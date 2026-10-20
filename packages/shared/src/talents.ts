@@ -1,11 +1,13 @@
 import { CLASS_IDS, type ClassId } from "./classes.ts";
-import { STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
+import { SPELL_MAX_RANK, STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
 
-// Árvore de magias de cada classe, comprada no menu com o gold das hunts.
-// Dois tipos de nó: magia de ataque (vira opção quando o slot libera na hunt) e áurea
-// (bônus passivo de dano, vida, mana ou velocidade, com vários níveis).
-// A tabela `talents` no Supabase (migration 20261020000300) repete id, nível máximo, custo e
-// pré-requisito de cada nó; mude as duas juntas.
+// Grimório: a árvore de magias de cada classe, comprada no menu com o gold das hunts.
+// É uma árvore de verdade: cada nó (fora a raiz) pede o nó pai no nível 1, então as magias da
+// ponta só abrem depois das anteriores do mesmo ramo. Dois tipos de nó:
+//   magia: vira opção quando o slot libera na hunt; os níveis 2 e 3 deixam a magia mais forte;
+//   áurea: bônus passivo de dano, vida, mana ou velocidade, com vários níveis.
+// As 2 magias iniciais da classe já vêm no nível 1 (`freeRank`). A tabela `talents` no Supabase
+// repete id, níveis, custo, nível grátis e pré-requisito de cada nó; mude os dois juntos.
 
 export type AuraStat = "damage" | "hp" | "mana" | "speed";
 
@@ -19,8 +21,9 @@ export const AURA_STAT_NAMES: Record<AuraStat, string> = {
 export interface TalentDef {
   id: string;
   classId: ClassId;
-  /** Círculo da árvore (1 = raiz). */
-  tier: 1 | 2 | 3;
+  /** Posição no desenho do Grimório: coluna (ramo, 0 a 2) e linha (0 = raiz). */
+  col: number;
+  row: number;
   kind: "spell" | "aura";
   name: string;
   icon: string;
@@ -29,10 +32,12 @@ export interface TalentDef {
   /** Bônus por nível da áurea, em fração (0.05 = +5%). */
   aura?: { stat: AuraStat; perRank: number };
   maxRank: number;
+  /** Níveis que a conta já tem sem comprar (as magias iniciais começam no 1). */
+  freeRank: number;
   /** Custo do nível n+1 = baseCost * costGrowth^n. */
   baseCost: number;
   costGrowth: number;
-  /** Nó que precisa ter pelo menos `rank` níveis antes. */
+  /** Nó pai, que precisa ter pelo menos `rank` níveis antes. */
   requires?: { id: string; rank: number };
 }
 
@@ -49,14 +54,6 @@ export interface Bonuses {
 
 export const NO_BONUSES: Bonuses = { damage: 0, hp: 0, mana: 0, speed: 0 };
 
-/** Magias compradas de cada classe: [slot 1, slot 2]. */
-const TREE_SPELLS: Record<ClassId, [SpellId, SpellId]> = {
-  knight: ["crushing_blow", "iron_skin"],
-  paladin: ["piercing_shot", "healing_light"],
-  sorcerer: ["lightning_bolt", "frost_nova"],
-  druid: ["venom_thorn", "nature_wrath"],
-};
-
 /** Nome das áureas de cada classe (dano, vida, mana, velocidade). */
 const AURA_NAMES: Record<ClassId, Record<AuraStat, string>> = {
   knight: { damage: "Áurea de Fúria", hp: "Áurea do Bastião", mana: "Áurea da Disciplina", speed: "Áurea da Investida" },
@@ -67,39 +64,97 @@ const AURA_NAMES: Record<ClassId, Record<AuraStat, string>> = {
 
 const AURA_ICONS: Record<AuraStat, string> = { damage: "⚔️", hp: "❤️", mana: "💧", speed: "👟" };
 
+/** Bônus, níveis e preço de cada áurea (iguais em todas as classes). */
+const AURA_RULES: Record<AuraStat, { perRank: number; maxRank: number; baseCost: number }> = {
+  damage: { perRank: 0.04, maxRank: 3, baseCost: 120 },
+  hp: { perRank: 0.06, maxRank: 3, baseCost: 120 },
+  mana: { perRank: 0.08, maxRank: 3, baseCost: 150 },
+  speed: { perRank: 0.04, maxRank: 2, baseCost: 300 },
+};
+
+/** Preço do 1º nível de uma magia, pela profundidade na árvore (a ponta é mais cara). */
+const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
+/** As iniciais já vêm no nível 1: o 2 custa base × 1,6. */
+const STARTER_BASE_COST = 150;
+
+/** Nome dos 3 ramos (colunas) do Grimório de cada classe. */
+export const TREE_BRANCHES: Record<ClassId, [string, string, string]> = {
+  knight: ["Lâmina", "Bastião", "Comando"],
+  paladin: ["Mira", "Luz", "Batedor"],
+  sorcerer: ["Raio", "Gelo", "Trevas"],
+  druid: ["Matilha", "Bosque", "Espinhos"],
+};
+
 /**
- * Mesmo formato para todas as classes:
- *   Círculo 1: áurea de dano e áurea de vida
- *   Círculo 2: magia nova do slot 1 (pede dano 1) e áurea de mana (pede vida 1)
- *   Círculo 3: magia nova do slot 2 (pede a do slot 1) e áurea de velocidade (pede mana 1)
+ * Forma do Grimório: [nó, coluna, linha, pai]. O nó é uma magia (id de SPELLS) ou uma áurea
+ * (damage, hp, mana, speed). A raiz é a magia inicial do slot 1; dela saem os 3 ramos.
  */
+type Shape = [key: SpellId | AuraStat, col: number, row: number, parent?: SpellId | AuraStat][];
+
+const SHAPES: Record<ClassId, Shape> = {
+  knight: [
+    ["blade_spin", 1, 0],
+    ["damage", 0, 1, "blade_spin"], ["hp", 1, 1, "blade_spin"], ["war_cry", 2, 1, "blade_spin"],
+    ["crushing_blow", 0, 2, "damage"], ["holy_shield", 1, 2, "hp"], ["mana", 2, 2, "war_cry"],
+    ["vampiric_blade", 0, 3, "crushing_blow"], ["iron_skin", 1, 3, "holy_shield"], ["speed", 2, 3, "mana"],
+    ["earthquake", 0, 4, "vampiric_blade"], ["steel_wall", 1, 4, "iron_skin"], ["commander_shout", 2, 4, "speed"],
+    ["execution", 0, 5, "earthquake"],
+  ],
+  paladin: [
+    ["holy_arrow", 1, 0],
+    ["damage", 0, 1, "holy_arrow"], ["hp", 1, 1, "holy_arrow"], ["arrow_rain", 2, 1, "holy_arrow"],
+    ["piercing_shot", 0, 2, "damage"], ["healing_light", 1, 2, "hp"], ["mana", 2, 2, "arrow_rain"],
+    ["stun_arrow", 0, 3, "piercing_shot"], ["blessed_ward", 1, 3, "healing_light"], ["speed", 2, 3, "mana"],
+    ["deadly_shot", 0, 4, "stun_arrow"], ["divine_judgment", 1, 4, "blessed_ward"], ["explosive_volley", 2, 4, "speed"],
+  ],
+  sorcerer: [
+    ["shadow_orb", 1, 0],
+    ["damage", 0, 1, "shadow_orb"], ["mana", 1, 1, "shadow_orb"], ["void_storm", 2, 1, "shadow_orb"],
+    ["lightning_bolt", 0, 2, "damage"], ["frost_nova", 1, 2, "mana"], ["hp", 2, 2, "void_storm"],
+    ["chain_lightning", 0, 3, "lightning_bolt"], ["ice_lance", 1, 3, "frost_nova"], ["drain_life", 2, 3, "hp"],
+    ["meteor", 0, 4, "chain_lightning"], ["blizzard", 1, 4, "ice_lance"], ["speed", 2, 4, "drain_life"],
+    ["dark_pact", 2, 5, "speed"],
+  ],
+  druid: [
+    ["forest_blessing", 1, 0],
+    ["damage", 0, 1, "forest_blessing"], ["mana", 1, 1, "forest_blessing"], ["thorn_roots", 2, 1, "forest_blessing"],
+    ["spirit_wolf", 0, 2, "damage"], ["healing_moth", 1, 2, "mana"], ["venom_thorn", 2, 2, "thorn_roots"],
+    ["wolf_pack", 0, 3, "spirit_wolf"], ["hp", 1, 3, "healing_moth"], ["hornet_swarm", 2, 3, "venom_thorn"],
+    ["ancient_bear", 0, 4, "wolf_pack"], ["grove_guardian", 1, 4, "hp"], ["nature_wrath", 2, 4, "hornet_swarm"],
+    ["speed", 0, 5, "ancient_bear"], ["forest_heart", 1, 5, "grove_guardian"],
+  ],
+};
+
+const isAura = (key: string): key is AuraStat => key in AURA_RULES;
+
 function classTree(classId: ClassId): TalentDef[] {
-  const [spellA, spellB] = TREE_SPELLS[classId];
-  const names = AURA_NAMES[classId];
   const id = (key: string) => `${classId}_${key}`;
-  const aura = (key: AuraStat, tier: 1 | 2 | 3, perRank: number, maxRank: number, baseCost: number, requires?: TalentDef["requires"]): TalentDef => ({
-    id: id(key), classId, tier, kind: "aura", name: names[key], icon: AURA_ICONS[key],
-    aura: { stat: key, perRank }, maxRank, baseCost, costGrowth: 1.8, requires,
+  return SHAPES[classId].map(([key, col, row, parent]): TalentDef => {
+    const requires = parent ? { id: id(parent), rank: 1 } : undefined;
+    if (isAura(key)) {
+      const rule = AURA_RULES[key];
+      return {
+        id: id(key), classId, col, row, kind: "aura", name: AURA_NAMES[classId][key], icon: AURA_ICONS[key],
+        aura: { stat: key, perRank: rule.perRank }, maxRank: rule.maxRank, freeRank: 0,
+        baseCost: rule.baseCost, costGrowth: 1.8, requires,
+      };
+    }
+    const spell = SPELLS[key];
+    if (spell.classId !== classId) throw new Error(`${key} não é magia de ${classId}`);
+    const starter = STARTER_SPELLS.includes(key);
+    return {
+      id: id(key), classId, col, row, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
+      maxRank: SPELL_MAX_RANK, freeRank: starter ? 1 : 0,
+      baseCost: starter ? STARTER_BASE_COST : SPELL_COST_BY_ROW[row], costGrowth: 1.6, requires,
+    };
   });
-  const spell = (spellId: SpellId, tier: 1 | 2 | 3, baseCost: number, requires: TalentDef["requires"]): TalentDef => ({
-    id: id(spellId), classId, tier, kind: "spell", name: SPELLS[spellId].name, icon: SPELLS[spellId].icon,
-    spellId, maxRank: 1, baseCost, costGrowth: 1, requires,
-  });
-  return [
-    aura("damage", 1, 0.04, 3, 120),
-    aura("hp", 1, 0.06, 3, 120),
-    spell(spellA, 2, 400, { id: id("damage"), rank: 1 }),
-    aura("mana", 2, 0.08, 3, 150, { id: id("hp"), rank: 1 }),
-    spell(spellB, 3, 900, { id: id(spellA), rank: 1 }),
-    aura("speed", 3, 0.04, 2, 300, { id: id("mana"), rank: 1 }),
-  ];
 }
 
 export const TALENTS: Record<string, TalentDef> = Object.fromEntries(
   CLASS_IDS.flatMap(classTree).map((t) => [t.id, t]),
 );
 
-/** Nós da árvore de uma classe, na ordem de exibição. */
+/** Nós do Grimório de uma classe, da raiz para as pontas. */
 export function talentTree(classId: ClassId): TalentDef[] {
   return Object.values(TALENTS).filter((t) => t.classId === classId);
 }
@@ -109,12 +164,16 @@ export function talentCost(def: TalentDef, currentRank: number): number {
   return Math.ceil(def.baseCost * def.costGrowth ** currentRank);
 }
 
+/** Nível do nó na conta: o comprado, ou o grátis se for maior. */
+export function talentRank(def: TalentDef, ranks: TalentRanks): number {
+  return Math.min(def.maxRank, Math.max(ranks[def.id] ?? 0, def.freeRank));
+}
+
 /** Por que o nó não pode ser comprado agora (null = pode, se houver gold). */
 export function talentBlocker(def: TalentDef, ranks: TalentRanks): string | null {
-  if ((ranks[def.id] ?? 0) >= def.maxRank) return def.kind === "spell" ? "Aprendida" : "Nível máximo";
-  if (def.requires && (ranks[def.requires.id] ?? 0) < def.requires.rank) {
-    return `Requer ${TALENTS[def.requires.id]?.name ?? def.requires.id}`;
-  }
+  if (talentRank(def, ranks) >= def.maxRank) return "Nível máximo";
+  const parent = def.requires && TALENTS[def.requires.id];
+  if (parent && talentRank(parent, ranks) < def.requires!.rank) return `Requer ${parent.name}`;
   return null;
 }
 
@@ -122,17 +181,25 @@ export function talentBlocker(def: TalentDef, ranks: TalentRanks): string | null
 export function auraBonuses(classId: ClassId, ranks: TalentRanks): Bonuses {
   const bonus = { ...NO_BONUSES };
   for (const t of talentTree(classId)) {
-    const rank = Math.min(ranks[t.id] ?? 0, t.maxRank);
+    const rank = talentRank(t, ranks);
     if (t.aura && rank > 0) bonus[t.aura.stat] += t.aura.perRank * rank;
   }
   return bonus;
 }
 
-/** Magias que a classe conhece: as iniciais e as compradas na árvore. */
+/** Nível de cada magia que a classe conhece (as iniciais e as compradas no Grimório). */
+export function spellRanks(classId: ClassId, ranks: TalentRanks): Partial<Record<SpellId, number>> {
+  const out: Partial<Record<SpellId, number>> = {};
+  for (const t of talentTree(classId)) {
+    const rank = talentRank(t, ranks);
+    if (t.spellId && rank > 0) out[t.spellId] = rank;
+  }
+  return out;
+}
+
+/** Magias que a classe conhece: as iniciais e as compradas no Grimório. */
 export function knownSpells(classId: ClassId, ranks: TalentRanks): SpellId[] {
-  const starters = STARTER_SPELLS.filter((id) => SPELLS[id].classId === classId);
-  const bought = talentTree(classId).filter((t) => t.spellId && (ranks[t.id] ?? 0) > 0).map((t) => t.spellId!);
-  return [...starters, ...bought];
+  return Object.keys(spellRanks(classId, ranks)) as SpellId[];
 }
 
 /** Texto curto do efeito de um nível de áurea. */

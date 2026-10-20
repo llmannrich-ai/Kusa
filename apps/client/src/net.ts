@@ -1,12 +1,13 @@
 import { Client, type Room } from "@colyseus/sdk";
 import { LOBBY_ROOM_NAME, ROOM_NAME, type HuntMetadata, type JoinOptions } from "@kusa/shared";
 // Só tipos: o cliente decodifica o estado por reflexão, sem carregar o código do servidor.
-import type { Chest, DungeonState, GroundItem, Monster, Player } from "../../server/src/state.ts";
+import type { Chest, DungeonState, GroundItem, Monster, Player, Summon } from "../../server/src/state.ts";
 
 export type PlayerView = Player;
 export type MonsterView = Monster;
 export type ChestView = Chest;
 export type GroundItemView = GroundItem;
+export type SummonView = Summon;
 export type DungeonRoom = Room<any, DungeonState>;
 
 // Sem VITE_SERVER_URL, usa o proxy do Vite (vite.config.ts) no mesmo endereço da página.
