@@ -72,6 +72,9 @@ import { nextStep } from "./pathfinding.ts";
 import { Chest, DungeonState, GroundItem, Monster, Player } from "./state.ts";
 import { recordRun, resolveAccount, takeLoadout, type Account } from "./supabase.ts";
 
+/** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
+type Hit = Pick<DamageMessage, "attacker" | "fromX" | "fromY" | "fx">;
+
 interface Seat {
   userId: string | null;
   /** Momento (ms) em que o jogador pode dar o próximo passo. */
@@ -413,9 +416,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
     this.broadcast(MSG.attack, { from: sessionId, x: p.x, y: p.y, tx: m.x, ty: m.y, ms } satisfies AttackMessage);
     const amount = rollDamage(this.baseDamage(sessionId, p));
+    // O cliente já desenhou o golpe pelo `MSG.attack`: o dano chega sem projétil de novo.
+    const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: cls.attackFx };
     this.after(ms, () => {
       const alive = this.state.monsters.get(m.id);
-      if (alive) this.damageMonster(alive, amount, sessionId);
+      if (alive) this.damageMonster(alive, amount, hit);
     });
   }
 
@@ -508,7 +513,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         brain.rootedUntil = now + spell.rootMs;
         m.rooted = true;
       }
-      if (spell.damage) this.damageMonster(m, rollDamage(amount), sessionId);
+      if (spell.damage) this.damageMonster(m, rollDamage(amount), { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx });
     }
 
     if (spell.heal) {
@@ -556,14 +561,15 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     return best;
   }
 
-  private damageMonster(m: Monster, amount: number, attackerId: string) {
+  private damageMonster(m: Monster, amount: number, hit: Hit) {
     const brain = this.brains.get(m.id);
     if (!brain) return;
+    const attackerId = hit.attacker;
     m.hp = Math.max(0, m.hp - amount);
     brain.participants.add(attackerId);
     // Apanhar faz o monstro perseguir quem bateu, se ainda não persegue ninguém.
     if (!brain.targetId) brain.targetId = attackerId;
-    this.broadcast(MSG.damage, { x: m.x, y: m.y, amount, toPlayer: false } satisfies DamageMessage);
+    this.broadcast(MSG.damage, { x: m.x, y: m.y, amount, toPlayer: false, ...hit } satisfies DamageMessage);
     if (m.hp === 0) this.killMonster(m, brain, attackerId);
   }
 
@@ -622,13 +628,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (SPELL_SLOT_LEVELS.some((l) => l <= level && l > previous)) this.notice(p.x, p.y - 2, "Nova magia!", 0x9b59b6);
   }
 
-  private damagePlayer(sessionId: string, raw: number) {
+  private damagePlayer(sessionId: string, raw: number, hit: Hit) {
     const p = this.state.players.get(sessionId);
     if (!p || p.status !== "playing") return;
     const guard = p.guarded ? this.seats.get(sessionId)?.guard ?? 0 : 0;
     const amount = Math.max(1, Math.round(raw * (1 - damageReduction(armorOf(equipment(p)))) * (1 - guard)));
     p.hp = Math.max(0, p.hp - amount);
-    this.broadcast(MSG.damage, { x: p.x, y: p.y, amount, toPlayer: true } satisfies DamageMessage);
+    this.broadcast(MSG.damage, { x: p.x, y: p.y, amount, toPlayer: true, ...hit } satisfies DamageMessage);
     if (p.hp === 0) this.endRun(sessionId, "died");
   }
 
@@ -656,7 +662,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (inRange) {
       if (now >= brain.nextAttackAt) {
         brain.nextAttackAt = now + def.attackCooldownMs;
-        this.damagePlayer(brain.targetId, rollDamage(brain.damage));
+        this.damagePlayer(brain.targetId, rollDamage(brain.damage), { attacker: m.id, fromX: m.x, fromY: m.y, fx: def.attackFx });
       }
       return;
     }

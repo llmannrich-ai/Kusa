@@ -4,7 +4,8 @@ import { itemIcon } from "./art/items.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet } from "./art/heroes.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { CHEST_TEXTURE, FLOOR_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE } from "./art/textures.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE } from "./art/textures.ts";
+import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 
 const ZOOM = 4;
 const gallery = document.getElementById("gallery")!;
@@ -89,7 +90,17 @@ for (let y = 0; y < H; y++) {
 }
 show(sceneRow, sceneCanvas, "corredor", 2);
 
+const combat = section("Combate (arte própria)");
+show(combat, slashStrip(), "corte");
+show(combat, biteStrip(), "mordida");
+show(combat, smashStrip(), "pancada");
+show(combat, leafCanvas(), "folha");
+
 const pack = section("Pack Dungeon Crawl (CC0)");
-for (const key of [...Object.values(MONSTER_TEXTURE), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE)]) {
+const packKeys = [
+  ...Object.values(MONSTER_TEXTURE), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
+  ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
+];
+for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);
 }

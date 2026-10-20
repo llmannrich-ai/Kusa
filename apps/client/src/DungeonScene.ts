@@ -20,8 +20,9 @@ import {
   type SpellMessage,
 } from "@kusa/shared";
 import { CombatFx } from "./fx.ts";
+import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { SpellBar } from "./spellbar.ts";
-import { FX, createCombatArt } from "./art/combat.ts";
+import { FX } from "./art/combat.ts";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
 import { loadSettings } from "./settings.ts";
@@ -34,13 +35,11 @@ import {
   FLOOR_TEXTURE,
   MONSTER_TEXTURE,
   PORTAL_TEXTURE,
-  createHeroArt,
   floorVariants,
   heroIdleFrame,
   heroTexture,
   heroWalkAnim,
   itemTexture,
-  preloadArt,
   wallCapTexture,
   wallFaceTexture,
 } from "./art/textures.ts";
@@ -62,6 +61,8 @@ const DEPTH = { floor: 0, ui: 100_000 };
 
 /** Sprites do pack que olham para a esquerda (espelhados quando andam para a direita). */
 const FACES_LEFT = new Set<MonsterKind>(["rat", "dragon"]);
+/** Monstros que não sangram (viram poeira). */
+const BLOODLESS = new Set<MonsterKind>(["skeleton"]);
 
 const COLORS = {
   void: 0x0b0908,
@@ -93,6 +94,11 @@ interface Unit {
   dir: HeroDir;
   lastStepAt: number;
   walkUntil: number;
+  /** Avanço do golpe (px), somado à posição do sprite. */
+  lunge: Lunge;
+  /** Se sangra ao apanhar (esqueleto não). */
+  bleeds: boolean;
+  dead: boolean;
   /** Escudo do Grito de Guerra (jogador) ou espinhos das raízes (monstro), visível enquanto dura. */
   status?: Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible;
 }
@@ -109,7 +115,10 @@ export class DungeonScene extends Phaser.Scene {
   private move!: MoveInput;
   /** Nulo quando o jogador desligou o minimapa nas configurações. */
   private minimap: Minimap | null = null;
+  /** Golpes e magias dos heróis (`MSG.attack` e `MSG.spell`). */
   private fx!: CombatFx;
+  /** Piscar, sangue, cadáver e o ataque dos monstros (`MSG.damage`). */
+  private hits!: HitFx;
   private spellBar!: SpellBar;
   private nextSendAt = 0;
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
@@ -123,14 +132,10 @@ export class DungeonScene extends Phaser.Scene {
     this.room = data.room;
   }
 
-  preload() {
-    preloadArt(this);
-  }
-
+  /** A arte já foi carregada pela cena `ArtLoader`, desde o lobby. */
   create() {
-    createHeroArt(this);
-    createCombatArt(this);
     this.fx = new CombatFx(this);
+    this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed);
     this.drawFloor();
     this.drawWalls();
@@ -155,7 +160,10 @@ export class DungeonScene extends Phaser.Scene {
       callbacks.onChange(monster, () => this.syncMonster(id, monster));
     });
     callbacks.onRemove("monsters", (_monster: MonsterView, id: string) => {
-      this.destroyUnit(this.monsters.get(id));
+      // Monstros só saem do estado quando morrem.
+      const unit = this.monsters.get(id);
+      if (unit) this.hits.death(unit.sprite, { x: unit.body.x, y: unit.body.y }, unit.bleeds);
+      this.destroyUnit(unit);
       this.monsters.delete(id);
     });
 
@@ -175,8 +183,7 @@ export class DungeonScene extends Phaser.Scene {
 
     callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
 
-    this.room.onMessage(MSG.damage, (msg: DamageMessage) =>
-      this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff));
+    this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
@@ -307,19 +314,56 @@ export class DungeonScene extends Phaser.Scene {
 
   /** Tranco curto do sprite na direção do golpe (ida e volta). */
   private lunge(unit: Unit | undefined, dx: number, dy: number, distance: number) {
-    if (!unit || (dx === 0 && dy === 0)) return;
+    if (!unit || unit.dead || (dx === 0 && dy === 0)) return;
     this.face(unit, Math.sign(dx), Math.abs(dx) >= Math.abs(dy) ? 0 : Math.sign(dy));
     const len = Math.hypot(dx, dy);
-    this.tweens.killTweensOf(unit.sprite);
-    unit.sprite.setPosition(0, TILE_SIZE / 2);
+    this.tweens.killTweensOf(unit.lunge);
+    unit.lunge.x = 0;
+    unit.lunge.y = 0;
     this.tweens.add({
-      targets: unit.sprite,
-      x: (dx / len) * distance,
-      y: TILE_SIZE / 2 + (dy / len) * distance,
+      targets: unit.lunge,
+      x: Math.round((dx / len) * distance),
+      y: Math.round((dy / len) * distance),
       duration: 70,
       yoyo: true,
       ease: "Quad.Out",
+      onComplete: () => { unit.lunge.x = 0; unit.lunge.y = 0; },
     });
+  }
+
+  /**
+   * Um golpe acertou. O golpe dos heróis já foi desenhado pelo `MSG.attack`/`MSG.spell` e o dano
+   * só chega no impacto: aqui o alvo pisca, sangra e o número sobe. O ataque dos monstros é
+   * desenhado agora (avanço, mordida ou bola de fogo) e o número sobe quando ele chega.
+   */
+  private onDamage(msg: DamageMessage) {
+    const target = this.unitAt(msg.x, msg.y, msg.toPlayer);
+    const tile = { x: this.toPx(msg.x), y: this.toPx(msg.y) };
+    // Posição viva do alvo (ele pode andar enquanto o projétil voa); sem alvo, o tile do golpe.
+    const to = () => (target?.body.active ? { x: target.body.x, y: target.body.y } : tile);
+    const impact = () => {
+      if (target?.sprite.active) {
+        this.hits.flash(target.sprite);
+        if (target.bleeds && Math.random() < 0.6) this.hits.bleed(to());
+      }
+      this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff);
+    };
+    const monster = this.monsters.get(msg.attacker);
+    if (!monster) return impact();
+    if (!monster.dead && this.time.now >= monster.walkUntil) {
+      this.face(monster, Math.sign(msg.x - msg.fromX), Math.sign(msg.y - msg.fromY));
+    }
+    this.hits.attack(msg.fx, { x: monster.body.x, y: monster.body.y }, to, monster.lunge, impact);
+  }
+
+  /** Unidade (jogador ou monstro) que está no tile, pelo estado do servidor. */
+  private unitAt(tileX: number, tileY: number, player: boolean): Unit | undefined {
+    let found: Unit | undefined;
+    const list = player ? this.room.state.players : this.room.state.monsters;
+    list.forEach((entity: { x: number; y: number }, id: string) => {
+      if (!found && entity.x === tileX && entity.y === tileY) found = (player ? this.avatars : this.monsters).get(id);
+    });
+    return found;
   }
 
   /** Mostra ou esconde o escudo / os espinhos de uma unidade, criando na primeira vez. */
@@ -469,6 +513,12 @@ export class DungeonScene extends Phaser.Scene {
     const alpha = player.status === "playing" ? 1 : 0.35;
     unit.body.setAlpha(alpha);
     unit.overlay.setAlpha(alpha);
+    if (player.status === "died" && !unit.dead) {
+      // Morto fica caído no chão, numa poça, até a partida acabar.
+      unit.dead = true;
+      unit.sprite.stop().setFrame(heroIdleFrame("down")).setAngle(90);
+      this.hits.bleed({ x: unit.body.x, y: unit.body.y });
+    }
     this.drawBar(unit, player.hp, player.maxHp, COLORS.hpPlayer);
     this.setStatus(unit, player.guarded && player.status === "playing", () => this.shieldAura());
     this.moveTo(unit, player.x, player.y);
@@ -482,6 +532,7 @@ export class DungeonScene extends Phaser.Scene {
     const sprite = this.add.sprite(0, 0, MONSTER_TEXTURE[kind]).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, FACES_LEFT.has(kind));
+    unit.bleeds = !BLOODLESS.has(kind);
     if (def.rank !== "common") {
       const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
       unit.overlay.add(label);
@@ -507,7 +558,10 @@ export class DungeonScene extends Phaser.Scene {
     const body = this.add.container(x, y, [shadow, sprite]);
     const bar = this.add.graphics();
     const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);
-    return { body, sprite, overlay, bar, barWidth, barY, facesLeft, dir: "down", lastStepAt: 0, walkUntil: 0 };
+    return {
+      body, sprite, overlay, bar, barWidth, barY, facesLeft,
+      dir: "down", lastStepAt: 0, walkUntil: 0, lunge: { x: 0, y: 0 }, bleeds: true, dead: false,
+    };
   }
 
   private destroyUnit(unit: Unit | undefined) {
@@ -558,14 +612,15 @@ export class DungeonScene extends Phaser.Scene {
     unit.body.setDepth(unit.body.y + TILE_SIZE / 2 + 0.5);
     unit.overlay.setPosition(unit.body.x, unit.body.y);
     const walking = time < unit.walkUntil;
+    // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam.
+    const bob = !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
+    unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
+    if (unit.dead) return;
     if (unit.classId) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.classId, unit.dir), true);
       else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
         unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
       }
-    } else {
-      // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam.
-      unit.sprite.y = TILE_SIZE / 2 - (walking && Math.floor(time / 125) % 2 ? 1 : 0);
     }
   }
 

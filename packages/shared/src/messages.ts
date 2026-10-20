@@ -1,6 +1,9 @@
 import type { ClassId } from "./classes.ts";
 import type { SpellId, SpellSlot } from "./spells.ts";
 
+/** Como um golpe aparece na tela: o cliente escolhe projétil e impacto a partir disto. */
+export type AttackFx = "slash" | "bite" | "smash" | "arrow" | "energy" | "nature" | "fire";
+
 /** Opções enviadas pelo cliente ao entrar numa sala. */
 export interface JoinOptions {
   name: string;
@@ -21,13 +24,18 @@ export interface MoveMessage { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }
 /** Cliente → servidor: seleciona o monstro alvo do auto-attack (null limpa). */
 export interface TargetMessage { id: string | null }
 
-/** Servidor → todos: um golpe acertou alguém (para números de dano flutuantes). */
+/** Servidor → todos: um golpe acertou alguém (efeito do golpe e número de dano flutuante). */
 export interface DamageMessage {
   x: number;
   y: number;
   amount: number;
   /** true quando quem apanhou foi um jogador. */
   toPlayer: boolean;
+  /** Quem bateu (sessionId do jogador ou id do monstro) e de onde, para o projétil e o avanço do golpe. */
+  attacker: string;
+  fromX: number;
+  fromY: number;
+  fx: AttackFx;
 }
 
 /** Servidor → todos: aviso flutuante no mapa (XP, nível, loot, baú, boss). */

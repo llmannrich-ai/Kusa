@@ -25,5 +25,14 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `portal-boss.png` | `dungeon/gateways/starry_portal.png` | — |
 | `floor.png` | `dungeon/floor/pebble_brown_0..8_new.png` | juntos numa faixa, brilho ×1,7 |
 | `floor-boss.png` | `dungeon/floor/cobble_blood_1..4_new.png` | juntos numa faixa, brilho ×1,4 |
+| `fx-arrow.png` | `effect/arrow_2.png` | — |
+| `fx-fireball.png` | `effect/flame_0.png` | — |
+| `fx-fire-burst.png` | `effect/cloud_fire_0..2.png` | juntos numa faixa |
+| `fx-energy-bolt.png` | `effect/magic_dart_0.png` | — |
+| `fx-energy-hit.png` | `effect/magic_bolt_1.png` | — |
+| `fx-nature-hit.png` | `effect/magic_bolt_2.png` | — |
+| `blood-splat.png` | `misc/blood/blood_red_0, 5, 9.png` | juntos numa faixa |
+| `blood-puddle.png` | `misc/blood/blood_puddle_red, _1, _2.png` | juntos numa faixa |
 
-As paredes e as 4 classes são arte própria do Kusa, gerada no código (`apps/client/src/art`).
+As paredes, as 4 classes e os efeitos de corpo a corpo (corte, mordida, pancada) e a folha do druida são arte
+própria do Kusa, gerada no código (`apps/client/src/art`).

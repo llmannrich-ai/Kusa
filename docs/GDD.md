@@ -86,7 +86,7 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 
 - Ataque básico (auto-attack) de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
 - Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 8. Ao alcançar o nível, aparece na tela a escolha da magia do slot; depois de escolhida, ela fica até o fim da hunt. Fechar a escolha deixa o botão do slot com ✨ para escolher depois.
-- Por enquanto cada classe tem uma magia por slot. Depois, o mercado do menu vai vender magias que viram opções extras na escolha.
+- Toda classe tem uma magia inicial por slot; as compradas na árvore de magias do menu viram opções extras na escolha (ver "Árvore de magias").
 - Magias de alvo usam o alvo atual (ou o monstro mais próximo ao alcance); paredes bloqueiam o efeito. Cada uma gasta mana e tem recarga.
 
 | Classe | Slot 1 (nível 3) | Slot 2 (nível 8) |
@@ -97,6 +97,7 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 | Druida | 🌿 Bênção da Floresta: cura 35% da vida de quem está a até 4 tiles | 🌱 Raízes Espinhosas: raio 2 no alvo, fere (1,2×) e prende por 3,5 s |
 
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
+- Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, bola de fogo do dragão).
 
 ## Itens (protótipo)
 

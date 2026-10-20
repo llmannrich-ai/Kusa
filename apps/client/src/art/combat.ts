@@ -6,15 +6,16 @@ import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
  * Projéteis apontam para a direita (o Phaser gira na direção do alvo).
  */
 
+/** Chaves próprias (prefixo `fx-hero-` onde o pack de `textures.ts` já usa o nome). */
 export const FX = {
-  arrow: "fx-arrow",
+  arrow: "fx-hero-arrow",
   holyArrow: "fx-holy-arrow",
   greenLight: "fx-green-light",
   darkLight: "fx-dark-light",
   shadowOrb: "fx-shadow-orb",
-  slash: "fx-slash",
+  slash: "fx-hero-slash",
   spark: "fx-spark",
-  leaf: "fx-leaf",
+  leaf: "fx-hero-leaf",
   thorns: "fx-thorns",
 } as const;
 
