@@ -32,7 +32,7 @@ function joinOptions(): JoinOptions {
 
 async function enter(connect: () => Promise<DungeonRoom>) {
   show("menu-error", false);
-  void goFullscreenLandscape();
+  void goFullscreenPortrait();
   try {
     bindRoom(await connect());
   } catch (err) {
@@ -125,12 +125,12 @@ function showResult(msg: RunEndedMessage) {
   show("result", true);
 }
 
-/** No celular, tela cheia e trava em paisagem (Android; o iOS ignora e mostra o aviso de girar). */
-async function goFullscreenLandscape() {
+/** No celular, tela cheia e trava em retrato (Android; o iOS ignora e mostra o aviso de girar). */
+async function goFullscreenPortrait() {
   if (!matchMedia("(pointer: coarse)").matches) return;
   try {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
-    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
+    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("portrait");
   } catch {
     // Navegador não permite: segue normal.
   }

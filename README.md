@@ -17,7 +17,7 @@ só envia intenções. O gold só é gravado pelo servidor (service role) atrav�
 
 ## Jogar
 
-**https://llmannrich-ai.github.io/Kusa/** (melhor no celular, na horizontal)
+**https://llmannrich-ai.github.io/Kusa/** (feito para celular, na vertical)
 
 - O cliente é publicado no GitHub Pages a cada push no `main` (`.github/workflows/pages.yml`).
 - O servidor de jogo roda no Render, plano free (`render.yaml`). Ele dorme após 15 min sem jogadores, e a primeira entrada leva cerca de 1 min.

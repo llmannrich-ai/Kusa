@@ -8,12 +8,12 @@ RPG de dungeon cooperativo para navegador, com tema de Dungeons & Dragons e visu
 O jogo roda no navegador, mas **o alvo principal é o celular**. Toda mecânica nasce pensada para o toque;
 teclado e mouse no desktop são um extra.
 
-- **Orientação paisagem**, como no Zooba. Em retrato aparece um aviso para girar o aparelho.
-- **Polegar esquerdo:** joystick virtual flutuante, que aparece onde o dedo toca na metade esquerda da tela, com 8 direções.
+- **Sempre com o celular em pé (retrato).** Com o aparelho deitado aparece um aviso para girá-lo.
+- **Polegar esquerdo:** joystick virtual flutuante, que aparece onde o dedo toca na parte de baixo da tela, à esquerda, com 8 direções.
 - **Polegar direito:** botões de ação no canto inferior direito (ataque, magias, poções), grandes e sem precisar de mira precisa.
-- **Mira:** auto-ataque no monstro mais próximo dentro do alcance. Tocar num monstro trava o alvo nele.
-- **Tela:** sempre se vê cerca de 15×9 tiles, em qualquer tamanho de celular. O HUD respeita o notch (safe area), e nada importante fica longe dos polegares.
-- Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar em paisagem ao entrar na hunt.
+- **Mira:** auto-ataque no monstro mais próximo dentro do alcance. Tocar num monstro (na parte de cima da tela) trava o alvo nele.
+- **Tela:** sempre se vê cerca de 9×15 tiles (mais altura que largura), em qualquer tamanho de celular. O HUD fica no topo, respeitando o notch (safe area); os controles ficam embaixo, perto dos polegares.
+- Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar em retrato ao entrar na hunt.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
 ## Menu inicial (estilo Zooba / Clash)

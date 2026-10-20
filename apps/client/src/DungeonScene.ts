@@ -4,7 +4,7 @@ import { CLASSES, MSG, TILE_SIZE, Tile, generateDungeon, type ClassId, type Dung
 import { MoveInput } from "./input.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
-const VIEW_TILES = { w: 15, h: 9 };
+const VIEW_TILES = { short: 9, long: 15 };
 
 const COLORS = {
   wall: 0x1a1512,
@@ -111,10 +111,14 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: avatar, x: this.toPx(player.x), y: this.toPx(player.y), duration: 120 });
   }
 
-  /** Mostra sempre cerca de 15×9 tiles, do celular pequeno ao monitor (campo de visão igual para todos). */
+  /**
+   * Mostra sempre cerca de 9×15 tiles com o celular em pé (15×9 numa tela deitada),
+   * do celular pequeno ao monitor: campo de visão igual para todos.
+   */
   private fitCamera() {
     const { width, height } = this.scale.gameSize;
-    const zoom = Math.min(width / (VIEW_TILES.w * TILE_SIZE), height / (VIEW_TILES.h * TILE_SIZE));
+    const [cols, rows] = height > width ? [VIEW_TILES.short, VIEW_TILES.long] : [VIEW_TILES.long, VIEW_TILES.short];
+    const zoom = Math.min(width / (cols * TILE_SIZE), height / (rows * TILE_SIZE));
     this.cameras.main.setZoom(zoom);
   }
 

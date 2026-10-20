@@ -146,20 +146,16 @@ button { min-height: 44px; touch-action: manipulation; }
   background: var(--bg);
 }
 .rotate-icon { font-size: 64px; color: var(--accent); }
-/* Só em telas de toque em retrato: o jogo é jogado na horizontal. */
-@media (orientation: portrait) and (pointer: coarse) {
+/* Só em telas de toque deitadas: o jogo é jogado com o celular em pé. */
+@media (orientation: landscape) and (pointer: coarse) {
   #rotate { display: flex; }
 }
 
-/* Celular em paisagem: pouca altura, então o menu fica compacto. */
-@media (max-height: 500px) {
-  .panel { padding: 12px 16px; width: min(560px, calc(100vw - 32px)); }
-  h1 { font-size: 28px; }
-  .tagline { margin: 0 0 4px; font-size: 13px; }
-  label { margin: 8px 0 4px; }
-  fieldset { grid-template-columns: repeat(4, 1fr); }
-  .class-option { padding: 6px; font-size: 14px; }
-  .actions { margin-top: 8px; grid-template-columns: 1fr 1fr; }
-  #timer { font-size: 18px; }
-  #stats { font-size: 12px; }
+/* Celular em pé: tela estreita. */
+@media (max-width: 480px) {
+  .panel { padding: 16px; }
+  h1 { font-size: 32px; }
+  #timer { font-size: 20px; }
+  #stats { font-size: 12px; max-width: 60vw; }
+  #actions { grid-template-columns: repeat(2, 72px); }
 }

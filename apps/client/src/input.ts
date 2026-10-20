@@ -6,7 +6,20 @@ const RADIUS = 56;
 const DEADZONE = 0.3;
 
 /**
- * Entrada de movimento: joystick virtual flutuante (metade esquerda da tela, toque)
+ * Onde um toque vira joystick.
+ * Celular em pé: parte de baixo da tela, à esquerda, onde fica o polegar. O topo fica livre
+ * para tocar em monstros e o canto inferior direito para os botões de ação.
+ * Tela deitada (desktop): metade esquerda.
+ */
+function inJoystickZone(x: number, y: number) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  if (h > w) return y > h * 0.45 && x < w * 0.6;
+  return x < w / 2;
+}
+
+/**
+ * Entrada de movimento: joystick virtual flutuante (toque, ver `inJoystickZone`)
  * e WASD/setas no desktop. O resultado é sempre uma das 8 direções, que é o que o servidor aceita.
  */
 export class MoveInput {
@@ -55,8 +68,7 @@ export class MoveInput {
   }
 
   private onDown = (e: PointerEvent) => {
-    // A metade direita fica livre para tocar em monstros e nos botões de ação.
-    if (this.pointerId !== null || e.clientX > window.innerWidth / 2) return;
+    if (this.pointerId !== null || !inJoystickZone(e.clientX, e.clientY)) return;
     this.pointerId = e.pointerId;
     this.origin = { x: e.clientX, y: e.clientY };
     this.base.style.left = `${e.clientX}px`;
