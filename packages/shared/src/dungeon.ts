@@ -25,6 +25,13 @@ export interface Dungeon {
 }
 
 const SIZE = 72;
+/**
+ * Folga mínima (tiles) entre uma sala lateral e a sala inicial: o mini-boss nasce no centro da
+ * lateral e não pode enxergar a equipe ao começar (aggro do ogro = 6).
+ */
+const SIDE_ROOM_MIN_GAP = 6;
+/** Deslocamentos possíveis de uma sala lateral em relação à sala do caminho em que ela pendura. */
+const SIDE_OFFSETS: readonly (readonly [number, number])[] = [[-14, -14], [-14, 10], [10, -14], [10, 10]];
 
 /**
  * Gera uma dungeon semi-linear: a equipe nasce numa borda aleatória e o caminho
@@ -80,18 +87,22 @@ export function generateDungeon(seed: number): Dungeon {
   for (const r of path) carve(r);
   for (let i = 0; i < path.length - 1; i++) corridor(path[i], path[i + 1]);
 
-  // Salas laterais penduradas no caminho.
+  // Salas laterais penduradas no caminho, longe da entrada: tenta os 4 lados em ordem sorteada
+  // e desiste da sala se todos caírem perto demais da sala inicial.
   const side: Rect[] = [];
   for (let i = 1; i < path.length - 1; i++) {
     if (rng.next() < 0.35) continue;
     const anchor = centerOf(path[i]);
     const w = rng.int(5, 7);
     const h = rng.int(5, 7);
-    const room: Rect = {
-      x: clamp(anchor.x + rng.pick([-14, 10]), 2, SIZE - w - 2),
-      y: clamp(anchor.y + rng.pick([-14, 10]), 2, SIZE - h - 2),
-      w, h,
-    };
+    const room = shuffled(rng, SIDE_OFFSETS)
+      .map(([dx, dy]): Rect => ({
+        x: clamp(anchor.x + dx, 2, SIZE - w - 2),
+        y: clamp(anchor.y + dy, 2, SIZE - h - 2),
+        w, h,
+      }))
+      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP);
+    if (!room) continue;
     carve(room);
     corridor(path[i], room);
     side.push(room);
@@ -137,6 +148,23 @@ export function hasLineOfSight(d: Dungeon, x0: number, y0: number, x1: number, y
 
 export function centerOf(r: Rect) {
   return { x: Math.floor(r.x + r.w / 2), y: Math.floor(r.y + r.h / 2) };
+}
+
+/** Tiles livres entre dois retângulos (0 quando se encostam ou se sobrepõem), contando diagonais como 1. */
+function gapBetween(a: Rect, b: Rect) {
+  const gx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0);
+  const gy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
+  return Math.max(gx, gy);
+}
+
+/** Cópia embaralhada (Fisher–Yates) com o RNG da seed, para continuar determinístico. */
+function shuffled<T>(rng: ReturnType<typeof createRng>, items: readonly T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = rng.int(0, i);
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 function clamp(v: number, min: number, max: number) {
