@@ -77,12 +77,13 @@ button:hover { border-color: var(--accent); }
 button.primary { background: #4a3417; border-color: var(--accent); width: 100%; }
 
 .actions { margin-top: 16px; display: grid; gap: 8px; }
-.join { display: flex; gap: 8px; }
-.join input { margin: 0; }
 .error { color: var(--danger); }
+.muted { color: var(--muted); }
+
+#room-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.room { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; }
 
 #lobby-players { padding-left: 20px; }
-code { color: var(--accent); user-select: all; }
 
 input, button { -webkit-user-select: text; user-select: text; }
 button { min-height: 44px; touch-action: manipulation; }

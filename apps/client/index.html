@@ -28,18 +28,24 @@
       </fieldset>
 
       <div class="actions">
-        <button id="create" class="primary">Criar hunt</button>
-        <div class="join">
-          <input id="code" placeholder="Código da equipe" />
-          <button id="join">Entrar</button>
-        </div>
+        <button id="play" class="primary">Jogar</button>
       </div>
-      <p id="menu-error" class="error" hidden></p>
+    </section>
+
+    <section id="rooms" class="panel" hidden>
+      <h2>Salas abertas</h2>
+      <ul id="room-list"></ul>
+      <p id="rooms-empty" class="muted">Nenhuma sala aberta. Crie uma e chame os amigos.</p>
+      <div class="actions">
+        <button id="create" class="primary">Criar sala</button>
+        <button id="rooms-back">Voltar</button>
+      </div>
+      <p id="rooms-error" class="error" hidden></p>
     </section>
 
     <section id="lobby" class="panel" hidden>
       <h2>Equipe</h2>
-      <p>Código: <code id="lobby-code"></code> <small>(envie para até 3 amigos)</small></p>
+      <p class="muted">Até 4 jogadores. Seus amigos encontram esta sala na lista de salas abertas.</p>
       <ul id="lobby-players"></ul>
       <button id="start" class="primary">Começar hunt</button>
       <p id="lobby-wait" hidden>Aguardando o líder iniciar…</p>

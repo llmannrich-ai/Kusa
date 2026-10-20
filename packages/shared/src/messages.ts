@@ -8,6 +8,12 @@ export interface JoinOptions {
   accessToken?: string;
 }
 
+/** Metadata de matchmaking de uma hunt, mostrada na lista de salas. */
+export interface HuntMetadata {
+  /** Nome do líder da equipe. */
+  leader: string;
+}
+
 /** Cliente → servidor: um passo de tile. */
 export interface MoveMessage { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }
 
