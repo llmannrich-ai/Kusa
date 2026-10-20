@@ -427,6 +427,28 @@ export function hasLineOfSight(d: Dungeon, x0: number, y0: number, x1: number, y
   return true;
 }
 
+/** Último tile livre na linha (Bresenham) de (x0, y0) até (x1, y1): onde um tiro para ao bater numa parede. */
+export function lineEnd(d: Dungeon, x0: number, y0: number, x1: number, y1: number) {
+  const dx = Math.abs(x1 - x0);
+  const dy = -Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  let x = x0;
+  let y = y0;
+  while (x !== x1 || y !== y1) {
+    const e2 = 2 * err;
+    let nx = x;
+    let ny = y;
+    if (e2 >= dy) { err += dy; nx += sx; }
+    if (e2 <= dx) { err += dx; ny += sy; }
+    if (!isWalkable(d, nx, ny)) break;
+    x = nx;
+    y = ny;
+  }
+  return { x, y };
+}
+
 export function centerOf(r: Rect) {
   return { x: Math.floor(r.x + r.w / 2), y: Math.floor(r.y + r.h / 2) };
 }
