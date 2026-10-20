@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Room, type Client } from "colyseus";
 import {
+  AIM_SNAP_TILES,
   BASIC_ATTACKS,
+  BASIC_ATTACK_COOLDOWN_MS,
   BOSS_LOOT_BONUS,
   CHEST_LOOT,
   CLASSES,
@@ -28,15 +30,18 @@ import {
   auraBonuses,
   bestPerSlot,
   centerOf,
+  clampToRange,
   createRng,
   generateDungeon,
   damageReduction,
   flightMs,
   hasLineOfSight,
   isUpgrade,
+  isSingleTarget,
   isWalkable,
   knownSpells,
   levelForXp,
+  lineEnd,
   mapIdOf,
   monsterStats,
   rankPower,
@@ -53,6 +58,7 @@ import {
   xpForLevel,
   xpShare,
   type AttackMessage,
+  type AttackingMessage,
   type Bonuses,
   type CastMessage,
   type ChooseSpellMessage,
@@ -88,9 +94,13 @@ interface Seat {
   userId: string | null;
   /** Momento (ms) em que o jogador pode dar o próximo passo. */
   nextMoveAt: number;
-  /** Momento (ms) do próximo auto-attack. */
+  /** Momento (ms) em que o ataque básico volta a poder sair. */
   nextAttackAt: number;
-  /** true quando o jogador escolheu o alvo (toque/🎯); false quando a mira automática escolheu. */
+  /** Segurando o botão de ataque: o golpe se repete no ritmo da recarga. */
+  attacking: boolean;
+  /** Um toque rápido no ataque ainda vale até este momento (sai assim que a recarga deixar). */
+  attackUntil: number;
+  /** true quando o jogador escolheu o alvo (toque no monstro); false quando a mira automática escolheu. */
   targetLocked: boolean;
   /** Momento (ms) em que cada slot de magia volta a poder ser usado. */
   spellReadyAt: [number, number];
@@ -189,6 +199,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     this.onMessage(MSG.move, (client, msg: MoveMessage) => this.handleMove(client, msg));
     this.onMessage(MSG.target, (client, msg: TargetMessage) => this.handleTarget(client, msg));
+    this.onMessage(MSG.attacking, (client, msg: AttackingMessage) => this.handleAttacking(client, msg));
     this.onMessage(MSG.chooseSpell, (client, msg: ChooseSpellMessage) => this.handleChooseSpell(client, msg));
     this.onMessage(MSG.cast, (client, msg: CastMessage) => this.handleCast(client, msg));
 
@@ -224,7 +235,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, {
-      userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false,
+      userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], guard: 0, guardUntil: 0, barrierUntil: 0, bonus, stats: newRunStats(),
     });
     if (!this.state.leaderId) {
@@ -410,6 +421,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (seat) seat.targetLocked = player.target !== "";
   }
 
+  private handleAttacking(client: Client, msg: AttackingMessage) {
+    const seat = this.seats.get(client.sessionId);
+    if (!seat) return;
+    seat.attacking = msg?.on === true;
+    // O toque vale por uma recarga inteira: se o golpe anterior ainda recarrega, sai assim que puder.
+    if (seat.attacking) seat.attackUntil = this.clock.currentTime + BASIC_ATTACK_COOLDOWN_MS;
+  }
+
   private tick(dt: number) {
     if (this.state.phase !== "running") return;
 
@@ -450,8 +469,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   /**
-   * Auto-attack: bate no alvo travado enquanto ele estiver no alcance da classe.
-   * Sem alvo, mira sozinho no monstro mais próximo ao alcance (no celular não há mira precisa).
+   * Ataque básico: sai enquanto o jogador segura o botão (ou logo após um toque), no alvo travado
+   * se estiver no alcance da classe. Sem alvo, mira sozinho no monstro mais próximo ao alcance;
+   * esse alvo automático é escolhido mesmo sem atacar, para o cliente mostrar quem vai apanhar.
    */
   private playerAttack(sessionId: string, p: Player, now: number) {
     if (p.status !== "playing") return;
@@ -466,11 +486,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p.target) return;
 
     const m = this.state.monsters.get(p.target)!;
+    if (!seat.attacking && now >= seat.attackUntil) return;
     if (now < seat.nextAttackAt) return;
 
     if (!this.canHit(p, m, cls.attackRange)) return;
 
-    seat.nextAttackAt = now + cls.attackCooldownMs;
+    seat.nextAttackAt = now + BASIC_ATTACK_COOLDOWN_MS;
+    seat.attackUntil = 0;
     // Flecha e luzes voam até o alvo: o dano entra quando chegam (se o monstro ainda estiver vivo).
     const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
     this.broadcast(MSG.attack, { from: sessionId, x: p.x, y: p.y, tx: m.x, ty: m.y, ms } satisfies AttackMessage);
@@ -526,9 +548,26 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       return;
     }
 
-    // Magia de alvo usa o alvo atual se estiver ao alcance; senão, o monstro mais próximo.
     let target: Monster | undefined;
-    if (spell.aim === "target") {
+    let tx = p.x;
+    let ty = p.y;
+    const aim = msg.aim;
+    if (spell.aim === "target" && aim && Number.isFinite(aim.x) && Number.isFinite(aim.y)) {
+      // Mira: o ponto é puxado para dentro do alcance e para na primeira parede do caminho.
+      const point = clampToRange(p.x, p.y, Math.round(aim.x), Math.round(aim.y), spell.range);
+      const end = lineEnd(this.dungeon, p.x, p.y, point.x, point.y);
+      tx = end.x;
+      ty = end.y;
+      // Alvo único: vale o monstro em que a mira grudou (com 1 tile de folga para o atraso da rede).
+      // Errou a mira: a magia sai do mesmo jeito, gasta mana e recarga, e só acerta quem estiver no ponto.
+      const snapped = isSingleTarget(spell) && typeof aim.targetId === "string" ? this.state.monsters.get(aim.targetId) : undefined;
+      if (snapped && this.canHit(p, snapped, spell.range) && tileDistance(snapped.x, snapped.y, aim.x, aim.y) <= AIM_SNAP_TILES + 1) {
+        target = snapped;
+        tx = snapped.x;
+        ty = snapped.y;
+      }
+    } else if (spell.aim === "target") {
+      // Toque rápido: alvo atual se estiver ao alcance; senão, o monstro mais próximo. Sem nenhum, não sai.
       const current = this.state.monsters.get(p.target);
       target = current && this.canHit(p, current, spell.range)
         ? current
@@ -538,13 +577,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Nenhum alvo ao alcance", color: 0xbdc3c7 } satisfies NoticeMessage);
         return;
       }
+      tx = target.x;
+      ty = target.y;
     }
 
     p.mana -= spell.manaCost;
     bump(seat.stats.casts, spell.id);
     seat.spellReadyAt[slot] = now + spell.cooldownMs;
-    const tx = target?.x ?? p.x;
-    const ty = target?.y ?? p.y;
     const ms = flightMs(spell.projectileSpeed ?? 0, p.x, p.y, tx, ty);
     this.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: p.x, y: p.y, tx, ty, ms } satisfies SpellMessage);
     const amount = this.baseDamage(sessionId, p) * (spell.damage ?? 0);
@@ -553,8 +592,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   /**
-   * Efeito da magia ao chegar. A área segue o alvo se ele andou durante o voo; paredes bloqueiam
-   * o efeito (precisa de linha de visão do centro até quem é atingido).
+   * Efeito da magia ao chegar. Com alvo (toque rápido ou mira grudada), a área segue o monstro se ele
+   * andou durante o voo; mirada no chão, cai no ponto. Paredes bloqueiam o efeito (precisa de linha
+   * de visão do centro até quem é atingido).
    */
   private applySpell(sessionId: string, spell: SpellDef, rank: number, targetId: string | undefined, tx: number, ty: number, amount: number) {
     const p = this.state.players.get(sessionId);

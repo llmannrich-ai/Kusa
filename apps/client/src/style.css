@@ -184,6 +184,7 @@ button { min-height: 44px; touch-action: manipulation; }
   right: calc(var(--col-x) + max(16px, env(safe-area-inset-right)));
   bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
   display: grid;
+  justify-items: center;
   gap: 16px;
 }
 .action {
@@ -197,6 +198,8 @@ button { min-height: 44px; touch-action: manipulation; }
   box-shadow: 0 4px 12px #000a;
   user-select: none;
   -webkit-user-select: none;
+  /* Arrastar a partir do botão é mira, não rolagem: sem isto o navegador cancela o toque. */
+  touch-action: none;
 }
 .action:active { transform: scale(0.94); background: #4a3417; }
 
@@ -266,6 +269,22 @@ button { min-height: 44px; touch-action: manipulation; }
 .action.spell[data-state="empty"] { border-color: var(--accent); animation: spell-pulse 1s ease-in-out infinite alternate; }
 .action.spell[data-state="empty"] .spell-label { color: var(--accent); }
 @keyframes spell-pulse { from { box-shadow: 0 0 0 0 #c9a24a00; } to { box-shadow: 0 0 16px 4px #c9a24aaa; } }
+
+/* Mirando: o botão acende; voltar o dedo para o botão cancela (fica vermelho). */
+.action.spell[data-aim="on"] { border-color: #d7c8ff; box-shadow: 0 0 14px 2px #b48cffaa; }
+.action.spell[data-aim="cancel"] { border-color: var(--danger); box-shadow: 0 0 14px 2px #e74c3caa; }
+
+/* Ataque básico: o maior botão, embaixo, com a recarga girando como nas magias. */
+.action.attack { position: relative; width: 84px; height: 84px; font-size: 36px; overflow: hidden; }
+.action.attack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(#0009 calc(var(--cd, 0) * 360deg), transparent 0);
+  pointer-events: none;
+}
+.action.attack.held { transform: scale(0.94); background: #4a3417; }
 
 /* Escolha de magia: na parte de cima, longe do joystick; o jogo continua rodando atrás. */
 .panel.spell-choice {
