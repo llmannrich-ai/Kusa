@@ -29,6 +29,16 @@
 
       <div class="actions">
         <button id="play" class="primary">Jogar</button>
+        <button id="open-settings">Configurações</button>
+      </div>
+    </section>
+
+    <section id="settings" class="panel" hidden>
+      <h2>Configurações</h2>
+      <!-- Preenchido por main.ts a partir de SETTING_DEFS. -->
+      <div id="settings-list"></div>
+      <div class="actions">
+        <button id="settings-back" class="primary">Voltar</button>
       </div>
     </section>
 
@@ -52,7 +62,11 @@
     </section>
 
     <div id="hud" hidden>
-      <div id="timer">0:00</div>
+      <div id="hud-left">
+        <div id="timer">0:00</div>
+        <!-- Toque (ou M) abre o mapa inteiro. -->
+        <canvas id="minimap" aria-label="Minimapa" hidden></canvas>
+      </div>
       <div id="stats">
         <div class="bar hp"><i></i><span id="hp-text"></span></div>
         <div class="bar mana"><i></i><span id="mana-text"></span></div>
@@ -67,7 +81,7 @@
       <div class="rotate-icon">⟳</div>
       <p>Volte o celular para a vertical para jogar.</p>
     </div>
-    <p id="help" hidden>WASD/setas: andar · Clique: travar alvo · Tab: próximo alvo · Esc: destravar</p>
+    <p id="help" hidden>WASD/setas: andar · Clique: travar alvo · Tab: próximo alvo · Esc: destravar · M: mapa</p>
 
     <section id="result" class="panel" hidden>
       <h2 id="result-title"></h2>
