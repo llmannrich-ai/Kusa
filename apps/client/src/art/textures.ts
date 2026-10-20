@@ -1,6 +1,7 @@
 import type * as Phaser from "phaser";
 import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind } from "@kusa/shared";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
+import { itemIcon } from "./items.ts";
 import { wallCap, wallFace } from "./walls.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 
@@ -111,6 +112,11 @@ export function wallCapTexture(scene: Phaser.Scene, variant: number, rim: number
 
 export function wallFaceTexture(scene: Phaser.Scene, variant: number) {
   return lazyCanvas(scene, `wall-face-${variant}`, () => wallFace(variant));
+}
+
+/** Ícone 16×16 de um item (chão e HUD). */
+export function itemTexture(scene: Phaser.Scene, itemId: string) {
+  return lazyCanvas(scene, `item-${itemId}`, () => itemIcon(itemId));
 }
 
 function lazyCanvas(scene: Phaser.Scene, key: string, draw: () => HTMLCanvasElement) {

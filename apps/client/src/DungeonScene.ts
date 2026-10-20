@@ -1,8 +1,10 @@
 import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
+  ITEMS,
   MONSTERS,
   MSG,
+  TIER_COLORS,
   TILE_SIZE,
   Tile,
   centerOf,
@@ -16,7 +18,7 @@ import {
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
 import { loadSettings } from "./settings.ts";
-import type { ChestView, DungeonRoom, MonsterView, PlayerView } from "./net.ts";
+import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView } from "./net.ts";
 import { CombatFx, type Lunge } from "./CombatFx.ts";
 import { hash } from "./art/pixels.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -32,6 +34,7 @@ import {
   heroIdleFrame,
   heroTexture,
   heroWalkAnim,
+  itemTexture,
   preloadArt,
   wallCapTexture,
   wallFaceTexture,
@@ -101,6 +104,7 @@ export class DungeonScene extends Phaser.Scene {
   private avatars = new Map<string, Unit>();
   private monsters = new Map<string, Unit>();
   private chests = new Map<string, Phaser.GameObjects.Image>();
+  private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
   private move!: MoveInput;
   /** Nulo quando o jogador desligou o minimapa nas configurações. */
@@ -163,6 +167,12 @@ export class DungeonScene extends Phaser.Scene {
       this.chests.set(id, image);
       this.syncChest(id, chest);
       callbacks.onChange(chest, () => this.syncChest(id, chest));
+    });
+
+    callbacks.onAdd("items", (item: GroundItemView, id: string) => this.addGroundItem(id, item));
+    callbacks.onRemove("items", (_item: GroundItemView, id: string) => {
+      this.items.get(id)?.destroy();
+      this.items.delete(id);
     });
 
     callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
@@ -344,6 +354,25 @@ export class DungeonScene extends Phaser.Scene {
     const image = this.chests.get(id);
     if (!image) return;
     image.setTexture(chest.opened ? CHEST_TEXTURE.open : chest.locked ? CHEST_TEXTURE.locked : CHEST_TEXTURE.unlocked);
+  }
+
+  /**
+   * Item no chão: brilho na cor do nível embaixo do ícone, acima do chão e abaixo dos personagens.
+   * Vários itens no mesmo tile se espalham um pouco para dar para ver todos.
+   */
+  private addGroundItem(id: string, item: GroundItemView) {
+    const def = ITEMS[item.itemId];
+    if (!def) return;
+    const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
+    const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
+    const glow = this.add.ellipse(0, 5, 20, 8, TIER_COLORS[def.tier], 0.45);
+    const icon = this.add.image(0, 0, itemTexture(this, def.id));
+    const container = this.add.container(this.toPx(item.x) + offset[0], this.toPx(item.y) + offset[1] + 4, [glow, icon])
+      .setDepth(item.y * TILE_SIZE + 2);
+    this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
+    // Cai do monstro com um pulinho.
+    this.tweens.add({ targets: icon, y: { from: -10, to: 0 }, duration: 260, ease: "Bounce.Out" });
+    this.items.set(id, container);
   }
 
   // --- Jogadores e monstros -------------------------------------------------

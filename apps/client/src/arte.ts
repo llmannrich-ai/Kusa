@@ -1,5 +1,6 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
-import { CLASS_IDS, CLASSES, TILE_SIZE } from "@kusa/shared";
+import { CLASS_IDS, CLASSES, ITEM_SLOTS, MAX_TIER, SLOT_NAMES, TILE_SIZE, itemId, type ItemTier } from "@kusa/shared";
+import { itemIcon } from "./art/items.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet } from "./art/heroes.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
@@ -40,6 +41,11 @@ for (const id of CLASS_IDS) {
       show(row, canvas, `${dirNames[dir]} ${f}`);
     }
   });
+}
+
+for (const slot of ITEM_SLOTS) {
+  const row = section(`Itens: ${SLOT_NAMES[slot]}`);
+  for (let tier = 1; tier <= MAX_TIER; tier++) show(row, itemIcon(itemId(slot, tier as ItemTier)), `nível ${tier}`);
 }
 
 const walls = section("Paredes (tampa + face)");

@@ -18,6 +18,11 @@ export class Player extends Schema {
   @type("string") status: PlayerStatus = "playing";
   /** Id do monstro selecionado para o auto-attack ("" = nenhum). */
   @type("string") target = "";
+  /** Itens equipados (ids de `ITEMS` em `@kusa/shared`; "" = slot vazio). */
+  @type("string") weapon = "";
+  @type("string") helmet = "";
+  @type("string") armor = "";
+  @type("string") shield = "";
 }
 
 export class Monster extends Schema {
@@ -39,6 +44,15 @@ export class Chest extends Schema {
   @type("boolean") opened = false;
 }
 
+/** Item largado no chão: qualquer jogador que passar por cima pega, se for melhor que o equipado. */
+export class GroundItem extends Schema {
+  @type("string") id = "";
+  /** Chave de `ITEMS` em `@kusa/shared`. */
+  @type("string") itemId = "";
+  @type("number") x = 0;
+  @type("number") y = 0;
+}
+
 export class DungeonState extends Schema {
   @type("string") phase = "lobby";
   /** Seed da dungeon: cliente e servidor geram o mesmo mapa a partir dela. */
@@ -49,6 +63,7 @@ export class DungeonState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
   @type({ map: Monster }) monsters = new MapSchema<Monster>();
   @type({ map: Chest }) chests = new MapSchema<Chest>();
+  @type({ map: GroundItem }) items = new MapSchema<GroundItem>();
   /** Boss morto: o portal de conclusão fica aberto no centro da sala do boss. */
   @type("boolean") bossDefeated = false;
 }
