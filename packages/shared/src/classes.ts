@@ -15,6 +15,8 @@ export interface ClassDef {
   damagePerLevel: number;
   /** Alcance do ataque básico em tiles (1 = corpo a corpo). */
   attackRange: number;
+  /** Intervalo entre ataques básicos (auto-attack). */
+  attackCooldownMs: number;
   /** Cor provisória até termos sprites. */
   color: number;
 }
@@ -23,22 +25,22 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   knight: {
     id: "knight", name: "Cavaleiro", color: 0xc0392b,
     baseHp: 150, baseMana: 20, baseDamage: 12, baseSpeed: 4,
-    hpPerLevel: 15, manaPerLevel: 5, damagePerLevel: 2, attackRange: 1,
+    hpPerLevel: 15, manaPerLevel: 5, damagePerLevel: 2, attackRange: 1, attackCooldownMs: 900,
   },
   paladin: {
     id: "paladin", name: "Paladino", color: 0xf1c40f,
     baseHp: 110, baseMana: 50, baseDamage: 10, baseSpeed: 4.2,
-    hpPerLevel: 10, manaPerLevel: 15, damagePerLevel: 2, attackRange: 5,
+    hpPerLevel: 10, manaPerLevel: 15, damagePerLevel: 2, attackRange: 5, attackCooldownMs: 1100,
   },
   sorcerer: {
     id: "sorcerer", name: "Feiticeiro", color: 0x8e44ad,
     baseHp: 80, baseMana: 100, baseDamage: 14, baseSpeed: 4,
-    hpPerLevel: 5, manaPerLevel: 30, damagePerLevel: 3, attackRange: 4,
+    hpPerLevel: 5, manaPerLevel: 30, damagePerLevel: 3, attackRange: 4, attackCooldownMs: 1200,
   },
   druid: {
     id: "druid", name: "Druida", color: 0x27ae60,
     baseHp: 85, baseMana: 95, baseDamage: 9, baseSpeed: 4,
-    hpPerLevel: 5, manaPerLevel: 30, damagePerLevel: 2, attackRange: 4,
+    hpPerLevel: 5, manaPerLevel: 30, damagePerLevel: 2, attackRange: 4, attackCooldownMs: 1100,
   },
 };
 

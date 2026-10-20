@@ -5,8 +5,11 @@ export interface MoveVector { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }
 const RADIUS = 56;
 const DEADZONE = 0.3;
 
+/** Fração de cima da tela que nunca abre o joystick (fica para ver o mapa e tocar em monstros). */
+const JOYSTICK_TOP = 0.45;
+
 /**
- * Entrada de movimento: joystick virtual flutuante (metade esquerda da tela, toque)
+ * Entrada de movimento: joystick virtual flutuante (parte de baixo da tela, celular na vertical)
  * e WASD/setas no desktop. O resultado é sempre uma das 8 direções, que é o que o servidor aceita.
  */
 export class MoveInput {
@@ -17,8 +20,11 @@ export class MoveInput {
   private pointerId: number | null = null;
   private origin = { x: 0, y: 0 };
   private stick: MoveVector = { dx: 0, dy: 0 };
+  private isTarget: (clientX: number, clientY: number) => boolean;
 
-  constructor(scene: Phaser.Scene, surface: HTMLElement) {
+  /** `isTarget` diz se o toque caiu em cima de um monstro: aí é seleção de alvo, não joystick. */
+  constructor(scene: Phaser.Scene, surface: HTMLElement, isTarget: (clientX: number, clientY: number) => boolean) {
+    this.isTarget = isTarget;
     this.keys = (scene.input.keyboard?.addKeys("up,down,left,right,w,a,s,d") as MoveInput["keys"]) ?? null;
     this.surface = surface;
 
@@ -55,8 +61,10 @@ export class MoveInput {
   }
 
   private onDown = (e: PointerEvent) => {
-    // A metade direita fica livre para tocar em monstros e nos botões de ação.
-    if (this.pointerId !== null || e.clientX > window.innerWidth / 2) return;
+    if (this.pointerId !== null) return;
+    // O joystick nasce onde o polegar toca, na parte de baixo da tela.
+    const rect = this.surface.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height * JOYSTICK_TOP || this.isTarget(e.clientX, e.clientY)) return;
     this.pointerId = e.pointerId;
     this.origin = { x: e.clientX, y: e.clientY };
     this.base.style.left = `${e.clientX}px`;

@@ -112,6 +112,29 @@ export function isWalkable(d: Dungeon, x: number, y: number): boolean {
   return tileAt(d, x, y) !== Tile.Wall;
 }
 
+/** Distância em tiles contando diagonais como 1 (alcance de ataque e aggro). */
+export function tileDistance(ax: number, ay: number, bx: number, by: number): number {
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+}
+
+/** Linha de visão entre dois tiles (Bresenham): falsa se alguma parede estiver no caminho. */
+export function hasLineOfSight(d: Dungeon, x0: number, y0: number, x1: number, y1: number): boolean {
+  const dx = Math.abs(x1 - x0);
+  const dy = -Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  let x = x0;
+  let y = y0;
+  while (x !== x1 || y !== y1) {
+    if ((x !== x0 || y !== y0) && !isWalkable(d, x, y)) return false;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+  return true;
+}
+
 export function centerOf(r: Rect) {
   return { x: Math.floor(r.x + r.w / 2), y: Math.floor(r.y + r.h / 2) };
 }

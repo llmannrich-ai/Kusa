@@ -17,7 +17,7 @@ só envia intenções. O gold só é gravado pelo servidor (service role) atrav�
 
 ## Jogar
 
-**https://llmannrich-ai.github.io/Kusa/** (melhor no celular, na horizontal)
+**https://llmannrich-ai.github.io/Kusa/** (feito para celular, na vertical)
 
 - O cliente é publicado no GitHub Pages a cada push no `main` (`.github/workflows/pages.yml`).
 - O servidor de jogo roda no Render, plano free (`render.yaml`). Ele dorme após 15 min sem jogadores, e a primeira entrada leva cerca de 1 min.
@@ -40,7 +40,10 @@ npm run dev          # servidor (2567) + cliente em http://localhost:5173
 
 O cliente fala com o servidor pelo proxy do Vite em `/colyseus`, então só a porta 5173 precisa ser exposta.
 
-Teste de fumaça (com o servidor rodando): `npx tsx apps/server/scripts/smoke.ts`
+Testes de fumaça (com o servidor rodando):
+
+- `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.
+- `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, mata e ganha XP e loot.
 
 ## Variáveis de ambiente
 

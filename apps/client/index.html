@@ -47,15 +47,21 @@
 
     <div id="hud" hidden>
       <div id="timer">0:00</div>
-      <div id="stats"></div>
+      <div id="stats">
+        <div class="bar hp"><i></i><span id="hp-text"></span></div>
+        <div class="bar mana"><i></i><span id="mana-text"></span></div>
+        <div class="bar xp"><i></i><span id="xp-text"></span></div>
+        <div id="meta"></div>
+      </div>
     </div>
-    <!-- Botões de ação (ataque, magias, poções) para o polegar direito. -->
+    <!-- Botões de ação (alvo; depois magias e poções) para o polegar direito. -->
     <div id="actions" hidden></div>
 
     <div id="rotate">
       <div class="rotate-icon">⟳</div>
-      <p>Gire o celular para jogar na horizontal.</p>
+      <p>Volte o celular para a vertical para jogar.</p>
     </div>
+    <p id="help" hidden>WASD/setas: andar · Clique: travar alvo · Tab: próximo alvo · Esc: destravar</p>
 
     <section id="result" class="panel" hidden>
       <h2 id="result-title"></h2>

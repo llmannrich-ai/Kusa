@@ -12,6 +12,12 @@ const client = new Client(url);
 const leader = await client.create<any>(ROOM_NAME, { name: "Lider", classId: "knight" });
 const friend = await client.joinById<any>(leader.roomId, { name: "Amigo", classId: "druid" });
 
+// Eventos de combate não importam aqui.
+for (const room of [leader, friend]) {
+  room.onMessage(MSG.damage, () => {});
+  room.onMessage(MSG.notice, () => {});
+}
+
 const ended = (room: typeof leader) =>
   new Promise<RunEndedMessage>((resolve) => room.onMessage(MSG.runEnded, resolve));
 const results = Promise.all([ended(leader), ended(friend)]);
