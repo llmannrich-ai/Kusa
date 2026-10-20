@@ -9,6 +9,17 @@ export const SERVER_TICK_MS = 50;
 
 export const ROOM_NAME = "dungeon";
 
+/**
+ * Versão das regras que cliente e servidor calculam cada um do seu lado (hoje, o gerador de mapas pela seed).
+ * **Suba a cada mudança no gerador (`dungeon.ts`) ou num mapa (`maps.ts`)**: o servidor recusa cliente de
+ * outra versão, e o cliente desatualizado se recarrega sozinho. Sem isso, cliente e servidor desenhariam
+ * mapas diferentes (o personagem atravessa árvores ou trava no nada).
+ */
+export const RULES_VERSION = 1;
+
+/** Código do erro de entrada numa sala quando a versão das regras do cliente não é a do servidor. */
+export const VERSION_MISMATCH_CODE = 4409;
+
 /** Sala que lista as hunts abertas em tempo real (LobbyRoom do Colyseus). */
 export const LOBBY_ROOM_NAME = "lobby";
 

@@ -1,7 +1,8 @@
 /**
  * Teste dos mapas. Primeiro, sem servidor: para várias seeds, o gerador de cada mapa é determinístico
  * e todos os pontos importantes (salas, campinas, baús, boss) são alcançáveis a pé a partir do portal.
- * Depois, contra um servidor rodando: cada mapa cria a sala certa (monstros, tempo) e a fuga funciona.
+ * Depois, contra um servidor rodando: cada mapa cria a sala certa (monstros, tempo) e a fuga funciona,
+ * e cliente de outra versão das regras (`RULES_VERSION`) é recusado.
  * Uso: npx tsx apps/server/scripts/maps.ts [url]
  */
 import { Client } from "@colyseus/sdk";
@@ -10,6 +11,8 @@ import {
   MAP_IDS,
   MSG,
   ROOM_NAME,
+  RULES_VERSION,
+  VERSION_MISMATCH_CODE,
   centerOf,
   generateDungeon,
   isWalkable,
@@ -41,8 +44,19 @@ for (const mapId of MAP_IDS) {
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 for (const mapId of MAP_IDS) await playMap(mapId);
-// Sem mapId (cliente antigo): cai no mapa padrão.
-const legacy = await client.create<any>(ROOM_NAME, { name: "Antigo", classId: "knight" });
+// Cliente sem versão (antigo) ou de outra versão: recusado, com a versão do servidor na mensagem.
+for (const rulesVersion of [undefined, RULES_VERSION + 1]) {
+  const err = await client.create<any>(ROOM_NAME, { name: "Velho", classId: "knight", rulesVersion }).then(
+    (room) => { void room.leave(); return null; },
+    (e: { code?: number; message: string }) => e,
+  );
+  if (err?.code !== VERSION_MISMATCH_CODE || !err.message.includes(`servidor v${RULES_VERSION}`)) {
+    throw new Error(`versão ${rulesVersion} deveria ser recusada, veio ${err ? `${err.code} ${err.message}` : "entrada aceita"}`);
+  }
+}
+console.log("versão diferente: recusada");
+// Sem mapId: cai no mapa padrão.
+const legacy = await client.create<any>(ROOM_NAME, { name: "Antigo", classId: "knight", rulesVersion: RULES_VERSION });
 await wait(300);
 if (legacy.state.mapId !== "crypt") throw new Error(`sala sem mapId deveria ser a cripta, veio ${legacy.state.mapId}`);
 await legacy.leave();
@@ -52,7 +66,7 @@ process.exit(0);
 
 async function playMap(mapId: MapId) {
   const map = MAPS[mapId];
-  const room = await client.create<any>(ROOM_NAME, { name: "Lider", classId: "paladin", mapId });
+  const room = await client.create<any>(ROOM_NAME, { name: "Lider", classId: "paladin", mapId, rulesVersion: RULES_VERSION });
   room.onMessage(MSG.damage, () => {});
   room.onMessage(MSG.notice, () => {});
   const ended = new Promise<RunEndedMessage>((resolve) => room.onMessage(MSG.runEnded, resolve));

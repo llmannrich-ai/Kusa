@@ -7,7 +7,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  BASIC_ATTACK_COOLDOWN_MS, MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance,
+  BASIC_ATTACK_COOLDOWN_MS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance,
   type AttackMessage, type DamageMessage, type MonsterKind,
 } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
@@ -15,7 +15,7 @@ import { nextStep } from "../src/pathfinding.ts";
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 
-const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight" });
+const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
 let hits = 0;
 let attacking = false;
 let earlyAttacks = 0;

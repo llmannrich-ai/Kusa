@@ -7,6 +7,8 @@ import {
   MAPS,
   MAX_LEVEL,
   MSG,
+  RULES_VERSION,
+  VERSION_MISMATCH_CODE,
   SLOT_NAMES,
   TIER_COLORS,
   difficultyStars,
@@ -35,7 +37,10 @@ let account: Account | null = null;
 
 /** O nome vale só no servidor em modo convidado; com Supabase, o servidor usa o do perfil (pelo token). */
 async function joinOptions(): Promise<JoinOptions> {
-  return { name: account?.username ?? "Aventureiro", classId: hub.classId, mapId: hub.mapId, accessToken: await accessToken() };
+  return {
+    name: account?.username ?? "Aventureiro", classId: hub.classId, mapId: hub.mapId,
+    rulesVersion: RULES_VERSION, accessToken: await accessToken(),
+  };
 }
 
 // --- Login ----------------------------------------------------------------
@@ -101,8 +106,29 @@ async function enter(connect: () => Promise<DungeonRoom>) {
     stopWatching();
     bindRoom(room);
   } catch (err) {
+    if ((err as { code?: number }).code === VERSION_MISMATCH_CODE) return onVersionMismatch((err as Error).message);
     showError(`Não foi possível entrar: ${(err as Error).message}`);
   }
+}
+
+/**
+ * Cliente e servidor em versões diferentes gerariam mapas diferentes. Se o servidor é mais novo, recarrega a
+ * página com `?v=` na URL (fura o cache do index.html); se o cliente é que está na frente, o servidor ainda
+ * está terminando o deploy e basta esperar.
+ */
+function onVersionMismatch(message: string) {
+  const server = Number(/servidor v(\d+)/.exec(message)?.[1] ?? 0);
+  if (server <= RULES_VERSION) {
+    showError("O servidor está sendo atualizado. Tente de novo em 1 ou 2 minutos.");
+    return;
+  }
+  // Já recarregou para esta versão e ela ainda não chegou (cache da hospedagem): não entra em loop.
+  if (new URLSearchParams(location.search).get("v") === String(server)) {
+    showError("Versão nova do jogo ainda chegando. Aguarde um minuto e recarregue a página.");
+    return;
+  }
+  showError("Versão nova do jogo: atualizando…");
+  location.replace(`${location.pathname}?v=${server}`);
 }
 
 // --- Lista de salas -------------------------------------------------------

@@ -7,7 +7,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MONSTERS, MSG, POTIONS, POTION_FIELD, ROOM_NAME, generateDungeon, tileDistance,
+  MONSTERS, MSG, POTIONS, POTION_FIELD, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance,
   type DrankMessage, type MonsterKind,
 } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
@@ -45,7 +45,7 @@ process.exit(0);
 
 /** Uma tentativa completa: caça até cair uma poção de vida, pega, apanha e bebe. */
 async function run() {
-  room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight" });
+  room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
   drank = [];
   died = false;
   kills = 0;
