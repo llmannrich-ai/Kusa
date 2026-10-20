@@ -30,6 +30,9 @@ export class Player extends Schema {
   @type(["string"]) knownSpells = new ArraySchema<string>();
   /** Nível de cada magia conhecida no Grimório (1 a 3). */
   @type({ map: "number" }) spellRanks = new MapSchema<number>();
+  /** Poções carregadas (só valem na hunt; até `POTION_MAX` de cada). */
+  @type("number") healthPotions = 0;
+  @type("number") manaPotions = 0;
   /** Sob o Grito de Guerra: recebe menos dano. */
   @type("boolean") guarded = false;
   /** Escudo temporário (Escudo da Fé e outros): absorve dano antes da vida. 0 = sem escudo. */
@@ -74,10 +77,10 @@ export class Chest extends Schema {
   @type("boolean") opened = false;
 }
 
-/** Item largado no chão: qualquer jogador que passar por cima pega, se for melhor que o equipado. */
+/** Item ou poção largado no chão: qualquer jogador que passar por cima pega (item só se for melhor que o equipado). */
 export class GroundItem extends Schema {
   @type("string") id = "";
-  /** Chave de `ITEMS` em `@kusa/shared`. */
+  /** Chave de `ITEMS` ou de `POTIONS` em `@kusa/shared`. */
   @type("string") itemId = "";
   @type("number") x = 0;
   @type("number") y = 0;
