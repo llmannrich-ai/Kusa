@@ -1,0 +1,13 @@
+{
+  "name": "Kusa",
+  "short_name": "Kusa",
+  "description": "Entre, saqueie e saia antes que a dungeon desabe.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0d0b0a",
+  "theme_color": "#0d0b0a",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

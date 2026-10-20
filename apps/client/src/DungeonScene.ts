@@ -1,7 +1,10 @@
 import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import { CLASSES, MSG, TILE_SIZE, Tile, generateDungeon, type ClassId, type Dungeon } from "@kusa/shared";
+import { MoveInput } from "./input.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
+
+const VIEW_TILES = { w: 15, h: 9 };
 
 const COLORS = {
   wall: 0x1a1512,
@@ -16,7 +19,7 @@ export class DungeonScene extends Phaser.Scene {
   private room!: DungeonRoom;
   private dungeon!: Dungeon;
   private avatars = new Map<string, Phaser.GameObjects.Container>();
-  private keys!: Record<"up" | "down" | "left" | "right" | "w" | "a" | "s" | "d", Phaser.Input.Keyboard.Key>;
+  private move!: MoveInput;
   private nextSendAt = 0;
 
   constructor() {
@@ -41,17 +44,17 @@ export class DungeonScene extends Phaser.Scene {
       this.avatars.delete(sessionId);
     });
 
-    const kb = this.input.keyboard!;
-    this.keys = kb.addKeys("up,down,left,right,w,a,s,d") as typeof this.keys;
-    this.cameras.main.setZoom(2);
+    this.move = new MoveInput(this, this.game.canvas);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.move.destroy());
+
     this.cameras.main.setBackgroundColor(COLORS.wall);
+    this.fitCamera();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
   }
 
   update(time: number) {
-    const k = this.keys;
-    const dx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
-    const dy = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0);
-    // O servidor decide a velocidade real; o cliente só reenvia a intenção enquanto a tecla está pressionada.
+    const { dx, dy } = this.move.vector();
+    // O servidor decide a velocidade real; o cliente só reenvia a intenção enquanto o comando está ativo.
     if ((dx || dy) && time >= this.nextSendAt) {
       this.room.send(MSG.move, { dx, dy });
       this.nextSendAt = time + 60;
@@ -106,6 +109,13 @@ export class DungeonScene extends Phaser.Scene {
     if (!avatar) return;
     avatar.setAlpha(player.status === "playing" ? 1 : 0.35);
     this.tweens.add({ targets: avatar, x: this.toPx(player.x), y: this.toPx(player.y), duration: 120 });
+  }
+
+  /** Mostra sempre cerca de 15×9 tiles, do celular pequeno ao monitor (campo de visão igual para todos). */
+  private fitCamera() {
+    const { width, height } = this.scale.gameSize;
+    const zoom = Math.min(width / (VIEW_TILES.w * TILE_SIZE), height / (VIEW_TILES.h * TILE_SIZE));
+    this.cameras.main.setZoom(zoom);
   }
 
   private toPx(tile: number) {

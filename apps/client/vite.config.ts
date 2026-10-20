@@ -5,6 +5,8 @@ const gameServer = process.env.GAME_SERVER_URL ?? "http://localhost:2567";
 export default defineConfig({
   server: {
     port: 5173,
+    // Falha em vez de pular para outra porta: o Codespace e o README apontam para a 5173.
+    strictPort: true,
     host: true,
     // Codespaces expõe a porta em *.app.github.dev.
     allowedHosts: [".app.github.dev"],
