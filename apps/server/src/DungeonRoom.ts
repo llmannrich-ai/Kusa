@@ -5,7 +5,11 @@ import {
   BOSS_LOOT_BONUS,
   CHEST_LOOT,
   CLASSES,
+  COMMON_DROP_CHANCE,
   DEPTH_SCALING,
+  GUARANTEED_DROPS,
+  ITEMS,
+  ITEM_SLOTS,
   MINIBOSS_KIND,
   MONSTERS,
   MATCH_DURATION_SECONDS,
@@ -13,17 +17,23 @@ import {
   MSG,
   PATH_SPAWNS,
   SERVER_TICK_MS,
+  TIER_COLORS,
   Tile,
+  armorOf,
   centerOf,
   createRng,
   generateDungeon,
+  damageReduction,
   hasLineOfSight,
+  isUpgrade,
   isWalkable,
   levelForXp,
   monsterStats,
+  rollItem,
   statsFor,
   tileAt,
   tileDistance,
+  weaponMultiplier,
   xpShare,
   type ClassId,
   type DamageMessage,
@@ -40,7 +50,7 @@ import {
   type TargetMessage,
 } from "@kusa/shared";
 import { nextStep } from "./pathfinding.ts";
-import { Chest, DungeonState, Monster, Player } from "./state.ts";
+import { Chest, DungeonState, GroundItem, Monster, Player } from "./state.ts";
 import { recordRun, resolveUserId } from "./supabase.ts";
 
 /** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
@@ -80,6 +90,8 @@ const HP_REGEN = 0.02;
 const MANA_REGEN = 0.02;
 /** Monstros não nascem tão perto do portal de entrada. */
 const SAFE_RADIUS = 6;
+/** Item no chão que ninguém pegou some depois deste tempo. */
+const ITEM_LIFETIME_MS = 120_000;
 
 /** Uma hunt: a equipe (1 a 4 jogadores) entra junta e cada um sai morto, fugindo ou após o boss. */
 export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetadata }> {
@@ -94,6 +106,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private brains = new Map<string, Brain>();
   private chestDepth = new Map<string, number>();
   private nextMonsterId = 1;
+  private nextItemId = 1;
+  /** Momento (ms) em que cada item do chão some. */
+  private itemExpiresAt = new Map<string, number>();
 
   onCreate() {
     this.state.seed = Math.floor(Math.random() * 2 ** 31);
@@ -306,6 +321,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     this.state.monsters.forEach((m) => this.monsterThink(m, now));
     this.openChests();
+    this.pickUpItems();
+    this.expireItems(now);
   }
 
   // --- Combate -----------------------------------------------------------
@@ -343,7 +360,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!this.canHit(p, m, cls.attackRange)) return;
 
     seat.nextAttackAt = now + cls.attackCooldownMs;
-    this.damageMonster(m, rollDamage(statsFor(cls.id, p.level).damage), { attacker: sessionId, fromX: p.x, fromY: p.y, fx: cls.attackFx });
+    this.damageMonster(m, rollDamage(statsFor(cls.id, p.level).damage * weaponMultiplier(p.weapon)), { attacker: sessionId, fromX: p.x, fromY: p.y, fx: cls.attackFx });
   }
 
   private canHit(p: Player, m: Monster, range: number) {
@@ -393,6 +410,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.notice(m.x, m.y - 1, `+${value} loot`, 0xf1c40f);
     }
 
+    // Itens caem no chão onde o monstro morreu: quem passar por cima primeiro leva.
+    const drops = GUARANTEED_DROPS[brain.def.rank] || (Math.random() < COMMON_DROP_CHANCE ? 1 : 0);
+    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random), m.x, m.y);
+
     if (brain.chestId) {
       const chest = this.state.chests.get(brain.chestId);
       if (chest) {
@@ -424,9 +445,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.notice(p.x, p.y - 1, `Nível ${level}!`, 0x2ecc71);
   }
 
-  private damagePlayer(sessionId: string, amount: number, hit: Hit) {
+  private damagePlayer(sessionId: string, raw: number, hit: Hit) {
     const p = this.state.players.get(sessionId);
     if (!p || p.status !== "playing") return;
+    const amount = Math.max(1, Math.round(raw * (1 - damageReduction(armorOf(equipment(p))))));
     p.hp = Math.max(0, p.hp - amount);
     this.broadcast(MSG.damage, { x: p.x, y: p.y, amount, toPlayer: true, ...hit } satisfies DamageMessage);
     if (p.hp === 0) this.endRun(sessionId, "died");
@@ -510,7 +532,52 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         const value = Math.round(rollRange(CHEST_LOOT) * k);
         p.loot += value;
         this.notice(chest.x, chest.y, `Baú: +${value} loot`, 0xf1c40f);
+        // O baú guarda um item melhor que o do mini-boss.
+        this.dropItem(rollItem("miniboss", this.chestDepth.get(chest.id) ?? 0, Math.random, 1), chest.x, chest.y);
       });
+    });
+  }
+
+  // --- Itens ------------------------------------------------------------
+
+  private dropItem(itemId: string, x: number, y: number) {
+    const item = new GroundItem();
+    item.id = `i${this.nextItemId++}`;
+    item.itemId = itemId;
+    item.x = x;
+    item.y = y;
+    this.state.items.set(item.id, item);
+    this.itemExpiresAt.set(item.id, this.clock.currentTime + ITEM_LIFETIME_MS);
+  }
+
+  /**
+   * Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão
+   * para quem quiser. Item pior fica onde está (qualquer jogador pode pegar, não há dono).
+   */
+  private pickUpItems() {
+    this.state.players.forEach((p) => {
+      if (p.status !== "playing") return;
+      const here = [...this.state.items.values()]
+        .filter((it) => it.x === p.x && it.y === p.y)
+        .sort((a, b) => (ITEMS[b.itemId]?.tier ?? 0) - (ITEMS[a.itemId]?.tier ?? 0));
+      for (const ground of here) {
+        const def = ITEMS[ground.itemId];
+        if (!def || !isUpgrade(def.id, p[def.slot])) continue;
+        const old = p[def.slot];
+        p[def.slot] = def.id;
+        this.state.items.delete(ground.id);
+        this.itemExpiresAt.delete(ground.id);
+        if (old) this.dropItem(old, p.x, p.y);
+        this.notice(p.x, p.y - 1, def.name, TIER_COLORS[def.tier]);
+      }
+    });
+  }
+
+  private expireItems(now: number) {
+    this.itemExpiresAt.forEach((at, id) => {
+      if (now < at) return;
+      this.state.items.delete(id);
+      this.itemExpiresAt.delete(id);
     });
   }
 
@@ -524,6 +591,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
+    // Quem morre larga o equipamento no chão, e os outros podem saquear.
+    if (outcome === "died") {
+      for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
+    }
     player.status = outcome;
     player.target = "";
 
@@ -541,6 +612,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.clock.setTimeout(() => this.disconnect(), 10_000);
     }
   }
+}
+
+function equipment(p: Player) {
+  return ITEM_SLOTS.map((slot) => p[slot]);
 }
 
 /** Dano com variação de ±15%. */

@@ -5,3 +5,4 @@ export * from "./messages.ts";
 export * from "./rng.ts";
 export * from "./dungeon.ts";
 export * from "./monsters.ts";
+export * from "./items.ts";

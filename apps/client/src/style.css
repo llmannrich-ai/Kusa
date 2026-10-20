@@ -172,6 +172,9 @@ button { min-height: 44px; touch-action: manipulation; }
 }
 #stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
 #meta { text-align: right; color: var(--accent); font-size: 13px; }
+#gear { display: flex; justify-content: flex-end; gap: 4px; }
+#gear .slot { width: 28px; height: 28px; display: grid; place-items: center; background: #0008; border: 1px solid #3a2f27; }
+#gear img { width: 24px; height: 24px; image-rendering: pixelated; }
 
 .bar { position: relative; height: 14px; background: #000; border: 1px solid #000; }
 .bar i { position: absolute; inset: 0 auto 0 0; width: 100%; transition: width 0.15s; }
