@@ -32,7 +32,7 @@ function joinOptions(): JoinOptions {
 
 async function enter(connect: () => Promise<DungeonRoom>) {
   show("menu-error", false);
-  void goFullscreenLandscape();
+  void goFullscreenPortrait();
   try {
     bindRoom(await connect());
   } catch (err) {
@@ -88,12 +88,13 @@ function bindRoom(room: DungeonRoom) {
 function startGame(room: DungeonRoom) {
   show("lobby", false);
   show("hud", true);
+  show("actions", true);
   show("help", true);
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
     pixelArt: true,
-    // Joystick com o polegar esquerdo enquanto o direito toca em alvos e botões.
+    // Joystick com um polegar enquanto o outro toca em alvos e botões.
     input: { activePointers: 3 },
     scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
     scene: [],
@@ -104,8 +105,12 @@ function startGame(room: DungeonRoom) {
   const renderStats = () => {
     const p = me();
     if (!p) return;
-    const xp = p.level >= MAX_LEVEL ? `${p.xp}` : `${p.xp}/${xpForLevel(p.level + 1)}`;
-    $("stats").textContent = `Nv ${p.level} · XP ${xp} · HP ${p.hp}/${p.maxHp} · Mana ${p.mana}/${p.maxMana} · Loot ${p.loot}`;
+    const xpFrom = xpForLevel(p.level);
+    const xpTo = p.level >= MAX_LEVEL ? p.xp : xpForLevel(p.level + 1);
+    setBar("hp", p.hp, p.maxHp, `${p.hp}/${p.maxHp}`);
+    setBar("mana", p.mana, p.maxMana, `${p.mana}/${p.maxMana}`);
+    setBar("xp", p.xp - xpFrom, xpTo - xpFrom, `Nv ${p.level}`);
+    $("meta").textContent = `Loot ${p.loot}`;
   };
   renderStats();
   const p = me();
@@ -119,8 +124,16 @@ const OUTCOME_TEXT: Record<RunEndedMessage["outcome"], string> = {
   buried: "A dungeon desabou sobre você.",
 };
 
+/** Preenche uma barra do HUD (`.bar.<name>`). */
+function setBar(name: "hp" | "mana" | "xp", value: number, max: number, text: string) {
+  const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 1;
+  document.querySelector<HTMLElement>(`.bar.${name} i`)!.style.width = `${ratio * 100}%`;
+  $(`${name}-text`).textContent = text;
+}
+
 function showResult(msg: RunEndedMessage) {
   show("hud", false);
+  show("actions", false);
   show("help", false);
   $("result-title").textContent = OUTCOME_TEXT[msg.outcome];
   $("result-detail").textContent = msg.loot > 0
@@ -129,12 +142,12 @@ function showResult(msg: RunEndedMessage) {
   show("result", true);
 }
 
-/** No celular, tela cheia e trava em paisagem (Android; o iOS ignora e mostra o aviso de girar). */
-async function goFullscreenLandscape() {
+/** No celular, tela cheia e trava na vertical (Android; o iOS ignora e mostra o aviso de girar). */
+async function goFullscreenPortrait() {
   if (!matchMedia("(pointer: coarse)").matches) return;
   try {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
-    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
+    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("portrait");
   } catch {
     // Navegador não permite: segue normal.
   }

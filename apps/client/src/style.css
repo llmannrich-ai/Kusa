@@ -6,6 +6,9 @@
   --muted: #a08f78;
   --accent: #c9a24a;
   --danger: #c0392b;
+  /* Coluna do jogo em retrato (9:16). No celular ocupa a tela toda; no desktop vira uma "tela de celular" centralizada. */
+  --col-w: min(100vw, 56.25vh);
+  --col-x: calc((100vw - var(--col-w)) / 2);
   font-family: "Georgia", serif;
   color: var(--text);
   background: var(--bg);
@@ -23,7 +26,7 @@ html, body {
   -webkit-touch-callout: none;
 }
 /* Sem pinça, rolagem ou duplo toque para zoom dentro do jogo. */
-#game { position: fixed; inset: 0; touch-action: none; }
+#game { position: fixed; top: 0; bottom: 0; left: var(--col-x); width: var(--col-w); touch-action: none; }
 [hidden] { display: none !important; }
 
 .panel {
@@ -88,28 +91,48 @@ button { min-height: 44px; touch-action: manipulation; }
 #hud {
   position: fixed;
   top: max(8px, env(safe-area-inset-top));
-  left: max(8px, env(safe-area-inset-left));
-  right: max(8px, env(safe-area-inset-right));
+  left: calc(var(--col-x) + max(8px, env(safe-area-inset-left)));
+  right: calc(var(--col-x) + max(8px, env(safe-area-inset-right)));
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
   pointer-events: none;
 }
-#timer, #stats { padding: 6px 12px; background: #000a; border: 1px solid var(--border); }
-#timer { font-size: 24px; font-variant-numeric: tabular-nums; }
+#timer, #stats { padding: 6px 10px; background: #000a; border: 1px solid var(--border); }
+#timer { font-size: 22px; font-variant-numeric: tabular-nums; }
 #timer.low { color: var(--danger); }
-#stats { font-size: 14px; text-align: right; }
+#stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
+#meta { text-align: right; color: var(--accent); font-size: 13px; }
 
-/* Zona do polegar direito. */
+.bar { position: relative; height: 14px; background: #000; border: 1px solid #000; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 100%; transition: width 0.15s; }
+.bar span { position: relative; display: block; padding: 0 4px; line-height: 14px; text-align: right; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.bar.hp i { background: #2e8b46; }
+.bar.mana i { background: #2f5fa8; }
+.bar.xp i { background: #8a6d2c; }
+
+/* Zona do polegar direito, em baixo. */
 #actions {
   position: fixed;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
+  right: calc(var(--col-x) + max(16px, env(safe-area-inset-right)));
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
   display: grid;
-  grid-template-columns: repeat(2, 64px);
-  gap: 12px;
+  gap: 16px;
 }
+.action {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  font-size: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: #2a211bdd;
+  box-shadow: 0 4px 12px #000a;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.action:active { transform: scale(0.94); background: #4a3417; }
 
 .joystick {
   position: fixed;
@@ -146,25 +169,12 @@ button { min-height: 44px; touch-action: manipulation; }
   background: var(--bg);
 }
 .rotate-icon { font-size: 64px; color: var(--accent); }
-/* Só em telas de toque em retrato: o jogo é jogado na horizontal. */
-@media (orientation: portrait) and (pointer: coarse) {
+/* Só em telas de toque deitadas: o jogo é jogado com o celular na vertical. */
+@media (orientation: landscape) and (pointer: coarse) {
   #rotate { display: flex; }
 }
 
-/* Celular em paisagem: pouca altura, então o menu fica compacto. */
-@media (max-height: 500px) {
-  .panel { padding: 12px 16px; width: min(560px, calc(100vw - 32px)); }
-  h1 { font-size: 28px; }
-  .tagline { margin: 0 0 4px; font-size: 13px; }
-  label { margin: 8px 0 4px; }
-  fieldset { grid-template-columns: repeat(4, 1fr); }
-  .class-option { padding: 6px; font-size: 14px; }
-  .actions { margin-top: 8px; grid-template-columns: 1fr 1fr; }
-  #timer { font-size: 18px; }
-  #stats { font-size: 12px; }
-}
-
-#help { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); margin: 0; padding: 4px 10px; font-size: 13px; color: var(--muted); background: #000a; border: 1px solid var(--border); pointer-events: none; }
+#help { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(var(--col-w) - 24px); margin: 0; padding: 4px 10px; font-size: 12px; text-align: center; color: var(--muted); background: #000a; border: 1px solid var(--border); pointer-events: none; }
 /* No toque não há teclado: a ajuda de teclas some. */
 @media (pointer: coarse) {
   #help { display: none !important; }

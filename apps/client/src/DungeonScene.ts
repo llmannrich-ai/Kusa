@@ -17,7 +17,12 @@ import {
 import { MoveInput } from "./input.ts";
 import type { ChestView, DungeonRoom, MonsterView, PlayerView } from "./net.ts";
 
-const VIEW_TILES = { w: 15, h: 9 };
+/** Campo de visão mínimo com o celular na vertical: 9 tiles de largura e pelo menos 13 de altura. */
+const VIEW_TILES = { w: 9, h: 13 };
+/** Quanto o jogador fica acima do centro da tela, em fração da altura (a parte de baixo é dos polegares). */
+const FOLLOW_LIFT = 0.12;
+/** Até onde o botão de alvo procura monstros (tiles). */
+const TARGET_CYCLE_RANGE = 8;
 
 const COLORS = {
   wall: 0x1a1512,
@@ -108,19 +113,27 @@ export class DungeonScene extends Phaser.Scene {
 
     this.targetRing = this.add.graphics().setDepth(9);
 
-    // Tab seleciona o monstro mais próximo; Esc limpa o alvo.
+    // Sem alvo travado, o servidor mira sozinho no monstro mais próximo ao alcance.
+    // Tocar num monstro trava o alvo; o botão de alvo (ou Tab) troca para o próximo; Esc destrava.
     const kb = this.input.keyboard;
     kb?.addCapture("TAB");
-    kb?.on("keydown-TAB", () => this.selectNearest());
+    kb?.on("keydown-TAB", () => this.cycleTarget());
     kb?.on("keydown-ESC", () => this.room.send(MSG.target, { id: null }));
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      // No toque, a metade esquerda é do joystick.
-      if (pointer.wasTouch && pointer.x < this.scale.width / 2) return;
-      this.selectAt(pointer.worldX, pointer.worldY);
+      const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
+      if (id) this.room.send(MSG.target, { id });
     });
 
-    this.move = new MoveInput(this, this.game.canvas);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.move.destroy());
+    this.move = new MoveInput(this, this.game.canvas, (clientX, clientY) => {
+      const rect = this.game.canvas.getBoundingClientRect();
+      const world = this.cameras.main.getWorldPoint(clientX - rect.left, clientY - rect.top);
+      return this.monsterAtWorld(world.x, world.y) !== null;
+    });
+    const targetButton = this.addActionButton("🎯", "Próximo alvo", () => this.cycleTarget());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.move.destroy();
+      targetButton.remove();
+    });
 
     this.cameras.main.setBackgroundColor(COLORS.wall);
     this.fitCamera();
@@ -143,27 +156,43 @@ export class DungeonScene extends Phaser.Scene {
     return this.room.state.players.get(this.room.sessionId);
   }
 
-  /** Clique: seleciona o monstro no tile clicado (ou no vizinho mais próximo, para facilitar). */
-  private selectAt(worldX: number, worldY: number) {
+  /** Monstro sob um ponto do mundo, com folga de quase um tile (o dedo é impreciso). */
+  private monsterAtWorld(worldX: number, worldY: number): string | null {
     let best: string | null = null;
-    let bestDist = TILE_SIZE;
+    let bestDist = TILE_SIZE * 0.9;
     this.monsters.forEach((unit, id) => {
       const dist = Math.hypot(unit.container.x - worldX, unit.container.y - worldY);
       if (dist < bestDist) { bestDist = dist; best = id; }
     });
-    if (best) this.room.send(MSG.target, { id: best });
+    return best;
   }
 
-  private selectNearest() {
+  /** Trava o alvo no próximo monstro por ordem de distância (repetir percorre todos por perto). */
+  private cycleTarget() {
     const me = this.me();
     if (!me) return;
-    let best: string | null = null;
-    let bestDist = Infinity;
+    const near: { id: string; dist: number }[] = [];
     this.room.state.monsters.forEach((m, id) => {
       const dist = Math.max(Math.abs(m.x - me.x), Math.abs(m.y - me.y));
-      if (dist < bestDist) { bestDist = dist; best = id; }
+      if (dist <= TARGET_CYCLE_RANGE) near.push({ id, dist });
     });
-    if (best) this.room.send(MSG.target, { id: best });
+    if (near.length === 0) return;
+    near.sort((a, b) => a.dist - b.dist || a.id.localeCompare(b.id));
+    const current = near.findIndex((n) => n.id === me.target);
+    this.room.send(MSG.target, { id: near[(current + 1) % near.length].id });
+  }
+
+  /** Botão grande na zona do polegar direito (`#actions`). */
+  private addActionButton(icon: string, label: string, onPress: () => void) {
+    const button = document.createElement("button");
+    button.className = "action";
+    button.textContent = icon;
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    // pointerdown responde na hora, sem o atraso do click no toque.
+    button.addEventListener("pointerdown", (e) => { e.preventDefault(); onPress(); });
+    document.getElementById("actions")?.append(button);
+    return button;
   }
 
   private drawTargetRing() {
@@ -305,11 +334,12 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
-  /** Mostra sempre cerca de 15×9 tiles, do celular pequeno ao monitor (campo de visão igual para todos). */
+  /** Celular na vertical: 9 tiles de largura em qualquer aparelho, com o jogador um pouco acima do centro. */
   private fitCamera() {
     const { width, height } = this.scale.gameSize;
     const zoom = Math.min(width / (VIEW_TILES.w * TILE_SIZE), height / (VIEW_TILES.h * TILE_SIZE));
     this.cameras.main.setZoom(zoom);
+    this.cameras.main.setFollowOffset(0, -(height * FOLLOW_LIFT) / zoom);
   }
 
   private toPx(tile: number) {

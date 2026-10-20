@@ -308,20 +308,39 @@ export class DungeonRoom extends Room<{ state: DungeonState }> {
     });
   }
 
-  /** Auto-attack: bate no alvo selecionado enquanto ele estiver no alcance da classe. */
+  /**
+   * Auto-attack: bate no alvo travado enquanto ele estiver no alcance da classe.
+   * Sem alvo, mira sozinho no monstro mais próximo ao alcance (no celular não há mira precisa).
+   */
   private playerAttack(sessionId: string, p: Player, now: number) {
-    if (p.status !== "playing" || !p.target) return;
+    if (p.status !== "playing") return;
+    const cls = CLASSES[p.classId as ClassId];
+    if (p.target && !this.state.monsters.has(p.target)) p.target = "";
+    if (!p.target) p.target = this.nearestMonsterInRange(p, cls.attackRange) ?? "";
+    if (!p.target) return;
+
     const seat = this.seats.get(sessionId);
-    const m = this.state.monsters.get(p.target);
-    if (!m) { p.target = ""; return; }
+    const m = this.state.monsters.get(p.target)!;
     if (!seat || now < seat.nextAttackAt) return;
 
-    const cls = CLASSES[p.classId as ClassId];
     if (tileDistance(p.x, p.y, m.x, m.y) > cls.attackRange) return;
     if (!hasLineOfSight(this.dungeon, p.x, p.y, m.x, m.y)) return;
 
     seat.nextAttackAt = now + cls.attackCooldownMs;
     this.damageMonster(m, rollDamage(statsFor(cls.id, p.level).damage), sessionId);
+  }
+
+  private nearestMonsterInRange(p: Player, range: number): string | null {
+    let best: string | null = null;
+    let bestDist = Infinity;
+    this.state.monsters.forEach((m, id) => {
+      const dist = tileDistance(p.x, p.y, m.x, m.y);
+      if (dist > range || dist >= bestDist) return;
+      if (!hasLineOfSight(this.dungeon, p.x, p.y, m.x, m.y)) return;
+      best = id;
+      bestDist = dist;
+    });
+    return best;
   }
 
   private damageMonster(m: Monster, amount: number, attackerId: string) {
