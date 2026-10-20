@@ -1,0 +1,25 @@
+import { defineConfig } from "vite";
+
+const gameServer = process.env.GAME_SERVER_URL ?? "http://localhost:2567";
+
+export default defineConfig({
+  // No GitHub Pages o jogo fica em /Kusa/ (definido pelo workflow de deploy).
+  base: process.env.BASE_PATH ?? "/",
+  server: {
+    port: 5173,
+    // Falha em vez de pular para outra porta: o Codespace e o README apontam para a 5173.
+    strictPort: true,
+    host: true,
+    // Codespaces expõe a porta em *.app.github.dev.
+    allowedHosts: [".app.github.dev"],
+    // Cliente e servidor de jogo no mesmo endereço: só a porta 5173 precisa ser exposta.
+    proxy: {
+      "/colyseus": {
+        target: gameServer,
+        ws: true,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/colyseus/, ""),
+      },
+    },
+  },
+});

@@ -11,9 +11,19 @@
   background: var(--bg);
 }
 
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
-#game { position: fixed; inset: 0; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Sem pinça, rolagem ou duplo toque para zoom dentro do jogo. */
+#game { position: fixed; inset: 0; touch-action: none; }
 [hidden] { display: none !important; }
 
 .panel {
@@ -22,6 +32,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
   padding: 24px;
   background: var(--panel);
   border: 2px solid var(--border);
@@ -69,7 +81,85 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 #lobby-players { padding-left: 20px; }
 code { color: var(--accent); user-select: all; }
 
-#hud { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none; }
+input, button { -webkit-user-select: text; user-select: text; }
+button { min-height: 44px; touch-action: manipulation; }
+
+/* HUD respeitando notch e barras do sistema. */
+#hud {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
 #timer, #stats { padding: 6px 12px; background: #000a; border: 1px solid var(--border); }
 #timer { font-size: 24px; font-variant-numeric: tabular-nums; }
 #timer.low { color: var(--danger); }
+#stats { font-size: 14px; text-align: right; }
+
+/* Zona do polegar direito. */
+#actions {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(2, 64px);
+  gap: 12px;
+}
+
+.joystick {
+  position: fixed;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border-radius: 50%;
+  background: #0006;
+  border: 2px solid #e8dcc855;
+  pointer-events: none;
+  z-index: 5;
+}
+.joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #c9a24acc;
+  border: 2px solid #000;
+}
+
+#rotate {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg);
+}
+.rotate-icon { font-size: 64px; color: var(--accent); }
+/* Só em telas de toque em retrato: o jogo é jogado na horizontal. */
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { display: flex; }
+}
+
+/* Celular em paisagem: pouca altura, então o menu fica compacto. */
+@media (max-height: 500px) {
+  .panel { padding: 12px 16px; width: min(560px, calc(100vw - 32px)); }
+  h1 { font-size: 28px; }
+  .tagline { margin: 0 0 4px; font-size: 13px; }
+  label { margin: 8px 0 4px; }
+  fieldset { grid-template-columns: repeat(4, 1fr); }
+  .class-option { padding: 6px; font-size: 14px; }
+  .actions { margin-top: 8px; grid-template-columns: 1fr 1fr; }
+  #timer { font-size: 18px; }
+  #stats { font-size: 12px; }
+}
