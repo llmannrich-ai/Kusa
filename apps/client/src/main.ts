@@ -3,6 +3,7 @@ import { Callbacks } from "@colyseus/sdk";
 import { CLASSES, CLASS_IDS, MAX_LEVEL, MSG, xpForLevel, type ClassId, type JoinOptions, type RunEndedMessage } from "@kusa/shared";
 import { DungeonScene } from "./DungeonScene.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
+import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import "./style.css";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -89,6 +90,40 @@ function renderHunts(hunts: HuntListing[]) {
   }
   show("rooms-empty", hunts.length === 0);
 }
+
+// --- Configurações --------------------------------------------------------
+
+function renderSettings() {
+  const list = $("settings-list");
+  list.innerHTML = "";
+  const settings = loadSettings();
+  for (const def of SETTING_DEFS) {
+    const row = document.createElement("label");
+    row.className = "setting";
+    const text = document.createElement("span");
+    text.textContent = def.label;
+    const hint = document.createElement("small");
+    hint.textContent = def.hint;
+    text.append(hint);
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.role = "switch";
+    toggle.checked = settings[def.key];
+    toggle.onchange = () => saveSetting(def.key, toggle.checked);
+    row.append(text, toggle);
+    list.append(row);
+  }
+}
+
+$("open-settings").onclick = () => {
+  renderSettings();
+  show("menu", false);
+  show("settings", true);
+};
+$("settings-back").onclick = () => {
+  show("settings", false);
+  show("menu", true);
+};
 
 $("play").onclick = () => { joinOptions(); void openRooms(); };
 $("rooms-back").onclick = () => {

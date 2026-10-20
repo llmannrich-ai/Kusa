@@ -15,6 +15,7 @@ import {
 } from "@kusa/shared";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
+import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, MonsterView, PlayerView } from "./net.ts";
 import { hash } from "./art/pixels.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -93,7 +94,8 @@ export class DungeonScene extends Phaser.Scene {
   private chests = new Map<string, Phaser.GameObjects.Image>();
   private targetRing!: Phaser.GameObjects.Graphics;
   private move!: MoveInput;
-  private minimap!: Minimap;
+  /** Nulo quando o jogador desligou o minimapa nas configurações. */
+  private minimap: Minimap | null = null;
   private nextSendAt = 0;
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
   private textResolution = 1;
@@ -174,10 +176,10 @@ export class DungeonScene extends Phaser.Scene {
       return this.monsterAtWorld(world.x, world.y) !== null;
     });
     const targetButton = this.addActionButton("🎯", "Próximo alvo", () => this.cycleTarget());
-    this.minimap = new Minimap(this.room, this.dungeon);
+    if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.move.destroy();
-      this.minimap.destroy();
+      this.minimap?.destroy();
       targetButton.remove();
     });
   }
@@ -192,7 +194,7 @@ export class DungeonScene extends Phaser.Scene {
     this.avatars.forEach((unit) => this.animateUnit(unit, time));
     this.monsters.forEach((unit) => this.animateUnit(unit, time));
     this.drawTargetRing();
-    this.minimap.update(time);
+    this.minimap?.update(time);
   }
 
   // --- Alvo ---------------------------------------------------------------
