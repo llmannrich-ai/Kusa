@@ -52,7 +52,11 @@
     </section>
 
     <div id="hud" hidden>
-      <div id="timer">0:00</div>
+      <div id="hud-left">
+        <div id="timer">0:00</div>
+        <!-- Toque (ou M) abre o mapa inteiro. -->
+        <canvas id="minimap" aria-label="Minimapa" hidden></canvas>
+      </div>
       <div id="stats">
         <div class="bar hp"><i></i><span id="hp-text"></span></div>
         <div class="bar mana"><i></i><span id="mana-text"></span></div>
@@ -67,7 +71,7 @@
       <div class="rotate-icon">⟳</div>
       <p>Volte o celular para a vertical para jogar.</p>
     </div>
-    <p id="help" hidden>WASD/setas: andar · Clique: travar alvo · Tab: próximo alvo · Esc: destravar</p>
+    <p id="help" hidden>WASD/setas: andar · Clique: travar alvo · Tab: próximo alvo · Esc: destravar · M: mapa</p>
 
     <section id="result" class="panel" hidden>
       <h2 id="result-title"></h2>

@@ -103,6 +103,29 @@ button { min-height: 44px; touch-action: manipulation; }
 #timer, #stats { padding: 6px 10px; background: #000a; border: 1px solid var(--border); }
 #timer { font-size: 22px; font-variant-numeric: tabular-nums; }
 #timer.low { color: var(--danger); }
+#hud-left { display: grid; gap: 6px; justify-items: start; }
+/* Minimapa: compacto embaixo do tempo; aberto, o mapa inteiro na parte de cima (longe dos polegares). */
+#minimap {
+  display: block;
+  width: 104px;
+  height: 104px;
+  background: #000c;
+  border: 1px solid var(--border);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+#minimap.expanded {
+  position: fixed;
+  top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(var(--col-w) - 32px), 360px);
+  height: min(calc(var(--col-w) - 32px), 360px);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px #000, 0 12px 40px #000c;
+  z-index: 10;
+}
 #stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
 #meta { text-align: right; color: var(--accent); font-size: 13px; }
 
