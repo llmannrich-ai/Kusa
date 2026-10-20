@@ -39,30 +39,39 @@ export class CombatFx {
   constructor(private scene: Phaser.Scene, private fxDepth: number, private decalDepth: number) {}
 
   /**
-   * Toca o golpe de `from` em `to` e chama `onImpact` quando ele acerta
+   * Toca o golpe de `from` no alvo e chama `onImpact` quando ele acerta
    * (na hora, corpo a corpo; na chegada do projétil, à distância).
+   * `target` dá a posição atual do alvo: o projétil persegue quem anda durante o voo.
    */
-  attack(fx: AttackFx, from: Point, to: Point, lunge: Lunge | null, onImpact: () => void) {
+  attack(fx: AttackFx, from: Point, target: () => Point, lunge: Lunge | null, onImpact: () => void) {
     const projectile = PROJECTILES[fx];
-    if (lunge) this.lunge(lunge, from, to, projectile ? 2 : LUNGE_PX);
+    const start = target();
+    if (lunge) this.lunge(lunge, from, start, projectile ? 2 : LUNGE_PX);
     if (!projectile) {
-      this.impact(MELEE_IMPACT[fx] ?? FX_ANIM.slash, true, to, from.x > to.x);
+      this.impact(MELEE_IMPACT[fx] ?? FX_ANIM.slash, true, start, from.x > start.x);
       onImpact();
       return;
     }
-    const angle = Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y);
-    const distance = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
+    const distance = Phaser.Math.Distance.Between(from.x, from.y, start.x, start.y);
     const duration = Phaser.Math.Clamp(distance / PROJECTILE_SPEED, FLIGHT_MS.min, FLIGHT_MS.max);
-    const shot = this.scene.add.image(from.x, from.y - 6, projectile.texture).setDepth(this.fxDepth).setRotation(angle);
+    const shot = this.scene.add.image(from.x, from.y - 6, projectile.texture).setDepth(this.fxDepth);
     if (projectile.texture === FX_TEXTURE.fireball) shot.setScale(0.8);
+    const flight = { t: 0 };
+    const place = () => {
+      const to = target();
+      const angle = Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y);
+      shot.setPosition(Phaser.Math.Linear(from.x, to.x, flight.t), Phaser.Math.Linear(from.y, to.y, flight.t) - 6);
+      shot.setRotation(projectile.spin ? angle + flight.t * Math.PI * 2 : angle);
+    };
+    place();
     this.scene.tweens.add({
-      targets: shot,
-      x: to.x,
-      y: to.y - 6,
-      rotation: projectile.spin ? angle + Math.PI * 2 : angle,
+      targets: flight,
+      t: 1,
       duration,
+      onUpdate: place,
       onComplete: () => {
         shot.destroy();
+        const to = target();
         if (projectile.impact) this.impact(projectile.impact, projectile.anim, to, from.x > to.x);
         onImpact();
       },
