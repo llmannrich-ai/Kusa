@@ -39,23 +39,85 @@ export class CombatFx {
       case "void_storm": return this.voidStorm(from, radius);
       case "forest_blessing": return this.ring(from, radius, 0x2ecc71, 600, 3);
       case "thorn_roots": return this.ring(to, radius, 0x6b7a2a, 400, 5);
-      // Compradas na árvore de magias.
+      // Compradas no Grimório.
       case "crushing_blow":
         this.slash(from, to);
         return this.later(120, () => this.ring(to, TILE_SIZE / 2, 0xd35400, 300, 6));
+      case "holy_shield": return this.shieldRaise(from);
+      case "vampiric_blade":
+        this.slash(from, to);
+        return this.later(120, () => this.drain(to, from, 0xc0392b));
       case "iron_skin": return this.ring(from, TILE_SIZE * 0.8, 0xa4b0be, 500, 5);
+      case "earthquake":
+        this.ring(from, radius, 0x8d6e4a, 500, 8);
+        this.debris(from, radius, 0x6b4426);
+        return this.scene.cameras.main.shake(220, 0.006);
+      case "steel_wall":
+        this.ring(from, radius, 0x95a5a6, 550, 6);
+        return this.shieldRaise(from);
+      case "commander_shout":
+        this.ring(from, radius, 0xf1c40f, 600, 4);
+        return this.ring(from, radius * 0.6, 0x7fc8ff, 500, 3);
+      case "execution":
+        this.slash(from, to);
+        this.later(80, () => this.slash(from, to));
+        return this.later(160, () => this.sparks(to, 0xff7675, 10));
       case "piercing_shot":
         this.projectile(FX.arrow, from, to, ms, { scale: 1.4 });
         return this.later(ms, () => this.ring(to, radius + TILE_SIZE / 2, 0xf1c40f, 300, 4));
+      case "stun_arrow":
+        this.projectile(FX.arrow, from, to, ms, { glow: 0xa4b0be, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xf1c40f, 6));
+      case "blessed_ward":
       case "healing_light": return this.ring(from, radius, 0xfff6c8, 600, 3);
+      case "deadly_shot":
+        this.projectile(FX.holyArrow, from, to, ms, { trail: 0xf7d774, glow: 0xf7d774, impact: 0xffffff, scale: 1.8 });
+        return this.later(ms, () => this.holyFlash(to));
+      case "divine_judgment":
+        this.beam(to, 0xfff6c8);
+        return this.later(150, () => this.ring(to, radius, 0xf7d774, 450, 5));
+      case "explosive_volley":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xe67e22, glow: 0xe67e22, scale: 1.3 });
+        return this.later(ms, () => { this.ring(to, radius, 0xe67e22, 450, 7); this.sparks(to, 0xf1c40f, 12); });
       case "lightning_bolt":
         this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff });
         return this.later(ms, () => this.sparks(to, 0x9ec5ff, 8));
+      case "chain_lightning":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff });
+        return this.later(ms, () => { this.ring(to, radius, 0x9ec5ff, 300, 2); this.sparks(to, 0xffffff, 10); });
+      case "ice_lance":
+        return this.projectile(FX.darkLight, from, to, ms, { trail: 0xd6f1ff, glow: 0x7fd8ff, impact: 0xffffff, scale: 1.2 });
+      case "drain_life":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0x8e44ad, glow: 0x5a1c7a, scale: 0.7 });
+        return this.later(ms, () => this.drain(to, from, 0xc77dff));
       case "frost_nova": return this.ring(from, radius, 0x7fd8ff, 450, 6);
+      case "meteor":
+        this.projectile(FX.shadowOrb, { x: to.x - 40, y: to.y - 120 }, to, ms, { trail: 0xe67e22, glow: 0xe74c3c, impact: 0xf1c40f, scale: 1.6 });
+        return this.later(ms, () => {
+          this.ring(to, radius, 0xe74c3c, 500, 8);
+          this.debris(to, radius, 0x5a2a1a);
+          this.scene.cameras.main.shake(200, 0.006);
+        });
+      case "blizzard":
+        this.snow(to, radius);
+        return this.ring(to, radius, 0xd6f1ff, 600, 4);
+      case "dark_pact":
+        this.voidStorm(from, radius);
+        return this.later(300, () => this.drain(from, from, 0xc77dff));
       case "venom_thorn": return this.projectile(FX.greenLight, from, to, ms, { trail: 0x6ab04c, glow: 0x2d6a1f, impact: 0xbadc58 });
       case "nature_wrath":
         this.projectile(FX.leaf, from, to, ms, { trail: 0x7bd36a, glow: 0x3fbf3a, impact: 0x9cff7a, scale: 1.5 });
         return this.later(ms, () => this.ring(to, radius, 0x3fbf3a, 450, 5));
+      // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
+      case "spirit_wolf":
+      case "healing_moth":
+      case "hornet_swarm":
+      case "wolf_pack":
+      case "ancient_bear":
+      case "grove_guardian":
+      case "forest_heart":
+        this.ring(from, Math.max(radius, TILE_SIZE * 1.5), SPELLS[spellId].color, 550, 3);
+        return this.heal(from);
     }
   }
 
@@ -195,6 +257,88 @@ export class CombatFx {
       });
     }
     this.scene.cameras.main.shake(180, 0.004);
+  }
+
+  /** Escudo da Fé: o brasão desce sobre o cavaleiro com um clarão azul. */
+  private shieldRaise(at: Point) {
+    const crest = this.scene.add.image(at.x, at.y - 30, FX.holyShield).setDepth(FX_DEPTH).setScale(2.2).setAlpha(0);
+    this.scene.tweens.add({
+      targets: crest, y: at.y - 4, scale: 1, alpha: { from: 0, to: 1 }, duration: 260, ease: "Quad.In",
+      onComplete: () => {
+        this.ring(at, TILE_SIZE * 0.9, 0x7fc8ff, 380, 4);
+        this.sparks(at, 0xe8f6ff, 8);
+        this.scene.tweens.add({ targets: crest, alpha: 0, duration: 200, onComplete: () => crest.destroy() });
+      },
+    });
+  }
+
+  /**
+   * O escudo acabou: com `broken`, estilhaços azuis voam (quebrou de tanto apanhar);
+   * sem, só some num brilho (o tempo acabou).
+   */
+  shatter(at: Point, broken: boolean) {
+    if (!broken) return this.sparks(at, 0x9fd8ff, 6);
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + Math.random() * 0.4;
+      const shard = this.scene.add.rectangle(at.x, at.y, 3, 2, i % 3 ? 0x7fc8ff : 0xe8f6ff).setDepth(FX_DEPTH).setRotation(a);
+      this.scene.tweens.add({
+        targets: shard,
+        x: at.x + Math.cos(a) * 22, y: at.y + Math.sin(a) * 22 + 6,
+        angle: Phaser.Math.Between(-180, 180), alpha: 0, duration: 420, ease: "Quad.Out",
+        onComplete: () => shard.destroy(),
+      });
+    }
+  }
+
+  /** Criatura invocada aparece: folhas e um círculo verde. */
+  summonBurst(at: Point) {
+    this.ring({ x: at.x, y: at.y + 8 }, TILE_SIZE * 0.6, 0x9cff7a, 400, 3);
+    this.heal(at);
+  }
+
+  /** Criatura invocada some (morreu ou o tempo acabou). */
+  vanish(at: Point) {
+    this.sparks(at, 0x9cff7a, 8);
+    this.puff(at.x, at.y, 0x9cff7a, 8);
+  }
+
+  /** Gotas de vida voando do alvo para quem conjurou (roubo de vida). */
+  private drain(from: Point, to: Point, color: number) {
+    for (let i = 0; i < 5; i++) {
+      const drop = this.scene.add.circle(from.x, from.y - 6, 2, color, 0.9).setDepth(FX_DEPTH);
+      this.scene.tweens.add({
+        targets: drop, x: to.x + Phaser.Math.Between(-4, 4), y: to.y - 8, alpha: { from: 1, to: 0.3 },
+        delay: i * 60, duration: 380, ease: "Sine.In", onComplete: () => drop.destroy(),
+      });
+    }
+  }
+
+  /** Coluna de luz caindo do céu (Julgamento Divino). */
+  private beam(at: Point, color: number) {
+    const g = this.scene.add.graphics().setDepth(FX_DEPTH).setPosition(at.x, at.y);
+    g.fillStyle(color, 0.8).fillRect(-5, -140, 10, 140);
+    g.fillStyle(0xffffff, 0.9).fillRect(-2, -140, 4, 140);
+    this.scene.tweens.add({ targets: g, scaleX: { from: 1.6, to: 0.2 }, alpha: { from: 1, to: 0 }, duration: 380, onComplete: () => g.destroy() });
+  }
+
+  /** Pedras e terra saltando do chão (Terremoto, Meteoro). */
+  private debris(at: Point, radius: number, color: number) {
+    for (let i = 0; i < 12; i++) {
+      const x = at.x + Phaser.Math.Between(-radius, radius);
+      const y = at.y + Phaser.Math.Between(-radius, radius);
+      const rock = this.scene.add.rectangle(x, y, 3, 3, color).setDepth(FX_DEPTH);
+      this.scene.tweens.add({ targets: rock, y: y - 10, duration: 160, yoyo: true, ease: "Quad.Out", delay: i * 20, onComplete: () => rock.destroy() });
+    }
+  }
+
+  /** Flocos de neve caindo sobre a área (Nevasca). */
+  private snow(at: Point, radius: number) {
+    for (let i = 0; i < 24; i++) {
+      const x = at.x + Phaser.Math.Between(-radius, radius);
+      const y = at.y + Phaser.Math.Between(-radius, radius);
+      const flake = this.scene.add.image(x - 6, y - 40, FX.spark).setDepth(FX_DEPTH).setTint(0xe8f6ff);
+      this.scene.tweens.add({ targets: flake, x, y, alpha: { from: 1, to: 0 }, duration: 500, delay: i * 18, onComplete: () => flake.destroy() });
+    }
   }
 
   // --- Peças ------------------------------------------------------------------

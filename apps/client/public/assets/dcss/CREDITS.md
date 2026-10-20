@@ -18,6 +18,11 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `monster-orc.png` | `monster/orc_warrior_new.png` | — |
 | `monster-ogre.png` | `monster/ogre_new.png` | — |
 | `monster-dragon.png` | `monster/dragons/dragon.png` | — |
+| `summon-wolf.png` | `monster/animals/wolf.png` | — |
+| `summon-bear.png` | `monster/animals/black_bear.png` | — |
+| `summon-hornet.png` | `monster/animals/hornet.png` | — |
+| `summon-moth.png` | `monster/animals/sun_moth.png` | — |
+| `summon-wisp.png` | `monster/nonliving/will_o_the_wisp.png` | — |
 | `chest-locked.png` | `dungeon/chest_2_closed.png` | — |
 | `chest-unlocked.png` | `dungeon/chest.png` | — |
 | `chest-open.png` | `dungeon/chest_2_open.png` | — |
@@ -34,5 +39,8 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `blood-splat.png` | `misc/blood/blood_red_0, 5, 9.png` | juntos numa faixa |
 | `blood-puddle.png` | `misc/blood/blood_puddle_red, _1, _2.png` | juntos numa faixa |
 
-As paredes, as 4 classes e os efeitos de corpo a corpo (corte, mordida, pancada) e a folha do druida são arte
+As criaturas invocadas vieram do repositório do jogo (https://github.com/crawl/crawl, `crawl-ref/source/rltiles/mon/`),
+com a mesma licença CC0.
+
+As paredes, as 4 classes, o Guardião do Bosque, o Escudo da Fé e os efeitos de corpo a corpo (corte, mordida, pancada) e a folha do druida são arte
 própria do Kusa, gerada no código (`apps/client/src/art`).
