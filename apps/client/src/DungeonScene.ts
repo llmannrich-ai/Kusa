@@ -5,6 +5,7 @@ import {
   MONSTERS,
   MSG,
   SPELLS,
+  SUMMONS,
   TIER_COLORS,
   TILE_SIZE,
   Tile,
@@ -19,6 +20,7 @@ import {
   type MonsterKind,
   type NoticeMessage,
   type SpellMessage,
+  type SummonKind,
 } from "@kusa/shared";
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
@@ -28,18 +30,20 @@ import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { loadSettings } from "./settings.ts";
-import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView } from "./net.ts";
+import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import { hash } from "./art/pixels.ts";
 import type { HeroDir } from "./art/heroes.ts";
+import { outfitOf } from "./art/outfit.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
 import {
   CHEST_TEXTURE,
   FLOOR_TEXTURE,
   MONSTER_TEXTURE,
   PORTAL_TEXTURE,
+  SUMMON_TEXTURE,
   floorVariants,
+  heroArt,
   heroIdleFrame,
-  heroTexture,
   heroWalkAnim,
   itemTexture,
   wallCapTexture,
@@ -72,7 +76,14 @@ const COLORS = {
   hpBack: 0x000000,
   hpPlayer: 0x2ecc71,
   hpMonster: 0xe74c3c,
+  hpSummon: 0x5dade2,
+  barrier: 0x9fd8ff,
 };
+
+/** Criaturas invocadas que voam (balançam no ar em vez de andar). */
+const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp"]);
+/** Sprites do pack que olham para a esquerda. */
+const SUMMON_FACES_LEFT = new Set<SummonKind>(["wolf", "bear"]);
 
 const TEXT_STYLE = {
   fontFamily: "Georgia, serif",
@@ -92,6 +103,8 @@ interface Unit {
   barY: number;
   /** Classe do herói (tem animação de caminhada); monstros só balançam. */
   classId?: ClassId;
+  /** Textura do herói com o equipamento vestido (muda quando ele pega ou perde um item). */
+  heroKey?: string;
   facesLeft: boolean;
   dir: HeroDir;
   lastStepAt: number;
@@ -101,8 +114,20 @@ interface Unit {
   /** Se sangra ao apanhar (esqueleto não). */
   bleeds: boolean;
   dead: boolean;
-  /** Escudo do Grito de Guerra (jogador) ou espinhos das raízes (monstro), visível enquanto dura. */
-  status?: Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible;
+  /** Efeitos que ficam na unidade enquanto duram: guarda, raízes, atordoamento. */
+  statuses: Map<string, Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible>;
+  /** Criatura que voa: flutua sobre a sombra. */
+  flies?: boolean;
+  /** Escudo da Fé (e outros escudos): bolha + brasão, enquanto houver escudo. */
+  barrier?: BarrierFx;
+}
+
+interface BarrierFx {
+  root: Phaser.GameObjects.Container;
+  dome: Phaser.GameObjects.Graphics;
+  crest: Phaser.GameObjects.Image;
+  /** Último valor visto, para notar a quebra. */
+  value: number;
 }
 
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
@@ -111,6 +136,7 @@ export class DungeonScene extends Phaser.Scene {
   private dungeon!: Dungeon;
   private avatars = new Map<string, Unit>();
   private monsters = new Map<string, Unit>();
+  private summons = new Map<string, Unit>();
   private chests = new Map<string, Phaser.GameObjects.Image>();
   private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
@@ -172,6 +198,18 @@ export class DungeonScene extends Phaser.Scene {
       if (unit) this.hits.death(unit.sprite, { x: unit.body.x, y: unit.body.y }, unit.bleeds);
       this.destroyUnit(unit);
       this.monsters.delete(id);
+    });
+
+    callbacks.onAdd("summons", (summon: SummonView, id: string) => {
+      this.addSummon(id, summon);
+      callbacks.onChange(summon, () => this.syncSummon(id, summon));
+    });
+    callbacks.onRemove("summons", (_summon: SummonView, id: string) => {
+      // A criatura some quando morre ou quando o tempo dela acaba: some num brilho, sem sangue.
+      const unit = this.summons.get(id);
+      if (unit) this.fx.vanish({ x: unit.body.x, y: unit.body.y });
+      this.destroyUnit(unit);
+      this.summons.delete(id);
     });
 
     callbacks.onAdd("chests", (chest: ChestView, id: string) => {
@@ -236,6 +274,7 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.avatars.forEach((unit) => this.animateUnit(unit, time));
     this.monsters.forEach((unit) => this.animateUnit(unit, time));
+    this.summons.forEach((unit) => this.animateUnit(unit, time));
     this.drawTargetRing();
     this.minimap?.update(time);
     this.spellBar.update();
@@ -349,13 +388,16 @@ export class DungeonScene extends Phaser.Scene {
     // Posição viva do alvo (ele pode andar enquanto o projétil voa); sem alvo, o tile do golpe.
     const to = () => (target?.body.active ? { x: target.body.x, y: target.body.y } : tile);
     const impact = () => {
-      if (target?.sprite.active) {
+      if (msg.absorbed && target?.barrier) this.barrierHit(target.barrier);
+      if (target?.sprite.active && msg.amount > 0) {
         this.hits.flash(target.sprite);
         if (target.bleeds && Math.random() < 0.6) this.hits.bleed(to());
       }
-      this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff);
+      if (msg.amount > 0) this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff);
+      if (msg.absorbed) this.floatText(msg.x, msg.y - 0.4, `-${msg.absorbed}`, COLORS.barrier);
     };
-    const monster = this.monsters.get(msg.attacker);
+    // Quem bate: um monstro ou uma criatura invocada (o golpe dos heróis já foi desenhado).
+    const monster = this.monsters.get(msg.attacker) ?? this.summons.get(msg.attacker);
     if (!monster) return impact();
     if (!monster.dead && this.time.now >= monster.walkUntil) {
       this.face(monster, Math.sign(msg.x - msg.fromX), Math.sign(msg.y - msg.fromY));
@@ -363,23 +405,31 @@ export class DungeonScene extends Phaser.Scene {
     this.hits.attack(msg.fx, { x: monster.body.x, y: monster.body.y }, to, monster.lunge, impact);
   }
 
-  /** Unidade (jogador ou monstro) que está no tile, pelo estado do servidor. */
-  private unitAt(tileX: number, tileY: number, player: boolean): Unit | undefined {
+  /** Unidade que está no tile, pelo estado do servidor: monstro, ou jogador/criatura invocada (aliados). */
+  private unitAt(tileX: number, tileY: number, ally: boolean): Unit | undefined {
     let found: Unit | undefined;
-    const list = player ? this.room.state.players : this.room.state.monsters;
-    list.forEach((entity: { x: number; y: number }, id: string) => {
-      if (!found && entity.x === tileX && entity.y === tileY) found = (player ? this.avatars : this.monsters).get(id);
-    });
+    const search = (list: { forEach(cb: (e: { x: number; y: number }, id: string) => void): void }, units: Map<string, Unit>) => {
+      list.forEach((entity, id) => {
+        if (!found && entity.x === tileX && entity.y === tileY) found = units.get(id);
+      });
+    };
+    if (!ally) search(this.room.state.monsters, this.monsters);
+    else {
+      search(this.room.state.players, this.avatars);
+      search(this.room.state.summons, this.summons);
+    }
     return found;
   }
 
-  /** Mostra ou esconde o escudo / os espinhos de uma unidade, criando na primeira vez. */
-  private setStatus(unit: Unit, on: boolean, create: () => Unit["status"]) {
-    if (on && !unit.status) {
-      unit.status = create();
-      unit.body.add(unit.status!);
+  /** Mostra ou esconde um efeito da unidade (escudo, espinhos, estrelas), criando na primeira vez. */
+  private setStatus(unit: Unit, key: string, on: boolean, create: () => Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible) {
+    let status = unit.statuses.get(key);
+    if (on && !status) {
+      status = create();
+      unit.statuses.set(key, status);
+      unit.body.add(status);
     }
-    unit.status?.setVisible(on);
+    status?.setVisible(on);
   }
 
   private shieldAura() {
@@ -388,6 +438,76 @@ export class DungeonScene extends Phaser.Scene {
     g.lineStyle(1, 0xffe9a3, 0.6).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE + 4, 16);
     this.tweens.add({ targets: g, alpha: { from: 1, to: 0.4 }, duration: 400, yoyo: true, repeat: -1 });
     return g;
+  }
+
+  /** Estrelinhas girando sobre a cabeça do monstro atordoado. */
+  private stunStars(top: number) {
+    const ring = this.add.container(0, top);
+    for (let i = 0; i < 3; i++) ring.add(this.add.image(0, 0, FX.star));
+    let t = 0;
+    const spin = this.time.addEvent({
+      delay: 40, loop: true,
+      callback: () => {
+        t += 0.25;
+        ring.each((star: Phaser.GameObjects.Image) => {
+          const a = t + (ring.getIndex(star) * Math.PI * 2) / 3;
+          star.setPosition(Math.cos(a) * 9, Math.sin(a) * 3).setScale(Math.sin(a) > 0 ? 1 : 0.7);
+        });
+      },
+    });
+    ring.once(Phaser.GameObjects.Events.DESTROY, () => spin.remove());
+    return ring;
+  }
+
+  /**
+   * Escudo da Fé: uma bolha de luz azul em volta do herói, com o brasão (cruz branca no azul,
+   * borda dourada) flutuando à frente. A bolha fica mais fraca conforme o escudo absorve dano
+   * e se estilhaça quando quebra.
+   */
+  private syncBarrier(unit: Unit, value: number, max: number) {
+    const on = value > 0;
+    if (on && !unit.barrier) {
+      const dome = this.add.graphics();
+      const crest = this.add.image(-9, 6, FX.holyShield);
+      const root = this.add.container(0, 0, [dome, crest]);
+      unit.body.add(root);
+      unit.barrier = { root, dome, crest, value };
+      // Ergue o escudo: o brasão desce girando e a bolha cresce.
+      root.setScale(0.2).setAlpha(0);
+      this.tweens.add({ targets: root, scale: 1, alpha: 1, duration: 260, ease: "Back.Out" });
+      this.tweens.add({ targets: crest, y: { from: 3, to: 7 }, duration: 900, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+      this.drawDome(dome, 1);
+    }
+    const fx = unit.barrier;
+    if (!fx) return;
+    if (!on) {
+      unit.barrier = undefined;
+      this.fx.shatter({ x: unit.body.x, y: unit.body.y }, fx.value > 0 && max > 0);
+      fx.root.destroy();
+      return;
+    }
+    if (value !== fx.value) {
+      fx.value = value;
+      this.drawDome(fx.dome, max > 0 ? value / max : 1);
+    }
+  }
+
+  /** Bolha em pixels: anel duplo, brilho no alto e um leve preenchimento. `strength` de 0 a 1. */
+  private drawDome(g: Phaser.GameObjects.Graphics, strength: number) {
+    const a = 0.35 + 0.65 * Math.max(0, Math.min(1, strength));
+    const cy = 0;
+    g.clear();
+    g.fillStyle(0x7fc8ff, 0.12 * a).fillEllipse(0, cy, 34, 38);
+    g.lineStyle(2, 0x7fc8ff, 0.85 * a).strokeEllipse(0, cy, 34, 38);
+    g.lineStyle(1, 0xe8f6ff, 0.7 * a).strokeEllipse(0, cy, 28, 32);
+    // Reflexo no alto da bolha.
+    g.fillStyle(0xffffff, 0.55 * a).fillRect(-9, cy - 14, 3, 2).fillRect(-6, cy - 16, 4, 1);
+  }
+
+  /** O escudo absorveu um golpe: a bolha pisca e treme. */
+  private barrierHit(fx: BarrierFx) {
+    this.tweens.add({ targets: fx.dome, alpha: { from: 0.3, to: 1 }, duration: 120 });
+    this.tweens.add({ targets: fx.crest, x: { from: -11, to: -9 }, duration: 80, ease: "Quad.Out" });
   }
 
   private thornsAt() {
@@ -501,9 +621,11 @@ export class DungeonScene extends Phaser.Scene {
 
   private addAvatar(sessionId: string, player: PlayerView) {
     const classId = player.classId as ClassId;
-    const sprite = this.add.sprite(0, 0, heroTexture(classId), heroIdleFrame("down"));
+    const heroKey = heroArt(this, classId, outfitOf(player));
+    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down"));
     const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, -TILE_SIZE / 2 + 4, false);
     unit.classId = classId;
+    unit.heroKey = heroKey;
     const label = this.add.text(0, unit.barY - 2, player.name, this.textStyle()).setOrigin(0.5, 1);
     unit.overlay.add(label);
     this.avatars.set(sessionId, unit);
@@ -517,6 +639,12 @@ export class DungeonScene extends Phaser.Scene {
   private syncAvatar(sessionId: string, player: PlayerView) {
     const unit = this.avatars.get(sessionId);
     if (!unit) return;
+    // O equipamento aparece no personagem: troca a roupa quando ele pega, larga ou recebe itens.
+    const heroKey = heroArt(this, unit.classId!, outfitOf(player));
+    if (heroKey !== unit.heroKey) {
+      unit.heroKey = heroKey;
+      unit.sprite.setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
+    }
     const alpha = player.status === "playing" ? 1 : 0.35;
     unit.body.setAlpha(alpha);
     unit.overlay.setAlpha(alpha);
@@ -526,8 +654,9 @@ export class DungeonScene extends Phaser.Scene {
       unit.sprite.stop().setFrame(heroIdleFrame("down")).setAngle(90);
       this.hits.bleed({ x: unit.body.x, y: unit.body.y });
     }
-    this.drawBar(unit, player.hp, player.maxHp, COLORS.hpPlayer);
-    this.setStatus(unit, player.guarded && player.status === "playing", () => this.shieldAura());
+    this.drawBar(unit, player.hp, player.maxHp, COLORS.hpPlayer, player.barrier);
+    this.setStatus(unit, "guard", player.guarded && player.status === "playing", () => this.shieldAura());
+    this.syncBarrier(unit, player.status === "playing" ? player.barrier : 0, player.maxBarrier);
     this.moveTo(unit, player.x, player.y);
   }
 
@@ -552,8 +681,35 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.monsters.get(id);
     if (!unit) return;
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
-    this.setStatus(unit, monster.rooted, () => this.thornsAt());
+    this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
+    this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
     this.moveTo(unit, monster.x, monster.y);
+  }
+
+  /** Criatura invocada: sprite do pack (ou o Guardião), barra azul (sem nome, para não poluir a tela) e um brilho ao aparecer. */
+  private addSummon(id: string, summon: SummonView) {
+    const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
+    const sprite = this.add.sprite(0, 0, SUMMON_TEXTURE[kind]);
+    const top = TILE_SIZE / 2 - sprite.displayHeight;
+    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, SUMMON_FACES_LEFT.has(kind));
+    unit.bleeds = false;
+    unit.flies = FLYERS.has(kind);
+    // Brilho de aliado sob os pés, para não confundir com os monstros.
+    const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 22, 7, 0x9cff7a, 0.35);
+    unit.body.addAt(glow, 0);
+    this.tweens.add({ targets: glow, alpha: { from: 0.35, to: 0.12 }, duration: 800, yoyo: true, repeat: -1 });
+    this.summons.set(id, unit);
+    this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
+    sprite.setScale(0.2);
+    this.tweens.add({ targets: sprite, scale: 1, duration: 280, ease: "Back.Out" });
+    this.fx.summonBurst({ x: unit.body.x, y: unit.body.y });
+  }
+
+  private syncSummon(id: string, summon: SummonView) {
+    const unit = this.summons.get(id);
+    if (!unit) return;
+    this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
+    this.moveTo(unit, summon.x, summon.y);
   }
 
   /** Sprite com os pés na base do tile, sombra no chão e barra/nome numa camada separada por cima de tudo. */
@@ -567,7 +723,7 @@ export class DungeonScene extends Phaser.Scene {
     const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);
     return {
       body, sprite, overlay, bar, barWidth, barY, facesLeft,
-      dir: "down", lastStepAt: 0, walkUntil: 0, lunge: { x: 0, y: 0 }, bleeds: true, dead: false,
+      dir: "down", lastStepAt: 0, walkUntil: 0, lunge: { x: 0, y: 0 }, bleeds: true, dead: false, statuses: new Map(),
     };
   }
 
@@ -576,12 +732,18 @@ export class DungeonScene extends Phaser.Scene {
     unit?.overlay.destroy();
   }
 
-  private drawBar(unit: Unit, hp: number, maxHp: number, color: number) {
+  /** Barra de vida; com escudo, uma faixa azul-clara por cima mostra quanto ele ainda absorve. */
+  private drawBar(unit: Unit, hp: number, maxHp: number, color: number, barrier = 0) {
     const ratio = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
     const x = -unit.barWidth / 2;
     unit.bar.clear()
       .fillStyle(COLORS.hpBack).fillRect(x - 1, unit.barY - 1, unit.barWidth + 2, 5)
       .fillStyle(ratio > 0.3 ? color : 0xe67e22).fillRect(x, unit.barY, unit.barWidth * ratio, 3);
+    if (barrier > 0 && maxHp > 0) {
+      const shield = Math.min(1, barrier / maxHp);
+      unit.bar.fillStyle(COLORS.hpBack).fillRect(x - 1, unit.barY + 3, unit.barWidth * shield + 2, 3)
+        .fillStyle(COLORS.barrier).fillRect(x, unit.barY + 4, unit.barWidth * shield, 1);
+    }
   }
 
   /**
@@ -619,12 +781,13 @@ export class DungeonScene extends Phaser.Scene {
     unit.body.setDepth(unit.body.y + TILE_SIZE / 2 + 0.5);
     unit.overlay.setPosition(unit.body.x, unit.body.y);
     const walking = time < unit.walkUntil;
-    // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam.
-    const bob = !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
+    // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam; quem voa flutua sempre.
+    const bob = unit.flies ? Math.round(3 + Math.sin(time / 180) * 2)
+      : !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
     unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
     if (unit.dead) return;
-    if (unit.classId) {
-      if (walking) unit.sprite.play(heroWalkAnim(unit.classId, unit.dir), true);
+    if (unit.heroKey) {
+      if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);
       else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
         unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
       }

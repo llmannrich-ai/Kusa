@@ -1,8 +1,10 @@
 import type * as Phaser from "phaser";
-import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind } from "@kusa/shared";
+import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind, type SummonKind } from "@kusa/shared";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
+import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
+import { treantCanvas } from "./summons.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 
 /**
@@ -25,6 +27,16 @@ export const MONSTER_TEXTURE: Record<MonsterKind, string> = {
   naga: "monster-naga",
   troll: "monster-troll",
   hydra: "monster-hydra",
+};
+
+/** Criaturas invocadas pelo Druida: as do pack e o Guardião do Bosque (arte própria). */
+export const SUMMON_TEXTURE: Record<SummonKind, string> = {
+  wolf: "summon-wolf",
+  hornet: "summon-hornet",
+  moth: "summon-moth",
+  bear: "summon-bear",
+  wisp: "summon-wisp",
+  treant: "summon-treant",
 };
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
@@ -62,6 +74,7 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...Object.values(MONSTER_TEXTURE),
+    ...Object.values(SUMMON_TEXTURE).filter((key) => key !== SUMMON_TEXTURE.treant),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
@@ -80,34 +93,43 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath();
 }
 
-export const heroTexture = (classId: ClassId) => `hero-${classId}`;
-export const heroWalkAnim = (classId: ClassId, dir: HeroDir) => `hero-${classId}-walk-${dir}`;
+/** Textura de uma classe vestindo uma combinação de equipamento. */
+export const heroTexture = (classId: ClassId, outfit: Outfit = NO_OUTFIT) => `hero-${classId}-${outfitKey(outfit)}`;
+export const heroWalkAnim = (texture: string, dir: HeroDir) => `${texture}-walk-${dir}`;
 export const heroIdleFrame = (dir: HeroDir) => HERO_DIRS.indexOf(dir) * HERO_FRAMES;
 
-/** Gera as texturas e animações das classes (uma vez por jogo). */
-export function createHeroArt(scene: Phaser.Scene) {
-  for (const classId of CLASS_IDS) {
-    const key = heroTexture(classId);
-    if (scene.textures.exists(key)) continue;
-    const texture = scene.textures.addCanvas(key, heroSheet(classId))!;
-    for (let i = 0; i < HERO_DIRS.length * HERO_FRAMES; i++) {
-      texture.add(i, 0, i * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE);
-    }
-    HERO_DIRS.forEach((dir) => {
-      const first = heroIdleFrame(dir);
-      scene.anims.create({
-        key: heroWalkAnim(classId, dir),
-        frames: [1, 0, 2, 0].map((f) => ({ key, frame: first + f })),
-        frameRate: 8,
-        repeat: -1,
-      });
-    });
+/**
+ * Folha e animações de caminhada da classe com o equipamento vestido. Cada combinação é
+ * gerada na primeira vez que aparece (são poucas por hunt) e fica no jogo. Devolve a chave da textura.
+ */
+export function heroArt(scene: Phaser.Scene, classId: ClassId, outfit: Outfit = NO_OUTFIT) {
+  const key = heroTexture(classId, outfit);
+  if (scene.textures.exists(key)) return key;
+  const texture = scene.textures.addCanvas(key, heroSheet(classId, outfit))!;
+  for (let i = 0; i < HERO_DIRS.length * HERO_FRAMES; i++) {
+    texture.add(i, 0, i * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE);
   }
+  HERO_DIRS.forEach((dir) => {
+    const first = heroIdleFrame(dir);
+    scene.anims.create({
+      key: heroWalkAnim(key, dir),
+      frames: [1, 0, 2, 0].map((f) => ({ key, frame: first + f })),
+      frameRate: 8,
+      repeat: -1,
+    });
+  });
+  return key;
+}
+
+/** Gera as texturas das classes sem equipamento (uma vez por jogo). */
+export function createHeroArt(scene: Phaser.Scene) {
+  for (const classId of CLASS_IDS) heroArt(scene, classId);
 }
 
 /** Gera as texturas próprias dos efeitos e as animações de impacto (uma vez por jogo). */
 export function createEffectArt(scene: Phaser.Scene) {
   if (!scene.textures.exists(FX_TEXTURE.leaf)) scene.textures.addCanvas(FX_TEXTURE.leaf, leafCanvas());
+  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) scene.textures.addCanvas(SUMMON_TEXTURE.treant, treantCanvas());
   const strips: [string, () => HTMLCanvasElement, number][] = [
     [FX_ANIM.slash, slashStrip, SLASH_FRAMES],
     [FX_ANIM.bite, biteStrip, BITE_FRAMES],

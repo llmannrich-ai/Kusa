@@ -33,9 +33,11 @@ export interface DamageMessage {
   x: number;
   y: number;
   amount: number;
-  /** true quando quem apanhou foi um jogador. */
+  /** true quando quem apanhou foi um jogador ou uma criatura invocada. */
   toPlayer: boolean;
-  /** Quem bateu (sessionId do jogador ou id do monstro) e de onde, para o projétil e o avanço do golpe. */
+  /** Dano que o escudo (Escudo da Fé e outros) absorveu antes de chegar à vida. */
+  absorbed?: number;
+  /** Quem bateu (sessionId do jogador, id do monstro ou da criatura invocada) e de onde, para o projétil e o avanço do golpe. */
   attacker: string;
   fromX: number;
   fromY: number;

@@ -17,7 +17,54 @@ export const FX = {
   spark: "fx-spark",
   leaf: "fx-hero-leaf",
   thorns: "fx-thorns",
+  holyShield: "fx-holy-shield",
+  star: "fx-star",
 } as const;
+
+/**
+ * Escudo da Fé do Cavaleiro: brasão azul com cruz branca e borda dourada. Flutua na frente
+ * do cavaleiro, dentro da bolha de luz, enquanto o escudo durar (ver `DungeonScene`).
+ */
+const HOLY_SHIELD: Grid = [
+  ".ooooooooooooo.",
+  "ogggggggggggggo",
+  "oglbbbbwbbbbBGo",
+  "oglbbbbwbbbbBGo",
+  "oglbbbbwbbbbBGo",
+  "oglwwwwwwwwwBGo",
+  "oglbbbbwbbbbBGo",
+  "oglbbbbwbbbbBGo",
+  ".oglbbbwbbbBGo.",
+  ".oglbbbwbbbBGo.",
+  "..oglbbwbbBGo..",
+  "..ogglbwbBGGo..",
+  "...oggbwbGGo...",
+  "....oggwGGo....",
+  ".....oggGo.....",
+  "......ogo......",
+  ".......o.......",
+];
+
+const SHIELD_PALETTE: Palette = {
+  o: "#0d1b2a",
+  g: "#f7d774", // borda dourada
+  G: "#b8860b",
+  l: "#7fc8ff", // brilho do campo
+  b: "#2e86de",
+  B: "#1b4f8a",
+  w: "#fdfefe", // cruz
+};
+
+/** Estrelinha do atordoamento (gira sobre a cabeça do monstro). */
+const STAR: Grid = [
+  "..y..",
+  ".yWy.",
+  "yWWWy",
+  ".yWy.",
+  "..y..",
+];
+
+const STAR_PALETTE: Palette = { y: "#f1c40f", W: "#fff6c8" };
 
 const ARROW: Grid = [
   "ff..........o...",
@@ -70,6 +117,8 @@ export function createCombatArt(scene: Phaser.Scene) {
   add(FX.holyArrow, () => grid(ARROW, HOLY_PALETTE));
   add(FX.leaf, () => grid(LEAF, PALETTE));
   add(FX.thorns, () => grid(THORNS, PALETTE));
+  add(FX.holyShield, () => grid(HOLY_SHIELD, SHIELD_PALETTE));
+  add(FX.star, () => grid(STAR, STAR_PALETTE));
   // Luz verde do druida: núcleo claro, halo de folha.
   add(FX.greenLight, () => orb(10, ["#f4ffe8", "#9cff7a", "#3fbf3a", "#1d6b22"]));
   // Luz negra do feiticeiro: centro preto com borda roxa, para aparecer no chão escuro.
