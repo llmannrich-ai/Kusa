@@ -1,12 +1,18 @@
 import type { ClassId } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
+import {
+  KNIGHT_WEAPONS, NO_OUTFIT, armorBody, helmetHead, outfitPalette, pauldrons, shieldGrid, tierOf, tintClassWeapon,
+  type Outfit, type Piece,
+} from "./outfit.ts";
 
 /**
  * Arte própria das 4 classes, no espírito do Tibia: 32×32, vista de cima levemente inclinada,
  * 3 direções (a direita é a esquerda espelhada) e 3 quadros de caminhada por direção.
  *
- * Cada classe = cabeça própria + corpo (calça ou túnica) + itens na mão, todos com a mesma
- * paleta de letras. A folha final tem 9 quadros em linha: `direção * 3 + quadro`.
+ * Cada classe = cabeça própria + corpo (calça ou túnica) + arma da classe na mão, todos com a mesma
+ * paleta de letras. Por cima entra o equipamento vestido (`outfit.ts`): a armadura recobre o tronco,
+ * o capacete troca a cabeça, o escudo vai na outra mão e a arma muda de forma ou de material.
+ * A folha final tem 9 quadros em linha: `direção * 3 + quadro`.
  */
 
 export type HeroDir = "down" | "up" | "side";
@@ -158,7 +164,7 @@ const BODIES: Record<BodyKind, Record<HeroDir, Grid[]>> = {
   },
 };
 
-// --- Itens -------------------------------------------------------------------
+// --- Arma da classe -----------------------------------------------------------
 
 interface Item {
   grid: Grid;
@@ -168,9 +174,9 @@ interface Item {
   behind?: boolean;
 }
 
-const SHIELD: Grid = [".ooo.", "omqmo", "oqqqo", "omqmo", ".omo.", "..o.."];
-const SHIELD_BACK: Grid = [".ooo.", "oMMMo", "oMMMo", "oMMMo", ".oMo.", "..o.."];
 const SWORD: Grid = [".o.", "omo", "omo", "omo", "omo", "oMo", "qqq", ".W."];
+/** Coluna do cabo da espada (onde a mão segura). */
+const SWORD_GRIP = 1;
 const BOW: Grid = ["wo.", "mwo", "m.w", "m.w", "m.w", "m.w", "m.w", "m.w", "mwo", "wo."];
 const BOW_FLIPPED: Grid = BOW.map((row) => [...row].reverse().join(""));
 
@@ -179,59 +185,76 @@ const staff = (top: Grid): Grid => [...top, ...Array(22 - top.length).fill("owWo
 const ORB_STAFF = staff([".oo.", "oggo", "oGgo", ".oo."]);
 const LEAF_STAFF = staff(["g..g", ".gg.", "gwWg", ".wW."]);
 
+/** Onde vai o escudo: coluna e linha do centro (no corpo) e se fica atrás dele. */
+interface ShieldHand { cx: number; cy: number; behind?: boolean }
+
+/** Escudo na mão esquerda; de lado, nas costas (a mão da frente segura arco ou cajado). */
+const SHIELD_HANDS: Record<HeroDir, ShieldHand> = {
+  down: { cx: 3, cy: 4 },
+  up: { cx: 12, cy: 4, behind: true },
+  side: { cx: 10, cy: 4, behind: true },
+};
+
 // --- Classes -----------------------------------------------------------------
 
 interface HeroDef {
   palette: Palette;
+  /** Cabeça sem capacete (com o chapéu ou capuz da classe). */
   heads: Record<HeroDir, Grid>;
   body: BodyKind;
+  /** Arma da classe (ataque básico). */
+  weapon: "sword" | "bow" | "staff";
   items: Record<HeroDir, Item[]>;
+  shieldHands?: Partial<Record<HeroDir, ShieldHand>>;
 }
 
 const HEROES: Record<ClassId, HeroDef> = {
   knight: {
-    palette: { p: "#b0332b", P: "#701c17", q: "#e0b040", l: "#7a7f8a", L: "#50545e" },
+    palette: { p: "#b0332b", P: "#701c17", q: "#e0b040", l: "#7a7f8a", L: "#50545e", h: "#6b4226", H: "#432814" },
     heads: {
       down: [
         "......oooo......",
-        "....oommmmoo....",
-        "...ommmmmmmmo...",
-        "...oMMMMMMMMo...",
-        "...oMssmmssMo...",
-        "...oMeSmmSeMo...",
-        "...oMssssssMo...",
-        "....oMssssMo....",
+        "....oohhhhoo....",
+        "...ohhhhhhhho...",
+        "...ohHhhhhHho...",
+        "...ohssssssho...",
+        "...oseSssSeso...",
+        "...osssssssso...",
+        "....oSssssSo....",
         ".....oooooo.....",
       ],
       up: [
         "......oooo......",
-        "....oommmmoo....",
-        "...ommmmmmmmo...",
-        "...oMmmmmmmMo...",
-        "...oMmmmmmmMo...",
-        "...oMMmmmmMMo...",
-        "...oMMMMMMMMo...",
-        "....oMMMMMMo....",
+        "....oohhhhoo....",
+        "...ohhhhhhhho...",
+        "...ohhhhhhhho...",
+        "...ohhHhhHhho...",
+        "...ohhhhhhhho...",
+        "...oHhhhhhhHo...",
+        "....oHssssHo....",
         ".....oooooo.....",
       ],
       side: [
         ".....oooo.......",
-        "...oommmmoo.....",
-        "..ommmmmmmmo....",
-        "..oMMMMMMMMo....",
-        "..omssMMMMMo....",
-        "..oseSMMMMMo....",
-        "..ossssMMMMo....",
-        "...oSssMMMo.....",
+        "...oohhhhoo.....",
+        "..ohhhhhhhho....",
+        "..ohHhhhhhho....",
+        "..osshhhhhho....",
+        "..oseShhhhho....",
+        "..osssshhhho....",
+        "...oSsshhHo.....",
         "....ooooooo.....",
       ],
     },
     body: "pants",
+    weapon: "sword",
     items: {
-      down: [{ grid: SHIELD, x: 1, y: 1 }, { grid: SWORD, x: 12, y: -1 }],
-      up: [{ grid: SHIELD_BACK, x: 10, y: 1, behind: true }, { grid: SWORD, x: 1, y: -1, behind: true }],
-      side: [{ grid: SWORD, x: 9, y: -1, behind: true }, { grid: SHIELD, x: 2, y: 1 }],
+      down: [{ grid: SWORD, x: 12, y: -1 }],
+      up: [{ grid: SWORD, x: 1, y: -1, behind: true }],
+      side: [{ grid: SWORD, x: 9, y: -1, behind: true }],
     },
+    // O cavaleiro segura o escudo à frente também de lado.
+    shieldHands: { side: { cx: 4, cy: 4 } },
   },
   paladin: {
     palette: { p: "#d9ad2c", P: "#8f6d12", q: "#6b3f1f", l: "#6a4d2f", L: "#4a3420", h: "#8a6435", H: "#5e4222" },
@@ -271,6 +294,7 @@ const HEROES: Record<ClassId, HeroDef> = {
       ],
     },
     body: "pants",
+    weapon: "bow",
     items: {
       down: [{ grid: BOW, x: 12, y: -3 }],
       up: [{ grid: BOW_FLIPPED, x: 1, y: -3, behind: true }],
@@ -321,6 +345,7 @@ const HEROES: Record<ClassId, HeroDef> = {
       ],
     },
     body: "robe",
+    weapon: "staff",
     items: {
       down: [{ grid: ORB_STAFF, x: 12, y: -7 }],
       up: [{ grid: ORB_STAFF, x: 0, y: -7, behind: true }],
@@ -365,6 +390,7 @@ const HEROES: Record<ClassId, HeroDef> = {
       ],
     },
     body: "robe",
+    weapon: "staff",
     items: {
       down: [{ grid: LEAF_STAFF, x: 12, y: -7 }],
       up: [{ grid: LEAF_STAFF, x: 0, y: -7, behind: true }],
@@ -373,25 +399,68 @@ const HEROES: Record<ClassId, HeroDef> = {
   },
 };
 
-/** Folha de sprites da classe: 9 quadros de 32×32 em linha (`direção * 3 + quadro`), virados para a esquerda no lado. */
-export function heroSheet(classId: ClassId): HTMLCanvasElement {
+/** Arma na mão: a da classe, trocada (cavaleiro) ou tingida (as outras) pela arma equipada. */
+function weaponPieces(hero: HeroDef, dir: HeroDir, outfit: Outfit): Piece[] {
+  const tier = tierOf(outfit, "weapon");
+  return hero.items[dir].map((item) => {
+    if (!tier) return item;
+    if (hero.weapon !== "sword") return { ...item, grid: tintClassWeapon(item.grid, hero.weapon) };
+    // Mesmo cabo e mesma altura da mão da espada; de costas e de lado a lâmina aponta para fora.
+    const art = KNIGHT_WEAPONS[tier];
+    const flip = dir !== "down";
+    const width = art.grid[0].length;
+    const grip = flip ? width - 1 - art.grip : art.grip;
+    const bottom = item.y + item.grid.length - 1;
+    return { ...item, grid: art.grid, x: item.x + SWORD_GRIP - grip, y: bottom - art.grid.length + 1, flip };
+  });
+}
+
+function shieldPiece(hero: HeroDef, dir: HeroDir, outfit: Outfit): Piece[] {
+  const tier = tierOf(outfit, "shield");
+  if (!tier) return [];
+  const grid = shieldGrid(tier, dir);
+  const hand = hero.shieldHands?.[dir] ?? SHIELD_HANDS[dir];
+  const x = hand.cx - Math.floor(grid[0].length / 2);
+  const y = hand.cy - Math.floor(grid.length / 2);
+  return [{ grid, x, y, behind: hand.behind }];
+}
+
+/**
+ * Folha de sprites da classe vestindo `outfit`: 9 quadros de 32×32 em linha
+ * (`direção * 3 + quadro`), virados para a esquerda no lado.
+ */
+export function heroSheet(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCanvasElement {
   const hero = HEROES[classId];
-  const palette = { ...BASE, ...hero.palette };
+  const palette = { ...BASE, ...hero.palette, ...outfitPalette(outfit) };
+  const armor = tierOf(outfit, "armor");
+  const helmet = tierOf(outfit, "helmet");
   const { canvas, ctx } = makeCanvas(HERO_SIZE * HERO_DIRS.length * HERO_FRAMES, HERO_SIZE);
   HERO_DIRS.forEach((dir, d) => {
-    BODIES[hero.body][dir].forEach((body, f) => {
+    const head = helmet ? helmetHead(helmet, dir) : hero.heads[dir];
+    const pieces = [...weaponPieces(hero, dir, outfit), ...shieldPiece(hero, dir, outfit)];
+    const shoulders = armor ? pauldrons(armor, dir) : [];
+    BODIES[hero.body][dir].forEach((frame, f) => {
       const ox = (d * HERO_FRAMES + f) * HERO_SIZE + BOX_X;
+      const body = armor ? armorBody(frame, armor, dir === "down") : frame;
       const top = FEET_ROW + 1 - body.length;
-      const head = hero.heads[dir];
-      const items = hero.items[dir];
-      const paintItems = (behind: boolean) => items
-        .filter((item) => !!item.behind === behind)
-        .forEach((item) => paintGrid(ctx, item.grid, palette, ox + item.x, top + item.y));
-      paintItems(true);
+      const paint = (list: Piece[]) => list.forEach((p) => paintGrid(ctx, p.grid, palette, ox + p.x, top + p.y, p.flip));
+      paint(pieces.filter((p) => p.behind));
       paintGrid(ctx, body, palette, ox, top);
+      paint(shoulders);
       paintGrid(ctx, head, palette, ox, top - head.length);
-      paintItems(false);
+      paint(pieces.filter((p) => !p.behind));
     });
+  });
+  return canvas;
+}
+
+/** Quadro parado de cada direção pedida, lado a lado (retratos e prévia do equipamento). */
+export function heroPoses(classId: ClassId, outfit: Outfit = NO_OUTFIT, dirs: HeroDir[] = ["down", "side", "up"]) {
+  const sheet = heroSheet(classId, outfit);
+  const { canvas, ctx } = makeCanvas(HERO_SIZE * dirs.length, HERO_SIZE);
+  dirs.forEach((dir, i) => {
+    const frame = HERO_DIRS.indexOf(dir) * HERO_FRAMES;
+    ctx.drawImage(sheet, frame * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, i * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE);
   });
   return canvas;
 }
