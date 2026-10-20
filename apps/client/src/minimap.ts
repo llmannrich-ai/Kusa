@@ -1,4 +1,4 @@
-import { CLASSES, Tile, centerOf, hasLineOfSight, type ClassId, type Dungeon } from "@kusa/shared";
+import { CLASSES, Tile, centerOf, hasLineOfSight, type ClassId, type Dungeon, type MapId } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
 
 /** Quanto cada jogador revela ao redor (tiles): o mesmo que cabe na tela, 9 de largura e 13+ de altura. */
@@ -8,10 +8,13 @@ const COMPACT_TILES = 25;
 /** Intervalo entre redesenhos (ms): o minimapa não precisa de 60 quadros por segundo. */
 const REDRAW_MS = 150;
 
+/** Cores dos tiles por mapa (RGB). */
+const TILE_COLORS = {
+  crypt: { floor: [107, 90, 72], bossFloor: [122, 59, 51], wall: [42, 33, 27], water: [42, 33, 27], ruin: [42, 33, 27] },
+  swamp: { floor: [86, 118, 56], bossFloor: [128, 120, 98], wall: [20, 36, 20], water: [46, 86, 104], ruin: [160, 150, 128] },
+} satisfies Record<MapId, Record<string, number[]>>;
+
 const COLORS = {
-  floor: [107, 90, 72],
-  bossFloor: [122, 59, 51],
-  wall: [42, 33, 27],
   me: "#ffffff",
   outline: "#000000",
   portal: "#4aa3ff",
@@ -107,9 +110,11 @@ export class Minimap {
   private paintTile(x: number, y: number) {
     const d = this.dungeon;
     const b = d.boss;
-    const wall = d.tiles[y * d.width + x] === Tile.Wall;
+    const tile = d.tiles[y * d.width + x];
+    const colors = TILE_COLORS[d.mapId];
     const inBoss = x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h;
-    const [r, g, bl] = wall ? COLORS.wall : inBoss ? COLORS.bossFloor : COLORS.floor;
+    const [r, g, bl] = tile === Tile.Wall ? colors.wall : tile === Tile.Water ? colors.water : tile === Tile.Ruin ? colors.ruin
+      : inBoss ? colors.bossFloor : colors.floor;
     const i = (y * d.width + x) * 4;
     this.fogPixels.data.set([r, g, bl, 255], i);
   }

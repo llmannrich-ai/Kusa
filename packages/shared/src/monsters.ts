@@ -1,6 +1,10 @@
 import type { AttackFx } from "./messages.ts";
 
-export type MonsterKind = "rat" | "goblin" | "skeleton" | "orc" | "ogre" | "dragon";
+export type MonsterKind =
+  // Cripta (dificuldade 1)
+  | "rat" | "goblin" | "skeleton" | "orc" | "ogre" | "dragon"
+  // Pântano das Ruínas (dificuldade 2)
+  | "frog" | "moccasin" | "bogBody" | "naga" | "troll" | "hydra";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -56,18 +60,32 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     kind: "dragon", name: "Dragão jovem", rank: "boss", shape: "diamond", color: 0xb33939, size: 1.4,
     hp: 900, damage: 24, xp: 700, loot: [150, 250], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
   },
+  // Pântano: mais vida e dano que os equivalentes da cripta, e loot maior.
+  frog: {
+    kind: "frog", name: "Sapo gigante", rank: "common", shape: "circle", color: 0x4caf50, size: 0.55,
+    hp: 50, damage: 6, xp: 40, loot: [5, 10], speed: 3.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1100, attackFx: "bite",
+  },
+  moccasin: {
+    kind: "moccasin", name: "Cobra-d'água", rank: "common", shape: "triangle", color: 0x8d5a3b, size: 0.55,
+    hp: 70, damage: 9, xp: 55, loot: [7, 14], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
+  },
+  bogBody: {
+    kind: "bogBody", name: "Afogado", rank: "common", shape: "diamond", color: 0x556b2f, size: 0.7,
+    hp: 120, damage: 12, xp: 85, loot: [12, 22], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
+  },
+  naga: {
+    kind: "naga", name: "Naga guerreira", rank: "common", shape: "square", color: 0x9aa0a6, size: 0.7,
+    hp: 160, damage: 15, xp: 120, loot: [18, 30], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+  },
+  troll: {
+    kind: "troll", name: "Troll do brejo", rank: "miniboss", shape: "square", color: 0x2e4a7d, size: 0.95,
+    hp: 520, damage: 22, xp: 400, loot: [60, 90], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+  },
+  hydra: {
+    kind: "hydra", name: "Hidra do pântano", rank: "boss", shape: "diamond", color: 0x2e8b57, size: 1.4,
+    hp: 1600, damage: 28, xp: 1300, loot: [300, 450], speed: 2.2, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
+  },
 };
-
-/** Monstros comuns por sala do caminho principal (índice = profundidade). Salas além da tabela repetem a última. */
-export const PATH_SPAWNS: MonsterKind[][] = [
-  ["rat", "rat", "rat"],
-  ["goblin", "goblin", "rat", "skeleton"],
-  ["skeleton", "skeleton", "goblin", "orc"],
-  ["orc", "orc", "skeleton", "skeleton", "orc"],
-];
-
-export const MINIBOSS_KIND: MonsterKind = "ogre";
-export const BOSS_KIND: MonsterKind = "dragon";
 
 /** Ganho de HP, dano, XP e loot por sala de profundidade (+12% por sala). */
 export const DEPTH_SCALING = 0.12;

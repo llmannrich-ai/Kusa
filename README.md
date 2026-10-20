@@ -44,6 +44,7 @@ Testes de fumaça (com o servidor rodando):
 
 - `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.
 - `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, mata e ganha XP e loot.
+- `npx tsx apps/server/scripts/maps.ts`: cada mapa gera mapas conectados e determinísticos e cria a sala certa (monstros, tempo).
 - `npx tsx apps/server/scripts/grimorio.ts http://localhost:2602`: com um servidor iniciado (em `apps/server`) com
   `KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602`, o Escudo da Fé do cavaleiro absorve dano e os lobos do druida atacam.
 

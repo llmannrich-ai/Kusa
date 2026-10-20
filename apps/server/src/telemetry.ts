@@ -58,6 +58,8 @@ export interface TelemetryRun {
   name: string;
   classId: string;
   partySize: number;
+  /** Mapa da hunt (id de `MAPS`): a seed sozinha não diz qual foi o mapa. */
+  mapId: string;
   seed: number;
   outcome: RunOutcome;
   level: number;
@@ -79,6 +81,7 @@ export async function recordTelemetry(run: TelemetryRun) {
     player_name: run.name,
     class_id: run.classId,
     party_size: run.partySize,
+    map_id: run.mapId,
     seed: run.seed,
     build: BUILD,
     outcome: run.outcome,

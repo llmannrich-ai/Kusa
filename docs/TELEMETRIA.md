@@ -9,6 +9,7 @@ Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou
 | Coluna / campo | Para que serve |
 |---|---|
 | `class_id`, `party_size`, `outcome`, `level`, `duration_s`, `loot` | Resultado da hunt |
+| `map_id` | Mapa da hunt (`crypt`, `swamp`). **Compare também por mapa**: as dificuldades são diferentes. `telemetry_classes`, `telemetry_deaths`, `telemetry_levels` e `telemetry_economy` têm a coluna `map_id` |
 | `build` | Commit do servidor (`RENDER_GIT_COMMIT`). **Sempre compare por build**: é o antes e o depois de cada ajuste |
 | `max_depth` / `path_rooms` | Até onde a equipe chegou (-1 = não saiu da sala inicial; `path_rooms` = sala do boss) |
 | `killed_by`, `stats.death` | Monstro, profundidade, posição e segundo da morte |

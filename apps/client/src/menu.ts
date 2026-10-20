@@ -5,6 +5,8 @@ import {
   ITEM_BUY_PRICES,
   ITEM_SELL_PRICES,
   ITEM_SLOTS,
+  MAPS,
+  MAP_IDS,
   SLOT_NAMES,
   SPELLS,
   TIER_COLORS,
@@ -12,7 +14,9 @@ import {
   TIER_NAMES,
   auraBonuses,
   auraText,
+  difficultyStars,
   knownSpells,
+  mapIdOf,
   spellFacts,
   statsFor,
   talentBlocker,
@@ -21,6 +25,7 @@ import {
   talentTree,
   type ClassId,
   type ItemDef,
+  type MapId,
   type TalentDef,
 } from "@kusa/shared";
 import { heroPoses } from "./art/heroes.ts";
@@ -109,16 +114,20 @@ export class Hub {
   private toastTimer = 0;
   /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
   classId: ClassId;
+  /** Mapa das hunts que este jogador criar (quem entra numa sala aberta joga o mapa dela). */
+  mapId: MapId;
   private treeClass: ClassId;
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
     this.classId = saved && saved in CLASSES ? saved : "knight";
     this.treeClass = this.classId;
+    this.mapId = mapIdOf(storageGet("kusa:map"));
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button").forEach((b) => {
       b.onclick = () => this.setTab(b.dataset.tab as Tab);
     });
     $("play").onclick = () => this.onPlay();
+    $("map-pick").onclick = () => this.openMapSheet();
     $("sheet-backdrop").onclick = () => this.closeSheet();
   }
 
@@ -145,6 +154,8 @@ export class Hub {
   private render() {
     $("account-gold").textContent = gold(this.profile.gold);
     $("play").textContent = `Jogar · ${CLASSES[this.classId].name}`;
+    const map = MAPS[this.mapId];
+    $("map-pick").textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min ▾`;
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button").forEach((b) => {
       b.setAttribute("aria-selected", String(b.dataset.tab === this.tab));
     });
@@ -455,6 +466,37 @@ export class Hub {
     actions.append(equip, sell, close);
     sheet.append(actions);
     $("sheet").hidden = false;
+    $("sheet-backdrop").hidden = false;
+  }
+
+  // --- Mapa -----------------------------------------------------------------
+
+  /** Escolha do mapa (folha embaixo, no alcance do polegar). */
+  private openMapSheet() {
+    const sheet = $("sheet");
+    sheet.replaceChildren(el("h2", "", "Mapa"), el("p", "muted hub-hint", "Vale para as salas que você criar."));
+    const list = el("div", "map-list");
+    for (const id of MAP_IDS) {
+      const map = MAPS[id];
+      const card = el("button", "map-card");
+      card.classList.toggle("selected", id === this.mapId);
+      card.setAttribute("aria-pressed", String(id === this.mapId));
+      const head = el("div", "map-head");
+      head.append(el("span", "map-icon", map.icon));
+      const title = el("div");
+      title.append(el("strong", "", map.name), el("small", "muted", `Dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min`));
+      head.append(title);
+      card.append(head, el("p", "", map.description));
+      card.onclick = () => {
+        this.mapId = id;
+        storageSet("kusa:map", id);
+        this.closeSheet();
+        this.render();
+      };
+      list.append(card);
+    }
+    sheet.append(list);
+    sheet.hidden = false;
     $("sheet-backdrop").hidden = false;
   }
 
