@@ -483,6 +483,9 @@ body.busy #hub-body { opacity: 0.7; }
 }
 .loadout-slot small { font-size: 10px; line-height: 1.2; text-align: center; }
 .loadout-slot .item-img { width: 40px; height: 40px; }
+/* Prévia do personagem vestido (frente, lado e costas): escala inteira para o pixel não borrar. */
+.doll { display: grid; justify-items: center; gap: 2px; margin-bottom: 8px; }
+.doll-img { width: 288px; max-width: 100%; image-rendering: pixelated; background: radial-gradient(#3a2f27, #0000 70%); }
 .slot-empty { font-size: 24px; color: var(--border); }
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
 .item-cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; background: #000; border: 2px solid; }

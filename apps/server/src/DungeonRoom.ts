@@ -1020,6 +1020,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Quem morre larga o equipamento no chão, e os outros podem saquear.
     if (outcome === "died") {
       for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
+      // O corpo fica sem o que largou (o equipamento aparece no personagem).
+      for (const slot of ITEM_SLOTS) player[slot] = "";
     }
     player.status = outcome;
     player.target = "";
