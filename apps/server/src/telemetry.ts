@@ -21,8 +21,10 @@ export interface RunStats {
   damageTaken: Record<string, number>;
   /** Dano evitado pela armadura, pelo Grito de Guerra e pelo escudo. */
   damageMitigated: number;
-  /** Vida curada (em si e nos aliados), incluindo roubo de vida e criaturas de cura. */
+  /** Vida curada (em si e nos aliados), incluindo roubo de vida, criaturas de cura e poções de vida. */
   healing: number;
+  /** Poções guardadas e bebidas por tipo, e mana devolvida pelas poções de mana. */
+  potions: { picked: Record<string, number>; drunk: Record<string, number>; manaRestored: number };
   /** Abates (último golpe) por tipo de monstro. */
   kills: Record<string, number>;
   firstKillAt: number | null;
@@ -41,7 +43,7 @@ export interface RunStats {
 export function newRunStats(): RunStats {
   return {
     levelAt: {}, depthAt: {}, spellsChosen: {}, casts: {}, castFails: { noMana: 0, noTarget: 0 },
-    damageDealt: {}, damageTaken: {}, damageMitigated: 0, healing: 0, kills: {}, firstKillAt: null, xp: 0,
+    damageDealt: {}, damageTaken: {}, damageMitigated: 0, healing: 0, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], picked: [], lost: [] },
     minHpPct: 1, abandoned: false, death: null,
   };

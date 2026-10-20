@@ -28,8 +28,11 @@ let kills = 0;
 let targetId: string | null = null;
 const deadline = Date.now() + 180_000;
 
+// Poções também caem no chão: aqui só interessa equipamento.
+const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId]);
+
 // Fase 1: matar comuns até aparecer um item no chão.
-while (room.state.items.size === 0) {
+while (groundGear().length === 0) {
   if (Date.now() > deadline) throw new Error(`timeout: nenhum item caiu em ${kills} mortes`);
   const p = me();
   if (targetId && !room.state.monsters.has(targetId)) { kills++; targetId = null; }
@@ -48,7 +51,7 @@ while (room.state.items.size === 0) {
   await wait(100);
 }
 
-const [ground] = [...room.state.items.values()] as any[];
+const [ground] = groundGear();
 const def = ITEMS[ground.itemId];
 console.log(`${kills + 1} mortes; caiu ${def.name} (${def.slot}) em ${ground.x},${ground.y}`);
 

@@ -1,4 +1,4 @@
-import { ITEMS, type ItemSlot, type ItemTier } from "@kusa/shared";
+import { ITEMS, isPotion, type ItemSlot, type ItemTier, type PotionId } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
 
 /**
@@ -332,9 +332,41 @@ const ICONS: Record<ItemSlot, Record<ItemTier, Grid>> = {
   },
 };
 
+/** Frasco das poções: "c" = rolha, "g" = brilho do vidro, "l"/"L" = líquido claro/escuro. */
+const POTION_GRID: Grid = [
+  "................",
+  "......oooo......",
+  "......occo......",
+  "......occo......",
+  ".....oooooo.....",
+  "......ogLo......",
+  "......ogLo......",
+  ".....oglllo.....",
+  "....ogllllLo....",
+  "...ogllllllLo...",
+  "...olllllllLo...",
+  "...olllllllLo...",
+  "...oLllllllLo...",
+  "....oLLLLLLo....",
+  ".....oooooo.....",
+  "................",
+];
+
+const LIQUIDS: Record<PotionId, Palette> = {
+  "potion-health": { l: "#e74c3c", L: "#8e1f16" },
+  "potion-mana": { l: "#4aa3df", L: "#1f4f8e" },
+};
+
+const GLASS: Palette = { o: "#140d0a", c: "#a9794a", g: "#f4f7fb" };
+
+/** Ícone 16×16 de um item do equipamento ou de uma poção. */
 export function itemIcon(itemId: string) {
-  const item = ITEMS[itemId];
   const { canvas, ctx } = makeCanvas(ITEM_ICON_SIZE, ITEM_ICON_SIZE);
+  if (isPotion(itemId)) {
+    paintGrid(ctx, POTION_GRID, { ...GLASS, ...LIQUIDS[itemId] }, 0, 0);
+    return canvas;
+  }
+  const item = ITEMS[itemId];
   if (item) paintGrid(ctx, ICONS[item.slot][item.tier], { ...BASE, ...MATERIALS[item.tier] }, 0, 0);
   return canvas;
 }

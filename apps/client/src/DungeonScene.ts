@@ -4,6 +4,7 @@ import {
   ITEMS,
   MONSTERS,
   MSG,
+  POTIONS,
   SPELLS,
   SUMMONS,
   TIER_COLORS,
@@ -11,11 +12,13 @@ import {
   Tile,
   centerOf,
   generateDungeon,
+  isPotion,
   mapIdOf,
   tileDistance,
   type AttackMessage,
   type ClassId,
   type DamageMessage,
+  type DrankMessage,
   type Dungeon,
   type MonsterKind,
   type NoticeMessage,
@@ -24,6 +27,7 @@ import {
 } from "@kusa/shared";
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
+import { PotionBar } from "./potionbar.ts";
 import { SpellBar } from "./spellbar.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
@@ -150,6 +154,7 @@ export class DungeonScene extends Phaser.Scene {
   /** Piscar, sangue, cadáver e o ataque dos monstros (`MSG.damage`). */
   private hits!: HitFx;
   private spellBar!: SpellBar;
+  private potionBar!: PotionBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
   private nextSendAt = 0;
@@ -236,6 +241,7 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
+    this.room.onMessage(MSG.drank, (msg: DrankMessage) => this.potionBar.onDrank(msg.cooldownMs));
 
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
@@ -251,6 +257,8 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keyup-SPACE", () => this.attack.release("key"));
     kb?.on("keydown-ONE", () => this.spellBar.press(0));
     kb?.on("keydown-TWO", () => this.spellBar.press(1));
+    kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
+    kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       // Modo mira de magia de área: o toque é o ponto dela (mesmo em cima de um monstro).
       if (this.spellBar.isPicking) {
@@ -277,12 +285,14 @@ export class DungeonScene extends Phaser.Scene {
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
     this.spellBar = new SpellBar(this.room, actions, this.aim);
+    this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.move.destroy();
       this.minimap?.destroy();
       this.attack.destroy();
       this.spellBar.destroy();
+      this.potionBar.destroy();
     });
   }
 
@@ -301,6 +311,7 @@ export class DungeonScene extends Phaser.Scene {
     this.spellBar.update();
     this.aim.update();
     this.attack.update();
+    this.potionBar.update();
   }
 
   // --- Alvo ---------------------------------------------------------------
@@ -610,16 +621,16 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /**
-   * Item no chão: brilho na cor do nível embaixo do ícone, acima do chão e abaixo dos personagens.
+   * Item ou poção no chão: brilho na cor do nível embaixo do ícone, acima do chão e abaixo dos personagens.
    * Vários itens no mesmo tile se espalham um pouco para dar para ver todos.
    */
   private addGroundItem(id: string, item: GroundItemView) {
-    const def = ITEMS[item.itemId];
-    if (!def) return;
+    const color = isPotion(item.itemId) ? POTIONS[item.itemId].color : TIER_COLORS[ITEMS[item.itemId]?.tier];
+    if (color === undefined) return;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
-    const glow = this.add.ellipse(0, 5, 20, 8, TIER_COLORS[def.tier], 0.45);
-    const icon = this.add.image(0, 0, itemTexture(this, def.id));
+    const glow = this.add.ellipse(0, 5, 20, 8, color, 0.45);
+    const icon = this.add.image(0, 0, itemTexture(this, item.itemId));
     const container = this.add.container(this.toPx(item.x) + offset[0], this.toPx(item.y) + offset[1] + 4, [glow, icon])
       .setDepth(item.y * TILE_SIZE + 2);
     this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });

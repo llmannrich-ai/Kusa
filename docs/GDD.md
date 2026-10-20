@@ -11,7 +11,7 @@ teclado e mouse no desktop são um extra.
 - **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado, aparece um aviso para voltar à vertical.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
 - **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
-- **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele (depois poções).
+- **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele.
 - **Mira das magias:** magia de alvo único mira arrastando a partir do botão; magia de área se conjura com um toque no botão e outro no mapa (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
@@ -192,6 +192,15 @@ Cada um dos 20 itens tem arte própria em dois formatos, e o que o personagem ve
 - Sem equipamento, o herói aparece só com a roupa e a arma básica da classe. Ao pegar, trocar ou largar um item, o sprite muda na hora. Quem morre fica sem o que largou no chão.
 - O menu mostra o personagem vestido de frente, de lado e de costas na aba Itens, e a ficha de cada item mostra "como fica vestido" antes de equipar. Os retratos das classes usam o equipamento da próxima hunt.
 - Galeria de conferência: `apps/client/arte.html` (todas as combinações por classe e nível).
+
+## Poções (protótipo)
+
+- 2 tipos: ❤️ vida (devolve 35% da vida máxima) e 💧 mana (devolve 40% da mana máxima). Cada jogador carrega até 5 de cada.
+- Só caem na dungeon (não há compra no mercado): comuns têm 25% de chance de dropar uma, o Ogro dropa 1, o Dragão 2 e o baú 1 de cada tipo. 60% das poções sorteadas são de vida.
+- A poção cai no chão como os itens e vai para a mochila de quem passar por cima primeiro, se ainda couber. Some após 2 minutos no chão.
+- Beber: botão da poção (ou Q/E no desktop). A recarga de 6 s é **compartilhada** entre os dois tipos, para ninguém ficar imortal bebendo sem parar. Com a barra cheia, a poção não é gasta.
+- Valem só durante a hunt: quem morre larga as poções no chão junto com o equipamento, e quem sai vivo perde as que sobraram (não vão para o inventário da conta).
+- Tabela em `packages/shared/src/potions.ts`; o frasco é desenhado em `apps/client/src/art/items.ts` e os botões em `apps/client/src/potionbar.ts`.
 
 ## Decisões em aberto
 
