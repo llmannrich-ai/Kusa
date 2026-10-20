@@ -487,7 +487,9 @@ export class DungeonScene extends Phaser.Scene {
   private onDamage(msg: DamageMessage) {
     const attacker = this.avatars.get(msg.attacker) ?? this.monsters.get(msg.attacker);
     const target = this.unitAt(msg.x, msg.y, msg.toPlayer);
-    const to = target ? { x: target.body.x, y: target.body.y } : { x: this.toPx(msg.x), y: this.toPx(msg.y) };
+    // Posição viva do alvo (ele pode andar enquanto o projétil voa); sem alvo, o tile do golpe.
+    const tile = { x: this.toPx(msg.x), y: this.toPx(msg.y) };
+    const to = () => (target?.body.active ? { x: target.body.x, y: target.body.y } : tile);
     const from = attacker ? { x: attacker.body.x, y: attacker.body.y } : { x: this.toPx(msg.fromX), y: this.toPx(msg.fromY) };
     if (attacker && !attacker.dead && this.time.now >= attacker.walkUntil) {
       this.face(attacker, Math.sign(msg.x - msg.fromX), Math.sign(msg.y - msg.fromY));
@@ -495,7 +497,7 @@ export class DungeonScene extends Phaser.Scene {
     this.fx.attack(msg.fx, from, to, attacker?.lunge ?? null, () => {
       if (target?.sprite.active) {
         this.fx.flash(target.sprite);
-        if (target.bleeds && Math.random() < 0.6) this.fx.bleed(to);
+        if (target.bleeds && Math.random() < 0.6) this.fx.bleed(to());
       }
       this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff);
     });
