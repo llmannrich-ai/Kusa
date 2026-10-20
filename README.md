@@ -15,13 +15,30 @@ saqueiam e precisam sair antes que a dungeon desabe. Veja o [game design](docs/G
 O servidor de jogo é a fonte da verdade: movimento, combate, loot e tempo rodam nele, e o navegador
 só envia intenções. O gold só é gravado pelo servidor (service role) através da função `finish_run`.
 
+## Jogar
+
+**https://llmannrich-ai.github.io/Kusa/** (melhor no celular, na horizontal)
+
+- O cliente é publicado no GitHub Pages a cada push no `main` (`.github/workflows/pages.yml`).
+- O servidor de jogo roda no Render, plano free (`render.yaml`). Ele dorme após 15 min sem jogadores, e a primeira entrada leva cerca de 1 min.
+- O endereço do servidor fica na variável do repositório `KUSA_SERVER_URL` (padrão `https://kusa-server.onrender.com`).
+
+## Testar no navegador (GitHub Codespaces)
+
+[![Abrir no GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/llmannrich-ai/Kusa?quickstart=1)
+
+O Codespace instala tudo, sobe servidor e cliente e abre o jogo na porta 5173.
+Para jogar em equipe com amigos, torne a porta 5173 pública (aba **Portas** → botão direito → **Visibilidade da porta → Pública**)
+e envie o endereço para eles.
+
 ## Rodando localmente
 
 ```bash
 npm install
-npm run dev:server   # ws://localhost:2567
-npm run dev:client   # http://localhost:5173
+npm run dev          # servidor (2567) + cliente em http://localhost:5173
 ```
+
+O cliente fala com o servidor pelo proxy do Vite em `/colyseus`, então só a porta 5173 precisa ser exposta.
 
 Testes de fumaça (com o servidor rodando):
 

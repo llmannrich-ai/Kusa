@@ -14,7 +14,10 @@ import {
   type MonsterKind,
   type NoticeMessage,
 } from "@kusa/shared";
+import { MoveInput } from "./input.ts";
 import type { ChestView, DungeonRoom, MonsterView, PlayerView } from "./net.ts";
+
+const VIEW_TILES = { w: 15, h: 9 };
 
 const COLORS = {
   wall: 0x1a1512,
@@ -55,7 +58,7 @@ export class DungeonScene extends Phaser.Scene {
   private monsters = new Map<string, Unit>();
   private chests = new Map<string, Phaser.GameObjects.Rectangle>();
   private targetRing!: Phaser.GameObjects.Graphics;
-  private keys!: Record<"up" | "down" | "left" | "right" | "w" | "a" | "s" | "d", Phaser.Input.Keyboard.Key>;
+  private move!: MoveInput;
   private nextSendAt = 0;
 
   constructor() {
@@ -105,23 +108,28 @@ export class DungeonScene extends Phaser.Scene {
 
     this.targetRing = this.add.graphics().setDepth(9);
 
-    const kb = this.input.keyboard!;
-    this.keys = kb.addKeys("up,down,left,right,w,a,s,d") as typeof this.keys;
     // Tab seleciona o monstro mais próximo; Esc limpa o alvo.
-    kb.addCapture("TAB");
-    kb.on("keydown-TAB", () => this.selectNearest());
-    kb.on("keydown-ESC", () => this.room.send(MSG.target, { id: null }));
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.selectAt(pointer.worldX, pointer.worldY));
+    const kb = this.input.keyboard;
+    kb?.addCapture("TAB");
+    kb?.on("keydown-TAB", () => this.selectNearest());
+    kb?.on("keydown-ESC", () => this.room.send(MSG.target, { id: null }));
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // No toque, a metade esquerda é do joystick.
+      if (pointer.wasTouch && pointer.x < this.scale.width / 2) return;
+      this.selectAt(pointer.worldX, pointer.worldY);
+    });
 
-    this.cameras.main.setZoom(2);
+    this.move = new MoveInput(this, this.game.canvas);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.move.destroy());
+
     this.cameras.main.setBackgroundColor(COLORS.wall);
+    this.fitCamera();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
   }
 
   update(time: number) {
-    const k = this.keys;
-    const dx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
-    const dy = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0);
-    // O servidor decide a velocidade real; o cliente só reenvia a intenção enquanto a tecla está pressionada.
+    const { dx, dy } = this.move.vector();
+    // O servidor decide a velocidade real; o cliente só reenvia a intenção enquanto o comando está ativo.
     if ((dx || dy) && time >= this.nextSendAt) {
       this.room.send(MSG.move, { dx, dy });
       this.nextSendAt = time + 60;
@@ -295,6 +303,13 @@ export class DungeonScene extends Phaser.Scene {
       ease: "Cubic.Out",
       onComplete: () => label.destroy(),
     });
+  }
+
+  /** Mostra sempre cerca de 15×9 tiles, do celular pequeno ao monitor (campo de visão igual para todos). */
+  private fitCamera() {
+    const { width, height } = this.scale.gameSize;
+    const zoom = Math.min(width / (VIEW_TILES.w * TILE_SIZE), height / (VIEW_TILES.h * TILE_SIZE));
+    this.cameras.main.setZoom(zoom);
   }
 
   private toPx(tile: number) {

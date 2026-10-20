@@ -3,6 +3,7 @@
 Leia `README.md` (stack, como rodar) e `docs/GDD.md` (game design) antes de mudar algo.
 
 - Idioma: textos do jogo, comentários e mensagens de commit em português.
+- **Mobile primeiro** (ver "Plataforma" no GDD): toda mecânica precisa funcionar só com toque, em paisagem. A entrada passa por `apps/client/src/input.ts` (joystick + teclado); botões de ação vão em `#actions` (canto inferior direito). Teste com viewport de celular em paisagem.
 - O servidor é autoritativo. Movimento, dano, XP, loot e tempo são calculados em `apps/server`; o cliente só envia intenções (`MSG.move` etc.) e desenha o estado.
 - Regras que cliente e servidor precisam concordar (classes, curva de XP, gerador de dungeon, mensagens) ficam em `packages/shared`. O gerador é determinístico pela `seed`: não use `Math.random()` dentro dele.
 - O schema sincronizado (`apps/server/src/state.ts`) usa decorators do `@colyseus/schema`. O cliente importa dele **só tipos** (`import type`).

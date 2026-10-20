@@ -3,6 +3,19 @@
 RPG de dungeon cooperativo para navegador, com tema de Dungeons & Dragons e visual inspirado no Tibia
 (pixel art 32×32, câmera de cima). As partidas são curtas, e entre elas existe um metajogo de progressão.
 
+## Plataforma: mobile primeiro
+
+O jogo roda no navegador, mas **o alvo principal é o celular**. Toda mecânica nasce pensada para o toque;
+teclado e mouse no desktop são um extra.
+
+- **Orientação paisagem**, como no Zooba. Em retrato aparece um aviso para girar o aparelho.
+- **Polegar esquerdo:** joystick virtual flutuante, que aparece onde o dedo toca na metade esquerda da tela, com 8 direções.
+- **Polegar direito:** botões de ação no canto inferior direito (ataque, magias, poções), grandes e sem precisar de mira precisa.
+- **Mira:** auto-ataque no monstro mais próximo dentro do alcance. Tocar num monstro trava o alvo nele.
+- **Tela:** sempre se vê cerca de 15×9 tiles, em qualquer tamanho de celular. O HUD respeita o notch (safe area), e nada importante fica longe dos polegares.
+- Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar em paisagem ao entrar na hunt.
+- Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
+
 ## Menu inicial (estilo Zooba / Clash)
 
 - Escolha do modo de jogo e do mapa

@@ -32,6 +32,7 @@ function joinOptions(): JoinOptions {
 
 async function enter(connect: () => Promise<DungeonRoom>) {
   show("menu-error", false);
+  void goFullscreenLandscape();
   try {
     bindRoom(await connect());
   } catch (err) {
@@ -92,6 +93,8 @@ function startGame(room: DungeonRoom) {
     type: Phaser.AUTO,
     parent: "game",
     pixelArt: true,
+    // Joystick com o polegar esquerdo enquanto o direito toca em alvos e botões.
+    input: { activePointers: 3 },
     scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
     scene: [],
   });
@@ -124,6 +127,17 @@ function showResult(msg: RunEndedMessage) {
     ? `Saiu com ${msg.loot} de loot no nível ${msg.level}.`
     : `Todo o loot ficou para trás. Nível alcançado: ${msg.level}.`;
   show("result", true);
+}
+
+/** No celular, tela cheia e trava em paisagem (Android; o iOS ignora e mostra o aviso de girar). */
+async function goFullscreenLandscape() {
+  if (!matchMedia("(pointer: coarse)").matches) return;
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
+    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
+  } catch {
+    // Navegador não permite: segue normal.
+  }
 }
 
 function localStorageGet(key: string) {
