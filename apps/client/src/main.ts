@@ -4,10 +4,13 @@ import {
   CLASSES,
   ITEMS,
   ITEM_SLOTS,
+  MAPS,
   MAX_LEVEL,
   MSG,
   SLOT_NAMES,
   TIER_COLORS,
+  difficultyStars,
+  mapIdOf,
   xpForLevel,
   type ClassId,
   type JoinOptions,
@@ -32,7 +35,7 @@ let account: Account | null = null;
 
 /** O nome vale só no servidor em modo convidado; com Supabase, o servidor usa o do perfil (pelo token). */
 async function joinOptions(): Promise<JoinOptions> {
-  return { name: account?.username ?? "Aventureiro", classId: hub.classId, accessToken: await accessToken() };
+  return { name: account?.username ?? "Aventureiro", classId: hub.classId, mapId: hub.mapId, accessToken: await accessToken() };
 }
 
 // --- Login ----------------------------------------------------------------
@@ -115,6 +118,7 @@ async function openRooms() {
   show("menu", false);
   show("rooms", true);
   show("rooms-error", false);
+  $("create").textContent = `Criar sala · ${MAPS[hub.mapId].name}`;
   renderHunts([]);
   try {
     unwatch = await watchHunts(renderHunts);
@@ -132,8 +136,13 @@ function renderHunts(hunts: HuntListing[]) {
     const li = document.createElement("li");
     const button = document.createElement("button");
     button.className = "room";
+    const map = MAPS[mapIdOf(hunt.metadata?.mapId)];
     const title = document.createElement("span");
     title.textContent = `Hunt de ${hunt.metadata?.leader ?? "?"}`;
+    const where = document.createElement("small");
+    where.className = "muted";
+    where.textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)}`;
+    title.append(where);
     const count = document.createElement("span");
     count.className = "muted";
     count.textContent = `${hunt.clients}/${hunt.maxClients}`;
@@ -214,6 +223,10 @@ function bindRoom(room: DungeonRoom) {
   callbacks.onAdd("players", renderLobby);
   callbacks.onRemove("players", renderLobby);
   callbacks.listen("leaderId", renderLobby);
+  callbacks.listen("mapId", (id: string) => {
+    const map = MAPS[mapIdOf(id)];
+    $("lobby-map").textContent = `${map.icon} ${map.name} · dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min`;
+  });
 
   let started = false;
   callbacks.listen("phase", (phase) => {

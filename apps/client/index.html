@@ -46,11 +46,12 @@
       </header>
       <div id="hub-body"></div>
       <div class="hub-play">
+        <button id="map-pick" class="map-pick" aria-label="Escolher mapa"></button>
         <button id="play" class="primary">Jogar</button>
       </div>
       <nav class="hub-tabs" role="tablist">
         <button data-tab="classes" role="tab"><span aria-hidden="true">🛡️</span>Classes</button>
-        <button data-tab="spells" role="tab"><span aria-hidden="true">✨</span>Magias</button>
+        <button data-tab="spells" role="tab"><span aria-hidden="true">📖</span>Grimório</button>
         <button data-tab="items" role="tab"><span aria-hidden="true">🎒</span>Itens</button>
         <button data-tab="market" role="tab"><span aria-hidden="true">⚖️</span>Mercado</button>
       </nav>
@@ -82,6 +83,7 @@
 
     <section id="lobby" class="panel" hidden>
       <h2>Equipe</h2>
+      <p id="lobby-map"></p>
       <p class="muted">Até 4 jogadores. Seus amigos encontram esta sala na lista de salas abertas.</p>
       <ul id="lobby-players"></ul>
       <button id="start" class="primary">Começar hunt</button>

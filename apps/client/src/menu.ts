@@ -5,20 +5,27 @@ import {
   ITEM_BUY_PRICES,
   ITEM_SELL_PRICES,
   ITEM_SLOTS,
+  MAPS,
+  MAP_IDS,
   SLOT_NAMES,
   SPELLS,
-  STARTER_SPELLS,
   TIER_COLORS,
+  TREE_BRANCHES,
   TIER_NAMES,
   auraBonuses,
   auraText,
+  difficultyStars,
   knownSpells,
+  mapIdOf,
+  spellFacts,
   statsFor,
   talentBlocker,
   talentCost,
+  talentRank,
   talentTree,
   type ClassId,
   type ItemDef,
+  type MapId,
   type TalentDef,
 } from "@kusa/shared";
 import { heroPoses } from "./art/heroes.ts";
@@ -35,7 +42,7 @@ import {
   type Profile,
 } from "./profile.ts";
 
-// Menu do jogador depois do login: classes, árvore de magias, inventário e mercado.
+// Menu do jogador depois do login: classes, Grimório (árvore de magias), inventário e mercado.
 // Abas embaixo (zona do polegar), "Jogar" logo acima delas; tudo funciona só com toque.
 
 type Tab = "classes" | "spells" | "items" | "market";
@@ -56,6 +63,11 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
   if (text) node.textContent = text;
   return node;
 }
+
+/** Altura de cada linha do Grimório, diâmetro do nó e altura do nó com bolinhas e nome, em px (CSS de `.grimoire`). */
+const GRIM_ROW = 116;
+const GRIM_ORB = 56;
+const GRIM_NODE = 98;
 
 const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
 const gold = (n: number) => `${n.toLocaleString("pt-BR")} 💰`;
@@ -100,18 +112,22 @@ export class Hub {
   private marketMode: "buy" | "sell" = "buy";
   private busy = false;
   private toastTimer = 0;
-  /** Classe escolhida para a próxima hunt (e a árvore aberta na aba de magias). */
+  /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
   classId: ClassId;
+  /** Mapa das hunts que este jogador criar (quem entra numa sala aberta joga o mapa dela). */
+  mapId: MapId;
   private treeClass: ClassId;
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
     this.classId = saved && saved in CLASSES ? saved : "knight";
     this.treeClass = this.classId;
+    this.mapId = mapIdOf(storageGet("kusa:map"));
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button").forEach((b) => {
       b.onclick = () => this.setTab(b.dataset.tab as Tab);
     });
     $("play").onclick = () => this.onPlay();
+    $("map-pick").onclick = () => this.openMapSheet();
     $("sheet-backdrop").onclick = () => this.closeSheet();
   }
 
@@ -138,6 +154,8 @@ export class Hub {
   private render() {
     $("account-gold").textContent = gold(this.profile.gold);
     $("play").textContent = `Jogar · ${CLASSES[this.classId].name}`;
+    const map = MAPS[this.mapId];
+    $("map-pick").textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min ▾`;
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button").forEach((b) => {
       b.setAttribute("aria-selected", String(b.dataset.tab === this.tab));
     });
@@ -186,7 +204,7 @@ export class Hub {
       const total = Object.values(SPELLS).filter((s) => s.classId === id).length;
       const foot = el("div", "class-foot");
       foot.append(el("span", "muted", `Magias ${known}/${total}`));
-      const tree = el("span", "link", "Árvore de magias ›");
+      const tree = el("span", "link", "Grimório ›");
       tree.onclick = (e) => {
         e.stopPropagation();
         this.treeClass = id;
@@ -207,11 +225,15 @@ export class Hub {
     return page;
   }
 
-  // --- Árvore de magias -----------------------------------------------------
+  // --- Grimório ---------------------------------------------------------------
 
+  /**
+   * O Grimório desenhado como uma árvore de verdade: a raiz (magia inicial do slot 1) no alto e
+   * 3 ramos descendo, ligados por galhos. Cada nó pede o anterior do ramo; tocar abre os detalhes.
+   */
   private renderTree() {
     const page = el("div", "hub-page");
-    page.append(el("h2", "", "Árvore de magias"));
+    page.append(el("h2", "", "Grimório"));
 
     const chips = el("div", "chips");
     for (const id of CLASS_IDS) {
@@ -222,88 +244,138 @@ export class Hub {
     }
     page.append(chips);
 
-    page.append(el("p", "muted hub-hint",
-      "Magias de ataque viram opção quando o slot abre na hunt (nível 3 e 8). Áureas valem sempre: mais dano, vida, mana ou velocidade."));
-
-    // As iniciais já vêm de graça; a árvore acrescenta opções e bônus.
-    const starters = el("div", "tree-tier");
-    starters.append(el("h3", "", "Iniciais"));
-    const startGrid = el("div", "tree-grid");
-    for (const id of STARTER_SPELLS.filter((s) => SPELLS[s].classId === this.treeClass)) {
-      const s = SPELLS[id];
-      const node = el("div", "tree-node owned");
-      node.append(
-        this.nodeHead(s.icon, s.name, `Magia · slot ${s.slot + 1}`),
-        el("p", "node-text", s.description),
-        el("div", "node-state", "Sempre disponível"),
-      );
-      startGrid.append(node);
-    }
-    starters.append(startGrid);
-    page.append(starters);
-
     const tree = talentTree(this.treeClass);
-    for (const tier of [1, 2, 3] as const) {
-      const section = el("div", "tree-tier");
-      section.append(el("h3", "", `Círculo ${tier}`));
-      const grid = el("div", "tree-grid");
-      for (const def of tree.filter((t) => t.tier === tier)) grid.append(this.renderNode(def));
-      section.append(grid);
-      page.append(section);
+    const ranks = this.profile.talents;
+    const spells = tree.filter((t) => t.kind === "spell");
+    const learned = spells.filter((t) => talentRank(t, ranks) > 0).length;
+    page.append(el("p", "muted hub-hint",
+      `${learned}/${spells.length} magias. Toque num nó para ver e comprar; os da ponta pedem os anteriores do ramo. ` +
+      "Magias viram opção quando o slot abre na hunt (nível 3 e 8); os níveis 2 e 3 deixam a magia mais forte."));
+
+    const rows = Math.max(...tree.map((t) => t.row)) + 1;
+    const grim = el("div", "grimoire");
+    grim.style.setProperty("--rows", String(rows));
+    grim.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
+
+    const branches = el("div", "grim-branches");
+    for (const name of TREE_BRANCHES[this.treeClass]) branches.append(el("span", "", name));
+    grim.append(branches);
+
+    // Galhos: SVG atrás dos nós, em unidades de coluna (100 por ramo) × pixels de linha.
+    const svgNs = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "grim-links");
+    svg.setAttribute("viewBox", `0 0 300 ${rows * GRIM_ROW}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+    for (const def of tree) {
+      const parent = def.requires && tree.find((t) => t.id === def.requires!.id);
+      if (!parent) continue;
+      const x0 = parent.col * 100 + 50;
+      const y0 = parent.row * GRIM_ROW + GRIM_ORB / 2;
+      const x1 = def.col * 100 + 50;
+      const y1 = def.row * GRIM_ROW + GRIM_ORB / 2;
+      // O galho se divide logo abaixo do nome do pai, antes do nó filho.
+      const mid = parent.row * GRIM_ROW + GRIM_NODE + (def.row * GRIM_ROW - parent.row * GRIM_ROW - GRIM_NODE) / 2;
+      const path = document.createElementNS(svgNs, "path");
+      path.setAttribute("d", x0 === x1 ? `M${x0} ${y0} V${y1}` : `M${x0} ${y0} V${mid} H${x1} V${y1}`);
+      path.setAttribute("vector-effect", "non-scaling-stroke");
+      const state = talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open";
+      if (state) path.classList.add(state);
+      svg.append(path);
     }
+    grim.append(svg);
+
+    for (const def of tree) grim.append(this.grimNode(def));
+    page.append(grim);
     return page;
   }
 
-  private nodeHead(icon: string, name: string, kind: string) {
-    const head = el("div", "node-head");
-    const text = el("div");
-    text.append(el("strong", "", name), el("small", "muted", kind));
-    head.append(el("span", "node-icon", icon), text);
-    return head;
-  }
-
-  private renderNode(def: TalentDef) {
-    const rank = this.profile.talents[def.id] ?? 0;
-    const blocker = talentBlocker(def, this.profile.talents);
+  private grimNode(def: TalentDef) {
+    const ranks = this.profile.talents;
+    const rank = talentRank(def, ranks);
+    const blocker = talentBlocker(def, ranks);
     const maxed = rank >= def.maxRank;
     const locked = !!blocker && !maxed;
-    const node = el("div", "tree-node");
-    node.classList.toggle("owned", rank > 0);
-    node.classList.toggle("locked", locked);
-
+    const affordable = !blocker && this.profile.gold >= talentCost(def, rank);
     const spell = def.spellId ? SPELLS[def.spellId] : null;
-    node.append(this.nodeHead(def.icon, def.name, spell ? `Magia · slot ${spell.slot + 1}` : "Áurea"));
 
-    if (def.maxRank > 1) {
-      const pips = el("div", "pips");
-      pips.setAttribute("aria-label", `Nível ${rank} de ${def.maxRank}`);
-      for (let i = 0; i < def.maxRank; i++) pips.append(el("i", i < rank ? "on" : ""));
-      node.append(pips);
-    }
+    const node = el("button", `gnode ${def.kind}`);
+    node.style.left = `${((def.col + 0.5) / 3) * 100}%`;
+    node.style.top = `${def.row * GRIM_ROW}px`;
+    node.classList.toggle("owned", rank > 0);
+    node.classList.toggle("maxed", maxed);
+    node.classList.toggle("locked", locked);
+    node.classList.toggle("ready", affordable);
+    node.setAttribute("aria-label", `${def.name}, nível ${rank} de ${def.maxRank}${locked ? `, ${blocker}` : ""}`);
 
-    let text: string;
-    if (spell) text = spell.description;
-    else if (maxed) text = auraText(def, rank);
-    else text = rank > 0 ? `${auraText(def, rank)} → ${auraText(def, rank + 1)}` : auraText(def, 1);
-    node.append(el("p", "node-text", text));
-    if (spell) node.append(el("p", "node-meta", `${spell.manaCost} de mana · recarga ${spell.cooldownMs / 1000}s`));
+    const orb = el("span", "gnode-orb", def.icon);
+    if (spell) orb.append(el("b", "gnode-slot", String(spell.slot + 1)));
+    if (locked) orb.append(el("b", "gnode-lock", "🔒"));
+    const pips = el("span", "gnode-pips");
+    for (let i = 0; i < def.maxRank; i++) pips.append(el("i", i < rank ? "on" : ""));
+    node.append(orb, pips, el("span", "gnode-name", def.name));
+    node.onclick = () => this.openTalentSheet(def);
+    return node;
+  }
 
+  /** Detalhes de um nó: o que faz no nível atual e no próximo, o pré-requisito e a compra. */
+  private openTalentSheet(def: TalentDef) {
+    const ranks = this.profile.talents;
+    const rank = talentRank(def, ranks);
+    const blocker = talentBlocker(def, ranks);
+    const maxed = rank >= def.maxRank;
+    const spell = def.spellId ? SPELLS[def.spellId] : null;
+    const branch = TREE_BRANCHES[def.classId][def.col];
+
+    const sheet = $("sheet");
+    sheet.replaceChildren();
+    const head = el("div", "sheet-head");
+    const title = el("div");
+    title.append(
+      el("strong", "", def.name),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : "Áurea"} · ramo ${branch} · nível ${rank}/${def.maxRank}`),
+    );
+    head.append(el("span", "sheet-icon", def.icon), title);
+    sheet.append(head);
+    if (spell) sheet.append(el("p", "", spell.description));
+
+    const levels = el("div", "grim-levels");
+    const level = (n: number, current: boolean) => {
+      const box = el("div", `grim-level${current ? " current" : ""}`);
+      box.append(el("strong", "", `Nível ${n}${current ? " (atual)" : ""}`));
+      const lines = spell ? spellFacts(spell, n) : [auraText(def, n)];
+      const list = el("ul");
+      for (const line of lines) list.append(el("li", "", line));
+      box.append(list);
+      levels.append(box);
+    };
+    if (rank > 0) level(rank, true);
+    if (!maxed) level(rank + 1, false);
+    sheet.append(levels);
+
+    const actions = el("div", "actions");
     if (maxed) {
-      node.append(el("div", "node-state", spell ? "Aprendida" : "Nível máximo"));
-    } else if (locked) {
-      node.append(el("div", "node-state", `🔒 ${blocker}`));
+      actions.append(el("p", "node-state", "Nível máximo"));
+    } else if (blocker) {
+      actions.append(el("p", "node-state", `🔒 ${blocker} (nível ${def.requires?.rank ?? 1})`));
     } else {
       const cost = talentCost(def, rank);
-      const buy = el("button", "buy", `${rank > 0 ? "Melhorar" : spell ? "Aprender" : "Comprar"} · ${gold(cost)}`);
+      const verb = rank > 0 ? `Subir para o nível ${rank + 1}` : spell ? "Aprender" : "Comprar";
+      const buy = el("button", "primary", `${verb} · ${gold(cost)}`);
       buy.disabled = this.profile.gold < cost;
-      buy.onclick = () => this.run(async () => {
+      buy.onclick = () => void this.run(async () => {
         this.profile.gold = await buyTalent(def.id);
         this.profile.talents[def.id] = rank + 1;
-        this.toast(spell ? `${def.name} aprendida!` : `${def.name} nível ${rank + 1}!`);
-      });
-      node.append(buy);
+        this.toast(rank === 0 && spell ? `${def.name} aprendida!` : `${def.name} nível ${rank + 1}!`);
+      }).then(() => this.openTalentSheet(def));
+      actions.append(buy);
     }
-    return node;
+    const close = el("button", "", "Fechar");
+    close.onclick = () => this.closeSheet();
+    actions.append(close);
+    sheet.append(actions);
+    $("sheet").hidden = false;
+    $("sheet-backdrop").hidden = false;
   }
 
   // --- Inventário -----------------------------------------------------------
@@ -394,6 +466,37 @@ export class Hub {
     actions.append(equip, sell, close);
     sheet.append(actions);
     $("sheet").hidden = false;
+    $("sheet-backdrop").hidden = false;
+  }
+
+  // --- Mapa -----------------------------------------------------------------
+
+  /** Escolha do mapa (folha embaixo, no alcance do polegar). */
+  private openMapSheet() {
+    const sheet = $("sheet");
+    sheet.replaceChildren(el("h2", "", "Mapa"), el("p", "muted hub-hint", "Vale para as salas que você criar."));
+    const list = el("div", "map-list");
+    for (const id of MAP_IDS) {
+      const map = MAPS[id];
+      const card = el("button", "map-card");
+      card.classList.toggle("selected", id === this.mapId);
+      card.setAttribute("aria-pressed", String(id === this.mapId));
+      const head = el("div", "map-head");
+      head.append(el("span", "map-icon", map.icon));
+      const title = el("div");
+      title.append(el("strong", "", map.name), el("small", "muted", `Dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min`));
+      head.append(title);
+      card.append(head, el("p", "", map.description));
+      card.onclick = () => {
+        this.mapId = id;
+        storageSet("kusa:map", id);
+        this.closeSheet();
+        this.render();
+      };
+      list.append(card);
+    }
+    sheet.append(list);
+    sheet.hidden = false;
     $("sheet-backdrop").hidden = false;
   }
 

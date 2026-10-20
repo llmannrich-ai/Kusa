@@ -1,9 +1,10 @@
 import type * as Phaser from "phaser";
-import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind } from "@kusa/shared";
+import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind, type SummonKind } from "@kusa/shared";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
+import { treantCanvas } from "./summons.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 
 /**
@@ -20,12 +21,40 @@ export const MONSTER_TEXTURE: Record<MonsterKind, string> = {
   orc: "monster-orc",
   ogre: "monster-ogre",
   dragon: "monster-dragon",
+  frog: "monster-frog",
+  moccasin: "monster-moccasin",
+  bogBody: "monster-bog-body",
+  naga: "monster-naga",
+  troll: "monster-troll",
+  hydra: "monster-hydra",
+};
+
+/** Criaturas invocadas pelo Druida: as do pack e o Guardião do Bosque (arte própria). */
+export const SUMMON_TEXTURE: Record<SummonKind, string> = {
+  wolf: "summon-wolf",
+  hornet: "summon-hornet",
+  moth: "summon-moth",
+  bear: "summon-bear",
+  wisp: "summon-wisp",
+  treant: "summon-treant",
 };
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
 export const PORTAL_TEXTURE = { escape: "portal-escape", boss: "portal-boss" };
 /** Faixas de variações de chão (32×32 cada). */
 export const FLOOR_TEXTURE = { normal: "floor", boss: "floor-boss" };
+/** Pântano das Ruínas: faixas de chão e água (tilemap) e de árvores, muros e colunas (sprites 32×32). */
+export const SWAMP_TEXTURE = {
+  grass: "floor-grass",
+  mud: "floor-mud",
+  ruins: "floor-ruins",
+  forest: "floor-forest",
+  water: "water-swamp",
+  tree: "tree-swamp",
+  ruinWall: "ruin-wall",
+  column: "ruin-column",
+};
+const SWAMP_SHEETS = [SWAMP_TEXTURE.tree, SWAMP_TEXTURE.ruinWall, SWAMP_TEXTURE.column];
 
 /** Efeitos de combate: projéteis e impactos do pack, e os de corpo a corpo desenhados em `effects.ts`. */
 export const FX_TEXTURE = {
@@ -45,9 +74,11 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...Object.values(MONSTER_TEXTURE),
+    ...Object.values(SUMMON_TEXTURE).filter((key) => key !== SUMMON_TEXTURE.treant),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
+    ...Object.values(SWAMP_TEXTURE).filter((key) => !SWAMP_SHEETS.includes(key)),
     FX_TEXTURE.arrow,
     FX_TEXTURE.fireball,
     FX_TEXTURE.energyBolt,
@@ -56,7 +87,7 @@ export function preloadArt(scene: Phaser.Scene) {
   ]) {
     scene.load.image(key, `${key}.png`);
   }
-  for (const key of [FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE)]) {
+  for (const key of [FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE), ...SWAMP_SHEETS]) {
     scene.load.spritesheet(key, `${key}.png`, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
   }
   scene.load.setPath();
@@ -98,6 +129,7 @@ export function createHeroArt(scene: Phaser.Scene) {
 /** Gera as texturas próprias dos efeitos e as animações de impacto (uma vez por jogo). */
 export function createEffectArt(scene: Phaser.Scene) {
   if (!scene.textures.exists(FX_TEXTURE.leaf)) scene.textures.addCanvas(FX_TEXTURE.leaf, leafCanvas());
+  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) scene.textures.addCanvas(SUMMON_TEXTURE.treant, treantCanvas());
   const strips: [string, () => HTMLCanvasElement, number][] = [
     [FX_ANIM.slash, slashStrip, SLASH_FRAMES],
     [FX_ANIM.bite, biteStrip, BITE_FRAMES],

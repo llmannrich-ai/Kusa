@@ -46,18 +46,24 @@ Testes de fumaça (com o servidor rodando):
 - `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, segura o ataque básico, mata e ganha XP e loot.
 - `npx tsx apps/server/scripts/items.ts`: um cavaleiro mata monstros até cair um item e o equipa ao passar por cima.
 - `npx tsx apps/server/scripts/spells.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, um feiticeiro conjura no toque rápido e com a mira.
+- `npx tsx apps/server/scripts/maps.ts`: cada mapa gera mapas conectados e determinísticos e cria a sala certa (monstros, tempo).
+- `npx tsx apps/server/scripts/grimorio.ts http://localhost:2602`: com um servidor iniciado (em `apps/server`) com
+  `KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602`, o Escudo da Fé do cavaleiro absorve dano e os lobos do druida atacam.
 
 ## Variáveis de ambiente
 
 Copie `.env.example` de cada app para `.env`:
 
 - `apps/server/.env`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Sem elas, o servidor roda em modo convidado e não salva nada.
+  `KUSA_TELEMETRY_LOG=1` imprime no console a telemetria de cada hunt (ver [telemetria](docs/TELEMETRIA.md)).
 - `apps/client/.env`: `VITE_SERVER_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
 ## Supabase
 
 Projeto **Kusa** (`niaylxoatuxkqwwnlsic`, sa-east-1). As migrations em `supabase/migrations` já foram
 aplicadas. Toda mudança de schema entra como uma nova migration nessa pasta.
+
+Telemetria de jogabilidade (para balanceamento): tabela `telemetry_runs` e views `telemetry_*`, ver [docs/TELEMETRIA.md](docs/TELEMETRIA.md).
 
 Contas: login por nome + senha (mínimo 4 caracteres), sem e-mail. O nome vira um e-mail interno
 (`packages/shared/src/account.ts`) e a conta é criada já confirmada pela Edge Function `signup`
