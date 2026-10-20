@@ -1,4 +1,5 @@
 import type { ClassId } from "./classes.ts";
+import type { SpellId, SpellSlot } from "./spells.ts";
 
 /** Opções enviadas pelo cliente ao entrar numa sala. */
 export interface JoinOptions {
@@ -37,6 +38,36 @@ export interface NoticeMessage {
   color: number;
 }
 
+/** Cliente → servidor: põe uma magia num slot liberado. */
+export interface ChooseSpellMessage { slot: SpellSlot; spellId: SpellId }
+
+/** Cliente → servidor: conjura a magia de um slot (no alvo atual ou no mais próximo ao alcance). */
+export interface CastMessage { slot: SpellSlot }
+
+/** Servidor → todos: um ataque básico saiu (para desenhar golpe ou projétil). */
+export interface AttackMessage {
+  /** sessionId de quem atacou. */
+  from: string;
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  /** Tempo de voo do projétil; 0 = corpo a corpo. */
+  ms: number;
+}
+
+/** Servidor → todos: uma magia foi conjurada. */
+export interface SpellMessage {
+  from: string;
+  spellId: SpellId;
+  x: number;
+  y: number;
+  /** Centro do efeito (o alvo, ou quem conjurou). */
+  tx: number;
+  ty: number;
+  ms: number;
+}
+
 export type RunOutcome = "died" | "escaped" | "completed" | "buried";
 
 /** Servidor → cliente quando a hunt de um jogador termina. */
@@ -55,4 +86,8 @@ export const MSG = {
   notice: "notice",
   start: "start",
   runEnded: "runEnded",
+  attack: "attack",
+  chooseSpell: "chooseSpell",
+  cast: "cast",
+  spell: "spell",
 } as const;

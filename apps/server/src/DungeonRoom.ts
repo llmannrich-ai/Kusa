@@ -1,30 +1,50 @@
 import { randomUUID } from "node:crypto";
 import { Room, type Client } from "colyseus";
 import {
+  BASIC_ATTACKS,
   BOSS_KIND,
   BOSS_LOOT_BONUS,
   CHEST_LOOT,
   CLASSES,
+  COMMON_DROP_CHANCE,
   DEPTH_SCALING,
+  GUARANTEED_DROPS,
+  ITEMS,
+  ITEM_SLOTS,
   MINIBOSS_KIND,
   MONSTERS,
   MATCH_DURATION_SECONDS,
+  MAX_LEVEL,
   MAX_PARTY_SIZE,
   MSG,
   PATH_SPAWNS,
   SERVER_TICK_MS,
+  SPELLS,
+  SPELL_SLOT_LEVELS,
+  TIER_COLORS,
   Tile,
+  armorOf,
   centerOf,
   createRng,
   generateDungeon,
+  damageReduction,
+  flightMs,
   hasLineOfSight,
+  isUpgrade,
   isWalkable,
   levelForXp,
   monsterStats,
+  rollItem,
+  spellChoices,
   statsFor,
   tileAt,
   tileDistance,
+  weaponMultiplier,
+  xpForLevel,
   xpShare,
+  type AttackMessage,
+  type CastMessage,
+  type ChooseSpellMessage,
   type ClassId,
   type DamageMessage,
   type Dungeon,
@@ -37,10 +57,14 @@ import {
   type Rect,
   type RunEndedMessage,
   type RunOutcome,
+  type SpellDef,
+  type SpellMessage,
+  type SpellId,
+  type SpellSlot,
   type TargetMessage,
 } from "@kusa/shared";
 import { nextStep } from "./pathfinding.ts";
-import { Chest, DungeonState, Monster, Player } from "./state.ts";
+import { Chest, DungeonState, GroundItem, Monster, Player } from "./state.ts";
 import { recordRun, resolveUserId } from "./supabase.ts";
 
 interface Seat {
@@ -51,6 +75,11 @@ interface Seat {
   nextAttackAt: number;
   /** true quando o jogador escolheu o alvo (toque/🎯); false quando a mira automática escolheu. */
   targetLocked: boolean;
+  /** Momento (ms) em que cada slot de magia volta a poder ser usado. */
+  spellReadyAt: [number, number];
+  /** Grito de Guerra: fração do dano evitada e até quando. */
+  guard: number;
+  guardUntil: number;
 }
 
 /** Dados do monstro que só o servidor precisa (o cliente vê só o schema `Monster`). */
@@ -68,6 +97,8 @@ interface Brain {
   participants: Set<string>;
   /** Baú liberado quando este mini-boss morre. */
   chestId?: string;
+  /** Preso por raízes até este momento (ms). */
+  rootedUntil: number;
 }
 
 /** Quantos tiles além do aggro range o monstro ainda persegue antes de desistir. */
@@ -77,6 +108,10 @@ const HP_REGEN = 0.02;
 const MANA_REGEN = 0.02;
 /** Monstros não nascem tão perto do portal de entrada. */
 const SAFE_RADIUS = 6;
+/** Item no chão que ninguém pegou some depois deste tempo. */
+const ITEM_LIFETIME_MS = 120_000;
+/** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
+const START_LEVEL = Math.min(MAX_LEVEL, Math.max(1, Number(process.env.KUSA_START_LEVEL) || 1));
 
 /** Uma hunt: a equipe (1 a 4 jogadores) entra junta e cada um sai morto, fugindo ou após o boss. */
 export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetadata }> {
@@ -91,6 +126,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private brains = new Map<string, Brain>();
   private chestDepth = new Map<string, number>();
   private nextMonsterId = 1;
+  private nextItemId = 1;
+  /** Momento (ms) em que cada item do chão some. */
+  private itemExpiresAt = new Map<string, number>();
 
   onCreate() {
     this.state.seed = Math.floor(Math.random() * 2 ** 31);
@@ -104,6 +142,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     this.onMessage(MSG.move, (client, msg: MoveMessage) => this.handleMove(client, msg));
     this.onMessage(MSG.target, (client, msg: TargetMessage) => this.handleTarget(client, msg));
+    this.onMessage(MSG.chooseSpell, (client, msg: ChooseSpellMessage) => this.handleChooseSpell(client, msg));
+    this.onMessage(MSG.cast, (client, msg: CastMessage) => this.handleCast(client, msg));
 
     this.setSimulationInterval((dt) => this.tick(dt), SERVER_TICK_MS);
   }
@@ -114,12 +154,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
   onJoin(client: Client, options: JoinOptions, auth: { userId: string | null }) {
     const classId: ClassId = options.classId in CLASSES ? options.classId : "knight";
-    const stats = statsFor(classId, 1);
+    const stats = statsFor(classId, START_LEVEL);
     const index = this.state.players.size;
 
     const player = new Player();
     player.name = (options.name || "Aventureiro").slice(0, 16);
     player.classId = classId;
+    player.level = START_LEVEL;
+    player.xp = xpForLevel(START_LEVEL);
     player.hp = player.maxHp = stats.maxHp;
     player.mana = player.maxMana = stats.maxMana;
     // A equipe nasce junta, ao redor do portal de fuga.
@@ -127,7 +169,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.y = this.dungeon.portal.y + [-1, -1, 1, 1][index];
 
     this.state.players.set(client.sessionId, player);
-    this.seats.set(client.sessionId, { userId: auth.userId, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false });
+    this.seats.set(client.sessionId, {
+      userId: auth.userId, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false,
+      spellReadyAt: [0, 0], guard: 0, guardUntil: 0,
+    });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
       void this.setMatchmaking({ metadata: { leader: player.name } });
@@ -196,7 +241,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.monsters.set(m.id, m);
     this.brains.set(m.id, {
       def, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
-      nextMoveAt: 0, nextAttackAt: 0, targetId: null, participants: new Set(),
+      nextMoveAt: 0, nextAttackAt: 0, targetId: null, participants: new Set(), rootedUntil: 0,
     });
     return m;
   }
@@ -300,9 +345,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const now = this.clock.currentTime;
     this.regen(dt);
+    this.expireEffects(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     this.state.monsters.forEach((m) => this.monsterThink(m, now));
     this.openChests();
+    this.pickUpItems();
+    this.expireItems(now);
   }
 
   // --- Combate -----------------------------------------------------------
@@ -340,7 +388,134 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!this.canHit(p, m, cls.attackRange)) return;
 
     seat.nextAttackAt = now + cls.attackCooldownMs;
-    this.damageMonster(m, rollDamage(statsFor(cls.id, p.level).damage), sessionId);
+    // Flecha e luzes voam até o alvo: o dano entra quando chegam (se o monstro ainda estiver vivo).
+    const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
+    this.broadcast(MSG.attack, { from: sessionId, x: p.x, y: p.y, tx: m.x, ty: m.y, ms } satisfies AttackMessage);
+    const amount = rollDamage(baseDamage(p));
+    this.after(ms, () => {
+      const alive = this.state.monsters.get(m.id);
+      if (alive) this.damageMonster(alive, amount, sessionId);
+    });
+  }
+
+  /** Roda `fn` depois de `ms` (na hora se 0), só enquanto a hunt estiver rolando. */
+  private after(ms: number, fn: () => void) {
+    if (ms <= 0) return fn();
+    this.clock.setTimeout(() => { if (this.state.phase === "running") fn(); }, ms);
+  }
+
+  // --- Magias -------------------------------------------------------------
+
+  /** Escolha da magia de um slot recém-liberado. Uma vez escolhida, fica até o fim da hunt. */
+  private handleChooseSpell(client: Client, msg: ChooseSpellMessage) {
+    const p = this.state.players.get(client.sessionId);
+    if (!p || p.status !== "playing") return;
+    const slot = msg?.slot;
+    if (slot !== 0 && slot !== 1) return;
+    if (p.level < SPELL_SLOT_LEVELS[slot] || spellIn(p, slot)) return;
+    const spell = spellChoices(p.classId as ClassId, slot).find((s) => s.id === msg.spellId);
+    if (!spell) return;
+    if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
+    this.notice(p.x, p.y - 1, spell.name, 0x9b59b6);
+  }
+
+  private handleCast(client: Client, msg: CastMessage) {
+    const sessionId = client.sessionId;
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!p || !seat || p.status !== "playing" || this.state.phase !== "running") return;
+    const slot = msg?.slot;
+    if (slot !== 0 && slot !== 1) return;
+    const spell = SPELLS[spellIn(p, slot) as SpellId];
+    if (!spell) return;
+
+    const now = this.clock.currentTime;
+    if (now < seat.spellReadyAt[slot]) return;
+    if (p.mana < spell.manaCost) {
+      client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Sem mana", color: 0x5dade2 } satisfies NoticeMessage);
+      return;
+    }
+
+    // Magia de alvo usa o alvo atual se estiver ao alcance; senão, o monstro mais próximo.
+    let target: Monster | undefined;
+    if (spell.aim === "target") {
+      const current = this.state.monsters.get(p.target);
+      target = current && this.canHit(p, current, spell.range)
+        ? current
+        : this.state.monsters.get(this.nearestMonsterInRange(p, spell.range) ?? "");
+      if (!target) {
+        client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Nenhum alvo ao alcance", color: 0xbdc3c7 } satisfies NoticeMessage);
+        return;
+      }
+    }
+
+    p.mana -= spell.manaCost;
+    seat.spellReadyAt[slot] = now + spell.cooldownMs;
+    const tx = target?.x ?? p.x;
+    const ty = target?.y ?? p.y;
+    const ms = flightMs(spell.projectileSpeed ?? 0, p.x, p.y, tx, ty);
+    this.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: p.x, y: p.y, tx, ty, ms } satisfies SpellMessage);
+    const amount = baseDamage(p) * (spell.damage ?? 0);
+    this.after(ms, () => this.applySpell(sessionId, spell, target?.id, tx, ty, amount));
+  }
+
+  /**
+   * Efeito da magia ao chegar. A área segue o alvo se ele andou durante o voo; paredes bloqueiam
+   * o efeito (precisa de linha de visão do centro até quem é atingido).
+   */
+  private applySpell(sessionId: string, spell: SpellDef, targetId: string | undefined, tx: number, ty: number, amount: number) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!p || !seat) return;
+    const now = this.clock.currentTime;
+    const anchor = targetId ? this.state.monsters.get(targetId) : undefined;
+    // Alvo único que morreu no caminho: a magia se perde.
+    if (targetId && !anchor && spell.radius === 0) return;
+    const cx = anchor?.x ?? tx;
+    const cy = anchor?.y ?? ty;
+    const inArea = (x: number, y: number) =>
+      tileDistance(cx, cy, x, y) <= spell.radius && hasLineOfSight(this.dungeon, cx, cy, x, y);
+
+    const hit = spell.radius === 0 && anchor
+      ? [anchor]
+      : [...this.state.monsters.values()].filter((m) => inArea(m.x, m.y));
+    for (const m of hit) {
+      const brain = this.brains.get(m.id);
+      if (!brain) continue;
+      if (spell.taunt) brain.targetId = sessionId;
+      if (spell.rootMs) {
+        brain.rootedUntil = now + spell.rootMs;
+        m.rooted = true;
+      }
+      if (spell.damage) this.damageMonster(m, rollDamage(amount), sessionId);
+    }
+
+    if (spell.heal) {
+      this.state.players.forEach((ally) => {
+        if (ally.status !== "playing" || !inArea(ally.x, ally.y)) return;
+        const healed = Math.min(ally.maxHp - ally.hp, Math.round(ally.maxHp * spell.heal!));
+        if (healed <= 0) return;
+        ally.hp += healed;
+        this.notice(ally.x, ally.y, `+${healed}`, 0x2ecc71);
+      });
+    }
+
+    if (spell.guard && spell.guardMs && p.status === "playing") {
+      seat.guard = spell.guard;
+      seat.guardUntil = now + spell.guardMs;
+      p.guarded = true;
+    }
+  }
+
+  /** Fim do Grito de Guerra e das raízes. */
+  private expireEffects(now: number) {
+    this.seats.forEach((seat, sessionId) => {
+      const p = this.state.players.get(sessionId);
+      if (p?.guarded && now >= seat.guardUntil) p.guarded = false;
+    });
+    this.state.monsters.forEach((m) => {
+      if (m.rooted && now >= (this.brains.get(m.id)?.rootedUntil ?? 0)) m.rooted = false;
+    });
   }
 
   private canHit(p: Player, m: Monster, range: number) {
@@ -389,6 +564,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.notice(m.x, m.y - 1, `+${value} loot`, 0xf1c40f);
     }
 
+    // Itens caem no chão onde o monstro morreu: quem passar por cima primeiro leva.
+    const drops = GUARANTEED_DROPS[brain.def.rank] || (Math.random() < COMMON_DROP_CHANCE ? 1 : 0);
+    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random), m.x, m.y);
+
     if (brain.chestId) {
       const chest = this.state.chests.get(brain.chestId);
       if (chest) {
@@ -411,18 +590,22 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     p.xp += amount;
     this.notice(p.x, p.y - 1, `+${amount} XP`, 0xdcdde1);
     const level = levelForXp(p.xp);
-    if (level <= p.level) return;
+    const previous = p.level;
+    if (level <= previous) return;
     // Subiu de nível: atributos novos e cura completa.
     const stats = statsFor(p.classId as ClassId, level);
     p.level = level;
     p.hp = p.maxHp = stats.maxHp;
     p.mana = p.maxMana = stats.maxMana;
     this.notice(p.x, p.y - 1, `Nível ${level}!`, 0x2ecc71);
+    if (SPELL_SLOT_LEVELS.some((l) => l <= level && l > previous)) this.notice(p.x, p.y - 2, "Nova magia!", 0x9b59b6);
   }
 
-  private damagePlayer(sessionId: string, amount: number) {
+  private damagePlayer(sessionId: string, raw: number) {
     const p = this.state.players.get(sessionId);
     if (!p || p.status !== "playing") return;
+    const guard = p.guarded ? this.seats.get(sessionId)?.guard ?? 0 : 0;
+    const amount = Math.max(1, Math.round(raw * (1 - damageReduction(armorOf(equipment(p)))) * (1 - guard)));
     p.hp = Math.max(0, p.hp - amount);
     this.broadcast(MSG.damage, { x: p.x, y: p.y, amount, toPlayer: true } satisfies DamageMessage);
     if (p.hp === 0) this.endRun(sessionId, "died");
@@ -457,7 +640,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       return;
     }
 
-    if (now < brain.nextMoveAt) return;
+    if (now < brain.nextMoveAt || m.rooted) return;
     const blocked = this.occupiedTiles();
     const step = nextStep(this.dungeon, m, target, def.attackRange, (x, y) => blocked.has(y * this.dungeon.width + x));
     if (!step) {
@@ -506,7 +689,52 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         const value = Math.round(rollRange(CHEST_LOOT) * k);
         p.loot += value;
         this.notice(chest.x, chest.y, `Baú: +${value} loot`, 0xf1c40f);
+        // O baú guarda um item melhor que o do mini-boss.
+        this.dropItem(rollItem("miniboss", this.chestDepth.get(chest.id) ?? 0, Math.random, 1), chest.x, chest.y);
       });
+    });
+  }
+
+  // --- Itens ------------------------------------------------------------
+
+  private dropItem(itemId: string, x: number, y: number) {
+    const item = new GroundItem();
+    item.id = `i${this.nextItemId++}`;
+    item.itemId = itemId;
+    item.x = x;
+    item.y = y;
+    this.state.items.set(item.id, item);
+    this.itemExpiresAt.set(item.id, this.clock.currentTime + ITEM_LIFETIME_MS);
+  }
+
+  /**
+   * Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão
+   * para quem quiser. Item pior fica onde está (qualquer jogador pode pegar, não há dono).
+   */
+  private pickUpItems() {
+    this.state.players.forEach((p) => {
+      if (p.status !== "playing") return;
+      const here = [...this.state.items.values()]
+        .filter((it) => it.x === p.x && it.y === p.y)
+        .sort((a, b) => (ITEMS[b.itemId]?.tier ?? 0) - (ITEMS[a.itemId]?.tier ?? 0));
+      for (const ground of here) {
+        const def = ITEMS[ground.itemId];
+        if (!def || !isUpgrade(def.id, p[def.slot])) continue;
+        const old = p[def.slot];
+        p[def.slot] = def.id;
+        this.state.items.delete(ground.id);
+        this.itemExpiresAt.delete(ground.id);
+        if (old) this.dropItem(old, p.x, p.y);
+        this.notice(p.x, p.y - 1, def.name, TIER_COLORS[def.tier]);
+      }
+    });
+  }
+
+  private expireItems(now: number) {
+    this.itemExpiresAt.forEach((at, id) => {
+      if (now < at) return;
+      this.state.items.delete(id);
+      this.itemExpiresAt.delete(id);
     });
   }
 
@@ -520,6 +748,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
+    // Quem morre larga o equipamento no chão, e os outros podem saquear.
+    if (outcome === "died") {
+      for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
+    }
     player.status = outcome;
     player.target = "";
 
@@ -537,6 +769,19 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.clock.setTimeout(() => this.disconnect(), 10_000);
     }
   }
+}
+
+/** Dano base do jogador (classe, nível e arma), antes da variação. */
+function baseDamage(p: Player) {
+  return statsFor(p.classId as ClassId, p.level).damage * weaponMultiplier(p.weapon);
+}
+
+function spellIn(p: Player, slot: SpellSlot) {
+  return slot === 0 ? p.spell1 : p.spell2;
+}
+
+function equipment(p: Player) {
+  return ITEM_SLOTS.map((slot) => p[slot]);
 }
 
 /** Dano com variação de ±15%. */

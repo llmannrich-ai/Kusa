@@ -85,6 +85,50 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 
 #lobby-players { padding-left: 20px; }
 
+/* Configurações: cada opção é uma linha inteira tocável, com um interruptor à direita. */
+#settings-list { display: grid; gap: 8px; }
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 12px;
+  min-height: 56px;
+  border: 1px solid var(--border);
+  background: #000;
+  cursor: pointer;
+}
+.setting small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.setting input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  position: relative;
+  width: 48px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #2a211b;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.setting input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.setting input:checked { background: #4a3417; border-color: var(--accent); }
+.setting input:checked::after { transform: translateX(20px); background: var(--accent); }
+
 input, button { -webkit-user-select: text; user-select: text; }
 button { min-height: 44px; touch-action: manipulation; }
 
@@ -103,8 +147,34 @@ button { min-height: 44px; touch-action: manipulation; }
 #timer, #stats { padding: 6px 10px; background: #000a; border: 1px solid var(--border); }
 #timer { font-size: 22px; font-variant-numeric: tabular-nums; }
 #timer.low { color: var(--danger); }
+#hud-left { display: grid; gap: 6px; justify-items: start; }
+/* Minimapa: compacto embaixo do tempo; aberto, o mapa inteiro na parte de cima (longe dos polegares). */
+#minimap {
+  display: block;
+  width: 104px;
+  height: 104px;
+  background: #000c;
+  border: 1px solid var(--border);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+#minimap.expanded {
+  position: fixed;
+  top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(var(--col-w) - 32px), 360px);
+  height: min(calc(var(--col-w) - 32px), 360px);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px #000, 0 12px 40px #000c;
+  z-index: 10;
+}
 #stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
 #meta { text-align: right; color: var(--accent); font-size: 13px; }
+#gear { display: flex; justify-content: flex-end; gap: 4px; }
+#gear .slot { width: 28px; height: 28px; display: grid; place-items: center; background: #0008; border: 1px solid #3a2f27; }
+#gear img { width: 24px; height: 24px; image-rendering: pixelated; }
 
 .bar { position: relative; height: 14px; background: #000; border: 1px solid #000; }
 .bar i { position: absolute; inset: 0 auto 0 0; width: 100%; transition: width 0.15s; }
@@ -180,3 +250,42 @@ button { min-height: 44px; touch-action: manipulation; }
 @media (pointer: coarse) {
   #help { display: none !important; }
 }
+
+/* Slots de magia: ícone, custo (ou recarga) embaixo e um véu escuro que esvazia durante a recarga. */
+.action.spell { position: relative; display: grid; place-items: center; overflow: hidden; border-color: #8e6bbf; }
+.action.spell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(#000b calc(var(--cd, 0) * 360deg), transparent 0);
+  pointer-events: none;
+}
+.spell-icon { font-size: 28px; line-height: 1; margin-top: -8px; }
+.spell-label { position: absolute; bottom: 7px; left: 0; right: 0; font-size: 11px; color: #9ec5ff; text-shadow: 0 0 2px #000, 0 0 2px #000; z-index: 1; }
+.action.spell[data-state="locked"] { opacity: 0.45; border-color: var(--border); }
+.action.spell[data-state="locked"] .spell-label { color: var(--muted); }
+.action.spell[data-state="nomana"] .spell-icon { filter: grayscale(1) brightness(0.6); }
+.action.spell[data-state="nomana"] .spell-label { color: #ff8a80; }
+.action.spell[data-state="cooldown"] .spell-label { color: var(--text); }
+.action.spell[data-state="empty"] { border-color: var(--accent); animation: spell-pulse 1s ease-in-out infinite alternate; }
+.action.spell[data-state="empty"] .spell-label { color: var(--accent); }
+@keyframes spell-pulse { from { box-shadow: 0 0 0 0 #c9a24a00; } to { box-shadow: 0 0 16px 4px #c9a24aaa; } }
+
+/* Escolha de magia: na parte de cima, longe do joystick; o jogo continua rodando atrás. */
+.panel.spell-choice {
+  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
+  transform: translateX(-50%);
+  width: min(380px, calc(var(--col-w) - 24px));
+  padding: 16px;
+  z-index: 15;
+}
+.spell-choice h2 { margin-bottom: 4px; font-size: 20px; }
+.spell-choice p { margin: 0 0 12px; font-size: 13px; }
+.spell-options { display: grid; gap: 8px; margin-bottom: 8px; }
+.spell-option { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 12px; border-color: #8e6bbf; background: #221a2b; }
+.spell-option-icon { font-size: 32px; flex: none; }
+.spell-option strong { display: block; color: var(--accent); }
+.spell-option small { display: block; margin: 2px 0 4px; font-size: 12px; }
+.spell-option em { display: block; font-size: 11px; font-style: normal; color: #9ec5ff; }
+.spell-choice > button:last-child { width: 100%; }

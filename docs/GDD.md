@@ -10,7 +10,7 @@ teclado e mouse no desktop são um extra.
 
 - **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado, aparece um aviso para voltar à vertical.
 - **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
-- **Ações:** botões grandes no canto inferior direito (hoje o 🎯 "próximo alvo"; depois magias e poções), sem precisar de mira precisa.
+- **Ações:** botões grandes no canto inferior direito (os 2 slots de magia e o 🎯 "próximo alvo"; depois poções), sem precisar de mira precisa.
 - **Mira:** sem alvo travado, o servidor ataca sozinho o monstro mais próximo dentro do alcance. Tocar num monstro (em qualquer parte da tela) trava o alvo nele; o 🎯 troca para o próximo monstro por perto.
 - **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
@@ -32,7 +32,7 @@ teclado e mouse no desktop são um extra.
 - O limite de tempo fica entre 3 e 5 minutos. **Se o tempo acaba, a dungeon desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados.
-- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Magias são desbloqueadas em níveis específicos.
+- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 8.
 - A dungeon é semi-linear: monstros fracos na entrada, ficando mais fortes conforme a equipe se aprofunda.
 - Baús no meio da dungeon trazem itens ou upgrades aleatórios poderosos, possivelmente ao matar mini-bosses.
 - No centro fica o boss final do tipo de mapa.
@@ -56,11 +56,36 @@ teclado e mouse no desktop são um extra.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 
+## Ataques e magias (protótipo)
+
+- Ataque básico (auto-attack) de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
+- Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 8. Ao alcançar o nível, aparece na tela a escolha da magia do slot; depois de escolhida, ela fica até o fim da hunt. Fechar a escolha deixa o botão do slot com ✨ para escolher depois.
+- Por enquanto cada classe tem uma magia por slot. Depois, o mercado do menu vai vender magias que viram opções extras na escolha.
+- Magias de alvo usam o alvo atual (ou o monstro mais próximo ao alcance); paredes bloqueiam o efeito. Cada uma gasta mana e tem recarga.
+
+| Classe | Slot 1 (nível 3) | Slot 2 (nível 8) |
+| --- | --- | --- |
+| Cavaleiro | 🌀 Giro da Lâmina: corta todos os monstros colados (1,6× dano) | 📯 Grito de Guerra: provoca monstros a até 4 tiles e corta 50% do dano recebido por 6 s |
+| Paladino | ✴️ Flecha Sagrada: flecha dourada num alvo (2,6× dano) | 🏹 Chuva de Flechas: área de raio 2 no alvo (1,4× dano) |
+| Feiticeiro | 🔮 Esfera Sombria: explode no alvo, raio 1 (1,9× dano) | 🌑 Tempestade do Vazio: raio 3 em volta de si (2,3× dano) |
+| Druida | 🌿 Bênção da Floresta: cura 35% da vida de quem está a até 4 tiles | 🌱 Raízes Espinhosas: raio 2 no alvo, fere (1,2×) e prende por 3,5 s |
+
+- Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
+
+## Itens (protótipo)
+
+- 4 slots: arma, capacete, armadura e escudo, cada um com 5 níveis de material (Comum, Bronze, Ferro, Aço, Dragão). A arma dá % a mais de dano; capacete, armadura e escudo somam armadura, que corta dano recebido (`armadura / (armadura + 20)`: tudo de dragão corta 57%).
+- Drop: comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
+- O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
+- Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão. Item pior fica onde está. Itens no chão somem após 2 minutos.
+- Quem morre larga o equipamento no chão. O equipamento vale só para a hunt (todos começam sem nada).
+- Tabela em `packages/shared/src/items.ts`; arte própria em `apps/client/src/art/items.ts`.
+
 ## Decisões em aberto
 
 - Duração exata da hunt (o código usa 4 min em `MATCH_DURATION_SECONDS`).
 - Se a morte regride os upgrades permanentes, e quanto.
-- Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida) e quais magias abrem em quais níveis.
+- Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida); quantas magias cada classe terá no mercado e quanto custam.
 - Tipos de mapa e bosses.
 - Os jogadores de uma equipe se reanimam? O loot é compartilhado ou individual?
 - Arte: os sprites do Tibia são da CipSoft e **não podem ser usados**. Usaremos assets com licença aberta (OpenGameArt, itch.io) ou arte própria, no mesmo estilo.

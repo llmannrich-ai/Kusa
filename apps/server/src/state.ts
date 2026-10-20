@@ -18,6 +18,16 @@ export class Player extends Schema {
   @type("string") status: PlayerStatus = "playing";
   /** Id do monstro selecionado para o auto-attack ("" = nenhum). */
   @type("string") target = "";
+  /** Itens equipados (ids de `ITEMS` em `@kusa/shared`; "" = slot vazio). */
+  @type("string") weapon = "";
+  @type("string") helmet = "";
+  @type("string") armor = "";
+  @type("string") shield = "";
+  /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
+  @type("string") spell1 = "";
+  @type("string") spell2 = "";
+  /** Sob o Grito de Guerra: recebe menos dano. */
+  @type("boolean") guarded = false;
 }
 
 export class Monster extends Schema {
@@ -28,6 +38,8 @@ export class Monster extends Schema {
   @type("number") y = 0;
   @type("number") hp = 0;
   @type("number") maxHp = 0;
+  /** Preso por Raízes Espinhosas: não anda. */
+  @type("boolean") rooted = false;
 }
 
 /** Baú de uma sala lateral: trancado até o mini-boss da sala morrer. */
@@ -37,6 +49,15 @@ export class Chest extends Schema {
   @type("number") y = 0;
   @type("boolean") locked = true;
   @type("boolean") opened = false;
+}
+
+/** Item largado no chão: qualquer jogador que passar por cima pega, se for melhor que o equipado. */
+export class GroundItem extends Schema {
+  @type("string") id = "";
+  /** Chave de `ITEMS` em `@kusa/shared`. */
+  @type("string") itemId = "";
+  @type("number") x = 0;
+  @type("number") y = 0;
 }
 
 export class DungeonState extends Schema {
@@ -49,6 +70,7 @@ export class DungeonState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
   @type({ map: Monster }) monsters = new MapSchema<Monster>();
   @type({ map: Chest }) chests = new MapSchema<Chest>();
+  @type({ map: GroundItem }) items = new MapSchema<GroundItem>();
   /** Boss morto: o portal de conclusão fica aberto no centro da sala do boss. */
   @type("boolean") bossDefeated = false;
 }

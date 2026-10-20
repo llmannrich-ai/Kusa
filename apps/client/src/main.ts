@@ -1,8 +1,23 @@
 import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
-import { CLASSES, CLASS_IDS, MAX_LEVEL, MSG, xpForLevel, type ClassId, type JoinOptions, type RunEndedMessage } from "@kusa/shared";
+import {
+  CLASSES,
+  CLASS_IDS,
+  ITEMS,
+  ITEM_SLOTS,
+  MAX_LEVEL,
+  MSG,
+  SLOT_NAMES,
+  TIER_COLORS,
+  xpForLevel,
+  type ClassId,
+  type JoinOptions,
+  type RunEndedMessage,
+} from "@kusa/shared";
+import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
+import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import "./style.css";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -90,6 +105,40 @@ function renderHunts(hunts: HuntListing[]) {
   show("rooms-empty", hunts.length === 0);
 }
 
+// --- Configurações --------------------------------------------------------
+
+function renderSettings() {
+  const list = $("settings-list");
+  list.innerHTML = "";
+  const settings = loadSettings();
+  for (const def of SETTING_DEFS) {
+    const row = document.createElement("label");
+    row.className = "setting";
+    const text = document.createElement("span");
+    text.textContent = def.label;
+    const hint = document.createElement("small");
+    hint.textContent = def.hint;
+    text.append(hint);
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.role = "switch";
+    toggle.checked = settings[def.key];
+    toggle.onchange = () => saveSetting(def.key, toggle.checked);
+    row.append(text, toggle);
+    list.append(row);
+  }
+}
+
+$("open-settings").onclick = () => {
+  renderSettings();
+  show("menu", false);
+  show("settings", true);
+};
+$("settings-back").onclick = () => {
+  show("settings", false);
+  show("menu", true);
+};
+
 $("play").onclick = () => { joinOptions(); void openRooms(); };
 $("rooms-back").onclick = () => {
   stopWatching();
@@ -143,15 +192,21 @@ function startGame(room: DungeonRoom) {
   show("hud", true);
   show("actions", true);
   show("help", true);
+  // O canvas tem a resolução real da tela (pixels do aparelho) e o CSS o reduz de volta:
+  // com o zoom alto da câmera, cada pixel da arte vira um bloco quase uniforme, sem borrão.
+  const parent = $("game");
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
   game = new Phaser.Game({
     type: Phaser.AUTO,
-    parent: "game",
+    parent,
     pixelArt: true,
     // Joystick com um polegar enquanto o outro toca em alvos e botões.
     input: { activePointers: 3 },
-    scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
+    scale: { mode: Phaser.Scale.NONE, width: parent.clientWidth * dpr, height: parent.clientHeight * dpr, zoom: 1 / dpr },
     scene: [],
   });
+  const g = game;
+  window.addEventListener("resize", () => g.scale.resize(parent.clientWidth * dpr, parent.clientHeight * dpr));
   game.scene.add("dungeon", DungeonScene, true, { room });
 
   const me = () => room.state.players.get(room.sessionId);
@@ -164,10 +219,36 @@ function startGame(room: DungeonRoom) {
     setBar("mana", p.mana, p.maxMana, `${p.mana}/${p.maxMana}`);
     setBar("xp", p.xp - xpFrom, xpTo - xpFrom, `Nv ${p.level}`);
     $("meta").textContent = `Loot ${p.loot}`;
+    renderGear(p);
   };
   renderStats();
   const p = me();
   if (p) Callbacks.get(room).onChange(p, renderStats);
+}
+
+/** Ícones do equipamento no HUD (as imagens são geradas uma vez por item). */
+const iconUrls = new Map<string, string>();
+function renderGear(p: { weapon: string; helmet: string; armor: string; shield: string }) {
+  const gear = $("gear");
+  const key = ITEM_SLOTS.map((slot) => p[slot]).join(",");
+  if (gear.dataset.key === key) return;
+  gear.dataset.key = key;
+  gear.innerHTML = "";
+  for (const slot of ITEM_SLOTS) {
+    const item = ITEMS[p[slot]];
+    const cell = document.createElement("span");
+    cell.className = "slot";
+    cell.title = item ? item.name : `${SLOT_NAMES[slot]} (vazio)`;
+    if (item) {
+      if (!iconUrls.has(item.id)) iconUrls.set(item.id, itemIcon(item.id).toDataURL());
+      const img = document.createElement("img");
+      img.src = iconUrls.get(item.id)!;
+      img.alt = item.name;
+      cell.append(img);
+      cell.style.borderColor = `#${TIER_COLORS[item.tier].toString(16).padStart(6, "0")}`;
+    }
+    gear.append(cell);
+  }
 }
 
 const OUTCOME_TEXT: Record<RunEndedMessage["outcome"], string> = {

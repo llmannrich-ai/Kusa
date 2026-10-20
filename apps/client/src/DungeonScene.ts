@@ -1,21 +1,49 @@
 import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
-  CLASSES,
+  ITEMS,
   MONSTERS,
   MSG,
+  SPELLS,
+  TIER_COLORS,
   TILE_SIZE,
   Tile,
   centerOf,
   generateDungeon,
+  tileDistance,
+  type AttackMessage,
   type ClassId,
   type DamageMessage,
   type Dungeon,
   type MonsterKind,
   type NoticeMessage,
+  type SpellMessage,
 } from "@kusa/shared";
+import { CombatFx } from "./fx.ts";
+import { SpellBar } from "./spellbar.ts";
+import { FX, createCombatArt } from "./art/combat.ts";
 import { MoveInput } from "./input.ts";
-import type { ChestView, DungeonRoom, MonsterView, PlayerView } from "./net.ts";
+import { Minimap } from "./minimap.ts";
+import { loadSettings } from "./settings.ts";
+import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView } from "./net.ts";
+import { hash } from "./art/pixels.ts";
+import type { HeroDir } from "./art/heroes.ts";
+import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
+import {
+  CHEST_TEXTURE,
+  FLOOR_TEXTURE,
+  MONSTER_TEXTURE,
+  PORTAL_TEXTURE,
+  createHeroArt,
+  floorVariants,
+  heroIdleFrame,
+  heroTexture,
+  heroWalkAnim,
+  itemTexture,
+  preloadArt,
+  wallCapTexture,
+  wallFaceTexture,
+} from "./art/textures.ts";
 
 /** Campo de visão mínimo com o celular na vertical: 9 tiles de largura e pelo menos 13 de altura. */
 const VIEW_TILES = { w: 9, h: 13 };
@@ -23,20 +51,24 @@ const VIEW_TILES = { w: 9, h: 13 };
 const FOLLOW_LIFT = 0.12;
 /** Até onde o botão de alvo procura monstros (tiles). */
 const TARGET_CYCLE_RANGE = 8;
+/** Paredes desenhadas até esta distância (em tiles) do chão; além disso é só o fundo escuro. */
+const WALL_REACH = 1;
+
+/**
+ * Ordem de desenho: o chão fica embaixo; paredes, baús e personagens são ordenados pela linha
+ * de baixo (y em pixels), como no Tibia; barras, nomes e números ficam sempre por cima.
+ */
+const DEPTH = { floor: 0, ui: 100_000 };
+
+/** Sprites do pack que olham para a esquerda (espelhados quando andam para a direita). */
+const FACES_LEFT = new Set<MonsterKind>(["rat", "dragon"]);
 
 const COLORS = {
-  wall: 0x1a1512,
-  wallEdge: 0x2e241d,
-  floor: 0x4a4038,
-  floorAlt: 0x443a33,
-  portal: 0x3fa7d6,
+  void: 0x0b0908,
   target: 0xe74c3c,
   hpBack: 0x000000,
   hpPlayer: 0x2ecc71,
   hpMonster: 0xe74c3c,
-  chestLocked: 0x5d4037,
-  chestUnlocked: 0xc9a24a,
-  chestOpen: 0x3e2723,
 };
 
 const TEXT_STYLE = {
@@ -47,12 +79,22 @@ const TEXT_STYLE = {
   strokeThickness: 3,
 };
 
-/** Um personagem desenhado: corpo + barra de HP dentro de um container. */
+/** Um personagem desenhado: sombra + sprite (ordenados por y) e barra de HP/nome por cima de tudo. */
 interface Unit {
-  container: Phaser.GameObjects.Container;
+  body: Phaser.GameObjects.Container;
+  sprite: Phaser.GameObjects.Sprite;
+  overlay: Phaser.GameObjects.Container;
   bar: Phaser.GameObjects.Graphics;
   barWidth: number;
   barY: number;
+  /** Classe do herói (tem animação de caminhada); monstros só balançam. */
+  classId?: ClassId;
+  facesLeft: boolean;
+  dir: HeroDir;
+  lastStepAt: number;
+  walkUntil: number;
+  /** Escudo do Grito de Guerra (jogador) ou espinhos das raízes (monstro), visível enquanto dura. */
+  status?: Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible;
 }
 
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
@@ -61,10 +103,17 @@ export class DungeonScene extends Phaser.Scene {
   private dungeon!: Dungeon;
   private avatars = new Map<string, Unit>();
   private monsters = new Map<string, Unit>();
-  private chests = new Map<string, Phaser.GameObjects.Rectangle>();
+  private chests = new Map<string, Phaser.GameObjects.Image>();
+  private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
   private move!: MoveInput;
+  /** Nulo quando o jogador desligou o minimapa nas configurações. */
+  private minimap: Minimap | null = null;
+  private fx!: CombatFx;
+  private spellBar!: SpellBar;
   private nextSendAt = 0;
+  /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
+  private textResolution = 1;
 
   constructor() {
     super("dungeon");
@@ -74,9 +123,22 @@ export class DungeonScene extends Phaser.Scene {
     this.room = data.room;
   }
 
+  preload() {
+    preloadArt(this);
+  }
+
   create() {
+    createHeroArt(this);
+    createCombatArt(this);
+    this.fx = new CombatFx(this);
     this.dungeon = generateDungeon(this.room.state.seed);
-    this.drawMap();
+    this.drawFloor();
+    this.drawWalls();
+    this.drawPortal();
+
+    this.cameras.main.setBackgroundColor(COLORS.void).setRoundPixels(true);
+    this.fitCamera();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
 
     const callbacks = Callbacks.get(this.room);
     callbacks.onAdd("players", (player: PlayerView, sessionId: string) => {
@@ -84,7 +146,7 @@ export class DungeonScene extends Phaser.Scene {
       callbacks.onChange(player, () => this.syncAvatar(sessionId, player));
     });
     callbacks.onRemove("players", (_player: PlayerView, sessionId: string) => {
-      this.avatars.get(sessionId)?.container.destroy();
+      this.destroyUnit(this.avatars.get(sessionId));
       this.avatars.delete(sessionId);
     });
 
@@ -93,16 +155,22 @@ export class DungeonScene extends Phaser.Scene {
       callbacks.onChange(monster, () => this.syncMonster(id, monster));
     });
     callbacks.onRemove("monsters", (_monster: MonsterView, id: string) => {
-      this.monsters.get(id)?.container.destroy();
+      this.destroyUnit(this.monsters.get(id));
       this.monsters.delete(id);
     });
 
     callbacks.onAdd("chests", (chest: ChestView, id: string) => {
-      const rect = this.add.rectangle(this.toPx(chest.x), this.toPx(chest.y), TILE_SIZE - 10, TILE_SIZE - 14)
-        .setStrokeStyle(2, 0x000000).setDepth(5);
-      this.chests.set(id, rect);
+      const image = this.add.image(this.toPx(chest.x), this.toPx(chest.y), CHEST_TEXTURE.locked)
+        .setDepth((chest.y + 1) * TILE_SIZE - 1);
+      this.chests.set(id, image);
       this.syncChest(id, chest);
       callbacks.onChange(chest, () => this.syncChest(id, chest));
+    });
+
+    callbacks.onAdd("items", (item: GroundItemView, id: string) => this.addGroundItem(id, item));
+    callbacks.onRemove("items", (_item: GroundItemView, id: string) => {
+      this.items.get(id)?.destroy();
+      this.items.delete(id);
     });
 
     callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
@@ -110,8 +178,10 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.damage, (msg: DamageMessage) =>
       this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff));
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
+    this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
+    this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
 
-    this.targetRing = this.add.graphics().setDepth(9);
+    this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
     // Sem alvo travado, o servidor mira sozinho no monstro mais próximo ao alcance.
     // Tocar num monstro trava o alvo; o botão de alvo (ou Tab) troca para o próximo; Esc destrava.
@@ -119,6 +189,8 @@ export class DungeonScene extends Phaser.Scene {
     kb?.addCapture("TAB");
     kb?.on("keydown-TAB", () => this.cycleTarget());
     kb?.on("keydown-ESC", () => this.room.send(MSG.target, { id: null }));
+    kb?.on("keydown-ONE", () => this.spellBar.press(0));
+    kb?.on("keydown-TWO", () => this.spellBar.press(1));
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
       if (id) this.room.send(MSG.target, { id });
@@ -126,18 +198,19 @@ export class DungeonScene extends Phaser.Scene {
 
     this.move = new MoveInput(this, this.game.canvas, (clientX, clientY) => {
       const rect = this.game.canvas.getBoundingClientRect();
-      const world = this.cameras.main.getWorldPoint(clientX - rect.left, clientY - rect.top);
+      const scale = this.game.canvas.width / rect.width;
+      const world = this.cameras.main.getWorldPoint((clientX - rect.left) * scale, (clientY - rect.top) * scale);
       return this.monsterAtWorld(world.x, world.y) !== null;
     });
     const targetButton = this.addActionButton("🎯", "Próximo alvo", () => this.cycleTarget());
+    this.spellBar = new SpellBar(this.room, document.getElementById("actions")!);
+    if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.move.destroy();
+      this.minimap?.destroy();
       targetButton.remove();
+      this.spellBar.destroy();
     });
-
-    this.cameras.main.setBackgroundColor(COLORS.wall);
-    this.fitCamera();
-    this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
   }
 
   update(time: number) {
@@ -147,7 +220,11 @@ export class DungeonScene extends Phaser.Scene {
       this.room.send(MSG.move, { dx, dy });
       this.nextSendAt = time + 60;
     }
+    this.avatars.forEach((unit) => this.animateUnit(unit, time));
+    this.monsters.forEach((unit) => this.animateUnit(unit, time));
     this.drawTargetRing();
+    this.minimap?.update(time);
+    this.spellBar.update();
   }
 
   // --- Alvo ---------------------------------------------------------------
@@ -161,7 +238,7 @@ export class DungeonScene extends Phaser.Scene {
     let best: string | null = null;
     let bestDist = TILE_SIZE * 0.9;
     this.monsters.forEach((unit, id) => {
-      const dist = Math.hypot(unit.container.x - worldX, unit.container.y - worldY);
+      const dist = Math.hypot(unit.body.x - worldX, unit.body.y - worldY);
       if (dist < bestDist) { bestDist = dist; best = id; }
     });
     return best;
@@ -200,90 +277,214 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.monsters.get(this.me()?.target ?? "");
     if (!unit) return;
     const half = TILE_SIZE / 2;
-    g.lineStyle(2, COLORS.target).strokeRect(unit.container.x - half, unit.container.y - half, TILE_SIZE, TILE_SIZE);
+    g.lineStyle(2, COLORS.target).strokeRect(unit.body.x - half, unit.body.y - half, TILE_SIZE, TILE_SIZE);
+  }
+
+  // --- Combate -------------------------------------------------------------
+
+  /** Ataque básico de alguém: o herói dá um tranco na direção do alvo e sai o golpe ou projétil. */
+  private onAttack(msg: AttackMessage) {
+    const classId = this.room.state.players.get(msg.from)?.classId as ClassId | undefined;
+    if (!classId) return;
+    this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, classId === "knight" ? 5 : 2);
+    this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
+  }
+
+  private onSpell(msg: SpellMessage) {
+    const spell = SPELLS[msg.spellId];
+    if (!spell) return;
+    if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
+    this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
+    this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
+    if (spell.heal) {
+      this.room.state.players.forEach((p, id) => {
+        if (p.status !== "playing" || tileDistance(msg.x, msg.y, p.x, p.y) > spell.radius) return;
+        const unit = this.avatars.get(id);
+        if (unit) this.fx.heal({ x: unit.body.x, y: unit.body.y });
+      });
+    }
+  }
+
+  /** Tranco curto do sprite na direção do golpe (ida e volta). */
+  private lunge(unit: Unit | undefined, dx: number, dy: number, distance: number) {
+    if (!unit || (dx === 0 && dy === 0)) return;
+    this.face(unit, Math.sign(dx), Math.abs(dx) >= Math.abs(dy) ? 0 : Math.sign(dy));
+    const len = Math.hypot(dx, dy);
+    this.tweens.killTweensOf(unit.sprite);
+    unit.sprite.setPosition(0, TILE_SIZE / 2);
+    this.tweens.add({
+      targets: unit.sprite,
+      x: (dx / len) * distance,
+      y: TILE_SIZE / 2 + (dy / len) * distance,
+      duration: 70,
+      yoyo: true,
+      ease: "Quad.Out",
+    });
+  }
+
+  /** Mostra ou esconde o escudo / os espinhos de uma unidade, criando na primeira vez. */
+  private setStatus(unit: Unit, on: boolean, create: () => Unit["status"]) {
+    if (on && !unit.status) {
+      unit.status = create();
+      unit.body.add(unit.status!);
+    }
+    unit.status?.setVisible(on);
+  }
+
+  private shieldAura() {
+    const g = this.add.graphics();
+    g.lineStyle(2, 0xf39c12, 0.9).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE - 2, 12);
+    g.lineStyle(1, 0xffe9a3, 0.6).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE + 4, 16);
+    this.tweens.add({ targets: g, alpha: { from: 1, to: 0.4 }, duration: 400, yoyo: true, repeat: -1 });
+    return g;
+  }
+
+  private thornsAt() {
+    const thorns = this.add.image(0, TILE_SIZE / 2, FX.thorns).setOrigin(0.5, 1);
+    this.tweens.add({ targets: thorns, scaleY: { from: 0.2, to: 1 }, duration: 180, ease: "Back.Out" });
+    return thorns;
   }
 
   // --- Mapa ---------------------------------------------------------------
 
-  private drawMap() {
-    const g = this.add.graphics();
+  private isFloor(x: number, y: number) {
+    const d = this.dungeon;
+    return x >= 0 && y >= 0 && x < d.width && y < d.height && d.tiles[y * d.width + x] !== Tile.Wall;
+  }
+
+  private inBossRoom(x: number, y: number) {
+    const b = this.dungeon.boss;
+    return x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h;
+  }
+
+  /** Chão num tilemap (o Phaser só desenha o que está na tela), variando o ladrilho por posição. */
+  private drawFloor() {
+    const d = this.dungeon;
+    const map = this.make.tilemap({ width: d.width, height: d.height, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const normalCount = floorVariants(this, FLOOR_TEXTURE.normal);
+    const bossCount = floorVariants(this, FLOOR_TEXTURE.boss);
+    const normal = map.addTilesetImage(FLOOR_TEXTURE.normal, FLOOR_TEXTURE.normal, TILE_SIZE, TILE_SIZE, 0, 0, 0)!;
+    const boss = map.addTilesetImage(FLOOR_TEXTURE.boss, FLOOR_TEXTURE.boss, TILE_SIZE, TILE_SIZE, 0, 0, normalCount)!;
+    const layer = map.createBlankLayer("chao", [normal, boss])!.setDepth(DEPTH.floor);
+    for (let y = 0; y < d.height; y++) {
+      for (let x = 0; x < d.width; x++) {
+        if (!this.isFloor(x, y)) continue;
+        // Metade dos tiles usa o ladrilho base; o resto se espalha pelas variações.
+        const n = hash(x, y);
+        const pick = (count: number) => (n < 0.5 ? 0 : 1 + Math.floor((n - 0.5) * 2 * (count - 1)));
+        layer.putTileAt(this.inBossRoom(x, y) ? normalCount + pick(bossCount) : pick(normalCount), x, y);
+      }
+    }
+  }
+
+  /**
+   * Paredes oblíquas: a tampa sobe WALL_RISE pixels (cobrindo parte do tile ao norte) e, com chão ao sul,
+   * aparece a face de tijolos. Cada parede é ordenada pela sua linha de baixo, como os personagens.
+   */
+  private drawWalls() {
     const d = this.dungeon;
     for (let y = 0; y < d.height; y++) {
       for (let x = 0; x < d.width; x++) {
-        const t = d.tiles[y * d.width + x];
+        if (this.isFloor(x, y) || !this.nearFloor(x, y)) continue;
         const px = x * TILE_SIZE;
         const py = y * TILE_SIZE;
-        if (t === Tile.Wall) {
-          // Parede com borda clara quando encosta no chão, para dar leitura de volume.
-          const touchesFloor = d.tiles[(y + 1) * d.width + x] > 0;
-          g.fillStyle(touchesFloor ? COLORS.wallEdge : COLORS.wall).fillRect(px, py, TILE_SIZE, TILE_SIZE);
-        } else {
-          g.fillStyle((x + y) % 2 ? COLORS.floor : COLORS.floorAlt).fillRect(px, py, TILE_SIZE, TILE_SIZE);
-          if (t === Tile.Portal) {
-            g.fillStyle(COLORS.portal).fillCircle(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 2 - 3);
-          }
+        const depth = (y + 1) * TILE_SIZE;
+        const variant = Math.floor(hash(x, y, 7) * WALL_VARIANTS);
+        const rim = (this.isFloor(x, y - 1) ? RIM.north : 0)
+          | (this.isFloor(x - 1, y) ? RIM.west : 0)
+          | (this.isFloor(x + 1, y) ? RIM.east : 0);
+        this.add.image(px, py - WALL_RISE, wallCapTexture(this, variant, rim)).setOrigin(0).setDepth(depth);
+        if (this.isFloor(x, y + 1)) {
+          this.add.image(px, py + TILE_SIZE - WALL_RISE, wallFaceTexture(this, variant)).setOrigin(0).setDepth(depth);
         }
       }
     }
-    const b = d.boss;
-    g.lineStyle(2, 0x8b1a1a).strokeRect(b.x * TILE_SIZE, b.y * TILE_SIZE, b.w * TILE_SIZE, b.h * TILE_SIZE);
+  }
+
+  private nearFloor(x: number, y: number) {
+    for (let dy = -WALL_REACH; dy <= WALL_REACH; dy++)
+      for (let dx = -WALL_REACH; dx <= WALL_REACH; dx++)
+        if (this.isFloor(x + dx, y + dy)) return true;
+    return false;
+  }
+
+  private drawPortal() {
+    const { x, y } = this.dungeon.portal;
+    const portal = this.add.image(this.toPx(x), this.toPx(y), PORTAL_TEXTURE.escape).setDepth(y * TILE_SIZE + 1);
+    this.tweens.add({ targets: portal, alpha: { from: 1, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
   }
 
   /** O servidor abre o portal de conclusão no centro da sala do boss quando ele morre. */
   private drawBossPortal() {
     const c = centerOf(this.dungeon.boss);
-    const portal = this.add.circle(this.toPx(c.x), this.toPx(c.y), TILE_SIZE / 2 - 3, COLORS.portal).setDepth(1);
+    const portal = this.add.image(this.toPx(c.x), this.toPx(c.y), PORTAL_TEXTURE.boss).setDepth(c.y * TILE_SIZE + 1);
     this.tweens.add({ targets: portal, scale: { from: 0.2, to: 1 }, duration: 600, ease: "Back.Out" });
   }
 
   private syncChest(id: string, chest: ChestView) {
-    const rect = this.chests.get(id);
-    if (!rect) return;
-    const color = chest.opened ? COLORS.chestOpen : chest.locked ? COLORS.chestLocked : COLORS.chestUnlocked;
-    rect.setFillStyle(color);
+    const image = this.chests.get(id);
+    if (!image) return;
+    image.setTexture(chest.opened ? CHEST_TEXTURE.open : chest.locked ? CHEST_TEXTURE.locked : CHEST_TEXTURE.unlocked);
+  }
+
+  /**
+   * Item no chão: brilho na cor do nível embaixo do ícone, acima do chão e abaixo dos personagens.
+   * Vários itens no mesmo tile se espalham um pouco para dar para ver todos.
+   */
+  private addGroundItem(id: string, item: GroundItemView) {
+    const def = ITEMS[item.itemId];
+    if (!def) return;
+    const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
+    const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
+    const glow = this.add.ellipse(0, 5, 20, 8, TIER_COLORS[def.tier], 0.45);
+    const icon = this.add.image(0, 0, itemTexture(this, def.id));
+    const container = this.add.container(this.toPx(item.x) + offset[0], this.toPx(item.y) + offset[1] + 4, [glow, icon])
+      .setDepth(item.y * TILE_SIZE + 2);
+    this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
+    // Cai do monstro com um pulinho.
+    this.tweens.add({ targets: icon, y: { from: -10, to: 0 }, duration: 260, ease: "Bounce.Out" });
+    this.items.set(id, container);
   }
 
   // --- Jogadores e monstros -------------------------------------------------
 
   private addAvatar(sessionId: string, player: PlayerView) {
-    const color = CLASSES[player.classId as ClassId]?.color ?? 0xffffff;
-    const body = this.add.circle(0, 0, TILE_SIZE / 2 - 4, color).setStrokeStyle(2, 0x000000);
-    const unit = this.makeUnit(this.toPx(player.x), this.toPx(player.y), body, TILE_SIZE - 6, -TILE_SIZE / 2 - 1);
-    const label = this.add.text(0, unit.barY - 2, player.name, TEXT_STYLE).setOrigin(0.5, 1);
-    unit.container.add(label).setDepth(10);
+    const classId = player.classId as ClassId;
+    const sprite = this.add.sprite(0, 0, heroTexture(classId), heroIdleFrame("down"));
+    const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, -TILE_SIZE / 2 + 4, false);
+    unit.classId = classId;
+    const label = this.add.text(0, unit.barY - 2, player.name, this.textStyle()).setOrigin(0.5, 1);
+    unit.overlay.add(label);
     this.avatars.set(sessionId, unit);
     this.drawBar(unit, player.hp, player.maxHp, COLORS.hpPlayer);
 
     if (sessionId === this.room.sessionId) {
-      this.cameras.main.startFollow(unit.container, true, 0.15, 0.15);
+      this.cameras.main.startFollow(unit.body, true, 0.15, 0.15);
     }
   }
 
   private syncAvatar(sessionId: string, player: PlayerView) {
     const unit = this.avatars.get(sessionId);
     if (!unit) return;
-    unit.container.setAlpha(player.status === "playing" ? 1 : 0.35);
+    const alpha = player.status === "playing" ? 1 : 0.35;
+    unit.body.setAlpha(alpha);
+    unit.overlay.setAlpha(alpha);
     this.drawBar(unit, player.hp, player.maxHp, COLORS.hpPlayer);
+    this.setStatus(unit, player.guarded && player.status === "playing", () => this.shieldAura());
     this.moveTo(unit, player.x, player.y);
   }
 
   private addMonster(id: string, monster: MonsterView) {
-    const def = MONSTERS[monster.kind as MonsterKind] ?? MONSTERS.rat;
-    const r = (TILE_SIZE * def.size) / 2;
-    let body: Phaser.GameObjects.Shape;
-    switch (def.shape) {
-      case "square": body = this.add.rectangle(0, 0, r * 2, r * 2, def.color); break;
-      case "diamond": body = this.add.rectangle(0, 0, r * 1.5, r * 1.5, def.color).setAngle(45); break;
-      case "triangle": body = this.add.triangle(0, 0, 0, r * 2, r, 0, r * 2, r * 2, def.color); break;
-      default: body = this.add.circle(0, 0, r, def.color);
-    }
-    body.setStrokeStyle(2, 0x000000);
-    const barWidth = Math.max(TILE_SIZE - 8, r * 2);
-    const unit = this.makeUnit(this.toPx(monster.x), this.toPx(monster.y), body, barWidth, -Math.max(r, TILE_SIZE / 2 - 4) - 4);
-    unit.container.setDepth(def.rank === "common" ? 8 : 9);
+    const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
+    const def = MONSTERS[kind];
+    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia); escala inteira para não borrar o pixel.
+    const scale = def.rank === "boss" ? 2 : 1;
+    const sprite = this.add.sprite(0, 0, MONSTER_TEXTURE[kind]).setScale(scale);
+    const top = TILE_SIZE / 2 - sprite.displayHeight;
+    const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, FACES_LEFT.has(kind));
     if (def.rank !== "common") {
-      const label = this.add.text(0, unit.barY - 2, def.name, { ...TEXT_STYLE, color: "#ff9f9f" }).setOrigin(0.5, 1);
-      unit.container.add(label);
+      const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
+      unit.overlay.add(label);
     }
     this.monsters.set(id, unit);
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
@@ -293,13 +494,25 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.monsters.get(id);
     if (!unit) return;
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
+    this.setStatus(unit, monster.rooted, () => this.thornsAt());
     this.moveTo(unit, monster.x, monster.y);
   }
 
-  private makeUnit(x: number, y: number, body: Phaser.GameObjects.GameObject, barWidth: number, barY: number): Unit {
+  /** Sprite com os pés na base do tile, sombra no chão e barra/nome numa camada separada por cima de tudo. */
+  private makeUnit(tileX: number, tileY: number, sprite: Phaser.GameObjects.Sprite, barWidth: number, barY: number, facesLeft: boolean): Unit {
+    const x = this.toPx(tileX);
+    const y = this.toPx(tileY);
+    sprite.setOrigin(0.5, 1).setPosition(0, TILE_SIZE / 2);
+    const shadow = this.add.ellipse(0, TILE_SIZE / 2 - 3, sprite.displayWidth * 0.55, 6 * sprite.scaleY, 0x000000, 0.35);
+    const body = this.add.container(x, y, [shadow, sprite]);
     const bar = this.add.graphics();
-    const container = this.add.container(x, y, [body, bar]);
-    return { container, bar, barWidth, barY };
+    const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);
+    return { body, sprite, overlay, bar, barWidth, barY, facesLeft, dir: "down", lastStepAt: 0, walkUntil: 0 };
+  }
+
+  private destroyUnit(unit: Unit | undefined) {
+    unit?.body.destroy();
+    unit?.overlay.destroy();
   }
 
   private drawBar(unit: Unit, hp: number, maxHp: number, color: number) {
@@ -310,20 +523,63 @@ export class DungeonScene extends Phaser.Scene {
       .fillStyle(ratio > 0.3 ? color : 0xe67e22).fillRect(x, unit.barY, unit.barWidth * ratio, 3);
   }
 
+  /**
+   * Anda até o tile novo. A duração acompanha o ritmo dos passos que chegam do servidor,
+   * para a caminhada sair contínua (sem "pula e para") em qualquer velocidade.
+   */
   private moveTo(unit: Unit, tileX: number, tileY: number) {
     const x = this.toPx(tileX);
     const y = this.toPx(tileY);
-    if (unit.container.x === x && unit.container.y === y) return;
-    this.tweens.add({ targets: unit.container, x, y, duration: 120 });
+    const dx = x - unit.body.x;
+    const dy = y - unit.body.y;
+    if (dx === 0 && dy === 0) return;
+    const now = this.time.now;
+    const sinceLast = now - unit.lastStepAt;
+    unit.lastStepAt = now;
+    const duration = sinceLast < 400 ? Phaser.Math.Clamp(sinceLast, 80, 400) : 150;
+    unit.walkUntil = now + duration + 120;
+    this.face(unit, dx, dy);
+    this.tweens.killTweensOf(unit.body);
+    this.tweens.add({ targets: unit.body, x, y, duration });
+  }
+
+  /** Diagonais olham para o lado, como no Tibia. */
+  private face(unit: Unit, dx: number, dy: number) {
+    if (dx !== 0) {
+      unit.dir = "side";
+      unit.sprite.setFlipX(unit.classId ? dx > 0 : unit.facesLeft && dx > 0);
+    } else {
+      unit.dir = dy < 0 ? "up" : "down";
+    }
+  }
+
+  /** A cada quadro: ordem de desenho pela base, barra acompanhando e animação de caminhada. */
+  private animateUnit(unit: Unit, time: number) {
+    unit.body.setDepth(unit.body.y + TILE_SIZE / 2 + 0.5);
+    unit.overlay.setPosition(unit.body.x, unit.body.y);
+    const walking = time < unit.walkUntil;
+    if (unit.classId) {
+      if (walking) unit.sprite.play(heroWalkAnim(unit.classId, unit.dir), true);
+      else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
+        unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
+      }
+    } else {
+      // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam.
+      unit.sprite.y = TILE_SIZE / 2 - (walking && Math.floor(time / 125) % 2 ? 1 : 0);
+    }
+  }
+
+  private textStyle() {
+    return { ...TEXT_STYLE, resolution: this.textResolution };
   }
 
   /** Número ou aviso que sobe e some sobre um tile. */
   private floatText(tileX: number, tileY: number, text: string, color: number) {
     const label = this.add.text(this.toPx(tileX), this.toPx(tileY) - 8, text, {
-      ...TEXT_STYLE,
+      ...this.textStyle(),
       fontSize: "11px",
       color: `#${color.toString(16).padStart(6, "0")}`,
-    }).setOrigin(0.5).setDepth(20);
+    }).setOrigin(0.5).setDepth(DEPTH.ui + 1);
     this.tweens.add({
       targets: label,
       y: label.y - 24,
@@ -338,8 +594,13 @@ export class DungeonScene extends Phaser.Scene {
   private fitCamera() {
     const { width, height } = this.scale.gameSize;
     const zoom = Math.min(width / (VIEW_TILES.w * TILE_SIZE), height / (VIEW_TILES.h * TILE_SIZE));
+    this.textResolution = Math.max(1, Math.ceil(zoom));
     this.cameras.main.setZoom(zoom);
     this.cameras.main.setFollowOffset(0, -(height * FOLLOW_LIFT) / zoom);
+  }
+
+  private tilePoint(x: number, y: number) {
+    return { x: this.toPx(x), y: this.toPx(y) };
   }
 
   private toPx(tile: number) {

@@ -15,6 +15,7 @@ const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knig
 let hits = 0;
 room.onMessage(MSG.damage, (msg: DamageMessage) => { if (!msg.toPlayer) hits++; });
 room.onMessage(MSG.notice, () => {});
+room.onMessage(MSG.attack, () => {});
 room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora: ${JSON.stringify(msg)}`); });
 
 await wait(300);
