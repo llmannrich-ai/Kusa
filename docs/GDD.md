@@ -33,6 +33,15 @@ RPG de dungeon cooperativo para navegador, com tema de Dungeons & Dragons e visu
 | **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
 | **Soterrado** (o tempo acabou) | Perde tudo | Conta como morte. |
 
+## Combate (protótipo)
+
+- Clique ou Tab seleciona um monstro; o servidor faz auto-attack enquanto ele estiver no alcance da classe e com linha de visão.
+- Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
+- A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
+- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um Ogro (mini-boss) que destranca um baú; o Dragão jovem fica no centro.
+- Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
+- Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
+
 ## Decisões em aberto
 
 - Duração exata da hunt (o código usa 4 min em `MATCH_DURATION_SECONDS`).

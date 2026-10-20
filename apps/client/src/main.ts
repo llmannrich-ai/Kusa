@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
-import { CLASSES, CLASS_IDS, MSG, type ClassId, type JoinOptions, type RunEndedMessage } from "@kusa/shared";
+import { CLASSES, CLASS_IDS, MAX_LEVEL, MSG, xpForLevel, type ClassId, type JoinOptions, type RunEndedMessage } from "@kusa/shared";
 import { DungeonScene } from "./DungeonScene.ts";
 import { createHunt, joinHunt, type DungeonRoom } from "./net.ts";
 import "./style.css";
@@ -87,6 +87,7 @@ function bindRoom(room: DungeonRoom) {
 function startGame(room: DungeonRoom) {
   show("lobby", false);
   show("hud", true);
+  show("help", true);
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
@@ -99,7 +100,9 @@ function startGame(room: DungeonRoom) {
   const me = () => room.state.players.get(room.sessionId);
   const renderStats = () => {
     const p = me();
-    if (p) $("stats").textContent = `Nv ${p.level} · HP ${p.hp}/${p.maxHp} · Mana ${p.mana}/${p.maxMana} · Loot ${p.loot}`;
+    if (!p) return;
+    const xp = p.level >= MAX_LEVEL ? `${p.xp}` : `${p.xp}/${xpForLevel(p.level + 1)}`;
+    $("stats").textContent = `Nv ${p.level} · XP ${xp} · HP ${p.hp}/${p.maxHp} · Mana ${p.mana}/${p.maxMana} · Loot ${p.loot}`;
   };
   renderStats();
   const p = me();
@@ -115,6 +118,7 @@ const OUTCOME_TEXT: Record<RunEndedMessage["outcome"], string> = {
 
 function showResult(msg: RunEndedMessage) {
   show("hud", false);
+  show("help", false);
   $("result-title").textContent = OUTCOME_TEXT[msg.outcome];
   $("result-detail").textContent = msg.loot > 0
     ? `Saiu com ${msg.loot} de loot no nível ${msg.level}.`

@@ -23,7 +23,10 @@ npm run dev:server   # ws://localhost:2567
 npm run dev:client   # http://localhost:5173
 ```
 
-Teste de fumaça (com o servidor rodando): `npx tsx apps/server/scripts/smoke.ts`
+Testes de fumaça (com o servidor rodando):
+
+- `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.
+- `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, mata e ganha XP e loot.
 
 ## Variáveis de ambiente
 

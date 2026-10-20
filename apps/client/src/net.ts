@@ -1,9 +1,11 @@
 import { Client, type Room } from "@colyseus/sdk";
 import { ROOM_NAME, type JoinOptions } from "@kusa/shared";
 // Só tipos: o cliente decodifica o estado por reflexão, sem carregar o código do servidor.
-import type { DungeonState, Player } from "../../server/src/state.ts";
+import type { Chest, DungeonState, Monster, Player } from "../../server/src/state.ts";
 
 export type PlayerView = Player;
+export type MonsterView = Monster;
+export type ChestView = Chest;
 export type DungeonRoom = Room<any, DungeonState>;
 
 const client = new Client(import.meta.env.VITE_SERVER_URL ?? "http://localhost:2567");

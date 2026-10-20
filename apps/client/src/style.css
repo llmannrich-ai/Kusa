@@ -73,3 +73,4 @@ code { color: var(--accent); user-select: all; }
 #timer, #stats { padding: 6px 12px; background: #000a; border: 1px solid var(--border); }
 #timer { font-size: 24px; font-variant-numeric: tabular-nums; }
 #timer.low { color: var(--danger); }
+#help { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); margin: 0; padding: 4px 10px; font-size: 13px; color: var(--muted); background: #000a; border: 1px solid var(--border); pointer-events: none; }
