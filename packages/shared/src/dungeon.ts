@@ -427,7 +427,10 @@ export function hasLineOfSight(d: Dungeon, x0: number, y0: number, x1: number, y
   return true;
 }
 
-/** Último tile livre na linha (Bresenham) de (x0, y0) até (x1, y1): onde um tiro para ao bater numa parede. */
+/**
+ * Último tile livre na linha (Bresenham) de (x0, y0) até (x1, y1): onde um tiro para ao bater numa parede.
+ * Como na linha de visão, água não para o tiro (flechas e magias passam por cima das lagoas).
+ */
 export function lineEnd(d: Dungeon, x0: number, y0: number, x1: number, y1: number) {
   const dx = Math.abs(x1 - x0);
   const dy = -Math.abs(y1 - y0);
@@ -442,7 +445,7 @@ export function lineEnd(d: Dungeon, x0: number, y0: number, x1: number, y1: numb
     let ny = y;
     if (e2 >= dy) { err += dy; nx += sx; }
     if (e2 <= dx) { err += dx; ny += sy; }
-    if (!isWalkable(d, nx, ny)) break;
+    if (blocksSight(d, nx, ny)) break;
     x = nx;
     y = ny;
   }
