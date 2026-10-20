@@ -2,13 +2,16 @@ import {
   MSG,
   SPELLS,
   SPELL_SLOT_LEVELS,
+  isSingleTarget,
   spellChoices,
+  tileDistance,
   spellFacts,
   type ClassId,
   type SpellDef,
   type SpellId,
   type SpellSlot,
 } from "@kusa/shared";
+import type { SpellAim } from "./aim.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
 const SLOTS: SpellSlot[] = [0, 1];
@@ -27,27 +30,78 @@ interface SlotView {
 }
 
 /**
- * Botões dos 2 slots de magia (acima do 🎯, na zona do polegar direito) e a janela de escolha
- * que abre quando o personagem alcança o nível de um slot. O servidor valida tudo; aqui só
+ * Botões dos 2 slots de magia (acima do ⚔️, na zona do polegar direito) e a janela de escolha
+ * que abre quando o personagem alcança o nível de um slot. Magia de alvo único mira enquanto o
+ * polegar segura o botão (ver `SpellAim`); magia de área entra no modo mira com um toque no botão
+ * e sai com um toque no mapa; magia em volta de si sai no toque. O servidor valida tudo; aqui só
  * mostramos estado, recarga e mandamos as intenções.
  */
 export class SpellBar {
   private slots: SlotView[];
   private chooser: HTMLElement | null = null;
+  /** Slot mirando agora e o dedo que segura o botão. */
+  private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
+  /** Magia de área esperando o toque no mapa (modo mira). */
+  private picking: SpellSlot | null = null;
+  /** Quando (ms) o último toque no mapa conjurou: esse mesmo toque não pode virar joystick. */
+  private pickedAt = -Infinity;
 
-  constructor(private room: DungeonRoom, private actions: HTMLElement) {
+  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim) {
     // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
     actions.prepend(this.slots[1].button, this.slots[0].button);
   }
 
-  /** Conjura pelo teclado (1 e 2) ou pelo botão; slot vazio liberado abre a escolha. */
+  /**
+   * Teclado (1 e 2) ou toque sem mira de arrasto: magia de área entra (ou sai) do modo mira;
+   * as outras conjuram no alvo automático. Slot vazio liberado abre a escolha.
+   */
   press(slot: SpellSlot) {
     const p = this.me();
     if (!p || p.status !== "playing") return;
     if (p.level < SPELL_SLOT_LEVELS[slot]) return;
-    if (!spellIn(p, slot)) return this.openChooser(slot);
+    const spell = SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    if (!spell) return this.openChooser(slot);
+    if (isArea(spell)) {
+      const again = this.picking === slot;
+      this.stopPicking();
+      if (again) return;
+      // Em recarga não entra no modo mira; sem mana, o servidor avisa.
+      if (performance.now() < this.slots[slot].readyAt) return;
+      if (p.mana < spell.manaCost) return this.room.send(MSG.cast, { slot });
+      this.picking = slot;
+      this.aim.startPick(spell);
+      this.slots[slot].button.dataset.aim = "on";
+      return;
+    }
+    this.stopPicking();
     this.room.send(MSG.cast, { slot });
+  }
+
+  /** Modo mira de uma magia de área ligado: o próximo toque no mapa é o ponto dela. */
+  get isPicking() {
+    return this.picking !== null;
+  }
+
+  /** O toque atual é do modo mira (ainda ligado ou que acabou de conjurar), não do joystick. */
+  get ownsTouch() {
+    return this.isPicking || performance.now() - this.pickedAt < 150;
+  }
+
+  /**
+   * Toque no mapa durante o modo mira, no tile (x, y). Fora do alcance não conjura: o alcance
+   * pisca e o modo mira continua. Dentro, a magia cai no tile (o servidor para na parede).
+   */
+  pickAt(x: number, y: number) {
+    const slot = this.picking;
+    const p = this.me();
+    if (slot === null || !p) return;
+    const spell = SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    if (!spell) return this.stopPicking();
+    if (tileDistance(p.x, p.y, x, y) > spell.range) return this.aim.flash();
+    this.stopPicking();
+    this.pickedAt = performance.now();
+    this.room.send(MSG.cast, { slot, aim: { x, y } });
   }
 
   /** O servidor confirmou uma magia nossa: começa a recarga do botão. */
@@ -65,6 +119,8 @@ export class SpellBar {
   }
 
   destroy() {
+    this.stopPicking();
+    this.aim.stop();
     this.slots.forEach((s) => s.button.remove());
     this.chooser?.remove();
   }
@@ -81,8 +137,50 @@ export class SpellBar {
     const label = document.createElement("small");
     label.className = "spell-label";
     button.append(icon, label);
-    button.addEventListener("pointerdown", (e) => { e.preventDefault(); this.press(slot); });
+    button.addEventListener("pointerdown", (e) => { e.preventDefault(); this.down(slot, e); });
+    button.addEventListener("pointermove", (e) => this.drag(e));
+    button.addEventListener("pointerup", (e) => this.up(e));
+    button.addEventListener("pointercancel", (e) => this.up(e, true));
     return { button, icon, label, readyAt: 0, cooldownMs: 1, offered: false, key: "" };
+  }
+
+  /** Encostou no botão: magia de alvo único começa a mirar; as outras seguem o teclado (`press`). */
+  private down(slot: SpellSlot, e: PointerEvent) {
+    if (this.aiming) return;
+    const p = this.me();
+    const spell = p && SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    const ready = performance.now() >= this.slots[slot].readyAt;
+    if (!p || !spell || !isSingleTarget(spell) || !ready || p.mana < spell.manaCost) return this.press(slot);
+    this.stopPicking();
+    // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
+    this.slots[slot].button.setPointerCapture(e.pointerId);
+    this.aiming = { slot, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY };
+    this.aim.start(spell);
+    this.slots[slot].button.dataset.aim = "on";
+  }
+
+  private drag(e: PointerEvent) {
+    const a = this.aiming;
+    if (!a || e.pointerId !== a.pointerId) return;
+    this.aim.move(e.clientX - a.x0, e.clientY - a.y0);
+    this.slots[a.slot].button.dataset.aim = this.aim.cancelled ? "cancel" : "on";
+  }
+
+  /** Soltou: lança no ponto mirado, no alvo automático (toque rápido) ou nada (cancelou). */
+  private up(e: PointerEvent, aborted = false) {
+    const a = this.aiming;
+    if (!a || e.pointerId !== a.pointerId) return;
+    this.aiming = null;
+    delete this.slots[a.slot].button.dataset.aim;
+    const result = this.aim.finish();
+    if (result && !aborted) this.room.send(MSG.cast, { slot: a.slot, ...result });
+  }
+
+  private stopPicking() {
+    if (this.picking === null) return;
+    delete this.slots[this.picking].button.dataset.aim;
+    this.picking = null;
+    this.aim.stop();
   }
 
   private render(slot: SpellSlot, p: PlayerView) {
@@ -172,4 +270,9 @@ export class SpellBar {
 
 function spellIn(p: PlayerView, slot: SpellSlot) {
   return slot === 0 ? p.spell1 : p.spell2;
+}
+
+/** Magia de área com alvo: conjura com um toque no botão e outro no mapa. */
+function isArea(spell: SpellDef) {
+  return spell.aim === "target" && spell.radius > 0;
 }
