@@ -22,6 +22,8 @@ import {
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { SpellBar } from "./spellbar.ts";
+import { SpellAim } from "./aim.ts";
+import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
@@ -48,7 +50,7 @@ import {
 const VIEW_TILES = { w: 9, h: 13 };
 /** Quanto o jogador fica acima do centro da tela, em fração da altura (a parte de baixo é dos polegares). */
 const FOLLOW_LIFT = 0.12;
-/** Até onde o botão de alvo procura monstros (tiles). */
+/** Até onde a troca de alvo (Tab) procura monstros (tiles). */
 const TARGET_CYCLE_RANGE = 8;
 /** Paredes desenhadas até esta distância (em tiles) do chão; além disso é só o fundo escuro. */
 const WALL_REACH = 1;
@@ -120,6 +122,8 @@ export class DungeonScene extends Phaser.Scene {
   /** Piscar, sangue, cadáver e o ataque dos monstros (`MSG.damage`). */
   private hits!: HitFx;
   private spellBar!: SpellBar;
+  private aim!: SpellAim;
+  private attack!: AttackButton;
   private nextSendAt = 0;
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
   private textResolution = 1;
@@ -190,12 +194,15 @@ export class DungeonScene extends Phaser.Scene {
 
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
-    // Sem alvo travado, o servidor mira sozinho no monstro mais próximo ao alcance.
-    // Tocar num monstro trava o alvo; o botão de alvo (ou Tab) troca para o próximo; Esc destrava.
+    // Sem alvo travado, o ataque vai no monstro mais próximo ao alcance (o anel vermelho mostra qual).
+    // Tocar num monstro trava o alvo; no desktop, Tab troca para o próximo e Esc destrava.
+    // Espaço segura o ataque básico; 1 e 2 conjuram no alvo automático (a mira é só no toque).
     const kb = this.input.keyboard;
-    kb?.addCapture("TAB");
+    kb?.addCapture("TAB,SPACE");
     kb?.on("keydown-TAB", () => this.cycleTarget());
     kb?.on("keydown-ESC", () => this.room.send(MSG.target, { id: null }));
+    kb?.on("keydown-SPACE", () => this.attack.hold("key"));
+    kb?.on("keyup-SPACE", () => this.attack.release("key"));
     kb?.on("keydown-ONE", () => this.spellBar.press(0));
     kb?.on("keydown-TWO", () => this.spellBar.press(1));
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -209,13 +216,19 @@ export class DungeonScene extends Phaser.Scene {
       const world = this.cameras.main.getWorldPoint((clientX - rect.left) * scale, (clientY - rect.top) * scale);
       return this.monsterAtWorld(world.x, world.y) !== null;
     });
-    const targetButton = this.addActionButton("🎯", "Próximo alvo", () => this.cycleTarget());
-    this.spellBar = new SpellBar(this.room, document.getElementById("actions")!);
+    // O ⚔️ fica embaixo, mais perto do polegar; os slots de magia entram acima dele.
+    const actions = document.getElementById("actions")!;
+    this.attack = new AttackButton(this.room, actions);
+    this.aim = new SpellAim(this, this.room, this.dungeon, (id) => {
+      const unit = this.avatars.get(id) ?? this.monsters.get(id);
+      return unit && { x: unit.body.x, y: unit.body.y };
+    }, DEPTH.ui - 1);
+    this.spellBar = new SpellBar(this.room, actions, this.aim);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.move.destroy();
       this.minimap?.destroy();
-      targetButton.remove();
+      this.attack.destroy();
       this.spellBar.destroy();
     });
   }
@@ -232,6 +245,8 @@ export class DungeonScene extends Phaser.Scene {
     this.drawTargetRing();
     this.minimap?.update(time);
     this.spellBar.update();
+    this.aim.update();
+    this.attack.update();
   }
 
   // --- Alvo ---------------------------------------------------------------
@@ -266,19 +281,6 @@ export class DungeonScene extends Phaser.Scene {
     this.room.send(MSG.target, { id: near[(current + 1) % near.length].id });
   }
 
-  /** Botão grande na zona do polegar direito (`#actions`). */
-  private addActionButton(icon: string, label: string, onPress: () => void) {
-    const button = document.createElement("button");
-    button.className = "action";
-    button.textContent = icon;
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    // pointerdown responde na hora, sem o atraso do click no toque.
-    button.addEventListener("pointerdown", (e) => { e.preventDefault(); onPress(); });
-    document.getElementById("actions")?.append(button);
-    return button;
-  }
-
   private drawTargetRing() {
     const g = this.targetRing.clear();
     const unit = this.monsters.get(this.me()?.target ?? "");
@@ -293,6 +295,7 @@ export class DungeonScene extends Phaser.Scene {
   private onAttack(msg: AttackMessage) {
     const classId = this.room.state.players.get(msg.from)?.classId as ClassId | undefined;
     if (!classId) return;
+    if (msg.from === this.room.sessionId) this.attack.onAttack();
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, classId === "knight" ? 5 : 2);
     this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
   }

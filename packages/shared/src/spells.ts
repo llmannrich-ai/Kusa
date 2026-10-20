@@ -1,7 +1,7 @@
 import type { ClassId } from "./classes.ts";
 
 /**
- * Ataque básico (auto-attack) de cada classe. Com `projectileSpeed`, o golpe viaja até o alvo
+ * Ataque básico de cada classe: sai enquanto o jogador segura o botão de ataque. Com `projectileSpeed`, o golpe viaja até o alvo
  * e o dano só entra quando chega; 0 = corpo a corpo, o dano é na hora.
  */
 export interface BasicAttackDef {
@@ -16,6 +16,9 @@ export const BASIC_ATTACKS: Record<ClassId, BasicAttackDef> = {
   sorcerer: { name: "Luz negra", projectileSpeed: 10 },
   druid: { name: "Luz verde", projectileSpeed: 11 },
 };
+
+/** Intervalo entre ataques básicos, igual para todas as classes. */
+export const BASIC_ATTACK_COOLDOWN_MS = 1000;
 
 /** Tempo (ms) que um projétil leva entre dois tiles. */
 export function flightMs(speed: number, x0: number, y0: number, x1: number, y1: number) {
@@ -39,7 +42,7 @@ export type SpellId =
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, cura, raízes, guarda e provocação.
- * `aim: "self"` centra a área em quem conjura; `aim: "target"` precisa de um monstro no alcance.
+ * `aim: "self"` centra a área em quem conjura; `aim: "target"` usa a mira (ou o alvo automático no toque rápido).
  */
 export interface SpellDef {
   id: SpellId;
@@ -172,4 +175,24 @@ export const STARTER_SPELLS: readonly SpellId[] = [
 export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly string[] = []): SpellDef[] {
   return Object.values(SPELLS).filter((s) =>
     s.classId === classId && s.slot === slot && (STARTER_SPELLS.includes(s.id) || known.includes(s.id)));
+}
+
+/**
+ * Magia de alvo único (`aim: "target"` sem área): a mira gruda no monstro a até `AIM_SNAP_TILES`
+ * do ponto mirado. As de área caem no ponto, sem ímã.
+ */
+export function isSingleTarget(spell: SpellDef) {
+  return spell.aim === "target" && spell.radius === 0;
+}
+
+/** Distância (tiles) do ponto mirado em que a mira de alvo único gruda num monstro. */
+export const AIM_SNAP_TILES = 1;
+
+/** Puxa o ponto mirado para dentro do alcance (distância em tiles, como `tileDistance`). */
+export function clampToRange(fromX: number, fromY: number, x: number, y: number, range: number) {
+  const dx = x - fromX;
+  const dy = y - fromY;
+  const dist = Math.max(Math.abs(dx), Math.abs(dy));
+  if (dist <= range) return { x, y };
+  return { x: fromX + Math.round((dx * range) / dist), y: fromY + Math.round((dy * range) / dist) };
 }

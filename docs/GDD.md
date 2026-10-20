@@ -9,12 +9,14 @@ O jogo roda no navegador, mas **o alvo principal é o celular**. Toda mecânica 
 teclado e mouse no desktop são um extra.
 
 - **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado, aparece um aviso para voltar à vertical.
-- **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
-- **Ações:** botões grandes no canto inferior direito (os 2 slots de magia e o 🎯 "próximo alvo"; depois poções), sem precisar de mira precisa.
-- **Mira:** sem alvo travado, o servidor ataca sozinho o monstro mais próximo dentro do alcance. Tocar num monstro (em qualquer parte da tela) trava o alvo nele; o 🎯 troca para o próximo monstro por perto.
+- **Dois polegares:** o esquerdo move, o direito ataca e conjura.
+- **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
+- **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele (depois poções).
+- **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele.
+- **Mira das magias:** encostar no botão de uma magia de alvo mostra uma mira pontilhada; arrastar escolhe o ponto e soltar lança (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
-- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Tab e Esc.
+- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias no alvo automático), Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
 ## Menu inicial (estilo Zooba / Clash)
@@ -75,7 +77,7 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 
 ## Combate (protótipo)
 
-- O servidor faz auto-attack no alvo enquanto ele estiver no alcance da classe e com linha de visão; sem alvo travado, escolhe sozinho o monstro mais próximo ao alcance.
+- O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado, o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
 - Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um Ogro (mini-boss) que destranca um baú; o Dragão jovem fica no centro.
@@ -84,10 +86,16 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 
 ## Ataques e magias (protótipo)
 
-- Ataque básico (auto-attack) de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
+- Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
+- O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
 - Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 8. Ao alcançar o nível, aparece na tela a escolha da magia do slot; depois de escolhida, ela fica até o fim da hunt. Fechar a escolha deixa o botão do slot com ✨ para escolher depois.
 - Toda classe tem uma magia inicial por slot; as compradas na árvore de magias do menu viram opções extras na escolha (ver "Árvore de magias").
-- Magias de alvo usam o alvo atual (ou o monstro mais próximo ao alcance); paredes bloqueiam o efeito. Cada uma gasta mana e tem recarga.
+- Magias de alvo têm mira. Encostar no botão mostra uma linha pontilhada do herói até o alvo, o alcance em volta dele e a área da magia; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
+  - **Toque rápido** (sem arrastar): lança no alvo atual ou no monstro mais próximo ao alcance. Sem nenhum monstro ao alcance, não sai nem gasta mana.
+  - **Área** (raio maior que 0): cai no ponto mirado, mesmo sem monstro, e não acompanha ninguém. O ponto para na primeira parede do caminho.
+  - **Alvo único:** a mira gruda (fica dourada) no monstro a até 1 tile do ponto; a magia vai nele e o acompanha durante o voo.
+  - **Errou a mira:** a magia sai, aparece na tela, gasta mana e recarga, e não acerta ninguém.
+- Magias em volta de si (Giro da Lâmina, Grito de Guerra, Tempestade do Vazio, Bênção da Floresta e as compradas do mesmo tipo) saem no toque, sem mira. Paredes bloqueiam o efeito de todas. Cada uma gasta mana e tem recarga.
 
 | Classe | Slot 1 (nível 3) | Slot 2 (nível 8) |
 | --- | --- | --- |

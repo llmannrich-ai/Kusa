@@ -49,8 +49,17 @@ export interface NoticeMessage {
 /** Cliente → servidor: põe uma magia num slot liberado. */
 export interface ChooseSpellMessage { slot: SpellSlot; spellId: SpellId }
 
-/** Cliente → servidor: conjura a magia de um slot (no alvo atual ou no mais próximo ao alcance). */
-export interface CastMessage { slot: SpellSlot }
+/** Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe. */
+export interface AttackingMessage { on: boolean }
+
+/** Ponto escolhido com a mira (tile). `targetId` é o monstro em que a mira de alvo único grudou. */
+export interface CastAim { x: number; y: number; targetId?: string }
+
+/**
+ * Cliente → servidor: conjura a magia de um slot. Sem `aim` (toque rápido), usa o alvo atual
+ * ou o monstro mais próximo ao alcance.
+ */
+export interface CastMessage { slot: SpellSlot; aim?: CastAim }
 
 /** Servidor → todos: um ataque básico saiu (para desenhar golpe ou projétil). */
 export interface AttackMessage {
@@ -97,6 +106,7 @@ export const MSG = {
   start: "start",
   runEnded: "runEnded",
   attack: "attack",
+  attacking: "attacking",
   chooseSpell: "chooseSpell",
   cast: "cast",
   spell: "spell",

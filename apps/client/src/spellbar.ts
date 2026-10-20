@@ -8,6 +8,7 @@ import {
   type SpellId,
   type SpellSlot,
 } from "@kusa/shared";
+import type { SpellAim } from "./aim.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
 const SLOTS: SpellSlot[] = [0, 1];
@@ -26,21 +27,24 @@ interface SlotView {
 }
 
 /**
- * Botões dos 2 slots de magia (acima do 🎯, na zona do polegar direito) e a janela de escolha
- * que abre quando o personagem alcança o nível de um slot. O servidor valida tudo; aqui só
- * mostramos estado, recarga e mandamos as intenções.
+ * Botões dos 2 slots de magia (acima do ⚔️, na zona do polegar direito) e a janela de escolha
+ * que abre quando o personagem alcança o nível de um slot. Magia de alvo mira enquanto o polegar
+ * segura o botão (ver `SpellAim`); magia em volta de si sai no toque. O servidor valida tudo;
+ * aqui só mostramos estado, recarga e mandamos as intenções.
  */
 export class SpellBar {
   private slots: SlotView[];
   private chooser: HTMLElement | null = null;
+  /** Slot mirando agora e o dedo que segura o botão. */
+  private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
 
-  constructor(private room: DungeonRoom, private actions: HTMLElement) {
+  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim) {
     // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
     actions.prepend(this.slots[1].button, this.slots[0].button);
   }
 
-  /** Conjura pelo teclado (1 e 2) ou pelo botão; slot vazio liberado abre a escolha. */
+  /** Conjura pelo teclado (1 e 2), no alvo automático; slot vazio liberado abre a escolha. */
   press(slot: SpellSlot) {
     const p = this.me();
     if (!p || p.status !== "playing") return;
@@ -64,6 +68,7 @@ export class SpellBar {
   }
 
   destroy() {
+    this.aim.stop();
     this.slots.forEach((s) => s.button.remove());
     this.chooser?.remove();
   }
@@ -80,8 +85,42 @@ export class SpellBar {
     const label = document.createElement("small");
     label.className = "spell-label";
     button.append(icon, label);
-    button.addEventListener("pointerdown", (e) => { e.preventDefault(); this.press(slot); });
+    button.addEventListener("pointerdown", (e) => { e.preventDefault(); this.down(slot, e); });
+    button.addEventListener("pointermove", (e) => this.drag(e));
+    button.addEventListener("pointerup", (e) => this.up(e));
+    button.addEventListener("pointercancel", (e) => this.up(e, true));
     return { button, icon, label, readyAt: 0, cooldownMs: 1, offered: false, key: "" };
+  }
+
+  /** Encostou no botão: magia de alvo começa a mirar; as outras saem na hora (como no teclado). */
+  private down(slot: SpellSlot, e: PointerEvent) {
+    if (this.aiming) return;
+    const p = this.me();
+    const spell = p && SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    const ready = performance.now() >= this.slots[slot].readyAt;
+    if (!p || !spell || spell.aim === "self" || !ready || p.mana < spell.manaCost) return this.press(slot);
+    // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
+    this.slots[slot].button.setPointerCapture(e.pointerId);
+    this.aiming = { slot, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY };
+    this.aim.start(spell);
+    this.slots[slot].button.dataset.aim = "on";
+  }
+
+  private drag(e: PointerEvent) {
+    const a = this.aiming;
+    if (!a || e.pointerId !== a.pointerId) return;
+    this.aim.move(e.clientX - a.x0, e.clientY - a.y0);
+    this.slots[a.slot].button.dataset.aim = this.aim.cancelled ? "cancel" : "on";
+  }
+
+  /** Soltou: lança no ponto mirado, no alvo automático (toque rápido) ou nada (cancelou). */
+  private up(e: PointerEvent, aborted = false) {
+    const a = this.aiming;
+    if (!a || e.pointerId !== a.pointerId) return;
+    this.aiming = null;
+    delete this.slots[a.slot].button.dataset.aim;
+    const result = this.aim.finish();
+    if (result && !aborted) this.room.send(MSG.cast, { slot: a.slot, ...result });
   }
 
   private render(slot: SpellSlot, p: PlayerView) {

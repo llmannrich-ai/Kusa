@@ -9,7 +9,7 @@ const DEADZONE = 0.3;
 const JOYSTICK_TOP = 0.45;
 
 /**
- * Entrada de movimento: joystick virtual flutuante (parte de baixo da tela, celular na vertical)
+ * Entrada de movimento: joystick virtual flutuante (parte de baixo e à esquerda da tela, celular na vertical)
  * e WASD/setas no desktop. O resultado é sempre uma das 8 direções, que é o que o servidor aceita.
  */
 export class MoveInput {
@@ -64,7 +64,9 @@ export class MoveInput {
     if (this.pointerId !== null) return;
     // O joystick nasce onde o polegar toca, na parte de baixo da tela.
     const rect = this.surface.getBoundingClientRect();
-    if (e.clientY < rect.top + rect.height * JOYSTICK_TOP || this.isTarget(e.clientX, e.clientY)) return;
+    // Só na metade esquerda: a direita é do outro polegar (ataque e magias).
+    if (e.clientY < rect.top + rect.height * JOYSTICK_TOP || e.clientX > rect.left + rect.width / 2) return;
+    if (this.isTarget(e.clientX, e.clientY)) return;
     this.pointerId = e.pointerId;
     this.origin = { x: e.clientX, y: e.clientY };
     this.base.style.left = `${e.clientX}px`;

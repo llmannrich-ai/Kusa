@@ -43,7 +43,9 @@ O cliente fala com o servidor pelo proxy do Vite em `/colyseus`, então só a po
 Testes de fumaça (com o servidor rodando):
 
 - `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.
-- `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, mata e ganha XP e loot.
+- `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, segura o ataque básico, mata e ganha XP e loot.
+- `npx tsx apps/server/scripts/items.ts`: um cavaleiro mata monstros até cair um item e o equipa ao passar por cima.
+- `npx tsx apps/server/scripts/spells.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, um feiticeiro conjura no toque rápido e com a mira.
 
 ## Variáveis de ambiente
 
