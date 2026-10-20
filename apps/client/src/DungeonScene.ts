@@ -29,6 +29,7 @@ import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView } from "./net.ts";
 import { hash } from "./art/pixels.ts";
 import type { HeroDir } from "./art/heroes.ts";
+import { outfitOf } from "./art/outfit.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
 import {
   CHEST_TEXTURE,
@@ -36,8 +37,8 @@ import {
   MONSTER_TEXTURE,
   PORTAL_TEXTURE,
   floorVariants,
+  heroArt,
   heroIdleFrame,
-  heroTexture,
   heroWalkAnim,
   itemTexture,
   wallCapTexture,
@@ -90,6 +91,8 @@ interface Unit {
   barY: number;
   /** Classe do herói (tem animação de caminhada); monstros só balançam. */
   classId?: ClassId;
+  /** Textura do herói com o equipamento vestido (muda quando ele pega ou perde um item). */
+  heroKey?: string;
   facesLeft: boolean;
   dir: HeroDir;
   lastStepAt: number;
@@ -494,9 +497,11 @@ export class DungeonScene extends Phaser.Scene {
 
   private addAvatar(sessionId: string, player: PlayerView) {
     const classId = player.classId as ClassId;
-    const sprite = this.add.sprite(0, 0, heroTexture(classId), heroIdleFrame("down"));
+    const heroKey = heroArt(this, classId, outfitOf(player));
+    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down"));
     const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, -TILE_SIZE / 2 + 4, false);
     unit.classId = classId;
+    unit.heroKey = heroKey;
     const label = this.add.text(0, unit.barY - 2, player.name, this.textStyle()).setOrigin(0.5, 1);
     unit.overlay.add(label);
     this.avatars.set(sessionId, unit);
@@ -510,6 +515,12 @@ export class DungeonScene extends Phaser.Scene {
   private syncAvatar(sessionId: string, player: PlayerView) {
     const unit = this.avatars.get(sessionId);
     if (!unit) return;
+    // O equipamento aparece no personagem: troca a roupa quando ele pega, larga ou recebe itens.
+    const heroKey = heroArt(this, unit.classId!, outfitOf(player));
+    if (heroKey !== unit.heroKey) {
+      unit.heroKey = heroKey;
+      unit.sprite.setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
+    }
     const alpha = player.status === "playing" ? 1 : 0.35;
     unit.body.setAlpha(alpha);
     unit.overlay.setAlpha(alpha);
@@ -616,8 +627,8 @@ export class DungeonScene extends Phaser.Scene {
     const bob = !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
     unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
     if (unit.dead) return;
-    if (unit.classId) {
-      if (walking) unit.sprite.play(heroWalkAnim(unit.classId, unit.dir), true);
+    if (unit.heroKey) {
+      if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);
       else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
         unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
       }

@@ -106,7 +106,21 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 - O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão. Item pior fica onde está. Itens no chão somem após 2 minutos.
 - Quem morre larga o equipamento no chão. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado (ver "Inventário e mercado").
-- Tabela em `packages/shared/src/items.ts`; arte própria em `apps/client/src/art/items.ts`.
+- Tabela em `packages/shared/src/items.ts`.
+
+### Arte dos itens e equipamento visível
+
+Cada um dos 20 itens tem arte própria em dois formatos, e o que o personagem veste aparece nele para todos da equipe.
+
+- **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por item, não só a cor do material (`apps/client/src/art/items.ts`).
+- **Vestido no herói** (`apps/client/src/art/outfit.ts`), por cima do corpo da classe:
+  - Armadura recobre o tronco com o padrão do material (amarração de couro, couraça, malha, placas com ombreiras, escamas); calça e saia continuam com a cor da classe.
+  - Capacete substitui o chapéu ou capuz da classe (gorro, elmo com crista, elmo com nasal, elmo fechado com penacho, elmo com chifres).
+  - Escudo vai na mão esquerda (nas costas quando o herói está de costas ou, para quem usa arco/cajado, de lado).
+  - Arma: o cavaleiro empunha a arma do item (porrete, espada, machado, espada longa, lâmina do dragão). Paladino, druida e feiticeiro mantêm o arco ou cajado da classe (é o ataque básico deles), feito do material da arma equipada.
+- Sem equipamento, o herói aparece só com a roupa e a arma básica da classe. Ao pegar, trocar ou largar um item, o sprite muda na hora. Quem morre fica sem o que largou no chão.
+- O menu mostra o personagem vestido de frente, de lado e de costas na aba Itens, e a ficha de cada item mostra "como fica vestido" antes de equipar. Os retratos das classes usam o equipamento da próxima hunt.
+- Galeria de conferência: `apps/client/arte.html` (todas as combinações por classe e nível).
 
 ## Decisões em aberto
 

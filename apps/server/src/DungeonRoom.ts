@@ -826,6 +826,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (outcome === "died") {
       for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
       if (seat) seat.stats.items.lost = equipment(player).filter(Boolean);
+      // O corpo fica sem o que largou (o equipamento aparece no personagem).
+      for (const slot of ITEM_SLOTS) player[slot] = "";
     }
     player.status = outcome;
     player.target = "";
