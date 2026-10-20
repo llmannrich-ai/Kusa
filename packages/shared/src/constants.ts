@@ -11,3 +11,6 @@ export const MATCH_DURATION_SECONDS = 4 * 60;
 export const SERVER_TICK_MS = 50;
 
 export const ROOM_NAME = "dungeon";
+
+/** Sala que lista as hunts abertas em tempo real (LobbyRoom do Colyseus). */
+export const LOBBY_ROOM_NAME = "lobby";

@@ -2,7 +2,7 @@ import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import { CLASSES, CLASS_IDS, MAX_LEVEL, MSG, xpForLevel, type ClassId, type JoinOptions, type RunEndedMessage } from "@kusa/shared";
 import { DungeonScene } from "./DungeonScene.ts";
-import { createHunt, joinHunt, type DungeonRoom } from "./net.ts";
+import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import "./style.css";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -30,19 +30,73 @@ function joinOptions(): JoinOptions {
   return { name, classId };
 }
 
+function showError(message: string) {
+  $("rooms-error").textContent = message;
+  show("rooms-error", true);
+}
+
 async function enter(connect: () => Promise<DungeonRoom>) {
-  show("menu-error", false);
+  show("rooms-error", false);
   void goFullscreenPortrait();
   try {
-    bindRoom(await connect());
+    const room = await connect();
+    stopWatching();
+    bindRoom(room);
   } catch (err) {
-    $("menu-error").textContent = `Não foi possível entrar: ${(err as Error).message}`;
-    show("menu-error", true);
+    showError(`Não foi possível entrar: ${(err as Error).message}`);
   }
 }
 
+// --- Lista de salas -------------------------------------------------------
+
+let unwatch: (() => void) | null = null;
+
+function stopWatching() {
+  unwatch?.();
+  unwatch = null;
+}
+
+async function openRooms() {
+  show("menu", false);
+  show("rooms", true);
+  show("rooms-error", false);
+  renderHunts([]);
+  try {
+    unwatch = await watchHunts(renderHunts);
+    // Saiu da tela (voltou ou entrou numa sala) antes de a lista conectar.
+    if ($("rooms").hidden) stopWatching();
+  } catch (err) {
+    showError(`Servidor indisponível: ${(err as Error).message}`);
+  }
+}
+
+function renderHunts(hunts: HuntListing[]) {
+  const list = $("room-list");
+  list.innerHTML = "";
+  for (const hunt of hunts) {
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    button.className = "room";
+    const title = document.createElement("span");
+    title.textContent = `Hunt de ${hunt.metadata?.leader ?? "?"}`;
+    const count = document.createElement("span");
+    count.className = "muted";
+    count.textContent = `${hunt.clients}/${hunt.maxClients}`;
+    button.append(title, count);
+    button.onclick = () => enter(() => joinHunt(hunt.roomId, joinOptions()));
+    li.append(button);
+    list.append(li);
+  }
+  show("rooms-empty", hunts.length === 0);
+}
+
+$("play").onclick = () => { joinOptions(); void openRooms(); };
+$("rooms-back").onclick = () => {
+  stopWatching();
+  show("rooms", false);
+  show("menu", true);
+};
 $("create").onclick = () => enter(() => createHunt(joinOptions()));
-$("join").onclick = () => enter(() => joinHunt($<HTMLInputElement>("code").value, joinOptions()));
 $("back").onclick = () => location.reload();
 
 // --- Sala ---------------------------------------------------------------
@@ -50,9 +104,8 @@ $("back").onclick = () => location.reload();
 let game: Phaser.Game | null = null;
 
 function bindRoom(room: DungeonRoom) {
-  show("menu", false);
+  show("rooms", false);
   show("lobby", true);
-  $("lobby-code").textContent = room.roomId;
   $("start").onclick = () => room.send(MSG.start);
 
   const callbacks = Callbacks.get(room);

@@ -28,6 +28,7 @@ import {
   type ClassId,
   type DamageMessage,
   type Dungeon,
+  type HuntMetadata,
   type JoinOptions,
   type MonsterDef,
   type MonsterKind,
@@ -78,7 +79,7 @@ const MANA_REGEN = 0.02;
 const SAFE_RADIUS = 6;
 
 /** Uma hunt: a equipe (1 a 4 jogadores) entra junta e cada um sai morto, fugindo ou após o boss. */
-export class DungeonRoom extends Room<{ state: DungeonState }> {
+export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetadata }> {
   maxClients = MAX_PARTY_SIZE;
   state = new DungeonState();
 
@@ -127,7 +128,10 @@ export class DungeonRoom extends Room<{ state: DungeonState }> {
 
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, { userId: auth.userId, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false });
-    if (!this.state.leaderId) this.state.leaderId = client.sessionId;
+    if (!this.state.leaderId) {
+      this.state.leaderId = client.sessionId;
+      void this.setMatchmaking({ metadata: { leader: player.name } });
+    }
   }
 
   onLeave(client: Client) {
@@ -141,6 +145,8 @@ export class DungeonRoom extends Room<{ state: DungeonState }> {
       this.seats.delete(client.sessionId);
       if (this.state.leaderId === client.sessionId) {
         this.state.leaderId = this.state.players.keys().next().value ?? "";
+        const leader = this.state.players.get(this.state.leaderId);
+        if (leader) void this.setMatchmaking({ metadata: { leader: leader.name } });
       }
     }
   }
