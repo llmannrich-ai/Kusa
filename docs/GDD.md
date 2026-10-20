@@ -69,14 +69,17 @@ Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dung
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-boss → boss) |
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Goblin, Esqueleto, Orc → Ogro → Dragão jovem |
-| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, 7 clareiras no caminho | Sapo gigante, Cobra-d'água, Afogado, Naga guerreira → Troll do brejo → Hidra do pântano |
+| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Cobra-d'água, Afogado, Naga guerreira → Troll do brejo → Hidra do pântano |
 
 ### Pântano das Ruínas
 
-- Floresta com sensação de campo aberto: o caminho faz um arco da borda até o centro passando por clareiras grandes,
-  ligadas por trilhas largas, às vezes com atalhos que pulam uma clareira. Campinas fora do caminho guardam alguns monstros.
+- **Campo aberto, sem caminho único:** o mapa nasce todo andável (só a borda é mata fechada) e recebe por cima
+  bosques de vários tamanhos, árvores soltas, lagoas e restos de muro. Todo obstáculo que fecharia a passagem
+  até uma zona, baú ou boss é descartado, então a equipe pode ir para qualquer região e contornar tudo.
+- **Dificuldade em arco:** 7 zonas de monstros vão da entrada até as ruínas do centro, cada uma mais forte;
+  5 campinas espalhadas têm alguns monstros extras.
 - Lagoas e poças: **a água bloqueia o passo, mas não a visão**. Flechas, magias e o ataque de alcance 2 da Hidra passam por cima.
-- Ruínas: salas laterais cercadas por muros caídos (Troll + baú), colunas soltas pelo campo e a arena do boss no centro,
+- Ruínas: salas laterais cercadas por muros caídos com 2 portões (Troll + baú), colunas soltas pelo campo e a arena do boss no centro,
   um quadrado de muros com 4 portões e 4 colunas.
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.

@@ -28,7 +28,7 @@ export interface Dungeon {
   path: Rect[];
   /** Salas laterais (baús, mini-bosses). */
   side: Rect[];
-  /** Campinas fora do caminho, com poucos monstros (só no pântano). */
+  /** Pontos de monstros extras fora das zonas do caminho (só no pântano). */
   meadows: Rect[];
   portal: { x: number; y: number };
 }
@@ -129,15 +129,19 @@ function generateCrypt(seed: number): Dungeon {
 }
 
 const SWAMP_SIZE = 112;
-/** Clareiras do caminho entre a entrada e as ruínas do boss. */
+/** Zonas de monstros entre a entrada e as ruínas do boss (cada uma mais forte que a anterior). */
 const SWAMP_STEPS = 7;
 /** Lado da arena do boss (quadrado de ruínas no centro). */
 const SWAMP_ARENA = 16;
+/** Quantos bosques e lagoas o gerador tenta pôr no campo aberto. */
+const SWAMP_GROVES = 70;
+const SWAMP_LAKES = 30;
 
 /**
- * Pântano das Ruínas: floresta aberta. O caminho faz um arco da borda até as ruínas do centro,
- * passando por clareiras grandes ligadas por trilhas largas (às vezes com atalhos). Lagoas
- * espalhadas bloqueiam o passo mas não a visão; salas laterais são ruínas com mini-boss e baú.
+ * Pântano das Ruínas: campo aberto. O mapa nasce todo andável, cercado de mata na borda, e recebe
+ * por cima bosques, lagoas (bloqueiam o passo, não a visão) e ruínas, sempre deixando espaço para
+ * contornar: a equipe vai para onde quiser. A dificuldade segue um arco de zonas da entrada até
+ * as ruínas do centro, onde está o boss; salas laterais em ruínas guardam mini-boss e baú.
  */
 function generateSwamp(seed: number): Dungeon {
   // Rede de segurança: se algum ponto importante ficou isolado, tenta a seed seguinte (continua determinístico).
@@ -147,7 +151,7 @@ function generateSwamp(seed: number): Dungeon {
   }
 }
 
-/** Pontos que precisam ser alcançáveis a pé a partir do portal: salas, baús e o boss. */
+/** Pontos que precisam ser alcançáveis a pé a partir do portal: zonas, baús e o boss. */
 function swampGoals(d: Pick<Dungeon, "portal" | "boss" | "path" | "side" | "meadows">) {
   return [
     d.portal, centerOf(d.boss), ...d.path.map(centerOf), ...d.meadows.map(centerOf),
@@ -158,7 +162,7 @@ function swampGoals(d: Pick<Dungeon, "portal" | "boss" | "path" | "side" | "mead
 function buildSwamp(seed: number): Dungeon {
   const rng = createRng(seed);
   const size = SWAMP_SIZE;
-  const tiles = new Uint8Array(size * size);
+  const tiles = new Uint8Array(size * size).fill(Tile.Floor);
   const inside = (x: number, y: number) => x > 0 && y > 0 && x < size - 1 && y < size - 1;
   const get = (x: number, y: number) => (inside(x, y) ? tiles[y * size + x] : Tile.Wall);
   const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * size + x] = t; };
@@ -173,184 +177,176 @@ function buildSwamp(seed: number): Dungeon {
         if (only === undefined || get(x, y) === only) set(x, y, t);
       }
   };
-  /** Clareira: vários círculos sobrepostos; devolve o retângulo onde os monstros nascem. */
-  const clearing = (cx: number, cy: number, r: number): Rect => {
-    blob(cx, cy, r * 0.75, Tile.Floor);
-    const extra = rng.int(2, 4);
-    for (let i = 0; i < extra; i++) {
-      const a = rng.next() * Math.PI * 2;
-      const d = r * (0.3 + rng.next() * 0.35);
-      blob(Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d), r * (0.5 + rng.next() * 0.25), Tile.Floor);
-    }
-    const half = Math.round(r * 0.7);
-    return { x: cx - half, y: cy - half, w: half * 2 + 1, h: half * 2 + 1 };
-  };
-  /** Trilha sinuosa de `a` até `b`: duas retas por um ponto do meio deslocado para o lado. */
-  const trail = (a: { x: number; y: number }, b: { x: number; y: number }, width: number) => {
-    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-    const bend = (rng.next() - 0.5) * 0.5 * len;
-    const mid = { x: (a.x + b.x) / 2 - ((b.y - a.y) / len) * bend, y: (a.y + b.y) / 2 + ((b.x - a.x) / len) * bend };
-    const brush = width / 2;
-    for (const [p, q] of [[a, mid], [mid, b]] as const) {
-      const steps = Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) * 2);
-      for (let i = 0; i <= steps; i++) {
-        const x = p.x + ((q.x - p.x) * i) / steps;
-        const y = p.y + ((q.y - p.y) * i) / steps;
-        for (let yy = Math.floor(y - brush); yy <= Math.ceil(y + brush); yy++)
-          for (let xx = Math.floor(x - brush); xx <= Math.ceil(x + brush); xx++)
-            if (Math.hypot(xx - x, yy - y) <= brush) set(xx, yy, Tile.Floor);
-      }
-    }
-  };
-  /**
-   * Contorno de um retângulo em ruínas: muros com falhas (`crumble` = chance de faltar pedra).
-   * Com `only`, só vira muro o que era desse tipo (uma trilha que já passava ali vira brecha no muro).
-   */
-  const ruinRing = (r: Rect, crumble: number, only?: number) => {
+  /** Contorno de um retângulo em ruínas: muros com falhas (`crumble` = chance de faltar pedra). */
+  const ruinRing = (r: Rect, crumble: number) => {
     for (let y = r.y; y < r.y + r.h; y++)
       for (let x = r.x; x < r.x + r.w; x++) {
         const border = x === r.x || y === r.y || x === r.x + r.w - 1 || y === r.y + r.h - 1;
-        if (border && rng.next() >= crumble && (only === undefined || get(x, y) === only)) set(x, y, Tile.Ruin);
+        if (border && rng.next() >= crumble) set(x, y, Tile.Ruin);
       }
   };
+  /** Abre um portão de 3 tiles no meio de cada lado pedido de um contorno. */
+  const gates = (r: Rect, sides: readonly number[]) => {
+    const cx = r.x + Math.floor(r.w / 2);
+    const cy = r.y + Math.floor(r.h / 2);
+    for (let k = -1; k <= 1; k++) {
+      if (sides.includes(0)) set(cx + k, r.y, Tile.Floor);
+      if (sides.includes(1)) set(r.x + r.w - 1, cy + k, Tile.Floor);
+      if (sides.includes(2)) set(cx + k, r.y + r.h - 1, Tile.Floor);
+      if (sides.includes(3)) set(r.x, cy + k, Tile.Floor);
+    }
+  };
+
+  // Mata fechada só na borda do mapa, com espessura que varia aos poucos.
+  for (let side = 0; side < 4; side++) {
+    let depth = rng.int(2, 4);
+    for (let i = 0; i < size; i++) {
+      depth = Math.max(2, Math.min(6, depth + rng.int(-1, 1)));
+      for (let d = 0; d < depth; d++) {
+        const [x, y] = side === 0 ? [i, d] : side === 1 ? [size - 1 - d, i] : side === 2 ? [i, size - 1 - d] : [d, i];
+        tiles[y * size + x] = Tile.Wall;
+      }
+    }
+  }
 
   const center = { x: size / 2, y: size / 2 };
   const boss: Rect = { x: center.x - SWAMP_ARENA / 2, y: center.y - SWAMP_ARENA / 2, w: SWAMP_ARENA, h: SWAMP_ARENA };
 
-  // Entrada numa das 4 bordas.
+  // Entrada perto de uma das 4 bordas.
   const along = rng.int(16, size - 26);
   const spawnPos = rng.pick([
-    { x: along, y: 3 },
-    { x: size - 13, y: along },
-    { x: along, y: size - 13 },
-    { x: 3, y: along },
+    { x: along, y: 7 },
+    { x: size - 17, y: along },
+    { x: along, y: size - 17 },
+    { x: 7, y: along },
   ]);
   const spawn: Rect = { ...spawnPos, w: 10, h: 10 };
   const s = centerOf(spawn);
+  for (let y = spawn.y; y < spawn.y + spawn.h; y++) for (let x = spawn.x; x < spawn.x + spawn.w; x++) set(x, y, Tile.Floor);
 
-  // Caminho em arco: da entrada até perto das ruínas, girando em volta do centro.
+  // Zonas de dificuldade em arco, da entrada até perto das ruínas, girando em volta do centro.
+  // Não são salas: é só onde cada grupo de monstros nasce no campo aberto.
   const r0 = Math.hypot(s.x - center.x, s.y - center.y);
   const a0 = Math.atan2(s.y - center.y, s.x - center.x);
   const turn = (rng.next() < 0.5 ? -1 : 1) * Math.PI * (1.2 + rng.next() * 0.4);
-  const anchors: { x: number; y: number }[] = [s];
+  const anchors: { x: number; y: number }[] = [];
   const path: Rect[] = [];
   for (let i = 1; i <= SWAMP_STEPS; i++) {
     const t = i / SWAMP_STEPS;
     const r = r0 + (24 - r0) * t;
     const a = a0 + turn * t;
-    const radius = rng.int(7, 10);
-    const cx = clamp(center.x + Math.cos(a) * r + rng.int(-3, 3), radius + 3, size - radius - 4);
-    const cy = clamp(center.y + Math.sin(a) * r + rng.int(-3, 3), radius + 3, size - radius - 4);
+    const half = rng.int(6, 8);
+    const cx = clamp(center.x + Math.cos(a) * r + rng.int(-3, 3), half + 7, size - half - 8);
+    const cy = clamp(center.y + Math.sin(a) * r + rng.int(-3, 3), half + 7, size - half - 8);
     anchors.push({ x: cx, y: cy });
-    path.push(clearing(cx, cy, radius));
+    path.push({ x: cx - half, y: cy - half, w: half * 2 + 1, h: half * 2 + 1 });
   }
 
-  // Clareira da entrada e arena do boss (aberta, com o quadrado de ruínas e 4 colunas).
-  blob(s.x, s.y, 6, Tile.Floor);
-  for (let y = spawn.y; y < spawn.y + spawn.h; y++) for (let x = spawn.x; x < spawn.x + spawn.w; x++) set(x, y, Tile.Floor);
-  blob(center.x, center.y, SWAMP_ARENA / 2 + 3, Tile.Floor);
+  // Arena do boss: quadrado de muros caídos com 4 portões e 4 colunas.
   ruinRing(boss, 0.3);
+  gates(boss, [0, 1, 2, 3]);
   for (const [dx, dy] of [[4, 4], [SWAMP_ARENA - 5, 4], [4, SWAMP_ARENA - 5], [SWAMP_ARENA - 5, SWAMP_ARENA - 5]]) {
     set(boss.x + dx, boss.y + dy, Tile.Ruin);
   }
-  // Portões no meio de cada lado do quadrado.
-  for (let k = -1; k <= 1; k++) {
-    set(center.x + k, boss.y, Tile.Floor);
-    set(center.x + k, boss.y + boss.h - 1, Tile.Floor);
-    set(boss.x, center.y + k, Tile.Floor);
-    set(boss.x + boss.w - 1, center.y + k, Tile.Floor);
-  }
 
-  // Trilhas do caminho principal, e alguns atalhos pulando uma clareira (campo aberto, mais de uma rota).
-  const route = [...anchors, center];
-  for (let i = 0; i < route.length - 1; i++) trail(route[i], route[i + 1], 3);
-  for (let i = 1; i < anchors.length - 2; i++) if (rng.next() < 0.3) trail(anchors[i], anchors[i + 2], 2);
-
-  // Campinas fora do caminho, para fora do arco: mais campo aberto para explorar.
-  const meadows: Rect[] = [];
-  for (let i = 1; i < anchors.length - 1; i++) {
-    if (rng.next() < 0.45) continue;
-    const out = Math.atan2(anchors[i].y - center.y, anchors[i].x - center.x) + (rng.next() - 0.5) * 1.6;
-    const radius = rng.int(5, 8);
-    const d = rng.int(14, 18);
-    const mx = clamp(anchors[i].x + Math.cos(out) * d, radius + 3, size - radius - 4);
-    const my = clamp(anchors[i].y + Math.sin(out) * d, radius + 3, size - radius - 4);
-    if (Math.hypot(mx - center.x, my - center.y) < SWAMP_ARENA + radius || Math.hypot(mx - s.x, my - s.y) < 14) continue;
-    meadows.push(clearing(mx, my, radius));
-    trail(anchors[i], { x: mx, y: my }, 3);
-  }
-
-  // Salas laterais em ruínas, penduradas nas clareiras, longe da entrada e das ruínas do boss.
+  // Salas laterais em ruínas perto das zonas, longe da entrada e da arena, com 2 portões.
   const side: Rect[] = [];
-  for (let i = 1; i < anchors.length - 1; i++) {
+  for (let i = 0; i < anchors.length - 1; i++) {
     if (rng.next() < 0.35) continue;
     const anchor = anchors[i];
     const w = rng.int(7, 9);
     const h = rng.int(7, 9);
     const room = shuffled(rng, SWAMP_SIDE_DIRS)
       .map(([dx, dy]): Rect => ({
-        x: clamp(anchor.x + dx * 13 - w / 2, 2, size - w - 2),
-        y: clamp(anchor.y + dy * 13 - h / 2, 2, size - h - 2),
+        x: clamp(anchor.x + dx * 13 - w / 2, 6, size - w - 7),
+        y: clamp(anchor.y + dy * 13 - h / 2, 6, size - h - 7),
         w, h,
       }))
       .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP && gapBetween(r, boss) >= 3
-        && side.every((o) => gapBetween(r, o) >= 2)
-        && [...anchors, ...meadows.map(centerOf)].every((p) => !(p.x >= r.x - 1 && p.y >= r.y - 1 && p.x <= r.x + r.w && p.y <= r.y + r.h)));
+        && side.every((o) => gapBetween(r, o) >= 3)
+        && anchors.every((p) => gapBetween(r, { x: p.x, y: p.y, w: 1, h: 1 }) >= 3));
     if (!room) continue;
-    ruinRing(room, 0.2, Tile.Wall);
-    for (let y = room.y + 1; y < room.y + room.h - 1; y++) for (let x = room.x + 1; x < room.x + room.w - 1; x++) set(x, y, Tile.Floor);
-    trail(centerOf(room), anchor, 2);
+    ruinRing(room, 0.2);
+    gates(room, shuffled(rng, [0, 1, 2, 3]).slice(0, 2));
     side.push(room);
   }
 
-  // Áreas que precisam ficar livres: entrada, arena e salas laterais (baú no canto de dentro).
-  const keep = [grow(spawn, 2), grow(boss, 1), ...side.map((r) => grow(r, 1))];
+  // Campinas: pontos de monstros extras espalhados pelo campo, longe da entrada, das zonas e da arena.
+  const meadows: Rect[] = [];
+  for (let tries = 0; tries < 60 && meadows.length < 5; tries++) {
+    const p = { x: rng.int(14, size - 15), y: rng.int(14, size - 15) };
+    const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+    if (!far(s, 24) || !far(center, SWAMP_ARENA + 6) || !anchors.every((a) => far(a, 14))
+      || !meadows.every((m) => far(centerOf(m), 14)) || side.some((r) => gapBetween(r, { ...p, w: 1, h: 1 }) < 4)) continue;
+    meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
+  }
+
+  // Áreas que ficam livres: entrada, arena, salas laterais e o miolo de cada zona e campina.
+  const keep = [
+    grow(spawn, 3), grow(boss, 2), ...side.map((r) => grow(r, 2)),
+    ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
+  ];
   const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
-
-  // Lagoas grandes na mata, perto das clareiras (só trocam mata por água: não fecham caminho nenhum).
-  for (const a of anchors.slice(1)) {
-    for (let k = rng.int(1, 2); k > 0; k--) {
-      const angle = rng.next() * Math.PI * 2;
-      const d = 10 + rng.next() * 6;
-      blob(Math.round(a.x + Math.cos(angle) * d), Math.round(a.y + Math.sin(angle) * d), 3 + rng.next() * 3, Tile.Water, Tile.Wall);
-    }
-  }
-
-  // Poças dentro das clareiras: desfeitas se separarem algum ponto importante do resto.
   const goals = [...swampGoals({ portal: s, boss, path, side, meadows }), ...anchors];
-  for (const c of [...anchors.slice(1), ...meadows.map(centerOf)]) {
-    const pools = rng.int(1, 3);
-    for (let k = 0; k < pools; k++) {
-      const a = rng.next() * Math.PI * 2;
-      const d = 3 + rng.next() * 4;
-      const px = Math.round(c.x + Math.cos(a) * d);
-      const py = Math.round(c.y + Math.sin(a) * d);
-      const r = 1.2 + rng.next() * 1.8;
-      const before = tiles.slice();
-      blob(px, py, r, Tile.Water, Tile.Floor);
-      for (let y = py - 5; y <= py + 5; y++)
-        for (let x = px - 5; x <= px + 5; x++)
-          if (inside(x, y) && (kept(x, y) || Math.hypot(x - c.x, y - c.y) < 2)) tiles[y * size + x] = before[y * size + x];
-      if (!connected(tiles, size, goals)) tiles.set(before);
+
+  /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
+  const obstacle = (place: () => void) => {
+    const before = tiles.slice();
+    place();
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i] !== before[i] && kept(i % size, Math.floor(i / size))) { tiles.set(before); return; }
     }
+    if (!connected(tiles, size, goals)) tiles.set(before);
+  };
+
+  // Bosques: manchas de árvores de tamanhos variados, às vezes com uma árvore-satélite ao lado.
+  for (let i = 0; i < SWAMP_GROVES; i++) {
+    const x = rng.int(6, size - 7);
+    const y = rng.int(6, size - 7);
+    const r = 1.2 + rng.next() * 3.3;
+    obstacle(() => {
+      blob(x, y, r, Tile.Wall, Tile.Floor);
+      if (rng.next() < 0.5) blob(x + rng.int(-4, 4), y + rng.int(-4, 4), 1 + rng.next() * 1.5, Tile.Wall, Tile.Floor);
+    });
   }
 
-  // Árvores e colunas soltas no meio do campo: só com chão em volta (2 tiles), para nunca fechar passagem.
+  // Lagoas e brejos.
+  for (let i = 0; i < SWAMP_LAKES; i++) {
+    const x = rng.int(8, size - 9);
+    const y = rng.int(8, size - 9);
+    const r = 2 + rng.next() * 3.5;
+    obstacle(() => blob(x, y, r, Tile.Water, Tile.Floor));
+  }
+
+  // Restos de muro pelo campo: trechos curtos, retos.
+  for (let i = 0; i < 9; i++) {
+    const x = rng.int(8, size - 9);
+    const y = rng.int(8, size - 9);
+    const len = rng.int(3, 6);
+    const horizontal = rng.next() < 0.5;
+    obstacle(() => { for (let k = 0; k < len; k++) set(horizontal ? x + k : x, horizontal ? y : y + k, Tile.Ruin); });
+  }
+
+  // Árvores e colunas soltas: só com chão em volta, para nunca fechar passagem.
   for (let y = 3; y < size - 3; y++)
     for (let x = 3; x < size - 3; x++) {
       if (kept(x, y) || !openAround(get, x, y, 2)) continue;
       const roll = rng.next();
-      if (roll < 0.025) set(x, y, Tile.Wall);
-      else if (roll < 0.033) set(x, y, Tile.Ruin);
+      if (roll < 0.045) set(x, y, Tile.Wall);
+      else if (roll < 0.051) set(x, y, Tile.Ruin);
     }
 
-  const portal = centerOf(spawn);
+  // Bolsões de chão que ficaram sem acesso viram mata (ninguém nasce ou cai lá).
+  const reach = reachableFrom(tiles, size, s);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+
+  const portal = s;
   set(portal.x, portal.y, Tile.Portal);
 
   return { mapId: "swamp", width: size, height: size, tiles, spawn, boss, path, side, meadows, portal };
 }
 
-/** Direções (8) em que uma sala lateral do pântano pode ficar em relação à clareira. */
+/** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */
 const SWAMP_SIDE_DIRS: readonly (readonly [number, number])[] = [
   [1, 0], [-1, 0], [0, 1], [0, -1], [0.75, 0.75], [-0.75, 0.75], [0.75, -0.75], [-0.75, -0.75],
 ];
@@ -363,12 +359,18 @@ function openAround(get: (x: number, y: number) => number, x: number, y: number,
   return true;
 }
 
-/** Todos os pontos alcançáveis a pé a partir do primeiro (busca em largura, 4 direções). */
+/** Todos os pontos alcançáveis a pé a partir do primeiro (4 direções: mais rígido que o passo do jogo). */
 function connected(tiles: Uint8Array, size: number, goals: readonly { x: number; y: number }[]) {
+  const seen = reachableFrom(tiles, size, goals[0]);
+  return goals.every((g) => seen[g.y * size + g.x] === 1);
+}
+
+/** Tiles andáveis alcançáveis a partir de um ponto (busca em largura, 4 direções). */
+function reachableFrom(tiles: Uint8Array, size: number, from: { x: number; y: number }) {
   const walk = (i: number) => tiles[i] === Tile.Floor || tiles[i] === Tile.Portal;
   const seen = new Uint8Array(tiles.length);
-  const start = goals[0].y * size + goals[0].x;
-  if (!walk(start)) return false;
+  const start = from.y * size + from.x;
+  if (!walk(start)) return seen;
   const queue = [start];
   seen[start] = 1;
   for (let head = 0; head < queue.length; head++) {
@@ -379,7 +381,7 @@ function connected(tiles: Uint8Array, size: number, goals: readonly { x: number;
       queue.push(n);
     }
   }
-  return goals.every((g) => seen[g.y * size + g.x] === 1);
+  return seen;
 }
 
 function grow(r: Rect, by: number): Rect {
