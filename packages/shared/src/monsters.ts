@@ -1,3 +1,5 @@
+import type { AttackFx } from "./messages.ts";
+
 export type MonsterKind = "rat" | "goblin" | "skeleton" | "orc" | "ogre" | "dragon";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
@@ -20,6 +22,8 @@ export interface MonsterDef {
   attackRange: number;
   /** Intervalo entre ataques. */
   attackCooldownMs: number;
+  /** Efeito visual do ataque. */
+  attackFx: AttackFx;
   /** Forma e cor provisórias até termos sprites. */
   shape: "circle" | "square" | "diamond" | "triangle";
   color: number;
@@ -30,27 +34,27 @@ export interface MonsterDef {
 export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   rat: {
     kind: "rat", name: "Ratazana", rank: "common", shape: "circle", color: 0x8d7b68, size: 0.5,
-    hp: 25, damage: 3, xp: 20, loot: [2, 5], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200,
+    hp: 25, damage: 3, xp: 20, loot: [2, 5], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
   },
   goblin: {
     kind: "goblin", name: "Goblin", rank: "common", shape: "triangle", color: 0x6ab04c, size: 0.6,
-    hp: 45, damage: 5, xp: 35, loot: [4, 9], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200,
+    hp: 45, damage: 5, xp: 35, loot: [4, 9], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "slash",
   },
   skeleton: {
     kind: "skeleton", name: "Esqueleto", rank: "common", shape: "diamond", color: 0xdcdde1, size: 0.65,
-    hp: 70, damage: 8, xp: 55, loot: [7, 14], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300,
+    hp: 70, damage: 8, xp: 55, loot: [7, 14], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
   },
   orc: {
     kind: "orc", name: "Orc guerreiro", rank: "common", shape: "square", color: 0x4b6584, size: 0.7,
-    hp: 110, damage: 11, xp: 85, loot: [12, 22], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400,
+    hp: 110, damage: 11, xp: 85, loot: [12, 22], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
   },
   ogre: {
     kind: "ogre", name: "Ogro", rank: "miniboss", shape: "square", color: 0xa0522d, size: 0.9,
-    hp: 260, damage: 16, xp: 220, loot: [30, 50], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600,
+    hp: 260, damage: 16, xp: 220, loot: [30, 50], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
   },
   dragon: {
     kind: "dragon", name: "Dragão jovem", rank: "boss", shape: "diamond", color: 0xb33939, size: 1.4,
-    hp: 900, damage: 24, xp: 700, loot: [150, 250], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500,
+    hp: 900, damage: 24, xp: 700, loot: [150, 250], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
   },
 };
 
