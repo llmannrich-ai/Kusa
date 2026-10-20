@@ -15,6 +15,14 @@ saqueiam e precisam sair antes que a dungeon desabe. Veja o [game design](docs/G
 O servidor de jogo é a fonte da verdade: movimento, combate, loot e tempo rodam nele, e o navegador
 só envia intenções. O gold só é gravado pelo servidor (service role) através da função `finish_run`.
 
+## Jogar
+
+**https://llmannrich-ai.github.io/Kusa/** (melhor no celular, na horizontal)
+
+- O cliente é publicado no GitHub Pages a cada push no `main` (`.github/workflows/pages.yml`).
+- O servidor de jogo roda no Render, plano free (`render.yaml`). Ele dorme após 15 min sem jogadores, e a primeira entrada leva cerca de 1 min.
+- O endereço do servidor fica na variável do repositório `KUSA_SERVER_URL` (padrão `https://kusa-server.onrender.com`).
+
 ## Testar no navegador (GitHub Codespaces)
 
 [![Abrir no GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/llmannrich-ai/Kusa?quickstart=1)

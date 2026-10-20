@@ -3,6 +3,8 @@ import { defineConfig } from "vite";
 const gameServer = process.env.GAME_SERVER_URL ?? "http://localhost:2567";
 
 export default defineConfig({
+  // No GitHub Pages o jogo fica em /Kusa/ (definido pelo workflow de deploy).
+  base: process.env.BASE_PATH ?? "/",
   server: {
     port: 5173,
     // Falha em vez de pular para outra porta: o Codespace e o README apontam para a 5173.

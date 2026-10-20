@@ -1,0 +1,19 @@
+# Servidor de jogo (Colyseus) no Render. No painel: New → Blueprint → escolha este repositório.
+services:
+  - type: web
+    name: kusa-server
+    runtime: node
+    plan: free
+    # Região mais próxima do Brasil disponível no Render.
+    region: virginia
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm start -w @kusa/server
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: SUPABASE_URL
+        value: https://niaylxoatuxkqwwnlsic.supabase.co
+      # O painel pede o valor na criação. Deixe em branco para rodar em modo convidado.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
