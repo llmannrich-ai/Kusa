@@ -11,3 +11,6 @@ export const ROOM_NAME = "dungeon";
 
 /** Sala que lista as hunts abertas em tempo real (LobbyRoom do Colyseus). */
 export const LOBBY_ROOM_NAME = "lobby";
+
+/** Multiplicador global da velocidade de movimento de jogadores e monstros (1 = valores das tabelas). */
+export const MOVE_SPEED_SCALE = 0.85;

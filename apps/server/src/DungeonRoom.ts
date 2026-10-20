@@ -18,6 +18,7 @@ import {
   MAX_LEVEL,
   MAX_PARTY_SIZE,
   MAX_SUMMONS_PER_PLAYER,
+  MOVE_SPEED_SCALE,
   MSG,
   SERVER_TICK_MS,
   SPELLS,
@@ -1004,7 +1005,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       return;
     }
     const diagonal = step.x !== m.x && step.y !== m.y;
-    brain.nextMoveAt = now + (1000 / def.speed) * (diagonal ? Math.SQRT2 : 1);
+    brain.nextMoveAt = now + (1000 / (def.speed * MOVE_SPEED_SCALE)) * (diagonal ? Math.SQRT2 : 1);
     m.x = step.x;
     m.y = step.y;
   }
