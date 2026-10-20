@@ -21,8 +21,9 @@ import {
   type ItemDef,
   type TalentDef,
 } from "@kusa/shared";
-import { heroSheet } from "./art/heroes.ts";
+import { heroPoses } from "./art/heroes.ts";
 import { itemIcon } from "./art/items.ts";
+import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
 import {
   ProfileError,
   buyItem,
@@ -68,20 +69,29 @@ function itemImg(itemId: string) {
   return img;
 }
 
-/** Retrato da classe: primeiro quadro (parado, de frente) da folha de sprites. */
-function portrait(classId: ClassId) {
-  const key = `hero:${classId}`;
-  if (!iconCache.has(key)) {
-    const sheet = heroSheet(classId);
-    const frame = document.createElement("canvas");
-    frame.width = frame.height = sheet.height;
-    frame.getContext("2d")!.drawImage(sheet, 0, 0, sheet.height, sheet.height, 0, 0, sheet.height, sheet.height);
-    iconCache.set(key, frame.toDataURL());
-  }
+/** Retrato da classe vestindo `outfit`: quadro parado, de frente. */
+function portrait(classId: ClassId, outfit: Outfit = NO_OUTFIT) {
   const img = el("img", "hero-img");
-  img.src = iconCache.get(key)!;
+  img.src = heroUrl(classId, outfit, "down");
   img.alt = CLASSES[classId].name;
   return img;
+}
+
+/** O personagem vestido de frente, de lado e de costas, para ver como o equipamento fica. */
+function outfitPreview(classId: ClassId, outfit: Outfit) {
+  const img = el("img", "doll-img");
+  img.src = heroUrl(classId, outfit, "all");
+  img.alt = `${CLASSES[classId].name} com o equipamento`;
+  return img;
+}
+
+function heroUrl(classId: ClassId, outfit: Outfit, view: "down" | "all") {
+  const key = `hero:${classId}:${outfitKey(outfit)}:${view}`;
+  if (!iconCache.has(key)) {
+    const canvas = view === "down" ? heroPoses(classId, outfit, ["down"]) : heroPoses(classId, outfit);
+    iconCache.set(key, canvas.toDataURL());
+  }
+  return iconCache.get(key)!;
 }
 
 export class Hub {
@@ -159,7 +169,7 @@ export class Hub {
       const head = el("div", "class-head");
       const title = el("div");
       title.append(el("strong", "", c.name), el("small", "muted", ROLES[id]));
-      head.append(portrait(id), title);
+      head.append(portrait(id, this.loadout()), title);
       if (id === this.classId) head.append(el("span", "badge", "Escolhida"));
 
       const stats = el("dl", "class-stats");
@@ -318,7 +328,9 @@ export class Hub {
       }
       loadout.append(cell);
     }
-    page.append(el("h3", "", "Para a próxima hunt"), loadout);
+    const doll = el("div", "doll");
+    doll.append(outfitPreview(this.classId, this.loadout()), el("small", "muted", `${CLASSES[this.classId].name} na próxima hunt`));
+    page.append(el("h3", "", "Para a próxima hunt"), doll, loadout);
 
     page.append(el("h3", "", `Inventário (${this.profile.items.length})`));
     if (this.profile.items.length === 0) {
@@ -353,6 +365,11 @@ export class Hub {
     title.append(name, el("small", "muted", `${SLOT_NAMES[def.slot]} · ${TIER_NAMES[def.tier]}`));
     head.append(itemImg(def.id), title);
     sheet.append(head, el("p", "", itemEffect(def)));
+    // Como fica vestido: o equipamento atual com este item no slot dele.
+    const tryOn = el("div", "doll");
+    tryOn.append(outfitPreview(this.classId, { ...this.loadout(), [def.slot]: def.id }),
+      el("small", "muted", owned.equipped ? "Vestido" : "Como fica vestido"));
+    sheet.append(tryOn);
     sheet.append(el("p", "muted", owned.source === "hunt" ? "Trazido de uma hunt." : "Comprado no mercado."));
 
     const actions = el("div", "actions");
@@ -378,6 +395,16 @@ export class Hub {
     sheet.append(actions);
     $("sheet").hidden = false;
     $("sheet-backdrop").hidden = false;
+  }
+
+  /** Equipamento marcado para a próxima hunt, como roupa do personagem. */
+  private loadout(): Outfit {
+    const outfit = { ...NO_OUTFIT };
+    for (const owned of this.profile.items) {
+      const def = ITEMS[owned.itemId];
+      if (owned.equipped && def) outfit[def.slot] = def.id;
+    }
+    return outfit;
   }
 
   private closeSheet() {
