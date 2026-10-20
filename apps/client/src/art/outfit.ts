@@ -7,6 +7,7 @@ import type { HeroDir } from "./heroes.ts";
  * Como cada item aparece vestido no herói (32×32). Cada camada tem letras próprias para não
  * brigar com as cores da classe:
  * armadura x/X/y, capacete c/C/k, escudo u/U/v e arma n/N/j (claro, escuro e detalhe do material).
+ * A armadura tem ainda "z", o brilho do material onde a luz bate no tronco.
  */
 
 /** Ids dos itens vestidos por slot ("" = vazio). */
@@ -34,8 +35,16 @@ export function outfitPalette(outfit: Outfit): Palette {
     const { m, M, a } = MATERIALS[tier];
     const [light, dark, accent] = LAYER_LETTERS[slot];
     Object.assign(palette, { [light]: m, [dark]: M, [accent]: a });
+    if (slot === "armor") palette.z = lighten(m, 0.35);
   }
   return palette;
+}
+
+/** Mistura a cor com branco (`amount` de 0 a 1). */
+function lighten(hex: string, amount: number) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * amount).toString(16).padStart(2, "0");
+  return `#${mix(n >> 16)}${mix((n >> 8) & 255)}${mix(n & 255)}`;
 }
 
 export function tierOf(outfit: Outfit, slot: ItemSlot): ItemTier | 0 {
@@ -241,7 +250,7 @@ export function helmetHead(tier: ItemTier, dir: HeroDir): Grid {
 
 // --- Armaduras -----------------------------------------------------------------
 // Recobrem o tronco dos corpos de `heroes.ts` (linhas 0 a 6; a 6 é o cinto com as mãos):
-// a roupa da classe (p/P/q) vira o material com o padrão de cada nível. Calça e saia continuam da classe.
+// a roupa da classe (r/p/P/q) vira o material com o padrão de cada nível. Calça e saia continuam da classe.
 
 export const ARMOR_ROWS = 7;
 const BELT_ROW = ARMOR_ROWS - 1;
@@ -249,6 +258,8 @@ const BELT_ROW = ARMOR_ROWS - 1;
 /** Letra do pixel `ch` em (x, y) do tronco coberto pela armadura de nível `tier`. */
 export function armorPixel(tier: ItemTier, front: boolean, x: number, y: number, ch: string): string {
   if (ch === "P") return "X";
+  // O brilho da roupa vira o brilho do material; na malha, os anéis seguem o padrão.
+  if (ch === "r") return tier === 3 ? armorPixel(tier, front, x, y, "p") : "z";
   if (ch === "q") return y === BELT_ROW && tier === 1 && !(front && (x === 7 || x === 8)) ? "X" : "y";
   if (ch !== "p") return ch;
   const center = x === 7 || x === 8;
