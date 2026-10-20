@@ -1,0 +1,75 @@
+:root {
+  --bg: #0d0b0a;
+  --panel: #1c1714;
+  --border: #5a4632;
+  --text: #e8dcc8;
+  --muted: #a08f78;
+  --accent: #c9a24a;
+  --danger: #c0392b;
+  font-family: "Georgia", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+#game { position: fixed; inset: 0; }
+[hidden] { display: none !important; }
+
+.panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 32px));
+  padding: 24px;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  box-shadow: 0 0 0 4px #000, 0 12px 40px #000c;
+}
+
+h1 { margin: 0; font-size: 40px; letter-spacing: 4px; color: var(--accent); text-align: center; }
+h2 { margin-top: 0; color: var(--accent); }
+.tagline { margin-top: 4px; text-align: center; color: var(--muted); font-style: italic; }
+
+label { display: block; margin: 16px 0 8px; }
+input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  font: inherit;
+  color: var(--text);
+  background: #000;
+  border: 1px solid var(--border);
+}
+
+fieldset { border: 1px solid var(--border); padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+legend { padding: 0 4px; }
+.class-option { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid transparent; cursor: pointer; }
+.class-option:has(input:checked) { border-color: var(--accent); background: #2a211b; }
+.class-option input { width: auto; margin: 0; }
+.swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+
+button {
+  padding: 10px 16px;
+  font: inherit;
+  color: var(--text);
+  background: #2a211b;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: #4a3417; border-color: var(--accent); width: 100%; }
+
+.actions { margin-top: 16px; display: grid; gap: 8px; }
+.join { display: flex; gap: 8px; }
+.join input { margin: 0; }
+.error { color: var(--danger); }
+
+#lobby-players { padding-left: 20px; }
+code { color: var(--accent); user-select: all; }
+
+#hud { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none; }
+#timer, #stats { padding: 6px 12px; background: #000a; border: 1px solid var(--border); }
+#timer { font-size: 24px; font-variant-numeric: tabular-nums; }
+#timer.low { color: var(--danger); }

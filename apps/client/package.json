@@ -1,0 +1,20 @@
+{
+  "name": "@kusa/client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@colyseus/sdk": "^0.18.5",
+    "@supabase/supabase-js": "^2.118.0",
+    "phaser": "^4.2.1",
+    "@kusa/shared": "*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4"
+  }
+}
