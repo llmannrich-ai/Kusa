@@ -15,6 +15,7 @@ import {
 } from "@kusa/shared";
 import { MoveInput } from "./input.ts";
 import type { ChestView, DungeonRoom, MonsterView, PlayerView } from "./net.ts";
+import { CombatFx, type Lunge } from "./CombatFx.ts";
 import { hash } from "./art/pixels.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
@@ -23,6 +24,7 @@ import {
   FLOOR_TEXTURE,
   MONSTER_TEXTURE,
   PORTAL_TEXTURE,
+  createEffectArt,
   createHeroArt,
   floorVariants,
   heroIdleFrame,
@@ -50,6 +52,8 @@ const DEPTH = { floor: 0, ui: 100_000 };
 
 /** Sprites do pack que olham para a esquerda (espelhados quando andam para a direita). */
 const FACES_LEFT = new Set<MonsterKind>(["rat", "dragon"]);
+/** Monstros que não sangram (viram poeira). */
+const BLOODLESS = new Set<MonsterKind>(["skeleton"]);
 
 const COLORS = {
   void: 0x0b0908,
@@ -81,6 +85,11 @@ interface Unit {
   dir: HeroDir;
   lastStepAt: number;
   walkUntil: number;
+  /** Avanço do golpe (px), somado à posição do sprite. */
+  lunge: Lunge;
+  /** Se sangra ao apanhar (esqueleto não). */
+  bleeds: boolean;
+  dead: boolean;
 }
 
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
@@ -95,6 +104,7 @@ export class DungeonScene extends Phaser.Scene {
   private nextSendAt = 0;
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
   private textResolution = 1;
+  private fx!: CombatFx;
 
   constructor() {
     super("dungeon");
@@ -110,6 +120,8 @@ export class DungeonScene extends Phaser.Scene {
 
   create() {
     createHeroArt(this);
+    createEffectArt(this);
+    this.fx = new CombatFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed);
     this.drawFloor();
     this.drawWalls();
@@ -134,7 +146,10 @@ export class DungeonScene extends Phaser.Scene {
       callbacks.onChange(monster, () => this.syncMonster(id, monster));
     });
     callbacks.onRemove("monsters", (_monster: MonsterView, id: string) => {
-      this.destroyUnit(this.monsters.get(id));
+      // Monstros só saem do estado quando morrem.
+      const unit = this.monsters.get(id);
+      if (unit) this.fx.death(unit.sprite, { x: unit.body.x, y: unit.body.y }, unit.bleeds);
+      this.destroyUnit(unit);
       this.monsters.delete(id);
     });
 
@@ -148,8 +163,7 @@ export class DungeonScene extends Phaser.Scene {
 
     callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
 
-    this.room.onMessage(MSG.damage, (msg: DamageMessage) =>
-      this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff));
+    this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
 
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
@@ -348,6 +362,12 @@ export class DungeonScene extends Phaser.Scene {
     const alpha = player.status === "playing" ? 1 : 0.35;
     unit.body.setAlpha(alpha);
     unit.overlay.setAlpha(alpha);
+    if (player.status === "died" && !unit.dead) {
+      // Morto fica caído no chão, numa poça, até a partida acabar.
+      unit.dead = true;
+      unit.sprite.stop().setFrame(heroIdleFrame("down")).setAngle(90);
+      this.fx.bleed({ x: unit.body.x, y: unit.body.y });
+    }
     this.drawBar(unit, player.hp, player.maxHp, COLORS.hpPlayer);
     this.moveTo(unit, player.x, player.y);
   }
@@ -360,6 +380,7 @@ export class DungeonScene extends Phaser.Scene {
     const sprite = this.add.sprite(0, 0, MONSTER_TEXTURE[kind]).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, FACES_LEFT.has(kind));
+    unit.bleeds = !BLOODLESS.has(kind);
     if (def.rank !== "common") {
       const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
       unit.overlay.add(label);
@@ -384,7 +405,10 @@ export class DungeonScene extends Phaser.Scene {
     const body = this.add.container(x, y, [shadow, sprite]);
     const bar = this.add.graphics();
     const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);
-    return { body, sprite, overlay, bar, barWidth, barY, facesLeft, dir: "down", lastStepAt: 0, walkUntil: 0 };
+    return {
+      body, sprite, overlay, bar, barWidth, barY, facesLeft,
+      dir: "down", lastStepAt: 0, walkUntil: 0, lunge: { x: 0, y: 0 }, bleeds: true, dead: false,
+    };
   }
 
   private destroyUnit(unit: Unit | undefined) {
@@ -435,15 +459,49 @@ export class DungeonScene extends Phaser.Scene {
     unit.body.setDepth(unit.body.y + TILE_SIZE / 2 + 0.5);
     unit.overlay.setPosition(unit.body.x, unit.body.y);
     const walking = time < unit.walkUntil;
+    // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam.
+    const bob = !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
+    unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
+    if (unit.dead) return;
     if (unit.classId) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.classId, unit.dir), true);
       else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
         unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
       }
-    } else {
-      // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam.
-      unit.sprite.y = TILE_SIZE / 2 - (walking && Math.floor(time / 125) % 2 ? 1 : 0);
     }
+  }
+
+  // --- Combate --------------------------------------------------------------
+
+  /**
+   * Um golpe acertou: quem bateu vira para o alvo e avança (ou atira), o alvo pisca e sangra,
+   * e o número de dano sobe quando o golpe chega (o projétil leva um instante no ar).
+   */
+  private onDamage(msg: DamageMessage) {
+    const attacker = this.avatars.get(msg.attacker) ?? this.monsters.get(msg.attacker);
+    const target = this.unitAt(msg.x, msg.y, msg.toPlayer);
+    const to = target ? { x: target.body.x, y: target.body.y } : { x: this.toPx(msg.x), y: this.toPx(msg.y) };
+    const from = attacker ? { x: attacker.body.x, y: attacker.body.y } : { x: this.toPx(msg.fromX), y: this.toPx(msg.fromY) };
+    if (attacker && !attacker.dead && this.time.now >= attacker.walkUntil) {
+      this.face(attacker, Math.sign(msg.x - msg.fromX), Math.sign(msg.y - msg.fromY));
+    }
+    this.fx.attack(msg.fx, from, to, attacker?.lunge ?? null, () => {
+      if (target?.sprite.active) {
+        this.fx.flash(target.sprite);
+        if (target.bleeds && Math.random() < 0.6) this.fx.bleed(to);
+      }
+      this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff);
+    });
+  }
+
+  /** Unidade (jogador ou monstro) que está no tile, pelo estado do servidor. */
+  private unitAt(tileX: number, tileY: number, player: boolean): Unit | undefined {
+    let found: Unit | undefined;
+    const list = player ? this.room.state.players : this.room.state.monsters;
+    list.forEach((entity: { x: number; y: number }, id: string) => {
+      if (!found && entity.x === tileX && entity.y === tileY) found = (player ? this.avatars : this.monsters).get(id);
+    });
+    return found;
   }
 
   private textStyle() {
