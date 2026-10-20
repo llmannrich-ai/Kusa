@@ -22,7 +22,7 @@ export class MoveInput {
   private stick: MoveVector = { dx: 0, dy: 0 };
   private isTarget: (clientX: number, clientY: number) => boolean;
 
-  /** `isTarget` diz se o toque caiu em cima de um monstro: aí é seleção de alvo, não joystick. */
+  /** `isTarget` diz se o toque é de outra coisa (um monstro, o modo mira de uma magia): aí não vira joystick. */
   constructor(scene: Phaser.Scene, surface: HTMLElement, isTarget: (clientX: number, clientY: number) => boolean) {
     this.isTarget = isTarget;
     this.keys = (scene.input.keyboard?.addKeys("up,down,left,right,w,a,s,d") as MoveInput["keys"]) ?? null;
