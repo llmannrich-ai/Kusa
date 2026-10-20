@@ -15,6 +15,7 @@ import {
   type RunEndedMessage,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
+import { ArtLoader, artReady } from "./ArtLoader.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
@@ -155,6 +156,8 @@ let game: Phaser.Game | null = null;
 function bindRoom(room: DungeonRoom) {
   show("rooms", false);
   show("lobby", true);
+  // A arte começa a carregar já no lobby, enquanto a equipe se junta.
+  createGame();
   $("start").onclick = () => room.send(MSG.start);
 
   const callbacks = Callbacks.get(room);
@@ -174,8 +177,12 @@ function bindRoom(room: DungeonRoom) {
   callbacks.onRemove("players", renderLobby);
   callbacks.listen("leaderId", renderLobby);
 
+  let started = false;
   callbacks.listen("phase", (phase) => {
-    if (phase === "running" && !game) startGame(room);
+    if (phase === "running" && !started) {
+      started = true;
+      startGame(room);
+    }
   });
 
   callbacks.listen("timeLeft", (t: number) => {
@@ -187,27 +194,35 @@ function bindRoom(room: DungeonRoom) {
   room.onMessage(MSG.runEnded, (msg: RunEndedMessage) => showResult(msg));
 }
 
-function startGame(room: DungeonRoom) {
-  show("lobby", false);
-  show("hud", true);
-  show("actions", true);
-  show("help", true);
+/** Cria o Phaser (uma vez) com a cena que carrega a arte; a dungeon entra depois, em `startGame`. */
+function createGame() {
+  if (game) return game;
   // O canvas tem a resolução real da tela (pixels do aparelho) e o CSS o reduz de volta:
   // com o zoom alto da câmera, cada pixel da arte vira um bloco quase uniforme, sem borrão.
   const parent = $("game");
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  game = new Phaser.Game({
+  const g = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
     pixelArt: true,
     // Joystick com um polegar enquanto o outro toca em alvos e botões.
     input: { activePointers: 3 },
     scale: { mode: Phaser.Scale.NONE, width: parent.clientWidth * dpr, height: parent.clientHeight * dpr, zoom: 1 / dpr },
-    scene: [],
+    scene: [ArtLoader],
   });
-  const g = game;
   window.addEventListener("resize", () => g.scale.resize(parent.clientWidth * dpr, parent.clientHeight * dpr));
-  game.scene.add("dungeon", DungeonScene, true, { room });
+  game = g;
+  return g;
+}
+
+function startGame(room: DungeonRoom) {
+  show("lobby", false);
+  show("hud", true);
+  show("actions", true);
+  show("help", true);
+  const g = createGame();
+  // Se a hunt começou antes de a arte terminar de chegar, a dungeon entra assim que ela chegar.
+  void artReady.then(() => g.scene.add("dungeon", DungeonScene, true, { room }));
 
   const me = () => room.state.players.get(room.sessionId);
   const renderStats = () => {

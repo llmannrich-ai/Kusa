@@ -28,14 +28,11 @@ import {
   FLOOR_TEXTURE,
   MONSTER_TEXTURE,
   PORTAL_TEXTURE,
-  createEffectArt,
-  createHeroArt,
   floorVariants,
   heroIdleFrame,
   heroTexture,
   heroWalkAnim,
   itemTexture,
-  preloadArt,
   wallCapTexture,
   wallFaceTexture,
 } from "./art/textures.ts";
@@ -122,13 +119,7 @@ export class DungeonScene extends Phaser.Scene {
     this.room = data.room;
   }
 
-  preload() {
-    preloadArt(this);
-  }
-
   create() {
-    createHeroArt(this);
-    createEffectArt(this);
     this.fx = new CombatFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed);
     this.drawFloor();
