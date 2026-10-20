@@ -6,7 +6,8 @@ import type { DungeonState, Player } from "../../server/src/state.ts";
 export type PlayerView = Player;
 export type DungeonRoom = Room<any, DungeonState>;
 
-const client = new Client(import.meta.env.VITE_SERVER_URL ?? "http://localhost:2567");
+// Sem VITE_SERVER_URL, usa o proxy do Vite (vite.config.ts) no mesmo endereço da página.
+const client = new Client(import.meta.env.VITE_SERVER_URL || `${location.origin}/colyseus`);
 
 export function createHunt(options: JoinOptions): Promise<DungeonRoom> {
   return client.create(ROOM_NAME, options);

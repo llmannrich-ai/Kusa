@@ -1,0 +1,11 @@
+{
+  "name": "Kusa",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+  "postCreateCommand": "npm install",
+  "postAttachCommand": "npm run dev",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": { "label": "Kusa (jogo)", "onAutoForward": "openBrowser" },
+    "2567": { "label": "Servidor de jogo", "onAutoForward": "silent" }
+  }
+}
