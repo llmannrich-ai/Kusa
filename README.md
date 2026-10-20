@@ -44,6 +44,8 @@ Testes de fumaça (com o servidor rodando):
 
 - `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.
 - `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, mata e ganha XP e loot.
+- `npx tsx apps/server/scripts/items.ts`: um cavaleiro caça até cair um item e confere que foi equipado.
+- `npx tsx apps/server/scripts/potions.ts`: um cavaleiro caça até cair uma poção de vida, guarda, apanha e bebe.
 
 ## Variáveis de ambiente
 

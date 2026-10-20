@@ -8,8 +8,10 @@ import {
   CLASSES,
   MAX_LOGIN_LENGTH,
   COMMON_DROP_CHANCE,
+  COMMON_POTION_CHANCE,
   DEPTH_SCALING,
   GUARANTEED_DROPS,
+  GUARANTEED_POTIONS,
   ITEMS,
   ITEM_SLOTS,
   MINIBOSS_KIND,
@@ -19,6 +21,11 @@ import {
   MAX_PARTY_SIZE,
   MSG,
   PATH_SPAWNS,
+  POTIONS,
+  POTION_COOLDOWN_MS,
+  POTION_FIELD,
+  POTION_IDS,
+  POTION_MAX,
   SERVER_TICK_MS,
   SPELLS,
   SPELL_SLOT_LEVELS,
@@ -33,12 +40,14 @@ import {
   damageReduction,
   flightMs,
   hasLineOfSight,
+  isPotion,
   isUpgrade,
   isWalkable,
   knownSpells,
   levelForXp,
   monsterStats,
   rollItem,
+  rollPotion,
   spellChoices,
   statsFor,
   tileAt,
@@ -52,6 +61,8 @@ import {
   type ChooseSpellMessage,
   type ClassId,
   type DamageMessage,
+  type DrankMessage,
+  type DrinkMessage,
   type Dungeon,
   type HuntMetadata,
   type JoinOptions,
@@ -85,6 +96,8 @@ interface Seat {
   targetLocked: boolean;
   /** Momento (ms) em que cada slot de magia volta a poder ser usado. */
   spellReadyAt: [number, number];
+  /** Momento (ms) em que pode beber a próxima poção (recarga compartilhada). */
+  potionReadyAt: number;
   /** Grito de Guerra: fração do dano evitada e até quando. */
   guard: number;
   guardUntil: number;
@@ -154,6 +167,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.onMessage(MSG.target, (client, msg: TargetMessage) => this.handleTarget(client, msg));
     this.onMessage(MSG.chooseSpell, (client, msg: ChooseSpellMessage) => this.handleChooseSpell(client, msg));
     this.onMessage(MSG.cast, (client, msg: CastMessage) => this.handleCast(client, msg));
+    this.onMessage(MSG.drink, (client, msg: DrinkMessage) => this.handleDrink(client, msg));
 
     this.setSimulationInterval((dt) => this.tick(dt), SERVER_TICK_MS);
   }
@@ -185,7 +199,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false,
-      spellReadyAt: [0, 0], guard: 0, guardUntil: 0, bonus,
+      spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, bonus,
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -533,6 +547,33 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
   }
 
+  // --- Poções -------------------------------------------------------------
+
+  /** Bebe uma poção carregada. Com a barra cheia, não gasta a poção nem a recarga. */
+  private handleDrink(client: Client, msg: DrinkMessage) {
+    const p = this.state.players.get(client.sessionId);
+    const seat = this.seats.get(client.sessionId);
+    if (!p || !seat || p.status !== "playing" || this.state.phase !== "running") return;
+    if (!isPotion(msg?.potion)) return;
+    const potion = POTIONS[msg.potion];
+    const field = POTION_FIELD[potion.id];
+    const now = this.clock.currentTime;
+    if (p[field] <= 0 || now < seat.potionReadyAt) return;
+
+    const max = potion.stat === "hp" ? p.maxHp : p.maxMana;
+    const restored = Math.min(max - p[potion.stat], Math.round(max * potion.restore));
+    if (restored <= 0) {
+      const text = potion.stat === "hp" ? "Vida cheia" : "Mana cheia";
+      client.send(MSG.notice, { x: p.x, y: p.y - 1, text, color: 0xbdc3c7 } satisfies NoticeMessage);
+      return;
+    }
+    p[field] -= 1;
+    p[potion.stat] += restored;
+    seat.potionReadyAt = now + POTION_COOLDOWN_MS;
+    client.send(MSG.drank, { potion: potion.id, cooldownMs: POTION_COOLDOWN_MS } satisfies DrankMessage);
+    this.notice(p.x, p.y, `+${restored}`, potion.color);
+  }
+
   /** Fim do Grito de Guerra e das raízes. */
   private expireEffects(now: number) {
     this.seats.forEach((seat, sessionId) => {
@@ -594,6 +635,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Itens caem no chão onde o monstro morreu: quem passar por cima primeiro leva.
     const drops = GUARANTEED_DROPS[brain.def.rank] || (Math.random() < COMMON_DROP_CHANCE ? 1 : 0);
     for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random), m.x, m.y);
+    const potions = GUARANTEED_POTIONS[brain.def.rank] || (Math.random() < COMMON_POTION_CHANCE ? 1 : 0);
+    for (let i = 0; i < potions; i++) this.dropItem(rollPotion(Math.random), m.x, m.y);
 
     if (brain.chestId) {
       const chest = this.state.chests.get(brain.chestId);
@@ -718,6 +761,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         this.notice(chest.x, chest.y, `Baú: +${value} loot`, 0xf1c40f);
         // O baú guarda um item melhor que o do mini-boss.
         this.dropItem(rollItem("miniboss", this.chestDepth.get(chest.id) ?? 0, Math.random, 1), chest.x, chest.y);
+        for (const potion of POTION_IDS) this.dropItem(potion, chest.x, chest.y);
       });
     });
   }
@@ -737,6 +781,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   /**
    * Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão
    * para quem quiser. Item pior fica onde está (qualquer jogador pode pegar, não há dono).
+   * Poções vão para a mochila até o limite de cada tipo.
    */
   private pickUpItems() {
     this.state.players.forEach((p) => {
@@ -745,6 +790,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         .filter((it) => it.x === p.x && it.y === p.y)
         .sort((a, b) => (ITEMS[b.itemId]?.tier ?? 0) - (ITEMS[a.itemId]?.tier ?? 0));
       for (const ground of here) {
+        if (isPotion(ground.itemId)) {
+          // Poção: guarda enquanto couber; com a mochila cheia, fica no chão.
+          const field = POTION_FIELD[ground.itemId];
+          if (p[field] >= POTION_MAX) continue;
+          p[field] += 1;
+          this.state.items.delete(ground.id);
+          this.itemExpiresAt.delete(ground.id);
+          this.notice(p.x, p.y - 1, POTIONS[ground.itemId].name, POTIONS[ground.itemId].color);
+          continue;
+        }
         const def = ITEMS[ground.itemId];
         if (!def || !isUpgrade(def.id, p[def.slot])) continue;
         const old = p[def.slot];
@@ -775,10 +830,15 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
-    // Quem morre larga o equipamento no chão, e os outros podem saquear.
+    // Quem morre larga o equipamento e as poções no chão, e os outros podem saquear.
     if (outcome === "died") {
       for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
+      for (const potion of POTION_IDS) {
+        for (let i = 0; i < player[POTION_FIELD[potion]]; i++) this.dropItem(potion, player.x, player.y);
+      }
     }
+    // Poções não saem da dungeon.
+    player.healthPotions = player.manaPotions = 0;
     player.status = outcome;
     player.target = "";
 

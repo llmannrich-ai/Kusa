@@ -10,7 +10,7 @@ teclado e mouse no desktop são um extra.
 
 - **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado, aparece um aviso para voltar à vertical.
 - **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
-- **Ações:** botões grandes no canto inferior direito (os 2 slots de magia e o 🎯 "próximo alvo"; depois poções), sem precisar de mira precisa.
+- **Ações:** botões grandes no canto inferior direito (os 2 slots de magia e o 🎯 "próximo alvo") e, numa coluna ao lado, as poções de vida e de mana, sem precisar de mira precisa.
 - **Mira:** sem alvo travado, o servidor ataca sozinho o monstro mais próximo dentro do alcance. Tocar num monstro (em qualquer parte da tela) trava o alvo nele; o 🎯 troca para o próximo monstro por perto.
 - **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
@@ -107,6 +107,15 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 - Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão. Item pior fica onde está. Itens no chão somem após 2 minutos.
 - Quem morre larga o equipamento no chão. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado (ver "Inventário e mercado").
 - Tabela em `packages/shared/src/items.ts`; arte própria em `apps/client/src/art/items.ts`.
+
+## Poções (protótipo)
+
+- 2 tipos: ❤️ vida (devolve 35% da vida máxima) e 💧 mana (devolve 40% da mana máxima). Cada jogador carrega até 5 de cada.
+- Só caem na dungeon (não há compra no mercado): comuns têm 25% de chance de dropar uma, o Ogro dropa 1, o Dragão 2 e o baú 1 de cada tipo. 60% das poções sorteadas são de vida.
+- A poção cai no chão como os itens e vai para a mochila de quem passar por cima primeiro, se ainda couber. Some após 2 minutos no chão.
+- Beber: botão da poção (ou Q/E no desktop). A recarga de 6 s é **compartilhada** entre os dois tipos, para ninguém ficar imortal bebendo sem parar. Com a barra cheia, a poção não é gasta.
+- Valem só durante a hunt: quem morre larga as poções no chão junto com o equipamento, e quem sai vivo perde as que sobraram (não vão para o inventário da conta).
+- Tabela em `packages/shared/src/potions.ts`; o frasco é desenhado em `apps/client/src/art/items.ts` e os botões em `apps/client/src/potionbar.ts`.
 
 ## Decisões em aberto
 

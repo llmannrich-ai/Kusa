@@ -257,6 +257,7 @@ function startGame(room: DungeonRoom) {
   show("lobby", false);
   show("hud", true);
   show("actions", true);
+  show("potions", true);
   show("help", true);
   const g = createGame();
   // Se a hunt começou antes de a arte terminar de chegar, a dungeon entra assim que ela chegar.
@@ -321,6 +322,7 @@ function setBar(name: "hp" | "mana" | "xp", value: number, max: number, text: st
 function showResult(msg: RunEndedMessage) {
   show("hud", false);
   show("actions", false);
+  show("potions", false);
   show("help", false);
   $("result-title").textContent = OUTCOME_TEXT[msg.outcome];
   $("result-detail").textContent = msg.loot > 0

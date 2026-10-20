@@ -1,4 +1,5 @@
 import type { ClassId } from "./classes.ts";
+import type { PotionId } from "./potions.ts";
 import type { SpellId, SpellSlot } from "./spells.ts";
 
 /** Como um golpe aparece na tela: o cliente escolhe projétil e impacto a partir disto. */
@@ -52,6 +53,12 @@ export interface ChooseSpellMessage { slot: SpellSlot; spellId: SpellId }
 /** Cliente → servidor: conjura a magia de um slot (no alvo atual ou no mais próximo ao alcance). */
 export interface CastMessage { slot: SpellSlot }
 
+/** Cliente → servidor: bebe uma poção carregada (recarga compartilhada entre os tipos). */
+export interface DrinkMessage { potion: PotionId }
+
+/** Servidor → quem bebeu: a poção foi bebida e a recarga começou. */
+export interface DrankMessage { potion: PotionId; cooldownMs: number }
+
 /** Servidor → todos: um ataque básico saiu (para desenhar golpe ou projétil). */
 export interface AttackMessage {
   /** sessionId de quem atacou. */
@@ -100,4 +107,6 @@ export const MSG = {
   chooseSpell: "chooseSpell",
   cast: "cast",
   spell: "spell",
+  drink: "drink",
+  drank: "drank",
 } as const;
