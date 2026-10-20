@@ -3,6 +3,7 @@ import {
   SPELLS,
   SPELL_SLOT_LEVELS,
   spellChoices,
+  spellFacts,
   type ClassId,
   type SpellDef,
   type SpellId,
@@ -125,7 +126,7 @@ export class SpellBar {
     view.button.title = view.button.getAttribute("aria-label") ?? "";
   }
 
-  /** Janela de escolha da magia do slot: a inicial da classe e as compradas na árvore de magias. */
+  /** Janela de escolha da magia do slot: a inicial da classe e as compradas no Grimório. */
   private openChooser(slot: SpellSlot) {
     const p = this.me();
     if (!p) return;
@@ -146,7 +147,9 @@ export class SpellBar {
       option.querySelector(".spell-option-icon")!.textContent = spell.icon;
       option.querySelector("strong")!.textContent = spell.name;
       option.querySelector("small")!.textContent = spell.description;
-      option.querySelector("em")!.textContent = `${spell.manaCost} de mana · recarga ${spell.cooldownMs / 1000}s`;
+      const rank = p.spellRanks.get(spell.id) ?? 1;
+      // Efeitos já com o nível comprado no Grimório (a última linha é mana e recarga).
+      option.querySelector("em")!.textContent = `Nível ${rank} · ${spellFacts(spell, rank).join(" · ")}`;
       option.onclick = () => {
         this.room.send(MSG.chooseSpell, { slot, spellId: spell.id });
         this.closeChooser();

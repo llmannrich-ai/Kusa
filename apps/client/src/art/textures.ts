@@ -1,9 +1,10 @@
 import type * as Phaser from "phaser";
-import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind } from "@kusa/shared";
+import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind, type SummonKind } from "@kusa/shared";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
+import { treantCanvas } from "./summons.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 
 /**
@@ -20,6 +21,16 @@ export const MONSTER_TEXTURE: Record<MonsterKind, string> = {
   orc: "monster-orc",
   ogre: "monster-ogre",
   dragon: "monster-dragon",
+};
+
+/** Criaturas invocadas pelo Druida: as do pack e o Guardião do Bosque (arte própria). */
+export const SUMMON_TEXTURE: Record<SummonKind, string> = {
+  wolf: "summon-wolf",
+  hornet: "summon-hornet",
+  moth: "summon-moth",
+  bear: "summon-bear",
+  wisp: "summon-wisp",
+  treant: "summon-treant",
 };
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
@@ -45,6 +56,7 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...Object.values(MONSTER_TEXTURE),
+    ...Object.values(SUMMON_TEXTURE).filter((key) => key !== SUMMON_TEXTURE.treant),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
@@ -98,6 +110,7 @@ export function createHeroArt(scene: Phaser.Scene) {
 /** Gera as texturas próprias dos efeitos e as animações de impacto (uma vez por jogo). */
 export function createEffectArt(scene: Phaser.Scene) {
   if (!scene.textures.exists(FX_TEXTURE.leaf)) scene.textures.addCanvas(FX_TEXTURE.leaf, leafCanvas());
+  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) scene.textures.addCanvas(SUMMON_TEXTURE.treant, treantCanvas());
   const strips: [string, () => HTMLCanvasElement, number][] = [
     [FX_ANIM.slash, slashStrip, SLASH_FRAMES],
     [FX_ANIM.bite, biteStrip, BITE_FRAMES],

@@ -11,17 +11,17 @@ export interface RunStats {
   levelAt: Record<number, number>;
   /** Segundo em que entrou pela primeira vez em cada sala do caminho (a do boss é a última). */
   depthAt: Record<number, number>;
-  /** Magia escolhida em cada slot e quando: { "1": { id, at } }. */
-  spellsChosen: Record<number, { id: string; at: number }>;
+  /** Magia escolhida em cada slot, nível comprado no Grimório e quando: { "1": { id, rank, at } }. */
+  spellsChosen: Record<number, { id: string; rank: number; at: number }>;
   casts: Record<string, number>;
   castFails: { noMana: number; noTarget: number };
-  /** Dano efetivo causado (sem contar o que passa da vida do monstro), por fonte: "basic" ou id da magia. */
+  /** Dano efetivo causado (sem contar o que passa da vida do monstro), por fonte: "basic", id da magia ou "summon:<tipo>" (criaturas invocadas). */
   damageDealt: Record<string, number>;
   /** Dano recebido por tipo de monstro, depois da armadura e do Grito de Guerra. */
   damageTaken: Record<string, number>;
-  /** Dano evitado pela armadura e pelo Grito de Guerra. */
+  /** Dano evitado pela armadura, pelo Grito de Guerra e pelo escudo. */
   damageMitigated: number;
-  /** Vida curada (em si e nos aliados). */
+  /** Vida curada (em si e nos aliados), incluindo roubo de vida e criaturas de cura. */
   healing: number;
   /** Abates (último golpe) por tipo de monstro. */
   kills: Record<string, number>;
