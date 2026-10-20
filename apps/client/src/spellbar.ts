@@ -125,7 +125,7 @@ export class SpellBar {
     view.button.title = view.button.getAttribute("aria-label") ?? "";
   }
 
-  /** Janela de escolha da magia do slot. Hoje cada classe tem uma opção por slot; o mercado trará mais. */
+  /** Janela de escolha da magia do slot: a inicial da classe e as compradas na árvore de magias. */
   private openChooser(slot: SpellSlot) {
     const p = this.me();
     if (!p) return;
@@ -139,7 +139,7 @@ export class SpellBar {
     hint.textContent = "Escolha a magia deste slot. Ela fica com você até o fim da hunt.";
     const list = document.createElement("div");
     list.className = "spell-options";
-    for (const spell of spellChoices(p.classId as ClassId, slot)) {
+    for (const spell of spellChoices(p.classId as ClassId, slot, [...p.knownSpells])) {
       const option = document.createElement("button");
       option.className = "spell-option";
       option.innerHTML = `<span class="spell-option-icon"></span><span><strong></strong><small></small><em></em></span>`;

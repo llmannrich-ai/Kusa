@@ -86,6 +86,27 @@ export function weaponMultiplier(weaponId: string) {
   return item?.slot === "weapon" ? 1 + item.power / 100 : 1;
 }
 
+// --- Mercado -----------------------------------------------------------------
+// A tabela `market_items` no Supabase repete estes preços; mude as duas juntas.
+
+/** Preço de compra no mercado por nível. Itens de Dragão não são vendidos: só saem das hunts. */
+export const ITEM_BUY_PRICES: Record<ItemTier, number | null> = { 1: 60, 2: 150, 3: 350, 4: 800, 5: null };
+/** Quanto o mercado paga por item, por nível. */
+export const ITEM_SELL_PRICES: Record<ItemTier, number> = { 1: 20, 2: 60, 3: 140, 4: 320, 5: 900 };
+
+/**
+ * Melhor item por slot entre os itens dados (o loadout que entra na hunt).
+ * Devolve os ids na ordem de `ITEM_SLOTS` ("" = slot vazio).
+ */
+export function bestPerSlot(itemIds: readonly string[]): Record<ItemSlot, string> {
+  const best = { weapon: "", helmet: "", armor: "", shield: "" } as Record<ItemSlot, string>;
+  for (const id of itemIds) {
+    const item = ITEMS[id];
+    if (item && isUpgrade(id, best[item.slot])) best[item.slot] = id;
+  }
+  return best;
+}
+
 // --- Drops -------------------------------------------------------------------
 
 /** Chance de um monstro comum dropar um item. */

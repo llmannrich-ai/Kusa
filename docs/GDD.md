@@ -19,11 +19,37 @@ teclado e mouse no desktop são um extra.
 
 ## Menu inicial (estilo Zooba / Clash)
 
-- Escolha do modo de jogo e do mapa
-- Escolha da classe
-- Itens cosméticos para equipar
-- Amigos e formação de equipe
-- Compra de upgrades permanentes com o gold ganho nas hunts
+Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e o botão **Jogar** logo acima delas.
+Código em `apps/client/src/menu.ts`.
+
+- **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
+- **Magias:** a árvore de magias de cada classe (ver abaixo).
+- **Itens:** o inventário da conta e o equipamento que vai para a próxima hunt (um item por slot).
+- **Mercado:** compra itens até Aço e vende qualquer item do inventário. Itens de Dragão só saem das hunts.
+- Configurações e "Sair da conta" ficam no ⚙️ do topo.
+- Ainda por fazer: modo/mapa, cosméticos e amigos.
+
+### Árvore de magias
+
+Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packages/shared/src/talents.ts`):
+
+| Círculo | Nó | Pré-requisito |
+|---|---|---|
+| Iniciais | as 2 magias da classe (uma por slot), de graça | — |
+| 1 | Áurea de dano (+4%/nível, 3 níveis) · Áurea de vida (+6%/nível, 3 níveis) | — |
+| 2 | Magia nova do slot 1 · Áurea de mana (+8%/nível, 3 níveis) | dano 1 · vida 1 |
+| 3 | Magia nova do slot 2 · Áurea de velocidade (+4%/nível, 2 níveis) | a magia do slot 1 · mana 1 |
+
+- **Magias de ataque** compradas viram opção na janela de escolha quando o slot libera na hunt (nível 3 e 8), ao lado da inicial.
+- **Áureas** valem sempre, desde o nível 1: multiplicam dano, vida máxima, mana máxima ou velocidade.
+- O servidor lê a árvore da conta ao entrar na sala; nada disso vem do navegador.
+
+### Inventário e mercado (extração)
+
+- O equipamento escolhido na aba Itens **sai do inventário quando a hunt começa** e entra no personagem.
+- Quem foge ou conclui traz para o inventário tudo o que estiver equipado ao sair (inclusive o que achou na dungeon).
+- Quem morre perde o que levou: o equipamento cai no chão e outro jogador pode pegar e extrair.
+- Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
 ## Partida (hunt)
 
@@ -31,7 +57,7 @@ teclado e mouse no desktop são um extra.
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
 - O limite de tempo fica entre 3 e 5 minutos. **Se o tempo acaba, a dungeon desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
-- Matar monstros dá XP e itens dropados.
+- Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 8.
 - A dungeon é semi-linear: monstros fracos na entrada, ficando mais fortes conforme a equipe se aprofunda.
 - Baús no meio da dungeon trazem itens ou upgrades aleatórios poderosos, possivelmente ao matar mini-bosses.
@@ -78,14 +104,14 @@ teclado e mouse no desktop são um extra.
 - Drop: comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
 - O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão. Item pior fica onde está. Itens no chão somem após 2 minutos.
-- Quem morre larga o equipamento no chão. O equipamento vale só para a hunt (todos começam sem nada).
+- Quem morre larga o equipamento no chão. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado (ver "Inventário e mercado").
 - Tabela em `packages/shared/src/items.ts`; arte própria em `apps/client/src/art/items.ts`.
 
 ## Decisões em aberto
 
 - Duração exata da hunt (o código usa 4 min em `MATCH_DURATION_SECONDS`).
 - Se a morte regride os upgrades permanentes, e quanto.
-- Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida); quantas magias cada classe terá no mercado e quanto custam.
+- Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida); preços da árvore de magias e do mercado ainda precisam de balanceamento.
 - Tipos de mapa e bosses.
 - Os jogadores de uma equipe se reanimam? O loot é compartilhado ou individual?
 - Arte: os sprites do Tibia são da CipSoft e **não podem ser usados**. Usaremos assets com licença aberta (OpenGameArt, itch.io) ou arte própria, no mesmo estilo.

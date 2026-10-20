@@ -6,6 +6,7 @@ import {
   BOSS_LOOT_BONUS,
   CHEST_LOOT,
   CLASSES,
+  MAX_LOGIN_LENGTH,
   COMMON_DROP_CHANCE,
   DEPTH_SCALING,
   GUARANTEED_DROPS,
@@ -24,6 +25,8 @@ import {
   TIER_COLORS,
   Tile,
   armorOf,
+  auraBonuses,
+  bestPerSlot,
   centerOf,
   createRng,
   generateDungeon,
@@ -32,6 +35,7 @@ import {
   hasLineOfSight,
   isUpgrade,
   isWalkable,
+  knownSpells,
   levelForXp,
   monsterStats,
   rollItem,
@@ -43,6 +47,7 @@ import {
   xpForLevel,
   xpShare,
   type AttackMessage,
+  type Bonuses,
   type CastMessage,
   type ChooseSpellMessage,
   type ClassId,
@@ -65,7 +70,7 @@ import {
 } from "@kusa/shared";
 import { nextStep } from "./pathfinding.ts";
 import { Chest, DungeonState, GroundItem, Monster, Player } from "./state.ts";
-import { recordRun, resolveUserId } from "./supabase.ts";
+import { recordRun, resolveAccount, takeLoadout, type Account } from "./supabase.ts";
 
 interface Seat {
   userId: string | null;
@@ -80,6 +85,8 @@ interface Seat {
   /** Grito de Guerra: fração do dano evitada e até quando. */
   guard: number;
   guardUntil: number;
+  /** Áureas compradas na árvore da classe. */
+  bonus: Bonuses;
 }
 
 /** Dados do monstro que só o servidor precisa (o cliente vê só o schema `Monster`). */
@@ -149,29 +156,33 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   async onAuth(_client: Client, options: JoinOptions) {
-    return { userId: await resolveUserId(options.accessToken) };
+    // Sempre um objeto (verdadeiro): sem conta, entra como convidado.
+    return { account: await resolveAccount(options.accessToken) };
   }
 
-  onJoin(client: Client, options: JoinOptions, auth: { userId: string | null }) {
+  onJoin(client: Client, options: JoinOptions, auth: { account: Account | null }) {
     const classId: ClassId = options.classId in CLASSES ? options.classId : "knight";
-    const stats = statsFor(classId, START_LEVEL);
+    const talents = auth.account?.talents ?? {};
+    const bonus = auraBonuses(classId, talents);
+    const stats = statsFor(classId, START_LEVEL, bonus);
     const index = this.state.players.size;
 
     const player = new Player();
-    player.name = (options.name || "Aventureiro").slice(0, 16);
+    player.name = auth.account?.name ?? [...(options.name || "Aventureiro")].slice(0, MAX_LOGIN_LENGTH).join("");
     player.classId = classId;
     player.level = START_LEVEL;
     player.xp = xpForLevel(START_LEVEL);
     player.hp = player.maxHp = stats.maxHp;
     player.mana = player.maxMana = stats.maxMana;
+    player.knownSpells.push(...knownSpells(classId, talents));
     // A equipe nasce junta, ao redor do portal de fuga.
     player.x = this.dungeon.portal.x + [-1, 1, -1, 1][index];
     player.y = this.dungeon.portal.y + [-1, -1, 1, 1][index];
 
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, {
-      userId: auth.userId, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false,
-      spellReadyAt: [0, 0], guard: 0, guardUntil: 0,
+      userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false,
+      spellReadyAt: [0, 0], guard: 0, guardUntil: 0, bonus,
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -281,6 +292,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.phase = "running";
     this.state.timeLeft = MATCH_DURATION_SECONDS;
     this.lock();
+    // O equipamento escolhido no menu sai do inventário e entra na dungeon (chega logo depois do início).
+    this.seats.forEach((seat, sessionId) => {
+      if (!seat.userId) return;
+      void takeLoadout(seat.userId).then((items) => {
+        const p = this.state.players.get(sessionId);
+        if (!p || p.status !== "playing") return;
+        const best = bestPerSlot(items);
+        for (const slot of ITEM_SLOTS) if (isUpgrade(best[slot], p[slot])) p[slot] = best[slot];
+      });
+    });
   }
 
   private handleMove(client: Client, msg: MoveMessage) {
@@ -302,7 +323,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Na diagonal, não atravessa quina de parede.
     if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, player.y) || !isWalkable(this.dungeon, player.x, ny))) return;
 
-    const speed = statsFor(player.classId as ClassId, player.level).speed;
+    const speed = statsFor(player.classId as ClassId, player.level, seat.bonus).speed;
     seat.nextMoveAt = now + (1000 / speed) * (dx !== 0 && dy !== 0 ? Math.SQRT2 : 1);
     player.x = nx;
     player.y = ny;
@@ -391,7 +412,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Flecha e luzes voam até o alvo: o dano entra quando chegam (se o monstro ainda estiver vivo).
     const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
     this.broadcast(MSG.attack, { from: sessionId, x: p.x, y: p.y, tx: m.x, ty: m.y, ms } satisfies AttackMessage);
-    const amount = rollDamage(baseDamage(p));
+    const amount = rollDamage(this.baseDamage(sessionId, p));
     this.after(ms, () => {
       const alive = this.state.monsters.get(m.id);
       if (alive) this.damageMonster(alive, amount, sessionId);
@@ -413,7 +434,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const slot = msg?.slot;
     if (slot !== 0 && slot !== 1) return;
     if (p.level < SPELL_SLOT_LEVELS[slot] || spellIn(p, slot)) return;
-    const spell = spellChoices(p.classId as ClassId, slot).find((s) => s.id === msg.spellId);
+    const spell = spellChoices(p.classId as ClassId, slot, [...p.knownSpells]).find((s) => s.id === msg.spellId);
     if (!spell) return;
     if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
     this.notice(p.x, p.y - 1, spell.name, 0x9b59b6);
@@ -455,7 +476,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const ty = target?.y ?? p.y;
     const ms = flightMs(spell.projectileSpeed ?? 0, p.x, p.y, tx, ty);
     this.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: p.x, y: p.y, tx, ty, ms } satisfies SpellMessage);
-    const amount = baseDamage(p) * (spell.damage ?? 0);
+    const amount = this.baseDamage(sessionId, p) * (spell.damage ?? 0);
     this.after(ms, () => this.applySpell(sessionId, spell, target?.id, tx, ty, amount));
   }
 
@@ -593,7 +614,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const previous = p.level;
     if (level <= previous) return;
     // Subiu de nível: atributos novos e cura completa.
-    const stats = statsFor(p.classId as ClassId, level);
+    const stats = statsFor(p.classId as ClassId, level, this.seats.get(sessionId)?.bonus);
     p.level = level;
     p.hp = p.maxHp = stats.maxHp;
     p.mana = p.maxMana = stats.maxMana;
@@ -755,12 +776,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.status = outcome;
     player.target = "";
 
-    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level };
+    // Quem sai vivo leva o equipamento para o inventário da conta.
+    const items = survived ? equipment(player).filter(Boolean) : [];
+    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items };
     this.clients.getById(sessionId)?.send(MSG.runEnded, result);
 
     const userId = this.seats.get(sessionId)?.userId;
     if (userId) {
-      void recordRun(this.matchId, { userId, classId: player.classId, outcome, level: player.level, loot: player.loot });
+      void recordRun(this.matchId, { userId, classId: player.classId, outcome, level: player.level, loot: player.loot, items });
     }
 
     const everyoneOut = [...this.state.players.values()].every((p) => p.status !== "playing");
@@ -769,11 +792,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.clock.setTimeout(() => this.disconnect(), 10_000);
     }
   }
-}
 
-/** Dano base do jogador (classe, nível e arma), antes da variação. */
-function baseDamage(p: Player) {
-  return statsFor(p.classId as ClassId, p.level).damage * weaponMultiplier(p.weapon);
+  /** Dano base do jogador (classe, nível, áureas e arma), antes da variação. */
+  private baseDamage(sessionId: string, p: Player) {
+    return statsFor(p.classId as ClassId, p.level, this.seats.get(sessionId)?.bonus).damage * weaponMultiplier(p.weapon);
+  }
 }
 
 function spellIn(p: Player, slot: SpellSlot) {

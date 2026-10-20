@@ -75,6 +75,8 @@ export interface RunEndedMessage {
   outcome: RunOutcome;
   loot: number;
   level: number;
+  /** Itens equipados que voltam para o inventário da conta (só quem sai vivo). */
+  items: string[];
 }
 
 export type MatchPhase = "lobby" | "running" | "ended";

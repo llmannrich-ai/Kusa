@@ -30,7 +30,12 @@ export type SpellId =
   | "blade_spin" | "war_cry"
   | "holy_arrow" | "arrow_rain"
   | "shadow_orb" | "void_storm"
-  | "forest_blessing" | "thorn_roots";
+  | "forest_blessing" | "thorn_roots"
+  // Compradas na árvore de magias da classe (menu).
+  | "crushing_blow" | "iron_skin"
+  | "piercing_shot" | "healing_light"
+  | "lightning_bolt" | "frost_nova"
+  | "venom_thorn" | "nature_wrath";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, cura, raízes, guarda e provocação.
@@ -111,12 +116,60 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Raízes brotam em volta do alvo: ferem e prendem os monstros por 3,5 s.",
     manaCost: 55, cooldownMs: 12000, aim: "target", range: 5, radius: 2, damage: 1.2, rootMs: 3500,
   },
+
+  // --- Compradas na árvore de magias (ver talents.ts) ---------------------------
+  crushing_blow: {
+    id: "crushing_blow", classId: "knight", slot: 0, name: "Golpe Esmagador", icon: "🔨",
+    description: "Uma pancada brutal no monstro colado em você.",
+    manaCost: 15, cooldownMs: 4500, aim: "target", range: 1, radius: 0, damage: 2.8,
+  },
+  iron_skin: {
+    id: "iron_skin", classId: "knight", slot: 1, name: "Pele de Ferro", icon: "🛡️",
+    description: "Recupera 25% da vida e corta 70% do dano recebido por 5 s.",
+    manaCost: 30, cooldownMs: 16000, aim: "self", range: 0, radius: 0, heal: 0.25, guard: 0.7, guardMs: 5000,
+  },
+  piercing_shot: {
+    id: "piercing_shot", classId: "paladin", slot: 0, name: "Disparo Perfurante", icon: "🎯",
+    description: "Uma flecha de longe que atravessa o alvo e fere quem está colado nele.",
+    manaCost: 28, cooldownMs: 5000, aim: "target", range: 7, radius: 1, damage: 1.9, projectileSpeed: 22,
+  },
+  healing_light: {
+    id: "healing_light", classId: "paladin", slot: 1, name: "Luz Curativa", icon: "☀️",
+    description: "Cura 30% da vida de você e dos aliados a até 3 tiles.",
+    manaCost: 45, cooldownMs: 12000, aim: "self", range: 0, radius: 3, heal: 0.3,
+  },
+  lightning_bolt: {
+    id: "lightning_bolt", classId: "sorcerer", slot: 0, name: "Relâmpago", icon: "⚡",
+    description: "Um raio rápido que causa dano altíssimo num único alvo.",
+    manaCost: 35, cooldownMs: 4500, aim: "target", range: 6, radius: 0, damage: 2.9, projectileSpeed: 30,
+  },
+  frost_nova: {
+    id: "frost_nova", classId: "sorcerer", slot: 1, name: "Nova de Gelo", icon: "❄️",
+    description: "Uma explosão de gelo ao seu redor: fere e congela os monstros por 2,5 s.",
+    manaCost: 55, cooldownMs: 11000, aim: "self", range: 0, radius: 2, damage: 1.6, rootMs: 2500,
+  },
+  venom_thorn: {
+    id: "venom_thorn", classId: "druid", slot: 0, name: "Espinho Venenoso", icon: "🦂",
+    description: "Um espinho envenenado que causa dano forte num alvo.",
+    manaCost: 30, cooldownMs: 4500, aim: "target", range: 5, radius: 0, damage: 2.3, projectileSpeed: 12,
+  },
+  nature_wrath: {
+    id: "nature_wrath", classId: "druid", slot: 1, name: "Fúria da Natureza", icon: "🌪️",
+    description: "Um redemoinho de folhas e pedras atinge o alvo e tudo ao redor dele.",
+    manaCost: 60, cooldownMs: 11000, aim: "target", range: 5, radius: 2, damage: 1.9, projectileSpeed: 9,
+  },
 };
 
+/** Magias que toda classe já tem de graça (uma por slot). As outras se compram na árvore. */
+export const STARTER_SPELLS: readonly SpellId[] = [
+  "blade_spin", "war_cry", "holy_arrow", "arrow_rain", "shadow_orb", "void_storm", "forest_blessing", "thorn_roots",
+];
+
 /**
- * Magias que a classe pode pôr num slot. Por enquanto toda classe tem uma por slot, que já vem
- * de graça; quando o mercado do menu existir, as compradas entram aqui como opções extras.
+ * Magias que a classe pode pôr num slot: as iniciais mais as compradas na árvore (`known`).
+ * Aparecem como opções quando o slot libera na hunt.
  */
-export function spellChoices(classId: ClassId, slot: SpellSlot): SpellDef[] {
-  return Object.values(SPELLS).filter((s) => s.classId === classId && s.slot === slot);
+export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly string[] = []): SpellDef[] {
+  return Object.values(SPELLS).filter((s) =>
+    s.classId === classId && s.slot === slot && (STARTER_SPELLS.includes(s.id) || known.includes(s.id)));
 }

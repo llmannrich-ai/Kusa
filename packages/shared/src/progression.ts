@@ -1,4 +1,5 @@
 import { CLASSES, type ClassId } from "./classes.ts";
+import { NO_BONUSES, type Bonuses } from "./talents.ts";
 
 export const MAX_LEVEL = 20;
 
@@ -22,14 +23,14 @@ export interface Stats {
   speed: number;
 }
 
-/** Atributos de uma classe num nível. Upgrades permanentes entram aqui no futuro. */
-export function statsFor(classId: ClassId, level: number): Stats {
+/** Atributos de uma classe num nível, com o bônus das áureas compradas na árvore de magias. */
+export function statsFor(classId: ClassId, level: number, bonus: Bonuses = NO_BONUSES): Stats {
   const c = CLASSES[classId];
   const l = level - 1;
   return {
-    maxHp: c.baseHp + c.hpPerLevel * l,
-    maxMana: c.baseMana + c.manaPerLevel * l,
-    damage: c.baseDamage + c.damagePerLevel * l,
-    speed: c.baseSpeed + 0.08 * l,
+    maxHp: Math.round((c.baseHp + c.hpPerLevel * l) * (1 + bonus.hp)),
+    maxMana: Math.round((c.baseMana + c.manaPerLevel * l) * (1 + bonus.mana)),
+    damage: (c.baseDamage + c.damagePerLevel * l) * (1 + bonus.damage),
+    speed: (c.baseSpeed + 0.08 * l) * (1 + bonus.speed),
   };
 }

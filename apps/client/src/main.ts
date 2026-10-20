@@ -2,7 +2,6 @@ import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
   CLASSES,
-  CLASS_IDS,
   ITEMS,
   ITEM_SLOTS,
   MAX_LEVEL,
@@ -16,6 +15,8 @@ import {
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
+import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
+import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import "./style.css";
@@ -25,25 +26,63 @@ const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
 
 // --- Menu ---------------------------------------------------------------
 
-const classFieldset = $("classes");
-for (const id of CLASS_IDS) {
-  const c = CLASSES[id];
-  const option = document.createElement("label");
-  option.className = "class-option";
-  option.innerHTML = `<input type="radio" name="class" value="${id}" ${id === "knight" ? "checked" : ""} />
-    <span class="swatch" style="background:#${c.color.toString(16).padStart(6, "0")}"></span>${c.name}`;
-  classFieldset.append(option);
+const hub = new Hub(() => void openRooms());
+let account: Account | null = null;
+
+/** O nome vale só no servidor em modo convidado; com Supabase, o servidor usa o do perfil (pelo token). */
+async function joinOptions(): Promise<JoinOptions> {
+  return { name: account?.username ?? "Aventureiro", classId: hub.classId, accessToken: await accessToken() };
 }
 
-const nameInput = $<HTMLInputElement>("name");
-nameInput.value = localStorageGet("kusa:name") ?? "";
+// --- Login ----------------------------------------------------------------
 
-function joinOptions(): JoinOptions {
-  const name = nameInput.value.trim() || "Aventureiro";
-  localStorageSet("kusa:name", name);
-  const classId = (document.querySelector<HTMLInputElement>('input[name="class"]:checked')?.value ?? "knight") as ClassId;
-  return { name, classId };
+const loginName = $<HTMLInputElement>("login-name");
+const loginPassword = $<HTMLInputElement>("login-password");
+loginName.value = localStorageGet("kusa:login") ?? "";
+
+function showMenu(acc: Account) {
+  account = acc;
+  show("login", false);
+  show("menu", true);
+  void hub.open(acc.username, acc.gold);
 }
+
+function showLogin() {
+  account = null;
+  loginPassword.value = "";
+  show("login-error", false);
+  show("menu", false);
+  show("login", true);
+  (loginName.value ? loginPassword : loginName).focus();
+}
+
+async function submitLogin(action: typeof signIn) {
+  const buttons = [$<HTMLButtonElement>("sign-in"), $<HTMLButtonElement>("sign-up")];
+  buttons.forEach((b) => { b.disabled = true; });
+  show("login-error", false);
+  try {
+    const acc = await action(loginName.value, loginPassword.value);
+    localStorageSet("kusa:login", loginName.value.trim());
+    loginPassword.value = "";
+    showMenu(acc);
+  } catch (err) {
+    $("login-error").textContent = err instanceof AuthError ? err.message : "Sem conexão. Tente de novo.";
+    show("login-error", true);
+  } finally {
+    buttons.forEach((b) => { b.disabled = false; });
+  }
+}
+
+// Enter no teclado (ou "ir" no celular) envia o formulário = Entrar.
+$<HTMLFormElement>("login").onsubmit = (e) => { e.preventDefault(); void submitLogin(signIn); };
+$("sign-up").onclick = () => void submitLogin(signUp);
+$("sign-out").onclick = async () => {
+  await signOut();
+  show("settings", false);
+  showLogin();
+};
+
+currentAccount().then((acc) => (acc ? showMenu(acc) : showLogin()), showLogin);
 
 function showError(message: string) {
   $("rooms-error").textContent = message;
@@ -98,7 +137,7 @@ function renderHunts(hunts: HuntListing[]) {
     count.className = "muted";
     count.textContent = `${hunt.clients}/${hunt.maxClients}`;
     button.append(title, count);
-    button.onclick = () => enter(() => joinHunt(hunt.roomId, joinOptions()));
+    button.onclick = () => enter(async () => joinHunt(hunt.roomId, await joinOptions()));
     li.append(button);
     list.append(li);
   }
@@ -139,13 +178,12 @@ $("settings-back").onclick = () => {
   show("menu", true);
 };
 
-$("play").onclick = () => { joinOptions(); void openRooms(); };
 $("rooms-back").onclick = () => {
   stopWatching();
   show("rooms", false);
   show("menu", true);
 };
-$("create").onclick = () => enter(() => createHunt(joinOptions()));
+$("create").onclick = () => enter(async () => createHunt(await joinOptions()));
 $("back").onclick = () => location.reload();
 
 // --- Sala ---------------------------------------------------------------
@@ -273,6 +311,10 @@ function showResult(msg: RunEndedMessage) {
   $("result-detail").textContent = msg.loot > 0
     ? `Saiu com ${msg.loot} de loot no nível ${msg.level}.`
     : `Todo o loot ficou para trás. Nível alcançado: ${msg.level}.`;
+  // Só com conta o equipamento volta para o inventário (convidado não salva nada).
+  if (account && msg.items.length > 0) {
+    $("result-detail").textContent += ` Guardado no inventário: ${msg.items.map((id) => ITEMS[id]?.name ?? id).join(", ")}.`;
+  }
   show("result", true);
 }
 

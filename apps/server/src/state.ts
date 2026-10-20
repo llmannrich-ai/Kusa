@@ -1,4 +1,4 @@
-import { MapSchema, Schema, type } from "@colyseus/schema";
+import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
 
 export type PlayerStatus = "playing" | "died" | "escaped" | "completed" | "buried";
 
@@ -26,6 +26,8 @@ export class Player extends Schema {
   /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
   @type("string") spell1 = "";
   @type("string") spell2 = "";
+  /** Magias que o jogador pode escolher quando um slot libera: as iniciais e as compradas na árvore. */
+  @type(["string"]) knownSpells = new ArraySchema<string>();
   /** Sob o Grito de Guerra: recebe menos dano. */
   @type("boolean") guarded = false;
 }

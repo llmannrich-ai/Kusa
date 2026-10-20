@@ -2,10 +2,52 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "servidor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:server"
+      ],
+      "port": 2567
+    },
+    {
       "name": "jogo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev:client"
+      ],
       "port": 5173
+    },
+    {
+      "name": "jogo-login",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "@kusa/client",
+        "--",
+        "--port",
+        "5182",
+        "--strictPort"
+      ],
+      "port": 5182
+    },
+    {
+      "name": "jogo-menu",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "@kusa/client",
+        "--",
+        "--port",
+        "5191",
+        "--strictPort"
+      ],
+      "port": 5191
     }
   ]
 }

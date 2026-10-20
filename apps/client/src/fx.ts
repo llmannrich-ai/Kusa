@@ -39,6 +39,23 @@ export class CombatFx {
       case "void_storm": return this.voidStorm(from, radius);
       case "forest_blessing": return this.ring(from, radius, 0x2ecc71, 600, 3);
       case "thorn_roots": return this.ring(to, radius, 0x6b7a2a, 400, 5);
+      // Compradas na árvore de magias.
+      case "crushing_blow":
+        this.slash(from, to);
+        return this.later(120, () => this.ring(to, TILE_SIZE / 2, 0xd35400, 300, 6));
+      case "iron_skin": return this.ring(from, TILE_SIZE * 0.8, 0xa4b0be, 500, 5);
+      case "piercing_shot":
+        this.projectile(FX.arrow, from, to, ms, { scale: 1.4 });
+        return this.later(ms, () => this.ring(to, radius + TILE_SIZE / 2, 0xf1c40f, 300, 4));
+      case "healing_light": return this.ring(from, radius, 0xfff6c8, 600, 3);
+      case "lightning_bolt":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff });
+        return this.later(ms, () => this.sparks(to, 0x9ec5ff, 8));
+      case "frost_nova": return this.ring(from, radius, 0x7fd8ff, 450, 6);
+      case "venom_thorn": return this.projectile(FX.greenLight, from, to, ms, { trail: 0x6ab04c, glow: 0x2d6a1f, impact: 0xbadc58 });
+      case "nature_wrath":
+        this.projectile(FX.leaf, from, to, ms, { trail: 0x7bd36a, glow: 0x3fbf3a, impact: 0x9cff7a, scale: 1.5 });
+        return this.later(ms, () => this.ring(to, radius, 0x3fbf3a, 450, 5));
     }
   }
 

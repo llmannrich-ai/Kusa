@@ -7,3 +7,5 @@ export * from "./dungeon.ts";
 export * from "./monsters.ts";
 export * from "./items.ts";
 export * from "./spells.ts";
+export * from "./account.ts";
+export * from "./talents.ts";

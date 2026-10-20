@@ -38,6 +38,12 @@ await wait(200);
 if (spells.length) throw new Error("conjurou com o slot vazio");
 if (me().spell2) throw new Error("aceitou magia de outra classe");
 
+// Convidado só conhece as magias iniciais: as da árvore precisam ser compradas no menu.
+if ([...me().knownSpells].join(",") !== "shadow_orb,void_storm") throw new Error(`magias conhecidas: ${[...me().knownSpells]}`);
+room.send(MSG.chooseSpell, { slot: 0, spellId: "lightning_bolt" });
+await wait(200);
+if (me().spell1) throw new Error("aceitou magia da árvore sem comprar");
+
 room.send(MSG.chooseSpell, { slot: 0, spellId: "shadow_orb" });
 room.send(MSG.chooseSpell, { slot: 1, spellId: "void_storm" });
 await wait(200);

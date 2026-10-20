@@ -56,3 +56,7 @@ Copie `.env.example` de cada app para `.env`:
 
 Projeto **Kusa** (`niaylxoatuxkqwwnlsic`, sa-east-1). As migrations em `supabase/migrations` já foram
 aplicadas. Toda mudança de schema entra como uma nova migration nessa pasta.
+
+Contas: login por nome + senha (mínimo 4 caracteres), sem e-mail. O nome vira um e-mail interno
+(`packages/shared/src/account.ts`) e a conta é criada já confirmada pela Edge Function `signup`
+(`supabase/functions/signup`, publicada sem verificação de JWT). As duas precisam seguir as mesmas regras.
