@@ -10,6 +10,7 @@ import {
   Tile,
   centerOf,
   generateDungeon,
+  mapIdOf,
   tileDistance,
   type AttackMessage,
   type ClassId,
@@ -25,6 +26,7 @@ import { SpellBar } from "./spellbar.ts";
 import { FX } from "./art/combat.ts";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
+import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView } from "./net.ts";
 import { hash } from "./art/pixels.ts";
@@ -60,9 +62,9 @@ const WALL_REACH = 1;
 const DEPTH = { floor: 0, ui: 100_000 };
 
 /** Sprites do pack que olham para a esquerda (espelhados quando andam para a direita). */
-const FACES_LEFT = new Set<MonsterKind>(["rat", "dragon"]);
-/** Monstros que não sangram (viram poeira). */
-const BLOODLESS = new Set<MonsterKind>(["skeleton"]);
+const FACES_LEFT = new Set<MonsterKind>(["rat", "dragon", "frog", "moccasin"]);
+/** Monstros que não sangram (viram poeira ou lama). */
+const BLOODLESS = new Set<MonsterKind>(["skeleton", "bogBody"]);
 
 const COLORS = {
   void: 0x0b0908,
@@ -136,12 +138,17 @@ export class DungeonScene extends Phaser.Scene {
   create() {
     this.fx = new CombatFx(this);
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
-    this.dungeon = generateDungeon(this.room.state.seed);
-    this.drawFloor();
-    this.drawWalls();
+    this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
+    const swamp = this.dungeon.mapId === "swamp";
+    if (swamp) {
+      drawSwamp(this, this.dungeon, DEPTH.floor);
+    } else {
+      this.drawFloor();
+      this.drawWalls();
+    }
     this.drawPortal();
 
-    this.cameras.main.setBackgroundColor(COLORS.void).setRoundPixels(true);
+    this.cameras.main.setBackgroundColor(swamp ? SWAMP_VOID : COLORS.void).setRoundPixels(true);
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
 
@@ -389,7 +396,7 @@ export class DungeonScene extends Phaser.Scene {
     return thorns;
   }
 
-  // --- Mapa ---------------------------------------------------------------
+  // --- Mapa (cripta; o pântano é desenhado em swampMap.ts) -------------------
 
   private isFloor(x: number, y: number) {
     const d = this.dungeon;

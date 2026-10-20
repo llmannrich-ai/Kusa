@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { Room, type Client } from "colyseus";
 import {
   BASIC_ATTACKS,
-  BOSS_KIND,
   BOSS_LOOT_BONUS,
   CHEST_LOOT,
   CLASSES,
@@ -12,13 +11,11 @@ import {
   GUARANTEED_DROPS,
   ITEMS,
   ITEM_SLOTS,
-  MINIBOSS_KIND,
+  MAPS,
   MONSTERS,
-  MATCH_DURATION_SECONDS,
   MAX_LEVEL,
   MAX_PARTY_SIZE,
   MSG,
-  PATH_SPAWNS,
   SERVER_TICK_MS,
   SPELLS,
   SPELL_SLOT_LEVELS,
@@ -37,6 +34,7 @@ import {
   isWalkable,
   knownSpells,
   levelForXp,
+  mapIdOf,
   monsterStats,
   rollItem,
   spellChoices,
@@ -55,6 +53,7 @@ import {
   type Dungeon,
   type HuntMetadata,
   type JoinOptions,
+  type MapDef,
   type MonsterDef,
   type MonsterKind,
   type MoveMessage,
@@ -129,6 +128,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   state = new DungeonState();
 
   private dungeon!: Dungeon;
+  private map!: MapDef;
   private matchId = randomUUID();
   private seats = new Map<string, Seat>();
   private elapsedMs = 0;
@@ -140,9 +140,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   /** Momento (ms) em que cada item do chão some. */
   private itemExpiresAt = new Map<string, number>();
 
-  onCreate() {
+  onCreate(options: JoinOptions) {
+    this.map = MAPS[mapIdOf(options?.mapId)];
+    this.state.mapId = this.map.id;
     this.state.seed = Math.floor(Math.random() * 2 ** 31);
-    this.dungeon = generateDungeon(this.state.seed);
+    this.dungeon = generateDungeon(this.state.seed, this.map.id);
     this.spawnMonsters();
 
     this.onMessage(MSG.start, (client) => {
@@ -189,7 +191,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
-      void this.setMatchmaking({ metadata: { leader: player.name } });
+      void this.setMatchmaking({ metadata: { leader: player.name, mapId: this.map.id } });
     }
   }
 
@@ -205,31 +207,42 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       if (this.state.leaderId === client.sessionId) {
         this.state.leaderId = this.state.players.keys().next().value ?? "";
         const leader = this.state.players.get(this.state.leaderId);
-        if (leader) void this.setMatchmaking({ metadata: { leader: leader.name } });
+        if (leader) void this.setMatchmaking({ metadata: { leader: leader.name, mapId: this.map.id } });
       }
     }
   }
 
   // --- Spawn ------------------------------------------------------------
 
-  /** Popula a dungeon: comuns nas salas do caminho, mini-boss + baú nas laterais e o boss no centro. */
+  /** Popula o mapa: comuns nas salas do caminho (e nas campinas), mini-boss + baú nas laterais e o boss no centro. */
   private spawnMonsters() {
     const d = this.dungeon;
     // RNG próprio derivado da seed, separado do gerador do mapa.
     const rng = createRng(this.state.seed ^ 0x9e3779b9);
 
+    const spawns = this.map.pathSpawns;
     d.path.forEach((room, depth) => {
-      const kinds = PATH_SPAWNS[Math.min(depth, PATH_SPAWNS.length - 1)];
+      const kinds = spawns[Math.min(depth, spawns.length - 1)];
       for (const kind of kinds) {
         const spot = this.freeSpotIn(room, () => rng.int(0, 1_000_000));
         if (spot) this.addMonster(kind, spot.x, spot.y, depth);
       }
     });
 
+    // Campinas: dois monstros da sala do caminho mais próxima.
+    d.meadows.forEach((room) => {
+      const depth = this.nearestPathDepth(room);
+      const kinds = spawns[Math.min(depth, spawns.length - 1)];
+      for (let i = 0; i < 2; i++) {
+        const spot = this.freeSpotIn(room, () => rng.int(0, 1_000_000));
+        if (spot) this.addMonster(rng.pick(kinds), spot.x, spot.y, depth);
+      }
+    });
+
     d.side.forEach((room, i) => {
       const depth = this.nearestPathDepth(room);
       const c = centerOf(room);
-      const boss = this.addMonster(MINIBOSS_KIND, c.x, c.y, depth);
+      const boss = this.addMonster(this.map.miniboss, c.x, c.y, depth);
       const chest = new Chest();
       chest.id = `c${i + 1}`;
       chest.x = room.x + 1;
@@ -240,7 +253,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     });
 
     const c = centerOf(d.boss);
-    this.addMonster(BOSS_KIND, c.x, c.y, d.path.length);
+    this.addMonster(this.map.boss, c.x, c.y, d.path.length);
   }
 
   private addMonster(kind: MonsterKind, x: number, y: number, depth: number) {
@@ -273,7 +286,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     return null;
   }
 
-  /** Profundidade de uma sala lateral = índice da sala do caminho mais próxima. */
+  /** Profundidade de uma sala lateral ou campina = índice da sala do caminho mais próxima. */
   private nearestPathDepth(room: Rect) {
     const c = centerOf(room);
     let best = 0;
@@ -293,7 +306,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
   private startRun() {
     this.state.phase = "running";
-    this.state.timeLeft = MATCH_DURATION_SECONDS;
+    this.state.timeLeft = this.map.durationSeconds;
     this.lock();
     // O equipamento escolhido no menu sai do inventário e entra na dungeon (chega logo depois do início).
     this.seats.forEach((seat, sessionId) => {
@@ -356,7 +369,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (this.state.phase !== "running") return;
 
     this.elapsedMs += dt;
-    const left = Math.max(0, MATCH_DURATION_SECONDS - Math.floor(this.elapsedMs / 1000));
+    const left = Math.max(0, this.map.durationSeconds - Math.floor(this.elapsedMs / 1000));
     if (left !== this.state.timeLeft) this.state.timeLeft = left;
 
     if (left === 0) {

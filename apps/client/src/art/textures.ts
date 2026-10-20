@@ -19,12 +19,30 @@ export const MONSTER_TEXTURE: Record<MonsterKind, string> = {
   orc: "monster-orc",
   ogre: "monster-ogre",
   dragon: "monster-dragon",
+  frog: "monster-frog",
+  moccasin: "monster-moccasin",
+  bogBody: "monster-bog-body",
+  naga: "monster-naga",
+  troll: "monster-troll",
+  hydra: "monster-hydra",
 };
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
 export const PORTAL_TEXTURE = { escape: "portal-escape", boss: "portal-boss" };
 /** Faixas de variações de chão (32×32 cada). */
 export const FLOOR_TEXTURE = { normal: "floor", boss: "floor-boss" };
+/** Pântano das Ruínas: faixas de chão e água (tilemap) e de árvores, muros e colunas (sprites 32×32). */
+export const SWAMP_TEXTURE = {
+  grass: "floor-grass",
+  mud: "floor-mud",
+  ruins: "floor-ruins",
+  forest: "floor-forest",
+  water: "water-swamp",
+  tree: "tree-swamp",
+  ruinWall: "ruin-wall",
+  column: "ruin-column",
+};
+const SWAMP_SHEETS = [SWAMP_TEXTURE.tree, SWAMP_TEXTURE.ruinWall, SWAMP_TEXTURE.column];
 
 /** Efeitos de combate: projéteis e impactos do pack, e os de corpo a corpo desenhados em `effects.ts`. */
 export const FX_TEXTURE = {
@@ -47,6 +65,7 @@ export function preloadArt(scene: Phaser.Scene) {
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
+    ...Object.values(SWAMP_TEXTURE).filter((key) => !SWAMP_SHEETS.includes(key)),
     FX_TEXTURE.arrow,
     FX_TEXTURE.fireball,
     FX_TEXTURE.energyBolt,
@@ -55,7 +74,7 @@ export function preloadArt(scene: Phaser.Scene) {
   ]) {
     scene.load.image(key, `${key}.png`);
   }
-  for (const key of [FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE)]) {
+  for (const key of [FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE), ...SWAMP_SHEETS]) {
     scene.load.spritesheet(key, `${key}.png`, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
   }
   scene.load.setPath();

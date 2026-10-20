@@ -64,6 +64,8 @@ export class GroundItem extends Schema {
 
 export class DungeonState extends Schema {
   @type("string") phase = "lobby";
+  /** Mapa da hunt (id de `MAPS` em `@kusa/shared`), escolhido por quem criou a sala. */
+  @type("string") mapId = "crypt";
   /** Seed da dungeon: cliente e servidor geram o mesmo mapa a partir dela. */
   @type("number") seed = 0;
   @type("number") timeLeft = 0;

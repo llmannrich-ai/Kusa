@@ -19,7 +19,8 @@ teclado e mouse no desktop são um extra.
 
 ## Menu inicial (estilo Zooba / Clash)
 
-Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e o botão **Jogar** logo acima delas.
+Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e o botão **Jogar** logo acima delas,
+com a escolha do mapa logo acima do Jogar (ver "Mapas").
 Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
@@ -27,7 +28,7 @@ Código em `apps/client/src/menu.ts`.
 - **Itens:** o inventário da conta e o equipamento que vai para a próxima hunt (um item por slot).
 - **Mercado:** compra itens até Aço e vende qualquer item do inventário. Itens de Dragão só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
-- Ainda por fazer: modo/mapa, cosméticos e amigos.
+- Ainda por fazer: modo, cosméticos e amigos.
 
 ### Árvore de magias
 
@@ -51,11 +52,32 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 - Quem morre perde o que levou: o equipamento cai no chão e outro jogador pode pegar e extrair.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
+## Mapas
+
+O jogador escolhe o mapa no menu (botão acima do **Jogar**; a escolha fica salva no aparelho). O mapa vale para as salas
+que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e no lobby.
+Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
+
+| Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-boss → boss) |
+|---|---|---|---|---|
+| 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Goblin, Esqueleto, Orc → Ogro → Dragão jovem |
+| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, 7 clareiras no caminho | Sapo gigante, Cobra-d'água, Afogado, Naga guerreira → Troll do brejo → Hidra do pântano |
+
+### Pântano das Ruínas
+
+- Floresta com sensação de campo aberto: o caminho faz um arco da borda até o centro passando por clareiras grandes,
+  ligadas por trilhas largas, às vezes com atalhos que pulam uma clareira. Campinas fora do caminho guardam alguns monstros.
+- Lagoas e poças: **a água bloqueia o passo, mas não a visão**. Flechas, magias e o ataque de alcance 2 da Hidra passam por cima.
+- Ruínas: salas laterais cercadas por muros caídos (Troll + baú), colunas soltas pelo campo e a arena do boss no centro,
+  um quadrado de muros com 4 portões e 4 colunas.
+- Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
+  Em troca, loot maior e itens de material melhor nas salas fundas.
+
 ## Partida (hunt)
 
 - Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto.
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
-- O limite de tempo fica entre 3 e 5 minutos. **Se o tempo acaba, a dungeon desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 8.
@@ -78,7 +100,7 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 - O servidor faz auto-attack no alvo enquanto ele estiver no alcance da classe e com linha de visão; sem alvo travado, escolhe sozinho o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
-- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um Ogro (mini-boss) que destranca um baú; o Dragão jovem fica no centro.
+- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 
@@ -110,9 +132,9 @@ Cada classe tem a mesma forma de árvore, comprada com o gold das hunts (`packag
 
 ## Decisões em aberto
 
-- Duração exata da hunt (o código usa 4 min em `MATCH_DURATION_SECONDS`).
+- Duração exata de cada mapa (`durationSeconds` em `packages/shared/src/maps.ts`).
 - Se a morte regride os upgrades permanentes, e quanto.
 - Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida); preços da árvore de magias e do mercado ainda precisam de balanceamento.
-- Tipos de mapa e bosses.
+- Balanceamento do Pântano (dificuldade 2) e próximos mapas e bosses.
 - Os jogadores de uma equipe se reanimam? O loot é compartilhado ou individual?
 - Arte: os sprites do Tibia são da CipSoft e **não podem ser usados**. Usaremos assets com licença aberta (OpenGameArt, itch.io) ou arte própria, no mesmo estilo.

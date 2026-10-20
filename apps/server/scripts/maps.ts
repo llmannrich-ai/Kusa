@@ -1,0 +1,108 @@
+/**
+ * Teste dos mapas. Primeiro, sem servidor: para várias seeds, o gerador de cada mapa é determinístico
+ * e todos os pontos importantes (salas, campinas, baús, boss) são alcançáveis a pé a partir do portal.
+ * Depois, contra um servidor rodando: cada mapa cria a sala certa (monstros, tempo) e a fuga funciona.
+ * Uso: npx tsx apps/server/scripts/maps.ts [url]
+ */
+import { Client } from "@colyseus/sdk";
+import {
+  MAPS,
+  MAP_IDS,
+  MSG,
+  ROOM_NAME,
+  centerOf,
+  generateDungeon,
+  isWalkable,
+  type Dungeon,
+  type MapId,
+  type RunEndedMessage,
+} from "@kusa/shared";
+
+const SEEDS = 150;
+
+for (const mapId of MAP_IDS) {
+  for (let i = 1; i <= SEEDS; i++) {
+    const seed = Math.imul(i, 2654435761) >>> 1;
+    const d = generateDungeon(seed, mapId);
+    const again = generateDungeon(seed, mapId);
+    if (d.tiles.some((t, k) => again.tiles[k] !== t)) throw new Error(`${mapId}: seed ${seed} não é determinística`);
+    const reach = reachable(d);
+    const goals = [
+      centerOf(d.boss), ...d.path.map(centerOf), ...d.meadows.map(centerOf),
+      ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+    ];
+    for (const g of goals) {
+      if (!reach[g.y * d.width + g.x]) throw new Error(`${mapId}: seed ${seed}, ponto (${g.x}, ${g.y}) inalcançável`);
+    }
+  }
+  console.log(`${MAPS[mapId].name}: ${SEEDS} seeds conectadas e determinísticas`);
+}
+
+const url = process.argv[2] ?? "http://localhost:2567";
+const client = new Client(url);
+for (const mapId of MAP_IDS) await playMap(mapId);
+// Sem mapId (cliente antigo): cai no mapa padrão.
+const legacy = await client.create<any>(ROOM_NAME, { name: "Antigo", classId: "knight" });
+await wait(300);
+if (legacy.state.mapId !== "crypt") throw new Error(`sala sem mapId deveria ser a cripta, veio ${legacy.state.mapId}`);
+await legacy.leave();
+
+console.log("MAPS OK");
+process.exit(0);
+
+async function playMap(mapId: MapId) {
+  const map = MAPS[mapId];
+  const room = await client.create<any>(ROOM_NAME, { name: "Lider", classId: "paladin", mapId });
+  room.onMessage(MSG.damage, () => {});
+  room.onMessage(MSG.notice, () => {});
+  const ended = new Promise<RunEndedMessage>((resolve) => room.onMessage(MSG.runEnded, resolve));
+
+  await wait(300);
+  if (room.state.mapId !== mapId) throw new Error(`mapId esperado ${mapId}, veio ${room.state.mapId}`);
+  const allowed = new Set([...map.pathSpawns.flat(), map.miniboss, map.boss]);
+  const kinds = new Set<string>();
+  room.state.monsters.forEach((m: { kind: string }) => kinds.add(m.kind));
+  for (const kind of kinds) if (!allowed.has(kind as never)) throw new Error(`${mapId}: monstro de outro mapa (${kind})`);
+  if (!kinds.has(map.boss)) throw new Error(`${mapId}: sem boss`);
+
+  room.send(MSG.start);
+  await wait(300);
+  if (room.state.timeLeft !== map.durationSeconds) {
+    throw new Error(`${mapId}: tempo esperado ${map.durationSeconds}, veio ${room.state.timeLeft}`);
+  }
+
+  // O líder nasce na diagonal de cima à esquerda do portal.
+  room.send(MSG.move, { dx: 1, dy: 1 });
+  const result = await Promise.race([ended, wait(3000).then(() => { throw new Error(`${mapId}: timeout na fuga`); })]);
+  if (result.outcome !== "escaped") throw new Error(`${mapId}: esperava fuga, veio ${result.outcome}`);
+  console.log(`${map.name}: ${room.state.monsters.size} monstros, ${map.durationSeconds / 60} min, fuga ok`);
+  await room.leave();
+}
+
+/** Tiles alcançáveis a partir do portal, andando como o servidor deixa (8 direções, sem cortar quina). */
+function reachable(d: Dungeon) {
+  const seen = new Uint8Array(d.width * d.height);
+  const start = d.portal.y * d.width + d.portal.x;
+  const queue = [start];
+  seen[start] = 1;
+  for (let head = 0; head < queue.length; head++) {
+    const x = queue[head] % d.width;
+    const y = Math.floor(queue[head] / d.width);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        const k = ny * d.width + nx;
+        if ((!dx && !dy) || seen[k] || !isWalkable(d, nx, ny)) continue;
+        if (dx && dy && (!isWalkable(d, nx, y) || !isWalkable(d, x, ny))) continue;
+        seen[k] = 1;
+        queue.push(k);
+      }
+    }
+  }
+  return seen;
+}
+
+function wait(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}

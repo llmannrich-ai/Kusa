@@ -1,4 +1,5 @@
 import type { ClassId } from "./classes.ts";
+import type { MapId } from "./maps.ts";
 import type { SpellId, SpellSlot } from "./spells.ts";
 
 /** Como um golpe aparece na tela: o cliente escolhe projétil e impacto a partir disto. */
@@ -10,12 +11,15 @@ export interface JoinOptions {
   classId: ClassId;
   /** JWT do Supabase; o servidor usa para identificar o jogador. */
   accessToken?: string;
+  /** Mapa da hunt. Só vale para quem cria a sala; quem entra numa sala aberta joga o mapa dela. */
+  mapId?: MapId;
 }
 
 /** Metadata de matchmaking de uma hunt, mostrada na lista de salas. */
 export interface HuntMetadata {
   /** Nome do líder da equipe. */
   leader: string;
+  mapId: MapId;
 }
 
 /** Cliente → servidor: um passo de tile. */

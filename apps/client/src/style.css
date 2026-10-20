@@ -75,6 +75,8 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 
 #room-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .room { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; }
+.room small { display: block; }
+#lobby-map { margin: 0; color: var(--accent); }
 
 #lobby-players { padding-left: 20px; }
 
@@ -319,7 +321,18 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .hub-hint { margin: 0 0 12px; font-size: 13px; }
 .empty { padding: 16px; text-align: center; border: 1px dashed var(--border); }
 .hub-play { padding: 8px 16px; background: var(--bg); border-top: 1px solid #2a211b; }
+.hub-play { display: grid; gap: 6px; }
 .hub-play .primary { min-height: 52px; font-size: 18px; }
+.map-pick { width: 100%; min-height: 40px; font-size: 14px; }
+
+/* Escolha de mapa (folha) */
+.map-list { display: grid; gap: 8px; }
+.map-card { display: grid; gap: 6px; width: 100%; padding: 12px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
+.map-card.selected { border-color: var(--accent); background: #2a211b; }
+.map-card p { margin: 0; font-size: 13px; }
+.map-head { display: flex; align-items: center; gap: 10px; }
+.map-head strong, .map-head small { display: block; }
+.map-icon { font-size: 28px; }
 .hub-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
