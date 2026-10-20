@@ -46,6 +46,32 @@ for (const id of CLASS_IDS) {
   });
 }
 
+// Caminhada animada como no jogo (quadros 1, 0, 2, 0 a 8 por segundo), em cada direção.
+const walkRow = section("Caminhada");
+const WALK = [1, 0, 2, 0];
+const walkers: { ctx: CanvasRenderingContext2D; sheet: HTMLCanvasElement; first: number; flip: boolean }[] = [];
+for (const id of CLASS_IDS) {
+  const sheet = heroSheet(id);
+  for (const [dir, flip] of [["down", false], ["side", false], ["side", true], ["up", false]] as const) {
+    const { canvas, ctx } = makeCanvas(HERO_SIZE, HERO_SIZE);
+    walkers.push({ ctx, sheet, first: HERO_DIRS.indexOf(dir) * HERO_FRAMES, flip });
+    show(walkRow, canvas, `${CLASSES[id].name} ${flip ? "direita" : dirNames[dir]}`, 3);
+  }
+}
+let walkStep = 0;
+const drawWalk = () => {
+  for (const w of walkers) {
+    w.ctx.clearRect(0, 0, HERO_SIZE, HERO_SIZE);
+    w.ctx.save();
+    if (w.flip) w.ctx.setTransform(-1, 0, 0, 1, HERO_SIZE, 0);
+    w.ctx.drawImage(w.sheet, (w.first + WALK[walkStep % WALK.length]) * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, 0, 0, HERO_SIZE, HERO_SIZE);
+    w.ctx.restore();
+  }
+  walkStep++;
+};
+drawWalk();
+setInterval(drawWalk, 125);
+
 for (const slot of ITEM_SLOTS) {
   const row = section(`Itens: ${SLOT_NAMES[slot]}`);
   for (let tier = 1; tier <= MAX_TIER; tier++) {
