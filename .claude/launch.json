@@ -2,9 +2,21 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "servidor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:server"
+      ],
+      "port": 2567
+    },
+    {
       "name": "jogo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev:client"
+      ],
       "port": 5173
     }
   ]
