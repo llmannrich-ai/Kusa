@@ -48,6 +48,8 @@ interface Seat {
   nextMoveAt: number;
   /** Momento (ms) do próximo auto-attack. */
   nextAttackAt: number;
+  /** true quando o jogador escolheu o alvo (toque/🎯); false quando a mira automática escolheu. */
+  targetLocked: boolean;
 }
 
 /** Dados do monstro que só o servidor precisa (o cliente vê só o schema `Monster`). */
@@ -124,7 +126,7 @@ export class DungeonRoom extends Room<{ state: DungeonState }> {
     player.y = this.dungeon.portal.y + [-1, -1, 1, 1][index];
 
     this.state.players.set(client.sessionId, player);
-    this.seats.set(client.sessionId, { userId: auth.userId, nextMoveAt: 0, nextAttackAt: 0 });
+    this.seats.set(client.sessionId, { userId: auth.userId, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false });
     if (!this.state.leaderId) this.state.leaderId = client.sessionId;
   }
 
@@ -271,6 +273,8 @@ export class DungeonRoom extends Room<{ state: DungeonState }> {
     if (!player || player.status !== "playing") return;
     const id = typeof msg?.id === "string" ? msg.id : "";
     player.target = this.state.monsters.has(id) ? id : "";
+    const seat = this.seats.get(client.sessionId);
+    if (seat) seat.targetLocked = player.target !== "";
   }
 
   private tick(dt: number) {
@@ -315,19 +319,26 @@ export class DungeonRoom extends Room<{ state: DungeonState }> {
   private playerAttack(sessionId: string, p: Player, now: number) {
     if (p.status !== "playing") return;
     const cls = CLASSES[p.classId as ClassId];
+    const seat = this.seats.get(sessionId);
+    if (!seat) return;
     if (p.target && !this.state.monsters.has(p.target)) p.target = "";
+    if (!p.target) seat.targetLocked = false;
+    // Alvo escolhido sozinho não fica preso: se saiu do alcance, troca pelo mais próximo que está no alcance.
+    if (!seat.targetLocked && p.target && !this.canHit(p, this.state.monsters.get(p.target)!, cls.attackRange)) p.target = "";
     if (!p.target) p.target = this.nearestMonsterInRange(p, cls.attackRange) ?? "";
     if (!p.target) return;
 
-    const seat = this.seats.get(sessionId);
     const m = this.state.monsters.get(p.target)!;
-    if (!seat || now < seat.nextAttackAt) return;
+    if (now < seat.nextAttackAt) return;
 
-    if (tileDistance(p.x, p.y, m.x, m.y) > cls.attackRange) return;
-    if (!hasLineOfSight(this.dungeon, p.x, p.y, m.x, m.y)) return;
+    if (!this.canHit(p, m, cls.attackRange)) return;
 
     seat.nextAttackAt = now + cls.attackCooldownMs;
     this.damageMonster(m, rollDamage(statsFor(cls.id, p.level).damage), sessionId);
+  }
+
+  private canHit(p: Player, m: Monster, range: number) {
+    return tileDistance(p.x, p.y, m.x, m.y) <= range && hasLineOfSight(this.dungeon, p.x, p.y, m.x, m.y);
   }
 
   private nearestMonsterInRange(p: Player, range: number): string | null {
