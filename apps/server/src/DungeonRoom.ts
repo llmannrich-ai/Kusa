@@ -71,6 +71,7 @@ import {
 import { nextStep } from "./pathfinding.ts";
 import { Chest, DungeonState, GroundItem, Monster, Player } from "./state.ts";
 import { recordRun, resolveAccount, takeLoadout, type Account } from "./supabase.ts";
+import { bump, newRunStats, recordTelemetry, type RunStats } from "./telemetry.ts";
 
 /** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
 type Hit = Pick<DamageMessage, "attacker" | "fromX" | "fromY" | "fx">;
@@ -90,6 +91,8 @@ interface Seat {
   guardUntil: number;
   /** Áureas compradas na árvore da classe. */
   bonus: Bonuses;
+  /** Números da hunt para a telemetria. */
+  stats: RunStats;
 }
 
 /** Dados do monstro que só o servidor precisa (o cliente vê só o schema `Monster`). */
@@ -185,7 +188,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, targetLocked: false,
-      spellReadyAt: [0, 0], guard: 0, guardUntil: 0, bonus,
+      spellReadyAt: [0, 0], guard: 0, guardUntil: 0, bonus, stats: newRunStats(),
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -197,6 +200,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const player = this.state.players.get(client.sessionId);
     // Abandonar uma hunt em andamento conta como morte.
     if (player && this.state.phase === "running" && player.status === "playing") {
+      const seat = this.seats.get(client.sessionId);
+      if (seat) seat.stats.abandoned = true;
       this.endRun(client.sessionId, "died");
     }
     if (this.state.phase === "lobby") {
@@ -295,12 +300,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.phase = "running";
     this.state.timeLeft = MATCH_DURATION_SECONDS;
     this.lock();
+    this.state.players.forEach((p, sessionId) => this.trackDepth(sessionId, p));
     // O equipamento escolhido no menu sai do inventário e entra na dungeon (chega logo depois do início).
     this.seats.forEach((seat, sessionId) => {
       if (!seat.userId) return;
       void takeLoadout(seat.userId).then((items) => {
         const p = this.state.players.get(sessionId);
         if (!p || p.status !== "playing") return;
+        seat.stats.items.loadout = items;
         const best = bestPerSlot(items);
         for (const slot of ITEM_SLOTS) if (isUpgrade(best[slot], p[slot])) p[slot] = best[slot];
       });
@@ -330,12 +337,15 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     seat.nextMoveAt = now + (1000 / speed) * (dx !== 0 && dy !== 0 ? Math.SQRT2 : 1);
     player.x = nx;
     player.y = ny;
+    if (this.state.phase === "running") this.trackDepth(client.sessionId, player);
 
     if (this.state.phase === "running" && tileAt(this.dungeon, nx, ny) === Tile.Portal) {
       const bossPortal = centerOf(this.dungeon.boss);
       if (nx === bossPortal.x && ny === bossPortal.y) {
         // Concluir a dungeon dá um bônus sobre o loot carregado.
-        player.loot = Math.round(player.loot * (1 + BOSS_LOOT_BONUS));
+        const bonus = Math.round(player.loot * BOSS_LOOT_BONUS);
+        player.loot += bonus;
+        seat.stats.loot.bossBonus = bonus;
         this.endRun(client.sessionId, "completed");
       } else {
         this.endRun(client.sessionId, "escaped");
@@ -420,7 +430,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: cls.attackFx };
     this.after(ms, () => {
       const alive = this.state.monsters.get(m.id);
-      if (alive) this.damageMonster(alive, amount, hit);
+      if (alive) this.damageMonster(alive, amount, hit, "basic");
     });
   }
 
@@ -442,6 +452,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const spell = spellChoices(p.classId as ClassId, slot, [...p.knownSpells]).find((s) => s.id === msg.spellId);
     if (!spell) return;
     if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
+    const seat = this.seats.get(client.sessionId);
+    if (seat) seat.stats.spellsChosen[slot + 1] = { id: spell.id, at: this.seconds() };
     this.notice(p.x, p.y - 1, spell.name, 0x9b59b6);
   }
 
@@ -458,6 +470,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const now = this.clock.currentTime;
     if (now < seat.spellReadyAt[slot]) return;
     if (p.mana < spell.manaCost) {
+      seat.stats.castFails.noMana++;
       client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Sem mana", color: 0x5dade2 } satisfies NoticeMessage);
       return;
     }
@@ -470,12 +483,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         ? current
         : this.state.monsters.get(this.nearestMonsterInRange(p, spell.range) ?? "");
       if (!target) {
+        seat.stats.castFails.noTarget++;
         client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Nenhum alvo ao alcance", color: 0xbdc3c7 } satisfies NoticeMessage);
         return;
       }
     }
 
     p.mana -= spell.manaCost;
+    bump(seat.stats.casts, spell.id);
     seat.spellReadyAt[slot] = now + spell.cooldownMs;
     const tx = target?.x ?? p.x;
     const ty = target?.y ?? p.y;
@@ -513,7 +528,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         brain.rootedUntil = now + spell.rootMs;
         m.rooted = true;
       }
-      if (spell.damage) this.damageMonster(m, rollDamage(amount), { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx });
+      if (spell.damage) this.damageMonster(m, rollDamage(amount), { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id);
     }
 
     if (spell.heal) {
@@ -522,6 +537,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         const healed = Math.min(ally.maxHp - ally.hp, Math.round(ally.maxHp * spell.heal!));
         if (healed <= 0) return;
         ally.hp += healed;
+        seat.stats.healing += healed;
         this.notice(ally.x, ally.y, `+${healed}`, 0x2ecc71);
       });
     }
@@ -561,10 +577,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     return best;
   }
 
-  private damageMonster(m: Monster, amount: number, hit: Hit) {
+  /** `source` é "basic" ou o id da magia, para a telemetria. */
+  private damageMonster(m: Monster, amount: number, hit: Hit, source: string) {
     const brain = this.brains.get(m.id);
     if (!brain) return;
     const attackerId = hit.attacker;
+    const stats = this.seats.get(attackerId)?.stats;
+    if (stats) bump(stats.damageDealt, source, Math.min(amount, m.hp));
     m.hp = Math.max(0, m.hp - amount);
     brain.participants.add(attackerId);
     // Apanhar faz o monstro perseguir quem bateu, se ainda não persegue ninguém.
@@ -588,6 +607,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (killer?.status === "playing") {
       const value = rollRange(brain.loot);
       killer.loot += value;
+      const stats = this.seats.get(killerId)?.stats;
+      if (stats) {
+        stats.loot.monsters += value;
+        bump(stats.kills, m.kind);
+        stats.firstKillAt ??= this.seconds();
+      }
       this.notice(m.x, m.y - 1, `+${value} loot`, 0xf1c40f);
     }
 
@@ -615,13 +640,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const p = this.state.players.get(sessionId);
     if (!p || p.status !== "playing") return;
     p.xp += amount;
+    const seat = this.seats.get(sessionId);
+    if (seat) seat.stats.xp += amount;
     this.notice(p.x, p.y - 1, `+${amount} XP`, 0xdcdde1);
     const level = levelForXp(p.xp);
     const previous = p.level;
     if (level <= previous) return;
     // Subiu de nível: atributos novos e cura completa.
-    const stats = statsFor(p.classId as ClassId, level, this.seats.get(sessionId)?.bonus);
+    const stats = statsFor(p.classId as ClassId, level, seat?.bonus);
     p.level = level;
+    if (seat) for (let l = previous + 1; l <= level; l++) seat.stats.levelAt[l] = this.seconds();
     p.hp = p.maxHp = stats.maxHp;
     p.mana = p.maxMana = stats.maxMana;
     this.notice(p.x, p.y - 1, `Nível ${level}!`, 0x2ecc71);
@@ -631,8 +659,20 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private damagePlayer(sessionId: string, raw: number, hit: Hit) {
     const p = this.state.players.get(sessionId);
     if (!p || p.status !== "playing") return;
-    const guard = p.guarded ? this.seats.get(sessionId)?.guard ?? 0 : 0;
+    const seat = this.seats.get(sessionId);
+    const guard = p.guarded ? seat?.guard ?? 0 : 0;
     const amount = Math.max(1, Math.round(raw * (1 - damageReduction(armorOf(equipment(p)))) * (1 - guard)));
+    const monster = this.state.monsters.get(hit.attacker);
+    if (seat) {
+      const kind = monster?.kind ?? "?";
+      bump(seat.stats.damageTaken, kind, Math.min(amount, p.hp));
+      seat.stats.damageMitigated += Math.max(0, raw - amount);
+      seat.stats.minHpPct = Math.min(seat.stats.minHpPct, Math.max(0, p.hp - amount) / p.maxHp);
+      if (amount >= p.hp) {
+        const depth = this.brains.get(hit.attacker)?.depth ?? -1;
+        seat.stats.death = { by: kind, depth, x: p.x, y: p.y, at: this.seconds() };
+      }
+    }
     p.hp = Math.max(0, p.hp - amount);
     this.broadcast(MSG.damage, { x: p.x, y: p.y, amount, toPlayer: true, ...hit } satisfies DamageMessage);
     if (p.hp === 0) this.endRun(sessionId, "died");
@@ -709,12 +749,17 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private openChests() {
     this.state.chests.forEach((chest) => {
       if (chest.locked || chest.opened) return;
-      this.state.players.forEach((p) => {
+      this.state.players.forEach((p, sessionId) => {
         if (chest.opened || p.status !== "playing" || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
         chest.opened = true;
         const k = 1 + DEPTH_SCALING * (this.chestDepth.get(chest.id) ?? 0);
         const value = Math.round(rollRange(CHEST_LOOT) * k);
         p.loot += value;
+        const stats = this.seats.get(sessionId)?.stats;
+        if (stats) {
+          stats.loot.chests += value;
+          stats.chestsOpened++;
+        }
         this.notice(chest.x, chest.y, `Baú: +${value} loot`, 0xf1c40f);
         // O baú guarda um item melhor que o do mini-boss.
         this.dropItem(rollItem("miniboss", this.chestDepth.get(chest.id) ?? 0, Math.random, 1), chest.x, chest.y);
@@ -739,7 +784,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
    * para quem quiser. Item pior fica onde está (qualquer jogador pode pegar, não há dono).
    */
   private pickUpItems() {
-    this.state.players.forEach((p) => {
+    this.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing") return;
       const here = [...this.state.items.values()]
         .filter((it) => it.x === p.x && it.y === p.y)
@@ -749,6 +794,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         if (!def || !isUpgrade(def.id, p[def.slot])) continue;
         const old = p[def.slot];
         p[def.slot] = def.id;
+        this.seats.get(sessionId)?.stats.items.picked.push(def.id);
         this.state.items.delete(ground.id);
         this.itemExpiresAt.delete(ground.id);
         if (old) this.dropItem(old, p.x, p.y);
@@ -776,8 +822,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
     // Quem morre larga o equipamento no chão, e os outros podem saquear.
+    const seat = this.seats.get(sessionId);
     if (outcome === "died") {
       for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
+      if (seat) seat.stats.items.lost = equipment(player).filter(Boolean);
     }
     player.status = outcome;
     player.target = "";
@@ -787,9 +835,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items };
     this.clients.getById(sessionId)?.send(MSG.runEnded, result);
 
-    const userId = this.seats.get(sessionId)?.userId;
+    const userId = seat?.userId;
     if (userId) {
       void recordRun(this.matchId, { userId, classId: player.classId, outcome, level: player.level, loot: player.loot, items });
+    }
+    if (seat) {
+      void recordTelemetry({
+        matchId: this.matchId, userId: userId ?? null, name: player.name, classId: player.classId,
+        partySize: this.state.players.size, seed: this.state.seed, outcome, level: player.level,
+        durationS: this.seconds(), loot: player.loot, pathRooms: this.dungeon.path.length, stats: seat.stats,
+      });
     }
 
     const everyoneOut = [...this.state.players.values()].every((p) => p.status !== "playing");
@@ -797,6 +852,22 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.state.phase = "ended";
       this.clock.setTimeout(() => this.disconnect(), 10_000);
     }
+  }
+
+  /** Segundos desde o início da hunt, para a telemetria. */
+  private seconds() {
+    return Math.round(this.elapsedMs / 100) / 10;
+  }
+
+  /** Telemetria: primeira vez que o jogador pisa em cada sala do caminho (a do boss conta como a última). */
+  private trackDepth(sessionId: string, p: Player) {
+    const stats = this.seats.get(sessionId)?.stats;
+    if (!stats) return;
+    const inside = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+    // A primeira sala do caminho às vezes encosta na inicial: o trecho em comum conta como sala inicial.
+    if (inside(this.dungeon.spawn)) return;
+    const depth = [...this.dungeon.path, this.dungeon.boss].findIndex(inside);
+    if (depth >= 0 && !(depth in stats.depthAt)) stats.depthAt[depth] = this.seconds();
   }
 
   /** Dano base do jogador (classe, nível, áureas e arma), antes da variação. */
