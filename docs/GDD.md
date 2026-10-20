@@ -8,12 +8,13 @@ RPG de dungeon cooperativo para navegador, com tema de Dungeons & Dragons e visu
 O jogo roda no navegador, mas **o alvo principal é o celular**. Toda mecânica nasce pensada para o toque;
 teclado e mouse no desktop são um extra.
 
-- **Sempre com o celular em pé (retrato).** Com o aparelho deitado aparece um aviso para girá-lo.
-- **Polegar esquerdo:** joystick virtual flutuante, que aparece onde o dedo toca na parte de baixo da tela, à esquerda, com 8 direções.
-- **Polegar direito:** botões de ação no canto inferior direito (ataque, magias, poções), grandes e sem precisar de mira precisa.
-- **Mira:** auto-ataque no monstro mais próximo dentro do alcance. Tocar num monstro (na parte de cima da tela) trava o alvo nele.
-- **Tela:** sempre se vê cerca de 9×15 tiles (mais altura que largura), em qualquer tamanho de celular. O HUD fica no topo, respeitando o notch (safe area); os controles ficam embaixo, perto dos polegares.
-- Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar em retrato ao entrar na hunt.
+- **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado, aparece um aviso para voltar à vertical.
+- **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
+- **Ações:** botões grandes no canto inferior direito (hoje o 🎯 "próximo alvo"; depois magias e poções), sem precisar de mira precisa.
+- **Mira:** sem alvo travado, o servidor ataca sozinho o monstro mais próximo dentro do alcance. Tocar num monstro (em qualquer parte da tela) trava o alvo nele; o 🎯 troca para o próximo monstro por perto.
+- **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
+- Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
+- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
 ## Menu inicial (estilo Zooba / Clash)
@@ -45,6 +46,15 @@ teclado e mouse no desktop são um extra.
 | **Fuga** | Leva tudo | Basta voltar à sala inicial e entrar no portal. |
 | **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
 | **Soterrado** (o tempo acabou) | Perde tudo | Conta como morte. |
+
+## Combate (protótipo)
+
+- O servidor faz auto-attack no alvo enquanto ele estiver no alcance da classe e com linha de visão; sem alvo travado, escolhe sozinho o monstro mais próximo ao alcance.
+- Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
+- A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
+- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um Ogro (mini-boss) que destranca um baú; o Dragão jovem fica no centro.
+- Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
+- Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 
 ## Decisões em aberto
 

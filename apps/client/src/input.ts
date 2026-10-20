@@ -5,21 +5,11 @@ export interface MoveVector { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }
 const RADIUS = 56;
 const DEADZONE = 0.3;
 
-/**
- * Onde um toque vira joystick.
- * Celular em pé: parte de baixo da tela, à esquerda, onde fica o polegar. O topo fica livre
- * para tocar em monstros e o canto inferior direito para os botões de ação.
- * Tela deitada (desktop): metade esquerda.
- */
-function inJoystickZone(x: number, y: number) {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  if (h > w) return y > h * 0.45 && x < w * 0.6;
-  return x < w / 2;
-}
+/** Fração de cima da tela que nunca abre o joystick (fica para ver o mapa e tocar em monstros). */
+const JOYSTICK_TOP = 0.45;
 
 /**
- * Entrada de movimento: joystick virtual flutuante (toque, ver `inJoystickZone`)
+ * Entrada de movimento: joystick virtual flutuante (parte de baixo da tela, celular na vertical)
  * e WASD/setas no desktop. O resultado é sempre uma das 8 direções, que é o que o servidor aceita.
  */
 export class MoveInput {
@@ -30,8 +20,11 @@ export class MoveInput {
   private pointerId: number | null = null;
   private origin = { x: 0, y: 0 };
   private stick: MoveVector = { dx: 0, dy: 0 };
+  private isTarget: (clientX: number, clientY: number) => boolean;
 
-  constructor(scene: Phaser.Scene, surface: HTMLElement) {
+  /** `isTarget` diz se o toque caiu em cima de um monstro: aí é seleção de alvo, não joystick. */
+  constructor(scene: Phaser.Scene, surface: HTMLElement, isTarget: (clientX: number, clientY: number) => boolean) {
+    this.isTarget = isTarget;
     this.keys = (scene.input.keyboard?.addKeys("up,down,left,right,w,a,s,d") as MoveInput["keys"]) ?? null;
     this.surface = surface;
 
@@ -68,7 +61,10 @@ export class MoveInput {
   }
 
   private onDown = (e: PointerEvent) => {
-    if (this.pointerId !== null || !inJoystickZone(e.clientX, e.clientY)) return;
+    if (this.pointerId !== null) return;
+    // O joystick nasce onde o polegar toca, na parte de baixo da tela.
+    const rect = this.surface.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height * JOYSTICK_TOP || this.isTarget(e.clientX, e.clientY)) return;
     this.pointerId = e.pointerId;
     this.origin = { x: e.clientX, y: e.clientY };
     this.base.style.left = `${e.clientX}px`;
