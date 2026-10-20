@@ -8,7 +8,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MSG, ROOM_NAME, SPELLS, clampToRange, generateDungeon, lineEnd, tileDistance,
+  MSG, ROOM_NAME, RULES_VERSION, SPELLS, clampToRange, generateDungeon, lineEnd, tileDistance,
   type AttackMessage, type DamageMessage, type SpellMessage,
 } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
@@ -16,7 +16,7 @@ import { nextStep } from "../src/pathfinding.ts";
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 
-const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "sorcerer" });
+const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "sorcerer", rulesVersion: RULES_VERSION });
 const spells: SpellMessage[] = [];
 const attacks: AttackMessage[] = [];
 let hits = 0;

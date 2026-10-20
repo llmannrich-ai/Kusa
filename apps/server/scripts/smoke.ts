@@ -4,13 +4,13 @@
  * Uso: npx tsx apps/server/scripts/smoke.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { MSG, ROOM_NAME, type RunEndedMessage } from "@kusa/shared";
+import { MSG, ROOM_NAME, RULES_VERSION, type RunEndedMessage } from "@kusa/shared";
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 
-const leader = await client.create<any>(ROOM_NAME, { name: "Lider", classId: "knight" });
-const friend = await client.joinById<any>(leader.roomId, { name: "Amigo", classId: "druid" });
+const leader = await client.create<any>(ROOM_NAME, { name: "Lider", classId: "knight", rulesVersion: RULES_VERSION });
+const friend = await client.joinById<any>(leader.roomId, { name: "Amigo", classId: "druid", rulesVersion: RULES_VERSION });
 
 // Eventos de combate não importam aqui.
 for (const room of [leader, friend]) {

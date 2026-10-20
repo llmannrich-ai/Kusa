@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Room, type Client } from "colyseus";
+import { Room, ServerError, type Client } from "colyseus";
 import {
   AIM_SNAP_TILES,
   BASIC_ATTACKS,
@@ -20,6 +20,8 @@ import {
   MAX_SUMMONS_PER_PLAYER,
   MOVE_SPEED_SCALE,
   MSG,
+  RULES_VERSION,
+  VERSION_MISMATCH_CODE,
   SERVER_TICK_MS,
   SPELLS,
   SPELL_SLOT_LEVELS,
@@ -207,6 +209,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   async onAuth(_client: Client, options: JoinOptions) {
+    // Cliente de outra versão geraria outro mapa a partir da mesma seed. A mensagem leva a versão do
+    // servidor para o cliente decidir se recarrega (ele está velho) ou espera (o servidor está atualizando).
+    if (options?.rulesVersion !== RULES_VERSION) {
+      throw new ServerError(VERSION_MISMATCH_CODE, `O jogo foi atualizado: recarregue a página. (servidor v${RULES_VERSION})`);
+    }
     // Sempre um objeto (verdadeiro): sem conta, entra como convidado.
     return { account: await resolveAccount(options.accessToken) };
   }

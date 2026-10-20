@@ -67,6 +67,9 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 O jogador escolhe o mapa no menu (botão acima do **Jogar**; a escolha fica salva no aparelho). O mapa vale para as salas
 que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e no lobby.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
+Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma
+`RULES_VERSION`. Cliente desatualizado se recarrega sozinho; se o servidor ainda está terminando o deploy, o
+cliente pede para tentar de novo em 1 ou 2 minutos.
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-boss → boss) |
 |---|---|---|---|---|

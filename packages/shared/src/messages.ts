@@ -11,6 +11,8 @@ export interface JoinOptions {
   classId: ClassId;
   /** JWT do Supabase; o servidor usa para identificar o jogador. */
   accessToken?: string;
+  /** `RULES_VERSION` do cliente: o servidor recusa outra versão. */
+  rulesVersion?: number;
   /** Mapa da hunt. Só vale para quem cria a sala; quem entra numa sala aberta joga o mapa dela. */
   mapId?: MapId;
 }

@@ -5,13 +5,13 @@
  * Uso: npx tsx apps/server/scripts/items.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { ITEMS, MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance, type MonsterKind } from "@kusa/shared";
+import { ITEMS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance, type MonsterKind } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 
-const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight" });
+const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
 room.onMessage(MSG.damage, () => {});
 room.onMessage(MSG.notice, () => {});
 room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora: ${JSON.stringify(msg)}`); });

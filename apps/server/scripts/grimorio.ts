@@ -7,7 +7,7 @@
  *      npx tsx apps/server/scripts/grimorio.ts http://localhost:2602
  */
 import { Client } from "@colyseus/sdk";
-import { MSG, ROOM_NAME, generateDungeon, tileDistance, type DamageMessage } from "@kusa/shared";
+import { MSG, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance, type DamageMessage } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -69,7 +69,7 @@ async function druidSummons() {
 }
 
 async function enter(classId: string) {
-  const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId });
+  const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId, rulesVersion: RULES_VERSION });
   const damage: DamageMessage[] = [];
   room.onMessage(MSG.damage, (msg: DamageMessage) => damage.push(msg));
   for (const type of [MSG.notice, MSG.spell, MSG.attack]) room.onMessage(type, () => {});
