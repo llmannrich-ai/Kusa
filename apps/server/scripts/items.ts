@@ -19,6 +19,8 @@ room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes d
 await wait(300);
 room.send(MSG.start);
 await wait(300);
+// Segura o ataque básico durante a fase de matar.
+room.send(MSG.attacking, { on: true });
 
 const dungeon = generateDungeon(room.state.seed);
 const me = () => room.state.players.get(room.sessionId);
@@ -55,6 +57,7 @@ console.log(`${kills + 1} mortes; caiu ${def.name} (${def.slot}) em ${ground.x},
 
 // Fase 2: andar até o item e conferir que foi equipado.
 room.send(MSG.target, { id: null });
+room.send(MSG.attacking, { on: false });
 while (me()[def.slot] !== def.id) {
   if (Date.now() > deadline) throw new Error("timeout: não conseguiu pegar o item");
   walkToward(ground, 0);

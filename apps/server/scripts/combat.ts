@@ -1,11 +1,15 @@
 /**
  * Teste de fumaça do combate contra um servidor rodando (npm run dev:server):
  * um cavaleiro entra sozinho, anda até o monstro comum mais próximo, seleciona como alvo
- * e o mata no auto-attack. Valida que o monstro sumiu, que houve dano e que o jogador ganhou XP e loot.
+ * e o mata segurando o ataque básico. Valida que nenhum golpe sai sem segurar o ataque, que o
+ * monstro sumiu, que houve dano e que o jogador ganhou XP e loot.
  * Uso: npx tsx apps/server/scripts/combat.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance, type DamageMessage, type MonsterKind } from "@kusa/shared";
+import {
+  BASIC_ATTACK_COOLDOWN_MS, MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance,
+  type AttackMessage, type DamageMessage, type MonsterKind,
+} from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -13,9 +17,16 @@ const client = new Client(url);
 
 const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight" });
 let hits = 0;
+let attacking = false;
+let earlyAttacks = 0;
+const attackTimes: number[] = [];
 room.onMessage(MSG.damage, (msg: DamageMessage) => { if (!msg.toPlayer) hits++; });
 room.onMessage(MSG.notice, () => {});
-room.onMessage(MSG.attack, () => {});
+room.onMessage(MSG.attack, (msg: AttackMessage) => {
+  if (msg.from !== room.sessionId) return;
+  if (!attacking) earlyAttacks++;
+  attackTimes.push(Date.now());
+});
 room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora: ${JSON.stringify(msg)}`); });
 
 await wait(300);
@@ -51,6 +62,12 @@ while (Date.now() < deadline) {
   }
 
   const m = room.state.monsters.get(targetId);
+  // Colado no monstro: espera um pouco sem atacar (nenhum golpe pode sair) e depois segura o ataque.
+  if (m && tileDistance(p.x, p.y, m.x, m.y) <= 1 && !attacking) {
+    await wait(1500);
+    attacking = true;
+    room.send(MSG.attacking, { on: true });
+  }
   if (m && tileDistance(p.x, p.y, m.x, m.y) > 1) {
     const blocked = new Set<number>();
     room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
@@ -66,6 +83,10 @@ console.log(`golpes: ${hits}, XP: ${p.xp}, loot: ${p.loot}, nível: ${p.level}, 
 if (!targetId || room.state.monsters.has(targetId)) throw new Error("timeout: o monstro não morreu");
 if (room.state.monsters.size !== startMonsters - 1) throw new Error("esperava exatamente um monstro a menos");
 if (hits === 0) throw new Error("nenhum evento de dano recebido");
+if (earlyAttacks > 0) throw new Error(`${earlyAttacks} golpes saíram sem segurar o ataque`);
+const gaps = attackTimes.slice(1).map((t, i) => t - attackTimes[i]);
+console.log(`intervalos entre golpes (ms): ${gaps.join(", ")}`);
+if (gaps.some((g) => g < BASIC_ATTACK_COOLDOWN_MS - 120)) throw new Error("golpes mais rápidos que a recarga");
 if (p.xp <= 0) throw new Error("matar o monstro não deu XP");
 if (p.loot <= 0) throw new Error("matar o monstro não deu loot");
 console.log("COMBAT OK");

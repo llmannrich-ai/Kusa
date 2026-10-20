@@ -1,10 +1,13 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
-import { CLASS_IDS, CLASSES, ITEM_SLOTS, MAX_TIER, SLOT_NAMES, TILE_SIZE, itemId, type ItemTier } from "@kusa/shared";
+import {
+  CLASS_IDS, CLASSES, ITEMS, ITEM_SLOTS, MAX_TIER, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId, type ItemTier,
+} from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
-import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet } from "./art/heroes.ts";
+import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroPoses, heroSheet } from "./art/heroes.ts";
+import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE } from "./art/textures.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 
 const ZOOM = 4;
@@ -45,7 +48,26 @@ for (const id of CLASS_IDS) {
 
 for (const slot of ITEM_SLOTS) {
   const row = section(`Itens: ${SLOT_NAMES[slot]}`);
-  for (let tier = 1; tier <= MAX_TIER; tier++) show(row, itemIcon(itemId(slot, tier as ItemTier)), `nível ${tier}`);
+  for (let tier = 1; tier <= MAX_TIER; tier++) {
+    const id = itemId(slot, tier as ItemTier);
+    show(row, itemIcon(id), ITEMS[id].name);
+  }
+}
+
+const fullSet = (tier: ItemTier): Outfit => ({
+  weapon: itemId("weapon", tier), helmet: itemId("helmet", tier), armor: itemId("armor", tier), shield: itemId("shield", tier),
+});
+for (const id of CLASS_IDS) {
+  const row = section(`Vestimenta: ${CLASSES[id].name}`);
+  show(row, heroPoses(id, NO_OUTFIT), "sem equipamento", 3);
+  for (let tier = 1; tier <= MAX_TIER; tier++) show(row, heroPoses(id, fullSet(tier as ItemTier)), TIER_NAMES[tier as ItemTier], 3);
+}
+for (const slot of ITEM_SLOTS) {
+  const row = section(`Vestido no cavaleiro: ${SLOT_NAMES[slot]}`);
+  for (let tier = 1; tier <= MAX_TIER; tier++) {
+    const id = itemId(slot, tier as ItemTier);
+    show(row, heroPoses("knight", { ...NO_OUTFIT, [slot]: id }), ITEMS[id].name, 3);
+  }
 }
 
 const walls = section("Paredes (tampa + face)");
@@ -100,6 +122,7 @@ const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
   ...Object.values(MONSTER_TEXTURE), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
   ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
+  ...Object.values(SWAMP_TEXTURE),
 ];
 for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);

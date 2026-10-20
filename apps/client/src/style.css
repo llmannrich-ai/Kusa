@@ -75,6 +75,8 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 
 #room-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .room { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; }
+.room small { display: block; }
+#lobby-map { margin: 0; color: var(--accent); }
 
 #lobby-players { padding-left: 20px; }
 
@@ -182,6 +184,7 @@ button { min-height: 44px; touch-action: manipulation; }
   right: calc(var(--col-x) + max(16px, env(safe-area-inset-right)));
   bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
   display: grid;
+  justify-items: center;
   gap: 16px;
 }
 .action {
@@ -195,13 +198,16 @@ button { min-height: 44px; touch-action: manipulation; }
   box-shadow: 0 4px 12px #000a;
   user-select: none;
   -webkit-user-select: none;
+  /* Arrastar a partir do botão é mira, não rolagem: sem isto o navegador cancela o toque. */
+  touch-action: none;
 }
 .action:active { transform: scale(0.94); background: #4a3417; }
 
 /* Poções: coluna menor à esquerda das magias, alinhada com a base dos botões. */
 #potions {
   position: fixed;
-  right: calc(var(--col-x) + max(16px, env(safe-area-inset-right)) + 72px + 16px);
+  /* À esquerda do ⚔️ (84px), o botão mais largo da coluna de ações. */
+  right: calc(var(--col-x) + max(16px, env(safe-area-inset-right)) + 84px + 16px);
   bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
   display: grid;
   gap: 12px;
@@ -288,6 +294,22 @@ button { min-height: 44px; touch-action: manipulation; }
 .action.spell[data-state="empty"] .spell-label { color: var(--accent); }
 @keyframes spell-pulse { from { box-shadow: 0 0 0 0 #c9a24a00; } to { box-shadow: 0 0 16px 4px #c9a24aaa; } }
 
+/* Mirando: o botão acende; voltar o dedo para o botão cancela (fica vermelho). */
+.action.spell[data-aim="on"] { border-color: #d7c8ff; box-shadow: 0 0 14px 2px #b48cffaa; }
+.action.spell[data-aim="cancel"] { border-color: var(--danger); box-shadow: 0 0 14px 2px #e74c3caa; }
+
+/* Ataque básico: o maior botão, embaixo, com a recarga girando como nas magias. */
+.action.attack { position: relative; width: 84px; height: 84px; font-size: 36px; overflow: hidden; }
+.action.attack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(#0009 calc(var(--cd, 0) * 360deg), transparent 0);
+  pointer-events: none;
+}
+.action.attack.held { transform: scale(0.94); background: #4a3417; }
+
 /* Escolha de magia: na parte de cima, longe do joystick; o jogo continua rodando atrás. */
 .panel.spell-choice {
   top: calc(max(8px, env(safe-area-inset-top)) + 96px);
@@ -342,7 +364,18 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .hub-hint { margin: 0 0 12px; font-size: 13px; }
 .empty { padding: 16px; text-align: center; border: 1px dashed var(--border); }
 .hub-play { padding: 8px 16px; background: var(--bg); border-top: 1px solid #2a211b; }
+.hub-play { display: grid; gap: 6px; }
 .hub-play .primary { min-height: 52px; font-size: 18px; }
+.map-pick { width: 100%; min-height: 40px; font-size: 14px; }
+
+/* Escolha de mapa (folha) */
+.map-list { display: grid; gap: 8px; }
+.map-card { display: grid; gap: 6px; width: 100%; padding: 12px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
+.map-card.selected { border-color: var(--accent); background: #2a211b; }
+.map-card p { margin: 0; font-size: 13px; }
+.map-head { display: flex; align-items: center; gap: 10px; }
+.map-head strong, .map-head small { display: block; }
+.map-icon { font-size: 28px; }
 .hub-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -410,42 +443,84 @@ body.busy #hub-body { opacity: 0.7; }
 .class-foot { display: flex; justify-content: space-between; font-size: 13px; }
 .class-foot .link { padding: 4px 0; }
 
-/* Árvore de magias */
+/* Grimório: árvore de verdade, raiz no alto e 3 ramos descendo (ver GRIM_ROW e GRIM_ORB em menu.ts). */
 .chips { display: flex; gap: 6px; margin: 8px 0 12px; overflow-x: auto; }
 .chip { min-height: 36px; padding: 6px 12px; font-size: 13px; border-radius: 18px; white-space: nowrap; }
 .chip[aria-pressed="true"] { color: #000; background: var(--accent); border-color: var(--accent); }
-.tree-tier { position: relative; }
-/* Ligação entre os círculos da árvore. */
-.tree-tier + .tree-tier::before {
-  content: "";
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  height: 20px;
-  border-left: 2px dashed var(--border);
-}
-.tree-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.tree-node {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  background: var(--panel);
+.grimoire {
+  --row: 116px;
+  --orb: 56px;
+  position: relative;
+  height: calc(var(--rows) * var(--row) + 28px);
+  margin: 8px 0 16px;
+  padding-top: 28px;
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--class-color) 22%, transparent), transparent 60%),
+    linear-gradient(#1a1410, #120e0b);
   border: 1px solid var(--border);
+  box-shadow: inset 0 0 40px #000;
+  overflow: hidden;
 }
-.tree-node.owned { border-color: #8e6bbf; background: #221a2b; }
-.tree-node.locked { opacity: 0.55; }
-.node-head { display: flex; align-items: center; gap: 8px; }
-.node-head strong { display: block; font-size: 14px; color: var(--accent); line-height: 1.2; }
-.node-head small { display: block; font-size: 11px; }
-.node-icon { font-size: 26px; flex: none; }
-.node-text { flex: 1; margin: 0; font-size: 12px; }
-.node-meta { margin: 0; font-size: 11px; color: #9ec5ff; }
-.node-state { font-size: 12px; color: var(--muted); text-align: center; padding: 6px 0; }
-.tree-node.owned .node-state { color: #c9a0ff; }
-.pips { display: flex; gap: 4px; }
-.pips i { flex: 1; height: 6px; background: #000; border: 1px solid var(--border); }
-.pips i.on { background: #8e6bbf; border-color: #c9a0ff; }
+.grim-branches { position: absolute; top: 6px; left: 0; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
+.grim-branches span { text-align: center; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.grim-links { position: absolute; top: 28px; left: 0; width: 100%; height: calc(var(--rows) * var(--row)); overflow: visible; }
+.grim-links path { fill: none; stroke: #3a2f27; stroke-width: 4; stroke-linejoin: round; }
+.grim-links path.open { stroke: #7a6040; stroke-dasharray: 6 4; }
+.grim-links path.on { stroke: var(--accent); filter: drop-shadow(0 0 3px #c9a24a88); }
+.gnode {
+  position: absolute;
+  margin-top: 28px;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  width: 31%;
+  min-height: 0;
+  padding: 0;
+  background: none;
+  border: none;
+}
+.gnode-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--orb);
+  height: var(--orb);
+  font-size: 26px;
+  background: radial-gradient(circle at 35% 30%, #3a2f27, #0d0b0a 75%);
+  border: 3px solid #4a3a2c;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px #000a;
+}
+.gnode.aura .gnode-orb { border-radius: 14px; }
+.gnode.owned .gnode-orb { border-color: #8e6bbf; background: radial-gradient(circle at 35% 30%, #4a3466, #160f1e 75%); }
+.gnode.maxed .gnode-orb { border-color: var(--accent); box-shadow: 0 0 12px #c9a24a88; }
+.gnode.locked .gnode-orb { filter: grayscale(1) brightness(0.55); }
+.gnode.ready .gnode-orb { border-color: var(--accent); animation: grim-ready 1.2s ease-in-out infinite alternate; }
+@keyframes grim-ready { from { box-shadow: 0 0 2px #c9a24a44; } to { box-shadow: 0 0 14px #c9a24acc; } }
+.gnode-slot {
+  position: absolute; right: -4px; bottom: -2px;
+  min-width: 18px; padding: 0 4px; font-size: 11px; line-height: 18px; color: #000;
+  background: var(--accent); border-radius: 9px;
+}
+.gnode-lock { position: absolute; left: -4px; bottom: -2px; font-size: 13px; }
+.gnode-pips { display: flex; gap: 3px; padding: 1px 4px; background: #150f0c; border-radius: 6px; }
+.gnode-pips i { width: 8px; height: 8px; background: #000; border: 1px solid var(--border); border-radius: 50%; }
+.gnode-pips i.on { background: #c9a0ff; border-color: #fff; }
+.gnode.maxed .gnode-pips i.on { background: var(--accent); }
+.gnode-name {
+  padding: 0 4px; font-size: 11px; line-height: 1.15; text-align: center; color: var(--text);
+  background: #150f0c; border-radius: 4px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.gnode.locked .gnode-name { color: var(--muted); }
+.sheet-icon { display: grid; place-items: center; width: 48px; height: 48px; font-size: 30px; flex: none; background: #000; border: 2px solid var(--accent); border-radius: 50%; }
+.grim-levels { display: grid; gap: 8px; margin: 8px 0 12px; }
+.grim-level { padding: 8px 10px; background: #000; border: 1px solid var(--border); }
+.grim-level.current { border-color: #8e6bbf; }
+.grim-level strong { font-size: 13px; color: var(--accent); }
+.grim-level ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+.node-state { font-size: 13px; color: var(--muted); text-align: center; padding: 6px 0; margin: 0; }
 .buy { min-height: 40px; padding: 6px 10px; font-size: 13px; background: #4a3417; border-color: var(--accent); white-space: nowrap; }
 .buy:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -464,6 +539,9 @@ body.busy #hub-body { opacity: 0.7; }
 }
 .loadout-slot small { font-size: 10px; line-height: 1.2; text-align: center; }
 .loadout-slot .item-img { width: 40px; height: 40px; }
+/* Prévia do personagem vestido (frente, lado e costas): escala inteira para o pixel não borrar. */
+.doll { display: grid; justify-items: center; gap: 2px; margin-bottom: 8px; }
+.doll-img { width: 288px; max-width: 100%; image-rendering: pixelated; background: radial-gradient(#3a2f27, #0000 70%); }
 .slot-empty { font-size: 24px; color: var(--border); }
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
 .item-cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; background: #000; border: 2px solid; }
@@ -481,6 +559,8 @@ body.busy #hub-body { opacity: 0.7; }
   border-top: 2px solid var(--accent);
   box-shadow: 0 -12px 40px #000c;
   z-index: 14;
+  max-height: 85%;
+  overflow-y: auto;
 }
 .sheet-head { display: flex; align-items: center; gap: 12px; }
 .sheet-head .item-img { width: 48px; height: 48px; }

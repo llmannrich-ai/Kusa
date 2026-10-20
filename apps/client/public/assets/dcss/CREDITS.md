@@ -18,6 +18,11 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `monster-orc.png` | `monster/orc_warrior_new.png` | — |
 | `monster-ogre.png` | `monster/ogre_new.png` | — |
 | `monster-dragon.png` | `monster/dragons/dragon.png` | — |
+| `summon-wolf.png` | `monster/animals/wolf.png` | — |
+| `summon-bear.png` | `monster/animals/black_bear.png` | — |
+| `summon-hornet.png` | `monster/animals/hornet.png` | — |
+| `summon-moth.png` | `monster/animals/sun_moth.png` | — |
+| `summon-wisp.png` | `monster/nonliving/will_o_the_wisp.png` | — |
 | `chest-locked.png` | `dungeon/chest_2_closed.png` | — |
 | `chest-unlocked.png` | `dungeon/chest.png` | — |
 | `chest-open.png` | `dungeon/chest_2_open.png` | — |
@@ -34,5 +39,29 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `blood-splat.png` | `misc/blood/blood_red_0, 5, 9.png` | juntos numa faixa |
 | `blood-puddle.png` | `misc/blood/blood_puddle_red, _1, _2.png` | juntos numa faixa |
 
-As paredes, as 4 classes e os efeitos de corpo a corpo (corte, mordida, pancada) e a folha do druida são arte
+As criaturas invocadas vieram do repositório do jogo (https://github.com/crawl/crawl, `crawl-ref/source/rltiles/mon/`),
+com a mesma licença CC0.
+
+As paredes, as 4 classes, o Guardião do Bosque, o Escudo da Fé e os efeitos de corpo a corpo (corte, mordida, pancada) e a folha do druida são arte
 própria do Kusa, gerada no código (`apps/client/src/art`).
+
+### Pântano das Ruínas
+
+Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0), pasta `releases/Nov-2015/`.
+
+| Arquivo | Original | Alteração |
+|---|---|---|
+| `monster-frog.png` | `mon/animals/giant_frog.png` | — |
+| `monster-moccasin.png` | `mon/animals/water_moccasin.png` | — |
+| `monster-bog-body.png` | `mon/undead/bog_body.png` | — |
+| `monster-naga.png` | `mon/naga_warrior.png` | — |
+| `monster-troll.png` | `mon/deep_troll.png` | — |
+| `monster-hydra.png` | `mon/dragons/hydra5.png` | — |
+| `floor-grass.png` | `dngn/floor/grass/grass0..2`, `grass_flowers_yellow1`, `grass_flowers_blue1`, `grass_flowers_red1` | juntos numa faixa, brilho ×1,1 |
+| `floor-mud.png` | `dngn/floor/swamp0..3.png` | juntos numa faixa, brilho ×1,1 |
+| `floor-ruins.png` | `dngn/floor/limestone0..3.png` | juntos numa faixa, brilho ×0,72 |
+| `floor-forest.png` | `dngn/floor/moss0..3.png` | juntos numa faixa, brilho ×0,8 |
+| `water-swamp.png` | `dngn/water/shallow_water`, `shallow_water_disturbance`, `deep_water` | juntos numa faixa, tom esverdeado |
+| `tree-swamp.png` | `dngn/trees/mangrove1..3.png` | juntos numa faixa |
+| `ruin-wall.png` | `dngn/wall/brick_brown-vines1..4.png` | juntos numa faixa |
+| `ruin-column.png` | `dngn/statues/crumbled_column_1..6.png` | juntos numa faixa |

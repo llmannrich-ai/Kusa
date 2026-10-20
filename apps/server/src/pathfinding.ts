@@ -2,7 +2,7 @@ import { hasLineOfSight, isWalkable, tileDistance, type Dungeon } from "@kusa/sh
 
 interface Point { x: number; y: number }
 
-/** Limite de tiles visitados por busca (o mapa tem 72×72; o aggro é curto). */
+/** Limite de tiles visitados por busca (os mapas têm até 112×112, mas o aggro é curto). */
 const MAX_VISITED = 1500;
 
 const DIRS = [

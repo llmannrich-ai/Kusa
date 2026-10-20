@@ -26,13 +26,19 @@ export class Player extends Schema {
   /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
   @type("string") spell1 = "";
   @type("string") spell2 = "";
-  /** Magias que o jogador pode escolher quando um slot libera: as iniciais e as compradas na árvore. */
+  /** Magias que o jogador pode escolher quando um slot libera: as iniciais e as compradas no Grimório. */
   @type(["string"]) knownSpells = new ArraySchema<string>();
+  /** Nível de cada magia conhecida no Grimório (1 a 3). */
+  @type({ map: "number" }) spellRanks = new MapSchema<number>();
   /** Poções carregadas (só valem na hunt; até `POTION_MAX` de cada). */
   @type("number") healthPotions = 0;
   @type("number") manaPotions = 0;
   /** Sob o Grito de Guerra: recebe menos dano. */
   @type("boolean") guarded = false;
+  /** Escudo temporário (Escudo da Fé e outros): absorve dano antes da vida. 0 = sem escudo. */
+  @type("number") barrier = 0;
+  /** Tamanho do escudo quando foi erguido, para desenhar quanto falta. */
+  @type("number") maxBarrier = 0;
 }
 
 export class Monster extends Schema {
@@ -45,6 +51,21 @@ export class Monster extends Schema {
   @type("number") maxHp = 0;
   /** Preso por Raízes Espinhosas: não anda. */
   @type("boolean") rooted = false;
+  /** Atordoado: não anda nem ataca. */
+  @type("boolean") stunned = false;
+}
+
+/** Criatura aliada invocada por um jogador (lobo, urso, vespa...). */
+export class Summon extends Schema {
+  @type("string") id = "";
+  /** Chave de `SUMMONS` em `@kusa/shared`. */
+  @type("string") kind = "wolf";
+  /** sessionId de quem invocou. */
+  @type("string") owner = "";
+  @type("number") x = 0;
+  @type("number") y = 0;
+  @type("number") hp = 0;
+  @type("number") maxHp = 0;
 }
 
 /** Baú de uma sala lateral: trancado até o mini-boss da sala morrer. */
@@ -67,6 +88,8 @@ export class GroundItem extends Schema {
 
 export class DungeonState extends Schema {
   @type("string") phase = "lobby";
+  /** Mapa da hunt (id de `MAPS` em `@kusa/shared`), escolhido por quem criou a sala. */
+  @type("string") mapId = "crypt";
   /** Seed da dungeon: cliente e servidor geram o mesmo mapa a partir dela. */
   @type("number") seed = 0;
   @type("number") timeLeft = 0;
@@ -76,6 +99,7 @@ export class DungeonState extends Schema {
   @type({ map: Monster }) monsters = new MapSchema<Monster>();
   @type({ map: Chest }) chests = new MapSchema<Chest>();
   @type({ map: GroundItem }) items = new MapSchema<GroundItem>();
+  @type({ map: Summon }) summons = new MapSchema<Summon>();
   /** Boss morto: o portal de conclusão fica aberto no centro da sala do boss. */
   @type("boolean") bossDefeated = false;
 }

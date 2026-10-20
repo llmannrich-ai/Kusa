@@ -1,13 +1,14 @@
 /**
  * Teste de fumaça das magias contra um servidor iniciado com KUSA_START_LEVEL=8
  * (os dois slots já abertos): um feiticeiro escolhe as magias, anda até um monstro,
- * conjura a Esfera Sombria e confere mana, recarga, projétil do ataque básico e dano.
+ * conjura a Esfera Sombria no toque rápido e confere mana, recarga, projétil do ataque básico e dano;
+ * depois mira a Esfera num ponto fora do alcance e confere que ela cai na borda do alcance.
  * Uso: KUSA_START_LEVEL=8 PORT=2601 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/spells.ts http://localhost:2601
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MSG, ROOM_NAME, SPELLS, generateDungeon, tileDistance,
+  MSG, ROOM_NAME, SPELLS, clampToRange, generateDungeon, lineEnd, tileDistance,
   type AttackMessage, type DamageMessage, type SpellMessage,
 } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
@@ -69,6 +70,7 @@ while (Date.now() < deadline) {
   await wait(100);
 }
 
+room.send(MSG.attacking, { on: true });
 const manaBefore = me().mana;
 const hitsBefore = hits;
 room.send(MSG.cast, { slot: 0 });
@@ -85,6 +87,22 @@ if (cast[0].spellId !== "shadow_orb" || cast[0].ms <= 0) throw new Error("a Esfe
 if (manaAfter > manaBefore - SPELLS.shadow_orb.manaCost + Math.ceil(me().maxMana * 0.02)) throw new Error("a magia não gastou mana");
 if (hits === hitsBefore) throw new Error("a magia não causou dano");
 if (!attacks.some((a) => a.from === room.sessionId && a.ms > 0)) throw new Error("o ataque básico do feiticeiro devia ser um projétil");
+
+// Mira: um ponto longe demais é puxado para a borda do alcance (e para na parede, se houver).
+await wait(SPELLS.shadow_orb.cooldownMs);
+room.send(MSG.attacking, { on: false });
+const p = me();
+const far = { x: p.x - 20, y: p.y };
+const edge = clampToRange(p.x, p.y, far.x, far.y, range);
+const expected = lineEnd(dungeon, p.x, p.y, edge.x, edge.y);
+const manaAim = me().mana;
+room.send(MSG.cast, { slot: 0, aim: far });
+await wait(200);
+const aimed = spells.filter((s) => s.from === room.sessionId)[1];
+if (!aimed) throw new Error("a magia mirada não saiu");
+console.log(`mirada em ${far.x},${far.y}: caiu em ${aimed.tx},${aimed.ty} (esperado ${expected.x},${expected.y})`);
+if (aimed.tx !== expected.x || aimed.ty !== expected.y) throw new Error("a magia mirada não caiu no ponto esperado");
+if (me().mana >= manaAim) throw new Error("a magia mirada não gastou mana");
 console.log("SPELLS OK");
 process.exit(0);
 

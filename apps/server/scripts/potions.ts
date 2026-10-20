@@ -62,6 +62,8 @@ async function run() {
   await wait(300);
   room.send(MSG.start);
   await wait(300);
+  // Segura o ataque básico durante toda a caça.
+  room.send(MSG.attacking, { on: true });
 
   dungeon = generateDungeon(room.state.seed);
   deadline = Date.now() + 180_000;

@@ -1,4 +1,5 @@
 import type { ClassId } from "./classes.ts";
+import type { MapId } from "./maps.ts";
 import type { PotionId } from "./potions.ts";
 import type { SpellId, SpellSlot } from "./spells.ts";
 
@@ -11,12 +12,15 @@ export interface JoinOptions {
   classId: ClassId;
   /** JWT do Supabase; o servidor usa para identificar o jogador. */
   accessToken?: string;
+  /** Mapa da hunt. Só vale para quem cria a sala; quem entra numa sala aberta joga o mapa dela. */
+  mapId?: MapId;
 }
 
 /** Metadata de matchmaking de uma hunt, mostrada na lista de salas. */
 export interface HuntMetadata {
   /** Nome do líder da equipe. */
   leader: string;
+  mapId: MapId;
 }
 
 /** Cliente → servidor: um passo de tile. */
@@ -30,9 +34,11 @@ export interface DamageMessage {
   x: number;
   y: number;
   amount: number;
-  /** true quando quem apanhou foi um jogador. */
+  /** true quando quem apanhou foi um jogador ou uma criatura invocada. */
   toPlayer: boolean;
-  /** Quem bateu (sessionId do jogador ou id do monstro) e de onde, para o projétil e o avanço do golpe. */
+  /** Dano que o escudo (Escudo da Fé e outros) absorveu antes de chegar à vida. */
+  absorbed?: number;
+  /** Quem bateu (sessionId do jogador, id do monstro ou da criatura invocada) e de onde, para o projétil e o avanço do golpe. */
   attacker: string;
   fromX: number;
   fromY: number;
@@ -50,8 +56,17 @@ export interface NoticeMessage {
 /** Cliente → servidor: põe uma magia num slot liberado. */
 export interface ChooseSpellMessage { slot: SpellSlot; spellId: SpellId }
 
-/** Cliente → servidor: conjura a magia de um slot (no alvo atual ou no mais próximo ao alcance). */
-export interface CastMessage { slot: SpellSlot }
+/** Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe. */
+export interface AttackingMessage { on: boolean }
+
+/** Ponto escolhido com a mira (tile). `targetId` é o monstro em que a mira de alvo único grudou. */
+export interface CastAim { x: number; y: number; targetId?: string }
+
+/**
+ * Cliente → servidor: conjura a magia de um slot. Sem `aim` (toque rápido), usa o alvo atual
+ * ou o monstro mais próximo ao alcance.
+ */
+export interface CastMessage { slot: SpellSlot; aim?: CastAim }
 
 /** Cliente → servidor: bebe uma poção carregada (recarga compartilhada entre os tipos). */
 export interface DrinkMessage { potion: PotionId }
@@ -104,6 +119,7 @@ export const MSG = {
   start: "start",
   runEnded: "runEnded",
   attack: "attack",
+  attacking: "attacking",
   chooseSpell: "chooseSpell",
   cast: "cast",
   spell: "spell",
