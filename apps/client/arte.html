@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kusa — galeria de arte</title>
+    <style>
+      body { margin: 16px; background: #0d0b0a; color: #e8dcc8; font-family: Georgia, serif; }
+      h2 { color: #c9a24a; font-size: 16px; margin: 24px 0 8px; }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+      canvas, img { image-rendering: pixelated; background: #4a3f35; }
+      figure { margin: 0; font-size: 11px; text-align: center; }
+      .scene { background: #000; }
+    </style>
+  </head>
+  <body>
+    <p>Página de desenvolvimento (não entra no build): arte própria gerada em <code>src/art</code> e sprites do pack CC0.</p>
+    <div id="gallery"></div>
+    <script type="module" src="/src/arte.ts"></script>
+  </body>
+</html>

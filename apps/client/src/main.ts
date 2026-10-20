@@ -90,15 +90,21 @@ function startGame(room: DungeonRoom) {
   show("hud", true);
   show("actions", true);
   show("help", true);
+  // O canvas tem a resolução real da tela (pixels do aparelho) e o CSS o reduz de volta:
+  // com o zoom alto da câmera, cada pixel da arte vira um bloco quase uniforme, sem borrão.
+  const parent = $("game");
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
   game = new Phaser.Game({
     type: Phaser.AUTO,
-    parent: "game",
+    parent,
     pixelArt: true,
     // Joystick com um polegar enquanto o outro toca em alvos e botões.
     input: { activePointers: 3 },
-    scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
+    scale: { mode: Phaser.Scale.NONE, width: parent.clientWidth * dpr, height: parent.clientHeight * dpr, zoom: 1 / dpr },
     scene: [],
   });
+  const g = game;
+  window.addEventListener("resize", () => g.scale.resize(parent.clientWidth * dpr, parent.clientHeight * dpr));
   game.scene.add("dungeon", DungeonScene, true, { room });
 
   const me = () => room.state.players.get(room.sessionId);
