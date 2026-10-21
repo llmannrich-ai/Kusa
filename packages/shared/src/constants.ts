@@ -24,4 +24,4 @@ export const VERSION_MISMATCH_CODE = 4409;
 export const LOBBY_ROOM_NAME = "lobby";
 
 /** Multiplicador global da velocidade de movimento de jogadores e monstros (1 = valores das tabelas). */
-export const MOVE_SPEED_SCALE = 0.85;
+export const MOVE_SPEED_SCALE = 0.765;
