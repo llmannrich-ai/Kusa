@@ -50,9 +50,11 @@ export async function approach(room: any, me: () => any, range: number, done: ()
       .map((m) => ({ m, d: tileDistance(p.x, p.y, m.x, m.y) }))
       .sort((a, b) => a.d - b.d);
     const wanted = byDistance.slice(Math.min(skip, Math.max(0, byDistance.length - 1)));
-    if (wanted.length > 0 && wanted[0].d > range) {
+    // Já perto e `done()` ainda falso (ex.: uma quina tapa a visão): continua até ficar colado no monstro.
+    const reach = wanted.length > 0 && wanted[0].d <= range ? 1 : range;
+    if (wanted.length > 0 && wanted[0].d > reach) {
       for (const { m } of wanted) {
-        const step = nextStep(dungeon, p, m, range, (x, y) => blocked.has(y * dungeon.width + x));
+        const step = nextStep(dungeon, p, m, reach, (x, y) => blocked.has(y * dungeon.width + x));
         if (!step) continue;
         room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
         break;
