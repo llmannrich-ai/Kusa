@@ -28,7 +28,7 @@ Código em `apps/client/src/menu.ts`.
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
-- **Mercado:** compra itens até Aço (entregues no cofre) e vende qualquer item da conta. Itens de Dragão só saem das hunts.
+- **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
   - **Telemetria** (`apps/client/src/telemetry.ts`): os números de todas as hunts, para qualquer jogador logado, com filtro de mapa e período: visão geral, hunts por dia, como as hunts terminam, sobrevivência por classe, o que mais mata, fontes de dano, magias e melhorias escolhidas, curva de nível e as suas hunts. Só agregados, sem nomes (função `telemetry_dashboard`).
   - **Regras** (`apps/client/src/rules.ts`): como o jogo funciona, em seções que abrem e fecham. Os números (tempos, preços, melhorias, poções) vêm de `packages/shared`, então a página acompanha o balanceamento.
@@ -355,25 +355,60 @@ As compradas no Grimório, por slot (números do nível 1):
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, bola de fogo do dragão).
 
-## Itens (protótipo)
+## Itens
 
-- 4 slots: arma, capacete, armadura e escudo, cada um com 5 níveis de material (Comum, Bronze, Ferro, Aço, Dragão). A arma dá % a mais de dano; capacete, armadura e escudo somam armadura, que corta dano recebido (`armadura / (armadura + 20)`: tudo de dragão corta 57%).
-- Drop: comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
+Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o banco repete o catálogo em `market_items`).
+
+- **6 slots:** arma, capacete, armadura, calça, botas e escudo.
+- **Família × material × raridade.** Cada item é de uma família (Espada, Cajado, Armadura de guerra, Vestes arcanas...),
+  num dos 5 materiais (Rústico, Bronze, Ferro, Mithral, Dragão) e numa raridade:
+
+  | Raridade | Cor | Atributos | Nome |
+  |---|---|---|---|
+  | Comum | branco | os da família | "Espada longa" |
+  | Raro | azul | +30% | "Espada longa +1" |
+  | Mágico | roxo | +60% e uma propriedade mágica | nome próprio: "Vingadora Sagrada", "Manto das Estrelas"... |
+
+- **Restrição de classe** (a classe que não usa não veste: na hunt vai só para a bag; no menu, equipado, fica em casa):
+
+  | Família | Classes | O que dá |
+  |---|---|---|
+  | Espada | Cavaleiro | dano do básico |
+  | Machado | Cavaleiro | mais dano do básico, ataque 12% mais lento |
+  | Arco | Paladino | dano do básico |
+  | Besta | Paladino | mais dano do básico, ataque 12% mais lento |
+  | Varinha | Feiticeiro e Druida | **dano das magias** alto, pouco no básico, ataque 8% mais rápido |
+  | Cajado | Feiticeiro e Druida | dano do básico **e das magias**, equilibrado |
+  | Elmo, armadura e perneiras de guerra | Cavaleiro e Paladino | armadura |
+  | Chapéu, manto e calças arcanos | Feiticeiro e Druida | menos armadura, + dano nas magias (chapéu) e + mana (manto e calças) |
+  | Botas | Todas | armadura e velocidade |
+  | Escudo | Todas | armadura |
+
+- **Só varinhas, cajados e alguns itens mágicos aumentam as magias** (e as criaturas invocadas e os campos no chão).
+  Espadas, machados, arcos e bestas aumentam só o ataque básico.
+- **Propriedades mágicas:** roubo de vida no básico, chamas ou veneno no básico (dano por segundo por 3 s), espinhos
+  (devolve parte do golpe corpo a corpo recebido), + alcance (arcos e bestas), ataque mais rápido, + vida, + mana,
+  + velocidade, + armadura e + dano nas magias.
+- Armadura corta dano recebido: `armadura / (armadura + 25)`; o conjunto comum de Dragão (33) corta 57%.
+- **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
+  Raridade: monstro comum 18% raro e 4% mágico; mini-boss e baú 35% e 12%; boss 40% e 25%.
+  **Só cai o que alguém da equipe pode usar** (um cavaleiro sozinho não acha cajado).
 - O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
-- Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag; item pior vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
+- Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
 - Quem morre larga 1 equipamento sorteado e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
-- Tabela em `packages/shared/src/items.ts`.
+- Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro e ×4 se mágico.
 
 ### Arte dos itens e equipamento visível
 
-Cada um dos 20 itens tem arte própria em dois formatos, e o que o personagem veste aparece nele para todos da equipe.
+Cada família tem arte própria em dois formatos, pintada com o material do nível, e o que o personagem veste aparece nele para todos da equipe.
 
-- **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por item, não só a cor do material (`apps/client/src/art/items.ts`).
+- **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por família (espada, machado, arco, besta, varinha, cajado, elmo, chapéu, armadura, manto, calça, botas, escudo), na cor do material; as vestes arcanas usam tecido (linho, lã, seda rúnica, mithral, seda de dragão), e varinhas e cajados têm uma gema por nível. Raros e mágicos levam uma gema azul ou roxa no canto (`apps/client/src/art/items.ts`).
 - **Vestido no herói** (`apps/client/src/art/outfit.ts`), por cima do corpo da classe:
-  - Armadura recobre o tronco com o padrão do material (amarração de couro, couraça, malha, placas com ombreiras, escamas); calça e saia continuam com a cor da classe.
-  - Capacete substitui o chapéu ou capuz da classe (gorro, elmo com crista, elmo com nasal, elmo fechado com penacho, elmo com chifres).
+  - Armadura de guerra recobre o tronco com o padrão do material (amarração de couro, couraça, malha, placas com ombreiras, escamas). O manto arcano tinge a túnica inteira (tronco e saia) com o tecido.
+  - Calça tinge a calça da classe e botas tingem as botas (a túnica de feiticeiro e druida cobre a calça; as botas aparecem).
+  - Capacete substitui o chapéu ou capuz da classe (gorro, elmo com crista, elmo com nasal, elmo fechado com penacho, elmo com chifres; chapéu pontudo de mago nas vestes arcanas).
   - Escudo vai na mão esquerda (nas costas quando o herói está de costas ou, para quem usa arco/cajado, de lado).
-  - Arma: o cavaleiro empunha a arma do item (porrete, espada, machado, espada longa, lâmina do dragão). Paladino, druida e feiticeiro mantêm o arco ou cajado da classe (é o ataque básico deles), feito do material da arma equipada.
+  - Arma: o cavaleiro empunha a espada (curta, longa, lâmina do dragão) ou o machado. O paladino com arco e o feiticeiro e o druida com cajado mantêm a arma da classe, feita do material da arma equipada; a besta e a varinha trocam a arma da mão.
 - Sem equipamento, o herói aparece só com a roupa e a arma básica da classe. Ao pegar, trocar ou largar um item, o sprite muda na hora. Quem morre fica sem o que largou no chão.
 - O menu mostra o personagem vestido de frente, de lado e de costas na aba Itens, e a ficha de cada item mostra "como fica vestido" antes de equipar. Os retratos das classes usam o equipamento da próxima hunt.
 - Galeria de conferência: `apps/client/arte.html` (todas as combinações por classe e nível).

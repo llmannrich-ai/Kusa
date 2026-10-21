@@ -14,6 +14,7 @@ import {
   GUARANTEED_DROPS,
   GUARANTEED_POTIONS,
   ITEMS,
+  ON_HIT_DOT_MS,
   ITEM_SLOTS,
   MAPS,
   MONSTERS,
@@ -34,9 +35,7 @@ import {
   SPELLS,
   SPELL_SLOT_LEVELS,
   SUMMONS,
-  TIER_COLORS,
   Tile,
-  armorOf,
   attackCooldownMs,
   auraBonuses,
   bestPerSlot,
@@ -56,6 +55,10 @@ import {
   isPerk,
   isPotion,
   isUpgrade,
+  canUse,
+  gearStats,
+  itemColor,
+  itemScore,
   isBagIndex,
   isItemSlot,
   pickupAction,
@@ -84,7 +87,6 @@ import {
   talentTree,
   tileAt,
   tileDistance,
-  weaponMultiplier,
   xpForLevel,
   xpShare,
   type AttackMessage,
@@ -193,6 +195,8 @@ interface Seat {
   perkLevels: number[];
   /** Áureas + melhorias: o que `statsFor` usa para vida, mana, dano e velocidade. */
   bonus: Bonuses;
+  /** Atributos somados dos itens vestidos (`gearStats`); recalculados a cada troca (`refreshGear`). */
+  gear: ReturnType<typeof gearStats>;
   /** Até quando não repete o aviso de bag cheia. */
   bagFullNoticeUntil: number;
   /** Veneno ou queimadura de um monstro (`Player.dot`): dano por pulso, de quem veio, próximo pulso e fim. */
@@ -394,7 +398,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0,
-      aura: bonus, perks: {}, perkBonus: perkBonuses({}), perkLevels: [], bonus, bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
+      aura: bonus, perks: {}, perkBonus: perkBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
     });
     const joined = this.seats.get(client.sessionId)!;
     joined.stats.specs = joined.traits.map((t) => t.id);
@@ -524,12 +528,25 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // O equipamento escolhido no menu e a bag saem da conta e entram na dungeon (chegam logo depois do início).
     this.seats.forEach((seat, sessionId) => {
       if (!seat.userId) return;
-      void takeLoadout(seat.userId).then((items) => {
+      const p0 = this.state.players.get(sessionId);
+      if (!p0) return;
+      void takeLoadout(seat.userId, p0.classId).then((items) => {
         const p = this.state.players.get(sessionId);
         if (!p || p.status !== "playing") return;
         seat.stats.items.loadout = items;
-        const best = bestPerSlot(items);
-        for (const slot of ITEM_SLOTS) if (isUpgrade(best[slot], p[slot])) p[slot] = best[slot];
+        const classId = p.classId as ClassId;
+        const best = bestPerSlot(items, classId);
+        const rest = [...items];
+        for (const slot of ITEM_SLOTS) {
+          if (!isUpgrade(best[slot], p[slot], classId)) continue;
+          rest.splice(rest.indexOf(best[slot]), 1);
+          // Já pegou algo no chão nesse slot antes do loadout chegar: o pior vai para a bag.
+          if (p[slot]) rest.push(p[slot]);
+          p[slot] = best[slot];
+        }
+        // O que não foi vestido vai para a bag (pode passar de BAG_SIZE, raro): nada se perde.
+        p.bag.push(...rest);
+        this.refreshGear(sessionId);
       });
       void takeBag(seat.userId).then((items) => {
         const p = this.state.players.get(sessionId);
@@ -655,7 +672,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const buff = seat.buff && now < seat.buff.until ? seat.buff : null;
     const form = seat.form && now < seat.form.until ? seat.form : null;
     // Na Forma de Urso, o básico é uma patada: só alcança quem está colado.
-    const range = form?.maul ? 1 : cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0);
+    const range = form?.maul ? 1 : cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0)
+      + (cls.attackRange > 1 ? seat.gear.range : 0);
     // Alvo escolhido sozinho não fica preso: se saiu do alcance, troca pelo mais próximo que está no alcance.
     if (!seat.targetLocked && p.target && !this.canHit(p, this.state.monsters.get(p.target)!, range)) p.target = "";
     if (!p.target) p.target = this.nearestMonsterInRange(p, range) ?? "";
@@ -667,7 +685,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     if (!this.canHit(p, m, range)) return;
 
-    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perks) * (1 - (buff?.attackHaste ?? 0)));
+    // Arma e botas mudam o ritmo (machado e besta são mais lentos; varinha e itens mágicos, mais rápidos).
+    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perks) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste));
     seat.attackUntil = 0;
     if (form?.maul) return this.maul(sessionId, p, m);
     if (form && form.pounce > 0) return this.pounce(sessionId, p, seat, m, form, now);
@@ -677,7 +696,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Flechas Consagradas (Traço): mais dano em morto-vivo e uma queimadura curta no alvo.
     const holy = seat.traits.find((t) => t.holyBasic)?.holyBasic;
     const undead = holy && MONSTERS[m.kind as MonsterKind]?.undead ? 1 + holy.undead : 1;
-    const amount = rollDamage(this.baseDamage(sessionId, p) * (1 + (buff?.basicDamage ?? 0)) * this.farBonus(seat, p, m) * undead);
+    const amount = rollDamage(this.baseDamage(sessionId, p, "basic") * (1 + (buff?.basicDamage ?? 0)) * this.farBonus(seat, p, m) * undead);
     // Rolamento: a próxima flecha atordoa (gasta no disparo, mesmo que o monstro morra antes).
     const stunMs = seat.nextBasicStunMs;
     seat.nextBasicStunMs = 0;
@@ -692,8 +711,23 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         alive.stunned = true;
         seat.stats.ccMs.stun += stunMs;
       }
-      if (holy && brain) this.applyDot(alive, brain, sessionId, "basic", this.baseDamage(sessionId, p) * holy.perSec, holy.ms, "burn", this.clock.currentTime);
-      this.damageMonster(alive, amount, hit, "basic");
+      if (holy && brain) this.applyDot(alive, brain, sessionId, "basic", this.baseDamage(sessionId, p, "basic") * holy.perSec, holy.ms, "burn", this.clock.currentTime);
+      // Armas mágicas: chamas ou veneno no alvo.
+      const g = seat.gear;
+      if (brain && (g.burn > 0 || g.poison > 0)) {
+        const kind = g.burn >= g.poison ? "burn" : "poison";
+        this.applyDot(alive, brain, sessionId, `item:${kind}`, this.baseDamage(sessionId, p, "basic") * Math.max(g.burn, g.poison), ON_HIT_DOT_MS, kind, this.clock.currentTime);
+      }
+      const dealt = this.damageMonster(alive, amount, hit, "basic");
+      // Roubo de vida dos itens (Espada do Juramento...): sem aviso a cada golpe, como a Sede de sangue.
+      const hero = this.state.players.get(sessionId);
+      if (g.lifesteal > 0 && dealt > 0 && hero?.status === "playing") {
+        const healed = Math.min(hero.maxHp - hero.hp, Math.round(dealt * g.lifesteal));
+        if (healed > 0) {
+          hero.hp += healed;
+          seat.stats.healing += healed;
+        }
+      }
     });
   }
 
@@ -701,7 +735,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private maul(sessionId: string, p: Player, target: Monster) {
     this.broadcast(MSG.spell, { from: sessionId, spellId: "bear_form", x: p.x, y: p.y, tx: target.x, ty: target.y, ms: 0, echo: true } satisfies SpellMessage);
     const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "smash" };
-    const base = this.baseDamage(sessionId, p);
+    const base = this.baseDamage(sessionId, p, "basic");
     for (const m of [...this.state.monsters.values()]) {
       if (!this.canHit(p, m, 1)) continue;
       const brain = this.brains.get(m.id);
@@ -733,7 +767,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       seat.stats.ccMs.stun += form.pounceStunMs;
     }
     const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "bite" };
-    this.damageMonster(m, rollDamage(this.baseDamage(sessionId, p) * power), hit, "panther_form");
+    this.damageMonster(m, rollDamage(this.baseDamage(sessionId, p, "basic") * power), hit, "panther_form");
   }
 
   /** Tile livre colado no monstro e mais perto do herói, à vista dele (null se o herói já está colado ou não há lugar). */
@@ -898,7 +932,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms } satisfies SpellMessage);
     // Disparo Certeiro: mais forte quanto mais longe estava o alvo na hora do tiro.
     const far = spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, tx, ty) : 1;
-    const amount = this.baseDamage(sessionId, p) * (spell.damage ?? 0) * far;
+    const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0) * far;
     const rank = p.spellRanks.get(base.id) ?? 1;
     this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount, line, slot, ally));
     // Maestria que repete (Giro da Lâmina, Terremoto, Esfera Sombria): o efeito volta mais fraco, sem gastar mana.
@@ -925,7 +959,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const target = this.nearestMonsterTo(p.x, p.y, sky.range);
     if (!target) return;
     this.broadcast(MSG.spell, { from: sessionId, spellId: "call_lightning", x: p.x, y: p.y, tx: target.x, ty: target.y, ms: 150, echo: true } satisfies SpellMessage);
-    const amount = rollDamage(this.baseDamage(sessionId, p) * sky.damage);
+    const amount = rollDamage(this.baseDamage(sessionId, p, "spell") * sky.damage);
     this.after(150, () => {
       const alive = this.state.monsters.get(target.id);
       if (alive) this.damageMonster(alive, amount, { attacker: sessionId, fromX: alive.x, fromY: alive.y, fx: "nature" }, "charged_sky");
@@ -990,7 +1024,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const hex = seat.traits.find((t) => t.hex)?.hex;
     const toxin = seat.traits.find((t) => t.toxin)?.toxin;
     // Picada da Mamba: o veneno leva a explosão junto, para o caso de o monstro morrer com ele.
-    const burst = spell.burst && { radius: spell.burst.radius, amount: this.baseDamage(sessionId, p) * spell.burst.damage, source: spell.id };
+    const burst = spell.burst && { radius: spell.burst.radius, amount: this.baseDamage(sessionId, p, "spell") * spell.burst.damage, source: spell.id };
     hit.forEach((m, i) => {
       const brain = this.brains.get(m.id);
       if (!brain) return;
@@ -1029,11 +1063,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         brain.markUntil = Math.max(brain.markUntil, now + hex.ms);
         m.marked = true;
       }
-      if (spell.dot) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p) * spell.dot.perSec, spell.dot.ms, spell.dot.kind, now, burst);
+      if (spell.dot) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spell.dot.perSec, spell.dot.ms, spell.dot.kind, now, burst);
       // Toxina (Traço): magia com dano envenena (e o veneno acumula, ver `applyDot`).
-      else if (toxin && spell.damage) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p) * toxin.perSec, toxin.ms, "poison", now);
+      else if (toxin && spell.damage) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * toxin.perSec, toxin.ms, "poison", now);
       if (spellBurn && spell.damage && !spell.dot) {
-        this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p) * spellBurn.perSec, spellBurn.ms, "burn", now);
+        this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spellBurn.perSec, spellBurn.ms, "burn", now);
       }
       if (spell.damage) {
         // Execução: mais forte em quem já está quase morto (vale a vida antes do golpe).
@@ -1060,7 +1094,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const fire = seat.traits.find((t) => t.areaFire)?.areaFire;
     if (fire && spell.damage && (spell.radius > 0 || spell.shape === "cone") && p.status === "playing") {
       const burning: SpellDef = { ...spell, radius: Math.max(1, spell.radius), field: { kind: "zone", ms: fire.ms, tickMs: 1000 } };
-      this.placeField(sessionId, p, seat, burning, rank, cx, cy, this.baseDamage(sessionId, p) * fire.perSec, "fire");
+      this.placeField(sessionId, p, seat, burning, rank, cx, cy, this.baseDamage(sessionId, p, "spell") * fire.perSec, "fire");
     }
 
     if (spell.lifesteal && dealt > 0 && p.status === "playing") this.healPlayer(p, Math.round(dealt * spell.lifesteal), sessionId);
@@ -1358,7 +1392,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       if (s.owner === sessionId && this.summonBrains.get(s.id)?.spellId === spell.id) this.removeSummon(s.id);
     });
     const now = this.clock.currentTime;
-    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p), rankPower(rank));
+    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "spell"), rankPower(rank));
     // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
     const boost = 1 + (this.seats.get(sessionId)?.traits.reduce((sum, t) => sum + (t.summonBoost ?? 0), 0) ?? 0);
     stats.maxHp = Math.round(stats.maxHp * boost);
@@ -1533,9 +1567,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
    * `source` é "basic", o id da magia ou "summon:<tipo>", para a telemetria.
    * `creditId` é o jogador que leva XP e loot (o dono, quando quem bate é uma criatura invocada).
    */
-  private damageMonster(m: Monster, raw: number, hit: Hit, source: string, creditId = hit.attacker) {
+  private damageMonster(m: Monster, raw: number, hit: Hit, source: string, creditId = hit.attacker): number {
     const brain = this.brains.get(m.id);
-    if (!brain) return;
+    if (!brain) return 0;
     // Marca do Caçador: o marcado leva mais dano de qualquer fonte (heróis, magias e criaturas).
     const amount = m.marked ? Math.round(raw * (1 + brain.markPct)) : raw;
     const seat = this.seats.get(creditId);
@@ -1557,6 +1591,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.broadcast(MSG.damage, { x: m.x, y: m.y, amount, toPlayer: false, ...hit } satisfies DamageMessage);
     if (m.hp === 0) this.killMonster(m, brain, creditId);
     else this.checkEnrage(m, brain);
+    return dealt;
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
@@ -1594,7 +1629,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // (e pegar o loot faria a equipe sair da dungeon).
     const at = brain.def.rank === "boss" ? this.besidePortal(m.x, m.y) : { x: m.x, y: m.y };
     const drops = GUARANTEED_DROPS[brain.def.rank] || (Math.random() < COMMON_DROP_CHANCE ? 1 : 0);
-    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random), at.x, at.y);
+    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random, 0, this.partyClasses()), at.x, at.y);
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (Math.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) this.dropItem(rollPotion(Math.random), at.x, at.y);
 
@@ -1663,19 +1698,39 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     seat.perks[perk] = (seat.perks[perk] ?? 0) + 1;
     p.perks.set(perk, seat.perks[perk]!);
     seat.perkBonus = perkBonuses(seat.perks);
+    this.applyBonuses(p, seat);
+    seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.perkLevel, at: this.seconds() });
+    this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f);
+
+    this.offerPerks(p, seat);
+  }
+
+  /**
+   * Junta áureas, melhorias e equipamento em `seat.bonus`. Vida e mana máximas mudam na hora: o que cresceu
+   * entra cheio, e o que diminuiu (tirou um item) só corta o que passar do novo máximo.
+   */
+  private applyBonuses(p: Player, seat: Seat) {
     const b = seat.perkBonus;
-    seat.bonus = { hp: seat.aura.hp + b.hp, mana: seat.aura.mana + b.mana, damage: seat.aura.damage + b.damage, speed: seat.aura.speed + b.speed };
-    // Vida e mana máximas crescem na hora, e o que cresceu entra cheio.
+    const g = seat.gear;
+    seat.bonus = {
+      hp: seat.aura.hp + b.hp + g.hp, mana: seat.aura.mana + b.mana + g.mana,
+      damage: seat.aura.damage + b.damage, speed: seat.aura.speed + b.speed + g.speed,
+    };
     const stats = statsFor(p.classId as ClassId, p.level, seat.bonus);
     const maxHp = stats.maxHp + (seat.form?.hpBonus ?? 0);
     p.hp = Math.min(maxHp, p.hp + Math.max(0, maxHp - p.maxHp));
     p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
     p.maxHp = maxHp;
     p.maxMana = stats.maxMana;
-    seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.perkLevel, at: this.seconds() });
-    this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f);
+  }
 
-    this.offerPerks(p, seat);
+  /** O equipamento vestido mudou (pegou, trocou, guardou ou largou): recalcula os atributos dos itens. */
+  private refreshGear(sessionId: string) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!p || !seat || p.status !== "playing") return;
+    seat.gear = gearStats(equipment(p));
+    this.applyBonuses(p, seat);
   }
 
   private damagePlayer(sessionId: string, raw: number, hit: Hit) {
@@ -1690,7 +1745,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Pele Selvagem (Traço) vale enquanto a forma animal dura; a Seiva Protetora, por alguns segundos depois da cura.
     const formArmor = seat?.form && now < seat.form.until ? seat.traits.reduce((sum, t) => sum + (t.formArmor ?? 0), 0) : 0;
     const sapArmor = seat && now < seat.sapUntil ? seat.sapArmor : 0;
-    const armor = armorOf(equipment(p)) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor;
+    const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor;
     let amount = Math.max(1, Math.round(raw * (1 - damageReduction(armor)) * (1 - guard) * (1 - this.allyWard(p))));
     // Escudo de Mana (Traço): parte do golpe sai da mana, enquanto houver.
     const manaShield = seat?.traits.find((t) => t.manaShield)?.manaShield;
@@ -1720,7 +1775,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (seat?.stats.revived) seat.stats.revived.damageAfter += amount;
     this.broadcast(MSG.damage, { x: p.x, y: p.y, amount, absorbed, toPlayer: true, ...hit } satisfies DamageMessage);
     if (p.hp === 0 && seat && this.rebirth(sessionId, p, seat, now)) return;
-    if (p.hp === 0) this.endRun(sessionId, "died");
+    if (p.hp === 0) return this.endRun(sessionId, "died");
+    // Espinhos (itens): o golpe corpo a corpo de um monstro volta em parte para ele.
+    const thorns = seat?.gear.thorns ?? 0;
+    const attacker = this.state.monsters.get(hit.attacker);
+    if (thorns > 0 && attacker && !hit.dot && tileDistance(p.x, p.y, attacker.x, attacker.y) <= 1) {
+      const back = Math.max(1, Math.round((amount + absorbed) * thorns));
+      this.damageMonster(attacker, back, { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "slash" }, "item:thorns");
+    }
   }
 
   // --- IA dos monstros ------------------------------------------------------
@@ -1922,7 +1984,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         }
         this.notice(chest.x, chest.y, `Baú: +${value} loot`, 0xf1c40f);
         // O baú guarda um item melhor que o do mini-boss.
-        this.dropItem(rollItem("miniboss", this.chestDepth.get(chest.id) ?? 0, Math.random, 1), chest.x, chest.y);
+        this.dropItem(rollItem("miniboss", this.chestDepth.get(chest.id) ?? 0, Math.random, 1, this.partyClasses()), chest.x, chest.y);
         for (const potion of POTION_IDS) this.dropItem(potion, chest.x, chest.y);
       });
     });
@@ -1938,6 +2000,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       if (isWalkable(this.dungeon, x + dx, y + dy)) return { x: x + dx, y: y + dy };
     }
     return { x, y };
+  }
+
+  /** Classes da equipe: os drops saem só do que alguém dela pode usar. */
+  private partyClasses() {
+    return [...new Set([...this.state.players.values()].map((p) => p.classId as ClassId))];
   }
 
   private dropItem(itemId: string, x: number, y: number) {
@@ -1965,11 +2032,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p || p.status !== "playing" || this.state.phase === "ended" || !isBagIndex(msg?.index, p.bag.length)) return;
     const def = ITEMS[p.bag[msg.index]];
     if (!def) return;
+    if (!canUse(def.id, p.classId as ClassId)) {
+      this.notice(p.x, p.y - 1, `${CLASSES[p.classId as ClassId].name} não usa`, 0xe74c3c);
+      return;
+    }
     // Troca de lugar: o item da bag veste, o que estava no slot ocupa a mesma posição da bag.
     const old = p[def.slot];
     p[def.slot] = def.id;
     if (old) p.bag[msg.index] = old;
     else p.bag.splice(msg.index, 1);
+    this.refreshGear(client.sessionId);
   }
 
   private handleUnequip(client: Client, msg: UnequipMessage) {
@@ -1978,6 +2050,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p[msg.slot] || p.bag.length >= BAG_SIZE) return;
     p.bag.push(p[msg.slot]);
     p[msg.slot] = "";
+    this.refreshGear(client.sessionId);
   }
 
   private handleBagDrop(client: Client, msg: BagDropMessage) {
@@ -2005,7 +2078,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       if (p.status !== "playing") return;
       const here = [...this.state.items.values()]
         .filter((it) => it.x === p.x && it.y === p.y && this.pickupBlocked.get(it.id) !== sessionId)
-        .sort((a, b) => (ITEMS[b.itemId]?.tier ?? 0) - (ITEMS[a.itemId]?.tier ?? 0));
+        .sort((a, b) => itemScore(b.itemId) - itemScore(a.itemId));
       for (const ground of here) {
         if (isPotion(ground.itemId)) {
           // Poção: guarda enquanto couber; com a mochila cheia, fica no chão.
@@ -2021,7 +2094,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         const def = ITEMS[ground.itemId];
         if (!def) continue;
         const seat = this.seats.get(sessionId);
-        const action = pickupAction(def.id, p[def.slot], p.bag.length);
+        const action = pickupAction(def.id, p[def.slot], p.bag.length, p.classId as ClassId);
         if (action === "full") {
           const now = this.clock.currentTime;
           if (seat && now >= seat.bagFullNoticeUntil) {
@@ -2035,10 +2108,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         else {
           if (action === "swap") p.bag.push(p[def.slot]);
           p[def.slot] = def.id;
+          this.refreshGear(sessionId);
         }
         seat?.stats.items.picked.push(def.id);
         this.removeGroundItem(ground.id);
-        this.notice(p.x, p.y - 1, action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}` : def.name, TIER_COLORS[def.tier]);
+        this.notice(p.x, p.y - 1, action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}` : def.name, itemColor(def.id));
       }
     });
   }
@@ -2230,7 +2304,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const tickMs = def.tickMs ?? 250;
     this.fieldBrains.set(f.id, {
       spell: { ...spell, field: undefined }, rank, kind: def.kind,
-      amount: def.kind === "trap" ? amount : this.baseDamage(sessionId, p) * (def.damage ?? 0) || amount,
+      amount: def.kind === "trap" ? amount : this.baseDamage(sessionId, p, "spell") * (def.damage ?? 0) || amount,
       allyArmor: def.allyArmor ?? 0, allyHeal: def.allyHeal ?? 0, allyMana: def.allyMana ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" ? 300 : tickMs),
       until: now + def.ms * (traps?.durationScale ?? 1), shotsLeft: def.shots ?? 0,
     });
@@ -2346,7 +2420,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
           }
           // Nuvem Venenosa: cada pulso envenena (com a Toxina, acumula).
           const dot = brain.spell.dot;
-          if (dot && mBrain) this.applyDot(m, mBrain, f.owner, brain.spell.id, this.baseDamage(f.owner, owner) * dot.perSec, dot.ms, dot.kind, now);
+          if (dot && mBrain) this.applyDot(m, mBrain, f.owner, brain.spell.id, this.baseDamage(f.owner, owner, "spell") * dot.perSec, dot.ms, dot.kind, now);
           if (brain.amount > 0) this.damageMonster(m, Math.max(1, rollDamage(brain.amount)), hit, brain.spell.id);
         }
         // Chuva Revigorante: cura e devolve mana a quem está dentro.
@@ -2456,9 +2530,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     return last;
   }
 
-  /** Dano base do jogador (classe, nível, áureas e arma), antes da variação. */
-  private baseDamage(sessionId: string, p: Player) {
-    return statsFor(p.classId as ClassId, p.level, this.seats.get(sessionId)?.bonus).damage * weaponMultiplier(p.weapon);
+  /**
+   * Dano base do jogador (classe, nível, áureas e equipamento), antes da variação. O ataque básico usa o
+   * dano da arma; magias, invocações e campos usam o dano mágico (varinhas, cajados e alguns itens mágicos).
+   */
+  private baseDamage(sessionId: string, p: Player, kind: "basic" | "spell") {
+    const seat = this.seats.get(sessionId);
+    const gear = kind === "basic" ? seat?.gear.damage ?? 0 : seat?.gear.spellPower ?? 0;
+    return statsFor(p.classId as ClassId, p.level, seat?.bonus).damage * (1 + gear);
   }
 }
 

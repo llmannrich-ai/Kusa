@@ -22,6 +22,8 @@ export class Player extends Schema {
   @type("string") weapon = "";
   @type("string") helmet = "";
   @type("string") armor = "";
+  @type("string") legs = "";
+  @type("string") boots = "";
   @type("string") shield = "";
   /** Bag: itens pegos no chão (e o que sobrou da hunt anterior), até `BAG_SIZE`. Vai para o cofre ao sair vivo. */
   @type(["string"]) bag = new ArraySchema<string>();
