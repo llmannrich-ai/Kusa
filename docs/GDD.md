@@ -41,6 +41,10 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 - **Magias** (círculo no desenho, com o número do slot): têm **3 níveis**. O 1 libera a magia como opção na
   janela de escolha da hunt; o 2 e o 3 dão +20% de dano, cura, escudo e força das criaturas, e +15% de duração,
   cada um. As 2 magias iniciais já vêm no nível 1, com os níveis 2 e 3 à venda.
+- **Maestria (nível 3):** além dos números, o nível 3 de toda magia muda o que ela faz (tabela `MASTERIES` em
+  `packages/shared/src/spells.ts`). No menu, a ficha da magia mostra a Maestria antes de comprar; na hunt, a escolha
+  mostra "★ Maestria". Três efeitos existem só nas Maestrias: **repetir** (o efeito volta sozinho logo depois, mais
+  fraco), **devolver recarga ao matar** e **roubar mana**.
 - **Áureas** (quadrado no desenho): dano +4%/nível, vida +6%/nível, mana +8%/nível (3 níveis cada) e
   velocidade +4%/nível (2 níveis). Valem sempre, desde o nível 1.
 - Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade, e cada nível seguinte custa
@@ -54,6 +58,15 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza |
+
+#### Maestrias
+
+| Classe | Magia → Maestria |
+|---|---|
+| Cavaleiro | Giro da Lâmina: gira de novo (50%) · Grito de Guerra: cura 15% · Golpe Esmagador: atordoa 1 s · Escudo da Fé: cobre aliados a até 2 tiles · Lâmina Sedenta: corta todos os colados no alvo · Pele de Ferro: provoca e cura aliados a até 3 tiles · Terremoto: réplica (50%) · Muralha de Aço: corta 30% do dano · Brado do Comandante: alcança 6 tiles · Execução: dobro abaixo de 50% da vida |
+| Paladino | Flecha Sagrada: salta para mais um · Chuva de Flechas: 30% de lentidão · Disparo Perfurante: alcance 9 e sangra · Flecha Atordoante: atordoa os colados no alvo · Bênção Protetora: ofusca 0,7 s · Luz Curativa: ofusca 1 s · Disparo Certeiro: matar corta metade da recarga · Julgamento Divino: queima · Saraivada Explosiva: queima |
+| Feiticeiro | Esfera Sombria: explode duas vezes (50%) · Tempestade do Vazio: rouba 20% de vida · Relâmpago: atordoa 0,5 s · Raio em Cadeia: salta 5 vezes · Lança de Gelo: lentidão depois do gelo · Drenar Vida: rouba 30% em mana · Nova de Gelo: lentidão depois do gelo · Meteoro: queima · Nevasca: raio 4 · Pacto Sombrio: rouba 50% de vida |
+| Druida | Bênção da Floresta: brota uma mariposa · Raízes Espinhosas: envenenam · Espinho Venenoso: o veneno pula para mais 2 · Lobo Espiritual: 2 lobos · Mariposa Curandeira: 2 mariposas · Enxame de Vespas: 5 vespas · Fúria da Natureza: prende 1,5 s · Chamado da Matilha: 4 lobos · Urso Ancestral: dobro do tempo · Guardião do Bosque: cura 20% da equipe · Coração da Floresta: 2 fogos-fátuos |
 
 ### Cofre, bag e mercado (extração)
 
@@ -219,7 +232,7 @@ magia for escolhida (ou a janela fechada). O título da carta mostra o nível qu
 - Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por
   segundo, que renova em vez de acumular), cura, raízes (não anda), **lentidão** (anda mais devagar), atordoamento (não anda nem ataca),
   guarda (corta parte do dano), armadura extra, **escudo** (absorve dano antes da vida, por alguns segundos), roubo de vida, provocação e invocação.
-  - **Linha** (Disparo Perfurante): acerta todos os monstros na reta do herói até o alcance inteiro ou a primeira parede.
+  - **Linha** (Disparo Perfurante): acerta todos os monstros na reta do herói até o alcance inteiro ou a primeira parede. A reta sempre passa pelo ponto mirado, e o alvo do toque rápido é acertado mesmo se sair da reta durante o voo.
   - **Cadeia** (Raio em Cadeia): depois do alvo, salta para o monstro mais perto ainda não atingido (a até 3 tiles, com linha de visão), perdendo 15% do dano a cada salto.
   - Bônus condicionais: a Execução causa o dobro em quem tem menos de 30% da vida; o Disparo Certeiro ganha +10% de dano por tile até o alvo.
   - No monstro, a lentidão aparece como gelo nos pés e o veneno como bolhas verdes subindo.

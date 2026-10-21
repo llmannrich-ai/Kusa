@@ -1,5 +1,5 @@
 import type { ClassId } from "./classes.ts";
-import { lineEnd, type Dungeon } from "./dungeon.ts";
+import { blocksSight, tileDistance, type Dungeon } from "./dungeon.ts";
 import type { DotKind } from "./monsters.ts";
 import { SUMMONS, type SummonKind } from "./summons.ts";
 
@@ -92,6 +92,12 @@ export interface SpellDef {
   distanceBonus?: number;
   /** Armadura extra em quem conjura (soma com o equipamento) por `ms`. */
   armor?: { points: number; ms: number };
+  /** O efeito inteiro se repete `delayMs` depois do primeiro, com `power` do dano (sem gastar mana de novo). */
+  repeat?: { delayMs: number; power: number };
+  /** Se a magia matar algum monstro, a recarga cai esta fração do que ainda falta. */
+  killRefund?: number;
+  /** Fração do dano causado que volta como mana para quem conjura. */
+  manaSteal?: number;
   /** Quem conjura recebe só (1 - guard) do dano por `guardMs`. */
   guard?: number;
   guardMs?: number;
@@ -334,8 +340,68 @@ export const rankPower = (rank: number) => 1 + 0.2 * (Math.max(1, rank) - 1);
 /** Duração dos efeitos no nível: +15% por nível acima do 1. */
 export const rankDuration = (rank: number) => 1 + 0.15 * (Math.max(1, rank) - 1);
 
-/** A magia com os números do nível comprado (mana, recarga e área não mudam). */
-export function spellAtRank(def: SpellDef, rank: number): SpellDef {
+/**
+ * Maestria: o nível 3 de cada magia muda o efeito, além dos +20%. `changes` troca campos da magia no nível 1
+ * (antes de aplicar a força do nível); objetos como `summon` e `chain` entram inteiros.
+ */
+export interface Mastery {
+  text: string;
+  changes: Partial<Omit<SpellDef, "id" | "classId" | "slot" | "name" | "description" | "icon" | "color">>;
+}
+
+/** Nível em que a Maestria entra. */
+export const MASTERY_RANK = 3;
+
+export const MASTERIES: Record<SpellId, Mastery> = {
+  // Cavaleiro
+  blade_spin: { text: "Gira de novo logo depois, com metade do dano.", changes: { repeat: { delayMs: 450, power: 0.5 } } },
+  war_cry: { text: "O grito também cura 15% da sua vida.", changes: { heal: 0.15 } },
+  crushing_blow: { text: "A pancada atordoa o monstro por 1 s.", changes: { stunMs: 1000 } },
+  holy_shield: { text: "O escudo cobre também os aliados a até 2 tiles.", changes: { radius: 2, barrierAllies: true } },
+  vampiric_blade: { text: "Corta todos os monstros colados no alvo.", changes: { radius: 1 } },
+  iron_skin: { text: "Provoca os monstros a até 3 tiles e a cura chega aos aliados nessa área.", changes: { radius: 3, taunt: true } },
+  earthquake: { text: "Réplica: o chão treme de novo, com metade do dano, e atordoa outra vez.", changes: { repeat: { delayMs: 900, power: 0.5 } } },
+  steel_wall: { text: "Também corta 30% do dano recebido enquanto o escudo dura.", changes: { guard: 0.3, guardMs: 8000 } },
+  commander_shout: { text: "Alcança aliados a até 6 tiles.", changes: { radius: 6 } },
+  execution: { text: "O dano dobrado vale abaixo de 50% da vida.", changes: { execute: { hpPct: 0.5, bonus: 1 } } },
+  // Paladino
+  holy_arrow: { text: "A flecha salta para mais um monstro perto do alvo.", changes: { chain: { jumps: 1, range: 3, falloff: 0.3 } } },
+  arrow_rain: { text: "As flechas fincadas deixam os monstros 30% mais lentos.", changes: { slow: { pct: 0.3, ms: 3000 } } },
+  piercing_shot: { text: "Alcance 9 e quem é atravessado sangra.", changes: { range: 9, dot: { perSec: 0.2, ms: 3000, kind: "bleed" } } },
+  stun_arrow: { text: "Atordoa também quem está colado no alvo.", changes: { radius: 1 } },
+  blessed_ward: { text: "A luz ofusca os monstros em volta por 0,7 s.", changes: { stunMs: 700 } },
+  healing_light: { text: "O clarão ofusca por 1 s.", changes: { stunMs: 1000 } },
+  deadly_shot: { text: "Se o tiro matar, a recarga cai pela metade.", changes: { killRefund: 0.5 } },
+  divine_judgment: { text: "A luz queima tudo o que atinge.", changes: { dot: { perSec: 0.3, ms: 4000, kind: "burn" } } },
+  explosive_volley: { text: "A pólvora deixa os monstros em chamas.", changes: { dot: { perSec: 0.25, ms: 3000, kind: "burn" } } },
+  // Feiticeiro
+  shadow_orb: { text: "A esfera explode duas vezes (a segunda com metade do dano).", changes: { repeat: { delayMs: 500, power: 0.5 } } },
+  void_storm: { text: "O vazio devolve 20% do dano como vida.", changes: { lifesteal: 0.2 } },
+  lightning_bolt: { text: "O raio atordoa o alvo por 0,5 s.", changes: { stunMs: 500 } },
+  chain_lightning: { text: "Salta 5 vezes.", changes: { chain: { jumps: 5, range: 3, falloff: 0.15 } } },
+  ice_lance: { text: "Quando o gelo solta, o monstro fica 50% mais lento.", changes: { slow: { pct: 0.5, ms: 4000 } } },
+  drain_life: { text: "Também rouba mana: 30% do dano volta como mana.", changes: { manaSteal: 0.3 } },
+  frost_nova: { text: "Quando o gelo solta, os monstros ficam 50% mais lentos.", changes: { slow: { pct: 0.5, ms: 4000 } } },
+  meteor: { text: "Deixa os atingidos em chamas.", changes: { dot: { perSec: 0.4, ms: 4000, kind: "burn" } } },
+  blizzard: { text: "A tempestade cobre raio 4.", changes: { radius: 4 } },
+  dark_pact: { text: "Devolve 50% do dano como vida.", changes: { lifesteal: 0.5 } },
+  // Druida
+  forest_blessing: { text: "Uma mariposa curandeira brota e acompanha você por 10 s.", changes: { summon: { kind: "moth", count: 1, durationMs: 10000 } } },
+  thorn_roots: { text: "Os espinhos envenenam quem fica preso.", changes: { dot: { perSec: 0.25, ms: 4000, kind: "poison" } } },
+  venom_thorn: { text: "O veneno pula para mais 2 monstros perto do alvo.", changes: { chain: { jumps: 2, range: 3, falloff: 0.3 } } },
+  spirit_wolf: { text: "Invoca 2 lobos.", changes: { summon: { kind: "wolf", count: 2, durationMs: 20000 } } },
+  healing_moth: { text: "Invoca 2 mariposas.", changes: { summon: { kind: "moth", count: 2, durationMs: 20000 } } },
+  hornet_swarm: { text: "Solta 5 vespas.", changes: { summon: { kind: "hornet", count: 5, durationMs: 12000 } } },
+  nature_wrath: { text: "O redemoinho prende os monstros por 1,5 s.", changes: { rootMs: 1500 } },
+  wolf_pack: { text: "A matilha vem com 4 lobos.", changes: { summon: { kind: "wolf", count: 4, durationMs: 18000 } } },
+  ancient_bear: { text: "O urso fica o dobro do tempo.", changes: { summon: { kind: "bear", count: 1, durationMs: 50000 } } },
+  grove_guardian: { text: "Ao despertar, a árvore cura 20% da vida da equipe a até 3 tiles.", changes: { heal: 0.2, radius: 3 } },
+  forest_heart: { text: "Dois fogos-fátuos.", changes: { summon: { kind: "wisp", count: 2, durationMs: 20000 } } },
+};
+
+/** A magia com os números do nível comprado e, no nível 3, a Maestria (mana e recarga não mudam). */
+export function spellAtRank(base: SpellDef, rank: number): SpellDef {
+  const def = rank >= MASTERY_RANK ? { ...base, ...MASTERIES[base.id].changes } : base;
   const k = rankPower(rank);
   const t = rankDuration(rank);
   const ms = (v?: number) => (v === undefined ? undefined : Math.round(v * t));
@@ -379,6 +445,9 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
   if (s.stunMs) facts.push(`Atordoa por ${sec(s.stunMs)}`);
   if (s.slow) facts.push(`Deixa ${pct(s.slow.pct)} mais lento por ${sec(s.slow.ms)}`);
   if (s.armor) facts.push(`+${s.armor.points} de armadura por ${sec(s.armor.ms)}`);
+  if (s.manaSteal) facts.push(`Rouba ${pct(s.manaSteal)} do dano em mana`);
+  if (s.repeat) facts.push(`Repete depois de ${sec(s.repeat.delayMs)} com ${pct(s.repeat.power)} do dano`);
+  if (s.killRefund) facts.push(`Se matar, a recarga cai ${pct(s.killRefund)}`);
   if (s.taunt) facts.push(`Provoca monstros a até ${s.radius} tiles`);
   if (s.summon) {
     const sum = SUMMONS[s.summon.kind];
@@ -388,6 +457,7 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
     facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
   }
   facts.push(`${s.manaCost} de mana · recarga ${num(s.cooldownMs / 1000)} s${s.aim === "target" ? ` · alcance ${s.range}` : ""}`);
+  if (rank >= MASTERY_RANK) facts.push(`★ Maestria: ${MASTERIES[def.id].text}`);
   return facts;
 }
 
@@ -415,27 +485,32 @@ export function isSingleTarget(spell: SpellDef) {
 
 /**
  * Tiles de uma magia em linha: do herói na direção do ponto mirado até `length` tiles, parando antes
- * da primeira parede. Não inclui o tile do herói. Cliente (mira e efeito) e servidor (dano) usam a mesma conta.
+ * da primeira parede. Não inclui o tile do herói. A reta segue o caminho exato (Bresenham) até o ponto
+ * mirado e depois repete o mesmo passo, então sempre passa pelo alvo que o jogador viu.
+ * Cliente (mira e efeito) e servidor (dano) usam a mesma conta.
  */
 export function lineTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {
-  const dx = ax - x0;
-  const dy = ay - y0;
-  const dist = Math.max(Math.abs(dx), Math.abs(dy));
-  if (dist === 0) return [];
-  const end = lineEnd(d, x0, y0, x0 + Math.round((dx * length) / dist), y0 + Math.round((dy * length) / dist));
-  const tiles: { x: number; y: number }[] = [];
-  const adx = Math.abs(end.x - x0);
-  const ady = -Math.abs(end.y - y0);
-  const sx = x0 < end.x ? 1 : -1;
-  const sy = y0 < end.y ? 1 : -1;
-  let err = adx + ady;
+  const path: { x: number; y: number }[] = [];
+  const dx = Math.abs(ax - x0);
+  const dy = -Math.abs(ay - y0);
+  const sx = x0 < ax ? 1 : -1;
+  const sy = y0 < ay ? 1 : -1;
+  let err = dx + dy;
   let x = x0;
   let y = y0;
-  while (x !== end.x || y !== end.y) {
+  while (x !== ax || y !== ay) {
     const e2 = 2 * err;
-    if (e2 >= ady) { err += ady; x += sx; }
-    if (e2 <= adx) { err += adx; y += sy; }
-    tiles.push({ x, y });
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+    path.push({ x, y });
+  }
+  const tiles: { x: number; y: number }[] = [];
+  for (let i = 0; path.length > 0; i++) {
+    const lap = Math.floor(i / path.length);
+    const step = path[i % path.length];
+    const t = { x: step.x + (ax - x0) * lap, y: step.y + (ay - y0) * lap };
+    if (tileDistance(x0, y0, t.x, t.y) > length || blocksSight(d, t.x, t.y)) break;
+    tiles.push(t);
   }
   return tiles;
 }
