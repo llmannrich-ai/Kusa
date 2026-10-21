@@ -536,11 +536,13 @@ async function knightSpecs() {
     await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "war_banner"), 2000, "o Estandarte de Guerra não subiu");
     const target = await backOff(h.room, h.me);
     if (!target) throw new Error(`senhor: nenhum monstro a 2–4 tiles: ${whereAmI(h.room, h.me)}`);
+    // O cavaleiro tem pouca mana: o estandarte gasta quase tudo, espera voltar o da investida.
+    await until(() => h.me().mana >= 25, 15000, `senhor: a mana não voltou (${h.me().mana})`);
     h.room.send(MSG.cast, { slot: 0, aim: { x: target[1].x, y: target[1].y, targetId: target[0] } });
     await until(() => {
       const m = h.room.state.monsters.get(target[0]);
       return !m || tileDistance(h.me().x, h.me().y, m.x, m.y) <= 1;
-    }, 2000, "a Investida não levou o herói até o alvo");
+    }, 2000, `a Investida não levou o herói até o alvo (avisos: ${h.notices.slice(-3).join(", ")})`);
     await h.room.leave();
   }
   // Desafiante: a corrente puxa o monstro para perto; o desafio protege.
@@ -550,6 +552,7 @@ async function knightSpecs() {
     await until(() => h.me().guarded, 2000, "o Desafio Supremo não protegeu o herói");
     const target = await backOff(h.room, h.me);
     if (!target) throw new Error(`desafiante: nenhum monstro a 2–4 tiles: ${whereAmI(h.room, h.me)}`);
+    await until(() => h.me().mana >= 20, 15000, `desafiante: a mana não voltou (${h.me().mana})`);
     h.room.send(MSG.cast, { slot: 0, aim: { x: target[1].x, y: target[1].y, targetId: target[0] } });
     await until(() => {
       const m = h.room.state.monsters.get(target[0]);
