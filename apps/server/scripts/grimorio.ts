@@ -12,7 +12,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MONSTERS, MSG, ROOM_NAME, RULES_VERSION, SPELLS, generateDungeon, hasLineOfSight, lineTiles, spellAtRank, tileDistance,
+  MONSTERS, MSG, ROOM_NAME, RULES_VERSION, SPELLS, generateDungeon, hasLineOfSight, isWalkable, lineTiles, spellAtRank, tileDistance,
   type ChainMessage, type DamageMessage, type MonsterKind, type SpellMessage,
 } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
@@ -93,7 +93,7 @@ function rules() {
 }
 
 async function venomDot() {
-  const { room, me, damage } = await enter("druid");
+  const { room, me, damage } = await enter("druid", true);
   room.send(MSG.chooseSpell, { slot: 0, spellId: "venom_thorn" });
   // Monstro comum morre antes do veneno pulsar: o espinho vai no mini-boss.
   const bossId = await huntMiniboss(room, me, (boss) => {
@@ -111,7 +111,7 @@ async function venomDot() {
 }
 
 async function sorcererSlowAndChain() {
-  const { room, me, damage, chains } = await enter("sorcerer");
+  const { room, me, damage, chains } = await enter("sorcerer", true);
   room.send(MSG.chooseSpell, { slot: 0, spellId: "chain_lightning" });
   room.send(MSG.chooseSpell, { slot: 1, spellId: "blizzard" });
   // No nível 8 a Nevasca mata qualquer monstro comum na hora (e a lentidão nem aparece): só o mini-boss sobrevive a
@@ -161,6 +161,8 @@ async function huntMiniboss(
     if (!boss) throw new Error("o mini-boss morreu antes da hora");
     const near = tileDistance(p.x, p.y, boss.x, boss.y) <= 4 && hasLineOfSight(dungeon, p.x, p.y, boss.x, boss.y);
     if (near && act({ ...boss.toJSON(), id: bossId }, p)) return bossId;
+    // Colado no mini-boss, o herói de vida baixa morre (ataque básico + golpe especial): recua mantendo-o à vista.
+    if (near && tileDistance(p.x, p.y, boss.x, boss.y) <= 2) retreat(room, dungeon, p, boss);
     if (!near) {
       onWay?.(p);
       const blocked = new Set<number>();
@@ -173,18 +175,54 @@ async function huntMiniboss(
   }
 }
 
+/** Um passo para longe de `from`, por um tile livre que ainda o mantenha à vista (não pisa no portal de fuga). */
+function retreat(room: any, dungeon: ReturnType<typeof generateDungeon>, p: { x: number; y: number }, from: { x: number; y: number }) {
+  const taken = new Set<number>();
+  room.state.monsters.forEach((o: any) => taken.add(o.y * dungeon.width + o.x));
+  let best: { dx: number; dy: number } | null = null;
+  let bestDist = tileDistance(p.x, p.y, from.x, from.y);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    const x = p.x + dx;
+    const y = p.y + dy;
+    if (!isWalkable(dungeon, x, y) || taken.has(y * dungeon.width + x)) continue;
+    if (x === dungeon.portal.x && y === dungeon.portal.y) continue;
+    if (dx !== 0 && dy !== 0 && (!isWalkable(dungeon, x, p.y) || !isWalkable(dungeon, p.x, y))) continue;
+    const dist = tileDistance(x, y, from.x, from.y);
+    if (dist > bestDist && hasLineOfSight(dungeon, x, y, from.x, from.y)) {
+      best = { dx, dy };
+      bestDist = dist;
+    }
+  }
+  if (best) room.send(MSG.move, best);
+}
+
 async function paladinLine() {
   const { room, me, damage, spells } = await enter("paladin");
   room.send(MSG.chooseSpell, { slot: 0, spellId: "piercing_shot" });
-  await approach(room, me, 4, () => inSight(room, me(), 5));
-  room.send(MSG.cast, { slot: 0 });
-  await until(() => spells.some((s) => s.spellId === "piercing_shot"), 2000, "o Disparo Perfurante não saiu");
-  const shot = spells.find((s) => s.spellId === "piercing_shot")!;
   const dungeon = generateDungeon(room.state.seed);
-  const line = lineTiles(dungeon, shot.x, shot.y, shot.tx, shot.ty, SPELLS.piercing_shot.range);
-  const end = line[line.length - 1];
-  if (!end || end.x !== shot.tx || end.y !== shot.ty) throw new Error(`a flecha devia ir até o fim da linha: ${JSON.stringify({ shot, end })}`);
-  await until(() => damage.some((d) => d.attacker === room.sessionId && !d.toPlayer), 2000, "a flecha não acertou ninguém");
+  const hit = () => damage.some((d) => d.attacker === room.sessionId && !d.toPlayer);
+  // A linha fica fixa no disparo: o monstro que anda para fora dela durante o voo escapa. Tenta até 3 tiros.
+  let shot!: SpellMessage;
+  let line: { x: number; y: number }[] = [];
+  for (let attempt = 1; !hit(); attempt++) {
+    if (attempt > 3) throw new Error("a flecha não acertou ninguém em 3 tiros");
+    // Folga sobre a recarga: o servidor recusa o tiro que chega antes da hora.
+    if (attempt > 1) await wait(SPELLS.piercing_shot.cooldownMs + 500);
+    await approach(room, me, 4, () => inSight(room, me(), 5));
+    const before = spells.length;
+    room.send(MSG.cast, { slot: 0 });
+    const fired = await until(() => spells.slice(before).some((s) => s.spellId === "piercing_shot"), 2000, "").then(() => true, () => false);
+    // Sem alvo ao alcance (o monstro saiu de vista entre a aproximação e o toque): conta como tiro perdido.
+    if (!fired) {
+      console.log(`paladino: tiro ${attempt} não saiu (sem alvo ao alcance)`);
+      continue;
+    }
+    shot = spells.slice(before).find((s) => s.spellId === "piercing_shot")!;
+    line = lineTiles(dungeon, shot.x, shot.y, shot.tx, shot.ty, SPELLS.piercing_shot.range);
+    const end = line[line.length - 1];
+    if (!end || end.x !== shot.tx || end.y !== shot.ty) throw new Error(`a flecha devia ir até o fim da linha: ${JSON.stringify({ shot, end })}`);
+    await until(() => hit(), shot.ms + 1000, "").catch(() => console.log(`paladino: tiro ${attempt} errou (o monstro saiu da linha)`));
+  }
   console.log(`paladino: linha de ${line.length} tiles até ${shot.tx},${shot.ty}`);
   await room.leave();
 }
@@ -204,7 +242,19 @@ async function until(done: () => boolean, ms: number, error: string) {
   }
 }
 
-async function enter(classId: string) {
+/** Entra numa hunt nova. Com `miniboss`, troca de sala até ter um (raros mapas da Cripta saem sem sala lateral). */
+async function enter(classId: string, miniboss = false): Promise<Hunt> {
+  for (let attempt = 1; ; attempt++) {
+    const hunt = await enterOnce(classId);
+    const has = [...hunt.room.state.monsters.values()].some((m: any) => MONSTERS[m.kind as MonsterKind].rank === "miniboss");
+    if (!miniboss || has || attempt === 5) return hunt;
+    await hunt.room.leave();
+  }
+}
+
+type Hunt = Awaited<ReturnType<typeof enterOnce>>;
+
+async function enterOnce(classId: string) {
   const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId, rulesVersion: RULES_VERSION });
   const damage: DamageMessage[] = [];
   const spells: SpellMessage[] = [];
