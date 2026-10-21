@@ -6,6 +6,7 @@ import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
 import { treantCanvas } from "./summons.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
+import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./swampDecor.ts";
 
 /**
  * Ponte entre a arte e o Phaser: carrega os PNGs do pack Dungeon Crawl (CC0, ver
@@ -53,6 +54,19 @@ export const SWAMP_TEXTURE = {
   tree: "tree-swamp",
   ruinWall: "ruin-wall",
   column: "ruin-column",
+  /** Franja de capim (N, L, S, O) e espuma da margem (N, L, S, O, cantos NE, NO, SE, SO). */
+  fringe: "grass-fringe",
+  shore: "water-shore",
+};
+/** Detalhes do pântano em arte própria (`swampDecor.ts`), gerados na primeira hunt no pântano. */
+export const SWAMP_DECOR = {
+  floor: "swamp-decor-floor",
+  water: "swamp-decor-water",
+  tall: "swamp-decor-tall",
+  shade: "swamp-shade",
+  ripple: "swamp-ripple",
+  firefly: "swamp-firefly",
+  mist: "swamp-mist",
 };
 const SWAMP_SHEETS = [SWAMP_TEXTURE.tree, SWAMP_TEXTURE.ruinWall, SWAMP_TEXTURE.column];
 
@@ -143,6 +157,33 @@ export function createEffectArt(scene: Phaser.Scene) {
   for (const key of Object.values(FX_ANIM)) {
     if (scene.anims.exists(key)) continue;
     scene.anims.create({ key, frames: scene.anims.generateFrameNumbers(key), frameRate: 14, hideOnComplete: true });
+  }
+}
+
+/** Gera as texturas dos detalhes do pântano (uma vez por jogo), com quadros 32×32 nas faixas. */
+export function createSwampArt(scene: Phaser.Scene) {
+  const strips: [string, () => HTMLCanvasElement][] = [
+    [SWAMP_DECOR.floor, decorFloorStrip],
+    [SWAMP_DECOR.water, decorWaterStrip],
+    [SWAMP_DECOR.tall, decorTallStrip],
+    [SWAMP_DECOR.shade, shadeStrip],
+    [SWAMP_DECOR.ripple, rippleStrip],
+  ];
+  for (const [key, draw] of strips) {
+    if (scene.textures.exists(key)) continue;
+    const canvas = draw();
+    const texture = scene.textures.addCanvas(key, canvas)!;
+    for (let i = 0; i < canvas.width / TILE_SIZE; i++) texture.add(i, 0, i * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE);
+  }
+  if (!scene.textures.exists(SWAMP_DECOR.firefly)) scene.textures.addCanvas(SWAMP_DECOR.firefly, fireflyCanvas());
+  if (!scene.textures.exists(SWAMP_DECOR.mist)) scene.textures.addCanvas(SWAMP_DECOR.mist, mistCanvas());
+  if (!scene.anims.exists(SWAMP_DECOR.ripple)) {
+    scene.anims.create({
+      key: SWAMP_DECOR.ripple,
+      frames: Array.from({ length: RIPPLE_FRAMES }, (_, frame) => ({ key: SWAMP_DECOR.ripple, frame })),
+      frameRate: 6,
+      hideOnComplete: true,
+    });
   }
 }
 
