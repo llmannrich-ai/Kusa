@@ -2,6 +2,7 @@
 -- escudo), famílias com restrição de classe e 3 raridades (comum, raro, mágico). O id passa a ser
 -- slot-família-nível-raridade (ex.: weapon-sword-3-rare); o slot continua sendo a primeira parte.
 -- O catálogo abaixo sai de `npx tsx apps/server/scripts/catalog-sql.ts`; mude os dois juntos.
+-- `market_items` também guarda as runas (rune-*): elas ficam como estão (tier, rarity e classes vazios).
 
 alter table public.market_items
   add column tier int check (tier between 1 and 5),
@@ -225,7 +226,7 @@ on conflict (item_id) do update set buy_price = excluded.buy_price, sell_price =
 
 -- Itens antigos (weapon-3, helmet-2...) viram o comum equivalente na família da última classe jogada:
 -- arma de cavaleiro (o nível 3 era um machado), arco do paladino ou cajado de feiticeiro e druida;
--- capacete e armadura de guerra ou arcanos.
+-- capacete e armadura de guerra ou arcanos. Só os 20 ids antigos de item (as runas não mudam).
 update public.profile_items pi
 set item_id = case split_part(pi.item_id, '-', 1)
     when 'weapon' then 'weapon-' || case
@@ -241,13 +242,20 @@ from (
                          order by mp.ended_at desc limit 1), 'knight') as class_id
   from public.profile_items p
 ) x
-where x.id = pi.id and split_part(pi.item_id, '-', 3) = '';
+where x.id = pi.id and pi.item_id = any (array[
+  'weapon-1', 'weapon-2', 'weapon-3', 'weapon-4', 'weapon-5',
+  'helmet-1', 'helmet-2', 'helmet-3', 'helmet-4', 'helmet-5',
+  'armor-1', 'armor-2', 'armor-3', 'armor-4', 'armor-5',
+  'shield-1', 'shield-2', 'shield-3', 'shield-4', 'shield-5'
+]);
 
-delete from public.market_items where split_part(item_id, '-', 3) = '';
-
-alter table public.market_items
-  alter column tier set not null,
-  alter column rarity set not null;
+-- Os itens antigos saem do mercado (a linha fica: telemetria e partidas antigas ainda citam esses ids).
+update public.market_items set buy_price = null where item_id = any (array[
+  'weapon-1', 'weapon-2', 'weapon-3', 'weapon-4', 'weapon-5',
+  'helmet-1', 'helmet-2', 'helmet-3', 'helmet-4', 'helmet-5',
+  'armor-1', 'armor-2', 'armor-3', 'armor-4', 'armor-5',
+  'shield-1', 'shield-2', 'shield-3', 'shield-4', 'shield-5'
+]);
 
 -- Servidor de jogo: a hunt começou, sai da conta só o equipamento que a classe usa. O resto (a espada,
 -- para um druida) fica equipado em casa. A versão de um argumento continua para quem não sabe a classe.
