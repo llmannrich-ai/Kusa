@@ -51,7 +51,13 @@ export type SpellId =
   | "energy_beam" | "sky_fury" | "fireball" | "infernal_core" | "cone_of_cold" | "ice_prison"
   | "misty_step" | "magic_wall" | "sudden_death" | "raise_skeletons" | "eldritch_blast" | "black_tentacles"
   | "beast_cry" | "giant_eagle" | "panther_form" | "bear_form" | "distant_heal" | "rebirth_seed"
-  | "barkskin" | "reviving_rain" | "mamba_bite" | "poison_cloud" | "thunderwave" | "call_lightning";
+  | "barkskin" | "reviving_rain" | "mamba_bite" | "poison_cloud" | "thunderwave" | "call_lightning"
+  // Costelas (galhos laterais que saem do tronco de um ramo do Grimório).
+  | "twin_slash" | "cross_cut" | "open_wound" | "seismic_rift" | "aegis_strike" | "shield_quake"
+  | "stunning_roar" | "battle_order" | "challenge_mark"
+  | "double_shot" | "barbed_arrow" | "sunbeam" | "holy_hammer" | "net_arrow" | "fire_arrows"
+  | "spark" | "ember_rain" | "frostbite" | "frozen_orb" | "dark_seal" | "plague"
+  | "howl" | "purifying_sap" | "blossom_burst" | "vine_lash" | "spore_burst" | "bramble_burst";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -618,6 +624,171 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 60, cooldownMs: 16000, aim: "target", range: 6, radius: 0,
     field: { kind: "turret", ms: 8000, tickMs: 1500, damage: 1.6, reach: 3, shots: 5, look: "storm" },
   }),
+  // --- Costelas do Grimório: galhos laterais do tronco (ver talents.ts). ------
+  // Cavaleiro, ramo Lâmina.
+  twin_slash: spell({
+    id: "twin_slash", classId: "knight", slot: 0, name: "Corte Duplo", icon: "🗡️", color: 0xd2d6de,
+    description: "Dois cortes seguidos no mesmo monstro.",
+    manaCost: 14, cooldownMs: 5000, aim: "target", range: 1, radius: 0, damage: 1.5, repeat: { delayMs: 350, power: 0.9 },
+  }),
+  cross_cut: spell({
+    id: "cross_cut", classId: "knight", slot: 0, name: "Corte Largo", icon: "🌒", color: 0xd2d6de,
+    description: "Um corte largo que acerta os monstros num leque à sua frente.",
+    manaCost: 16, cooldownMs: 5500, aim: "target", range: 2, radius: 0, shape: "cone", damage: 1.7,
+  }),
+  open_wound: spell({
+    id: "open_wound", classId: "knight", slot: 1, name: "Ferida Aberta", icon: "🔪", color: 0xc0392b,
+    description: "Um golpe fundo que faz o monstro sangrar por 6 s.",
+    manaCost: 30, cooldownMs: 12000, aim: "target", range: 1, radius: 0, damage: 2.4,
+    dot: { perSec: 0.5, ms: 6000, kind: "bleed" },
+  }),
+  seismic_rift: spell({
+    id: "seismic_rift", classId: "knight", slot: 1, name: "Fenda Sísmica", icon: "🪨", color: 0x8b5a2b,
+    description: "Racha o chão em linha reta à sua frente, ferindo e atordoando quem estiver nela.",
+    manaCost: 40, cooldownMs: 15000, aim: "target", range: 5, radius: 0, shape: "line", damage: 2.2, stunMs: 1000,
+  }),
+  // Cavaleiro, ramo Bastião.
+  aegis_strike: spell({
+    id: "aegis_strike", classId: "knight", slot: 0, name: "Golpe de Égide", icon: "🔰", color: 0x5dade2,
+    description: "Bate com o escudo e ganha um escudo de 15% da vida por 6 s.",
+    manaCost: 18, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 1.4, barrier: 0.15, barrierMs: 6000,
+  }),
+  shield_quake: spell({
+    id: "shield_quake", classId: "knight", slot: 1, name: "Tremor do Escudo", icon: "💢", color: 0x5dade2,
+    description: "Bate o escudo no chão: fere, provoca e deixa lentos os monstros a até 2 tiles.",
+    manaCost: 35, cooldownMs: 14000, aim: "self", range: 0, radius: 2, damage: 1.2, taunt: true,
+    slow: { pct: 0.4, ms: 4000 },
+  }),
+  // Cavaleiro, ramo Comando.
+  stunning_roar: spell({
+    id: "stunning_roar", classId: "knight", slot: 1, name: "Rugido Atordoante", icon: "🦁", color: 0xe67e22,
+    description: "Um rugido que atordoa os monstros a até 3 tiles, sem ferir.",
+    manaCost: 35, cooldownMs: 16000, aim: "self", range: 0, radius: 3, stunMs: 1500,
+  }),
+  battle_order: spell({
+    id: "battle_order", classId: "knight", slot: 0, name: "Ordem de Batalha", icon: "🎖️", color: 0xe67e22,
+    description: "Por 6 s, o golpe de espada causa +40% e sai 30% mais rápido.",
+    manaCost: 20, cooldownMs: 15000, aim: "self", range: 0, radius: 0,
+    selfBuff: { ms: 6000, basicDamage: 0.4, attackHaste: 0.3 },
+  }),
+  challenge_mark: spell({
+    id: "challenge_mark", classId: "knight", slot: 0, name: "Desafio", icon: "🚩", color: 0xe67e22,
+    description: "Desafia um monstro: ele vem atrás de você e recebe +20% de dano de toda a equipe por 8 s.",
+    manaCost: 16, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 0.6, taunt: true,
+    mark: { pct: 0.2, ms: 8000 },
+  }),
+  // Paladino, ramo Mira.
+  double_shot: spell({
+    id: "double_shot", classId: "paladin", slot: 0, name: "Tiro Duplo", icon: "🪶", color: 0xf1c40f,
+    description: "Duas flechas seguidas no mesmo alvo.",
+    manaCost: 26, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 22,
+    repeat: { delayMs: 300, power: 0.9 },
+  }),
+  barbed_arrow: spell({
+    id: "barbed_arrow", classId: "paladin", slot: 1, name: "Flecha Farpada", icon: "🪝", color: 0xc0392b,
+    description: "Uma flecha com farpas que faz o alvo sangrar por 5 s.",
+    manaCost: 40, cooldownMs: 12000, aim: "target", range: 7, radius: 0, damage: 2.4, projectileSpeed: 22,
+    dot: { perSec: 0.5, ms: 5000, kind: "bleed" },
+  }),
+  // Paladino, ramo Luz.
+  sunbeam: spell({
+    id: "sunbeam", classId: "paladin", slot: 0, name: "Raio Solar", icon: "🌅", color: 0xfff6c8,
+    description: "Um feixe de luz em linha reta que fere mais os mortos-vivos.",
+    manaCost: 28, cooldownMs: 6000, aim: "target", range: 6, radius: 0, shape: "line", damage: 1.6, undeadBonus: 0.5,
+  }),
+  holy_hammer: spell({
+    id: "holy_hammer", classId: "paladin", slot: 1, name: "Martelo Sagrado", icon: "⚒️", color: 0xfff6c8,
+    description: "Um martelo de luz que marca o alvo: +15% de dano de toda a equipe nele por 6 s.",
+    manaCost: 45, cooldownMs: 13000, aim: "target", range: 5, radius: 0, damage: 2.6, undeadBonus: 0.5,
+    mark: { pct: 0.15, ms: 6000 }, projectileSpeed: 12,
+  }),
+  // Paladino, ramo Batedor.
+  net_arrow: spell({
+    id: "net_arrow", classId: "paladin", slot: 0, name: "Flecha de Rede", icon: "🕸️", color: 0xc8a165,
+    description: "A flecha abre uma rede que prende os monstros em volta do alvo.",
+    manaCost: 24, cooldownMs: 8000, aim: "target", range: 6, radius: 1, damage: 0.6, rootMs: 2500, projectileSpeed: 18,
+  }),
+  fire_arrows: spell({
+    id: "fire_arrows", classId: "paladin", slot: 1, name: "Flechas Incendiárias", icon: "🏮", color: 0xff7f27,
+    description: "Uma saraivada de flechas em chamas que queima os monstros da área.",
+    manaCost: 50, cooldownMs: 13000, aim: "target", range: 6, radius: 2, damage: 1, projectileSpeed: 10,
+    dot: { perSec: 0.4, ms: 4000, kind: "burn" },
+  }),
+  // Feiticeiro, ramo Raio.
+  spark: spell({
+    id: "spark", classId: "sorcerer", slot: 0, name: "Faísca", icon: "✨", color: 0x9ec5ff, element: "energy",
+    description: "Uma faísca barata e rápida que salta para mais um monstro.",
+    manaCost: 16, cooldownMs: 2500, aim: "target", range: 5, radius: 0, damage: 1.1, projectileSpeed: 30,
+    chain: { jumps: 1, range: 2, falloff: 0.3 },
+  }),
+  ember_rain: spell({
+    id: "ember_rain", classId: "sorcerer", slot: 1, name: "Chuva de Brasas", icon: "🌠", color: 0xff7f27, element: "fire",
+    description: "Brasas caem numa área por 5 s, ferindo quem estiver dentro.",
+    manaCost: 60, cooldownMs: 15000, aim: "target", range: 6, radius: 2,
+    field: { kind: "zone", ms: 5000, tickMs: 1000, damage: 0.5 },
+  }),
+  // Feiticeiro, ramo Gelo.
+  frostbite: spell({
+    id: "frostbite", classId: "sorcerer", slot: 0, name: "Geada", icon: "🥶", color: 0xd6f1ff, element: "ice",
+    description: "Um sopro gelado que deixa o alvo 60% mais lento.",
+    manaCost: 26, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 1.3, projectileSpeed: 16,
+    slow: { pct: 0.6, ms: 4000 },
+  }),
+  frozen_orb: spell({
+    id: "frozen_orb", classId: "sorcerer", slot: 1, name: "Orbe Congelado", icon: "💠", color: 0xd6f1ff, element: "ice",
+    description: "Um orbe lento que explode em gelo e explode de novo logo depois, mais fraco.",
+    manaCost: 75, cooldownMs: 15000, aim: "target", range: 6, radius: 2, damage: 1.8, projectileSpeed: 6,
+    slow: { pct: 0.5, ms: 3000 }, repeat: { delayMs: 600, power: 0.6 },
+  }),
+  // Feiticeiro, ramo Trevas.
+  dark_seal: spell({
+    id: "dark_seal", classId: "sorcerer", slot: 0, name: "Selo Sombrio", icon: "🕳️", color: 0x8e44ad, element: "dark",
+    description: "Sela o alvo: ele recebe +20% de dano de toda a equipe por 6 s.",
+    manaCost: 22, cooldownMs: 6000, aim: "target", range: 5, radius: 0, damage: 1, projectileSpeed: 14,
+    mark: { pct: 0.2, ms: 6000 },
+  }),
+  plague: spell({
+    id: "plague", classId: "sorcerer", slot: 1, name: "Praga", icon: "🧫", color: 0x6b8e23, element: "dark",
+    description: "Uma nuvem de pestilência que envenena os monstros da área por 6 s.",
+    manaCost: 60, cooldownMs: 14000, aim: "target", range: 5, radius: 2, damage: 0.8, projectileSpeed: 9,
+    dot: { perSec: 0.4, ms: 6000, kind: "poison" },
+  }),
+  // Druida, ramo Matilha.
+  howl: spell({
+    id: "howl", classId: "druid", slot: 0, name: "Uivo", icon: "🌜", color: 0xb0c4de,
+    description: "Um uivo que fere de leve e deixa lentos os monstros a até 3 tiles.",
+    manaCost: 30, cooldownMs: 10000, aim: "self", range: 0, radius: 3, damage: 0.5, slow: { pct: 0.4, ms: 4000 },
+  }),
+  // Druida, ramo Bosque.
+  purifying_sap: spell({
+    id: "purifying_sap", classId: "druid", slot: 0, name: "Seiva Purificadora", icon: "🫧", color: 0x7bed9f,
+    description: "Cura 20% da vida de um aliado (ou sua) e tira o veneno, a queimadura e a lentidão.",
+    manaCost: 30, cooldownMs: 7000, aim: "ally", range: 6, radius: 0, heal: 0.2, cleanse: true,
+  }),
+  blossom_burst: spell({
+    id: "blossom_burst", classId: "druid", slot: 1, name: "Florada", icon: "🌺", color: 0xff9ff3,
+    description: "Flores brotam em volta: curam e dão um escudo de 10% a quem está a até 3 tiles.",
+    manaCost: 60, cooldownMs: 18000, aim: "self", range: 0, radius: 3, heal: 0.25,
+    barrier: 0.1, barrierMs: 5000, barrierAllies: true,
+  }),
+  // Druida, ramo Espinhos.
+  vine_lash: spell({
+    id: "vine_lash", classId: "druid", slot: 0, name: "Chicote de Cipó", icon: "🪢", color: 0x6b7a2a,
+    description: "Um cipó em linha reta que fere e prende por 1 s quem estiver nela.",
+    manaCost: 24, cooldownMs: 5000, aim: "target", range: 4, radius: 0, shape: "line", damage: 1.3, rootMs: 1000,
+  }),
+  spore_burst: spell({
+    id: "spore_burst", classId: "druid", slot: 1, name: "Esporos", icon: "🍄", color: 0x9acd32,
+    description: "Uma nuvem de esporos que envenena e deixa lentos os monstros da área.",
+    manaCost: 50, cooldownMs: 13000, aim: "target", range: 5, radius: 2, damage: 0.6, projectileSpeed: 9,
+    dot: { perSec: 0.35, ms: 5000, kind: "poison" }, slow: { pct: 0.3, ms: 3000 },
+  }),
+  bramble_burst: spell({
+    id: "bramble_burst", classId: "druid", slot: 1, name: "Explosão de Espinhos", icon: "🌵", color: 0x6b7a2a,
+    description: "Espinhos brotam em volta: ferem, fazem sangrar e prendem os monstros a até 2 tiles.",
+    manaCost: 55, cooldownMs: 14000, aim: "self", range: 0, radius: 2, damage: 1.6, rootMs: 1500,
+    dot: { perSec: 0.3, ms: 4000, kind: "bleed" },
+  }),
 };
 
 /** Níveis de uma magia no Grimório (o 1 é o aprendido). */
@@ -722,6 +893,34 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   poison_cloud: { text: "A nuvem cobre raio 3.", changes: { radius: 3 } },
   thunderwave: { text: "O trovão atordoa os atingidos por 1 s.", changes: { stunMs: 1000 } },
   call_lightning: { text: "A nuvem solta 8 raios.", changes: { field: { kind: "turret", ms: 12000, tickMs: 1500, damage: 1.6, reach: 3, shots: 8, look: "storm" } } },
+  // Costelas.
+  twin_slash: { text: "O segundo corte faz sangrar por 4 s.", changes: { dot: { perSec: 0.3, ms: 4000, kind: "bleed" } } },
+  cross_cut: { text: "O leque alcança 3 tiles.", changes: { range: 3 } },
+  open_wound: { text: "Sangram também os monstros colados no alvo.", changes: { radius: 1 } },
+  seismic_rift: { text: "Depois do atordoamento, os atingidos ficam 40% mais lentos.", changes: { slow: { pct: 0.4, ms: 3000 } } },
+  aegis_strike: { text: "A pancada atordoa o monstro por 1 s.", changes: { stunMs: 1000 } },
+  shield_quake: { text: "O tremor alcança 3 tiles.", changes: { radius: 3 } },
+  stunning_roar: { text: "Depois do atordoamento, os monstros ficam 40% mais lentos.", changes: { slow: { pct: 0.4, ms: 4000 } } },
+  battle_order: { text: "Também anda 20% mais rápido.", changes: { selfBuff: { ms: 6000, basicDamage: 0.4, attackHaste: 0.3, moveSpeed: 0.2 } } },
+  challenge_mark: { text: "Desafia também os monstros colados no alvo.", changes: { radius: 1 } },
+  double_shot: { text: "As flechas fazem sangrar por 3 s.", changes: { dot: { perSec: 0.25, ms: 3000, kind: "bleed" } } },
+  barbed_arrow: { text: "O alvo também fica 30% mais lento.", changes: { slow: { pct: 0.3, ms: 5000 } } },
+  sunbeam: { text: "Ofusca os atingidos por 0,5 s.", changes: { stunMs: 500 } },
+  holy_hammer: { text: "O martelo acerta e marca também os colados no alvo.", changes: { radius: 1 } },
+  net_arrow: { text: "A rede cobre raio 2.", changes: { radius: 2 } },
+  fire_arrows: { text: "A área cresce para raio 3.", changes: { radius: 3 } },
+  spark: { text: "Salta 2 vezes.", changes: { chain: { jumps: 2, range: 2, falloff: 0.3 } } },
+  ember_rain: { text: "As brasas também queimam os atingidos.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "burn" } } },
+  frostbite: { text: "Gela também os monstros colados no alvo.", changes: { radius: 1 } },
+  frozen_orb: { text: "As explosões prendem por 1,5 s.", changes: { rootMs: 1500 } },
+  dark_seal: { text: "Sela também os monstros colados no alvo.", changes: { radius: 1 } },
+  plague: { text: "A praga cobre raio 3.", changes: { radius: 3 } },
+  howl: { text: "Atordoa por 0,6 s antes da lentidão.", changes: { stunMs: 600 } },
+  purifying_sap: { text: "Também dá ao aliado um escudo de 10% da vida por 4 s.", changes: { barrier: 0.1, barrierMs: 4000 } },
+  blossom_burst: { text: "As flores alcançam 4 tiles.", changes: { radius: 4 } },
+  vine_lash: { text: "O cipó também envenena por 3 s.", changes: { dot: { perSec: 0.25, ms: 3000, kind: "poison" } } },
+  spore_burst: { text: "Os esporos cobrem raio 3.", changes: { radius: 3 } },
+  bramble_burst: { text: "Os espinhos brotam em raio 3.", changes: { radius: 3 } },
 };
 
 /** A magia com os números do nível comprado e, no nível 3, a Maestria (mana e recarga não mudam). */

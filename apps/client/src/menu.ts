@@ -26,7 +26,6 @@ import {
   talentTree,
   TALENTS,
   TRAITS,
-  chosenSide,
   canUse,
   classesText,
   describeStats,
@@ -130,8 +129,8 @@ export class Hub {
   /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
   classId: ClassId;
   private treeClass: ClassId;
-  /** Ramo do Grimório aberto em foco (com os dois lados da especialização); vale só para a classe dele. */
-  private treeFocus: { classId: ClassId; col: number } | null = null;
+  /** Ramo aberto no Grimório (0 a 2): um por tela. */
+  private treeBranch = 0;
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
@@ -239,8 +238,8 @@ export class Hub {
   // --- Grimório ---------------------------------------------------------------
 
   /**
-   * O Grimório desenhado como uma árvore de verdade: a raiz (magia inicial do slot 1) no alto e
-   * 3 ramos descendo, ligados por galhos. Cada nó pede o anterior do ramo; tocar abre os detalhes.
+   * O Grimório desenhado como uma árvore de verdade, um ramo por tela: a raiz (magia inicial do slot 1) no alto,
+   * o tronco do ramo descendo no meio e as costelas para os lados, ligados por galhos. Tocar abre os detalhes.
    */
   private renderTree() {
     const page = el("div", "hub-page");
@@ -260,49 +259,31 @@ export class Hub {
     const spells = tree.filter((t) => t.kind === "spell");
     const learned = spells.filter((t) => talentRank(t, ranks) > 0).length;
     page.append(el("p", "muted hub-hint",
-      `${learned}/${spells.length} magias. Toque num nó para ver e comprar; os da ponta pedem os anteriores do ramo. ` +
-      "Magias viram opção quando o slot abre na hunt (nível 3 e 6); os níveis 2 e 3 deixam a magia mais forte. " +
-      "Ramos com ✦ se dividem em duas especializações, e a escolha é permanente."));
+      `${learned}/${spells.length} magias. Um ramo por vez: o tronco desce no meio e os galhos saem para os lados. ` +
+      "Toque num nó para ver e comprar; cada um pede o nó de cima (a diagonal pontilhada é um segundo pré-requisito). " +
+      "Magias viram opção quando o slot abre na hunt (nível 3 e 6). Ramos com ✦ terminam em duas especializações, " +
+      "e a escolha é permanente."));
 
-    // Visão geral: os 3 ramos sem os lados das especializações (no lugar deles, um nó ✦ que abre o ramo em foco).
-    // Ramo em foco: só ele, com o tronco no meio e os dois lados da especialização lado a lado.
-    const focus = this.treeFocus?.classId === this.treeClass ? this.treeFocus.col : null;
-    const specCols = [...new Set(tree.filter((t) => t.side !== undefined).map((t) => t.col))];
-    const shown = focus === null
-      ? tree.filter((t) => t.side === undefined)
-      : tree.filter((t) => t.col === focus && t.row > 0);
-    const forks = focus === null
-      ? specCols.map((col) => tree.find((t) => t.kind === "trait" && t.col === col)!)
-      : [];
-    const offset = focus === null ? 0 : Math.min(...shown.map((t) => t.row));
-    const rowOf = (def: TalentDef) => def.row - offset;
-    const xOf = (def: TalentDef) => focus === null ? (def.col + 0.5) / 3 : def.side === undefined ? 0.5 : def.side === 0 ? 0.25 : 0.75;
+    // Um ramo por tela, como as abas do Diablo 2: a raiz no alto, o tronco no meio e as costelas para os lados.
+    const col = this.treeBranch;
+    const tabs = el("div", "chips grim-tabs");
+    TREE_BRANCHES[this.treeClass].forEach((name, c) => {
+      const branch = tree.filter((t) => t.col === c && t.kind === "spell" && t.row > 0);
+      const owned = branch.filter((t) => talentRank(t, ranks) > 0).length;
+      const spec = tree.some((t) => t.col === c && t.side !== undefined);
+      const tab = el("button", "chip", `${name}${spec ? " ✦" : ""} · ${owned}/${branch.length}`);
+      tab.setAttribute("aria-pressed", String(c === col));
+      tab.onclick = () => { this.treeBranch = c; this.render(); };
+      tabs.append(tab);
+    });
+    page.append(tabs);
 
-    const rows = Math.max(...[...shown, ...forks].map(rowOf)) + 1;
+    const shown = tree.filter((t) => t.col === col || t.row === 0);
+    const xOf = (def: TalentDef) => 0.5 + def.lane * 0.2;
+    const rows = Math.max(...shown.map((t) => t.row)) + 1;
     const grim = el("div", "grimoire");
     grim.style.setProperty("--rows", String(rows));
     grim.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
-
-    const branches = el("div", "grim-branches");
-    if (focus === null) {
-      TREE_BRANCHES[this.treeClass].forEach((name, col) => {
-        const spec = specCols.includes(col);
-        const head = el(spec ? "button" : "span", spec ? "grim-branch-spec" : "", spec ? `${name} ✦` : name);
-        if (spec) head.onclick = () => { this.treeFocus = { classId: this.treeClass, col }; this.render(); };
-        branches.append(head);
-      });
-    } else {
-      // Em foco: o nome de cada lado em cima da sua coluna, e o do ramo no meio.
-      const sideName = (side: 0 | 1) => {
-        const trait = tree.find((t) => t.kind === "trait" && t.col === focus && t.side === side);
-        return trait ? TRAITS[trait.traitId!].spec : "";
-      };
-      branches.append(el("span", "grim-spec-name", sideName(0)), el("span", "", TREE_BRANCHES[this.treeClass][focus]), el("span", "grim-spec-name", sideName(1)));
-      const back = el("button", "link grim-back", "‹ Todos os ramos");
-      back.onclick = () => { this.treeFocus = null; this.render(); };
-      page.append(back);
-    }
-    grim.append(branches);
 
     // Galhos: SVG atrás dos nós, em unidades de 300 na largura × pixels de linha.
     const svgNs = "http://www.w3.org/2000/svg";
@@ -310,52 +291,38 @@ export class Hub {
     svg.setAttribute("class", "grim-links");
     svg.setAttribute("viewBox", `0 0 300 ${rows * GRIM_ROW}`);
     svg.setAttribute("preserveAspectRatio", "none");
-    const link = (parent: TalentDef, child: TalentDef, state: string) => {
+    const link = (parent: TalentDef, child: TalentDef, state: string, also: boolean) => {
       const x0 = xOf(parent) * 300;
-      const y0 = rowOf(parent) * GRIM_ROW + GRIM_ORB / 2;
+      const y0 = parent.row * GRIM_ROW + GRIM_ORB / 2;
       const x1 = xOf(child) * 300;
-      const y1 = rowOf(child) * GRIM_ROW + GRIM_ORB / 2;
+      const y1 = child.row * GRIM_ROW + GRIM_ORB / 2;
       // O galho se divide logo abaixo do nome do pai, antes do nó filho.
-      const mid = rowOf(parent) * GRIM_ROW + GRIM_NODE + ((rowOf(child) - rowOf(parent)) * GRIM_ROW - GRIM_NODE) / 2;
+      const mid = parent.row * GRIM_ROW + GRIM_NODE + ((child.row - parent.row) * GRIM_ROW - GRIM_NODE) / 2;
       const path = document.createElementNS(svgNs, "path");
-      path.setAttribute("d", x0 === x1 ? `M${x0} ${y0} V${y1}` : `M${x0} ${y0} V${mid} H${x1} V${y1}`);
+      // O segundo pai liga em diagonal reta, para não se confundir com os galhos do ramo.
+      path.setAttribute("d", also ? `M${x0} ${y0} L${x1} ${y1}` : x0 === x1 ? `M${x0} ${y0} V${y1}` : `M${x0} ${y0} V${mid} H${x1} V${y1}`);
       path.setAttribute("vector-effect", "non-scaling-stroke");
       if (state) path.classList.add(state);
+      if (also) path.classList.add("also");
       svg.append(path);
     };
     for (const def of shown) {
-      const parent = def.requires && shown.find((t) => t.id === def.requires!.id);
-      if (parent) link(parent, def, talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open");
-    }
-    for (const fork of forks) {
-      const parent = shown.find((t) => t.id === fork.requires?.id);
-      const picked = chosenSide(this.treeClass, fork.col, ranks) !== null;
-      if (parent) link(parent, fork, picked ? "on" : talentRank(parent, ranks) > 0 ? "open" : "");
+      const state = talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open";
+      for (const req of [def.requires, def.alsoRequires]) {
+        const parent = req && shown.find((t) => t.id === req.id);
+        if (parent) link(parent, def, state, req === def.alsoRequires);
+      }
     }
     grim.append(svg);
 
-    const place = (node: HTMLElement, def: TalentDef) => {
+    for (const def of shown) {
+      const node = this.grimNode(def);
       node.style.left = `${xOf(def) * 100}%`;
-      node.style.top = `${rowOf(def) * GRIM_ROW}px`;
-      return node;
-    };
-    for (const def of shown) grim.append(place(this.grimNode(def), def));
-    for (const fork of forks) grim.append(place(this.forkNode(fork), fork));
+      node.style.top = `${def.row * GRIM_ROW}px`;
+      grim.append(node);
+    }
     page.append(grim);
     return page;
-  }
-
-  /** Nó ✦ da visão geral no fim de um ramo especializado: mostra o lado escolhido (ou o convite) e abre o ramo em foco. */
-  private forkNode(trait: TalentDef) {
-    const side = chosenSide(trait.classId, trait.col, this.profile.talents);
-    const picked = side === null ? null : this.specTrait(trait.classId, trait.col, side);
-    const node = el("button", "gnode fork");
-    node.classList.toggle("owned", picked !== null);
-    const name = picked ? TRAITS[picked.traitId!].spec : "Especialização";
-    node.setAttribute("aria-label", `${name}: abrir o ramo`);
-    node.append(el("span", "gnode-orb", picked ? picked.icon : "✦"), el("span", "gnode-name", name));
-    node.onclick = () => { this.treeFocus = { classId: trait.classId, col: trait.col }; this.render(); };
-    return node;
   }
 
   /** O Traço de um lado de um ramo especializado. */
@@ -386,7 +353,8 @@ export class Hub {
     if (locked) orb.append(el("b", "gnode-lock", "🔒"));
     const pips = el("span", "gnode-pips");
     for (let i = 0; i < def.maxRank; i++) pips.append(el("i", i < rank ? "on" : ""));
-    node.append(orb, pips, el("span", "gnode-name", def.name));
+    // O losango do Traço leva o nome da especialização (Criomante, Arcanista...); o do Traço fica na ficha.
+    node.append(orb, pips, el("span", "gnode-name", def.traitId ? TRAITS[def.traitId].spec : def.name));
     node.onclick = () => this.openTalentSheet(def);
     return node;
   }

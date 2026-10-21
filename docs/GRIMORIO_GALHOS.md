@@ -2,8 +2,15 @@
 
 Estudo para trocar os 3 ramos retos do Grimório por ramos com **sub-ramificações** (costelas de uma espinha de
 peixe) e **mais magias por classe**. Continua o `GRIMORIO_PLANO.md` (fases 0 a 4, especializações): nada do que já
-existe é removido, e os ids comprados no banco continuam valendo. Documento de planejamento: nada aqui está
-implementado ainda.
+existe é removido, e os ids comprados no banco continuam valendo. Quando uma fase é entregue, o `GDD.md` passa a
+descrever o que vale e este arquivo marca a fase como feita.
+
+**Andamento:** fase 5a feita (estrutura em espinha de peixe, abas no menu, nó de dois pais e 27 magias nas costelas
+das 4 classes; ver "Como foi entregue" na seção 5). Próxima: fase 5b (sinergias e passivas), depois que o PR #60
+(hunt solo, que move a simulação para `apps/server/src/hunt.ts`) entrar no `main`.
+
+**Decisões do Leonardo:** "aleatória" quer dizer **ramos não uniformes**, como no Diablo 2 (leitura A da seção 3.2);
+as **sinergias** entram, inclusive magias e passivas que fortalecem um grupo de magias.
 
 ---
 
@@ -154,6 +161,21 @@ de Ferro do Desafiante (`GRIMORIO_PLANO.md` 6.1).
 | 5b. Cavaleiro | costelas dos 3 ramos (~12 magias e 3 passivas) **junto** com a fase 4d (especializações) | G |
 | 5c–5e. Paladino, Feiticeiro, Druida | costelas de cada classe, um PR por classe | M cada |
 | 5f. Escolha sorteada | 3 opções na janela do slot + 1 re-sorteio por hunt | P |
+
+**Fase 5a, como foi entregue:** em vez de só a estrutura e o Cavaleiro, as costelas das 4 classes entraram juntas,
+porque as magias novas usam só peças que o servidor já tinha (nenhuma linha de `DungeonRoom.ts` mudou; assim não há
+conflito com o PR #60). Diferenças em relação à seção 4:
+
+- 27 magias novas: Cavaleiro +9 (19 no total), Paladino, Feiticeiro e Druida +6 (27 a 29). Lista no `GDD.md` ("Costelas").
+- O exemplo do ramo Lâmina (4.3) mudou: Ciclone de Aço precisava de "puxar" (peça nova) e Hemorragia era passiva; no
+  lugar entraram Corte Largo (leque curto) e a Ferida Aberta virou magia de slot 2. Os nomes das magias de
+  especialização do Cavaleiro no `GRIMORIO_PLANO.md` 6.1 foram evitados, para a fase 4d não colidir.
+- Passivas de costela e sinergias ficam para a 5b: as duas precisam do servidor.
+- Banco: `talents.also_requires_id`/`also_requires_rank` e `buy_talent` confere o segundo pai
+  (`20261022000000_grimorio_costelas.sql`).
+- Teste de fumaça novo `costelas`: regras das costelas e uma hunt de verdade conjurando cada magia nova.
+- Riscos que continuam: balanceamento (números de partida, sem telemetria ainda) e a lista longa na janela de escolha
+  (agora rola; a escolha sorteada da 5f resolve de vez).
 
 Meta de medição (telemetria): magia mais escolhida num slot < 35% das escolhas da classe; gold gasto no Grimório por
 jogador ativo subindo; nenhuma costela com menos de 10% de compra depois de 2 semanas.

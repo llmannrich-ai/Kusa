@@ -40,6 +40,14 @@ Cada classe tem uma árvore de verdade, comprada com o gold das hunts (`packages
 A raiz é a magia inicial do slot 1; dela saem **3 ramos** que descem até 5 nós de profundidade. Cada nó pede
 o nó de cima no nível 1, então as magias da ponta só abrem depois das anteriores do mesmo ramo.
 
+- **Espinha de peixe** (inspirada no Diablo 2, plano em `docs/GRIMORIO_GALHOS.md`): o tronco de cada ramo desce no
+  meio e as **costelas** (`RIBS`) saem para a esquerda e a direita em alturas e tamanhos diferentes, então nenhum
+  ramo tem a mesma forma. A costela nasce num nó do tronco; algumas magias pedem **dois pais** (um da costela e um do
+  tronco, como a Nevasca do Diablo 2), ligados no desenho por uma diagonal pontilhada (`also_requires_id` no banco).
+- **No menu, um ramo por tela**, com abas no topo (nome, magias compradas/total e ✦ se termina em especialização).
+  Até 5 colunas: tronco, costelas dos dois lados e, no pé, os dois lados da especialização. O losango do Traço leva
+  o nome da especialização.
+
 - **Magias** (círculo no desenho, com o número do slot): têm **3 níveis**. O 1 libera a magia como opção na
   janela de escolha da hunt; o 2 e o 3 dão +20% de dano, cura, escudo e força das criaturas, e +15% de duração,
   cada um. As 2 magias iniciais já vêm no nível 1, com os níveis 2 e 3 à venda.
@@ -52,8 +60,8 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 - **Especializações** (losango no desenho): no fim de alguns ramos, a árvore se divide em dois lados. Cada lado
   tem um **Traço** (passiva que vale sempre, nível único, 1.000 de gold) e duas magias, uma de cada slot, que pedem o
   Traço. **A escolha é permanente:** comprar o Traço de um lado fecha o outro lado do ramo para sempre, com as
-  magias dele (o banco recusa a compra em `buy_talent`). No menu, o ramo aparece com ✦; tocar no nome ou no nó ✦
-  abre o ramo em foco, com os dois lados lado a lado. A ficha do Traço avisa que a escolha é permanente e pede um
+  magias dele (o banco recusa a compra em `buy_talent`). No menu, a aba do ramo aparece com ✦ e os dois lados
+  ficam lado a lado no pé do ramo. A ficha do Traço avisa que a escolha é permanente e pede um
   segundo toque para confirmar. Catálogo em `packages/shared/src/traits.ts` e `talents.ts`.
   - **Paladino** (a primeira classe com os 3 ramos especializados). Ramo **Mira**:
 
@@ -120,8 +128,8 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
     troca a outra. A vida extra do urso entra cheia e sai quando a forma acaba.
   - **Renascer da Semente**: uma semente por druida (plantar outra tira a anterior); na mesma pessoa, salva uma vez. Vale
     contra golpes e venenos; não vale contra o desabamento da dungeon. Uma semente com broto flutua sobre quem a tem.
-- Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade (1.200 e 1.600 nas magias das
-  especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
+- Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade, no tronco e nas costelas (1.200
+  e 1.600 nas magias das especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
 - O servidor lê o Grimório da conta ao entrar na sala; nada disso vem do navegador.
 
@@ -131,6 +139,35 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo → ✦ Mestre das Feras **ou** Metamorfo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta → ✦ Círculo da Vida **ou** Guardião da Natureza | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza → ✦ Peste **ou** Tempestade |
+
+#### Costelas
+
+Magias das costelas (números do nível 1). Todas combinam efeitos que o servidor já tinha; a Maestria muda o efeito no nível 3.
+"A + B" = pede os dois pais.
+
+| Classe | Ramo | Costela (pai → magias) | Magias |
+|---|---|---|---|
+| Cavaleiro | Lâmina | Golpe Esmagador → Corte Duplo → Corte Largo | 🗡️ **Corte Duplo** (S1): 1,5× e repete com 90% · Maestria: sangra 4 s · 🌒 **Corte Largo** (S1): leque de 2 tiles, 1,7× · Maestria: leque de 3 |
+| Cavaleiro | Lâmina | Lâmina Sedenta → Ferida Aberta → Fenda Sísmica (+ Terremoto) | 🔪 **Ferida Aberta** (S2): 2,4× e sangra 0,5×/s por 6 s · Maestria: sangram os colados · 🪨 **Fenda Sísmica** (S2): linha de 5 tiles, 2,2× e atordoa 1 s · Maestria: 40% de lentidão depois |
+| Cavaleiro | Bastião | Escudo da Fé → Golpe de Égide → Tremor do Escudo | 🔰 **Golpe de Égide** (S1): 1,4× e escudo de 15% por 6 s · Maestria: atordoa 1 s · 💢 **Tremor do Escudo** (S2): raio 2, 1,2×, provoca e 40% de lentidão · Maestria: raio 3 |
+| Cavaleiro | Comando | Grito de Guerra → Rugido Atordoante | 🦁 **Rugido Atordoante** (S2): atordoa 1,5 s em raio 3, sem dano · Maestria: 40% de lentidão depois |
+| Cavaleiro | Comando | Áurea da Disciplina → Ordem de Batalha → Desafio (+ Áurea da Investida) | 🎖️ **Ordem de Batalha** (S1): 6 s com o básico +40% e 30% mais rápido · Maestria: anda 20% mais rápido · 🚩 **Desafio** (S1): provoca e marca um monstro a até 4 tiles (+20% de dano da equipe por 8 s) · Maestria: também os colados |
+| Paladino | Mira | Disparo Perfurante → Tiro Duplo → Flecha Farpada | 🪶 **Tiro Duplo** (S1): 1,4× e repete com 90% · Maestria: sangra 3 s · 🪝 **Flecha Farpada** (S2): 2,4× e sangra 0,5×/s por 5 s · Maestria: 30% de lentidão |
+| Paladino | Luz | Áurea da Fé → Raio Solar → Martelo Sagrado (+ Bênção Protetora) | 🌅 **Raio Solar** (S1): linha de 6 tiles, 1,6×, +50% em mortos-vivos · Maestria: ofusca 0,5 s · ⚒️ **Martelo Sagrado** (S2): 2,6×, marca o alvo (+15% por 6 s), +50% em mortos-vivos · Maestria: raio 1 |
+| Paladino | Batedor | Chuva de Flechas → Flecha de Rede | 🕸️ **Flecha de Rede** (S1): raio 1, 0,6× e prende 2,5 s · Maestria: raio 2 |
+| Paladino | Batedor | Áurea do Batedor → Flechas Incendiárias | 🏮 **Flechas Incendiárias** (S2): raio 2, 1× e queima 0,4×/s por 4 s · Maestria: raio 3 |
+| Feiticeiro | Raio | Relâmpago → Faísca → Chuva de Brasas | ✨ **Faísca** (S1, energia): 1,1×, salta 1 vez, recarga de 2,5 s · Maestria: salta 2 · 🌠 **Chuva de Brasas** (S2, fogo): campo de raio 2 por 5 s, 0,5×/s · Maestria: queima |
+| Feiticeiro | Gelo | Nova de Gelo → Geada → Orbe Congelado (+ Lança de Gelo) | 🥶 **Geada** (S1): 1,3× e 60% de lentidão por 4 s · Maestria: raio 1 · 💠 **Orbe Congelado** (S2): raio 2, 1,8×, lentidão e explode de novo com 60% · Maestria: prende 1,5 s |
+| Feiticeiro | Trevas | Tempestade do Vazio → Selo Sombrio | 🕳️ **Selo Sombrio** (S1): 1× e marca o alvo (+20% por 6 s) · Maestria: raio 1 |
+| Feiticeiro | Trevas | Drenar Vida → Praga | 🧫 **Praga** (S2): raio 2, 0,8× e veneno 0,4×/s por 6 s · Maestria: raio 3 |
+| Druida | Matilha | Lobo Espiritual → Uivo | 🌜 **Uivo** (S1): raio 3, 0,5× e 40% de lentidão · Maestria: atordoa 0,6 s |
+| Druida | Bosque | Mariposa Curandeira → Seiva Purificadora → Florada | 🫧 **Seiva Purificadora** (S1): cura 20% de um aliado e tira veneno, queimadura e lentidão · Maestria: escudo de 10% · 🌺 **Florada** (S2): cura 25% e escudo de 10% em raio 3 · Maestria: raio 4 |
+| Druida | Espinhos | Raízes Espinhosas → Chicote de Cipó | 🪢 **Chicote de Cipó** (S1): linha de 4 tiles, 1,3× e prende 1 s · Maestria: envenena |
+| Druida | Espinhos | Espinho Venenoso → Esporos → Explosão de Espinhos (+ Enxame de Vespas) | 🍄 **Esporos** (S2): raio 2, 0,6×, veneno e 30% de lentidão · Maestria: raio 3 · 🌵 **Explosão de Espinhos** (S2): raio 2 em volta de si, 1,6×, sangra e prende 1,5 s · Maestria: raio 3 |
+
+- A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.
+- Ainda por fazer (fase 5b, depois do PR da hunt solo): **sinergias** (magias e passivas que fortalecem um grupo de
+  magias do mesmo ramo) e a escolha sorteada (3 opções por slot).
 
 #### Maestrias
 
