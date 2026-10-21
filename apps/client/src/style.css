@@ -93,9 +93,25 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 #room-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .room { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; }
 .room small { display: block; }
-#lobby-map { margin: 0; color: var(--accent); }
+#lobby-map { margin: 0 0 12px; color: var(--accent); }
 
-#lobby-players { padding-left: 20px; }
+/* Criar sala: o cenário fica nesta tela, logo acima do botão. */
+.rooms-section { margin: 20px 0 4px; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+#rooms .map-list { margin-top: 8px; }
+
+/* Sala de espera: uma vaga por jogador, as livres tracejadas. */
+#lobby-slots { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.slot { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 12px; background: #000; border: 1px solid var(--border); }
+.slot.open { border-style: dashed; border-color: #3a2f27; font-size: 14px; }
+.slot.me { border-color: var(--accent); background: #2a211b; }
+.slot-portrait { flex: none; width: 48px; height: 48px; image-rendering: pixelated; }
+.slot-portrait.empty { display: grid; place-items: center; font-size: 24px; color: #5a4632; border: 1px dashed #3a2f27; }
+.slot-info { display: grid; flex: 1; min-width: 0; }
+.slot-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-info small { font-size: 13px; }
+.slot-tag { flex: none; font-size: 12px; color: var(--accent); }
+#lobby .hint { margin: 12px 0 0; font-size: 13px; text-align: center; }
+#lobby-wait { margin: 0; text-align: center; }
 
 /* Configurações: cada opção é uma linha inteira tocável, com um interruptor à direita. */
 #settings-list { display: grid; gap: 8px; }
@@ -432,9 +448,8 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .hub-play { padding: 8px 16px; background: var(--bg); border-top: 1px solid #2a211b; }
 .hub-play { display: grid; gap: 6px; }
 .hub-play .primary { min-height: 52px; font-size: 18px; }
-.map-pick { width: 100%; min-height: 40px; font-size: 14px; }
 
-/* Escolha de mapa (folha) */
+/* Escolha do cenário (tela de criar sala) */
 .map-list { display: grid; gap: 8px; }
 .map-card { display: grid; gap: 6px; width: 100%; padding: 12px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
 .map-card.selected { border-color: var(--accent); background: #2a211b; }

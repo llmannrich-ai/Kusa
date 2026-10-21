@@ -289,7 +289,6 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       : auth.account?.talents ?? {};
     const bonus = auraBonuses(classId, talents);
     const stats = statsFor(classId, START_LEVEL, bonus);
-    const index = this.state.players.size;
 
     const player = new Player();
     player.name = auth.account?.name ?? [...(options.name || "Aventureiro")].slice(0, MAX_LOGIN_LENGTH).join("");
@@ -300,9 +299,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.mana = player.maxMana = stats.maxMana;
     player.knownSpells.push(...knownSpells(classId, talents));
     for (const [spellId, rank] of Object.entries(spellRanks(classId, talents))) player.spellRanks.set(spellId, rank);
-    // A equipe nasce junta, ao redor do portal de fuga.
-    player.x = this.dungeon.portal.x + [-1, 1, -1, 1][index];
-    player.y = this.dungeon.portal.y + [-1, -1, 1, 1][index];
+    // A equipe nasce junta, ao redor do portal de fuga: cada um num canto livre (quem saiu da sala de espera libera o seu).
+    const { x: px, y: py } = this.dungeon.portal;
+    const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([dx, dy]) => ({ x: px + dx, y: py + dy }));
+    const taken = [...this.state.players.values()];
+    const spot = corners.find((c) => !taken.some((o) => o.x === c.x && o.y === c.y)) ?? corners[0];
+    player.x = spot.x;
+    player.y = spot.y;
 
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, {

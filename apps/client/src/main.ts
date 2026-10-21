@@ -1,7 +1,6 @@
 import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
-  CLASSES,
   ITEMS,
   MAPS,
   MAX_LEVEL,
@@ -11,13 +10,13 @@ import {
   difficultyStars,
   mapIdOf,
   xpForLevel,
-  type ClassId,
   type JoinOptions,
   type RunEndedMessage,
 } from "@kusa/shared";
 import { ArtLoader, artReady } from "./ArtLoader.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
+import { createMapId, mapLine, renderMapPicker, renderWaitingRoom } from "./lobby.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
@@ -34,7 +33,7 @@ let account: Account | null = null;
 /** O nome vale só no servidor em modo convidado; com Supabase, o servidor usa o do perfil (pelo token). */
 async function joinOptions(): Promise<JoinOptions> {
   return {
-    name: account?.username ?? "Aventureiro", classId: hub.classId, mapId: hub.mapId,
+    name: account?.username ?? "Aventureiro", classId: hub.classId, mapId: createMapId(),
     rulesVersion: RULES_VERSION, accessToken: await accessToken(),
   };
 }
@@ -123,7 +122,7 @@ async function enter(connect: () => Promise<DungeonRoom>) {
 function setEntering(on: boolean) {
   entering = on;
   const create = $<HTMLButtonElement>("create");
-  create.textContent = on ? "Conectando… (o servidor pode levar 1 min para acordar)" : `Criar sala · ${MAPS[hub.mapId].name}`;
+  create.textContent = on ? "Conectando… (o servidor pode levar 1 min para acordar)" : `Criar sala · ${MAPS[createMapId()].name}`;
   create.disabled = on;
   $<HTMLButtonElement>("rooms-back").disabled = on;
   document.querySelectorAll<HTMLButtonElement>("#room-list button").forEach((b) => { b.disabled = on; });
@@ -163,6 +162,7 @@ async function openRooms() {
   show("rooms", true);
   show("rooms-error", false);
   setEntering(false);
+  renderMapPicker(() => setEntering(entering));
   renderHunts([]);
   try {
     unwatch = await watchHunts(renderHunts);
@@ -248,32 +248,29 @@ let game: Phaser.Game | null = null;
 function bindRoom(room: DungeonRoom) {
   show("rooms", false);
   show("lobby", true);
-  // A arte começa a carregar já no lobby, enquanto a equipe se junta.
+  // A arte começa a carregar já na sala de espera, enquanto a equipe se junta.
   createGame();
   $("start").onclick = () => room.send(MSG.start);
 
+  let started = false;
+  // Sair na sala de espera devolve à lista de salas; durante a hunt, sair conta como morte (servidor).
+  $("lobby-leave").onclick = () => void room.leave();
+  room.onLeave(() => {
+    if (started) return;
+    joined = false;
+    show("lobby", false);
+    void openRooms();
+  });
+
   const callbacks = Callbacks.get(room);
-  const renderLobby = () => {
-    const list = $("lobby-players");
-    list.innerHTML = "";
-    room.state.players.forEach((p, id) => {
-      const li = document.createElement("li");
-      li.textContent = `${p.name} — ${CLASSES[p.classId as ClassId]?.name ?? p.classId}${id === room.state.leaderId ? " (líder)" : ""}`;
-      list.append(li);
-    });
-    const isLeader = room.state.leaderId === room.sessionId;
-    show("start", isLeader);
-    show("lobby-wait", !isLeader);
-  };
+  const renderLobby = () => renderWaitingRoom(room);
   callbacks.onAdd("players", renderLobby);
   callbacks.onRemove("players", renderLobby);
   callbacks.listen("leaderId", renderLobby);
   callbacks.listen("mapId", (id: string) => {
-    const map = MAPS[mapIdOf(id)];
-    $("lobby-map").textContent = `${map.icon} ${map.name} · dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min`;
+    $("lobby-map").textContent = mapLine(mapIdOf(id));
   });
 
-  let started = false;
   callbacks.listen("phase", (phase) => {
     if (phase === "running" && !started) {
       started = true;
