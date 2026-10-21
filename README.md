@@ -62,7 +62,11 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx apps/server/scripts/specials.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, confere as áreas das habilidades especiais (só mini-bosses e bosses) e um cavaleiro apanha do golpe especial de um mini-boss.
 - `npx tsx apps/server/scripts/maps.ts`: cada mapa gera mapas conectados e determinísticos e cria a sala certa (monstros, tempo).
 - `npx tsx apps/server/scripts/grimorio.ts http://localhost:2602`: com um servidor iniciado (em `apps/server`) com
-  `KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602`, o Escudo da Fé do cavaleiro absorve dano e os lobos do druida atacam.
+  `KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602`, confere as Maestrias de todas as magias e a reta das magias em linha;
+  o Escudo da Fé absorve dano, o Giro da Lâmina gira de novo, os lobos do druida atacam, a flecha perfurante vai até o
+  fim da reta e o Disparo Certeiro que mata devolve a recarga.
+- `npx tsx apps/server/scripts/efeitos.ts http://localhost:2603`: o mesmo servidor com `KUSA_MONSTER_HP=20` (monstros
+  com 20× a vida, para aguentarem o golpe) e `PORT=2603`: o veneno continua ferindo, a Nevasca deixa lento e o Raio em Cadeia salta.
 
 ## Variáveis de ambiente
 

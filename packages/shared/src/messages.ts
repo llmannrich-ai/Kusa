@@ -120,6 +120,14 @@ export interface SpellMessage {
   tx: number;
   ty: number;
   ms: number;
+  /** Repetição de uma magia já conjurada (Maestria): só o efeito, sem recarga nem tranco. */
+  echo?: boolean;
+}
+
+/** Servidor → quem conjurou: a recarga de um slot mudou (Maestria do Disparo Certeiro); falta `ms` agora. */
+export interface CooldownMessage {
+  slot: SpellSlot;
+  ms: number;
 }
 
 /**
@@ -174,6 +182,7 @@ export const MSG = {
   cast: "cast",
   spell: "spell",
   chain: "chain",
+  cooldown: "cooldown",
   drink: "drink",
   drank: "drank",
   bagEquip: "bagEquip",
