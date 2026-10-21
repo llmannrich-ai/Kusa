@@ -31,18 +31,18 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   },
   paladin: {
     id: "paladin", name: "Paladino", color: 0xf1c40f, attackFx: "arrow",
-    baseHp: 110, baseMana: 50, baseDamage: 10, baseSpeed: 4.2,
-    hpPerLevel: 10, manaPerLevel: 15, damagePerLevel: 2, attackRange: 5,
+    baseHp: 120, baseMana: 50, baseDamage: 10, baseSpeed: 4.2,
+    hpPerLevel: 12, manaPerLevel: 15, damagePerLevel: 2, attackRange: 5,
   },
   sorcerer: {
     id: "sorcerer", name: "Feiticeiro", color: 0x8e44ad, attackFx: "energy",
-    baseHp: 80, baseMana: 100, baseDamage: 14, baseSpeed: 4,
-    hpPerLevel: 5, manaPerLevel: 30, damagePerLevel: 3, attackRange: 4,
+    baseHp: 100, baseMana: 100, baseDamage: 14, baseSpeed: 4,
+    hpPerLevel: 8, manaPerLevel: 30, damagePerLevel: 3, attackRange: 4,
   },
   druid: {
     id: "druid", name: "Druida", color: 0x27ae60, attackFx: "nature",
-    baseHp: 85, baseMana: 95, baseDamage: 9, baseSpeed: 4,
-    hpPerLevel: 5, manaPerLevel: 30, damagePerLevel: 2, attackRange: 4,
+    baseHp: 100, baseMana: 95, baseDamage: 9, baseSpeed: 4,
+    hpPerLevel: 8, manaPerLevel: 30, damagePerLevel: 2, attackRange: 4,
   },
 };
 

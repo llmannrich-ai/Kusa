@@ -1,9 +1,10 @@
-import { BASIC_ATTACK_COOLDOWN_MS, MSG } from "@kusa/shared";
+import { MSG, attackCooldownMs } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
+import { stacksOf } from "./perkchoice.ts";
 
 /**
  * Botão de ataque básico (⚔️), o mais perto do polegar direito. Um toque dá um golpe; segurar
- * repete no ritmo da recarga, que é a mesma para todas as classes. O servidor escolhe o alvo
+ * repete no ritmo da recarga, que é a mesma para todas as classes (a Fúria encurta). O servidor escolhe o alvo
  * (o travado ou o mais próximo ao alcance) e decide quando o golpe sai; aqui só avisamos
  * quando o botão é apertado e solto. No desktop, a barra de espaço faz o mesmo.
  */
@@ -13,6 +14,7 @@ export class AttackButton {
   private holders = new Set<number | "key">();
   /** Fim da recarga do último golpe, em `performance.now()`. */
   private readyAt = 0;
+  private cooldownMs = 1;
 
   constructor(private room: DungeonRoom, actions: HTMLElement) {
     const button = document.createElement("button");
@@ -51,12 +53,14 @@ export class AttackButton {
 
   /** O servidor confirmou um golpe nosso: começa a recarga do botão. */
   onAttack() {
-    this.readyAt = performance.now() + BASIC_ATTACK_COOLDOWN_MS;
+    const p = this.room.state.players.get(this.room.sessionId);
+    this.cooldownMs = attackCooldownMs(p ? stacksOf(p) : {});
+    this.readyAt = performance.now() + this.cooldownMs;
   }
 
   update() {
     const left = Math.max(0, this.readyAt - performance.now());
-    this.button.style.setProperty("--cd", String(left / BASIC_ATTACK_COOLDOWN_MS));
+    this.button.style.setProperty("--cd", String(left / this.cooldownMs));
   }
 
   destroy() {

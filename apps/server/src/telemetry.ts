@@ -13,6 +13,8 @@ export interface RunStats {
   depthAt: Record<number, number>;
   /** Magia escolhida em cada slot, nível comprado no Grimório e quando: { "1": { id, rank, at } }. */
   spellsChosen: Record<number, { id: string; rank: number; at: number }>;
+  /** Melhorias escolhidas ao subir de nível, com as opções sorteadas, o nível e o segundo. */
+  perksChosen: { id: string; offer: string[]; level: number; at: number }[];
   casts: Record<string, number>;
   castFails: { noMana: number; noTarget: number };
   /** Dano efetivo causado (sem contar o que passa da vida do monstro), por fonte: "basic", id da magia ou "summon:<tipo>" (criaturas invocadas). */
@@ -21,7 +23,7 @@ export interface RunStats {
   damageTaken: Record<string, number>;
   /** Dano evitado pela armadura, pelo Grito de Guerra e pelo escudo. */
   damageMitigated: number;
-  /** Vida curada (em si e nos aliados), incluindo roubo de vida, criaturas de cura e poções de vida. */
+  /** Vida curada (em si e nos aliados), incluindo roubo de vida (magias e Sede de sangue), criaturas de cura e poções de vida. */
   healing: number;
   /** Poções guardadas e bebidas por tipo, e mana devolvida pelas poções de mana. */
   potions: { picked: Record<string, number>; drunk: Record<string, number>; manaRestored: number };
@@ -45,7 +47,7 @@ export interface RunStats {
 
 export function newRunStats(): RunStats {
   return {
-    levelAt: {}, depthAt: {}, spellsChosen: {}, casts: {}, castFails: { noMana: 0, noTarget: 0 },
+    levelAt: {}, depthAt: {}, spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0 },
     damageDealt: {}, damageTaken: {}, damageMitigated: 0, healing: 0, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], lost: [], bagFull: 0 },
     minHpPct: 1, abandoned: false, death: null,

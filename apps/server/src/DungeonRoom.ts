@@ -3,7 +3,6 @@ import { Room, ServerError, type Client } from "colyseus";
 import {
   AIM_SNAP_TILES,
   BASIC_ATTACKS,
-  BASIC_ATTACK_COOLDOWN_MS,
   BAG_SIZE,
   BOSS_LOOT_BONUS,
   CHEST_LOOT,
@@ -23,6 +22,7 @@ import {
   MAX_SUMMONS_PER_PLAYER,
   MOVE_SPEED_SCALE,
   MSG,
+  PERKS,
   POTIONS,
   POTION_COOLDOWN_MS,
   POTION_FIELD,
@@ -37,15 +37,18 @@ import {
   TIER_COLORS,
   Tile,
   armorOf,
+  attackCooldownMs,
   auraBonuses,
   bestPerSlot,
   centerOf,
   clampToRange,
   createRng,
   generateDungeon,
+  grantsPerk,
   damageReduction,
   flightMs,
   hasLineOfSight,
+  isPerk,
   isPotion,
   isUpgrade,
   pickupAction,
@@ -56,11 +59,14 @@ import {
   lineEnd,
   mapIdOf,
   monsterStats,
+  perkBonuses,
   rankPower,
   rollItem,
+  rollPerkOffer,
   rollPotion,
   spellAtRank,
   spellChoices,
+  spellCooldownMs,
   spellRanks,
   statsFor,
   summonStats,
@@ -74,6 +80,7 @@ import {
   type AttackingMessage,
   type Bonuses,
   type CastMessage,
+  type ChoosePerkMessage,
   type ChooseSpellMessage,
   type ClassId,
   type DamageMessage,
@@ -87,6 +94,8 @@ import {
   type MonsterKind,
   type MoveMessage,
   type NoticeMessage,
+  type PerkBonuses,
+  type PerkStacks,
   type Rect,
   type RunEndedMessage,
   type RunOutcome,
@@ -127,6 +136,11 @@ interface Seat {
   /** Até quando dura o escudo (`Player.barrier`). */
   barrierUntil: number;
   /** Áureas compradas na árvore da classe. */
+  aura: Bonuses;
+  /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
+  perks: PerkStacks;
+  perkBonus: PerkBonuses;
+  /** Áureas + melhorias: o que `statsFor` usa para vida, mana, dano e velocidade. */
   bonus: Bonuses;
   /** Até quando não repete o aviso de bag cheia. */
   bagFullNoticeUntil: number;
@@ -222,6 +236,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.onMessage(MSG.target, (client, msg: TargetMessage) => this.handleTarget(client, msg));
     this.onMessage(MSG.attacking, (client, msg: AttackingMessage) => this.handleAttacking(client, msg));
     this.onMessage(MSG.chooseSpell, (client, msg: ChooseSpellMessage) => this.handleChooseSpell(client, msg));
+    this.onMessage(MSG.choosePerk, (client, msg: ChoosePerkMessage) => this.handleChoosePerk(client, msg));
     this.onMessage(MSG.cast, (client, msg: CastMessage) => this.handleCast(client, msg));
     this.onMessage(MSG.drink, (client, msg: DrinkMessage) => this.handleDrink(client, msg));
 
@@ -263,7 +278,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
-      spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, bonus, bagFullNoticeUntil: 0, stats: newRunStats(),
+      spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0,
+      aura: bonus, perks: {}, perkBonus: perkBonuses({}), bonus, bagFullNoticeUntil: 0, stats: newRunStats(),
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -460,7 +476,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!seat) return;
     seat.attacking = msg?.on === true;
     // O toque vale por uma recarga inteira: se o golpe anterior ainda recarrega, sai assim que puder.
-    if (seat.attacking) seat.attackUntil = this.clock.currentTime + BASIC_ATTACK_COOLDOWN_MS;
+    if (seat.attacking) seat.attackUntil = this.clock.currentTime + attackCooldownMs(seat.perks);
   }
 
   private tick(dt: number) {
@@ -495,10 +511,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.regenMs += dt;
     if (this.regenMs < 1000) return;
     this.regenMs -= 1000;
-    this.state.players.forEach((p) => {
+    this.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing") return;
-      if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * HP_REGEN)));
-      if (p.mana < p.maxMana) p.mana = Math.min(p.maxMana, p.mana + Math.max(1, Math.round(p.maxMana * MANA_REGEN)));
+      // Regeneração e Clareza (melhorias) somam à regeneração base.
+      const perk = this.seats.get(sessionId)?.perkBonus;
+      if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * (HP_REGEN + (perk?.hpRegen ?? 0)))));
+      if (p.mana < p.maxMana) p.mana = Math.min(p.maxMana, p.mana + Math.max(1, Math.round(p.maxMana * (MANA_REGEN + (perk?.manaRegen ?? 0)))));
     });
   }
 
@@ -525,7 +543,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     if (!this.canHit(p, m, cls.attackRange)) return;
 
-    seat.nextAttackAt = now + BASIC_ATTACK_COOLDOWN_MS;
+    seat.nextAttackAt = now + attackCooldownMs(seat.perks);
     seat.attackUntil = 0;
     // Flecha e luzes voam até o alvo: o dano entra quando chegam (se o monstro ainda estiver vivo).
     const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
@@ -617,7 +635,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     p.mana -= spell.manaCost;
     bump(seat.stats.casts, spell.id);
-    seat.spellReadyAt[slot] = now + spell.cooldownMs;
+    seat.spellReadyAt[slot] = now + spellCooldownMs(spell.cooldownMs, seat.perks);
     const ms = flightMs(spell.projectileSpeed ?? 0, p.x, p.y, tx, ty);
     this.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: p.x, y: p.y, tx, ty, ms } satisfies SpellMessage);
     const amount = this.baseDamage(sessionId, p) * (spell.damage ?? 0);
@@ -926,9 +944,19 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private damageMonster(m: Monster, amount: number, hit: Hit, source: string, creditId = hit.attacker) {
     const brain = this.brains.get(m.id);
     if (!brain) return;
-    const stats = this.seats.get(creditId)?.stats;
-    if (stats) bump(stats.damageDealt, source, Math.min(amount, m.hp));
+    const seat = this.seats.get(creditId);
+    const dealt = Math.min(amount, m.hp);
+    if (seat) bump(seat.stats.damageDealt, source, dealt);
     m.hp = Math.max(0, m.hp - amount);
+    // Sede de sangue (melhoria): o golpe do próprio herói cura uma parte do dano, sem aviso a cada golpe.
+    const hero = this.state.players.get(creditId);
+    if (seat && hero?.status === "playing" && seat.perkBonus.lifesteal > 0 && !source.startsWith("summon:")) {
+      const healed = Math.min(hero.maxHp - hero.hp, Math.round(dealt * seat.perkBonus.lifesteal));
+      if (healed > 0) {
+        hero.hp += healed;
+        seat.stats.healing += healed;
+      }
+    }
     brain.participants.add(creditId);
     // Apanhar faz o monstro perseguir quem bateu, se ainda não persegue ninguém.
     if (!brain.targetId) brain.targetId = hit.attacker;
@@ -1000,6 +1028,54 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     p.mana = p.maxMana = stats.maxMana;
     this.notice(p.x, p.y - 1, `Nível ${level}!`, 0x2ecc71);
     if (SPELL_SLOT_LEVELS.some((l) => l <= level && l > previous)) this.notice(p.x, p.y - 2, "Nova magia!", 0x9b59b6);
+    // Os outros níveis dão uma melhoria para escolher (uma de cada vez, se subiu vários).
+    let perks = 0;
+    for (let l = previous + 1; l <= level; l++) if (grantsPerk(l)) perks++;
+    if (perks > 0 && seat) {
+      if (p.perkOffer.length === 0) {
+        this.offerPerks(p, seat);
+        perks--;
+      }
+      p.perksQueued += perks;
+    }
+  }
+
+  // --- Melhorias ---------------------------------------------------------------
+
+  /** Sorteia as melhorias da próxima escolha (some sozinha se todas já chegaram ao limite). */
+  private offerPerks(p: Player, seat: Seat) {
+    p.perkOffer.clear();
+    p.perkOffer.push(...rollPerkOffer(seat.perks, p.level, Math.random));
+  }
+
+  /** Escolha de uma das melhorias oferecidas. Vale até o fim da hunt. */
+  private handleChoosePerk(client: Client, msg: ChoosePerkMessage) {
+    const p = this.state.players.get(client.sessionId);
+    const seat = this.seats.get(client.sessionId);
+    if (!p || !seat || p.status !== "playing") return;
+    const perk = msg?.perk;
+    if (!isPerk(perk) || !p.perkOffer.includes(perk)) return;
+
+    seat.perks[perk] = (seat.perks[perk] ?? 0) + 1;
+    p.perks.set(perk, seat.perks[perk]!);
+    seat.perkBonus = perkBonuses(seat.perks);
+    const b = seat.perkBonus;
+    seat.bonus = { hp: seat.aura.hp + b.hp, mana: seat.aura.mana + b.mana, damage: seat.aura.damage + b.damage, speed: seat.aura.speed + b.speed };
+    // Vida e mana máximas crescem na hora, e o que cresceu entra cheio.
+    const stats = statsFor(p.classId as ClassId, p.level, seat.bonus);
+    p.hp = Math.min(stats.maxHp, p.hp + Math.max(0, stats.maxHp - p.maxHp));
+    p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
+    p.maxHp = stats.maxHp;
+    p.maxMana = stats.maxMana;
+    seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.level, at: this.seconds() });
+    this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f);
+
+    if (p.perksQueued > 0) {
+      p.perksQueued--;
+      this.offerPerks(p, seat);
+    } else {
+      p.perkOffer.clear();
+    }
   }
 
   private damagePlayer(sessionId: string, raw: number, hit: Hit) {
@@ -1007,7 +1083,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p || p.status !== "playing") return;
     const seat = this.seats.get(sessionId);
     const guard = p.guarded ? seat?.guard ?? 0 : 0;
-    let amount = Math.max(1, Math.round(raw * (1 - damageReduction(armorOf(equipment(p)))) * (1 - guard)));
+    const armor = armorOf(equipment(p)) + (seat?.perkBonus.armor ?? 0);
+    let amount = Math.max(1, Math.round(raw * (1 - damageReduction(armor)) * (1 - guard)));
     // O escudo absorve primeiro; o que sobra vai para a vida.
     const absorbed = Math.min(p.barrier, amount);
     if (absorbed > 0) {

@@ -9,7 +9,6 @@ import {
   SUMMONS,
   TIER_COLORS,
   TILE_SIZE,
-  Tile,
   blocksSight,
   centerOf,
   generateDungeon,
@@ -32,32 +31,29 @@ import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { PotionBar } from "./potionbar.ts";
 import { SpellBar } from "./spellbar.ts";
+import { PerkChoice } from "./perkchoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
-import { SWAMP_VOID, drawSwamp, type SwampAmbience } from "./swampMap.ts";
+import { drawCrypt } from "./cryptMap.ts";
+import type { MapAmbience } from "./mapShared.ts";
+import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
-import { hash } from "./art/pixels.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
 import { ART_SCALE, CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
-import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
 import {
   CHEST_TEXTURE,
-  FLOOR_TEXTURE,
   MONSTER_TEXTURE,
   PORTAL_TEXTURE,
   SUMMON_TEXTURE,
-  floorVariants,
   heroArt,
   heroIdleFrame,
   heroWalkAnim,
   itemTexture,
-  wallCapTexture,
-  wallFaceTexture,
 } from "./art/textures.ts";
 
 /** Campo de visão mínimo com o celular na vertical: 9 tiles de largura e pelo menos 13 de altura. */
@@ -66,8 +62,6 @@ const VIEW_TILES = { w: 9, h: 13 };
 const FOLLOW_LIFT = 0.12;
 /** Até onde a troca de alvo (Tab) procura monstros (tiles). */
 const TARGET_CYCLE_RANGE = 8;
-/** Paredes desenhadas até esta distância (em tiles) do chão; além disso é só o fundo escuro. */
-const WALL_REACH = 1;
 
 /**
  * Ordem de desenho: o chão fica embaixo; paredes, baús e personagens são ordenados pela linha
@@ -151,8 +145,8 @@ export class DungeonScene extends Phaser.Scene {
   private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
   private move!: MoveInput;
-  /** Vaga-lumes, ondinhas e névoa do pântano (nulo nos outros mapas). */
-  private ambience: SwampAmbience | null = null;
+  /** Ambiente do mapa: vaga-lumes e névoa no pântano, luz das tochas e poeira na cripta. */
+  private ambience: MapAmbience | null = null;
   /** Nulo quando o jogador desligou o minimapa nas configurações. */
   private minimap: Minimap | null = null;
   /** Golpes e magias dos heróis (`MSG.attack` e `MSG.spell`). */
@@ -160,6 +154,7 @@ export class DungeonScene extends Phaser.Scene {
   /** Piscar, sangue, cadáver e o ataque dos monstros (`MSG.damage`). */
   private hits!: HitFx;
   private spellBar!: SpellBar;
+  private perkChoice!: PerkChoice;
   private potionBar!: PotionBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
@@ -181,17 +176,13 @@ export class DungeonScene extends Phaser.Scene {
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
     const swamp = this.dungeon.mapId === "swamp";
-    if (swamp) {
-      this.ambience = drawSwamp(this, this.dungeon, DEPTH.floor, DEPTH.ui);
-    } else {
-      this.drawFloor();
-      this.drawWalls();
-    }
+    this.ambience = (swamp ? drawSwamp : drawCrypt)(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
     this.cameras.main.setBackgroundColor(swamp ? SWAMP_VOID : COLORS.void).setRoundPixels(true);
-    // Cantos da tela levemente escurecidos no pântano (CSS por cima do canvas, abaixo do HUD).
+    // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
     document.getElementById("game")?.classList.toggle("swamp", swamp);
+    document.getElementById("game")?.classList.toggle("crypt", !swamp);
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
 
@@ -292,7 +283,8 @@ export class DungeonScene extends Phaser.Scene {
       const unit = this.avatars.get(id) ?? this.monsters.get(id);
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
-    this.spellBar = new SpellBar(this.room, actions, this.aim);
+    this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.perkChoice.open);
+    this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing);
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -300,6 +292,7 @@ export class DungeonScene extends Phaser.Scene {
       this.minimap?.destroy();
       this.attack.destroy();
       this.spellBar.destroy();
+      this.perkChoice.destroy();
       this.potionBar.destroy();
     });
   }
@@ -318,6 +311,7 @@ export class DungeonScene extends Phaser.Scene {
     this.minimap?.update(time);
     this.ambience?.update(time);
     this.spellBar.update();
+    this.perkChoice.update();
     this.aim.update();
     this.attack.update();
     this.potionBar.update();
@@ -564,69 +558,6 @@ export class DungeonScene extends Phaser.Scene {
     const thorns = this.add.image(0, TILE_SIZE / 2, FX.thorns).setOrigin(0.5, 1);
     this.tweens.add({ targets: thorns, scaleY: { from: 0.2, to: 1 }, duration: 180, ease: "Back.Out" });
     return thorns;
-  }
-
-  // --- Mapa (cripta; o pântano é desenhado em swampMap.ts) -------------------
-
-  private isFloor(x: number, y: number) {
-    const d = this.dungeon;
-    return x >= 0 && y >= 0 && x < d.width && y < d.height && d.tiles[y * d.width + x] !== Tile.Wall;
-  }
-
-  private inBossRoom(x: number, y: number) {
-    const b = this.dungeon.boss;
-    return x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h;
-  }
-
-  /** Chão num tilemap (o Phaser só desenha o que está na tela), variando o ladrilho por posição. */
-  private drawFloor() {
-    const d = this.dungeon;
-    const map = this.make.tilemap({ width: d.width, height: d.height, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const normalCount = floorVariants(this, FLOOR_TEXTURE.normal);
-    const bossCount = floorVariants(this, FLOOR_TEXTURE.boss);
-    const normal = map.addTilesetImage(FLOOR_TEXTURE.normal, FLOOR_TEXTURE.normal, TILE_SIZE, TILE_SIZE, 0, 0, 0)!;
-    const boss = map.addTilesetImage(FLOOR_TEXTURE.boss, FLOOR_TEXTURE.boss, TILE_SIZE, TILE_SIZE, 0, 0, normalCount)!;
-    const layer = map.createBlankLayer("chao", [normal, boss])!.setDepth(DEPTH.floor);
-    for (let y = 0; y < d.height; y++) {
-      for (let x = 0; x < d.width; x++) {
-        if (!this.isFloor(x, y)) continue;
-        // Metade dos tiles usa o ladrilho base; o resto se espalha pelas variações.
-        const n = hash(x, y);
-        const pick = (count: number) => (n < 0.5 ? 0 : 1 + Math.floor((n - 0.5) * 2 * (count - 1)));
-        layer.putTileAt(this.inBossRoom(x, y) ? normalCount + pick(bossCount) : pick(normalCount), x, y);
-      }
-    }
-  }
-
-  /**
-   * Paredes oblíquas: a tampa sobe WALL_RISE pixels (cobrindo parte do tile ao norte) e, com chão ao sul,
-   * aparece a face de tijolos. Cada parede é ordenada pela sua linha de baixo, como os personagens.
-   */
-  private drawWalls() {
-    const d = this.dungeon;
-    for (let y = 0; y < d.height; y++) {
-      for (let x = 0; x < d.width; x++) {
-        if (this.isFloor(x, y) || !this.nearFloor(x, y)) continue;
-        const px = x * TILE_SIZE;
-        const py = y * TILE_SIZE;
-        const depth = (y + 1) * TILE_SIZE;
-        const variant = Math.floor(hash(x, y, 7) * WALL_VARIANTS);
-        const rim = (this.isFloor(x, y - 1) ? RIM.north : 0)
-          | (this.isFloor(x - 1, y) ? RIM.west : 0)
-          | (this.isFloor(x + 1, y) ? RIM.east : 0);
-        this.add.image(px, py - WALL_RISE, wallCapTexture(this, variant, rim)).setOrigin(0).setDepth(depth);
-        if (this.isFloor(x, y + 1)) {
-          this.add.image(px, py + TILE_SIZE - WALL_RISE, wallFaceTexture(this, variant)).setOrigin(0).setDepth(depth);
-        }
-      }
-    }
-  }
-
-  private nearFloor(x: number, y: number) {
-    for (let dy = -WALL_REACH; dy <= WALL_REACH; dy++)
-      for (let dx = -WALL_REACH; dx <= WALL_REACH; dx++)
-        if (this.isFloor(x + dx, y + dy)) return true;
-    return false;
   }
 
   private drawPortal() {
