@@ -404,22 +404,33 @@ async function druidSpecs() {
     console.log(`druida: pantera saltou; urso com vida ${hp} → ${h.me().maxHp}`);
     await h.room.leave();
   }
-  // Círculo da Vida: a cura em quem está cheio vira escudo (Florescer); a semente salva o druida da morte.
+  // Círculo da Vida: a semente salva o druida da morte; depois, a cura em quem está cheio vira escudo (Florescer).
+  // A semente vem antes da cura: o escudo do Florescer atrasaria a morte.
   {
     const h = await druid("circulo", "distant_heal", "rebirth_seed");
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => h.me().barrier > 0, 2000, "a Cura Distante não virou escudo com o Florescer");
     h.room.send(MSG.cast, { slot: 1 });
     await until(() => h.me().seeded === true, 2000, "a semente não foi plantada");
-    // Fica no meio dos monstros sem lutar até morrer: a semente faz o druida renascer.
+    // Fica no meio dos monstros, batendo neles para atrair todos, até morrer: a semente faz o druida renascer.
+    h.room.send(MSG.attacking, { on: true });
     const deadline = Date.now() + 50_000;
     while (!h.notices.includes("Renasceu!")) {
       if (Date.now() > deadline) throw new Error(`o druida não morreu (nem renasceu) em 50 s: vida ${h.me().hp}/${h.me().maxHp}`);
       await approach(h.room, h.me, 1, () => h.notices.includes("Renasceu!") || inSight(h.room, h.me(), 1).length > 0);
       await wait(300);
     }
+    h.room.send(MSG.attacking, { on: false });
     if (h.me().status !== "playing" || h.me().seeded) throw new Error(`renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
     console.log(`druida: renasceu da semente com ${h.me().hp}/${h.me().maxHp} de vida`);
+    // Cura além da vida máxima vira escudo: espera a vida encher (a cura de 45% também enche) e cura de novo.
+    await until(() => h.me().mana >= 40, 15000, "círculo: a mana não voltou");
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => h.me().barrier > 0 || h.me().hp === h.me().maxHp, 3000, "a Cura Distante não curou");
+    if (h.me().barrier === 0) {
+      await until(() => h.me().mana >= 40, 15000, "círculo: a mana não voltou");
+      await wait(8000);
+      h.room.send(MSG.cast, { slot: 0 });
+      await until(() => h.me().barrier > 0, 3000, "a Cura Distante não virou escudo com o Florescer");
+    }
     await h.room.leave();
   }
   // Guardião da Natureza: a casca protege; a chuva cai no chão.
