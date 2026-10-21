@@ -3,7 +3,8 @@
  * (slots abertos e todas as magias da classe no nível 3):
  *   - o Cavaleiro ergue o Escudo da Fé, que absorve o dano dos monstros antes da vida;
  *   - o Druida invoca o Lobo Espiritual e a Matilha, e os lobos ferem os monstros.
- * Uso: KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602 npx tsx apps/server/src/index.ts
+ * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
+ *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/grimorio.ts http://localhost:2602
  */
 import { Client } from "@colyseus/sdk";
@@ -47,7 +48,8 @@ async function druidSummons() {
   const { room, me, damage } = await enter("druid");
   room.send(MSG.chooseSpell, { slot: 0, spellId: "spirit_wolf" });
   room.send(MSG.chooseSpell, { slot: 1, spellId: "wolf_pack" });
-  await wait(200);
+  // Chega perto dos monstros antes de invocar: os lobos têm tempo de vida e sumiam no caminho.
+  await approach(room, me, 4, () => nearestMonster(room, me()) <= 4);
   room.send(MSG.cast, { slot: 0 });
   await wait(200);
   const mine = () => [...room.state.summons.values()].filter((s: any) => s.owner === room.sessionId);
@@ -61,7 +63,7 @@ async function druidSummons() {
   if (mine().length !== 4) throw new Error("invocou durante a recarga");
 
   // Os lobos caçam os monstros por perto: algum golpe vem de uma criatura invocada.
-  await approach(room, me, 4, () => damage.some((d) => !d.toPlayer && d.attacker.startsWith("s")));
+  await approach(room, me, 1, () => damage.some((d) => !d.toPlayer && d.attacker.startsWith("s")));
   const bites = damage.filter((d) => !d.toPlayer && d.attacker.startsWith("s")).length;
   console.log(`druida: ${mine().length} lobos, ${bites} mordidas`);
   if (bites === 0) throw new Error("os lobos não atacaram");
@@ -97,11 +99,20 @@ async function approach(room: any, me: () => any, range: number, done: () => boo
     if (target && best > range) {
       const blocked = new Set<number>();
       room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
+      // O herói nasce colado no portal de fuga: pisar nele no caminho encerra a hunt.
+      blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
       const step = nextStep(dungeon, p, target, range, (x, y) => blocked.has(y * dungeon.width + x));
       if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
     }
     await wait(100);
   }
+}
+
+/** Distância até o monstro mais próximo. */
+function nearestMonster(room: any, p: { x: number; y: number }) {
+  let best = Infinity;
+  room.state.monsters.forEach((m: any) => { best = Math.min(best, tileDistance(p.x, p.y, m.x, m.y)); });
+  return best;
 }
 
 function wait(ms: number) {

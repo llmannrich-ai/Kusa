@@ -8,7 +8,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MSG, ROOM_NAME, RULES_VERSION, SPELLS, clampToRange, generateDungeon, lineEnd, tileDistance,
+  MSG, ROOM_NAME, RULES_VERSION, SPELLS, clampToRange, generateDungeon, hasLineOfSight, lineEnd, tileDistance,
   type AttackMessage, type DamageMessage, type SpellMessage,
 } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
@@ -50,7 +50,8 @@ room.send(MSG.chooseSpell, { slot: 1, spellId: "void_storm" });
 await wait(200);
 if (me().spell1 !== "shadow_orb" || me().spell2 !== "void_storm") throw new Error(`slots: ${me().spell1}, ${me().spell2}`);
 
-// Anda até ficar ao alcance da Esfera Sombria do monstro mais próximo.
+// Anda até ficar ao alcance da Esfera Sombria do monstro mais próximo, com linha de visão
+// (sem ela, o toque rápido não acha alvo e a magia não sai).
 const dungeon = generateDungeon(room.state.seed);
 const range = SPELLS.shadow_orb.range;
 const deadline = Date.now() + 30_000;
@@ -62,9 +63,11 @@ while (Date.now() < deadline) {
     const d = tileDistance(p.x, p.y, m.x, m.y);
     if (d < best) { best = d; target = m; }
   });
-  if (best <= range - 1) break;
+  if (best <= range - 1 && hasLineOfSight(dungeon, p.x, p.y, target.x, target.y)) break;
   const blocked = new Set<number>();
   room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
+  // O herói nasce colado no portal de fuga: pisar nele no caminho encerra a hunt.
+  blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
   const step = nextStep(dungeon, p, target, 1, (x, y) => blocked.has(y * dungeon.width + x));
   if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
   await wait(100);

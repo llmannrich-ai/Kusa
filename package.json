@@ -11,7 +11,9 @@
     "dev:client": "npm run dev -w @kusa/client",
     "dev:server": "npm run dev -w @kusa/server",
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "tsx apps/server/scripts/all.ts",
+    "check": "npm run typecheck && npm run build -w @kusa/client && npm test"
   },
   "devDependencies": {
     "concurrently": "^10.0.6",
