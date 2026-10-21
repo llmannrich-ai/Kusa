@@ -101,6 +101,25 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
   - **Muralha Mágica**: cada tile da parede é um campo `wall`; heróis, monstros e criaturas desviam (os monstros pelo
     pathfinding), mas magias, flechas e a visão passam. Só sobe em tile livre.
   - **Empurrar** (Rajada Mística): o alvo é empurrado para longe de quem conjura, parando em parede, água ou alguém.
+  - **Druida** (os 3 ramos especializados). Só o druida do Círculo da Vida reanima (escolha de design: é o motivo para
+    ter esse druida na equipe):
+
+    | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
+    |---|---|---|---|---|
+    | Matilha | **Mestre das Feras** | 🐕 Vínculo Selvagem: criaturas com +25% de vida e de dano | 📣 Grito da Fera: suas criaturas atacam 50% mais rápido por 6 s e recuperam 20% da vida | 🦅 Águia Gigante: voa por cima da água e o mergulho (1,2×) atordoa 0,8 s, por 20 s |
+    | Matilha | **Metamorfo** | 🐾 Pele Selvagem: +4 de armadura enquanto transformado | 🐆 Forma de Pantera: 6 s andando 40% mais rápido; o próximo básico salta colado no alvo com 2,5× | 🐻 Forma de Urso: 10 s com +50% de vida; o básico vira patada (1×) em todos os colados, que passam a te perseguir |
+    | Bosque | **Círculo da Vida** | 🌸 Florescer: cura que passa da vida máxima vira escudo (até 20% da vida) por 6 s | 💞 Cura Distante: cura 45% de um aliado mirado a até 6 tiles | 🌰 Renascer da Semente: semente num aliado por 25 s; se ele morrer, renasce no lugar com 40% da vida e 2 s invulnerável, sem largar nada (recarga de 60 s) |
+    | Bosque | **Guardião da Natureza** | 🍯 Seiva Protetora: quem você cura ganha +3 de armadura por 4 s | 🪵 Pele de Casca: escudo de 30% e +4 de armadura num aliado por 8 s | 🌧️ Chuva Revigorante: campo de raio 3 por 8 s que cura 4% da vida e devolve 2% da mana por segundo |
+    | Espinhos | **Peste** | 🧪 Toxina: magias com dano envenenam, e seus venenos acumulam até 3 vezes | 🐍 Picada da Mamba: 1× e veneno forte (0,6× por segundo por 5 s); se o alvo morrer envenenado, explode (1,5× em raio 2) e envenena em volta | 🦠 Nuvem Venenosa: campo de raio 2 por 8 s que fere (0,2×) e envenena a cada segundo |
+    | Espinhos | **Tempestade** | 🌩️ Céu Carregado: a cada 4 magias, um raio (2×) cai no monstro mais perto | 💥 Onda Trovejante: raio 2 em volta de si, 1,5× e empurra 2 tiles | 🌦️ Chamar Relâmpago: nuvem no ponto mirado que solta 5 raios (1,6×) a até 3 tiles em 8 s |
+
+  - Maestrias: Grito da Fera chama um lobo por 10 s; 2 águias; o salto da pantera atordoa 1 s; o urso corta 30% do dano;
+    Cura Distante tira veneno, queimadura e lentidão; a semente dura 40 s e renasce com 60%; a casca cura 20%; chuva em
+    raio 4; explosão da mamba em raio 3; nuvem venenosa em raio 3; a onda atordoa 1 s; a nuvem do relâmpago solta 8 raios.
+  - **Formas animais** (Pantera e Urso): a fera aparece no lugar do herói (a pantera é o lobo em tons de noite); uma forma
+    troca a outra. A vida extra do urso entra cheia e sai quando a forma acaba.
+  - **Renascer da Semente**: uma semente por druida (plantar outra tira a anterior); na mesma pessoa, salva uma vez. Vale
+    contra golpes e venenos; não vale contra o desabamento da dungeon. Uma semente com broto flutua sobre quem a tem.
 - Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade (1.200 e 1.600 nas magias das
   especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
@@ -111,7 +130,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante |
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
-| Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza |
+| Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo → ✦ Mestre das Feras **ou** Metamorfo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta → ✦ Círculo da Vida **ou** Guardião da Natureza | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza → ✦ Peste **ou** Tempestade |
 
 #### Maestrias
 
@@ -346,6 +365,7 @@ As compradas no Grimório, por slot (números do nível 1):
 | Guardião do Bosque | 220% | tanque: atrai e prende com raízes a cada golpe (0,8×) |
 | Fogo-Fátuo | 50% | cura 8% da vida e devolve 2% da mana de quem está a até 4 tiles, a cada 2,5 s |
 | Esqueleto Erguido (Feiticeiro Necromante) | 60% | corpo a corpo (0,8×) |
+| Águia Gigante (Mestre das Feras) | 50% | voa por cima da água; o mergulho (1,2×) atordoa 0,8 s |
 
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, bola de fogo do dragão).

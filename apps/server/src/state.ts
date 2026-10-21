@@ -57,6 +57,12 @@ export class Player extends Schema {
   @type("boolean") slowed = false;
   /** Magia de bônus em si ativa agora (Postura do Atirador, Aljava Veloz), para o desenho; vazio = nenhuma. */
   @type("string") buff = "";
+  /** Forma animal do Druida ("panther", "bear"; vazio = nenhuma), para o desenho. */
+  @type("string") form = "";
+  /** Tem uma semente do Renascer da Semente: se morrer enquanto ela dura, renasce. */
+  @type("boolean") seeded = false;
+  /** Acabou de renascer da semente: invulnerável por um instante. */
+  @type("boolean") reborn = false;
 }
 
 export class Monster extends Schema {

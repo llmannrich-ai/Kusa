@@ -4,7 +4,7 @@ import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./he
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
-import { TREANT_OUTLINE, treantCanvas } from "./summons.ts";
+import { TREANT_OUTLINE, eagleCanvas, treantCanvas } from "./summons.ts";
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 import { TORCH_FRAMES, cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./cryptDecor.ts";
@@ -42,7 +42,11 @@ export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   treant: "summon-treant",
   // O esqueleto erguido usa a arte do Esqueleto monstro (o brilho de aliado nos pés diferencia).
   skeleton: "monster-skeleton",
+  eagle: "summon-eagle",
 };
+
+/** Criaturas invocadas com arte própria (não vêm do pack). */
+const OWN_SUMMON_ART: string[] = [SUMMON_TEXTURE.treant, SUMMON_TEXTURE.skeleton, SUMMON_TEXTURE.eagle];
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
 export const PORTAL_TEXTURE = { escape: "portal-escape", boss: "portal-boss" };
@@ -92,7 +96,7 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...Object.values(MONSTER_TEXTURE),
-    ...Object.values(SUMMON_TEXTURE).filter((key) => key !== SUMMON_TEXTURE.treant && key !== SUMMON_TEXTURE.skeleton),
+    ...Object.values(SUMMON_TEXTURE).filter((key) => !OWN_SUMMON_ART.includes(key)),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
@@ -146,10 +150,11 @@ export function createHeroArt(scene: Phaser.Scene) {
 
 /**
  * Monstros e invocações com a arte refinada (`refine.ts`): os PNGs do pack são trocados pela
- * versão em dobro de resolução, e o Guardião do Bosque já nasce refinado (uma vez por jogo).
+ * versão em dobro de resolução, e o Guardião do Bosque e a Águia Gigante já nascem refinados (uma vez por jogo).
  */
 export function createCreatureArt(scene: Phaser.Scene) {
-  const packed = [...new Set([...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)])].filter((key) => key !== SUMMON_TEXTURE.treant);
+  const packed = [...new Set([...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)])]
+    .filter((key) => key !== SUMMON_TEXTURE.treant && key !== SUMMON_TEXTURE.eagle);
   for (const key of packed) {
     const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
     if (source.width !== TILE_SIZE) continue;
@@ -159,6 +164,9 @@ export function createCreatureArt(scene: Phaser.Scene) {
   }
   if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
     scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
+  }
+  if (!scene.textures.exists(SUMMON_TEXTURE.eagle)) {
+    scene.textures.addCanvas(SUMMON_TEXTURE.eagle, refineArt(eagleCanvas(), { outline: TREANT_OUTLINE }));
   }
 }
 
