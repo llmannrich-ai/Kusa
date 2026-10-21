@@ -23,10 +23,12 @@ Campo novo que deva aparecer para os jogadores entra nessa função e no `Dashbo
 | `stats.depthAt` | Segundo em que entrou em cada sala do caminho (ritmo) |
 | `stats.perksChosen` | Melhoria escolhida em cada nível, as duas oferecidas, o nível e o segundo |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo) |
-| `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia) |
+| `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |
 | `stats.specialDamage` | Dano das habilidades especiais dos mini-bosses e bosses (golpe + veneno/queimadura), por monstro |
 | `stats.healing` | Cura feita (druida) |
+| `stats.manaGiven` | Mana devolvida aos aliados por magias e criaturas (Fogo-Fátuo), sem as poções |
+| `stats.ccMs` | Tempo de controle aplicado nos monstros (ms somados por monstro): `root`, `stun` e `slow` |
 | `stats.potions` | Poções guardadas e bebidas por tipo e mana devolvida (a vida das poções entra em `healing`) |
 | `stats.kills`, `firstKillAt`, `xp` | Abates por monstro, tempo até o primeiro abate, XP total |
 | `stats.loot`, `chestsOpened`, `items` | De onde veio o loot (monstros, baús, bônus do boss); itens equipados e bag que entraram (`loadout`, `bag`), pegos, largados pelo menu da bag (`dropped`), perdidos na morte (equipamento sorteado + bag) e `bagFull` (avisos de bag cheia: item deixado no chão) |

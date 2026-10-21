@@ -122,6 +122,15 @@ export interface SpellMessage {
   ms: number;
 }
 
+/**
+ * Servidor → todos: os saltos de uma magia em cadeia (Raio em Cadeia), do primeiro alvo ao último, para o
+ * cliente desenhar o raio pulando. Sai na hora do impacto, quando o servidor já sabe em quem o raio pulou.
+ */
+export interface ChainMessage {
+  spellId: SpellId;
+  points: { x: number; y: number }[];
+}
+
 /** Servidor → todos: a habilidade especial de um mini-boss ou boss saiu (efeito do golpe); o dano chega em seguida por `MSG.damage`. */
 export interface MonsterStrikeMessage {
   id: string;
@@ -164,6 +173,7 @@ export const MSG = {
   choosePerk: "choosePerk",
   cast: "cast",
   spell: "spell",
+  chain: "chain",
   drink: "drink",
   drank: "drank",
   bagEquip: "bagEquip",

@@ -23,6 +23,8 @@ export interface SummonDef {
   /** Cura os aliados (jogadores) a até `healRadius` tiles, em fração da vida máxima de cada um. */
   heal?: number;
   healRadius?: number;
+  /** Junto com a cura, devolve esta fração da mana máxima de cada aliado na área. */
+  mana?: number;
   /** O monstro atingido passa a perseguir a criatura (protege a equipe). */
   taunt?: boolean;
   /** O monstro atingido fica preso por este tempo. */
@@ -50,7 +52,7 @@ export const SUMMONS: Record<SummonKind, SummonDef> = {
   },
   wisp: {
     kind: "wisp", name: "Fogo-Fátuo", hp: 0.5, damage: 0, attackRange: 0, attackCooldownMs: 2500, speed: 4.5, attackFx: "nature",
-    heal: 0.08, healRadius: 4,
+    heal: 0.08, healRadius: 4, mana: 0.02,
   },
 };
 
@@ -64,5 +66,6 @@ export function summonStats(kind: SummonKind, ownerMaxHp: number, ownerDamage: n
     maxHp: Math.max(1, Math.round(ownerMaxHp * def.hp * power)),
     damage: ownerDamage * def.damage * power,
     heal: (def.heal ?? 0) * power,
+    mana: (def.mana ?? 0) * power,
   };
 }
