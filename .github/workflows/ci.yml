@@ -1,0 +1,32 @@
+# Verificação de todo PR e de cada push no main: tipos, build do cliente e testes de fumaça
+# (`npm test` sobe os servidores de teste sozinho, em modo convidado: nada é gravado no Supabase).
+# Para bloquear merge com CI vermelho: Settings → Branches → regra no main → exigir o check "verificar".
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build -w @kusa/client
+      - run: npm test
