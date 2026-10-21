@@ -11,6 +11,8 @@ export interface RunStats {
   levelAt: Record<number, number>;
   /** Segundo em que entrou pela primeira vez em cada sala do caminho (a do boss é a última). */
   depthAt: Record<number, number>;
+  /** Traços das especializações escolhidas no Grimório (ids de TRAITS). */
+  specs: string[];
   /** Magia escolhida em cada slot, nível comprado no Grimório e quando: { "1": { id, rank, at } }. */
   spellsChosen: Record<number, { id: string; rank: number; at: number }>;
   /** Melhorias escolhidas ao subir de nível, com as opções sorteadas, o nível e o segundo. */
@@ -53,7 +55,7 @@ export interface RunStats {
 
 export function newRunStats(): RunStats {
   return {
-    levelAt: {}, depthAt: {}, spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0 },
+    levelAt: {}, depthAt: {}, specs: [], spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0 },
     damageDealt: {}, damageTaken: {}, specialDamage: {}, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
     minHpPct: 1, abandoned: false, death: null,

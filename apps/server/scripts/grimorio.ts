@@ -1,7 +1,8 @@
 /**
  * Teste de fumaça do Grimório contra um servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1
  * (slots abertos e todas as magias da classe no nível 3, com a Maestria):
- *   - regras: toda magia tem Maestria, que só entra no nível 3, e os efeitos sobem com o nível;
+ *   - regras: toda magia tem Maestria, que só entra no nível 3, e os efeitos sobem com o nível; as especializações
+ *     do Grimório se excluem (comprar um lado fecha o outro) e as magias de um lado pedem o Traço dele;
  *   - o Cavaleiro ergue o Escudo da Fé, que absorve o dano dos monstros antes da vida;
  *   - o Giro da Lâmina gira de novo sozinho (Maestria);
  *   - o Druida invoca 2 Lobos Espirituais e a Matilha de 4 (Maestria), e os lobos ferem os monstros;
@@ -14,8 +15,9 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MASTERIES, MONSTERS, MSG, SPELLS, blocksSight, generateDungeon, hasLineOfSight, lineTiles, spellAtRank, spellFacts,
-  type MonsterKind, type SpellId,
+  CLASS_IDS, MASTERIES, MONSTERS, MSG, SPELLS, TALENTS, activeTraits, blocksSight, generateDungeon, hasLineOfSight,
+  knownSpells, lineTiles, spellAtRank, spellFacts, talentBlocker, talentTree,
+  type MonsterKind, type SpellId, type TalentRanks,
 } from "@kusa/shared";
 import { approach, enter, inSight, nearestMonster, until, wait } from "./hunt.ts";
 
@@ -60,6 +62,30 @@ function rules() {
   }
   if (spellAtRank(SPELLS.piercing_shot, 3).range !== 9) throw new Error("a Maestria do Disparo Perfurante devia dar alcance 9");
   if (spellAtRank(SPELLS.spirit_wolf, 3).summon!.count !== 2) throw new Error("a Maestria do Lobo Espiritual devia dar 2 lobos");
+  specializations();
+}
+
+/** Especializações: os dois Traços de um ramo se excluem, cada lado tem 1 magia por slot e elas pedem o Traço. */
+function specializations() {
+  for (const classId of CLASS_IDS) {
+    for (const t of talentTree(classId).filter((n) => n.kind === "trait")) {
+      const rival = TALENTS[t.exclusiveWith!];
+      if (!rival || rival.exclusiveWith !== t.id || rival.side === t.side || rival.col !== t.col) throw new Error(`${t.id}: lado rival errado`);
+      const side = talentTree(classId).filter((n) => n.kind === "spell" && n.col === t.col && n.side === t.side);
+      const slots = side.map((n) => SPELLS[n.spellId!].slot).sort().join(",");
+      if (slots !== "0,1") throw new Error(`${t.id}: o lado devia ter uma magia de cada slot (tem ${slots})`);
+    }
+  }
+  // Conta com o tronco do ramo Mira comprado: os dois lados abertos; comprou um, o outro fecha, com as magias dele.
+  const base: TalentRanks = { paladin_damage: 1, paladin_piercing_shot: 1, paladin_stun_arrow: 1, paladin_deadly_shot: 1 };
+  if (talentBlocker(TALENTS.paladin_eagle_eye, base) || talentBlocker(TALENTS.paladin_light_step, base)) throw new Error("os dois lados deviam estar abertos");
+  if (!talentBlocker(TALENTS.paladin_hunter_mark, base)) throw new Error("a magia do lado não pode sair sem o Traço");
+  const picked = { ...base, paladin_eagle_eye: 1 };
+  if (!talentBlocker(TALENTS.paladin_light_step, picked)?.includes("Atirador de Elite")) throw new Error("o outro lado devia fechar");
+  if (talentBlocker(TALENTS.paladin_hunter_mark, picked)) throw new Error("a magia do lado escolhido devia abrir");
+  if (!talentBlocker(TALENTS.paladin_evasive_roll, picked)) throw new Error("a magia do outro lado devia continuar fechada");
+  if (activeTraits("paladin", picked).join() !== "eagle_eye") throw new Error(`Traços ativos: ${activeTraits("paladin", picked)}`);
+  if (!knownSpells("paladin", { ...picked, paladin_hunter_mark: 1 }).includes("hunter_mark")) throw new Error("a magia do lado devia virar opção na hunt");
 }
 
 async function knightShield() {
