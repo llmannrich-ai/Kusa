@@ -410,13 +410,14 @@ async function druidSpecs() {
     const h = await druid("circulo", "distant_heal", "rebirth_seed");
     h.room.send(MSG.cast, { slot: 1 });
     await until(() => h.me().seeded === true, 2000, "a semente não foi plantada");
-    // Fica no meio dos monstros, batendo neles para atrair todos, até morrer: a semente faz o druida renascer.
+    // Batendo nos monstros e indo atrás de outros, junta vários em volta até morrer: a semente faz o druida renascer.
+    // Com um monstro só, a regeneração empata com o dano; por isso ele vai buscar mais.
     h.room.send(MSG.attacking, { on: true });
+    const reborn = () => h.notices.includes("Renasceu!");
     const deadline = Date.now() + 50_000;
-    while (!h.notices.includes("Renasceu!")) {
+    for (let tries = 0; !reborn(); tries++) {
       if (Date.now() > deadline) throw new Error(`o druida não morreu (nem renasceu) em 50 s: vida ${h.me().hp}/${h.me().maxHp}`);
-      await approach(h.room, h.me, 1, () => h.notices.includes("Renasceu!") || inSight(h.room, h.me(), 1).length > 0);
-      await wait(300);
+      await gather(h.room, h.me, reborn, tries);
     }
     h.room.send(MSG.attacking, { on: false });
     if (h.me().status !== "playing" || h.me().seeded) throw new Error(`renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
