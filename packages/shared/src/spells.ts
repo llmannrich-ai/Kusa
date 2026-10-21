@@ -42,7 +42,9 @@ export type SpellId =
   | "piercing_shot" | "stun_arrow" | "blessed_ward" | "healing_light" | "deadly_shot" | "divine_judgment" | "explosive_volley"
   | "lightning_bolt" | "chain_lightning" | "ice_lance" | "drain_life" | "frost_nova" | "meteor" | "blizzard" | "dark_pact"
   | "venom_thorn" | "spirit_wolf" | "healing_moth" | "hornet_swarm" | "nature_wrath" | "wolf_pack" | "ancient_bear"
-  | "grove_guardian" | "forest_heart";
+  | "grove_guardian" | "forest_heart"
+  // Especializações (lados no fim de um ramo do Grimório).
+  | "hunter_mark" | "sniper_stance" | "evasive_roll" | "swift_quiver";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -98,6 +100,17 @@ export interface SpellDef {
   killRefund?: number;
   /** Fração do dano causado que volta como mana para quem conjura. */
   manaSteal?: number;
+  /** Monstros atingidos ficam marcados: recebem +`pct` de dano de toda a equipe por `ms`. */
+  mark?: { pct: number; ms: number };
+  /**
+   * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
+   * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
+   */
+  selfBuff?: { ms: number; basicDamage?: number; attackRange?: number; moveSpeed?: number; attackHaste?: number };
+  /** Quem conjura salta até `tiles` tiles na direção mirada (no toque rápido, para longe do alvo), parando em parede ou monstro. */
+  dash?: { tiles: number };
+  /** O próximo ataque básico de quem conjura atordoa o alvo por este tempo. */
+  nextBasicStunMs?: number;
   /** Quem conjura recebe só (1 - guard) do dano por `guardMs`. */
   guard?: number;
   guardMs?: number;
@@ -218,6 +231,31 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     id: "explosive_volley", classId: "paladin", slot: 1, name: "Saraivada Explosiva", icon: "🎆", color: 0xe67e22,
     description: "Flechas com pólvora que explodem numa área larga em volta do alvo.",
     manaCost: 60, cooldownMs: 13000, aim: "target", range: 6, radius: 3, damage: 1.6, projectileSpeed: 10,
+  }),
+
+  // Especialização Atirador de Elite (ramo Mira).
+  hunter_mark: spell({
+    id: "hunter_mark", classId: "paladin", slot: 0, name: "Marca do Caçador", icon: "🎯", color: 0xe74c3c,
+    description: "Marca um monstro: ele recebe mais dano de toda a equipe por alguns segundos.",
+    manaCost: 20, cooldownMs: 9000, aim: "target", range: 7, radius: 0, damage: 0.8, mark: { pct: 0.25, ms: 10000 },
+    projectileSpeed: 24,
+  }),
+  sniper_stance: spell({
+    id: "sniper_stance", classId: "paladin", slot: 1, name: "Postura do Atirador", icon: "🔭", color: 0xf7d774,
+    description: "Firma os pés e mira com calma: flechas mais fortes e mais longas, mas anda devagar.",
+    manaCost: 40, cooldownMs: 18000, aim: "self", range: 0, radius: 0,
+    selfBuff: { ms: 8000, basicDamage: 1, attackRange: 2, moveSpeed: -0.5 },
+  }),
+  // Especialização Caçador Ágil (ramo Mira).
+  evasive_roll: spell({
+    id: "evasive_roll", classId: "paladin", slot: 0, name: "Rolamento", icon: "🤸", color: 0x9be15d,
+    description: "Rola para o lado mirado (no toque rápido, para longe do monstro) e a próxima flecha atordoa.",
+    manaCost: 18, cooldownMs: 8000, aim: "target", range: 3, radius: 0, dash: { tiles: 3 }, nextBasicStunMs: 1000,
+  }),
+  swift_quiver: spell({
+    id: "swift_quiver", classId: "paladin", slot: 1, name: "Aljava Veloz", icon: "🏹", color: 0x9be15d,
+    description: "Por alguns segundos, as flechas saem uma atrás da outra.",
+    manaCost: 45, cooldownMs: 18000, aim: "self", range: 0, radius: 0, selfBuff: { ms: 6000, attackHaste: 0.6 },
   }),
 
   // --- Feiticeiro: dano em área, frágil. ----------------------------------------
@@ -397,6 +435,11 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   ancient_bear: { text: "O urso fica o dobro do tempo.", changes: { summon: { kind: "bear", count: 1, durationMs: 50000 } } },
   grove_guardian: { text: "Ao despertar, a árvore cura 20% da vida da equipe a até 3 tiles.", changes: { heal: 0.2, radius: 3 } },
   forest_heart: { text: "Dois fogos-fátuos.", changes: { summon: { kind: "wisp", count: 2, durationMs: 20000 } } },
+  // Especializações
+  hunter_mark: { text: "Marca também quem está colado no alvo.", changes: { radius: 1 } },
+  sniper_stance: { text: "Firme sem ficar lento: anda na velocidade normal.", changes: { selfBuff: { ms: 8000, basicDamage: 1, attackRange: 2, moveSpeed: 0 } } },
+  evasive_roll: { text: "Rola 5 tiles e ganha um escudo de 15% da vida por 3 s.", changes: { dash: { tiles: 5 }, range: 5, barrier: 0.15, barrierMs: 3000 } },
+  swift_quiver: { text: "As flechas rápidas também causam +30% de dano.", changes: { selfBuff: { ms: 6000, attackHaste: 0.6, basicDamage: 0.3 } } },
 };
 
 /** A magia com os números do nível comprado e, no nível 3, a Maestria (mana e recarga não mudam). */
@@ -415,6 +458,9 @@ export function spellAtRank(base: SpellDef, rank: number): SpellDef {
     slow: def.slow && { ...def.slow, ms: Math.round(def.slow.ms * t) },
     dot: def.dot && { ...def.dot, perSec: def.dot.perSec * k, ms: Math.round(def.dot.ms * t) },
     armor: def.armor && { points: Math.round(def.armor.points * k), ms: Math.round(def.armor.ms * t) },
+    mark: def.mark && { pct: def.mark.pct * k, ms: Math.round(def.mark.ms * t) },
+    selfBuff: def.selfBuff && { ...def.selfBuff, ms: Math.round(def.selfBuff.ms * t) },
+    nextBasicStunMs: ms(def.nextBasicStunMs),
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
     summon: def.summon && { ...def.summon, durationMs: Math.round(def.summon.durationMs * t) },
@@ -446,6 +492,19 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
   if (s.slow) facts.push(`Deixa ${pct(s.slow.pct)} mais lento por ${sec(s.slow.ms)}`);
   if (s.armor) facts.push(`+${s.armor.points} de armadura por ${sec(s.armor.ms)}`);
   if (s.manaSteal) facts.push(`Rouba ${pct(s.manaSteal)} do dano em mana`);
+  if (s.mark) facts.push(`Marca: +${pct(s.mark.pct)} de dano da equipe no alvo por ${sec(s.mark.ms)}`);
+  if (s.dash) facts.push(`Salta até ${s.dash.tiles} tiles`);
+  if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
+  if (s.selfBuff) {
+    const b = s.selfBuff;
+    const parts = [
+      b.basicDamage ? `básico +${pct(b.basicDamage)}` : "",
+      b.attackRange ? `alcance +${b.attackRange}` : "",
+      b.attackHaste ? `básico ${pct(b.attackHaste)} mais rápido` : "",
+      b.moveSpeed ? `anda ${pct(Math.abs(b.moveSpeed))} mais ${b.moveSpeed < 0 ? "devagar" : "rápido"}` : "",
+    ].filter(Boolean);
+    facts.push(`Por ${sec(b.ms)}: ${parts.join(", ")}`);
+  }
   if (s.repeat) facts.push(`Repete depois de ${sec(s.repeat.delayMs)} com ${pct(s.repeat.power)} do dano`);
   if (s.killRefund) facts.push(`Se matar, a recarga cai ${pct(s.killRefund)}`);
   if (s.taunt) facts.push(`Provoca monstros a até ${s.radius} tiles`);
@@ -480,7 +539,7 @@ export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly 
  * do ponto mirado. As de área caem no ponto, sem ímã.
  */
 export function isSingleTarget(spell: SpellDef) {
-  return spell.aim === "target" && spell.radius === 0 && spell.shape !== "line";
+  return spell.aim === "target" && spell.radius === 0 && spell.shape !== "line" && !spell.dash;
 }
 
 /**

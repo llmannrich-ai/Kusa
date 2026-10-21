@@ -23,6 +23,9 @@ import {
   talentCost,
   talentRank,
   talentTree,
+  TALENTS,
+  TRAITS,
+  chosenSide,
   type ClassId,
   type ItemDef,
   type TalentDef,
@@ -115,6 +118,8 @@ export class Hub {
   /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
   classId: ClassId;
   private treeClass: ClassId;
+  /** Ramo do Grimório aberto em foco (com os dois lados da especialização); vale só para a classe dele. */
+  private treeFocus: { classId: ClassId; col: number } | null = null;
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
@@ -244,44 +249,106 @@ export class Hub {
     const learned = spells.filter((t) => talentRank(t, ranks) > 0).length;
     page.append(el("p", "muted hub-hint",
       `${learned}/${spells.length} magias. Toque num nó para ver e comprar; os da ponta pedem os anteriores do ramo. ` +
-      "Magias viram opção quando o slot abre na hunt (nível 3 e 6); os níveis 2 e 3 deixam a magia mais forte."));
+      "Magias viram opção quando o slot abre na hunt (nível 3 e 6); os níveis 2 e 3 deixam a magia mais forte. " +
+      "Ramos com ✦ se dividem em duas especializações, e a escolha é permanente."));
 
-    const rows = Math.max(...tree.map((t) => t.row)) + 1;
+    // Visão geral: os 3 ramos sem os lados das especializações (no lugar deles, um nó ✦ que abre o ramo em foco).
+    // Ramo em foco: só ele, com o tronco no meio e os dois lados da especialização lado a lado.
+    const focus = this.treeFocus?.classId === this.treeClass ? this.treeFocus.col : null;
+    const specCols = [...new Set(tree.filter((t) => t.side !== undefined).map((t) => t.col))];
+    const shown = focus === null
+      ? tree.filter((t) => t.side === undefined)
+      : tree.filter((t) => t.col === focus && t.row > 0);
+    const forks = focus === null
+      ? specCols.map((col) => tree.find((t) => t.kind === "trait" && t.col === col)!)
+      : [];
+    const offset = focus === null ? 0 : Math.min(...shown.map((t) => t.row));
+    const rowOf = (def: TalentDef) => def.row - offset;
+    const xOf = (def: TalentDef) => focus === null ? (def.col + 0.5) / 3 : def.side === undefined ? 0.5 : def.side === 0 ? 0.25 : 0.75;
+
+    const rows = Math.max(...[...shown, ...forks].map(rowOf)) + 1;
     const grim = el("div", "grimoire");
     grim.style.setProperty("--rows", String(rows));
     grim.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
 
     const branches = el("div", "grim-branches");
-    for (const name of TREE_BRANCHES[this.treeClass]) branches.append(el("span", "", name));
+    if (focus === null) {
+      TREE_BRANCHES[this.treeClass].forEach((name, col) => {
+        const spec = specCols.includes(col);
+        const head = el(spec ? "button" : "span", spec ? "grim-branch-spec" : "", spec ? `${name} ✦` : name);
+        if (spec) head.onclick = () => { this.treeFocus = { classId: this.treeClass, col }; this.render(); };
+        branches.append(head);
+      });
+    } else {
+      // Em foco: o nome de cada lado em cima da sua coluna, e o do ramo no meio.
+      const sideName = (side: 0 | 1) => {
+        const trait = tree.find((t) => t.kind === "trait" && t.col === focus && t.side === side);
+        return trait ? TRAITS[trait.traitId!].spec : "";
+      };
+      branches.append(el("span", "grim-spec-name", sideName(0)), el("span", "", TREE_BRANCHES[this.treeClass][focus]), el("span", "grim-spec-name", sideName(1)));
+      const back = el("button", "link grim-back", "‹ Todos os ramos");
+      back.onclick = () => { this.treeFocus = null; this.render(); };
+      page.append(back);
+    }
     grim.append(branches);
 
-    // Galhos: SVG atrás dos nós, em unidades de coluna (100 por ramo) × pixels de linha.
+    // Galhos: SVG atrás dos nós, em unidades de 300 na largura × pixels de linha.
     const svgNs = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNs, "svg");
     svg.setAttribute("class", "grim-links");
     svg.setAttribute("viewBox", `0 0 300 ${rows * GRIM_ROW}`);
     svg.setAttribute("preserveAspectRatio", "none");
-    for (const def of tree) {
-      const parent = def.requires && tree.find((t) => t.id === def.requires!.id);
-      if (!parent) continue;
-      const x0 = parent.col * 100 + 50;
-      const y0 = parent.row * GRIM_ROW + GRIM_ORB / 2;
-      const x1 = def.col * 100 + 50;
-      const y1 = def.row * GRIM_ROW + GRIM_ORB / 2;
+    const link = (parent: TalentDef, child: TalentDef, state: string) => {
+      const x0 = xOf(parent) * 300;
+      const y0 = rowOf(parent) * GRIM_ROW + GRIM_ORB / 2;
+      const x1 = xOf(child) * 300;
+      const y1 = rowOf(child) * GRIM_ROW + GRIM_ORB / 2;
       // O galho se divide logo abaixo do nome do pai, antes do nó filho.
-      const mid = parent.row * GRIM_ROW + GRIM_NODE + (def.row * GRIM_ROW - parent.row * GRIM_ROW - GRIM_NODE) / 2;
+      const mid = rowOf(parent) * GRIM_ROW + GRIM_NODE + ((rowOf(child) - rowOf(parent)) * GRIM_ROW - GRIM_NODE) / 2;
       const path = document.createElementNS(svgNs, "path");
       path.setAttribute("d", x0 === x1 ? `M${x0} ${y0} V${y1}` : `M${x0} ${y0} V${mid} H${x1} V${y1}`);
       path.setAttribute("vector-effect", "non-scaling-stroke");
-      const state = talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open";
       if (state) path.classList.add(state);
       svg.append(path);
+    };
+    for (const def of shown) {
+      const parent = def.requires && shown.find((t) => t.id === def.requires!.id);
+      if (parent) link(parent, def, talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open");
+    }
+    for (const fork of forks) {
+      const parent = shown.find((t) => t.id === fork.requires?.id);
+      const picked = chosenSide(this.treeClass, fork.col, ranks) !== null;
+      if (parent) link(parent, fork, picked ? "on" : talentRank(parent, ranks) > 0 ? "open" : "");
     }
     grim.append(svg);
 
-    for (const def of tree) grim.append(this.grimNode(def));
+    const place = (node: HTMLElement, def: TalentDef) => {
+      node.style.left = `${xOf(def) * 100}%`;
+      node.style.top = `${rowOf(def) * GRIM_ROW}px`;
+      return node;
+    };
+    for (const def of shown) grim.append(place(this.grimNode(def), def));
+    for (const fork of forks) grim.append(place(this.forkNode(fork), fork));
     page.append(grim);
     return page;
+  }
+
+  /** Nó ✦ da visão geral no fim de um ramo especializado: mostra o lado escolhido (ou o convite) e abre o ramo em foco. */
+  private forkNode(trait: TalentDef) {
+    const side = chosenSide(trait.classId, trait.col, this.profile.talents);
+    const picked = side === null ? null : this.specTrait(trait.classId, trait.col, side);
+    const node = el("button", "gnode fork");
+    node.classList.toggle("owned", picked !== null);
+    const name = picked ? TRAITS[picked.traitId!].spec : "Especialização";
+    node.setAttribute("aria-label", `${name}: abrir o ramo`);
+    node.append(el("span", "gnode-orb", picked ? picked.icon : "✦"), el("span", "gnode-name", name));
+    node.onclick = () => { this.treeFocus = { classId: trait.classId, col: trait.col }; this.render(); };
+    return node;
+  }
+
+  /** O Traço de um lado de um ramo especializado. */
+  private specTrait(classId: ClassId, col: number, side: 0 | 1) {
+    return talentTree(classId).find((t) => t.kind === "trait" && t.col === col && t.side === side) ?? null;
   }
 
   private grimNode(def: TalentDef) {
@@ -294,15 +361,15 @@ export class Hub {
     const spell = def.spellId ? SPELLS[def.spellId] : null;
 
     const node = el("button", `gnode ${def.kind}`);
-    node.style.left = `${((def.col + 0.5) / 3) * 100}%`;
-    node.style.top = `${def.row * GRIM_ROW}px`;
     node.classList.toggle("owned", rank > 0);
     node.classList.toggle("maxed", maxed);
     node.classList.toggle("locked", locked);
     node.classList.toggle("ready", affordable);
     node.setAttribute("aria-label", `${def.name}, nível ${rank} de ${def.maxRank}${locked ? `, ${blocker}` : ""}`);
 
-    const orb = el("span", "gnode-orb", def.icon);
+    // O Traço é um losango: o ícone vai num span que desfaz a rotação.
+    const orb = el("span", "gnode-orb");
+    orb.append(def.kind === "trait" ? el("span", "gnode-icon", def.icon) : def.icon);
     if (spell) orb.append(el("b", "gnode-slot", String(spell.slot + 1)));
     if (locked) orb.append(el("b", "gnode-lock", "🔒"));
     const pips = el("span", "gnode-pips");
@@ -320,6 +387,11 @@ export class Hub {
     const maxed = rank >= def.maxRank;
     const spell = def.spellId ? SPELLS[def.spellId] : null;
     const branch = TREE_BRANCHES[def.classId][def.col];
+    const trait = def.traitId ? TRAITS[def.traitId] : null;
+    // Lado de uma especialização: o nome dela aparece na ficha (do Traço e das magias do lado).
+    const sideTrait = def.side === undefined ? null : this.specTrait(def.classId, def.col, def.side);
+    const spec = sideTrait ? TRAITS[sideTrait.traitId!].spec : null;
+    const rival = def.exclusiveWith ? TALENTS[def.exclusiveWith] : null;
 
     const sheet = $("sheet");
     sheet.replaceChildren();
@@ -327,10 +399,18 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : "Áurea"} · ramo ${branch} · nível ${rank}/${def.maxRank}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
+    if (trait) {
+      sheet.append(el("p", "", trait.description));
+      if (rank === 0 && rival) {
+        sheet.append(el("p", "grim-warning",
+          `Escolha permanente: comprar ${trait.name} faz de você ${trait.spec} e fecha para sempre o outro lado do ramo ` +
+          `(${TRAITS[rival.traitId!].spec}), com as magias dele.`));
+      }
+    }
     if (spell) {
       sheet.append(el("p", "", spell.description));
       if (rank < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
@@ -346,25 +426,36 @@ export class Hub {
       box.append(list);
       levels.append(box);
     };
-    if (rank > 0) level(rank, true);
-    if (!maxed) level(rank + 1, false);
-    sheet.append(levels);
+    // O Traço não tem níveis: a descrição já diz o que ele faz.
+    if (!trait) {
+      if (rank > 0) level(rank, true);
+      if (!maxed) level(rank + 1, false);
+      sheet.append(levels);
+    }
 
     const actions = el("div", "actions");
     if (maxed) {
-      actions.append(el("p", "node-state", "Nível máximo"));
+      actions.append(el("p", "node-state", trait ? `Você é ${trait.spec}` : "Nível máximo"));
     } else if (blocker) {
       actions.append(el("p", "node-state", `🔒 ${blocker} (nível ${def.requires?.rank ?? 1})`));
     } else {
       const cost = talentCost(def, rank);
-      const verb = rank > 0 ? `Subir para o nível ${rank + 1}` : spell ? "Aprender" : "Comprar";
+      const verb = rank > 0 ? `Subir para o nível ${rank + 1}` : spell ? "Aprender" : trait ? `Ser ${trait.spec}` : "Comprar";
       const buy = el("button", "primary", `${verb} · ${gold(cost)}`);
       buy.disabled = this.profile.gold < cost;
-      buy.onclick = () => void this.run(async () => {
+      // Escolha permanente: o primeiro toque só pede a confirmação.
+      let confirmed = !trait;
+      const purchase = () => void this.run(async () => {
         this.profile.gold = await buyTalent(def.id);
         this.profile.talents[def.id] = rank + 1;
-        this.toast(rank === 0 && spell ? `${def.name} aprendida!` : `${def.name} nível ${rank + 1}!`);
+        this.toast(trait ? `Agora você é ${trait.spec}!` : rank === 0 && spell ? `${def.name} aprendida!` : `${def.name} nível ${rank + 1}!`);
       }).then(() => this.openTalentSheet(def));
+      buy.onclick = () => {
+        if (confirmed) return purchase();
+        confirmed = true;
+        buy.textContent = `Confirmar: ${trait!.spec} para sempre`;
+        buy.classList.add("danger");
+      };
       actions.append(buy);
     }
     const close = el("button", "", "Fechar");

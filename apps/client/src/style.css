@@ -644,6 +644,21 @@ body.busy #hub-body { opacity: 0.7; }
   box-shadow: 0 2px 6px #000a;
 }
 .gnode.aura .gnode-orb { border-radius: 14px; }
+/* Traço (especialização): losango menor, com o ícone desvirado. */
+.gnode.trait .gnode-orb { width: 46px; height: 46px; margin: 5px 0; border-radius: 8px; transform: rotate(45deg); }
+.gnode.trait .gnode-icon { transform: rotate(-45deg); font-size: 22px; }
+.gnode.trait .gnode-lock { transform: rotate(-45deg); }
+/* Nó ✦ da visão geral: abre o ramo em foco com os dois lados. */
+.gnode.fork .gnode-orb { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.gnode.fork.owned .gnode-orb { border-style: solid; }
+.grim-branch-spec {
+  min-height: 0; padding: 0; font: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--accent); background: none; border: none;
+}
+.grim-spec-name { color: var(--accent) !important; letter-spacing: 1px !important; }
+.grim-back { display: block; min-height: 36px; padding: 4px 0; background: none; border: none; font-size: 14px; }
+.grim-warning { padding: 8px 10px; font-size: 13px; color: #ffd8a8; background: #3a1e0c; border: 1px solid #a0522d; }
+button.danger { background: #5a1e12; border-color: #e67e22; }
 .gnode.owned .gnode-orb { border-color: #8e6bbf; background: radial-gradient(circle at 35% 30%, #4a3466, #160f1e 75%); }
 .gnode.maxed .gnode-orb { border-color: var(--accent); box-shadow: 0 0 12px #c9a24a88; }
 .gnode.locked .gnode-orb { filter: grayscale(1) brightness(0.55); }
