@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3 e 4a feitas: o Paladino tem os 3 ramos especializados. Próxima: fase 4b (Feiticeiro).
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3, 4a e 4b feitas: Paladino e Feiticeiro têm os 3 ramos especializados. Próxima: fase 4c (Druida).
 
 ---
 
@@ -352,6 +352,12 @@ salto (6). Os outros ramos especializam conforme o conteúdo deles fica pronto (
 Paladino, como na seção 6.2. Peças novas do motor: campo no chão (10, com zona, armadilha e estaca, que cobre também a
 peça 12), cone (4), mira em aliado (13) e a marca de morto-vivo nos monstros. Ajuste: o Solo Consagrado fere 0,35× por
 segundo (a seção 6.2 não dava número).
+
+**Fase 4b, como foi entregue:** as 6 especializações do Feiticeiro, como na seção 6.3. Peças novas: teleporte
+(6), parede temporária (15), empurrar (7), campo que prende (Tentáculos), nuvem de raios (uma variação da estaca),
+elemento nas magias e o esqueleto invocado. Ajustes: as magias de especialização passaram a custar 1.200 e 1.600
+pela posição no lado (o ramo Trevas é um nó mais fundo); o Passo Nebuloso tenta as diagonais e as laterais quando a
+reta está bloqueada, como o Rolamento (#57).
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).

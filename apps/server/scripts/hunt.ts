@@ -89,3 +89,13 @@ export async function until(done: () => boolean, ms: number, error: string) {
 export function wait(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+/** Onde o herói está e os 3 monstros mais perto (distância e linha de visão), para mensagens de erro. */
+export function whereAmI(room: any, me: () => any) {
+  const dungeon = generateDungeon(room.state.seed, room.state.mapId);
+  const p = me();
+  const near = ([...room.state.monsters.values()] as any[])
+    .map((m) => ({ k: m.kind, d: tileDistance(p.x, p.y, m.x, m.y), v: hasLineOfSight(dungeon, p.x, p.y, m.x, m.y) }))
+    .sort((a, b) => a.d - b.d).slice(0, 3);
+  return `herói em ${p.x},${p.y} (${p.status}); perto: ${JSON.stringify(near)}`;
+}
