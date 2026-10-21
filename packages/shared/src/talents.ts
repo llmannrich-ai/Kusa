@@ -124,6 +124,14 @@ const SHAPES: Record<ClassId, Shape> = {
     ["eagle_eye", 0, 5, "deadly_shot", 0], ["light_step", 0, 5, "deadly_shot", 1],
     ["hunter_mark", 0, 6, "eagle_eye", 0], ["evasive_roll", 0, 6, "light_step", 1],
     ["sniper_stance", 0, 7, "hunter_mark", 0], ["swift_quiver", 0, 7, "evasive_roll", 1],
+    // Luz: Cruzado (lado 0) ou Guardião da Luz (lado 1).
+    ["consecrated_arrows", 1, 5, "divine_judgment", 0], ["sacred_aura", 1, 5, "divine_judgment", 1],
+    ["holy_spear", 1, 6, "consecrated_arrows", 0], ["light_shield", 1, 6, "sacred_aura", 1],
+    ["divine_caldera", 1, 7, "holy_spear", 0], ["consecrated_ground", 1, 7, "light_shield", 1],
+    // Batedor: Artilheiro (lado 0) ou Armadilheiro (lado 1).
+    ["gunpowder", 2, 5, "explosive_volley", 0], ["ingenious", 2, 5, "explosive_volley", 1],
+    ["lightning_arrow", 2, 6, "gunpowder", 0], ["bear_trap", 2, 6, "ingenious", 1],
+    ["barrage", 2, 7, "lightning_arrow", 0], ["arrow_cordon", 2, 7, "bear_trap", 1],
   ],
   sorcerer: [
     ["shadow_orb", 1, 0],

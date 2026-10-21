@@ -15,7 +15,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  CLASS_IDS, MASTERIES, MONSTERS, MSG, SPELLS, TALENTS, activeTraits, blocksSight, generateDungeon, hasLineOfSight,
+  CLASS_IDS, MASTERIES, MONSTERS, MSG, SPELLS, TALENTS, activeTraits, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
   knownSpells, lineTiles, spellAtRank, spellFacts, talentBlocker, talentTree,
   type MonsterKind, type SpellId, type TalentRanks,
 } from "@kusa/shared";
@@ -63,6 +63,19 @@ function rules() {
   if (spellAtRank(SPELLS.piercing_shot, 3).range !== 9) throw new Error("a Maestria do Disparo Perfurante devia dar alcance 9");
   if (spellAtRank(SPELLS.spirit_wolf, 3).summon!.count !== 2) throw new Error("a Maestria do Lobo Espiritual devia dar 2 lobos");
   specializations();
+  // Leque (Barragem): passa pelo ponto mirado, não volta para trás e fica dentro do alcance.
+  for (let ty = y - 4; ty <= y + 4; ty++) {
+    for (let tx = x - 4; tx <= x + 4; tx++) {
+      if ((tx === x && ty === y) || blocksSight(dungeon, tx, ty) || !hasLineOfSight(dungeon, x, y, tx, ty)) continue;
+      const cone = coneTiles(dungeon, x, y, tx, ty, 5);
+      if (!cone.some((t) => t.x === tx && t.y === ty)) throw new Error(`o leque até ${tx},${ty} não passa por lá`);
+      if (cone.some((t) => (t.x - x) * (tx - x) + (t.y - y) * (ty - y) <= 0)) throw new Error(`o leque até ${tx},${ty} volta para trás`);
+      if (cone.some((t) => Math.max(Math.abs(t.x - x), Math.abs(t.y - y)) > 5)) throw new Error("o leque passou do alcance");
+    }
+  }
+  // Mortos-vivos: o Esqueleto e o Afogado (a luz do Paladino fere mais).
+  const undead = Object.values(MONSTERS).filter((m) => m.undead).map((m) => m.kind).sort().join();
+  if (undead !== "bogBody,skeleton") throw new Error(`mortos-vivos: ${undead}`);
 }
 
 /** Especializações: os dois Traços de um ramo se excluem, cada lado tem 1 magia por slot e elas pedem o Traço. */
