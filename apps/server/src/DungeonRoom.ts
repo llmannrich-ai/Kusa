@@ -688,7 +688,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       const end = line[line.length - 1] ?? { x: ox, y: oy };
       tx = end.x;
       ty = end.y;
-      target = undefined;
+      // O alvo do toque rápido continua valendo: a flecha o segue mesmo se ele sair da reta durante o voo.
     }
 
     p.mana -= spell.manaCost;
@@ -735,15 +735,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const now = this.clock.currentTime;
     const anchor = targetId ? this.state.monsters.get(targetId) : undefined;
     // Alvo único que morreu no caminho: a magia se perde.
-    if (targetId && !anchor && spell.radius === 0) return;
+    if (targetId && !anchor && spell.radius === 0 && !line) return;
     const cx = anchor?.x ?? tx;
     const cy = anchor?.y ?? ty;
     const inArea = (x: number, y: number) =>
       tileDistance(cx, cy, x, y) <= spell.radius && hasLineOfSight(this.dungeon, cx, cy, x, y);
 
     const onLine = line && new Set(line.map((t) => t.y * this.dungeon.width + t.x));
+    // Linha: quem está na reta na chegada, mais o alvo do toque rápido (que pode ter saído dela durante o voo).
     const hit = onLine
-      ? [...this.state.monsters.values()].filter((m) => onLine.has(m.y * this.dungeon.width + m.x))
+      ? [...this.state.monsters.values()].filter((m) => m === anchor || onLine.has(m.y * this.dungeon.width + m.x))
       : spell.radius === 0 && anchor
         ? [anchor]
         : [...this.state.monsters.values()].filter((m) => inArea(m.x, m.y));

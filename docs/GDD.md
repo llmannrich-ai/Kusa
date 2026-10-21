@@ -230,7 +230,7 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 - Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por
   segundo, que renova em vez de acumular), cura, raízes (não anda), **lentidão** (anda mais devagar), atordoamento (não anda nem ataca),
   guarda (corta parte do dano), armadura extra, **escudo** (absorve dano antes da vida, por alguns segundos), roubo de vida, provocação e invocação.
-  - **Linha** (Disparo Perfurante): acerta todos os monstros na reta do herói até o alcance inteiro ou a primeira parede.
+  - **Linha** (Disparo Perfurante): acerta todos os monstros na reta do herói até o alcance inteiro ou a primeira parede. A reta sempre passa pelo ponto mirado, e o alvo do toque rápido é acertado mesmo se sair da reta durante o voo.
   - **Cadeia** (Raio em Cadeia): depois do alvo, salta para o monstro mais perto ainda não atingido (a até 3 tiles, com linha de visão), perdendo 15% do dano a cada salto.
   - Bônus condicionais: a Execução causa o dobro em quem tem menos de 30% da vida; o Disparo Certeiro ganha +10% de dano por tile até o alvo.
   - No monstro, a lentidão aparece como gelo nos pés e o veneno como bolhas verdes subindo.

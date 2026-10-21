@@ -36,19 +36,21 @@ export async function approach(room: any, me: () => any, range: number, done: ()
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline && !done()) {
     const p = me();
-    let target: any = null;
-    let best = Infinity;
-    room.state.monsters.forEach((m: any) => {
-      const d = tileDistance(p.x, p.y, m.x, m.y);
-      if (d < best) { best = d; target = m; }
-    });
-    if (target && best > range) {
-      const blocked = new Set<number>();
-      room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
-      // O herói nasce colado no portal de fuga: pisar nele no caminho encerra a hunt.
-      blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
-      const step = nextStep(dungeon, p, target, range, (x, y) => blocked.has(y * dungeon.width + x));
-      if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
+    const blocked = new Set<number>();
+    room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
+    // O herói nasce colado no portal de fuga: pisar nele no caminho encerra a hunt.
+    blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
+    // O monstro mais próximo que tem caminho (o mais perto em linha reta pode estar atrás de uma parede sem passagem).
+    const byDistance = ([...room.state.monsters.values()] as any[])
+      .map((m) => ({ m, d: tileDistance(p.x, p.y, m.x, m.y) }))
+      .sort((a, b) => a.d - b.d);
+    if (byDistance.length > 0 && byDistance[0].d > range) {
+      for (const { m } of byDistance) {
+        const step = nextStep(dungeon, p, m, range, (x, y) => blocked.has(y * dungeon.width + x));
+        if (!step) continue;
+        room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
+        break;
+      }
     }
     await wait(100);
   }
