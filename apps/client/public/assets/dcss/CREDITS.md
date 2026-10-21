@@ -65,3 +65,5 @@ Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0
 | `tree-swamp.png` | `dngn/trees/mangrove1..3.png` | juntos numa faixa |
 | `ruin-wall.png` | `dngn/wall/brick_brown-vines1..4.png` | juntos numa faixa |
 | `ruin-column.png` | `dngn/statues/crumbled_column_1..6.png` | juntos numa faixa |
+| `grass-fringe.png` | `dngn/floor/grass/grass_n`, `_e`, `_s`, `_w` | só o capim (terra recortada), brilho ×1,1; franja sobre lama e pedra |
+| `water-shore.png` | `dngn/water/shallow_water_wave_N/E/S/W` e `_corner_NE/NW/SE/SW` | tom esverdeado e mais escuro, 60% de opacidade; espuma da margem das lagoas |
