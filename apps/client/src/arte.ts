@@ -6,7 +6,7 @@ import { itemIcon } from "./art/items.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroPoses, heroSheet } from "./art/heroes.ts";
 import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
-import { ART_SCALE, CHAR_SCALE, refineArt } from "./art/refine.ts";
+import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
 import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
@@ -121,11 +121,12 @@ const [floor, ...monsters] = await Promise.all([
   ...Object.values(MONSTER_TEXTURE).map(loadImage),
 ]);
 const isWall = (_x: number, y: number) => y === 0 || y === H - 1;
-/** Personagem do tamanho do jogo (`CHAR_SCALE`), com os pés na base do tile. */
-const CHAR = TILE_SIZE * CHAR_SCALE;
-const drawChar = (art: CanvasImageSource, sx: number, size: number, x: number, y: number) =>
-  sceneCtx.drawImage(art, sx, 0, size, size, x * TILE_SIZE - (CHAR - TILE_SIZE) / 2, (y + 1) * TILE_SIZE - CHAR, CHAR, CHAR);
-const drawHero = (sheet: HTMLCanvasElement, frame: number, x: number, y: number) => drawChar(sheet, frame * HERO_SIZE, HERO_SIZE, x, y);
+/** Personagem do tamanho do jogo (heróis em `HERO_SCALE`, monstros no tile), com os pés na base do tile. */
+const drawChar = (art: CanvasImageSource, sx: number, size: number, x: number, y: number, scale = 1) => {
+  const side = TILE_SIZE * scale;
+  sceneCtx.drawImage(art, sx, 0, size, size, x * TILE_SIZE - (side - TILE_SIZE) / 2, (y + 1) * TILE_SIZE - side, side, side);
+};
+const drawHero = (sheet: HTMLCanvasElement, frame: number, x: number, y: number) => drawChar(sheet, frame * HERO_SIZE, HERO_SIZE, x, y, HERO_SCALE);
 const refinedMonsters = monsters.map((img) => refineArt(img));
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {

@@ -2,7 +2,7 @@ import { makeCanvas } from "./pixels.ts";
 
 /**
  * Refinamento da arte dos personagens: a arte de 32×32 vira uma textura de 64×64 com mais
- * detalhe, desenhada no jogo em escala menor (ver `CHAR_SCALE`). Passos, em ordem:
+ * detalhe, desenhada no jogo em escala menor (ver `HERO_SCALE`). Passos, em ordem:
  *
  * 1. Scale2x (EPX): dobra cada pixel e arredonda as diagonais em escada, sem inventar cores.
  * 2. Contorno seletivo: as linhas de contorno internas (entre duas cores) ficam com 1 px escuro e
@@ -15,10 +15,12 @@ import { makeCanvas } from "./pixels.ts";
 
 /** Quantas vezes a textura refinada é maior que a arte original. */
 export const ART_SCALE = 2;
-/** Tamanho dos personagens no jogo em relação ao tile (heróis, monstros e invocações). */
-export const CHAR_SCALE = 1.2;
-/** Escala do sprite com textura refinada para ficar do tamanho `CHAR_SCALE`. */
-export const CHAR_SPRITE_SCALE = CHAR_SCALE / ART_SCALE;
+/** Tamanho dos heróis no jogo em relação ao tile (monstros e invocações ficam do tamanho do tile). */
+export const HERO_SCALE = 1.2;
+/** Escala do sprite do herói (textura refinada) para ficar do tamanho `HERO_SCALE`. */
+export const HERO_SPRITE_SCALE = HERO_SCALE / ART_SCALE;
+/** Escala do sprite de monstro ou invocação (textura refinada) para ficar do tamanho do tile. */
+export const CREATURE_SPRITE_SCALE = 1 / ART_SCALE;
 
 export interface RefineOptions {
   /** Cor do contorno da arte (as linhas internas dela são afinadas). Sem ela, tons muito escuros não recebem luz. */
