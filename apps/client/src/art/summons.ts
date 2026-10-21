@@ -6,8 +6,8 @@ import { ramp, solid, type Painter, type Ramp } from "./paint.ts";
 
 /**
  * Criaturas invocadas, no traço dos monstros: lobo e urso de quatro patas, vespa, mariposa e
- * fogo-fátuo voando (batem as asas o tempo todo), o Guardião do Bosque (uma árvore viva) e o
- * Esqueleto Erguido do Necromante, que é o mesmo esqueleto dos monstros.
+ * fogo-fátuo e a Águia Gigante voando (batem as asas o tempo todo), o Guardião do Bosque (uma
+ * árvore viva) e o Esqueleto Erguido do Necromante, que é o mesmo esqueleto dos monstros.
  */
 
 // --- Quadrúpedes ----------------------------------------------------------------
@@ -188,6 +188,52 @@ function wisp(s: Painter, _dir: Dir, frame: number, cx: number, g: number) {
   }
 }
 
+const EAGLE_BODY = ramp("#7a4a24");
+const EAGLE_WING = ramp("#5a3519");
+const EAGLE_HEAD = ramp("#f4efe2");
+const EAGLE_BEAK = ramp("#f2b134");
+
+/** Águia Gigante (Mestre das Feras): cabeça branca, asas largas batendo e garras amarelas. */
+function eagle(s: Painter, dir: Dir, frame: number, cx: number, g: number) {
+  const flap = frame === 1 ? -7 : frame === 2 ? 4 : 0;
+  const y = g - FLY - 4;
+  /** Asa aberta para o lado `sign`, com as penas das pontas em dentes. */
+  const wing = (sign: number, r: Ramp) => {
+    const x = (d: number) => cx + sign * d;
+    s.poly([x(2), y - 3, x(10), y - 7 + flap * 0.6, x(19), y - 5 + flap, x(21), y - 1 + flap, x(17), y + 1 + flap * 0.8, x(15), y + flap * 0.6 + 3, x(11), y + 2 + flap * 0.4, x(8), y + 4, x(2), y + 2], r);
+    s.line(x(5), y - 2, x(18), y - 3 + flap, ramp("#b07a45"), 2);
+  };
+  const talons = (xs: number[]) => s.dots(xs.flatMap((x) => [x, y + 7, x + 1, y + 7]), EAGLE_BEAK, 3);
+  if (dir === "side") {
+    s.poly([cx + 2, y - 2, cx + 8, y - 12 + flap, cx + 14, y - 10 + flap, cx + 6, y + 1], EAGLE_WING, { light: -0.15 });
+    s.poly([cx + 6, y - 1, cx + 14, y - 3, cx + 15, y + 2, cx + 7, y + 3], EAGLE_WING);
+    s.sphere(cx + 1, y, 7, 4.5, EAGLE_BODY);
+    talons([cx - 1, cx + 2]);
+    s.sphere(cx - 6, y - 3, 3.6, 3.2, EAGLE_HEAD);
+    s.poly([cx - 9, y - 4, cx - 12.5, y - 3, cx - 11.5, y - 1, cx - 9, y - 1.5], EAGLE_BEAK);
+    s.dots([cx - 7, y - 4], HOLE);
+    // Asa de perto: sobe para trás e abre em penas na ponta.
+    const f = flap * 0.7;
+    s.poly([cx - 1, y - 1, cx + 2, y - 7 + f * 0.5, cx + 7, y - 11 + f, cx + 14, y - 10 + f, cx + 16, y - 7 + f, cx + 13, y - 6 + f * 0.8,
+      cx + 14, y - 4 + f * 0.6, cx + 10, y - 3 + f * 0.4, cx + 6, y + 1], EAGLE_WING);
+    s.line(cx + 1, y - 2, cx + 12, y - 9 + f, ramp("#b07a45"), 2);
+    return;
+  }
+  for (const sign of [-1, 1]) wing(sign, EAGLE_WING);
+  if (dir === "up") {
+    s.sphere(cx, y - 7, 3.4, 3.2, EAGLE_HEAD);
+    s.sphere(cx, y, 5, 6.5, EAGLE_BODY);
+    s.poly([cx - 3.5, y + 5, cx + 3.5, y + 5, cx + 4.5, y + 10, cx - 4.5, y + 10], EAGLE_WING);
+    return;
+  }
+  s.poly([cx - 3, y + 4, cx + 3, y + 4, cx + 4, y + 8, cx - 4, y + 8], EAGLE_WING);
+  s.sphere(cx, y, 5, 6.5, EAGLE_BODY);
+  talons([cx - 2.5, cx + 1.5]);
+  s.sphere(cx, y - 6, 3.8, 3.4, EAGLE_HEAD);
+  s.poly([cx - 1.5, y - 5, cx + 1.5, y - 5, cx, y - 2], EAGLE_BEAK);
+  s.dots([cx - 2, y - 7, cx + 2, y - 7], HOLE);
+}
+
 // --- Guardião do Bosque ---------------------------------------------------------
 
 const BARK = ramp("#6b4426");
@@ -230,4 +276,5 @@ export const SUMMON_ART: Record<SummonKind, CreatureArt> = {
   wisp: grownArt(40, 44, CREATURE_GROWTH, wisp),
   treant: humanoidArt(TREANT, 72, 80),
   skeleton: MONSTER_ART.skeleton,
+  eagle: grownArt(56, 48, CREATURE_GROWTH, eagle),
 };

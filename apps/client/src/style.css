@@ -206,6 +206,12 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .tm-col.active i { background: var(--text); }
 .tm-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted); }
 .tm-readout { margin: 6px 0 0; font-size: 13px; }
+.tm-metrics { margin-bottom: 10px; }
+.tm-awards { grid-template-columns: repeat(2, 1fr); }
+.tm-awards .tm-tile small { display: block; margin-top: 2px; font-size: 11px; }
+.tm-tile.eu { border-color: var(--accent); }
+.tm-bars li.mine .tm-bar-head span { color: var(--accent); font-weight: bold; }
+.tm-bars li.mine .tm-track i { background: var(--text); }
 .tm-note { margin: 0 0 12px; font-size: 12px; }
 
 /* Regras: seções que abrem e fecham. */

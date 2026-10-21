@@ -44,6 +44,7 @@ export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   treant: "summon-treant",
   // O Esqueleto Erguido usa a folha do Esqueleto monstro (o brilho de aliado nos pés diferencia).
   skeleton: "monster-skeleton",
+  eagle: "summon-eagle",
 };
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };

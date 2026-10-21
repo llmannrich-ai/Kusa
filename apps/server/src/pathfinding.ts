@@ -14,6 +14,7 @@ const DIRS = [
  * Próximo passo (8 direções, tile a tile) de `from` até um tile a até `range` de `to`
  * com linha de visão. Busca em largura que respeita `isWalkable`, não corta quina de
  * parede na diagonal e desvia de tiles ocupados. Devolve null se não houver caminho.
+ * `walkable` troca o chão que vale (a Águia Gigante voa por cima da água).
  */
 export function nextStep(
   d: Dungeon,
@@ -21,6 +22,7 @@ export function nextStep(
   to: Point,
   range: number,
   occupied: (x: number, y: number) => boolean,
+  walkable: (x: number, y: number) => boolean = (x, y) => isWalkable(d, x, y),
 ): Point | null {
   const key = (x: number, y: number) => y * d.width + x;
   const start = key(from.x, from.y);
@@ -43,8 +45,8 @@ export function nextStep(
       const nx = cx + dx;
       const ny = cy + dy;
       const k = key(nx, ny);
-      if (parent.has(k) || !isWalkable(d, nx, ny) || occupied(nx, ny)) continue;
-      if (dx !== 0 && dy !== 0 && (!isWalkable(d, nx, cy) || !isWalkable(d, cx, ny))) continue;
+      if (parent.has(k) || !walkable(nx, ny) || occupied(nx, ny)) continue;
+      if (dx !== 0 && dy !== 0 && (!walkable(nx, cy) || !walkable(cx, ny))) continue;
       parent.set(k, cur);
       queue.push(k);
     }

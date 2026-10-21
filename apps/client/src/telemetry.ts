@@ -2,7 +2,8 @@ import { BASIC_ATTACKS, CLASSES, MAPS, MAP_IDS, MONSTERS, PERKS, SPELLS, SUMMONS
 import { supabase } from "./auth.ts";
 
 // Configurações > Telemetria: os números de todas as hunts, para qualquer jogador logado.
-// O banco só devolve agregados (função `telemetry_dashboard`): nada de nome ou id de outros jogadores.
+// O banco devolve agregados (função `telemetry_dashboard`) e o ranking por conta, com o nome (`telemetry_ranking`):
+// o jogo é entre amigos e a comparação faz parte da brincadeira.
 
 interface Dashboard {
   totais: {
@@ -21,6 +22,32 @@ interface Dashboard {
   niveis: { nivel: number; hunts: number; segundo_medio: number }[];
   minhas: { hunts: number; sobrevivencia_pct: number | null; bosses: number; melhor_nivel: number | null; loot_total: number; abates: number; classe_favorita: string | null };
 }
+
+/** Uma linha por conta (convidados ficam de fora). */
+interface Player {
+  nome: string; eu: boolean; hunts: number; sobrevivencia_pct: number | null; bosses: number; mortes: number;
+  loot_total: number; abates: number; dano_causado: number; dano_recebido: number; cura: number;
+  melhor_nivel: number | null; minutos: number; classe_favorita: string | null;
+}
+
+type Metric = Exclude<keyof Player, "nome" | "eu" | "classe_favorita">;
+
+/** Métricas do ranking: rótulo do chip, formato do valor e o "prêmio" de quem lidera. */
+const METRICS: { key: Metric; label: string; award: string; fmt: (v: number | null) => string }[] = [
+  { key: "hunts", label: "Hunts", award: "🎮 Viciado", fmt: (v) => num(v) },
+  { key: "sobrevivencia_pct", label: "Sobrevivência", award: "🛡️ Imortal", fmt: (v) => pct(v) },
+  { key: "abates", label: "Abates", award: "🗡️ Açougueiro", fmt: (v) => num(v) },
+  { key: "dano_causado", label: "Dano causado", award: "💥 Canhão", fmt: (v) => num(v) },
+  { key: "loot_total", label: "Gold", award: "💰 Mão de vaca", fmt: (v) => num(v) },
+  { key: "bosses", label: "Bosses", award: "🐉 Caçador de boss", fmt: (v) => num(v) },
+  { key: "mortes", label: "Mortes", award: "💀 Mais morreu", fmt: (v) => num(v) },
+  { key: "dano_recebido", label: "Apanhou", award: "🥊 Saco de pancada", fmt: (v) => num(v) },
+  { key: "cura", label: "Cura", award: "💚 Enfermeiro", fmt: (v) => num(v) },
+  { key: "melhor_nivel", label: "Nível", award: "⭐ Maior nível", fmt: (v) => num(v) },
+  { key: "minutos", label: "Minutos", award: "⏳ Sem vida social", fmt: (v) => num(v) },
+];
+
+let metric: Metric = "hunts";
 
 /** Filtros da tela; a escolha fica só enquanto o jogo está aberto. */
 const filters: { map: string | null; days: number | null } = { map: null, days: 30 };
@@ -92,14 +119,60 @@ let requestId = 0;
 async function load(body: HTMLElement) {
   const id = ++requestId;
   body.replaceChildren(el("p", "muted tm-status", "Carregando…"));
-  const { data, error } = await supabase.rpc("telemetry_dashboard", { p_map: filters.map, p_days: filters.days });
+  const args = { p_map: filters.map, p_days: filters.days };
+  const [dash, rank] = await Promise.all([
+    supabase.rpc("telemetry_dashboard", args),
+    supabase.rpc("telemetry_ranking", args),
+  ]);
   // Trocou o filtro antes de chegar: vale só a resposta mais nova.
   if (id !== requestId) return;
-  if (error || !data) {
+  if (dash.error || !dash.data) {
     body.replaceChildren(el("p", "error tm-status", "Não foi possível carregar a telemetria. Tente de novo."));
     return;
   }
-  body.replaceChildren(...sections(data as Dashboard));
+  const out = sections(dash.data as Dashboard);
+  // O ranking falhar não esconde o resto: entra logo depois de "Suas hunts".
+  const players = (rank.data ?? []) as Player[];
+  if (players.length) out.splice(1, 0, awards(players), ranking(players));
+  body.replaceChildren(...out);
+}
+
+/** Quem lidera cada métrica (empate: quem tem mais hunts, que é a ordem do banco). */
+function awards(players: Player[]) {
+  const grid = el("dl", "tm-tiles tm-awards");
+  for (const m of METRICS) {
+    const best = players.reduce<Player | null>((a, p) => ((p[m.key] ?? -1) > (a?.[m.key] ?? -1) ? p : a), null);
+    if (!best || !best[m.key]) continue;
+    const tile = el("div", best.eu ? "tm-tile eu" : "tm-tile");
+    tile.append(el("dt", "", m.award), el("dd", "", best.nome), el("small", "muted", `${m.label}: ${m.fmt(best[m.key])}`));
+    grid.append(tile);
+  }
+  return card("🏆 Prêmios da galera", grid);
+}
+
+/** Barras por jogador na métrica escolhida; os chips trocam a métrica sem recarregar. */
+function ranking(players: Player[]) {
+  const wrap = el("div");
+  const list = el("div");
+  const paint = () => {
+    const m = METRICS.find((x) => x.key === metric)!;
+    const sorted = [...players].sort((a, b) => (b[m.key] ?? -1) - (a[m.key] ?? -1));
+    const medals = ["🥇", "🥈", "🥉"];
+    const chart = bars(sorted.map((p, i) => ({
+      label: `${medals[i] ?? `${i + 1}º`} ${p.nome}${p.eu ? " (você)" : ""}`,
+      value: p[m.key] ?? 0,
+      max: m.key === "sobrevivencia_pct" ? 100 : undefined,
+      text: m.fmt(p[m.key]),
+      sub: `${num(p.hunts)} hunts${p.classe_favorita ? ` · joga mais de ${className(p.classe_favorita)}` : ""}`,
+      mine: p.eu,
+    })));
+    list.replaceChildren(chart);
+  };
+  const chips = chipRow("Comparar", METRICS.map((m): [Metric, string] => [m.key, m.label]), () => metric, (v) => { metric = v; paint(); });
+  chips.classList.add("tm-metrics");
+  wrap.append(chips, list);
+  paint();
+  return card("⚔️ Ranking entre amigos", wrap);
 }
 
 function sections(d: Dashboard): HTMLElement[] {
@@ -185,7 +258,7 @@ function sections(d: Dashboard): HTMLElement[] {
   }
 
   out.push(el("p", "muted tm-note",
-    `Números de todos os jogadores, sem nomes. Hunts abandonadas no meio (${num(t.abandonos)}) contam no total, mas não nas taxas. `
+    `Números de todos os jogadores (os rankings mostram só contas; convidados ficam de fora). Hunts abandonadas no meio (${num(t.abandonos)}) contam no total, mas não nas taxas. `
     + "Com poucas hunts os números mudam bastante."));
   return out;
 }
@@ -220,14 +293,14 @@ function tiles(items: [string, string][]) {
   return grid;
 }
 
-interface Bar { label: string; value: number; max?: number; text: string; sub?: string }
+interface Bar { label: string; value: number; max?: number; text: string; sub?: string; mine?: boolean }
 
 /** Barras horizontais com o valor escrito ao lado (toque não tem hover, então o número fica sempre visível). */
 function bars(rows: Bar[]) {
   const list = el("ul", "tm-bars");
   const max = Math.max(1, ...rows.map((r) => r.max ?? r.value));
   for (const r of rows) {
-    const li = el("li");
+    const li = el("li", r.mine ? "mine" : "");
     const head = el("div", "tm-bar-head");
     head.append(el("span", "", r.label), el("strong", "", r.text));
     const track = el("div", "tm-track");
