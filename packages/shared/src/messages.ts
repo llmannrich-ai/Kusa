@@ -111,8 +111,10 @@ export interface RunEndedMessage {
   outcome: RunOutcome;
   loot: number;
   level: number;
-  /** Itens equipados que voltam para o inventário da conta (na morte, todos menos o perdido). */
+  /** Itens equipados que voltam equipados para a conta (na morte, todos menos o perdido). */
   items: string[];
+  /** Itens da bag que vão para o cofre (o que não couber fica na bag). Vazio para quem morre: a bag se perde. */
+  bag: string[];
   /** Equipamento sorteado que ficou no chão na morte. */
   lost?: string;
 }

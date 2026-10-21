@@ -49,17 +49,30 @@ export async function takeLoadout(userId: string): Promise<string[]> {
   return (data ?? []) as string[];
 }
 
+/** A hunt começou: a bag da conta entra na dungeon com o jogador (`take_bag`). */
+export async function takeBag(userId: string): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("take_bag", { p_profile_id: userId });
+  if (error) {
+    console.error("Falha ao retirar a bag da conta", error);
+    return [];
+  }
+  return (data ?? []) as string[];
+}
+
 export interface RunResult {
   userId: string;
   classId: string;
   outcome: RunOutcome;
   level: number;
   loot: number;
-  /** Itens equipados ao sair; voltam para o inventário (na morte, já sem o item perdido). */
+  /** Itens equipados ao sair; voltam equipados para a conta (na morte, já sem o item perdido). */
   items: string[];
+  /** Itens da bag ao sair; vão para o cofre de quem sai vivo (o que não couber fica na bag). */
+  bag: string[];
 }
 
-/** Grava o resultado da hunt e credita o gold (função `finish_run` no banco). */
+/** Grava o resultado da hunt, credita o gold e devolve equipamento e bag (`finish_run` e `store_bag` no banco). */
 export async function recordRun(matchId: string, result: RunResult) {
   if (!supabase) return;
   const { error } = await supabase.rpc("finish_run", {
@@ -71,5 +84,12 @@ export async function recordRun(matchId: string, result: RunResult) {
     p_loot: result.loot,
     p_items: result.items,
   });
-  if (error) console.error("Falha ao salvar resultado da hunt", error);
+  if (error) {
+    console.error("Falha ao salvar resultado da hunt", error);
+    return;
+  }
+  // A bag de quem sai vivo vai para o cofre (o que não couber fica na bag).
+  if (result.bag.length === 0) return;
+  const { error: bagError } = await supabase.rpc("store_bag", { p_profile_id: result.userId, p_bag: result.bag });
+  if (bagError) console.error("Falha ao guardar a bag no cofre", bagError);
 }

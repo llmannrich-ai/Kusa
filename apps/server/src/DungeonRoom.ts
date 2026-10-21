@@ -3,6 +3,7 @@ import { Room, ServerError, type Client } from "colyseus";
 import {
   AIM_SNAP_TILES,
   BASIC_ATTACKS,
+  BAG_SIZE,
   BOSS_LOOT_BONUS,
   CHEST_LOOT,
   CLASSES,
@@ -50,6 +51,7 @@ import {
   isPerk,
   isPotion,
   isUpgrade,
+  pickupAction,
   isSingleTarget,
   isWalkable,
   knownSpells,
@@ -106,7 +108,7 @@ import {
 } from "@kusa/shared";
 import { nextStep } from "./pathfinding.ts";
 import { Chest, DungeonState, GroundItem, Monster, Player, Summon } from "./state.ts";
-import { recordRun, resolveAccount, takeLoadout, type Account } from "./supabase.ts";
+import { recordRun, resolveAccount, takeBag, takeLoadout, type Account } from "./supabase.ts";
 import { bump, newRunStats, recordTelemetry, type RunStats } from "./telemetry.ts";
 
 /** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
@@ -140,6 +142,8 @@ interface Seat {
   perkBonus: PerkBonuses;
   /** Áureas + melhorias: o que `statsFor` usa para vida, mana, dano e velocidade. */
   bonus: Bonuses;
+  /** Até quando não repete o aviso de bag cheia. */
+  bagFullNoticeUntil: number;
   /** Números da hunt para a telemetria. */
   stats: RunStats;
 }
@@ -189,6 +193,8 @@ const MANA_REGEN = 0.02;
 const SAFE_RADIUS = 6;
 /** Item no chão que ninguém pegou some depois deste tempo. */
 const ITEM_LIFETIME_MS = 120_000;
+/** Intervalo mínimo entre dois avisos de bag cheia para o mesmo jogador. */
+const BAG_FULL_NOTICE_MS = 3000;
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
 const START_LEVEL = Math.min(MAX_LEVEL, Math.max(1, Number(process.env.KUSA_START_LEVEL) || 1));
 /** Só para testes: KUSA_ALL_SPELLS=1 dá a todo mundo o Grimório inteiro da classe no nível máximo. */
@@ -273,7 +279,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0,
-      aura: bonus, perks: {}, perkBonus: perkBonuses({}), bonus, stats: newRunStats(),
+      aura: bonus, perks: {}, perkBonus: perkBonuses({}), bonus, bagFullNoticeUntil: 0, stats: newRunStats(),
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -397,7 +403,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.timeLeft = this.map.durationSeconds;
     this.lock();
     this.state.players.forEach((p, sessionId) => this.trackDepth(sessionId, p));
-    // O equipamento escolhido no menu sai do inventário e entra na dungeon (chega logo depois do início).
+    // O equipamento escolhido no menu e a bag saem da conta e entram na dungeon (chegam logo depois do início).
     this.seats.forEach((seat, sessionId) => {
       if (!seat.userId) return;
       void takeLoadout(seat.userId).then((items) => {
@@ -406,6 +412,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         seat.stats.items.loadout = items;
         const best = bestPerSlot(items);
         for (const slot of ITEM_SLOTS) if (isUpgrade(best[slot], p[slot])) p[slot] = best[slot];
+      });
+      void takeBag(seat.userId).then((items) => {
+        const p = this.state.players.get(sessionId);
+        if (!p || p.status !== "playing") return;
+        seat.stats.items.bag = items;
+        // Pode passar de BAG_SIZE se o equipamento não coube no slot ao voltar (raro): nada se perde.
+        p.bag.push(...items);
       });
     });
   }
@@ -1210,9 +1223,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   /**
-   * Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão
-   * para quem quiser. Item pior fica onde está (qualquer jogador pode pegar, não há dono).
-   * Poções vão para a mochila até o limite de cada tipo.
+   * Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag.
+   * Os outros itens vão para a bag. Com a bag cheia, nada sai do chão (o item trocado também fica
+   * no chão) e qualquer jogador pode pegar, não há dono. Poções vão para a mochila até o limite de cada tipo.
    */
   private pickUpItems() {
     this.state.players.forEach((p, sessionId) => {
@@ -1234,14 +1247,27 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
           continue;
         }
         const def = ITEMS[ground.itemId];
-        if (!def || !isUpgrade(def.id, p[def.slot])) continue;
-        const old = p[def.slot];
-        p[def.slot] = def.id;
-        this.seats.get(sessionId)?.stats.items.picked.push(def.id);
+        if (!def) continue;
+        const seat = this.seats.get(sessionId);
+        const action = pickupAction(def.id, p[def.slot], p.bag.length);
+        if (action === "full") {
+          const now = this.clock.currentTime;
+          if (seat && now >= seat.bagFullNoticeUntil) {
+            seat.bagFullNoticeUntil = now + BAG_FULL_NOTICE_MS;
+            seat.stats.items.bagFull++;
+            this.notice(p.x, p.y - 1, "Bag cheia", 0xe74c3c);
+          }
+          continue;
+        }
+        if (action === "bag") p.bag.push(def.id);
+        else {
+          if (action === "swap") p.bag.push(p[def.slot]);
+          p[def.slot] = def.id;
+        }
+        seat?.stats.items.picked.push(def.id);
         this.state.items.delete(ground.id);
         this.itemExpiresAt.delete(ground.id);
-        if (old) this.dropItem(old, p.x, p.y);
-        this.notice(p.x, p.y - 1, def.name, TIER_COLORS[def.tier]);
+        this.notice(p.x, p.y - 1, action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}` : def.name, TIER_COLORS[def.tier]);
       }
     });
   }
@@ -1264,9 +1290,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
-    // Quem morre (ou fica soterrado) perde 1 equipamento sorteado e as poções: caem no chão e os outros
-    // podem saquear. O resto do equipamento volta para o inventário da conta.
-    // TODO: quando a bag existir, ela também cai inteira aqui.
+    // Quem morre (ou fica soterrado) perde 1 equipamento sorteado, a bag inteira e as poções: caem no chão e
+    // os outros podem saquear. O resto do equipamento volta para a conta.
     const seat = this.seats.get(sessionId);
     let lost: string | undefined;
     if (!survived) {
@@ -1278,11 +1303,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         // O corpo fica sem o que largou (o equipamento aparece no personagem).
         player[slot] = "";
       }
-      if (seat) seat.stats.items.lost = lost ? [lost] : [];
+      for (const id of player.bag) this.dropItem(id, player.x, player.y);
+      if (seat) seat.stats.items.lost = [...(lost ? [lost] : []), ...player.bag];
       for (const potion of POTION_IDS) {
         for (let i = 0; i < player[POTION_FIELD[potion]]; i++) this.dropItem(potion, player.x, player.y);
       }
     }
+    const bag = survived ? [...player.bag] : [];
+    player.bag.clear();
     // Poções não saem da dungeon.
     player.healthPotions = player.manaPotions = 0;
     player.status = outcome;
@@ -1290,14 +1318,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.barrier = 0;
     this.state.summons.forEach((s) => { if (s.owner === sessionId) this.removeSummon(s.id); });
 
-    // O equipamento que sobrou no corpo vai para o inventário da conta.
+    // O equipamento que sobrou no corpo volta equipado para a conta; a bag de quem sai vivo vai para o cofre.
     const items = equipment(player).filter(Boolean);
-    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, lost };
+    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost };
     this.clients.getById(sessionId)?.send(MSG.runEnded, result);
 
     const userId = seat?.userId;
     if (userId) {
-      void recordRun(this.matchId, { userId, classId: player.classId, outcome, level: player.level, loot: player.loot, items });
+      void recordRun(this.matchId, { userId, classId: player.classId, outcome, level: player.level, loot: player.loot, items, bag });
     }
     if (seat) {
       void recordTelemetry({

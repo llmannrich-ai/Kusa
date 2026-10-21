@@ -1,12 +1,29 @@
 /**
  * Teste de fumaça dos itens contra um servidor rodando (npm run dev:server):
  * um cavaleiro mata monstros comuns até algum dropar um item, anda por cima dele
- * e confere que o item foi equipado automaticamente (o slot estava vazio).
+ * e confere que o item foi equipado automaticamente (o slot estava vazio) e que a bag continuou vazia.
+ * Antes, confere as regras da bag (`pickupAction`) sem servidor.
  * Uso: npx tsx apps/server/scripts/items.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { ITEMS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance, type MonsterKind } from "@kusa/shared";
+import { BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, generateDungeon, pickupAction, tileDistance, type MonsterKind } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
+
+// Regras da bag: slot vazio equipa, melhor troca (o antigo vai para a bag), pior vai para a bag,
+// e com a bag cheia nada sai do chão (só um slot vazio ainda recebe).
+const rules: [string, string, number, string][] = [
+  ["weapon-2", "", 0, "equip"],
+  ["weapon-2", "", BAG_SIZE, "equip"],
+  ["weapon-3", "weapon-2", 0, "swap"],
+  ["weapon-3", "weapon-2", BAG_SIZE, "full"],
+  ["weapon-1", "weapon-2", BAG_SIZE - 1, "bag"],
+  ["weapon-2", "weapon-2", BAG_SIZE, "full"],
+];
+for (const [item, equipped, bag, expected] of rules) {
+  const got = pickupAction(item, equipped, bag);
+  if (got !== expected) throw new Error(`pickupAction(${item}, "${equipped}", ${bag}) = ${got}, esperado ${expected}`);
+}
+console.log("regras da bag: ok");
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
@@ -64,6 +81,7 @@ while (me()[def.slot] !== def.id) {
   await wait(100);
 }
 if (room.state.items.has(ground.id)) throw new Error("o item continua no chão depois de equipado");
+if (me().bag.length !== 0) throw new Error(`a bag devia estar vazia: ${[...me().bag].join(", ")}`);
 console.log(`equipado: ${me()[def.slot]}`);
 console.log("ITEMS OK");
 process.exit(0);

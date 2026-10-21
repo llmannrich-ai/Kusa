@@ -1,17 +1,19 @@
 import type { TalentRanks } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
-// Dados do menu: árvore de magias, inventário e gold. O navegador só lê as tabelas;
+// Dados do menu: árvore de magias, itens (equipamento, cofre e bag) e gold. O navegador só lê as tabelas;
 // toda compra, venda e troca de equipamento é uma função security definer no banco.
 
-/** Item guardado no inventário da conta. */
+/** Item da conta: equipado, no cofre ou na bag. */
 export interface OwnedItem {
   /** Id da linha (cada cópia do item é uma linha). */
   id: string;
   /** Chave de `ITEMS` em `@kusa/shared`. */
   itemId: string;
-  /** Vai para a próxima hunt. */
+  /** Vai para a próxima hunt vestido (não ocupa o cofre). */
   equipped: boolean;
+  /** Cofre (até `VAULT_SIZE`, só no menu) ou bag (até `BAG_SIZE`, entra na hunt e se perde ao morrer). */
+  location: "vault" | "bag";
   source: "hunt" | "market";
 }
 
@@ -31,13 +33,13 @@ export async function loadProfile(): Promise<Profile> {
   const [profile, talents, items] = await Promise.all([
     supabase.from("profiles").select("gold").eq("id", uid).single(),
     supabase.from("profile_talents").select("talent_id, rank"),
-    supabase.from("profile_items").select("id, item_id, equipped, source").order("acquired_at", { ascending: false }),
+    supabase.from("profile_items").select("id, item_id, equipped, source, location").order("acquired_at", { ascending: false }),
   ]);
   if (!profile.data || !talents.data || !items.data) throw new ProfileError("Não foi possível carregar a conta.");
   return {
     gold: profile.data.gold,
     talents: Object.fromEntries(talents.data.map((t) => [t.talent_id, t.rank])),
-    items: items.data.map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, source: i.source })),
+    items: items.data.map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, source: i.source, location: i.location })),
   };
 }
 
@@ -56,13 +58,18 @@ export function sellItem(id: string): Promise<number> {
   return call("sell_item", { p_item: id });
 }
 
-/** Equipa (o que estava no mesmo slot sai) ou desequipa um item para a próxima hunt. */
+/** Equipa um item do cofre (o que estava no mesmo slot volta para o cofre) ou desequipa um item para a próxima hunt. */
 export async function equipItem(id: string, equipped: boolean): Promise<void> {
   await call("equip_item", { p_item: id, p_equipped: equipped });
 }
 
+/** Tira um item da bag e guarda no cofre. */
+export async function storeItem(id: string): Promise<void> {
+  await call("store_item", { p_item: id });
+}
+
 /** Mensagens do banco (`raise exception`) que já servem para o jogador. */
-const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "item fora de venda", "item não está no inventário"];
+const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "item fora de venda", "item não está no inventário", "cofre cheio", "item está na bag", "item não está na bag"];
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);
