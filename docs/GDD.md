@@ -185,23 +185,23 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 
 ### Melhorias de nível
 
-Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **duas cartas** no alto da tela e o jogador
-toca numa. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
+Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **dois ícones pequenos** logo acima do
+personagem (acompanhando ele) e o jogador toca num. Só o ícone aparece; nome e efeito ficam no rótulo acessível. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
 até o fim da hunt e soma por cima das áureas do Grimório. Subiu vários níveis de uma vez: as escolhas entram na fila,
 uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas, e a de magia tem
 prioridade: uma melhoria ainda pendente de um nível anterior sai da tela quando o slot abre e só volta depois que a
-magia for escolhida (ou a janela fechada). O título da carta mostra o nível que deu a melhoria, nunca o 3 ou o 6.
+magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que deu a melhoria, nunca o 3 ou o 6.
 
 | Melhoria | Cada escolha | Limite |
 |---|---|---|
 | ❤️ Vigor | +12% de vida máxima | 5 |
 | 💧 Reserva arcana | +15% de mana máxima | 4 |
-| 💗 Regeneração | +1% de vida por segundo (base 2%) | 3 |
+| 🌿 Regeneração | +1% de vida por segundo (base 2%) | 3 |
 | 🔷 Clareza | +1,5% de mana por segundo (base 2%) | 3 |
 | ⚔️ Força | +10% de dano (básico, magias e criaturas) | 5 |
 | 👟 Agilidade | +6% de velocidade de movimento | 3 |
 | 🛡️ Escudo | +3 de armadura (soma com o equipamento) | 4 |
-| 🗡️ Fúria | ataque básico 10% mais rápido | 3 |
+| ⚡ Fúria | ataque básico 10% mais rápido | 3 |
 | ⏳ Foco | recarga das magias 10% menor | 3 |
 | 🩸 Sede de sangue | cura 4% do dano que o herói causa | 3 |
 
