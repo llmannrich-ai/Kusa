@@ -30,6 +30,7 @@ import {
   type CooldownMessage,
   type DotKind,
   type SpellDef,
+  type SpellId,
   type SpellMessage,
   type SummonKind,
 } from "@kusa/shared";
@@ -95,6 +96,9 @@ const COLORS = {
 };
 
 /** Cor dos números do veneno e da queimadura (e das bolhas no herói). */
+/** Magias com bônus em si (`selfBuff`): cada uma tem sua aura no herói. */
+const SELF_BUFFS = (Object.keys(SPELLS) as SpellId[]).filter((id) => SPELLS[id].selfBuff);
+
 const DOT_COLORS: Record<DotKind, number> = { poison: 0x9acd32, burn: 0xff9f43, bleed: 0xc0392b };
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
@@ -614,6 +618,24 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: fx.crest, x: { from: -11, to: -9 }, duration: 80, ease: "Quad.Out" });
   }
 
+  /** Marca do Caçador: uma mira vermelha girando sobre o monstro. */
+  private markAt(top: number) {
+    const g = this.add.graphics().setPosition(0, top);
+    g.lineStyle(2, 0xe74c3c, 0.95).strokeCircle(0, 0, 6);
+    g.fillStyle(0xe74c3c, 0.95).fillRect(-1, -10, 2, 5).fillRect(-1, 5, 2, 5).fillRect(-10, -1, 5, 2).fillRect(5, -1, 5, 2);
+    this.tweens.add({ targets: g, angle: 360, duration: 2400, repeat: -1 });
+    return g;
+  }
+
+  /** Bônus em si (Postura do Atirador, Aljava Veloz): um anel na cor da magia pulsando nos pés do herói. */
+  private buffAura(color: number) {
+    const g = this.add.graphics();
+    g.lineStyle(2, color, 0.9).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE + 2, 13);
+    g.lineStyle(1, 0xffffff, 0.5).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE - 6, 9);
+    this.tweens.add({ targets: g, alpha: { from: 1, to: 0.35 }, duration: 450, yoyo: true, repeat: -1 });
+    return g;
+  }
+
   /** Lento: uma crosta de gelo azul nos pés, piscando devagar. */
   private frostAt() {
     const g = this.add.graphics();
@@ -765,6 +787,8 @@ export class DungeonScene extends Phaser.Scene {
     const alive = player.status === "playing";
     this.setStatus(unit, "poison", alive && player.dot === "poison", () => this.dotAura(unit.barY + 2, DOT_COLORS.poison));
     this.setStatus(unit, "burn", alive && player.dot === "burn", () => this.dotAura(unit.barY + 2, DOT_COLORS.burn));
+    // Uma aura por magia de bônus em si, na cor dela.
+    for (const id of SELF_BUFFS) this.setStatus(unit, `buff:${id}`, alive && player.buff === id, () => this.buffAura(SPELLS[id].color));
     this.setStatus(unit, "slow", alive && player.slowed, () => this.mudAtFeet());
     this.syncBarrier(unit, player.status === "playing" ? player.barrier : 0, player.maxBarrier);
     this.moveTo(unit, player.x, player.y);
@@ -794,6 +818,7 @@ export class DungeonScene extends Phaser.Scene {
     this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
     this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
     this.setStatus(unit, "slow", monster.slowed, () => this.frostAt());
+    this.setStatus(unit, "mark", monster.marked, () => this.markAt(unit.barY - 14));
     for (const kind of DOT_KINDS) this.setStatus(unit, `dot:${kind}`, monster.dot === kind, () => this.dotAt(kind));
     this.moveTo(unit, monster.x, monster.y);
   }

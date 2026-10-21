@@ -53,6 +53,8 @@ export class Player extends Schema {
   @type("string") dot = "";
   /** Mais lento por uma habilidade de monstro (Pisão Sísmico, Lodo Sufocante). */
   @type("boolean") slowed = false;
+  /** Magia de bônus em si ativa agora (Postura do Atirador, Aljava Veloz), para o desenho; vazio = nenhuma. */
+  @type("string") buff = "";
 }
 
 export class Monster extends Schema {
@@ -71,6 +73,8 @@ export class Monster extends Schema {
   @type("boolean") slowed = false;
   /** Dano contínuo ativo ("poison", "burn" ou "bleed"; vazio = nenhum), só para o desenho. */
   @type("string") dot = "";
+  /** Marcado (Marca do Caçador): recebe mais dano de toda a equipe. */
+  @type("boolean") marked = false;
 }
 
 /** Criatura aliada invocada por um jogador (lobo, urso, vespa...). */
