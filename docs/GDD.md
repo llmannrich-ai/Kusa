@@ -55,7 +55,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
   magias dele (o banco recusa a compra em `buy_talent`). No menu, o ramo aparece com ✦; tocar no nome ou no nó ✦
   abre o ramo em foco, com os dois lados lado a lado. A ficha do Traço avisa que a escolha é permanente e pede um
   segundo toque para confirmar. Catálogo em `packages/shared/src/traits.ts` e `talents.ts`.
-  - **Paladino, ramo Mira** (o único especializado por enquanto):
+  - **Paladino** (a primeira classe com os 3 ramos especializados). Ramo **Mira**:
 
     | Lado | Traço | Magia slot 1 | Magia slot 2 |
     |---|---|---|---|
@@ -65,6 +65,23 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
   - Maestrias: Marca do Caçador marca também quem está colado no alvo; Postura do Atirador não deixa lento; Rolamento
     salta 5 tiles e dá escudo de 15% por 3 s; Aljava Veloz soma +30% de dano no básico.
   - Na hunt, o monstro marcado ganha uma mira vermelha girando, e o herói com Postura ou Aljava fica com um anel na cor da magia.
+  - Ramos **Luz** e **Batedor** do Paladino (o Paladino não cura: a cura é do Druida; o Guardião da Luz protege):
+
+    | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
+    |---|---|---|---|---|
+    | Luz | **Cruzado** | ✝️ Flechas Consagradas: básico +30% em mortos-vivos e queima o alvo por 2 s | 🔱 Lança Etérea: 1,6×, recarga de 2,5 s, +50% em mortos-vivos | 🌞 Caldeira Divina: raio 3 em volta de si, 2,2×, dobro em mortos-vivos |
+    | Luz | **Guardião da Luz** | 😇 Aura Sagrada: você e os aliados a até 3 tiles recebem 10% menos dano | 🔆 Escudo da Luz: escudo de 30% num aliado mirado (no toque rápido, o mais ferido ao alcance, você incluído) | ⛪ Solo Consagrado: campo de raio 2 por 8 s, fere os monstros dentro (0,35× por segundo) e dá +5 de armadura aos aliados |
+    | Batedor | **Artilheiro** | 🧨 Pólvora: suas magias de área deixam o chão em chamas por 3 s | ⚡ Flecha Relâmpago: 1,5× e salta para mais 3 monstros | 🎇 Barragem: leque de 90° e 5 tiles à sua frente, 2× |
+    | Batedor | **Armadilheiro** | ⚙️ Engenhoso: armadilhas e estacas duram o dobro, e cabem 3 de cada | 🪤 Armadilha de Urso: fica no chão por 20 s; o primeiro monstro que pisar fica preso 3 s e sangra | 🎋 Cordão de Flechas: estaca por 12 s que atira 4 vezes nos monstros a até 3 tiles |
+
+  - Maestrias: Lança Etérea atravessa a reta; Caldeira ofusca 1 s; Escudo da Luz dura o dobro; Solo Consagrado em raio 3;
+    Flecha Relâmpago salta 5 vezes; Barragem faz sangrar; Armadilha prende quem está colado; Cordão atira 7 vezes.
+  - **Mortos-vivos:** Esqueleto (Cripta) e Afogado (Pântano) (`undead` em `monsters.ts`).
+  - **Campos no chão** (`state.fields`): a zona brilha nos tiles do raio (laranja no chão em chamas), a armadilha aparece
+    como mandíbulas de ferro e a estaca como um poste com o alcance em volta. Conjurar de novo troca o campo mais antigo
+    da mesma magia. A estaca e a armadilha atiram e disparam sozinhas; o dano conta para quem as pôs.
+  - **Mira em aliado** (Escudo da Luz): arrastando, o herói a até 1 tile do ponto (círculo azul nos pés); parado no
+    botão, o mais ferido ao alcance. **Mira em leque** (Barragem): a mira acende os tiles do leque.
 - Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade (1.200 e 1.600 nas magias das
   especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
@@ -73,7 +90,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 | Classe | Ramo 1 | Ramo 2 | Ramo 3 |
 |---|---|---|---|
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante |
-| Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva |
+| Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza |
 

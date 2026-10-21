@@ -108,6 +108,23 @@ export class GroundItem extends Schema {
   @type("number") y = 0;
 }
 
+/** Campo no chão criado por uma magia (Solo Consagrado, armadilha, estaca, chão em chamas da Pólvora). */
+export class Field extends Schema {
+  @type("string") id = "";
+  /** "zone", "trap" ou "turret" (ver `SpellDef.field`). */
+  @type("string") kind = "zone";
+  /** Magia que criou o campo (cor e desenho). */
+  @type("string") spellId = "";
+  /** "fire" para o chão em chamas da Pólvora; vazio = o desenho da magia. */
+  @type("string") style = "";
+  /** sessionId de quem criou. */
+  @type("string") owner = "";
+  @type("number") x = 0;
+  @type("number") y = 0;
+  /** Raio da zona ou da armadilha; alcance da estaca. */
+  @type("number") radius = 0;
+}
+
 export class DungeonState extends Schema {
   @type("string") phase = "lobby";
   /** Mapa da hunt (id de `MAPS` em `@kusa/shared`), escolhido por quem criou a sala. */
@@ -122,6 +139,7 @@ export class DungeonState extends Schema {
   @type({ map: Chest }) chests = new MapSchema<Chest>();
   @type({ map: GroundItem }) items = new MapSchema<GroundItem>();
   @type({ map: Summon }) summons = new MapSchema<Summon>();
+  @type({ map: Field }) fields = new MapSchema<Field>();
   /** Boss morto: o portal de conclusão fica aberto no centro da sala do boss. */
   @type("boolean") bossDefeated = false;
 }

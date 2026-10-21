@@ -8,6 +8,7 @@ import {
   DOT_KINDS,
   SPELLS,
   lineTiles,
+  coneTiles,
   SUMMONS,
   TIER_COLORS,
   TILE_SIZE,
@@ -49,7 +50,7 @@ import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { loadSettings } from "./settings.ts";
-import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
+import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
 import { ART_SCALE, CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
@@ -158,6 +159,8 @@ export class DungeonScene extends Phaser.Scene {
   private avatars = new Map<string, Unit>();
   private monsters = new Map<string, Unit>();
   private summons = new Map<string, Unit>();
+  /** Campos no chão (Solo Consagrado, chão em chamas, armadilhas, estacas). */
+  private fields = new Map<string, Phaser.GameObjects.Container>();
   private chests = new Map<string, Phaser.GameObjects.Image>();
   private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
@@ -229,6 +232,12 @@ export class DungeonScene extends Phaser.Scene {
     callbacks.onAdd("summons", (summon: SummonView, id: string) => {
       this.addSummon(id, summon);
       callbacks.onChange(summon, () => this.syncSummon(id, summon));
+    });
+    callbacks.onAdd("fields", (field: FieldView, id: string) => this.addField(id, field));
+    callbacks.onRemove("fields", (_field: FieldView, id: string) => {
+      const view = this.fields.get(id);
+      this.fields.delete(id);
+      if (view) this.tweens.add({ targets: view, alpha: 0, duration: 250, onComplete: () => view.destroy() });
     });
     callbacks.onRemove("summons", (_summon: SummonView, id: string) => {
       // A criatura some quando morre ou quando o tempo dela acaba: some num brilho, sem sangue.
@@ -402,7 +411,8 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms, spell.radius);
     if (spell.shape === "line") this.showLine(spell, msg);
-    else if (spell.radius > 0) this.showArea(spell, msg);
+    else if (spell.shape === "cone") this.showCone(spell, msg);
+    else if (spell.radius > 0 && !spell.field) this.showArea(spell, msg);
     if (spell.heal) {
       this.room.state.players.forEach((p, id) => {
         if (p.status !== "playing" || tileDistance(msg.x, msg.y, p.x, p.y) > spell.radius) return;
@@ -428,6 +438,53 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
     this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
+  }
+
+  /** Magia em cone: acende o leque (a mesma conta do servidor), do herói para fora. */
+  private showCone(spell: SpellDef, msg: SpellMessage) {
+    const tiles = coneTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
+    this.fx.area(tiles.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: tileDistance(msg.x, msg.y, t.x, t.y) })), spell.color, 0);
+  }
+
+  /**
+   * Campo no chão. Zona: os tiles do raio (com linha de visão do centro) brilham na cor da magia, ou em laranja
+   * no chão em chamas da Pólvora. Armadilha: mandíbulas de ferro no tile. Estaca: um poste com o alcance em volta.
+   */
+  private addField(id: string, field: FieldView) {
+    const spell = SPELLS[field.spellId as SpellId];
+    const color = field.style === "fire" ? 0xff7f27 : spell?.color ?? 0xffffff;
+    const view = this.add.container(this.toPx(field.x), this.toPx(field.y)).setDepth(field.y * TILE_SIZE - 1);
+    const g = this.add.graphics();
+    const half = TILE_SIZE / 2;
+    if (field.kind === "zone") {
+      for (let y = field.y - field.radius; y <= field.y + field.radius; y++) {
+        for (let x = field.x - field.radius; x <= field.x + field.radius; x++) {
+          if (blocksSight(this.dungeon, x, y) || !hasLineOfSight(this.dungeon, field.x, field.y, x, y)) continue;
+          const px = (x - field.x) * TILE_SIZE;
+          const py = (y - field.y) * TILE_SIZE;
+          // Cada tile do campo com preenchimento e borda: o contorno segue as paredes em vez de atravessá-las.
+          g.fillStyle(color, 0.3).fillRect(px - half + 1, py - half + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+          g.lineStyle(1, color, 0.75).strokeRect(px - half + 2, py - half + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        }
+      }
+      this.tweens.add({ targets: g, alpha: { from: 1, to: 0.55 }, duration: field.style === "fire" ? 180 : 700, yoyo: true, repeat: -1 });
+    } else if (field.kind === "trap") {
+      // Mandíbulas abertas: arco de dentes de ferro.
+      g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);
+      for (let i = -3; i <= 3; i++) g.fillStyle(0xbdc3c7, 1).fillTriangle(i * 3 - 1, 4, i * 3 + 1, 4, i * 3, -1);
+      g.fillStyle(0x7f8c8d, 1).fillCircle(0, 6, 2);
+    } else {
+      // Estaca com flechas e o alcance tracejado.
+      const reach = (field.radius + 0.5) * TILE_SIZE;
+      g.lineStyle(1, color, 0.45).strokeCircle(0, 0, reach);
+      g.fillStyle(0x6b4426, 1).fillRect(-2, -14, 4, 22);
+      g.fillStyle(color, 1).fillTriangle(-6, -14, 6, -14, 0, -22);
+      for (const dx of [-4, 4]) g.lineStyle(1, 0xdcdde1, 1).lineBetween(dx, -10, dx * 2, -18);
+    }
+    view.add(g);
+    view.setScale(0.6).setAlpha(0);
+    this.tweens.add({ targets: view, scale: 1, alpha: 1, duration: 220, ease: "Back.Out" });
+    this.fields.set(id, view);
   }
 
   /** Magia em linha: acende os tiles atravessados (a mesma conta do servidor), do herói para a ponta, no ritmo da flecha. */

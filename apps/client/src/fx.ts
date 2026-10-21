@@ -121,6 +121,34 @@ export class CombatFx {
       case "swift_quiver":
         this.ring(from, TILE_SIZE * 0.9, 0x9be15d, 500, 3);
         return this.later(120, () => this.ring(from, TILE_SIZE * 0.6, 0xffffff, 400, 2));
+      // Especializações do Paladino (ramos Luz e Batedor).
+      case "holy_spear":
+        this.projectile(FX.holyArrow, from, to, ms, { trail: 0xfff6c8, glow: 0xfff6c8, impact: 0xffffff, scale: 1.3 });
+        return this.later(ms, () => this.holyFlash(to));
+      case "divine_caldera":
+        this.ring(from, radius, 0xf7d774, 550, 6);
+        return this.later(120, () => this.ring(from, radius * 0.6, 0xffffff, 400, 3));
+      case "light_shield":
+        this.drain(from, to, 0x7fc8ff);
+        return this.later(200, () => this.shieldRaise(to));
+      case "consecrated_ground":
+        this.beam(to, 0xfff6c8);
+        return this.later(120, () => this.ring(to, radius, 0xfff6c8, 500, 4));
+      case "lightning_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff, scale: 1.3 });
+        return this.later(ms, () => this.sparks(to, 0x9ec5ff, 8));
+      case "barrage":
+        // O leque acende pelo `showCone` (DungeonScene); aqui saem algumas flechas na direção do tiro.
+        for (let i = 0; i < 5; i++) {
+          const spread = { x: to.x + Phaser.Math.Between(-24, 24), y: to.y + Phaser.Math.Between(-24, 24) };
+          this.later(i * 40, () => this.projectile(FX.arrow, from, spread, 220, { trail: 0xe67e22, glow: 0xe67e22 }));
+        }
+        return;
+      // Armadilha e estaca: ao lançar, o objeto aparece pelo estado (campo); o disparo chega como eco.
+      case "bear_trap":
+        return this.sparks(to, 0xbdc3c7, from.x === to.x && from.y === to.y ? 12 : 4);
+      case "arrow_cordon":
+        return from.x === to.x && from.y === to.y ? undefined : this.projectile(FX.arrow, from, to, ms, { trail: 0xc8a165, glow: 0xc8a165 });
       // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
       case "spirit_wolf":
       case "healing_moth":
