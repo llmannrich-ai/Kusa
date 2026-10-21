@@ -12,3 +12,4 @@ export * from "./account.ts";
 export * from "./talents.ts";
 export * from "./potions.ts";
 export * from "./summons.ts";
+export * from "./perks.ts";

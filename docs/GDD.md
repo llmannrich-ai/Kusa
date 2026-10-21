@@ -96,11 +96,38 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 - O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
-- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 8.
+- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 8;
+  os outros níveis dão uma melhoria à escolha (ver "Melhorias de nível").
 - A dungeon é semi-linear: monstros fracos na entrada, ficando mais fortes conforme a equipe se aprofunda.
 - Baús no meio da dungeon trazem itens ou upgrades aleatórios poderosos, possivelmente ao matar mini-bosses.
 - No centro fica o boss final do tipo de mapa.
 - Objetivo: sair com o máximo de loot, que vira gold para os upgrades permanentes.
+
+### Melhorias de nível
+
+Todo nível que não abre slot de magia (2, 4, 5, 6, 7, 9 em diante) mostra **duas cartas** no alto da tela e o jogador
+toca numa. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
+até o fim da hunt e soma por cima das áureas do Grimório. Subiu vários níveis de uma vez: as escolhas entram na fila,
+uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas.
+
+| Melhoria | Cada escolha | Limite |
+|---|---|---|
+| ❤️ Vigor | +12% de vida máxima | 5 |
+| 💧 Reserva arcana | +15% de mana máxima | 4 |
+| 💗 Regeneração | +1% de vida por segundo (base 2%) | 3 |
+| 🔷 Clareza | +1,5% de mana por segundo (base 2%) | 3 |
+| ⚔️ Força | +10% de dano (básico, magias e criaturas) | 5 |
+| 👟 Agilidade | +6% de velocidade de movimento | 3 |
+| 🛡️ Escudo | +3 de armadura (soma com o equipamento) | 4 |
+| 🗡️ Fúria | ataque básico 10% mais rápido | 3 |
+| ⏳ Foco | recarga das magias 10% menor | 3 |
+| 🩸 Sede de sangue | cura 4% do dano que o herói causa | 3 |
+
+- Reserva arcana, Clareza e Foco só aparecem do nível 4 em diante (antes do 1º slot de magia não servem para nada).
+- Balanceamento: cada escolha vale perto de +10% de poder num eixo. Numa hunt de 4 min o jogador faz umas 5 escolhas
+  (níveis 2, 4, 5, 6, 7); os limites impedem empilhar um eixo só (ex.: Escudo no máximo = 12 de armadura, 38% de corte).
+- Vida e mana que crescem com Vigor e Reserva arcana entram cheias na hora.
+- Tabela em `packages/shared/src/perks.ts`; janela em `apps/client/src/perkchoice.ts`.
 
 ### Como uma hunt termina
 
