@@ -17,6 +17,8 @@ const client = new Client(url);
 
 /** O bot de nível 1 avança sem descansar e morre em cerca de metade das hunts: aí recomeça numa sala nova. */
 class Died extends Error {}
+/** Matou todos os comuns sem cair poção (azar no sorteio): também recomeça numa sala nova. */
+class NoPotion extends Died {}
 const ATTEMPTS = 5;
 
 let room: any;
@@ -36,7 +38,7 @@ for (let attempt = 1; ; attempt++) {
     break;
   } catch (e) {
     if (!(e instanceof Died) || attempt === ATTEMPTS) throw e;
-    console.log(`tentativa ${attempt}: o cavaleiro morreu caçando; recomeçando`);
+    console.log(`tentativa ${attempt}: ${e instanceof NoPotion ? "acabaram os comuns sem cair poção" : "o cavaleiro morreu caçando"}; recomeçando`);
     await room.leave();
   }
 }
@@ -121,7 +123,7 @@ async function fightCommons(reason: string) {
       const dist = tileDistance(p.x, p.y, m.x, m.y);
       if (dist < bestDist) { bestDist = dist; targetId = id; }
     });
-    if (!targetId) throw new Error("acabaram os monstros comuns");
+    if (!targetId) throw new NoPotion("acabaram os monstros comuns");
     room.send(MSG.target, { id: targetId });
   }
   const m = room.state.monsters.get(targetId);
