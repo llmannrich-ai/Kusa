@@ -26,3 +26,6 @@ export const LOBBY_ROOM_NAME = "lobby";
 
 /** Multiplicador global da velocidade de movimento de jogadores e monstros (1 = valores das tabelas). */
 export const MOVE_SPEED_SCALE = 0.765;
+
+/** Multiplicador extra só dos heróis, sobre o `MOVE_SPEED_SCALE`. */
+export const HERO_SPEED_SCALE = MOVE_SPEED_SCALE * 0.9;
