@@ -1,5 +1,5 @@
 import { ITEMS, type ItemSlot, type ItemTier } from "@kusa/shared";
-import { MATERIALS } from "./items.ts";
+import { itemMaterial } from "./items.ts";
 import type { Grid, Palette } from "./pixels.ts";
 import type { HeroDir } from "./heroes.ts";
 
@@ -7,16 +7,17 @@ import type { HeroDir } from "./heroes.ts";
  * Como cada item aparece vestido no herói (32×32). Cada camada tem letras próprias para não
  * brigar com as cores da classe:
  * armadura x/X/y, capacete c/C/k, escudo u/U/v e arma n/N/j (claro, escuro e detalhe do material).
- * A armadura tem ainda "z", o brilho do material onde a luz bate no tronco.
+ * A armadura tem ainda "z", o brilho do material onde a luz bate no tronco. Calça e botas recolorem as
+ * letras do corpo (l/L da calça; b/t/d da bota), e as vestes arcanas usam tecido (`CLOTH`) em vez de metal.
  */
 
 /** Ids dos itens vestidos por slot ("" = vazio). */
 export type Outfit = Record<ItemSlot, string>;
-export const NO_OUTFIT: Outfit = { weapon: "", helmet: "", armor: "", shield: "" };
+export const NO_OUTFIT: Outfit = { weapon: "", helmet: "", armor: "", legs: "", boots: "", shield: "" };
 
 /** Roupa de quem tem os slots como campos (o jogador sincronizado pelo servidor). */
 export function outfitOf(p: Readonly<Outfit>): Outfit {
-  return { weapon: p.weapon, helmet: p.helmet, armor: p.armor, shield: p.shield };
+  return { weapon: p.weapon, helmet: p.helmet, armor: p.armor, legs: p.legs, boots: p.boots, shield: p.shield };
 }
 
 const LAYER_LETTERS: Record<ItemSlot, [string, string, string]> = {
@@ -24,6 +25,9 @@ const LAYER_LETTERS: Record<ItemSlot, [string, string, string]> = {
   helmet: ["c", "C", "k"],
   shield: ["u", "U", "v"],
   weapon: ["n", "N", "j"],
+  // A calça troca a cor da calça da classe; a bota, a da bota (com o brilho no detalhe).
+  legs: ["l", "L", "l"],
+  boots: ["b", "d", "t"],
 };
 
 /** Paleta das camadas vestidas: o material de cada item nas letras do seu slot. */
@@ -32,12 +36,19 @@ export function outfitPalette(outfit: Outfit): Palette {
   for (const slot of Object.keys(LAYER_LETTERS) as ItemSlot[]) {
     const tier = tierOf(outfit, slot);
     if (!tier) continue;
-    const { m, M, a } = MATERIALS[tier];
+    const { m, M, a } = itemMaterial(outfit[slot]);
     const [light, dark, accent] = LAYER_LETTERS[slot];
-    Object.assign(palette, { [light]: m, [dark]: M, [accent]: a });
+    Object.assign(palette, { [accent]: a, [light]: m, [dark]: M });
     if (slot === "armor") palette.z = lighten(m, 0.35);
+    if (slot === "boots") palette.t = lighten(m, 0.3);
   }
   return palette;
+}
+
+/** Família vestida no slot ("weapon-bow", "armor-arcane"...; "" = vazio). */
+export function familyOf(outfit: Outfit, slot: ItemSlot): string {
+  const item = ITEMS[outfit[slot]];
+  return item?.slot === slot ? item.family : "";
 }
 
 /** Mistura a cor com branco (`amount` de 0 a 1). */
@@ -54,7 +65,7 @@ export function tierOf(outfit: Outfit, slot: ItemSlot): ItemTier | 0 {
 
 /** Chave estável de uma roupa (texturas e cache de retratos). */
 export function outfitKey(outfit: Outfit) {
-  return [outfit.weapon, outfit.helmet, outfit.armor, outfit.shield].map((id) => id || "-").join(".");
+  return [outfit.weapon, outfit.helmet, outfit.armor, outfit.legs, outfit.boots, outfit.shield].map((id) => id || "-").join(".");
 }
 
 // --- Capacetes -----------------------------------------------------------------
@@ -244,8 +255,48 @@ const HELMETS: Record<ItemTier, Record<HeroDir, Grid>> = {
   },
 };
 
-export function helmetHead(tier: ItemTier, dir: HeroDir): Grid {
-  return HELMETS[tier][dir];
+/** Chapéu pontudo das vestes arcanas (o tecido muda de cor por nível). */
+const ARCANE_HAT: Record<HeroDir, Grid> = {
+  down: [
+    "........oo......",
+    ".......ocCo.....",
+    "......occCCo....",
+    ".....okkkkkko...",
+    "..occcccccccCCo.",
+    "...ohssssssho...",
+    "...oseSssSeso...",
+    "....osssssso....",
+    ".....oooooo.....",
+  ],
+  up: [
+    "........oo......",
+    ".......ocCo.....",
+    "......occCCo....",
+    ".....okkkkkko...",
+    "..occcccccccCCo.",
+    "...ohhhhhhhho...",
+    "...oHhhhhhhHo...",
+    "....oHssssHo....",
+    ".....oooooo.....",
+  ],
+  side: [
+    ".......oo.......",
+    "......ocCo......",
+    ".....occCCo.....",
+    "....okkkkkko....",
+    ".occcccccccCCo..",
+    "..osshhhhhho....",
+    "..oseShhhhho....",
+    "...osssshHo.....",
+    "....ooooooo.....",
+  ],
+};
+
+/** Cabeça com o capacete vestido (`id` de `ITEMS`). */
+export function helmetHead(id: string, dir: HeroDir): Grid {
+  const item = ITEMS[id];
+  if (item.family === "helmet-arcane") return ARCANE_HAT[dir];
+  return HELMETS[item.tier][dir];
 }
 
 // --- Armaduras -----------------------------------------------------------------
@@ -278,6 +329,12 @@ export function armorPixel(tier: ItemTier, front: boolean, x: number, y: number,
       if (front && center && y === 1) return "y";
       return (x + (y % 2) * 2) % 4 === 0 ? "X" : "x";
   }
+}
+
+/** Vestes arcanas: a roupa da classe (tronco e saia) vira o tecido, com a barra no detalhe. */
+export function robeCloth(grid: Grid): Grid {
+  const map: Record<string, string> = { p: "x", P: "X", r: "z", q: "y" };
+  return grid.map((row) => [...row].map((ch) => map[ch] ?? ch).join(""));
 }
 
 /** Aplica a armadura no tronco de um corpo. */
@@ -469,6 +526,38 @@ export const KNIGHT_WEAPONS: Record<ItemTier, WeaponArt> = {
     ],
   },
 };
+
+/** Arte da arma do cavaleiro por família e nível: espadas crescem de curta a longa; machados são machados. */
+export function knightWeapon(family: string, tier: ItemTier): WeaponArt {
+  if (family === "weapon-axe") return KNIGHT_WEAPONS[3];
+  return KNIGHT_WEAPONS[({ 1: 2, 2: 2, 3: 4, 4: 4, 5: 5 } as const)[tier]];
+}
+
+/** Besta do paladino (no lugar do arco), em pé na mão. */
+export const CROSSBOW: Grid = [
+  "..o..",
+  ".oWo.",
+  "onnno",
+  "oNWNo",
+  "o.W.o",
+  ".jWj.",
+  "..W..",
+  "..o..",
+];
+
+/** Varinha do feiticeiro e do druida (no lugar do cajado): curta, com a gema no detalhe. */
+export const WAND: Grid = [
+  ".oo.",
+  "ojjo",
+  "ojjo",
+  ".oo.",
+  "onNo",
+  "owWo",
+  "owWo",
+  "owWo",
+  "owWo",
+  ".oo.",
+];
 
 /** Arma da classe com o material da arma equipada: madeira do arco ou da haste vira o material, com anéis no detalhe. */
 export function tintClassWeapon(grid: Grid, kind: "bow" | "staff"): Grid {

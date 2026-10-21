@@ -7,6 +7,9 @@ import {
   DEPTH_SCALING,
   ITEM_BUY_PRICES,
   ITEM_SELL_PRICES,
+  ITEM_RARITIES,
+  RARITY_NAMES,
+  RARITY_SELL,
   MAPS,
   MAP_IDS,
   MAX_PARTY_SIZE,
@@ -140,15 +143,20 @@ export function renderRules(root: HTMLElement) {
 
     section("🎒 Itens, bag e cofre", false,
       list([
-        "4 slots: arma (mais dano), capacete, armadura e escudo (armadura, que corta o dano recebido).",
+        "6 slots: arma, capacete, armadura, calça, botas e escudo. Armadura corta o dano recebido; botas dão velocidade.",
+        "Armas são da classe: espada e machado (Cavaleiro), arco e besta (Paladino), varinha e cajado (Feiticeiro e Druida).",
+        "Só varinhas, cajados e alguns itens mágicos aumentam o dano das magias; as outras armas aumentam o ataque básico.",
+        "Armaduras de guerra são do Cavaleiro e do Paladino; vestes arcanas (chapéu, manto e calças), do Feiticeiro e do Druida.",
         `Materiais, do pior ao melhor: ${TIERS.map((t) => TIER_NAMES[t]).join(", ")}.`,
+        `Raridades: ${ITEM_RARITIES.map((r) => RARITY_NAMES[r]).join(", ")}. O raro (+1) é 30% mais forte; o mágico tem nome próprio, é 60% mais forte e ganha uma propriedade (roubo de vida, chamas, espinhos, velocidade...).`,
         `Monstros comuns têm ${pct(COMMON_DROP_CHANCE)} de chance de dropar item; mini-bosses, bosses e baús sempre dropam. Salas fundas dão material melhor.`,
         "O item no chão é de quem passar por cima primeiro. Se for melhor que o seu, você veste na hora e o antigo vai para a bag.",
         `A bag tem ${BAG_SIZE} espaços e entra com você na hunt. Cheia, você não pega mais nada do chão.`,
         `Saindo vivo, a bag vai sozinha para o cofre (${VAULT_SIZE} espaços), que fica seguro na conta.`,
       ]),
-      table(["Material", "Compra", "Venda"], TIERS.map((t) => [
-        TIER_NAMES[t], ITEM_BUY_PRICES[t] == null ? "só na hunt" : `${ITEM_BUY_PRICES[t]} gold`, `${ITEM_SELL_PRICES[t]} gold`,
+      table(["Material", "Compra (comum)", "Venda (comum · raro · mágico)"], TIERS.map((t) => [
+        TIER_NAMES[t], ITEM_BUY_PRICES[t] == null ? "só na hunt" : `${ITEM_BUY_PRICES[t]} gold`,
+        ITEM_RARITIES.map((r) => ITEM_SELL_PRICES[t] * RARITY_SELL[r]).join(" · ") + " gold",
       ])),
     ),
 

@@ -112,8 +112,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.lock();
     // O equipamento escolhido no menu e a bag saem da conta e entram na dungeon (chegam logo depois do início).
     this.users.forEach((userId, sessionId) => {
-      if (!userId) return;
-      void takeLoadout(userId).then((items) => this.hunt.equip(sessionId, items));
+      const classId = this.state.players.get(sessionId)?.classId;
+      if (!userId || !classId) return;
+      // Sai da conta só o equipamento que a classe usa (a espada de um druida fica em casa).
+      void takeLoadout(userId, classId).then((items) => this.hunt.equip(sessionId, items));
       void takeBag(userId).then((items) => this.hunt.fillBag(sessionId, items));
     });
   }
