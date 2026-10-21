@@ -1002,10 +1002,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
 
     // Itens caem no chão onde o monstro morreu: quem passar por cima primeiro leva.
+    // O boss que morre no centro da sala larga ao lado: ali abre o portal, que esconderia o loot
+    // (e pegar o loot faria a equipe sair da dungeon).
+    const at = brain.def.rank === "boss" ? this.besidePortal(m.x, m.y) : { x: m.x, y: m.y };
     const drops = GUARANTEED_DROPS[brain.def.rank] || (Math.random() < COMMON_DROP_CHANCE ? 1 : 0);
-    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random), m.x, m.y);
+    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random), at.x, at.y);
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (Math.random() < COMMON_POTION_CHANCE ? 1 : 0);
-    for (let i = 0; i < potions; i++) this.dropItem(rollPotion(Math.random), m.x, m.y);
+    for (let i = 0; i < potions; i++) this.dropItem(rollPotion(Math.random), at.x, at.y);
 
     if (brain.chestId) {
       const chest = this.state.chests.get(brain.chestId);
@@ -1224,6 +1227,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   // --- Itens ------------------------------------------------------------
+
+  /** O tile dado, ou um vizinho andável se ele for o centro da sala do boss (onde abre o portal). */
+  private besidePortal(x: number, y: number) {
+    const c = centerOf(this.dungeon.boss);
+    if (x !== c.x || y !== c.y) return { x, y };
+    for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      if (isWalkable(this.dungeon, x + dx, y + dy)) return { x: x + dx, y: y + dy };
+    }
+    return { x, y };
+  }
 
   private dropItem(itemId: string, x: number, y: number) {
     const item = new GroundItem();
