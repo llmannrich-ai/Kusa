@@ -10,7 +10,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import { CLASS_IDS, MSG, SPELLS, TALENTS, talentBlocker, talentTree, type ClassId, type SpellId } from "@kusa/shared";
-import { approach, enter, nearestMonster, until, wait } from "./hunt.ts";
+import { approach, enter, inSight, until, wait } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
@@ -48,19 +48,24 @@ async function castRibs(classId: ClassId) {
   const hunts = Math.max(bySlot[0].length, bySlot[1].length);
   for (let i = 0; i < hunts; i++) {
     const pair = bySlot.map((list) => list[Math.min(i, list.length - 1)]) as [SpellId, SpellId];
-    const { room, me, spells, damage } = await enter(client, classId, `costelas ${pair.join("+")}`);
+    const { room, me, spells, damage, notices } = await enter(client, classId, `costelas ${pair.join("+")}`);
     room.send(MSG.chooseSpell, { slot: 0, spellId: pair[0] });
     room.send(MSG.chooseSpell, { slot: 1, spellId: pair[1] });
     await wait(200);
     for (const slot of [0, 1] as const) {
       const id = pair[slot];
-      // Colado no monstro, toda forma de magia acerta: em volta de si, corpo a corpo, linha, leque e área.
-      await approach(room, me, 1, () => nearestMonster(room, me()) <= 1);
-      const hits = () => damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer).length;
-      const before = hits();
-      room.send(MSG.cast, { slot });
-      await until(() => spells.some((s) => s.from === room.sessionId && s.spellId === id), 3000, `${id} não saiu`);
       const def = SPELLS[id];
+      const hits = () => damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer).length;
+      const cast = () => spells.some((s) => s.from === room.sessionId && s.spellId === id);
+      const before = hits();
+      // Colado num monstro à vista, toda forma de magia acerta: em volta de si, corpo a corpo, linha, leque e área.
+      // O servidor recusa sem alvo (o monstro da magia anterior pode ter morrido): chega de novo e tenta outra vez.
+      for (let tries = 0; tries < 3 && !cast(); tries++) {
+        await approach(room, me, 1, () => inSight(room, me(), 1).length > 0 && me().mana >= def.manaCost);
+        room.send(MSG.cast, { slot });
+        await until(() => cast(), 1500, "").catch(() => {});
+      }
+      if (!cast()) throw new Error(`${id} não saiu (avisos: ${notices.slice(-3).join(" | ") || "nenhum"})`);
       if (def.damage || def.field?.damage) await until(() => hits() > before, 3000, `${id} não feriu nenhum monstro`);
       console.log(`${classId}: ${def.name} ok`);
     }
