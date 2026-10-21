@@ -23,6 +23,8 @@ export class Player extends Schema {
   @type("string") helmet = "";
   @type("string") armor = "";
   @type("string") shield = "";
+  /** Bag da hunt: itens carregados além do equipamento (até `BAG_SIZE`). */
+  @type(["string"]) bag = new ArraySchema<string>();
   /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
   @type("string") spell1 = "";
   @type("string") spell2 = "";

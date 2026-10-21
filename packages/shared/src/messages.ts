@@ -1,4 +1,5 @@
 import type { ClassId } from "./classes.ts";
+import type { ItemSlot } from "./items.ts";
 import type { MapId } from "./maps.ts";
 import type { PotionId } from "./potions.ts";
 import type { SpellId, SpellSlot } from "./spells.ts";
@@ -76,6 +77,15 @@ export interface DrinkMessage { potion: PotionId }
 /** Servidor → quem bebeu: a poção foi bebida e a recarga começou. */
 export interface DrankMessage { potion: PotionId; cooldownMs: number }
 
+/** Cliente → servidor: veste o item da posição `index` da bag (o que estava no slot volta para a bag). */
+export interface BagEquipMessage { index: number }
+
+/** Cliente → servidor: tira o item do slot e guarda na bag (se couber). */
+export interface UnequipMessage { slot: ItemSlot }
+
+/** Cliente → servidor: larga no chão o item da posição `index` da bag. */
+export interface BagDropMessage { index: number }
+
 /** Servidor → todos: um ataque básico saiu (para desenhar golpe ou projétil). */
 export interface AttackMessage {
   /** sessionId de quem atacou. */
@@ -107,7 +117,7 @@ export interface RunEndedMessage {
   outcome: RunOutcome;
   loot: number;
   level: number;
-  /** Itens equipados que voltam para o inventário da conta (só quem sai vivo). */
+  /** Itens equipados e da bag que voltam para o inventário da conta (só quem sai vivo). */
   items: string[];
 }
 
@@ -127,4 +137,7 @@ export const MSG = {
   spell: "spell",
   drink: "drink",
   drank: "drank",
+  bagEquip: "bagEquip",
+  unequip: "unequip",
+  bagDrop: "bagDrop",
 } as const;

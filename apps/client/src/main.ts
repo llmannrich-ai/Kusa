@@ -3,14 +3,11 @@ import { Callbacks } from "@colyseus/sdk";
 import {
   CLASSES,
   ITEMS,
-  ITEM_SLOTS,
   MAPS,
   MAX_LEVEL,
   MSG,
   RULES_VERSION,
   VERSION_MISMATCH_CODE,
-  SLOT_NAMES,
-  TIER_COLORS,
   difficultyStars,
   mapIdOf,
   xpForLevel,
@@ -18,7 +15,6 @@ import {
   type JoinOptions,
   type RunEndedMessage,
 } from "@kusa/shared";
-import { itemIcon } from "./art/items.ts";
 import { ArtLoader, artReady } from "./ArtLoader.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
@@ -312,36 +308,10 @@ function startGame(room: DungeonRoom) {
     setBar("mana", p.mana, p.maxMana, `${p.mana}/${p.maxMana}`);
     setBar("xp", p.xp - xpFrom, xpTo - xpFrom, `Nv ${p.level}`);
     $("meta").textContent = `Loot ${p.loot}`;
-    renderGear(p);
   };
   renderStats();
   const p = me();
   if (p) Callbacks.get(room).onChange(p, renderStats);
-}
-
-/** Ícones do equipamento no HUD (as imagens são geradas uma vez por item). */
-const iconUrls = new Map<string, string>();
-function renderGear(p: { weapon: string; helmet: string; armor: string; shield: string }) {
-  const gear = $("gear");
-  const key = ITEM_SLOTS.map((slot) => p[slot]).join(",");
-  if (gear.dataset.key === key) return;
-  gear.dataset.key = key;
-  gear.innerHTML = "";
-  for (const slot of ITEM_SLOTS) {
-    const item = ITEMS[p[slot]];
-    const cell = document.createElement("span");
-    cell.className = "slot";
-    cell.title = item ? item.name : `${SLOT_NAMES[slot]} (vazio)`;
-    if (item) {
-      if (!iconUrls.has(item.id)) iconUrls.set(item.id, itemIcon(item.id).toDataURL());
-      const img = document.createElement("img");
-      img.src = iconUrls.get(item.id)!;
-      img.alt = item.name;
-      cell.append(img);
-      cell.style.borderColor = `#${TIER_COLORS[item.tier].toString(16).padStart(6, "0")}`;
-    }
-    gear.append(cell);
-  }
 }
 
 const OUTCOME_TEXT: Record<RunEndedMessage["outcome"], string> = {

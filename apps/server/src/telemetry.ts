@@ -31,8 +31,8 @@ export interface RunStats {
   xp: number;
   loot: { monsters: number; chests: number; bossBonus: number };
   chestsOpened: number;
-  /** Itens que vieram do inventário, que pegou no chão e que perdeu ao morrer. */
-  items: { loadout: string[]; picked: string[]; lost: string[] };
+  /** Itens que vieram do inventário, que pegou no chão (equipados ou na bag), que largou da bag e que perdeu ao morrer. */
+  items: { loadout: string[]; picked: string[]; dropped: string[]; lost: string[] };
   /** Menor vida na hunt, em fração do máximo (sustos). */
   minHpPct: number;
   /** true se fechou o jogo ou caiu durante a hunt (conta como morte). */
@@ -44,7 +44,7 @@ export function newRunStats(): RunStats {
   return {
     levelAt: {}, depthAt: {}, spellsChosen: {}, casts: {}, castFails: { noMana: 0, noTarget: 0 },
     damageDealt: {}, damageTaken: {}, damageMitigated: 0, healing: 0, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
-    loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], picked: [], lost: [] },
+    loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], picked: [], dropped: [], lost: [] },
     minHpPct: 1, abandoned: false, death: null,
   };
 }

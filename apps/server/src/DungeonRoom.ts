@@ -27,6 +27,7 @@ import {
   POTION_FIELD,
   POTION_IDS,
   POTION_MAX,
+  BAG_SIZE,
   RULES_VERSION,
   VERSION_MISMATCH_CODE,
   SERVER_TICK_MS,
@@ -47,6 +48,8 @@ import {
   hasLineOfSight,
   isPotion,
   isUpgrade,
+  isBagIndex,
+  isItemSlot,
   isSingleTarget,
   isWalkable,
   knownSpells,
@@ -77,6 +80,9 @@ import {
   type DamageMessage,
   type DrankMessage,
   type DrinkMessage,
+  type BagDropMessage,
+  type BagEquipMessage,
+  type UnequipMessage,
   type Dungeon,
   type HuntMetadata,
   type JoinOptions,
@@ -199,6 +205,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private summonBrains = new Map<string, SummonBrain>();
   /** Momento (ms) em que cada item do chão some. */
   private itemExpiresAt = new Map<string, number>();
+  /**
+   * Item largado da bag (ou que não coube nela) → sessionId de quem largou: essa pessoa só pega
+   * de novo depois de sair do tile, senão o item voltaria para a bag no tick seguinte.
+   */
+  private pickupBlocked = new Map<string, string>();
 
   onCreate(options: JoinOptions) {
     this.map = MAPS[mapIdOf(options?.mapId)];
@@ -218,6 +229,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.onMessage(MSG.chooseSpell, (client, msg: ChooseSpellMessage) => this.handleChooseSpell(client, msg));
     this.onMessage(MSG.cast, (client, msg: CastMessage) => this.handleCast(client, msg));
     this.onMessage(MSG.drink, (client, msg: DrinkMessage) => this.handleDrink(client, msg));
+    this.onMessage(MSG.bagEquip, (client, msg: BagEquipMessage) => this.handleBagEquip(client, msg));
+    this.onMessage(MSG.unequip, (client, msg: UnequipMessage) => this.handleUnequip(client, msg));
+    this.onMessage(MSG.bagDrop, (client, msg: BagDropMessage) => this.handleBagDrop(client, msg));
 
     this.setSimulationInterval((dt) => this.tick(dt), SERVER_TICK_MS);
   }
@@ -388,8 +402,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         const p = this.state.players.get(sessionId);
         if (!p || p.status !== "playing") return;
         seat.stats.items.loadout = items;
+        // Se já pegou algo no chão antes de o loadout chegar, o pior dos dois vai para a bag (ou para o chão).
         const best = bestPerSlot(items);
-        for (const slot of ITEM_SLOTS) if (isUpgrade(best[slot], p[slot])) p[slot] = best[slot];
+        for (const id of items) {
+          if (!ITEMS[id]) continue;
+          if (id === best[ITEMS[id].slot]) this.equipOrStash(sessionId, p, id);
+          else this.stash(sessionId, p, id);
+        }
       });
     });
   }
@@ -1130,18 +1149,84 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     item.y = y;
     this.state.items.set(item.id, item);
     this.itemExpiresAt.set(item.id, this.clock.currentTime + ITEM_LIFETIME_MS);
+    return item;
+  }
+
+  /** Some com o item do chão (pego, expirado). */
+  private removeGroundItem(id: string) {
+    this.state.items.delete(id);
+    this.itemExpiresAt.delete(id);
+    this.pickupBlocked.delete(id);
+  }
+
+  /** Guarda o item na bag; com a bag cheia, larga no chão sem pegar de volta enquanto não sair do tile. */
+  private stash(sessionId: string, p: Player, itemId: string) {
+    if (p.bag.length < BAG_SIZE) {
+      p.bag.push(itemId);
+      return;
+    }
+    const ground = this.dropItem(itemId, p.x, p.y);
+    this.pickupBlocked.set(ground.id, sessionId);
+  }
+
+  /** Veste o item se for melhor que o do slot (o antigo vai para a bag); senão, guarda na bag. */
+  private equipOrStash(sessionId: string, p: Player, itemId: string) {
+    const def = ITEMS[itemId];
+    if (!def) return;
+    if (!isUpgrade(itemId, p[def.slot])) {
+      this.stash(sessionId, p, itemId);
+      return;
+    }
+    const old = p[def.slot];
+    p[def.slot] = itemId;
+    if (old) this.stash(sessionId, p, old);
+  }
+
+  private handleBagEquip(client: Client, msg: BagEquipMessage) {
+    const p = this.state.players.get(client.sessionId);
+    if (!p || p.status !== "playing" || this.state.phase === "ended" || !isBagIndex(msg?.index, p.bag.length)) return;
+    const def = ITEMS[p.bag[msg.index]];
+    if (!def) return;
+    // Troca de lugar: o item da bag veste, o que estava no slot ocupa a mesma posição da bag.
+    const old = p[def.slot];
+    p[def.slot] = def.id;
+    if (old) p.bag[msg.index] = old;
+    else p.bag.splice(msg.index, 1);
+  }
+
+  private handleUnequip(client: Client, msg: UnequipMessage) {
+    const p = this.state.players.get(client.sessionId);
+    if (!p || p.status !== "playing" || this.state.phase === "ended" || !isItemSlot(msg?.slot)) return;
+    if (!p[msg.slot] || p.bag.length >= BAG_SIZE) return;
+    p.bag.push(p[msg.slot]);
+    p[msg.slot] = "";
+  }
+
+  private handleBagDrop(client: Client, msg: BagDropMessage) {
+    const p = this.state.players.get(client.sessionId);
+    if (!p || p.status !== "playing" || this.state.phase !== "running" || !isBagIndex(msg?.index, p.bag.length)) return;
+    const [itemId] = p.bag.splice(msg.index, 1);
+    const ground = this.dropItem(itemId, p.x, p.y);
+    this.pickupBlocked.set(ground.id, client.sessionId);
+    this.seats.get(client.sessionId)?.stats.items.dropped.push(itemId);
   }
 
   /**
-   * Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão
-   * para quem quiser. Item pior fica onde está (qualquer jogador pode pegar, não há dono).
-   * Poções vão para a mochila até o limite de cada tipo.
+   * Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag.
+   * Item pior vai direto para a bag. Com a bag cheia, o que não cabe fica no chão
+   * (qualquer jogador pode pegar, não há dono). Poções vão para a mochila até o limite de cada tipo.
    */
   private pickUpItems() {
+    // Quem largou um item já saiu de cima dele: volta a poder pegar.
+    this.pickupBlocked.forEach((sessionId, id) => {
+      const p = this.state.players.get(sessionId);
+      const it = this.state.items.get(id);
+      if (!p || !it || p.x !== it.x || p.y !== it.y) this.pickupBlocked.delete(id);
+    });
     this.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing") return;
       const here = [...this.state.items.values()]
-        .filter((it) => it.x === p.x && it.y === p.y)
+        .filter((it) => it.x === p.x && it.y === p.y && this.pickupBlocked.get(it.id) !== sessionId)
         .sort((a, b) => (ITEMS[b.itemId]?.tier ?? 0) - (ITEMS[a.itemId]?.tier ?? 0));
       for (const ground of here) {
         if (isPotion(ground.itemId)) {
@@ -1151,19 +1236,17 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
           p[field] += 1;
           const picked = this.seats.get(sessionId)?.stats.potions.picked;
           if (picked) picked[ground.itemId] = (picked[ground.itemId] ?? 0) + 1;
-          this.state.items.delete(ground.id);
-          this.itemExpiresAt.delete(ground.id);
+          this.removeGroundItem(ground.id);
           this.notice(p.x, p.y - 1, POTIONS[ground.itemId].name, POTIONS[ground.itemId].color);
           continue;
         }
         const def = ITEMS[ground.itemId];
-        if (!def || !isUpgrade(def.id, p[def.slot])) continue;
-        const old = p[def.slot];
-        p[def.slot] = def.id;
+        if (!def) continue;
+        // Sem lugar: item pior que o equipado fica no chão (o melhor ainda troca, e o antigo é largado).
+        if (p.bag.length >= BAG_SIZE && !isUpgrade(def.id, p[def.slot])) continue;
         this.seats.get(sessionId)?.stats.items.picked.push(def.id);
-        this.state.items.delete(ground.id);
-        this.itemExpiresAt.delete(ground.id);
-        if (old) this.dropItem(old, p.x, p.y);
+        this.removeGroundItem(ground.id);
+        this.equipOrStash(sessionId, p, def.id);
         this.notice(p.x, p.y - 1, def.name, TIER_COLORS[def.tier]);
       }
     });
@@ -1172,8 +1255,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private expireItems(now: number) {
     this.itemExpiresAt.forEach((at, id) => {
       if (now < at) return;
-      this.state.items.delete(id);
-      this.itemExpiresAt.delete(id);
+      this.removeGroundItem(id);
     });
   }
 
@@ -1187,17 +1269,20 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
-    // Quem morre larga o equipamento e as poções no chão, e os outros podem saquear.
+    // Quem morre larga o equipamento, a bag e as poções no chão, e os outros podem saquear.
     const seat = this.seats.get(sessionId);
     if (outcome === "died") {
-      for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
-      if (seat) seat.stats.items.lost = equipment(player).filter(Boolean);
+      const carried = carriedItems(player);
+      for (const id of carried) this.dropItem(id, player.x, player.y);
+      if (seat) seat.stats.items.lost = carried;
       for (const potion of POTION_IDS) {
         for (let i = 0; i < player[POTION_FIELD[potion]]; i++) this.dropItem(potion, player.x, player.y);
       }
       // O corpo fica sem o que largou (o equipamento aparece no personagem).
       for (const slot of ITEM_SLOTS) player[slot] = "";
     }
+    // Soterrado perde tudo junto com a dungeon; quem sai vivo leva a bag (abaixo).
+    if (!survived) player.bag.clear();
     // Poções não saem da dungeon.
     player.healthPotions = player.manaPotions = 0;
     player.status = outcome;
@@ -1205,8 +1290,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.barrier = 0;
     this.state.summons.forEach((s) => { if (s.owner === sessionId) this.removeSummon(s.id); });
 
-    // Quem sai vivo leva o equipamento para o inventário da conta.
-    const items = survived ? equipment(player).filter(Boolean) : [];
+    // Quem sai vivo leva o equipamento e a bag para o inventário da conta.
+    const items = survived ? carriedItems(player) : [];
     const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items };
     this.clients.getById(sessionId)?.send(MSG.runEnded, result);
 
@@ -1257,6 +1342,11 @@ function spellIn(p: Player, slot: SpellSlot) {
 
 function equipment(p: Player) {
   return ITEM_SLOTS.map((slot) => p[slot]);
+}
+
+/** Tudo o que o jogador carrega: equipamento vestido e bag. */
+function carriedItems(p: Player) {
+  return [...equipment(p).filter(Boolean), ...p.bag];
 }
 
 /** Dano com variação de ±15%. */

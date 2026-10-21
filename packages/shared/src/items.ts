@@ -74,6 +74,22 @@ export function armorOf(equipped: readonly string[]) {
   }, 0);
 }
 
+/**
+ * Bag da hunt: além dos itens equipados no corpo, o personagem carrega até este número de itens.
+ * Quem sai vivo leva bag e equipamento para o inventário da conta; quem morre larga tudo no chão.
+ */
+export const BAG_SIZE = 8;
+
+/** Índice válido da bag (a mensagem do cliente pode trazer qualquer coisa). */
+export function isBagIndex(index: unknown, bagLength: number): index is number {
+  return Number.isInteger(index) && (index as number) >= 0 && (index as number) < bagLength;
+}
+
+/** Só chaves próprias: a mensagem do cliente pode trazer qualquer texto (ex.: "__proto__"). */
+export function isItemSlot(slot: unknown): slot is ItemSlot {
+  return typeof slot === "string" && (ITEM_SLOTS as string[]).includes(slot);
+}
+
 /** Quanto mais armadura, menos dano: 10 de armadura corta 1/3, 27 (tudo de dragão) corta 57%. */
 const ARMOR_HALF = 20;
 export function damageReduction(armor: number) {

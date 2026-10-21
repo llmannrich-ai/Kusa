@@ -14,9 +14,9 @@ teclado e mouse no desktop são um extra.
 - **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele.
 - **Mira das magias:** magia de alvo único mira arrastando a partir do botão; magia de área se conjura com um toque no botão e outro no mapa (ver "Ataques e magias").
-- **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
+- **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot e a fileira da bag), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
-- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias: alvo automático, ou modo mira das de área e clique no mapa), Tab e Esc.
+- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias: alvo automático, ou modo mira das de área e clique no mapa), B (bag), Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
 ## Menu inicial (estilo Zooba / Clash)
@@ -58,8 +58,8 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 ### Inventário e mercado (extração)
 
 - O equipamento escolhido na aba Itens **sai do inventário quando a hunt começa** e entra no personagem.
-- Quem foge ou conclui traz para o inventário tudo o que estiver equipado ao sair (inclusive o que achou na dungeon).
-- Quem morre perde o que levou: o equipamento cai no chão e outro jogador pode pegar e extrair.
+- Quem foge ou conclui traz para o inventário tudo o que estiver equipado **e na bag** ao sair (inclusive o que achou na dungeon).
+- Quem morre perde o que levou: equipamento e bag caem no chão e outro jogador pode pegar e extrair. Soterrado perde tudo junto com a dungeon.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
 ## Mapas
@@ -184,8 +184,23 @@ As compradas no Grimório, por slot (números do nível 1):
 - 4 slots: arma, capacete, armadura e escudo, cada um com 5 níveis de material (Comum, Bronze, Ferro, Aço, Dragão). A arma dá % a mais de dano; capacete, armadura e escudo somam armadura, que corta dano recebido (`armadura / (armadura + 20)`: tudo de dragão corta 57%).
 - Drop: comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
 - O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
-- Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão. Item pior fica onde está. Itens no chão somem após 2 minutos.
-- Quem morre larga o equipamento no chão. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado (ver "Inventário e mercado").
+- Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag. Item pior vai direto para a bag. Itens no chão somem após 2 minutos.
+- Quem morre larga o equipamento e a bag no chão. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado e a bag (ver "Inventário e mercado").
+
+### Bag
+
+Além do equipamento vestido no corpo (4 slots), o personagem carrega uma **bag de até 8 itens** durante a hunt
+(`BAG_SIZE` em `packages/shared/src/items.ts`; menu em `apps/client/src/bagbar.ts`).
+
+- **No HUD aparece só a bag:** uma fileira com os 8 espaços embaixo do loot. O equipamento vestido aparece **somente no menu** da bag (e no próprio personagem).
+- Tocar na fileira (ou B no desktop) abre o menu na parte de cima da tela, para o polegar esquerdo continuar andando. A hunt não pausa.
+- No menu, tocar num item mostra o que ele faz (e o vestido no mesmo slot, para comparar):
+  - item da bag: **Equipar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está);
+  - item vestido: **Guardar na bag**, se couber.
+- Bag cheia: item pior que o equipado fica no chão; item melhor ainda troca, e o antigo é largado no chão.
+- O que o jogador larga (ou não coube) não volta para a bag enquanto ele estiver em cima do item: precisa sair do tile e voltar.
+- O equipamento levado do inventário entra vestido; se ele já tiver pego algo melhor antes de o equipamento chegar, o pior vai para a bag.
+- Poções continuam na mochila de poções (até 5 de cada), fora da bag.
 - Tabela em `packages/shared/src/items.ts`.
 
 ### Arte dos itens e equipamento visível
