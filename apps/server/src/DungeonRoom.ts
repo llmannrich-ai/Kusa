@@ -772,6 +772,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       const landing = this.dashLanding(p, threat ? 2 * p.x - threat.x : tx, threat ? 2 * p.y - threat.y : ty, spell.dash.tiles, threat);
       if (!landing) {
         // Encurralado: nenhuma direção livre. A magia não sai, e não gasta mana nem recarga.
+        seat.stats.castFails.noRoom++;
         client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Sem espaço para rolar", color: 0xbdc3c7 } satisfies NoticeMessage);
         return;
       }
@@ -1953,10 +1954,6 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   /**
-   * Salto (Rolamento): anda até `tiles` tiles em linha reta na direção de (tx, ty), parando antes de parede,
-   * água, monstro, outro herói ou portal (o salto nunca encerra a hunt sem querer).
-   */
-  /**
    * Onde o Rolamento pousa, saltando até `tiles` na direção de (tx, ty). Se essa reta estiver bloqueada logo de cara
    * (parede, portal, monstro), tenta as diagonais (±45°) e as laterais (±90°). Fugindo de um monstro (`threat`),
    * fica com o pouso que mais se afasta dele, e só vale pouso que aumenta a distância; mirado, com a direção mais
@@ -1994,7 +1991,6 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
     return last;
   }
-
 
   /** Dano base do jogador (classe, nível, áureas e arma), antes da variação. */
   private baseDamage(sessionId: string, p: Player) {

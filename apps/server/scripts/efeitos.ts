@@ -15,7 +15,7 @@
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
  */
 import { Client } from "@colyseus/sdk";
-import { MONSTERS, MSG, Tile, generateDungeon, isWalkable, lineTiles, tileAt, tileDistance, type MonsterKind } from "@kusa/shared";
+import { MONSTERS, MSG, Tile, generateDungeon, tileAt, tileDistance, type MonsterKind } from "@kusa/shared";
 import { approach, enter, inSight, until, wait } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -119,27 +119,31 @@ async function paladinMira() {
   const roll = await enter(client, "paladin", "paladinRoll");
   roll.room.send(MSG.chooseSpell, { slot: 0, spellId: "evasive_roll" });
   roll.room.send(MSG.chooseSpell, { slot: 1, spellId: "sniper_stance" });
-  await approach(roll.room, roll.me, 2, () => inSight(roll.room, roll.me(), 3).length > 0);
-  const near = inSight(roll.room, roll.me(), 3)[0];
-  if (!near) throw new Error("nenhum monstro perto para rolar para longe");
-  const before = { x: roll.me().x, y: roll.me().y };
-  const gap = tileDistance(before.x, before.y, near[1].x, near[1].y);
-  // Mira o rolamento na direção livre que mais afasta do monstro (rolar contra a parede não sai do lugar).
-  const map = generateDungeon(roll.room.state.seed, roll.room.state.mapId);
-  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
-    .map(([dx, dy]) => ({ x: before.x + dx * 3, y: before.y + dy * 3 }))
-    .filter((p) => {
-      const first = lineTiles(map, before.x, before.y, p.x, p.y, 1)[0];
-      return first && isWalkable(map, first.x, first.y) && tileAt(map, first.x, first.y) !== Tile.Portal;
-    })
-    .sort((a, b) => tileDistance(b.x, b.y, near[1].x, near[1].y) - tileDistance(a.x, a.y, near[1].x, near[1].y));
-  if (dirs.length === 0) throw new Error("o herói está cercado: nenhum lado livre para rolar");
-  roll.room.send(MSG.cast, { slot: 0, aim: dirs[0] });
-  await until(() => roll.me().x !== before.x || roll.me().y !== before.y, 2000, "o Rolamento não moveu o herói");
+  // Encurralado (parede atrás e monstro colado), o Rolamento não sai e não cobra nada: chega mais e tenta de novo.
+  const rollDeadline = Date.now() + 30_000;
+  let before: { x: number; y: number } | undefined;
+  let near: [string, any] | undefined;
+  let gap = 0;
+  while (!before) {
+    if (Date.now() > rollDeadline) throw new Error("o Rolamento não moveu o herói");
+    await approach(roll.room, roll.me, 2, () => inSight(roll.room, roll.me(), 3).length > 0);
+    near = inSight(roll.room, roll.me(), 3)[0];
+    if (!near) throw new Error("nenhum monstro perto para rolar para longe");
+    const from = { x: roll.me().x, y: roll.me().y };
+    const mana = roll.me().mana;
+    gap = tileDistance(from.x, from.y, near[1].x, near[1].y);
+    roll.room.send(MSG.target, { id: near[0] });
+    roll.room.send(MSG.cast, { slot: 0 });
+    const moved = () => roll.me().x !== from.x || roll.me().y !== from.y;
+    await until(() => moved() || roll.notices.includes("Sem espaço para rolar"), 2000, "o Rolamento não moveu o herói nem avisou que não havia espaço");
+    if (moved()) before = from;
+    else if (roll.me().mana < mana - 9) throw new Error("o Rolamento sem espaço gastou mana");
+    roll.notices.length = 0;
+  }
   const after = roll.me();
   const dungeon = generateDungeon(roll.room.state.seed, roll.room.state.mapId);
   if (tileAt(dungeon, after.x, after.y) === Tile.Portal) throw new Error("o Rolamento caiu no portal");
-  const monster = roll.room.state.monsters.get(near[0]);
+  const monster = roll.room.state.monsters.get(near![0]);
   const gapAfter = monster ? tileDistance(after.x, after.y, monster.x, monster.y) : Infinity;
   console.log(`paladino: rolou de ${before.x},${before.y} para ${after.x},${after.y} (distância do monstro ${gap} → ${gapAfter})`);
   if (gapAfter < gap) throw new Error("o Rolamento devia afastar o herói do monstro");

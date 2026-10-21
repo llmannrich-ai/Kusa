@@ -20,14 +20,16 @@ export async function enter(client: Client, classId: string, label: string) {
   room.onMessage(MSG.spell, (msg: SpellMessage) => spells.push(msg));
   room.onMessage(MSG.chain, (msg: ChainMessage) => chains.push(msg));
   room.onMessage(MSG.cooldown, (msg: CooldownMessage) => cooldowns.push(msg));
-  for (const type of [MSG.notice, MSG.attack, MSG.monsterStrike]) room.onMessage(type, () => {});
+  const notices: string[] = [];
+  room.onMessage(MSG.notice, (msg: { text: string }) => notices.push(msg.text));
+  for (const type of [MSG.attack, MSG.monsterStrike]) room.onMessage(type, () => {});
   room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora (${label}, ${classId}): ${JSON.stringify(msg)}`); });
   await wait(300);
   room.send(MSG.start);
   await wait(300);
   const me = () => room.state.players.get(room.sessionId);
   if (me().level < 8) throw new Error(`o servidor precisa de KUSA_START_LEVEL=8 (nível ${me().level})`);
-  return { room, me, damage, spells, chains, cooldowns };
+  return { room, me, damage, spells, chains, cooldowns, notices };
 }
 
 /**
