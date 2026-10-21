@@ -50,8 +50,7 @@ export class CombatFx {
       case "iron_skin": return this.ring(from, TILE_SIZE * 0.8, 0xa4b0be, 500, 5);
       case "earthquake":
         this.ring(from, radius, 0x8d6e4a, 500, 8);
-        this.debris(from, radius, 0x6b4426);
-        return this.scene.cameras.main.shake(220, 0.006);
+        return this.debris(from, radius, 0x6b4426);
       case "steel_wall":
         this.ring(from, radius, 0x95a5a6, 550, 6);
         return this.shieldRaise(from);
@@ -96,7 +95,6 @@ export class CombatFx {
         return this.later(ms, () => {
           this.ring(to, radius, 0xe74c3c, 500, 8);
           this.debris(to, radius, 0x5a2a1a);
-          this.scene.cameras.main.shake(200, 0.006);
         });
       case "blizzard":
         this.snow(to, radius);
@@ -191,7 +189,6 @@ export class CombatFx {
     if (!special) return;
     const color = special.color;
     const flash = (delayPerRing = 0) => this.area(tiles.map((t, i) => ({ ...t, ring: delayPerRing ? i * delayPerRing : 0 })), color, 0);
-    const shake = (ms: number, k: number) => this.scene.cameras.main.shake(ms, k);
     switch (kind) {
       case "ogre":
       case "troll":
@@ -200,15 +197,13 @@ export class CombatFx {
         this.debris(from, TILE_SIZE * (kind === "ogre" ? 2 : 1.3), kind === "ogre" ? 0x6b4426 : 0x2d4a1f);
         flash(0.6);
         if (kind === "troll") this.heal(from);
-        return shake(kind === "ogre" ? 260 : 180, kind === "ogre" ? 0.009 : 0.006);
+        return;
       case "dragon":
         this.breath(from, tiles);
-        flash(0.5);
-        return shake(300, 0.008);
+        return flash(0.5);
       case "hydra":
         this.acidRain(tiles, color);
-        this.later(320, () => flash(0.3));
-        return this.later(320, () => shake(220, 0.006));
+        return this.later(320, () => flash(0.3));
     }
   }
 
@@ -375,7 +370,6 @@ export class CombatFx {
         onComplete: () => orb.destroy(),
       });
     }
-    this.scene.cameras.main.shake(180, 0.004);
   }
 
   /** Escudo da Fé: o brasão desce sobre o cavaleiro com um clarão azul. */
