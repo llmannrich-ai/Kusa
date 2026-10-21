@@ -1,8 +1,9 @@
-import type { ClassId, ItemTier } from "@kusa/shared";
+import type { ClassId } from "@kusa/shared";
 import { DIRS, FRAMES, creatureSheet, type Dir } from "./creature.ts";
 import { eyes, headRx, humanoid, type Joints, type Look, type Point } from "./humanoid.ts";
 import {
-  NO_OUTFIT, armorDetails, helmet, knightWeapon, metal, pauldronSpike, shield, tierOf, weaponTrim, weaponWood, type Outfit,
+  NO_OUTFIT, armorDetails, closedHelmet, crossbow, helmet, knightWeapon, pauldronSpike, shield, wand, weaponTrim, weaponWood, worn,
+  type Outfit, type Worn,
 } from "./outfit.ts";
 import { makeCanvas } from "./pixels.ts";
 import { ramp, solid, type Painter, type Ramp } from "./paint.ts";
@@ -13,8 +14,9 @@ import { ramp, solid, type Painter, type Ramp } from "./paint.ts";
  * de caminhada por direção (a animação toca `1, 0, 2, 0`). A folha segue `creature.ts`.
  *
  * Cada classe tem a roupa e a arma dela; o equipamento vestido (`outfit.ts`) troca a cabeça pelo
- * capacete, recobre o tronco com a armadura, põe o escudo na outra mão e muda a arma: o cavaleiro
- * empunha a arma do item, as outras classes mantêm arco ou cajado no material da arma.
+ * capacete ou chapéu, recobre o tronco com a armadura (ou tinge a túnica com as vestes arcanas),
+ * troca a cor da calça e das botas, põe o escudo na outra mão e muda a arma pela família: espada ou
+ * machado do cavaleiro, arco ou besta do paladino, cajado ou varinha do feiticeiro e do druida.
  */
 
 export type HeroDir = Dir;
@@ -137,16 +139,16 @@ function bow(s: Painter, j: Joints, at: Point, bulge: number, wood: Ramp, tips: 
 }
 
 /** Cajado em pé: haste no material da arma (com uma luva entre dois anéis) e o topo da classe. */
-function staff(s: Painter, j: Joints, at: Point, lean: number, tier: ItemTier | 0, top: (tip: Point) => void) {
+function staff(s: Painter, j: Joints, at: Point, lean: number, w: Worn | null, top: (tip: Point) => void) {
   const { k } = j;
   const tip = { x: at.x + lean * k, y: at.y - 21 * k };
   const base = { x: at.x - lean * 0.3 * k, y: at.y + 8 * k };
-  s.limb(base.x, base.y, tip.x, tip.y + 2 * k, 1.4 * k, 1.2 * k, weaponWood(0));
-  if (tier) {
+  s.limb(base.x, base.y, tip.x, tip.y + 2 * k, 1.4 * k, 1.2 * k, weaponWood(null));
+  if (w) {
     const p = (t: number) => ({ x: base.x + (tip.x - base.x) * t, y: base.y + (tip.y - base.y) * t });
     const a = p(0.45), b = p(0.85);
-    s.limb(a.x, a.y, b.x, b.y, 1.5 * k, 1.4 * k, weaponWood(tier));
-    for (const q of [a, b]) s.limb(q.x - 1.8 * k, q.y, q.x + 1.8 * k, q.y, 0.8 * k, 0.8 * k, weaponTrim(tier));
+    s.limb(a.x, a.y, b.x, b.y, 1.5 * k, 1.4 * k, weaponWood(w));
+    for (const q of [a, b]) s.limb(q.x - 1.8 * k, q.y, q.x + 1.8 * k, q.y, 0.8 * k, 0.8 * k, weaponTrim(w));
   }
   top(tip);
 }
@@ -162,7 +164,7 @@ function orb(s: Painter, j: Joints, tip: Point) {
 
 function leafyTop(s: Painter, j: Joints, tip: Point) {
   const { k } = j;
-  s.chain([tip.x, tip.y + 2 * k, 1.3 * k, tip.x - 2 * k, tip.y - 2 * k, 1.2 * k, tip.x + k, tip.y - 5 * k, k], weaponWood(0));
+  s.chain([tip.x, tip.y + 2 * k, 1.3 * k, tip.x - 2 * k, tip.y - 2 * k, 1.2 * k, tip.x + k, tip.y - 5 * k, k], weaponWood(null));
   s.sphere(tip.x + 3 * k, tip.y - k, 2.3 * k, 1.6 * k, LEAF);
   s.sphere(tip.x - 4 * k, tip.y - 4 * k, 2.3 * k, 1.6 * k, LEAF);
   s.sphere(tip.x + 2 * k, tip.y - 6 * k, 2 * k, 1.5 * k, LEAF);
@@ -205,8 +207,8 @@ interface HeroDef {
   bare: (s: Painter, j: Joints) => void;
   /** Detalhes da roupa da classe sobre o tronco (cinto, aljava, barra da túnica). */
   details: (s: Painter, j: Joints, armored: boolean) => void;
-  /** Arma na mão, com o nível da arma equipada (0 = a da classe). */
-  weapon: (s: Painter, j: Joints, tier: ItemTier | 0) => void;
+  /** Arma na mão, com a arma equipada (sem ela, a da classe). */
+  weapon: (s: Painter, j: Joints, w: Worn | null) => void;
 }
 
 const KNIGHT_RED = ramp("#b8352c");
@@ -219,7 +221,7 @@ const HEROES: Record<ClassId, HeroDef> = {
     },
     bare: hairHead(DARK_HAIR),
     details: (s, j, armored) => { if (!armored) belt(s, j, DARK_LEATHER, GOLD); },
-    weapon: (s, j, tier) => knightWeapon(s, j.handW, j.dir === "side" ? -0.75 : 0.12 * j.sideW, j.k, tier),
+    weapon: (s, j, w) => knightWeapon(s, j.handW, j.dir === "side" ? -0.75 : 0.12 * j.sideW, j.k, w),
   },
   paladin: {
     look: {
@@ -232,7 +234,10 @@ const HEROES: Record<ClassId, HeroDef> = {
       // Correia da aljava atravessando o peito.
       if (j.dir !== "side") s.line(j.cx - 6 * j.k * j.sideW, j.chest.y - 5 * j.k, j.cx + 6 * j.k * j.sideW, j.chest.y + 4 * j.k, DARK_LEATHER, 2);
     },
-    weapon: (s, j, tier) => bow(s, j, { x: j.handW.x - (j.dir === "side" ? 2 * j.k : 0), y: j.handW.y }, j.dir === "side" ? -1 : j.sideW, weaponWood(tier), weaponTrim(tier)),
+    weapon: (s, j, w) => {
+      if (w?.family === "weapon-crossbow") return crossbow(s, j.handW, j.k, w);
+      bow(s, j, { x: j.handW.x - (j.dir === "side" ? 2 * j.k : 0), y: j.handW.y }, j.dir === "side" ? -1 : j.sideW, weaponWood(w), weaponTrim(w));
+    },
   },
   sorcerer: {
     look: {
@@ -241,7 +246,8 @@ const HEROES: Record<ClassId, HeroDef> = {
     },
     bare: (s, j) => { hairHead(ramp("#dcd8e4"))(s, j); },
     details: (s, j) => { belt(s, j, GOLD); robeTrim(s, j, GOLD); },
-    weapon: (s, j, tier) => staff(s, j, j.handW, j.dir === "side" ? -8 : 0, tier, (tip) => orb(s, j, tip)),
+    weapon: (s, j, w) => (w?.family === "weapon-wand" ? wand(s, j.handW, j.k, w)
+      : staff(s, j, j.handW, j.dir === "side" ? -8 : 0, w, (tip) => orb(s, j, tip))),
   },
   druid: {
     look: {
@@ -250,24 +256,34 @@ const HEROES: Record<ClassId, HeroDef> = {
     },
     bare: hairHead(BROWN_HAIR),
     details: (s, j) => { belt(s, j, ramp("#a07a44")); robeTrim(s, j, DRUID_DARK); },
-    weapon: (s, j, tier) => staff(s, j, j.handW, j.dir === "side" ? -8 : 0, tier, (tip) => leafyTop(s, j, tip)),
+    weapon: (s, j, w) => (w?.family === "weapon-wand" ? wand(s, j.handW, j.k, w)
+      : staff(s, j, j.handW, j.dir === "side" ? -8 : 0, w, (tip) => leafyTop(s, j, tip))),
   },
 };
 
 /** O visual da classe vestindo `outfit`. */
 function heroLook(classId: ClassId, outfit: Outfit): Look {
   const hero = HEROES[classId];
-  const armor = tierOf(outfit, "armor");
-  const helm = tierOf(outfit, "helmet");
-  const shieldTier = tierOf(outfit, "shield");
-  const weaponTier = tierOf(outfit, "weapon");
+  const armor = worn(outfit, "armor");
+  const helm = worn(outfit, "helmet");
+  const legs = worn(outfit, "legs");
+  const boots = worn(outfit, "boots");
+  const shieldItem = worn(outfit, "shield");
+  const weaponItem = worn(outfit, "weapon");
   const look: Look = { ...hero.look, k: K };
   if (armor) {
-    look.shirt = metal(armor);
-    look.sleeves = metal(armor);
-    if (armor >= 4) look.shoulders = metal(armor);
-    if (armor === 5) look.pauldron = (s, j, at) => pauldronSpike(s, at, j.k);
+    look.shirt = armor.mat;
+    look.sleeves = armor.mat;
+    if (armor.family === "armor-arcane") {
+      // Vestes arcanas tingem a túnica inteira (tronco, mangas e saia).
+      if (look.robe) look.robe = armor.mat;
+    } else {
+      if (armor.tier >= 4) look.shoulders = armor.mat;
+      if (armor.tier === 5) look.pauldron = (s, j, at) => pauldronSpike(s, at, j.k);
+    }
   }
+  if (legs) look.pants = legs.mat;
+  if (boots) look.boots = boots.mat;
   look.torso = (s, j) => {
     if (armor) armorDetails(s, j, armor);
     hero.details(s, j, !!armor);
@@ -276,12 +292,12 @@ function heroLook(classId: ClassId, outfit: Outfit): Look {
     look.head = (s, j) => {
       hero.bare(s, j);
       helmet(s, j, helm, headRx(j), SKIN, () => eyes(s, j, EYE, 1.5));
-      // A barba do feiticeiro aparece por baixo dos elmos que deixam o rosto à mostra.
-      if (classId === "sorcerer" && helm !== 4 && j.dir !== "up") beard(s, j);
+      // A barba do feiticeiro aparece por baixo de tudo que deixa o rosto à mostra.
+      if (classId === "sorcerer" && !closedHelmet(helm) && j.dir !== "up") beard(s, j);
     };
   }
-  look.weapon = (s, j) => hero.weapon(s, j, weaponTier);
-  if (shieldTier) look.offhand = (s, j) => shield(s, j, j.dir === "down" ? { x: j.handO.x + 1.5 * j.k, y: j.handO.y } : j.handO, shieldTier);
+  look.weapon = (s, j) => hero.weapon(s, j, weaponItem);
+  if (shieldItem) look.offhand = (s, j) => shield(s, j, j.dir === "down" ? { x: j.handO.x + 1.5 * j.k, y: j.handO.y } : j.handO, shieldItem);
   return look;
 }
 

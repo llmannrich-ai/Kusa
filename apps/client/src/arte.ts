@@ -1,6 +1,7 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
 import {
-  CLASS_IDS, CLASSES, ITEMS, MONSTERS, SUMMONS, ITEM_SLOTS, MAX_TIER, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId, type ItemTier, type MonsterKind, type SummonKind,
+  CLASS_IDS, CLASSES, ITEMS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, MONSTERS, SUMMONS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
+  type ClassId, type ItemTier, type MonsterKind, type SummonKind,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroPoses, heroSheet } from "./art/heroes.ts";
@@ -93,26 +94,38 @@ function creatureRow(title: string, art: CreatureArt) {
 for (const [kind, art] of Object.entries(MONSTER_ART)) creatureRow(MONSTERS[kind as MonsterKind].name, art);
 for (const [kind, art] of Object.entries(SUMMON_ART)) creatureRow(`Invocação: ${SUMMONS[kind as SummonKind].name}`, art);
 
-for (const slot of ITEM_SLOTS) {
-  const row = section(`Itens: ${SLOT_NAMES[slot]}`);
-  for (let tier = 1; tier <= MAX_TIER; tier++) {
-    const id = itemId(slot, tier as ItemTier);
+for (const family of Object.values(ITEM_FAMILIES)) {
+  const row = section(`Itens: ${SLOT_NAMES[family.slot]} · ${family.name}`);
+  for (const tier of ITEM_TIERS) {
+    const id = itemId(family.slot, family.key, tier);
+    show(row, itemIcon(id), ITEMS[id].name);
+  }
+  for (const rarity of ["rare", "magic"] as const) {
+    const id = itemId(family.slot, family.key, 3, rarity);
     show(row, itemIcon(id), ITEMS[id].name);
   }
 }
 
-const fullSet = (tier: ItemTier): Outfit => ({
-  weapon: itemId("weapon", tier), helmet: itemId("helmet", tier), armor: itemId("armor", tier), shield: itemId("shield", tier),
-});
+/** Conjunto completo de um nível com as famílias que a classe usa (a primeira de cada slot). */
+const fullSet = (classId: ClassId, tier: ItemTier, pick = 0): Outfit => {
+  const outfit = { ...NO_OUTFIT };
+  for (const slot of ITEM_SLOTS) {
+    const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot && (!f.classes || f.classes.includes(classId)));
+    const family = families[Math.min(pick, families.length - 1)];
+    outfit[slot] = itemId(slot, family.key, tier);
+  }
+  return outfit;
+};
 for (const id of CLASS_IDS) {
   const row = section(`Vestimenta: ${CLASSES[id].name}`);
   show(row, heroPoses(id, NO_OUTFIT), "sem equipamento", 3 / ART_SCALE);
-  for (let tier = 1; tier <= MAX_TIER; tier++) show(row, heroPoses(id, fullSet(tier as ItemTier)), TIER_NAMES[tier as ItemTier], 3 / ART_SCALE);
+  for (const tier of ITEM_TIERS) show(row, heroPoses(id, fullSet(id, tier)), TIER_NAMES[tier], 3 / ART_SCALE);
+  show(row, heroPoses(id, fullSet(id, 4, 1)), "outra arma", 3 / ART_SCALE);
 }
 for (const slot of ITEM_SLOTS) {
   const row = section(`Vestido no cavaleiro: ${SLOT_NAMES[slot]}`);
-  for (let tier = 1; tier <= MAX_TIER; tier++) {
-    const id = itemId(slot, tier as ItemTier);
+  for (const tier of ITEM_TIERS) {
+    const id = fullSet("knight", tier)[slot];
     show(row, heroPoses("knight", { ...NO_OUTFIT, [slot]: id }), ITEMS[id].name, 3 / ART_SCALE);
   }
 }
@@ -160,7 +173,7 @@ for (let y = 0; y < H; y++) {
     sceneCtx.drawImage(wallCap(x % WALL_VARIANTS, rim), x * T, y * T - WALL_RISE * ART_SCALE, T, T);
     if (y + 1 < H && !isWall(x, y + 1)) sceneCtx.drawImage(wallFace(x % WALL_VARIANTS), x * T, (y + 1) * T - WALL_RISE * ART_SCALE, T, WALL_RISE * ART_SCALE);
   }
-  if (y === 1) CLASS_IDS.forEach((id, i) => put(heroSheet(id, fullSet(((i % 5) + 1) as ItemTier)), HERO_SIZE, HERO_SIZE, 0, 1 + i * 2, y));
+  if (y === 1) CLASS_IDS.forEach((id, i) => put(heroSheet(id, fullSet(id, ((i % 5) + 2) as ItemTier)), HERO_SIZE, HERO_SIZE, 0, 1 + i * 2, y));
   if (y === 3) [0, 1, 2, 3, 6, 7].forEach((k, i) => putArt(kinds[k], 6, 1 + i * 1.6, y));
   if (y === 5) [8, 9].forEach((k, i) => putArt(kinds[k], 0, 1 + i * 2, y));
   if (y === 5) Object.values(SUMMON_ART).forEach((art, i) => putArt(art, 0, 5 + i, y));

@@ -1,32 +1,28 @@
 import { ITEMS, type ItemSlot, type ItemTier } from "@kusa/shared";
-import { MATERIALS } from "./items.ts";
+import { itemMaterial } from "./items.ts";
 import { placed, type Joints, type Point } from "./humanoid.ts";
 import { ramp, solid, type Painter, type Ramp } from "./paint.ts";
 
 /**
- * Como cada item aparece vestido no herói, no traço de `paint.ts`: o capacete cobre a cabeça,
- * a armadura recobre o tronco e os braços (calça e saia continuam da classe), o escudo vai na
- * outra mão e a arma muda de forma (cavaleiro) ou de material (arco e cajado das outras classes).
- * As cores vêm do material do nível (`MATERIALS`, as mesmas dos ícones).
+ * Como cada item aparece vestido no herói, no traço de `paint.ts`: o capacete cobre a cabeça
+ * (o chapéu arcano troca por capuz, chapéu pontudo ou coroa), a armadura de guerra recobre o
+ * tronco e os braços, as vestes arcanas tingem a túnica inteira, calça e botas trocam a cor das
+ * pernas e dos pés, o escudo vai na outra mão e a arma muda pela família (espada ou machado, arco
+ * ou besta, cajado ou varinha) e pelo material. As cores vêm de `itemMaterial`, as mesmas dos ícones.
  */
 
 /** Ids dos itens vestidos por slot ("" = vazio). */
 export type Outfit = Record<ItemSlot, string>;
-export const NO_OUTFIT: Outfit = { weapon: "", helmet: "", armor: "", shield: "" };
+export const NO_OUTFIT: Outfit = { weapon: "", helmet: "", armor: "", legs: "", boots: "", shield: "" };
 
 /** Roupa de quem tem os slots como campos (o jogador sincronizado pelo servidor). */
 export function outfitOf(p: Readonly<Outfit>): Outfit {
-  return { weapon: p.weapon, helmet: p.helmet, armor: p.armor, shield: p.shield };
-}
-
-export function tierOf(outfit: Outfit, slot: ItemSlot): ItemTier | 0 {
-  const item = ITEMS[outfit[slot]];
-  return item?.slot === slot ? item.tier : 0;
+  return { weapon: p.weapon, helmet: p.helmet, armor: p.armor, legs: p.legs, boots: p.boots, shield: p.shield };
 }
 
 /** Chave estável de uma roupa (texturas e cache de retratos). */
 export function outfitKey(outfit: Outfit) {
-  return [outfit.weapon, outfit.helmet, outfit.armor, outfit.shield].map((id) => id || "-").join(".");
+  return [outfit.weapon, outfit.helmet, outfit.armor, outfit.legs, outfit.boots, outfit.shield].map((id) => id || "-").join(".");
 }
 
 // --- Materiais -------------------------------------------------------------------
@@ -37,14 +33,23 @@ function mix(a: string, b: string, t: number) {
   return "#" + [16, 8, 0].map((s) => c(s).toString(16).padStart(2, "0")).join("");
 }
 
-/** Rampa do material: do tom escuro (`M`) ao claro (`m`), com sombra e brilho além deles. */
-export function metal(tier: ItemTier): Ramp {
-  const { m, M } = MATERIALS[tier];
-  return [mix(M, "#000000", 0.35), M, mix(m, M, 0.45), m, mix(m, "#ffffff", 0.45)];
+/** Um item vestido: nível, família ("weapon-axe", "armor-arcane"...) e as rampas do material e do detalhe. */
+export interface Worn {
+  tier: ItemTier;
+  family: string;
+  /** Do tom escuro (`M`) ao claro (`m`), com sombra e brilho além deles. */
+  mat: Ramp;
+  /** Detalhe do material (amarração, guarda, gema, barra). */
+  acc: Ramp;
 }
 
-/** Rampa do detalhe do material (amarração, guarda, gema). */
-export const accent = (tier: ItemTier): Ramp => ramp(MATERIALS[tier].a);
+/** O item vestido no slot, ou nada. */
+export function worn(outfit: Outfit, slot: ItemSlot): Worn | null {
+  const item = ITEMS[outfit[slot]];
+  if (item?.slot !== slot) return null;
+  const { m, M, a } = itemMaterial(item.id);
+  return { tier: item.tier, family: item.family, mat: [mix(M, "#000000", 0.35), M, mix(m, M, 0.45), m, mix(m, "#ffffff", 0.45)], acc: ramp(a) };
+}
 
 const WOOD = ramp("#8a5e32");
 const DARK = solid("#1a1210");
@@ -58,10 +63,10 @@ const GOLD = ramp("#f2c14e");
  * Capacete sobre a cabeça já desenhada (pele, cabelo e rosto); `r` é o raio da cabeça.
  * Os fechados redesenham a abertura do rosto com `skin` e chamam `eyes` por cima.
  */
-export function helmet(s: Painter, j: Joints, tier: ItemTier, r: number, skin: Ramp, eyes: () => void) {
+export function helmet(s: Painter, j: Joints, w: Worn, r: number, skin: Ramp, eyes: () => void) {
+  if (w.family === "helmet-arcane") return arcaneHat(s, j, w, r, skin, eyes);
   const { head: h, k, dir } = j;
-  const mat = metal(tier);
-  const acc = accent(tier);
+  const { tier, mat, acc } = w;
   const side = dir === "side";
   const front = dir === "down";
   const faceX = side ? h.x - r * 0.45 : h.x;
@@ -130,6 +135,49 @@ export function helmet(s: Painter, j: Joints, tier: ItemTier, r: number, skin: R
   }
 }
 
+/** O elmo fechado (nível 4 de guerra) esconde o rosto inteiro. */
+export const closedHelmet = (w: Worn | null) => !!w && w.family !== "helmet-arcane" && w.tier === 4;
+
+/**
+ * Chapéus arcanos, no tecido do nível: capuz de lã e capuz rúnico (com runas no detalhe),
+ * chapéu pontudo e chapéu do mago (com estrelas), e a coroa de chifres de dragão.
+ */
+function arcaneHat(s: Painter, j: Joints, w: Worn, r: number, skin: Ramp, eyes: () => void) {
+  const { head: h, k, dir } = j;
+  const { tier, mat, acc } = w;
+  const side = dir === "side";
+  const u = (dx: number, dy: number) => [h.x + dx * k, h.y + dy * k];
+  if (tier === 1 || tier === 3) {
+    const rr = r + k;
+    if (dir === "up") s.limb(h.x, h.y + 2 * k, h.x + k, h.y + rr + 2 * k, 3 * k, 1.5 * k, mat);
+    if (side) s.limb(h.x + 3 * k, h.y, h.x + rr + 2 * k, h.y + 4 * k, 3 * k, 1.5 * k, mat);
+    s.sphere(h.x, h.y - 0.5 * k, rr, rr * 0.95, mat);
+    if (dir !== "up") {
+      s.sphere(h.x + (side ? -rr * 0.45 : 0), h.y + 1.5 * k, (side ? 5.6 : 7.5) * k, 6.5 * k, mat, { edge: false, shade: 1 });
+      s.sphere(h.x + (side ? -r * 0.45 : 0), h.y + 2 * k, (side ? 4.5 : 6) * k, 5.2 * k, skin, { edge: false });
+      eyes();
+    }
+    if (tier === 3) s.dots([h.x - 3 * k, h.y - rr + 2 * k, h.x, h.y - rr + 1.2 * k, h.x + 3 * k, h.y - rr + 2 * k], acc, 3);
+    return;
+  }
+  if (tier === 5) {
+    // Coroa: aro de seda vermelha com uma gema e chifres de dragão para trás.
+    for (const sign of side ? [1] : [-1, 1]) {
+      const bx = h.x + sign * (r - 2) + (side ? 2 : 0);
+      s.chain([bx, h.y - r * 0.5, 1.8 * k, bx + sign * 3 * k, h.y - r - 2 * k, 1.2 * k, bx + sign * 5 * k, h.y - r - 4 * k, 0.6], IVORY);
+    }
+    s.sphere(h.x, h.y - r * 0.45, r + 0.6, 3 * k, mat);
+    if (!side) s.sphere(h.x, h.y - r * 0.45, 1.4 * k, 1.4 * k, acc);
+    return;
+  }
+  // Chapéu pontudo (nível 2) e chapéu do mago (nível 4, com estrelas).
+  const tipX = h.x + (side ? 7 : 3) * k;
+  s.poly([...u(-7, -3), ...u(7, -3), ...u(3, -13), tipX, h.y - 18 * k, ...u(-1, -13)], mat);
+  s.poly([...u(-6.5, -4.5), ...u(6.5, -4.5), ...u(6, -6.5), ...u(-6, -6.5)], acc, { edge: false, shade: 3 });
+  if (tier === 4) s.dots([...u(-1, -9), ...u(2, -12), ...u(1, -7)], solid("#fff2a8"));
+  s.sphere(h.x, h.y - 3 * k, r + 3 * k, 3 * k, mat);
+}
+
 // --- Armaduras -------------------------------------------------------------------
 
 /** Pinta pixels do padrão dentro do peito e da barriga (padrões das armaduras). */
@@ -152,11 +200,17 @@ function overChest(s: Painter, j: Joints, rampOf: (x: number, y: number) => Ramp
 }
 
 /** Detalhes da armadura sobre o tronco (o tronco e os braços já saem na cor do material). */
-export function armorDetails(s: Painter, j: Joints, tier: ItemTier) {
+export function armorDetails(s: Painter, j: Joints, w: Worn) {
   const { chest: c, k, dir, cx, hipY } = j;
-  const mat = metal(tier);
-  const acc = accent(tier);
+  const { tier, mat, acc } = w;
   const front = dir === "down";
+  if (w.family === "armor-arcane") {
+    // Vestes arcanas: gola e faixa na cor do detalhe (runas a partir do manto rúnico).
+    if (front) s.line(c.x - 3 * k, c.y - 5 * k, c.x + 3 * k, c.y - 5 * k, acc, 3);
+    s.limb(cx - j.b.waistRx * k, hipY - 2 * k, cx + j.b.waistRx * k, hipY - 2 * k, 1.1 * k, 1.1 * k, acc);
+    if (tier >= 3 && front) s.dots([c.x - 3 * k, c.y, c.x + 3 * k, c.y + k, c.x, c.y + 2.5 * k], acc, 4);
+    return;
+  }
   switch (tier) {
     case 1: // Gibão de couro: amarração cruzada no peito.
       if (front) for (let y = -4; y <= 3; y += 2) s.dots([c.x - 1, c.y + y * k, c.x + 1, c.y + (y + 1) * k], acc, 3);
@@ -187,10 +241,9 @@ export function pauldronSpike(s: Painter, at: Point, k: number) {
 // --- Escudos ---------------------------------------------------------------------
 
 /** Escudo na mão `at`; de costas mostra a madeira com a alça, de lado fica de perfil. */
-export function shield(s: Painter, j: Joints, at: Point, tier: ItemTier) {
+export function shield(s: Painter, j: Joints, at: Point, w: Worn) {
   const { k, dir } = j;
-  const mat = metal(tier);
-  const acc = accent(tier);
+  const { tier, mat, acc } = w;
   const o = { x: at.x, y: at.y - 2 * k };
   const shape = (pts: number[], r: Ramp) => s.poly(placed(pts.map((v) => v * k), o), r);
   if (dir === "side") {
@@ -248,25 +301,27 @@ export function sword(s: Painter, at: Point, angle: number, k: number, blade: Ra
   s.sphere(px, py, 1.5 * k, 1.5 * k, guard);
 }
 
-/** Arma do cavaleiro conforme o nível da arma equipada (0 = espada simples da classe). */
-export function knightWeapon(s: Painter, at: Point, angle: number, k: number, tier: ItemTier | 0) {
-  if (!tier) return sword(s, at, angle, k, ramp("#b4bcc8", 1.2), ramp("#8a6a48"));
-  const mat = metal(tier);
-  const acc = accent(tier);
-  switch (tier) {
-    case 1: { // Porrete com um nó.
-      s.limb(...seg([0, 4 * k, 0, -14 * k], at, angle), 1.4 * k, 3.2 * k, mat);
-      const [nx, ny] = placed([1.5 * k, -9 * k], at, angle);
-      s.dots([nx, ny, nx - 1, ny - 1], acc, 3);
-      return;
-    }
+/** Machado: cabo de madeira e lâmina no material; maior a cada nível, com a lâmina dupla a partir do mithral. */
+function axe(s: Painter, at: Point, angle: number, k: number, w: Worn) {
+  const f = (0.85 + w.tier * 0.06) * k;
+  s.limb(...seg([0, 5 * f, 0, -16 * f], at, angle), 1.2 * k, 1.2 * k, WOOD);
+  s.poly(placed([0, -15, -7, -18, -8.5, -12, -7, -6, 0, -9].map((v) => v * f), at, angle), w.mat);
+  s.line(...seg([-8 * f, -17 * f, -8 * f, -7 * f], at, angle), w.mat, 4);
+  if (w.tier >= 4) s.poly(placed([0, -14, 3.5, -16, 3.5, -10, 0, -11].map((v) => v * f), at, angle), w.mat);
+}
+
+/**
+ * Arma do cavaleiro pela família e pelo nível (sem arma, a espada simples da classe): espadas
+ * crescem de curta a longa, com guarda azul no mithral e a lâmina curva do dragão; machados são machados.
+ */
+export function knightWeapon(s: Painter, at: Point, angle: number, k: number, w: Worn | null) {
+  if (!w) return sword(s, at, angle, k, ramp("#b4bcc8", 1.2), ramp("#8a6a48"));
+  if (w.family === "weapon-axe") return axe(s, at, angle, k, w);
+  const { mat, acc } = w;
+  switch (w.tier) {
+    case 1: return sword(s, at, angle, k, mat, acc, 11);
     case 2: return sword(s, at, angle, k, mat, acc);
-    case 3: { // Machado de ferro.
-      s.limb(...seg([0, 5 * k, 0, -16 * k], at, angle), 1.2 * k, 1.2 * k, WOOD);
-      s.poly(placed([0, -15, -7, -18, -8.5, -12, -7, -6, 0, -9].map((v) => v * k), at, angle), mat);
-      s.line(...seg([-8 * k, -17 * k, -8 * k, -7 * k], at, angle), mat, 4);
-      return;
-    }
+    case 3: return sword(s, at, angle, k, mat, acc, 18);
     case 4: return sword(s, at, angle, k, mat, BLUE, 20);
     case 5: { // Lâmina do dragão: curva, rubra, guarda de asas douradas.
       const pts = [-1.8, -3, 1.8, -3, 2.6, -10, 3.4, -16, 1.5, -21, -0.6, -16, -1.4, -10].map((v) => v * k);
@@ -281,7 +336,23 @@ export function knightWeapon(s: Painter, at: Point, angle: number, k: number, ti
   }
 }
 
+/** Besta do paladino em pé na mão: coronha de madeira, arco atravessado no material e corda. */
+export function crossbow(s: Painter, at: Point, k: number, w: Worn) {
+  const top = at.y - 9 * k;
+  s.limb(at.x, at.y + 3 * k, at.x, top, 1.3 * k, 1.1 * k, WOOD);
+  s.chain([at.x - 6 * k, top + 3 * k, 0.9 * k, at.x, top, 1.4 * k, at.x + 6 * k, top + 3 * k, 0.9 * k], w.mat);
+  s.line(at.x - 6 * k, top + 3 * k, at.x + 6 * k, top + 3 * k, solid("#e8e0c8"), 2);
+  s.dots([at.x, top - 1, at.x, top - 2], w.acc, 3);
+}
+
+/** Varinha curta na mão, com a gema do detalhe na ponta. */
+export function wand(s: Painter, at: Point, k: number, w: Worn) {
+  s.limb(at.x, at.y + 2 * k, at.x + 0.5 * k, at.y - 9 * k, 0.9 * k, 0.8 * k, w.mat);
+  s.sphere(at.x + 0.5 * k, at.y - 10.5 * k, 1.8 * k, 1.8 * k, w.acc, { light: 0.2 });
+  s.dots([at.x, at.y - 11 * k], solid("#ffffff"));
+}
+
 /** Madeira do arco e do cajado: a do material da arma equipada, ou madeira comum. */
-export const weaponWood = (tier: ItemTier | 0): Ramp => (tier ? metal(tier) : WOOD);
+export const weaponWood = (w: Worn | null): Ramp => w?.mat ?? WOOD;
 /** Anéis e pontas do arco e do cajado. */
-export const weaponTrim = (tier: ItemTier | 0): Ramp => (tier ? accent(tier) : ramp("#5e3c1c"));
+export const weaponTrim = (w: Worn | null): Ramp => w?.acc ?? ramp("#5e3c1c");

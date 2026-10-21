@@ -38,10 +38,13 @@ export async function resolveAccount(accessToken?: string): Promise<Account | nu
   };
 }
 
-/** A hunt começou: tira do inventário os itens equipados no menu e devolve os ids (`take_loadout`). */
-export async function takeLoadout(userId: string): Promise<string[]> {
+/**
+ * A hunt começou: tira do inventário os itens equipados no menu que a classe pode usar e devolve os ids
+ * (`take_loadout`). O que a classe não usa (a espada, para um druida) fica equipado na conta.
+ */
+export async function takeLoadout(userId: string, classId: string): Promise<string[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase.rpc("take_loadout", { p_profile_id: userId });
+  const { data, error } = await supabase.rpc("take_loadout", { p_profile_id: userId, p_class_id: classId });
   if (error) {
     console.error("Falha ao retirar o equipamento do inventário", error);
     return [];
