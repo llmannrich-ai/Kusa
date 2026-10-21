@@ -67,12 +67,21 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 - O equipamento e a bag **saem da conta quando a hunt começa** e entram no personagem.
 - Na hunt, todo item que o jogador pisa vai para a bag (ou direto para o equipamento, se for melhor; o trocado vai para a bag).
-  **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra 🎒 x/8 (vermelho quando cheia).
+  **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra a fileira da bag (vermelha quando cheia; ver "Bag na hunt").
 - Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
   **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
 - Quem morre perde **1 equipamento do corpo, sorteado**, **a bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para a conta.
 - Na aba Itens: equipar um item do cofre devolve o do slot ao cofre; tirar do equipamento e guardar da bag precisam de espaço no cofre.
 - Funções no banco: `buy_item`, `equip_item`, `store_item` e `sell_item` (jogador); `take_loadout`, `take_bag`, `finish_run` e `store_bag` (servidor de jogo).
+
+#### Bag na hunt (menu)
+
+- **No HUD aparece só a bag:** uma fileira com os espaços da bag embaixo do loot. O equipamento vestido aparece **somente no menu** da bag (e no próprio personagem). Código em `apps/client/src/bagbar.ts`.
+- Tocar na fileira (ou B no desktop) abre o menu na parte de cima da tela, para o polegar esquerdo continuar andando. A hunt não pausa.
+- No menu, tocar num item mostra o que ele faz (e o vestido no mesmo slot, para comparar):
+  - item da bag: **Equipar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
+  - item vestido: **Guardar na bag**, se couber.
+- O que o jogador larga não volta para a bag enquanto ele estiver em cima do item: precisa sair do tile e voltar.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
 ## Mapas

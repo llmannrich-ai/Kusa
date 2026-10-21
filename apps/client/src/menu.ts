@@ -647,7 +647,7 @@ export class Hub {
   }
 }
 
-function itemEffect(def: ItemDef) {
+export function itemEffect(def: ItemDef) {
   return def.slot === "weapon" ? `+${def.power}% de dano` : `+${def.power} de armadura`;
 }
 

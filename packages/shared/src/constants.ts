@@ -16,7 +16,7 @@ export const ROOM_NAME = "dungeon";
  * outra versão, e o cliente desatualizado se recarrega sozinho. Sem isso, cliente e servidor desenhariam
  * mapas diferentes (o personagem atravessa árvores ou trava no nada).
  */
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;
 
 /** Código do erro de entrada numa sala quando a versão das regras do cliente não é a do servidor. */
 export const VERSION_MISMATCH_CODE = 4409;
@@ -26,3 +26,6 @@ export const LOBBY_ROOM_NAME = "lobby";
 
 /** Multiplicador global da velocidade de movimento de jogadores e monstros (1 = valores das tabelas). */
 export const MOVE_SPEED_SCALE = 0.765;
+
+/** Multiplicador extra só dos heróis, sobre o `MOVE_SPEED_SCALE`. */
+export const HERO_SPEED_SCALE = MOVE_SPEED_SCALE * 0.9;

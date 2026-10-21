@@ -30,6 +30,7 @@ import {
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { PotionBar } from "./potionbar.ts";
+import { BagBar } from "./bagbar.ts";
 import { SpellBar } from "./spellbar.ts";
 import { PerkChoice } from "./perkchoice.ts";
 import { SpellAim } from "./aim.ts";
@@ -82,6 +83,7 @@ const COLORS = {
   hpMonster: 0xe74c3c,
   hpSummon: 0x5dade2,
   barrier: 0x9fd8ff,
+  bossPortal: 0xb36bff,
 };
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
@@ -156,6 +158,7 @@ export class DungeonScene extends Phaser.Scene {
   private spellBar!: SpellBar;
   private perkChoice!: PerkChoice;
   private potionBar!: PotionBar;
+  private bagBar!: BagBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
   private nextSendAt = 0;
@@ -250,13 +253,17 @@ export class DungeonScene extends Phaser.Scene {
     const kb = this.input.keyboard;
     kb?.addCapture("TAB,SPACE");
     kb?.on("keydown-TAB", () => this.cycleTarget());
-    kb?.on("keydown-ESC", () => this.room.send(MSG.target, { id: null }));
+    kb?.on("keydown-ESC", () => {
+      if (this.bagBar.isOpen) this.bagBar.close();
+      else this.room.send(MSG.target, { id: null });
+    });
     kb?.on("keydown-SPACE", () => this.attack.hold("key"));
     kb?.on("keyup-SPACE", () => this.attack.release("key"));
     kb?.on("keydown-ONE", () => this.spellBar.press(0));
     kb?.on("keydown-TWO", () => this.spellBar.press(1));
     kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
     kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
+    kb?.on("keydown-B", () => this.bagBar.toggle());
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
       if (id) this.room.send(MSG.target, { id });
@@ -278,6 +285,7 @@ export class DungeonScene extends Phaser.Scene {
     this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.perkChoice.open);
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing);
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
+    this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.move.destroy();
@@ -286,6 +294,7 @@ export class DungeonScene extends Phaser.Scene {
       this.spellBar.destroy();
       this.perkChoice.destroy();
       this.potionBar.destroy();
+      this.bagBar.destroy();
     });
   }
 
@@ -307,6 +316,7 @@ export class DungeonScene extends Phaser.Scene {
     this.aim.update();
     this.attack.update();
     this.potionBar.update();
+    this.bagBar.update();
   }
 
   // --- Alvo ---------------------------------------------------------------
@@ -561,8 +571,17 @@ export class DungeonScene extends Phaser.Scene {
   /** O servidor abre o portal de conclusão no centro da sala do boss quando ele morre. */
   private drawBossPortal() {
     const c = centerOf(this.dungeon.boss);
-    const portal = this.add.image(this.toPx(c.x), this.toPx(c.y), PORTAL_TEXTURE.boss).setDepth(c.y * TILE_SIZE + 1);
-    this.tweens.add({ targets: portal, scale: { from: 0.2, to: 1 }, duration: 600, ease: "Back.Out" });
+    const x = this.toPx(c.x);
+    const y = this.toPx(c.y);
+    // A arte do pack é quase preta e some no chão escuro: um brilho roxo (a cor do portal no minimapa) pulsa por baixo.
+    const halo = this.add.ellipse(x, y + 2, 64, 52, COLORS.bossPortal, 0.5).setDepth(c.y * TILE_SIZE + 0.5)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    const core = this.add.ellipse(x, y, 34, 38, COLORS.bossPortal, 0.9).setDepth(c.y * TILE_SIZE + 0.6)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    const portal = this.add.image(x, y, PORTAL_TEXTURE.boss).setDepth(c.y * TILE_SIZE + 1);
+    this.tweens.add({ targets: [portal, core], scale: { from: 0.2, to: 1.2 }, duration: 600, ease: "Back.Out" });
+    this.tweens.add({ targets: halo, scale: { from: 0.8, to: 1.25 }, alpha: { from: 0.55, to: 0.25 }, duration: 900, yoyo: true, repeat: -1 });
+    this.tweens.add({ targets: core, alpha: { from: 0.9, to: 0.55 }, duration: 700, yoyo: true, repeat: -1, delay: 600 });
   }
 
   private syncChest(id: string, chest: ChestView) {

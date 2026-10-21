@@ -1,5 +1,5 @@
 import { CLASSES, type ClassId } from "./classes.ts";
-import { MOVE_SPEED_SCALE } from "./constants.ts";
+import { HERO_SPEED_SCALE } from "./constants.ts";
 import { NO_BONUSES, type Bonuses } from "./talents.ts";
 
 export const MAX_LEVEL = 20;
@@ -32,6 +32,6 @@ export function statsFor(classId: ClassId, level: number, bonus: Bonuses = NO_BO
     maxHp: Math.round((c.baseHp + c.hpPerLevel * l) * (1 + bonus.hp)),
     maxMana: Math.round((c.baseMana + c.manaPerLevel * l) * (1 + bonus.mana)),
     damage: (c.baseDamage + c.damagePerLevel * l) * (1 + bonus.damage),
-    speed: (c.baseSpeed + 0.08 * l) * (1 + bonus.speed) * MOVE_SPEED_SCALE,
+    speed: (c.baseSpeed + 0.08 * l) * (1 + bonus.speed) * HERO_SPEED_SCALE,
   };
 }
