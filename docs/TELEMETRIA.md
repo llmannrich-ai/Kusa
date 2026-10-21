@@ -34,7 +34,7 @@ Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou
 | `telemetry_damage` | Quanto do dano vem do ataque básico e de cada magia? DPS médio |
 | `telemetry_spell_picks` | Qual magia é escolhida em cada slot e se ela muda a sobrevivência |
 | `telemetry_perk_picks` | Quantas vezes cada melhoria foi oferecida e escolhida, e a sobrevivência de quem escolheu |
-| `telemetry_levels` | Em que segundo cada nível chega (os slots abrem no 3 e no 8) |
+| `telemetry_levels` | Em que segundo cada nível chega (os slots abrem no 3 e no 6) |
 | `telemetry_monsters` | Abates, dano causado nos jogadores e mortes por monstro |
 | `telemetry_economy` | Gold médio por hunt e de onde vem, por tamanho de equipe |
 

@@ -27,7 +27,7 @@ export function flightMs(speed: number, x0: number, y0: number, x1: number, y1: 
 }
 
 /** Nível em que cada slot de magia abre (slot 0 e slot 1). */
-export const SPELL_SLOT_LEVELS = [3, 8] as const;
+export const SPELL_SLOT_LEVELS = [3, 6] as const;
 export type SpellSlot = 0 | 1;
 
 export type SpellId =

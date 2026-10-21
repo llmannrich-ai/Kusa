@@ -1,8 +1,10 @@
 # Grimório 2.0 — análise e plano de expansão
 
 Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons & Dragons (5e) e Tibia.
-Documento de planejamento: nada aqui está implementado ainda. Quando uma fase for entregue, o `GDD.md`
-passa a descrever o que vale e este arquivo marca a fase como feita.
+Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
+arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
+
+**Andamento:** fase 0 feita (slot 2 no nível 6). Próxima: fase 1.
 
 ---
 
@@ -12,7 +14,7 @@ passa a descrever o que vale e este arquivo marca a fase como feita.
 |---|---|---|
 | Nós por classe | 13–15 (4 deles são áureas genéricas) | 31–33 (tronco + 2 especializações por ramo) |
 | Magias por classe | 9–10 | ~22 |
-| Escolha de build | nenhuma: tudo se compra em fila, cada ramo é uma lista | 1 **especialização** por ramo (A ou B), estilo subclasse de D&D |
+| Escolha de build | nenhuma: tudo se compra em fila, cada ramo é uma lista | 1 **especialização** por ramo (A ou B), **permanente**, estilo subclasse de D&D |
 | Nível 2 e 3 da magia | só +20% de número | o nível 3 vira **Maestria**: muda o comportamento |
 | Tipos de efeito | 10 (dano, cura, raiz, atordoar, guarda, escudo, roubo de vida, provocar, invocar, projétil) | +12 (veneno/queimadura, lentidão, linha, cone, salto em cadeia, investida/teleporte, empurrar/puxar, marca, campo no chão, bônus em aliados, transformação, armadilha) |
 | Slot 2 | abre no nível 8 (quase ninguém chega) | abre no nível 6 |
@@ -120,11 +122,14 @@ Papel de cada classe, que todo conteúdo novo precisa respeitar:
 - **Tronco:** os nós atuais ficam onde estão (mesmos ids no banco), então nada do que alguém já comprou se perde.
 - **Especialização:** no fim do tronco, o ramo se divide em dois. Cada lado tem um **Traço** (passiva com mecânica,
   não só número) e 2 magias (uma de cada slot, para as duas escolhas na hunt sempre terem opção nova).
-- **Pode comprar os dois lados**, mas **só um fica ativo por ramo em cada hunt**. O jogador escolhe no Grimório antes
-  de jogar, como o mago do D&D que prepara as magias do dia. Vantagens:
-  - não precisa de "resetar" a árvore nem devolver gold;
-  - vira um bom destino para o gold acumulado;
-  - a decisão continua real a cada hunt (Traço e magias do lado inativo não aparecem).
+- **A escolha é permanente** (decisão do Leonardo): comprar o Traço de um lado tranca o outro lado daquele ramo para
+  sempre, naquela classe da conta. Como na subclasse do D&D, é uma decisão de identidade, não de hunt.
+  - Cada classe tem 3 escolhas (uma por ramo), então são 8 combinações por classe e 32 no jogo.
+  - Nada do que já foi comprado é afetado: os lados só têm conteúdo novo.
+  - Como não dá para voltar atrás, o jogador precisa ver **tudo** antes: o Traço e as 2 magias de cada lado, com os
+    números do nível 1 ao 3, e uma confirmação clara ("Esta escolha é permanente. O outro lado fica fechado.").
+  - O banco garante a regra: `talents` ganha `exclusive_with` (o Traço do outro lado), e `buy_talent` recusa a compra
+    se o outro lado tiver qualquer nível.
 - **Áureas:** as 4 de hoje ficam no tronco (mesmos ids e bônus). Conteúdo novo nunca é áurea genérica.
 
 ### 4.2 Maestria (nível 3 de cada magia)
@@ -168,7 +173,8 @@ Proposta:
 - **Visão geral** (como hoje): mostra o tronco dos 3 ramos e, no fim de cada um, um nó duplo "A | B".
 - **Tocar no nome do ramo** (ou no nó duplo) **foca o ramo**: ele ocupa a largura toda, com as 2 especializações lado a lado.
   Voltar com o ✕ ou deslizando para o lado.
-- O lado ativo fica aceso; o inativo fica apagado com o botão "Ativar nesta hunt".
+- Antes da escolha, os dois lados aparecem abertos para ler. Depois, o lado escolhido fica aceso e o outro fica
+  apagado com um cadeado.
 - O nó do Traço é um losango (o círculo é magia e o quadrado é áurea).
 
 ---
@@ -193,10 +199,10 @@ Tamanho: **P** = até 1 dia, **M** = 2–3 dias, **G** = 1 semana ou mais (inclu
 | 10 | Campo no chão (dura alguns segundos) | `field: { ms, tickMs, ... }` | G | Solo Consagrado, Nuvem Venenosa, Tentáculos, Chamar Relâmpago |
 | 11 | Traços (gatilhos passivos) | ganchos `onHit`, `onHurt`, `onKill`, `onCast` | G | as 24 especializações |
 | 12 | Armadilha | `field` que dispara 1 vez quando um monstro pisa | M (depois do 10) | Armadilha de Urso, Cordão de Flechas |
-| 13 | Mirar em aliado | `aim: "ally"` | M | Cura Distante, Renascer da Semente |
+| 13 | Mirar em aliado | `aim: "ally"` | M | Cura Distante, Escudo da Luz, Renascer da Semente |
 | 14 | Transformação | estado no `Player` + troca de ataque básico | G | Forma de Urso, Forma de Pantera |
 | 15 | Parede temporária | tiles bloqueados com tempo (pathfinding e visão) | G | Muralha Mágica |
-| 16 | Reanimar aliado | depende da decisão em aberto "os jogadores se reanimam?" | G | Renascer da Semente |
+| 16 | Reanimar aliado | semente no aliado: se ele morrer enquanto ela dura, renasce no lugar em vez de morrer (ver 6.4) | M | Renascer da Semente |
 
 Regras de implementação:
 
@@ -246,7 +252,7 @@ Ramos: **Mira** (alvo único) · **Luz** (flechas sagradas, pouco suporte) · **
 | Mira | **Atirador de Elite** (Sharpshooter, utito tempo san) | *Olho de Águia:* +1 de alcance no básico e +20% de dano em alvos a 5 tiles ou mais | 🎯 **Marca do Caçador** (Hunter's Mark): marca um alvo por 10 s, que recebe +25% de dano de toda a equipe | 🦅 **Postura do Atirador:** 8 s com básico de dano dobrado e +2 de alcance, andando 50% mais devagar |
 | Mira | **Caçador Ágil** (Disengage, Zephyr Strike) | *Passo Leve:* +25% de velocidade por 2 s depois de cada magia | 🤸 **Rolamento:** salta 3 tiles para trás e a próxima flecha atordoa | 🏹 **Aljava Veloz** (Swift Quiver): 6 s de ataque básico a cada 0,4 s |
 | Luz | **Cruzado** (exori san) | *Flechas Consagradas:* básico causa +30% em mortos-vivos (Esqueleto, Afogado) e queima por 2 s | ✝️ **Lança Etérea** (exori con): lança rápida com recarga de 2,5 s | ☀️ **Caldeira Divina** (exevo mas san): luz em raio 3 em volta de si, dano dobrado em mortos-vivos |
-| Luz | **Guardião da Luz** | *Aura Sagrada:* aliados a até 3 tiles regeneram +1% de vida por segundo | 🕯️ **Luz da Salvação:** cura 25% de um aliado mirado a até 6 tiles | ⛪ **Solo Consagrado:** campo de raio 2 por 8 s que cura aliados (3%/s) e fere monstros |
+| Luz | **Guardião da Luz** | *Aura Sagrada:* aliados a até 3 tiles recebem 10% menos dano | 🕯️ **Escudo da Luz:** escudo de 30% da vida num aliado mirado a até 6 tiles | ⛪ **Solo Consagrado:** campo de raio 2 por 8 s que fere monstros e dá +5 de armadura aos aliados dentro |
 | Batedor | **Artilheiro** (Lightning Arrow, Conjure Barrage) | *Pólvora:* as magias de área do paladino deixam o chão em chamas por 3 s | ⚡ **Flecha Relâmpago:** acerta o alvo e salta para mais 3 | 🎇 **Barragem:** cone de 5 tiles à frente com uma chuva de flechas |
 | Batedor | **Armadilheiro** (Cordon of Arrows) | *Engenhoso:* armadilhas duram o dobro e cabem 3 ao mesmo tempo | 🪤 **Armadilha de Urso:** o 1º monstro que pisar fica preso 3 s e sangra | 🎋 **Cordão de Flechas:** estaca que dispara 4 vezes em monstros que chegam a 3 tiles |
 
@@ -278,10 +284,22 @@ Ramos: **Matilha** (invocação) · **Bosque** (cura) · **Espinhos** (natureza 
 |---|---|---|---|---|
 | Matilha | **Mestre das Feras** | *Vínculo Selvagem:* criaturas com +25% de vida e de dano | 📣 **Grito da Fera:** suas criaturas atacam 50% mais rápido por 6 s e recuperam 20% da vida | 🦅 **Águia Gigante:** voa sobre água e obstáculos e mergulha atordoando |
 | Matilha | **Metamorfo** (Wild Shape) | *Pele Selvagem:* +4 de armadura enquanto transformado | 🐆 **Forma de Pantera:** 6 s com +40% de velocidade; o próximo básico salta no alvo (2,5×) | 🐻 **Forma de Urso:** 10 s com +50% de vida e básico corpo a corpo em raio 1 que provoca |
-| Bosque | **Círculo da Vida** (exura sio, Revivify) | *Florescer:* cura além da vida máxima vira escudo (até 20%) | 💞 **Cura Distante** (exura sio): cura 45% de um aliado mirado a até 6 tiles | 🌰 **Renascer da Semente:** se o aliado marcado morrer em 20 s, renasce com 40% (depende da decisão sobre reanimar) |
+| Bosque | **Círculo da Vida** (exura sio, Revivify) | *Florescer:* cura além da vida máxima vira escudo (até 20%) | 💞 **Cura Distante** (exura sio): cura 45% de um aliado mirado a até 6 tiles | 🌰 **Renascer da Semente:** a única magia que reanima no jogo (ver abaixo) |
 | Bosque | **Guardião da Natureza** (Barkskin, utura gran) | *Seiva Protetora:* quem você cura ganha +3 de armadura por 4 s | 🪵 **Pele de Casca:** o aliado mais ferido por perto ganha escudo de 30% | 🌧️ **Chuva Revigorante:** campo de raio 3 por 8 s que cura 4% de vida e devolve 2% de mana por segundo |
 | Espinhos | **Peste** (poison field, Stinking Cloud) | *Toxina:* dano de natureza envenena (acumula até 3 vezes) | 🐍 **Picada da Mamba:** veneno forte num alvo, que explode em área se ele morrer | ☠️ **Nuvem Venenosa:** campo de raio 2 por 8 s |
 | Espinhos | **Tempestade** (Call Lightning, Thunderwave) | *Céu Carregado:* a cada 4 magias, um raio cai no monstro mais próximo | 💥 **Onda Trovejante:** empurra tudo em raio 2 e fere | ⛈️ **Chamar Relâmpago:** nuvem sobre o ponto mirado que solta um raio a cada 1,5 s por 8 s |
+
+**Renascer da Semente** (decisão do Leonardo: só o druida reanima, e só com esta magia)
+- O druida mira um aliado (ou a si mesmo) e planta uma semente que dura 25 s. Recarga de 60 s, mana alta.
+- Se esse aliado morrer com a semente ativa, ele **não morre**: renasce no mesmo lugar com 40% da vida e 2 s de
+  invulnerabilidade. Não larga item, bag nem poções, e a hunt continua normal.
+- Só uma semente por druida de cada vez. Na mesma pessoa, a semente salva só uma vez (ela some quando salva).
+- Por que antes e não depois da morte: reanimar um corpo caído obrigaria a mudar a regra da morte (adiar o
+  `finish_run`, segurar o item largado, criar um estado de "caído"). A semente entrega o mesmo momento ("o druida me
+  salvou") sem mexer nisso. Se depois quiserem reanimar de verdade, isso vira a Maestria dela.
+- Telemetria: contador `revives` em `RunStats` (quem salvou quem) e o dano que a pessoa recebeu depois de renascer.
+- Consequência da escolha permanente: só o druida do **Círculo da Vida** reanima. É de propósito: vira o motivo para
+  ter esse druida na equipe.
 
 ### 6.5 Contagem
 
@@ -300,19 +318,21 @@ Cada fase é um PR que pode ir sozinho para produção (CI verde, `RULES_VERSION
 
 | Fase | Entrega | Depende de | Tamanho | Impacto |
 |---|---|---|---|---|
-| **0. Destravar o que existe** | slot 2 no nível 6 (`SPELL_SLOT_LEVELS`) e conferir as melhorias de nível na telemetria | — | P | **alto**: metade do Grimório passa a aparecer |
+| **0. Destravar o que existe** ✅ | slot 2 no nível 6 (`SPELL_SLOT_LEVELS`) e conferir as melhorias de nível na telemetria | — | P | **alto**: metade do Grimório passa a aparecer |
 | **1. Motor de efeitos (parte 1)** | peças 1–9 da seção 5, testes de fumaça, 7 famílias de efeito visual; aplicar os ♻️ que dependem delas (Raio em Cadeia, Disparo Perfurante, Nevasca...) | 0 | G | alto: tira as magias repetidas |
 | **2. Maestrias** | `mastery` no `SpellDef`, texto no menu, Maestria das 39 magias atuais | 1 | M | médio: dá motivo para o nível 3 |
-| **3. Especializações (estrutura)** | ganchos de Traço no servidor; banco: nós novos em `talents`, especialização ativa por ramo no perfil + função `security definer` `set_spec`; menu com o ramo em foco | 1 | G | alto: cria a escolha de build |
+| **3. Especializações (estrutura)** | ganchos de Traço no servidor; banco: nós novos em `talents`, coluna `exclusive_with` e a regra da escolha permanente em `buy_talent`; menu com o ramo em foco | 1 | G | alto: cria a escolha de build |
 | **4a–4d. Conteúdo por classe** | 12 magias + 6 Traços por classe, um PR por classe | 3 | M cada | alto |
-| **5. Peças grandes** | campo, armadilha, mirar em aliado, transformação, parede, reanimar (peças 10–16) e as magias que dependem delas | 3 | G | médio-alto |
+| **5. Peças grandes** | campo, armadilha, mirar em aliado, transformação, parede, semente (peças 10–16) e as magias que dependem delas | 3 | G | médio-alto |
 | **6. Balanceamento** | ajustes pela telemetria (seção 8) | 4 | contínuo | — |
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).
 
-Para chegar na fase 4 sem esperar a fase 5, cada classe lança primeiro as magias que só usam as peças 1–9 e deixa as
-outras (marcadas na seção 6 com campo, armadilha, aliado, transformação ou parede) para a fase 5.
+Como a escolha é permanente, uma especialização só abre para compra com o Traço e as 2 magias prontos, e os dois
+lados do ramo abrem juntos. Por isso as peças da fase 5 que uma classe usa entram **antes** do PR dessa classe na
+fase 4. Exemplos: o campo (peça 10) antes do Paladino (Solo Consagrado, Cordão de Flechas); a mira em aliado e a
+semente (peças 13 e 16) antes do Druida.
 
 **Banco e economia (fase 3):**
 - Nós novos entram em `talents` com `requires_id` apontando para o fim do tronco, e os Traços com custo próprio.
@@ -330,7 +350,7 @@ Já dá para medir com a telemetria (`stats.spellsChosen`, `casts`, `damageDealt
 |---|---|
 | Hunts que chegam ao slot 2 | > 40% (hoje: 3 de 32) |
 | Magia mais escolhida num slot, por classe | < 50% das escolhas (nenhuma magia obrigatória) |
-| Especializações ativas | nenhuma abaixo de 15% de uso dentro do ramo |
+| Especializações escolhidas | nenhuma abaixo de 20% das escolhas do ramo (um lado ruim tranca o jogador para sempre) |
 | Gold gasto no Grimório por jogador ativo | subir semana a semana até a fase 4 |
 | Taxa de conclusão por classe | diferença < 10 pontos percentuais entre classes |
 | Magias por minuto | não cair (efeitos novos não podem deixar o jogo lento de jogar) |
@@ -347,15 +367,27 @@ Já dá para medir com a telemetria (`stats.spellsChosen`, `casts`, `damageDealt
 | **Tela poluída** | campos, venenos e armadilhas no chão em 9 tiles de largura | campos com borda clara e transparência; no máximo 2 campos do mesmo jogador ao mesmo tempo |
 | **Celular fraco** | campos e danos contínuos geram mais atualizações por segundo | tique de 500 ms (não por frame); medir o tick do servidor com 4 jogadores |
 | **Só 2 slots** | 22 magias por classe e 2 por hunt: muita coisa não é usada | é intencional (a escolha é o jogo), e os Traços garantem que a especialização vale mesmo sem a magia dela no slot |
-| **Decisão de reanimar ainda em aberto** | Renascer da Semente depende dela | é a única magia afetada; tem alternativa (escudo forte no aliado) se a resposta for "não" |
-| **Paladino perde a cura** | quem joga de suporte com ele pode não gostar | Guardião da Luz mantém um caminho de suporte leve |
+| **Escolha permanente errada** | o jogador escolhe um lado fraco e fica preso nele | lados lançados juntos e balanceados antes; confirmação clara; ajustar números do lado fraco em vez de liberar troca |
+| **Reanimar forte demais** | um druida torna a equipe quase imortal | 1 semente por druida, 60 s de recarga e só salva uma vez |
+| **Paladino perde a cura** | quem joga de suporte com ele pode não gostar | Guardião da Luz vira proteção (escudo e armadura), sem cura: cura é do druida |
 
 ---
 
-## 10. Decisões que precisam do Leonardo
+## 10. Decisões tomadas
 
-1. **Slot 2 no nível 6?** (recomendado: sim, é a fase 0)
-2. **Especializações: comprar os dois lados e ativar um por hunt** (recomendado) **ou** escolha permanente com custo para trocar?
-3. **Os jogadores se reanimam?** Define Renascer da Semente e uma possível magia de reanimar do paladino.
-4. **Ordem das classes na fase 4** (recomendado: Paladino → Feiticeiro → Druida → Cavaleiro).
-5. **Quais magias da seção 6 cortar ou trocar** antes de começar, para ninguém implementar o que não vai ficar.
+| # | Pergunta | Decisão |
+|---|---|---|
+| 1 | Slot 2 no nível 6? | **Sim.** Feito na fase 0. |
+| 2 | Especialização: ativar por hunt ou permanente? | **Permanente.** Comprar um lado tranca o outro (seção 4.1). |
+| 3 | Os jogadores se reanimam? | **Sim, só com a magia do druida** (Renascer da Semente, seção 6.4). |
+| 4 | Ordem das classes e cortes no catálogo | **Decisão do Claude** (abaixo). |
+
+Ajustes no catálogo que decidi (já aplicados na seção 6):
+
+- **Paladino sem cura.** A primeira versão dava ao Guardião da Luz uma cura num aliado e um campo de cura, o que
+  repetia o druida. Agora ele protege: Escudo da Luz (escudo num aliado mirado), Solo Consagrado dá armadura e a
+  Aura Sagrada corta dano. Cura e reanimar ficam só com o druida.
+- **Renascer da Semente** virou a magia de reanimar, salvando o aliado no momento da morte (seção 6.4).
+- **Ordem da fase 4:** Paladino → Feiticeiro → Druida → Cavaleiro, como recomendado na seção 7.
+- Lados de um mesmo ramo **saem juntos no mesmo PR**: com a escolha permanente, lançar só um lado forçaria quem
+  quer a especialização a escolher antes de ver a outra.

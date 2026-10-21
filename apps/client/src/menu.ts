@@ -253,7 +253,7 @@ export class Hub {
     const learned = spells.filter((t) => talentRank(t, ranks) > 0).length;
     page.append(el("p", "muted hub-hint",
       `${learned}/${spells.length} magias. Toque num nó para ver e comprar; os da ponta pedem os anteriores do ramo. ` +
-      "Magias viram opção quando o slot abre na hunt (nível 3 e 8); os níveis 2 e 3 deixam a magia mais forte."));
+      "Magias viram opção quando o slot abre na hunt (nível 3 e 6); os níveis 2 e 3 deixam a magia mais forte."));
 
     const rows = Math.max(...tree.map((t) => t.row)) + 1;
     const grim = el("div", "grimoire");
