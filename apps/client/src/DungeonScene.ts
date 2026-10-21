@@ -297,7 +297,7 @@ export class DungeonScene extends Phaser.Scene {
       const unit = this.avatars.get(id) ?? this.monsters.get(id);
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
-    this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.perkChoice.open);
+    this.spellBar = new SpellBar(this.room, actions, this.aim);
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing);
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
