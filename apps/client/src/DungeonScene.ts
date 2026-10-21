@@ -43,6 +43,7 @@ import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView, S
 import { hash } from "./art/pixels.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
+import { ART_SCALE, CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
 import {
   CHEST_TEXTURE,
@@ -671,8 +672,9 @@ export class DungeonScene extends Phaser.Scene {
   private addAvatar(sessionId: string, player: PlayerView) {
     const classId = player.classId as ClassId;
     const heroKey = heroArt(this, classId, outfitOf(player));
-    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down"));
-    const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, -TILE_SIZE / 2 + 4, false);
+    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down")).setScale(HERO_SPRITE_SCALE);
+    const top = TILE_SIZE / 2 - sprite.displayHeight;
+    const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, top + 4, false);
     unit.classId = classId;
     unit.heroKey = heroKey;
     const label = this.add.text(0, unit.barY - 2, player.name, this.textStyle()).setOrigin(0.5, 1);
@@ -712,8 +714,8 @@ export class DungeonScene extends Phaser.Scene {
   private addMonster(id: string, monster: MonsterView) {
     const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
     const def = MONSTERS[kind];
-    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia); escala inteira para não borrar o pixel.
-    const scale = def.rank === "boss" ? 2 : 1;
+    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia).
+    const scale = (def.rank === "boss" ? 2 : 1) * CREATURE_SPRITE_SCALE;
     const sprite = this.add.sprite(0, 0, MONSTER_TEXTURE[kind]).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, FACES_LEFT.has(kind));
@@ -738,7 +740,7 @@ export class DungeonScene extends Phaser.Scene {
   /** Criatura invocada: sprite do pack (ou o Guardião), barra azul (sem nome, para não poluir a tela) e um brilho ao aparecer. */
   private addSummon(id: string, summon: SummonView) {
     const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
-    const sprite = this.add.sprite(0, 0, SUMMON_TEXTURE[kind]);
+    const sprite = this.add.sprite(0, 0, SUMMON_TEXTURE[kind]).setScale(CREATURE_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, SUMMON_FACES_LEFT.has(kind));
     unit.bleeds = false;
@@ -749,8 +751,8 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: glow, alpha: { from: 0.35, to: 0.12 }, duration: 800, yoyo: true, repeat: -1 });
     this.summons.set(id, unit);
     this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
-    sprite.setScale(0.2);
-    this.tweens.add({ targets: sprite, scale: 1, duration: 280, ease: "Back.Out" });
+    sprite.setScale(0.2 * CREATURE_SPRITE_SCALE);
+    this.tweens.add({ targets: sprite, scale: CREATURE_SPRITE_SCALE, duration: 280, ease: "Back.Out" });
     this.fx.summonBurst({ x: unit.body.x, y: unit.body.y });
   }
 
@@ -766,7 +768,7 @@ export class DungeonScene extends Phaser.Scene {
     const x = this.toPx(tileX);
     const y = this.toPx(tileY);
     sprite.setOrigin(0.5, 1).setPosition(0, TILE_SIZE / 2);
-    const shadow = this.add.ellipse(0, TILE_SIZE / 2 - 3, sprite.displayWidth * 0.55, 6 * sprite.scaleY, 0x000000, 0.35);
+    const shadow = this.add.ellipse(0, TILE_SIZE / 2 - 3, sprite.displayWidth * 0.55, 6 * sprite.scaleY * ART_SCALE, 0x000000, 0.35);
     const body = this.add.container(x, y, [shadow, sprite]);
     const bar = this.add.graphics();
     const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);

@@ -4,7 +4,8 @@ import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./he
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
-import { treantCanvas } from "./summons.ts";
+import { TREANT_OUTLINE, treantCanvas } from "./summons.ts";
+import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./swampDecor.ts";
 
@@ -140,10 +141,27 @@ export function createHeroArt(scene: Phaser.Scene) {
   for (const classId of CLASS_IDS) heroArt(scene, classId);
 }
 
+/**
+ * Monstros e invocações com a arte refinada (`refine.ts`): os PNGs do pack são trocados pela
+ * versão em dobro de resolução, e o Guardião do Bosque já nasce refinado (uma vez por jogo).
+ */
+export function createCreatureArt(scene: Phaser.Scene) {
+  const packed = [...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)].filter((key) => key !== SUMMON_TEXTURE.treant);
+  for (const key of packed) {
+    const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+    if (source.width !== TILE_SIZE) continue;
+    const refined = refineArt(source);
+    scene.textures.remove(key);
+    scene.textures.addCanvas(key, refined);
+  }
+  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
+    scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
+  }
+}
+
 /** Gera as texturas próprias dos efeitos e as animações de impacto (uma vez por jogo). */
 export function createEffectArt(scene: Phaser.Scene) {
   if (!scene.textures.exists(FX_TEXTURE.leaf)) scene.textures.addCanvas(FX_TEXTURE.leaf, leafCanvas());
-  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) scene.textures.addCanvas(SUMMON_TEXTURE.treant, treantCanvas());
   const strips: [string, () => HTMLCanvasElement, number][] = [
     [FX_ANIM.slash, slashStrip, SLASH_FRAMES],
     [FX_ANIM.bite, biteStrip, BITE_FRAMES],
