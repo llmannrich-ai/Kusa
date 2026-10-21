@@ -92,7 +92,7 @@ export function weaponMultiplier(weaponId: string) {
 /** Preço de compra no mercado por nível. Itens de Dragão não são vendidos: só saem das hunts. */
 export const ITEM_BUY_PRICES: Record<ItemTier, number | null> = { 1: 60, 2: 150, 3: 350, 4: 800, 5: null };
 /** Quanto o mercado paga por item, por nível. */
-export const ITEM_SELL_PRICES: Record<ItemTier, number> = { 1: 20, 2: 60, 3: 140, 4: 320, 5: 900 };
+export const ITEM_SELL_PRICES: Record<ItemTier, number> = { 1: 10, 2: 25, 3: 60, 4: 130, 5: 300 };
 
 /**
  * Melhor item por slot entre os itens dados (o loadout que entra na hunt).

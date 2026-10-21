@@ -40,7 +40,17 @@ npm run dev          # servidor (2567) + cliente em http://localhost:5173
 
 O cliente fala com o servidor pelo proxy do Vite em `/colyseus`, então só a porta 5173 precisa ser exposta.
 
-Testes de fumaça (com o servidor rodando):
+Verificação completa (a mesma do CI em todo PR):
+
+```bash
+npm run check        # typecheck + build do cliente + npm test
+npm test             # só os testes de fumaça: sobe os servidores de teste sozinho
+npm test -- bag maps # só alguns
+```
+
+`npm test` (`apps/server/scripts/all.ts`) roda os scripts abaixo em modo convidado (sem Supabase). Os bots caçam no
+nível 1 e às vezes morrem por azar: só nesse caso o teste roda de novo (até 5 vezes). Cada script também roda sozinho
+contra um servidor já aberto, passando a URL:
 
 - `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.
 - `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, segura o ataque básico, mata e ganha XP e loot.

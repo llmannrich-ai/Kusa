@@ -82,7 +82,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
   - item da bag: **Equipar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
   - item vestido: **Guardar na bag**, se couber.
 - O que o jogador larga não volta para a bag enquanto ele estiver em cima do item: precisa sair do tile e voltar.
-- Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
+- Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 10, 25, 60, 130 e Dragão 300.
 
 ## Salas e sala de espera
 
