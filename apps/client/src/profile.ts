@@ -1,4 +1,4 @@
-import type { TalentRanks } from "@kusa/shared";
+import { ITEMS, type TalentRanks } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
 // Dados do menu: árvore de magias, itens (equipamento, cofre e bag) e gold. O navegador só lê as tabelas;
@@ -39,7 +39,8 @@ export async function loadProfile(): Promise<Profile> {
   return {
     gold: profile.data.gold,
     talents: Object.fromEntries(talents.data.map((t) => [t.talent_id, t.rank])),
-    items: items.data.map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, source: i.source, location: i.location })),
+    // Id fora do catálogo (banco e cliente em versões diferentes durante uma atualização): não aparece.
+    items: items.data.filter((i) => ITEMS[i.item_id]).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, source: i.source, location: i.location })),
   };
 }
 

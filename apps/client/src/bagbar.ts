@@ -1,6 +1,6 @@
-import { BAG_SIZE, ITEMS, ITEM_SLOTS, MSG, SLOT_NAMES, TIER_COLORS, TIER_NAMES, type ItemSlot } from "@kusa/shared";
+import { BAG_SIZE, CLASSES, ITEMS, ITEM_SLOTS, MSG, SLOT_NAMES, canUse, itemColor, type ClassId, type ItemSlot } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
-import { itemEffect } from "./menu.ts";
+import { itemEffect, itemLabel, statList } from "./menu.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
 /** Item escolhido no menu: uma posição da bag ou um slot do corpo. */
@@ -13,9 +13,8 @@ function iconUrl(id: string) {
   return iconUrls.get(id)!;
 }
 
-function tierColor(id: string) {
-  const item = ITEMS[id];
-  return item ? `#${TIER_COLORS[item.tier].toString(16).padStart(6, "0")}` : "";
+function rarityColor(id: string) {
+  return ITEMS[id] ? `#${itemColor(id).toString(16).padStart(6, "0")}` : "";
 }
 
 /**
@@ -120,6 +119,8 @@ export class BagBar {
     const grid = el("div", "bag-grid");
     for (let i = 0; i < Math.max(BAG_SIZE, bag.length); i++) {
       const cell = this.cell(bag[i], "bag-cell");
+      // A classe não usa (arma de outra classe, armadura de guerra num feiticeiro): só serve para vender.
+      if (bag[i] && !canUse(bag[i], p.classId as ClassId)) cell.classList.add("unusable");
       if (bag[i]) cell.dataset.bag = String(i);
       if (this.isSelected({ bag: i })) cell.classList.add("selected");
       grid.append(cell);
@@ -141,13 +142,15 @@ export class BagBar {
       return box;
     }
     const name = el("strong", "", def.name);
-    name.style.color = tierColor(id);
-    box.append(name, el("small", "muted", `${SLOT_NAMES[def.slot]} · ${TIER_NAMES[def.tier]} · ${itemEffect(def)}`));
+    name.style.color = rarityColor(id);
+    box.append(name, el("small", "muted", itemLabel(def)), statList(def));
     const actions = el("div", "bag-actions");
     if ("bag" in sel) {
       const worn = ITEMS[p[def.slot]];
       if (worn) box.append(el("small", "muted", `Vestido: ${worn.name} (${itemEffect(worn)})`));
-      actions.append(button("Equipar", "equip", true), button("Largar", "drop"));
+      const usable = canUse(def.id, p.classId as ClassId);
+      if (!usable) box.append(el("small", "warn", `${CLASSES[p.classId as ClassId].name} não usa: leve para vender ou para outra classe.`));
+      actions.append(button("Equipar", "equip", true, !usable), button("Largar", "drop"));
     } else {
       const full = bag.length >= BAG_SIZE;
       actions.append(button(full ? "Bag cheia" : "Guardar na bag", "unequip", !full, full));
@@ -169,7 +172,7 @@ export class BagBar {
       img.src = iconUrl(item.id);
       img.alt = item.name;
       cell.append(img);
-      cell.style.borderColor = tierColor(item.id);
+      cell.style.borderColor = rarityColor(item.id);
       cell.title = item.name;
     } else {
       cell.classList.add("vazio");

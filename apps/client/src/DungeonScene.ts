@@ -10,7 +10,7 @@ import {
   lineTiles,
   coneTiles,
   SUMMONS,
-  TIER_COLORS,
+  itemColor,
   TILE_SIZE,
   blocksSight,
   centerOf,
@@ -783,11 +783,11 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /**
-   * Item ou poção no chão: brilho na cor do nível embaixo do ícone, acima do chão e abaixo dos personagens.
+   * Item ou poção no chão: brilho na cor da raridade embaixo do ícone, acima do chão e abaixo dos personagens.
    * Vários itens no mesmo tile se espalham um pouco para dar para ver todos.
    */
   private addGroundItem(id: string, item: GroundItemView) {
-    const color = isPotion(item.itemId) ? POTIONS[item.itemId].color : TIER_COLORS[ITEMS[item.itemId]?.tier];
+    const color = isPotion(item.itemId) ? POTIONS[item.itemId].color : ITEMS[item.itemId] && itemColor(item.itemId);
     if (color === undefined) return;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
