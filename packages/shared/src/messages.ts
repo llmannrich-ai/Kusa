@@ -1,6 +1,7 @@
 import type { ClassId } from "./classes.ts";
 import type { ItemSlot } from "./items.ts";
 import type { MapId } from "./maps.ts";
+import type { DotKind, MonsterKind } from "./monsters.ts";
 import type { PerkId } from "./perks.ts";
 import type { PotionId } from "./potions.ts";
 import type { SpellId, SpellSlot } from "./spells.ts";
@@ -47,6 +48,13 @@ export interface DamageMessage {
   fromX: number;
   fromY: number;
   fx: AttackFx;
+  /**
+   * Golpe já desenhado por outro efeito (habilidade especial do monstro, `MSG.monsterStrike`) ou dano
+   * contínuo: o cliente não desenha o ataque básico de quem bateu, só o impacto.
+   */
+  special?: boolean;
+  /** Dano de veneno ou queimadura que ainda está fazendo efeito. */
+  dot?: DotKind;
 }
 
 /** Servidor → todos: aviso flutuante no mapa (XP, nível, loot, baú, boss). */
@@ -114,6 +122,35 @@ export interface SpellMessage {
   ms: number;
 }
 
+/**
+ * Servidor → todos: um monstro começou a habilidade especial (`MonsterDef.special`). Os tiles acendem como
+ * aviso por `ms`; depois vem `MSG.monsterStrike` (ou nada, se o monstro morreu ou foi atordoado antes).
+ */
+export interface MonsterCastMessage {
+  /** Id do monstro. */
+  id: string;
+  kind: MonsterKind;
+  x: number;
+  y: number;
+  /** Para onde mira (o alvo, ou a ponta da faixa). */
+  tx: number;
+  ty: number;
+  /** Tiles atingidos, em pares [x0, y0, x1, y1, ...], do centro para fora. */
+  tiles: number[];
+  ms: number;
+}
+
+/** Servidor → todos: a habilidade especial saiu (efeito do golpe); o dano chega em seguida por `MSG.damage`. */
+export interface MonsterStrikeMessage {
+  id: string;
+  kind: MonsterKind;
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  tiles: number[];
+}
+
 export type RunOutcome = "died" | "escaped" | "completed" | "buried";
 
 /** Servidor → cliente quando a hunt de um jogador termina. */
@@ -149,4 +186,6 @@ export const MSG = {
   bagEquip: "bagEquip",
   unequip: "unequip",
   bagDrop: "bagDrop",
+  monsterCast: "monsterCast",
+  monsterStrike: "monsterStrike",
 } as const;
