@@ -4,11 +4,12 @@ import {
   CLASS_IDS,
   ITEMS,
   ITEM_BUY_PRICES,
-  ITEM_SELL_PRICES,
+  ITEM_FAMILIES,
   ITEM_SLOTS,
+  ITEM_TIERS,
+  RARITY_NAMES,
   SLOT_NAMES,
   SPELLS,
-  TIER_COLORS,
   TREE_BRANCHES,
   TIER_NAMES,
   VAULT_SIZE,
@@ -26,8 +27,17 @@ import {
   TALENTS,
   TRAITS,
   chosenSide,
+  canUse,
+  classesText,
+  describeStats,
+  itemColor,
+  itemId,
+  itemScore,
+  itemSummary,
+  sellPrice,
   type ClassId,
   type ItemDef,
+  type ItemSlot,
   type TalentDef,
 } from "@kusa/shared";
 import { heroPoses } from "./art/heroes.ts";
@@ -113,6 +123,8 @@ export class Hub {
   private profile: Profile = { gold: 0, talents: {}, items: [] };
   private tab: Tab = "classes";
   private marketMode: "buy" | "sell" = "buy";
+  /** Slot mostrado na compra do mercado. */
+  private marketSlot: ItemSlot = "weapon";
   private busy = false;
   private toastTimer = 0;
   /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
@@ -480,7 +492,12 @@ export class Hub {
       const cell = el("button", "loadout-slot");
       if (owned) {
         cell.append(itemImg(owned.itemId), el("small", "", ITEMS[owned.itemId].name));
-        cell.style.borderColor = hex(TIER_COLORS[ITEMS[owned.itemId].tier]);
+        cell.style.borderColor = hex(itemColor(owned.itemId));
+        // A classe escolhida não usa: o item fica em casa nesta hunt.
+        if (!canUse(owned.itemId, this.classId)) {
+          cell.classList.add("unusable");
+          cell.append(el("small", "warn", "fica em casa"));
+        }
         cell.onclick = () => this.openItemSheet(owned);
       } else {
         cell.append(el("span", "slot-empty", "＋"), el("small", "muted", SLOT_NAMES[slot]));
@@ -527,7 +544,8 @@ export class Hub {
   private itemCell(owned: OwnedItem, onclick: () => void) {
     const def = ITEMS[owned.itemId];
     const cell = el("button", "item-cell");
-    cell.style.borderColor = hex(TIER_COLORS[def.tier]);
+    cell.style.borderColor = hex(itemColor(def.id));
+    cell.classList.toggle("unusable", !canUse(def.id, this.classId));
     cell.append(itemImg(owned.itemId));
     cell.setAttribute("aria-label", def.name);
     cell.onclick = onclick;
@@ -541,10 +559,13 @@ export class Hub {
     const head = el("div", "sheet-head");
     const title = el("div");
     const name = el("strong", "", def.name);
-    name.style.color = hex(TIER_COLORS[def.tier]);
-    title.append(name, el("small", "muted", `${SLOT_NAMES[def.slot]} · ${TIER_NAMES[def.tier]}`));
+    name.style.color = hex(itemColor(def.id));
+    title.append(name, el("small", "muted", itemLabel(def)));
     head.append(itemImg(def.id), title);
-    sheet.append(head, el("p", "", itemEffect(def)));
+    sheet.append(head, statList(def));
+    if (!canUse(def.id, this.classId)) {
+      sheet.append(el("p", "warn", `${CLASSES[this.classId].name} não usa este item: equipado, ele fica em casa nas hunts de ${CLASSES[this.classId].name}.`));
+    }
     // Como fica vestido: o equipamento atual com este item no slot dele.
     const tryOn = el("div", "doll");
     tryOn.append(outfitPreview(this.classId, { ...this.loadout(), [def.slot]: def.id }),
@@ -579,7 +600,7 @@ export class Hub {
         this.closeSheet();
       });
     }
-    const sell = el("button", "", `Vender por ${gold(ITEM_SELL_PRICES[def.tier])}`);
+    const sell = el("button", "", `Vender por ${gold(sellPrice(def.id))}`);
     sell.onclick = () => this.run(async () => {
       this.profile.gold = await sellItem(owned.id);
       this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
@@ -628,11 +649,21 @@ export class Hub {
       const vaultFull = this.vaultItems().length >= VAULT_SIZE;
       page.append(el("p", "muted hub-hint", vaultFull
         ? `Cofre cheio (${VAULT_SIZE}/${VAULT_SIZE}): venda ou equipe algo para comprar.`
-        : "Equipamento até Aço, entregue no cofre. Itens de Dragão só saem das hunts."));
+        : `Itens comuns até Mithral, entregues no cofre. Raros, mágicos e de Dragão só saem das hunts. Mostrando o que o ${CLASSES[this.classId].name} usa.`));
+      const slots = el("div", "chips");
       for (const slot of ITEM_SLOTS) {
-        list.append(el("h3", "", SLOT_NAMES[slot]));
-        for (const def of Object.values(ITEMS).filter((i) => i.slot === slot)) {
-          const price = ITEM_BUY_PRICES[def.tier];
+        const chip = el("button", "chip", SLOT_NAMES[slot]);
+        chip.setAttribute("aria-pressed", String(slot === this.marketSlot));
+        chip.onclick = () => { this.marketSlot = slot; this.render(); };
+        slots.append(chip);
+      }
+      page.append(slots);
+      const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === this.marketSlot && (!f.classes || f.classes.includes(this.classId)));
+      for (const family of families) {
+        if (families.length > 1) list.append(el("h3", "", family.name));
+        for (const tier of ITEM_TIERS) {
+          const def = ITEMS[itemId(family.slot, family.key, tier)];
+          const price = ITEM_BUY_PRICES[tier];
           if (price === null) continue;
           const buy = el("button", "buy", gold(price));
           buy.disabled = vaultFull || this.profile.gold < price;
@@ -650,7 +681,7 @@ export class Hub {
       if (this.profile.items.length === 0) list.append(el("p", "muted empty", "Nada para vender."));
       for (const owned of sortItems(this.profile.items)) {
         const def = ITEMS[owned.itemId];
-        const sell = el("button", "buy", gold(ITEM_SELL_PRICES[def.tier]));
+        const sell = el("button", "buy", gold(sellPrice(def.id)));
         sell.onclick = () => this.run(async () => {
           this.profile.gold = await sellItem(owned.id);
           this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
@@ -667,8 +698,8 @@ export class Hub {
     const row = el("div", "market-row");
     const text = el("div");
     const name = el("strong", "", def.name);
-    name.style.color = hex(TIER_COLORS[def.tier]);
-    text.append(name, el("small", "muted", `${TIER_NAMES[def.tier]} · ${itemEffect(def)}${note ? ` · ${note}` : ""}`));
+    name.style.color = hex(itemColor(def.id));
+    text.append(name, el("small", "muted", `${itemLabel(def)} · ${itemEffect(def)}${note ? ` · ${note}` : ""}`));
     row.append(itemImg(def.id), text, action);
     return row;
   }
@@ -702,14 +733,28 @@ export class Hub {
 }
 
 export function itemEffect(def: ItemDef) {
-  return def.slot === "weapon" ? `+${def.power}% de dano` : `+${def.power} de armadura`;
+  return itemSummary(def);
 }
 
-/** Melhores primeiro; dentro do nível, na ordem dos slots. */
+const CLASS_NAMES = Object.fromEntries(CLASS_IDS.map((id) => [id, CLASSES[id].name])) as Record<ClassId, string>;
+
+/** "Arma · Raro · Ferro · Só Cavaleiro". */
+export function itemLabel(def: ItemDef) {
+  return `${SLOT_NAMES[def.slot]} · ${RARITY_NAMES[def.rarity]} · ${TIER_NAMES[def.tier]} · ${classesText(def, CLASS_NAMES)}`;
+}
+
+/** Lista do que o item faz, uma linha por atributo. */
+export function statList(def: ItemDef) {
+  const list = el("ul", "item-stats");
+  for (const line of describeStats(def.stats)) list.append(el("li", "", line));
+  return list;
+}
+
+/** Melhores primeiro (material e raridade); empatados, na ordem dos slots. */
 function sortItems(items: OwnedItem[]) {
   return [...items].sort((a, b) => {
     const x = ITEMS[a.itemId], y = ITEMS[b.itemId];
-    return y.tier - x.tier || ITEM_SLOTS.indexOf(x.slot) - ITEM_SLOTS.indexOf(y.slot);
+    return itemScore(y.id) - itemScore(x.id) || ITEM_SLOTS.indexOf(x.slot) - ITEM_SLOTS.indexOf(y.slot);
   });
 }
 

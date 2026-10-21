@@ -2,8 +2,8 @@ import type { ClassId } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
 import { ART_SCALE, refineArt } from "./refine.ts";
 import {
-  KNIGHT_WEAPONS, NO_OUTFIT, armorBody, helmetHead, outfitPalette, pauldrons, shieldGrid, tierOf, tintClassWeapon,
-  type Outfit, type Piece,
+  CROSSBOW, NO_OUTFIT, WAND, armorBody, familyOf, helmetHead, knightWeapon, outfitPalette, pauldrons, robeCloth, shieldGrid,
+  tierOf, tintClassWeapon, type Outfit, type Piece,
 } from "./outfit.ts";
 
 /**
@@ -674,11 +674,17 @@ const HEROES: Record<ClassId, HeroDef> = {
 /** Arma na mão: a da classe, trocada (cavaleiro) ou tingida (as outras) pela arma equipada. */
 function weaponPieces(hero: HeroDef, dir: HeroDir, outfit: Outfit): Item[] {
   const tier = tierOf(outfit, "weapon");
+  const family = familyOf(outfit, "weapon");
   return hero.items[dir].map((item) => {
     if (!tier || item.grid === FIST) return item;
+    // Besta e varinha trocam a arma da classe, em pé na mesma mão (a base fica onde ficava a do arco; a varinha, na mão).
+    if (family === "weapon-crossbow") {
+      return { ...item, grid: CROSSBOW, x: item.x - 1, y: item.y + item.grid.length - CROSSBOW.length };
+    }
+    if (family === "weapon-wand") return { ...item, grid: WAND, y: item.y + 7 };
     if (hero.weapon !== "sword") return { ...item, grid: tintClassWeapon(item.grid, hero.weapon) };
     // Mesmo cabo e mesma altura da mão da espada; de costas e de lado a lâmina aponta para fora.
-    const art = KNIGHT_WEAPONS[tier];
+    const art = knightWeapon(family, tier);
     const flip = dir !== "down";
     const width = art.grid[0].length;
     const grip = flip ? width - 1 - art.grip : art.grip;
@@ -705,26 +711,29 @@ export function heroSheet(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCan
   const hero = HEROES[classId];
   const palette = { ...BASE, ...hero.palette, ...outfitPalette(outfit) };
   const armor = tierOf(outfit, "armor");
+  const robe = familyOf(outfit, "armor") === "armor-arcane";
   const helmet = tierOf(outfit, "helmet");
   const { canvas, ctx } = makeCanvas(CELL * HERO_DIRS.length * HERO_FRAMES, CELL);
   HERO_DIRS.forEach((dir, d) => {
-    const head = helmet ? helmetHead(helmet, dir) : hero.heads[dir];
+    const head = helmet ? helmetHead(outfit.helmet, dir) : hero.heads[dir];
     const items = [...weaponPieces(hero, dir, outfit), ...shieldPiece(hero, dir, outfit)];
     const extras = (hero.extras?.[dir] ?? []).filter((p) => !(helmet && p.ofHead));
-    const shoulders = armor ? pauldrons(armor, dir) : [];
+    const shoulders = armor && !robe ? pauldrons(armor, dir) : [];
     // Quem usa cajado não balança a mão que o segura.
     const steady = hero.weapon === "staff" && dir !== "side" ? hero.items[dir][0].hand : undefined;
     poses(hero.body, dir, steady).forEach((pose, f) => {
       const ox = (d * HERO_FRAMES + f) * CELL + BOX_X;
       const top = BODY_TOP + pose.bob;
-      const torso = armor ? armorBody(pose.torso, armor, dir === "down") : pose.torso;
+      // Vestes arcanas tingem a túnica inteira (tronco e saia); a armadura de guerra recobre o tronco.
+      const torso = robe ? robeCloth(pose.torso) : armor ? armorBody(pose.torso, armor, dir === "down") : pose.torso;
+      const legs = robe && hero.body === "robe" ? robeCloth(pose.legs) : pose.legs;
       const paint = (list: Item[]) => list.forEach((p) => {
         const dy = p.hand === undefined ? 0 : pose.hands[p.hand];
         paintGrid(ctx, p.grid, palette, ox + p.x, top + p.y + dy, p.flip);
       });
       const behind = [...items, ...extras].filter((p) => p.behind);
       paint(behind);
-      paintGrid(ctx, pose.legs, palette, ox, BODY_TOP + LEGS_ROW);
+      paintGrid(ctx, legs, palette, ox, BODY_TOP + LEGS_ROW);
       paintGrid(ctx, torso, palette, ox, top);
       paint(shoulders);
       paint(extras.filter((p) => !p.behind));
