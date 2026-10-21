@@ -48,8 +48,11 @@ export class SpellBar {
   /** Slot mirando agora e o dedo que segura o botão. */
   private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
 
-  /** `busy` diz se outra janela (a escolha de melhoria) está aberta: a escolha de magia espera. */
-  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim, private busy: () => boolean) {
+  /**
+   * A escolha de magia tem prioridade: o nível que abre um slot não dá melhoria, e uma melhoria que
+   * ficou pendente de um nível anterior espera esta janela fechar (ver `PerkChoice`).
+   */
+  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim) {
     // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
     actions.prepend(this.slots[1].button, this.slots[0].button);
@@ -164,7 +167,7 @@ export class SpellBar {
 
     // Liberou agora: abre a escolha sozinha (uma vez; depois, pelo botão ✨).
     // Com dois slots liberados ao mesmo tempo, um de cada vez: o próximo abre quando este fechar.
-    if (state === "empty" && !view.offered && !this.chooser && !this.busy() && p.status === "playing") {
+    if (state === "empty" && !view.offered && !this.chooser && p.status === "playing") {
       view.offered = true;
       this.openChooser(slot);
     }

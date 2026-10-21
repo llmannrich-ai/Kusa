@@ -157,6 +157,8 @@ interface Seat {
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
   perks: PerkStacks;
   perkBonus: PerkBonuses;
+  /** Níveis com melhoria ainda na fila, além da oferecida agora (`Player.perksQueued` é o tamanho). */
+  perkLevels: number[];
   /** Áureas + melhorias: o que `statsFor` usa para vida, mana, dano e velocidade. */
   bonus: Bonuses;
   /** Até quando não repete o aviso de bag cheia. */
@@ -324,7 +326,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, armorBonus: 0, armorUntil: 0,
-      aura: bonus, perks: {}, perkBonus: perkBonuses({}), bonus, bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
+      aura: bonus, perks: {}, perkBonus: perkBonuses({}), perkLevels: [], bonus, bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -1198,23 +1200,22 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     p.mana = p.maxMana = stats.maxMana;
     this.notice(p.x, p.y - 1, `Nível ${level}!`, 0x2ecc71);
     if (SPELL_SLOT_LEVELS.some((l) => l <= level && l > previous)) this.notice(p.x, p.y - 2, "Nova magia!", 0x9b59b6);
-    // Os outros níveis dão uma melhoria para escolher (uma de cada vez, se subiu vários).
-    let perks = 0;
-    for (let l = previous + 1; l <= level; l++) if (grantsPerk(l)) perks++;
-    if (perks > 0 && seat) {
-      if (p.perkOffer.length === 0) {
-        this.offerPerks(p, seat);
-        perks--;
-      }
-      p.perksQueued += perks;
-    }
+    // Só os níveis que não abrem slot de magia dão melhoria (uma de cada vez, se subiu vários).
+    if (!seat) return;
+    for (let l = previous + 1; l <= level; l++) if (grantsPerk(l)) seat.perkLevels.push(l);
+    if (p.perkOffer.length === 0) this.offerPerks(p, seat);
+    p.perksQueued = seat.perkLevels.length;
   }
 
   // --- Melhorias ---------------------------------------------------------------
 
-  /** Sorteia as melhorias da próxima escolha (some sozinha se todas já chegaram ao limite). */
+  /** Sorteia as melhorias do próximo nível da fila (some sozinha se todas já chegaram ao limite). */
   private offerPerks(p: Player, seat: Seat) {
     p.perkOffer.clear();
+    const level = seat.perkLevels.shift();
+    p.perksQueued = seat.perkLevels.length;
+    p.perkLevel = level ?? 0;
+    if (level === undefined) return;
     p.perkOffer.push(...rollPerkOffer(seat.perks, p.level, Math.random));
   }
 
@@ -1237,15 +1238,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
     p.maxHp = stats.maxHp;
     p.maxMana = stats.maxMana;
-    seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.level, at: this.seconds() });
+    seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.perkLevel, at: this.seconds() });
     this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f);
 
-    if (p.perksQueued > 0) {
-      p.perksQueued--;
-      this.offerPerks(p, seat);
-    } else {
-      p.perkOffer.clear();
-    }
+    this.offerPerks(p, seat);
   }
 
   private damagePlayer(sessionId: string, raw: number, hit: Hit) {

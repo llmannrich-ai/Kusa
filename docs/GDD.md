@@ -170,7 +170,9 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **duas cartas** no alto da tela e o jogador
 toca numa. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
 até o fim da hunt e soma por cima das áureas do Grimório. Subiu vários níveis de uma vez: as escolhas entram na fila,
-uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas.
+uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas, e a de magia tem
+prioridade: uma melhoria ainda pendente de um nível anterior sai da tela quando o slot abre e só volta depois que a
+magia for escolhida (ou a janela fechada). O título da carta mostra o nível que deu a melhoria, nunca o 3 ou o 6.
 
 | Melhoria | Cada escolha | Limite |
 |---|---|---|
