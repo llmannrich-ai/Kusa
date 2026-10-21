@@ -24,8 +24,9 @@ export class CombatFx {
     }
   }
 
-  spell(spellId: SpellId, from: Point, to: Point, ms: number) {
-    const radius = SPELLS[spellId].radius * TILE_SIZE;
+  /** `radiusTiles`: a área no nível de quem conjurou (a Maestria pode aumentar). */
+  spell(spellId: SpellId, from: Point, to: Point, ms: number, radiusTiles = SPELLS[spellId].radius) {
+    const radius = radiusTiles * TILE_SIZE;
     switch (spellId) {
       case "blade_spin": return this.bladeSpin(from);
       case "war_cry": return this.ring(from, radius, 0xe67e22, 500, 4);

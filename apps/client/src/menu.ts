@@ -15,6 +15,8 @@ import {
   auraBonuses,
   auraText,
   knownSpells,
+  MASTERIES,
+  MASTERY_RANK,
   spellFacts,
   statsFor,
   talentBlocker,
@@ -329,7 +331,10 @@ export class Hub {
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
-    if (spell) sheet.append(el("p", "", spell.description));
+    if (spell) {
+      sheet.append(el("p", "", spell.description));
+      if (rank < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
+    }
 
     const levels = el("div", "grim-levels");
     const level = (n: number, current: boolean) => {

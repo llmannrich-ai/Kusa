@@ -115,6 +115,7 @@ import {
   type SpellId,
   type SpellSlot,
   type ChainMessage,
+  type CooldownMessage,
   type DotKind,
   type SummonDef,
   type TargetMessage,
@@ -230,6 +231,8 @@ const BAG_FULL_NOTICE_MS = 3000;
 const START_LEVEL = Math.min(MAX_LEVEL, Math.max(1, Number(process.env.KUSA_START_LEVEL) || 1));
 /** Só para testes: KUSA_ALL_SPELLS=1 dá a todo mundo o Grimório inteiro da classe no nível máximo. */
 const ALL_SPELLS = process.env.KUSA_ALL_SPELLS === "1";
+/** Só para testes: KUSA_MONSTER_HP=20 multiplica a vida dos monstros (efeitos como veneno e lentidão aparecem antes de eles morrerem). */
+const MONSTER_HP = Math.max(1, Number(process.env.KUSA_MONSTER_HP) || 1);
 
 /** Uma hunt: a equipe (1 a 4 jogadores) entra junta e cada um sai morto, fugindo ou após o boss. */
 export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetadata }> {
@@ -400,7 +403,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     m.kind = kind;
     m.x = x;
     m.y = y;
-    m.hp = m.maxHp = stats.maxHp;
+    m.hp = m.maxHp = Math.round(stats.maxHp * MONSTER_HP);
     this.state.monsters.set(m.id, m);
     this.brains.set(m.id, {
       def, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
@@ -697,7 +700,24 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const far = spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, tx, ty) : 1;
     const amount = this.baseDamage(sessionId, p) * (spell.damage ?? 0) * far;
     const rank = p.spellRanks.get(base.id) ?? 1;
-    this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount, line));
+    this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount, line, slot));
+    // Maestria que repete (Giro da Lâmina, Terremoto, Esfera Sombria): o efeito volta mais fraco, sem gastar mana.
+    // Em volta de si, segue o herói; com alvo, segue o monstro se ele ainda estiver vivo.
+    if (spell.repeat) {
+      const echo = spell.repeat;
+      const once = { ...spell, repeat: undefined, summon: undefined };
+      this.after(ms + echo.delayMs, () => {
+        const caster = this.state.players.get(sessionId);
+        if (!caster || caster.status !== "playing") return;
+        const anchor = target && this.state.monsters.get(target.id);
+        const at = spell.aim === "self" ? caster : anchor ?? { x: tx, y: ty };
+        // O eco nasce no próprio ponto do efeito: nada voa de novo do herói.
+        this.broadcast(MSG.spell, {
+          from: sessionId, spellId: spell.id, x: at.x, y: at.y, tx: at.x, ty: at.y, ms: 0, echo: true,
+        } satisfies SpellMessage);
+        this.applySpell(sessionId, once, rank, anchor?.id, at.x, at.y, amount * echo.power, line, slot);
+      });
+    }
   }
 
   /**
@@ -707,7 +727,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
    */
   private applySpell(
     sessionId: string, spell: SpellDef, rank: number, targetId: string | undefined, tx: number, ty: number, amount: number,
-    line?: { x: number; y: number }[],
+    line: { x: number; y: number }[] | undefined, slot: SpellSlot,
   ) {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
@@ -743,6 +763,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       if (points.length > 1) this.broadcast(MSG.chain, { spellId: spell.id, points } satisfies ChainMessage);
     }
     let dealt = 0;
+    let killed = false;
     hit.forEach((m, i) => {
       const brain = this.brains.get(m.id);
       if (!brain) return;
@@ -778,10 +799,18 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         const value = Math.min(m.hp, rollDamage(amount * power[i] * execute));
         dealt += value;
         this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id);
+        if (m.hp === 0) killed = true;
       }
     });
 
     if (spell.lifesteal && dealt > 0 && p.status === "playing") this.healPlayer(p, Math.round(dealt * spell.lifesteal), sessionId);
+    if (spell.manaSteal && dealt > 0 && p.status === "playing") this.giveMana(p, Math.round(dealt * spell.manaSteal), sessionId);
+    // Disparo Certeiro (Maestria): matar corta o que falta da recarga; o botão do jogador acompanha.
+    if (spell.killRefund && killed && now < seat.spellReadyAt[slot]) {
+      const left = Math.round((seat.spellReadyAt[slot] - now) * (1 - spell.killRefund));
+      seat.spellReadyAt[slot] = now + left;
+      this.clients.getById(sessionId)?.send(MSG.cooldown, { slot, ms: left } satisfies CooldownMessage);
+    }
 
     if (spell.heal) {
       this.state.players.forEach((ally) => {
