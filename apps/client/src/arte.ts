@@ -1,14 +1,17 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
 import {
-  CLASS_IDS, CLASSES, ITEMS, ITEM_SLOTS, MAX_TIER, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId, type ItemTier,
+  CLASS_IDS, CLASSES, ITEMS, MONSTERS, SUMMONS, ITEM_SLOTS, MAX_TIER, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId, type ItemTier, type MonsterKind, type SummonKind,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroPoses, heroSheet } from "./art/heroes.ts";
 import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
-import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
+import { ART_SCALE } from "./art/paint.ts";
+import { creatureSheet, type CreatureArt } from "./art/creature.ts";
+import { MONSTER_ART } from "./art/monsters.ts";
+import { SUMMON_ART } from "./art/summons.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
@@ -75,6 +78,21 @@ const drawWalk = () => {
 drawWalk();
 setInterval(drawWalk, 125);
 
+/** Os 9 quadros de uma folha de criatura (monstros e invocações). */
+function creatureRow(title: string, art: CreatureArt) {
+  const row = section(title);
+  const sheet = creatureSheet(art);
+  HERO_DIRS.forEach((dir, d) => {
+    for (let f = 0; f < HERO_FRAMES; f++) {
+      const { canvas, ctx } = makeCanvas(art.w, art.h);
+      ctx.drawImage(sheet, (d * HERO_FRAMES + f) * art.w, 0, art.w, art.h, 0, 0, art.w, art.h);
+      show(row, canvas, `${dirNames[dir]} ${f}`, art.w > 100 ? 1 : 3 / ART_SCALE);
+    }
+  });
+}
+for (const [kind, art] of Object.entries(MONSTER_ART)) creatureRow(MONSTERS[kind as MonsterKind].name, art);
+for (const [kind, art] of Object.entries(SUMMON_ART)) creatureRow(`Invocação: ${SUMMONS[kind as SummonKind].name}`, art);
+
 for (const slot of ITEM_SLOTS) {
   const row = section(`Itens: ${SLOT_NAMES[slot]}`);
   for (let tier = 1; tier <= MAX_TIER; tier++) {
@@ -107,46 +125,48 @@ for (let v = 0; v < WALL_VARIANTS; v++) {
   show(walls, canvas, `variação ${v}`);
 }
 
-// Mini-cena: um corredor com parede ao norte e ao sul, as 4 classes e alguns monstros.
+// Mini-cena em escala de arte (2 pixels por unidade), como no jogo: corredor com parede ao norte
+// e ao sul, as 4 classes, monstros e invocações com os pés na base do tile.
 const sceneRow = section("Mini-cena");
-const W = 9, H = 6;
-const { canvas: sceneCanvas, ctx: sceneCtx } = makeCanvas(W * TILE_SIZE, H * TILE_SIZE);
+const W = 11, H = 9, T = TILE_SIZE * ART_SCALE;
+const { canvas: sceneCanvas, ctx: sceneCtx } = makeCanvas(W * T, H * T);
 sceneCanvas.className = "scene";
 const loadImage = (key: string) => new Promise<HTMLImageElement>((resolve) => {
   const img = new Image();
   img.onload = () => resolve(img);
   img.src = `assets/dcss/${key}.png`;
 });
-const [floor, ...monsters] = await Promise.all([
-  loadImage(FLOOR_TEXTURE.normal),
-  ...Object.values(MONSTER_TEXTURE).map(loadImage),
-]);
+const floor = await loadImage(FLOOR_TEXTURE.normal);
 const isWall = (_x: number, y: number) => y === 0 || y === H - 1;
-/** Personagem do tamanho do jogo (heróis em `HERO_SCALE`, monstros no tile), com os pés na base do tile. */
-const drawChar = (art: CanvasImageSource, sx: number, size: number, x: number, y: number, scale = 1) => {
-  const side = TILE_SIZE * scale;
-  sceneCtx.drawImage(art, sx, 0, size, size, x * TILE_SIZE - (side - TILE_SIZE) / 2, (y + 1) * TILE_SIZE - side, side, side);
+const put = (sheet: HTMLCanvasElement, w: number, h: number, frame: number, x: number, y: number) => {
+  sceneCtx.fillStyle = "rgba(0,0,0,0.35)";
+  sceneCtx.beginPath();
+  sceneCtx.ellipse((x + 0.5) * T, (y + 1) * T - 6 * ART_SCALE, w * 0.27, 3 * ART_SCALE, 0, 0, Math.PI * 2);
+  sceneCtx.fill();
+  sceneCtx.drawImage(sheet, frame * w, 0, w, h, (x + 0.5) * T - w / 2, (y + 1) * T - h, w, h);
 };
-const drawHero = (sheet: HTMLCanvasElement, frame: number, x: number, y: number) => drawChar(sheet, frame * HERO_SIZE, HERO_SIZE, x, y, HERO_SCALE);
-const refinedMonsters = monsters.map((img) => refineArt(img));
+const putArt = (art: CreatureArt, frame: number, x: number, y: number) => put(creatureSheet(art), art.w, art.h, frame, x, y);
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {
-    if (!isWall(x, y)) sceneCtx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    if (!isWall(x, y)) sceneCtx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * T, y * T, T, T);
   }
 }
+const kinds = Object.values(MONSTER_ART);
 // Ordem de desenho por linha, como no jogo: paredes e personagens da mesma linha, de cima para baixo.
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {
     if (!isWall(x, y)) continue;
     const rim = (!isWall(x, y - 1) && y > 0 ? RIM.north : 0);
-    sceneCtx.drawImage(wallCap(x % WALL_VARIANTS, rim), x * TILE_SIZE, y * TILE_SIZE - WALL_RISE);
-    if (y + 1 < H && !isWall(x, y + 1)) sceneCtx.drawImage(wallFace(x % WALL_VARIANTS), x * TILE_SIZE, (y + 1) * TILE_SIZE - WALL_RISE);
+    sceneCtx.drawImage(wallCap(x % WALL_VARIANTS, rim), x * T, y * T - WALL_RISE * ART_SCALE, T, T);
+    if (y + 1 < H && !isWall(x, y + 1)) sceneCtx.drawImage(wallFace(x % WALL_VARIANTS), x * T, (y + 1) * T - WALL_RISE * ART_SCALE, T, WALL_RISE * ART_SCALE);
   }
-  if (y === 1) CLASS_IDS.forEach((id, i) => drawHero(heroSheet(id), 0, 1 + i * 2, y));
-  if (y === 3) refinedMonsters.slice(0, 5).forEach((art, i) => drawChar(art, 0, art.width, i * 2, y));
-  if (y === 4) CLASS_IDS.forEach((id, i) => drawHero(heroSheet(id), 6, 2 + i * 2, y));
+  if (y === 1) CLASS_IDS.forEach((id, i) => put(heroSheet(id, fullSet(((i % 5) + 1) as ItemTier)), HERO_SIZE, HERO_SIZE, 0, 1 + i * 2, y));
+  if (y === 3) [0, 1, 2, 3, 6, 7].forEach((k, i) => putArt(kinds[k], 6, 1 + i * 1.6, y));
+  if (y === 5) [8, 9].forEach((k, i) => putArt(kinds[k], 0, 1 + i * 2, y));
+  if (y === 5) Object.values(SUMMON_ART).forEach((art, i) => putArt(art, 0, 5 + i, y));
+  if (y === 7) [4, 10, 5, 11].forEach((k, i) => putArt(kinds[k], k === 5 || k === 11 ? 6 : 0, 1 + i * 2.6, y));
 }
-show(sceneRow, sceneCanvas, "corredor", 2);
+show(sceneRow, sceneCanvas, "corredor (escala de arte)", 1);
 
 const combat = section("Combate (arte própria)");
 show(combat, slashStrip(), "corte");
@@ -191,13 +211,10 @@ show(crypt, onGround(dustCanvas(), "#3a2e22"), "poeira", 8);
 
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
-  ...Object.values(MONSTER_TEXTURE), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
+  ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
   ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
   ...Object.values(SWAMP_TEXTURE),
 ];
 for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);
 }
-
-const refined = section("Monstros refinados (como no jogo)");
-Object.keys(MONSTER_TEXTURE).forEach((kind, i) => show(refined, refinedMonsters[i], kind, 2));

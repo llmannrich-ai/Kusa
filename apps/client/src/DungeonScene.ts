@@ -51,7 +51,7 @@ import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
-import { ART_SCALE, CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
+import { ART_SCALE, CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/paint.ts";
 import {
   CHEST_TEXTURE,
   MONSTER_TEXTURE,
@@ -60,6 +60,7 @@ import {
   heroArt,
   heroIdleFrame,
   heroWalkAnim,
+  setCreatureFiltering,
   itemTexture,
 } from "./art/textures.ts";
 
@@ -78,8 +79,6 @@ const DAMAGE_TEXT_MS = 1080;
  */
 const DEPTH = { floor: 0, ui: 100_000 };
 
-/** Sprites do pack que olham para a esquerda (espelhados quando andam para a direita). */
-const FACES_LEFT = new Set<MonsterKind>(["rat", "dragon", "frog", "moccasin"]);
 /** Monstros que não sangram (viram poeira ou lama). */
 const BLOODLESS = new Set<MonsterKind>(["skeleton", "bogBody"]);
 
@@ -99,8 +98,6 @@ const DOT_COLORS: Record<DotKind, number> = { poison: 0x9acd32, burn: 0xff9f43, 
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
 const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp"]);
-/** Sprites do pack que olham para a esquerda. */
-const SUMMON_FACES_LEFT = new Set<SummonKind>(["wolf", "bear"]);
 
 const TEXT_STYLE = {
   fontFamily: "Georgia, serif",
@@ -118,11 +115,13 @@ interface Unit {
   bar: Phaser.GameObjects.Graphics;
   barWidth: number;
   barY: number;
-  /** Classe do herói (tem animação de caminhada); monstros só balançam. */
+  /** Classe do herói (monstros e invocações não têm). */
   classId?: ClassId;
-  /** Textura do herói com o equipamento vestido (muda quando ele pega ou perde um item). */
-  heroKey?: string;
-  facesLeft: boolean;
+  /**
+   * Folha de sprites com caminhada (`creature.ts`); de lado olha para a esquerda e é espelhada
+   * para a direita. No herói é a do equipamento vestido (muda quando ele pega ou perde um item).
+   */
+  sheet: string;
   dir: HeroDir;
   lastStepAt: number;
   walkUntil: number;
@@ -729,9 +728,8 @@ export class DungeonScene extends Phaser.Scene {
     const heroKey = heroArt(this, classId, outfitOf(player));
     const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down")).setScale(HERO_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
-    const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, top + 4, false);
+    const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, top + 4);
     unit.classId = classId;
-    unit.heroKey = heroKey;
     const label = this.add.text(0, unit.barY - 2, player.name, this.textStyle()).setOrigin(0.5, 1);
     unit.overlay.add(label);
     this.avatars.set(sessionId, unit);
@@ -747,8 +745,8 @@ export class DungeonScene extends Phaser.Scene {
     if (!unit) return;
     // O equipamento aparece no personagem: troca a roupa quando ele pega, larga ou recebe itens.
     const heroKey = heroArt(this, unit.classId!, outfitOf(player));
-    if (heroKey !== unit.heroKey) {
-      unit.heroKey = heroKey;
+    if (heroKey !== unit.sheet) {
+      unit.sheet = heroKey;
       unit.sprite.setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
     }
     const alpha = player.status === "playing" ? 1 : 0.35;
@@ -773,11 +771,10 @@ export class DungeonScene extends Phaser.Scene {
   private addMonster(id: string, monster: MonsterView) {
     const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
     const def = MONSTERS[kind];
-    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia).
-    const scale = (def.rank === "boss" ? 2 : 1) * CREATURE_SPRITE_SCALE;
-    const sprite = this.add.sprite(0, 0, MONSTER_TEXTURE[kind]).setScale(scale);
+    // O tamanho vem da folha: mini-bosses e bosses passam de um tile, como as criaturas grandes do Tibia.
+    const sprite = this.add.sprite(0, 0, MONSTER_TEXTURE[kind], heroIdleFrame("down")).setScale(CREATURE_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
-    const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, FACES_LEFT.has(kind));
+    const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2);
     unit.bleeds = !BLOODLESS.has(kind);
     if (def.rank !== "common") {
       const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
@@ -798,12 +795,12 @@ export class DungeonScene extends Phaser.Scene {
     this.moveTo(unit, monster.x, monster.y);
   }
 
-  /** Criatura invocada: sprite do pack (ou o Guardião), barra azul (sem nome, para não poluir a tela) e um brilho ao aparecer. */
+  /** Criatura invocada: sprite próprio, barra azul (sem nome, para não poluir a tela) e um brilho ao aparecer. */
   private addSummon(id: string, summon: SummonView) {
     const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
-    const sprite = this.add.sprite(0, 0, SUMMON_TEXTURE[kind]).setScale(CREATURE_SPRITE_SCALE);
+    const sprite = this.add.sprite(0, 0, SUMMON_TEXTURE[kind], heroIdleFrame("down")).setScale(CREATURE_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
-    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, SUMMON_FACES_LEFT.has(kind));
+    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2);
     unit.bleeds = false;
     unit.flies = FLYERS.has(kind);
     // Brilho de aliado sob os pés, para não confundir com os monstros.
@@ -825,7 +822,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** Sprite com os pés na base do tile, sombra no chão e barra/nome numa camada separada por cima de tudo. */
-  private makeUnit(tileX: number, tileY: number, sprite: Phaser.GameObjects.Sprite, barWidth: number, barY: number, facesLeft: boolean): Unit {
+  private makeUnit(tileX: number, tileY: number, sprite: Phaser.GameObjects.Sprite, barWidth: number, barY: number): Unit {
     const x = this.toPx(tileX);
     const y = this.toPx(tileY);
     sprite.setOrigin(0.5, 1).setPosition(0, TILE_SIZE / 2);
@@ -834,7 +831,7 @@ export class DungeonScene extends Phaser.Scene {
     const bar = this.add.graphics();
     const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);
     return {
-      body, sprite, overlay, bar, barWidth, barY, facesLeft,
+      body, sprite, overlay, bar, barWidth, barY, sheet: sprite.texture.key,
       dir: "down", lastStepAt: 0, walkUntil: 0, lunge: { x: 0, y: 0 }, bleeds: true, dead: false, statuses: new Map(),
     };
   }
@@ -882,7 +879,7 @@ export class DungeonScene extends Phaser.Scene {
   private face(unit: Unit, dx: number, dy: number) {
     if (dx !== 0) {
       unit.dir = "side";
-      unit.sprite.setFlipX(unit.classId ? dx > 0 : unit.facesLeft && dx > 0);
+      unit.sprite.setFlipX(dx > 0);
     } else {
       unit.dir = dy < 0 ? "up" : "down";
     }
@@ -893,16 +890,13 @@ export class DungeonScene extends Phaser.Scene {
     unit.body.setDepth(unit.body.y + TILE_SIZE / 2 + 0.5);
     unit.overlay.setPosition(unit.body.x, unit.body.y);
     const walking = time < unit.walkUntil;
-    // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam; quem voa flutua sempre.
-    const bob = unit.flies ? Math.round(3 + Math.sin(time / 180) * 2)
-      : !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
+    // Quem voa flutua sobre a sombra e bate as asas o tempo todo.
+    const bob = unit.flies ? Math.round(3 + Math.sin(time / 180) * 2) : 0;
     unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
     if (unit.dead) return;
-    if (unit.heroKey) {
-      if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);
-      else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
-        unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
-      }
+    if (walking || unit.flies) unit.sprite.play(heroWalkAnim(unit.sheet, unit.dir), true);
+    else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
+      unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
     }
   }
 
@@ -933,6 +927,7 @@ export class DungeonScene extends Phaser.Scene {
     const zoom = Math.min(width / (VIEW_TILES.w * TILE_SIZE), height / (VIEW_TILES.h * TILE_SIZE));
     this.textResolution = Math.max(1, Math.ceil(zoom));
     this.cameras.main.setZoom(zoom);
+    setCreatureFiltering(this, zoom / ART_SCALE);
     this.cameras.main.setFollowOffset(0, -(height * FOLLOW_LIFT) / zoom);
   }
 

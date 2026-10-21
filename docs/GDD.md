@@ -1,7 +1,7 @@
 # Kusa — Game Design
 
 RPG de dungeon cooperativo para navegador, com tema de Dungeons & Dragons e visual inspirado no Tibia
-(pixel art 32×32, câmera de cima). As partidas são curtas, e entre elas existe um metajogo de progressão.
+(tiles de 32×32, câmera de cima; heróis, monstros e invocações num pixel art mais fino, com 2 pixels de arte por pixel do tile). As partidas são curtas, e entre elas existe um metajogo de progressão.
 
 ## Plataforma: mobile primeiro
 
@@ -320,3 +320,4 @@ Cada um dos 20 itens tem arte própria em dois formatos, e o que o personagem ve
 - Balanceamento do Pântano (dificuldade 2) e próximos mapas e bosses.
 - Os jogadores de uma equipe se reanimam? O loot é compartilhado ou individual?
 - Arte: os sprites do Tibia são da CipSoft e **não podem ser usados**. Usaremos assets com licença aberta (OpenGameArt, itch.io) ou arte própria, no mesmo estilo.
+  Heróis, monstros e invocações são arte própria gerada no código (`apps/client/src/art`): `paint.ts` pinta formas sombreadas com contorno, `humanoid.ts` é o esqueleto dos humanoides (heróis e monstros de duas pernas), `heroes.ts`, `monsters.ts` e `summons.ts` as criaturas, e `outfit.ts` o equipamento vestido. Todas têm 3 direções e caminhada; a galeria `arte.html` mostra tudo ampliado. Chão, baús e portais ainda vêm do pack CC0.

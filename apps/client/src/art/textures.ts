@@ -4,15 +4,17 @@ import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./he
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
-import { TREANT_OUTLINE, treantCanvas } from "./summons.ts";
-import { refineArt } from "./refine.ts";
+import { MONSTER_ART } from "./monsters.ts";
+import { SUMMON_ART } from "./summons.ts";
+import { creatureSheet, type CreatureArt } from "./creature.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 import { TORCH_FRAMES, cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./cryptDecor.ts";
 import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./swampDecor.ts";
 
 /**
  * Ponte entre a arte e o Phaser: carrega os PNGs do pack Dungeon Crawl (CC0, ver
- * public/assets/dcss/CREDITS.md) e transforma a arte própria (grades de pixels) em texturas.
+ * public/assets/dcss/CREDITS.md) e transforma a arte própria (heróis, monstros, invocações,
+ * paredes, efeitos e detalhes dos mapas) em texturas.
  */
 
 const DCSS_PATH = "assets/dcss/";
@@ -32,7 +34,7 @@ export const MONSTER_TEXTURE: Record<MonsterKind, string> = {
   hydra: "monster-hydra",
 };
 
-/** Criaturas invocadas pelo Druida: as do pack e o Guardião do Bosque (arte própria). */
+/** Criaturas invocadas pelo Druida (arte própria, `summons.ts`). */
 export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   wolf: "summon-wolf",
   hornet: "summon-hornet",
@@ -89,8 +91,6 @@ export const BLOOD_TEXTURE = { splat: "blood-splat", puddle: "blood-puddle" };
 export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
-    ...Object.values(MONSTER_TEXTURE),
-    ...Object.values(SUMMON_TEXTURE).filter((key) => key !== SUMMON_TEXTURE.treant),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
@@ -122,6 +122,7 @@ export function heroArt(scene: Phaser.Scene, classId: ClassId, outfit: Outfit = 
   const key = heroTexture(classId, outfit);
   if (scene.textures.exists(key)) return key;
   const texture = scene.textures.addCanvas(key, heroSheet(classId, outfit))!;
+  texture.setFilter(creatureFilter);
   for (let i = 0; i < HERO_DIRS.length * HERO_FRAMES; i++) {
     texture.add(i, 0, i * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE);
   }
@@ -142,21 +143,42 @@ export function createHeroArt(scene: Phaser.Scene) {
   for (const classId of CLASS_IDS) heroArt(scene, classId);
 }
 
-/**
- * Monstros e invocações com a arte refinada (`refine.ts`): os PNGs do pack são trocados pela
- * versão em dobro de resolução, e o Guardião do Bosque já nasce refinado (uma vez por jogo).
- */
+/** Filtro das folhas de criatura (ver `setCreatureFiltering`); vale também para roupas geradas depois. */
+let creatureFilter = 1;
+
+/** Folhas e animações de caminhada dos monstros e das invocações (uma vez por jogo). */
 export function createCreatureArt(scene: Phaser.Scene) {
-  const packed = [...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)].filter((key) => key !== SUMMON_TEXTURE.treant);
-  for (const key of packed) {
-    const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
-    if (source.width !== TILE_SIZE) continue;
-    const refined = refineArt(source);
-    scene.textures.remove(key);
-    scene.textures.addCanvas(key, refined);
+  const arts: [string, CreatureArt][] = [
+    ...Object.entries(MONSTER_ART).map(([kind, art]) => [MONSTER_TEXTURE[kind as MonsterKind], art] as [string, CreatureArt]),
+    ...Object.entries(SUMMON_ART).map(([kind, art]) => [SUMMON_TEXTURE[kind as SummonKind], art] as [string, CreatureArt]),
+  ];
+  for (const [key, art] of arts) {
+    if (scene.textures.exists(key)) continue;
+    const texture = scene.textures.addCanvas(key, creatureSheet(art))!;
+    for (let i = 0; i < HERO_DIRS.length * HERO_FRAMES; i++) texture.add(i, 0, i * art.w, 0, art.w, art.h);
+    HERO_DIRS.forEach((dir) => {
+      const first = heroIdleFrame(dir);
+      scene.anims.create({
+        key: heroWalkAnim(key, dir),
+        frames: [1, 0, 2, 0].map((f) => ({ key, frame: first + f })),
+        frameRate: 8,
+        repeat: -1,
+      });
+    });
   }
-  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
-    scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
+}
+
+/**
+ * As criaturas têm 2 pixels de arte por unidade: com zoom alto (celular) o pixel fica nítido;
+ * com zoom baixo (desktop sem DPR) cada pixel de arte ficaria menor que um da tela, e o filtro
+ * linear evita que linhas finas sumam ou cintilem.
+ */
+export function setCreatureFiltering(scene: Phaser.Scene, artPixelOnScreen: number) {
+  const mode = artPixelOnScreen < 1.5 ? 0 : 1; // Phaser.Textures.FilterMode: LINEAR = 0, NEAREST = 1
+  creatureFilter = mode;
+  const keys = [...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)];
+  for (const key of scene.textures.getTextureKeys()) {
+    if (key.startsWith("hero-") || keys.includes(key)) scene.textures.get(key).setFilter(mode);
   }
 }
 
