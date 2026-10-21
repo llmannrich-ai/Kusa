@@ -766,10 +766,19 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       // O alvo do toque rápido continua valendo: a flecha o segue mesmo se ele sair da reta durante o voo.
     }
 
-    // Rolamento: o herói salta na hora, antes do resto do efeito.
+    // Rolamento: o herói salta na hora, antes do resto do efeito. Toque rápido foge do alvo; mirado, vai para o ponto.
     if (spell.dash) {
-      const away = !aim && target;
-      this.dash(sessionId, p, seat, away ? 2 * p.x - target!.x : tx, away ? 2 * p.y - target!.y : ty, spell.dash.tiles, now);
+      const threat = !aim ? target : undefined;
+      const landing = this.dashLanding(p, threat ? 2 * p.x - threat.x : tx, threat ? 2 * p.y - threat.y : ty, spell.dash.tiles, threat);
+      if (!landing) {
+        // Encurralado: nenhuma direção livre. A magia não sai, e não gasta mana nem recarga.
+        client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Sem espaço para rolar", color: 0xbdc3c7 } satisfies NoticeMessage);
+        return;
+      }
+      p.x = landing.x;
+      p.y = landing.y;
+      seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 150);
+      this.trackDepth(sessionId, p);
       tx = p.x;
       ty = p.y;
       target = undefined;
@@ -1947,22 +1956,45 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
    * Salto (Rolamento): anda até `tiles` tiles em linha reta na direção de (tx, ty), parando antes de parede,
    * água, monstro, outro herói ou portal (o salto nunca encerra a hunt sem querer).
    */
-  private dash(sessionId: string, p: Player, seat: Seat, tx: number, ty: number, tiles: number, now: number) {
+  /**
+   * Onde o Rolamento pousa, saltando até `tiles` na direção de (tx, ty). Se essa reta estiver bloqueada logo de cara
+   * (parede, portal, monstro), tenta as diagonais (±45°) e as laterais (±90°). Fugindo de um monstro (`threat`),
+   * fica com o pouso que mais se afasta dele, e só vale pouso que aumenta a distância; mirado, com a direção mais
+   * próxima da escolhida. Sem nenhum pouso, devolve null.
+   */
+  private dashLanding(p: Player, tx: number, ty: number, tiles: number, threat?: { x: number; y: number }) {
+    const base = Math.atan2(ty - p.y, tx - p.x);
+    const gap = threat ? tileDistance(p.x, p.y, threat.x, threat.y) : 0;
+    let best: { x: number; y: number } | null = null;
+    let bestGap = gap;
+    for (const turn of [0, 1, -1, 2, -2]) {
+      const angle = base + (turn * Math.PI) / 4;
+      const end = this.dashPath(p, p.x + Math.round(Math.cos(angle) * tiles), p.y + Math.round(Math.sin(angle) * tiles), tiles);
+      if (end.x === p.x && end.y === p.y) continue;
+      if (!threat) return end;
+      const after = tileDistance(end.x, end.y, threat.x, threat.y);
+      if (after > bestGap) {
+        best = end;
+        bestGap = after;
+      }
+    }
+    return best;
+  }
+
+  /** Último tile livre da reta do Rolamento (para antes de parede, portal ou alguém; não corta quina de parede). */
+  private dashPath(p: Player, tx: number, ty: number, tiles: number) {
     const path = lineTiles(this.dungeon, p.x, p.y, tx, ty, tiles);
     const blocked = this.occupiedTiles();
     const w = this.dungeon.width;
     let last = { x: p.x, y: p.y };
     for (const t of path) {
       if (!isWalkable(this.dungeon, t.x, t.y) || tileAt(this.dungeon, t.x, t.y) === Tile.Portal || blocked.has(t.y * w + t.x)) break;
-      // Na diagonal, não atravessa quina de parede (como o passo normal).
       if (t.x !== last.x && t.y !== last.y && (!isWalkable(this.dungeon, t.x, last.y) || !isWalkable(this.dungeon, last.x, t.y))) break;
       last = t;
     }
-    p.x = last.x;
-    p.y = last.y;
-    seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 150);
-    this.trackDepth(sessionId, p);
+    return last;
   }
+
 
   /** Dano base do jogador (classe, nível, áureas e arma), antes da variação. */
   private baseDamage(sessionId: string, p: Player) {
