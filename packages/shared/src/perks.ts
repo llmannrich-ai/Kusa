@@ -3,7 +3,7 @@ import { BASIC_ATTACK_COOLDOWN_MS, SPELL_SLOT_LEVELS } from "./spells.ts";
 // Melhorias da hunt: a cada nível que não abre slot de magia, o servidor sorteia 2 melhorias e o
 // jogador escolhe uma. Valem só até o fim da hunt e somam por cima das áureas do Grimório.
 // Balanceamento: cada escolha vale perto de +10% de poder num eixo. Numa hunt de 4 min o jogador
-// chega a ~5 escolhas (níveis 2, 4, 5, 6, 7); o limite de cada uma impede empilhar um eixo só.
+// chega a ~5 escolhas (níveis 2, 4, 5, 7, 8); o limite de cada uma impede empilhar um eixo só.
 
 export type PerkId =
   | "vigor" | "arcana" | "regen" | "clarity" | "might"
