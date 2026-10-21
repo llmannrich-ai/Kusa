@@ -10,8 +10,10 @@ import {
   TIER_COLORS,
   TILE_SIZE,
   Tile,
+  blocksSight,
   centerOf,
   generateDungeon,
+  hasLineOfSight,
   isPotion,
   mapIdOf,
   tileDistance,
@@ -22,6 +24,7 @@ import {
   type Dungeon,
   type MonsterKind,
   type NoticeMessage,
+  type SpellDef,
   type SpellMessage,
   type SummonKind,
 } from "@kusa/shared";
@@ -371,6 +374,7 @@ export class DungeonScene extends Phaser.Scene {
     if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
     this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
+    if (spell.radius > 0) this.showArea(spell, msg);
     if (spell.heal) {
       this.room.state.players.forEach((p, id) => {
         if (p.status !== "playing" || tileDistance(msg.x, msg.y, p.x, p.y) > spell.radius) return;
@@ -378,6 +382,24 @@ export class DungeonScene extends Phaser.Scene {
         if (unit) this.fx.heal({ x: unit.body.x, y: unit.body.y });
       });
     }
+  }
+
+  /**
+   * Marca cada tile atingido por uma magia de área, com a mesma regra do servidor (raio em tiles e
+   * linha de visão do centro), para o jogador ver o tamanho real da área. Paredes ficam de fora.
+   */
+  private showArea(spell: SpellDef, msg: SpellMessage) {
+    const self = spell.aim === "self";
+    const cx = self ? msg.x : msg.tx;
+    const cy = self ? msg.y : msg.ty;
+    const tiles: { x: number; y: number; ring: number }[] = [];
+    for (let y = cy - spell.radius; y <= cy + spell.radius; y++) {
+      for (let x = cx - spell.radius; x <= cx + spell.radius; x++) {
+        if (blocksSight(this.dungeon, x, y) || !hasLineOfSight(this.dungeon, cx, cy, x, y)) continue;
+        tiles.push({ ...this.tilePoint(x, y), ring: tileDistance(cx, cy, x, y) });
+      }
+    }
+    this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
   }
 
   /** Tranco curto do sprite na direção do golpe (ida e volta). */
