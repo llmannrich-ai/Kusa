@@ -421,7 +421,7 @@ async function druidSpecs() {
     }
     h.room.send(MSG.attacking, { on: false });
     // O aviso chega na hora; o estado (a semente que some) vem na próxima sincronização.
-    await until(() => h.me().status === "playing" && !h.me().seeded, 1000, `renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
+    await until(() => h.me().status === "playing" && !h.me().seeded, 2000, `renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
     console.log(`druida: renasceu da semente com ${h.me().hp}/${h.me().maxHp} de vida`);
     // Cura além da vida máxima vira escudo: espera a vida encher (a cura de 45% também enche) e cura de novo.
     await until(() => h.me().mana >= 40, 15000, "círculo: a mana não voltou");

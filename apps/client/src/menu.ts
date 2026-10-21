@@ -27,6 +27,8 @@ import {
   TALENTS,
   TRAITS,
   chosenSide,
+  damageReduction,
+  gearStats,
   canUse,
   classesText,
   describeStats,
@@ -40,8 +42,8 @@ import {
   type ItemSlot,
   type TalentDef,
 } from "@kusa/shared";
-import { heroPoses } from "./art/heroes.ts";
-import { itemIcon } from "./art/items.ts";
+import { heroPoses, type HeroDir } from "./art/heroes.ts";
+import { itemIcon, slotGhost } from "./art/items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
 import {
   ProfileError,
@@ -94,6 +96,62 @@ function itemImg(itemId: string) {
   return img;
 }
 
+function ghostImg(slot: ItemSlot) {
+  const key = `ghost:${slot}`;
+  if (!iconCache.has(key)) iconCache.set(key, slotGhost(slot).toDataURL());
+  const img = el("img", "item-img");
+  img.src = iconCache.get(key)!;
+  img.alt = "";
+  return img;
+}
+
+/**
+ * Manequim atrás dos slots do equipamento (viewBox no mesmo formato do `.loadout`): parede de
+ * pedra, corpo com volume, ombreiras, cinto, joelheiras e botas. Os slots cobrem cabeça, peito,
+ * pernas, pés e mãos; o resto do corpo aparece em volta deles.
+ */
+const BODY_SVG = `<svg class="loadout-body" viewBox="0 0 100 110" aria-hidden="true">
+  <defs>
+    <pattern id="doll-bricks" width="12" height="7" patternUnits="userSpaceOnUse">
+      <rect width="12" height="7" fill="#17110e"/>
+      <path d="M0 .5h12M0 4h12M3 .5v3.5M9 4v3" stroke="#0c0907" stroke-width=".6"/>
+    </pattern>
+    <linearGradient id="doll-skin" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2b221c"/><stop offset=".45" stop-color="#4a3c30"/><stop offset="1" stop-color="#241c17"/>
+    </linearGradient>
+    <radialGradient id="doll-light" cx=".5" cy=".42" r=".6">
+      <stop offset="0" stop-color="#c9a24a" stop-opacity=".16"/><stop offset="1" stop-color="#000" stop-opacity=".55"/>
+    </radialGradient>
+  </defs>
+  <rect width="100" height="110" fill="url(#doll-bricks)"/>
+  <rect width="100" height="110" fill="url(#doll-light)"/>
+  <ellipse cx="50" cy="106.5" rx="25" ry="2.6" fill="#000" opacity=".6"/>
+  <g fill="url(#doll-skin)" stroke="#6b5640" stroke-width=".7" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32 37 22 49l-6 11 6 4 7-11 6-8zM68 37l10 12 6 11-6 4-7-11-6-8z"/>
+    <path d="M37 66h11l-.5 18 .5 14h-9l-1-14zM52 66h11l-1 18-1 14h-9l.5-14z"/>
+    <path d="M36 97h12v6q0 2-2 2H33q-2 0-1-2zM52 97h12l4 6q1 2-1 2H54q-2 0-2-2z"/>
+    <path d="M45 23h10v9H45z"/>
+    <circle cx="50" cy="14" r="10"/>
+    <path d="M31 34q19-6 38 0l2 6-4 14-3 12H36l-3-12-4-14z"/>
+    <path d="M26 37q4-7 12-5l1 7q-6 3-12 1zM74 37q-4-7-12-5l-1 7q6 3 12 1z"/>
+  </g>
+  <g fill="none" stroke="#0d0a08" stroke-width=".8" stroke-linecap="round">
+    <path d="M50 38v26M40 44q10 4 20 0M38 55q12 3 24 0"/>
+    <path d="M24 46l5 4M76 46l-5 4"/>
+  </g>
+  <g stroke="#0d0a08" stroke-width=".6">
+    <rect x="35" y="62" width="30" height="5" fill="#3a2a1c"/>
+    <rect x="47" y="61.5" width="6" height="6" fill="#8a6d2c" stroke="#c9a24a"/>
+    <rect x="49" y="63.5" width="2" height="2" fill="#17110e"/>
+    <path d="M40 83h5l-1 4.5h-3z" fill="#3a2f27"/>
+    <path d="M55 83h5l-1 4.5h-3z" fill="#3a2f27"/>
+  </g>
+  <g fill="#c9a24a" opacity=".45">
+    <circle cx="29" cy="35.5" r=".9"/><circle cx="33" cy="33.2" r=".9"/>
+    <circle cx="71" cy="35.5" r=".9"/><circle cx="67" cy="33.2" r=".9"/>
+  </g>
+</svg>`;
+
 /** Retrato da classe vestindo `outfit`: quadro parado, de frente. */
 function portrait(classId: ClassId, outfit: Outfit = NO_OUTFIT) {
   const img = el("img", "hero-img");
@@ -110,10 +168,24 @@ function outfitPreview(classId: ClassId, outfit: Outfit) {
   return img;
 }
 
-function heroUrl(classId: ClassId, outfit: Outfit, view: "down" | "all") {
+/** O personagem vestido em pé, um quadro por direção (frente, lado e costas), para a coluna ao lado do boneco. */
+function heroColumn(classId: ClassId, outfit: Outfit) {
+  const column = el("div", "hero-poses");
+  for (const dir of ["down", "side", "up"] as const) {
+    const img = el("img", "hero-pose");
+    img.src = heroUrl(classId, outfit, dir);
+    img.alt = "";
+    column.append(img);
+  }
+  column.setAttribute("role", "img");
+  column.setAttribute("aria-label", `${CLASSES[classId].name} com o equipamento`);
+  return column;
+}
+
+function heroUrl(classId: ClassId, outfit: Outfit, view: HeroDir | "all") {
   const key = `hero:${classId}:${outfitKey(outfit)}:${view}`;
   if (!iconCache.has(key)) {
-    const canvas = view === "down" ? heroPoses(classId, outfit, ["down"]) : heroPoses(classId, outfit);
+    const canvas = view === "all" ? heroPoses(classId, outfit) : heroPoses(classId, outfit, [view]);
     iconCache.set(key, canvas.toDataURL());
   }
   return iconCache.get(key)!;
@@ -486,28 +558,51 @@ export class Hub {
     page.append(el("p", "muted hub-hint",
       "O equipamento e a bag entram com você na hunt. Quem foge volta vestido e esvazia a bag no cofre; quem morre perde os dois."));
 
+    // Quadro do equipamento como no Tibia (cada slot no lugar do corpo) ao lado do herói vestido.
     const loadout = el("div", "loadout");
+    loadout.innerHTML = BODY_SVG;
+    const equipped: string[] = [];
     for (const slot of ITEM_SLOTS) {
       const owned = this.profile.items.find((i) => i.equipped && ITEMS[i.itemId]?.slot === slot);
-      const cell = el("button", "loadout-slot");
+      const cell = el("button", `loadout-slot at-${slot}`);
+      cell.append(el("span", "slot-tag", SLOT_NAMES[slot]));
       if (owned) {
-        cell.append(itemImg(owned.itemId), el("small", "", ITEMS[owned.itemId].name));
+        const def = ITEMS[owned.itemId];
+        cell.append(itemImg(owned.itemId));
         cell.style.borderColor = hex(itemColor(owned.itemId));
-        // A classe escolhida não usa: o item fica em casa nesta hunt.
-        if (!canUse(owned.itemId, this.classId)) {
+        cell.title = def.name;
+        // A classe escolhida não usa: o item fica em casa nesta hunt (e não entra na soma).
+        if (canUse(owned.itemId, this.classId)) {
+          equipped.push(owned.itemId);
+          cell.setAttribute("aria-label", `${SLOT_NAMES[slot]}: ${def.name}`);
+        } else {
           cell.classList.add("unusable");
-          cell.append(el("small", "warn", "fica em casa"));
+          cell.title += " (fica em casa)";
+          cell.setAttribute("aria-label", `${SLOT_NAMES[slot]}: ${def.name}, fica em casa`);
         }
         cell.onclick = () => this.openItemSheet(owned);
       } else {
-        cell.append(el("span", "slot-empty", "＋"), el("small", "muted", SLOT_NAMES[slot]));
+        cell.append(ghostImg(slot));
+        cell.classList.add("vacant");
+        cell.setAttribute("aria-label", `${SLOT_NAMES[slot]} (vazio)`);
         cell.onclick = () => this.toast(`Toque num item do cofre para equipar ${SLOT_NAMES[slot].toLowerCase()}.`);
       }
       loadout.append(cell);
     }
-    const doll = el("div", "doll");
-    doll.append(outfitPreview(this.classId, this.loadout()), el("small", "muted", `${CLASSES[this.classId].name} na próxima hunt`));
-    page.append(el("h3", "", "Para a próxima hunt"), doll, loadout);
+    const gear = gearStats(equipped);
+    const stats = el("div", "equip-stats");
+    stats.append(
+      el("span", "", `🛡️ Armadura ${gear.armor}${gear.armor ? ` (−${Math.round(damageReduction(gear.armor) * 100)}% de dano)` : ""}`),
+      el("span", "", `⚔️ Dano +${Math.round(gear.damage * 100)}%`),
+    );
+    if (gear.spellPower) stats.append(el("span", "", `✨ Magias +${Math.round(gear.spellPower * 100)}%`));
+    const panel = el("div", "equip-panel");
+    panel.append(el("div", "equip-title", "Equipamento"), loadout, stats);
+    const hero = el("div", "equip-hero");
+    hero.append(heroColumn(this.classId, this.loadout()), el("small", "muted", CLASSES[this.classId].name));
+    const row = el("div", "equip-row");
+    row.append(panel, hero);
+    page.append(el("h3", "", "Para a próxima hunt"), row);
 
     const vault = this.vaultItems();
     page.append(el("h3", "", `Cofre (${vault.length}/${VAULT_SIZE})`));
