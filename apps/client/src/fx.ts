@@ -121,6 +121,29 @@ export class CombatFx {
     }
   }
 
+  /**
+   * Área de uma magia: cada tile atingido acende com a cor da magia e solta faíscas, em onda do centro
+   * para fora (`ring` = distância em tiles até o centro). `delay` espera o projétil chegar.
+   */
+  area(tiles: (Point & { ring: number })[], color: number, delay: number) {
+    const half = TILE_SIZE / 2;
+    this.later(delay, () => {
+      for (const t of tiles) {
+        this.later(t.ring * 45, () => {
+          const g = this.scene.add.graphics().setDepth(FX_DEPTH - 2).setPosition(t.x, t.y);
+          g.fillStyle(color, 0.35).fillRect(-half + 1, -half + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+          g.lineStyle(1, color, 0.9).strokeRect(-half + 1.5, -half + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
+          g.fillStyle(0xffffff, 0.25).fillRect(-half + 3, -half + 3, TILE_SIZE - 6, 2);
+          this.scene.tweens.add({
+            targets: g, scale: { from: 0.6, to: 1 }, alpha: { from: 1, to: 0 }, duration: 520, ease: "Cubic.Out",
+            onComplete: () => g.destroy(),
+          });
+          this.sparks(t, color, 2);
+        });
+      }
+    });
+  }
+
   /** Brilho de cura subindo de um aliado (Bênção da Floresta). */
   heal(at: Point) {
     for (let i = 0; i < 6; i++) {
