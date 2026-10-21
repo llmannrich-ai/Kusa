@@ -82,6 +82,25 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
     da mesma magia. A estaca e a armadilha atiram e disparam sozinhas; o dano conta para quem as pôs.
   - **Mira em aliado** (Escudo da Luz): arrastando, o herói a até 1 tile do ponto (círculo azul nos pés); parado no
     botão, o mais ferido ao alcance. **Mira em leque** (Barragem): a mira acende os tiles do leque.
+  - **Feiticeiro** (os 3 ramos especializados). As magias do Feiticeiro têm elemento (energia, fogo, gelo ou trevas):
+
+    | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
+    |---|---|---|---|---|
+    | Raio | **Tempestuoso** | 🌩️ Estática: magias de energia têm 25% de chance de atordoar 0,5 s | 📏 Feixe de Energia: linha de 6 tiles, 2× | ⛈️ Fúria dos Céus: nuvem sobre você que solta 6 raios (1,3×) nos monstros a até 4 tiles em 3,5 s |
+    | Raio | **Piromante** | 🔥 Combustão: magias com dano queimam os atingidos por 4 s | 🔥 Bola de Fogo: raio 2, 1,6× e queima | 🌋 Núcleo Infernal: raio 4 em volta de si, 3×, recarga de 20 s |
+    | Gelo | **Criomante** | 💎 Estilhaçar: magia em monstro preso causa +50% e o solta | 🌬️ Cone de Frio: leque de 4 tiles, 1,7× e 50% de lentidão | 🧊 Prisão de Gelo: prende tudo em raio 3 por 4 s, sem dano |
+    | Gelo | **Arcanista** | 🔷 Escudo de Mana: 30% do dano recebido sai da mana | 💨 Passo Nebuloso: teleporta até 4 tiles (passa por cima de monstros) | 🧱 Muralha Mágica: parede de 3 tiles por 6 s que ninguém atravessa |
+    | Trevas | **Necromante** | 💀 Colheita: monstro morto por magia devolve 3% da mana | ☠️ Morte Súbita: 3,4× num alvo | 🦴 Erguer Esqueletos: 2 esqueletos por 15 s |
+    | Trevas | **Bruxo** | 👁️ Maldição: magia de alvo único marca o alvo (+15% de dano da equipe por 5 s) | 🟣 Rajada Mística: 2,2× e empurra o alvo 1 tile | 🐙 Tentáculos Negros: campo de raio 2 por 6 s que prende e fere |
+
+  - Maestrias: Feixe atordoa 0,5 s; Fúria dos Céus solta 10 raios; Bola de Fogo em raio 3; Núcleo Infernal queima;
+    Cone de Frio congela 1,5 s; Prisão de Gelo fere 1×; Passo Nebuloso dá escudo de 20%; Muralha de 5 tiles; Morte
+    Súbita dobra abaixo de 30% da vida; 3 esqueletos; Rajada empurra 2 tiles; Tentáculos em raio 3.
+  - **Teleporte** (Passo Nebuloso): aparece no tile livre mais longe da reta mirada; se a reta não tiver nenhum, tenta
+    as diagonais e as laterais (como o Rolamento). No toque rápido, foge do monstro mais perto; sem lugar, não gasta mana.
+  - **Muralha Mágica**: cada tile da parede é um campo `wall`; heróis, monstros e criaturas desviam (os monstros pelo
+    pathfinding), mas magias, flechas e a visão passam. Só sobe em tile livre.
+  - **Empurrar** (Rajada Mística): o alvo é empurrado para longe de quem conjura, parando em parede, água ou alguém.
 - Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade (1.200 e 1.600 nas magias das
   especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
@@ -91,7 +110,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 |---|---|---|---|
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante |
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
-| Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio |
+| Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza |
 
 #### Maestrias
@@ -326,6 +345,7 @@ As compradas no Grimório, por slot (números do nível 1):
 | Urso Ancestral | 130% | tanque: atrai os monstros que acerta (1,1×) |
 | Guardião do Bosque | 220% | tanque: atrai e prende com raízes a cada golpe (0,8×) |
 | Fogo-Fátuo | 50% | cura 8% da vida e devolve 2% da mana de quem está a até 4 tiles, a cada 2,5 s |
+| Esqueleto Erguido (Feiticeiro Necromante) | 60% | corpo a corpo (0,8×) |
 
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, bola de fogo do dragão).

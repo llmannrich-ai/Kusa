@@ -40,6 +40,8 @@ export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   bear: "summon-bear",
   wisp: "summon-wisp",
   treant: "summon-treant",
+  // O esqueleto erguido usa a arte do Esqueleto monstro (o brilho de aliado nos pés diferencia).
+  skeleton: "monster-skeleton",
 };
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
@@ -90,7 +92,7 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...Object.values(MONSTER_TEXTURE),
-    ...Object.values(SUMMON_TEXTURE).filter((key) => key !== SUMMON_TEXTURE.treant),
+    ...Object.values(SUMMON_TEXTURE).filter((key) => key !== SUMMON_TEXTURE.treant && key !== SUMMON_TEXTURE.skeleton),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
@@ -147,7 +149,7 @@ export function createHeroArt(scene: Phaser.Scene) {
  * versão em dobro de resolução, e o Guardião do Bosque já nasce refinado (uma vez por jogo).
  */
 export function createCreatureArt(scene: Phaser.Scene) {
-  const packed = [...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)].filter((key) => key !== SUMMON_TEXTURE.treant);
+  const packed = [...new Set([...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)])].filter((key) => key !== SUMMON_TEXTURE.treant);
   for (const key of packed) {
     const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
     if (source.width !== TILE_SIZE) continue;

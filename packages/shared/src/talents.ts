@@ -82,8 +82,10 @@ const AURA_RULES: Record<AuraStat, { perRank: number; maxRank: number; baseCost:
   speed: { perRank: 0.04, maxRank: 2, baseCost: 300 },
 };
 
-/** Preço do 1º nível de uma magia, pela profundidade na árvore (a ponta é mais cara). */
-const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200, 1200, 1600];
+/** Preço do 1º nível de uma magia do tronco, pela profundidade na árvore (a ponta é mais cara). */
+const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
+/** Preço do 1º nível das magias de uma especialização: a 1ª do lado (logo abaixo do Traço) e a 2ª. */
+const SIDE_SPELL_COST = [1200, 1600];
 /** Preço do Traço de uma especialização (nível único). */
 const TRAIT_COST = 1000;
 /** As iniciais já vêm no nível 1: o 2 custa base × 1,6. */
@@ -140,6 +142,18 @@ const SHAPES: Record<ClassId, Shape> = {
     ["chain_lightning", 0, 3, "lightning_bolt"], ["ice_lance", 1, 3, "frost_nova"], ["drain_life", 2, 3, "hp"],
     ["meteor", 0, 4, "chain_lightning"], ["blizzard", 1, 4, "ice_lance"], ["speed", 2, 4, "drain_life"],
     ["dark_pact", 2, 5, "speed"],
+    // Raio: Tempestuoso (lado 0) ou Piromante (lado 1).
+    ["static_charge", 0, 5, "meteor", 0], ["combustion", 0, 5, "meteor", 1],
+    ["energy_beam", 0, 6, "static_charge", 0], ["fireball", 0, 6, "combustion", 1],
+    ["sky_fury", 0, 7, "energy_beam", 0], ["infernal_core", 0, 7, "fireball", 1],
+    // Gelo: Criomante (lado 0) ou Arcanista (lado 1).
+    ["shatter", 1, 5, "blizzard", 0], ["mana_shield", 1, 5, "blizzard", 1],
+    ["cone_of_cold", 1, 6, "shatter", 0], ["misty_step", 1, 6, "mana_shield", 1],
+    ["ice_prison", 1, 7, "cone_of_cold", 0], ["magic_wall", 1, 7, "misty_step", 1],
+    // Trevas: Necromante (lado 0) ou Bruxo (lado 1).
+    ["harvest", 2, 6, "dark_pact", 0], ["hex", 2, 6, "dark_pact", 1],
+    ["sudden_death", 2, 7, "harvest", 0], ["eldritch_blast", 2, 7, "hex", 1],
+    ["raise_skeletons", 2, 8, "sudden_death", 0], ["black_tentacles", 2, 8, "eldritch_blast", 1],
   ],
   druid: [
     ["forest_blessing", 1, 0],
@@ -182,7 +196,8 @@ function classTree(classId: ClassId): TalentDef[] {
     return {
       id: id(key), classId, col, row, side, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
       maxRank: SPELL_MAX_RANK, freeRank: starter ? 1 : 0,
-      baseCost: starter ? STARTER_BASE_COST : SPELL_COST_BY_ROW[row], costGrowth: 1.6, requires,
+      baseCost: starter ? STARTER_BASE_COST : side === undefined ? SPELL_COST_BY_ROW[row] : SIDE_SPELL_COST[isTrait(parent!) ? 0 : 1],
+      costGrowth: 1.6, requires,
     };
   });
 }
