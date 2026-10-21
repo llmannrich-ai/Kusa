@@ -24,8 +24,6 @@ export const VERSION_MISMATCH_CODE = 4409;
 /** Sala que lista as hunts abertas em tempo real (LobbyRoom do Colyseus). */
 export const LOBBY_ROOM_NAME = "lobby";
 
-/** Multiplicador global da velocidade de movimento de jogadores e monstros (1 = valores das tabelas). */
-export const MOVE_SPEED_SCALE = 0.765;
-
-/** Multiplicador extra só dos heróis, sobre o `MOVE_SPEED_SCALE`. */
-export const HERO_SPEED_SCALE = MOVE_SPEED_SCALE * 0.9;
+/** Multiplicadores da velocidade de movimento (1 = valores das tabelas de classes e monstros). */
+export const HERO_SPEED_SCALE = 0.6885;
+export const MONSTER_SPEED_SCALE = 0.6885;
