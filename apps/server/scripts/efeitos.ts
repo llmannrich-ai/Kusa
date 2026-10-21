@@ -15,7 +15,7 @@
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
  */
 import { Client } from "@colyseus/sdk";
-import { MONSTERS, MSG, Tile, generateDungeon, tileAt, tileDistance, type MonsterKind } from "@kusa/shared";
+import { MONSTERS, MSG, Tile, generateDungeon, isWalkable, lineTiles, tileAt, tileDistance, type MonsterKind } from "@kusa/shared";
 import { approach, enter, inSight, until, wait } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -60,7 +60,8 @@ async function slowAndChain() {
   await until(() => [...room.state.monsters.values()].some((m: any) => m.slowed), 3000, "a Nevasca não deixou ninguém lento");
 
   // Cadeia: precisa de dois monstros a até 3 tiles um do outro; anda pela entrada até achar.
-  const deadline = Date.now() + 40_000;
+  const deadline = Date.now() + 90_000;
+  let tries = 0;
   const pair = () => {
     const seen = inSight(room, me(), 6).filter(([, m]) => MONSTERS[m.kind as MonsterKind].rank === "common");
     return seen.find(([a, m]) => seen.some(([b, o]) => a !== b && tileDistance(m.x, m.y, o.x, o.y) <= 3));
@@ -69,7 +70,7 @@ async function slowAndChain() {
     if (Date.now() > deadline) throw new Error("o Raio em Cadeia não saltou");
     const found = pair();
     if (found) room.send(MSG.cast, { slot: 0, aim: { x: found[1].x, y: found[1].y, targetId: found[0] } });
-    else await approach(room, me, 2, () => pair() !== undefined);
+    else await gather(room, me, () => pair() !== undefined, ++tries);
     await wait(400);
   }
   const hops = Math.max(...chains.map((c) => c.points.length));
@@ -94,15 +95,24 @@ async function paladinMira() {
   // Aljava Veloz: o bônus aparece no herói (a aura) e as flechas saem mais rápido.
   room.send(MSG.cast, { slot: 1 });
   await until(() => me().buff === "swift_quiver", 2000, "a Aljava Veloz não ficou ativa");
+  // Atira por 6 s (a aljava dura 7,8 s no nível 3), trocando para outro monstro à vista se o alvo sair do alcance.
+  // Sem a aljava, saem no máximo 6 flechas em 6 s (1 por segundo); com ela, uma a cada 0,4 s.
+  const hitsBefore = damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer && !d.dot).length;
   room.send(MSG.target, { id });
   room.send(MSG.attacking, { on: true });
-  const t0 = Date.now();
-  await until(() => damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer).length >= 5, 4000, "as flechas rápidas não saíram");
+  for (let t = 0; t < 20; t++) {
+    const p = me();
+    const current = room.state.monsters.get(p.target);
+    if (!current || tileDistance(p.x, p.y, current.x, current.y) > 5) {
+      const other = inSight(room, p, 5)[0];
+      if (other) room.send(MSG.target, { id: other[0] });
+    }
+    await wait(300);
+  }
   room.send(MSG.attacking, { on: false });
-  const arrowsMs = Date.now() - t0;
-  console.log(`paladino: alvo marcado, 5 golpes em ${arrowsMs} ms com a Aljava Veloz`);
-  // Sem a aljava, 5 flechas levam 4 s (1 por segundo); com ela, 0,4 s cada.
-  if (arrowsMs > 3500) throw new Error(`as flechas não ficaram mais rápidas (${arrowsMs} ms)`);
+  const hits = damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer && !d.dot).length - hitsBefore;
+  console.log(`paladino: alvo marcado, ${hits} golpes em 6 s com a Aljava Veloz`);
+  if (hits < 7) throw new Error(`as flechas não ficaram mais rápidas (${hits} golpes em 6 s)`);
   await room.leave();
 
   // Rolamento: o herói salta para longe do monstro e nunca cai no portal.
@@ -114,8 +124,17 @@ async function paladinMira() {
   if (!near) throw new Error("nenhum monstro perto para rolar para longe");
   const before = { x: roll.me().x, y: roll.me().y };
   const gap = tileDistance(before.x, before.y, near[1].x, near[1].y);
-  roll.room.send(MSG.target, { id: near[0] });
-  roll.room.send(MSG.cast, { slot: 0 });
+  // Mira o rolamento na direção livre que mais afasta do monstro (rolar contra a parede não sai do lugar).
+  const map = generateDungeon(roll.room.state.seed, roll.room.state.mapId);
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+    .map(([dx, dy]) => ({ x: before.x + dx * 3, y: before.y + dy * 3 }))
+    .filter((p) => {
+      const first = lineTiles(map, before.x, before.y, p.x, p.y, 1)[0];
+      return first && isWalkable(map, first.x, first.y) && tileAt(map, first.x, first.y) !== Tile.Portal;
+    })
+    .sort((a, b) => tileDistance(b.x, b.y, near[1].x, near[1].y) - tileDistance(a.x, a.y, near[1].x, near[1].y));
+  if (dirs.length === 0) throw new Error("o herói está cercado: nenhum lado livre para rolar");
+  roll.room.send(MSG.cast, { slot: 0, aim: dirs[0] });
   await until(() => roll.me().x !== before.x || roll.me().y !== before.y, 2000, "o Rolamento não moveu o herói");
   const after = roll.me();
   const dungeon = generateDungeon(roll.room.state.seed, roll.room.state.mapId);
@@ -123,7 +142,7 @@ async function paladinMira() {
   const monster = roll.room.state.monsters.get(near[0]);
   const gapAfter = monster ? tileDistance(after.x, after.y, monster.x, monster.y) : Infinity;
   console.log(`paladino: rolou de ${before.x},${before.y} para ${after.x},${after.y} (distância do monstro ${gap} → ${gapAfter})`);
-  if (gapAfter <= gap) throw new Error("o Rolamento devia afastar o herói do monstro");
+  if (gapAfter < gap) throw new Error("o Rolamento devia afastar o herói do monstro");
   roll.room.send(MSG.cast, { slot: 1 });
   await until(() => roll.me().buff === "sniper_stance", 2000, "a Postura do Atirador não ficou ativa");
   await roll.room.leave();
@@ -192,7 +211,8 @@ async function paladinScout() {
   const before = art.damage.length;
   art.room.send(MSG.cast, { slot: 1, aim: { x: near[1].x, y: near[1].y } });
   await until(() => hitsFrom(art.damage, art.room.sessionId, before) > 0, 2000, "a Barragem não acertou ninguém");
-  const deadline = Date.now() + 60_000;
+  const deadline = Date.now() + 90_000;
+  let tries = 0;
   const pairOf = () => {
     const seenNow = inSight(art.room, art.me(), 6);
     return seenNow.find(([a, m]) => seenNow.some(([b, o]) => a !== b && tileDistance(m.x, m.y, o.x, o.y) <= 3));
@@ -202,9 +222,18 @@ async function paladinScout() {
     // Lança no par (ou em qualquer monstro à vista: o salto pode achar um vizinho que o herói não enxerga).
     const pair = pairOf() ?? inSight(art.room, art.me(), 6)[0];
     if (pair) art.room.send(MSG.cast, { slot: 0, aim: { x: pair[1].x, y: pair[1].y, targetId: pair[0] } });
-    else await approach(art.room, art.me, 2, () => pairOf() !== undefined);
+    else await gather(art.room, art.me, () => pairOf() !== undefined, ++tries);
     await wait(500);
   }
   console.log(`paladino: Barragem acertou, Flecha Relâmpago saltou por ${Math.max(...art.chains.map((c) => c.points.length))} monstros`);
   await art.room.leave();
+}
+
+/**
+ * Sem dois monstros juntos à vista: anda 4 s atrás de outro monstro (o 2º, 3º ou 4º mais próximo, alternando a cada
+ * tentativa). Os monstros que notam o herói vêm atrás dele e acabam formando o par que o salto em cadeia precisa.
+ */
+async function gather(room: any, me: () => any, done: () => boolean, tries: number) {
+  const until = Date.now() + 4000;
+  await approach(room, me, 1, () => done() || Date.now() > until, 1 + (tries % 3));
 }

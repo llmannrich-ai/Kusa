@@ -30,8 +30,11 @@ export async function enter(client: Client, classId: string, label: string) {
   return { room, me, damage, spells, chains, cooldowns };
 }
 
-/** Anda até ficar a `range` tiles do monstro mais próximo, até `done()` ou 30 s. */
-export async function approach(room: any, me: () => any, range: number, done: () => boolean) {
+/**
+ * Anda até ficar a `range` tiles do monstro mais próximo (que tem caminho), até `done()` ou 30 s. Com `skip`, pula os
+ * `skip` monstros mais próximos: serve para ir buscar outro monstro e juntar um par perto do herói.
+ */
+export async function approach(room: any, me: () => any, range: number, done: () => boolean, skip = 0) {
   const dungeon = generateDungeon(room.state.seed, room.state.mapId);
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline && !done()) {
@@ -44,8 +47,9 @@ export async function approach(room: any, me: () => any, range: number, done: ()
     const byDistance = ([...room.state.monsters.values()] as any[])
       .map((m) => ({ m, d: tileDistance(p.x, p.y, m.x, m.y) }))
       .sort((a, b) => a.d - b.d);
-    if (byDistance.length > 0 && byDistance[0].d > range) {
-      for (const { m } of byDistance) {
+    const wanted = byDistance.slice(Math.min(skip, Math.max(0, byDistance.length - 1)));
+    if (wanted.length > 0 && wanted[0].d > range) {
+      for (const { m } of wanted) {
         const step = nextStep(dungeon, p, m, range, (x, y) => blocked.has(y * dungeon.width + x));
         if (!step) continue;
         room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
