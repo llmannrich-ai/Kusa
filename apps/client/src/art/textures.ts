@@ -4,8 +4,10 @@ import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./he
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
-import { treantCanvas } from "./summons.ts";
+import { TREANT_OUTLINE, treantCanvas } from "./summons.ts";
+import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
+import { TORCH_FRAMES, cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./cryptDecor.ts";
 import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./swampDecor.ts";
 
 /**
@@ -140,10 +142,27 @@ export function createHeroArt(scene: Phaser.Scene) {
   for (const classId of CLASS_IDS) heroArt(scene, classId);
 }
 
+/**
+ * Monstros e invocações com a arte refinada (`refine.ts`): os PNGs do pack são trocados pela
+ * versão em dobro de resolução, e o Guardião do Bosque já nasce refinado (uma vez por jogo).
+ */
+export function createCreatureArt(scene: Phaser.Scene) {
+  const packed = [...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)].filter((key) => key !== SUMMON_TEXTURE.treant);
+  for (const key of packed) {
+    const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+    if (source.width !== TILE_SIZE) continue;
+    const refined = refineArt(source);
+    scene.textures.remove(key);
+    scene.textures.addCanvas(key, refined);
+  }
+  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
+    scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
+  }
+}
+
 /** Gera as texturas próprias dos efeitos e as animações de impacto (uma vez por jogo). */
 export function createEffectArt(scene: Phaser.Scene) {
   if (!scene.textures.exists(FX_TEXTURE.leaf)) scene.textures.addCanvas(FX_TEXTURE.leaf, leafCanvas());
-  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) scene.textures.addCanvas(SUMMON_TEXTURE.treant, treantCanvas());
   const strips: [string, () => HTMLCanvasElement, number][] = [
     [FX_ANIM.slash, slashStrip, SLASH_FRAMES],
     [FX_ANIM.bite, biteStrip, BITE_FRAMES],
@@ -160,21 +179,57 @@ export function createEffectArt(scene: Phaser.Scene) {
   }
 }
 
-/** Gera as texturas dos detalhes do pântano (uma vez por jogo), com quadros 32×32 nas faixas. */
-export function createSwampArt(scene: Phaser.Scene) {
-  const strips: [string, () => HTMLCanvasElement][] = [
-    [SWAMP_DECOR.floor, decorFloorStrip],
-    [SWAMP_DECOR.water, decorWaterStrip],
-    [SWAMP_DECOR.tall, decorTallStrip],
-    [SWAMP_DECOR.shade, shadeStrip],
-    [SWAMP_DECOR.ripple, rippleStrip],
-  ];
+/** Detalhes da cripta em arte própria (`cryptDecor.ts`), gerados na primeira hunt na cripta. */
+export const CRYPT_DECOR = {
+  floor: "crypt-decor-floor",
+  wall: "crypt-decor-wall",
+  tall: "crypt-decor-tall",
+  torch: "crypt-torch",
+  shade: "crypt-shade",
+  light: "crypt-light",
+  dust: "crypt-dust",
+};
+
+/** Gera as texturas e a animação da tocha da cripta (uma vez por jogo). */
+export function createCryptArt(scene: Phaser.Scene) {
+  addStrips(scene, [
+    [CRYPT_DECOR.floor, cryptFloorStrip],
+    [CRYPT_DECOR.wall, cryptWallStrip],
+    [CRYPT_DECOR.tall, cryptTallStrip],
+    [CRYPT_DECOR.torch, torchStrip],
+    [CRYPT_DECOR.shade, () => shadeStrip("12,8,4", 1.5)],
+  ]);
+  if (!scene.textures.exists(CRYPT_DECOR.light)) scene.textures.addCanvas(CRYPT_DECOR.light, lightCanvas());
+  if (!scene.textures.exists(CRYPT_DECOR.dust)) scene.textures.addCanvas(CRYPT_DECOR.dust, dustCanvas());
+  if (!scene.anims.exists(CRYPT_DECOR.torch)) {
+    scene.anims.create({
+      key: CRYPT_DECOR.torch,
+      frames: Array.from({ length: TORCH_FRAMES }, (_, frame) => ({ key: CRYPT_DECOR.torch, frame })),
+      frameRate: 7,
+      repeat: -1,
+    });
+  }
+}
+
+/** Faixas de quadros 32×32 viram texturas com um quadro por tile. */
+function addStrips(scene: Phaser.Scene, strips: [string, () => HTMLCanvasElement][]) {
   for (const [key, draw] of strips) {
     if (scene.textures.exists(key)) continue;
     const canvas = draw();
     const texture = scene.textures.addCanvas(key, canvas)!;
     for (let i = 0; i < canvas.width / TILE_SIZE; i++) texture.add(i, 0, i * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE);
   }
+}
+
+/** Gera as texturas dos detalhes do pântano (uma vez por jogo), com quadros 32×32 nas faixas. */
+export function createSwampArt(scene: Phaser.Scene) {
+  addStrips(scene, [
+    [SWAMP_DECOR.floor, decorFloorStrip],
+    [SWAMP_DECOR.water, decorWaterStrip],
+    [SWAMP_DECOR.tall, decorTallStrip],
+    [SWAMP_DECOR.shade, () => shadeStrip()],
+    [SWAMP_DECOR.ripple, rippleStrip],
+  ]);
   if (!scene.textures.exists(SWAMP_DECOR.firefly)) scene.textures.addCanvas(SWAMP_DECOR.firefly, fireflyCanvas());
   if (!scene.textures.exists(SWAMP_DECOR.mist)) scene.textures.addCanvas(SWAMP_DECOR.mist, mistCanvas());
   if (!scene.anims.exists(SWAMP_DECOR.ripple)) {

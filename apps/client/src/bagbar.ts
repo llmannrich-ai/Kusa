@@ -25,7 +25,8 @@ function tierColor(id: string) {
  */
 export class BagBar {
   private selected: Selection = null;
-  private hudKey = "";
+  /** null até o primeiro desenho: a bag vazia também precisa aparecer. */
+  private hudKey: string | null = null;
   private menuKey = "";
 
   constructor(private room: DungeonRoom, private hud: HTMLElement, private menu: HTMLElement) {

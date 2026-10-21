@@ -341,6 +341,10 @@ function showResult(msg: RunEndedMessage) {
   if (account && msg.items.length > 0) {
     $("result-detail").textContent += ` Guardado no inventário: ${msg.items.map((id) => ITEMS[id]?.name ?? id).join(", ")}.`;
   }
+  if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${ITEMS[msg.lost]?.name ?? msg.lost}.`;
+  if (msg.bagLost?.length) {
+    $("result-detail").textContent += ` A bag ficou na dungeon: ${msg.bagLost.map((id) => ITEMS[id]?.name ?? id).join(", ")}.`;
+  }
   show("result", true);
 }
 

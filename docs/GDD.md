@@ -59,7 +59,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 
 - O equipamento escolhido na aba Itens **sai do inventário quando a hunt começa** e entra no personagem.
 - Quem foge ou conclui traz para o inventário tudo o que estiver equipado **e na bag** ao sair (inclusive o que achou na dungeon).
-- Quem morre perde o que levou: equipamento e bag caem no chão e outro jogador pode pegar e extrair. Soterrado perde tudo junto com a dungeon.
+- Quem morre perde **1 equipamento do corpo, sorteado**, a **bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para o inventário.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
 ## Mapas
@@ -75,6 +75,15 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Goblin, Esqueleto, Orc → Ogro → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Cobra-d'água, Afogado, Naga guerreira → Troll do brejo → Hidra do pântano |
+
+### Cripta
+
+- **Visual** (só no cliente, `apps/client/src/cryptMap.ts` e arte própria em `art/cryptDecor.ts`; não muda a jogabilidade):
+  tochas animadas nas paredes com poça de luz quente tremulando no chão, candelabros acesos, estandartes rasgados,
+  correntes, nichos com caveira, rachaduras e teias nas paredes; sombra ao pé das paredes e manchas de luz e sujeira
+  no chão e nos tampos; ossos, entulho, cacos, poças e teias nos cantos; barris, caixotes e sacos na entrada, urnas,
+  pilhas de ossos e caixões nas salas; marcas de queimado, sangue e ossada no covil do dragão; poeira flutuando e
+  cantos da tela escurecidos. Como no pântano, só os sprites perto da câmera são desenhados.
 
 ### Pântano das Ruínas
 
@@ -102,20 +111,47 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 - O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
-- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 8.
+- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 8;
+  os outros níveis dão uma melhoria à escolha (ver "Melhorias de nível").
 - A dungeon é semi-linear: monstros fracos na entrada, ficando mais fortes conforme a equipe se aprofunda.
 - Baús no meio da dungeon trazem itens ou upgrades aleatórios poderosos, possivelmente ao matar mini-bosses.
 - No centro fica o boss final do tipo de mapa.
 - Objetivo: sair com o máximo de loot, que vira gold para os upgrades permanentes.
 
+### Melhorias de nível
+
+Todo nível que não abre slot de magia (2, 4, 5, 6, 7, 9 em diante) mostra **duas cartas** no alto da tela e o jogador
+toca numa. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
+até o fim da hunt e soma por cima das áureas do Grimório. Subiu vários níveis de uma vez: as escolhas entram na fila,
+uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas.
+
+| Melhoria | Cada escolha | Limite |
+|---|---|---|
+| ❤️ Vigor | +12% de vida máxima | 5 |
+| 💧 Reserva arcana | +15% de mana máxima | 4 |
+| 💗 Regeneração | +1% de vida por segundo (base 2%) | 3 |
+| 🔷 Clareza | +1,5% de mana por segundo (base 2%) | 3 |
+| ⚔️ Força | +10% de dano (básico, magias e criaturas) | 5 |
+| 👟 Agilidade | +6% de velocidade de movimento | 3 |
+| 🛡️ Escudo | +3 de armadura (soma com o equipamento) | 4 |
+| 🗡️ Fúria | ataque básico 10% mais rápido | 3 |
+| ⏳ Foco | recarga das magias 10% menor | 3 |
+| 🩸 Sede de sangue | cura 4% do dano que o herói causa | 3 |
+
+- Reserva arcana, Clareza e Foco só aparecem do nível 4 em diante (antes do 1º slot de magia não servem para nada).
+- Balanceamento: cada escolha vale perto de +10% de poder num eixo. Numa hunt de 4 min o jogador faz umas 5 escolhas
+  (níveis 2, 4, 5, 6, 7); os limites impedem empilhar um eixo só (ex.: Escudo no máximo = 12 de armadura, 38% de corte).
+- Vida e mana que crescem com Vigor e Reserva arcana entram cheias na hora.
+- Tabela em `packages/shared/src/perks.ts`; janela em `apps/client/src/perkchoice.ts`.
+
 ### Como uma hunt termina
 
 | Fim | Loot | Observação |
 |---|---|---|
-| **Morte** | Perde tudo | Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
+| **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
 | **Fuga** | Leva tudo | Basta voltar à sala inicial e entrar no portal. |
 | **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
-| **Soterrado** (o tempo acabou) | Perde tudo | Conta como morte. |
+| **Soterrado** (o tempo acabou) | Igual à morte | Conta como morte. |
 
 ## Combate (protótipo)
 
@@ -185,7 +221,7 @@ As compradas no Grimório, por slot (números do nível 1):
 - Drop: comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
 - O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag. Item pior vai direto para a bag. Itens no chão somem após 2 minutos.
-- Quem morre larga o equipamento e a bag no chão. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado e a bag (ver "Inventário e mercado").
+- Quem morre larga 1 equipamento sorteado e a bag inteira no chão, e guarda o resto do equipamento. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado e a bag (ver "Inventário e mercado").
 
 ### Bag
 

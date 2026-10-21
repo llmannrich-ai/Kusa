@@ -1,5 +1,6 @@
 import type { ClassId } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
+import { ART_SCALE, refineArt } from "./refine.ts";
 import {
   KNIGHT_WEAPONS, NO_OUTFIT, armorBody, helmetHead, outfitPalette, pauldrons, shieldGrid, tierOf, tintClassWeapon,
   type Outfit, type Piece,
@@ -22,7 +23,10 @@ import {
 export type HeroDir = "down" | "up" | "side";
 export const HERO_DIRS: HeroDir[] = ["down", "up", "side"];
 export const HERO_FRAMES = 3;
-export const HERO_SIZE = 32;
+/** Quadro da arte (grades de pixels). */
+const CELL = 32;
+/** Quadro da textura final, já refinada (`refine.ts`). */
+export const HERO_SIZE = CELL * ART_SCALE;
 
 /** Caixa de 16 colunas centralizada no quadro; o corpo termina na linha 30 (pés). */
 const BOX_X = 8;
@@ -694,15 +698,15 @@ function shieldPiece(hero: HeroDef, dir: HeroDir, outfit: Outfit): Item[] {
 }
 
 /**
- * Folha de sprites da classe vestindo `outfit`: 9 quadros de 32×32 em linha
- * (`direção * 3 + quadro`), virados para a esquerda no lado.
+ * Folha de sprites da classe vestindo `outfit`: 9 quadros em linha (`direção * 3 + quadro`),
+ * virados para a esquerda no lado. A arte é montada em 32×32 e refinada para `HERO_SIZE`.
  */
 export function heroSheet(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCanvasElement {
   const hero = HEROES[classId];
   const palette = { ...BASE, ...hero.palette, ...outfitPalette(outfit) };
   const armor = tierOf(outfit, "armor");
   const helmet = tierOf(outfit, "helmet");
-  const { canvas, ctx } = makeCanvas(HERO_SIZE * HERO_DIRS.length * HERO_FRAMES, HERO_SIZE);
+  const { canvas, ctx } = makeCanvas(CELL * HERO_DIRS.length * HERO_FRAMES, CELL);
   HERO_DIRS.forEach((dir, d) => {
     const head = helmet ? helmetHead(helmet, dir) : hero.heads[dir];
     const items = [...weaponPieces(hero, dir, outfit), ...shieldPiece(hero, dir, outfit)];
@@ -711,7 +715,7 @@ export function heroSheet(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCan
     // Quem usa cajado não balança a mão que o segura.
     const steady = hero.weapon === "staff" && dir !== "side" ? hero.items[dir][0].hand : undefined;
     poses(hero.body, dir, steady).forEach((pose, f) => {
-      const ox = (d * HERO_FRAMES + f) * HERO_SIZE + BOX_X;
+      const ox = (d * HERO_FRAMES + f) * CELL + BOX_X;
       const top = BODY_TOP + pose.bob;
       const torso = armor ? armorBody(pose.torso, armor, dir === "down") : pose.torso;
       const paint = (list: Item[]) => list.forEach((p) => {
@@ -728,7 +732,7 @@ export function heroSheet(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCan
       paint(items.filter((p) => !p.behind));
     });
   });
-  return canvas;
+  return refineArt(canvas, { outline: BASE.o, eye: BASE.e });
 }
 
 /** Quadro parado de cada direção pedida, lado a lado (retratos e prévia do equipamento). */
