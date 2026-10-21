@@ -157,7 +157,9 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **duas cartas** no alto da tela e o jogador
 toca numa. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
 até o fim da hunt e soma por cima das áureas do Grimório. Subiu vários níveis de uma vez: as escolhas entram na fila,
-uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas.
+uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas, e a de magia tem
+prioridade: uma melhoria ainda pendente de um nível anterior sai da tela quando o slot abre e só volta depois que a
+magia for escolhida (ou a janela fechada). O título da carta mostra o nível que deu a melhoria, nunca o 3 ou o 6.
 
 | Melhoria | Cada escolha | Limite |
 |---|---|---|
@@ -192,7 +194,7 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado, o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
-- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
+- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 - **Habilidades especiais dos mini-bosses e bosses:** além do ataque básico, eles têm um golpe mais forte, que sai

@@ -36,6 +36,8 @@ export class Player extends Schema {
   @type({ map: "number" }) perks = new MapSchema<number>();
   /** Melhorias oferecidas agora, para escolher uma (vazio = nenhuma escolha pendente). */
   @type(["string"]) perkOffer = new ArraySchema<string>();
+  /** Nível que deu a melhoria oferecida agora (pode ser anterior ao atual, se ela ficou esperando). */
+  @type("number") perkLevel = 0;
   /** Escolhas ainda na fila além da oferecida agora (subiu vários níveis de uma vez). */
   @type("number") perksQueued = 0;
   /** Poções carregadas (só valem na hunt; até `POTION_MAX` de cada). */
