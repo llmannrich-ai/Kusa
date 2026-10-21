@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { createCombatArt } from "./art/combat.ts";
-import { createEffectArt, createHeroArt, preloadArt } from "./art/textures.ts";
+import { createCreatureArt, createEffectArt, createHeroArt, preloadArt } from "./art/textures.ts";
 
 let markReady: () => void;
 /** Resolve quando todos os PNGs carregaram e a arte própria virou textura. */
@@ -21,6 +21,7 @@ export class ArtLoader extends Phaser.Scene {
 
   create() {
     createHeroArt(this);
+    createCreatureArt(this);
     createEffectArt(this);
     createCombatArt(this);
     markReady();

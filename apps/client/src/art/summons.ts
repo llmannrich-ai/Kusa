@@ -33,8 +33,10 @@ const TREANT: Grid = [
   "..oooo..oooooooooo.oooo.",
 ];
 
+export const TREANT_OUTLINE = "#140d0a";
+
 const TREANT_PALETTE: Palette = {
-  o: "#140d0a",
+  o: TREANT_OUTLINE,
   G: "#9cd65a", // copa clara
   g: "#4f9a2f",
   L: "#2c6a1e",
