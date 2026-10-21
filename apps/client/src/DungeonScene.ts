@@ -752,7 +752,7 @@ export class DungeonScene extends Phaser.Scene {
     const now = this.time.now;
     const sinceLast = now - unit.lastStepAt;
     unit.lastStepAt = now;
-    const duration = sinceLast < 900 ? Phaser.Math.Clamp(sinceLast, 80, 900) : 150;
+    const duration = sinceLast < 1000 ? Phaser.Math.Clamp(sinceLast, 80, 1000) : 150;
     unit.walkUntil = now + duration + 120;
     this.face(unit, dx, dy);
     this.tweens.killTweensOf(unit.body);
