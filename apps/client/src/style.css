@@ -455,21 +455,29 @@ button { min-height: 44px; touch-action: manipulation; }
 .spell-choice > button:last-child { width: 100%; }
 
 /* Escolha de melhoria ao subir de nível: duas cartas lado a lado, no alto, um toque escolhe. */
-.panel.perk-choice {
-  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
-  transform: translateX(-50%);
-  width: min(380px, calc(var(--col-w) - 24px));
-  padding: 12px;
+/* Melhoria de nível: 2 ícones pequenos logo acima do personagem (a posição vem do PerkChoice). */
+.perk-choice {
+  position: fixed;
   z-index: 15;
+  display: flex;
+  gap: 8px;
+  transform: translate(-50%, -100%);
 }
-.perk-choice h2 { margin: 0 0 8px; font-size: 17px; text-align: center; }
-.perk-choice p { margin: 8px 0 0; font-size: 12px; text-align: center; }
-.perk-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.perk-option { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; min-height: 120px; border-color: #c9a227; background: #2b2414; text-align: center; }
-.perk-icon { font-size: 34px; line-height: 1.1; }
-.perk-option strong { color: var(--accent); font-size: 15px; }
-.perk-option small { font-size: 12px; line-height: 1.25; }
-.perk-option em { font-size: 11px; font-style: normal; color: #9ec5ff; }
+.perk-choice[hidden] { display: none; }
+.perk-option {
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #c9a227;
+  background: rgba(43, 36, 20, 0.85);
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 0 6px rgba(241, 196, 15, 0.6);
+  animation: perk-pulse 1.2s ease-in-out infinite;
+}
+@keyframes perk-pulse { 50% { box-shadow: 0 0 12px rgba(241, 196, 15, 0.95); } }
 
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
