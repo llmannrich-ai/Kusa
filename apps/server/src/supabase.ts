@@ -55,7 +55,7 @@ export interface RunResult {
   outcome: RunOutcome;
   level: number;
   loot: number;
-  /** Itens equipados ao sair; voltam para o inventário de quem sai vivo. */
+  /** Itens equipados ao sair; voltam para o inventário (na morte, já sem o item perdido). */
   items: string[];
 }
 
