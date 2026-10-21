@@ -9,6 +9,7 @@ import { makeCanvas } from "./art/pixels.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
 import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
+import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
@@ -161,6 +162,24 @@ show(swamp, onGround(shadeStrip(), "#3f6a2a"), "sombras", 3);
 show(swamp, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
 show(swamp, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
 show(swamp, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
+
+// Detalhes da cripta: chão sobre ladrilho escuro; paredes sobre a face de tijolos (linhas 16 a 31).
+const crypt = section("Cripta: detalhes (arte própria)");
+const onWallFaces = (source: HTMLCanvasElement) => {
+  const { canvas, ctx } = makeCanvas(source.width, source.height);
+  for (let x = 0; x < source.width; x += TILE_SIZE) {
+    ctx.drawImage(wallCap(0, RIM.north), x, -WALL_RISE);
+    ctx.drawImage(wallFace(x / TILE_SIZE % WALL_VARIANTS), x, TILE_SIZE - WALL_RISE);
+  }
+  ctx.drawImage(source, 0, 0);
+  return canvas;
+};
+show(crypt, onGround(cryptFloorStrip(), "#5a4a38"), "chão", 3);
+show(crypt, onWallFaces(cryptWallStrip()), "paredes", 3);
+show(crypt, onWallFaces(torchStrip()), "tocha", 3);
+show(crypt, onGround(cryptTallStrip(), "#5a4a38"), "móveis", 3);
+show(crypt, onGround(lightCanvas(), "#3a2e22"), "luz", 2);
+show(crypt, onGround(dustCanvas(), "#3a2e22"), "poeira", 8);
 
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [

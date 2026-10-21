@@ -3,6 +3,7 @@ import { TILE_SIZE, Tile, tileAt, type Dungeon, type Rect } from "@kusa/shared";
 import { hash, makeCanvas } from "./art/pixels.ts";
 import { DECOR_FLOOR, DECOR_TALL, DECOR_WATER } from "./art/swampDecor.ts";
 import { SWAMP_DECOR, SWAMP_TEXTURE, createSwampArt, floorVariants } from "./art/textures.ts";
+import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
 
 /** Fundo além da mata: verde quase preto, como a copa fechada da floresta. */
 export const SWAMP_VOID = 0x0b140a;
@@ -24,11 +25,6 @@ const CORNERS = [[1, -1], [-1, -1], [1, 1], [-1, 1]] as const;
 /** Tons das árvores: a mesma árvore do pack com variação de cor, para a mata não parecer carimbada. */
 const TREE_TINTS = [0xffffff, 0xffffff, 0xe6f0d6, 0xd2e2c0, 0xfff2d6, 0xc8d8c0];
 
-/** O que a cena precisa chamar a cada quadro para o ambiente (vaga-lumes, ondinhas e névoa) acompanhar a câmera. */
-export interface SwampAmbience {
-  update(time: number): void;
-}
-
 /**
  * Desenha o Pântano das Ruínas. Em tilemaps (o Phaser só desenha o que está na tela): o chão (capim,
  * lama perto da água, pedra nas ruínas), a água, as bordas (capim invadindo lama e pedra, espuma na
@@ -37,7 +33,7 @@ export interface SwampAmbience {
  * (taboas na margem, samambaias, arbustos, tocos). Tudo vem de `hash(x, y)`: todos os jogadores veem
  * o mesmo mapa, e nada disso muda a jogabilidade.
  */
-export function drawSwamp(scene: Phaser.Scene, d: Dungeon, floorDepth: number, uiDepth: number): SwampAmbience {
+export function drawSwamp(scene: Phaser.Scene, d: Dungeon, floorDepth: number, uiDepth: number): MapAmbience {
   createSwampArt(scene);
   const at = (x: number, y: number) => tileAt(d, x, y);
   const ruins = [d.boss, ...d.side];
@@ -119,14 +115,9 @@ export function drawSwamp(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
   const wallFrames = floorVariants(scene, SWAMP_TEXTURE.ruinWall);
   const columnFrames = floorVariants(scene, SWAMP_TEXTURE.column);
   // Sprites parados (árvores, muros, enfeites altos) ficam em blocos; só os blocos perto da câmera são desenhados.
-  const chunks = new Map<number, Phaser.GameObjects.Image[]>();
-  const sprite = (key: string, frame: number, x: number, y: number, depth = (y + 1) * TILE_SIZE) => {
-    const img = scene.add.image(x * TILE_SIZE, y * TILE_SIZE, key, frame).setOrigin(0).setDepth(depth).setVisible(false);
-    const chunk = chunkOf(x, y);
-    if (!chunks.has(chunk)) chunks.set(chunk, []);
-    chunks.get(chunk)!.push(img);
-    return img;
-  };
+  const culler = new ChunkCuller();
+  const sprite = (key: string, frame: number, x: number, y: number, depth = (y + 1) * TILE_SIZE) =>
+    culler.add(scene.add.image(x * TILE_SIZE, y * TILE_SIZE, key, frame).setOrigin(0).setDepth(depth), x, y);
   // Enfeite alto fica logo atrás de quem pisa no mesmo tile (personagens ficam em (y+1)·32 + 0,5).
   const tall = (frame: number, x: number, y: number) => {
     const img = sprite(SWAMP_DECOR.tall, frame, x, y, (y + 1) * TILE_SIZE - 0.25);
@@ -164,7 +155,7 @@ export function drawSwamp(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
 
       const g = ground[i];
       const floor = g === Ground.Stone ? stone : g === Ground.Mud ? mud : grass;
-      groundLayer.putTileAt(floor.gid + pick(x, y, floor.count), x, y).tint = patchTint(x, y);
+      groundLayer.putTileAt(floor.gid + pick(x, y, floor.count), x, y).tint = patchTint(x, y, 0.82, SWAMP_SHADE);
       if (t === Tile.Ruin) {
         // Pedra ligada a outra vira trecho de muro; pedra sozinha, coluna caída.
         const joined = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes(Tile.Ruin);
@@ -215,35 +206,11 @@ export function drawSwamp(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
     }
   }
 
-  return createAmbience(scene, d, uiDepth, chunks);
+  return createAmbience(scene, d, uiDepth, culler);
 }
 
-/** Lado (em tiles) dos blocos de sprites que ligam e desligam conforme a câmera anda. */
-const CHUNK = 8;
-const chunkOf = (x: number, y: number) => Math.floor(y / CHUNK) * 1024 + Math.floor(x / CHUNK);
-
-/**
- * Manchas grandes de luz e sombra no chão (ruído suave em grade de 7 tiles): o campo deixa de parecer
- * chapado. O tint só escurece, então o tom vai de 82% a 100% do ladrilho.
- */
-function patchTint(x: number, y: number) {
-  const cell = 7;
-  const gx = Math.floor(x / cell);
-  const gy = Math.floor(y / cell);
-  const fx = smooth(x / cell - gx);
-  const fy = smooth(y / cell - gy);
-  const top = lerp(hash(gx, gy, 61), hash(gx + 1, gy, 61), fx);
-  const bottom = lerp(hash(gx, gy + 1, 61), hash(gx + 1, gy + 1, 61), fx);
-  const light = 0.82 + 0.18 * lerp(top, bottom, fy);
-  // Sombra puxa levemente para o verde-azulado, como luz filtrada pelas copas.
-  const r = Math.round(255 * light * 0.97);
-  const g = Math.round(255 * light);
-  const b = Math.round(255 * light * 0.95);
-  return (r << 16) | (g << 8) | b;
-}
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const smooth = (t: number) => t * t * (3 - 2 * t);
+/** Sombra das manchas do capim: puxa para o verde-azulado, como luz filtrada pelas copas. */
+const SWAMP_SHADE = [0.85, 1, 0.72] as const;
 
 const EDGE_TEXTURE = "swamp-edges";
 
@@ -282,24 +249,9 @@ const RIPPLE_EVERY_MS = 280;
  * Ambiente que acompanha a câmera: vaga-lumes piscando, ondinhas que se abrem nas lagoas à vista e
  * névoa baixa passando devagar. Tudo por cima do mapa e abaixo das barras de vida.
  */
-function createAmbience(scene: Phaser.Scene, d: Dungeon, uiDepth: number, chunks: Map<number, Phaser.GameObjects.Image[]>): SwampAmbience {
+function createAmbience(scene: Phaser.Scene, d: Dungeon, uiDepth: number, culler: ChunkCuller): MapAmbience {
   const cam = scene.cameras.main;
   const view = () => cam.worldView;
-
-  // Blocos visíveis: os que tocam a tela, com um bloco de folga em volta (nada aparece "do nada" na borda).
-  let shown = new Set<number>();
-  const cull = (v: Phaser.Geom.Rectangle) => {
-    const span = CHUNK * TILE_SIZE;
-    const x0 = Math.floor(v.x / span) - 1;
-    const y0 = Math.floor(v.y / span) - 1;
-    const x1 = Math.floor(v.right / span) + 1;
-    const y1 = Math.floor(v.bottom / span) + 1;
-    const next = new Set<number>();
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) next.add(cy * 1024 + cx);
-    for (const c of shown) if (!next.has(c)) chunks.get(c)?.forEach((img) => img.setVisible(false));
-    for (const c of next) if (!shown.has(c)) chunks.get(c)?.forEach((img) => img.setVisible(true));
-    shown = next;
-  };
 
   const fireflies = scene.add.particles(0, 0, SWAMP_DECOR.firefly, {
     lifespan: { min: 3500, max: 7000 },
@@ -333,7 +285,7 @@ function createAmbience(scene: Phaser.Scene, d: Dungeon, uiDepth: number, chunks
       const v = view();
       if (v.width === 0) return;
       zone.setTo(v.x, v.y, v.width, v.height);
-      cull(v);
+      culler.update(v);
 
       // Névoa: espalha na primeira vez; depois anda para a direita e reaparece do outro lado da tela.
       const dt = scene.game.loop.delta / 1000;

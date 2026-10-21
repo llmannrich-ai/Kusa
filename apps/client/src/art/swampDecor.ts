@@ -1,64 +1,11 @@
 import { TILE_SIZE } from "@kusa/shared";
-import { hash, makeCanvas } from "./pixels.ts";
+import { blob, hash, line, makeCanvas, px, strip, type Ctx } from "./pixels.ts";
 
 /**
  * Arte própria dos detalhes do Pântano das Ruínas, pixel a pixel (32×32 por quadro, como os tiles):
  * enfeites do chão, da água e altos (juncos, samambaias, tocos), sombras, ondinhas, vaga-lume e névoa.
  * Tudo é enfeite: não bloqueia passo nem visão.
  */
-
-type Ctx = CanvasRenderingContext2D;
-
-/** Um pixel (ou um bloco w×h) numa cor; alpha opcional. */
-function px(ctx: Ctx, x: number, y: number, color: string, w = 1, h = 1) {
-  ctx.fillStyle = color;
-  ctx.fillRect(Math.round(x), Math.round(y), w, h);
-}
-
-/**
- * Elipse cheia com contorno escuro, luz em cima à esquerda e sombra embaixo à direita.
- * `skip` recorta pixels (ex.: o corte da vitória-régia).
- */
-function blob(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, c: { o: string; m: string; l: string; d: string }, skip?: (x: number, y: number) => boolean) {
-  const inside = (x: number, y: number) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 && !skip?.(x, y);
-  for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++) {
-    for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
-      if (!inside(x, y)) continue;
-      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
-      const u = (x - cx) / rx + (y - cy) / ry;
-      px(ctx, x, y, edge ? c.o : u < -0.7 ? c.l : u > 0.6 ? c.d : c.m);
-    }
-  }
-}
-
-/** Linha de pixels (Bresenham). */
-function line(ctx: Ctx, x0: number, y0: number, x1: number, y1: number, color: string) {
-  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
-  const dx = Math.abs(x1 - x0);
-  const dy = -Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-  let err = dx + dy;
-  for (;;) {
-    px(ctx, x0, y0, color);
-    if (x0 === x1 && y0 === y1) return;
-    const e2 = 2 * err;
-    if (e2 >= dy) { err += dy; x0 += sx; }
-    if (e2 <= dx) { err += dx; y0 += sy; }
-  }
-}
-
-/** Faixa horizontal de quadros 32×32, cada um desenhado por uma função. */
-function strip(frames: ((ctx: Ctx) => void)[]) {
-  const { canvas, ctx } = makeCanvas(TILE_SIZE * frames.length, TILE_SIZE);
-  frames.forEach((draw, i) => {
-    ctx.save();
-    ctx.translate(i * TILE_SIZE, 0);
-    draw(ctx);
-    ctx.restore();
-  });
-  return canvas;
-}
 
 const STONE = { o: "#2b2823", m: "#7d776b", l: "#a6a091", d: "#5a554b" };
 const RUIN_STONE = { o: "#3a3326", m: "#a29a83", l: "#c9c0a5", d: "#77705d" };
@@ -338,13 +285,15 @@ export function decorTallStrip() {
 
 // --- Sombras, ondinhas, vaga-lume e névoa -------------------------------------------
 
-/** Sombra que árvores e muros jogam no chão ao sul (quadro 0) e a leste (quadro 1), em faixas de pixel. */
-export function shadeStrip() {
-  const bands = [0.34, 0.26, 0.2, 0.14, 0.09, 0.05];
-  return strip([
-    (ctx) => bands.forEach((a, i) => px(ctx, 0, i * 2, `rgba(8,14,6,${a})`, TILE_SIZE, 2)),
-    (ctx) => bands.forEach((a, i) => px(ctx, i * 2, 0, `rgba(8,14,6,${a})`, 2, TILE_SIZE)),
-  ]);
+/**
+ * Sombra que árvores e paredes jogam no chão ao sul (quadro 0), a leste (quadro 1) e nos dois (quadro 2),
+ * em faixas de pixel. `rgb` é a cor da sombra ("r,g,b"); `strength` multiplica a opacidade.
+ */
+export function shadeStrip(rgb = "8,14,6", strength = 1) {
+  const bands = [0.34, 0.26, 0.2, 0.14, 0.09, 0.05].map((a) => (a * strength).toFixed(3));
+  const north = (ctx: Ctx) => bands.forEach((a, i) => px(ctx, 0, i * 2, `rgba(${rgb},${a})`, TILE_SIZE, 2));
+  const west = (ctx: Ctx) => bands.forEach((a, i) => px(ctx, i * 2, 0, `rgba(${rgb},${a})`, 2, TILE_SIZE));
+  return strip([north, west, (ctx) => { north(ctx); west(ctx); }]);
 }
 
 export const RIPPLE_FRAMES = 4;
