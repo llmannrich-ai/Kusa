@@ -338,6 +338,7 @@ button { min-height: 44px; touch-action: manipulation; }
 
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
+#rooms .hint { margin: 8px 0 0; font-size: 13px; text-align: center; }
 #login input { font-size: 16px; } /* 16px evita o zoom automático do iOS ao focar. */
 button:disabled { opacity: 0.6; cursor: wait; }
 
