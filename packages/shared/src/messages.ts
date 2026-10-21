@@ -122,25 +122,7 @@ export interface SpellMessage {
   ms: number;
 }
 
-/**
- * Servidor → todos: um monstro começou a habilidade especial (`MonsterDef.special`). Os tiles acendem como
- * aviso por `ms`; depois vem `MSG.monsterStrike` (ou nada, se o monstro morreu ou foi atordoado antes).
- */
-export interface MonsterCastMessage {
-  /** Id do monstro. */
-  id: string;
-  kind: MonsterKind;
-  x: number;
-  y: number;
-  /** Para onde mira (o alvo, ou a ponta da faixa). */
-  tx: number;
-  ty: number;
-  /** Tiles atingidos, em pares [x0, y0, x1, y1, ...], do centro para fora. */
-  tiles: number[];
-  ms: number;
-}
-
-/** Servidor → todos: a habilidade especial saiu (efeito do golpe); o dano chega em seguida por `MSG.damage`. */
+/** Servidor → todos: a habilidade especial de um mini-boss ou boss saiu (efeito do golpe); o dano chega em seguida por `MSG.damage`. */
 export interface MonsterStrikeMessage {
   id: string;
   kind: MonsterKind;
@@ -148,6 +130,7 @@ export interface MonsterStrikeMessage {
   y: number;
   tx: number;
   ty: number;
+  /** Tiles atingidos, em pares [x0, y0, x1, y1, ...], do centro para fora. */
   tiles: number[];
 }
 
@@ -186,6 +169,5 @@ export const MSG = {
   bagEquip: "bagEquip",
   unequip: "unequip",
   bagDrop: "bagDrop",
-  monsterCast: "monsterCast",
   monsterStrike: "monsterStrike",
 } as const;

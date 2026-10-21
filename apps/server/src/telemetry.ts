@@ -21,12 +21,8 @@ export interface RunStats {
   damageDealt: Record<string, number>;
   /** Dano recebido por tipo de monstro, depois da armadura e do Grito de Guerra. */
   damageTaken: Record<string, number>;
-  /** Dano recebido das habilidades especiais dos monstros (golpe + veneno/queimadura), por tipo de monstro (já somado em `damageTaken`). */
+  /** Dano recebido das habilidades especiais dos mini-bosses e bosses (golpe + veneno/queimadura), por tipo de monstro (já somado em `damageTaken`). */
   specialDamage: Record<string, number>;
-  /** Habilidades especiais mirando o jogador que ele esquivou (saiu da área no aviso), por tipo de monstro. */
-  specialsDodged: Record<string, number>;
-  /** Habilidades especiais que o jogador cancelou atordoando o monstro durante o aviso. */
-  specialsInterrupted: number;
   /** Dano evitado pela armadura, pelo Grito de Guerra e pelo escudo. */
   damageMitigated: number;
   /** Vida curada (em si e nos aliados), incluindo roubo de vida (magias e Sede de sangue), criaturas de cura e poções de vida. */
@@ -54,7 +50,7 @@ export interface RunStats {
 export function newRunStats(): RunStats {
   return {
     levelAt: {}, depthAt: {}, spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0 },
-    damageDealt: {}, damageTaken: {}, specialDamage: {}, specialsDodged: {}, specialsInterrupted: 0, damageMitigated: 0, healing: 0, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
+    damageDealt: {}, damageTaken: {}, specialDamage: {}, damageMitigated: 0, healing: 0, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
     minHpPct: 1, abandoned: false, death: null,
   };

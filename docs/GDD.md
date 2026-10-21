@@ -195,23 +195,15 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 - Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
-- **Habilidades especiais dos monstros:** além do ataque básico, todo monstro tem um golpe mais forte com aviso. Ele para,
-  diz o nome da habilidade, brilha na cor dela e os tiles atingidos ficam vermelhos no chão, enchendo até o golpe sair:
-  quem sair da área a tempo escapa. Atordoar o monstro durante o aviso cancela a habilidade ("Interrompido!").
-  Bosses abaixo de 50% da vida se enfurecem e usam a habilidade mais vezes.
+- **Habilidades especiais dos mini-bosses e bosses:** além do ataque básico, eles têm um golpe mais forte, que sai
+  na hora, sem aviso, sempre que a recarga deixa e o alvo está ao alcance. O nome do golpe sobe sobre o monstro, ele
+  brilha na cor da habilidade e o efeito cobre a área atingida. Monstros comuns só têm o ataque básico.
+  Bosses abaixo de 50% da vida se enfurecem e usam o golpe mais vezes.
 
 | Monstro | Habilidade | Efeito |
 |---|---|---|
-| Ratazana | Mordida Pestilenta | 1,5× no alvo + veneno por 4 s |
-| Goblin | Bomba de Pólvora | arremessa a até 4 tiles, explode em 3×3 (1,7×) |
-| Esqueleto | Lança de Ossos | faixa reta de 4 tiles (1,8×) |
-| Orc guerreiro | Machado Giratório | gira e acerta tudo em volta (1,9×) |
 | Ogro (mini-boss) | Pisão Sísmico | 5×5 em volta (2,1×) e deixa lento por 3 s |
 | Dragão jovem (boss) | Sopro Infernal | faixa de fogo 3 de largura × 6 (1,9×) + queimadura |
-| Sapo gigante | Língua Grudenta | a até 4 tiles, puxa o alvo para o lado dele (1,4×) |
-| Cobra-d'água | Bote Venenoso | 1,4× a até 2 tiles + veneno forte por 5 s |
-| Afogado | Lodo Sufocante | arremessa lodo em 3×3 (1,5×) e deixa lento |
-| Naga guerreira | Tridente das Marés | faixa reta de 4 tiles (1,9×) |
 | Troll do brejo (mini-boss) | Fúria Regenerante | acerta tudo em volta (2×) e cura 8% da vida |
 | Hidra do pântano (boss) | Chuva Ácida | 5×5 a até 7 tiles (1,7×) + veneno |
 

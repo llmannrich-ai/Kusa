@@ -19,7 +19,6 @@ import {
   type AttackMessage,
   type ClassId,
   type DamageMessage,
-  type MonsterCastMessage,
   type MonsterStrikeMessage,
   type DrankMessage,
   type Dungeon,
@@ -214,7 +213,6 @@ export class DungeonScene extends Phaser.Scene {
       // Monstros só saem do estado quando morrem.
       const unit = this.monsters.get(id);
       if (unit) this.hits.death(unit.sprite, { x: unit.body.x, y: unit.body.y }, unit.bleeds);
-      this.fx.cancelTelegraph(id);
       this.destroyUnit(unit);
       this.monsters.delete(id);
     });
@@ -252,7 +250,6 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
     this.room.onMessage(MSG.drank, (msg: DrankMessage) => this.potionBar.onDrank(msg.cooldownMs));
-    this.room.onMessage(MSG.monsterCast, (msg: MonsterCastMessage) => this.onMonsterCast(msg));
     this.room.onMessage(MSG.monsterStrike, (msg: MonsterStrikeMessage) => this.onMonsterStrike(msg));
 
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
@@ -415,30 +412,23 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /**
-   * Um monstro começou a habilidade especial: o nome dela sobe sobre ele, o sprite incha e brilha na cor
-   * da habilidade e os tiles atingidos acendem no chão até o golpe sair.
+   * Golpe especial de um mini-boss ou boss (sai na hora, sem aviso): o nome sobe sobre ele, o sprite incha e
+   * brilha na cor da habilidade e o efeito cobre os tiles atingidos.
    */
-  private onMonsterCast(msg: MonsterCastMessage) {
-    const special = MONSTERS[msg.kind]?.special;
-    const unit = this.monsters.get(msg.id);
-    if (!special || !unit) return;
-    this.floatText(msg.x, msg.y - 0.6, special.name, special.color, msg.ms + 300);
-    if (!unit.dead) this.face(unit, Math.sign(msg.tx - msg.x), Math.sign(msg.ty - msg.y));
-    const base = unit.sprite.scaleX;
-    this.tweens.add({
-      targets: unit.sprite, scaleX: base * 1.12, scaleY: base * 1.12, duration: msg.ms * 0.8, ease: "Quad.In",
-      onComplete: () => { if (unit.sprite.active) this.tweens.add({ targets: unit.sprite, scaleX: base, scaleY: base, duration: 120 }); },
-    });
-    unit.sprite.setTint(special.color);
-    this.time.delayedCall(msg.ms, () => { if (unit.sprite.active) unit.sprite.clearTint(); });
-    this.fx.monsterTelegraph(msg.id, msg.kind, { x: unit.body.x, y: unit.body.y }, this.tilePoint(msg.tx, msg.ty), this.tilePoints(msg.tiles), msg.ms);
-  }
-
   private onMonsterStrike(msg: MonsterStrikeMessage) {
+    const special = MONSTERS[msg.kind]?.special;
+    if (!special) return;
     const unit = this.monsters.get(msg.id);
     const from = unit ? { x: unit.body.x, y: unit.body.y } : this.tilePoint(msg.x, msg.y);
-    if (unit) this.lunge(unit, msg.tx - msg.x, msg.ty - msg.y, 7);
-    this.fx.monsterStrike(msg.id, msg.kind, from, this.tilePoint(msg.tx, msg.ty), this.tilePoints(msg.tiles));
+    this.floatText(msg.x, msg.y - 0.6, special.name, special.color, 1200);
+    if (unit && !unit.dead) {
+      this.lunge(unit, msg.tx - msg.x, msg.ty - msg.y, 7);
+      const base = unit.sprite.scaleX;
+      this.tweens.add({ targets: unit.sprite, scaleX: base * 1.15, scaleY: base * 1.15, duration: 110, yoyo: true, ease: "Quad.Out" });
+      unit.sprite.setTint(special.color);
+      this.time.delayedCall(250, () => { if (unit.sprite.active) unit.sprite.clearTint(); });
+    }
+    this.fx.monsterStrike(msg.kind, from, this.tilePoints(msg.tiles));
   }
 
   /** Tiles em pares [x0, y0, x1, y1, ...] para pontos em pixels. */
@@ -751,11 +741,6 @@ export class DungeonScene extends Phaser.Scene {
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
     this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
     this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
-    // Atordoado durante o aviso: a habilidade especial foi cancelada no servidor.
-    if (monster.stunned) {
-      this.fx.cancelTelegraph(id);
-      unit.sprite.clearTint();
-    }
     this.moveTo(unit, monster.x, monster.y);
   }
 

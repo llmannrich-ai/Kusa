@@ -100,7 +100,6 @@ import {
   type JoinOptions,
   type MapDef,
   type MonsterDef,
-  type MonsterCastMessage,
   type MonsterKind,
   type MonsterStrikeMessage,
   type MoveMessage,
@@ -184,8 +183,6 @@ interface Brain {
   stunnedUntil: number;
   /** Quando a habilidade especial pode sair de novo (0 = ainda não notou ninguém). */
   nextSpecialAt: number;
-  /** Habilidade especial em andamento: tiles avisados, alvo e quando o golpe sai. */
-  casting: { tiles: { x: number; y: number }[]; tx: number; ty: number; targetId: string; strikeAt: number } | null;
   /** Boss já se enfureceu (aviso dado uma vez). */
   enraged: boolean;
 }
@@ -395,7 +392,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.brains.set(m.id, {
       def, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
       nextMoveAt: 0, nextAttackAt: 0, targetId: null, participants: new Set(), rootedUntil: 0, stunnedUntil: 0,
-      nextSpecialAt: 0, casting: null, enraged: false,
+      nextSpecialAt: 0, enraged: false,
     });
     return m;
   }
@@ -706,10 +703,6 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       if (spell.stunMs) {
         brain.stunnedUntil = Math.max(brain.stunnedUntil, now + spell.stunMs);
         m.stunned = true;
-        if (brain.casting) {
-          this.interruptSpecial(m, brain);
-          seat.stats.specialsInterrupted++;
-        }
       }
       if (spell.damage) {
         const value = Math.min(m.hp, rollDamage(amount));
@@ -1163,12 +1156,6 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Atordoado: não anda nem ataca.
     if (m.stunned) return;
 
-    // Habilidade especial em andamento: parado até o golpe sair.
-    if (brain.casting) {
-      if (now >= brain.casting.strikeAt) this.strikeSpecial(m, brain, now);
-      return;
-    }
-
     // Desiste de quem morreu, saiu ou fugiu para longe.
     if (brain.targetId) {
       const t = this.foe(brain.targetId);
@@ -1178,9 +1165,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!brain.targetId) return;
 
     const target = this.foe(brain.targetId)!;
-    // A primeira habilidade especial espera um pouco depois de notar alguém (não sai junto com o aggro).
-    if (brain.nextSpecialAt === 0) brain.nextSpecialAt = now + def.special.cooldownMs * SPECIAL_FIRST_DELAY;
-    if (now >= brain.nextSpecialAt && this.startSpecial(m, brain, target, now)) return;
+    // Mini-bosses e bosses: a primeira habilidade especial espera um pouco depois de notar alguém (não sai junto com o aggro).
+    if (def.special) {
+      if (brain.nextSpecialAt === 0) brain.nextSpecialAt = now + def.special.cooldownMs * SPECIAL_FIRST_DELAY;
+      if (now >= brain.nextSpecialAt && this.special(m, brain, target, now)) return;
+    }
 
     const inRange = tileDistance(m.x, m.y, target.x, target.y) <= def.attackRange
       && hasLineOfSight(this.dungeon, m.x, m.y, target.x, target.y);
@@ -1213,13 +1202,15 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   // --- Habilidades especiais dos monstros ---------------------------------------
 
   /**
-   * Começa a habilidade especial se o alvo estiver ao alcance e à vista: o monstro para e os tiles atingidos
-   * acendem no chão (aviso). O golpe sai em `strikeSpecial`, nos tiles avisados: quem sair deles escapa.
+   * Habilidade especial de mini-boss ou boss: sai na hora, sem aviso, se o alvo estiver ao alcance e à vista.
+   * Acerta todos os jogadores e criaturas invocadas nos tiles da área.
    */
-  private startSpecial(m: Monster, brain: Brain, target: { x: number; y: number }, now: number) {
-    const special = brain.def.special;
+  private special(m: Monster, brain: Brain, target: { x: number; y: number }, now: number) {
+    const special = brain.def.special!;
     if (tileDistance(m.x, m.y, target.x, target.y) > special.range || !hasLineOfSight(this.dungeon, m.x, m.y, target.x, target.y)) return false;
-    // A faixa vai até a ponta do alcance na direção do alvo; as áreas ficam no alvo (ou em volta do monstro).
+    const tiles = specialTiles(this.dungeon, special, m.x, m.y, target.x, target.y);
+    if (tiles.length === 0) return false;
+    // A faixa vai até a ponta do alcance na direção do alvo (para o efeito); as áreas ficam no alvo.
     let tx = target.x;
     let ty = target.y;
     if (special.shape === "line") {
@@ -1228,40 +1219,23 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       tx = m.x + Math.round(((tx - m.x) / len) * reach);
       ty = m.y + Math.round(((ty - m.y) / len) * reach);
     }
-    const tiles = specialTiles(this.dungeon, special, m.x, m.y, target.x, target.y);
-    if (tiles.length === 0) return false;
-    brain.casting = { tiles, tx, ty, targetId: brain.targetId!, strikeAt: now + special.windupMs };
-    brain.nextSpecialAt = now + special.windupMs + special.cooldownMs * (brain.enraged ? ENRAGE_COOLDOWN : 1);
+    brain.nextSpecialAt = now + special.cooldownMs * (brain.enraged ? ENRAGE_COOLDOWN : 1);
     // Não emenda o ataque básico logo depois do golpe especial.
-    brain.nextAttackAt = Math.max(brain.nextAttackAt, now + special.windupMs + brain.def.attackCooldownMs * 0.5);
-    this.broadcast(MSG.monsterCast, {
-      id: m.id, kind: m.kind as MonsterKind, x: m.x, y: m.y, tx, ty, tiles: flatTiles(tiles), ms: special.windupMs,
-    } satisfies MonsterCastMessage);
-    return true;
-  }
-
-  /** O golpe especial sai: dano em quem ainda está nos tiles avisados, mais o efeito da habilidade. */
-  private strikeSpecial(m: Monster, brain: Brain, now: number) {
-    const cast = brain.casting!;
-    brain.casting = null;
-    const special = brain.def.special;
+    brain.nextAttackAt = Math.max(brain.nextAttackAt, now + brain.def.attackCooldownMs * 0.5);
     const kind = m.kind as MonsterKind;
     this.broadcast(MSG.monsterStrike, {
-      id: m.id, kind, x: m.x, y: m.y, tx: cast.tx, ty: cast.ty, tiles: flatTiles(cast.tiles),
+      id: m.id, kind, x: m.x, y: m.y, tx, ty, tiles: flatTiles(tiles),
     } satisfies MonsterStrikeMessage);
-    const inArea = (x: number, y: number) => cast.tiles.some((t) => t.x === x && t.y === y);
+    const inArea = (x: number, y: number) => tiles.some((t) => t.x === x && t.y === y);
     const raw = brain.damage * special.power;
     const hit: Hit = { attacker: m.id, fromX: m.x, fromY: m.y, fx: brain.def.attackFx, special: true };
-    let targetHit = false;
 
     this.state.summons.forEach((s) => {
       if (!inArea(s.x, s.y)) return;
-      if (s.id === cast.targetId) targetHit = true;
       this.damageSummon(s, rollDamage(raw), hit);
     });
     this.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing" || !inArea(p.x, p.y)) return;
-      if (sessionId === cast.targetId) targetHit = true;
       this.damagePlayer(sessionId, rollDamage(raw), hit);
       const seat = this.seats.get(sessionId);
       if (!seat || p.status !== "playing") return;
@@ -1277,14 +1251,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         seat.slow = { factor: Math.min(special.slow.factor, seat.slow?.factor ?? 1), until: now + special.slow.durationMs };
         p.slowed = true;
       }
-      if (special.pull) this.pullBeside(p, m);
     });
 
-    // Quem era o alvo e saiu da área esquivou.
-    if (!targetHit) {
-      const seat = this.seats.get(cast.targetId);
-      if (seat && this.state.players.get(cast.targetId)?.status === "playing") bump(seat.stats.specialsDodged, kind);
-    }
     if (special.selfHeal && m.hp > 0) {
       const healed = Math.min(m.maxHp - m.hp, Math.round(m.maxHp * special.selfHeal));
       if (healed > 0) {
@@ -1292,12 +1260,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         this.notice(m.x, m.y, `+${healed}`, 0x2ecc71);
       }
     }
-  }
-
-  /** Atordoado durante o aviso: a habilidade se perde (o cliente apaga o aviso quando o monstro fica atordoado). */
-  private interruptSpecial(m: Monster, brain: Brain) {
-    brain.casting = null;
-    this.notice(m.x, m.y - 1, "Interrompido!", 0xf1c40f);
+    return true;
   }
 
   /** Abaixo de `ENRAGE_HP` da vida, o boss se enfurece: a habilidade especial volta mais rápido. */
@@ -1306,31 +1269,6 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     brain.enraged = true;
     brain.nextSpecialAt = Math.min(brain.nextSpecialAt, this.clock.currentTime + 1500);
     this.notice(m.x, m.y - 1, `${brain.def.name} se enfurece!`, 0xff5e57);
-  }
-
-  /** Língua Grudenta: puxa o jogador para o tile livre ao lado do monstro mais perto de onde ele está. */
-  private pullBeside(p: Player, m: Monster) {
-    if (tileDistance(p.x, p.y, m.x, m.y) <= 1) return;
-    const blocked = this.occupiedTiles();
-    let best: { x: number; y: number } | null = null;
-    let bestDist = Infinity;
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        const x = m.x + dx;
-        const y = m.y + dy;
-        if ((dx === 0 && dy === 0) || !isWalkable(this.dungeon, x, y) || blocked.has(y * this.dungeon.width + x)) continue;
-        // Não puxa para cima de um portal (sairia da hunt sem querer).
-        if (tileAt(this.dungeon, x, y) === Tile.Portal) continue;
-        const dist = Math.hypot(p.x - x, p.y - y);
-        if (dist < bestDist) {
-          best = { x, y };
-          bestDist = dist;
-        }
-      }
-    }
-    if (!best) return;
-    p.x = best.x;
-    p.y = best.y;
   }
 
   /** Veneno ou queimadura: um pulso de dano por segundo até acabar. */

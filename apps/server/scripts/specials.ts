@@ -1,17 +1,18 @@
 /**
- * Teste de fumaça das habilidades especiais dos monstros contra um servidor rodando (npm run dev:server).
+ * Teste de fumaça das habilidades especiais (só mini-bosses e bosses) contra um servidor rodando.
  *
- * 1. Regras: todo monstro tem habilidade especial, e `specialTiles` dá áreas determinísticas, sem paredes e
- *    do tamanho certo (faixa reta na direção do alvo, área em volta do alvo ou do monstro).
- * 2. Na hunt: um cavaleiro encosta no monstro comum mais fraco sem atacar e espera a habilidade especial.
- *    O aviso (`MSG.monsterCast`) tem que cobrir o tile do cavaleiro e o golpe (`MSG.monsterStrike`) tem que
- *    acertar com `special`. Na seguinte, o cavaleiro sai da área durante o aviso e não pode apanhar do golpe.
- * Uso: npx tsx apps/server/scripts/specials.ts [url]
+ * 1. Regras: monstros comuns não têm habilidade especial; mini-bosses e bosses têm, e `specialTiles` dá
+ *    áreas determinísticas, sem paredes e do tamanho certo (faixa reta na direção do alvo, área em volta
+ *    do alvo ou do monstro).
+ * 2. Na hunt: um cavaleiro vai até o mini-boss mais próximo sem atacá-lo e espera o golpe especial, que sai
+ *    sem aviso (`MSG.monsterStrike`) e tem que acertá-lo com `special`.
+ * Uso (servidor com KUSA_START_LEVEL=8, para o cavaleiro aguentar apanhar parado):
+ *   npx tsx apps/server/scripts/specials.ts <url>
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MAP_IDS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, blocksSight, centerOf, generateDungeon, isWalkable, specialTiles, tileDistance,
-  type DamageMessage, type MonsterCastMessage, type MonsterKind, type MonsterStrikeMessage,
+  MAP_IDS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, blocksSight, centerOf, generateDungeon, specialTiles, tileDistance,
+  type DamageMessage, type MonsterKind, type MonsterStrikeMessage,
 } from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
 
@@ -21,8 +22,12 @@ for (const mapId of MAP_IDS) {
   const d = generateDungeon(1234, mapId);
   const c = centerOf(d.boss);
   for (const kind of Object.keys(MONSTERS) as MonsterKind[]) {
-    const special = MONSTERS[kind].special;
-    if (!special || special.power <= 1 || special.windupMs < 400) throw new Error(`${kind}: habilidade especial fraca ou sem aviso`);
+    const { rank, special } = MONSTERS[kind];
+    if (rank === "common") {
+      if (special) throw new Error(`${kind}: monstro comum não deve ter habilidade especial`);
+      continue;
+    }
+    if (!special || special.power <= 1) throw new Error(`${kind}: ${rank} sem habilidade especial forte`);
     const target = { x: c.x + Math.min(2, special.range), y: c.y };
     const tiles = specialTiles(d, special, c.x, c.y, target.x, target.y);
     const again = specialTiles(d, special, c.x, c.y, target.x, target.y);
@@ -48,10 +53,8 @@ const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
 
-let cast: MonsterCastMessage | null = null;
 let strike: MonsterStrikeMessage | null = null;
 const specialHits: DamageMessage[] = [];
-room.onMessage(MSG.monsterCast, (msg: MonsterCastMessage) => { if (msg.id === targetId) cast = msg; });
 room.onMessage(MSG.monsterStrike, (msg: MonsterStrikeMessage) => { if (msg.id === targetId) strike = msg; });
 room.onMessage(MSG.damage, (msg: DamageMessage) => { if (msg.toPlayer && msg.special && msg.attacker === targetId) specialHits.push(msg); });
 room.onMessage(MSG.notice, () => {});
@@ -67,24 +70,18 @@ const me = () => room.state.players.get(room.sessionId);
 let targetId: string | null = null;
 {
   const p = me();
-  // O cavaleiro de nível 1 fica parado apanhando: escolhe o monstro comum mais fraco (o mais próximo dele).
   let bestDist = Infinity;
-  let weakest = Infinity;
-  room.state.monsters.forEach((m: any) => {
-    const def = MONSTERS[m.kind as MonsterKind];
-    if (def.rank === "common") weakest = Math.min(weakest, def.damage);
-  });
   room.state.monsters.forEach((m: any, id: string) => {
-    const def = MONSTERS[m.kind as MonsterKind];
-    if (def.rank !== "common" || def.damage !== weakest) return;
+    if (MONSTERS[m.kind as MonsterKind].rank !== "miniboss") return;
     const dist = tileDistance(p.x, p.y, m.x, m.y);
     if (dist < bestDist) { bestDist = dist; targetId = id; }
   });
-  if (!targetId) throw new Error("nenhum monstro comum no mapa");
+  if (!targetId) throw new Error("nenhum mini-boss no mapa");
   console.log(`alvo ${targetId} (${room.state.monsters.get(targetId).kind}) a ${bestDist} tiles`);
 }
+if (MONSTERS.rat.special || !MONSTERS.ogre.special) throw new Error("tabela de monstros inesperada");
 
-// Outros monstros que se juntarem apanham do cavaleiro (o alvo do teste nunca), senão o bot morre parado.
+// Outros monstros que se juntarem apanham do cavaleiro (o mini-boss nunca), senão o bot morre no caminho.
 let defending = false;
 setInterval(() => {
   const p = me();
@@ -104,80 +101,29 @@ setInterval(() => {
   }
 }, 150);
 
-/** Encosta no alvo até ele começar a habilidade especial. */
-async function waitForCast() {
-  cast = null;
-  strike = null;
-  const deadline = Date.now() + 40_000;
-  while (!cast) {
-    if (Date.now() > deadline) throw new Error("timeout: o monstro não usou a habilidade especial");
-    const p = me();
-    if (p.status !== "playing") throw new Error(`jogador saiu da hunt: ${p.status}`);
-    const m = room.state.monsters.get(targetId!);
-    if (!m) throw new Error("o alvo sumiu");
-    if (tileDistance(p.x, p.y, m.x, m.y) > 1) {
-      const blocked = new Set<number>();
-      room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
-      blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
-      const step = nextStep(dungeon, p, m, 1, (x, y) => blocked.has(y * dungeon.width + x));
-      if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
-    }
-    await wait(50);
+// Anda até o mini-boss e fica colado nele até o golpe especial sair.
+const deadline = Date.now() + 120_000;
+while (!strike) {
+  if (Date.now() > deadline) throw new Error("timeout: o mini-boss não usou a habilidade especial");
+  const p = me();
+  if (p.status !== "playing") throw new Error(`jogador saiu da hunt: ${p.status}`);
+  const m = room.state.monsters.get(targetId!);
+  if (!m) throw new Error("o mini-boss sumiu");
+  if (tileDistance(p.x, p.y, m.x, m.y) > 1) {
+    const blocked = new Set<number>();
+    room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
+    blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
+    const step = nextStep(dungeon, p, m, 1, (x, y) => blocked.has(y * dungeon.width + x));
+    if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
   }
-  return cast as MonsterCastMessage;
+  await wait(60);
 }
-
-async function waitForStrike(ms: number) {
-  const deadline = Date.now() + ms + 1500;
-  while (!strike) {
-    if (Date.now() > deadline) throw new Error("timeout: o golpe especial não saiu depois do aviso");
-    await wait(30);
-  }
-  await wait(250);
-}
-
-const covers = (msg: MonsterCastMessage, x: number, y: number) => {
-  for (let i = 0; i < msg.tiles.length; i += 2) if (msg.tiles[i] === x && msg.tiles[i + 1] === y) return true;
-  return false;
-};
-
-// Primeira: fica parado e apanha. Se o jogador ainda andava quando o aviso saiu (um passo pode chegar
-// depois do aviso), a área pode não cobrir onde ele parou: espera a próxima.
-let p = me();
-for (let round = 1; ; round++) {
-  const first = await waitForCast();
-  await wait(150);
-  p = me();
-  console.log(`aviso: ${MONSTERS[first.kind].special.name}, ${first.tiles.length / 2} tiles, ${first.ms} ms`);
-  const inside = covers(first, p.x, p.y);
-  await waitForStrike(first.ms);
-  if (inside && specialHits.length > 0) break;
-  if (inside) throw new Error("o golpe especial não acertou quem ficou na área");
-  if (round === 3) throw new Error(`o aviso nunca cobriu o tile do jogador (${p.x},${p.y}): ${first.tiles.join(",")}`);
-}
+await wait(250);
+const s = strike as MonsterStrikeMessage;
+console.log(`golpe: ${MONSTERS[s.kind].special!.name}, ${s.tiles.length / 2} tiles`);
+if (s.tiles.length === 0) throw new Error("golpe especial sem área");
+if (specialHits.length === 0) throw new Error("o golpe especial não acertou o cavaleiro colado no mini-boss");
 console.log(`golpe especial acertou: -${specialHits[0].amount}`);
-
-// Segunda: sai da área durante o aviso.
-const second = await waitForCast();
-await wait(100);
-p = me();
-const occupied = new Set<string>();
-room.state.monsters.forEach((o: any) => occupied.add(`${o.x},${o.y}`));
-const escape = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
-  .map(([dx, dy]) => ({ dx, dy, x: p.x + dx, y: p.y + dy }))
-  .find((t) => isWalkable(dungeon, t.x, t.y) && !occupied.has(`${t.x},${t.y}`) && !covers(second, t.x, t.y)
-    && !(t.x === dungeon.portal.x && t.y === dungeon.portal.y)
-    && (t.dx === 0 || t.dy === 0 || (isWalkable(dungeon, t.x, p.y) && isWalkable(dungeon, p.x, t.y))));
-if (escape) {
-  const before = specialHits.length;
-  room.send(MSG.move, { dx: escape.dx, dy: escape.dy });
-  await waitForStrike(second.ms);
-  if (me().x !== escape.x || me().y !== escape.y) throw new Error("o passo para fora da área não saiu");
-  if (specialHits.length !== before) throw new Error("apanhou do golpe especial mesmo fora da área avisada");
-  console.log("esquivou do golpe especial");
-} else {
-  console.log("sem tile livre em volta para esquivar: pulando a esquiva");
-}
 
 console.log("SPECIALS OK");
 process.exit(0);
