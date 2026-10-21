@@ -21,8 +21,8 @@ teclado e mouse no desktop são um extra.
 
 ## Menu inicial (estilo Zooba / Clash)
 
-Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e o botão **Jogar** logo acima delas,
-com a escolha do mapa logo acima do Jogar (ver "Mapas").
+Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e o botão **Jogar** logo acima delas.
+O **Jogar** abre a tela de salas (ver "Salas e sala de espera").
 Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
@@ -84,10 +84,22 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 - O que o jogador larga não volta para a bag enquanto ele estiver em cima do item: precisa sair do tile e voltar.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
+## Salas e sala de espera
+
+Código em `apps/client/src/lobby.ts` e `main.ts`.
+
+1. **Jogar** (menu) abre a tela de salas: em cima, as **salas abertas** (líder, cenário e vagas); embaixo, **Criar sala**
+   com os cartões dos cenários e o botão "Criar sala · <cenário>".
+2. Criar ou entrar numa sala leva à **sala de espera**: 4 vagas (`MAX_PARTY_SIZE`), cada uma com retrato, nome e classe
+   de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".
+3. Só o líder vê o botão de começar: **"Começar sozinho"** com 1 jogador, "Começar hunt · N jogadores" com mais.
+   Os outros veem "Aguardando o líder iniciar…". Ao começar, a sala sai da lista (ninguém mais entra).
+4. **Sair da sala** volta para a tela de salas. Se o líder sai, o próximo da sala vira líder.
+
 ## Mapas
 
-O jogador escolhe o mapa no menu (botão acima do **Jogar**; a escolha fica salva no aparelho). O mapa vale para as salas
-que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e no lobby.
+O jogador escolhe o mapa (cenário) na tela de criar sala (a escolha fica salva no aparelho). O mapa vale para as salas
+que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma
 `RULES_VERSION`. Cliente desatualizado se recarrega sozinho; se o servidor ainda está terminando o deploy, o
