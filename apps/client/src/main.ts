@@ -99,17 +99,39 @@ function showError(message: string) {
   show("rooms-error", true);
 }
 
+/**
+ * Conectando ou já dentro de uma sala. Com o servidor acordando (até 1 min no Render free), cada toque
+ * repetido em "Criar sala" abria outra hunt: o celular ficava com várias partidas ao mesmo tempo e travava.
+ */
+let entering = false;
+let joined = false;
+
 async function enter(connect: () => Promise<DungeonRoom>) {
+  if (entering || joined) return;
+  setEntering(true);
   show("rooms-error", false);
   void goFullscreenPortrait();
   try {
     const room = await connect();
+    joined = true;
     stopWatching();
     bindRoom(room);
   } catch (err) {
     if ((err as { code?: number }).code === VERSION_MISMATCH_CODE) return onVersionMismatch((err as Error).message);
     showError(`Não foi possível entrar: ${(err as Error).message}`);
+  } finally {
+    setEntering(false);
   }
+}
+
+/** Trava os botões da lista de salas enquanto a conexão não termina. */
+function setEntering(on: boolean) {
+  entering = on;
+  const create = $<HTMLButtonElement>("create");
+  create.textContent = on ? "Conectando… (o servidor pode levar 1 min para acordar)" : `Criar sala · ${MAPS[hub.mapId].name}`;
+  create.disabled = on;
+  $<HTMLButtonElement>("rooms-back").disabled = on;
+  document.querySelectorAll<HTMLButtonElement>("#room-list button").forEach((b) => { b.disabled = on; });
 }
 
 /**
@@ -145,7 +167,7 @@ async function openRooms() {
   show("menu", false);
   show("rooms", true);
   show("rooms-error", false);
-  $("create").textContent = `Criar sala · ${MAPS[hub.mapId].name}`;
+  setEntering(false);
   renderHunts([]);
   try {
     unwatch = await watchHunts(renderHunts);
@@ -163,6 +185,7 @@ function renderHunts(hunts: HuntListing[]) {
     const li = document.createElement("li");
     const button = document.createElement("button");
     button.className = "room";
+    button.disabled = entering;
     const map = MAPS[mapIdOf(hunt.metadata?.mapId)];
     const title = document.createElement("span");
     title.textContent = `Hunt de ${hunt.metadata?.leader ?? "?"}`;
