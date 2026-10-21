@@ -84,6 +84,26 @@ let targetId: string | null = null;
   console.log(`alvo ${targetId} (${room.state.monsters.get(targetId).kind}) a ${bestDist} tiles`);
 }
 
+// Outros monstros que se juntarem apanham do cavaleiro (o alvo do teste nunca), senão o bot morre parado.
+let defending = false;
+setInterval(() => {
+  const p = me();
+  if (!p || p.status !== "playing") return;
+  let other: string | null = null;
+  room.state.monsters.forEach((m: any, id: string) => {
+    if (id !== targetId && !other && tileDistance(p.x, p.y, m.x, m.y) <= 1) other = id;
+  });
+  if (other) {
+    room.send(MSG.target, { id: other });
+    if (!defending) room.send(MSG.attacking, { on: true });
+    defending = true;
+  } else if (defending) {
+    room.send(MSG.attacking, { on: false });
+    room.send(MSG.target, { id: null });
+    defending = false;
+  }
+}, 150);
+
 /** Encosta no alvo até ele começar a habilidade especial. */
 async function waitForCast() {
   cast = null;
