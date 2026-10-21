@@ -2,28 +2,68 @@
  * Teste de fumaça dos itens contra um servidor rodando (npm run dev:server):
  * um cavaleiro mata monstros comuns até algum dropar um item, anda por cima dele
  * e confere que o item foi equipado automaticamente (o slot estava vazio) e que a bag continuou vazia.
- * Antes, confere as regras da bag (`pickupAction`) sem servidor.
+ * Antes, confere sem servidor as regras da bag (`pickupAction`, com restrição de classe) e o catálogo de itens.
  * Uso: npx tsx apps/server/scripts/items.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, generateDungeon, pickupAction, tileDistance, type MonsterKind } from "@kusa/shared";
+import {
+  BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, canUse, describeStats, gearStats, generateDungeon, itemId, pickupAction,
+  rollItem, tileDistance, type ClassId, type ItemRarity, type ItemTier, type MonsterKind,
+} from "@kusa/shared";
 import { nextStep } from "../src/pathfinding.ts";
 
 // Regras da bag: slot vazio equipa, melhor troca (o antigo vai para a bag), pior vai para a bag,
-// e com a bag cheia nada sai do chão (só um slot vazio ainda recebe).
-const rules: [string, string, number, string][] = [
-  ["weapon-2", "", 0, "equip"],
-  ["weapon-2", "", BAG_SIZE, "equip"],
-  ["weapon-3", "weapon-2", 0, "swap"],
-  ["weapon-3", "weapon-2", BAG_SIZE, "full"],
-  ["weapon-1", "weapon-2", BAG_SIZE - 1, "bag"],
-  ["weapon-2", "weapon-2", BAG_SIZE, "full"],
+// e com a bag cheia nada sai do chão (só um slot vazio ainda recebe). Item de outra classe nunca veste.
+const sword = (tier: ItemTier, rarity: ItemRarity = "common") => itemId("weapon", "sword", tier, rarity);
+const rules: [string, string, number, ClassId, string][] = [
+  [sword(2), "", 0, "knight", "equip"],
+  [sword(2), "", BAG_SIZE, "knight", "equip"],
+  [sword(3), sword(2), 0, "knight", "swap"],
+  [sword(3), sword(2), BAG_SIZE, "knight", "full"],
+  [sword(1), sword(2), BAG_SIZE - 1, "knight", "bag"],
+  [sword(2), sword(2), BAG_SIZE, "knight", "full"],
+  // Raridade vale meio nível: o mágico do mesmo material é melhor; o raro não passa o comum do nível acima.
+  [sword(2, "magic"), sword(2), 0, "knight", "swap"],
+  [sword(2, "rare"), sword(3), 0, "knight", "bag"],
+  // Espada não é do druida: vai para a bag mesmo com a mão vazia.
+  [sword(5, "magic"), "", 0, "druid", "bag"],
+  [sword(5, "magic"), "", BAG_SIZE, "druid", "full"],
 ];
-for (const [item, equipped, bag, expected] of rules) {
-  const got = pickupAction(item, equipped, bag);
-  if (got !== expected) throw new Error(`pickupAction(${item}, "${equipped}", ${bag}) = ${got}, esperado ${expected}`);
+for (const [item, equipped, bag, classId, expected] of rules) {
+  const got = pickupAction(item, equipped, bag, classId);
+  if (got !== expected) throw new Error(`pickupAction(${item}, "${equipped}", ${bag}, ${classId}) = ${got}, esperado ${expected}`);
 }
 console.log("regras da bag: ok");
+
+// Catálogo: classes das armas, cajado e varinha com dano mágico, espada sem, raro e mágico mais fortes.
+const expectClasses: Record<string, ClassId[]> = {
+  "weapon-sword": ["knight"], "weapon-axe": ["knight"], "weapon-bow": ["paladin"], "weapon-crossbow": ["paladin"],
+  "weapon-wand": ["sorcerer", "druid"], "weapon-staff": ["sorcerer", "druid"],
+};
+for (const [family, classes] of Object.entries(expectClasses)) {
+  const id = `${family}-3-common`;
+  for (const c of ["knight", "paladin", "sorcerer", "druid"] as ClassId[]) {
+    if (canUse(id, c) !== classes.includes(c)) throw new Error(`${id}: canUse(${c}) errado`);
+  }
+}
+if (!(ITEMS[itemId("weapon", "staff", 3)].stats.spellPower! > 0)) throw new Error("cajado sem dano nas magias");
+if (!(ITEMS[itemId("weapon", "wand", 3)].stats.spellPower! > 0)) throw new Error("varinha sem dano nas magias");
+if (ITEMS[sword(5)].stats.spellPower) throw new Error("espada não aumenta magias");
+if (!(ITEMS[sword(3, "rare")].stats.damage! > ITEMS[sword(3)].stats.damage!)) throw new Error("raro não é mais forte");
+if (describeStats(ITEMS[sword(3, "magic")].stats).length < 2) throw new Error("mágico sem propriedade");
+for (const slot of ["legs", "boots"] as const) {
+  if (!Object.values(ITEMS).some((d) => d.slot === slot)) throw new Error(`sem itens de ${slot}`);
+}
+const gear = gearStats([itemId("boots", "boots", 3), itemId("armor", "war", 3), itemId("weapon", "staff", 3)]);
+if (!(gear.armor > 0 && gear.speed > 0 && gear.spellPower > 0)) throw new Error("gearStats não somou");
+// Drop da equipe: um cavaleiro sozinho só recebe o que ele usa.
+let seed = 1;
+const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+for (let i = 0; i < 500; i++) {
+  const id = rollItem("boss", 6, random, 0, ["knight"]);
+  if (!ITEMS[id] || !canUse(id, "knight")) throw new Error(`drop inválido para cavaleiro: ${id}`);
+}
+console.log("catálogo de itens: ok");
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
