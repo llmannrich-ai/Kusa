@@ -9,14 +9,17 @@
  *     afasta o herói do monstro, a Aljava Veloz e a Postura do Atirador ficam ativas no herói;
  *   - ramos Luz e Batedor do Paladino: Lança Etérea e Caldeira Divina ferem, o Escudo da Luz (toque rápido, sozinho)
  *     protege o próprio herói, o Solo Consagrado vira um campo que fere, a Flecha Relâmpago salta, a Barragem acerta
- *     em leque, a Armadilha de Urso prende o monstro que pisa nela e a estaca do Cordão de Flechas atira sozinha.
+ *     em leque, a Armadilha de Urso prende o monstro que pisa nela e a estaca do Cordão de Flechas atira sozinha;
+ *   - especializações do Feiticeiro: Feixe de Energia e Fúria dos Céus ferem, a Bola de Fogo queima, o Núcleo
+ *     Infernal fere, o Cone de Frio deixa lento, a Prisão de Gelo prende, o Passo Nebuloso teleporta, a Muralha
+ *     Mágica sobe, a Morte Súbita fere, os esqueletos erguidos aparecem, a Rajada Mística empurra e os Tentáculos prendem.
  * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
  *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 KUSA_MONSTER_HP=20 PORT=2603 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
  */
 import { Client } from "@colyseus/sdk";
-import { MONSTERS, MSG, Tile, generateDungeon, tileAt, tileDistance, type MonsterKind } from "@kusa/shared";
-import { approach, enter, inSight, until, wait } from "./hunt.ts";
+import { MONSTERS, MSG, Tile, generateDungeon, isWalkable, tileAt, tileDistance, type MonsterKind } from "@kusa/shared";
+import { approach, enter, inSight, until, wait, whereAmI } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
@@ -26,6 +29,7 @@ await slowAndChain();
 await paladinMira();
 await paladinLight();
 await paladinScout();
+await sorcererSpecs();
 console.log("EFEITOS OK");
 process.exit(0);
 
@@ -34,7 +38,7 @@ async function venom() {
   room.send(MSG.chooseSpell, { slot: 0, spellId: "venom_thorn" });
   await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
   const seen = inSight(room, me(), 5)[0];
-  if (!seen) throw new Error("nenhum monstro à vista em 30 s");
+  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
   const [id, target] = seen;
   if (target.maxHp < 300) throw new Error(`o servidor precisa de KUSA_MONSTER_HP=20 (vida ${target.maxHp})`);
   room.send(MSG.cast, { slot: 0, aim: { x: target.x, y: target.y, targetId: id } });
@@ -54,7 +58,7 @@ async function slowAndChain() {
   room.send(MSG.chooseSpell, { slot: 1, spellId: "blizzard" });
   await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
   const seen = inSight(room, me(), 5)[0];
-  if (!seen) throw new Error("nenhum monstro à vista em 30 s");
+  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
   const [, target] = seen;
   room.send(MSG.cast, { slot: 1, aim: { x: target.x, y: target.y } });
   await until(() => [...room.state.monsters.values()].some((m: any) => m.slowed), 3000, "a Nevasca não deixou ninguém lento");
@@ -85,7 +89,7 @@ async function paladinMira() {
   room.send(MSG.chooseSpell, { slot: 1, spellId: "swift_quiver" });
   await approach(room, me, 2, () => inSight(room, me(), 6).length > 0);
   const seen = inSight(room, me(), 6)[0];
-  if (!seen) throw new Error("nenhum monstro à vista em 30 s");
+  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
   const [id, target] = seen;
 
   // Marca: o alvo fica marcado e o mesmo golpe passa a tirar mais vida.
@@ -169,7 +173,7 @@ async function paladinLight() {
   // Solo Consagrado: o campo aparece no chão e fere os monstros em cima dele.
   await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
   const seen = inSight(room, me(), 5)[0];
-  if (!seen) throw new Error("nenhum monstro à vista em 30 s");
+  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
   const before = damage.length;
   room.send(MSG.cast, { slot: 1, aim: { x: seen[1].x, y: seen[1].y } });
   await until(() => [...room.state.fields.values()].some((f: any) => f.spellId === "consecrated_ground" && f.kind === "zone"), 2000, "o Solo Consagrado não criou o campo");
@@ -185,7 +189,7 @@ async function paladinScout() {
   room.send(MSG.chooseSpell, { slot: 1, spellId: "arrow_cordon" });
   await approach(room, me, 2, () => inSight(room, me(), 4).length > 0);
   const seen = inSight(room, me(), 4)[0];
-  if (!seen) throw new Error("nenhum monstro à vista em 30 s");
+  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
   const [id] = seen;
 
   // Armadilha no tile do monstro: se ele continua em cima, dispara no pulso seguinte e o prende. Se ele saiu do
@@ -211,7 +215,7 @@ async function paladinScout() {
   art.room.send(MSG.chooseSpell, { slot: 1, spellId: "barrage" });
   await approach(art.room, art.me, 2, () => inSight(art.room, art.me(), 5).length > 0);
   const near = inSight(art.room, art.me(), 5)[0];
-  if (!near) throw new Error("nenhum monstro à vista em 30 s");
+  if (!near) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(art.room, art.me)}`);
   const before = art.damage.length;
   art.room.send(MSG.cast, { slot: 1, aim: { x: near[1].x, y: near[1].y } });
   await until(() => hitsFrom(art.damage, art.room.sessionId, before) > 0, 2000, "a Barragem não acertou ninguém");
@@ -240,4 +244,111 @@ async function paladinScout() {
 async function gather(room: any, me: () => any, done: () => boolean, tries: number) {
   const until = Date.now() + 4000;
   await approach(room, me, 1, () => done() || Date.now() > until, 1 + (tries % 3));
+}
+
+/** Uma sala de Feiticeiro com as duas magias de uma especialização, já perto de um monstro à vista. */
+async function sorcerer(label: string, slot1: string, slot2: string) {
+  const hunt = await enter(client, "sorcerer", label);
+  hunt.room.send(MSG.chooseSpell, { slot: 0, spellId: slot1 });
+  hunt.room.send(MSG.chooseSpell, { slot: 1, spellId: slot2 });
+  await approach(hunt.room, hunt.me, 2, () => inSight(hunt.room, hunt.me(), 4).length > 0);
+  const seen = inSight(hunt.room, hunt.me(), 4)[0];
+  if (!seen) throw new Error(`${label}: nenhum monstro à vista em 30 s: ${whereAmI(hunt.room, hunt.me)}`);
+  return { ...hunt, seen };
+}
+
+/** Golpes do herói (sem os que ele recebeu) depois da posição `from` da lista de dano. */
+function myHits(hunt: { damage: { attacker: string; toPlayer: boolean }[]; room: any }, from: number) {
+  return hunt.damage.slice(from).filter((d) => d.attacker === hunt.room.sessionId && !d.toPlayer).length;
+}
+
+async function sorcererSpecs() {
+  // Tempestuoso: o feixe fere quem está na reta; a nuvem solta raios sozinha.
+  {
+    const h = await sorcerer("tempestuoso", "energy_beam", "sky_fury");
+    let from = h.damage.length;
+    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y } });
+    await until(() => myHits(h, from) > 0, 2000, "o Feixe de Energia não feriu ninguém");
+    from = h.damage.length;
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => [...h.room.state.fields.values()].some((f: any) => f.style === "storm"), 2000, "a Fúria dos Céus não criou a nuvem");
+    await until(() => myHits(h, from) > 0, 4000, "a nuvem não soltou raios");
+    await h.room.leave();
+  }
+  // Piromante: a bola de fogo queima; o núcleo infernal fere em volta.
+  {
+    const h = await sorcerer("piromante", "fireball", "infernal_core");
+    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y } });
+    await until(() => [...h.room.state.monsters.values()].some((m: any) => m.dot === "burn"), 3000, "a Bola de Fogo não queimou ninguém");
+    await approach(h.room, h.me, 2, () => inSight(h.room, h.me(), 3).length > 0);
+    const from = h.damage.length;
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => myHits(h, from) > 0, 2000, "o Núcleo Infernal não feriu ninguém");
+    await h.room.leave();
+  }
+  // Criomante: o cone deixa lento; a prisão prende.
+  {
+    const h = await sorcerer("criomante", "cone_of_cold", "ice_prison");
+    h.room.send(MSG.cast, { slot: 1, aim: { x: h.seen[1].x, y: h.seen[1].y } });
+    await until(() => h.room.state.monsters.get(h.seen[0])?.rooted === true, 2000, "a Prisão de Gelo não prendeu o alvo");
+    const near = inSight(h.room, h.me(), 4)[0];
+    if (near) h.room.send(MSG.cast, { slot: 0, aim: { x: near[1].x, y: near[1].y } });
+    await until(() => [...h.room.state.monsters.values()].some((m: any) => m.slowed), 2000, "o Cone de Frio não deixou ninguém lento");
+    await h.room.leave();
+  }
+  // Arcanista: o passo nebuloso teleporta; a muralha sobe no chão.
+  {
+    const h = await sorcerer("arcanista", "misty_step", "magic_wall");
+    const start = { x: h.me().x, y: h.me().y };
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => h.me().x !== start.x || h.me().y !== start.y || h.notices.includes("Sem espaço para rolar"), 2000, "o Passo Nebuloso não levou o herói");
+    if (h.me().x === start.x && h.me().y === start.y) throw new Error("o Passo Nebuloso não achou lugar livre");
+    const target = inSight(h.room, h.me(), 5)[0] ?? h.seen;
+    h.room.send(MSG.cast, { slot: 1, aim: { x: target[1].x, y: target[1].y } });
+    await until(() => [...h.room.state.fields.values()].some((f: any) => f.kind === "wall"), 2000, "a Muralha Mágica não subiu");
+    console.log(`feiticeiro: teleportou de ${start.x},${start.y} para ${h.me().x},${h.me().y}; muralha de ${[...h.room.state.fields.values()].filter((f: any) => f.kind === "wall").length} tiles`);
+    await h.room.leave();
+  }
+  // Necromante: a morte súbita fere; os esqueletos aparecem (3 com a Maestria).
+  {
+    const h = await sorcerer("necromante", "sudden_death", "raise_skeletons");
+    const from = h.damage.length;
+    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
+    await until(() => myHits(h, from) > 0, 2000, "a Morte Súbita não feriu o alvo");
+    h.room.send(MSG.cast, { slot: 1 });
+    const mine = () => [...h.room.state.summons.values()].filter((x: any) => x.owner === h.room.sessionId && x.kind === "skeleton");
+    await until(() => mine().length === 3, 2000, "os esqueletos não apareceram");
+    await h.room.leave();
+  }
+  // Bruxo: a rajada empurra o alvo para longe (precisa de espaço livre atrás dele); os tentáculos prendem.
+  {
+    const h = await sorcerer("bruxo", "eldritch_blast", "black_tentacles");
+    const map = generateDungeon(h.room.state.seed, h.room.state.mapId);
+    const behindFree = (m: any) => {
+      const p = h.me();
+      const bx = m.x + Math.sign(m.x - p.x);
+      const by = m.y + Math.sign(m.y - p.y);
+      return isWalkable(map, bx, by) && ![...h.room.state.monsters.values()].some((o: any) => o.x === bx && o.y === by);
+    };
+    let pushed = false;
+    for (let i = 0; i < 6 && !pushed; i++) {
+      const pick = inSight(h.room, h.me(), 6).find(([, m]) => behindFree(m));
+      if (!pick) { await approach(h.room, h.me, 1, () => inSight(h.room, h.me(), 6).some(([, m]) => behindFree(m))); continue; }
+      const [id, m] = pick;
+      const before = { x: m.x, y: m.y };
+      h.room.send(MSG.cast, { slot: 0, aim: { x: m.x, y: m.y, targetId: id } });
+      await until(() => {
+        const now = h.room.state.monsters.get(id);
+        return !!now && (now.x !== before.x || now.y !== before.y);
+      }, 4800, "").then(() => { pushed = true; }, () => {});
+    }
+    if (!pushed) throw new Error(`a Rajada Mística não empurrou o alvo: ${whereAmI(h.room, h.me)}`);
+    await approach(h.room, h.me, 2, () => inSight(h.room, h.me(), 5).length > 0);
+    const seen = inSight(h.room, h.me(), 5)[0];
+    if (!seen) throw new Error(`bruxo: nenhum monstro à vista: ${whereAmI(h.room, h.me)}`);
+    h.room.send(MSG.cast, { slot: 1, aim: { x: seen[1].x, y: seen[1].y } });
+    await until(() => [...h.room.state.monsters.values()].some((x: any) => x.rooted), 3000, "os Tentáculos Negros não prenderam ninguém");
+    await h.room.leave();
+  }
+  console.log("feiticeiro: as 12 magias das especializações funcionaram");
 }

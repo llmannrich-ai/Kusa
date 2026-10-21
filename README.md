@@ -68,7 +68,8 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx apps/server/scripts/efeitos.ts http://localhost:2603`: o mesmo servidor com `KUSA_MONSTER_HP=20` (monstros
   com 20× a vida, para aguentarem o golpe) e `PORT=2603`: o veneno continua ferindo, a Nevasca deixa lento, o Raio em Cadeia salta,
   e as 12 magias das especializações do Paladino funcionam na hunt (marca, bônus em si, salto, campo no chão, armadilha,
-  estaca, leque e escudo num aliado).
+  estaca, leque e escudo num aliado), e as 12 do Feiticeiro (tempestade, fogo, gelo, teleporte, parede, esqueletos,
+  empurrão e tentáculos).
 
 ## Variáveis de ambiente
 
