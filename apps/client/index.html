@@ -103,18 +103,21 @@
         <div class="bar xp"><i></i><span id="xp-text"></span></div>
         <div id="meta"></div>
         <!-- Equipamento: arma, capacete, armadura e escudo. -->
-        <div id="gear"></div>
+        <!-- Bag da hunt (bagbar.ts): toque abre o menu com a bag e o equipamento vestido. -->
+        <div id="bag" role="button" tabindex="0" hidden></div>
       </div>
     </div>
     <!-- Botões de ação (magias e alvo) para o polegar direito; as poções ficam na coluna ao lado. -->
     <div id="actions" hidden></div>
     <div id="potions" hidden></div>
+    <!-- Menu da bag na hunt: equipamento vestido (só aparece aqui) e os itens da bag. -->
+    <section id="bag-menu" hidden></section>
 
     <div id="rotate">
       <div class="rotate-icon">⟳</div>
       <p>Volte o celular para a vertical para jogar.</p>
     </div>
-    <p id="help" hidden>WASD/setas: andar · Clique: travar alvo · Tab: próximo alvo · Esc: destravar · 1/2: magias · Q/E: poções · M: mapa</p>
+    <p id="help" hidden>WASD/setas: andar · Clique: travar alvo · Tab: próximo alvo · Esc: destravar · 1/2: magias · Q/E: poções · B: bag · M: mapa</p>
 
     <section id="result" class="panel" hidden>
       <h2 id="result-title"></h2>

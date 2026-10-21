@@ -184,10 +184,40 @@ button { min-height: 44px; touch-action: manipulation; }
 }
 #stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
 #meta { text-align: right; color: var(--accent); font-size: 13px; }
-#meta.bag-full { color: #ff6b6b; }
-#gear { display: flex; justify-content: flex-end; gap: 4px; }
-#gear .slot { width: 28px; height: 28px; display: grid; place-items: center; background: #0008; border: 1px solid #3a2f27; }
-#gear img { width: 24px; height: 24px; image-rendering: pixelated; }
+/* Bag no HUD: uma fileira com os 8 espaços; tocar abre o menu da bag. */
+#bag { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; cursor: pointer; pointer-events: auto; }
+.bag-hud-cell { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; overflow: hidden; background: #0008; border: 1px solid #3a2f27; }
+.bag-hud-cell img { width: 100%; height: 100%; image-rendering: pixelated; }
+#bag.cheia .bag-hud-cell { border-color: #ff6b6b; }
+
+/* Menu da bag na hunt: na parte de cima, para o polegar esquerdo continuar andando embaixo. */
+#bag-menu {
+  position: fixed;
+  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
+  left: calc(var(--col-x) + max(8px, env(safe-area-inset-left)));
+  right: calc(var(--col-x) + max(8px, env(safe-area-inset-right)));
+  max-height: calc(55vh - 96px);
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+  background: #1c1714f2;
+  border: 1px solid var(--accent);
+  box-shadow: 0 6px 18px #000c;
+  z-index: 12;
+}
+#bag-menu h3 { margin: 8px 0 4px; font-size: 12px; color: var(--muted); font-weight: normal; text-transform: uppercase; letter-spacing: 1px; }
+.bag-head { display: flex; justify-content: space-between; align-items: center; }
+.bag-head .icon-button { min-height: 36px; width: 36px; font-size: 16px; }
+.bag-gear, .bag-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 60px)); justify-content: center; gap: 8px; }
+.bag-cell { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; min-height: 0; padding: 0; background: #000; border: 2px solid #3a2f27; }
+.bag-cell .item-img { width: 70%; height: 70%; image-rendering: pixelated; }
+.bag-cell.vazio, .bag-hud-cell.vazio { border-style: dashed; }
+.bag-cell small { font-size: 9px; }
+.bag-cell.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+.bag-details { display: grid; gap: 2px; margin-top: 10px; font-size: 13px; }
+.bag-details p { margin: 0; font-size: 12px; }
+.bag-actions { display: flex; gap: 8px; margin-top: 6px; }
+.bag-actions button { flex: 1; width: auto; }
+.bag-actions button:disabled { cursor: default; }
 
 .bar { position: relative; height: 14px; background: #000; border: 1px solid #000; }
 .bar i { position: absolute; inset: 0 auto 0 0; width: 100%; transition: width 0.15s; }

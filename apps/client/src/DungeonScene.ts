@@ -30,6 +30,7 @@ import {
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { PotionBar } from "./potionbar.ts";
+import { BagBar } from "./bagbar.ts";
 import { SpellBar } from "./spellbar.ts";
 import { PerkChoice } from "./perkchoice.ts";
 import { SpellAim } from "./aim.ts";
@@ -156,6 +157,7 @@ export class DungeonScene extends Phaser.Scene {
   private spellBar!: SpellBar;
   private perkChoice!: PerkChoice;
   private potionBar!: PotionBar;
+  private bagBar!: BagBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
   private nextSendAt = 0;
@@ -250,13 +252,17 @@ export class DungeonScene extends Phaser.Scene {
     const kb = this.input.keyboard;
     kb?.addCapture("TAB,SPACE");
     kb?.on("keydown-TAB", () => this.cycleTarget());
-    kb?.on("keydown-ESC", () => this.room.send(MSG.target, { id: null }));
+    kb?.on("keydown-ESC", () => {
+      if (this.bagBar.isOpen) this.bagBar.close();
+      else this.room.send(MSG.target, { id: null });
+    });
     kb?.on("keydown-SPACE", () => this.attack.hold("key"));
     kb?.on("keyup-SPACE", () => this.attack.release("key"));
     kb?.on("keydown-ONE", () => this.spellBar.press(0));
     kb?.on("keydown-TWO", () => this.spellBar.press(1));
     kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
     kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
+    kb?.on("keydown-B", () => this.bagBar.toggle());
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
       if (id) this.room.send(MSG.target, { id });
@@ -278,6 +284,7 @@ export class DungeonScene extends Phaser.Scene {
     this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.perkChoice.open);
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing);
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
+    this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.move.destroy();
@@ -286,6 +293,7 @@ export class DungeonScene extends Phaser.Scene {
       this.spellBar.destroy();
       this.perkChoice.destroy();
       this.potionBar.destroy();
+      this.bagBar.destroy();
     });
   }
 
@@ -307,6 +315,7 @@ export class DungeonScene extends Phaser.Scene {
     this.aim.update();
     this.attack.update();
     this.potionBar.update();
+    this.bagBar.update();
   }
 
   // --- Alvo ---------------------------------------------------------------

@@ -118,6 +118,16 @@ export const VAULT_SIZE = 20;
  */
 export const BAG_SIZE = 8;
 
+/** Índice válido da bag (a mensagem do cliente pode trazer qualquer coisa). */
+export function isBagIndex(index: unknown, bagLength: number): index is number {
+  return Number.isInteger(index) && (index as number) >= 0 && (index as number) < bagLength;
+}
+
+/** Só chaves próprias: a mensagem do cliente pode trazer qualquer texto (ex.: "__proto__"). */
+export function isItemSlot(slot: unknown): slot is ItemSlot {
+  return typeof slot === "string" && (ITEM_SLOTS as string[]).includes(slot);
+}
+
 /**
  * O que acontece ao passar por cima de um item: `equip` (slot vazio), `swap` (melhor que o equipado; o antigo vai
  * para a bag), `bag` (não é melhor) ou `full` (bag cheia: fica no chão). Slot vazio recebe o item mesmo com a bag cheia.

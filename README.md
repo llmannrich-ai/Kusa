@@ -46,6 +46,7 @@ Testes de fumaça (com o servidor rodando):
 - `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, segura o ataque básico, mata e ganha XP e loot.
 - `npx tsx apps/server/scripts/items.ts`: confere as regras da bag e um cavaleiro mata monstros até cair um item e o equipa ao passar por cima.
 - `npx tsx apps/server/scripts/potions.ts`: um cavaleiro caça até cair uma poção de vida, guarda, apanha e bebe.
+- `npx tsx apps/server/scripts/bag.ts`: um cavaleiro veste um item, guarda na bag, veste de novo, larga, pega de volta e foge levando o item na bag.
 - `npx tsx apps/server/scripts/perks.ts`: um cavaleiro caça até o nível 2, recebe 2 melhorias, uma fora da oferta é recusada e a escolhida é aplicada.
 - `npx tsx apps/server/scripts/spells.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, um feiticeiro conjura no toque rápido e com a mira.
 - `npx tsx apps/server/scripts/maps.ts`: cada mapa gera mapas conectados e determinísticos e cria a sala certa (monstros, tempo).
