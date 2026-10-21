@@ -38,52 +38,52 @@ export interface MonsterDef {
 export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   rat: {
     kind: "rat", name: "Ratazana", rank: "common", shape: "circle", color: 0x8d7b68, size: 0.5,
-    hp: 25, damage: 3, xp: 20, loot: [2, 5], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
+    hp: 25, damage: 3, xp: 20, loot: [1, 2], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
   },
   goblin: {
     kind: "goblin", name: "Goblin", rank: "common", shape: "triangle", color: 0x6ab04c, size: 0.6,
-    hp: 45, damage: 5, xp: 35, loot: [4, 9], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "slash",
+    hp: 45, damage: 5, xp: 35, loot: [2, 4], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "slash",
   },
   skeleton: {
     kind: "skeleton", name: "Esqueleto", rank: "common", shape: "diamond", color: 0xdcdde1, size: 0.65,
-    hp: 70, damage: 7, xp: 55, loot: [7, 14], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    hp: 70, damage: 7, xp: 55, loot: [3, 6], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
   },
   orc: {
     kind: "orc", name: "Orc guerreiro", rank: "common", shape: "square", color: 0x4b6584, size: 0.7,
-    hp: 110, damage: 9, xp: 85, loot: [12, 22], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    hp: 110, damage: 9, xp: 85, loot: [5, 9], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
   },
   ogre: {
     kind: "ogre", name: "Ogro", rank: "miniboss", shape: "square", color: 0xa0522d, size: 0.9,
-    hp: 260, damage: 14, xp: 220, loot: [30, 50], speed: 2.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    hp: 260, damage: 14, xp: 220, loot: [12, 20], speed: 2.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
   },
   dragon: {
     kind: "dragon", name: "Dragão jovem", rank: "boss", shape: "diamond", color: 0xb33939, size: 1.4,
-    hp: 900, damage: 24, xp: 700, loot: [150, 250], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
+    hp: 900, damage: 24, xp: 700, loot: [60, 100], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
   },
   // Pântano: mais vida e dano que os equivalentes da cripta, e loot maior.
   frog: {
     kind: "frog", name: "Sapo gigante", rank: "common", shape: "circle", color: 0x4caf50, size: 0.55,
-    hp: 50, damage: 5, xp: 40, loot: [5, 10], speed: 3.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1100, attackFx: "bite",
+    hp: 50, damage: 5, xp: 40, loot: [2, 4], speed: 3.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1100, attackFx: "bite",
   },
   moccasin: {
     kind: "moccasin", name: "Cobra-d'água", rank: "common", shape: "triangle", color: 0x8d5a3b, size: 0.55,
-    hp: 70, damage: 8, xp: 55, loot: [7, 14], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
+    hp: 70, damage: 8, xp: 55, loot: [3, 6], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
   },
   bogBody: {
     kind: "bogBody", name: "Afogado", rank: "common", shape: "diamond", color: 0x556b2f, size: 0.7,
-    hp: 120, damage: 11, xp: 85, loot: [12, 22], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
+    hp: 120, damage: 11, xp: 85, loot: [5, 9], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
   },
   naga: {
     kind: "naga", name: "Naga guerreira", rank: "common", shape: "square", color: 0x9aa0a6, size: 0.7,
-    hp: 160, damage: 13, xp: 120, loot: [18, 30], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    hp: 160, damage: 13, xp: 120, loot: [7, 12], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
   },
   troll: {
     kind: "troll", name: "Troll do brejo", rank: "miniboss", shape: "square", color: 0x2e4a7d, size: 0.95,
-    hp: 520, damage: 20, xp: 400, loot: [60, 90], speed: 2.8, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    hp: 520, damage: 20, xp: 400, loot: [24, 36], speed: 2.8, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
   },
   hydra: {
     kind: "hydra", name: "Hidra do pântano", rank: "boss", shape: "diamond", color: 0x2e8b57, size: 1.4,
-    hp: 1600, damage: 28, xp: 1300, loot: [300, 450], speed: 2.2, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
+    hp: 1600, damage: 28, xp: 1300, loot: [120, 180], speed: 2.2, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
   },
 };
 
@@ -91,7 +91,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
 export const DEPTH_SCALING = 0.12;
 
 /** Bônus de loot do baú das salas laterais (liberado ao matar o mini-boss). */
-export const CHEST_LOOT: [number, number] = [80, 140];
+export const CHEST_LOOT: [number, number] = [30, 55];
 
 /** Fração extra de loot ao concluir a dungeon pelo portal do boss. */
 export const BOSS_LOOT_BONUS = 0.5;
