@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3, 4a e 4b feitas: Paladino e Feiticeiro têm os 3 ramos especializados. Próxima: fase 4c (Druida).
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3, 4a, 4b e 4c feitas: Paladino, Feiticeiro e Druida têm os 3 ramos especializados. Próxima: fase 4d (Cavaleiro).
 
 ---
 
@@ -358,6 +358,15 @@ segundo (a seção 6.2 não dava número).
 elemento nas magias e o esqueleto invocado. Ajustes: as magias de especialização passaram a custar 1.200 e 1.600
 pela posição no lado (o ramo Trevas é um nó mais fundo); o Passo Nebuloso tenta as diagonais e as laterais quando a
 reta está bloqueada, como o Rolamento (#57).
+
+**Fase 4c, como foi entregue:** as 6 especializações do Druida, como na seção 6.4, com o Renascer da Semente (peça 16)
+e a forma animal (Wild Shape). Peças novas: forma animal (pantera com salto no alvo; urso com vida extra e patada que
+provoca), semente que salva da morte, cura e armadura num aliado mirado, cura além da vida virando escudo (Florescer),
+veneno que acumula (Toxina), explosão quando o monstro morre envenenado, campo que cura e devolve mana, criatura que voa
+por cima da água (Águia Gigante) e o raio a cada 4 magias (Céu Carregado). Ajustes em relação à seção 6.4: a Pele de
+Casca vai num aliado mirado (como o Escudo da Luz) e também dá +4 de armadura, para não ser uma cópia; a Águia mergulha
+em quem está perto em vez de voar sobre obstáculos que barram a visão; a Maestria da semente é durar mais e renascer com
+mais vida (reanimar um corpo caído continua fora). Telemetria: `revives` e `revived`.
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).

@@ -4,7 +4,7 @@ import type { AttackFx } from "./messages.ts";
 // atacam os monstros por perto (ou curam a equipe) e somem quando o tempo acaba ou morrem.
 // Os monstros também as atacam: as robustas servem de escudo para a equipe.
 
-export type SummonKind = "wolf" | "hornet" | "moth" | "bear" | "treant" | "wisp" | "skeleton";
+export type SummonKind = "wolf" | "hornet" | "moth" | "bear" | "treant" | "wisp" | "skeleton" | "eagle";
 
 export interface SummonDef {
   kind: SummonKind;
@@ -29,6 +29,10 @@ export interface SummonDef {
   taunt?: boolean;
   /** O monstro atingido fica preso por este tempo. */
   rootMs?: number;
+  /** O monstro atingido fica atordoado por este tempo. */
+  stunMs?: number;
+  /** Voa: passa por cima da água (paredes e mata ainda barram). */
+  flies?: boolean;
 }
 
 export const SUMMONS: Record<SummonKind, SummonDef> = {
@@ -52,6 +56,10 @@ export const SUMMONS: Record<SummonKind, SummonDef> = {
   },
   skeleton: {
     kind: "skeleton", name: "Esqueleto Erguido", hp: 0.6, damage: 0.8, attackRange: 1, attackCooldownMs: 1000, speed: 4, attackFx: "slash",
+  },
+  eagle: {
+    kind: "eagle", name: "Águia Gigante", hp: 0.5, damage: 1.2, attackRange: 1, attackCooldownMs: 1500, speed: 6, attackFx: "bite",
+    stunMs: 800, flies: true,
   },
   wisp: {
     kind: "wisp", name: "Fogo-Fátuo", hp: 0.5, damage: 0, attackRange: 0, attackCooldownMs: 2500, speed: 4.5, attackFx: "nature",

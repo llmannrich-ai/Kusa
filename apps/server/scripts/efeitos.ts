@@ -12,7 +12,11 @@
  *     em leque, a Armadilha de Urso prende o monstro que pisa nela e a estaca do Cordão de Flechas atira sozinha;
  *   - especializações do Feiticeiro: Feixe de Energia e Fúria dos Céus ferem, a Bola de Fogo queima, o Núcleo
  *     Infernal fere, o Cone de Frio deixa lento, a Prisão de Gelo prende, o Passo Nebuloso teleporta, a Muralha
- *     Mágica sobe, a Morte Súbita fere, os esqueletos erguidos aparecem, a Rajada Mística empurra e os Tentáculos prendem.
+ *     Mágica sobe, a Morte Súbita fere, os esqueletos erguidos aparecem, a Rajada Mística empurra e os Tentáculos prendem;
+ *   - especializações do Druida: a Águia Gigante aparece e atordoa, o Grito da Fera chama o lobo da Maestria, as formas de
+ *     Pantera (o salto) e de Urso (mais vida e a patada) funcionam, a Cura Distante vira escudo com o Florescer, a semente
+ *     do Renascer salva o druida da morte, a Pele de Casca protege, a Chuva Revigorante cai, a Picada da Mamba e a Nuvem
+ *     Venenosa envenenam, a Onda Trovejante fere e o Chamar Relâmpago solta raios.
  * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
  *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 KUSA_MONSTER_HP=20 PORT=2603 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
@@ -30,6 +34,7 @@ await paladinMira();
 await paladinLight();
 await paladinScout();
 await sorcererSpecs();
+await druidSpecs();
 console.log("EFEITOS OK");
 process.exit(0);
 
@@ -351,4 +356,100 @@ async function sorcererSpecs() {
     await h.room.leave();
   }
   console.log("feiticeiro: as 12 magias das especializações funcionaram");
+}
+
+/** Uma sala de Druida com as duas magias de uma especialização, já perto de um monstro à vista. */
+async function druid(label: string, slot1: string, slot2: string) {
+  const hunt = await enter(client, "druid", label);
+  hunt.room.send(MSG.chooseSpell, { slot: 0, spellId: slot1 });
+  hunt.room.send(MSG.chooseSpell, { slot: 1, spellId: slot2 });
+  await approach(hunt.room, hunt.me, 2, () => inSight(hunt.room, hunt.me(), 4).length > 0);
+  const seen = inSight(hunt.room, hunt.me(), 4)[0];
+  if (!seen) throw new Error(`${label}: nenhum monstro à vista em 30 s: ${whereAmI(hunt.room, hunt.me)}`);
+  return { ...hunt, seen };
+}
+
+async function druidSpecs() {
+  // Mestre das Feras: a águia aparece e o mergulho atordoa; o grito (Maestria) chama um lobo.
+  {
+    const h = await druid("feras", "beast_cry", "giant_eagle");
+    const mine = (kind: string) => [...h.room.state.summons.values()].filter((x: any) => x.owner === h.room.sessionId && x.kind === kind);
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => mine("eagle").length === 2, 2000, "as águias não apareceram");
+    await until(() => [...h.room.state.monsters.values()].some((m: any) => m.stunned), 8000, "a águia não atordoou ninguém");
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => mine("wolf").length === 1, 2000, "o Grito da Fera não chamou o lobo");
+    await h.room.leave();
+  }
+  // Metamorfo: a pantera salta no alvo; o urso soma vida e dá patadas em quem está colado.
+  {
+    const h = await druid("metamorfo", "panther_form", "bear_form");
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => h.me().form === "panther", 2000, "a Forma de Pantera não transformou o druida");
+    h.room.send(MSG.attacking, { on: true });
+    await until(() => h.spells.some((s) => s.spellId === "panther_form" && s.echo), 4000, "a pantera não saltou no alvo");
+    h.room.send(MSG.attacking, { on: false });
+    const hp = h.me().maxHp;
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => h.me().form === "bear", 2000, "a Forma de Urso não transformou o druida");
+    if (h.me().maxHp <= hp * 1.4) throw new Error(`o urso não somou vida: ${hp} → ${h.me().maxHp}`);
+    await approach(h.room, h.me, 1, () => inSight(h.room, h.me(), 1).length > 0);
+    h.room.send(MSG.attacking, { on: true });
+    await until(() => h.spells.some((s) => s.spellId === "bear_form" && s.echo), 6000, `o urso não deu patada: ${whereAmI(h.room, h.me)}`);
+    console.log(`druida: pantera saltou; urso com vida ${hp} → ${h.me().maxHp}`);
+    await h.room.leave();
+  }
+  // Círculo da Vida: a cura em quem está cheio vira escudo (Florescer); a semente salva o druida da morte.
+  {
+    const h = await druid("circulo", "distant_heal", "rebirth_seed");
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => h.me().barrier > 0, 2000, "a Cura Distante não virou escudo com o Florescer");
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => h.me().seeded === true, 2000, "a semente não foi plantada");
+    // Fica no meio dos monstros sem lutar até morrer: a semente faz o druida renascer.
+    const deadline = Date.now() + 50_000;
+    while (!h.notices.includes("Renasceu!")) {
+      if (Date.now() > deadline) throw new Error(`o druida não morreu (nem renasceu) em 50 s: vida ${h.me().hp}/${h.me().maxHp}`);
+      await approach(h.room, h.me, 1, () => h.notices.includes("Renasceu!") || inSight(h.room, h.me(), 1).length > 0);
+      await wait(300);
+    }
+    if (h.me().status !== "playing" || h.me().seeded) throw new Error(`renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
+    console.log(`druida: renasceu da semente com ${h.me().hp}/${h.me().maxHp} de vida`);
+    await h.room.leave();
+  }
+  // Guardião da Natureza: a casca protege; a chuva cai no chão.
+  {
+    const h = await druid("guardiao", "barkskin", "reviving_rain");
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => h.me().barrier > 0, 2000, "a Pele de Casca não deu escudo");
+    h.room.send(MSG.cast, { slot: 1, aim: { x: h.me().x, y: h.me().y } });
+    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "reviving_rain"), 2000, "a Chuva Revigorante não caiu");
+    await h.room.leave();
+  }
+  // Peste: a picada e a nuvem envenenam.
+  {
+    const h = await druid("peste", "mamba_bite", "poison_cloud");
+    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
+    await until(() => h.room.state.monsters.get(h.seen[0])?.dot === "poison", 3000, "a Picada da Mamba não envenenou o alvo");
+    const other = inSight(h.room, h.me(), 5).find(([id]) => id !== h.seen[0]) ?? h.seen;
+    h.room.send(MSG.cast, { slot: 1, aim: { x: other[1].x, y: other[1].y } });
+    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "poison_cloud"), 2000, "a Nuvem Venenosa não apareceu");
+    await h.room.leave();
+  }
+  // Tempestade: a onda fere quem está perto; a nuvem do relâmpago solta raios.
+  {
+    const h = await druid("tempestade", "thunderwave", "call_lightning");
+    await approach(h.room, h.me, 1, () => inSight(h.room, h.me(), 2).length > 0);
+    let from = h.damage.length;
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => myHits(h, from) > 0, 2000, "a Onda Trovejante não feriu ninguém");
+    const target = inSight(h.room, h.me(), 6)[0];
+    if (!target) throw new Error(`tempestade: nenhum monstro à vista: ${whereAmI(h.room, h.me)}`);
+    from = h.damage.length;
+    h.room.send(MSG.cast, { slot: 1, aim: { x: target[1].x, y: target[1].y } });
+    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "call_lightning"), 2000, "a nuvem do relâmpago não apareceu");
+    await until(() => myHits(h, from) > 0, 4000, "a nuvem não soltou raios");
+    await h.room.leave();
+  }
+  console.log("druida: as 12 magias das especializações funcionaram");
 }

@@ -24,11 +24,12 @@ Campo novo que deva aparecer para os jogadores entra nessa função e no `Dashbo
 | `stats.perksChosen` | Melhoria escolhida em cada nível, as duas oferecidas, o nível e o segundo |
 | `stats.specs` | Traços das especializações que o jogador tinha na hunt (ex.: `eagle_eye`) |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo / sem espaço para o Rolamento) |
-| `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou) |
+| `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou; o salto da pantera e a patada do urso em `panther_form` e `bear_form`; o raio do Céu Carregado em `charged_sky`) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |
 | `stats.specialDamage` | Dano das habilidades especiais dos mini-bosses e bosses (golpe + veneno/queimadura), por monstro |
 | `stats.healing` | Cura feita (druida) |
 | `stats.manaGiven` | Mana devolvida aos aliados por magias e criaturas (Fogo-Fátuo), sem as poções |
+| `stats.revives`, `stats.revived` | Renascer da Semente: nomes de quem o druida salvou; em quem renasceu, de quem veio a semente, o segundo e o dano que levou depois |
 | `stats.ccMs` | Tempo de controle aplicado nos monstros (ms somados por monstro): `root`, `stun` e `slow` |
 | `stats.potions` | Poções guardadas e bebidas por tipo e mana devolvida (a vida das poções entra em `healing`) |
 | `stats.kills`, `firstKillAt`, `xp` | Abates por monstro, tempo até o primeiro abate, XP total |

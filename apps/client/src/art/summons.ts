@@ -52,3 +52,42 @@ export function treantCanvas() {
   paintGrid(ctx, TREANT, TREANT_PALETTE, 4, 32 - TREANT.length);
   return canvas;
 }
+
+/** Águia Gigante (Mestre das Feras): arte própria, de asas abertas, vista de frente. */
+const EAGLE: Grid = [
+  "...........oooooo...........",
+  "..........owwwwwwo..........",
+  "..........owewwewo..........",
+  "..........owwwwwwo..........",
+  "...........oyyyyo...........",
+  "ooo.......obbwwbbo.......ooo",
+  "oBBooo...obbbbbbbbo...oooBBo",
+  ".oBBBBoooobbbbbbbbooooBBBBo.",
+  "..oBlBBBBbbbbbbbbbbBBBBlBo..",
+  "...oBlBlBBbbbbbbbbBBlBlBo...",
+  "....oBlBlBbbbbbbbbBlBlBo....",
+  ".....ooBlBbbbbbbbbBlBoo.....",
+  ".......oooBbbbbbbBooo.......",
+  "..........obbbbbbo..........",
+  "..........oBlBBlBo..........",
+  ".........oBBoBBoBBo.........",
+  ".........ooyooooyoo.........",
+  "..........yy.oo.yy..........",
+];
+
+const EAGLE_PALETTE: Palette = {
+  o: TREANT_OUTLINE,
+  w: "#f4efe2", // cabeça branca
+  e: "#1b1410",
+  y: "#f2b134", // bico e garras
+  b: "#7a4a24", // corpo
+  B: "#4e2f17", // penas das asas
+  l: "#b07a45",
+};
+
+/** Águia num quadro 32×32, com a ponta das garras na base. */
+export function eagleCanvas() {
+  const { canvas, ctx } = makeCanvas(32, 32);
+  paintGrid(ctx, EAGLE, EAGLE_PALETTE, 2, 32 - EAGLE.length - 2);
+  return canvas;
+}
