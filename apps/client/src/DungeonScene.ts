@@ -27,6 +27,7 @@ import {
   type MonsterKind,
   type NoticeMessage,
   type ChainMessage,
+  type CooldownMessage,
   type DotKind,
   type SpellDef,
   type SpellMessage,
@@ -36,7 +37,7 @@ import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { PotionBar } from "./potionbar.ts";
 import { BagBar } from "./bagbar.ts";
-import { SpellBar } from "./spellbar.ts";
+import { SpellBar, rankedSpell } from "./spellbar.ts";
 import { PerkChoice } from "./perkchoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
@@ -253,6 +254,7 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
+    this.room.onMessage(MSG.cooldown, (msg: CooldownMessage) => this.spellBar.setCooldown(msg.slot, msg.ms));
     this.room.onMessage(MSG.chain, (msg: ChainMessage) => {
       const spell = SPELLS[msg.spellId];
       if (spell) this.fx.chain(msg.points.map((p) => this.tilePoint(p.x, p.y)), spell.color);
@@ -386,11 +388,15 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private onSpell(msg: SpellMessage) {
-    const spell = SPELLS[msg.spellId];
+    // No nível de quem conjurou: a Maestria pode mudar a área e o alcance.
+    const spell = rankedSpell(this.room.state.players.get(msg.from), msg.spellId);
     if (!spell) return;
-    if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
-    this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
-    this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
+    // A repetição da Maestria (`echo`) é só o efeito: sem recarga nem tranco.
+    if (!msg.echo) {
+      if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
+      this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
+    }
+    this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms, spell.radius);
     if (spell.shape === "line") this.showLine(spell, msg);
     else if (spell.radius > 0) this.showArea(spell, msg);
     if (spell.heal) {

@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fase 0 feita (slot 2 no nível 6). Fase 1 feita com escopo reduzido (ver seção 7). Próxima: fase 2.
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7) e 2 feitas. Próxima: fase 3 (estrutura das especializações).
 
 ---
 
@@ -333,6 +333,14 @@ Perfurante, Raio em Cadeia, Nevasca, Espinho Venenoso, Execução, Disparo Certe
 Coração da Floresta. **Cone (4), investida (6), empurrar/puxar (7), bônus em aliados (8) e marca (9) ficaram para o PR
 da primeira classe que os usar**: sem nenhuma magia usando, seriam código sem teste de verdade e um desenho no escuro.
 A Nevasca ganhou lentidão em vez de campo no chão; o campo (peça 10) vem na fase 5.
+
+**Fase 2, como foi entregue:** as 39 magias têm Maestria no nível 3 (tabela no GDD). A maioria combina efeitos que já
+existiam (veneno, lentidão, cadeia, área maior, mais criaturas); três efeitos novos nasceram para ela: repetir,
+devolver recarga ao matar e roubar mana. Mudanças em relação à seção 4.2: o Escudo da Fé cobre aliados (o empurrão ao
+quebrar fica para quando existir empurrar), o Meteoro queima os atingidos (a cratera espera o campo no chão), a Bênção
+da Floresta brota uma mariposa (o excesso de cura virando escudo é o Traço Florescer do Círculo da Vida) e o Urso
+Ancestral dura o dobro (curar ao morrer pede um gancho de morte de criatura). A mira e o efeito na tela passaram a usar a
+magia no nível de quem conjura. A reta das magias em linha foi corrigida para sempre passar pelo ponto mirado.
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).

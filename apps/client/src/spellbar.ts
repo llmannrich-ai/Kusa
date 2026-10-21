@@ -4,6 +4,7 @@ import {
   SPELL_SLOT_LEVELS,
   spellChoices,
   spellCooldownMs,
+  spellAtRank,
   spellFacts,
   type ClassId,
   type SpellDef,
@@ -15,6 +16,12 @@ import type { DungeonRoom, PlayerView } from "./net.ts";
 import { stacksOf } from "./perkchoice.ts";
 
 const SLOTS: SpellSlot[] = [0, 1];
+
+/** A magia como o herói a conjura: no nível comprado no Grimório, com a Maestria no 3 (alcance e área podem mudar). */
+export function rankedSpell(p: PlayerView | undefined, id: string): SpellDef | undefined {
+  const base = SPELLS[id as SpellId] as SpellDef | undefined;
+  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 1);
+}
 
 interface SlotView {
   button: HTMLButtonElement;
@@ -59,9 +66,14 @@ export class SpellBar {
     const p = this.me();
     if (!p || p.status !== "playing") return;
     if (p.level < SPELL_SLOT_LEVELS[slot]) return;
-    const spell = SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    const spell = rankedSpell(p, spellIn(p, slot));
     if (!spell) return this.openChooser(slot);
     this.room.send(MSG.cast, { slot });
+  }
+
+  /** O servidor mudou a recarga de um slot (a Maestria do Disparo Certeiro corta a recarga ao matar). */
+  setCooldown(slot: SpellSlot, ms: number) {
+    this.slots[slot].readyAt = performance.now() + ms;
   }
 
   /** Janela de escolha de magia aberta. */
@@ -113,7 +125,7 @@ export class SpellBar {
   private down(slot: SpellSlot, e: PointerEvent) {
     if (this.aiming) return;
     const p = this.me();
-    const spell = p && SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    const spell = p && rankedSpell(p, spellIn(p, slot));
     const ready = performance.now() >= this.slots[slot].readyAt;
     if (!p || !spell || spell.aim !== "target" || !ready || p.mana < spell.manaCost) return this.press(slot);
     // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
