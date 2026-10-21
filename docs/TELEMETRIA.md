@@ -9,6 +9,11 @@ Os jogadores veem um resumo em **Configurações > Telemetria** (`apps/client/sr
 id ou seed de ninguém, mais o resumo das hunts de quem consulta. A tabela e as views continuam fechadas.
 Campo novo que deva aparecer para os jogadores entra nessa função e no `Dashboard` do cliente.
 
+Como o jogo é entre amigos, a tela também tem **Prêmios da galera** e **Ranking entre amigos**: a função
+`telemetry_ranking(p_map, p_days)` (`security definer`, só para logados) devolve uma linha por conta, **com o nome**
+(hunts, sobrevivência, abates, dano causado e recebido, cura, gold, bosses, mortes, melhor nível, minutos e classe
+favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa função e em `METRICS` do cliente.
+
 ## O que é medido
 
 | Coluna / campo | Para que serve |
