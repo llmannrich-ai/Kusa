@@ -336,6 +336,23 @@ button { min-height: 44px; touch-action: manipulation; }
 .spell-option em { display: block; font-size: 11px; font-style: normal; color: #9ec5ff; }
 .spell-choice > button:last-child { width: 100%; }
 
+/* Escolha de melhoria ao subir de nível: duas cartas lado a lado, no alto, um toque escolhe. */
+.panel.perk-choice {
+  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
+  transform: translateX(-50%);
+  width: min(380px, calc(var(--col-w) - 24px));
+  padding: 12px;
+  z-index: 15;
+}
+.perk-choice h2 { margin: 0 0 8px; font-size: 17px; text-align: center; }
+.perk-choice p { margin: 8px 0 0; font-size: 12px; text-align: center; }
+.perk-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.perk-option { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; min-height: 120px; border-color: #c9a227; background: #2b2414; text-align: center; }
+.perk-icon { font-size: 34px; line-height: 1.1; }
+.perk-option strong { color: var(--accent); font-size: 15px; }
+.perk-option small { font-size: 12px; line-height: 1.25; }
+.perk-option em { font-size: 11px; font-style: normal; color: #9ec5ff; }
+
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
 #rooms .hint { margin: 8px 0 0; font-size: 13px; text-align: center; }

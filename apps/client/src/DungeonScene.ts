@@ -32,6 +32,7 @@ import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { PotionBar } from "./potionbar.ts";
 import { SpellBar } from "./spellbar.ts";
+import { PerkChoice } from "./perkchoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
@@ -160,6 +161,7 @@ export class DungeonScene extends Phaser.Scene {
   /** Piscar, sangue, cadáver e o ataque dos monstros (`MSG.damage`). */
   private hits!: HitFx;
   private spellBar!: SpellBar;
+  private perkChoice!: PerkChoice;
   private potionBar!: PotionBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
@@ -292,7 +294,8 @@ export class DungeonScene extends Phaser.Scene {
       const unit = this.avatars.get(id) ?? this.monsters.get(id);
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
-    this.spellBar = new SpellBar(this.room, actions, this.aim);
+    this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.perkChoice.open);
+    this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing);
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -300,6 +303,7 @@ export class DungeonScene extends Phaser.Scene {
       this.minimap?.destroy();
       this.attack.destroy();
       this.spellBar.destroy();
+      this.perkChoice.destroy();
       this.potionBar.destroy();
     });
   }
@@ -318,6 +322,7 @@ export class DungeonScene extends Phaser.Scene {
     this.minimap?.update(time);
     this.ambience?.update(time);
     this.spellBar.update();
+    this.perkChoice.update();
     this.aim.update();
     this.attack.update();
     this.potionBar.update();
