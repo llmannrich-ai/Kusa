@@ -206,6 +206,12 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .tm-col.active i { background: var(--text); }
 .tm-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted); }
 .tm-readout { margin: 6px 0 0; font-size: 13px; }
+.tm-metrics { margin-bottom: 10px; }
+.tm-awards { grid-template-columns: repeat(2, 1fr); }
+.tm-awards .tm-tile small { display: block; margin-top: 2px; font-size: 11px; }
+.tm-tile.eu { border-color: var(--accent); }
+.tm-bars li.mine .tm-bar-head span { color: var(--accent); font-weight: bold; }
+.tm-bars li.mine .tm-track i { background: var(--text); }
 .tm-note { margin: 0 0 12px; font-size: 12px; }
 
 /* Regras: seções que abrem e fecham. */
@@ -285,7 +291,8 @@ button { min-height: 44px; touch-action: manipulation; }
 #bag-menu h3 { margin: 8px 0 4px; font-size: 12px; color: var(--muted); font-weight: normal; text-transform: uppercase; letter-spacing: 1px; }
 .bag-head { display: flex; justify-content: space-between; align-items: center; }
 .bag-head .icon-button { min-height: 36px; width: 36px; font-size: 16px; }
-.bag-gear, .bag-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 60px)); justify-content: center; gap: 8px; }
+.bag-gear { display: grid; grid-template-columns: repeat(3, minmax(0, 60px)); justify-content: center; gap: 8px; }
+.bag-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 60px)); justify-content: center; gap: 8px; }
 .bag-cell { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; min-height: 0; padding: 0; background: #000; border: 2px solid #3a2f27; }
 .bag-cell .item-img { width: 70%; height: 70%; image-rendering: pixelated; }
 .bag-cell.vazio, .bag-hud-cell.vazio { border-style: dashed; }
@@ -455,21 +462,29 @@ button { min-height: 44px; touch-action: manipulation; }
 .spell-choice > button:last-child { width: 100%; }
 
 /* Escolha de melhoria ao subir de nível: duas cartas lado a lado, no alto, um toque escolhe. */
-.panel.perk-choice {
-  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
-  transform: translateX(-50%);
-  width: min(380px, calc(var(--col-w) - 24px));
-  padding: 12px;
+/* Melhoria de nível: 2 ícones pequenos logo acima do personagem (a posição vem do PerkChoice). */
+.perk-choice {
+  position: fixed;
   z-index: 15;
+  display: flex;
+  gap: 8px;
+  transform: translate(-50%, -100%);
 }
-.perk-choice h2 { margin: 0 0 8px; font-size: 17px; text-align: center; }
-.perk-choice p { margin: 8px 0 0; font-size: 12px; text-align: center; }
-.perk-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.perk-option { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; min-height: 120px; border-color: #c9a227; background: #2b2414; text-align: center; }
-.perk-icon { font-size: 34px; line-height: 1.1; }
-.perk-option strong { color: var(--accent); font-size: 15px; }
-.perk-option small { font-size: 12px; line-height: 1.25; }
-.perk-option em { font-size: 11px; font-style: normal; color: #9ec5ff; }
+.perk-choice[hidden] { display: none; }
+.perk-option {
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #c9a227;
+  background: rgba(43, 36, 20, 0.85);
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 0 6px rgba(241, 196, 15, 0.6);
+  animation: perk-pulse 1.2s ease-in-out infinite;
+}
+@keyframes perk-pulse { 50% { box-shadow: 0 0 12px rgba(241, 196, 15, 0.95); } }
 
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
@@ -724,7 +739,7 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .loadout-body { position: absolute; inset: 0; width: 100%; height: 100%; }
 .loadout-slot {
   position: absolute;
-  width: 24%;
+  width: 21%;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -750,10 +765,13 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
   background: #120d0a;
   border: 1px solid #3a2f27;
 }
-.at-helmet { left: 38%; top: 2%; }
-.at-armor { left: 38%; top: 30%; }
-.at-weapon { left: 4%; top: 44%; }
-.at-shield { left: 72%; top: 44%; }
+/* Coluna do corpo (cabeça, peito, pernas, pés) e as mãos dos lados, como no Tibia. */
+.at-helmet { left: 39.5%; top: 2%; }
+.at-armor { left: 39.5%; top: 26.5%; }
+.at-legs { left: 39.5%; top: 51%; }
+.at-boots { left: 39.5%; top: 75.5%; }
+.at-weapon { left: 7%; top: 38%; }
+.at-shield { left: 72%; top: 38%; }
 .equip-stats {
   display: grid;
   gap: 2px;
@@ -808,3 +826,9 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .market-row > div { flex: 1; min-width: 0; }
 .market-row strong { display: block; font-size: 14px; }
 .market-row small { display: block; font-size: 12px; }
+
+/* Itens que a classe escolhida não usa: apagados, e o aviso em vermelho. */
+.unusable .item-img { opacity: 0.4; filter: grayscale(0.7); }
+.warn { color: #ff7b6b; }
+.item-stats { margin: 4px 0 8px; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+.bag-details .item-stats { margin: 2px 0 4px; font-size: 12px; }

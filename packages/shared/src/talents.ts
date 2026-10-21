@@ -82,8 +82,10 @@ const AURA_RULES: Record<AuraStat, { perRank: number; maxRank: number; baseCost:
   speed: { perRank: 0.04, maxRank: 2, baseCost: 300 },
 };
 
-/** Preço do 1º nível de uma magia, pela profundidade na árvore (a ponta é mais cara). */
-const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200, 1200, 1600];
+/** Preço do 1º nível de uma magia do tronco, pela profundidade na árvore (a ponta é mais cara). */
+const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
+/** Preço do 1º nível das magias de uma especialização: a 1ª do lado (logo abaixo do Traço) e a 2ª. */
+const SIDE_SPELL_COST = [1200, 1600];
 /** Preço do Traço de uma especialização (nível único). */
 const TRAIT_COST = 1000;
 /** As iniciais já vêm no nível 1: o 2 custa base × 1,6. */
@@ -124,6 +126,14 @@ const SHAPES: Record<ClassId, Shape> = {
     ["eagle_eye", 0, 5, "deadly_shot", 0], ["light_step", 0, 5, "deadly_shot", 1],
     ["hunter_mark", 0, 6, "eagle_eye", 0], ["evasive_roll", 0, 6, "light_step", 1],
     ["sniper_stance", 0, 7, "hunter_mark", 0], ["swift_quiver", 0, 7, "evasive_roll", 1],
+    // Luz: Cruzado (lado 0) ou Guardião da Luz (lado 1).
+    ["consecrated_arrows", 1, 5, "divine_judgment", 0], ["sacred_aura", 1, 5, "divine_judgment", 1],
+    ["holy_spear", 1, 6, "consecrated_arrows", 0], ["light_shield", 1, 6, "sacred_aura", 1],
+    ["divine_caldera", 1, 7, "holy_spear", 0], ["consecrated_ground", 1, 7, "light_shield", 1],
+    // Batedor: Artilheiro (lado 0) ou Armadilheiro (lado 1).
+    ["gunpowder", 2, 5, "explosive_volley", 0], ["ingenious", 2, 5, "explosive_volley", 1],
+    ["lightning_arrow", 2, 6, "gunpowder", 0], ["bear_trap", 2, 6, "ingenious", 1],
+    ["barrage", 2, 7, "lightning_arrow", 0], ["arrow_cordon", 2, 7, "bear_trap", 1],
   ],
   sorcerer: [
     ["shadow_orb", 1, 0],
@@ -132,6 +142,18 @@ const SHAPES: Record<ClassId, Shape> = {
     ["chain_lightning", 0, 3, "lightning_bolt"], ["ice_lance", 1, 3, "frost_nova"], ["drain_life", 2, 3, "hp"],
     ["meteor", 0, 4, "chain_lightning"], ["blizzard", 1, 4, "ice_lance"], ["speed", 2, 4, "drain_life"],
     ["dark_pact", 2, 5, "speed"],
+    // Raio: Tempestuoso (lado 0) ou Piromante (lado 1).
+    ["static_charge", 0, 5, "meteor", 0], ["combustion", 0, 5, "meteor", 1],
+    ["energy_beam", 0, 6, "static_charge", 0], ["fireball", 0, 6, "combustion", 1],
+    ["sky_fury", 0, 7, "energy_beam", 0], ["infernal_core", 0, 7, "fireball", 1],
+    // Gelo: Criomante (lado 0) ou Arcanista (lado 1).
+    ["shatter", 1, 5, "blizzard", 0], ["mana_shield", 1, 5, "blizzard", 1],
+    ["cone_of_cold", 1, 6, "shatter", 0], ["misty_step", 1, 6, "mana_shield", 1],
+    ["ice_prison", 1, 7, "cone_of_cold", 0], ["magic_wall", 1, 7, "misty_step", 1],
+    // Trevas: Necromante (lado 0) ou Bruxo (lado 1).
+    ["harvest", 2, 6, "dark_pact", 0], ["hex", 2, 6, "dark_pact", 1],
+    ["sudden_death", 2, 7, "harvest", 0], ["eldritch_blast", 2, 7, "hex", 1],
+    ["raise_skeletons", 2, 8, "sudden_death", 0], ["black_tentacles", 2, 8, "eldritch_blast", 1],
   ],
   druid: [
     ["forest_blessing", 1, 0],
@@ -140,6 +162,18 @@ const SHAPES: Record<ClassId, Shape> = {
     ["wolf_pack", 0, 3, "spirit_wolf"], ["hp", 1, 3, "healing_moth"], ["hornet_swarm", 2, 3, "venom_thorn"],
     ["ancient_bear", 0, 4, "wolf_pack"], ["grove_guardian", 1, 4, "hp"], ["nature_wrath", 2, 4, "hornet_swarm"],
     ["speed", 0, 5, "ancient_bear"], ["forest_heart", 1, 5, "grove_guardian"],
+    // Matilha: Mestre das Feras (lado 0) ou Metamorfo (lado 1).
+    ["wild_bond", 0, 6, "speed", 0], ["wild_hide", 0, 6, "speed", 1],
+    ["beast_cry", 0, 7, "wild_bond", 0], ["panther_form", 0, 7, "wild_hide", 1],
+    ["giant_eagle", 0, 8, "beast_cry", 0], ["bear_form", 0, 8, "panther_form", 1],
+    // Bosque: Círculo da Vida (lado 0) ou Guardião da Natureza (lado 1).
+    ["bloom", 1, 6, "forest_heart", 0], ["protective_sap", 1, 6, "forest_heart", 1],
+    ["distant_heal", 1, 7, "bloom", 0], ["barkskin", 1, 7, "protective_sap", 1],
+    ["rebirth_seed", 1, 8, "distant_heal", 0], ["reviving_rain", 1, 8, "barkskin", 1],
+    // Espinhos: Peste (lado 0) ou Tempestade (lado 1).
+    ["toxin", 2, 5, "nature_wrath", 0], ["charged_sky", 2, 5, "nature_wrath", 1],
+    ["mamba_bite", 2, 6, "toxin", 0], ["thunderwave", 2, 6, "charged_sky", 1],
+    ["poison_cloud", 2, 7, "mamba_bite", 0], ["call_lightning", 2, 7, "thunderwave", 1],
   ],
 };
 
@@ -174,7 +208,8 @@ function classTree(classId: ClassId): TalentDef[] {
     return {
       id: id(key), classId, col, row, side, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
       maxRank: SPELL_MAX_RANK, freeRank: starter ? 1 : 0,
-      baseCost: starter ? STARTER_BASE_COST : SPELL_COST_BY_ROW[row], costGrowth: 1.6, requires,
+      baseCost: starter ? STARTER_BASE_COST : side === undefined ? SPELL_COST_BY_ROW[row] : SIDE_SPELL_COST[isTrait(parent!) ? 0 : 1],
+      costGrowth: 1.6, requires,
     };
   });
 }

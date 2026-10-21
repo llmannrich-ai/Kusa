@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2 e 3 feitas. A fase 3 trouxe a estrutura e o primeiro ramo especializado (Mira do Paladino). Próxima: fase 4a (o resto do Paladino).
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3, 4a, 4b e 4c feitas: Paladino, Feiticeiro e Druida têm os 3 ramos especializados. Próxima: fase 4d (Cavaleiro).
 
 ---
 
@@ -347,6 +347,26 @@ magia no nível de quem conjura. A reta das magias em linha foi corrigida para s
 nascer vazia, o ramo **Mira do Paladino** inteiro: os Traços Olho de Águia e Passo Leve e as magias Marca do Caçador,
 Postura do Atirador, Rolamento e Aljava Veloz. Isso trouxe 3 peças do motor: marca (9), bônus em si (parte da 8) e
 salto (6). Os outros ramos especializam conforme o conteúdo deles fica pronto (os dois lados juntos).
+
+**Fase 4a, como foi entregue:** ramos Luz (Cruzado ou Guardião da Luz) e Batedor (Artilheiro ou Armadilheiro) do
+Paladino, como na seção 6.2. Peças novas do motor: campo no chão (10, com zona, armadilha e estaca, que cobre também a
+peça 12), cone (4), mira em aliado (13) e a marca de morto-vivo nos monstros. Ajuste: o Solo Consagrado fere 0,35× por
+segundo (a seção 6.2 não dava número).
+
+**Fase 4b, como foi entregue:** as 6 especializações do Feiticeiro, como na seção 6.3. Peças novas: teleporte
+(6), parede temporária (15), empurrar (7), campo que prende (Tentáculos), nuvem de raios (uma variação da estaca),
+elemento nas magias e o esqueleto invocado. Ajustes: as magias de especialização passaram a custar 1.200 e 1.600
+pela posição no lado (o ramo Trevas é um nó mais fundo); o Passo Nebuloso tenta as diagonais e as laterais quando a
+reta está bloqueada, como o Rolamento (#57).
+
+**Fase 4c, como foi entregue:** as 6 especializações do Druida, como na seção 6.4, com o Renascer da Semente (peça 16)
+e a forma animal (Wild Shape). Peças novas: forma animal (pantera com salto no alvo; urso com vida extra e patada que
+provoca), semente que salva da morte, cura e armadura num aliado mirado, cura além da vida virando escudo (Florescer),
+veneno que acumula (Toxina), explosão quando o monstro morre envenenado, campo que cura e devolve mana, criatura que voa
+por cima da água (Águia Gigante) e o raio a cada 4 magias (Céu Carregado). Ajustes em relação à seção 6.4: a Pele de
+Casca vai num aliado mirado (como o Escudo da Luz) e também dá +4 de armadura, para não ser uma cópia; a Águia mergulha
+em quem está perto em vez de voar sobre obstáculos que barram a visão; a Maestria da semente é durar mais e renascer com
+mais vida (reanimar um corpo caído continua fora). Telemetria: `revives` e `revived`.
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).

@@ -1,10 +1,11 @@
-import { ITEMS, isPotion, type ItemSlot, type ItemTier, type PotionId } from "@kusa/shared";
+import { ITEMS, isPotion, type ItemRarity, type ItemSlot, type ItemTier, type PotionId } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
 
 /**
- * Arte própria dos itens: um ícone 16×16 por item (chão, HUD, inventário e mercado), pintado com
- * a paleta do material (nível 1 = couro/madeira … 5 = dragão). "m"/"M" = material claro/escuro,
- * "a" = detalhe. Como cada item fica vestido no herói está em `outfit.ts`.
+ * Arte própria dos itens: um ícone 16×16 por família (espada, arco, cajado, manto...) e nível, pintado com
+ * a paleta do material (nível 1 = couro/madeira … 5 = dragão; as vestes arcanas usam tecidos, `CLOTH`).
+ * "m"/"M" = material claro/escuro, "a" = detalhe (nas varinhas e cajados, a gema). Itens raros e mágicos
+ * ganham uma gema no canto, na cor da raridade. Como cada item fica vestido no herói está em `outfit.ts`.
  */
 
 export const ITEM_ICON_SIZE = 16;
@@ -17,10 +18,38 @@ export const MATERIALS: Record<ItemTier, { m: string; M: string; a: string }> = 
   5: { m: "#d9483a", M: "#7e1d1d", a: "#f2c14e" }, // dragão
 };
 
+/** Tecidos das vestes arcanas: linho, lã azul, seda rúnica, mithral e seda de dragão. */
+export const CLOTH: Record<ItemTier, { m: string; M: string; a: string }> = {
+  1: { m: "#cdbf9c", M: "#8a7a58", a: "#6b4526" },
+  2: { m: "#4f6fb0", M: "#2c3f6e", a: "#d9b25a" },
+  3: { m: "#7b4fa8", M: "#46286a", a: "#7fd6ff" },
+  4: { m: "#d8e2f0", M: "#7f93b3", a: "#4c7bd9" },
+  5: { m: "#b8322a", M: "#5e1414", a: "#f2c14e" },
+};
+
+/** Gema das varinhas e cajados: esmeralda, âmbar, safira clara, safira e rubi. */
+const GEMS: Record<ItemTier, string> = { 1: "#7fd66a", 2: "#f0a93a", 3: "#7fd6ff", 4: "#4c7bd9", 5: "#ff4d3d" };
+
+/** Paleta (claro, escuro, detalhe) de um item vestível: tecido para as vestes arcanas, material para o resto. */
+export function itemMaterial(id: string) {
+  const item = ITEMS[id];
+  if (!item) return MATERIALS[1];
+  return item.family.endsWith("-arcane") ? CLOTH[item.tier] : MATERIALS[item.tier];
+}
+
 const BASE: Palette = { o: "#140d0a", w: "#9a6a36", W: "#5e3c1c", i: "#efe3c8" };
 
 /** Completa a grade com linhas vazias até 16. */
 const icon = (rows: string[]): Grid => [...rows, ...Array(ITEM_ICON_SIZE - rows.length).fill(".".repeat(ITEM_ICON_SIZE))];
+
+/** Grade só com o preenchimento: o contorno "o" entra sozinho em volta (vizinhos de cima, baixo e lados). */
+const outlined = (rows: string[]): Grid => {
+  const grid = icon(rows);
+  const filled = (x: number, y: number) => grid[y]?.[x] !== undefined && grid[y][x] !== "." && grid[y][x] !== "o";
+  return grid.map((row, y) => [...row].map((ch, x) => (
+    ch === "." && (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) ? "o" : ch
+  )).join(""));
+};
 
 /** Troca as letras de uma grade pixel a pixel. */
 const remap = (grid: Grid, fn: (ch: string, x: number, y: number) => string): Grid =>
@@ -92,7 +121,7 @@ const PLATE_ARMOR = icon([
   ".....oooooo.....",
 ]);
 
-const ICONS: Record<ItemSlot, Record<ItemTier, Grid>> = {
+const OLD_ICONS = {
   weapon: {
     // Porrete
     1: icon([
@@ -332,6 +361,180 @@ const ICONS: Record<ItemSlot, Record<ItemTier, Grid>> = {
   },
 };
 
+const BOW = outlined([
+  "................",
+  "..........Mi....",
+  ".........m.i....",
+  "........m..i....",
+  ".......mM..i....",
+  "......mM...i....",
+  "......mM...i....",
+  ".....aa....i....",
+  ".....aa....i....",
+  "......mM...i....",
+  "......mM...i....",
+  ".......mM..i....",
+  "........m..i....",
+  ".........m.i....",
+  "..........Mi....",
+]);
+
+const CROSSBOW = outlined([
+  "................",
+  "................",
+  ".......aa.......",
+  ".......wW.......",
+  "..mmmmmwWmmmmM..",
+  ".mM....wW....Mm.",
+  ".M.....wW.....M.",
+  "..i....wW....i..",
+  "...ii..wW..ii...",
+  ".....iiwWii.....",
+  ".......wW.......",
+  "......mwWm......",
+  ".......wW.......",
+  ".......WW.......",
+]);
+
+const WAND = outlined([
+  "................",
+  "................",
+  "................",
+  "...........aa...",
+  "..........aiaa..",
+  "..........aaa...",
+  ".........mM.....",
+  "........wW......",
+  ".......wW.......",
+  "......wW........",
+  ".....mM.........",
+  "....wW..........",
+  "...wW...........",
+  "..WW............",
+]);
+
+const STAFF = outlined([
+  "............aa..",
+  "...........aiaa.",
+  "...........aaaa.",
+  "..........mmaa..",
+  "..........mM....",
+  ".........wW.....",
+  "........wW......",
+  ".......wW.......",
+  "......mM........",
+  ".....wW.........",
+  "....wW..........",
+  "...wW...........",
+  "..wW............",
+  ".WW.............",
+]);
+
+const DOUBLE_AXE = outlined([
+  "................",
+  ".......wW.......",
+  "..mm...wW...mm..",
+  ".mmmM..wW..Mmmm.",
+  ".mmmMMawWaMMmmm.",
+  ".mmmMMawWaMMmmm.",
+  ".mmmM..wW..Mmmm.",
+  "..mm...wW...mm..",
+  ".......wW.......",
+  ".......wW.......",
+  ".......wW.......",
+  ".......aa.......",
+  ".......wW.......",
+  ".......aa.......",
+]);
+
+const PANTS = outlined([
+  "................",
+  "................",
+  "...aaaaaaaaaa...",
+  "...mmmmmmmmmM...",
+  "...mmmmMmmmmM...",
+  "...mmmM..mmmM...",
+  "...mmmM..mmmM...",
+  "...mmmM..mmmM...",
+  "...mMmM..mMmM...",
+  "...mmmM..mmmM...",
+  "...mmmM..mmmM...",
+  "...mmmM..mmmM...",
+  "...MMMM..MMMM...",
+]);
+
+const BOOTS = outlined([
+  "................",
+  "................",
+  "................",
+  "...aaa....aaa...",
+  "...mmM....mmM...",
+  "...mmM....mmM...",
+  "...mmM....mmM...",
+  "...mmM....mmM...",
+  "..mmmM...mmmM...",
+  ".mmmmM..mmmmM...",
+  ".mmmmM..mmmmM...",
+  ".MMMMM..MMMMM...",
+]);
+
+const HAT = outlined([
+  "................",
+  "..........M.....",
+  ".........mM.....",
+  "........mmM.....",
+  ".......mmmM.....",
+  "......mmmmM.....",
+  "......mmmmMM....",
+  ".....mmmmmMM....",
+  ".....aaaaaaa....",
+  "..mmmmmmmmmmMM..",
+  ".mmmmmmmmmmmmMM.",
+]);
+
+const ROBE = outlined([
+  "................",
+  "....mm....mm....",
+  "...mmmmaammmm...",
+  "..mmmmmaammmmM..",
+  "..mMmmmaammmMM..",
+  "..mMmmmaammmMM..",
+  "....mmmaammmM...",
+  "....mmmaammmM...",
+  "...mmmmaammmmM..",
+  "...mmmmaammmmM..",
+  "..mmmmmaammmmmM.",
+  "..mmmmmaammmmmM.",
+  "..MMMMMMMMMMMMM.",
+]);
+
+/** O mesmo desenho em todos os níveis (o material muda a cor). */
+const allTiers = (grid: Grid): Record<ItemTier, Grid> => ({ 1: grid, 2: grid, 3: grid, 4: grid, 5: grid });
+
+/** Ícone de cada família (`ITEM_FAMILIES`) por nível. */
+const ICONS: Record<string, Record<ItemTier, Grid>> = {
+  "weapon-sword": { ...OLD_ICONS.weapon, 1: OLD_ICONS.weapon[2], 3: LONG_SWORD },
+  "weapon-axe": { ...allTiers(OLD_ICONS.weapon[3]), 5: DOUBLE_AXE },
+  "weapon-bow": allTiers(BOW),
+  "weapon-crossbow": allTiers(CROSSBOW),
+  "weapon-wand": allTiers(WAND),
+  "weapon-staff": allTiers(STAFF),
+  "helmet-war": OLD_ICONS.helmet,
+  "helmet-arcane": allTiers(HAT),
+  "armor-war": OLD_ICONS.armor,
+  "armor-arcane": allTiers(ROBE),
+  "legs-war": allTiers(PANTS),
+  "legs-arcane": allTiers(PANTS),
+  "boots-boots": allTiers(BOOTS),
+  "shield-shield": OLD_ICONS.shield,
+};
+
+/** Gema no canto dos itens raros (azul) e mágicos (roxa, com brilho). */
+const RARITY_GEM: Partial<Record<ItemRarity, { grid: Grid; palette: Palette }>> = {
+  rare: { grid: [".o.", "oro", ".o."], palette: { o: "#0b1a33", r: "#4aa3ff" } },
+  magic: { grid: [".o.", "oro", ".o."], palette: { o: "#2a0b33", r: "#c56cf0" } },
+};
+
 /** Frasco das poções: "c" = rolha, "g" = brilho do vidro, "l"/"L" = líquido claro/escuro. */
 const POTION_GRID: Grid = [
   "................",
@@ -367,15 +570,23 @@ export function itemIcon(itemId: string) {
     return canvas;
   }
   const item = ITEMS[itemId];
-  if (item) paintGrid(ctx, ICONS[item.slot][item.tier], { ...BASE, ...MATERIALS[item.tier] }, 0, 0);
+  if (!item) return canvas;
+  const gem = item.slot === "weapon" && (item.family === "weapon-wand" || item.family === "weapon-staff") ? { a: GEMS[item.tier] } : {};
+  paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem }, 0, 0);
+  const mark = RARITY_GEM[item.rarity];
+  if (mark) paintGrid(ctx, mark.grid, mark.palette, 0, 0);
   return canvas;
 }
 
 /** Contorno apagado do slot vazio (como no Tibia): o ícone de ferro do slot numa cor só, quase sumindo no fundo. */
 const GHOST: Palette = { o: "#3a3029", m: "#2a221d", M: "#2a221d", a: "#2a221d", w: "#2a221d", W: "#2a221d", i: "#2a221d" };
 
+const GHOST_FAMILY: Record<ItemSlot, string> = {
+  weapon: "weapon-sword", helmet: "helmet-war", armor: "armor-war", legs: "legs-war", boots: "boots-boots", shield: "shield-shield",
+};
+
 export function slotGhost(slot: ItemSlot) {
   const { canvas, ctx } = makeCanvas(ITEM_ICON_SIZE, ITEM_ICON_SIZE);
-  paintGrid(ctx, ICONS[slot][3], GHOST, 0, 0);
+  paintGrid(ctx, ICONS[GHOST_FAMILY[slot]][3], GHOST, 0, 0);
   return canvas;
 }

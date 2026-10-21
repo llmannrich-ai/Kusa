@@ -121,6 +121,120 @@ export class CombatFx {
       case "swift_quiver":
         this.ring(from, TILE_SIZE * 0.9, 0x9be15d, 500, 3);
         return this.later(120, () => this.ring(from, TILE_SIZE * 0.6, 0xffffff, 400, 2));
+      // Especializações do Paladino (ramos Luz e Batedor).
+      case "holy_spear":
+        this.projectile(FX.holyArrow, from, to, ms, { trail: 0xfff6c8, glow: 0xfff6c8, impact: 0xffffff, scale: 1.3 });
+        return this.later(ms, () => this.holyFlash(to));
+      case "divine_caldera":
+        this.ring(from, radius, 0xf7d774, 550, 6);
+        return this.later(120, () => this.ring(from, radius * 0.6, 0xffffff, 400, 3));
+      case "light_shield":
+        this.drain(from, to, 0x7fc8ff);
+        return this.later(200, () => this.shieldRaise(to));
+      case "consecrated_ground":
+        this.beam(to, 0xfff6c8);
+        return this.later(120, () => this.ring(to, radius, 0xfff6c8, 500, 4));
+      case "lightning_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff, scale: 1.3 });
+        return this.later(ms, () => this.sparks(to, 0x9ec5ff, 8));
+      case "barrage":
+        // O leque acende pelo `showCone` (DungeonScene); aqui saem algumas flechas na direção do tiro.
+        for (let i = 0; i < 5; i++) {
+          const spread = { x: to.x + Phaser.Math.Between(-24, 24), y: to.y + Phaser.Math.Between(-24, 24) };
+          this.later(i * 40, () => this.projectile(FX.arrow, from, spread, 220, { trail: 0xe67e22, glow: 0xe67e22 }));
+        }
+        return;
+      // Armadilha e estaca: ao lançar, o objeto aparece pelo estado (campo); o disparo chega como eco.
+      case "bear_trap":
+        return this.sparks(to, 0xbdc3c7, from.x === to.x && from.y === to.y ? 12 : 4);
+      case "arrow_cordon":
+        return from.x === to.x && from.y === to.y ? undefined : this.projectile(FX.arrow, from, to, ms, { trail: 0xc8a165, glow: 0xc8a165 });
+      // Especializações do Feiticeiro.
+      case "energy_beam": return this.zap(from, to, 0x9ec5ff);
+      // Os raios da nuvem chegam como eco, de cima para o monstro; o lançamento só faz a nuvem (campo).
+      case "sky_fury":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE, 0x9ec5ff, 400, 3);
+        this.beam(to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 8);
+      case "fireball":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xff7f27, glow: 0xe74c3c, impact: 0xf1c40f, scale: 1.3 });
+        return this.later(ms, () => { this.ring(to, radius, 0xff7f27, 450, 7); this.sparks(to, 0xf1c40f, 12); });
+      case "infernal_core":
+        this.ring(from, radius, 0xe74c3c, 650, 9);
+        this.later(100, () => this.ring(from, radius * 0.7, 0xff7f27, 500, 6));
+        return this.debris(from, radius, 0x5a2a1a);
+      case "cone_of_cold": return this.sparks(from, 0xd6f1ff, 10);
+      case "ice_prison":
+        this.snow(to, radius);
+        return this.ring(to, radius, 0xd6f1ff, 500, 5);
+      // O feiticeiro já está no destino (to): névoa onde estava e onde aparece.
+      case "misty_step":
+        for (const at of [from, to]) for (let i = 0; i < 5; i++) this.puff(at.x + Phaser.Math.Between(-10, 10), at.y + Phaser.Math.Between(-8, 8), 0xc7b8ff, 6);
+        return;
+      case "magic_wall": return this.ring(to, TILE_SIZE, 0x8e7cc3, 400, 4);
+      case "sudden_death":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0x2d0a40, glow: 0x000000, impact: 0x8e44ad, scale: 1.1 });
+        return this.later(ms, () => this.drain(to, to, 0x5a1c7a));
+      case "raise_skeletons":
+        this.ring(from, TILE_SIZE * 1.5, 0xdcdde1, 550, 3);
+        return this.debris(from, TILE_SIZE, 0xdcdde1);
+      case "eldritch_blast":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0xb04ae0, glow: 0x6b2a9a, impact: 0xe0b0ff, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xb04ae0, 8));
+      case "black_tentacles": return this.ring(to, radius, 0x9b59b6, 500, 5);
+      // Especializações do Druida. As formas: no lançamento, folhas em volta; o salto da pantera e a patada do urso
+      // chegam como eco (de onde o druida estava até o monstro).
+      case "panther_form":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE, 0x4b4b6b, 450, 4);
+        for (let i = 0; i <= 4; i++) this.later(i * 25, () => this.puff(from.x + ((to.x - from.x) * i) / 4, from.y + ((to.y - from.y) * i) / 4, 0x4b4b6b, 6));
+        return this.later(100, () => this.sparks(to, 0xffffff, 8));
+      case "bear_form":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(from, TILE_SIZE * 1.2, 0x8d6e4a, 500, 6);
+          return this.debris(from, TILE_SIZE, 0x6b4426);
+        }
+        return this.ring(from, TILE_SIZE * 1.5, 0x8d6e4a, 300, 5);
+      case "beast_cry":
+        this.ring(from, TILE_SIZE * 3, 0xe67e22, 550, 5);
+        return this.later(120, () => this.ring(from, TILE_SIZE * 1.8, 0xf1c40f, 450, 3));
+      // As folhas da cura no aliado saem pela cena (`spell.heal`).
+      case "distant_heal": return this.drain(from, to, 0xff8fab);
+      // A semente voa até o aliado; quando ela salva (eco no próprio aliado), uma flor se abre.
+      case "rebirth_seed":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 1.5, 0x9cff7a, 700, 5);
+          this.later(150, () => this.ring(to, TILE_SIZE, 0xf7d774, 500, 3));
+          return this.heal(to);
+        }
+        this.projectile(FX.leaf, from, to, 260, { trail: 0xc8a165, glow: 0x9cff7a, impact: 0x9cff7a });
+        return this.later(260, () => this.sparks(to, 0x9cff7a, 8));
+      case "barkskin":
+        this.drain(from, to, 0x8d6e4a);
+        return this.later(200, () => { this.shieldRaise(to); this.debris(to, TILE_SIZE / 2, 0x8d6e4a); });
+      case "reviving_rain":
+        this.beam(to, 0x7fc8ff);
+        return this.ring(to, radius, 0x7fc8ff, 600, 3);
+      // A explosão do veneno chega como eco no monstro morto.
+      case "mamba_bite":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 2.5, 0x9acd32, 450, 7);
+          return this.sparks(to, 0x9acd32, 14);
+        }
+        return this.projectile(FX.greenLight, from, to, ms, { trail: 0x2d6a1f, glow: 0x1e4d14, impact: 0x9acd32, scale: 1.2 });
+      case "poison_cloud":
+        this.projectile(FX.greenLight, from, to, 200, { trail: 0x9acd32, glow: 0x6ab04c });
+        return this.later(200, () => this.ring(to, radius, 0x9acd32, 500, 5));
+      case "thunderwave":
+        this.ring(from, radius, 0x9ec5ff, 400, 8);
+        this.later(80, () => this.ring(from, radius * 0.6, 0xffffff, 300, 4));
+        return this.sparks(from, 0x9ec5ff, 10);
+      // Raio do céu: da nuvem (Chamar Relâmpago) ou do Céu Carregado, sempre caindo no ponto `to`.
+      case "call_lightning":
+        this.beam(to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 8);
+      case "giant_eagle":
+        this.ring(from, TILE_SIZE * 1.5, 0xc8a165, 550, 3);
+        return this.sparks(from, 0xf7d774, 8);
       // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
       case "spirit_wolf":
       case "healing_moth":
@@ -178,6 +292,23 @@ export class CombatFx {
         this.sparks(b, color, 6);
       });
     }
+  }
+
+  /** Raio reto e tremido de `from` a `to` (Feixe de Energia). */
+  private zap(from: Point, to: Point, color: number) {
+    const g = this.scene.add.graphics().setDepth(FX_DEPTH);
+    const steps = Math.max(3, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / 16));
+    const line = (width: number, tint: number, alpha: number) => {
+      g.lineStyle(width, tint, alpha).beginPath().moveTo(from.x, from.y);
+      for (let k = 1; k < steps; k++) {
+        const t = k / steps;
+        g.lineTo(from.x + (to.x - from.x) * t + Phaser.Math.Between(-3, 3), from.y + (to.y - from.y) * t + Phaser.Math.Between(-3, 3));
+      }
+      g.lineTo(to.x, to.y).strokePath();
+    };
+    line(6, color, 0.45);
+    line(2, 0xffffff, 0.95);
+    this.scene.tweens.add({ targets: g, alpha: { from: 1, to: 0 }, duration: 300, onComplete: () => g.destroy() });
   }
 
   /** Brilho de cura subindo de um aliado (Bênção da Floresta). */
