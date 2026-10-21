@@ -724,9 +724,18 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
 
     // Rolamento: o herói salta na hora, antes do resto do efeito.
+    // Sem espaço para rolar (parede ou monstro colado): não sai, e não gasta mana nem recarga.
     if (spell.dash) {
-      const away = !aim && target;
-      this.dash(sessionId, p, seat, away ? 2 * p.x - target!.x : tx, away ? 2 * p.y - target!.y : ty, spell.dash.tiles, now);
+      const end = !aim && target ? this.dashAwayEnd(p, target, spell.dash.tiles) : this.dashEnd(p.x, p.y, tx, ty, spell.dash.tiles);
+      if (end.x === p.x && end.y === p.y) {
+        seat.stats.castFails.noRoom++;
+        client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Sem espaço para rolar", color: 0xbdc3c7 } satisfies NoticeMessage);
+        return;
+      }
+      p.x = end.x;
+      p.y = end.y;
+      seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 150);
+      this.trackDepth(sessionId, p);
       tx = p.x;
       ty = p.y;
       target = undefined;
@@ -1761,24 +1770,48 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   /**
-   * Salto (Rolamento): anda até `tiles` tiles em linha reta na direção de (tx, ty), parando antes de parede,
-   * água, monstro, outro herói ou portal (o salto nunca encerra a hunt sem querer).
+   * Salto (Rolamento): onde o herói cai andando até `tiles` tiles em linha reta na direção de (tx, ty), parando
+   * antes de parede, água, monstro, outro herói ou portal (o salto nunca encerra a hunt sem querer).
    */
-  private dash(sessionId: string, p: Player, seat: Seat, tx: number, ty: number, tiles: number, now: number) {
-    const path = lineTiles(this.dungeon, p.x, p.y, tx, ty, tiles);
+  private dashEnd(x: number, y: number, tx: number, ty: number, tiles: number) {
+    const path = lineTiles(this.dungeon, x, y, tx, ty, tiles);
     const blocked = this.occupiedTiles();
     const w = this.dungeon.width;
-    let last = { x: p.x, y: p.y };
+    let last = { x, y };
     for (const t of path) {
       if (!isWalkable(this.dungeon, t.x, t.y) || tileAt(this.dungeon, t.x, t.y) === Tile.Portal || blocked.has(t.y * w + t.x)) break;
       // Na diagonal, não atravessa quina de parede (como o passo normal).
       if (t.x !== last.x && t.y !== last.y && (!isWalkable(this.dungeon, t.x, last.y) || !isWalkable(this.dungeon, last.x, t.y))) break;
       last = t;
     }
-    p.x = last.x;
-    p.y = last.y;
-    seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 150);
-    this.trackDepth(sessionId, p);
+    return last;
+  }
+
+  /**
+   * Rolamento no toque rápido: para longe do monstro. Se a reta para trás estiver bloqueada (herói de costas
+   * para a parede), tenta as outras direções que não vão para o monstro e fica com a que mais afasta dele.
+   * Nenhuma afasta: devolve a posição atual (o Rolamento não sai).
+   */
+  private dashAwayEnd(p: Player, from: Monster, tiles: number) {
+    const ax = p.x - from.x;
+    const ay = p.y - from.y;
+    const dirs: { dx: number; dy: number; dot: number }[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const dot = (dx * ax + dy * ay) / Math.hypot(dx, dy);
+        if ((dx !== 0 || dy !== 0) && dot >= 0) dirs.push({ dx, dy, dot });
+      }
+    }
+    // Só vale direção que afasta. A reta exata para longe vem primeiro: no empate, ganha ela e depois as mais alinhadas.
+    const aims = [{ x: 2 * p.x - from.x, y: 2 * p.y - from.y }, ...dirs.sort((a, b) => b.dot - a.dot).map((d) => ({ x: p.x + d.dx * tiles, y: p.y + d.dy * tiles }))];
+    let best = { x: p.x, y: p.y };
+    let bestGap = tileDistance(p.x, p.y, from.x, from.y);
+    for (const aim of aims) {
+      const end = this.dashEnd(p.x, p.y, aim.x, aim.y, tiles);
+      const gap = tileDistance(end.x, end.y, from.x, from.y);
+      if (gap > bestGap) { best = end; bestGap = gap; }
+    }
+    return best;
   }
 
   /** Dano base do jogador (classe, nível, áureas e arma), antes da variação. */
