@@ -413,7 +413,8 @@ async function druidSpecs() {
       await approach(h.room, h.me, 1, () => h.notices.includes("Renasceu!") || inSight(h.room, h.me(), 1).length > 0);
       await wait(300);
     }
-    if (h.me().status !== "playing" || h.me().seeded) throw new Error(`renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
+    // O aviso chega na hora; o estado (semente gasta) só no próximo patch.
+    await until(() => h.me().status === "playing" && !h.me().seeded, 2000, `renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
     console.log(`druida: renasceu da semente com ${h.me().hp}/${h.me().maxHp} de vida`);
     await h.room.leave();
   }
