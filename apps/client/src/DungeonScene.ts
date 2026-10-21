@@ -304,7 +304,7 @@ export class DungeonScene extends Phaser.Scene {
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
     this.spellBar = new SpellBar(this.room, actions, this.aim);
-    this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing);
+    this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing, () => this.aboveMe());
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
@@ -762,6 +762,18 @@ export class DungeonScene extends Phaser.Scene {
     if (sessionId === this.room.sessionId) {
       this.cameras.main.startFollow(unit.body, true, 0.15, 0.15);
     }
+  }
+
+  /** Ponto da página logo acima do nome do nosso personagem (onde ficam os ícones de melhoria). */
+  private aboveMe() {
+    const unit = this.avatars.get(this.room.sessionId);
+    if (!unit) return null;
+    const cam = this.cameras.main;
+    const rect = this.game.canvas.getBoundingClientRect();
+    const scale = rect.width / this.game.canvas.width;
+    const x = rect.left + (unit.body.x - cam.worldView.x) * cam.zoom * scale;
+    const y = rect.top + (unit.body.y + unit.barY - 14 - cam.worldView.y) * cam.zoom * scale;
+    return x < rect.left || x > rect.right || y < rect.top || y > rect.bottom ? null : { x, y };
   }
 
   private syncAvatar(sessionId: string, player: PlayerView) {
