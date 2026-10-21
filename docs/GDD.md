@@ -60,7 +60,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
     | Lado | Traço | Magia slot 1 | Magia slot 2 |
     |---|---|---|---|
     | **Atirador de Elite** | 🦅 Olho de Águia: +1 de alcance no básico e +20% de dano em monstros a 5 tiles ou mais | 🎯 Marca do Caçador: 0,8× e marca o alvo (+25% de dano de toda a equipe por 10 s) | 🔭 Postura do Atirador: 8 s com básico +100% e +2 de alcance, andando 50% mais devagar |
-    | **Caçador Ágil** | 🍃 Passo Leve: depois de cada magia, anda 25% mais rápido por 2 s | 🤸 Rolamento: salta 3 tiles (no toque rápido, para longe do monstro, desviando da parede se precisar; nunca no portal; sem espaço, não sai e não gasta nada) e a próxima flecha atordoa por 1 s | 🏹 Aljava Veloz: 6 s com o básico 60% mais rápido |
+    | **Caçador Ágil** | 🍃 Passo Leve: depois de cada magia, anda 25% mais rápido por 2 s | 🤸 Rolamento: salta 3 tiles (no toque rápido, para longe do monstro; nunca no portal; com parede atrás, rola para o lado; encurralado, não sai nem gasta mana) e a próxima flecha atordoa por 1 s | 🏹 Aljava Veloz: 6 s com o básico 60% mais rápido |
 
   - Maestrias: Marca do Caçador marca também quem está colado no alvo; Postura do Atirador não deixa lento; Rolamento
     salta 5 tiles e dá escudo de 15% por 3 s; Aljava Veloz soma +30% de dano no básico.
