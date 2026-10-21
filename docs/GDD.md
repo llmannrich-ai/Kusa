@@ -13,10 +13,10 @@ teclado e mouse no desktop são um extra.
 - **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
 - **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele.
-- **Mira das magias:** magia de alvo único mira arrastando a partir do botão; magia de área se conjura com um toque no botão e outro no mapa (ver "Ataques e magias").
+- **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
-- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias: alvo automático, ou modo mira das de área e clique no mapa), Tab e Esc.
+- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias no alvo automático), Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
 ## Menu inicial (estilo Zooba / Clash)
@@ -173,9 +173,7 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 - **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo e o alcance em volta dele; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
   - **Toque rápido** (sem arrastar): lança no alvo atual ou no monstro mais próximo ao alcance. Sem nenhum monstro ao alcance, não sai nem gasta mana.
   - A mira gruda (fica dourada) no monstro a até 1 tile do ponto; a magia vai nele e o acompanha durante o voo.
-- **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Disparo Perfurante, Fúria da Natureza) usam dois toques: um no botão liga o modo mira (o botão acende e o que está fora do alcance escurece) e outro no mapa conjura ali, sem confirmação.
-  - Toque fora do alcance não conjura: o alcance pisca em vermelho e o modo mira continua. Tocar de novo no botão cancela; tocar no outro slot troca.
-  - No modo mira, nenhum toque novo vira joystick (o dedo que já move continua movendo) e tocar num monstro não trava o alvo: a magia cai no tile tocado, sem acompanhar ninguém. O ponto para na primeira parede do caminho.
+- **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Disparo Perfurante, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança no alvo automático. O ponto para na primeira parede do caminho.
 - **Errou a mira:** a magia sai, aparece na tela, gasta mana e recarga, e não acerta ninguém.
 - Magias em volta de si (Giro da Lâmina, Grito de Guerra, Tempestade do Vazio, Bênção da Floresta e as compradas do mesmo tipo) saem no toque, sem mira. Paredes bloqueiam o efeito de todas. Cada uma gasta mana e tem recarga.
 

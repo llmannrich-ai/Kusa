@@ -20,20 +20,17 @@ const FULL_DRAG_PX = 96;
 /** Espaço (px do mundo) entre os pontos da linha pontilhada. */
 const DOT_GAP = 7;
 
-const COLORS = { free: 0xd7c8ff, locked: 0xf1c40f, range: 0xd7c8ff, out: 0xe74c3c };
-/** Quanto tempo (ms) o alcance pisca em vermelho após um toque fora dele. */
-const FLASH_MS = 450;
+const COLORS = { free: 0xd7c8ff, locked: 0xf1c40f, range: 0xd7c8ff };
 
 /** Posição desenhada (px do mundo) de um jogador ou monstro, que anda suave entre os tiles. */
 export type BodyAt = (id: string) => { x: number; y: number } | undefined;
 
 /**
- * Mira das magias de alvo único, desenhada no mapa enquanto o polegar segura o botão do slot:
- * linha pontilhada do herói até o ponto, o alcance em volta dele e a área da magia.
+ * Mira das magias com alvo (únicas e de área), desenhada no mapa enquanto o polegar segura o botão
+ * do slot: linha pontilhada do herói até o ponto, o alcance em volta dele e a área da magia.
  * Parado no botão, a mira mostra o alvo automático (o que o toque rápido acerta); arrastando,
  * o tamanho do arrasto vira distância até o alcance máximo. Magia de alvo único gruda no monstro
- * a até 1 tile do ponto. O servidor confere tudo de novo ao conjurar.
- * Magias de área usam o modo mira (`startPick`): só o alcance aparece, e o toque no mapa conjura.
+ * a até 1 tile do ponto; a de área cai no ponto. O servidor confere tudo de novo ao conjurar.
  */
 export class SpellAim {
   private g: Phaser.GameObjects.Graphics;
@@ -42,10 +39,6 @@ export class SpellAim {
   private drag = { x: 0, y: 0 };
   /** Já saiu da zona morta uma vez: agora é mira manual (voltar ao centro cancela). */
   private manual = false;
-  /** Modo mira de magia de área: mostra só o alcance, esperando o toque no mapa. */
-  private picking = false;
-  /** Até quando (ms, `performance.now()`) o alcance pisca após um toque fora dele. */
-  private flashUntil = 0;
 
   constructor(scene: Phaser.Scene, private room: DungeonRoom, private dungeon: Dungeon, private bodyAt: BodyAt, depth: number) {
     this.g = scene.add.graphics().setDepth(depth);
@@ -59,18 +52,6 @@ export class SpellAim {
     this.spell = spell;
     this.drag = { x: 0, y: 0 };
     this.manual = false;
-    this.picking = false;
-  }
-
-  /** Modo mira de uma magia de área: marca o alcance até o toque no mapa. */
-  startPick(spell: SpellDef) {
-    this.start(spell);
-    this.picking = true;
-  }
-
-  /** Toque fora do alcance: o alcance pisca em vermelho. */
-  flash() {
-    this.flashUntil = performance.now() + FLASH_MS;
   }
 
   move(dx: number, dy: number) {
@@ -95,7 +76,6 @@ export class SpellAim {
 
   stop() {
     this.spell = null;
-    this.picking = false;
     this.g.clear();
   }
 
@@ -109,22 +89,6 @@ export class SpellAim {
 
     // Alcance: os tiles a até `range` do herói (a distância do jogo conta a diagonal como 1).
     const reach = (spell.range * 2 + 1) * TILE_SIZE;
-    if (this.picking) {
-      // No modo mira, o que fica fora do alcance escurece (vermelho logo após um toque fora):
-      // o alcance costuma ser mais largo que a tela, então só a borda não bastaria.
-      const out = performance.now() < this.flashUntil;
-      const color = out ? COLORS.out : COLORS.range;
-      const x0 = from.x - reach / 2;
-      const y0 = from.y - reach / 2;
-      const far = 1000;
-      g.fillStyle(out ? COLORS.out : 0x000000, out ? 0.3 : 0.45);
-      g.fillRect(x0 - far, y0 - far, reach + far * 2, far);
-      g.fillRect(x0 - far, y0 + reach, reach + far * 2, far);
-      g.fillRect(x0 - far, y0, far, reach);
-      g.fillRect(x0 + reach, y0, far, reach);
-      dashedRect(g, x0, y0, reach, reach, color, 0.9);
-      return;
-    }
     g.fillStyle(COLORS.range, 0.06).fillRect(from.x - reach / 2, from.y - reach / 2, reach, reach);
     dashedRect(g, from.x - reach / 2, from.y - reach / 2, reach, reach, COLORS.range, 0.35);
 

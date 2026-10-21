@@ -246,8 +246,7 @@ export class DungeonScene extends Phaser.Scene {
 
     // Sem alvo travado, o ataque vai no monstro mais próximo ao alcance (o anel vermelho mostra qual).
     // Tocar num monstro trava o alvo; no desktop, Tab troca para o próximo e Esc destrava.
-    // Espaço segura o ataque básico; 1 e 2 conjuram no alvo automático, ou entram no modo mira
-    // das magias de área (aí o clique no mapa conjura).
+    // Espaço segura o ataque básico; 1 e 2 conjuram no alvo automático.
     const kb = this.input.keyboard;
     kb?.addCapture("TAB,SPACE");
     kb?.on("keydown-TAB", () => this.cycleTarget());
@@ -259,18 +258,11 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
     kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      // Modo mira de magia de área: o toque é o ponto dela (mesmo em cima de um monstro).
-      if (this.spellBar.isPicking) {
-        this.spellBar.pickAt(Math.floor(pointer.worldX / TILE_SIZE), Math.floor(pointer.worldY / TILE_SIZE));
-        return;
-      }
       const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
       if (id) this.room.send(MSG.target, { id });
     });
 
-    // No modo mira, nenhum toque novo vira joystick (o dedo que já move continua movendo).
     this.move = new MoveInput(this, this.game.canvas, (clientX, clientY) => {
-      if (this.spellBar.ownsTouch) return true;
       const rect = this.game.canvas.getBoundingClientRect();
       const scale = this.game.canvas.width / rect.width;
       const world = this.cameras.main.getWorldPoint((clientX - rect.left) * scale, (clientY - rect.top) * scale);
