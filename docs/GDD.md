@@ -178,12 +178,12 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 |---|---|---|
 | ❤️ Vigor | +12% de vida máxima | 5 |
 | 💧 Reserva arcana | +15% de mana máxima | 4 |
-| 💗 Regeneração | +1% de vida por segundo (base 2%) | 3 |
+| 🌿 Regeneração | +1% de vida por segundo (base 2%) | 3 |
 | 🔷 Clareza | +1,5% de mana por segundo (base 2%) | 3 |
 | ⚔️ Força | +10% de dano (básico, magias e criaturas) | 5 |
 | 👟 Agilidade | +6% de velocidade de movimento | 3 |
 | 🛡️ Escudo | +3 de armadura (soma com o equipamento) | 4 |
-| 🗡️ Fúria | ataque básico 10% mais rápido | 3 |
+| ⚡ Fúria | ataque básico 10% mais rápido | 3 |
 | ⏳ Foco | recarga das magias 10% menor | 3 |
 | 🩸 Sede de sangue | cura 4% do dano que o herói causa | 3 |
 
