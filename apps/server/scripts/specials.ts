@@ -51,7 +51,16 @@ console.log("regras das habilidades especiais OK");
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
-const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
+// Cerca de 1,6% dos mapas da Cripta saem sem sala lateral (sem mini-boss): troca de sala até ter um.
+let room: any;
+for (let attempt = 1; ; attempt++) {
+  room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
+  await wait(300);
+  const has = [...room.state.monsters.values()].some((m: any) => MONSTERS[m.kind as MonsterKind].rank === "miniboss");
+  if (has || attempt === 5) break;
+  console.log("mapa sem mini-boss: trocando de sala");
+  await room.leave();
+}
 
 let strike: MonsterStrikeMessage | null = null;
 const specialHits: DamageMessage[] = [];
