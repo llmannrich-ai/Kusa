@@ -4,6 +4,11 @@ O servidor de jogo grava uma linha por jogador por hunt em `public.telemetry_run
 de convidados. Nada vem do navegador: tudo é medido no servidor (`apps/server/src/telemetry.ts`).
 Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou pela ferramenta de SQL.
 
+Os jogadores veem um resumo em **Configurações > Telemetria** (`apps/client/src/telemetry.ts`). Ele vem da função
+`telemetry_dashboard(p_map, p_days)` (`security definer`, só para logados), que devolve apenas agregados, sem nome,
+id ou seed de ninguém, mais o resumo das hunts de quem consulta. A tabela e as views continuam fechadas.
+Campo novo que deva aparecer para os jogadores entra nessa função e no `Dashboard` do cliente.
+
 ## O que é medido
 
 | Coluna / campo | Para que serve |
