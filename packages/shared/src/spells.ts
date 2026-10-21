@@ -1,6 +1,7 @@
 import type { ClassId } from "./classes.ts";
 import { blocksSight, hasLineOfSight, tileDistance, type Dungeon } from "./dungeon.ts";
 import type { DotKind } from "./monsters.ts";
+import type { Element } from "./traits.ts";
 import { SUMMONS, type SummonKind } from "./summons.ts";
 
 /**
@@ -46,7 +47,9 @@ export type SpellId =
   // Especializações (lados no fim de um ramo do Grimório).
   | "hunter_mark" | "sniper_stance" | "evasive_roll" | "swift_quiver"
   | "holy_spear" | "divine_caldera" | "light_shield" | "consecrated_ground"
-  | "lightning_arrow" | "barrage" | "bear_trap" | "arrow_cordon";
+  | "lightning_arrow" | "barrage" | "bear_trap" | "arrow_cordon"
+  | "energy_beam" | "sky_fury" | "fireball" | "infernal_core" | "cone_of_cold" | "ice_prison"
+  | "misty_step" | "magic_wall" | "sudden_death" | "raise_skeletons" | "eldritch_blast" | "black_tentacles";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -83,10 +86,25 @@ export interface SpellDef {
    * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
    * - `trap`: armadilha invisível para os monstros; o primeiro que pisar dispara os efeitos da magia
    *   (raízes, dano contínuo) no raio dela, e a armadilha some;
-   * - `turret`: estaca que, a cada `tickMs`, atira (`damage` ×) no monstro mais perto a até `reach` tiles, `shots` vezes.
+   * - `turret`: estaca que, a cada `tickMs`, atira (`damage` ×) no monstro mais perto a até `reach` tiles, `shots` vezes;
+   * - `wall` (Muralha Mágica): tiles que ninguém atravessa (heróis, monstros e criaturas) até o fim do tempo; a
+   *   magia, as flechas e a visão passam por cima.
    * Conjurar de novo troca o campo anterior da mesma magia.
    */
-  field?: { kind: "zone" | "trap" | "turret"; ms: number; tickMs?: number; damage?: number; allyArmor?: number; reach?: number; shots?: number };
+  field?: {
+    kind: "zone" | "trap" | "turret" | "wall";
+    ms: number; tickMs?: number; damage?: number; allyArmor?: number; reach?: number; shots?: number;
+    /** Zona: prende os monstros dentro a cada pulso por este tempo (Tentáculos Negros). */
+    rootMs?: number;
+    /** Parede: quantos tiles, de lado para a direção do herói até o ponto mirado. */
+    length?: number;
+    /** Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus), em vez da estaca. */
+    look?: "storm";
+  };
+  /** Elemento (só do Feiticeiro): Estática vale para energia. */
+  element?: Element;
+  /** Empurra o monstro atingido `push` tiles para longe de quem conjura (para em parede, água ou alguém). */
+  push?: number;
   /** Dano +`undeadBonus` (fração) em mortos-vivos. */
   undeadBonus?: number;
   /** Multiplicador do dano base nos monstros da área. */
@@ -122,8 +140,11 @@ export interface SpellDef {
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
    */
   selfBuff?: { ms: number; basicDamage?: number; attackRange?: number; moveSpeed?: number; attackHaste?: number };
-  /** Quem conjura salta até `tiles` tiles na direção mirada (no toque rápido, para longe do alvo), parando em parede ou monstro. */
-  dash?: { tiles: number };
+  /**
+   * Quem conjura salta até `tiles` tiles na direção mirada (no toque rápido, para longe do alvo), parando em parede ou
+   * monstro. `teleport`: some e aparece no ponto mirado (passa por cima de monstros; precisa ver o ponto e ele estar livre).
+   */
+  dash?: { tiles: number; teleport?: boolean };
   /** O próximo ataque básico de quem conjura atordoa o alvo por este tempo. */
   nextBasicStunMs?: number;
   /** Quem conjura recebe só (1 - guard) do dano por `guardMs`. */
@@ -322,55 +343,126 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     field: { kind: "turret", ms: 12000, tickMs: 900, damage: 1, reach: 3, shots: 4 },
   }),
 
+  // --- Feiticeiro: especializações. -----------------------------------------------
+  // Tempestuoso (ramo Raio).
+  energy_beam: spell({
+    id: "energy_beam", classId: "sorcerer", slot: 0, name: "Feixe de Energia", icon: "📏", color: 0x9ec5ff, element: "energy",
+    description: "Um feixe que atravessa todos os monstros em linha reta à sua frente.",
+    manaCost: 32, cooldownMs: 5000, aim: "target", range: 6, radius: 0, shape: "line", damage: 2,
+  }),
+  sky_fury: spell({
+    id: "sky_fury", classId: "sorcerer", slot: 1, name: "Fúria dos Céus", icon: "⛈️", color: 0x9ec5ff, element: "energy",
+    description: "Uma nuvem negra sobre você solta raios nos monstros por perto por alguns segundos.",
+    manaCost: 70, cooldownMs: 16000, aim: "self", range: 0, radius: 0,
+    field: { kind: "turret", ms: 3500, tickMs: 500, damage: 1.3, reach: 4, shots: 6, look: "storm" },
+  }),
+  // Piromante (ramo Raio).
+  fireball: spell({
+    id: "fireball", classId: "sorcerer", slot: 0, name: "Bola de Fogo", icon: "🔥", color: 0xff7f27, element: "fire",
+    description: "Explode no alvo e em volta dele, e deixa os atingidos queimando.",
+    manaCost: 34, cooldownMs: 5000, aim: "target", range: 6, radius: 2, damage: 1.6, projectileSpeed: 11,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  infernal_core: spell({
+    id: "infernal_core", classId: "sorcerer", slot: 1, name: "Núcleo Infernal", icon: "🌋", color: 0xe74c3c, element: "fire",
+    description: "Um inferno explode em volta de você: o maior dano em área do jogo, com recarga longa.",
+    manaCost: 90, cooldownMs: 20000, aim: "self", range: 0, radius: 4, damage: 3,
+  }),
+  // Criomante (ramo Gelo).
+  cone_of_cold: spell({
+    id: "cone_of_cold", classId: "sorcerer", slot: 0, name: "Cone de Frio", icon: "🌬️", color: 0x7fd8ff, element: "ice",
+    description: "Um sopro gelado em leque à sua frente: fere e deixa os monstros lentos.",
+    manaCost: 32, cooldownMs: 6000, aim: "target", range: 4, radius: 0, shape: "cone", damage: 1.7, slow: { pct: 0.5, ms: 3000 },
+  }),
+  ice_prison: spell({
+    id: "ice_prison", classId: "sorcerer", slot: 1, name: "Prisão de Gelo", icon: "🧊", color: 0xd6f1ff, element: "ice",
+    description: "Congela no lugar todos os monstros em volta do alvo, sem dano (prepara o Estilhaçar).",
+    manaCost: 50, cooldownMs: 15000, aim: "target", range: 6, radius: 3, rootMs: 4000,
+  }),
+  // Arcanista (ramo Gelo).
+  misty_step: spell({
+    id: "misty_step", classId: "sorcerer", slot: 0, name: "Passo Nebuloso", icon: "💨", color: 0xc7b8ff,
+    description: "Some numa névoa e aparece no ponto mirado (no toque rápido, longe do monstro mais perto).",
+    manaCost: 20, cooldownMs: 8000, aim: "target", range: 4, radius: 0, dash: { tiles: 4, teleport: true },
+  }),
+  magic_wall: spell({
+    id: "magic_wall", classId: "sorcerer", slot: 1, name: "Muralha Mágica", icon: "🧱", color: 0x8e7cc3,
+    description: "Ergue uma parede de energia de 3 tiles que nada atravessa por alguns segundos.",
+    manaCost: 45, cooldownMs: 18000, aim: "target", range: 5, radius: 0, field: { kind: "wall", ms: 6000, length: 3 },
+  }),
+  // Necromante (ramo Trevas).
+  sudden_death: spell({
+    id: "sudden_death", classId: "sorcerer", slot: 0, name: "Morte Súbita", icon: "☠️", color: 0x2d0a40, element: "dark",
+    description: "Um golpe de morte num único alvo: o maior dano de alvo único do Feiticeiro.",
+    manaCost: 40, cooldownMs: 8000, aim: "target", range: 5, radius: 0, damage: 3.4, projectileSpeed: 14,
+  }),
+  raise_skeletons: spell({
+    id: "raise_skeletons", classId: "sorcerer", slot: 1, name: "Erguer Esqueletos", icon: "🦴", color: 0xdcdde1, element: "dark",
+    description: "Ergue dois esqueletos que lutam por você por alguns segundos.",
+    manaCost: 60, cooldownMs: 22000, aim: "self", range: 0, radius: 0, summon: { kind: "skeleton", count: 2, durationMs: 15000 },
+  }),
+  // Bruxo (ramo Trevas).
+  eldritch_blast: spell({
+    id: "eldritch_blast", classId: "sorcerer", slot: 0, name: "Rajada Mística", icon: "🟣", color: 0xb04ae0, element: "dark",
+    description: "Um raio arcano que fere o alvo e o empurra para longe de você.",
+    manaCost: 26, cooldownMs: 4500, aim: "target", range: 6, radius: 0, damage: 2.2, push: 1, projectileSpeed: 20,
+  }),
+  black_tentacles: spell({
+    id: "black_tentacles", classId: "sorcerer", slot: 1, name: "Tentáculos Negros", icon: "🐙", color: 0x9b59b6, element: "dark",
+    description: "Tentáculos brotam do chão: prendem e ferem os monstros na área por alguns segundos.",
+    manaCost: 60, cooldownMs: 16000, aim: "target", range: 5, radius: 2,
+    field: { kind: "zone", ms: 6000, tickMs: 1000, damage: 0.4, rootMs: 1200 },
+  }),
+
   // --- Feiticeiro: dano em área, frágil. ----------------------------------------
   shadow_orb: spell({
-    id: "shadow_orb", classId: "sorcerer", slot: 0, name: "Esfera Sombria", icon: "🔮", color: 0x6b2a9a,
+    id: "shadow_orb", classId: "sorcerer", slot: 0, name: "Esfera Sombria", icon: "🔮", color: 0x6b2a9a, element: "dark",
     description: "Uma esfera de trevas que explode no alvo e atinge quem estiver colado nele.",
     manaCost: 30, cooldownMs: 4000, aim: "target", range: 5, radius: 1, damage: 1.9, projectileSpeed: 8,
   }),
   void_storm: spell({
-    id: "void_storm", classId: "sorcerer", slot: 1, name: "Tempestade do Vazio", icon: "🌑", color: 0x2d0a40,
+    id: "void_storm", classId: "sorcerer", slot: 1, name: "Tempestade do Vazio", icon: "🌑", color: 0x2d0a40, element: "dark",
     description: "Uma onda de vazio rasga todos os monstros em volta de você.",
     manaCost: 70, cooldownMs: 12000, aim: "self", range: 0, radius: 3, damage: 2.3,
   }),
   lightning_bolt: spell({
-    id: "lightning_bolt", classId: "sorcerer", slot: 0, name: "Relâmpago", icon: "⚡", color: 0x9ec5ff,
+    id: "lightning_bolt", classId: "sorcerer", slot: 0, name: "Relâmpago", icon: "⚡", color: 0x9ec5ff, element: "energy",
     description: "Um raio rápido que causa dano altíssimo num único alvo.",
     manaCost: 35, cooldownMs: 4500, aim: "target", range: 6, radius: 0, damage: 2.9, projectileSpeed: 30,
   }),
   chain_lightning: spell({
-    id: "chain_lightning", classId: "sorcerer", slot: 0, name: "Raio em Cadeia", icon: "🌩️", color: 0x9ec5ff,
+    id: "chain_lightning", classId: "sorcerer", slot: 0, name: "Raio em Cadeia", icon: "🌩️", color: 0x9ec5ff, element: "energy",
     description: "O raio acerta o alvo e salta de monstro em monstro, perdendo um pouco de força a cada salto.",
     manaCost: 32, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 1.6, projectileSpeed: 30,
     chain: { jumps: 3, range: 3, falloff: 0.15 },
   }),
   ice_lance: spell({
-    id: "ice_lance", classId: "sorcerer", slot: 0, name: "Lança de Gelo", icon: "🧊", color: 0x7fd8ff,
+    id: "ice_lance", classId: "sorcerer", slot: 0, name: "Lança de Gelo", icon: "🧊", color: 0x7fd8ff, element: "ice",
     description: "Uma lança de gelo que fere e congela o alvo no lugar.",
     manaCost: 28, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 2, rootMs: 2000, projectileSpeed: 18,
   }),
   drain_life: spell({
-    id: "drain_life", classId: "sorcerer", slot: 0, name: "Drenar Vida", icon: "🦇", color: 0x8e44ad,
+    id: "drain_life", classId: "sorcerer", slot: 0, name: "Drenar Vida", icon: "🦇", color: 0x8e44ad, element: "dark",
     description: "Suga a força vital do alvo e devolve boa parte do dano como vida.",
     manaCost: 30, cooldownMs: 6000, aim: "target", range: 5, radius: 0, damage: 1.8, lifesteal: 0.6, projectileSpeed: 12,
   }),
   frost_nova: spell({
-    id: "frost_nova", classId: "sorcerer", slot: 1, name: "Nova de Gelo", icon: "❄️", color: 0x7fd8ff,
+    id: "frost_nova", classId: "sorcerer", slot: 1, name: "Nova de Gelo", icon: "❄️", color: 0x7fd8ff, element: "ice",
     description: "Uma explosão de gelo ao seu redor: fere e congela os monstros.",
     manaCost: 55, cooldownMs: 11000, aim: "self", range: 0, radius: 2, damage: 1.6, rootMs: 2500,
   }),
   meteor: spell({
-    id: "meteor", classId: "sorcerer", slot: 1, name: "Meteoro", icon: "☄️", color: 0xe74c3c,
+    id: "meteor", classId: "sorcerer", slot: 1, name: "Meteoro", icon: "☄️", color: 0xe74c3c, element: "fire",
     description: "Uma rocha em chamas cai devagar sobre o alvo e esmaga tudo ao redor.",
     manaCost: 80, cooldownMs: 15000, aim: "target", range: 6, radius: 2, damage: 3, stunMs: 1000, projectileSpeed: 7,
   }),
   blizzard: spell({
-    id: "blizzard", classId: "sorcerer", slot: 1, name: "Nevasca", icon: "🌨️", color: 0xd6f1ff,
+    id: "blizzard", classId: "sorcerer", slot: 1, name: "Nevasca", icon: "🌨️", color: 0xd6f1ff, element: "ice",
     description: "Uma tempestade de neve cobre uma área grande: fere e deixa os monstros bem lentos.",
     manaCost: 70, cooldownMs: 14000, aim: "target", range: 6, radius: 3, damage: 1.4, slow: { pct: 0.5, ms: 4000 },
   }),
   dark_pact: spell({
-    id: "dark_pact", classId: "sorcerer", slot: 1, name: "Pacto Sombrio", icon: "🩻", color: 0x5a1c7a,
+    id: "dark_pact", classId: "sorcerer", slot: 1, name: "Pacto Sombrio", icon: "🩻", color: 0x5a1c7a, element: "dark",
     description: "Sombras famintas devoram os monstros ao redor e devolvem parte do dano como vida.",
     manaCost: 60, cooldownMs: 12000, aim: "self", range: 0, radius: 2, damage: 2, lifesteal: 0.3,
   }),
@@ -511,6 +603,18 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   lightning_arrow: { text: "Salta 5 vezes.", changes: { chain: { jumps: 5, range: 3, falloff: 0.2 } } },
   barrage: { text: "As flechas fazem sangrar.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "bleed" } } },
   bear_trap: { text: "A armadilha prende também quem estiver colado no monstro.", changes: { radius: 1 } },
+  energy_beam: { text: "O feixe atordoa os atingidos por 0,5 s.", changes: { stunMs: 500 } },
+  sky_fury: { text: "A nuvem solta 10 raios.", changes: { field: { kind: "turret", ms: 5000, tickMs: 500, damage: 1.3, reach: 4, shots: 10, look: "storm" } } },
+  fireball: { text: "A explosão cobre raio 3.", changes: { radius: 3 } },
+  infernal_core: { text: "O inferno deixa os atingidos queimando.", changes: { dot: { perSec: 0.4, ms: 4000, kind: "burn" } } },
+  cone_of_cold: { text: "O frio congela os atingidos por 1,5 s.", changes: { rootMs: 1500 } },
+  ice_prison: { text: "O gelo também fere (1×).", changes: { damage: 1 } },
+  misty_step: { text: "Ao reaparecer, ganha um escudo de 20% da vida por 3 s.", changes: { barrier: 0.2, barrierMs: 3000 } },
+  magic_wall: { text: "A parede tem 5 tiles.", changes: { field: { kind: "wall", ms: 6000, length: 5 } } },
+  sudden_death: { text: "Dano dobrado em quem tem menos de 30% da vida.", changes: { execute: { hpPct: 0.3, bonus: 1 } } },
+  raise_skeletons: { text: "Ergue 3 esqueletos.", changes: { summon: { kind: "skeleton", count: 3, durationMs: 15000 } } },
+  eldritch_blast: { text: "Empurra 2 tiles.", changes: { push: 2 } },
+  black_tentacles: { text: "Os tentáculos cobrem raio 3.", changes: { radius: 3 } },
   arrow_cordon: { text: "A estaca atira 7 vezes.", changes: { field: { kind: "turret", ms: 12000, tickMs: 900, damage: 1, reach: 3, shots: 7 } } },
 };
 
@@ -572,8 +676,14 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
     facts.push(`Campo de raio ${s.radius} por ${sec(s.field.ms)}: ${num(s.field.damage ?? 0)}× por segundo nos monstros${s.field.allyArmor ? `, +${s.field.allyArmor} de armadura nos aliados` : ""}`);
   }
   if (s.field?.kind === "trap") facts.push(`Armadilha por ${sec(s.field.ms)}: dispara no primeiro monstro que pisar${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
-  if (s.field?.kind === "turret") facts.push(`Estaca por ${sec(s.field.ms)}: ${s.field.shots} tiros de ${num(s.field.damage ?? 0)}× a até ${s.field.reach} tiles`);
-  if (s.dash) facts.push(`Salta até ${s.dash.tiles} tiles`);
+  if (s.field?.kind === "turret") {
+    const what = s.field.look === "storm" ? "Nuvem" : "Estaca";
+    facts.push(`${what} por ${sec(s.field.ms)}: ${s.field.shots} ${s.field.look === "storm" ? "raios" : "tiros"} de ${num(s.field.damage ?? 0)}× a até ${s.field.reach} tiles`);
+  }
+  if (s.field?.kind === "wall") facts.push(`Parede de ${s.field.length} tiles por ${sec(s.field.ms)}`);
+  if (s.field?.kind === "zone" && s.field.rootMs) facts.push(`Prende quem está dentro (${sec(s.field.rootMs)} a cada pulso)`);
+  if (s.push) facts.push(`Empurra o alvo ${s.push} ${s.push > 1 ? "tiles" : "tile"}`);
+  if (s.dash) facts.push(s.dash.teleport ? `Teleporta até ${s.dash.tiles} tiles` : `Salta até ${s.dash.tiles} tiles`);
   if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
   if (s.selfBuff) {
     const b = s.selfBuff;

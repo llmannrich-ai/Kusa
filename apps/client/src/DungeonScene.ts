@@ -468,6 +468,19 @@ export class DungeonScene extends Phaser.Scene {
         }
       }
       this.tweens.add({ targets: g, alpha: { from: 1, to: 0.55 }, duration: field.style === "fire" ? 180 : 700, yoyo: true, repeat: -1 });
+    } else if (field.kind === "wall") {
+      // Muralha Mágica: um bloco de energia roxa, com brilho pulsando.
+      g.fillStyle(color, 0.55).fillRect(-half + 1, -half - 6, TILE_SIZE - 2, TILE_SIZE + 4);
+      g.lineStyle(2, 0xd7c8ff, 0.9).strokeRect(-half + 1, -half - 6, TILE_SIZE - 2, TILE_SIZE + 4);
+      g.fillStyle(0xffffff, 0.35).fillRect(-half + 4, -half - 3, TILE_SIZE - 8, 3);
+      this.tweens.add({ targets: g, alpha: { from: 1, to: 0.7 }, duration: 400, yoyo: true, repeat: -1 });
+    } else if (field.style === "storm") {
+      // Fúria dos Céus: nuvem escura sobre o feiticeiro e o alcance dos raios tracejado.
+      const reach = (field.radius + 0.5) * TILE_SIZE;
+      g.lineStyle(1, color, 0.4).strokeCircle(0, 0, reach);
+      for (const [cx, cy, r] of [[-10, -40, 12], [6, -44, 14], [18, -38, 10], [-2, -34, 11]]) g.fillStyle(0x2c3e50, 0.85).fillCircle(cx, cy, r);
+      g.fillStyle(0x9ec5ff, 0.5).fillCircle(4, -36, 6);
+      this.tweens.add({ targets: g, alpha: { from: 1, to: 0.75 }, duration: 300, yoyo: true, repeat: -1 });
     } else if (field.kind === "trap") {
       // Mandíbulas abertas: arco de dentes de ferro.
       g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);

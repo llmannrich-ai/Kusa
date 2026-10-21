@@ -149,6 +149,39 @@ export class CombatFx {
         return this.sparks(to, 0xbdc3c7, from.x === to.x && from.y === to.y ? 12 : 4);
       case "arrow_cordon":
         return from.x === to.x && from.y === to.y ? undefined : this.projectile(FX.arrow, from, to, ms, { trail: 0xc8a165, glow: 0xc8a165 });
+      // Especializações do Feiticeiro.
+      case "energy_beam": return this.zap(from, to, 0x9ec5ff);
+      // Os raios da nuvem chegam como eco, de cima para o monstro; o lançamento só faz a nuvem (campo).
+      case "sky_fury":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE, 0x9ec5ff, 400, 3);
+        this.beam(to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 8);
+      case "fireball":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xff7f27, glow: 0xe74c3c, impact: 0xf1c40f, scale: 1.3 });
+        return this.later(ms, () => { this.ring(to, radius, 0xff7f27, 450, 7); this.sparks(to, 0xf1c40f, 12); });
+      case "infernal_core":
+        this.ring(from, radius, 0xe74c3c, 650, 9);
+        this.later(100, () => this.ring(from, radius * 0.7, 0xff7f27, 500, 6));
+        return this.debris(from, radius, 0x5a2a1a);
+      case "cone_of_cold": return this.sparks(from, 0xd6f1ff, 10);
+      case "ice_prison":
+        this.snow(to, radius);
+        return this.ring(to, radius, 0xd6f1ff, 500, 5);
+      // O feiticeiro já está no destino (to): névoa onde estava e onde aparece.
+      case "misty_step":
+        for (const at of [from, to]) for (let i = 0; i < 5; i++) this.puff(at.x + Phaser.Math.Between(-10, 10), at.y + Phaser.Math.Between(-8, 8), 0xc7b8ff, 6);
+        return;
+      case "magic_wall": return this.ring(to, TILE_SIZE, 0x8e7cc3, 400, 4);
+      case "sudden_death":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0x2d0a40, glow: 0x000000, impact: 0x8e44ad, scale: 1.1 });
+        return this.later(ms, () => this.drain(to, to, 0x5a1c7a));
+      case "raise_skeletons":
+        this.ring(from, TILE_SIZE * 1.5, 0xdcdde1, 550, 3);
+        return this.debris(from, TILE_SIZE, 0xdcdde1);
+      case "eldritch_blast":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0xb04ae0, glow: 0x6b2a9a, impact: 0xe0b0ff, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xb04ae0, 8));
+      case "black_tentacles": return this.ring(to, radius, 0x9b59b6, 500, 5);
       // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
       case "spirit_wolf":
       case "healing_moth":
@@ -206,6 +239,23 @@ export class CombatFx {
         this.sparks(b, color, 6);
       });
     }
+  }
+
+  /** Raio reto e tremido de `from` a `to` (Feixe de Energia). */
+  private zap(from: Point, to: Point, color: number) {
+    const g = this.scene.add.graphics().setDepth(FX_DEPTH);
+    const steps = Math.max(3, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / 16));
+    const line = (width: number, tint: number, alpha: number) => {
+      g.lineStyle(width, tint, alpha).beginPath().moveTo(from.x, from.y);
+      for (let k = 1; k < steps; k++) {
+        const t = k / steps;
+        g.lineTo(from.x + (to.x - from.x) * t + Phaser.Math.Between(-3, 3), from.y + (to.y - from.y) * t + Phaser.Math.Between(-3, 3));
+      }
+      g.lineTo(to.x, to.y).strokePath();
+    };
+    line(6, color, 0.45);
+    line(2, 0xffffff, 0.95);
+    this.scene.tweens.add({ targets: g, alpha: { from: 1, to: 0 }, duration: 300, onComplete: () => g.destroy() });
   }
 
   /** Brilho de cura subindo de um aliado (Bênção da Floresta). */
