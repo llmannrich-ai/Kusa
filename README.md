@@ -49,7 +49,7 @@ npm test -- bag maps # só alguns
 ```
 
 `npm test` (`apps/server/scripts/all.ts`) roda os scripts abaixo em modo convidado (sem Supabase). Os bots caçam no
-nível 1 e às vezes morrem por azar: só nesse caso o teste roda de novo (até 3 vezes). Cada script também roda sozinho
+nível 1 e às vezes morrem por azar: só nesse caso o teste roda de novo (até 5 vezes). Cada script também roda sozinho
 contra um servidor já aberto, passando a URL:
 
 - `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.

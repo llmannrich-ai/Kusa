@@ -144,6 +144,8 @@ function walkToward(to: { x: number; y: number }, range: number) {
   if (tileDistance(p.x, p.y, to.x, to.y) <= range) return;
   const blocked = new Set<number>();
   room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
+  // O portal de fuga encerra a hunt: só pisa nele quando é o destino.
+  if (to.x !== dungeon.portal.x || to.y !== dungeon.portal.y) blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
   const step = nextStep(dungeon, p, to, range, (x, y) => blocked.has(y * dungeon.width + x));
   if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
 }

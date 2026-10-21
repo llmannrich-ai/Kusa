@@ -7,7 +7,8 @@
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio.
  *
  * Os bots caçam no nível 1 e às vezes morrem por azar. Só nesse caso (a hunt terminou com "died")
- * o teste roda de novo, até 3 vezes; qualquer outra falha conta na hora.
+ * o teste roda de novo, até 5 vezes (o bot de nível 1 morre em cerca de
+ * metade das hunts); qualquer outra falha conta na hora.
  * Uso: npm test  (ou npx tsx apps/server/scripts/all.ts [nome...] para rodar só alguns)
  */
 import { spawn, type ChildProcess } from "node:child_process";
@@ -16,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const serverDir = join(here, "..");
-const ATTEMPTS = 3;
+const ATTEMPTS = 5;
 
 interface Suite { port: number; env: Record<string, string>; tests: string[] }
 const SUITES: Suite[] = [
