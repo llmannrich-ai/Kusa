@@ -21,6 +21,7 @@ import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
+import { createSoloHunt } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import "./style.css";
 
@@ -126,6 +127,9 @@ function setEntering(on: boolean) {
   const create = $<HTMLButtonElement>("create");
   create.textContent = on ? "Conectando… (o servidor pode levar 1 min para acordar)" : `Criar sala · ${MAPS[createMapId()].name}`;
   create.disabled = on;
+  const solo = $<HTMLButtonElement>("solo");
+  solo.textContent = `Jogar sozinho · ${MAPS[createMapId()].name}`;
+  solo.disabled = on;
   $<HTMLButtonElement>("rooms-back").disabled = on;
   document.querySelectorAll<HTMLButtonElement>("#room-list button").forEach((b) => { b.disabled = on; });
 }
@@ -260,6 +264,12 @@ $("rooms-back").onclick = () => {
   show("menu", true);
 };
 $("create").onclick = () => enter(async () => createHunt(await joinOptions()));
+// Solo roda no aparelho, sem sala de espera: a hunt começa na hora.
+$("solo").onclick = () => enter(async () => {
+  const room = await createSoloHunt(account?.username ?? "Aventureiro", hub.classId, createMapId());
+  window.setTimeout(() => room.send(MSG.start));
+  return room;
+});
 $("back").onclick = () => location.reload();
 
 // --- Sala ---------------------------------------------------------------
@@ -388,6 +398,7 @@ function showResult(msg: RunEndedMessage) {
       + ` (com o cofre cheio, o resto fica na bag).`;
   }
   if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${ITEMS[msg.lost]?.name ?? msg.lost}.`;
+  if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
   show("result", true);
 }
 

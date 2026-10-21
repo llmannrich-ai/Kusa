@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@colyseus/schema": "^5.0.42",
     "@colyseus/sdk": "^0.18.5",
     "@supabase/supabase-js": "^2.118.0",
     "phaser": "^4.2.1",

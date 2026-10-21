@@ -164,6 +164,8 @@ export interface RunEndedMessage {
   bag: string[];
   /** Equipamento sorteado que ficou no chão na morte. */
   lost?: string;
+  /** Aviso extra na tela de resultado (hunt solo: limite de recompensa ou falha ao salvar). */
+  note?: string;
 }
 
 export type MatchPhase = "lobby" | "running" | "ended";

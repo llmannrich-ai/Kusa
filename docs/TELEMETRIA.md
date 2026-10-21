@@ -1,7 +1,9 @@
 # Telemetria de jogabilidade
 
 O servidor de jogo grava uma linha por jogador por hunt em `public.telemetry_runs` (Supabase), inclusive
-de convidados. Nada vem do navegador: tudo é medido no servidor (`apps/server/src/telemetry.ts`).
+de convidados. Nas hunts em equipe tudo é medido no servidor (`apps/server/src/telemetry.ts`). A exceção são as hunts
+solo (`solo = true`, `build = 'solo'`): a simulação roda no navegador e a linha chega pelo `finish_solo_run`, com
+números do aparelho do jogador. **Separe ou descarte `solo` ao balancear** se houver suspeita de adulteração.
 Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou pela ferramenta de SQL.
 
 Os jogadores veem um resumo em **Configurações > Telemetria** (`apps/client/src/telemetry.ts`). Ele vem da função
@@ -16,6 +18,7 @@ Campo novo que deva aparecer para os jogadores entra nessa função e no `Dashbo
 | `class_id`, `party_size`, `outcome`, `level`, `duration_s`, `loot` | Resultado da hunt |
 | `map_id` | Mapa da hunt (`crypt`, `swamp`). **Compare também por mapa**: as dificuldades são diferentes. `telemetry_classes`, `telemetry_deaths`, `telemetry_levels` e `telemetry_economy` têm a coluna `map_id` |
 | `build` | Commit do servidor (`RENDER_GIT_COMMIT`). **Sempre compare por build**: é o antes e o depois de cada ajuste |
+| `solo` | Hunt solo, simulada no aparelho do jogador (`build` = `solo`) |
 | `max_depth` / `path_rooms` | Até onde a equipe chegou (-1 = não saiu da sala inicial; `path_rooms` = sala do boss) |
 | `killed_by`, `stats.death` | Monstro, profundidade, posição e segundo da morte |
 | `abandoned` | Fechou o jogo ou caiu no meio (conta como morte, mas não é dificuldade) |
