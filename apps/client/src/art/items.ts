@@ -370,3 +370,12 @@ export function itemIcon(itemId: string) {
   if (item) paintGrid(ctx, ICONS[item.slot][item.tier], { ...BASE, ...MATERIALS[item.tier] }, 0, 0);
   return canvas;
 }
+
+/** Contorno apagado do slot vazio (como no Tibia): o ícone de ferro do slot numa cor só, quase sumindo no fundo. */
+const GHOST: Palette = { o: "#3a3029", m: "#2a221d", M: "#2a221d", a: "#2a221d", w: "#2a221d", W: "#2a221d", i: "#2a221d" };
+
+export function slotGhost(slot: ItemSlot) {
+  const { canvas, ctx } = makeCanvas(ITEM_ICON_SIZE, ITEM_ICON_SIZE);
+  paintGrid(ctx, ICONS[slot][3], GHOST, 0, 0);
+  return canvas;
+}

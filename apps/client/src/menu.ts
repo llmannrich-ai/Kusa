@@ -28,10 +28,11 @@ import {
   chosenSide,
   type ClassId,
   type ItemDef,
+  type ItemSlot,
   type TalentDef,
 } from "@kusa/shared";
 import { heroPoses } from "./art/heroes.ts";
-import { itemIcon } from "./art/items.ts";
+import { itemIcon, slotGhost } from "./art/items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
 import {
   ProfileError,
@@ -83,6 +84,23 @@ function itemImg(itemId: string) {
   img.alt = ITEMS[itemId]?.name ?? "";
   return img;
 }
+
+function ghostImg(slot: ItemSlot) {
+  const key = `ghost:${slot}`;
+  if (!iconCache.has(key)) iconCache.set(key, slotGhost(slot).toDataURL());
+  const img = el("img", "item-img");
+  img.src = iconCache.get(key)!;
+  img.alt = "";
+  return img;
+}
+
+/** Silhueta do corpo atrás dos slots do equipamento (viewBox no mesmo formato do `.loadout`). */
+const BODY_SVG = `<svg class="loadout-body" viewBox="0 0 100 110" aria-hidden="true">
+  <circle cx="50" cy="14" r="10"/>
+  <path d="M44 24h12v6H44z"/>
+  <path d="M30 32q20-6 40 0l3 4 13 22-7 4-11-17-1 22H33l-1-22-11 17-7-4 13-22z"/>
+  <path d="M33 67h34l-3 40h-9l-5-28-5 28h-9z"/>
+</svg>`;
 
 /** Retrato da classe vestindo `outfit`: quadro parado, de frente. */
 function portrait(classId: ClassId, outfit: Outfit = NO_OUTFIT) {
@@ -474,19 +492,27 @@ export class Hub {
     page.append(el("p", "muted hub-hint",
       "O equipamento e a bag entram com você na hunt. Quem foge volta vestido e esvazia a bag no cofre; quem morre perde os dois."));
 
+    // Boneco como no Tibia: cada slot fica no lugar do corpo (cabeça, peito e as duas mãos).
     const loadout = el("div", "loadout");
+    loadout.innerHTML = BODY_SVG;
     for (const slot of ITEM_SLOTS) {
       const owned = this.profile.items.find((i) => i.equipped && ITEMS[i.itemId]?.slot === slot);
+      const wrap = el("div", `loadout-cell at-${slot}`);
       const cell = el("button", "loadout-slot");
       if (owned) {
-        cell.append(itemImg(owned.itemId), el("small", "", ITEMS[owned.itemId].name));
+        cell.append(itemImg(owned.itemId));
         cell.style.borderColor = hex(TIER_COLORS[ITEMS[owned.itemId].tier]);
+        cell.setAttribute("aria-label", `${SLOT_NAMES[slot]}: ${ITEMS[owned.itemId].name}`);
         cell.onclick = () => this.openItemSheet(owned);
+        wrap.append(cell, el("small", "", ITEMS[owned.itemId].name));
       } else {
-        cell.append(el("span", "slot-empty", "＋"), el("small", "muted", SLOT_NAMES[slot]));
+        cell.append(ghostImg(slot));
+        cell.classList.add("vacant");
+        cell.setAttribute("aria-label", `${SLOT_NAMES[slot]} (vazio)`);
         cell.onclick = () => this.toast(`Toque num item do cofre para equipar ${SLOT_NAMES[slot].toLowerCase()}.`);
+        wrap.append(cell, el("small", "muted", SLOT_NAMES[slot]));
       }
-      loadout.append(cell);
+      loadout.append(wrap);
     }
     const doll = el("div", "doll");
     doll.append(outfitPreview(this.classId, this.loadout()), el("small", "muted", `${CLASSES[this.classId].name} na próxima hunt`));

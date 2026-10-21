@@ -684,23 +684,40 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 
 /* Itens */
 .item-img { width: 32px; height: 32px; flex: none; image-rendering: pixelated; }
-.loadout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* Boneco do equipamento (estilo Tibia): silhueta do corpo e cada slot no seu lugar. */
+.loadout {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 100 / 110;
+  margin: 0 auto;
+  background: radial-gradient(ellipse at 50% 40%, #2a211b, #120e0b 75%);
+  border: 2px solid #3a2f27;
+  box-shadow: inset 0 0 0 2px #000, inset 0 0 24px #000;
+}
+.loadout-body { position: absolute; inset: 0; width: 100%; height: 100%; fill: #2a221c; stroke: #4a3c30; stroke-width: 0.8; stroke-linejoin: round; }
+.loadout-cell { position: absolute; width: 24%; display: grid; justify-items: center; gap: 2px; }
+.loadout-cell small { font-size: 10px; line-height: 1.15; text-align: center; text-shadow: 0 1px 2px #000; }
+.at-helmet { left: 38%; top: 2%; }
+.at-armor { left: 38%; top: 30%; }
+.at-weapon { left: 4%; top: 44%; }
+.at-shield { left: 72%; top: 44%; }
 .loadout-slot {
   display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 4px;
-  min-height: 84px;
-  padding: 6px 4px;
-  background: #000;
-  border: 2px solid #3a2f27;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 0;
+  background: #0b0907;
+  border: 2px solid #4a3c30;
+  /* Moldura afundada, como os slots do inventário do Tibia. */
+  box-shadow: inset 2px 2px 0 #000, inset -2px -2px 0 #2a221d;
 }
-.loadout-slot small { font-size: 10px; line-height: 1.2; text-align: center; }
-.loadout-slot .item-img { width: 40px; height: 40px; }
+.loadout-slot.vacant { border-color: #2e2620; }
+.loadout-slot .item-img { width: 75%; height: 75%; image-rendering: pixelated; }
 /* Prévia do personagem vestido (frente, lado e costas): escala inteira para o pixel não borrar. */
 .doll { display: grid; justify-items: center; gap: 2px; margin-bottom: 8px; }
 .doll-img { width: 288px; max-width: 100%; image-rendering: pixelated; background: radial-gradient(#3a2f27, #0000 70%); }
-.slot-empty { font-size: 24px; color: var(--border); }
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
 .item-cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; background: #000; border: 2px solid; }
 .item-cell .item-img { width: 40px; height: 40px; }
