@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { SPELLS, TILE_SIZE, type ClassId, type SpellId } from "@kusa/shared";
+import { MONSTERS, SPELLS, TILE_SIZE, type ClassId, type MonsterKind, type SpellId } from "@kusa/shared";
 import { FX } from "./art/combat.ts";
 
 /** Efeitos ficam acima dos personagens e abaixo das barras de vida e números. */
@@ -13,6 +13,9 @@ interface Point { x: number; y: number }
  * desenhado coincidir com o número de dano.
  */
 export class CombatFx {
+  /** Avisos de habilidade especial em andamento, por id do monstro (somem no golpe, na morte ou no atordoamento). */
+  private telegraphs = new Map<string, Phaser.GameObjects.GameObject[]>();
+
   constructor(private scene: Phaser.Scene) {}
 
   basicAttack(classId: ClassId, from: Point, to: Point, ms: number) {
@@ -160,6 +163,234 @@ export class CombatFx {
     }
   }
 
+  // --- Habilidades especiais dos monstros --------------------------------------
+
+  /**
+   * Aviso da habilidade especial: os tiles atingidos ficam vermelhos com a cor da habilidade e enchem do centro
+   * até a borda no tempo do aviso (quando enchem, o golpe sai). O monstro junta energia com uma aura pulsando.
+   */
+  monsterTelegraph(id: string, kind: MonsterKind, from: Point, to: Point, tiles: Point[], ms: number) {
+    this.cancelTelegraph(id);
+    const color = MONSTERS[kind].special.color;
+    const half = TILE_SIZE / 2;
+    const parts: Phaser.GameObjects.GameObject[] = [];
+    for (const t of tiles) {
+      const g = this.scene.add.graphics().setDepth(FX_DEPTH - 3).setPosition(t.x, t.y);
+      parts.push(g);
+      this.scene.tweens.addCounter({
+        from: 0, to: 1, duration: ms,
+        onUpdate: (tween) => {
+          const k = tween.getValue() ?? 0;
+          const pulse = 0.5 + 0.5 * Math.sin(this.scene.time.now / 70);
+          const inner = (TILE_SIZE - 4) * k;
+          g.clear();
+          g.fillStyle(0xff2d2d, 0.12 + 0.08 * pulse).fillRect(-half + 1, -half + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+          g.fillStyle(color, 0.25 + 0.2 * k).fillRect(-inner / 2, -inner / 2, inner, inner);
+          g.lineStyle(1, 0xff5e57, 0.6 + 0.4 * pulse).strokeRect(-half + 1.5, -half + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
+        },
+      });
+    }
+    // Aura de carga sob o monstro, apertando até o golpe.
+    const size = MONSTERS[kind].rank === "boss" ? 2 : 1;
+    const aura = this.scene.add.ellipse(from.x, from.y + 10, 30 * size, 12 * size, color, 0.5).setDepth(FX_DEPTH - 1)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    parts.push(aura);
+    this.scene.tweens.add({ targets: aura, scale: { from: 1.4, to: 0.8 }, alpha: { from: 0.2, to: 0.7 }, duration: ms, ease: "Quad.In" });
+    const gather = this.scene.time.addEvent({
+      delay: 90, loop: true,
+      callback: () => {
+        const a = Math.random() * Math.PI * 2;
+        const d = 18 * size;
+        const s = this.scene.add.image(from.x + Math.cos(a) * d, from.y + Math.sin(a) * d - 6, FX.spark).setDepth(FX_DEPTH).setTint(color);
+        this.scene.tweens.add({ targets: s, x: from.x, y: from.y - 6, alpha: { from: 1, to: 0.2 }, duration: 260, onComplete: () => s.destroy() });
+      },
+    });
+    const stop = this.scene.add.zone(0, 0, 1, 1);
+    stop.once(Phaser.GameObjects.Events.DESTROY, () => gather.remove());
+    parts.push(stop);
+    // Arremessos voam durante o aviso e caem bem na hora do golpe.
+    if (kind === "goblin") parts.push(this.lob(from, to, ms, 0x2d3436, 4, 0xe67e22));
+    if (kind === "bogBody") parts.push(this.lob(from, to, ms, 0x5b4a2a, 5, 0x8b7d4a));
+    this.telegraphs.set(id, parts);
+    this.scene.time.delayedCall(ms + 100, () => { if (this.telegraphs.get(id) === parts) this.cancelTelegraph(id); });
+  }
+
+  /** Apaga o aviso (o golpe saiu, o monstro morreu ou foi atordoado). */
+  cancelTelegraph(id: string) {
+    const parts = this.telegraphs.get(id);
+    if (!parts) return;
+    this.telegraphs.delete(id);
+    for (const part of parts) {
+      this.scene.tweens.killTweensOf(part);
+      part.destroy();
+    }
+  }
+
+  /** O golpe especial: arte própria de cada monstro sobre os tiles atingidos. */
+  monsterStrike(id: string, kind: MonsterKind, from: Point, to: Point, tiles: Point[]) {
+    this.cancelTelegraph(id);
+    const color = MONSTERS[kind].special.color;
+    const flash = (delayPerRing = 0) => this.area(tiles.map((t, i) => ({ ...t, ring: delayPerRing ? i * delayPerRing : 0 })), color, 0);
+    const shake = (ms: number, k: number) => this.scene.cameras.main.shake(ms, k);
+    switch (kind) {
+      case "rat":
+      case "moccasin":
+        flash();
+        this.fangs(to, color);
+        return this.bubbles(to, color);
+      case "goblin":
+        flash();
+        this.ring(to, TILE_SIZE * 1.6, 0xf39c12, 380, 8);
+        this.sparks(to, 0xf1c40f, 14);
+        this.debris(to, TILE_SIZE, 0x3d2b1f);
+        return shake(160, 0.005);
+      case "skeleton":
+        this.spear(from, tiles, 0xecf0f1, 0xbdc3c7);
+        return flash(0.25);
+      case "naga":
+        this.spear(from, tiles, 0x48dbfb, 0x0abde3);
+        this.wave(tiles, 0x48dbfb);
+        return flash(0.25);
+      case "orc":
+        this.bladeSpin(from, 0xff6b6b);
+        this.ring(from, TILE_SIZE * 1.5, color, 380, 5);
+        return flash();
+      case "ogre":
+      case "troll":
+        this.ring(from, TILE_SIZE * (kind === "ogre" ? 2.6 : 1.7), color, 520, 9);
+        this.later(120, () => this.ring(from, TILE_SIZE * (kind === "ogre" ? 1.8 : 1.2), 0xffffff, 360, 3));
+        this.debris(from, TILE_SIZE * (kind === "ogre" ? 2 : 1.3), kind === "ogre" ? 0x6b4426 : 0x2d4a1f);
+        flash(0.6);
+        if (kind === "troll") this.heal(from);
+        return shake(kind === "ogre" ? 260 : 180, kind === "ogre" ? 0.009 : 0.006);
+      case "dragon":
+        this.breath(from, tiles);
+        flash(0.5);
+        return shake(300, 0.008);
+      case "frog":
+        this.tongue(from, to, color);
+        return this.later(160, () => this.sparks(to, color, 8));
+      case "bogBody":
+        flash();
+        this.ring(to, TILE_SIZE * 1.6, color, 450, 7);
+        return this.debris(to, TILE_SIZE, 0x4a3b1f);
+      case "hydra":
+        this.acidRain(tiles, color);
+        this.later(320, () => flash(0.3));
+        return this.later(320, () => shake(220, 0.006));
+    }
+  }
+
+  /** Bomba ou bola de lodo em arco do monstro até o alvo, caindo em `ms`. */
+  private lob(from: Point, to: Point, ms: number, body: number, radius: number, fuse: number) {
+    const ball = this.scene.add.circle(from.x, from.y - 8, radius, body).setDepth(FX_DEPTH).setStrokeStyle(1, 0x000000, 0.6);
+    const peak = Math.min(70, 30 + Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y) * 0.4);
+    this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: ms,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        ball.setPosition(Phaser.Math.Linear(from.x, to.x, t), Phaser.Math.Linear(from.y, to.y, t) - 8 - Math.sin(t * Math.PI) * peak);
+        if (Math.random() < 0.4) this.puff(ball.x, ball.y, fuse, 2);
+      },
+    });
+    return ball;
+  }
+
+  /** Mordida com veneno: presas fechando no alvo. */
+  private fangs(at: Point, color: number) {
+    for (const side of [-1, 1]) {
+      const fang = this.scene.add.triangle(at.x, at.y - 6 + side * 12, 0, 0, 6, 0, 3, 8 * side, 0xffffff).setDepth(FX_DEPTH);
+      this.scene.tweens.add({ targets: fang, y: at.y - 6 + side * 2, alpha: { from: 1, to: 0 }, duration: 220, ease: "Quad.In", onComplete: () => fang.destroy() });
+    }
+    this.sparks(at, color, 8);
+  }
+
+  /** Bolhas de veneno subindo. */
+  private bubbles(at: Point, color: number) {
+    for (let i = 0; i < 7; i++) {
+      const b = this.scene.add.circle(at.x + Phaser.Math.Between(-8, 8), at.y + 4, Phaser.Math.Between(1, 3), color, 0.85).setDepth(FX_DEPTH);
+      this.scene.tweens.add({
+        targets: b, y: at.y - 18 - Phaser.Math.Between(0, 8), alpha: { from: 1, to: 0 },
+        delay: i * 50, duration: 500, onComplete: () => b.destroy(),
+      });
+    }
+  }
+
+  /** Lança (osso ou tridente) cruzando a faixa do monstro até a ponta. */
+  private spear(from: Point, tiles: Point[], color: number, edge: number) {
+    const end = tiles[tiles.length - 1] ?? from;
+    const angle = Phaser.Math.Angle.Between(from.x, from.y, end.x, end.y);
+    const shaft = this.scene.add.rectangle(from.x, from.y - 6, 22, 3, color).setDepth(FX_DEPTH).setRotation(angle).setStrokeStyle(1, edge);
+    const tip = this.scene.add.triangle(from.x, from.y - 6, 0, -4, 0, 4, 7, 0, color).setDepth(FX_DEPTH).setRotation(angle);
+    this.scene.tweens.add({
+      targets: [shaft, tip], x: end.x + Math.cos(angle) * 10, y: end.y - 6 + Math.sin(angle) * 10, duration: 200, ease: "Quad.In",
+      onUpdate: () => this.puff(shaft.x, shaft.y, edge, 2),
+      onComplete: () => {
+        shaft.destroy();
+        tip.destroy();
+        this.sparks(end, color, 8);
+      },
+    });
+  }
+
+  /** Onda de água correndo pela faixa (Tridente das Marés). */
+  private wave(tiles: Point[], color: number) {
+    tiles.forEach((t, i) => this.later(i * 40, () => {
+      for (let k = 0; k < 3; k++) {
+        const drop = this.scene.add.circle(t.x + Phaser.Math.Between(-8, 8), t.y, 2, k ? color : 0xffffff, 0.9).setDepth(FX_DEPTH);
+        this.scene.tweens.add({ targets: drop, y: t.y - 12, duration: 180, yoyo: true, ease: "Quad.Out", onComplete: () => drop.destroy() });
+      }
+    }));
+  }
+
+  /** Sopro Infernal: labaredas correm pela faixa, cada tile explode em fogo. */
+  private breath(from: Point, tiles: Point[]) {
+    tiles.forEach((t, i) => this.later(i * 22, () => {
+      const flame = this.scene.add.circle(t.x, t.y - 4, 6, 0xffd166, 0.95).setDepth(FX_DEPTH).setBlendMode(Phaser.BlendModes.ADD);
+      const outer = this.scene.add.circle(t.x, t.y - 4, 10, 0xff6b1a, 0.6).setDepth(FX_DEPTH - 1).setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({
+        targets: [flame, outer], scale: { from: 0.4, to: 1.6 }, alpha: { from: 1, to: 0 }, y: t.y - 16, duration: 420, ease: "Quad.Out",
+        onComplete: () => { flame.destroy(); outer.destroy(); },
+      });
+      this.puff(t.x + Phaser.Math.Between(-6, 6), t.y, 0x3d1f0f, 4);
+    }));
+    for (let i = 0; i < 10; i++) {
+      const ember = this.scene.add.image(from.x, from.y - 8, FX.spark).setDepth(FX_DEPTH).setTint(i % 2 ? 0xffd166 : 0xff6b1a);
+      const t = tiles[Math.floor((i / 10) * tiles.length)] ?? from;
+      this.scene.tweens.add({ targets: ember, x: t.x + Phaser.Math.Between(-10, 10), y: t.y - 10, alpha: { from: 1, to: 0 }, duration: 300, delay: i * 20, onComplete: () => ember.destroy() });
+    }
+  }
+
+  /** Língua do sapo: estica até o alvo e volta. */
+  private tongue(from: Point, to: Point, color: number) {
+    const g = this.scene.add.graphics().setDepth(FX_DEPTH);
+    this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: 320, yoyo: true, ease: "Quad.Out",
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        const x = Phaser.Math.Linear(from.x, to.x, t);
+        const y = Phaser.Math.Linear(from.y - 4, to.y - 6, t);
+        g.clear().lineStyle(3, color, 1).lineBetween(from.x, from.y - 4, x, y);
+        g.fillStyle(0xff4d6d, 1).fillCircle(x, y, 3.5);
+      },
+      onComplete: () => g.destroy(),
+    });
+  }
+
+  /** Chuva Ácida: gotas caem do alto em cada tile e espirram. */
+  private acidRain(tiles: Point[], color: number) {
+    tiles.forEach((t, i) => {
+      const drop = this.scene.add.ellipse(t.x + Phaser.Math.Between(-6, 6), t.y - 110, 4, 8, color, 0.95).setDepth(FX_DEPTH);
+      this.scene.tweens.add({
+        targets: drop, y: t.y - 2, duration: 280, delay: (i % 6) * 15, ease: "Quad.In",
+        onComplete: () => {
+          drop.destroy();
+          this.bubbles(t, color);
+        },
+      });
+    });
+  }
+
   // --- Ataques básicos ------------------------------------------------------
 
   /** Golpe de espada: meia-lua virada para o alvo, girando um pouco. */
@@ -217,10 +448,11 @@ export class CombatFx {
   // --- Magias ---------------------------------------------------------------
 
   /** Giro da Lâmina: quatro meias-luas dando a volta no cavaleiro. */
-  private bladeSpin(at: Point) {
+  private bladeSpin(at: Point, tint?: number) {
     for (let i = 0; i < 4; i++) {
       const start = (i * Math.PI) / 2;
       const arc = this.scene.add.image(at.x, at.y, FX.slash).setDepth(FX_DEPTH).setScale(1.3).setOrigin(0, 0.5);
+      if (tint !== undefined) arc.setTint(tint);
       this.scene.tweens.addCounter({
         from: 0, to: 1, duration: 420, ease: "Cubic.Out",
         onUpdate: (tween) => {

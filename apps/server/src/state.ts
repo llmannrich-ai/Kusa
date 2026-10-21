@@ -47,6 +47,10 @@ export class Player extends Schema {
   @type("number") barrier = 0;
   /** Tamanho do escudo quando foi erguido, para desenhar quanto falta. */
   @type("number") maxBarrier = 0;
+  /** Dano contínuo de uma habilidade de monstro: "poison", "burn" ou "" (nenhum). */
+  @type("string") dot = "";
+  /** Mais lento por uma habilidade de monstro (Pisão Sísmico, Lodo Sufocante). */
+  @type("boolean") slowed = false;
 }
 
 export class Monster extends Schema {
