@@ -60,7 +60,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
     | Lado | Traço | Magia slot 1 | Magia slot 2 |
     |---|---|---|---|
     | **Atirador de Elite** | 🦅 Olho de Águia: +1 de alcance no básico e +20% de dano em monstros a 5 tiles ou mais | 🎯 Marca do Caçador: 0,8× e marca o alvo (+25% de dano de toda a equipe por 10 s) | 🔭 Postura do Atirador: 8 s com básico +100% e +2 de alcance, andando 50% mais devagar |
-    | **Caçador Ágil** | 🍃 Passo Leve: depois de cada magia, anda 25% mais rápido por 2 s | 🤸 Rolamento: salta 3 tiles (no toque rápido, para longe do monstro; nunca no portal) e a próxima flecha atordoa por 1 s | 🏹 Aljava Veloz: 6 s com o básico 60% mais rápido |
+    | **Caçador Ágil** | 🍃 Passo Leve: depois de cada magia, anda 25% mais rápido por 2 s | 🤸 Rolamento: salta 3 tiles (no toque rápido, para longe do monstro; nunca no portal; com parede atrás, rola para o lado; encurralado, não sai nem gasta mana) e a próxima flecha atordoa por 1 s | 🏹 Aljava Veloz: 6 s com o básico 60% mais rápido |
 
   - Maestrias: Marca do Caçador marca também quem está colado no alvo; Postura do Atirador não deixa lento; Rolamento
     salta 5 tiles e dá escudo de 15% por 3 s; Aljava Veloz soma +30% de dano no básico.
@@ -200,23 +200,23 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 
 ### Melhorias de nível
 
-Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **duas cartas** no alto da tela e o jogador
-toca numa. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
+Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **dois ícones pequenos** logo acima do
+personagem (acompanhando ele) e o jogador toca num. Só o ícone aparece; nome e efeito ficam no rótulo acessível. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
 até o fim da hunt e soma por cima das áureas do Grimório. Subiu vários níveis de uma vez: as escolhas entram na fila,
 uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas, e a de magia tem
 prioridade: uma melhoria ainda pendente de um nível anterior sai da tela quando o slot abre e só volta depois que a
-magia for escolhida (ou a janela fechada). O título da carta mostra o nível que deu a melhoria, nunca o 3 ou o 6.
+magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que deu a melhoria, nunca o 3 ou o 6.
 
 | Melhoria | Cada escolha | Limite |
 |---|---|---|
 | ❤️ Vigor | +12% de vida máxima | 5 |
 | 💧 Reserva arcana | +15% de mana máxima | 4 |
-| 💗 Regeneração | +1% de vida por segundo (base 2%) | 3 |
+| 🌿 Regeneração | +1% de vida por segundo (base 2%) | 3 |
 | 🔷 Clareza | +1,5% de mana por segundo (base 2%) | 3 |
 | ⚔️ Força | +10% de dano (básico, magias e criaturas) | 5 |
 | 👟 Agilidade | +6% de velocidade de movimento | 3 |
 | 🛡️ Escudo | +3 de armadura (soma com o equipamento) | 4 |
-| 🗡️ Fúria | ataque básico 10% mais rápido | 3 |
+| ⚡ Fúria | ataque básico 10% mais rápido | 3 |
 | ⏳ Foco | recarga das magias 10% menor | 3 |
 | 🩸 Sede de sangue | cura 4% do dano que o herói causa | 3 |
 
@@ -240,7 +240,7 @@ magia for escolhida (ou a janela fechada). O título da carta mostra o nível qu
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado, o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
-- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
+- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 - **Habilidades especiais dos mini-bosses e bosses:** além do ataque básico, eles têm um golpe mais forte, que sai
