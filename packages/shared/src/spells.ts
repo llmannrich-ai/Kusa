@@ -1,4 +1,6 @@
 import type { ClassId } from "./classes.ts";
+import { lineEnd, type Dungeon } from "./dungeon.ts";
+import type { DotKind } from "./monsters.ts";
 import { SUMMONS, type SummonKind } from "./summons.ts";
 
 /**
@@ -43,8 +45,8 @@ export type SpellId =
   | "grove_guardian" | "forest_heart";
 
 /**
- * Uma magia. Os efeitos se combinam: dano em área, cura, raízes, atordoamento, guarda, escudo,
- * roubo de vida, provocação e invocação de criaturas.
+ * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
+ * lentidão, atordoamento, guarda, armadura, escudo, roubo de vida, provocação e invocação de criaturas.
  * `aim: "self"` centra a área em quem conjura; `aim: "target"` usa a mira (ou o alvo automático no toque rápido).
  * Os números são do nível 1; `spellAtRank` aplica os níveis 2 e 3 comprados no Grimório.
  */
@@ -65,6 +67,11 @@ export interface SpellDef {
   range: number;
   /** Raio da área em tiles; 0 = só o alvo. */
   radius: number;
+  /**
+   * `line`: acerta todos os monstros na reta do herói na direção mirada, até `range` tiles ou a primeira
+   * parede (o `radius` não vale).
+   */
+  shape?: "line";
   /** Multiplicador do dano base nos monstros da área. */
   damage?: number;
   /** Cura, em fração do HP máximo, de quem está na área (aliados e quem conjura). */
@@ -73,6 +80,18 @@ export interface SpellDef {
   rootMs?: number;
   /** Monstros da área ficam atordoados: não andam nem atacam. */
   stunMs?: number;
+  /** Monstros da área andam mais devagar (`pct` = fração da velocidade perdida). */
+  slow?: { pct: number; ms: number };
+  /** Dano contínuo nos monstros atingidos: `perSec` × dano base a cada segundo, por `ms`. Não acumula: renova. */
+  dot?: { perSec: number; ms: number; kind: DotKind };
+  /** Depois do alvo, salta para o monstro mais próximo ainda não atingido (a até `range` tiles), `jumps` vezes, perdendo `falloff` do dano a cada salto. */
+  chain?: { jumps: number; range: number; falloff: number };
+  /** Dano +`bonus` (fração) em monstro com menos de `hpPct` da vida. */
+  execute?: { hpPct: number; bonus: number };
+  /** Dano +`perTile` (fração) por tile de distância entre quem conjura e o alvo. */
+  distanceBonus?: number;
+  /** Armadura extra em quem conjura (soma com o equipamento) por `ms`. */
+  armor?: { points: number; ms: number };
   /** Quem conjura recebe só (1 - guard) do dano por `guardMs`. */
   guard?: number;
   guardMs?: number;
@@ -122,8 +141,9 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   iron_skin: spell({
     id: "iron_skin", classId: "knight", slot: 1, name: "Pele de Ferro", icon: "⛓️", color: 0xa4b0be,
-    description: "Recupera parte da vida e corta quase todo o dano recebido por alguns segundos.",
+    description: "Recupera parte da vida, corta quase todo o dano e endurece a armadura por alguns segundos.",
     manaCost: 30, cooldownMs: 16000, aim: "self", range: 0, radius: 0, heal: 0.25, guard: 0.7, guardMs: 5000,
+    armor: { points: 5, ms: 5000 },
   }),
   earthquake: spell({
     id: "earthquake", classId: "knight", slot: 1, name: "Terremoto", icon: "🌋", color: 0x8d6e4a,
@@ -142,8 +162,9 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   execution: spell({
     id: "execution", classId: "knight", slot: 1, name: "Execução", icon: "⚔️", color: 0x922b21,
-    description: "Um golpe devastador no monstro colado, que ainda o deixa atordoado.",
+    description: "Um golpe devastador no monstro colado, que ainda o deixa atordoado. Dano dobrado em quem já está quase morto.",
     manaCost: 35, cooldownMs: 16000, aim: "target", range: 1, radius: 0, damage: 4.5, stunMs: 1000,
+    execute: { hpPct: 0.3, bonus: 1 },
   }),
 
   // --- Paladino: tiros fortes de longe e luz que protege. ------------------------
@@ -159,8 +180,8 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   piercing_shot: spell({
     id: "piercing_shot", classId: "paladin", slot: 0, name: "Disparo Perfurante", icon: "🎯", color: 0xf1c40f,
-    description: "Uma flecha de longe que atravessa o alvo e fere quem está colado nele.",
-    manaCost: 28, cooldownMs: 5000, aim: "target", range: 7, radius: 1, damage: 1.9, projectileSpeed: 22,
+    description: "Uma flecha que atravessa todos os monstros em linha reta, até a primeira parede.",
+    manaCost: 28, cooldownMs: 5000, aim: "target", range: 7, radius: 0, shape: "line", damage: 1.9, projectileSpeed: 22,
   }),
   stun_arrow: spell({
     id: "stun_arrow", classId: "paladin", slot: 0, name: "Flecha Atordoante", icon: "💫", color: 0xa4b0be,
@@ -174,13 +195,13 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   healing_light: spell({
     id: "healing_light", classId: "paladin", slot: 1, name: "Luz Curativa", icon: "☀️", color: 0xfff6c8,
-    description: "Cura você e os aliados por perto.",
-    manaCost: 45, cooldownMs: 12000, aim: "self", range: 0, radius: 3, heal: 0.3,
+    description: "Um clarão que cura um pouco você e os aliados por perto e ofusca os monstros em volta.",
+    manaCost: 45, cooldownMs: 12000, aim: "self", range: 0, radius: 3, heal: 0.2, stunMs: 500,
   }),
   deadly_shot: spell({
     id: "deadly_shot", classId: "paladin", slot: 1, name: "Disparo Certeiro", icon: "🏆", color: 0xf7d774,
-    description: "Mira com calma e acerta um tiro enorme num alvo bem distante.",
-    manaCost: 40, cooldownMs: 14000, aim: "target", range: 8, radius: 0, damage: 4, projectileSpeed: 26,
+    description: "Mira com calma e acerta um tiro enorme num alvo distante: quanto mais longe, mais forte.",
+    manaCost: 40, cooldownMs: 14000, aim: "target", range: 8, radius: 0, damage: 3.2, distanceBonus: 0.1, projectileSpeed: 26,
   }),
   divine_judgment: spell({
     id: "divine_judgment", classId: "paladin", slot: 1, name: "Julgamento Divino", icon: "⚖️", color: 0xfff6c8,
@@ -211,8 +232,9 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   chain_lightning: spell({
     id: "chain_lightning", classId: "sorcerer", slot: 0, name: "Raio em Cadeia", icon: "🌩️", color: 0x9ec5ff,
-    description: "O raio salta do alvo para os monstros em volta dele.",
-    manaCost: 32, cooldownMs: 5500, aim: "target", range: 6, radius: 2, damage: 1.5, projectileSpeed: 30,
+    description: "O raio acerta o alvo e salta de monstro em monstro, perdendo um pouco de força a cada salto.",
+    manaCost: 32, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 1.6, projectileSpeed: 30,
+    chain: { jumps: 3, range: 3, falloff: 0.15 },
   }),
   ice_lance: spell({
     id: "ice_lance", classId: "sorcerer", slot: 0, name: "Lança de Gelo", icon: "🧊", color: 0x7fd8ff,
@@ -236,8 +258,8 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   blizzard: spell({
     id: "blizzard", classId: "sorcerer", slot: 1, name: "Nevasca", icon: "🌨️", color: 0xd6f1ff,
-    description: "Uma tempestade de neve cobre uma área grande: fere e congela os monstros.",
-    manaCost: 70, cooldownMs: 14000, aim: "target", range: 6, radius: 3, damage: 1.4, rootMs: 3000,
+    description: "Uma tempestade de neve cobre uma área grande: fere e deixa os monstros bem lentos.",
+    manaCost: 70, cooldownMs: 14000, aim: "target", range: 6, radius: 3, damage: 1.4, slow: { pct: 0.5, ms: 4000 },
   }),
   dark_pact: spell({
     id: "dark_pact", classId: "sorcerer", slot: 1, name: "Pacto Sombrio", icon: "🩻", color: 0x5a1c7a,
@@ -258,8 +280,9 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   venom_thorn: spell({
     id: "venom_thorn", classId: "druid", slot: 0, name: "Espinho Venenoso", icon: "🦂", color: 0x6ab04c,
-    description: "Um espinho envenenado que causa dano forte num alvo.",
-    manaCost: 30, cooldownMs: 4500, aim: "target", range: 5, radius: 0, damage: 2.3, projectileSpeed: 12,
+    description: "Um espinho envenenado: fere o alvo e o veneno continua corroendo por alguns segundos.",
+    manaCost: 30, cooldownMs: 4500, aim: "target", range: 5, radius: 0, damage: 1.4,
+    dot: { perSec: 0.3, ms: 4000, kind: "poison" }, projectileSpeed: 12,
   }),
   spirit_wolf: spell({
     id: "spirit_wolf", classId: "druid", slot: 0, name: "Lobo Espiritual", icon: "🐺", color: 0x9ec5ff,
@@ -298,7 +321,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   forest_heart: spell({
     id: "forest_heart", classId: "druid", slot: 1, name: "Coração da Floresta", icon: "💚", color: 0x9cff7a,
-    description: "Cura a equipe por perto e invoca um fogo-fátuo que continua curando todos.",
+    description: "Cura a equipe por perto e invoca um fogo-fátuo que continua curando todos e devolve um pouco de mana.",
     manaCost: 70, cooldownMs: 24000, aim: "self", range: 0, radius: 3, heal: 0.2, summon: { kind: "wisp", count: 1, durationMs: 20000 },
   }),
 };
@@ -306,7 +329,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
 /** Níveis de uma magia no Grimório (o 1 é o aprendido). */
 export const SPELL_MAX_RANK = 3;
 
-/** Força da magia no nível: +20% de dano, cura, escudo e criaturas por nível acima do 1. */
+/** Força da magia no nível: +20% de dano (também o contínuo), cura, escudo, armadura e criaturas por nível acima do 1. */
 export const rankPower = (rank: number) => 1 + 0.2 * (Math.max(1, rank) - 1);
 /** Duração dos efeitos no nível: +15% por nível acima do 1. */
 export const rankDuration = (rank: number) => 1 + 0.15 * (Math.max(1, rank) - 1);
@@ -323,11 +346,16 @@ export function spellAtRank(def: SpellDef, rank: number): SpellDef {
     barrier: def.barrier && def.barrier * k,
     rootMs: ms(def.rootMs),
     stunMs: ms(def.stunMs),
+    slow: def.slow && { ...def.slow, ms: Math.round(def.slow.ms * t) },
+    dot: def.dot && { ...def.dot, perSec: def.dot.perSec * k, ms: Math.round(def.dot.ms * t) },
+    armor: def.armor && { points: Math.round(def.armor.points * k), ms: Math.round(def.armor.ms * t) },
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
     summon: def.summon && { ...def.summon, durationMs: Math.round(def.summon.durationMs * t) },
   };
 }
+
+const DOT_NAMES: Record<DotKind, string> = { poison: "Veneno", burn: "Queimadura", bleed: "Sangramento" };
 
 const num = (v: number, digits = 1) => v.toLocaleString("pt-BR", { maximumFractionDigits: digits });
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -336,22 +364,28 @@ const sec = (ms: number) => `${num(ms / 1000)} s`;
 /** Efeitos da magia num nível, em linhas curtas para o menu e a escolha na hunt. */
 export function spellFacts(def: SpellDef, rank = 1): string[] {
   const s = spellAtRank(def, rank);
-  const area = s.radius > 0 ? ` em raio ${s.radius}` : "";
+  const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.radius > 0 ? ` em raio ${s.radius}` : "";
   const facts: string[] = [];
   if (s.damage) facts.push(`Dano ${num(s.damage)}×${area}`);
+  if (s.chain) facts.push(`Salta para mais ${s.chain.jumps} monstros (−${pct(s.chain.falloff)} por salto)`);
+  if (s.execute) facts.push(`+${pct(s.execute.bonus)} de dano em quem tem menos de ${pct(s.execute.hpPct)} da vida`);
+  if (s.distanceBonus) facts.push(`+${pct(s.distanceBonus)} de dano por tile até o alvo`);
+  if (s.dot) facts.push(`${DOT_NAMES[s.dot.kind]}: ${num(s.dot.perSec)}× por segundo por ${sec(s.dot.ms)}`);
   if (s.lifesteal) facts.push(`Rouba ${pct(s.lifesteal)} do dano em vida`);
   if (s.heal) facts.push(`Cura ${pct(s.heal)} da vida${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
   if (s.barrier && s.barrierMs) facts.push(`Escudo de ${pct(s.barrier)} da vida por ${sec(s.barrierMs)}${s.barrierAllies ? " (aliados também)" : ""}`);
   if (s.guard && s.guardMs) facts.push(`Corta ${pct(s.guard)} do dano por ${sec(s.guardMs)}`);
   if (s.rootMs) facts.push(`Prende por ${sec(s.rootMs)}`);
   if (s.stunMs) facts.push(`Atordoa por ${sec(s.stunMs)}`);
+  if (s.slow) facts.push(`Deixa ${pct(s.slow.pct)} mais lento por ${sec(s.slow.ms)}`);
+  if (s.armor) facts.push(`+${s.armor.points} de armadura por ${sec(s.armor.ms)}`);
   if (s.taunt) facts.push(`Provoca monstros a até ${s.radius} tiles`);
   if (s.summon) {
     const sum = SUMMONS[s.summon.kind];
     const power = rankPower(rank);
     const what = s.summon.count > 1 ? `${s.summon.count}× ${sum.name}` : sum.name;
     facts.push(`Invoca ${what} por ${sec(s.summon.durationMs)}`);
-    facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}`);
+    facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
   }
   facts.push(`${s.manaCost} de mana · recarga ${num(s.cooldownMs / 1000)} s${s.aim === "target" ? ` · alcance ${s.range}` : ""}`);
   return facts;
@@ -376,7 +410,34 @@ export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly 
  * do ponto mirado. As de área caem no ponto, sem ímã.
  */
 export function isSingleTarget(spell: SpellDef) {
-  return spell.aim === "target" && spell.radius === 0;
+  return spell.aim === "target" && spell.radius === 0 && spell.shape !== "line";
+}
+
+/**
+ * Tiles de uma magia em linha: do herói na direção do ponto mirado até `length` tiles, parando antes
+ * da primeira parede. Não inclui o tile do herói. Cliente (mira e efeito) e servidor (dano) usam a mesma conta.
+ */
+export function lineTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {
+  const dx = ax - x0;
+  const dy = ay - y0;
+  const dist = Math.max(Math.abs(dx), Math.abs(dy));
+  if (dist === 0) return [];
+  const end = lineEnd(d, x0, y0, x0 + Math.round((dx * length) / dist), y0 + Math.round((dy * length) / dist));
+  const tiles: { x: number; y: number }[] = [];
+  const adx = Math.abs(end.x - x0);
+  const ady = -Math.abs(end.y - y0);
+  const sx = x0 < end.x ? 1 : -1;
+  const sy = y0 < end.y ? 1 : -1;
+  let err = adx + ady;
+  let x = x0;
+  let y = y0;
+  while (x !== end.x || y !== end.y) {
+    const e2 = 2 * err;
+    if (e2 >= ady) { err += ady; x += sx; }
+    if (e2 <= adx) { err += adx; y += sy; }
+    tiles.push({ x, y });
+  }
+  return tiles;
 }
 
 /** Distância (tiles) do ponto mirado em que a mira de alvo único gruda num monstro. */

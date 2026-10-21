@@ -6,6 +6,7 @@ import {
   hasLineOfSight,
   isSingleTarget,
   lineEnd,
+  lineTiles,
   tileDistance,
   type CastAim,
   type Dungeon,
@@ -97,6 +98,15 @@ export class SpellAim {
     const locked = aim.targetId !== undefined;
     const to = (aim.targetId && this.bodyAt(aim.targetId)) || { x: toPx(aim.x), y: toPx(aim.y) };
     const color = locked ? COLORS.locked : COLORS.free;
+    if (spell.shape === "line") {
+      // Linha: os tiles que a flecha atravessa até o alcance inteiro, na direção mirada.
+      const size = TILE_SIZE - 2;
+      for (const t of lineTiles(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range)) {
+        g.fillStyle(COLORS.free, 0.16).fillRect(toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size);
+        dashedRect(g, toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size, COLORS.free, 0.7);
+      }
+      return;
+    }
     dottedLine(g, from.x, from.y, to.x, to.y, color);
 
     const area = (spell.radius * 2 + 1) * TILE_SIZE;

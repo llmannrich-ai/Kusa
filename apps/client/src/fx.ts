@@ -62,9 +62,8 @@ export class CombatFx {
         this.slash(from, to);
         this.later(80, () => this.slash(from, to));
         return this.later(160, () => this.sparks(to, 0xff7675, 10));
-      case "piercing_shot":
-        this.projectile(FX.arrow, from, to, ms, { scale: 1.4 });
-        return this.later(ms, () => this.ring(to, radius + TILE_SIZE / 2, 0xf1c40f, 300, 4));
+      // A flecha voa até o fim da linha; os tiles atravessados acendem pelo `area` (DungeonScene).
+      case "piercing_shot": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf1c40f, glow: 0xf1c40f, scale: 1.4 });
       case "stun_arrow":
         this.projectile(FX.arrow, from, to, ms, { glow: 0xa4b0be, scale: 1.2 });
         return this.later(ms, () => this.sparks(to, 0xf1c40f, 6));
@@ -82,9 +81,10 @@ export class CombatFx {
       case "lightning_bolt":
         this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff });
         return this.later(ms, () => this.sparks(to, 0x9ec5ff, 8));
+      // Os saltos chegam depois, pelo `MSG.chain` (`chain`).
       case "chain_lightning":
         this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff });
-        return this.later(ms, () => { this.ring(to, radius, 0x9ec5ff, 300, 2); this.sparks(to, 0xffffff, 10); });
+        return this.later(ms, () => this.sparks(to, 0xffffff, 10));
       case "ice_lance":
         return this.projectile(FX.darkLight, from, to, ms, { trail: 0xd6f1ff, glow: 0x7fd8ff, impact: 0xffffff, scale: 1.2 });
       case "drain_life":
@@ -142,6 +142,29 @@ export class CombatFx {
         });
       }
     });
+  }
+
+  /** Raio em cadeia: um arco elétrico em zigue-zague de cada alvo para o seguinte, um salto de cada vez. */
+  chain(points: Point[], color: number) {
+    for (let i = 1; i < points.length; i++) {
+      this.later((i - 1) * 70, () => {
+        const a = points[i - 1];
+        const b = points[i];
+        const g = this.scene.add.graphics().setDepth(FX_DEPTH);
+        const zigzag = (width: number, tint: number, alpha: number) => {
+          g.lineStyle(width, tint, alpha).beginPath().moveTo(a.x, a.y);
+          for (let k = 1; k < 5; k++) {
+            const t = k / 5;
+            g.lineTo(a.x + (b.x - a.x) * t + Phaser.Math.Between(-6, 6), a.y + (b.y - a.y) * t + Phaser.Math.Between(-6, 6));
+          }
+          g.lineTo(b.x, b.y).strokePath();
+        };
+        zigzag(4, color, 0.5);
+        zigzag(2, 0xffffff, 0.95);
+        this.scene.tweens.add({ targets: g, alpha: { from: 1, to: 0 }, duration: 260, onComplete: () => g.destroy() });
+        this.sparks(b, color, 6);
+      });
+    }
   }
 
   /** Brilho de cura subindo de um aliado (Bênção da Floresta). */

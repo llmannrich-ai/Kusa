@@ -5,7 +5,9 @@ import {
   MONSTERS,
   MSG,
   POTIONS,
+  DOT_KINDS,
   SPELLS,
+  lineTiles,
   SUMMONS,
   TIER_COLORS,
   TILE_SIZE,
@@ -24,6 +26,8 @@ import {
   type Dungeon,
   type MonsterKind,
   type NoticeMessage,
+  type ChainMessage,
+  type DotKind,
   type SpellDef,
   type SpellMessage,
   type SummonKind,
@@ -90,7 +94,7 @@ const COLORS = {
 };
 
 /** Cor dos números do veneno e da queimadura (e das bolhas no herói). */
-const DOT_COLORS = { poison: 0x9acd32, burn: 0xff9f43 };
+const DOT_COLORS: Record<DotKind, number> = { poison: 0x9acd32, burn: 0xff9f43, bleed: 0xc0392b };
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
 const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp"]);
@@ -249,6 +253,10 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
+    this.room.onMessage(MSG.chain, (msg: ChainMessage) => {
+      const spell = SPELLS[msg.spellId];
+      if (spell) this.fx.chain(msg.points.map((p) => this.tilePoint(p.x, p.y)), spell.color);
+    });
     this.room.onMessage(MSG.drank, (msg: DrankMessage) => this.potionBar.onDrank(msg.cooldownMs));
     this.room.onMessage(MSG.monsterStrike, (msg: MonsterStrikeMessage) => this.onMonsterStrike(msg));
 
@@ -383,7 +391,8 @@ export class DungeonScene extends Phaser.Scene {
     if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
     this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
-    if (spell.radius > 0) this.showArea(spell, msg);
+    if (spell.shape === "line") this.showLine(spell, msg);
+    else if (spell.radius > 0) this.showArea(spell, msg);
     if (spell.heal) {
       this.room.state.players.forEach((p, id) => {
         if (p.status !== "playing" || tileDistance(msg.x, msg.y, p.x, p.y) > spell.radius) return;
@@ -409,6 +418,13 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
     this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
+  }
+
+  /** Magia em linha: acende os tiles atravessados (a mesma conta do servidor), do herói para a ponta, no ritmo da flecha. */
+  private showLine(spell: SpellDef, msg: SpellMessage) {
+    const tiles = lineTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
+    const step = tiles.length > 0 ? msg.ms / tiles.length / 45 : 0;
+    this.fx.area(tiles.map((t, i) => ({ ...this.tilePoint(t.x, t.y), ring: i * step })), spell.color, 0);
   }
 
   /**
@@ -592,6 +608,36 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: fx.crest, x: { from: -11, to: -9 }, duration: 80, ease: "Quad.Out" });
   }
 
+  /** Lento: uma crosta de gelo azul nos pés, piscando devagar. */
+  private frostAt() {
+    const g = this.add.graphics();
+    g.fillStyle(0x9fdcff, 0.35).fillEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE - 4, 10);
+    g.lineStyle(1, 0xd6f1ff, 0.9).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE - 4, 10);
+    for (const x of [-9, -2, 6]) g.fillStyle(0xe8f6ff, 0.9).fillTriangle(x, TILE_SIZE / 2 - 2, x + 2, TILE_SIZE / 2 - 9, x + 4, TILE_SIZE / 2 - 2);
+    this.tweens.add({ targets: g, alpha: { from: 1, to: 0.5 }, duration: 700, yoyo: true, repeat: -1 });
+    return g;
+  }
+
+  /** Dano contínuo no monstro: bolhas (veneno), brasas (queimadura) subindo ou gotas (sangramento) caindo. */
+  private dotAt(kind: DotKind) {
+    const color = DOT_COLORS[kind];
+    const box = this.add.container(0, 0);
+    const spawn = this.time.addEvent({
+      delay: 260, loop: true,
+      callback: () => {
+        if (!box.visible) return;
+        const dot = this.add.circle(Phaser.Math.Between(-8, 8), Phaser.Math.Between(-2, 8), kind === "burn" ? 2.5 : 2, color, 0.9);
+        box.add(dot);
+        this.tweens.add({
+          targets: dot, y: dot.y + (kind === "bleed" ? 8 : -12), alpha: { from: 0.9, to: 0 }, duration: 600,
+          onComplete: () => dot.destroy(),
+        });
+      },
+    });
+    box.once(Phaser.GameObjects.Events.DESTROY, () => spawn.remove());
+    return box;
+  }
+
   /** Veneno ou queimadura: bolhas (ou brasas) subindo em volta do herói enquanto dura. */
   private dotAura(top: number, color: number) {
     const root = this.add.container(0, 0);
@@ -741,6 +787,8 @@ export class DungeonScene extends Phaser.Scene {
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
     this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
     this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
+    this.setStatus(unit, "slow", monster.slowed, () => this.frostAt());
+    for (const kind of DOT_KINDS) this.setStatus(unit, `dot:${kind}`, monster.dot === kind, () => this.dotAt(kind));
     this.moveTo(unit, monster.x, monster.y);
   }
 

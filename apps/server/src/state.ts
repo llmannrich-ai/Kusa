@@ -65,6 +65,10 @@ export class Monster extends Schema {
   @type("boolean") rooted = false;
   /** Atordoado: não anda nem ataca. */
   @type("boolean") stunned = false;
+  /** Lento (Nevasca): anda mais devagar. */
+  @type("boolean") slowed = false;
+  /** Dano contínuo ativo ("poison", "burn" ou "bleed"; vazio = nenhum), só para o desenho. */
+  @type("string") dot = "";
 }
 
 /** Criatura aliada invocada por um jogador (lobo, urso, vespa...). */
