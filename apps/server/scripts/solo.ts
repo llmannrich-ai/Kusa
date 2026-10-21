@@ -5,7 +5,7 @@
  * - Outro sai no meio da hunt e conta como morte.
  * Uso: npx tsx apps/server/scripts/solo.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { MAP_IDS, SOLO_LIMITS, type RunEndedMessage } from "@kusa/shared";
+import { ITEMS, MAP_IDS, SOLO_LIMITS, type ItemSlot, type RunEndedMessage } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { DungeonState } from "../src/state.ts";
 
@@ -48,17 +48,22 @@ for (const mapId of MAP_IDS) {
   const hunt = new Hunt(state, host, { mapId: "crypt", seed: 12345 });
   hunt.join("solo", { name: "Solo", classId: "knight", talents: {} });
   if (!hunt.start("solo")) throw new Error("a hunt solo não começou");
-  hunt.equip("solo", ["weapon-2", "helmet-1"]);
-  hunt.fillBag("solo", ["armor-1"]);
+  // Itens comuns que o cavaleiro pode usar.
+  const knightItem = (slot: ItemSlot, tier: number) => Object.values(ITEMS).find((d) =>
+    d.slot === slot && d.tier === tier && d.rarity === "common" && (!d.classes || d.classes.includes("knight")))!.id;
+  const weapon = knightItem("weapon", 2);
+  const armor = knightItem("armor", 1);
+  hunt.equip("solo", [weapon, knightItem("helmet", 1)]);
+  hunt.fillBag("solo", [armor]);
   const p = state.players.get("solo")!;
-  if (p.weapon !== "weapon-2" || p.bag.length !== 1) throw new Error(`equipamento/bag não entraram: ${p.weapon} ${[...p.bag]}`);
+  if (p.weapon !== weapon || p.bag.length !== 1) throw new Error(`equipamento/bag não entraram: ${p.weapon} ${[...p.bag]}`);
   advance(hunt, 500);
   hunt.move("solo", { dx: 1, dy: 1 });
   advance(hunt, 100);
   const result = results.pop();
   console.log("fuga:", result);
   if (result?.outcome !== "escaped") throw new Error(`esperava fuga, veio ${result?.outcome}`);
-  if (!result.items.includes("weapon-2") || !result.bag.includes("armor-1")) throw new Error("equipamento ou bag não voltaram");
+  if (!result.items.includes(weapon) || !result.bag.includes(armor)) throw new Error("equipamento ou bag não voltaram");
   if (state.phase !== "ended") throw new Error(`fase esperada ended, veio ${state.phase}`);
 }
 
