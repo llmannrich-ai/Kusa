@@ -43,6 +43,10 @@ import {
   centerOf,
   clampToRange,
   createRng,
+  ENRAGE_COOLDOWN,
+  ENRAGE_HP,
+  SPECIAL_FIRST_DELAY,
+  specialTiles,
   generateDungeon,
   grantsPerk,
   damageReduction,
@@ -97,6 +101,7 @@ import {
   type MapDef,
   type MonsterDef,
   type MonsterKind,
+  type MonsterStrikeMessage,
   type MoveMessage,
   type NoticeMessage,
   type PerkBonuses,
@@ -117,7 +122,7 @@ import { recordRun, resolveAccount, takeBag, takeLoadout, type Account } from ".
 import { bump, newRunStats, recordTelemetry, type RunStats } from "./telemetry.ts";
 
 /** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
-type Hit = Pick<DamageMessage, "attacker" | "fromX" | "fromY" | "fx">;
+type Hit = Pick<DamageMessage, "attacker" | "fromX" | "fromY" | "fx" | "special" | "dot">;
 
 interface Seat {
   userId: string | null;
@@ -149,6 +154,10 @@ interface Seat {
   bonus: Bonuses;
   /** Até quando não repete o aviso de bag cheia. */
   bagFullNoticeUntil: number;
+  /** Veneno ou queimadura de um monstro (`Player.dot`): dano por pulso, de quem veio, próximo pulso e fim. */
+  dot: { damage: number; monsterId: string; kind: MonsterKind; nextAt: number; until: number } | null;
+  /** Lentidão de um monstro (`Player.slowed`): fração da velocidade que sobra e até quando. */
+  slow: { factor: number; until: number } | null;
   /** Números da hunt para a telemetria. */
   stats: RunStats;
 }
@@ -172,6 +181,10 @@ interface Brain {
   rootedUntil: number;
   /** Atordoado até este momento (ms). */
   stunnedUntil: number;
+  /** Quando a habilidade especial pode sair de novo (0 = ainda não notou ninguém). */
+  nextSpecialAt: number;
+  /** Boss já se enfureceu (aviso dado uma vez). */
+  enraged: boolean;
 }
 
 /** Dados da criatura invocada que só o servidor precisa. */
@@ -295,7 +308,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0,
-      aura: bonus, perks: {}, perkBonus: perkBonuses({}), bonus, bagFullNoticeUntil: 0, stats: newRunStats(),
+      aura: bonus, perks: {}, perkBonus: perkBonuses({}), bonus, bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -379,6 +392,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.brains.set(m.id, {
       def, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
       nextMoveAt: 0, nextAttackAt: 0, targetId: null, participants: new Set(), rootedUntil: 0, stunnedUntil: 0,
+      nextSpecialAt: 0, enraged: false,
     });
     return m;
   }
@@ -458,7 +472,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Na diagonal, não atravessa quina de parede.
     if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, player.y) || !isWalkable(this.dungeon, player.x, ny))) return;
 
-    const speed = statsFor(player.classId as ClassId, player.level, seat.bonus).speed;
+    const speed = statsFor(player.classId as ClassId, player.level, seat.bonus).speed * (seat.slow?.factor ?? 1);
     seat.nextMoveAt = now + (1000 / speed) * (dx !== 0 && dy !== 0 ? Math.SQRT2 : 1);
     player.x = nx;
     player.y = ny;
@@ -780,6 +794,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       const p = this.state.players.get(sessionId);
       if (p?.guarded && now >= seat.guardUntil) p.guarded = false;
       if (p && p.barrier > 0 && now >= seat.barrierUntil) p.barrier = 0;
+      if (p && seat.slow && now >= seat.slow.until) {
+        seat.slow = null;
+        p.slowed = false;
+      }
+      if (p) this.tickDot(sessionId, p, seat, now);
     });
     this.state.monsters.forEach((m) => {
       const brain = this.brains.get(m.id);
@@ -978,6 +997,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!brain.targetId) brain.targetId = hit.attacker;
     this.broadcast(MSG.damage, { x: m.x, y: m.y, amount, toPlayer: false, ...hit } satisfies DamageMessage);
     if (m.hp === 0) this.killMonster(m, brain, creditId);
+    else this.checkEnrage(m, brain);
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
@@ -1111,8 +1131,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       amount -= absorbed;
     }
     if (seat) {
-      const kind = this.state.monsters.get(hit.attacker)?.kind ?? "?";
+      const kind = this.state.monsters.get(hit.attacker)?.kind ?? seat.dot?.kind ?? "?";
       bump(seat.stats.damageTaken, kind, Math.min(amount, p.hp));
+      if (hit.special) bump(seat.stats.specialDamage, kind, Math.min(amount, p.hp));
       seat.stats.damageMitigated += Math.max(0, raw - amount);
       seat.stats.minHpPct = Math.min(seat.stats.minHpPct, Math.max(0, p.hp - amount) / p.maxHp);
       if (amount > 0 && amount >= p.hp) {
@@ -1144,6 +1165,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!brain.targetId) return;
 
     const target = this.foe(brain.targetId)!;
+    // Mini-bosses e bosses: a primeira habilidade especial espera um pouco depois de notar alguém (não sai junto com o aggro).
+    if (def.special) {
+      if (brain.nextSpecialAt === 0) brain.nextSpecialAt = now + def.special.cooldownMs * SPECIAL_FIRST_DELAY;
+      if (now >= brain.nextSpecialAt && this.special(m, brain, target, now)) return;
+    }
+
     const inRange = tileDistance(m.x, m.y, target.x, target.y) <= def.attackRange
       && hasLineOfSight(this.dungeon, m.x, m.y, target.x, target.y);
 
@@ -1170,6 +1197,94 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     brain.nextMoveAt = now + (1000 / (def.speed * MONSTER_SPEED_SCALE)) * (diagonal ? Math.SQRT2 : 1);
     m.x = step.x;
     m.y = step.y;
+  }
+
+  // --- Habilidades especiais dos monstros ---------------------------------------
+
+  /**
+   * Habilidade especial de mini-boss ou boss: sai na hora, sem aviso, se o alvo estiver ao alcance e à vista.
+   * Acerta todos os jogadores e criaturas invocadas nos tiles da área.
+   */
+  private special(m: Monster, brain: Brain, target: { x: number; y: number }, now: number) {
+    const special = brain.def.special!;
+    if (tileDistance(m.x, m.y, target.x, target.y) > special.range || !hasLineOfSight(this.dungeon, m.x, m.y, target.x, target.y)) return false;
+    const tiles = specialTiles(this.dungeon, special, m.x, m.y, target.x, target.y);
+    if (tiles.length === 0) return false;
+    // A faixa vai até a ponta do alcance na direção do alvo (para o efeito); as áreas ficam no alvo.
+    let tx = target.x;
+    let ty = target.y;
+    if (special.shape === "line") {
+      const len = Math.hypot(tx - m.x, ty - m.y) || 1;
+      const reach = special.length ?? 1;
+      tx = m.x + Math.round(((tx - m.x) / len) * reach);
+      ty = m.y + Math.round(((ty - m.y) / len) * reach);
+    }
+    brain.nextSpecialAt = now + special.cooldownMs * (brain.enraged ? ENRAGE_COOLDOWN : 1);
+    // Não emenda o ataque básico logo depois do golpe especial.
+    brain.nextAttackAt = Math.max(brain.nextAttackAt, now + brain.def.attackCooldownMs * 0.5);
+    const kind = m.kind as MonsterKind;
+    this.broadcast(MSG.monsterStrike, {
+      id: m.id, kind, x: m.x, y: m.y, tx, ty, tiles: flatTiles(tiles),
+    } satisfies MonsterStrikeMessage);
+    const inArea = (x: number, y: number) => tiles.some((t) => t.x === x && t.y === y);
+    const raw = brain.damage * special.power;
+    const hit: Hit = { attacker: m.id, fromX: m.x, fromY: m.y, fx: brain.def.attackFx, special: true };
+
+    this.state.summons.forEach((s) => {
+      if (!inArea(s.x, s.y)) return;
+      this.damageSummon(s, rollDamage(raw), hit);
+    });
+    this.state.players.forEach((p, sessionId) => {
+      if (p.status !== "playing" || !inArea(p.x, p.y)) return;
+      this.damagePlayer(sessionId, rollDamage(raw), hit);
+      const seat = this.seats.get(sessionId);
+      if (!seat || p.status !== "playing") return;
+      if (special.dot) {
+        const damage = Math.max(1, Math.round(brain.damage * special.dot.power));
+        // Um veneno novo substitui o antigo se for mais forte ou se o antigo estiver acabando.
+        if (!seat.dot || damage >= seat.dot.damage || seat.dot.until < now + special.dot.durationMs) {
+          seat.dot = { damage, monsterId: m.id, kind, nextAt: now + 1000, until: now + special.dot.durationMs };
+          p.dot = special.dot.kind;
+        }
+      }
+      if (special.slow) {
+        seat.slow = { factor: Math.min(special.slow.factor, seat.slow?.factor ?? 1), until: now + special.slow.durationMs };
+        p.slowed = true;
+      }
+    });
+
+    if (special.selfHeal && m.hp > 0) {
+      const healed = Math.min(m.maxHp - m.hp, Math.round(m.maxHp * special.selfHeal));
+      if (healed > 0) {
+        m.hp += healed;
+        this.notice(m.x, m.y, `+${healed}`, 0x2ecc71);
+      }
+    }
+    return true;
+  }
+
+  /** Abaixo de `ENRAGE_HP` da vida, o boss se enfurece: a habilidade especial volta mais rápido. */
+  private checkEnrage(m: Monster, brain: Brain) {
+    if (brain.enraged || brain.def.rank !== "boss" || m.hp > m.maxHp * ENRAGE_HP) return;
+    brain.enraged = true;
+    brain.nextSpecialAt = Math.min(brain.nextSpecialAt, this.clock.currentTime + 1500);
+    this.notice(m.x, m.y - 1, `${brain.def.name} se enfurece!`, 0xff5e57);
+  }
+
+  /** Veneno ou queimadura: um pulso de dano por segundo até acabar. */
+  private tickDot(sessionId: string, p: Player, seat: Seat, now: number) {
+    const dot = seat.dot;
+    if (!dot) return;
+    if (p.status !== "playing" || now >= dot.until) {
+      seat.dot = null;
+      p.dot = "";
+      return;
+    }
+    if (now < dot.nextAt) return;
+    dot.nextAt += 1000;
+    this.damagePlayer(sessionId, dot.damage, {
+      attacker: dot.monsterId, fromX: p.x, fromY: p.y, fx: "bite", special: true, dot: p.dot as "poison" | "burn",
+    });
   }
 
   /** Quem o monstro pode atacar: jogador vivo na hunt ou criatura invocada. */
@@ -1386,6 +1501,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.healthPotions = player.manaPotions = 0;
     player.status = outcome;
     player.target = "";
+    player.dot = "";
+    player.slowed = false;
+    if (seat) {
+      seat.dot = null;
+      seat.slow = null;
+    }
     player.barrier = 0;
     this.state.summons.forEach((s) => { if (s.owner === sessionId) this.removeSummon(s.id); });
 
@@ -1444,6 +1565,11 @@ function equipment(p: Player) {
 }
 
 /** Dano com variação de ±15%. */
+/** Tiles em pares [x0, y0, x1, y1, ...] para as mensagens. */
+function flatTiles(tiles: { x: number; y: number }[]) {
+  return tiles.flatMap((t) => [t.x, t.y]);
+}
+
 function rollDamage(base: number) {
   return Math.max(1, Math.round(base * (0.85 + Math.random() * 0.3)));
 }

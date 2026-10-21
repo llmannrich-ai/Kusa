@@ -3,7 +3,7 @@
  * script, mostra o resumo e derruba os servidores. Não precisa de servidor rodando antes.
  *
  * - Servidor normal: smoke, combat, items, maps, potions, perks e bag.
- * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos): spells.
+ * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos; o cavaleiro aguenta apanhar parado): spells e specials.
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio.
  *
  * Os bots caçam no nível 1 e às vezes morrem por azar. Só nesse caso (a hunt terminou com "died")
@@ -22,7 +22,7 @@ const ATTEMPTS = 5;
 interface Suite { port: number; env: Record<string, string>; tests: string[] }
 const SUITES: Suite[] = [
   { port: 2610, env: {}, tests: ["smoke", "combat", "items", "maps", "potions", "perks", "bag"] },
-  { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["spells"] },
+  { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["spells", "specials"] },
   { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["grimorio"] },
 ];
 

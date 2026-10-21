@@ -195,6 +195,18 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 - Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
+- **Habilidades especiais dos mini-bosses e bosses:** além do ataque básico, eles têm um golpe mais forte, que sai
+  na hora, sem aviso, sempre que a recarga deixa e o alvo está ao alcance. O nome do golpe sobe sobre o monstro, ele
+  brilha na cor da habilidade e o efeito cobre a área atingida. Monstros comuns só têm o ataque básico.
+  Bosses abaixo de 50% da vida se enfurecem e usam o golpe mais vezes.
+
+| Monstro | Habilidade | Efeito |
+|---|---|---|
+| Ogro (mini-boss) | Pisão Sísmico | 5×5 em volta (2,1×) e deixa lento por 3 s |
+| Dragão jovem (boss) | Sopro Infernal | faixa de fogo 3 de largura × 6 (1,9×) + queimadura |
+| Troll do brejo (mini-boss) | Fúria Regenerante | acerta tudo em volta (2×) e cura 8% da vida |
+| Hidra do pântano (boss) | Chuva Ácida | 5×5 a até 7 tiles (1,7×) + veneno |
+
 
 ## Ataques e magias (protótipo)
 

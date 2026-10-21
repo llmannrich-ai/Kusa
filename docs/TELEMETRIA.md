@@ -20,6 +20,7 @@ Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo) |
 | `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |
+| `stats.specialDamage` | Dano das habilidades especiais dos mini-bosses e bosses (golpe + veneno/queimadura), por monstro |
 | `stats.healing` | Cura feita (druida) |
 | `stats.potions` | Poções guardadas e bebidas por tipo e mana devolvida (a vida das poções entra em `healing`) |
 | `stats.kills`, `firstKillAt`, `xp` | Abates por monstro, tempo até o primeiro abate, XP total |

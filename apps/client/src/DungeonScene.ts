@@ -19,6 +19,7 @@ import {
   type AttackMessage,
   type ClassId,
   type DamageMessage,
+  type MonsterStrikeMessage,
   type DrankMessage,
   type Dungeon,
   type MonsterKind,
@@ -87,6 +88,9 @@ const COLORS = {
   barrier: 0x9fd8ff,
   bossPortal: 0xb36bff,
 };
+
+/** Cor dos números do veneno e da queimadura (e das bolhas no herói). */
+const DOT_COLORS = { poison: 0x9acd32, burn: 0xff9f43 };
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
 const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp"]);
@@ -246,6 +250,7 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
     this.room.onMessage(MSG.drank, (msg: DrankMessage) => this.potionBar.onDrank(msg.cooldownMs));
+    this.room.onMessage(MSG.monsterStrike, (msg: MonsterStrikeMessage) => this.onMonsterStrike(msg));
 
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
@@ -406,6 +411,33 @@ export class DungeonScene extends Phaser.Scene {
     this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
   }
 
+  /**
+   * Golpe especial de um mini-boss ou boss (sai na hora, sem aviso): o nome sobe sobre ele, o sprite incha e
+   * brilha na cor da habilidade e o efeito cobre os tiles atingidos.
+   */
+  private onMonsterStrike(msg: MonsterStrikeMessage) {
+    const special = MONSTERS[msg.kind]?.special;
+    if (!special) return;
+    const unit = this.monsters.get(msg.id);
+    const from = unit ? { x: unit.body.x, y: unit.body.y } : this.tilePoint(msg.x, msg.y);
+    this.floatText(msg.x, msg.y - 0.6, special.name, special.color, 1200);
+    if (unit && !unit.dead) {
+      this.lunge(unit, msg.tx - msg.x, msg.ty - msg.y, 7);
+      const base = unit.sprite.scaleX;
+      this.tweens.add({ targets: unit.sprite, scaleX: base * 1.15, scaleY: base * 1.15, duration: 110, yoyo: true, ease: "Quad.Out" });
+      unit.sprite.setTint(special.color);
+      this.time.delayedCall(250, () => { if (unit.sprite.active) unit.sprite.clearTint(); });
+    }
+    this.fx.monsterStrike(msg.kind, from, this.tilePoints(msg.tiles));
+  }
+
+  /** Tiles em pares [x0, y0, x1, y1, ...] para pontos em pixels. */
+  private tilePoints(flat: number[]) {
+    const points: { x: number; y: number }[] = [];
+    for (let i = 0; i + 1 < flat.length; i += 2) points.push(this.tilePoint(flat[i], flat[i + 1]));
+    return points;
+  }
+
   /** Tranco curto do sprite na direção do golpe (ida e volta). */
   private lunge(unit: Unit | undefined, dx: number, dy: number, distance: number) {
     if (!unit || unit.dead || (dx === 0 && dy === 0)) return;
@@ -441,12 +473,14 @@ export class DungeonScene extends Phaser.Scene {
         this.hits.flash(target.sprite);
         if (target.bleeds && Math.random() < 0.6) this.hits.bleed(to());
       }
-      if (msg.amount > 0) this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff, DAMAGE_TEXT_MS);
+      const color = msg.dot ? DOT_COLORS[msg.dot] : msg.toPlayer ? 0xff5e57 : 0xffffff;
+      if (msg.amount > 0) this.floatText(msg.x, msg.y, `-${msg.amount}`, color, DAMAGE_TEXT_MS);
       if (msg.absorbed) this.floatText(msg.x, msg.y - 0.4, `-${msg.absorbed}`, COLORS.barrier, DAMAGE_TEXT_MS);
     };
     // Quem bate: um monstro ou uma criatura invocada (o golpe dos heróis já foi desenhado).
     const monster = this.monsters.get(msg.attacker) ?? this.summons.get(msg.attacker);
-    if (!monster) return impact();
+    // Habilidade especial e veneno: o efeito já foi desenhado (`onMonsterStrike`) ou não tem golpe.
+    if (!monster || msg.special) return impact();
     if (!monster.dead && this.time.now >= monster.walkUntil) {
       this.face(monster, Math.sign(msg.x - msg.fromX), Math.sign(msg.y - msg.fromY));
     }
@@ -558,6 +592,31 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: fx.crest, x: { from: -11, to: -9 }, duration: 80, ease: "Quad.Out" });
   }
 
+  /** Veneno ou queimadura: bolhas (ou brasas) subindo em volta do herói enquanto dura. */
+  private dotAura(top: number, color: number) {
+    const root = this.add.container(0, 0);
+    const spawn = this.time.addEvent({
+      delay: 160, loop: true,
+      callback: () => {
+        if (!root.visible) return;
+        const b = this.add.circle(Phaser.Math.Between(-9, 9), TILE_SIZE / 2 - 6, Phaser.Math.Between(1, 2), color, 0.9);
+        root.add(b);
+        this.tweens.add({ targets: b, y: top + 10, alpha: { from: 0.9, to: 0 }, duration: 650, onComplete: () => b.destroy() });
+      },
+    });
+    root.once(Phaser.GameObjects.Events.DESTROY, () => spawn.remove());
+    return root;
+  }
+
+  /** Lento: uma poça de lodo nos pés do herói. */
+  private mudAtFeet() {
+    const g = this.add.graphics();
+    g.fillStyle(0x5b4a2a, 0.7).fillEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE, 10);
+    g.fillStyle(0x8b7d4a, 0.6).fillEllipse(-5, TILE_SIZE / 2 - 4, 8, 3).fillEllipse(6, TILE_SIZE / 2 - 2, 6, 3);
+    this.tweens.add({ targets: g, alpha: { from: 1, to: 0.6 }, duration: 500, yoyo: true, repeat: -1 });
+    return g;
+  }
+
   private thornsAt() {
     const thorns = this.add.image(0, TILE_SIZE / 2, FX.thorns).setOrigin(0.5, 1);
     this.tweens.add({ targets: thorns, scaleY: { from: 0.2, to: 1 }, duration: 180, ease: "Back.Out" });
@@ -651,6 +710,10 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.drawBar(unit, player.hp, player.maxHp, COLORS.hpPlayer, player.barrier);
     this.setStatus(unit, "guard", player.guarded && player.status === "playing", () => this.shieldAura());
+    const alive = player.status === "playing";
+    this.setStatus(unit, "poison", alive && player.dot === "poison", () => this.dotAura(unit.barY + 2, DOT_COLORS.poison));
+    this.setStatus(unit, "burn", alive && player.dot === "burn", () => this.dotAura(unit.barY + 2, DOT_COLORS.burn));
+    this.setStatus(unit, "slow", alive && player.slowed, () => this.mudAtFeet());
     this.syncBarrier(unit, player.status === "playing" ? player.barrier : 0, player.maxBarrier);
     this.moveTo(unit, player.x, player.y);
   }
