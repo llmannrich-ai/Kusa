@@ -16,7 +16,11 @@
  *   - especializações do Druida: a Águia Gigante aparece e atordoa, o Grito da Fera chama o lobo da Maestria, as formas de
  *     Pantera (o salto) e de Urso (mais vida e a patada) funcionam, a Cura Distante vira escudo com o Florescer, a semente
  *     do Renascer salva o druida da morte, a Pele de Casca protege, a Chuva Revigorante cai, a Picada da Mamba e a Nuvem
- *     Venenosa envenenam, a Onda Trovejante fere e o Chamar Relâmpago solta raios.
+ *     Venenosa envenenam, a Onda Trovejante fere e o Chamar Relâmpago solta raios;
+ *   - especializações do Cavaleiro: o Redemoinho gira 3 vezes, a Fúria Berserker fica ativa, a Lâmina Arremessada sangra,
+ *     os Mil Cortes repetem, o Bater com Escudo atordoa, a Égide dá escudo, os Espinhos de Ferro devolvem o golpe, a
+ *     Fortaleza Viva prende o herói no lugar, a Investida leva o herói até o alvo, o Estandarte sobe, a Corrente de Ferro
+ *     puxa o monstro e o Desafio Supremo protege.
  * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
  *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 KUSA_MONSTER_HP=20 PORT=2603 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
@@ -35,6 +39,7 @@ await paladinLight();
 await paladinScout();
 await sorcererSpecs();
 await druidSpecs();
+await knightSpecs();
 console.log("EFEITOS OK");
 process.exit(0);
 
@@ -452,4 +457,105 @@ async function druidSpecs() {
     await h.room.leave();
   }
   console.log("druida: as 12 magias das especializações funcionaram");
+}
+
+/** Uma sala de Cavaleiro com as duas magias de uma especialização, já colado num monstro. */
+async function knight(label: string, slot1: string, slot2: string) {
+  const hunt = await enter(client, "knight", label);
+  hunt.room.send(MSG.chooseSpell, { slot: 0, spellId: slot1 });
+  hunt.room.send(MSG.chooseSpell, { slot: 1, spellId: slot2 });
+  await approach(hunt.room, hunt.me, 1, () => inSight(hunt.room, hunt.me(), 1).length > 0);
+  const seen = inSight(hunt.room, hunt.me(), 1)[0];
+  if (!seen) throw new Error(`${label}: nenhum monstro colado em 30 s: ${whereAmI(hunt.room, hunt.me)}`);
+  return { ...hunt, seen };
+}
+
+/** Anda para longe do monstro mais perto até ficar a 2–4 tiles de algum à vista (para a Investida e a Corrente). */
+async function backOff(room: any, me: () => any) {
+  const dungeon = generateDungeon(room.state.seed, room.state.mapId);
+  const far = () => inSight(room, me(), 4).find(([, m]) => tileDistance(me().x, me().y, m.x, m.y) >= 2);
+  const deadline = Date.now() + 8000;
+  while (!far() && Date.now() < deadline) {
+    const p = me();
+    const near = inSight(room, p, 2)[0];
+    const away = near ? [Math.sign(p.x - near[1].x), Math.sign(p.y - near[1].y)] : [1, 0];
+    const options = [away, [away[0], 0], [0, away[1]], [-away[1], away[0]], [away[1], -away[0]]]
+      .filter(([dx, dy]) => (dx !== 0 || dy !== 0) && isWalkable(dungeon, p.x + dx, p.y + dy) && tileAt(dungeon, p.x + dx, p.y + dy) !== Tile.Portal);
+    if (options[0]) room.send(MSG.move, { dx: options[0][0], dy: options[0][1] });
+    await wait(250);
+  }
+  return far();
+}
+
+async function knightSpecs() {
+  // Berserker: o redemoinho gira 3 vezes; a fúria fica ativa no herói.
+  {
+    const h = await knight("berserker", "steel_whirlwind", "berserk_rage");
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => h.spells.filter((s) => s.spellId === "steel_whirlwind").length >= 3, 3000, "o Redemoinho de Aço não girou 3 vezes");
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => h.me().buff === "berserk_rage", 2000, "a Fúria Berserker não ficou ativa");
+    await h.room.leave();
+  }
+  // Duelista: a lâmina faz sangrar; os mil cortes repetem no alvo.
+  {
+    const h = await knight("duelista", "thrown_blade", "thousand_cuts");
+    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
+    await until(() => h.room.state.monsters.get(h.seen[0])?.dot === "bleed", 3000, "a Lâmina Arremessada não fez sangrar");
+    const near = inSight(h.room, h.me(), 1)[0] ?? h.seen;
+    h.room.send(MSG.cast, { slot: 1, aim: { x: near[1].x, y: near[1].y, targetId: near[0] } });
+    await until(() => h.spells.filter((s) => s.spellId === "thousand_cuts").length >= 5, 3000, "os Mil Cortes não repetiram");
+    await h.room.leave();
+  }
+  // Guardião: a pancada atordoa; a égide dá escudo.
+  {
+    const h = await knight("guardiao", "shield_bash", "shared_aegis");
+    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
+    await until(() => h.room.state.monsters.get(h.seen[0])?.stunned === true, 2000, "o Bater com Escudo não atordoou");
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => h.me().barrier > 0, 2000, "a Égide Compartilhada não deu escudo");
+    await h.room.leave();
+  }
+  // Inabalável: os espinhos ferem quem bate; na fortaleza, o herói não anda.
+  {
+    const h = await knight("inabalavel", "iron_thorns", "living_fortress");
+    const from = h.damage.length;
+    h.room.send(MSG.cast, { slot: 0 });
+    await until(() => myHits(h, from) > 0, 8000, "os Espinhos de Ferro não devolveram nenhum golpe");
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => h.me().buff === "living_fortress" && h.me().guarded, 2000, "a Fortaleza Viva não ficou ativa");
+    const at = { x: h.me().x, y: h.me().y };
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { h.room.send(MSG.move, { dx, dy }); await wait(300); }
+    if (h.me().x !== at.x || h.me().y !== at.y) throw new Error("o herói andou durante a Fortaleza Viva");
+    await h.room.leave();
+  }
+  // Senhor da Guerra: a investida leva o herói até o alvo; o estandarte sobe.
+  {
+    const h = await knight("senhor", "charge", "war_banner");
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "war_banner"), 2000, "o Estandarte de Guerra não subiu");
+    const target = await backOff(h.room, h.me);
+    if (!target) throw new Error(`senhor: nenhum monstro a 2–4 tiles: ${whereAmI(h.room, h.me)}`);
+    h.room.send(MSG.cast, { slot: 0, aim: { x: target[1].x, y: target[1].y, targetId: target[0] } });
+    await until(() => {
+      const m = h.room.state.monsters.get(target[0]);
+      return !m || tileDistance(h.me().x, h.me().y, m.x, m.y) <= 1;
+    }, 2000, "a Investida não levou o herói até o alvo");
+    await h.room.leave();
+  }
+  // Desafiante: a corrente puxa o monstro para perto; o desafio protege.
+  {
+    const h = await knight("desafiante", "iron_chain", "supreme_challenge");
+    h.room.send(MSG.cast, { slot: 1 });
+    await until(() => h.me().guarded, 2000, "o Desafio Supremo não protegeu o herói");
+    const target = await backOff(h.room, h.me);
+    if (!target) throw new Error(`desafiante: nenhum monstro a 2–4 tiles: ${whereAmI(h.room, h.me)}`);
+    h.room.send(MSG.cast, { slot: 0, aim: { x: target[1].x, y: target[1].y, targetId: target[0] } });
+    await until(() => {
+      const m = h.room.state.monsters.get(target[0]);
+      return !!m && tileDistance(h.me().x, h.me().y, m.x, m.y) <= 1 && m.rooted;
+    }, 3000, "a Corrente de Ferro não puxou o monstro");
+    await h.room.leave();
+  }
+  console.log("cavaleiro: as 12 magias das especializações funcionaram");
 }
