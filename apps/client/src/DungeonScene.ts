@@ -63,6 +63,8 @@ const VIEW_TILES = { w: 9, h: 13 };
 const FOLLOW_LIFT = 0.12;
 /** Até onde a troca de alvo (Tab) procura monstros (tiles). */
 const TARGET_CYCLE_RANGE = 8;
+/** Quanto tempo o número de dano fica na tela (ms); os demais avisos flutuantes usam 900. */
+const DAMAGE_TEXT_MS = 1080;
 
 /**
  * Ordem de desenho: o chão fica embaixo; paredes, baús e personagens são ordenados pela linha
@@ -439,8 +441,8 @@ export class DungeonScene extends Phaser.Scene {
         this.hits.flash(target.sprite);
         if (target.bleeds && Math.random() < 0.6) this.hits.bleed(to());
       }
-      if (msg.amount > 0) this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff);
-      if (msg.absorbed) this.floatText(msg.x, msg.y - 0.4, `-${msg.absorbed}`, COLORS.barrier);
+      if (msg.amount > 0) this.floatText(msg.x, msg.y, `-${msg.amount}`, msg.toPlayer ? 0xff5e57 : 0xffffff, DAMAGE_TEXT_MS);
+      if (msg.absorbed) this.floatText(msg.x, msg.y - 0.4, `-${msg.absorbed}`, COLORS.barrier, DAMAGE_TEXT_MS);
     };
     // Quem bate: um monstro ou uma criatura invocada (o golpe dos heróis já foi desenhado).
     const monster = this.monsters.get(msg.attacker) ?? this.summons.get(msg.attacker);
@@ -792,7 +794,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** Número ou aviso que sobe e some sobre um tile. */
-  private floatText(tileX: number, tileY: number, text: string, color: number) {
+  private floatText(tileX: number, tileY: number, text: string, color: number, duration = 900) {
     const label = this.add.text(this.toPx(tileX), this.toPx(tileY) - 8, text, {
       ...this.textStyle(),
       fontSize: "11px",
@@ -802,7 +804,7 @@ export class DungeonScene extends Phaser.Scene {
       targets: label,
       y: label.y - 24,
       alpha: 0,
-      duration: 900,
+      duration,
       ease: "Cubic.Out",
       onComplete: () => label.destroy(),
     });
