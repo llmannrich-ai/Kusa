@@ -6,9 +6,11 @@ import { itemIcon } from "./art/items.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroPoses, heroSheet } from "./art/heroes.ts";
 import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
+import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
 import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
+import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
@@ -42,7 +44,7 @@ for (const id of CLASS_IDS) {
     for (let f = 0; f < HERO_FRAMES; f++) {
       const { canvas, ctx } = makeCanvas(HERO_SIZE, HERO_SIZE);
       ctx.drawImage(sheet, (d * HERO_FRAMES + f) * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, 0, 0, HERO_SIZE, HERO_SIZE);
-      show(row, canvas, `${dirNames[dir]} ${f}`);
+      show(row, canvas, `${dirNames[dir]} ${f}`, ZOOM / ART_SCALE);
     }
   });
 }
@@ -56,7 +58,7 @@ for (const id of CLASS_IDS) {
   for (const [dir, flip] of [["down", false], ["side", false], ["side", true], ["up", false]] as const) {
     const { canvas, ctx } = makeCanvas(HERO_SIZE, HERO_SIZE);
     walkers.push({ ctx, sheet, first: HERO_DIRS.indexOf(dir) * HERO_FRAMES, flip });
-    show(walkRow, canvas, `${CLASSES[id].name} ${flip ? "direita" : dirNames[dir]}`, 3);
+    show(walkRow, canvas, `${CLASSES[id].name} ${flip ? "direita" : dirNames[dir]}`, 3 / ART_SCALE);
   }
 }
 let walkStep = 0;
@@ -86,14 +88,14 @@ const fullSet = (tier: ItemTier): Outfit => ({
 });
 for (const id of CLASS_IDS) {
   const row = section(`Vestimenta: ${CLASSES[id].name}`);
-  show(row, heroPoses(id, NO_OUTFIT), "sem equipamento", 3);
-  for (let tier = 1; tier <= MAX_TIER; tier++) show(row, heroPoses(id, fullSet(tier as ItemTier)), TIER_NAMES[tier as ItemTier], 3);
+  show(row, heroPoses(id, NO_OUTFIT), "sem equipamento", 3 / ART_SCALE);
+  for (let tier = 1; tier <= MAX_TIER; tier++) show(row, heroPoses(id, fullSet(tier as ItemTier)), TIER_NAMES[tier as ItemTier], 3 / ART_SCALE);
 }
 for (const slot of ITEM_SLOTS) {
   const row = section(`Vestido no cavaleiro: ${SLOT_NAMES[slot]}`);
   for (let tier = 1; tier <= MAX_TIER; tier++) {
     const id = itemId(slot, tier as ItemTier);
-    show(row, heroPoses("knight", { ...NO_OUTFIT, [slot]: id }), ITEMS[id].name, 3);
+    show(row, heroPoses("knight", { ...NO_OUTFIT, [slot]: id }), ITEMS[id].name, 3 / ART_SCALE);
   }
 }
 
@@ -120,6 +122,13 @@ const [floor, ...monsters] = await Promise.all([
   ...Object.values(MONSTER_TEXTURE).map(loadImage),
 ]);
 const isWall = (_x: number, y: number) => y === 0 || y === H - 1;
+/** Personagem do tamanho do jogo (heróis em `HERO_SCALE`, monstros no tile), com os pés na base do tile. */
+const drawChar = (art: CanvasImageSource, sx: number, size: number, x: number, y: number, scale = 1) => {
+  const side = TILE_SIZE * scale;
+  sceneCtx.drawImage(art, sx, 0, size, size, x * TILE_SIZE - (side - TILE_SIZE) / 2, (y + 1) * TILE_SIZE - side, side, side);
+};
+const drawHero = (sheet: HTMLCanvasElement, frame: number, x: number, y: number) => drawChar(sheet, frame * HERO_SIZE, HERO_SIZE, x, y, HERO_SCALE);
+const refinedMonsters = monsters.map((img) => refineArt(img));
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {
     if (!isWall(x, y)) sceneCtx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -133,9 +142,9 @@ for (let y = 0; y < H; y++) {
     sceneCtx.drawImage(wallCap(x % WALL_VARIANTS, rim), x * TILE_SIZE, y * TILE_SIZE - WALL_RISE);
     if (y + 1 < H && !isWall(x, y + 1)) sceneCtx.drawImage(wallFace(x % WALL_VARIANTS), x * TILE_SIZE, (y + 1) * TILE_SIZE - WALL_RISE);
   }
-  if (y === 1) CLASS_IDS.forEach((id, i) => sceneCtx.drawImage(heroSheet(id), 0, 0, HERO_SIZE, HERO_SIZE, (1 + i * 2) * TILE_SIZE, y * TILE_SIZE, HERO_SIZE, HERO_SIZE));
-  if (y === 3) monsters.slice(0, 5).forEach((img, i) => sceneCtx.drawImage(img, (i * 2) * TILE_SIZE, y * TILE_SIZE));
-  if (y === 4) CLASS_IDS.forEach((id, i) => sceneCtx.drawImage(heroSheet(id), 6 * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, (2 + i * 2) * TILE_SIZE, y * TILE_SIZE, HERO_SIZE, HERO_SIZE));
+  if (y === 1) CLASS_IDS.forEach((id, i) => drawHero(heroSheet(id), 0, 1 + i * 2, y));
+  if (y === 3) refinedMonsters.slice(0, 5).forEach((art, i) => drawChar(art, 0, art.width, i * 2, y));
+  if (y === 4) CLASS_IDS.forEach((id, i) => drawHero(heroSheet(id), 6, 2 + i * 2, y));
 }
 show(sceneRow, sceneCanvas, "corredor", 2);
 
@@ -162,6 +171,24 @@ show(swamp, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
 show(swamp, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
 show(swamp, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
 
+// Detalhes da cripta: chão sobre ladrilho escuro; paredes sobre a face de tijolos (linhas 16 a 31).
+const crypt = section("Cripta: detalhes (arte própria)");
+const onWallFaces = (source: HTMLCanvasElement) => {
+  const { canvas, ctx } = makeCanvas(source.width, source.height);
+  for (let x = 0; x < source.width; x += TILE_SIZE) {
+    ctx.drawImage(wallCap(0, RIM.north), x, -WALL_RISE);
+    ctx.drawImage(wallFace(x / TILE_SIZE % WALL_VARIANTS), x, TILE_SIZE - WALL_RISE);
+  }
+  ctx.drawImage(source, 0, 0);
+  return canvas;
+};
+show(crypt, onGround(cryptFloorStrip(), "#5a4a38"), "chão", 3);
+show(crypt, onWallFaces(cryptWallStrip()), "paredes", 3);
+show(crypt, onWallFaces(torchStrip()), "tocha", 3);
+show(crypt, onGround(cryptTallStrip(), "#5a4a38"), "móveis", 3);
+show(crypt, onGround(lightCanvas(), "#3a2e22"), "luz", 2);
+show(crypt, onGround(dustCanvas(), "#3a2e22"), "poeira", 8);
+
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
   ...Object.values(MONSTER_TEXTURE), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
@@ -171,3 +198,6 @@ const packKeys = [
 for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);
 }
+
+const refined = section("Monstros refinados (como no jogo)");
+Object.keys(MONSTER_TEXTURE).forEach((kind, i) => show(refined, refinedMonsters[i], kind, 2));

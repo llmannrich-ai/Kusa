@@ -1,5 +1,6 @@
 import type { ClassId } from "./classes.ts";
 import type { MapId } from "./maps.ts";
+import type { PerkId } from "./perks.ts";
 import type { PotionId } from "./potions.ts";
 import type { SpellId, SpellSlot } from "./spells.ts";
 
@@ -58,6 +59,9 @@ export interface NoticeMessage {
 /** Cliente → servidor: põe uma magia num slot liberado. */
 export interface ChooseSpellMessage { slot: SpellSlot; spellId: SpellId }
 
+/** Cliente → servidor: escolhe uma das melhorias oferecidas na subida de nível (`Player.perkOffer`). */
+export interface ChoosePerkMessage { perk: PerkId }
+
 /** Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe. */
 export interface AttackingMessage { on: boolean }
 
@@ -107,8 +111,10 @@ export interface RunEndedMessage {
   outcome: RunOutcome;
   loot: number;
   level: number;
-  /** Itens equipados que voltam para o inventário da conta (só quem sai vivo). */
+  /** Itens equipados que voltam para o inventário da conta (na morte, todos menos o perdido). */
   items: string[];
+  /** Equipamento sorteado que ficou no chão na morte. */
+  lost?: string;
 }
 
 export type MatchPhase = "lobby" | "running" | "ended";
@@ -123,6 +129,7 @@ export const MSG = {
   attack: "attack",
   attacking: "attacking",
   chooseSpell: "chooseSpell",
+  choosePerk: "choosePerk",
   cast: "cast",
   spell: "spell",
   drink: "drink",

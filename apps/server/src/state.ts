@@ -30,6 +30,12 @@ export class Player extends Schema {
   @type(["string"]) knownSpells = new ArraySchema<string>();
   /** Nível de cada magia conhecida no Grimório (1 a 3). */
   @type({ map: "number" }) spellRanks = new MapSchema<number>();
+  /** Melhorias da hunt já escolhidas (id de `PERKS` → quantas vezes). */
+  @type({ map: "number" }) perks = new MapSchema<number>();
+  /** Melhorias oferecidas agora, para escolher uma (vazio = nenhuma escolha pendente). */
+  @type(["string"]) perkOffer = new ArraySchema<string>();
+  /** Escolhas ainda na fila além da oferecida agora (subiu vários níveis de uma vez). */
+  @type("number") perksQueued = 0;
   /** Poções carregadas (só valem na hunt; até `POTION_MAX` de cada). */
   @type("number") healthPotions = 0;
   @type("number") manaPotions = 0;

@@ -27,13 +27,22 @@ html, body {
 }
 /* Sem pinça, rolagem ou duplo toque para zoom dentro do jogo. */
 #game { position: fixed; top: 0; bottom: 0; left: var(--col-x); width: var(--col-w); touch-action: none; }
-/* Pântano: cantos escurecidos (só luz; não pega toque). */
+/* Cantos escurecidos por mapa (só luz; não pega toque). */
+/* Pântano */
 #game.swamp::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: radial-gradient(ellipse 75% 65% at 50% 42%, transparent 55%, rgba(4, 10, 3, 0.5) 100%);
+}
+/* Cripta: mais escura nos cantos, como corredor iluminado só por tochas. */
+#game.crypt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 72% 62% at 50% 42%, transparent 45%, rgba(8, 4, 2, 0.62) 100%);
 }
 [hidden] { display: none !important; }
 
@@ -335,6 +344,23 @@ button { min-height: 44px; touch-action: manipulation; }
 .spell-option small { display: block; margin: 2px 0 4px; font-size: 12px; }
 .spell-option em { display: block; font-size: 11px; font-style: normal; color: #9ec5ff; }
 .spell-choice > button:last-child { width: 100%; }
+
+/* Escolha de melhoria ao subir de nível: duas cartas lado a lado, no alto, um toque escolhe. */
+.panel.perk-choice {
+  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
+  transform: translateX(-50%);
+  width: min(380px, calc(var(--col-w) - 24px));
+  padding: 12px;
+  z-index: 15;
+}
+.perk-choice h2 { margin: 0 0 8px; font-size: 17px; text-align: center; }
+.perk-choice p { margin: 8px 0 0; font-size: 12px; text-align: center; }
+.perk-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.perk-option { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; min-height: 120px; border-color: #c9a227; background: #2b2414; text-align: center; }
+.perk-icon { font-size: 34px; line-height: 1.1; }
+.perk-option strong { color: var(--accent); font-size: 15px; }
+.perk-option small { font-size: 12px; line-height: 1.25; }
+.perk-option em { font-size: 11px; font-style: normal; color: #9ec5ff; }
 
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }

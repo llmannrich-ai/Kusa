@@ -3,6 +3,7 @@ import {
   SPELLS,
   SPELL_SLOT_LEVELS,
   spellChoices,
+  spellCooldownMs,
   spellFacts,
   type ClassId,
   type SpellDef,
@@ -11,6 +12,7 @@ import {
 } from "@kusa/shared";
 import type { SpellAim } from "./aim.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
+import { stacksOf } from "./perkchoice.ts";
 
 const SLOTS: SpellSlot[] = [0, 1];
 
@@ -39,7 +41,8 @@ export class SpellBar {
   /** Slot mirando agora e o dedo que segura o botão. */
   private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
 
-  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim) {
+  /** `busy` diz se outra janela (a escolha de melhoria) está aberta: a escolha de magia espera. */
+  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim, private busy: () => boolean) {
     // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
     actions.prepend(this.slots[1].button, this.slots[0].button);
@@ -58,12 +61,18 @@ export class SpellBar {
     this.room.send(MSG.cast, { slot });
   }
 
+  /** Janela de escolha de magia aberta. */
+  get choosing() {
+    return this.chooser !== null;
+  }
+
   /** O servidor confirmou uma magia nossa: começa a recarga do botão. */
   onCast(spellId: SpellId) {
     const spell = SPELLS[spellId];
     const view = this.slots[spell.slot];
-    view.cooldownMs = spell.cooldownMs;
-    view.readyAt = performance.now() + spell.cooldownMs;
+    const p = this.me();
+    view.cooldownMs = spellCooldownMs(spell.cooldownMs, p ? stacksOf(p) : {});
+    view.readyAt = performance.now() + view.cooldownMs;
   }
 
   update() {
@@ -143,7 +152,7 @@ export class SpellBar {
 
     // Liberou agora: abre a escolha sozinha (uma vez; depois, pelo botão ✨).
     // Com dois slots liberados ao mesmo tempo, um de cada vez: o próximo abre quando este fechar.
-    if (state === "empty" && !view.offered && !this.chooser && p.status === "playing") {
+    if (state === "empty" && !view.offered && !this.chooser && !this.busy() && p.status === "playing") {
       view.offered = true;
       this.openChooser(slot);
     }
