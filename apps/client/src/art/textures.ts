@@ -34,7 +34,7 @@ export const MONSTER_TEXTURE: Record<MonsterKind, string> = {
   hydra: "monster-hydra",
 };
 
-/** Criaturas invocadas pelo Druida (arte própria, `summons.ts`). */
+/** Criaturas invocadas (arte própria, `summons.ts`). */
 export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   wolf: "summon-wolf",
   hornet: "summon-hornet",
@@ -42,6 +42,8 @@ export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   bear: "summon-bear",
   wisp: "summon-wisp",
   treant: "summon-treant",
+  // O Esqueleto Erguido usa a folha do Esqueleto monstro (o brilho de aliado nos pés diferencia).
+  skeleton: "monster-skeleton",
 };
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };

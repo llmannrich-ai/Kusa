@@ -1,12 +1,13 @@
 import type { SummonKind } from "@kusa/shared";
 import { CREATURE_GROWTH, grownArt, stepOf, type CreatureArt, type Dir } from "./creature.ts";
 import { eyes, headRx, type Joints, type Look } from "./humanoid.ts";
-import { HOLE, humanoidArt } from "./monsters.ts";
+import { HOLE, MONSTER_ART, humanoidArt } from "./monsters.ts";
 import { ramp, solid, type Painter, type Ramp } from "./paint.ts";
 
 /**
- * Criaturas invocadas pelo Druida, no traço dos monstros: lobo e urso de quatro patas, vespa,
- * mariposa e fogo-fátuo voando (batem as asas o tempo todo) e o Guardião do Bosque, uma árvore viva.
+ * Criaturas invocadas, no traço dos monstros: lobo e urso de quatro patas, vespa, mariposa e
+ * fogo-fátuo voando (batem as asas o tempo todo), o Guardião do Bosque (uma árvore viva) e o
+ * Esqueleto Erguido do Necromante, que é o mesmo esqueleto dos monstros.
  */
 
 // --- Quadrúpedes ----------------------------------------------------------------
@@ -228,4 +229,5 @@ export const SUMMON_ART: Record<SummonKind, CreatureArt> = {
   moth: grownArt(44, 40, CREATURE_GROWTH, moth),
   wisp: grownArt(40, 44, CREATURE_GROWTH, wisp),
   treant: humanoidArt(TREANT, 72, 80),
+  skeleton: MONSTER_ART.skeleton,
 };

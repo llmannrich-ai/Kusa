@@ -20,18 +20,23 @@ export async function enter(client: Client, classId: string, label: string) {
   room.onMessage(MSG.spell, (msg: SpellMessage) => spells.push(msg));
   room.onMessage(MSG.chain, (msg: ChainMessage) => chains.push(msg));
   room.onMessage(MSG.cooldown, (msg: CooldownMessage) => cooldowns.push(msg));
-  for (const type of [MSG.notice, MSG.attack, MSG.monsterStrike]) room.onMessage(type, () => {});
+  const notices: string[] = [];
+  room.onMessage(MSG.notice, (msg: { text: string }) => notices.push(msg.text));
+  for (const type of [MSG.attack, MSG.monsterStrike]) room.onMessage(type, () => {});
   room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora (${label}, ${classId}): ${JSON.stringify(msg)}`); });
   await wait(300);
   room.send(MSG.start);
   await wait(300);
   const me = () => room.state.players.get(room.sessionId);
   if (me().level < 8) throw new Error(`o servidor precisa de KUSA_START_LEVEL=8 (nível ${me().level})`);
-  return { room, me, damage, spells, chains, cooldowns };
+  return { room, me, damage, spells, chains, cooldowns, notices };
 }
 
-/** Anda até ficar a `range` tiles do monstro mais próximo, até `done()` ou 30 s. */
-export async function approach(room: any, me: () => any, range: number, done: () => boolean) {
+/**
+ * Anda até ficar a `range` tiles do monstro mais próximo (que tem caminho), até `done()` ou 30 s. Com `skip`, pula os
+ * `skip` monstros mais próximos: serve para ir buscar outro monstro e juntar um par perto do herói.
+ */
+export async function approach(room: any, me: () => any, range: number, done: () => boolean, skip = 0) {
   const dungeon = generateDungeon(room.state.seed, room.state.mapId);
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline && !done()) {
@@ -44,9 +49,12 @@ export async function approach(room: any, me: () => any, range: number, done: ()
     const byDistance = ([...room.state.monsters.values()] as any[])
       .map((m) => ({ m, d: tileDistance(p.x, p.y, m.x, m.y) }))
       .sort((a, b) => a.d - b.d);
-    if (byDistance.length > 0 && byDistance[0].d > range) {
-      for (const { m } of byDistance) {
-        const step = nextStep(dungeon, p, m, range, (x, y) => blocked.has(y * dungeon.width + x));
+    const wanted = byDistance.slice(Math.min(skip, Math.max(0, byDistance.length - 1)));
+    // Já perto e `done()` ainda falso (ex.: uma quina tapa a visão): continua até ficar colado no monstro.
+    const reach = wanted.length > 0 && wanted[0].d <= range ? 1 : range;
+    if (wanted.length > 0 && wanted[0].d > reach) {
+      for (const { m } of wanted) {
+        const step = nextStep(dungeon, p, m, reach, (x, y) => blocked.has(y * dungeon.width + x));
         if (!step) continue;
         room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
         break;
@@ -80,4 +88,14 @@ export async function until(done: () => boolean, ms: number, error: string) {
 
 export function wait(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Onde o herói está e os 3 monstros mais perto (distância e linha de visão), para mensagens de erro. */
+export function whereAmI(room: any, me: () => any) {
+  const dungeon = generateDungeon(room.state.seed, room.state.mapId);
+  const p = me();
+  const near = ([...room.state.monsters.values()] as any[])
+    .map((m) => ({ k: m.kind, d: tileDistance(p.x, p.y, m.x, m.y), v: hasLineOfSight(dungeon, p.x, p.y, m.x, m.y) }))
+    .sort((a, b) => a.d - b.d).slice(0, 3);
+  return `herói em ${p.x},${p.y} (${p.status}); perto: ${JSON.stringify(near)}`;
 }

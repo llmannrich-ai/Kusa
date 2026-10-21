@@ -55,16 +55,52 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
   magias dele (o banco recusa a compra em `buy_talent`). No menu, o ramo aparece com ✦; tocar no nome ou no nó ✦
   abre o ramo em foco, com os dois lados lado a lado. A ficha do Traço avisa que a escolha é permanente e pede um
   segundo toque para confirmar. Catálogo em `packages/shared/src/traits.ts` e `talents.ts`.
-  - **Paladino, ramo Mira** (o único especializado por enquanto):
+  - **Paladino** (a primeira classe com os 3 ramos especializados). Ramo **Mira**:
 
     | Lado | Traço | Magia slot 1 | Magia slot 2 |
     |---|---|---|---|
     | **Atirador de Elite** | 🦅 Olho de Águia: +1 de alcance no básico e +20% de dano em monstros a 5 tiles ou mais | 🎯 Marca do Caçador: 0,8× e marca o alvo (+25% de dano de toda a equipe por 10 s) | 🔭 Postura do Atirador: 8 s com básico +100% e +2 de alcance, andando 50% mais devagar |
-    | **Caçador Ágil** | 🍃 Passo Leve: depois de cada magia, anda 25% mais rápido por 2 s | 🤸 Rolamento: salta 3 tiles (no toque rápido, para longe do monstro; nunca no portal) e a próxima flecha atordoa por 1 s | 🏹 Aljava Veloz: 6 s com o básico 60% mais rápido |
+    | **Caçador Ágil** | 🍃 Passo Leve: depois de cada magia, anda 25% mais rápido por 2 s | 🤸 Rolamento: salta 3 tiles (no toque rápido, para longe do monstro; nunca no portal; com parede atrás, rola para o lado; encurralado, não sai nem gasta mana) e a próxima flecha atordoa por 1 s | 🏹 Aljava Veloz: 6 s com o básico 60% mais rápido |
 
   - Maestrias: Marca do Caçador marca também quem está colado no alvo; Postura do Atirador não deixa lento; Rolamento
     salta 5 tiles e dá escudo de 15% por 3 s; Aljava Veloz soma +30% de dano no básico.
   - Na hunt, o monstro marcado ganha uma mira vermelha girando, e o herói com Postura ou Aljava fica com um anel na cor da magia.
+  - Ramos **Luz** e **Batedor** do Paladino (o Paladino não cura: a cura é do Druida; o Guardião da Luz protege):
+
+    | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
+    |---|---|---|---|---|
+    | Luz | **Cruzado** | ✝️ Flechas Consagradas: básico +30% em mortos-vivos e queima o alvo por 2 s | 🔱 Lança Etérea: 1,6×, recarga de 2,5 s, +50% em mortos-vivos | 🌞 Caldeira Divina: raio 3 em volta de si, 2,2×, dobro em mortos-vivos |
+    | Luz | **Guardião da Luz** | 😇 Aura Sagrada: você e os aliados a até 3 tiles recebem 10% menos dano | 🔆 Escudo da Luz: escudo de 30% num aliado mirado (no toque rápido, o mais ferido ao alcance, você incluído) | ⛪ Solo Consagrado: campo de raio 2 por 8 s, fere os monstros dentro (0,35× por segundo) e dá +5 de armadura aos aliados |
+    | Batedor | **Artilheiro** | 🧨 Pólvora: suas magias de área deixam o chão em chamas por 3 s | ⚡ Flecha Relâmpago: 1,5× e salta para mais 3 monstros | 🎇 Barragem: leque de 90° e 5 tiles à sua frente, 2× |
+    | Batedor | **Armadilheiro** | ⚙️ Engenhoso: armadilhas e estacas duram o dobro, e cabem 3 de cada | 🪤 Armadilha de Urso: fica no chão por 20 s; o primeiro monstro que pisar fica preso 3 s e sangra | 🎋 Cordão de Flechas: estaca por 12 s que atira 4 vezes nos monstros a até 3 tiles |
+
+  - Maestrias: Lança Etérea atravessa a reta; Caldeira ofusca 1 s; Escudo da Luz dura o dobro; Solo Consagrado em raio 3;
+    Flecha Relâmpago salta 5 vezes; Barragem faz sangrar; Armadilha prende quem está colado; Cordão atira 7 vezes.
+  - **Mortos-vivos:** Esqueleto (Cripta) e Afogado (Pântano) (`undead` em `monsters.ts`).
+  - **Campos no chão** (`state.fields`): a zona brilha nos tiles do raio (laranja no chão em chamas), a armadilha aparece
+    como mandíbulas de ferro e a estaca como um poste com o alcance em volta. Conjurar de novo troca o campo mais antigo
+    da mesma magia. A estaca e a armadilha atiram e disparam sozinhas; o dano conta para quem as pôs.
+  - **Mira em aliado** (Escudo da Luz): arrastando, o herói a até 1 tile do ponto (círculo azul nos pés); parado no
+    botão, o mais ferido ao alcance. **Mira em leque** (Barragem): a mira acende os tiles do leque.
+  - **Feiticeiro** (os 3 ramos especializados). As magias do Feiticeiro têm elemento (energia, fogo, gelo ou trevas):
+
+    | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
+    |---|---|---|---|---|
+    | Raio | **Tempestuoso** | 🌩️ Estática: magias de energia têm 25% de chance de atordoar 0,5 s | 📏 Feixe de Energia: linha de 6 tiles, 2× | ⛈️ Fúria dos Céus: nuvem sobre você que solta 6 raios (1,3×) nos monstros a até 4 tiles em 3,5 s |
+    | Raio | **Piromante** | 🔥 Combustão: magias com dano queimam os atingidos por 4 s | 🔥 Bola de Fogo: raio 2, 1,6× e queima | 🌋 Núcleo Infernal: raio 4 em volta de si, 3×, recarga de 20 s |
+    | Gelo | **Criomante** | 💎 Estilhaçar: magia em monstro preso causa +50% e o solta | 🌬️ Cone de Frio: leque de 4 tiles, 1,7× e 50% de lentidão | 🧊 Prisão de Gelo: prende tudo em raio 3 por 4 s, sem dano |
+    | Gelo | **Arcanista** | 🔷 Escudo de Mana: 30% do dano recebido sai da mana | 💨 Passo Nebuloso: teleporta até 4 tiles (passa por cima de monstros) | 🧱 Muralha Mágica: parede de 3 tiles por 6 s que ninguém atravessa |
+    | Trevas | **Necromante** | 💀 Colheita: monstro morto por magia devolve 3% da mana | ☠️ Morte Súbita: 3,4× num alvo | 🦴 Erguer Esqueletos: 2 esqueletos por 15 s |
+    | Trevas | **Bruxo** | 👁️ Maldição: magia de alvo único marca o alvo (+15% de dano da equipe por 5 s) | 🟣 Rajada Mística: 2,2× e empurra o alvo 1 tile | 🐙 Tentáculos Negros: campo de raio 2 por 6 s que prende e fere |
+
+  - Maestrias: Feixe atordoa 0,5 s; Fúria dos Céus solta 10 raios; Bola de Fogo em raio 3; Núcleo Infernal queima;
+    Cone de Frio congela 1,5 s; Prisão de Gelo fere 1×; Passo Nebuloso dá escudo de 20%; Muralha de 5 tiles; Morte
+    Súbita dobra abaixo de 30% da vida; 3 esqueletos; Rajada empurra 2 tiles; Tentáculos em raio 3.
+  - **Teleporte** (Passo Nebuloso): aparece no tile livre mais longe da reta mirada; se a reta não tiver nenhum, tenta
+    as diagonais e as laterais (como o Rolamento). No toque rápido, foge do monstro mais perto; sem lugar, não gasta mana.
+  - **Muralha Mágica**: cada tile da parede é um campo `wall`; heróis, monstros e criaturas desviam (os monstros pelo
+    pathfinding), mas magias, flechas e a visão passam. Só sobe em tile livre.
+  - **Empurrar** (Rajada Mística): o alvo é empurrado para longe de quem conjura, parando em parede, água ou alguém.
 - Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade (1.200 e 1.600 nas magias das
   especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
@@ -73,8 +109,8 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 | Classe | Ramo 1 | Ramo 2 | Ramo 3 |
 |---|---|---|---|
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante |
-| Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva |
-| Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio |
+| Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
+| Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza |
 
 #### Maestrias
@@ -185,23 +221,23 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 
 ### Melhorias de nível
 
-Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **duas cartas** no alto da tela e o jogador
-toca numa. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
+Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **dois ícones pequenos** logo acima do
+personagem (acompanhando ele) e o jogador toca num. Só o ícone aparece; nome e efeito ficam no rótulo acessível. O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
 até o fim da hunt e soma por cima das áureas do Grimório. Subiu vários níveis de uma vez: as escolhas entram na fila,
 uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abrem juntas, e a de magia tem
 prioridade: uma melhoria ainda pendente de um nível anterior sai da tela quando o slot abre e só volta depois que a
-magia for escolhida (ou a janela fechada). O título da carta mostra o nível que deu a melhoria, nunca o 3 ou o 6.
+magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que deu a melhoria, nunca o 3 ou o 6.
 
 | Melhoria | Cada escolha | Limite |
 |---|---|---|
 | ❤️ Vigor | +12% de vida máxima | 5 |
 | 💧 Reserva arcana | +15% de mana máxima | 4 |
-| 💗 Regeneração | +1% de vida por segundo (base 2%) | 3 |
+| 🌿 Regeneração | +1% de vida por segundo (base 2%) | 3 |
 | 🔷 Clareza | +1,5% de mana por segundo (base 2%) | 3 |
 | ⚔️ Força | +10% de dano (básico, magias e criaturas) | 5 |
 | 👟 Agilidade | +6% de velocidade de movimento | 3 |
 | 🛡️ Escudo | +3 de armadura (soma com o equipamento) | 4 |
-| 🗡️ Fúria | ataque básico 10% mais rápido | 3 |
+| ⚡ Fúria | ataque básico 10% mais rápido | 3 |
 | ⏳ Foco | recarga das magias 10% menor | 3 |
 | 🩸 Sede de sangue | cura 4% do dano que o herói causa | 3 |
 
@@ -225,7 +261,7 @@ magia for escolhida (ou a janela fechada). O título da carta mostra o nível qu
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado, o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
-- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
+- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 - **Habilidades especiais dos mini-bosses e bosses:** além do ataque básico, eles têm um golpe mais forte, que sai
@@ -294,6 +330,7 @@ As compradas no Grimório, por slot (números do nível 1):
 | Urso Ancestral | 130% | tanque: atrai os monstros que acerta (1,1×) |
 | Guardião do Bosque | 220% | tanque: atrai e prende com raízes a cada golpe (0,8×) |
 | Fogo-Fátuo | 50% | cura 8% da vida e devolve 2% da mana de quem está a até 4 tiles, a cada 2,5 s |
+| Esqueleto Erguido (Feiticeiro Necromante) | 60% | corpo a corpo (0,8×) |
 
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, bola de fogo do dragão).

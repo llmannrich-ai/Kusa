@@ -62,6 +62,7 @@ import {
   activeTraits,
   TRAITS,
   lineTiles,
+  coneTiles,
   isWalkable,
   knownSpells,
   levelForXp,
@@ -124,7 +125,7 @@ import {
   type TargetMessage,
 } from "@kusa/shared";
 import { nextStep } from "./pathfinding.ts";
-import { Chest, DungeonState, GroundItem, Monster, Player, Summon } from "./state.ts";
+import { Chest, DungeonState, Field, GroundItem, Monster, Player, Summon } from "./state.ts";
 import { recordRun, resolveAccount, takeBag, takeLoadout, type Account } from "./supabase.ts";
 import { bump, newRunStats, recordTelemetry, type RunStats } from "./telemetry.ts";
 
@@ -163,6 +164,9 @@ interface Seat {
   hasteUntil: number;
   /** Rolamento: o próximo ataque básico atordoa por este tempo (0 = não). */
   nextBasicStunMs: number;
+  /** Solo Consagrado: armadura extra enquanto o herói está dentro do campo (renovada a cada pulso). */
+  fieldArmor: number;
+  fieldArmorUntil: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -208,7 +212,7 @@ interface Brain {
   markUntil: number;
   markPct: number;
   /** Dano contínuo ativo: `amount` por pulso de 1 s até `until`, creditado a `attacker` na fonte `source`. */
-  dot: { amount: number; nextAt: number; until: number; attacker: string; source: SpellId; kind: DotKind } | null;
+  dot: { amount: number; nextAt: number; until: number; attacker: string; source: string; kind: DotKind } | null;
   /** Quando a habilidade especial pode sair de novo (0 = ainda não notou ninguém). */
   nextSpecialAt: number;
   /** Boss já se enfureceu (aviso dado uma vez). */
@@ -230,6 +234,23 @@ interface SummonBrain {
   nextAttackAt: number;
   /** Id do monstro que está caçando. */
   targetId: string | null;
+}
+
+/** Dados do campo no chão que só o servidor precisa. */
+interface FieldBrain {
+  /** A magia no nível de quem criou, sem o `field` (é o que a armadilha dispara). */
+  spell: SpellDef;
+  rank: number;
+  kind: "zone" | "trap" | "turret" | "wall";
+  /** Zona que prende os monstros dentro a cada pulso (Tentáculos Negros). */
+  rootMs: number;
+  /** Dano por pulso (zona), por tiro (estaca) ou do disparo (armadilha), já com o dano base de quem criou. */
+  amount: number;
+  allyArmor: number;
+  tickMs: number;
+  nextTickAt: number;
+  until: number;
+  shotsLeft: number;
 }
 
 /** Quantos tiles além do aggro range o monstro ainda persegue antes de desistir. */
@@ -267,6 +288,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private nextItemId = 1;
   private nextSummonId = 1;
   private summonBrains = new Map<string, SummonBrain>();
+  private fieldBrains = new Map<string, FieldBrain>();
+  private nextFieldId = 1;
   /** Momento (ms) em que cada item do chão some. */
   private itemExpiresAt = new Map<string, number>();
   /**
@@ -341,6 +364,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
+      fieldArmor: 0, fieldArmorUntil: 0,
       aura: bonus, perks: {}, perkBonus: perkBonuses({}), perkLevels: [], bonus, bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
     });
     const joined = this.seats.get(client.sessionId)!;
@@ -503,7 +527,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const nx = player.x + dx;
     const ny = player.y + dy;
-    if (!isWalkable(this.dungeon, nx, ny) || this.monsterAt(nx, ny)) return;
+    if (!isWalkable(this.dungeon, nx, ny) || this.monsterAt(nx, ny) || this.wallAt(nx, ny)) return;
     // Na diagonal, não atravessa quina de parede.
     if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, player.y) || !isWalkable(this.dungeon, player.x, ny))) return;
 
@@ -565,6 +589,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     this.state.monsters.forEach((m) => this.monsterThink(m, now));
     this.state.summons.forEach((s) => this.summonThink(s, now));
+    this.tickFields(now);
     this.openChests();
     this.pickUpItems();
     this.expireItems(now);
@@ -616,7 +641,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Flecha e luzes voam até o alvo: o dano entra quando chegam (se o monstro ainda estiver vivo).
     const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
     this.broadcast(MSG.attack, { from: sessionId, x: p.x, y: p.y, tx: m.x, ty: m.y, ms } satisfies AttackMessage);
-    const amount = rollDamage(this.baseDamage(sessionId, p) * (1 + (buff?.basicDamage ?? 0)) * this.farBonus(seat, p, m));
+    // Flechas Consagradas (Traço): mais dano em morto-vivo e uma queimadura curta no alvo.
+    const holy = seat.traits.find((t) => t.holyBasic)?.holyBasic;
+    const undead = holy && MONSTERS[m.kind as MonsterKind]?.undead ? 1 + holy.undead : 1;
+    const amount = rollDamage(this.baseDamage(sessionId, p) * (1 + (buff?.basicDamage ?? 0)) * this.farBonus(seat, p, m) * undead);
     // Rolamento: a próxima flecha atordoa (gasta no disparo, mesmo que o monstro morra antes).
     const stunMs = seat.nextBasicStunMs;
     seat.nextBasicStunMs = 0;
@@ -631,6 +659,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         alive.stunned = true;
         seat.stats.ccMs.stun += stunMs;
       }
+      if (holy && brain) this.applyDot(alive, brain, sessionId, "basic", this.baseDamage(sessionId, p) * holy.perSec, holy.ms, "burn", this.clock.currentTime);
       this.damageMonster(alive, amount, hit, "basic");
     });
   }
@@ -711,10 +740,26 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       ty = target.y;
     }
 
+    // Mira em aliado (Escudo da Luz): o aliado mais perto do ponto mirado; no toque rápido, o mais ferido ao alcance.
+    let ally: string | undefined;
+    if (spell.aim === "ally") {
+      ally = this.allyTarget(sessionId, p, spell.range, aim);
+      const chosen = ally && this.state.players.get(ally);
+      if (!chosen) {
+        seat.stats.castFails.noTarget++;
+        client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Nenhum aliado ali", color: 0xbdc3c7 } satisfies NoticeMessage);
+        return;
+      }
+      tx = chosen.x;
+      ty = chosen.y;
+    }
+
     // Linha: vai até o alcance inteiro na direção mirada (ou do alvo, no toque rápido), parando na parede.
     const ox = p.x;
     const oy = p.y;
     let line: { x: number; y: number }[] | undefined;
+    // Cone: o leque fica fixo na direção mirada na hora do tiro.
+    if (spell.shape === "cone") line = coneTiles(this.dungeon, ox, oy, tx, ty, spell.range);
     if (spell.shape === "line") {
       line = lineTiles(this.dungeon, ox, oy, tx, ty, spell.range);
       const end = line[line.length - 1] ?? { x: ox, y: oy };
@@ -723,10 +768,24 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       // O alvo do toque rápido continua valendo: a flecha o segue mesmo se ele sair da reta durante o voo.
     }
 
-    // Rolamento: o herói salta na hora, antes do resto do efeito.
+    // Rolamento: o herói salta na hora, antes do resto do efeito. Toque rápido foge do alvo; mirado, vai para o ponto.
     if (spell.dash) {
-      const away = !aim && target;
-      this.dash(sessionId, p, seat, away ? 2 * p.x - target!.x : tx, away ? 2 * p.y - target!.y : ty, spell.dash.tiles, now);
+      const threat = !aim ? target : undefined;
+      const toX = threat ? 2 * p.x - threat.x : tx;
+      const toY = threat ? 2 * p.y - threat.y : ty;
+      const landing = spell.dash.teleport
+        ? this.teleportLanding(p, toX, toY, spell.dash.tiles, threat)
+        : this.dashLanding(p, toX, toY, spell.dash.tiles, threat);
+      if (!landing) {
+        // Encurralado: nenhuma direção livre. A magia não sai, e não gasta mana nem recarga.
+        seat.stats.castFails.noRoom++;
+        client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Sem espaço para rolar", color: 0xbdc3c7 } satisfies NoticeMessage);
+        return;
+      }
+      p.x = landing.x;
+      p.y = landing.y;
+      seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 150);
+      this.trackDepth(sessionId, p);
       tx = p.x;
       ty = p.y;
       target = undefined;
@@ -744,7 +803,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const far = spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, tx, ty) : 1;
     const amount = this.baseDamage(sessionId, p) * (spell.damage ?? 0) * far;
     const rank = p.spellRanks.get(base.id) ?? 1;
-    this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount, line, slot));
+    this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount, line, slot, ally));
     // Maestria que repete (Giro da Lâmina, Terremoto, Esfera Sombria): o efeito volta mais fraco, sem gastar mana.
     // Em volta de si, segue o herói; com alvo, segue o monstro se ele ainda estiver vivo.
     if (spell.repeat) {
@@ -771,11 +830,16 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
    */
   private applySpell(
     sessionId: string, spell: SpellDef, rank: number, targetId: string | undefined, tx: number, ty: number, amount: number,
-    line: { x: number; y: number }[] | undefined, slot: SpellSlot,
+    line: { x: number; y: number }[] | undefined, slot: SpellSlot, allyId?: string,
   ) {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
     if (!p || !seat) return;
+    // Campo no chão (Solo Consagrado, armadilha, estaca): os efeitos saem depois, pelos pulsos do campo.
+    if (spell.field) {
+      if (p.status === "playing") this.placeField(sessionId, p, seat, spell, rank, tx, ty, amount);
+      return;
+    }
     const now = this.clock.currentTime;
     const anchor = targetId ? this.state.monsters.get(targetId) : undefined;
     // Alvo único que morreu no caminho: a magia se perde.
@@ -809,9 +873,17 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
     let dealt = 0;
     let killed = false;
+    // Traços do Feiticeiro que valem a cada monstro atingido.
+    const stunChance = seat.traits.find((t) => t.stunChance && t.stunChance.element === spell.element)?.stunChance;
+    const spellBurn = seat.traits.find((t) => t.spellBurn)?.spellBurn;
+    const shatter = seat.traits.find((t) => t.shatter)?.shatter;
+    const harvest = seat.traits.find((t) => t.harvest)?.harvest;
+    const hex = seat.traits.find((t) => t.hex)?.hex;
     hit.forEach((m, i) => {
       const brain = this.brains.get(m.id);
       if (!brain) return;
+      // Estilhaçar vale para quem já estava preso antes desta magia (a Prisão de Gelo não se quebra sozinha).
+      const wasRooted = m.rooted;
       if (spell.taunt) brain.targetId = sessionId;
       if (spell.rootMs) {
         this.root(m, brain, now + spell.rootMs);
@@ -834,24 +906,48 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         brain.markUntil = Math.max(brain.markUntil, now + spell.mark.ms);
         m.marked = true;
       }
-      if (spell.dot) {
-        // Renova em vez de acumular: o veneno novo substitui o antigo se for mais forte ou durar mais.
-        const perTick = this.baseDamage(sessionId, p) * spell.dot.perSec;
-        const until = now + spell.dot.ms;
-        if (!brain.dot || brain.dot.amount <= perTick || brain.dot.until < until) {
-          brain.dot = { amount: perTick, nextAt: now + 1000, until, attacker: sessionId, source: spell.id, kind: spell.dot.kind };
-          m.dot = spell.dot.kind;
-        }
+      if (stunChance && Math.random() < stunChance.chance) {
+        brain.stunnedUntil = Math.max(brain.stunnedUntil, now + stunChance.ms);
+        m.stunned = true;
+        seat.stats.ccMs.stun += stunChance.ms;
+      }
+      // Maldição (Traço): magia de alvo único marca o alvo para toda a equipe.
+      if (hex && m === anchor && spell.radius === 0 && !line) {
+        brain.markPct = Math.max(now < brain.markUntil ? brain.markPct : 0, hex.pct);
+        brain.markUntil = Math.max(brain.markUntil, now + hex.ms);
+        m.marked = true;
+      }
+      if (spell.dot) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p) * spell.dot.perSec, spell.dot.ms, spell.dot.kind, now);
+      if (spellBurn && spell.damage && !spell.dot) {
+        this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p) * spellBurn.perSec, spellBurn.ms, "burn", now);
       }
       if (spell.damage) {
         // Execução: mais forte em quem já está quase morto (vale a vida antes do golpe).
         const execute = spell.execute && m.hp < m.maxHp * spell.execute.hpPct ? 1 + spell.execute.bonus : 1;
-        const value = Math.min(m.hp, rollDamage(amount * power[i] * execute * this.farBonus(seat, p, m)));
+        const undead = spell.undeadBonus && MONSTERS[m.kind as MonsterKind]?.undead ? 1 + spell.undeadBonus : 1;
+        const shattered = shatter && wasRooted ? 1 + shatter.bonus : 1;
+        if (shattered > 1) {
+          brain.rootedUntil = now;
+          m.rooted = false;
+        }
+        const value = Math.min(m.hp, rollDamage(amount * power[i] * execute * undead * shattered * this.farBonus(seat, p, m)));
         dealt += value;
         this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id);
-        if (m.hp === 0) killed = true;
+        if (m.hp === 0) {
+          killed = true;
+          // Colheita (Traço): matar com magia devolve mana.
+          if (harvest && p.status === "playing") this.giveMana(p, Math.max(1, Math.round(p.maxMana * harvest.pct)), sessionId);
+        }
       }
+      if (spell.push && m.hp > 0) this.push(m, p, spell.push);
     });
+
+    // Pólvora (Traço): magia de área deixa o chão em chamas onde caiu.
+    const fire = seat.traits.find((t) => t.areaFire)?.areaFire;
+    if (fire && spell.damage && (spell.radius > 0 || spell.shape === "cone") && p.status === "playing") {
+      const burning: SpellDef = { ...spell, radius: Math.max(1, spell.radius), field: { kind: "zone", ms: fire.ms, tickMs: 1000 } };
+      this.placeField(sessionId, p, seat, burning, rank, cx, cy, this.baseDamage(sessionId, p) * fire.perSec, "fire");
+    }
 
     if (spell.lifesteal && dealt > 0 && p.status === "playing") this.healPlayer(p, Math.round(dealt * spell.lifesteal), sessionId);
     if (spell.manaSteal && dealt > 0 && p.status === "playing") this.giveMana(p, Math.round(dealt * spell.manaSteal), sessionId);
@@ -869,10 +965,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
 
     if (spell.barrier && spell.barrierMs) {
-      this.state.players.forEach((ally, allyId) => {
+      this.state.players.forEach((ally, id) => {
         if (ally.status !== "playing") return;
-        if (allyId !== sessionId && !(spell.barrierAllies && inArea(ally.x, ally.y))) return;
-        const allySeat = this.seats.get(allyId);
+        // Mira em aliado: só ele ganha o escudo (pode ser o próprio herói).
+        if (spell.aim === "ally" ? id !== allyId : id !== sessionId && !(spell.barrierAllies && inArea(ally.x, ally.y))) return;
+        const allySeat = this.seats.get(id);
         if (!allySeat) return;
         // Escudo novo não soma com o antigo: fica o maior.
         const amountBarrier = Math.round(ally.maxHp * spell.barrier!);
@@ -1312,8 +1409,17 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p || p.status !== "playing") return;
     const seat = this.seats.get(sessionId);
     const guard = p.guarded ? seat?.guard ?? 0 : 0;
-    const armor = armorOf(equipment(p)) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0);
-    let amount = Math.max(1, Math.round(raw * (1 - damageReduction(armor)) * (1 - guard)));
+    const now = this.clock.currentTime;
+    const fieldArmor = seat && now < seat.fieldArmorUntil ? seat.fieldArmor : 0;
+    const armor = armorOf(equipment(p)) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor;
+    let amount = Math.max(1, Math.round(raw * (1 - damageReduction(armor)) * (1 - guard) * (1 - this.allyWard(p))));
+    // Escudo de Mana (Traço): parte do golpe sai da mana, enquanto houver.
+    const manaShield = seat?.traits.find((t) => t.manaShield)?.manaShield;
+    if (manaShield && p.mana > 0) {
+      const fromMana = Math.min(p.mana, Math.round(amount * manaShield.pct));
+      p.mana -= fromMana;
+      amount -= fromMana;
+    }
     // O escudo absorve primeiro; o que sobra vai para a vida.
     const absorbed = Math.min(p.barrier, amount);
     if (absorbed > 0) {
@@ -1508,7 +1614,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.monsters.forEach((m) => set.add(m.y * w + m.x));
     this.state.summons.forEach((s) => set.add(s.y * w + s.x));
     this.state.players.forEach((p) => { if (p.status === "playing") set.add(p.y * w + p.x); });
+    // Muralha Mágica: ninguém atravessa (monstros e criaturas desviam pelo pathfinding).
+    this.state.fields.forEach((f) => { if (f.kind === "wall") set.add(f.y * w + f.x); });
     return set;
+  }
+
+  private wallAt(x: number, y: number) {
+    return [...this.state.fields.values()].some((f) => f.kind === "wall" && f.x === x && f.y === y);
   }
 
   // --- Baús -------------------------------------------------------------
@@ -1743,6 +1855,236 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (depth >= 0 && !(depth in stats.depthAt)) stats.depthAt[depth] = this.seconds();
   }
 
+  /** Aura Sagrada (Traço): fração cortada do dano de quem está perto de um herói com ela (não acumula). */
+  private allyWard(p: Player) {
+    let best = 0;
+    this.state.players.forEach((other, id) => {
+      if (other.status !== "playing") return;
+      for (const t of this.seats.get(id)?.traits ?? []) {
+        if (t.allyWard && tileDistance(p.x, p.y, other.x, other.y) <= t.allyWard.radius) best = Math.max(best, t.allyWard.pct);
+      }
+    });
+    return best;
+  }
+
+  /**
+   * Aliado de uma magia com `aim: "ally"`: com mira, o herói vivo mais perto do ponto (a até 1 tile dele); no toque
+   * rápido, o mais ferido (em fração da vida) ao alcance, contando quem conjura. Precisa de linha de visão.
+   */
+  private allyTarget(sessionId: string, p: Player, range: number, aim?: { x: number; y: number }) {
+    let best: string | undefined;
+    let score = Infinity;
+    this.state.players.forEach((ally, id) => {
+      if (ally.status !== "playing" || tileDistance(p.x, p.y, ally.x, ally.y) > range) return;
+      if (!hasLineOfSight(this.dungeon, p.x, p.y, ally.x, ally.y)) return;
+      let value: number;
+      if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.y)) {
+        value = tileDistance(ally.x, ally.y, Math.round(aim.x), Math.round(aim.y));
+        if (value > 1) return;
+      } else {
+        value = ally.hp / ally.maxHp + (id === sessionId ? 0.001 : 0);
+      }
+      if (value < score) { score = value; best = id; }
+    });
+    return best;
+  }
+
+  /** Dano contínuo no monstro. Renova em vez de acumular: o novo substitui o antigo se for mais forte ou durar mais. */
+  private applyDot(m: Monster, brain: Brain, attacker: string, source: string, perTick: number, ms: number, kind: DotKind, now: number) {
+    const until = now + ms;
+    if (brain.dot && brain.dot.amount > perTick && brain.dot.until >= until) return;
+    brain.dot = { amount: perTick, nextAt: now + 1000, until, attacker, source, kind };
+    m.dot = kind;
+  }
+
+  /**
+   * Põe um campo no chão. Conjurar de novo troca o campo mais antigo da mesma magia (o Engenhoso deixa até 3
+   * armadilhas e estacas de cada e dobra a duração delas). `style` "fire" é o chão em chamas da Pólvora.
+   */
+  private placeField(sessionId: string, p: Player, seat: Seat, spell: SpellDef, rank: number, x: number, y: number, amount: number, style = "") {
+    const def = spell.field!;
+    const now = this.clock.currentTime;
+    const traps = def.kind !== "zone" ? seat.traits.find((t) => t.traps)?.traps : undefined;
+    const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3 : traps?.max ?? 1;
+    const mine = [...this.state.fields.values()]
+      .filter((f) => f.owner === sessionId && f.spellId === spell.id && f.style === style)
+      .sort((a, b) => (this.fieldBrains.get(a.id)?.until ?? 0) - (this.fieldBrains.get(b.id)?.until ?? 0));
+    // A parede troca a anterior inteira (são vários tiles da mesma magia).
+    if (def.kind === "wall") mine.forEach((old) => this.removeField(old.id));
+    else while (mine.length >= max) this.removeField(mine.shift()!.id);
+    if (def.kind === "wall") return this.placeWall(sessionId, p, spell, x, y, now);
+
+    const f = new Field();
+    f.id = `f${this.nextFieldId++}`;
+    f.kind = def.kind;
+    f.spellId = spell.id;
+    f.style = style || (def.look ?? "");
+    f.owner = sessionId;
+    f.x = x;
+    f.y = y;
+    f.radius = def.kind === "turret" ? def.reach ?? 3 : spell.radius;
+    this.state.fields.set(f.id, f);
+    const tickMs = def.tickMs ?? 250;
+    this.fieldBrains.set(f.id, {
+      spell: { ...spell, field: undefined }, rank, kind: def.kind,
+      amount: def.kind === "trap" ? amount : this.baseDamage(sessionId, p) * (def.damage ?? 0) || amount,
+      allyArmor: def.allyArmor ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" ? 300 : tickMs),
+      until: now + def.ms * (traps?.durationScale ?? 1), shotsLeft: def.shots ?? 0,
+    });
+  }
+
+  /**
+   * Muralha Mágica: `length` tiles de lado para a direção do herói até o ponto, centrada no ponto. Só sobe em tile
+   * andável e livre (nunca em cima de alguém nem do portal).
+   */
+  private placeWall(sessionId: string, p: Player, spell: SpellDef, x: number, y: number, now: number) {
+    const def = spell.field!;
+    const dx = Math.sign(x - p.x);
+    const dy = Math.sign(y - p.y);
+    // De lado: perpendicular à direção do tiro (na diagonal, a parede também fica na diagonal oposta).
+    const [sx, sy] = dx === 0 && dy === 0 ? [1, 0] : [-dy, dx];
+    const blocked = this.occupiedTiles();
+    const half = Math.floor((def.length ?? 3) / 2);
+    for (let k = -half; k <= half; k++) {
+      const tx = x + sx * k;
+      const ty = y + sy * k;
+      if (!isWalkable(this.dungeon, tx, ty) || tileAt(this.dungeon, tx, ty) === Tile.Portal || blocked.has(ty * this.dungeon.width + tx)) continue;
+      const f = new Field();
+      f.id = `f${this.nextFieldId++}`;
+      f.kind = "wall";
+      f.spellId = spell.id;
+      f.owner = sessionId;
+      f.x = tx;
+      f.y = ty;
+      this.state.fields.set(f.id, f);
+      this.fieldBrains.set(f.id, {
+        spell: { ...spell, field: undefined }, rank: 1, kind: "wall", amount: 0, allyArmor: 0, rootMs: 0,
+        tickMs: 1000, nextTickAt: now + 1000, until: now + def.ms, shotsLeft: 0,
+      });
+    }
+  }
+
+  /** Empurra o monstro até `tiles` tiles para longe de quem bateu, parando em parede, água, alguém ou Muralha. */
+  private push(m: Monster, from: { x: number; y: number }, tiles: number) {
+    const dx = Math.sign(m.x - from.x);
+    const dy = Math.sign(m.y - from.y);
+    if (dx === 0 && dy === 0) return;
+    const blocked = this.occupiedTiles();
+    const w = this.dungeon.width;
+    for (let i = 0; i < tiles; i++) {
+      const nx = m.x + dx;
+      const ny = m.y + dy;
+      if (!isWalkable(this.dungeon, nx, ny) || blocked.has(ny * w + nx)) return;
+      if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, m.y) || !isWalkable(this.dungeon, m.x, ny))) return;
+      blocked.delete(m.y * w + m.x);
+      m.x = nx;
+      m.y = ny;
+      blocked.add(ny * w + nx);
+    }
+  }
+
+  /**
+   * Passo Nebuloso: o tile mais longe da reta até (tx, ty), a até `tiles`, que esteja livre e andável (pula por cima de
+   * monstros no caminho; a reta já para na parede, então o herói sempre vê onde aparece). Como o Rolamento, se essa
+   * reta não tiver nenhum tile livre, tenta as diagonais (±45°) e as laterais (±90°); fugindo de um monstro
+   * (`threat`), fica com o ponto que mais se afasta dele. Sem nenhum, null.
+   */
+  private teleportLanding(p: Player, tx: number, ty: number, tiles: number, threat?: { x: number; y: number }) {
+    const blocked = this.occupiedTiles();
+    const free = (t: { x: number; y: number }) =>
+      isWalkable(this.dungeon, t.x, t.y) && tileAt(this.dungeon, t.x, t.y) !== Tile.Portal && !blocked.has(t.y * this.dungeon.width + t.x);
+    const base = Math.atan2(ty - p.y, tx - p.x);
+    let best: { x: number; y: number } | null = null;
+    let bestGap = threat ? tileDistance(p.x, p.y, threat.x, threat.y) : 0;
+    for (const turn of [0, 1, -1, 2, -2]) {
+      const angle = base + (turn * Math.PI) / 4;
+      const path = lineTiles(this.dungeon, p.x, p.y, p.x + Math.round(Math.cos(angle) * tiles), p.y + Math.round(Math.sin(angle) * tiles), tiles);
+      const end = [...path].reverse().find(free);
+      if (!end) continue;
+      if (!threat) return end;
+      const gap = tileDistance(end.x, end.y, threat.x, threat.y);
+      if (gap > bestGap) {
+        best = end;
+        bestGap = gap;
+      }
+    }
+    return best;
+  }
+
+  private removeField(id: string) {
+    this.state.fields.delete(id);
+    this.fieldBrains.delete(id);
+  }
+
+  /** Pulsos dos campos: a zona fere e protege, a armadilha espera um monstro pisar, a estaca atira. */
+  private tickFields(now: number) {
+    for (const f of [...this.state.fields.values()]) {
+      const brain = this.fieldBrains.get(f.id);
+      const owner = this.state.players.get(f.owner);
+      const seat = this.seats.get(f.owner);
+      if (!brain || !owner || !seat || owner.status !== "playing" || now >= brain.until) {
+        this.removeField(f.id);
+        continue;
+      }
+      if (now < brain.nextTickAt) continue;
+      brain.nextTickAt += brain.tickMs;
+      const sees = (x: number, y: number, reach: number) =>
+        tileDistance(f.x, f.y, x, y) <= reach && hasLineOfSight(this.dungeon, f.x, f.y, x, y);
+
+      if (brain.kind === "wall") continue;
+      if (brain.kind === "zone") {
+        const hit: Hit = { attacker: f.owner, fromX: f.x, fromY: f.y, fx: f.style === "fire" ? "fire" : CLASSES[owner.classId as ClassId].attackFx };
+        for (const m of [...this.state.monsters.values()]) {
+          if (!sees(m.x, m.y, f.radius)) continue;
+          const mBrain = this.brains.get(m.id);
+          if (brain.rootMs > 0 && mBrain) {
+            this.root(m, mBrain, now + brain.rootMs);
+            seat.stats.ccMs.root += brain.rootMs;
+          }
+          if (brain.amount > 0) this.damageMonster(m, Math.max(1, rollDamage(brain.amount)), hit, brain.spell.id);
+        }
+        if (brain.allyArmor > 0) {
+          this.state.players.forEach((ally, id) => {
+            const allySeat = this.seats.get(id);
+            if (ally.status !== "playing" || !allySeat || !sees(ally.x, ally.y, f.radius)) return;
+            allySeat.fieldArmor = brain.allyArmor;
+            allySeat.fieldArmorUntil = now + brain.tickMs + 100;
+          });
+        }
+      } else if (brain.kind === "trap") {
+        // Dispara no primeiro monstro que pisar no tile da armadilha; os efeitos valem no raio da magia.
+        const prey = [...this.state.monsters.values()].find((m) => m.x === f.x && m.y === f.y);
+        if (!prey) continue;
+        this.removeField(f.id);
+        this.broadcast(MSG.spell, { from: f.owner, spellId: brain.spell.id, x: f.x, y: f.y, tx: f.x, ty: f.y, ms: 0, echo: true } satisfies SpellMessage);
+        this.applySpell(f.owner, brain.spell, brain.rank, undefined, f.x, f.y, brain.amount, undefined, 0);
+      } else {
+        const target = this.nearestMonsterTo(f.x, f.y, f.radius);
+        if (!target) continue;
+        brain.shotsLeft--;
+        // O raio da Fúria dos Céus cai do céu quase na hora; a flecha da estaca voa até o alvo.
+        const ms = f.style === "storm" ? 150 : flightMs(18, f.x, f.y, target.x, target.y);
+        this.broadcast(MSG.spell, { from: f.owner, spellId: brain.spell.id, x: f.x, y: f.y, tx: target.x, ty: target.y, ms, echo: true } satisfies SpellMessage);
+        const hit: Hit = { attacker: f.owner, fromX: f.x, fromY: f.y, fx: "arrow" };
+        const amount = rollDamage(brain.amount);
+        // Estática (Traço) vale também para os raios da Fúria dos Céus (magia de energia).
+        const stun = seat.traits.find((t) => t.stunChance && t.stunChance.element === brain.spell.element)?.stunChance;
+        this.after(ms, () => {
+          const alive = this.state.monsters.get(target.id);
+          const aliveBrain = alive && this.brains.get(alive.id);
+          if (!alive || !aliveBrain) return;
+          if (stun && Math.random() < stun.chance) {
+            aliveBrain.stunnedUntil = Math.max(aliveBrain.stunnedUntil, this.clock.currentTime + stun.ms);
+            alive.stunned = true;
+            seat.stats.ccMs.stun += stun.ms;
+          }
+          this.damageMonster(alive, amount, hit, brain.spell.id);
+        });
+        if (brain.shotsLeft <= 0) this.removeField(f.id);
+      }
+    }
+  }
+
   /** Velocidade de movimento agora: classe e nível, lentidão dos monstros, Passo Leve e bônus em si. */
   private moveSpeed(p: Player, seat: Seat, now: number) {
     const base = statsFor(p.classId as ClassId, p.level, seat.bonus).speed * (seat.slow?.factor ?? 1);
@@ -1761,24 +2103,42 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   /**
-   * Salto (Rolamento): anda até `tiles` tiles em linha reta na direção de (tx, ty), parando antes de parede,
-   * água, monstro, outro herói ou portal (o salto nunca encerra a hunt sem querer).
+   * Onde o Rolamento pousa, saltando até `tiles` na direção de (tx, ty). Se essa reta estiver bloqueada logo de cara
+   * (parede, portal, monstro), tenta as diagonais (±45°) e as laterais (±90°). Fugindo de um monstro (`threat`),
+   * fica com o pouso que mais se afasta dele, e só vale pouso que aumenta a distância; mirado, com a direção mais
+   * próxima da escolhida. Sem nenhum pouso, devolve null.
    */
-  private dash(sessionId: string, p: Player, seat: Seat, tx: number, ty: number, tiles: number, now: number) {
+  private dashLanding(p: Player, tx: number, ty: number, tiles: number, threat?: { x: number; y: number }) {
+    const base = Math.atan2(ty - p.y, tx - p.x);
+    const gap = threat ? tileDistance(p.x, p.y, threat.x, threat.y) : 0;
+    let best: { x: number; y: number } | null = null;
+    let bestGap = gap;
+    for (const turn of [0, 1, -1, 2, -2]) {
+      const angle = base + (turn * Math.PI) / 4;
+      const end = this.dashPath(p, p.x + Math.round(Math.cos(angle) * tiles), p.y + Math.round(Math.sin(angle) * tiles), tiles);
+      if (end.x === p.x && end.y === p.y) continue;
+      if (!threat) return end;
+      const after = tileDistance(end.x, end.y, threat.x, threat.y);
+      if (after > bestGap) {
+        best = end;
+        bestGap = after;
+      }
+    }
+    return best;
+  }
+
+  /** Último tile livre da reta do Rolamento (para antes de parede, portal ou alguém; não corta quina de parede). */
+  private dashPath(p: Player, tx: number, ty: number, tiles: number) {
     const path = lineTiles(this.dungeon, p.x, p.y, tx, ty, tiles);
     const blocked = this.occupiedTiles();
     const w = this.dungeon.width;
     let last = { x: p.x, y: p.y };
     for (const t of path) {
       if (!isWalkable(this.dungeon, t.x, t.y) || tileAt(this.dungeon, t.x, t.y) === Tile.Portal || blocked.has(t.y * w + t.x)) break;
-      // Na diagonal, não atravessa quina de parede (como o passo normal).
       if (t.x !== last.x && t.y !== last.y && (!isWalkable(this.dungeon, t.x, last.y) || !isWalkable(this.dungeon, last.x, t.y))) break;
       last = t;
     }
-    p.x = last.x;
-    p.y = last.y;
-    seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 150);
-    this.trackDepth(sessionId, p);
+    return last;
   }
 
   /** Dano base do jogador (classe, nível, áureas e arma), antes da variação. */
