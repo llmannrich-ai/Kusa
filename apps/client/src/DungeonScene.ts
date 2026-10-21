@@ -38,7 +38,7 @@ import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
-import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
+import { SWAMP_VOID, drawSwamp, type SwampAmbience } from "./swampMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import { hash } from "./art/pixels.ts";
@@ -151,6 +151,8 @@ export class DungeonScene extends Phaser.Scene {
   private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
   private move!: MoveInput;
+  /** Vaga-lumes, ondinhas e névoa do pântano (nulo nos outros mapas). */
+  private ambience: SwampAmbience | null = null;
   /** Nulo quando o jogador desligou o minimapa nas configurações. */
   private minimap: Minimap | null = null;
   /** Golpes e magias dos heróis (`MSG.attack` e `MSG.spell`). */
@@ -181,7 +183,7 @@ export class DungeonScene extends Phaser.Scene {
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
     const swamp = this.dungeon.mapId === "swamp";
     if (swamp) {
-      drawSwamp(this, this.dungeon, DEPTH.floor);
+      this.ambience = drawSwamp(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     } else {
       this.drawFloor();
       this.drawWalls();
@@ -189,6 +191,8 @@ export class DungeonScene extends Phaser.Scene {
     this.drawPortal();
 
     this.cameras.main.setBackgroundColor(swamp ? SWAMP_VOID : COLORS.void).setRoundPixels(true);
+    // Cantos da tela levemente escurecidos no pântano (CSS por cima do canvas, abaixo do HUD).
+    document.getElementById("game")?.classList.toggle("swamp", swamp);
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
 
@@ -315,6 +319,7 @@ export class DungeonScene extends Phaser.Scene {
     this.summons.forEach((unit) => this.animateUnit(unit, time));
     this.drawTargetRing();
     this.minimap?.update(time);
+    this.ambience?.update(time);
     this.spellBar.update();
     this.perkChoice.update();
     this.aim.update();

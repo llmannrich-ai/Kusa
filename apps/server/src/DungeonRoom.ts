@@ -1264,16 +1264,24 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
-    // Quem morre larga o equipamento e as poções no chão, e os outros podem saquear.
+    // Quem morre (ou fica soterrado) perde 1 equipamento sorteado e as poções: caem no chão e os outros
+    // podem saquear. O resto do equipamento volta para o inventário da conta.
+    // TODO: quando a bag existir, ela também cai inteira aqui.
     const seat = this.seats.get(sessionId);
-    if (outcome === "died") {
-      for (const id of equipment(player)) if (id) this.dropItem(id, player.x, player.y);
-      if (seat) seat.stats.items.lost = equipment(player).filter(Boolean);
+    let lost: string | undefined;
+    if (!survived) {
+      const worn = ITEM_SLOTS.filter((slot) => player[slot]);
+      const slot = worn[Math.floor(Math.random() * worn.length)];
+      if (slot) {
+        lost = player[slot];
+        this.dropItem(lost, player.x, player.y);
+        // O corpo fica sem o que largou (o equipamento aparece no personagem).
+        player[slot] = "";
+      }
+      if (seat) seat.stats.items.lost = lost ? [lost] : [];
       for (const potion of POTION_IDS) {
         for (let i = 0; i < player[POTION_FIELD[potion]]; i++) this.dropItem(potion, player.x, player.y);
       }
-      // O corpo fica sem o que largou (o equipamento aparece no personagem).
-      for (const slot of ITEM_SLOTS) player[slot] = "";
     }
     // Poções não saem da dungeon.
     player.healthPotions = player.manaPotions = 0;
@@ -1282,9 +1290,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.barrier = 0;
     this.state.summons.forEach((s) => { if (s.owner === sessionId) this.removeSummon(s.id); });
 
-    // Quem sai vivo leva o equipamento para o inventário da conta.
-    const items = survived ? equipment(player).filter(Boolean) : [];
-    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items };
+    // O equipamento que sobrou no corpo vai para o inventário da conta.
+    const items = equipment(player).filter(Boolean);
+    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, lost };
     this.clients.getById(sessionId)?.send(MSG.runEnded, result);
 
     const userId = seat?.userId;

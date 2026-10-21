@@ -9,6 +9,7 @@ import { makeCanvas } from "./art/pixels.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
 import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
+import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
 const gallery = document.getElementById("gallery")!;
@@ -143,6 +144,23 @@ show(combat, slashStrip(), "corte");
 show(combat, biteStrip(), "mordida");
 show(combat, smashStrip(), "pancada");
 show(combat, leafCanvas(), "folha");
+
+// Detalhes do pântano: cada faixa sobre capim, para ver o contraste como no jogo.
+const swamp = section("Pântano: detalhes (arte própria)");
+const onGround = (source: HTMLCanvasElement, ground: string) => {
+  const { canvas, ctx } = makeCanvas(source.width, source.height);
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(source, 0, 0);
+  return canvas;
+};
+show(swamp, onGround(decorFloorStrip(), "#3f6a2a"), "chão", 3);
+show(swamp, onGround(decorWaterStrip(), "#2f5a5a"), "água", 3);
+show(swamp, onGround(decorTallStrip(), "#3f6a2a"), "altos", 3);
+show(swamp, onGround(shadeStrip(), "#3f6a2a"), "sombras", 3);
+show(swamp, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
+show(swamp, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
+show(swamp, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
 
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [

@@ -59,7 +59,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 
 - O equipamento escolhido na aba Itens **sai do inventário quando a hunt começa** e entra no personagem.
 - Quem foge ou conclui traz para o inventário tudo o que estiver equipado ao sair (inclusive o que achou na dungeon).
-- Quem morre perde o que levou: o equipamento cai no chão e outro jogador pode pegar e extrair.
+- Quem morre perde **1 equipamento do corpo, sorteado** (e as poções): ele cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para o inventário. Quando a bag existir, ela também se perde inteira.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
 ## Mapas
@@ -86,6 +86,12 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 - Lagoas e poças: **a água bloqueia o passo, mas não a visão**. Flechas, magias e o ataque de alcance 2 da Hidra passam por cima.
 - Ruínas: salas laterais cercadas por muros caídos com 2 portões (Troll + baú), colunas soltas pelo campo e a arena do boss no centro,
   um quadrado de muros com 4 portões e 4 colunas.
+- **Visual** (só no cliente, `apps/client/src/swampMap.ts` e arte própria em `art/swampDecor.ts`; não muda a jogabilidade
+  nem o gerador): capim invadindo a lama e a pedra, espuma na margem das lagoas, sombra das árvores e muros no chão,
+  manchas de luz no capim, árvores com variação de tom, taboas na margem, samambaias, arbustos e cogumelos no pé das
+  árvores, flores, pedrinhas, tocos e troncos no campo, entulho, musgo e ossos nas ruínas, vitórias-régias na água,
+  e o ambiente: vaga-lumes, ondinhas nas lagoas, névoa baixa e cantos da tela escurecidos. Só os sprites perto da
+  câmera são desenhados (blocos de 8×8 tiles), para o celular aguentar.
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
@@ -133,10 +139,10 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 
 | Fim | Loot | Observação |
 |---|---|---|
-| **Morte** | Perde tudo | Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
+| **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
 | **Fuga** | Leva tudo | Basta voltar à sala inicial e entrar no portal. |
 | **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
-| **Soterrado** (o tempo acabou) | Perde tudo | Conta como morte. |
+| **Soterrado** (o tempo acabou) | Igual à morte | Conta como morte. |
 
 ## Combate (protótipo)
 
@@ -206,7 +212,7 @@ As compradas no Grimório, por slot (números do nível 1):
 - Drop: comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
 - O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão. Item pior fica onde está. Itens no chão somem após 2 minutos.
-- Quem morre larga o equipamento no chão. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado (ver "Inventário e mercado").
+- Quem morre larga 1 equipamento sorteado no chão e guarda o resto. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado (ver "Inventário e mercado").
 - Tabela em `packages/shared/src/items.ts`.
 
 ### Arte dos itens e equipamento visível
