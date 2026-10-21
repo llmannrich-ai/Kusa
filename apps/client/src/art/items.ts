@@ -1,4 +1,4 @@
-import { ITEMS, isPotion, type ItemRarity, type ItemTier, type PotionId } from "@kusa/shared";
+import { ITEMS, isPotion, type ItemRarity, type ItemSlot, type ItemTier, type PotionId } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
 
 /**
@@ -575,5 +575,18 @@ export function itemIcon(itemId: string) {
   paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem }, 0, 0);
   const mark = RARITY_GEM[item.rarity];
   if (mark) paintGrid(ctx, mark.grid, mark.palette, 0, 0);
+  return canvas;
+}
+
+/** Contorno apagado do slot vazio (como no Tibia): o ícone de ferro do slot numa cor só, quase sumindo no fundo. */
+const GHOST: Palette = { o: "#3a3029", m: "#2a221d", M: "#2a221d", a: "#2a221d", w: "#2a221d", W: "#2a221d", i: "#2a221d" };
+
+const GHOST_FAMILY: Record<ItemSlot, string> = {
+  weapon: "weapon-sword", helmet: "helmet-war", armor: "armor-war", legs: "legs-war", boots: "boots-boots", shield: "shield-shield",
+};
+
+export function slotGhost(slot: ItemSlot) {
+  const { canvas, ctx } = makeCanvas(ITEM_ICON_SIZE, ITEM_ICON_SIZE);
+  paintGrid(ctx, ICONS[GHOST_FAMILY[slot]][3], GHOST, 0, 0);
   return canvas;
 }

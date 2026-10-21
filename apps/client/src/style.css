@@ -764,23 +764,103 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 
 /* Itens */
 .item-img { width: 32px; height: 32px; flex: none; image-rendering: pixelated; }
-.loadout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.loadout-slot {
+/* Quadro do equipamento (estilo Tibia) ao lado do herói vestido. */
+.equip-row { display: flex; gap: 8px; align-items: stretch; }
+.equip-panel {
+  flex: 1;
+  min-width: 0;
+  max-width: 300px;
   display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 4px;
-  min-height: 84px;
-  padding: 6px 4px;
-  background: #000;
-  border: 2px solid #3a2f27;
+  background: #120d0a;
+  border: 2px solid #5a4632;
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 6px 18px #000a;
 }
-.loadout-slot small { font-size: 10px; line-height: 1.2; text-align: center; }
-.loadout-slot .item-img { width: 40px; height: 40px; }
+.equip-title {
+  position: relative;
+  padding: 5px 8px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--accent);
+  background: linear-gradient(#3d2e21, #1d150f);
+  border-bottom: 1px solid #000;
+}
+/* Rebites nos cantos da barra de título. */
+.equip-title::before, .equip-title::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e8cf8a, #6b5022 70%);
+  box-shadow: 0 0 0 1px #000;
+}
+.equip-title::before { left: 6px; }
+.equip-title::after { right: 6px; }
+.loadout { position: relative; width: 100%; aspect-ratio: 100 / 110; overflow: hidden; }
+.loadout-body { position: absolute; inset: 0; width: 100%; height: 100%; }
+.loadout-slot {
+  position: absolute;
+  width: 21%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 0;
+  background: radial-gradient(circle at 50% 40%, #1d1611, #070504 80%);
+  border: 2px solid #5a4632;
+  /* Moldura afundada, como os slots do inventário do Tibia. */
+  box-shadow: inset 2px 2px 0 #000, inset -1px -1px 0 #3a2f27, 0 0 0 1px #000, 0 3px 6px #000c;
+}
+.loadout-slot.vacant { border-color: #3a2f27; }
+.loadout-slot .item-img { width: 78%; height: 78%; image-rendering: pixelated; filter: drop-shadow(0 2px 1px #000); }
+.slot-tag {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 13px;
+  white-space: nowrap;
+  color: var(--muted);
+  background: #120d0a;
+  border: 1px solid #3a2f27;
+}
+/* Coluna do corpo (cabeça, peito, pernas, pés) e as mãos dos lados, como no Tibia. */
+.at-helmet { left: 39.5%; top: 2%; }
+.at-armor { left: 39.5%; top: 26.5%; }
+.at-legs { left: 39.5%; top: 51%; }
+.at-boots { left: 39.5%; top: 75.5%; }
+.at-weapon { left: 7%; top: 38%; }
+.at-shield { left: 72%; top: 38%; }
+.equip-stats {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  font-size: 11px;
+  background: linear-gradient(#1d150f, #120d0a);
+  border-top: 1px solid #000;
+}
+.equip-hero {
+  flex: none;
+  width: 84px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  background: radial-gradient(ellipse at 50% 50%, #2a211b, #120d0a 75%);
+  border: 1px solid #3a2f27;
+}
+.hero-poses { display: grid; gap: 2px; }
+.hero-pose { width: 72px; height: 72px; image-rendering: pixelated; }
 /* Prévia do personagem vestido (frente, lado e costas): escala inteira para o pixel não borrar. */
 .doll { display: grid; justify-items: center; gap: 2px; margin-bottom: 8px; }
 .doll-img { width: 288px; max-width: 100%; image-rendering: pixelated; background: radial-gradient(#3a2f27, #0000 70%); }
-.slot-empty { font-size: 24px; color: var(--border); }
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
 .item-cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; background: #000; border: 2px solid; }
 .item-cell .item-img { width: 40px; height: 40px; }
