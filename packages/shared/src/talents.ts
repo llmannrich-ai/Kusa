@@ -162,6 +162,18 @@ const SHAPES: Record<ClassId, Shape> = {
     ["wolf_pack", 0, 3, "spirit_wolf"], ["hp", 1, 3, "healing_moth"], ["hornet_swarm", 2, 3, "venom_thorn"],
     ["ancient_bear", 0, 4, "wolf_pack"], ["grove_guardian", 1, 4, "hp"], ["nature_wrath", 2, 4, "hornet_swarm"],
     ["speed", 0, 5, "ancient_bear"], ["forest_heart", 1, 5, "grove_guardian"],
+    // Matilha: Mestre das Feras (lado 0) ou Metamorfo (lado 1).
+    ["wild_bond", 0, 6, "speed", 0], ["wild_hide", 0, 6, "speed", 1],
+    ["beast_cry", 0, 7, "wild_bond", 0], ["panther_form", 0, 7, "wild_hide", 1],
+    ["giant_eagle", 0, 8, "beast_cry", 0], ["bear_form", 0, 8, "panther_form", 1],
+    // Bosque: Círculo da Vida (lado 0) ou Guardião da Natureza (lado 1).
+    ["bloom", 1, 6, "forest_heart", 0], ["protective_sap", 1, 6, "forest_heart", 1],
+    ["distant_heal", 1, 7, "bloom", 0], ["barkskin", 1, 7, "protective_sap", 1],
+    ["rebirth_seed", 1, 8, "distant_heal", 0], ["reviving_rain", 1, 8, "barkskin", 1],
+    // Espinhos: Peste (lado 0) ou Tempestade (lado 1).
+    ["toxin", 2, 5, "nature_wrath", 0], ["charged_sky", 2, 5, "nature_wrath", 1],
+    ["mamba_bite", 2, 6, "toxin", 0], ["thunderwave", 2, 6, "charged_sky", 1],
+    ["poison_cloud", 2, 7, "mamba_bite", 0], ["call_lightning", 2, 7, "thunderwave", 1],
   ],
 };
 

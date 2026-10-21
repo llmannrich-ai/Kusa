@@ -9,7 +9,8 @@ export type TraitId =
   | "eagle_eye" | "light_step"
   | "consecrated_arrows" | "sacred_aura"
   | "gunpowder" | "ingenious"
-  | "static_charge" | "combustion" | "shatter" | "mana_shield" | "harvest" | "hex";
+  | "static_charge" | "combustion" | "shatter" | "mana_shield" | "harvest" | "hex"
+  | "wild_bond" | "wild_hide" | "bloom" | "protective_sap" | "toxin" | "charged_sky";
 
 export interface TraitDef {
   id: TraitId;
@@ -45,6 +46,21 @@ export interface TraitDef {
   harvest?: { pct: number };
   /** Magias de alvo único marcam o alvo: +`pct` de dano de toda a equipe por `ms`. */
   hex?: { pct: number; ms: number };
+  /** Criaturas invocadas com +`summonBoost` (fração) de vida e de dano. */
+  summonBoost?: number;
+  /** +pontos de armadura enquanto o herói está numa forma animal. */
+  formArmor?: number;
+  /** Cura do herói além da vida máxima vira escudo, até `max` (fração da vida máxima) por `ms`. */
+  overheal?: { max: number; ms: number };
+  /** Quem o herói cura (magias e criaturas) ganha +`points` de armadura por `ms`. */
+  healArmor?: { points: number; ms: number };
+  /**
+   * Magias com dano envenenam (`perSec` × dano base por segundo, por `ms`), e os venenos do herói acumulam até
+   * `maxStacks` vezes no mesmo monstro.
+   */
+  toxin?: { perSec: number; ms: number; maxStacks: number };
+  /** A cada `every` magias, um raio (`damage` ×) cai no monstro mais perto a até `range` tiles. */
+  chargedSky?: { every: number; damage: number; range: number };
 }
 
 /** Elemento de uma magia do Feiticeiro (Estática vale para energia). */
@@ -118,6 +134,39 @@ export const TRAITS: Record<TraitId, TraitDef> = {
     id: "hex", classId: "sorcerer", spec: "Bruxo", name: "Maldição", icon: "👁️",
     description: "Suas magias de alvo único amaldiçoam o alvo: ele recebe +15% de dano de toda a equipe por 5 s.",
     hex: { pct: 0.15, ms: 5000 },
+  }),
+  // Druida, ramo Matilha.
+  wild_bond: trait({
+    id: "wild_bond", classId: "druid", spec: "Mestre das Feras", name: "Vínculo Selvagem", icon: "🐕",
+    description: "Suas criaturas têm +25% de vida e de dano.",
+    summonBoost: 0.25,
+  }),
+  wild_hide: trait({
+    id: "wild_hide", classId: "druid", spec: "Metamorfo", name: "Pele Selvagem", icon: "🐾",
+    description: "+4 de armadura enquanto você está numa forma animal.",
+    formArmor: 4,
+  }),
+  // Druida, ramo Bosque.
+  bloom: trait({
+    id: "bloom", classId: "druid", spec: "Círculo da Vida", name: "Florescer", icon: "🌸",
+    description: "Suas curas que passam da vida máxima viram escudo (até 20% da vida) por 6 s.",
+    overheal: { max: 0.2, ms: 6000 },
+  }),
+  protective_sap: trait({
+    id: "protective_sap", classId: "druid", spec: "Guardião da Natureza", name: "Seiva Protetora", icon: "🍯",
+    description: "Quem você cura (com magias ou criaturas) ganha +3 de armadura por 4 s.",
+    healArmor: { points: 3, ms: 4000 },
+  }),
+  // Druida, ramo Espinhos.
+  toxin: trait({
+    id: "toxin", classId: "druid", spec: "Peste", name: "Toxina", icon: "🧪",
+    description: "Suas magias com dano envenenam, e seus venenos acumulam até 3 vezes no mesmo monstro.",
+    toxin: { perSec: 0.15, ms: 4000, maxStacks: 3 },
+  }),
+  charged_sky: trait({
+    id: "charged_sky", classId: "druid", spec: "Tempestade", name: "Céu Carregado", icon: "🌩️",
+    description: "A cada 4 magias, um raio cai no monstro mais perto de você.",
+    chargedSky: { every: 4, damage: 2, range: 6 },
   }),
 };
 

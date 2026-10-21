@@ -182,6 +182,59 @@ export class CombatFx {
         this.projectile(FX.darkLight, from, to, ms, { trail: 0xb04ae0, glow: 0x6b2a9a, impact: 0xe0b0ff, scale: 1.2 });
         return this.later(ms, () => this.sparks(to, 0xb04ae0, 8));
       case "black_tentacles": return this.ring(to, radius, 0x9b59b6, 500, 5);
+      // Especializações do Druida. As formas: no lançamento, folhas em volta; o salto da pantera e a patada do urso
+      // chegam como eco (de onde o druida estava até o monstro).
+      case "panther_form":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE, 0x4b4b6b, 450, 4);
+        for (let i = 0; i <= 4; i++) this.later(i * 25, () => this.puff(from.x + ((to.x - from.x) * i) / 4, from.y + ((to.y - from.y) * i) / 4, 0x4b4b6b, 6));
+        return this.later(100, () => this.sparks(to, 0xffffff, 8));
+      case "bear_form":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(from, TILE_SIZE * 1.2, 0x8d6e4a, 500, 6);
+          return this.debris(from, TILE_SIZE, 0x6b4426);
+        }
+        return this.ring(from, TILE_SIZE * 1.5, 0x8d6e4a, 300, 5);
+      case "beast_cry":
+        this.ring(from, TILE_SIZE * 3, 0xe67e22, 550, 5);
+        return this.later(120, () => this.ring(from, TILE_SIZE * 1.8, 0xf1c40f, 450, 3));
+      // As folhas da cura no aliado saem pela cena (`spell.heal`).
+      case "distant_heal": return this.drain(from, to, 0xff8fab);
+      // A semente voa até o aliado; quando ela salva (eco no próprio aliado), uma flor se abre.
+      case "rebirth_seed":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 1.5, 0x9cff7a, 700, 5);
+          this.later(150, () => this.ring(to, TILE_SIZE, 0xf7d774, 500, 3));
+          return this.heal(to);
+        }
+        this.projectile(FX.leaf, from, to, 260, { trail: 0xc8a165, glow: 0x9cff7a, impact: 0x9cff7a });
+        return this.later(260, () => this.sparks(to, 0x9cff7a, 8));
+      case "barkskin":
+        this.drain(from, to, 0x8d6e4a);
+        return this.later(200, () => { this.shieldRaise(to); this.debris(to, TILE_SIZE / 2, 0x8d6e4a); });
+      case "reviving_rain":
+        this.beam(to, 0x7fc8ff);
+        return this.ring(to, radius, 0x7fc8ff, 600, 3);
+      // A explosão do veneno chega como eco no monstro morto.
+      case "mamba_bite":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 2.5, 0x9acd32, 450, 7);
+          return this.sparks(to, 0x9acd32, 14);
+        }
+        return this.projectile(FX.greenLight, from, to, ms, { trail: 0x2d6a1f, glow: 0x1e4d14, impact: 0x9acd32, scale: 1.2 });
+      case "poison_cloud":
+        this.projectile(FX.greenLight, from, to, 200, { trail: 0x9acd32, glow: 0x6ab04c });
+        return this.later(200, () => this.ring(to, radius, 0x9acd32, 500, 5));
+      case "thunderwave":
+        this.ring(from, radius, 0x9ec5ff, 400, 8);
+        this.later(80, () => this.ring(from, radius * 0.6, 0xffffff, 300, 4));
+        return this.sparks(from, 0x9ec5ff, 10);
+      // Raio do céu: da nuvem (Chamar Relâmpago) ou do Céu Carregado, sempre caindo no ponto `to`.
+      case "call_lightning":
+        this.beam(to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 8);
+      case "giant_eagle":
+        this.ring(from, TILE_SIZE * 1.5, 0xc8a165, 550, 3);
+        return this.sparks(from, 0xf7d774, 8);
       // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
       case "spirit_wolf":
       case "healing_moth":

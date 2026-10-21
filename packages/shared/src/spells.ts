@@ -49,7 +49,9 @@ export type SpellId =
   | "holy_spear" | "divine_caldera" | "light_shield" | "consecrated_ground"
   | "lightning_arrow" | "barrage" | "bear_trap" | "arrow_cordon"
   | "energy_beam" | "sky_fury" | "fireball" | "infernal_core" | "cone_of_cold" | "ice_prison"
-  | "misty_step" | "magic_wall" | "sudden_death" | "raise_skeletons" | "eldritch_blast" | "black_tentacles";
+  | "misty_step" | "magic_wall" | "sudden_death" | "raise_skeletons" | "eldritch_blast" | "black_tentacles"
+  | "beast_cry" | "giant_eagle" | "panther_form" | "bear_form" | "distant_heal" | "rebirth_seed"
+  | "barkskin" | "reviving_rain" | "mamba_bite" | "poison_cloud" | "thunderwave" | "call_lightning";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -94,6 +96,9 @@ export interface SpellDef {
   field?: {
     kind: "zone" | "trap" | "turret" | "wall";
     ms: number; tickMs?: number; damage?: number; allyArmor?: number; reach?: number; shots?: number;
+    /** Zona: a cada pulso, cura esta fração da vida máxima e devolve `allyMana` da mana máxima dos aliados dentro. */
+    allyHeal?: number;
+    allyMana?: number;
     /** Zona: prende os monstros dentro a cada pulso por este tempo (Tentáculos Negros). */
     rootMs?: number;
     /** Parede: quantos tiles, de lado para a direção do herói até o ponto mirado. */
@@ -125,7 +130,7 @@ export interface SpellDef {
   execute?: { hpPct: number; bonus: number };
   /** Dano +`perTile` (fração) por tile de distância entre quem conjura e o alvo. */
   distanceBonus?: number;
-  /** Armadura extra em quem conjura (soma com o equipamento) por `ms`. */
+  /** Armadura extra em quem conjura (ou no aliado mirado, com `aim: "ally"`), somada ao equipamento, por `ms`. */
   armor?: { points: number; ms: number };
   /** O efeito inteiro se repete `delayMs` depois do primeiro, com `power` do dano (sem gastar mana de novo). */
   repeat?: { delayMs: number; power: number };
@@ -150,6 +155,23 @@ export interface SpellDef {
   /** Quem conjura recebe só (1 - guard) do dano por `guardMs`. */
   guard?: number;
   guardMs?: number;
+  /**
+   * Forma animal de quem conjura por `ms` (só uma de cada vez; conjurar outra troca). Pantera: anda +`moveSpeed` e o
+   * próximo ataque básico salta no alvo com `pounce` × dano (atordoando por `pounceStunMs`). Urso: +`hp` da vida máxima
+   * (entra cheia) e o ataque básico vira uma patada em todos os monstros colados, que os provoca (`maul`).
+   */
+  form?: { kind: "panther" | "bear"; ms: number; moveSpeed?: number; pounce?: number; pounceStunMs?: number; hp?: number; maul?: boolean };
+  /** Grito da Fera: as criaturas de quem conjura atacam `haste` mais rápido por `ms` e recuperam `heal` da vida. */
+  packCall?: { haste: number; ms: number; heal: number };
+  /**
+   * Renascer da Semente: semente no aliado mirado por `ms`. Se ele morrer enquanto ela dura, renasce no lugar com `hp`
+   * da vida e `invulnMs` de invulnerabilidade, sem largar nada. Uma semente por druida; ela some quando salva.
+   */
+  seed?: { ms: number; hp: number; invulnMs: number };
+  /** Tira o veneno, a queimadura e a lentidão de quem recebe a magia (o aliado mirado). */
+  cleanse?: boolean;
+  /** Picada da Mamba: se o monstro morrer com o veneno desta magia, ele explode em `radius` com `damage` × e envenena quem pegar. */
+  burst?: { radius: number; damage: number };
   /** Escudo temporário que absorve dano, em fração do HP máximo, por `barrierMs`. */
   barrier?: number;
   barrierMs?: number;
@@ -524,6 +546,78 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Cura a equipe por perto e invoca um fogo-fátuo que continua curando todos e devolve um pouco de mana.",
     manaCost: 70, cooldownMs: 24000, aim: "self", range: 0, radius: 3, heal: 0.2, summon: { kind: "wisp", count: 1, durationMs: 20000 },
   }),
+
+  // --- Druida: especializações. --------------------------------------------------
+  // Mestre das Feras (ramo Matilha).
+  beast_cry: spell({
+    id: "beast_cry", classId: "druid", slot: 0, name: "Grito da Fera", icon: "📣", color: 0xe67e22,
+    description: "Um rugido que enfurece suas criaturas: atacam bem mais rápido por alguns segundos e recuperam vida.",
+    manaCost: 30, cooldownMs: 14000, aim: "self", range: 0, radius: 0, packCall: { haste: 0.5, ms: 6000, heal: 0.2 },
+  }),
+  giant_eagle: spell({
+    id: "giant_eagle", classId: "druid", slot: 1, name: "Águia Gigante", icon: "🦅", color: 0xc8a165,
+    description: "Chama uma águia que voa por cima da água e mergulha nos monstros, deixando-os tontos.",
+    manaCost: 55, cooldownMs: 20000, aim: "self", range: 0, radius: 0, summon: { kind: "eagle", count: 1, durationMs: 20000 },
+  }),
+  // Metamorfo (ramo Matilha).
+  panther_form: spell({
+    id: "panther_form", classId: "druid", slot: 0, name: "Forma de Pantera", icon: "🐆", color: 0x4b4b6b,
+    description: "Vira uma pantera veloz: anda mais rápido, e o próximo ataque salta no alvo com um golpe forte.",
+    manaCost: 30, cooldownMs: 12000, aim: "self", range: 0, radius: 0, form: { kind: "panther", ms: 6000, moveSpeed: 0.4, pounce: 2.5 },
+  }),
+  bear_form: spell({
+    id: "bear_form", classId: "druid", slot: 1, name: "Forma de Urso", icon: "🐻", color: 0x8d6e4a,
+    description: "Vira um urso enorme: mais vida, e o ataque vira uma patada em todos os monstros colados, que passam a te perseguir.",
+    manaCost: 45, cooldownMs: 20000, aim: "self", range: 0, radius: 0, form: { kind: "bear", ms: 10000, hp: 0.5, maul: true },
+  }),
+  // Círculo da Vida (ramo Bosque).
+  distant_heal: spell({
+    id: "distant_heal", classId: "druid", slot: 0, name: "Cura Distante", icon: "💞", color: 0xff8fab,
+    description: "Cura muito um aliado (ou você) de longe. No toque rápido, vai no mais ferido por perto.",
+    manaCost: 40, cooldownMs: 8000, aim: "ally", range: 6, radius: 0, heal: 0.45,
+  }),
+  rebirth_seed: spell({
+    id: "rebirth_seed", classId: "druid", slot: 1, name: "Renascer da Semente", icon: "🌰", color: 0xc8a165,
+    description: "Planta uma semente num aliado (ou em você): se ele morrer enquanto ela dura, renasce no lugar sem perder nada.",
+    manaCost: 60, cooldownMs: 60000, aim: "ally", range: 6, radius: 0, seed: { ms: 25000, hp: 0.4, invulnMs: 2000 },
+  }),
+  // Guardião da Natureza (ramo Bosque).
+  barkskin: spell({
+    id: "barkskin", classId: "druid", slot: 0, name: "Pele de Casca", icon: "🪵", color: 0x8d6e4a,
+    description: "Cobre um aliado (ou você) de casca: escudo e armadura por alguns segundos. No toque rápido, vai no mais ferido.",
+    manaCost: 30, cooldownMs: 10000, aim: "ally", range: 6, radius: 0, barrier: 0.3, barrierMs: 8000, armor: { points: 4, ms: 8000 },
+  }),
+  reviving_rain: spell({
+    id: "reviving_rain", classId: "druid", slot: 1, name: "Chuva Revigorante", icon: "🌧️", color: 0x7fc8ff,
+    description: "Uma chuva mansa cai na área: quem está embaixo recupera vida e mana a cada segundo.",
+    manaCost: 60, cooldownMs: 18000, aim: "target", range: 5, radius: 3,
+    field: { kind: "zone", ms: 8000, tickMs: 1000, allyHeal: 0.04, allyMana: 0.02 },
+  }),
+  // Peste (ramo Espinhos).
+  mamba_bite: spell({
+    id: "mamba_bite", classId: "druid", slot: 0, name: "Picada da Mamba", icon: "🐍", color: 0x2d6a1f,
+    description: "Um veneno fortíssimo num alvo. Se ele morrer envenenado, explode e espalha o veneno em volta.",
+    manaCost: 30, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1, projectileSpeed: 14,
+    dot: { perSec: 0.6, ms: 5000, kind: "poison" }, burst: { radius: 2, damage: 1.5 },
+  }),
+  poison_cloud: spell({
+    id: "poison_cloud", classId: "druid", slot: 1, name: "Nuvem Venenosa", icon: "🦠", color: 0x9acd32,
+    description: "Uma nuvem verde fica no chão: fere e envenena os monstros que estão dentro.",
+    manaCost: 50, cooldownMs: 15000, aim: "target", range: 5, radius: 2, dot: { perSec: 0.3, ms: 3000, kind: "poison" },
+    field: { kind: "zone", ms: 8000, tickMs: 1000, damage: 0.2 },
+  }),
+  // Tempestade (ramo Espinhos).
+  thunderwave: spell({
+    id: "thunderwave", classId: "druid", slot: 0, name: "Onda Trovejante", icon: "💥", color: 0x9ec5ff,
+    description: "Um trovão em volta de você: fere e joga longe os monstros colados.",
+    manaCost: 35, cooldownMs: 8000, aim: "self", range: 0, radius: 2, damage: 1.5, push: 2,
+  }),
+  call_lightning: spell({
+    id: "call_lightning", classId: "druid", slot: 1, name: "Chamar Relâmpago", icon: "🌦️", color: 0x9ec5ff,
+    description: "Uma nuvem de tempestade sobre o ponto mirado solta raios nos monstros por perto.",
+    manaCost: 60, cooldownMs: 16000, aim: "target", range: 6, radius: 0,
+    field: { kind: "turret", ms: 8000, tickMs: 1500, damage: 1.6, reach: 3, shots: 5, look: "storm" },
+  }),
 };
 
 /** Níveis de uma magia no Grimório (o 1 é o aprendido). */
@@ -616,6 +710,18 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   eldritch_blast: { text: "Empurra 2 tiles.", changes: { push: 2 } },
   black_tentacles: { text: "Os tentáculos cobrem raio 3.", changes: { radius: 3 } },
   arrow_cordon: { text: "A estaca atira 7 vezes.", changes: { field: { kind: "turret", ms: 12000, tickMs: 900, damage: 1, reach: 3, shots: 7 } } },
+  beast_cry: { text: "O rugido também chama um lobo por 10 s.", changes: { summon: { kind: "wolf", count: 1, durationMs: 10000 } } },
+  giant_eagle: { text: "Chama 2 águias.", changes: { summon: { kind: "eagle", count: 2, durationMs: 20000 } } },
+  panther_form: { text: "O salto atordoa o alvo por 1 s.", changes: { form: { kind: "panther", ms: 6000, moveSpeed: 0.4, pounce: 2.5, pounceStunMs: 1000 } } },
+  bear_form: { text: "O urso também corta 30% do dano recebido.", changes: { guard: 0.3, guardMs: 10000 } },
+  distant_heal: { text: "Também tira o veneno, a queimadura e a lentidão do aliado.", changes: { cleanse: true } },
+  rebirth_seed: { text: "A semente dura 40 s e o aliado renasce com 60% da vida.", changes: { seed: { ms: 40000, hp: 0.6, invulnMs: 2000 } } },
+  barkskin: { text: "A casca também cura 20% da vida do aliado.", changes: { heal: 0.2 } },
+  reviving_rain: { text: "A chuva cobre raio 4.", changes: { radius: 4 } },
+  mamba_bite: { text: "A explosão cobre raio 3.", changes: { burst: { radius: 3, damage: 1.5 } } },
+  poison_cloud: { text: "A nuvem cobre raio 3.", changes: { radius: 3 } },
+  thunderwave: { text: "O trovão atordoa os atingidos por 1 s.", changes: { stunMs: 1000 } },
+  call_lightning: { text: "A nuvem solta 8 raios.", changes: { field: { kind: "turret", ms: 12000, tickMs: 1500, damage: 1.6, reach: 3, shots: 8, look: "storm" } } },
 };
 
 /** A magia com os números do nível comprado e, no nível 3, a Maestria (mana e recarga não mudam). */
@@ -636,7 +742,14 @@ export function spellAtRank(base: SpellDef, rank: number): SpellDef {
     armor: def.armor && { points: Math.round(def.armor.points * k), ms: Math.round(def.armor.ms * t) },
     mark: def.mark && { pct: def.mark.pct * k, ms: Math.round(def.mark.ms * t) },
     selfBuff: def.selfBuff && { ...def.selfBuff, ms: Math.round(def.selfBuff.ms * t) },
-    field: def.field && { ...def.field, ms: Math.round(def.field.ms * t), damage: def.field.damage && def.field.damage * k },
+    field: def.field && {
+      ...def.field, ms: Math.round(def.field.ms * t), damage: def.field.damage && def.field.damage * k,
+      allyHeal: def.field.allyHeal && def.field.allyHeal * k, allyMana: def.field.allyMana && def.field.allyMana * k,
+    },
+    form: def.form && { ...def.form, ms: Math.round(def.form.ms * t), pounce: def.form.pounce && def.form.pounce * k, pounceStunMs: ms(def.form.pounceStunMs) },
+    packCall: def.packCall && { ...def.packCall, ms: Math.round(def.packCall.ms * t), heal: def.packCall.heal * k },
+    seed: def.seed && { ...def.seed, ms: Math.round(def.seed.ms * t) },
+    burst: def.burst && { ...def.burst, damage: def.burst.damage * k },
     nextBasicStunMs: ms(def.nextBasicStunMs),
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
@@ -673,7 +786,12 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
   if (s.mark) facts.push(`Marca: +${pct(s.mark.pct)} de dano da equipe no alvo por ${sec(s.mark.ms)}`);
   if (s.undeadBonus) facts.push(`+${pct(s.undeadBonus)} de dano em mortos-vivos`);
   if (s.field?.kind === "zone") {
-    facts.push(`Campo de raio ${s.radius} por ${sec(s.field.ms)}: ${num(s.field.damage ?? 0)}× por segundo nos monstros${s.field.allyArmor ? `, +${s.field.allyArmor} de armadura nos aliados` : ""}`);
+    const effects = [
+      s.field.damage ? `${num(s.field.damage)}× por segundo nos monstros` : "",
+      s.field.allyArmor ? `+${s.field.allyArmor} de armadura nos aliados` : "",
+      s.field.allyHeal ? `cura ${pct(s.field.allyHeal)} da vida e devolve ${pct(s.field.allyMana ?? 0)} da mana por segundo` : "",
+    ].filter(Boolean);
+    facts.push(`Campo de raio ${s.radius} por ${sec(s.field.ms)}${effects.length ? `: ${effects.join(", ")}` : ""}`);
   }
   if (s.field?.kind === "trap") facts.push(`Armadilha por ${sec(s.field.ms)}: dispara no primeiro monstro que pisar${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
   if (s.field?.kind === "turret") {
@@ -684,6 +802,15 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
   if (s.field?.kind === "zone" && s.field.rootMs) facts.push(`Prende quem está dentro (${sec(s.field.rootMs)} a cada pulso)`);
   if (s.push) facts.push(`Empurra o alvo ${s.push} ${s.push > 1 ? "tiles" : "tile"}`);
   if (s.dash) facts.push(s.dash.teleport ? `Teleporta até ${s.dash.tiles} tiles` : `Salta até ${s.dash.tiles} tiles`);
+  if (s.form?.kind === "panther") {
+    facts.push(`Pantera por ${sec(s.form.ms)}: anda ${pct(s.form.moveSpeed ?? 0)} mais rápido`);
+    facts.push(`O próximo ataque salta no alvo: ${num(s.form.pounce ?? 1)}×${s.form.pounceStunMs ? `, atordoa por ${sec(s.form.pounceStunMs)}` : ""}`);
+  }
+  if (s.form?.kind === "bear") facts.push(`Urso por ${sec(s.form.ms)}: +${pct(s.form.hp ?? 0)} de vida; o ataque fere e provoca todos os monstros colados`);
+  if (s.packCall) facts.push(`Suas criaturas atacam ${pct(s.packCall.haste)} mais rápido por ${sec(s.packCall.ms)} e recuperam ${pct(s.packCall.heal)} da vida`);
+  if (s.seed) facts.push(`Semente por ${sec(s.seed.ms)}: se o aliado morrer, renasce com ${pct(s.seed.hp)} da vida, sem perder nada`);
+  if (s.cleanse) facts.push("Tira veneno, queimadura e lentidão");
+  if (s.burst) facts.push(`Se o alvo morrer envenenado, explode: ${num(s.burst.damage)}× em raio ${s.burst.radius}, e envenena`);
   if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
   if (s.selfBuff) {
     const b = s.selfBuff;

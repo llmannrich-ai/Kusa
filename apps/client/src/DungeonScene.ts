@@ -103,7 +103,12 @@ const SELF_BUFFS = (Object.keys(SPELLS) as SpellId[]).filter((id) => SPELLS[id].
 const DOT_COLORS: Record<DotKind, number> = { poison: 0x9acd32, burn: 0xff9f43, bleed: 0xc0392b };
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
-const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp"]);
+const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp", "eagle"]);
+/** Formas animais do Druida: o sprite da fera no lugar do herói (a pantera é o lobo do pack em tons de noite). */
+const FORMS = {
+  panther: { texture: SUMMON_TEXTURE.wolf, tint: 0x4b4b6b, scale: 1.1 },
+  bear: { texture: SUMMON_TEXTURE.bear, tint: 0xffffff, scale: 1.35 },
+} as const;
 /** Sprites do pack que olham para a esquerda. */
 const SUMMON_FACES_LEFT = new Set<SummonKind>(["wolf", "bear"]);
 
@@ -414,8 +419,10 @@ export class DungeonScene extends Phaser.Scene {
     else if (spell.shape === "cone") this.showCone(spell, msg);
     else if (spell.radius > 0 && !spell.field) this.showArea(spell, msg);
     if (spell.heal) {
+      // Em volta de quem conjura, ou no aliado mirado (Cura Distante).
+      const at = spell.aim === "self" ? { x: msg.x, y: msg.y } : { x: msg.tx, y: msg.ty };
       this.room.state.players.forEach((p, id) => {
-        if (p.status !== "playing" || tileDistance(msg.x, msg.y, p.x, p.y) > spell.radius) return;
+        if (p.status !== "playing" || tileDistance(at.x, at.y, p.x, p.y) > spell.radius) return;
         const unit = this.avatars.get(id);
         if (unit) this.fx.heal({ x: unit.body.x, y: unit.body.y });
       });
@@ -697,6 +704,25 @@ export class DungeonScene extends Phaser.Scene {
     return g;
   }
 
+  /** Forma de Pantera ou de Urso: o sprite da fera com os pés na base do tile (olha para a esquerda, como no pack). */
+  private formSprite(kind: keyof typeof FORMS, facingRight: boolean) {
+    const form = FORMS[kind];
+    const sprite = this.add.sprite(0, TILE_SIZE / 2, form.texture).setOrigin(0.5, 1).setScale(CREATURE_SPRITE_SCALE * form.scale)
+      .setTint(form.tint).setFlipX(facingRight);
+    this.tweens.add({ targets: sprite, scale: { from: CREATURE_SPRITE_SCALE * 0.6, to: CREATURE_SPRITE_SCALE * form.scale }, duration: 220, ease: "Back.Out" });
+    return sprite;
+  }
+
+  /** Renascer da Semente: uma semente com um broto sobre a cabeça, balançando enquanto ela vale. */
+  private seedAt(top: number) {
+    const g = this.add.graphics().setPosition(0, top);
+    g.fillStyle(0x8d5a2b, 1).fillEllipse(0, 2, 8, 9);
+    g.fillStyle(0xc8a165, 1).fillEllipse(-1, 1, 3, 4);
+    g.fillStyle(0x9cff7a, 1).fillTriangle(0, -2, 6, -7, 2, -1).fillTriangle(0, -2, -5, -6, -1, -1);
+    this.tweens.add({ targets: g, y: top - 3, duration: 700, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    return g;
+  }
+
   /** Bônus em si (Postura do Atirador, Aljava Veloz): um anel na cor da magia pulsando nos pés do herói. */
   private buffAura(color: number) {
     const g = this.add.graphics();
@@ -872,6 +898,14 @@ export class DungeonScene extends Phaser.Scene {
     // Uma aura por magia de bônus em si, na cor dela.
     for (const id of SELF_BUFFS) this.setStatus(unit, `buff:${id}`, alive && player.buff === id, () => this.buffAura(SPELLS[id].color));
     this.setStatus(unit, "slow", alive && player.slowed, () => this.mudAtFeet());
+    // Forma animal: a fera aparece no lugar do herói enquanto a forma dura.
+    for (const kind of Object.keys(FORMS) as (keyof typeof FORMS)[]) {
+      const on = alive && player.form === kind;
+      this.setStatus(unit, `form:${kind}`, on, () => this.formSprite(kind, unit.sprite.flipX));
+    }
+    unit.sprite.setVisible(!alive || !(player.form in FORMS));
+    this.setStatus(unit, "seed", alive && player.seeded, () => this.seedAt(unit.barY - 12));
+    this.setStatus(unit, "reborn", alive && player.reborn, () => this.buffAura(0xf7d774));
     this.syncBarrier(unit, player.status === "playing" ? player.barrier : 0, player.maxBarrier);
     this.moveTo(unit, player.x, player.y);
   }
@@ -990,6 +1024,8 @@ export class DungeonScene extends Phaser.Scene {
     if (dx !== 0) {
       unit.dir = "side";
       unit.sprite.setFlipX(unit.classId ? dx > 0 : unit.facesLeft && dx > 0);
+      // A fera da forma animal (do pack, olhando para a esquerda) vira junto com o herói.
+      for (const kind of Object.keys(FORMS)) (unit.statuses.get(`form:${kind}`) as Phaser.GameObjects.Sprite | undefined)?.setFlipX(dx > 0);
     } else {
       unit.dir = dy < 0 ? "up" : "down";
     }

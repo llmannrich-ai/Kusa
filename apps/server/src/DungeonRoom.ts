@@ -51,6 +51,7 @@ import {
   damageReduction,
   flightMs,
   hasLineOfSight,
+  blocksSight,
   isPerk,
   isPotion,
   isUpgrade,
@@ -169,6 +170,22 @@ interface Seat {
   /** Solo Consagrado: armadura extra enquanto o herói está dentro do campo (renovada a cada pulso). */
   fieldArmor: number;
   fieldArmorUntil: number;
+  /**
+   * Forma animal do Druida até `until`: velocidade extra, salto da pantera (gasto no próximo básico), patada do urso e a
+   * vida que o urso somou à máxima (sai quando a forma acaba).
+   */
+  form: { kind: "panther" | "bear"; until: number; moveSpeed: number; pounce: number; pounceStunMs: number; maul: boolean; hpBonus: number } | null;
+  /** Semente do Renascer recebida: até quando vale, de quem, vida ao renascer e tempo de invulnerabilidade. */
+  seed: { until: number; by: string; hp: number; invulnMs: number } | null;
+  /** Druida: em quem está a semente que ele plantou (só uma de cada vez). */
+  seedTarget: string | null;
+  /** Renasceu da semente: não leva dano até este momento. */
+  invulnUntil: number;
+  /** Seiva Protetora: armadura extra de quem foi curado por um Guardião da Natureza, até quando. */
+  sapArmor: number;
+  sapUntil: number;
+  /** Céu Carregado (Traço): magias conjuradas na hunt, para o raio a cada 4. */
+  castCount: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -215,8 +232,14 @@ interface Brain {
   /** Marcado (Marca do Caçador) até este momento: recebe +`markPct` de dano de qualquer fonte. */
   markUntil: number;
   markPct: number;
-  /** Dano contínuo ativo: `amount` por pulso de 1 s até `until`, creditado a `attacker` na fonte `source`. */
-  dot: { amount: number; nextAt: number; until: number; attacker: string; source: string; kind: DotKind } | null;
+  /**
+   * Dano contínuo ativo: `amount` por pulso de 1 s até `until`, creditado a `attacker` na fonte `source`. Com a Toxina,
+   * o veneno acumula (`stacks` vezes o pulso de `perStack`). `burst`: explode se o monstro morrer com ele (Picada da Mamba).
+   */
+  dot: {
+    amount: number; nextAt: number; until: number; attacker: string; source: string; kind: DotKind; stacks: number; perStack: number;
+    burst?: { radius: number; amount: number; source: string };
+  } | null;
   /** Quando a habilidade especial pode sair de novo (0 = ainda não notou ninguém). */
   nextSpecialAt: number;
   /** Boss já se enfureceu (aviso dado uma vez). */
@@ -238,6 +261,9 @@ interface SummonBrain {
   nextAttackAt: number;
   /** Id do monstro que está caçando. */
   targetId: string | null;
+  /** Grito da Fera: ataca `haste` (fração da recarga cortada) mais rápido até `hasteUntil`. */
+  haste: number;
+  hasteUntil: number;
 }
 
 /** Dados do campo no chão que só o servidor precisa. */
@@ -251,6 +277,9 @@ interface FieldBrain {
   /** Dano por pulso (zona), por tiro (estaca) ou do disparo (armadilha), já com o dano base de quem criou. */
   amount: number;
   allyArmor: number;
+  /** Chuva Revigorante: cura e mana por pulso nos aliados dentro, em fração do máximo de cada um. */
+  allyHeal: number;
+  allyMana: number;
   tickMs: number;
   nextTickAt: number;
   until: number;
@@ -368,7 +397,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
-      fieldArmor: 0, fieldArmorUntil: 0,
+      fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0,
       aura: bonus, perks: {}, perkBonus: perkBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
     });
     const joined = this.seats.get(client.sessionId)!;
@@ -641,7 +670,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p.target) seat.targetLocked = false;
     // Alcance: o da classe, mais o Olho de Águia (Traço) e a Postura do Atirador (bônus em si).
     const buff = seat.buff && now < seat.buff.until ? seat.buff : null;
-    const range = cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0)
+    const form = seat.form && now < seat.form.until ? seat.form : null;
+    // Na Forma de Urso, o básico é uma patada: só alcança quem está colado.
+    const range = form?.maul ? 1 : cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0)
       + (cls.attackRange > 1 ? seat.gear.range : 0);
     // Alvo escolhido sozinho não fica preso: se saiu do alcance, troca pelo mais próximo que está no alcance.
     if (!seat.targetLocked && p.target && !this.canHit(p, this.state.monsters.get(p.target)!, range)) p.target = "";
@@ -657,6 +688,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Arma e botas mudam o ritmo (machado e besta são mais lentos; varinha e itens mágicos, mais rápidos).
     seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perks) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste));
     seat.attackUntil = 0;
+    if (form?.maul) return this.maul(sessionId, p, m);
+    if (form && form.pounce > 0) return this.pounce(sessionId, p, seat, m, form, now);
     // Flecha e luzes voam até o alvo: o dano entra quando chegam (se o monstro ainda estiver vivo).
     const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
     this.broadcast(MSG.attack, { from: sessionId, x: p.x, y: p.y, tx: m.x, ty: m.y, ms } satisfies AttackMessage);
@@ -696,6 +729,67 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         }
       }
     });
+  }
+
+  /** Forma de Urso: o básico vira uma patada em todos os monstros colados no druida, que passam a persegui-lo. */
+  private maul(sessionId: string, p: Player, target: Monster) {
+    this.broadcast(MSG.spell, { from: sessionId, spellId: "bear_form", x: p.x, y: p.y, tx: target.x, ty: target.y, ms: 0, echo: true } satisfies SpellMessage);
+    const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "smash" };
+    const base = this.baseDamage(sessionId, p, "basic");
+    for (const m of [...this.state.monsters.values()]) {
+      if (!this.canHit(p, m, 1)) continue;
+      const brain = this.brains.get(m.id);
+      if (brain) brain.targetId = sessionId;
+      this.damageMonster(m, rollDamage(base), hit, "bear_form");
+    }
+  }
+
+  /**
+   * Forma de Pantera: o próximo básico salta no alvo (o druida pousa colado nele, se houver lugar) com um golpe forte,
+   * que atordoa com a Maestria. O salto se gasta nesse golpe.
+   */
+  private pounce(sessionId: string, p: Player, seat: Seat, m: Monster, form: NonNullable<Seat["form"]>, now: number) {
+    const power = form.pounce;
+    form.pounce = 0;
+    const from = { x: p.x, y: p.y };
+    const spot = this.besideMonster(p, m);
+    if (spot) {
+      p.x = spot.x;
+      p.y = spot.y;
+      seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 200);
+      this.trackDepth(sessionId, p);
+    }
+    this.broadcast(MSG.spell, { from: sessionId, spellId: "panther_form", x: from.x, y: from.y, tx: m.x, ty: m.y, ms: 0, echo: true } satisfies SpellMessage);
+    const brain = this.brains.get(m.id);
+    if (form.pounceStunMs > 0 && brain) {
+      brain.stunnedUntil = Math.max(brain.stunnedUntil, now + form.pounceStunMs);
+      m.stunned = true;
+      seat.stats.ccMs.stun += form.pounceStunMs;
+    }
+    const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "bite" };
+    this.damageMonster(m, rollDamage(this.baseDamage(sessionId, p, "basic") * power), hit, "panther_form");
+  }
+
+  /** Tile livre colado no monstro e mais perto do herói, à vista dele (null se o herói já está colado ou não há lugar). */
+  private besideMonster(p: Player, m: Monster) {
+    if (tileDistance(p.x, p.y, m.x, m.y) <= 1) return null;
+    const blocked = this.occupiedTiles();
+    let best: { x: number; y: number } | null = null;
+    let bestDist = Infinity;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const x = m.x + dx;
+        const y = m.y + dy;
+        if ((dx === 0 && dy === 0) || !isWalkable(this.dungeon, x, y) || tileAt(this.dungeon, x, y) === Tile.Portal) continue;
+        if (blocked.has(y * this.dungeon.width + x) || !hasLineOfSight(this.dungeon, p.x, p.y, x, y)) continue;
+        const dist = Math.hypot(x - p.x, y - p.y);
+        if (dist < bestDist) {
+          best = { x, y };
+          bestDist = dist;
+        }
+      }
+    }
+    return best;
   }
 
   /** Roda `fn` depois de `ms` (na hora se 0), só enquanto a hunt estiver rolando. */
@@ -830,6 +924,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     p.mana -= spell.manaCost;
     bump(seat.stats.casts, spell.id);
+    // Céu Carregado (Traço): a cada tantas magias, um raio cai no monstro mais perto.
+    const sky = seat.traits.find((t) => t.chargedSky)?.chargedSky;
+    if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
     seat.spellReadyAt[slot] = now + spellCooldownMs(spell.cooldownMs, seat.perks);
     const ms = flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty);
     this.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms } satisfies SpellMessage);
@@ -855,6 +952,18 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         this.applySpell(sessionId, once, rank, anchor?.id, at.x, at.y, amount * echo.power, line, slot);
       });
     }
+  }
+
+  /** Céu Carregado (Traço): um raio cai do céu no monstro mais perto do druida. */
+  private skyBolt(sessionId: string, p: Player, sky: NonNullable<TraitDef["chargedSky"]>) {
+    const target = this.nearestMonsterTo(p.x, p.y, sky.range);
+    if (!target) return;
+    this.broadcast(MSG.spell, { from: sessionId, spellId: "call_lightning", x: p.x, y: p.y, tx: target.x, ty: target.y, ms: 150, echo: true } satisfies SpellMessage);
+    const amount = rollDamage(this.baseDamage(sessionId, p, "spell") * sky.damage);
+    this.after(150, () => {
+      const alive = this.state.monsters.get(target.id);
+      if (alive) this.damageMonster(alive, amount, { attacker: sessionId, fromX: alive.x, fromY: alive.y, fx: "nature" }, "charged_sky");
+    });
   }
 
   /**
@@ -913,6 +1022,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const shatter = seat.traits.find((t) => t.shatter)?.shatter;
     const harvest = seat.traits.find((t) => t.harvest)?.harvest;
     const hex = seat.traits.find((t) => t.hex)?.hex;
+    const toxin = seat.traits.find((t) => t.toxin)?.toxin;
+    // Picada da Mamba: o veneno leva a explosão junto, para o caso de o monstro morrer com ele.
+    const burst = spell.burst && { radius: spell.burst.radius, amount: this.baseDamage(sessionId, p, "spell") * spell.burst.damage, source: spell.id };
     hit.forEach((m, i) => {
       const brain = this.brains.get(m.id);
       if (!brain) return;
@@ -951,7 +1063,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         brain.markUntil = Math.max(brain.markUntil, now + hex.ms);
         m.marked = true;
       }
-      if (spell.dot) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spell.dot.perSec, spell.dot.ms, spell.dot.kind, now);
+      if (spell.dot) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spell.dot.perSec, spell.dot.ms, spell.dot.kind, now, burst);
+      // Toxina (Traço): magia com dano envenena (e o veneno acumula, ver `applyDot`).
+      else if (toxin && spell.damage) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * toxin.perSec, toxin.ms, "poison", now);
       if (spellBurn && spell.damage && !spell.dot) {
         this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spellBurn.perSec, spellBurn.ms, "burn", now);
       }
@@ -1030,11 +1144,122 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
 
     if (spell.armor && p.status === "playing") {
-      seat.armorBonus = spell.armor.points;
-      seat.armorUntil = now + spell.armor.ms;
+      // Mira em aliado (Pele de Casca): a armadura vai para ele.
+      const armorSeat = spell.aim === "ally" ? allyId && this.seats.get(allyId) : seat;
+      if (armorSeat) {
+        armorSeat.armorBonus = spell.armor.points;
+        armorSeat.armorUntil = now + spell.armor.ms;
+      }
     }
 
+    if (spell.form && p.status === "playing") this.startForm(p, seat, spell.form, now);
+
+    // Grito da Fera: as criaturas do druida atacam mais rápido e recuperam vida.
+    if (spell.packCall && p.status === "playing") {
+      const call = spell.packCall;
+      this.state.summons.forEach((s) => {
+        const summonBrain = this.summonBrains.get(s.id);
+        if (s.owner !== sessionId || !summonBrain) return;
+        summonBrain.haste = call.haste;
+        summonBrain.hasteUntil = now + call.ms;
+        s.hp = Math.min(s.maxHp, s.hp + Math.round(s.maxHp * call.heal));
+      });
+    }
+
+    const ally = allyId ? this.state.players.get(allyId) : undefined;
+    const allySeat = allyId ? this.seats.get(allyId) : undefined;
+    if (spell.cleanse && ally && allySeat) {
+      allySeat.dot = null;
+      ally.dot = "";
+      allySeat.slow = null;
+      ally.slowed = false;
+    }
+    if (spell.seed && allyId && ally?.status === "playing" && allySeat) this.plantSeed(sessionId, seat, allyId, ally, allySeat, spell.seed, now);
+
     if (spell.summon && p.status === "playing") this.summon(sessionId, p, spell, rank);
+  }
+
+  /** Forma animal: troca a anterior. O urso soma vida à máxima (entra cheia) e tira de volta quando a forma acaba. */
+  private startForm(p: Player, seat: Seat, form: NonNullable<SpellDef["form"]>, now: number) {
+    this.endForm(p, seat);
+    const hpBonus = form.hp ? Math.round(p.maxHp * form.hp) : 0;
+    seat.form = {
+      kind: form.kind, until: now + form.ms, moveSpeed: form.moveSpeed ?? 0, pounce: form.pounce ?? 0,
+      pounceStunMs: form.pounceStunMs ?? 0, maul: form.maul ?? false, hpBonus,
+    };
+    p.maxHp += hpBonus;
+    p.hp += hpBonus;
+    p.form = form.kind;
+  }
+
+  private endForm(p: Player, seat: Seat) {
+    if (!seat.form) return;
+    p.maxHp -= seat.form.hpBonus;
+    p.hp = Math.min(p.hp, p.maxHp);
+    seat.form = null;
+    p.form = "";
+  }
+
+  /** Renascer da Semente: uma semente por druida (a nova troca a anterior, onde quer que esteja). */
+  private plantSeed(
+    sessionId: string, seat: Seat, allyId: string, ally: Player, allySeat: Seat, seed: NonNullable<SpellDef["seed"]>, now: number,
+  ) {
+    const oldId = seat.seedTarget;
+    const old = oldId ? this.seats.get(oldId) : undefined;
+    if (oldId && old?.seed?.by === sessionId) {
+      old.seed = null;
+      const holder = this.state.players.get(oldId);
+      if (holder) holder.seeded = false;
+    }
+    allySeat.seed = { until: now + seed.ms, by: sessionId, hp: seed.hp, invulnMs: seed.invulnMs };
+    ally.seeded = true;
+    seat.seedTarget = allyId;
+  }
+
+  /**
+   * Renascer da Semente: quem ia morrer com a semente ativa renasce no lugar com parte da vida e um instante de
+   * invulnerabilidade, sem largar item, bag nem poções. A semente some.
+   */
+  private rebirth(sessionId: string, p: Player, seat: Seat, now: number) {
+    const seed = seat.seed;
+    if (!seed || now >= seed.until) return false;
+    seat.seed = null;
+    p.seeded = false;
+    const druid = this.seats.get(seed.by);
+    if (druid?.seedTarget === sessionId) druid.seedTarget = null;
+    p.hp = Math.max(1, Math.round(p.maxHp * seed.hp));
+    seat.invulnUntil = now + seed.invulnMs;
+    p.reborn = true;
+    seat.dot = null;
+    p.dot = "";
+    seat.slow = null;
+    p.slowed = false;
+    seat.stats.death = null;
+    druid?.stats.revives.push(p.name);
+    seat.stats.revived = { by: this.state.players.get(seed.by)?.name ?? "?", at: this.seconds(), damageAfter: 0 };
+    this.broadcast(MSG.spell, { from: seed.by, spellId: "rebirth_seed", x: p.x, y: p.y, tx: p.x, ty: p.y, ms: 0, echo: true } satisfies SpellMessage);
+    this.notice(p.x, p.y - 1, "Renasceu!", 0x9cff7a);
+    return true;
+  }
+
+  /** Picada da Mamba: o monstro que morreu envenenado explode e envenena quem estiver em volta. */
+  private venomBurst(x: number, y: number, attacker: string, burst: { radius: number; amount: number; source: string }) {
+    const p = this.state.players.get(attacker);
+    if (!p) return;
+    this.broadcast(MSG.spell, { from: attacker, spellId: "mamba_bite", x, y, tx: x, ty: y, ms: 0, echo: true } satisfies SpellMessage);
+    const hit: Hit = { attacker, fromX: x, fromY: y, fx: "nature" };
+    const now = this.clock.currentTime;
+    for (const m of [...this.state.monsters.values()]) {
+      if (tileDistance(x, y, m.x, m.y) > burst.radius || !hasLineOfSight(this.dungeon, x, y, m.x, m.y)) continue;
+      const brain = this.brains.get(m.id);
+      if (brain) this.applyDot(m, brain, attacker, burst.source, burst.amount * 0.2, 3000, "poison", now);
+      this.damageMonster(m, rollDamage(burst.amount), hit, burst.source);
+    }
+  }
+
+  private seatOf(p: Player) {
+    for (const [id, other] of this.state.players) if (other === p) return this.seats.get(id);
+    return undefined;
   }
 
   // --- Poções -------------------------------------------------------------
@@ -1069,6 +1294,26 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
   /** `healerId` é quem leva o crédito da cura na telemetria. */
   private healPlayer(p: Player, amount: number, healerId: string) {
+    const healer = this.seats.get(healerId);
+    const sap = healer?.traits.find((t) => t.healArmor)?.healArmor;
+    const bloom = healer?.traits.find((t) => t.overheal)?.overheal;
+    const seat = (sap || bloom) && p.status === "playing" ? this.seatOf(p) : undefined;
+    if (seat) {
+      const now = this.clock.currentTime;
+      // Seiva Protetora (Traço): quem o druida cura endurece a pele.
+      if (sap) {
+        seat.sapArmor = sap.points;
+        seat.sapUntil = now + sap.ms;
+      }
+      // Florescer (Traço): o que passa da vida máxima vira escudo, até o teto.
+      const extra = amount - (p.maxHp - p.hp);
+      const barrier = bloom ? Math.min(Math.round(p.maxHp * bloom.max), p.barrier + Math.max(0, extra)) : 0;
+      if (bloom && barrier > p.barrier) {
+        p.maxBarrier = p.barrier > 0 ? Math.max(p.maxBarrier, barrier) : barrier;
+        p.barrier = barrier;
+        seat.barrierUntil = Math.max(seat.barrierUntil, now + bloom.ms);
+      }
+    }
     const healed = Math.min(p.maxHp - p.hp, amount);
     if (healed <= 0) return;
     p.hp += healed;
@@ -1106,6 +1351,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         seat.slow = null;
         p.slowed = false;
       }
+      if (p && seat.form && now >= seat.form.until) this.endForm(p, seat);
+      if (p?.reborn && now >= seat.invulnUntil) p.reborn = false;
+      if (p && seat.seed && now >= seat.seed.until) {
+        const druid = this.seats.get(seat.seed.by);
+        if (druid?.seedTarget === sessionId) druid.seedTarget = null;
+        seat.seed = null;
+        p.seeded = false;
+      }
       if (p) this.tickDot(sessionId, p, seat, now);
     });
     // Cópia da lista: o pulso do dano contínuo pode matar (e tirar do estado) o monstro.
@@ -1140,6 +1393,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     });
     const now = this.clock.currentTime;
     const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "spell"), rankPower(rank));
+    // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
+    const boost = 1 + (this.seats.get(sessionId)?.traits.reduce((sum, t) => sum + (t.summonBoost ?? 0), 0) ?? 0);
+    stats.maxHp = Math.round(stats.maxHp * boost);
+    stats.damage *= boost;
     for (let i = 0; i < count; i++) {
       const mine = [...this.state.summons.values()].filter((s) => s.owner === sessionId);
       // No limite, a criatura mais antiga dá lugar à nova.
@@ -1156,7 +1413,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.state.summons.set(s.id, s);
       this.summonBrains.set(s.id, {
         def: SUMMONS[kind], spellId: spell.id, damage: stats.damage, heal: stats.heal, mana: stats.mana,
-        expiresAt: now + durationMs, nextMoveAt: now + 300, nextAttackAt: now + 300, targetId: null,
+        expiresAt: now + durationMs, nextMoveAt: now + 300, nextAttackAt: now + 300, targetId: null, haste: 0, hasteUntil: 0,
       });
     }
   }
@@ -1222,7 +1479,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       && hasLineOfSight(this.dungeon, s.x, s.y, target.x, target.y);
     if (inRange) {
       if (now < brain.nextAttackAt) return;
-      brain.nextAttackAt = now + def.attackCooldownMs;
+      brain.nextAttackAt = now + def.attackCooldownMs * (now < brain.hasteUntil ? 1 - brain.haste : 1);
       const m = target;
       const amount = rollDamage(brain.damage);
       const hit: Hit = { attacker: s.id, fromX: s.x, fromY: s.y, fx: def.attackFx };
@@ -1233,6 +1490,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         if (!alive || !brainM || !this.state.summons.has(s.id)) return;
         if (def.taunt) brainM.targetId = s.id;
         if (def.rootMs) this.root(alive, brainM, this.clock.currentTime + def.rootMs);
+        // Águia Gigante: o mergulho deixa o monstro tonto.
+        if (def.stunMs) {
+          brainM.stunnedUntil = Math.max(brainM.stunnedUntil, this.clock.currentTime + def.stunMs);
+          alive.stunned = true;
+          const ownerStats = this.seats.get(s.owner)?.stats;
+          if (ownerStats) ownerStats.ccMs.stun += def.stunMs;
+        }
         this.damageMonster(alive, amount, hit, `summon:${s.kind}`, s.owner);
       });
       return;
@@ -1249,7 +1513,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private summonStep(s: Summon, brain: SummonBrain, to: { x: number; y: number }, range: number, now: number) {
     if (now < brain.nextMoveAt) return;
     const blocked = this.occupiedTiles();
-    const step = nextStep(this.dungeon, s, to, range, (x, y) => blocked.has(y * this.dungeon.width + x));
+    // Quem voa (Águia Gigante) passa por cima da água; paredes e mata ainda barram.
+    const walkable = brain.def.flies ? (x: number, y: number) => !blocksSight(this.dungeon, x, y) : undefined;
+    const step = nextStep(this.dungeon, s, to, range, (x, y) => blocked.has(y * this.dungeon.width + x), walkable);
     if (!step) {
       brain.nextMoveAt = now + 400;
       return;
@@ -1329,6 +1595,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
+    // Picada da Mamba: morreu com o veneno dela, explode logo depois.
+    const venom = brain.dot;
+    if (venom?.burst && this.clock.currentTime < venom.until) {
+      const burst = venom.burst;
+      this.after(150, () => this.venomBurst(m.x, m.y, venom.attacker, burst));
+    }
     this.state.monsters.delete(m.id);
     this.brains.delete(m.id);
     this.state.players.forEach((p) => { if (p.target === m.id) p.target = ""; });
@@ -1391,7 +1663,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const stats = statsFor(p.classId as ClassId, level, seat?.bonus);
     p.level = level;
     if (seat) for (let l = previous + 1; l <= level; l++) seat.stats.levelAt[l] = this.seconds();
-    p.hp = p.maxHp = stats.maxHp;
+    // A Forma de Urso continua somando a vida dela até acabar.
+    p.hp = p.maxHp = stats.maxHp + (seat?.form?.hpBonus ?? 0);
     p.mana = p.maxMana = stats.maxMana;
     this.notice(p.x, p.y - 1, `Nível ${level}!`, 0x2ecc71);
     if (SPELL_SLOT_LEVELS.some((l) => l <= level && l > previous)) this.notice(p.x, p.y - 2, "Nova magia!", 0x9b59b6);
@@ -1444,9 +1717,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       damage: seat.aura.damage + b.damage, speed: seat.aura.speed + b.speed + g.speed,
     };
     const stats = statsFor(p.classId as ClassId, p.level, seat.bonus);
-    p.hp = Math.min(stats.maxHp, p.hp + Math.max(0, stats.maxHp - p.maxHp));
+    const maxHp = stats.maxHp + (seat.form?.hpBonus ?? 0);
+    p.hp = Math.min(maxHp, p.hp + Math.max(0, maxHp - p.maxHp));
     p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
-    p.maxHp = stats.maxHp;
+    p.maxHp = maxHp;
     p.maxMana = stats.maxMana;
   }
 
@@ -1465,8 +1739,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const seat = this.seats.get(sessionId);
     const guard = p.guarded ? seat?.guard ?? 0 : 0;
     const now = this.clock.currentTime;
+    // Recém-renascido da semente: nada o fere por um instante.
+    if (seat && now < seat.invulnUntil) return;
     const fieldArmor = seat && now < seat.fieldArmorUntil ? seat.fieldArmor : 0;
-    const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor;
+    // Pele Selvagem (Traço) vale enquanto a forma animal dura; a Seiva Protetora, por alguns segundos depois da cura.
+    const formArmor = seat?.form && now < seat.form.until ? seat.traits.reduce((sum, t) => sum + (t.formArmor ?? 0), 0) : 0;
+    const sapArmor = seat && now < seat.sapUntil ? seat.sapArmor : 0;
+    const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor;
     let amount = Math.max(1, Math.round(raw * (1 - damageReduction(armor)) * (1 - guard) * (1 - this.allyWard(p))));
     // Escudo de Mana (Traço): parte do golpe sai da mana, enquanto houver.
     const manaShield = seat?.traits.find((t) => t.manaShield)?.manaShield;
@@ -1493,7 +1772,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       }
     }
     p.hp = Math.max(0, p.hp - amount);
+    if (seat?.stats.revived) seat.stats.revived.damageAfter += amount;
     this.broadcast(MSG.damage, { x: p.x, y: p.y, amount, absorbed, toPlayer: true, ...hit } satisfies DamageMessage);
+    if (p.hp === 0 && seat && this.rebirth(sessionId, p, seat, now)) return;
     if (p.hp === 0) return this.endRun(sessionId, "died");
     // Espinhos (itens): o golpe corpo a corpo de um monstro volta em parte para ele.
     const thorns = seat?.gear.thorns ?? 0;
@@ -1887,6 +2168,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
     player.barrier = 0;
     player.buff = "";
+    player.form = "";
+    player.seeded = false;
+    player.reborn = false;
+    if (seat) {
+      seat.form = null;
+      seat.seed = null;
+    }
     this.state.summons.forEach((s) => { if (s.owner === sessionId) this.removeSummon(s.id); });
 
     // O equipamento que sobrou no corpo volta equipado para a conta; a bag de quem sai vivo vai para o cofre.
@@ -1963,11 +2251,26 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     return best;
   }
 
-  /** Dano contínuo no monstro. Renova em vez de acumular: o novo substitui o antigo se for mais forte ou durar mais. */
-  private applyDot(m: Monster, brain: Brain, attacker: string, source: string, perTick: number, ms: number, kind: DotKind, now: number) {
+  /**
+   * Dano contínuo no monstro. Renova em vez de acumular: o novo substitui o antigo se for mais forte ou durar mais.
+   * Toxina (Traço): o veneno de quem a tem acumula no mesmo monstro até o limite (cada camada soma um pulso).
+   */
+  private applyDot(
+    m: Monster, brain: Brain, attacker: string, source: string, perTick: number, ms: number, kind: DotKind, now: number,
+    burst?: { radius: number; amount: number; source: string },
+  ) {
     const until = now + ms;
-    if (brain.dot && brain.dot.amount > perTick && brain.dot.until >= until) return;
-    brain.dot = { amount: perTick, nextAt: now + 1000, until, attacker, source, kind };
+    const old = brain.dot;
+    const toxin = kind === "poison" ? this.seats.get(attacker)?.traits.find((t) => t.toxin)?.toxin : undefined;
+    if (toxin && old?.kind === "poison" && old.attacker === attacker && now < old.until) {
+      const stacks = Math.min(toxin.maxStacks, old.stacks + 1);
+      const perStack = Math.max(old.perStack, perTick);
+      brain.dot = { ...old, stacks, perStack, amount: perStack * stacks, until: Math.max(old.until, until), source, burst: burst ?? old.burst };
+      m.dot = kind;
+      return;
+    }
+    if (old && old.amount > perTick && old.until >= until) return;
+    brain.dot = { amount: perTick, nextAt: now + 1000, until, attacker, source, kind, stacks: 1, perStack: perTick, burst };
     m.dot = kind;
   }
 
@@ -2002,7 +2305,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.fieldBrains.set(f.id, {
       spell: { ...spell, field: undefined }, rank, kind: def.kind,
       amount: def.kind === "trap" ? amount : this.baseDamage(sessionId, p, "spell") * (def.damage ?? 0) || amount,
-      allyArmor: def.allyArmor ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" ? 300 : tickMs),
+      allyArmor: def.allyArmor ?? 0, allyHeal: def.allyHeal ?? 0, allyMana: def.allyMana ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" ? 300 : tickMs),
       until: now + def.ms * (traps?.durationScale ?? 1), shotsLeft: def.shots ?? 0,
     });
   }
@@ -2032,7 +2335,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       f.y = ty;
       this.state.fields.set(f.id, f);
       this.fieldBrains.set(f.id, {
-        spell: { ...spell, field: undefined }, rank: 1, kind: "wall", amount: 0, allyArmor: 0, rootMs: 0,
+        spell: { ...spell, field: undefined }, rank: 1, kind: "wall", amount: 0, allyArmor: 0, allyHeal: 0, allyMana: 0, rootMs: 0,
         tickMs: 1000, nextTickAt: now + 1000, until: now + def.ms, shotsLeft: 0,
       });
     }
@@ -2115,7 +2418,18 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
             this.root(m, mBrain, now + brain.rootMs);
             seat.stats.ccMs.root += brain.rootMs;
           }
+          // Nuvem Venenosa: cada pulso envenena (com a Toxina, acumula).
+          const dot = brain.spell.dot;
+          if (dot && mBrain) this.applyDot(m, mBrain, f.owner, brain.spell.id, this.baseDamage(f.owner, owner, "spell") * dot.perSec, dot.ms, dot.kind, now);
           if (brain.amount > 0) this.damageMonster(m, Math.max(1, rollDamage(brain.amount)), hit, brain.spell.id);
+        }
+        // Chuva Revigorante: cura e devolve mana a quem está dentro.
+        if (brain.allyHeal > 0 || brain.allyMana > 0) {
+          this.state.players.forEach((ally) => {
+            if (ally.status !== "playing" || !sees(ally.x, ally.y, f.radius)) return;
+            if (brain.allyHeal > 0) this.healPlayer(ally, Math.max(1, Math.round(ally.maxHp * brain.allyHeal)), f.owner);
+            if (brain.allyMana > 0) this.giveMana(ally, Math.max(1, Math.round(ally.maxMana * brain.allyMana)), f.owner);
+          });
         }
         if (brain.allyArmor > 0) {
           this.state.players.forEach((ally, id) => {
@@ -2159,12 +2473,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
   }
 
-  /** Velocidade de movimento agora: classe e nível, lentidão dos monstros, Passo Leve e bônus em si. */
+  /** Velocidade de movimento agora: classe e nível, lentidão dos monstros, Passo Leve, bônus em si e Forma de Pantera. */
   private moveSpeed(p: Player, seat: Seat, now: number) {
     const base = statsFor(p.classId as ClassId, p.level, seat.bonus).speed * (seat.slow?.factor ?? 1);
     const haste = now < seat.hasteUntil ? seat.traits.reduce((sum, t) => sum + (t.castHaste?.speed ?? 0), 0) : 0;
     const buff = seat.buff && now < seat.buff.until ? seat.buff.moveSpeed : 0;
-    return base * Math.max(0.2, 1 + haste + buff);
+    const form = seat.form && now < seat.form.until ? seat.form.moveSpeed : 0;
+    return base * Math.max(0.2, 1 + haste + buff + form);
   }
 
   /** Olho de Águia (Traço): mais dano em monstro longe de quem bate. */
