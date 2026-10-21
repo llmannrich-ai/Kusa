@@ -1,10 +1,14 @@
 import { MSG, PERKS, isPerk, type PerkId, type PerkStacks } from "@kusa/shared";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
+/** Ponto da tela (px do documento) logo acima da cabeça do personagem, ou null se ele não estiver na tela. */
+export type Anchor = () => { x: number; y: number } | null;
+
 /**
- * Escolha de melhoria ao subir de nível (só os níveis que não abrem slot de magia): duas cartas lado
- * a lado no alto da tela, longe do joystick, enquanto o jogo segue rodando. Um toque escolhe. O
- * servidor sorteia as opções (`Player.perkOffer`) e valida a escolha; aqui só mostramos e mandamos.
+ * Escolha de melhoria ao subir de nível (só os níveis que não abrem slot de magia): dois ícones
+ * pequenos logo acima do personagem, acompanhando ele, enquanto o jogo segue rodando. Um toque
+ * escolhe; o nome e o efeito ficam no rótulo acessível (e no `title`, no desktop). O servidor
+ * sorteia as opções (`Player.perkOffer`) e valida a escolha; aqui só mostramos e mandamos.
  * Uma melhoria pendente sai da tela enquanto a escolha de magia estiver aberta e volta depois.
  */
 export class PerkChoice {
@@ -14,15 +18,15 @@ export class PerkChoice {
   private sentKey = "";
 
   /** `busy` diz se a escolha de magia está aberta: ela tem prioridade, uma janela de cada vez. */
-  constructor(private room: DungeonRoom, private busy: () => boolean) {}
+  constructor(private room: DungeonRoom, private busy: () => boolean, private anchor: Anchor) {}
 
   update() {
     const p = this.room.state.players.get(this.room.sessionId);
     const offer = p && p.status === "playing" ? [...p.perkOffer].filter(isPerk) : [];
     const key = p && offer.length > 0 ? `${offer.join(",")}|${totalStacks(p)}` : "";
     if (!key || key === this.sentKey || this.busy()) return this.close();
-    if (key === this.shownKey) return;
-    this.render(p!, offer, key);
+    if (key !== this.shownKey) this.render(p!, offer, key);
+    this.place();
   }
 
   destroy() {
@@ -31,40 +35,40 @@ export class PerkChoice {
 
   private render(p: PlayerView, offer: PerkId[], key: string) {
     this.panel?.remove();
-    const panel = document.createElement("section");
-    panel.className = "panel perk-choice";
-    const title = document.createElement("h2");
-    title.textContent = `Nível ${p.perkLevel || p.level}: escolha uma melhoria`;
-    const list = document.createElement("div");
-    list.className = "perk-options";
+    const panel = document.createElement("div");
+    panel.className = "perk-choice";
+    panel.setAttribute("role", "group");
+    panel.setAttribute("aria-label", `Nível ${p.perkLevel || p.level}: escolha uma melhoria`);
     const stacks = stacksOf(p);
     for (const id of offer) {
       const perk = PERKS[id];
       const option = document.createElement("button");
       option.className = "perk-option";
-      option.innerHTML = `<span class="perk-icon"></span><strong></strong><small></small><em></em>`;
-      option.querySelector(".perk-icon")!.textContent = perk.icon;
-      option.querySelector("strong")!.textContent = perk.name;
-      option.querySelector("small")!.textContent = perk.description;
-      option.querySelector("em")!.textContent = `${(stacks[id] ?? 0) + 1}/${perk.maxStacks}`;
-      option.setAttribute("aria-label", `${perk.name}: ${perk.description}`);
+      option.textContent = perk.icon;
+      const label = `${perk.name}: ${perk.description} (${(stacks[id] ?? 0) + 1}/${perk.maxStacks})`;
+      option.setAttribute("aria-label", label);
+      option.title = label;
       option.onclick = () => {
         this.room.send(MSG.choosePerk, { perk: id });
         this.sentKey = key;
         this.close();
       };
-      list.append(option);
-    }
-    panel.append(title, list);
-    if (p.perksQueued > 0) {
-      const more = document.createElement("p");
-      more.className = "muted";
-      more.textContent = `Mais ${p.perksQueued} na fila.`;
-      panel.append(more);
+      panel.append(option);
     }
     document.body.append(panel);
     this.panel = panel;
     this.shownKey = key;
+  }
+
+  /** Acompanha o personagem (a câmera o segue com atraso, então muda um pouco a cada quadro). */
+  private place() {
+    const panel = this.panel;
+    if (!panel) return;
+    const at = this.anchor();
+    panel.hidden = !at;
+    if (!at) return;
+    panel.style.left = `${Math.round(at.x)}px`;
+    panel.style.top = `${Math.round(at.y)}px`;
   }
 
   private close() {
