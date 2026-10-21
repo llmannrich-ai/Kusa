@@ -46,7 +46,6 @@
       </header>
       <div id="hub-body"></div>
       <div class="hub-play">
-        <button id="map-pick" class="map-pick" aria-label="Escolher mapa"></button>
         <button id="play" class="primary">Jogar</button>
       </div>
       <nav class="hub-tabs" role="tablist">
@@ -70,10 +69,15 @@
       </div>
     </section>
 
+    <!-- Jogar: entrar numa sala aberta ou criar uma, escolhendo o cenário aqui mesmo. -->
     <section id="rooms" class="panel" hidden>
       <h2>Salas abertas</h2>
       <ul id="room-list"></ul>
       <p id="rooms-empty" class="muted">Nenhuma sala aberta. Crie uma e chame os amigos.</p>
+
+      <h3 class="rooms-section">Criar sala</h3>
+      <p class="muted hint">Escolha o cenário. Quem entrar na sua sala joga nele.</p>
+      <div id="map-list" class="map-list" role="radiogroup" aria-label="Cenário"></div>
       <div class="actions">
         <button id="create" class="primary">Criar sala</button>
         <button id="rooms-back">Voltar</button>
@@ -82,13 +86,17 @@
       <p id="rooms-error" class="error" hidden></p>
     </section>
 
+    <!-- Sala de espera (lobby.ts): uma vaga por jogador; o líder começa sozinho ou espera a equipe. -->
     <section id="lobby" class="panel" hidden>
-      <h2>Equipe</h2>
+      <h2>Sala de espera</h2>
       <p id="lobby-map"></p>
-      <p class="muted">Até 4 jogadores. Seus amigos encontram esta sala na lista de salas abertas.</p>
-      <ul id="lobby-players"></ul>
-      <button id="start" class="primary">Começar hunt</button>
-      <p id="lobby-wait" hidden>Aguardando o líder iniciar…</p>
+      <ul id="lobby-slots"></ul>
+      <p id="lobby-hint" class="muted hint"></p>
+      <div class="actions">
+        <button id="start" class="primary">Começar hunt</button>
+        <p id="lobby-wait" hidden>Aguardando o líder iniciar…</p>
+        <button id="lobby-leave">Sair da sala</button>
+      </div>
     </section>
 
     <div id="hud" hidden>
