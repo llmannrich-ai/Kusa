@@ -16,7 +16,7 @@ import { makeCanvas } from "./pixels.ts";
 /** Quantas vezes a textura refinada é maior que a arte original. */
 export const ART_SCALE = 2;
 /** Tamanho dos heróis no jogo em relação ao tile (monstros e invocações ficam do tamanho do tile). */
-export const HERO_SCALE = 1.2;
+export const HERO_SCALE = 1.38;
 /** Escala do sprite do herói (textura refinada) para ficar do tamanho `HERO_SCALE`. */
 export const HERO_SPRITE_SCALE = HERO_SCALE / ART_SCALE;
 /** Escala do sprite de monstro ou invocação (textura refinada) para ficar do tamanho do tile. */
