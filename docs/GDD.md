@@ -30,6 +30,8 @@ Código em `apps/client/src/menu.ts`.
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens até Aço (entregues no cofre) e vende qualquer item da conta. Itens de Dragão só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
+  - **Telemetria** (`apps/client/src/telemetry.ts`): os números de todas as hunts, para qualquer jogador logado, com filtro de mapa e período: visão geral, hunts por dia, como as hunts terminam, sobrevivência por classe, o que mais mata, fontes de dano, magias e melhorias escolhidas, curva de nível e as suas hunts. Só agregados, sem nomes (função `telemetry_dashboard`).
+  - **Regras** (`apps/client/src/rules.ts`): como o jogo funciona, em seções que abrem e fecham. Os números (tempos, preços, melhorias, poções) vêm de `packages/shared`, então a página acompanha o balanceamento.
 - Ainda por fazer: modo, cosméticos e amigos.
 
 ### Grimório (árvore de magias)
