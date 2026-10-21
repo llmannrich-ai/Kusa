@@ -12,6 +12,7 @@ import {
   type SpellSlot,
 } from "@kusa/shared";
 import type { SpellAim } from "./aim.ts";
+import { ChoiceCards, type Anchor } from "./choicecards.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 import { stacksOf } from "./perkchoice.ts";
 
@@ -38,13 +39,13 @@ interface SlotView {
 
 /**
  * Botões dos 2 slots de magia (acima do ⚔️, na zona do polegar direito) e a janela de escolha
- * que abre quando o personagem alcança o nível de um slot. Magia com alvo (única ou de área) mira
+ * (cartas acima do personagem) que abre quando ele alcança o nível de um slot. Magia com alvo (única ou de área) mira
  * enquanto o polegar segura o botão (ver `SpellAim`); magia em volta de si sai no toque. O servidor valida tudo; aqui só
  * mostramos estado, recarga e mandamos as intenções.
  */
 export class SpellBar {
   private slots: SlotView[];
-  private chooser: HTMLElement | null = null;
+  private chooser: ChoiceCards | null = null;
   /** Slot mirando agora e o dedo que segura o botão. */
   private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
 
@@ -52,7 +53,12 @@ export class SpellBar {
    * A escolha de magia tem prioridade: o nível que abre um slot não dá melhoria, e uma melhoria que
    * ficou pendente de um nível anterior espera esta janela fechar (ver `PerkChoice`).
    */
-  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim) {
+  constructor(
+    private room: DungeonRoom,
+    private actions: HTMLElement,
+    private aim: SpellAim,
+    private anchor: Anchor,
+  ) {
     // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
     actions.prepend(this.slots[1].button, this.slots[0].button);
@@ -94,6 +100,7 @@ export class SpellBar {
     const p = this.me();
     if (!p) return;
     for (const slot of SLOTS) this.render(slot, p);
+    this.chooser?.place(this.anchor);
   }
 
   destroy() {
@@ -193,42 +200,35 @@ export class SpellBar {
     view.button.title = view.button.getAttribute("aria-label") ?? "";
   }
 
-  /** Janela de escolha da magia do slot: a inicial da classe e as compradas no Grimório. */
+  /**
+   * Escolha da magia do slot (a inicial da classe e as compradas no Grimório): as mesmas cartas da
+   * melhoria de nível, acima do personagem, com os efeitos já no nível comprado no Grimório.
+   */
   private openChooser(slot: SpellSlot) {
     const p = this.me();
     if (!p) return;
     this.chooser?.remove();
-    const panel = document.createElement("section");
-    panel.className = "panel spell-choice";
-    const title = document.createElement("h2");
-    title.textContent = `Nova magia — slot ${slot + 1}`;
-    const hint = document.createElement("p");
-    hint.className = "muted";
-    hint.textContent = "Escolha a magia deste slot. Ela fica com você até o fim da hunt.";
-    const list = document.createElement("div");
-    list.className = "spell-options";
-    for (const spell of spellChoices(p.classId as ClassId, slot, [...p.knownSpells])) {
-      const option = document.createElement("button");
-      option.className = "spell-option";
-      option.innerHTML = `<span class="spell-option-icon"></span><span><strong></strong><small></small><em></em></span>`;
-      option.querySelector(".spell-option-icon")!.textContent = spell.icon;
-      option.querySelector("strong")!.textContent = spell.name;
-      option.querySelector("small")!.textContent = spell.description;
-      const rank = p.spellRanks.get(spell.id) ?? 1;
-      // Efeitos já com o nível comprado no Grimório (a última linha é mana e recarga).
-      option.querySelector("em")!.textContent = `Nível ${rank} · ${spellFacts(spell, rank).join(" · ")}`;
-      option.onclick = () => {
-        this.room.send(MSG.chooseSpell, { slot, spellId: spell.id });
-        this.closeChooser();
-      };
-      list.append(option);
-    }
-    const later = document.createElement("button");
-    later.textContent = "Depois";
-    later.onclick = () => this.closeChooser();
-    panel.append(title, hint, list, later);
-    document.body.append(panel);
-    this.chooser = panel;
+    this.chooser = new ChoiceCards({
+      kind: "spell",
+      title: `Nova magia · slot ${slot + 1}`,
+      onDismiss: () => this.closeChooser(),
+      cards: spellChoices(p.classId as ClassId, slot, [...p.knownSpells]).map((spell) => {
+        const rank = p.spellRanks.get(spell.id) ?? 1;
+        return {
+          icon: spell.icon,
+          name: spell.name,
+          description: spell.description,
+          badge: `Nv ${rank}`,
+          // A última linha é mana e recarga.
+          details: spellFacts(spell, rank),
+          onPick: () => {
+            this.room.send(MSG.chooseSpell, { slot, spellId: spell.id });
+            this.closeChooser();
+          },
+        };
+      }),
+    });
+    this.chooser.place(this.anchor);
   }
 
   private closeChooser() {
