@@ -7,6 +7,7 @@ import {
   isSingleTarget,
   lineEnd,
   lineTiles,
+  coneTiles,
   tileDistance,
   type CastAim,
   type Dungeon,
@@ -21,7 +22,7 @@ const FULL_DRAG_PX = 96;
 /** Espaço (px do mundo) entre os pontos da linha pontilhada. */
 const DOT_GAP = 7;
 
-const COLORS = { free: 0xd7c8ff, locked: 0xf1c40f, range: 0xd7c8ff };
+const COLORS = { free: 0xd7c8ff, locked: 0xf1c40f, range: 0xd7c8ff, ally: 0x7fc8ff };
 
 /** Posição desenhada (px do mundo) de um jogador ou monstro, que anda suave entre os tiles. */
 export type BodyAt = (id: string) => { x: number; y: number } | undefined;
@@ -98,6 +99,21 @@ export class SpellAim {
     const locked = aim.targetId !== undefined;
     const to = (aim.targetId && this.bodyAt(aim.targetId)) || { x: toPx(aim.x), y: toPx(aim.y) };
     const color = locked ? COLORS.locked : COLORS.free;
+    if (spell.aim === "ally") {
+      // Aliado: linha até ele e um círculo azul nos pés (sem aliado no ponto, a mira some).
+      dottedLine(g, from.x, from.y, to.x, to.y, COLORS.ally);
+      g.lineStyle(2, COLORS.ally, 0.9).strokeEllipse(to.x, to.y + TILE_SIZE / 2 - 3, TILE_SIZE + 4, 14);
+      return;
+    }
+    if (spell.shape === "cone") {
+      // Leque: os tiles que a rajada cobre na direção mirada.
+      const size = TILE_SIZE - 2;
+      for (const t of coneTiles(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range)) {
+        g.fillStyle(COLORS.free, 0.14).fillRect(toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size);
+        dashedRect(g, toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size, COLORS.free, 0.6);
+      }
+      return;
+    }
     if (spell.shape === "line") {
       // Linha: os tiles que a flecha atravessa até o alcance inteiro, na direção mirada.
       const size = TILE_SIZE - 2;
@@ -119,6 +135,7 @@ export class SpellAim {
     const spell = this.spell;
     const me = this.room.state.players.get(this.room.sessionId);
     if (!spell || !me) return null;
+    if (spell.aim === "ally") return this.allyAim(me.x, me.y, spell.range);
     if (!this.manual) {
       const id = this.autoTarget(me.x, me.y, spell.range);
       const m = id ? this.room.state.monsters.get(id) : undefined;
@@ -147,6 +164,36 @@ export class SpellAim {
     });
     const m = best ? this.room.state.monsters.get(best) : undefined;
     return m ? { x: m.x, y: m.y, targetId: best } : point;
+  }
+
+  /**
+   * Aliado da mira (a mesma regra do servidor): arrastando, o herói vivo a até 1 tile do ponto; parado no botão,
+   * o mais ferido ao alcance (contando você). `targetId` é o sessionId dele, só para o desenho.
+   */
+  private allyAim(x: number, y: number, range: number): CastAim | null {
+    const point = this.manual ? this.dragPoint(x, y, range) : null;
+    let best: string | undefined;
+    let score = Infinity;
+    this.room.state.players.forEach((p, id) => {
+      if (p.status !== "playing" || !this.canHit(x, y, p.x, p.y, range)) return;
+      const value = point ? tileDistance(point.x, point.y, p.x, p.y) : p.hp / p.maxHp + (id === this.room.sessionId ? 0.001 : 0);
+      if ((point && value > 1) || value >= score) return;
+      best = id;
+      score = value;
+    });
+    const ally = best ? this.room.state.players.get(best) : undefined;
+    return ally ? { x: ally.x, y: ally.y, targetId: best } : null;
+  }
+
+  /** O ponto do arrasto em tiles (até o alcance, parando na parede). */
+  private dragPoint(x: number, y: number, range: number) {
+    const len = Math.hypot(this.drag.x, this.drag.y);
+    const t = Math.min(1, (len - DEADZONE_PX) / (FULL_DRAG_PX - DEADZONE_PX)) * range;
+    const ux = this.drag.x / len;
+    const uy = this.drag.y / len;
+    const edge = Math.max(Math.abs(ux), Math.abs(uy));
+    const raw = clampToRange(x, y, x + Math.round((ux / edge) * t), y + Math.round((uy / edge) * t), range);
+    return lineEnd(this.dungeon, x, y, raw.x, raw.y);
   }
 
   /** O mesmo alvo que o servidor usa no toque rápido: o travado, se ao alcance; senão, o mais próximo. */

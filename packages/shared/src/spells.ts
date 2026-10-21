@@ -1,5 +1,5 @@
 import type { ClassId } from "./classes.ts";
-import { blocksSight, tileDistance, type Dungeon } from "./dungeon.ts";
+import { blocksSight, hasLineOfSight, tileDistance, type Dungeon } from "./dungeon.ts";
 import type { DotKind } from "./monsters.ts";
 import { SUMMONS, type SummonKind } from "./summons.ts";
 
@@ -44,7 +44,9 @@ export type SpellId =
   | "venom_thorn" | "spirit_wolf" | "healing_moth" | "hornet_swarm" | "nature_wrath" | "wolf_pack" | "ancient_bear"
   | "grove_guardian" | "forest_heart"
   // Especializações (lados no fim de um ramo do Grimório).
-  | "hunter_mark" | "sniper_stance" | "evasive_roll" | "swift_quiver";
+  | "hunter_mark" | "sniper_stance" | "evasive_roll" | "swift_quiver"
+  | "holy_spear" | "divine_caldera" | "light_shield" | "consecrated_ground"
+  | "lightning_arrow" | "barrage" | "bear_trap" | "arrow_cordon";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -64,7 +66,8 @@ export interface SpellDef {
   color: number;
   manaCost: number;
   cooldownMs: number;
-  aim: "self" | "target";
+  /** `ally`: mira um aliado (ou a si mesmo); no toque rápido, o aliado mais ferido ao alcance. */
+  aim: "self" | "target" | "ally";
   /** Alcance até o alvo (só `aim: "target"`). */
   range: number;
   /** Raio da área em tiles; 0 = só o alvo. */
@@ -72,8 +75,20 @@ export interface SpellDef {
   /**
    * `line`: acerta todos os monstros na reta do herói na direção mirada, até `range` tiles ou a primeira
    * parede (o `radius` não vale).
+   * `cone`: acerta os monstros num leque de 90° à frente do herói, na direção mirada, até `range` tiles.
    */
-  shape?: "line";
+  shape?: "line" | "cone";
+  /**
+   * Campo no chão onde a magia cai, por `ms`:
+   * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
+   * - `trap`: armadilha invisível para os monstros; o primeiro que pisar dispara os efeitos da magia
+   *   (raízes, dano contínuo) no raio dela, e a armadilha some;
+   * - `turret`: estaca que, a cada `tickMs`, atira (`damage` ×) no monstro mais perto a até `reach` tiles, `shots` vezes.
+   * Conjurar de novo troca o campo anterior da mesma magia.
+   */
+  field?: { kind: "zone" | "trap" | "turret"; ms: number; tickMs?: number; damage?: number; allyArmor?: number; reach?: number; shots?: number };
+  /** Dano +`undeadBonus` (fração) em mortos-vivos. */
+  undeadBonus?: number;
   /** Multiplicador do dano base nos monstros da área. */
   damage?: number;
   /** Cura, em fração do HP máximo, de quem está na área (aliados e quem conjura). */
@@ -258,6 +273,55 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 45, cooldownMs: 18000, aim: "self", range: 0, radius: 0, selfBuff: { ms: 6000, attackHaste: 0.6 },
   }),
 
+  // Especialização Cruzado (ramo Luz).
+  holy_spear: spell({
+    id: "holy_spear", classId: "paladin", slot: 0, name: "Lança Etérea", icon: "🔱", color: 0xfff6c8,
+    description: "Uma lança de luz rápida, de recarga curta. Fere mais os mortos-vivos.",
+    manaCost: 14, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 1.6, undeadBonus: 0.5, projectileSpeed: 26,
+  }),
+  divine_caldera: spell({
+    id: "divine_caldera", classId: "paladin", slot: 1, name: "Caldeira Divina", icon: "🌞", color: 0xf7d774,
+    description: "A luz explode em volta de você. Mortos-vivos levam o dobro.",
+    manaCost: 55, cooldownMs: 13000, aim: "self", range: 0, radius: 3, damage: 2.2, undeadBonus: 1,
+  }),
+  // Especialização Guardião da Luz (ramo Luz).
+  light_shield: spell({
+    id: "light_shield", classId: "paladin", slot: 0, name: "Escudo da Luz", icon: "🔆", color: 0x7fc8ff,
+    description: "Põe um escudo de luz num aliado (ou em você). No toque rápido, vai no mais ferido por perto.",
+    manaCost: 25, cooldownMs: 9000, aim: "ally", range: 6, radius: 0, barrier: 0.3, barrierMs: 6000,
+  }),
+  consecrated_ground: spell({
+    id: "consecrated_ground", classId: "paladin", slot: 1, name: "Solo Consagrado", icon: "⛪", color: 0xf7c948,
+    description: "Consagra o chão: fere os monstros que pisam nele e protege os aliados dentro.",
+    manaCost: 50, cooldownMs: 16000, aim: "target", range: 5, radius: 2,
+    field: { kind: "zone", ms: 8000, tickMs: 1000, damage: 0.35, allyArmor: 5 },
+  }),
+  // Especialização Artilheiro (ramo Batedor).
+  lightning_arrow: spell({
+    id: "lightning_arrow", classId: "paladin", slot: 0, name: "Flecha Relâmpago", icon: "⚡", color: 0x9ec5ff,
+    description: "Uma flecha carregada que acerta o alvo e salta para os monstros perto dele.",
+    manaCost: 28, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1.5, projectileSpeed: 28,
+    chain: { jumps: 3, range: 3, falloff: 0.2 },
+  }),
+  barrage: spell({
+    id: "barrage", classId: "paladin", slot: 1, name: "Barragem", icon: "🎇", color: 0xe67e22,
+    description: "Uma rajada de flechas em leque à sua frente.",
+    manaCost: 50, cooldownMs: 12000, aim: "target", range: 5, radius: 0, shape: "cone", damage: 2,
+  }),
+  // Especialização Armadilheiro (ramo Batedor).
+  bear_trap: spell({
+    id: "bear_trap", classId: "paladin", slot: 0, name: "Armadilha de Urso", icon: "🪤", color: 0xa4b0be,
+    description: "Arma uma armadilha no chão: o primeiro monstro que pisar fica preso e sangra.",
+    manaCost: 20, cooldownMs: 6000, aim: "target", range: 4, radius: 0, damage: 1,
+    rootMs: 3000, dot: { perSec: 0.3, ms: 4000, kind: "bleed" }, field: { kind: "trap", ms: 20000 },
+  }),
+  arrow_cordon: spell({
+    id: "arrow_cordon", classId: "paladin", slot: 1, name: "Cordão de Flechas", icon: "🎋", color: 0xc8a165,
+    description: "Finca uma estaca que atira sozinha nos monstros que chegam perto.",
+    manaCost: 45, cooldownMs: 15000, aim: "target", range: 4, radius: 0,
+    field: { kind: "turret", ms: 12000, tickMs: 900, damage: 1, reach: 3, shots: 4 },
+  }),
+
   // --- Feiticeiro: dano em área, frágil. ----------------------------------------
   shadow_orb: spell({
     id: "shadow_orb", classId: "sorcerer", slot: 0, name: "Esfera Sombria", icon: "🔮", color: 0x6b2a9a,
@@ -440,6 +504,14 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   sniper_stance: { text: "Firme sem ficar lento: anda na velocidade normal.", changes: { selfBuff: { ms: 8000, basicDamage: 1, attackRange: 2, moveSpeed: 0 } } },
   evasive_roll: { text: "Rola 5 tiles e ganha um escudo de 15% da vida por 3 s.", changes: { dash: { tiles: 5 }, range: 5, barrier: 0.15, barrierMs: 3000 } },
   swift_quiver: { text: "As flechas rápidas também causam +30% de dano.", changes: { selfBuff: { ms: 6000, attackHaste: 0.6, basicDamage: 0.3 } } },
+  holy_spear: { text: "A lança atravessa todos os monstros na reta.", changes: { shape: "line", range: 7 } },
+  divine_caldera: { text: "A luz ofusca os atingidos por 1 s.", changes: { stunMs: 1000 } },
+  light_shield: { text: "O escudo dura o dobro do tempo.", changes: { barrierMs: 12000 } },
+  consecrated_ground: { text: "O solo consagrado cobre raio 3.", changes: { radius: 3 } },
+  lightning_arrow: { text: "Salta 5 vezes.", changes: { chain: { jumps: 5, range: 3, falloff: 0.2 } } },
+  barrage: { text: "As flechas fazem sangrar.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "bleed" } } },
+  bear_trap: { text: "A armadilha prende também quem estiver colado no monstro.", changes: { radius: 1 } },
+  arrow_cordon: { text: "A estaca atira 7 vezes.", changes: { field: { kind: "turret", ms: 12000, tickMs: 900, damage: 1, reach: 3, shots: 7 } } },
 };
 
 /** A magia com os números do nível comprado e, no nível 3, a Maestria (mana e recarga não mudam). */
@@ -460,6 +532,7 @@ export function spellAtRank(base: SpellDef, rank: number): SpellDef {
     armor: def.armor && { points: Math.round(def.armor.points * k), ms: Math.round(def.armor.ms * t) },
     mark: def.mark && { pct: def.mark.pct * k, ms: Math.round(def.mark.ms * t) },
     selfBuff: def.selfBuff && { ...def.selfBuff, ms: Math.round(def.selfBuff.ms * t) },
+    field: def.field && { ...def.field, ms: Math.round(def.field.ms * t), damage: def.field.damage && def.field.damage * k },
     nextBasicStunMs: ms(def.nextBasicStunMs),
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
@@ -476,7 +549,8 @@ const sec = (ms: number) => `${num(ms / 1000)} s`;
 /** Efeitos da magia num nível, em linhas curtas para o menu e a escolha na hunt. */
 export function spellFacts(def: SpellDef, rank = 1): string[] {
   const s = spellAtRank(def, rank);
-  const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.radius > 0 ? ` em raio ${s.radius}` : "";
+  const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque (${s.range} tiles)`
+    : s.radius > 0 && !s.field ? ` em raio ${s.radius}` : "";
   const facts: string[] = [];
   if (s.damage) facts.push(`Dano ${num(s.damage)}×${area}`);
   if (s.chain) facts.push(`Salta para mais ${s.chain.jumps} monstros (−${pct(s.chain.falloff)} por salto)`);
@@ -493,6 +567,12 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
   if (s.armor) facts.push(`+${s.armor.points} de armadura por ${sec(s.armor.ms)}`);
   if (s.manaSteal) facts.push(`Rouba ${pct(s.manaSteal)} do dano em mana`);
   if (s.mark) facts.push(`Marca: +${pct(s.mark.pct)} de dano da equipe no alvo por ${sec(s.mark.ms)}`);
+  if (s.undeadBonus) facts.push(`+${pct(s.undeadBonus)} de dano em mortos-vivos`);
+  if (s.field?.kind === "zone") {
+    facts.push(`Campo de raio ${s.radius} por ${sec(s.field.ms)}: ${num(s.field.damage ?? 0)}× por segundo nos monstros${s.field.allyArmor ? `, +${s.field.allyArmor} de armadura nos aliados` : ""}`);
+  }
+  if (s.field?.kind === "trap") facts.push(`Armadilha por ${sec(s.field.ms)}: dispara no primeiro monstro que pisar${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
+  if (s.field?.kind === "turret") facts.push(`Estaca por ${sec(s.field.ms)}: ${s.field.shots} tiros de ${num(s.field.damage ?? 0)}× a até ${s.field.reach} tiles`);
   if (s.dash) facts.push(`Salta até ${s.dash.tiles} tiles`);
   if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
   if (s.selfBuff) {
@@ -515,7 +595,7 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
     facts.push(`Invoca ${what} por ${sec(s.summon.durationMs)}`);
     facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
   }
-  facts.push(`${s.manaCost} de mana · recarga ${num(s.cooldownMs / 1000)} s${s.aim === "target" ? ` · alcance ${s.range}` : ""}`);
+  facts.push(`${s.manaCost} de mana · recarga ${num(s.cooldownMs / 1000)} s${s.aim !== "self" ? ` · alcance ${s.range}` : ""}`);
   if (rank >= MASTERY_RANK) facts.push(`★ Maestria: ${MASTERIES[def.id].text}`);
   return facts;
 }
@@ -539,7 +619,7 @@ export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly 
  * do ponto mirado. As de área caem no ponto, sem ímã.
  */
 export function isSingleTarget(spell: SpellDef) {
-  return spell.aim === "target" && spell.radius === 0 && spell.shape !== "line" && !spell.dash;
+  return spell.aim === "target" && spell.radius === 0 && !spell.shape && !spell.dash && !spell.field;
 }
 
 /**
@@ -548,6 +628,26 @@ export function isSingleTarget(spell: SpellDef) {
  * mirado e depois repete o mesmo passo, então sempre passa pelo alvo que o jogador viu.
  * Cliente (mira e efeito) e servidor (dano) usam a mesma conta.
  */
+/**
+ * Tiles de uma magia em cone: um leque de 90° do herói na direção do ponto mirado, até `length` tiles, só os que o
+ * herói enxerga (paredes cortam o leque). Não inclui o tile do herói. Cliente e servidor usam a mesma conta.
+ */
+export function coneTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {
+  const dir = Math.atan2(ay - y0, ax - x0);
+  if (ax === x0 && ay === y0) return [];
+  const tiles: { x: number; y: number }[] = [];
+  for (let y = y0 - length; y <= y0 + length; y++) {
+    for (let x = x0 - length; x <= x0 + length; x++) {
+      if ((x === x0 && y === y0) || tileDistance(x0, y0, x, y) > length || blocksSight(d, x, y)) continue;
+      let diff = Math.abs(Math.atan2(y - y0, x - x0) - dir);
+      if (diff > Math.PI) diff = 2 * Math.PI - diff;
+      // Meia abertura de 45°, com folga para os tiles da borda não piscarem com o arredondamento.
+      if (diff <= Math.PI / 4 + 0.01 && hasLineOfSight(d, x0, y0, x, y)) tiles.push({ x, y });
+    }
+  }
+  return tiles;
+}
+
 export function lineTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {
   const path: { x: number; y: number }[] = [];
   const dx = Math.abs(ax - x0);

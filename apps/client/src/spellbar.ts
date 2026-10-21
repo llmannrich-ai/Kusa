@@ -127,7 +127,7 @@ export class SpellBar {
     const p = this.me();
     const spell = p && rankedSpell(p, spellIn(p, slot));
     const ready = performance.now() >= this.slots[slot].readyAt;
-    if (!p || !spell || spell.aim !== "target" || !ready || p.mana < spell.manaCost) return this.press(slot);
+    if (!p || !spell || spell.aim === "self" || !ready || p.mana < spell.manaCost) return this.press(slot);
     // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
     this.slots[slot].button.setPointerCapture(e.pointerId);
     this.aiming = { slot, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY };

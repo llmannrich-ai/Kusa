@@ -6,7 +6,10 @@
  *   - a Nevasca deixa os monstros lentos;
  *   - o Raio em Cadeia salta do alvo para outro monstro;
  *   - ramo Mira do Paladino (especializações): a Marca do Caçador marca o alvo e ele leva mais dano, o Rolamento
- *     afasta o herói do monstro, a Aljava Veloz e a Postura do Atirador ficam ativas no herói.
+ *     afasta o herói do monstro, a Aljava Veloz e a Postura do Atirador ficam ativas no herói;
+ *   - ramos Luz e Batedor do Paladino: Lança Etérea e Caldeira Divina ferem, o Escudo da Luz (toque rápido, sozinho)
+ *     protege o próprio herói, o Solo Consagrado vira um campo que fere, a Flecha Relâmpago salta, a Barragem acerta
+ *     em leque, a Armadilha de Urso prende o monstro que pisa nela e a estaca do Cordão de Flechas atira sozinha.
  * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
  *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 KUSA_MONSTER_HP=20 PORT=2603 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
@@ -21,6 +24,8 @@ const client = new Client(url);
 await venom();
 await slowAndChain();
 await paladinMira();
+await paladinLight();
+await paladinScout();
 console.log("EFEITOS OK");
 process.exit(0);
 
@@ -122,4 +127,84 @@ async function paladinMira() {
   roll.room.send(MSG.cast, { slot: 1 });
   await until(() => roll.me().buff === "sniper_stance", 2000, "a Postura do Atirador não ficou ativa");
   await roll.room.leave();
+}
+
+/** Dano do herói (sem o que ele recebeu) desde a posição `from` da lista. */
+function hitsFrom(damage: { attacker: string; toPlayer: boolean }[], me: string, from: number) {
+  return damage.slice(from).filter((d) => d.attacker === me && !d.toPlayer).length;
+}
+
+async function paladinLight() {
+  const { room, me, damage, spells } = await enter(client, "paladin", "paladinLight");
+  room.send(MSG.chooseSpell, { slot: 0, spellId: "light_shield" });
+  room.send(MSG.chooseSpell, { slot: 1, spellId: "consecrated_ground" });
+  // Escudo da Luz no toque rápido: sozinho, o mais ferido ao alcance é o próprio herói.
+  room.send(MSG.cast, { slot: 0 });
+  await until(() => me().barrier > 0, 2000, "o Escudo da Luz não protegeu o herói");
+  const shield = me().barrier;
+
+  // Solo Consagrado: o campo aparece no chão e fere os monstros em cima dele.
+  await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
+  const seen = inSight(room, me(), 5)[0];
+  if (!seen) throw new Error("nenhum monstro à vista em 30 s");
+  const before = damage.length;
+  room.send(MSG.cast, { slot: 1, aim: { x: seen[1].x, y: seen[1].y } });
+  await until(() => [...room.state.fields.values()].some((f: any) => f.spellId === "consecrated_ground" && f.kind === "zone"), 2000, "o Solo Consagrado não criou o campo");
+  await until(() => hitsFrom(damage, room.sessionId, before) > 0, 4000, "o Solo Consagrado não feriu ninguém");
+  console.log(`paladino: Escudo da Luz de ${shield} em si mesmo; Solo Consagrado feriu ${hitsFrom(damage, room.sessionId, before)} vezes`);
+  if (!spells.some((s) => s.spellId === "light_shield")) throw new Error("o Escudo da Luz não saiu");
+  await room.leave();
+}
+
+async function paladinScout() {
+  const { room, me, spells } = await enter(client, "paladin", "paladinScout");
+  room.send(MSG.chooseSpell, { slot: 0, spellId: "bear_trap" });
+  room.send(MSG.chooseSpell, { slot: 1, spellId: "arrow_cordon" });
+  await approach(room, me, 2, () => inSight(room, me(), 4).length > 0);
+  const seen = inSight(room, me(), 4)[0];
+  if (!seen) throw new Error("nenhum monstro à vista em 30 s");
+  const [id] = seen;
+
+  // Armadilha no tile do monstro: se ele continua em cima, dispara no pulso seguinte e o prende. Se ele saiu do
+  // tile no meio-tempo, a armadilha fica esperando: arma outra no tile novo dele (recarga de 6 s).
+  const rooted = () => [...room.state.monsters.values()].some((m: any) => m.rooted);
+  for (let i = 0; i < 5 && !rooted(); i++) {
+    const m = room.state.monsters.get(id) ?? inSight(room, me(), 4)[0]?.[1];
+    if (m) room.send(MSG.cast, { slot: 0, aim: { x: m.x, y: m.y } });
+    await until(rooted, 6500, "").catch(() => {});
+  }
+  if (!rooted()) throw new Error("a armadilha não prendeu nenhum monstro");
+
+  // Estaca do Cordão de Flechas: atira sozinha nos monstros a até 3 tiles.
+  room.send(MSG.cast, { slot: 1, aim: { x: me().x, y: me().y } });
+  await until(() => [...room.state.fields.values()].some((f: any) => f.kind === "turret"), 2000, "a estaca não apareceu");
+  await until(() => spells.some((s) => s.spellId === "arrow_cordon" && s.echo && (s.x !== s.tx || s.y !== s.ty)), 5000, "a estaca não atirou");
+  console.log("paladino: armadilha prendeu o monstro e a estaca atirou");
+  await room.leave();
+
+  // Artilheiro: Flecha Relâmpago salta e Barragem acerta em leque.
+  const art = await enter(client, "paladin", "paladinArtillery");
+  art.room.send(MSG.chooseSpell, { slot: 0, spellId: "lightning_arrow" });
+  art.room.send(MSG.chooseSpell, { slot: 1, spellId: "barrage" });
+  await approach(art.room, art.me, 2, () => inSight(art.room, art.me(), 5).length > 0);
+  const near = inSight(art.room, art.me(), 5)[0];
+  if (!near) throw new Error("nenhum monstro à vista em 30 s");
+  const before = art.damage.length;
+  art.room.send(MSG.cast, { slot: 1, aim: { x: near[1].x, y: near[1].y } });
+  await until(() => hitsFrom(art.damage, art.room.sessionId, before) > 0, 2000, "a Barragem não acertou ninguém");
+  const deadline = Date.now() + 60_000;
+  const pairOf = () => {
+    const seenNow = inSight(art.room, art.me(), 6);
+    return seenNow.find(([a, m]) => seenNow.some(([b, o]) => a !== b && tileDistance(m.x, m.y, o.x, o.y) <= 3));
+  };
+  while (art.chains.length === 0) {
+    if (Date.now() > deadline) throw new Error("a Flecha Relâmpago não saltou");
+    // Lança no par (ou em qualquer monstro à vista: o salto pode achar um vizinho que o herói não enxerga).
+    const pair = pairOf() ?? inSight(art.room, art.me(), 6)[0];
+    if (pair) art.room.send(MSG.cast, { slot: 0, aim: { x: pair[1].x, y: pair[1].y, targetId: pair[0] } });
+    else await approach(art.room, art.me, 2, () => pairOf() !== undefined);
+    await wait(500);
+  }
+  console.log(`paladino: Barragem acertou, Flecha Relâmpago saltou por ${Math.max(...art.chains.map((c) => c.points.length))} monstros`);
+  await art.room.leave();
 }

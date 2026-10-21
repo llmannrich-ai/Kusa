@@ -72,6 +72,8 @@ export interface MonsterDef {
   size: number;
   /** Ataque extra, mais forte (só mini-bosses e bosses; ver `MonsterSpecial`). */
   special?: MonsterSpecial;
+  /** Morto-vivo: a luz sagrada do Paladino fere mais (Flechas Consagradas, Caldeira Divina). */
+  undead?: boolean;
 }
 
 export const MONSTERS: Record<MonsterKind, MonsterDef> = {
@@ -84,7 +86,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     hp: 45, damage: 5, xp: 35, loot: [2, 4], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "slash",
   },
   skeleton: {
-    kind: "skeleton", name: "Esqueleto", rank: "common", shape: "diamond", color: 0xdcdde1, size: 0.65,
+    kind: "skeleton", name: "Esqueleto", rank: "common", undead: true, shape: "diamond", color: 0xdcdde1, size: 0.65,
     hp: 70, damage: 7, xp: 55, loot: [3, 6], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
   },
   orc: {
@@ -111,7 +113,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     hp: 70, damage: 8, xp: 55, loot: [3, 6], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
   },
   bogBody: {
-    kind: "bogBody", name: "Afogado", rank: "common", shape: "diamond", color: 0x556b2f, size: 0.7,
+    kind: "bogBody", name: "Afogado", rank: "common", undead: true, shape: "diamond", color: 0x556b2f, size: 0.7,
     hp: 120, damage: 11, xp: 85, loot: [5, 9], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
   },
   naga: {
