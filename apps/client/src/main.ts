@@ -3,6 +3,7 @@ import { Callbacks } from "@colyseus/sdk";
 import {
   CLASSES,
   ITEMS,
+  BAG_SIZE,
   ITEM_SLOTS,
   MAPS,
   MAX_LEVEL,
@@ -311,12 +312,19 @@ function startGame(room: DungeonRoom) {
     setBar("hp", p.hp, p.maxHp, `${p.hp}/${p.maxHp}`);
     setBar("mana", p.mana, p.maxMana, `${p.mana}/${p.maxMana}`);
     setBar("xp", p.xp - xpFrom, xpTo - xpFrom, `Nv ${p.level}`);
-    $("meta").textContent = `Loot ${p.loot}`;
+    // Bag cheia fica vermelha: o que estiver no chão não entra mais.
+    $("meta").textContent = `Loot ${p.loot} · 🎒 ${p.bag.length}/${BAG_SIZE}`;
+    $("meta").classList.toggle("bag-full", p.bag.length >= BAG_SIZE);
     renderGear(p);
   };
   renderStats();
   const p = me();
-  if (p) Callbacks.get(room).onChange(p, renderStats);
+  if (p) {
+    const callbacks = Callbacks.get(room);
+    callbacks.onChange(p, renderStats);
+    callbacks.onAdd(p, "bag", renderStats);
+    callbacks.onRemove(p, "bag", renderStats);
+  }
 }
 
 /** Ícones do equipamento no HUD (as imagens são geradas uma vez por item). */
@@ -367,9 +375,13 @@ function showResult(msg: RunEndedMessage) {
   $("result-detail").textContent = msg.loot > 0
     ? `Saiu com ${msg.loot} de loot no nível ${msg.level}.`
     : `Todo o loot ficou para trás. Nível alcançado: ${msg.level}.`;
-  // Só com conta o equipamento volta para o inventário (convidado não salva nada).
+  // Só com conta o equipamento e a bag voltam (convidado não salva nada).
   if (account && msg.items.length > 0) {
-    $("result-detail").textContent += ` Guardado no inventário: ${msg.items.map((id) => ITEMS[id]?.name ?? id).join(", ")}.`;
+    $("result-detail").textContent += ` Equipamento guardado: ${msg.items.map((id) => ITEMS[id]?.name ?? id).join(", ")}.`;
+  }
+  if (account && msg.bag.length > 0) {
+    $("result-detail").textContent += ` Bag para o cofre: ${msg.bag.map((id) => ITEMS[id]?.name ?? id).join(", ")}`
+      + ` (com o cofre cheio, o resto fica na bag).`;
   }
   if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${ITEMS[msg.lost]?.name ?? msg.lost}.`;
   show("result", true);

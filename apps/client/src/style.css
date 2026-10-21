@@ -175,6 +175,7 @@ button { min-height: 44px; touch-action: manipulation; }
 }
 #stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
 #meta { text-align: right; color: var(--accent); font-size: 13px; }
+#meta.bag-full { color: #ff6b6b; }
 #gear { display: flex; justify-content: flex-end; gap: 4px; }
 #gear .slot { width: 28px; height: 28px; display: grid; place-items: center; background: #0008; border: 1px solid #3a2f27; }
 #gear img { width: 24px; height: 24px; image-rendering: pixelated; }
@@ -555,7 +556,7 @@ body.busy #hub-body { opacity: 0.7; }
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
 .item-cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; background: #000; border: 2px solid; }
 .item-cell .item-img { width: 40px; height: 40px; }
-.item-flag { position: absolute; top: 2px; right: 4px; font-size: 10px; color: #000; background: var(--accent); padding: 0 3px; }
+.item-cell.empty { border: 2px dashed #3a2f27; background: #0006; }
 
 #sheet-backdrop { position: absolute; inset: 0; background: #000a; z-index: 13; }
 .sheet {

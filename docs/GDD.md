@@ -27,8 +27,8 @@ Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
-- **Itens:** o inventário da conta e o equipamento que vai para a próxima hunt (um item por slot).
-- **Mercado:** compra itens até Aço e vende qualquer item do inventário. Itens de Dragão só saem das hunts.
+- **Itens:** o equipamento que vai para a próxima hunt (um item por slot), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
+- **Mercado:** compra itens até Aço (entregues no cofre) e vende qualquer item da conta. Itens de Dragão só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
 - Ainda por fazer: modo, cosméticos e amigos.
 
@@ -55,11 +55,24 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza |
 
-### Inventário e mercado (extração)
+### Cofre, bag e mercado (extração)
 
-- O equipamento escolhido na aba Itens **sai do inventário quando a hunt começa** e entra no personagem.
-- Quem foge ou conclui traz para o inventário tudo o que estiver equipado ao sair (inclusive o que achou na dungeon).
-- Quem morre perde **1 equipamento do corpo, sorteado** (e as poções): ele cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para o inventário. Quando a bag existir, ela também se perde inteira.
+Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `packages/shared/src/items.ts`):
+
+| Lugar | Espaços | Onde se mexe | Na hunt |
+|---|---|---|---|
+| **Equipamento** | 1 por slot | aba Itens | entra vestido no personagem |
+| **Cofre** | 20 (o equipamento não ocupa) | só na aba Itens | fica seguro na conta |
+| **Bag** | 8 | aba Itens (guardar no cofre ou vender) | entra com o jogador e recebe o que ele pega no chão |
+
+- O equipamento e a bag **saem da conta quando a hunt começa** e entram no personagem.
+- Na hunt, todo item que o jogador pisa vai para a bag (ou direto para o equipamento, se for melhor; o trocado vai para a bag).
+  **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra 🎒 x/8 (vermelho quando cheia).
+- Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
+  **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
+- Quem morre perde **1 equipamento do corpo, sorteado**, **a bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para a conta.
+- Na aba Itens: equipar um item do cofre devolve o do slot ao cofre; tirar do equipamento e guardar da bag precisam de espaço no cofre.
+- Funções no banco: `buy_item`, `equip_item`, `store_item` e `sell_item` (jogador); `take_loadout`, `take_bag`, `finish_run` e `store_bag` (servidor de jogo).
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 20, 60, 140, 320 e Dragão 900.
 
 ## Mapas
@@ -184,8 +197,8 @@ As compradas no Grimório, por slot (números do nível 1):
 - 4 slots: arma, capacete, armadura e escudo, cada um com 5 níveis de material (Comum, Bronze, Ferro, Aço, Dragão). A arma dá % a mais de dano; capacete, armadura e escudo somam armadura, que corta dano recebido (`armadura / (armadura + 20)`: tudo de dragão corta 57%).
 - Drop: comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
 - O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
-- Passar por cima de um item melhor que o equipado troca na hora; o antigo fica no chão. Item pior fica onde está. Itens no chão somem após 2 minutos.
-- Quem morre larga 1 equipamento sorteado no chão e guarda o resto. Sem levar nada do inventário, todos começam sem equipamento; quem sai vivo guarda o equipado (ver "Inventário e mercado").
+- Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag; item pior vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
+- Quem morre larga 1 equipamento sorteado e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
 - Tabela em `packages/shared/src/items.ts`.
 
 ### Arte dos itens e equipamento visível

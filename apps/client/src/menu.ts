@@ -1,4 +1,5 @@
 import {
+  BAG_SIZE,
   CLASSES,
   CLASS_IDS,
   ITEMS,
@@ -12,6 +13,7 @@ import {
   TIER_COLORS,
   TREE_BRANCHES,
   TIER_NAMES,
+  VAULT_SIZE,
   auraBonuses,
   auraText,
   difficultyStars,
@@ -38,11 +40,12 @@ import {
   equipItem,
   loadProfile,
   sellItem,
+  storeItem,
   type OwnedItem,
   type Profile,
 } from "./profile.ts";
 
-// Menu do jogador depois do login: classes, Grimório (árvore de magias), inventário e mercado.
+// Menu do jogador depois do login: classes, Grimório (árvore de magias), itens (equipamento, cofre e bag) e mercado.
 // Abas embaixo (zona do polegar), "Jogar" logo acima delas; tudo funciona só com toque.
 
 type Tab = "classes" | "spells" | "items" | "market";
@@ -384,7 +387,7 @@ export class Hub {
     const page = el("div", "hub-page");
     page.append(el("h2", "", "Itens"));
     page.append(el("p", "muted hub-hint",
-      "O equipamento escolhido entra com você na hunt. Quem foge traz tudo de volta; quem morre perde o que levou."));
+      "O equipamento e a bag entram com você na hunt. Quem foge volta vestido e esvazia a bag no cofre; quem morre perde os dois."));
 
     const loadout = el("div", "loadout");
     for (const slot of ITEM_SLOTS) {
@@ -396,7 +399,7 @@ export class Hub {
         cell.onclick = () => this.openItemSheet(owned);
       } else {
         cell.append(el("span", "slot-empty", "＋"), el("small", "muted", SLOT_NAMES[slot]));
-        cell.onclick = () => this.toast(`Toque num item do inventário para equipar ${SLOT_NAMES[slot].toLowerCase()}.`);
+        cell.onclick = () => this.toast(`Toque num item do cofre para equipar ${SLOT_NAMES[slot].toLowerCase()}.`);
       }
       loadout.append(cell);
     }
@@ -404,15 +407,36 @@ export class Hub {
     doll.append(outfitPreview(this.classId, this.loadout()), el("small", "muted", `${CLASSES[this.classId].name} na próxima hunt`));
     page.append(el("h3", "", "Para a próxima hunt"), doll, loadout);
 
-    page.append(el("h3", "", `Inventário (${this.profile.items.length})`));
-    if (this.profile.items.length === 0) {
-      page.append(el("p", "muted empty", "Vazio. Traga itens das hunts (fugindo vivo) ou compre no mercado."));
-      return page;
-    }
-    const grid = el("div", "item-grid");
-    for (const owned of sortItems(this.profile.items)) grid.append(this.itemCell(owned, () => this.openItemSheet(owned)));
-    page.append(grid);
+    const vault = this.vaultItems();
+    page.append(el("h3", "", `Cofre (${vault.length}/${VAULT_SIZE})`));
+    page.append(el("p", "muted hub-hint", vault.length >= VAULT_SIZE
+      ? "Cofre cheio: o que vier da bag fica nela, e o mercado não entrega. Venda ou equipe algo para abrir espaço."
+      : "Fica guardado na conta. Recebe a bag ao fim de cada hunt e as compras do mercado."));
+    page.append(this.itemGrid(vault, VAULT_SIZE));
+
+    const bag = this.bagItems();
+    page.append(el("h3", "", `Bag (${bag.length}/${BAG_SIZE})`));
+    page.append(el("p", "muted hub-hint",
+      "Entra na hunt com você e recebe o que você pega no chão. Com a bag cheia, nada mais sai do chão."));
+    page.append(this.itemGrid(bag, BAG_SIZE));
     return page;
+  }
+
+  /** Grade com um quadrado por espaço: os itens e os espaços livres até `size`. */
+  private itemGrid(items: OwnedItem[], size: number) {
+    const grid = el("div", "item-grid");
+    for (const owned of sortItems(items)) grid.append(this.itemCell(owned, () => this.openItemSheet(owned)));
+    for (let i = items.length; i < size; i++) grid.append(el("div", "item-cell empty"));
+    return grid;
+  }
+
+  /** Itens no cofre (o equipamento não ocupa espaço). */
+  private vaultItems() {
+    return this.profile.items.filter((i) => i.location === "vault" && !i.equipped);
+  }
+
+  private bagItems() {
+    return this.profile.items.filter((i) => i.location === "bag");
   }
 
   private itemCell(owned: OwnedItem, onclick: () => void) {
@@ -420,8 +444,7 @@ export class Hub {
     const cell = el("button", "item-cell");
     cell.style.borderColor = hex(TIER_COLORS[def.tier]);
     cell.append(itemImg(owned.itemId));
-    if (owned.equipped) cell.append(el("span", "item-flag", "E"));
-    cell.setAttribute("aria-label", `${def.name}${owned.equipped ? " (equipado)" : ""}`);
+    cell.setAttribute("aria-label", def.name);
     cell.onclick = onclick;
     return cell;
   }
@@ -442,18 +465,35 @@ export class Hub {
     tryOn.append(outfitPreview(this.classId, { ...this.loadout(), [def.slot]: def.id }),
       el("small", "muted", owned.equipped ? "Vestido" : "Como fica vestido"));
     sheet.append(tryOn);
-    sheet.append(el("p", "muted", owned.source === "hunt" ? "Trazido de uma hunt." : "Comprado no mercado."));
+    const where = owned.equipped ? "Equipado" : owned.location === "bag" ? "Na bag" : "No cofre";
+    sheet.append(el("p", "muted", `${where} · ${owned.source === "hunt" ? "trazido de uma hunt" : "comprado no mercado"}.`));
 
     const actions = el("div", "actions");
-    const equip = el("button", "primary", owned.equipped ? "Tirar do equipamento" : "Equipar para a hunt");
-    equip.onclick = () => this.run(async () => {
-      await equipItem(owned.id, !owned.equipped);
-      for (const other of this.profile.items) {
-        if (other.id === owned.id) other.equipped = !owned.equipped;
-        else if (!owned.equipped && other.equipped && ITEMS[other.itemId]?.slot === def.slot) other.equipped = false;
-      }
-      this.closeSheet();
-    });
+    const vaultFull = this.vaultItems().length >= VAULT_SIZE;
+    let main: HTMLButtonElement;
+    if (owned.location === "bag") {
+      // Da bag, só dá para guardar no cofre (ou vender); equipar é a partir do cofre.
+      main = el("button", "primary", vaultFull ? "Cofre cheio" : "Guardar no cofre");
+      main.disabled = vaultFull;
+      main.onclick = () => this.run(async () => {
+        await storeItem(owned.id);
+        owned.location = "vault";
+        this.toast(`${def.name} foi para o cofre.`);
+        this.closeSheet();
+      });
+    } else {
+      main = el("button", "primary", owned.equipped ? (vaultFull ? "Cofre cheio" : "Tirar do equipamento") : "Equipar para a hunt");
+      // Tirar do equipamento devolve o item ao cofre; trocar no slot não muda a lotação.
+      main.disabled = owned.equipped && vaultFull;
+      main.onclick = () => this.run(async () => {
+        await equipItem(owned.id, !owned.equipped);
+        for (const other of this.profile.items) {
+          if (other.id === owned.id) other.equipped = !owned.equipped;
+          else if (!owned.equipped && other.equipped && ITEMS[other.itemId]?.slot === def.slot) other.equipped = false;
+        }
+        this.closeSheet();
+      });
+    }
     const sell = el("button", "", `Vender por ${gold(ITEM_SELL_PRICES[def.tier])}`);
     sell.onclick = () => this.run(async () => {
       this.profile.gold = await sellItem(owned.id);
@@ -463,7 +503,7 @@ export class Hub {
     });
     const close = el("button", "", "Fechar");
     close.onclick = () => this.closeSheet();
-    actions.append(equip, sell, close);
+    actions.append(main, sell, close);
     sheet.append(actions);
     $("sheet").hidden = false;
     $("sheet-backdrop").hidden = false;
@@ -531,17 +571,20 @@ export class Hub {
 
     const list = el("div", "market-list");
     if (this.marketMode === "buy") {
-      page.append(el("p", "muted hub-hint", "Equipamento até Aço. Itens de Dragão só saem das hunts."));
+      const vaultFull = this.vaultItems().length >= VAULT_SIZE;
+      page.append(el("p", "muted hub-hint", vaultFull
+        ? `Cofre cheio (${VAULT_SIZE}/${VAULT_SIZE}): venda ou equipe algo para comprar.`
+        : "Equipamento até Aço, entregue no cofre. Itens de Dragão só saem das hunts."));
       for (const slot of ITEM_SLOTS) {
         list.append(el("h3", "", SLOT_NAMES[slot]));
         for (const def of Object.values(ITEMS).filter((i) => i.slot === slot)) {
           const price = ITEM_BUY_PRICES[def.tier];
           if (price === null) continue;
           const buy = el("button", "buy", gold(price));
-          buy.disabled = this.profile.gold < price;
+          buy.disabled = vaultFull || this.profile.gold < price;
           buy.onclick = () => this.run(async () => {
             this.profile.gold = await buyItem(def.id);
-            this.toast(`${def.name} foi para o inventário.`);
+            this.toast(`${def.name} foi para o cofre.`);
             // O id da linha nova vem do banco: recarrega o inventário.
             this.profile = await loadProfile();
           });
@@ -549,7 +592,7 @@ export class Hub {
         }
       }
     } else {
-      page.append(el("p", "muted hub-hint", "O mercado compra qualquer item do seu inventário."));
+      page.append(el("p", "muted hub-hint", "O mercado compra qualquer item seu: equipado, no cofre ou na bag."));
       if (this.profile.items.length === 0) list.append(el("p", "muted empty", "Nada para vender."));
       for (const owned of sortItems(this.profile.items)) {
         const def = ITEMS[owned.itemId];
@@ -559,7 +602,7 @@ export class Hub {
           this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
           this.toast(`${def.name} vendido.`);
         });
-        list.append(this.marketRow(def, sell, owned.equipped ? "Equipado" : ""));
+        list.append(this.marketRow(def, sell, owned.equipped ? "Equipado" : owned.location === "bag" ? "Na bag" : ""));
       }
     }
     page.append(list);

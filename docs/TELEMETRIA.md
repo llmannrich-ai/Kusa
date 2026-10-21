@@ -22,7 +22,7 @@ Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou
 | `stats.healing` | Cura feita (druida) |
 | `stats.potions` | Poções guardadas e bebidas por tipo e mana devolvida (a vida das poções entra em `healing`) |
 | `stats.kills`, `firstKillAt`, `xp` | Abates por monstro, tempo até o primeiro abate, XP total |
-| `stats.loot`, `chestsOpened`, `items` | De onde veio o loot (monstros, baús, bônus do boss) e itens levados, pegos e perdidos |
+| `stats.loot`, `chestsOpened`, `items` | De onde veio o loot (monstros, baús, bônus do boss); itens equipados e bag que entraram (`loadout`, `bag`), pegos, perdidos na morte (equipamento sorteado + bag) e `bagFull` (avisos de bag cheia: item deixado no chão) |
 
 ## Views prontas
 

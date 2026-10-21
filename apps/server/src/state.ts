@@ -23,6 +23,8 @@ export class Player extends Schema {
   @type("string") helmet = "";
   @type("string") armor = "";
   @type("string") shield = "";
+  /** Bag: itens pegos no chão (e o que sobrou da hunt anterior), até `BAG_SIZE`. Vai para o cofre ao sair vivo. */
+  @type(["string"]) bag = new ArraySchema<string>();
   /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
   @type("string") spell1 = "";
   @type("string") spell2 = "";
@@ -77,7 +79,7 @@ export class Chest extends Schema {
   @type("boolean") opened = false;
 }
 
-/** Item ou poção largado no chão: qualquer jogador que passar por cima pega (item só se for melhor que o equipado). */
+/** Item ou poção largado no chão: qualquer jogador que passar por cima pega (item vai para o equipamento se for melhor, senão para a bag). */
 export class GroundItem extends Schema {
   @type("string") id = "";
   /** Chave de `ITEMS` ou de `POTIONS` em `@kusa/shared`. */

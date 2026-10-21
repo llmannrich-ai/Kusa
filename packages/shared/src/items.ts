@@ -107,6 +107,28 @@ export function bestPerSlot(itemIds: readonly string[]): Record<ItemSlot, string
   return best;
 }
 
+// --- Cofre e bag --------------------------------------------------------------
+// As funções do Supabase (`buy_item`, `equip_item`, `store_item`, `finish_run`, `store_bag`) repetem estes limites; mude os dois juntos.
+
+/** Espaços do cofre da conta (fora do equipamento). Só se mexe nele pelo menu Itens. */
+export const VAULT_SIZE = 20;
+/**
+ * Espaços da bag: entra na hunt com o jogador e guarda o que ele pega no chão. Ao sair vivo, a bag é
+ * esvaziada no cofre e o que não couber fica nela para a próxima hunt. Com a bag cheia, não pega mais nada.
+ */
+export const BAG_SIZE = 8;
+
+/**
+ * O que acontece ao passar por cima de um item: `equip` (slot vazio), `swap` (melhor que o equipado; o antigo vai
+ * para a bag), `bag` (não é melhor) ou `full` (bag cheia: fica no chão). Slot vazio recebe o item mesmo com a bag cheia.
+ */
+export type PickupAction = "equip" | "swap" | "bag" | "full";
+export function pickupAction(itemId: string, equipped: string, bagCount: number): PickupAction {
+  if (!isUpgrade(itemId, equipped)) return bagCount < BAG_SIZE ? "bag" : "full";
+  if (!equipped) return "equip";
+  return bagCount < BAG_SIZE ? "swap" : "full";
+}
+
 // --- Drops -------------------------------------------------------------------
 
 /** Chance de um monstro comum dropar um item. */
