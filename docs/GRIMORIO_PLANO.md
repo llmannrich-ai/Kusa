@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7) e 2 feitas. Próxima: fase 3 (estrutura das especializações).
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2 e 3 feitas. A fase 3 trouxe a estrutura e o primeiro ramo especializado (Mira do Paladino). Próxima: fase 4a (o resto do Paladino).
 
 ---
 
@@ -341,6 +341,12 @@ quebrar fica para quando existir empurrar), o Meteoro queima os atingidos (a cra
 da Floresta brota uma mariposa (o excesso de cura virando escudo é o Traço Florescer do Círculo da Vida) e o Urso
 Ancestral dura o dobro (curar ao morrer pede um gancho de morte de criatura). A mira e o efeito na tela passaram a usar a
 magia no nível de quem conjura. A reta das magias em linha foi corrigida para sempre passar pelo ponto mirado.
+
+**Fase 3, como foi entregue:** a estrutura das especializações (nó de Traço com `exclusiveWith`, regra permanente no
+`buy_talent`, ramo em foco no menu, confirmação em dois toques, Traços no servidor e `stats.specs`) e, para ela não
+nascer vazia, o ramo **Mira do Paladino** inteiro: os Traços Olho de Águia e Passo Leve e as magias Marca do Caçador,
+Postura do Atirador, Rolamento e Aljava Veloz. Isso trouxe 3 peças do motor: marca (9), bônus em si (parte da 8) e
+salto (6). Os outros ramos especializam conforme o conteúdo deles fica pronto (os dois lados juntos).
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).

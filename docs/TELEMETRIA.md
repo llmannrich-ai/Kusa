@@ -4,6 +4,11 @@ O servidor de jogo grava uma linha por jogador por hunt em `public.telemetry_run
 de convidados. Nada vem do navegador: tudo é medido no servidor (`apps/server/src/telemetry.ts`).
 Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou pela ferramenta de SQL.
 
+Os jogadores veem um resumo em **Configurações > Telemetria** (`apps/client/src/telemetry.ts`). Ele vem da função
+`telemetry_dashboard(p_map, p_days)` (`security definer`, só para logados), que devolve apenas agregados, sem nome,
+id ou seed de ninguém, mais o resumo das hunts de quem consulta. A tabela e as views continuam fechadas.
+Campo novo que deva aparecer para os jogadores entra nessa função e no `Dashboard` do cliente.
+
 ## O que é medido
 
 | Coluna / campo | Para que serve |
@@ -17,6 +22,7 @@ Só o service role lê e grava; consulte pelo painel do Supabase (SQL Editor) ou
 | `stats.levelAt` | Segundo em que cada nível foi alcançado (curva de XP) |
 | `stats.depthAt` | Segundo em que entrou em cada sala do caminho (ritmo) |
 | `stats.perksChosen` | Melhoria escolhida em cada nível, as duas oferecidas, o nível e o segundo |
+| `stats.specs` | Traços das especializações que o jogador tinha na hunt (ex.: `eagle_eye`) |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo) |
 | `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |

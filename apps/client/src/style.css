@@ -157,6 +157,68 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .setting input:checked { background: #4a3417; border-color: var(--accent); }
 .setting input:checked::after { transform: translateX(20px); background: var(--accent); }
 
+/* Links para as subpáginas (Telemetria, Regras): mesma linha das opções, com uma seta no lugar do interruptor. */
+#settings-pages { display: grid; gap: 8px; margin-top: 8px; }
+.setting-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 12px; text-align: left; background: #000; }
+.setting-link small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.setting-link b { flex: none; font-size: 24px; color: var(--accent); }
+
+/* Subpágina: ocupa a altura toda, com o título e o "‹" presos no topo enquanto o conteúdo rola. */
+.panel.page { height: calc(100dvh - 24px); padding-top: 0; }
+.page-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -24px 12px;
+  padding: 12px 24px 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.page-top h2 { margin: 0; }
+.page-top .page-back { font-size: 28px; line-height: 1; }
+
+/* Telemetria */
+.tm-filters { display: grid; gap: 8px; margin-bottom: 12px; }
+.tm-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { min-height: 36px; padding: 6px 12px; font-size: 14px; border-radius: 18px; }
+.chip[aria-pressed="true"] { background: #4a3417; border-color: var(--accent); color: var(--accent); }
+.tm-body { display: grid; gap: 12px; }
+.tm-status { text-align: center; margin: 24px 0; }
+.tm-card { padding: 12px; background: #000; border: 1px solid var(--border); }
+.tm-card.mine { border-color: var(--accent); }
+.tm-card h3 { margin: 0 0 10px; font-size: 15px; color: var(--accent); }
+.tm-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.tm-tile { min-width: 0; padding: 8px; background: #1c1714; border: 1px solid #3a2f27; }
+.tm-tile dt { font-size: 11px; color: var(--muted); }
+.tm-tile dd { margin: 2px 0 0; font-size: 17px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tm-bars { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.tm-bar-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.tm-bar-head strong { flex: none; font-variant-numeric: tabular-nums; }
+.tm-bars small { display: block; margin-top: 2px; font-size: 12px; }
+.tm-track { height: 8px; margin-top: 4px; background: #1c1714; border-radius: 4px; overflow: hidden; }
+.tm-track i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.tm-columns { display: flex; align-items: flex-end; gap: 2px; height: 96px; border-bottom: 1px solid var(--border); }
+.tm-col { flex: 1; display: flex; align-items: flex-end; height: 100%; min-height: 0; padding: 0; background: none; border: none; }
+.tm-col i { display: block; width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; }
+.tm-col.active i { background: var(--text); }
+.tm-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.tm-readout { margin: 6px 0 0; font-size: 13px; }
+.tm-note { margin: 0 0 12px; font-size: 12px; }
+
+/* Regras: seções que abrem e fecham. */
+.rule { margin-bottom: 8px; border: 1px solid var(--border); background: #000; }
+.rule summary { padding: 12px; min-height: 44px; font-weight: bold; color: var(--accent); cursor: pointer; }
+.rule[open] summary { border-bottom: 1px solid #3a2f27; }
+.rule > p, .rule > ul, .rule > table { margin: 10px 12px; font-size: 14px; line-height: 1.45; }
+.rule ul { padding-left: 18px; }
+.rule li + li { margin-top: 6px; }
+.rule-table { width: calc(100% - 24px); border-collapse: collapse; font-size: 13px; }
+.rule-table th, .rule-table td { padding: 6px 4px; text-align: left; vertical-align: top; border-bottom: 1px solid #3a2f27; }
+.rule-table th { color: var(--muted); font-weight: normal; font-size: 12px; }
+
 input, button { -webkit-user-select: text; user-select: text; }
 button { min-height: 44px; touch-action: manipulation; }
 
@@ -574,6 +636,21 @@ body.busy #hub-body { opacity: 0.7; }
   box-shadow: 0 2px 6px #000a;
 }
 .gnode.aura .gnode-orb { border-radius: 14px; }
+/* Traço (especialização): losango menor, com o ícone desvirado. */
+.gnode.trait .gnode-orb { width: 46px; height: 46px; margin: 5px 0; border-radius: 8px; transform: rotate(45deg); }
+.gnode.trait .gnode-icon { transform: rotate(-45deg); font-size: 22px; }
+.gnode.trait .gnode-lock { transform: rotate(-45deg); }
+/* Nó ✦ da visão geral: abre o ramo em foco com os dois lados. */
+.gnode.fork .gnode-orb { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.gnode.fork.owned .gnode-orb { border-style: solid; }
+.grim-branch-spec {
+  min-height: 0; padding: 0; font: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--accent); background: none; border: none;
+}
+.grim-spec-name { color: var(--accent) !important; letter-spacing: 1px !important; }
+.grim-back { display: block; min-height: 36px; padding: 4px 0; background: none; border: none; font-size: 14px; }
+.grim-warning { padding: 8px 10px; font-size: 13px; color: #ffd8a8; background: #3a1e0c; border: 1px solid #a0522d; }
+button.danger { background: #5a1e12; border-color: #e67e22; }
 .gnode.owned .gnode-orb { border-color: #8e6bbf; background: radial-gradient(circle at 35% 30%, #4a3466, #160f1e 75%); }
 .gnode.maxed .gnode-orb { border-color: var(--accent); box-shadow: 0 0 12px #c9a24a88; }
 .gnode.locked .gnode-orb { filter: grayscale(1) brightness(0.55); }

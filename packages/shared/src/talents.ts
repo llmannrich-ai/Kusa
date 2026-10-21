@@ -1,11 +1,15 @@
 import { CLASS_IDS, type ClassId } from "./classes.ts";
 import { SPELL_MAX_RANK, STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
+import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 
 // Grimório: a árvore de magias de cada classe, comprada no menu com o gold das hunts.
 // É uma árvore de verdade: cada nó (fora a raiz) pede o nó pai no nível 1, então as magias da
-// ponta só abrem depois das anteriores do mesmo ramo. Dois tipos de nó:
+// ponta só abrem depois das anteriores do mesmo ramo. Três tipos de nó:
 //   magia: vira opção quando o slot libera na hunt; os níveis 2 e 3 deixam a magia mais forte;
-//   áurea: bônus passivo de dano, vida, mana ou velocidade, com vários níveis.
+//   áurea: bônus passivo de dano, vida, mana ou velocidade, com vários níveis;
+//   traço: a passiva de uma especialização. No fim de um ramo, a árvore se divide em dois lados (`side`);
+//          comprar o Traço de um lado tranca o outro para sempre (`exclusiveWith`), e as magias do lado
+//          pedem o Traço.
 // As 2 magias iniciais da classe já vêm no nível 1 (`freeRank`). A tabela `talents` no Supabase
 // repete id, níveis, custo, nível grátis e pré-requisito de cada nó; mude os dois juntos.
 
@@ -24,13 +28,19 @@ export interface TalentDef {
   /** Posição no desenho do Grimório: coluna (ramo, 0 a 2) e linha (0 = raiz). */
   col: number;
   row: number;
-  kind: "spell" | "aura";
+  kind: "spell" | "aura" | "trait";
   name: string;
   icon: string;
   /** Magia liberada (só `kind: "spell"`). */
   spellId?: SpellId;
   /** Bônus por nível da áurea, em fração (0.05 = +5%). */
   aura?: { stat: AuraStat; perRank: number };
+  /** Traço liberado (só `kind: "trait"`). */
+  traitId?: TraitId;
+  /** Lado da especialização (0 ou 1) no fim do ramo; ausente no tronco. */
+  side?: 0 | 1;
+  /** Traço do outro lado: com qualquer nível nele, este não pode ser comprado (escolha permanente). */
+  exclusiveWith?: string;
   maxRank: number;
   /** Níveis que a conta já tem sem comprar (as magias iniciais começam no 1). */
   freeRank: number;
@@ -73,7 +83,9 @@ const AURA_RULES: Record<AuraStat, { perRank: number; maxRank: number; baseCost:
 };
 
 /** Preço do 1º nível de uma magia, pela profundidade na árvore (a ponta é mais cara). */
-const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
+const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200, 1200, 1600];
+/** Preço do Traço de uma especialização (nível único). */
+const TRAIT_COST = 1000;
 /** As iniciais já vêm no nível 1: o 2 custa base × 1,6. */
 const STARTER_BASE_COST = 150;
 
@@ -86,10 +98,12 @@ export const TREE_BRANCHES: Record<ClassId, [string, string, string]> = {
 };
 
 /**
- * Forma do Grimório: [nó, coluna, linha, pai]. O nó é uma magia (id de SPELLS) ou uma áurea
- * (damage, hp, mana, speed). A raiz é a magia inicial do slot 1; dela saem os 3 ramos.
+ * Forma do Grimório: [nó, coluna, linha, pai, lado]. O nó é uma magia (id de SPELLS), uma áurea
+ * (damage, hp, mana, speed) ou um Traço (id de TRAITS). A raiz é a magia inicial do slot 1; dela saem os
+ * 3 ramos. `lado` (0 ou 1) marca os nós de uma especialização; os dois Traços de um ramo se excluem.
  */
-type Shape = [key: SpellId | AuraStat, col: number, row: number, parent?: SpellId | AuraStat][];
+type ShapeKey = SpellId | AuraStat | TraitId;
+type Shape = [key: ShapeKey, col: number, row: number, parent?: ShapeKey, side?: 0 | 1][];
 
 const SHAPES: Record<ClassId, Shape> = {
   knight: [
@@ -106,6 +120,10 @@ const SHAPES: Record<ClassId, Shape> = {
     ["piercing_shot", 0, 2, "damage"], ["healing_light", 1, 2, "hp"], ["mana", 2, 2, "arrow_rain"],
     ["stun_arrow", 0, 3, "piercing_shot"], ["blessed_ward", 1, 3, "healing_light"], ["speed", 2, 3, "mana"],
     ["deadly_shot", 0, 4, "stun_arrow"], ["divine_judgment", 1, 4, "blessed_ward"], ["explosive_volley", 2, 4, "speed"],
+    // Mira: Atirador de Elite (lado 0) ou Caçador Ágil (lado 1).
+    ["eagle_eye", 0, 5, "deadly_shot", 0], ["light_step", 0, 5, "deadly_shot", 1],
+    ["hunter_mark", 0, 6, "eagle_eye", 0], ["evasive_roll", 0, 6, "light_step", 1],
+    ["sniper_stance", 0, 7, "hunter_mark", 0], ["swift_quiver", 0, 7, "evasive_roll", 1],
   ],
   sorcerer: [
     ["shadow_orb", 1, 0],
@@ -129,8 +147,19 @@ const isAura = (key: string): key is AuraStat => key in AURA_RULES;
 
 function classTree(classId: ClassId): TalentDef[] {
   const id = (key: string) => `${classId}_${key}`;
-  return SHAPES[classId].map(([key, col, row, parent]): TalentDef => {
+  const shape = SHAPES[classId];
+  return shape.map(([key, col, row, parent, side]): TalentDef => {
     const requires = parent ? { id: id(parent), rank: 1 } : undefined;
+    if (isTrait(key)) {
+      const trait = TRAITS[key];
+      if (trait.classId !== classId) throw new Error(`${key} não é Traço de ${classId}`);
+      const other = shape.find(([k, c, r, , s]) => isTrait(k) && k !== key && c === col && r === row && s !== side);
+      if (!other) throw new Error(`${key}: Traço sem o outro lado`);
+      return {
+        id: id(key), classId, col, row, side, kind: "trait", name: trait.name, icon: trait.icon, traitId: key,
+        maxRank: 1, freeRank: 0, baseCost: TRAIT_COST, costGrowth: 1, requires, exclusiveWith: id(other[0]),
+      };
+    }
     if (isAura(key)) {
       const rule = AURA_RULES[key];
       return {
@@ -143,7 +172,7 @@ function classTree(classId: ClassId): TalentDef[] {
     if (spell.classId !== classId) throw new Error(`${key} não é magia de ${classId}`);
     const starter = STARTER_SPELLS.includes(key);
     return {
-      id: id(key), classId, col, row, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
+      id: id(key), classId, col, row, side, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
       maxRank: SPELL_MAX_RANK, freeRank: starter ? 1 : 0,
       baseCost: starter ? STARTER_BASE_COST : SPELL_COST_BY_ROW[row], costGrowth: 1.6, requires,
     };
@@ -172,6 +201,8 @@ export function talentRank(def: TalentDef, ranks: TalentRanks): number {
 /** Por que o nó não pode ser comprado agora (null = pode, se houver gold). */
 export function talentBlocker(def: TalentDef, ranks: TalentRanks): string | null {
   if (talentRank(def, ranks) >= def.maxRank) return "Nível máximo";
+  const rival = def.exclusiveWith && TALENTS[def.exclusiveWith];
+  if (rival && talentRank(rival, ranks) > 0) return `Você escolheu ${TRAITS[rival.traitId!].spec}`;
   const parent = def.requires && TALENTS[def.requires.id];
   if (parent && talentRank(parent, ranks) < def.requires!.rank) return `Requer ${parent.name}`;
   return null;
@@ -195,6 +226,17 @@ export function spellRanks(classId: ClassId, ranks: TalentRanks): Partial<Record
     if (t.spellId && rank > 0) out[t.spellId] = rank;
   }
   return out;
+}
+
+/** Traços que a conta tem na classe (um por ramo especializado, no máximo). */
+export function activeTraits(classId: ClassId, ranks: TalentRanks): TraitId[] {
+  return talentTree(classId).filter((t) => t.traitId && talentRank(t, ranks) > 0).map((t) => t.traitId!);
+}
+
+/** O lado escolhido de cada ramo especializado (coluna → 0 ou 1), para o menu mostrar o cadeado no outro. */
+export function chosenSide(classId: ClassId, col: number, ranks: TalentRanks): 0 | 1 | null {
+  const picked = talentTree(classId).find((t) => t.kind === "trait" && t.col === col && talentRank(t, ranks) > 0);
+  return picked?.side ?? null;
 }
 
 /** Magias que a classe conhece: as iniciais e as compradas no Grimório. */
