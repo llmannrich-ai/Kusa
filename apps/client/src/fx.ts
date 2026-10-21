@@ -107,6 +107,20 @@ export class CombatFx {
       case "nature_wrath":
         this.projectile(FX.leaf, from, to, ms, { trail: 0x7bd36a, glow: 0x3fbf3a, impact: 0x9cff7a, scale: 1.5 });
         return this.later(ms, () => this.ring(to, radius, 0x3fbf3a, 450, 5));
+      // Especializações do Paladino (ramo Mira).
+      case "hunter_mark":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xe74c3c, glow: 0xe74c3c, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xe74c3c, 8));
+      case "sniper_stance":
+        this.ring(from, TILE_SIZE * 0.9, 0xf7d774, 500, 4);
+        return this.sparks(from, 0xffffff, 6);
+      // O herói já está no destino: um rastro de folhas do ponto de partida (from) até ele (to).
+      case "evasive_roll":
+        for (let i = 0; i <= 4; i++) this.later(i * 30, () => this.puff(from.x + ((to.x - from.x) * i) / 4, from.y + ((to.y - from.y) * i) / 4 + 10, 0x9be15d, 5));
+        return;
+      case "swift_quiver":
+        this.ring(from, TILE_SIZE * 0.9, 0x9be15d, 500, 3);
+        return this.later(120, () => this.ring(from, TILE_SIZE * 0.6, 0xffffff, 400, 2));
       // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
       case "spirit_wolf":
       case "healing_moth":

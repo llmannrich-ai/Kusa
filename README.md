@@ -66,7 +66,8 @@ contra um servidor já aberto, passando a URL:
   o Escudo da Fé absorve dano, o Giro da Lâmina gira de novo, os lobos do druida atacam, a flecha perfurante vai até o
   fim da reta e o Disparo Certeiro que mata devolve a recarga.
 - `npx tsx apps/server/scripts/efeitos.ts http://localhost:2603`: o mesmo servidor com `KUSA_MONSTER_HP=20` (monstros
-  com 20× a vida, para aguentarem o golpe) e `PORT=2603`: o veneno continua ferindo, a Nevasca deixa lento e o Raio em Cadeia salta.
+  com 20× a vida, para aguentarem o golpe) e `PORT=2603`: o veneno continua ferindo, a Nevasca deixa lento, o Raio em Cadeia salta,
+  e o ramo Mira do Paladino (Marca do Caçador, Aljava Veloz, Rolamento e Postura do Atirador) funciona na hunt.
 
 ## Variáveis de ambiente
 

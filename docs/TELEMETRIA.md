@@ -22,6 +22,7 @@ Campo novo que deva aparecer para os jogadores entra nessa função e no `Dashbo
 | `stats.levelAt` | Segundo em que cada nível foi alcançado (curva de XP) |
 | `stats.depthAt` | Segundo em que entrou em cada sala do caminho (ritmo) |
 | `stats.perksChosen` | Melhoria escolhida em cada nível, as duas oferecidas, o nível e o segundo |
+| `stats.specs` | Traços das especializações que o jogador tinha na hunt (ex.: `eagle_eye`) |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo) |
 | `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |

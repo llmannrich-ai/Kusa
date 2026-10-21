@@ -49,15 +49,31 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
   fraco), **devolver recarga ao matar** e **roubar mana**.
 - **Áureas** (quadrado no desenho): dano +4%/nível, vida +6%/nível, mana +8%/nível (3 níveis cada) e
   velocidade +4%/nível (2 níveis). Valem sempre, desde o nível 1.
-- Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade, e cada nível seguinte custa
-  ×1,6; as áureas custam 120–300 e ×1,8 por nível.
+- **Especializações** (losango no desenho): no fim de alguns ramos, a árvore se divide em dois lados. Cada lado
+  tem um **Traço** (passiva que vale sempre, nível único, 1.000 de gold) e duas magias, uma de cada slot, que pedem o
+  Traço. **A escolha é permanente:** comprar o Traço de um lado fecha o outro lado do ramo para sempre, com as
+  magias dele (o banco recusa a compra em `buy_talent`). No menu, o ramo aparece com ✦; tocar no nome ou no nó ✦
+  abre o ramo em foco, com os dois lados lado a lado. A ficha do Traço avisa que a escolha é permanente e pede um
+  segundo toque para confirmar. Catálogo em `packages/shared/src/traits.ts` e `talents.ts`.
+  - **Paladino, ramo Mira** (o único especializado por enquanto):
+
+    | Lado | Traço | Magia slot 1 | Magia slot 2 |
+    |---|---|---|---|
+    | **Atirador de Elite** | 🦅 Olho de Águia: +1 de alcance no básico e +20% de dano em monstros a 5 tiles ou mais | 🎯 Marca do Caçador: 0,8× e marca o alvo (+25% de dano de toda a equipe por 10 s) | 🔭 Postura do Atirador: 8 s com básico +100% e +2 de alcance, andando 50% mais devagar |
+    | **Caçador Ágil** | 🍃 Passo Leve: depois de cada magia, anda 25% mais rápido por 2 s | 🤸 Rolamento: salta 3 tiles (no toque rápido, para longe do monstro; nunca no portal) e a próxima flecha atordoa por 1 s | 🏹 Aljava Veloz: 6 s com o básico 60% mais rápido |
+
+  - Maestrias: Marca do Caçador marca também quem está colado no alvo; Postura do Atirador não deixa lento; Rolamento
+    salta 5 tiles e dá escudo de 15% por 3 s; Aljava Veloz soma +30% de dano no básico.
+  - Na hunt, o monstro marcado ganha uma mira vermelha girando, e o herói com Postura ou Aljava fica com um anel na cor da magia.
+- Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade (1.200 e 1.600 nas magias das
+  especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
 - O servidor lê o Grimório da conta ao entrar na sala; nada disso vem do navegador.
 
 | Classe | Ramo 1 | Ramo 2 | Ramo 3 |
 |---|---|---|---|
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante |
-| Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva |
+| Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza |
 
