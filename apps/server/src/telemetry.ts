@@ -27,6 +27,10 @@ export interface RunStats {
   damageMitigated: number;
   /** Vida curada (em si e nos aliados), incluindo roubo de vida (magias e Sede de sangue), criaturas de cura e poções de vida. */
   healing: number;
+  /** Mana devolvida aos aliados (e a si) por magias e criaturas, sem contar poções. */
+  manaGiven: number;
+  /** Tempo de controle aplicado nos monstros, em ms somados por monstro: raízes, atordoamento e lentidão. */
+  ccMs: { root: number; stun: number; slow: number };
   /** Poções guardadas e bebidas por tipo, e mana devolvida pelas poções de mana. */
   potions: { picked: Record<string, number>; drunk: Record<string, number>; manaRestored: number };
   /** Abates (último golpe) por tipo de monstro. */
@@ -50,7 +54,7 @@ export interface RunStats {
 export function newRunStats(): RunStats {
   return {
     levelAt: {}, depthAt: {}, spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0 },
-    damageDealt: {}, damageTaken: {}, specialDamage: {}, damageMitigated: 0, healing: 0, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
+    damageDealt: {}, damageTaken: {}, specialDamage: {}, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
     minHpPct: 1, abandoned: false, death: null,
   };

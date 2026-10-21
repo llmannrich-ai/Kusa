@@ -214,12 +214,18 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 - O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
 - Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece na tela a escolha da magia do slot; depois de escolhida, ela fica até o fim da hunt. Fechar a escolha deixa o botão do slot com ✨ para escolher depois.
 - Toda classe tem uma magia inicial por slot; as compradas no Grimório viram opções extras na escolha, já com o nível comprado (ver "Grimório").
-- Efeitos que as magias combinam: dano (em área ou num alvo), cura, raízes (não anda), atordoamento (não anda nem ataca),
-  guarda (corta parte do dano), **escudo** (absorve dano antes da vida, por alguns segundos), roubo de vida, provocação e invocação.
-- **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo e o alcance em volta dele; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
+- Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por
+  segundo, que renova em vez de acumular), cura, raízes (não anda), **lentidão** (anda mais devagar), atordoamento (não anda nem ataca),
+  guarda (corta parte do dano), armadura extra, **escudo** (absorve dano antes da vida, por alguns segundos), roubo de vida, provocação e invocação.
+  - **Linha** (Disparo Perfurante): acerta todos os monstros na reta do herói até o alcance inteiro ou a primeira parede.
+  - **Cadeia** (Raio em Cadeia): depois do alvo, salta para o monstro mais perto ainda não atingido (a até 3 tiles, com linha de visão), perdendo 15% do dano a cada salto.
+  - Bônus condicionais: a Execução causa o dobro em quem tem menos de 30% da vida; o Disparo Certeiro ganha +10% de dano por tile até o alvo.
+  - No monstro, a lentidão aparece como gelo nos pés e o veneno como bolhas verdes subindo.
+- **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador, Raio em Cadeia) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo e o alcance em volta dele; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
   - **Toque rápido** (sem arrastar): lança no alvo atual ou no monstro mais próximo ao alcance. Sem nenhum monstro ao alcance, não sai nem gasta mana.
   - A mira gruda (fica dourada) no monstro a até 1 tile do ponto; a magia vai nele e o acompanha durante o voo.
-- **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Disparo Perfurante, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança no alvo automático. O ponto para na primeira parede do caminho.
+- **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança no alvo automático. O ponto para na primeira parede do caminho.
+- **Magias em linha** (Disparo Perfurante) miram a direção: a mira acende os tiles da reta até o alcance inteiro; o toque rápido atira na direção do alvo automático.
 - **Errou a mira:** a magia sai, aparece na tela, gasta mana e recarga, e não acerta ninguém.
 - Magias em volta de si (Giro da Lâmina, Grito de Guerra, Tempestade do Vazio, Bênção da Floresta e as compradas do mesmo tipo) saem no toque, sem mira. Paredes bloqueiam o efeito de todas. Cada uma gasta mana e tem recarga.
 
@@ -234,10 +240,10 @@ As compradas no Grimório, por slot (números do nível 1):
 
 | Classe | Slot 1 | Slot 2 |
 | --- | --- | --- |
-| Cavaleiro | 🔨 Golpe Esmagador (2,8×) · 🛡️ **Escudo da Fé** (escudo de 40% da vida por 8 s) · 🩸 Lâmina Sedenta (2× e rouba 50%) | ⛓️ Pele de Ferro · 🌋 Terremoto (raio 2, atordoa) · 🏰 Muralha de Aço (provoca e escudo de 60%) · 🎺 Brado do Comandante (cura e escudo na equipe) · ⚔️ Execução (4,5× e atordoa) |
-| Paladino | 🎯 Disparo Perfurante · 💫 Flecha Atordoante · 🕊️ Bênção Protetora (escudo na equipe) | ☀️ Luz Curativa · 🏆 Disparo Certeiro (4×, alcance 8) · ⚖️ Julgamento Divino · 🎆 Saraivada Explosiva |
-| Feiticeiro | ⚡ Relâmpago · 🌩️ Raio em Cadeia · 🧊 Lança de Gelo · 🦇 Drenar Vida | ❄️ Nova de Gelo · ☄️ Meteoro · 🌨️ Nevasca · 🩻 Pacto Sombrio |
-| Druida | 🦂 Espinho Venenoso · 🐺 Lobo Espiritual · 🦋 Mariposa Curandeira · 🐝 Enxame de Vespas | 🌪️ Fúria da Natureza · 🌕 Chamado da Matilha · 🐻 Urso Ancestral · 🌳 Guardião do Bosque · 💚 Coração da Floresta |
+| Cavaleiro | 🔨 Golpe Esmagador (2,8×) · 🛡️ **Escudo da Fé** (escudo de 40% da vida por 8 s) · 🩸 Lâmina Sedenta (2× e rouba 50%) | ⛓️ Pele de Ferro (cura, corta 70% do dano e +5 de armadura) · 🌋 Terremoto (raio 2, atordoa) · 🏰 Muralha de Aço (provoca e escudo de 60%) · 🎺 Brado do Comandante (cura e escudo na equipe) · ⚔️ Execução (4,5× e atordoa; o dobro abaixo de 30% da vida) |
+| Paladino | 🎯 Disparo Perfurante (1,9× em linha, alcance 7) · 💫 Flecha Atordoante · 🕊️ Bênção Protetora (escudo na equipe) | ☀️ Luz Curativa (cura 20% e ofusca os monstros por 0,5 s) · 🏆 Disparo Certeiro (3,2× +10% por tile, alcance 8) · ⚖️ Julgamento Divino · 🎆 Saraivada Explosiva |
+| Feiticeiro | ⚡ Relâmpago · 🌩️ Raio em Cadeia (1,6× e salta 3 vezes) · 🧊 Lança de Gelo · 🦇 Drenar Vida | ❄️ Nova de Gelo · ☄️ Meteoro · 🌨️ Nevasca (raio 3, 1,4× e 50% mais lento por 4 s) · 🩻 Pacto Sombrio |
+| Druida | 🦂 Espinho Venenoso (1,4× e veneno de 0,3× por segundo por 4 s) · 🐺 Lobo Espiritual · 🦋 Mariposa Curandeira · 🐝 Enxame de Vespas | 🌪️ Fúria da Natureza · 🌕 Chamado da Matilha · 🐻 Urso Ancestral · 🌳 Guardião do Bosque · 💚 Coração da Floresta |
 
 - **Escudo da Fé:** enquanto dura, uma bolha de luz azul envolve o cavaleiro com o brasão (cruz branca no azul, borda
   dourada) flutuando à frente; uma faixa azul sob a barra de vida mostra quanto falta. A bolha enfraquece a cada
@@ -254,7 +260,7 @@ As compradas no Grimório, por slot (números do nível 1):
 | Mariposa Curandeira | 30% | cura 5% da vida de quem está a até 2 tiles, a cada 2 s |
 | Urso Ancestral | 130% | tanque: atrai os monstros que acerta (1,1×) |
 | Guardião do Bosque | 220% | tanque: atrai e prende com raízes a cada golpe (0,8×) |
-| Fogo-Fátuo | 50% | cura 8% da vida de quem está a até 4 tiles, a cada 2,5 s |
+| Fogo-Fátuo | 50% | cura 8% da vida e devolve 2% da mana de quem está a até 4 tiles, a cada 2,5 s |
 
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, bola de fogo do dragão).

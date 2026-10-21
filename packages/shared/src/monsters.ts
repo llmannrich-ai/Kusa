@@ -42,7 +42,8 @@ export interface MonsterSpecial {
   color: number;
 }
 
-export type DotKind = "poison" | "burn";
+export type DotKind = "poison" | "burn" | "bleed";
+export const DOT_KINDS: readonly DotKind[] = ["poison", "burn", "bleed"];
 
 export interface MonsterDef {
   kind: MonsterKind;

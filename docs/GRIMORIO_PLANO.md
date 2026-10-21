@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fase 0 feita (slot 2 no nível 6). Próxima: fase 1.
+**Andamento:** fase 0 feita (slot 2 no nível 6). Fase 1 feita com escopo reduzido (ver seção 7). Próxima: fase 2.
 
 ---
 
@@ -325,6 +325,14 @@ Cada fase é um PR que pode ir sozinho para produção (CI verde, `RULES_VERSION
 | **4a–4d. Conteúdo por classe** | 12 magias + 6 Traços por classe, um PR por classe | 3 | M cada | alto |
 | **5. Peças grandes** | campo, armadilha, mirar em aliado, transformação, parede, semente (peças 10–16) e as magias que dependem delas | 3 | G | médio-alto |
 | **6. Balanceamento** | ajustes pela telemetria (seção 8) | 4 | contínuo | — |
+
+**Fase 1, como foi entregue:** entraram só as peças que as magias repetidas precisavam para virar únicas: dano contínuo (1),
+lentidão (2), linha (3), salto em cadeia (5), mais bônus contra alvo ferido (Execução), bônus por distância (Disparo
+Certeiro), armadura temporária (Pele de Ferro) e mana na criatura (Fogo-Fátuo). As magias retrabalhadas: Disparo
+Perfurante, Raio em Cadeia, Nevasca, Espinho Venenoso, Execução, Disparo Certeiro, Pele de Ferro, Luz Curativa e
+Coração da Floresta. **Cone (4), investida (6), empurrar/puxar (7), bônus em aliados (8) e marca (9) ficaram para o PR
+da primeira classe que os usar**: sem nenhuma magia usando, seriam código sem teste de verdade e um desenho no escuro.
+A Nevasca ganhou lentidão em vez de campo no chão; o campo (peça 10) vem na fase 5.
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).
