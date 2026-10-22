@@ -277,6 +277,23 @@ limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
   o que passar disso fica para trás, e a tela de resultado avisa;
 - hunt solo deixada aberta (aba fechada) conta como morte na próxima.
 
+### Sala no aparelho do jogador
+
+Ao criar a sala, o jogador escolhe **onde a hunt roda**: **☁️ Nuvem** (o servidor do jogo, que pode levar 1 min para
+acordar) ou **📱 Meu aparelho**. No aparelho, quem cria vira o **anfitrião**: a mesma `Hunt` roda no celular dele
+(`apps/client/src/hosted.ts`) e os amigos se conectam direto a ele, por WebRTC (`apps/client/src/p2p.ts`). A lista
+de salas mostra as duas, com o ícone de cada uma; a lista e o pedido de conexão passam pelo Realtime do Supabase,
+então funcionam com o servidor do jogo dormindo.
+- **Recompensas:** o celular do anfitrião pode ser adulterado, então cada jogador grava o próprio resultado com os
+  limites da hunt solo (`start_solo_run`/`finish_solo_run`): ninguém grava pelos outros.
+- **Conexão:** só direta (servidores STUN públicos, sem TURN). Em algumas redes móveis ela não fecha; o jogo avisa
+  e a sala na nuvem continua sendo o caminho.
+- **O anfitrião saiu ou o celular dele apagou:** a cada segundo ele manda aos convidados um retrato da hunt
+  (estado e interno da `Hunt`). Se ele some, o próximo na ordem de entrada assume a partir do último retrato e os
+  outros se conectam a ele; a dungeon é remontada e aparece o aviso "<nome> agora hospeda a sala". O que aconteceu
+  no último segundo se perde. Quem hospedava conta como morte (abandono). Se ninguém conseguir assumir, a hunt
+  acaba para quem ficou.
+
 ## Mapas
 
 O jogador escolhe o mapa (cenário) na tela de criar sala (a escolha fica salva no aparelho). O mapa vale para as salas
