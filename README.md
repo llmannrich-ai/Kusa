@@ -61,6 +61,8 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx apps/server/scripts/spells.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, um feiticeiro conjura no toque rápido e com a mira.
 - `npx tsx apps/server/scripts/specials.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, confere as áreas das habilidades especiais (só mini-bosses e bosses) e um cavaleiro apanha do golpe especial de um mini-boss.
 - `npx tsx apps/server/scripts/maps.ts`: cada mapa gera mapas conectados e determinísticos e cria a sala certa (monstros, tempo).
+- `npx tsx apps/server/scripts/arte.ts`: sem servidor; todo item do catálogo aparece vestido em todas as classes e
+  direções, com um desenho único (o raro usa o do comum) e sem sair do quadro.
 - `npx tsx apps/server/scripts/grimorio.ts http://localhost:2602`: com um servidor iniciado (em `apps/server`) com
   `KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602`, confere as Maestrias de todas as magias e a reta das magias em linha;
   o Escudo da Fé absorve dano, o Giro da Lâmina gira de novo, os lobos do druida atacam, a flecha perfurante vai até o

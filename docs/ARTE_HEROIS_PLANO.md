@@ -216,12 +216,25 @@ tinturas da roupa de baixo da classe, capas e "transmog" (aparência de outro it
 - **Escopo**: "algo grande" vira projeto sem fim se as fases não tiverem critério de pronto. Cada fase fecha
   com antes/depois na galeria e atualização da seção "Arte dos itens e equipamento visível" do GDD.
 
-## 8. Decisões pendentes
+## 8. Decisões
 
-1. Origem da arte: A, B, C ou **D (recomendado)**.
-2. Resolução: **48×48 (recomendado)** ou manter 32×32 e só aplicar as Fases 1 e 3.
-3. Itens mágicos: desenho próprio para cada um (recomendado, 70 variações) ou só aura e sinal de propriedade
-   sobre o desenho do nível.
-4. Poses de ação (Fase 4) agora ou depois do resto.
+- Cada item tem a sua arte vestida, igual em qualquer classe (seção 3).
+- Origem da arte: **toda feita em código**, sem artista nem pack de terceiros (opção A da seção 5), com o motor
+  de luz e contorno que deixa a qualidade consistente em todas as peças.
+- Resolução: **48×48**.
+- Itens mágicos: **desenho próprio** para cada um (variação do desenho do nível com materiais e enfeites).
+- Paladino: arqueiro, mantendo o Tibia.
 
-Decidido: cada item tem a sua arte vestida, igual em qualquer classe (seção 3).
+## 9. Situação
+
+| Fase | Situação |
+|---|---|
+| 0 — Provador e teste | feita: provador em `apps/client/arte.html` e teste `apps/server/scripts/arte.ts` no `npm test` |
+| 1 — Motor de camadas | feita: `apps/client/src/art/hero/` (`raster.ts`, `materials.ts`, `rig.ts`, `compose.ts`) |
+| 2 — 70 itens comuns em 48×48 | feita: `gear.ts`, `headgear.ts`, `weapons.ts`, `shields.ts` |
+| 3 — Raridade e itens mágicos | feita: 70 mágicos (`magic.ts` e `weapons.ts`), brilho e partículas no jogo (`gearFx.ts`) |
+| 4 — Poses de ação | a fazer |
+| 5 — Base para cosméticos | a fazer |
+
+Medidas: um conjunto completo (9 quadros) é pintado em ~20 ms no Node; o teste desenha os 210 itens nas 4 classes
+(7.560 quadros) em ~20 s.
