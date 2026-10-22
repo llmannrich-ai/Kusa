@@ -8,12 +8,14 @@ import {
   RULES_VERSION,
   VERSION_MISMATCH_CODE,
   difficultyStars,
+  itemColor,
   mapIdOf,
   xpForLevel,
   type JoinOptions,
   type RunEndedMessage,
 } from "@kusa/shared";
 import { ArtLoader, artReady } from "./ArtLoader.ts";
+import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
 import { createMapId, mapLine, renderMapPicker, renderWaitingRoom } from "./lobby.ts";
@@ -397,9 +399,32 @@ function showResult(msg: RunEndedMessage) {
     $("result-detail").textContent += ` Bag para o cofre: ${msg.bag.map((id) => ITEMS[id]?.name ?? id).join(", ")}`
       + ` (com o cofre cheio, o resto fica na bag).`;
   }
-  if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${ITEMS[msg.lost]?.name ?? msg.lost}.`;
   if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
+  showLost(msg);
   show("result", true);
+}
+
+/** Na morte, destaca o que ficou no chão: o equipamento sorteado do corpo e a bag inteira. */
+function showLost(msg: RunEndedMessage) {
+  const lost = [
+    ...(msg.lost ? [{ id: msg.lost, from: "do corpo" }] : []),
+    ...(msg.lostBag ?? []).map((id) => ({ id, from: "da bag" })),
+  ];
+  const list = $("result-lost-list");
+  list.replaceChildren(...lost.map(({ id, from }) => {
+    const li = document.createElement("li");
+    const icon = document.createElement("img");
+    icon.src = itemIcon(id).toDataURL();
+    icon.alt = "";
+    const name = document.createElement("span");
+    name.textContent = ITEMS[id]?.name ?? id;
+    if (ITEMS[id]) name.style.color = `#${itemColor(id).toString(16).padStart(6, "0")}`;
+    const where = document.createElement("small");
+    where.textContent = from;
+    li.append(icon, name, where);
+    return li;
+  }));
+  show("result-lost", lost.length > 0);
 }
 
 /** No celular, tela cheia e trava na vertical (Android; o iOS ignora e mostra o aviso de girar). */

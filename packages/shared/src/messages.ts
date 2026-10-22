@@ -166,6 +166,8 @@ export interface RunEndedMessage {
   bag: string[];
   /** Equipamento sorteado que ficou no chão na morte. */
   lost?: string;
+  /** Itens da bag que ficaram no chão na morte. */
+  lostBag?: string[];
   /** Aviso extra na tela de resultado (hunt solo: limite de recompensa ou falha ao salvar). */
   note?: string;
 }
