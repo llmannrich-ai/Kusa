@@ -69,13 +69,14 @@ contra um servidor já aberto, passando a URL:
   `KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602`, confere as Maestrias de todas as magias e a reta das magias em linha;
   o Escudo da Fé absorve dano, o Giro da Lâmina gira de novo, os lobos do druida atacam, a flecha perfurante vai até o
   fim da reta e o Disparo Certeiro que mata devolve a recarga.
-- `npx tsx apps/server/scripts/efeitos.ts http://localhost:2603`: o mesmo servidor com `KUSA_MONSTER_HP=20` (monstros
-  com 20× a vida, para aguentarem o golpe) e `PORT=2603`: o veneno continua ferindo, a Nevasca deixa lento, o Raio em Cadeia salta,
-  e as 12 magias das especializações do Paladino funcionam na hunt (marca, bônus em si, salto, campo no chão, armadilha,
-  estaca, leque e escudo num aliado), as 12 do Feiticeiro (tempestade, fogo, gelo, teleporte, parede, esqueletos,
-  empurrão e tentáculos) e as 12 do Druida (águia, formas de pantera e urso, semente que faz renascer, escudos de cura,
-  chuva, venenos e relâmpago) e as 12 do Cavaleiro (giros, fúria, cortes, escudos, espinhos, fortaleza, investida,
-  estandarte, corrente e desafio).
+- `npx tsx scripts/efeitos.ts` (de dentro de `apps/server`; sem servidor): a `Hunt` roda direto, com relógio falso,
+  sorteios de seed fixa e o monstro posto onde o teste precisa (`scripts/arena.ts`), então o resultado é sempre o mesmo.
+  O veneno continua ferindo, a Nevasca deixa lento, o Raio em Cadeia salta, e as magias das especializações funcionam:
+  as do Paladino (marca, Aljava, Rolamento, postura, escudo, campo no chão, armadilha, estaca, leque e salto), as 12 do
+  Feiticeiro (tempestade, fogo, gelo, teleporte, parede, esqueletos, empurrão e tentáculos), as 12 do Druida (águia,
+  formas de pantera e urso, semente que faz renascer, escudos de cura, chuva, venenos e relâmpago) e as 12 do Cavaleiro
+  (giros, fúria, cortes, escudos, espinhos, fortaleza, investida, estandarte, corrente e desafio). `KUSA_SEED=<n>` troca
+  o mapa e os sorteios (para conferir que o teste não depende de um mapa só).
 
 ## Variáveis de ambiente
 

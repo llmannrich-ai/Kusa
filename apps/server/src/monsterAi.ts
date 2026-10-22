@@ -129,6 +129,8 @@ export interface MonsterWorld {
   dungeon: Dungeon;
   brains: Map<string, Brain>;
   now(): number;
+  /** Sorteios da hunt (`HuntOptions.random`). */
+  random(): number;
   after(ms: number, fn: () => void): void;
   broadcast(type: string, msg: unknown): void;
   notice(x: number, y: number, text: string, color: number, ms?: number): void;
@@ -217,7 +219,7 @@ export class MonsterAi {
     // Habilidades: a primeira de cada só sai um pouco depois de notar alguém (não junto com o aggro).
     if (def.abilities && !brain.engulfing) {
       for (const a of def.abilities) {
-        if (brain.abilityReadyAt[a.id] === undefined) brain.abilityReadyAt[a.id] = now + a.cooldownMs * SPECIAL_FIRST_DELAY * jitter();
+        if (brain.abilityReadyAt[a.id] === undefined) brain.abilityReadyAt[a.id] = now + a.cooldownMs * SPECIAL_FIRST_DELAY * jitter(this.w.random);
         if (now < brain.abilityReadyAt[a.id] || !this.usable(m, brain, a, dist, sees)) continue;
         if (this.useAbility(m, brain, a, targetId, target, now)) return;
       }
@@ -404,7 +406,7 @@ export class MonsterAi {
   }
 
   private cooldown(brain: Brain, a: MonsterAbility, now: number) {
-    brain.abilityReadyAt[a.id] = now + a.cooldownMs * jitter() * (brain.enraged ? ENRAGE_COOLDOWN : 1);
+    brain.abilityReadyAt[a.id] = now + a.cooldownMs * jitter(this.w.random) * (brain.enraged ? ENRAGE_COOLDOWN : 1);
   }
 
   private strike(m: Monster, a: MonsterAbility, tx: number, ty: number, tiles: { x: number; y: number }[], rising?: boolean) {
@@ -425,11 +427,11 @@ export class MonsterAi {
     const raw = brain.damage * a.power;
     const hit: Hit = { attacker: m.id, fromX: m.x, fromY: m.y, fx: brain.def.attackFx, special: true, ability: a.id };
     if (a.power > 0) {
-      for (const s of [...this.w.state.summons.values()]) if (inArea(s.x, s.y)) this.w.damageSummon(s, rollDamage(raw), hit);
+      for (const s of [...this.w.state.summons.values()]) if (inArea(s.x, s.y)) this.w.damageSummon(s, rollDamage(this.w.random, raw), hit);
     }
     this.w.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing" || !inArea(p.x, p.y)) return;
-      if (a.power > 0) this.w.damagePlayer(sessionId, rollDamage(raw), hit);
+      if (a.power > 0) this.w.damagePlayer(sessionId, rollDamage(this.w.random, raw), hit);
       if (p.status !== "playing") return;
       if (a.dot) this.w.dotHero(sessionId, a.dot.kind, Math.max(1, Math.round(brain.damage * a.dot.power)), a.dot.durationMs, m);
       if (a.slow) this.w.slowHero(sessionId, a.slow.factor, a.slow.durationMs);
@@ -561,13 +563,13 @@ export class MonsterAi {
   private bite(m: Monster, brain: Brain, id: string, raw: number, hit: Hit) {
     if (!this.w.state.monsters.has(m.id)) return;
     const summon = this.w.state.summons.get(id);
-    const amount = rollDamage(raw);
+    const amount = rollDamage(this.w.random, raw);
     if (summon) return this.w.damageSummon(summon, amount, { ...hit, fromX: m.x, fromY: m.y });
     const p = this.w.state.players.get(id);
     if (!p || p.status !== "playing") return;
     this.w.damagePlayer(id, amount, { ...hit, fromX: m.x, fromY: m.y });
     const onHit = brain.traits.onHit;
-    if (!onHit || p.status !== "playing" || Math.random() >= (onHit.chance ?? 1)) return;
+    if (!onHit || p.status !== "playing" || this.w.random() >= (onHit.chance ?? 1)) return;
     if (onHit.dot) this.w.dotHero(id, onHit.dot.kind, Math.max(1, Math.round(brain.damage * onHit.dot.power)), onHit.dot.durationMs, m);
     if (onHit.effect) this.w.affectHero(id, onHit.effect, m, brain.damage);
     if (onHit.corrode) this.w.affectHero(id, { kind: "corrode", ms: onHit.corrode }, m, brain.damage);
@@ -621,9 +623,9 @@ export class MonsterAi {
     }
     const blink = traits.blink;
     if (blink && brain.targetId && !brain.diving && brain.hiddenUntil === 0) {
-      if (brain.nextBlinkAt === 0) brain.nextBlinkAt = now + blink.everyMs * jitter();
+      if (brain.nextBlinkAt === 0) brain.nextBlinkAt = now + blink.everyMs * jitter(this.w.random);
       else if (now >= brain.nextBlinkAt) {
-        brain.nextBlinkAt = now + blink.everyMs * jitter();
+        brain.nextBlinkAt = now + blink.everyMs * jitter(this.w.random);
         this.hide(m, brain, now + blink.ms);
       }
     }
@@ -786,11 +788,11 @@ export class MonsterAi {
 const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]] as const;
 
 /** Recarga 5–6: entre 70% e 130% da recarga da tabela. */
-function jitter() {
-  return 1 - COOLDOWN_JITTER + Math.random() * 2 * COOLDOWN_JITTER;
+function jitter(random: () => number) {
+  return 1 - COOLDOWN_JITTER + random() * 2 * COOLDOWN_JITTER;
 }
 
 /** Dano com variação de ±15%. */
-export function rollDamage(base: number) {
-  return Math.max(1, Math.round(base * (0.85 + Math.random() * 0.3)));
+export function rollDamage(random: () => number, base: number) {
+  return Math.max(1, Math.round(base * (0.85 + random() * 0.3)));
 }

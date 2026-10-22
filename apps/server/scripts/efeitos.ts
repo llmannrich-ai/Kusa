@@ -1,15 +1,15 @@
 /**
- * Teste de fumaça dos efeitos que só aparecem em quem sobrevive ao golpe, contra um servidor com
- * KUSA_START_LEVEL=8, KUSA_ALL_SPELLS=1 e KUSA_MONSTER_HP=20 (no nível 8 os monstros comuns morrem de um golpe;
- * com 20× a vida, os da entrada aguentam e o herói não precisa sair andando pela dungeon):
+ * Teste dos efeitos das magias, sem servidor: a simulação (`Hunt`) roda sozinha, com relógio falso, sorteios de seed
+ * fixa e o monstro posto onde o teste precisa (`arena.ts`). Herói no nível 8 com o Grimório inteiro e monstros com
+ * 20× a vida (aguentam a magia e o efeito aparece neles):
  *   - o Espinho Venenoso continua ferindo sozinho (dano contínuo, um pulso por segundo);
  *   - a Nevasca deixa os monstros lentos;
  *   - o Raio em Cadeia salta do alvo para outro monstro;
- *   - ramo Mira do Paladino (especializações): a Marca do Caçador marca o alvo e ele leva mais dano, o Rolamento
- *     afasta o herói do monstro, a Aljava Veloz e a Postura do Atirador ficam ativas no herói;
- *   - ramos Luz e Batedor do Paladino: Lança Etérea e Caldeira Divina ferem, o Escudo da Luz (toque rápido, sozinho)
- *     protege o próprio herói, o Solo Consagrado vira um campo que fere, a Flecha Relâmpago salta, a Barragem acerta
- *     em leque, a Armadilha de Urso prende o monstro que pisa nela e a estaca do Cordão de Flechas atira sozinha;
+ *   - ramo Mira do Paladino (especializações): a Marca do Caçador marca o alvo, o Rolamento afasta o herói do monstro
+ *     (sem cair no portal), a Aljava Veloz deixa as flechas mais rápidas e a Postura do Atirador fica ativa no herói;
+ *   - ramos Luz e Batedor do Paladino: o Escudo da Luz (toque rápido, sozinho) protege o próprio herói, o Solo
+ *     Consagrado vira um campo que fere, a Flecha Relâmpago salta, a Barragem acerta, a Armadilha de Urso prende o
+ *     monstro que pisa nela e a estaca do Cordão de Flechas atira sozinha;
  *   - especializações do Feiticeiro: Feixe de Energia e Fúria dos Céus ferem, a Bola de Fogo queima, o Núcleo
  *     Infernal fere, o Cone de Frio deixa lento, a Prisão de Gelo prende, o Passo Nebuloso teleporta, a Muralha
  *     Mágica sobe, a Morte Súbita fere, os esqueletos erguidos aparecem, a Rajada Mística empurra e os Tentáculos prendem;
@@ -22,585 +22,369 @@
  *     Fortaleza Viva prende o herói no lugar, a Investida leva o herói até o alvo, o Estandarte sobe, a Corrente de Ferro
  *     puxa o monstro e o Desafio Supremo protege;
  *   - a cratera em chamas do Meteoro (Maestria).
- * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
- *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 KUSA_MONSTER_HP=20 PORT=2603 npx tsx apps/server/src/index.ts
- *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
+ * Cada caso roda numa arena nova; no fim, a lista do que falhou (com a seed e a posição para reproduzir).
+ * Uso: npx tsx apps/server/scripts/efeitos.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { Client } from "@colyseus/sdk";
-import { MONSTERS, MSG, Tile, generateDungeon, immuneToDot, isWalkable, tileAt, tileDistance, type DotKind, type MonsterKind } from "@kusa/shared";
-import { approach, enter, inSight, until, wait, whereAmI } from "./hunt.ts";
+import { Tile, tileAt, tileDistance, type ClassId, type MonsterKind } from "@kusa/shared";
+import { HERO, arena, check, type ArenaOptions } from "./arena.ts";
 
-const url = process.argv[2] ?? "http://localhost:2567";
-const client = new Client(url);
+/** Alvo padrão: humanoide parrudo, sem fuga nem salto, pega veneno e sangramento. */
+const TARGET: MonsterKind = "lizardfolk";
 
-await venom();
-await slowAndChain();
-await paladinMira();
-await paladinLight();
-await paladinScout();
-await sorcererSpecs();
-await druidSpecs();
-await knightSpecs();
+const failures: string[] = [];
+let passed = 0;
+
+function test(name: string, classId: ClassId, fn: (a: ReturnType<typeof arena>) => void, options: ArenaOptions = {}) {
+  const a = arena({ classId, monsterHp: 20, ...options });
+  try {
+    fn(a);
+    passed++;
+    console.log(`  ✔ ${name}`);
+  } catch (err) {
+    failures.push(`${name}: ${(err as Error).message}`);
+    console.log(`  ✘ ${name}: ${(err as Error).message}`);
+  }
+}
+
+const fieldOf = (a: ReturnType<typeof arena>, ok: (f: any) => boolean) => [...a.state.fields.values()].some(ok);
+const anyMonster = (a: ReturnType<typeof arena>, ok: (m: any) => boolean) => [...a.state.monsters.values()].some(ok);
+const mine = (a: ReturnType<typeof arena>, kind: string) => [...a.state.summons.values()].filter((s) => s.owner === HERO && s.kind === kind);
+const castsOf = (a: ReturnType<typeof arena>, spellId: string) => a.spells.filter((s) => s.spellId === spellId);
+
+// --- Druida, Feiticeiro: dano contínuo, lentidão e cadeia -------------------------------
+console.log("básicos:");
+test("Espinho Venenoso envenena e fere sozinho", "druid", (a) => {
+  a.choose("venom_thorn");
+  const m = a.spawn(TARGET, 3);
+  check(m.maxHp >= 300, `a vida dos monstros devia estar 20× maior (${m.maxHp})`);
+  a.cast(0, m);
+  a.until(() => m.dot === "poison", 3000, "o espinho não envenenou o alvo");
+  const before = m.hp;
+  a.advance(2300);
+  check(m.hp < before, `o veneno não tirou vida do alvo (${before} → ${m.hp})`);
+});
+test("Nevasca deixa lento", "sorcerer", (a) => {
+  a.choose("chain_lightning", "blizzard");
+  const m = a.spawn(TARGET, 3);
+  a.cast(1, { x: m.x, y: m.y });
+  a.until(() => anyMonster(a, (x) => x.slowed), 3000, "a Nevasca não deixou ninguém lento");
+});
+test("Raio em Cadeia salta", "sorcerer", (a) => {
+  a.choose("chain_lightning");
+  const m = a.place(TARGET, 3, 0);
+  a.place(TARGET, 0, 1, m);
+  a.cast(0, m);
+  a.until(() => a.chains.length > 0, 3000, "o Raio em Cadeia não saltou");
+  const hops = Math.max(...a.chains.map((c) => c.points.length));
+  check(hops >= 2, `a cadeia devia ter ao menos 2 pontos (${hops})`);
+});
+
+// --- Paladino ---------------------------------------------------------------------------
+console.log("paladino:");
+test("Marca do Caçador marca o alvo", "paladin", (a) => {
+  a.choose("hunter_mark", "swift_quiver");
+  const m = a.spawn(TARGET, 4);
+  a.cast(0, m);
+  a.until(() => m.marked, 3000, "a Marca do Caçador não marcou o alvo");
+});
+test("Aljava Veloz deixa as flechas mais rápidas", "paladin", (a) => {
+  a.choose("hunter_mark", "swift_quiver");
+  const m = a.spawn(TARGET, 3);
+  a.p.hp = a.p.maxHp = 1_000_000;
+  // Sem a aljava, conta as flechas em 4 s; com ela, de novo: devem sair bem mais.
+  const shots = () => {
+    const from = a.damage.length;
+    a.hunt.target(HERO, { id: m.id });
+    a.hunt.attacking(HERO, { on: true });
+    a.advance(4000);
+    a.hunt.attacking(HERO, { on: false });
+    return a.hitsFrom(from);
+  };
+  const slow = shots();
+  a.cast(1);
+  a.until(() => a.p.buff === "swift_quiver", 2000, "a Aljava Veloz não ficou ativa");
+  const fast = shots();
+  console.log(`    flechas em 4 s: ${slow} sem a aljava, ${fast} com ela`);
+  check(slow >= 2, `o paladino quase não atirou (${slow} flechas em 4 s)`);
+  check(fast >= slow * 1.5, `as flechas não ficaram mais rápidas (${slow} → ${fast} em 4 s)`);
+});
+test("Rolamento afasta do monstro e Postura do Atirador fica ativa", "paladin", (a) => {
+  a.choose("evasive_roll", "sniper_stance");
+  const m = a.place(TARGET, 1, 0);
+  const from = { x: a.p.x, y: a.p.y };
+  const start = { x: m.x, y: m.y };
+  a.hunt.target(HERO, { id: m.id });
+  a.cast(0);
+  a.until(() => a.p.x !== from.x || a.p.y !== from.y, 2000, `o Rolamento não moveu o herói (avisos: ${a.notices.join(", ")})`);
+  check(tileAt(a.d, a.p.x, a.p.y) !== Tile.Portal, "o Rolamento caiu no portal");
+  // Para o lado oposto ao do monstro (com espaço livre, não de lado) e longe dele.
+  const away = (a.p.x - from.x) * (from.x - start.x) + (a.p.y - from.y) * (from.y - start.y);
+  const gap = tileDistance(a.p.x, a.p.y, m.x, m.y);
+  check(away > 0, `o Rolamento devia ir para o lado oposto ao monstro (${from.x},${from.y} → ${a.p.x},${a.p.y}, monstro em ${start.x},${start.y})`);
+  check(gap >= 3, `o Rolamento devia afastar o herói do monstro (distância ${gap})`);
+  a.cast(1);
+  a.until(() => a.p.buff === "sniper_stance", 2000, "a Postura do Atirador não ficou ativa");
+});
+test("Escudo da Luz protege o próprio herói", "paladin", (a) => {
+  a.choose("light_shield", "consecrated_ground");
+  a.cast(0);
+  a.until(() => a.p.barrier > 0, 2000, "o Escudo da Luz não protegeu o herói");
+  check(castsOf(a, "light_shield").length > 0, "o Escudo da Luz não saiu");
+});
+test("Solo Consagrado vira campo e fere", "paladin", (a) => {
+  a.choose("light_shield", "consecrated_ground");
+  const m = a.spawn(TARGET, 3);
+  const from = a.damage.length;
+  a.cast(1, { x: m.x, y: m.y });
+  a.until(() => fieldOf(a, (f) => f.spellId === "consecrated_ground" && f.kind === "zone"), 2000, "o Solo Consagrado não criou o campo");
+  a.until(() => a.hitsFrom(from) > 0, 4000, "o Solo Consagrado não feriu ninguém");
+});
+test("Armadilha de Urso prende quem pisa", "paladin", (a) => {
+  a.choose("bear_trap", "arrow_cordon");
+  // A armadilha fica no caminho: o monstro vem até o herói e pisa nela.
+  const m = a.place(TARGET, 3, 0);
+  a.cast(0, { x: a.p.x + 1, y: a.p.y });
+  a.until(() => m.rooted, 6000, "a armadilha não prendeu o monstro");
+});
+test("estaca do Cordão de Flechas atira sozinha", "paladin", (a) => {
+  a.choose("bear_trap", "arrow_cordon");
+  a.place(TARGET, 2, 0);
+  a.cast(1, { x: a.p.x, y: a.p.y });
+  a.until(() => fieldOf(a, (f) => f.kind === "turret"), 2000, "a estaca não apareceu");
+  a.until(() => castsOf(a, "arrow_cordon").some((s) => s.echo && (s.x !== s.tx || s.y !== s.ty)), 5000, "a estaca não atirou");
+});
+test("Barragem acerta", "paladin", (a) => {
+  a.choose("lightning_arrow", "barrage");
+  const m = a.place(TARGET, 3, 0);
+  const from = a.damage.length;
+  a.cast(1, { x: m.x, y: m.y });
+  a.until(() => a.hitsFrom(from) > 0, 2000, "a Barragem não acertou ninguém");
+});
+test("Flecha Relâmpago salta", "paladin", (a) => {
+  a.choose("lightning_arrow", "barrage");
+  const m = a.place(TARGET, 3, 0);
+  a.place(TARGET, 0, 1, m);
+  a.cast(0, m);
+  a.until(() => a.chains.length > 0, 3000, "a Flecha Relâmpago não saltou");
+});
+
+// --- Feiticeiro -------------------------------------------------------------------------
+console.log("feiticeiro:");
+test("Feixe de Energia fere e Fúria dos Céus solta raios", "sorcerer", (a) => {
+  a.choose("energy_beam", "sky_fury");
+  const m = a.place(TARGET, 3, 0);
+  let from = a.damage.length;
+  a.cast(0, { x: m.x, y: m.y });
+  a.until(() => a.hitsFrom(from) > 0, 2000, "o Feixe de Energia não feriu ninguém");
+  from = a.damage.length;
+  a.ready();
+  a.cast(1);
+  a.until(() => fieldOf(a, (f) => f.style === "storm"), 2000, "a Fúria dos Céus não criou a nuvem");
+  a.until(() => a.hitsFrom(from) > 0, 4000, "a nuvem não soltou raios");
+});
+test("Bola de Fogo queima e Núcleo Infernal fere em volta", "sorcerer", (a) => {
+  a.choose("fireball", "infernal_core");
+  const m = a.place(TARGET, 3, 0);
+  a.cast(0, { x: m.x, y: m.y });
+  a.until(() => m.dot === "burn", 3000, "a Bola de Fogo não queimou");
+  a.place(TARGET, -1, 0);
+  const from = a.damage.length;
+  a.ready();
+  a.cast(1);
+  a.until(() => a.hitsFrom(from) > 0, 2000, "o Núcleo Infernal não feriu ninguém");
+});
+test("Prisão de Gelo prende e Cone de Frio deixa lento", "sorcerer", (a) => {
+  a.choose("cone_of_cold", "ice_prison");
+  const m = a.place(TARGET, 3, 0);
+  a.cast(1, m);
+  a.until(() => m.rooted, 2000, "a Prisão de Gelo não prendeu o alvo");
+  a.ready();
+  a.cast(0, { x: m.x, y: m.y });
+  a.until(() => m.slowed, 2000, "o Cone de Frio não deixou o alvo lento");
+});
+test("Passo Nebuloso teleporta e Muralha Mágica sobe", "sorcerer", (a) => {
+  a.choose("misty_step", "magic_wall");
+  // No toque rápido, o passo leva para longe do monstro mais perto.
+  a.place(TARGET, 1, 0);
+  const start = { x: a.p.x, y: a.p.y };
+  a.cast(0);
+  a.until(() => a.p.x !== start.x || a.p.y !== start.y, 2000, `o Passo Nebuloso não levou o herói (avisos: ${a.notices.join(", ")})`);
+  a.ready();
+  a.cast(1, { x: a.p.x + 3, y: a.p.y });
+  a.until(() => fieldOf(a, (f) => f.kind === "wall"), 2000, "a Muralha Mágica não subiu");
+});
+test("Morte Súbita fere e os esqueletos aparecem", "sorcerer", (a) => {
+  a.choose("sudden_death", "raise_skeletons");
+  const m = a.place(TARGET, 3, 0);
+  const from = a.damage.length;
+  a.cast(0, m);
+  a.until(() => a.hitsFrom(from) > 0, 2000, "a Morte Súbita não feriu o alvo");
+  a.ready();
+  a.cast(1);
+  a.until(() => mine(a, "skeleton").length === 3, 2000, `os esqueletos não apareceram (${mine(a, "skeleton").length})`);
+});
+test("Rajada Mística empurra e Tentáculos prendem", "sorcerer", (a) => {
+  a.choose("eldritch_blast", "black_tentacles");
+  const m = a.place(TARGET, 2, 0);
+  const before = { x: m.x, y: m.y };
+  a.cast(0, m);
+  a.until(() => m.x !== before.x || m.y !== before.y, 3000, "a Rajada Mística não empurrou o alvo");
+  a.ready();
+  a.cast(1, { x: m.x, y: m.y });
+  a.until(() => anyMonster(a, (x) => x.rooted), 3000, "os Tentáculos Negros não prenderam ninguém");
+});
+test("Meteoro deixa a cratera em chamas", "sorcerer", (a) => {
+  a.choose("shadow_orb", "meteor");
+  const m = a.place(TARGET, 3, 0);
+  a.cast(1, { x: m.x, y: m.y });
+  a.until(() => fieldOf(a, (f) => f.spellId === "meteor" && f.style === "fire"), 4000, "o Meteoro não deixou a cratera em chamas");
+});
+
+// --- Druida -----------------------------------------------------------------------------
+console.log("druida:");
+test("Águia Gigante atordoa e Grito da Fera chama o lobo", "druid", (a) => {
+  a.choose("beast_cry", "giant_eagle");
+  a.place(TARGET, 3, 0);
+  a.cast(1);
+  a.until(() => mine(a, "eagle").length === 2, 2000, "as águias não apareceram");
+  a.until(() => anyMonster(a, (m) => m.stunned), 8000, "a águia não atordoou ninguém");
+  a.ready();
+  a.cast(0);
+  a.until(() => mine(a, "wolf").length === 1, 2000, "o Grito da Fera não chamou o lobo");
+});
+test("Pantera salta e Urso soma vida e dá patada", "druid", (a) => {
+  a.choose("panther_form", "bear_form");
+  const m = a.place(TARGET, 3, 0);
+  a.cast(0);
+  a.until(() => a.p.form === "panther", 2000, "a Forma de Pantera não transformou o druida");
+  a.hunt.target(HERO, { id: m.id });
+  a.hunt.attacking(HERO, { on: true });
+  a.until(() => castsOf(a, "panther_form").some((s) => s.echo), 4000, "a pantera não saltou no alvo");
+  a.hunt.attacking(HERO, { on: false });
+  const hp = a.p.maxHp;
+  a.ready();
+  a.cast(1);
+  a.until(() => a.p.form === "bear", 2000, "a Forma de Urso não transformou o druida");
+  check(a.p.maxHp > hp * 1.4, `o urso não somou vida: ${hp} → ${a.p.maxHp}`);
+  a.until(() => tileDistance(a.p.x, a.p.y, m.x, m.y) <= 1, 3000, "o monstro não chegou perto do urso");
+  a.hunt.target(HERO, { id: m.id });
+  a.hunt.attacking(HERO, { on: true });
+  a.until(() => castsOf(a, "bear_form").some((s) => s.echo), 6000, "o urso não deu patada");
+});
+test("semente do Renascer salva o druida da morte", "druid", (a) => {
+  a.choose("distant_heal", "rebirth_seed");
+  a.cast(1);
+  a.until(() => a.p.seeded, 2000, "a semente não foi plantada");
+  // Quase morto e cercado: o próximo golpe mata, e a semente faz o druida renascer.
+  a.p.hp = 1;
+  a.place("orc", 1, 0);
+  a.place("orc", -1, 0);
+  a.until(() => a.notices.includes("Renasceu!"), 6000, `o druida não renasceu (vida ${a.p.hp}/${a.p.maxHp})`);
+  check(a.p.status === "playing" && !a.p.seeded, `renasceu errado: ${a.p.status}, semente ${a.p.seeded}`);
+});
+test("Cura Distante em quem está cheio vira escudo (Florescer)", "druid", (a) => {
+  a.choose("distant_heal", "rebirth_seed");
+  check(a.p.hp === a.p.maxHp, "o druida devia começar com a vida cheia");
+  a.cast(0);
+  a.until(() => a.p.barrier > 0, 3000, "a Cura Distante não virou escudo com o Florescer");
+});
+test("Pele de Casca protege e Chuva Revigorante cai", "druid", (a) => {
+  a.choose("barkskin", "reviving_rain");
+  a.cast(0);
+  a.until(() => a.p.barrier > 0, 2000, "a Pele de Casca não deu escudo");
+  a.ready();
+  a.cast(1, { x: a.p.x, y: a.p.y });
+  a.until(() => fieldOf(a, (f) => f.spellId === "reviving_rain"), 2000, "a Chuva Revigorante não caiu");
+});
+test("Picada da Mamba envenena e Nuvem Venenosa aparece", "druid", (a) => {
+  a.choose("mamba_bite", "poison_cloud");
+  const m = a.place(TARGET, 3, 0);
+  a.cast(0, m);
+  a.until(() => m.dot === "poison", 3000, "a Picada da Mamba não envenenou o alvo");
+  a.ready();
+  a.cast(1, { x: m.x, y: m.y });
+  a.until(() => fieldOf(a, (f) => f.spellId === "poison_cloud"), 2000, "a Nuvem Venenosa não apareceu");
+});
+test("Onda Trovejante fere e Chamar Relâmpago solta raios", "druid", (a) => {
+  a.choose("thunderwave", "call_lightning");
+  a.place(TARGET, 1, 0);
+  let from = a.damage.length;
+  a.cast(0);
+  a.until(() => a.hitsFrom(from) > 0, 2000, "a Onda Trovejante não feriu ninguém");
+  const far = a.place(TARGET, -3, 0);
+  from = a.damage.length;
+  a.ready();
+  a.cast(1, { x: far.x, y: far.y });
+  a.until(() => fieldOf(a, (f) => f.spellId === "call_lightning"), 2000, "a nuvem do relâmpago não apareceu");
+  a.until(() => a.hitsFrom(from) > 0, 4000, "a nuvem não soltou raios");
+});
+
+// --- Cavaleiro --------------------------------------------------------------------------
+console.log("cavaleiro:");
+test("Redemoinho gira 3 vezes e Fúria Berserker fica ativa", "knight", (a) => {
+  a.choose("steel_whirlwind", "berserk_rage");
+  a.place(TARGET, 1, 0);
+  a.cast(0);
+  a.until(() => castsOf(a, "steel_whirlwind").length >= 3, 3000, "o Redemoinho de Aço não girou 3 vezes");
+  a.ready();
+  a.cast(1);
+  a.until(() => a.p.buff === "berserk_rage", 2000, "a Fúria Berserker não ficou ativa");
+});
+test("Lâmina Arremessada sangra e Mil Cortes repetem", "knight", (a) => {
+  a.choose("thrown_blade", "thousand_cuts");
+  const m = a.place(TARGET, 3, 0);
+  a.cast(0, m);
+  a.until(() => m.dot === "bleed", 3000, "a Lâmina Arremessada não fez sangrar");
+  const near = a.place(TARGET, -1, 0);
+  a.ready();
+  a.cast(1, near);
+  a.until(() => castsOf(a, "thousand_cuts").length >= 5, 3000, "os Mil Cortes não repetiram");
+});
+test("Bater com Escudo atordoa e Égide dá escudo", "knight", (a) => {
+  a.choose("shield_bash", "shared_aegis");
+  const m = a.place(TARGET, 1, 0);
+  a.cast(0, m);
+  a.until(() => m.stunned, 2000, "o Bater com Escudo não atordoou");
+  a.ready();
+  a.cast(1);
+  a.until(() => a.p.barrier > 0, 2000, "a Égide Compartilhada não deu escudo");
+});
+test("Espinhos de Ferro devolvem o golpe e Fortaleza Viva prende o herói", "knight", (a) => {
+  a.choose("iron_thorns", "living_fortress");
+  a.place(TARGET, 1, 0);
+  const from = a.damage.length;
+  a.cast(0);
+  a.until(() => a.hitsFrom(from) > 0, 8000, "os Espinhos de Ferro não devolveram nenhum golpe");
+  a.ready();
+  a.cast(1);
+  a.until(() => a.p.buff === "living_fortress" && a.p.guarded, 2000, "a Fortaleza Viva não ficou ativa");
+  const at = { x: a.p.x, y: a.p.y };
+  for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0]] as const) { a.hunt.move(HERO, { dx, dy }); a.advance(300); }
+  check(a.p.x === at.x && a.p.y === at.y, "o herói andou durante a Fortaleza Viva");
+});
+test("Estandarte sobe e Investida leva o herói até o alvo", "knight", (a) => {
+  a.choose("charge", "war_banner");
+  a.cast(1);
+  a.until(() => fieldOf(a, (f) => f.spellId === "war_banner"), 2000, "o Estandarte de Guerra não subiu");
+  const m = a.place(TARGET, 3, 0);
+  a.ready();
+  a.cast(0, m);
+  a.until(() => tileDistance(a.p.x, a.p.y, m.x, m.y) <= 1, 2000, `a Investida não levou o herói até o alvo (avisos: ${a.notices.slice(-3).join(", ")})`);
+});
+test("Desafio Supremo protege e Corrente de Ferro puxa", "knight", (a) => {
+  a.choose("iron_chain", "supreme_challenge");
+  a.cast(1);
+  a.until(() => a.p.guarded, 2000, "o Desafio Supremo não protegeu o herói");
+  const m = a.place(TARGET, 3, 0);
+  a.ready();
+  a.cast(0, m);
+  a.until(() => tileDistance(a.p.x, a.p.y, m.x, m.y) <= 1 && m.rooted, 3000, "a Corrente de Ferro não puxou o monstro");
+});
+
+console.log(`\n${passed} casos OK, ${failures.length} falharam`);
+if (failures.length > 0) {
+  for (const f of failures) console.error(`  - ${f}`);
+  process.exit(1);
+}
 console.log("EFEITOS OK");
 process.exit(0);
-
-async function venom() {
-  const { room, me } = await enter(client, "druid", "venom");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "venom_thorn" });
-  const seen = await dotTarget(room, me, "poison");
-  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
-  const [id, target] = seen;
-  if (target.maxHp < 300) throw new Error(`o servidor precisa de KUSA_MONSTER_HP=20 (vida ${target.maxHp})`);
-  room.send(MSG.cast, { slot: 0, aim: { x: target.x, y: target.y, targetId: id } });
-  await until(() => room.state.monsters.get(id)?.dot === "poison", 3000, "o espinho não envenenou o alvo");
-  // Veneno: o alvo continua perdendo vida sem o druida fazer nada (um pulso por segundo).
-  const hpBefore = room.state.monsters.get(id).hp;
-  await wait(2300);
-  const hpAfter = room.state.monsters.get(id)?.hp ?? 0;
-  console.log(`druida: veneno no alvo, vida ${hpBefore} → ${hpAfter} em 2,3 s`);
-  if (hpAfter >= hpBefore) throw new Error("o veneno não tirou vida do alvo");
-  await room.leave();
-}
-
-async function slowAndChain() {
-  const { room, me, chains } = await enter(client, "sorcerer", "slowAndChain");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "chain_lightning" });
-  room.send(MSG.chooseSpell, { slot: 1, spellId: "blizzard" });
-  await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
-  const seen = inSight(room, me(), 5)[0];
-  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
-  const [, target] = seen;
-  room.send(MSG.cast, { slot: 1, aim: { x: target.x, y: target.y } });
-  await until(() => [...room.state.monsters.values()].some((m: any) => m.slowed), 3000, "a Nevasca não deixou ninguém lento");
-
-  // Cadeia: precisa de dois monstros a até 3 tiles um do outro; anda pela entrada até achar.
-  const deadline = Date.now() + 90_000;
-  let tries = 0;
-  const pair = () => {
-    const seen = inSight(room, me(), 6).filter(([, m]) => MONSTERS[m.kind as MonsterKind].rank === "common");
-    return seen.find(([a, m]) => seen.some(([b, o]) => a !== b && tileDistance(m.x, m.y, o.x, o.y) <= 3));
-  };
-  while (chains.length === 0) {
-    if (Date.now() > deadline) throw new Error("o Raio em Cadeia não saltou");
-    const found = pair();
-    if (found) room.send(MSG.cast, { slot: 0, aim: { x: found[1].x, y: found[1].y, targetId: found[0] } });
-    else await gather(room, me, () => pair() !== undefined, ++tries);
-    await wait(400);
-  }
-  const hops = Math.max(...chains.map((c) => c.points.length));
-  console.log(`feiticeiro: monstros lentos, raio em até ${hops} monstros`);
-  if (hops < 2) throw new Error("a cadeia devia ter ao menos 2 pontos");
-  await room.leave();
-}
-
-async function paladinMira() {
-  const { room, me, damage } = await enter(client, "paladin", "paladinMira");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "hunter_mark" });
-  room.send(MSG.chooseSpell, { slot: 1, spellId: "swift_quiver" });
-  await approach(room, me, 2, () => inSight(room, me(), 6).length > 0);
-  const seen = inSight(room, me(), 6)[0];
-  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
-  const [id, target] = seen;
-
-  // Marca: o alvo fica marcado e o mesmo golpe passa a tirar mais vida.
-  room.send(MSG.cast, { slot: 0, aim: { x: target.x, y: target.y, targetId: id } });
-  await until(() => room.state.monsters.get(id)?.marked === true, 3000, "a Marca do Caçador não marcou o alvo");
-
-  // Aljava Veloz: o bônus aparece no herói (a aura) e as flechas saem mais rápido.
-  room.send(MSG.cast, { slot: 1 });
-  await until(() => me().buff === "swift_quiver", 2000, "a Aljava Veloz não ficou ativa");
-  // Atira por 6 s (a aljava dura 8,25 s no nível 5), trocando para outro monstro à vista se o alvo sair do alcance.
-  // Sem a aljava, sai 1 flecha por segundo; com ela, uma a cada 0,4 s. Conta o intervalo entre flechas seguidas, não
-  // o total: com o Bestiário os monstros fogem e se escondem, e o herói passa parte dos 6 s sem alvo ao alcance.
-  const hitsBefore = damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer && !d.dot).length;
-  const arrows: number[] = [];
-  room.onMessage(MSG.damage, (d: { attacker: string; toPlayer: boolean; dot?: unknown }) => {
-    if (d.attacker === room.sessionId && !d.toPlayer && !d.dot) arrows.push(Date.now());
-  });
-  room.send(MSG.target, { id });
-  room.send(MSG.attacking, { on: true });
-  for (let t = 0; t < 20; t++) {
-    const p = me();
-    const current = room.state.monsters.get(p.target);
-    if (!current || tileDistance(p.x, p.y, current.x, current.y) > 5) {
-      const other = inSight(room, p, 5)[0];
-      if (other) room.send(MSG.target, { id: other[0] });
-    }
-    await wait(300);
-  }
-  room.send(MSG.attacking, { on: false });
-  const hits = damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer && !d.dot).length - hitsBefore;
-  const fast = arrows.slice(1).filter((t, i) => t - arrows[i] < 700).length;
-  console.log(`paladino: alvo marcado, ${hits} golpes em 6 s com a Aljava Veloz (${fast} intervalos abaixo de 0,7 s)`);
-  if (hits < 3) throw new Error(`o paladino quase não atirou (${hits} golpes em 6 s)`);
-  if (fast < 2) throw new Error(`as flechas não ficaram mais rápidas (${hits} golpes em 6 s, ${fast} intervalos abaixo de 0,7 s)`);
-  await room.leave();
-
-  // Rolamento: o herói salta para longe do monstro e nunca cai no portal.
-  const roll = await enter(client, "paladin", "paladinRoll");
-  roll.room.send(MSG.chooseSpell, { slot: 0, spellId: "evasive_roll" });
-  roll.room.send(MSG.chooseSpell, { slot: 1, spellId: "sniper_stance" });
-  // Encurralado (parede atrás e monstro colado), o Rolamento não sai e não cobra nada: chega mais e tenta de novo.
-  const rollDeadline = Date.now() + 30_000;
-  let before: { x: number; y: number } | undefined;
-  let near: [string, any] | undefined;
-  let gap = 0;
-  while (!before) {
-    if (Date.now() > rollDeadline) throw new Error("o Rolamento não moveu o herói");
-    await approach(roll.room, roll.me, 2, () => inSight(roll.room, roll.me(), 3).length > 0);
-    near = inSight(roll.room, roll.me(), 3)[0];
-    if (!near) throw new Error("nenhum monstro perto para rolar para longe");
-    const from = { x: roll.me().x, y: roll.me().y };
-    const mana = roll.me().mana;
-    gap = tileDistance(from.x, from.y, near[1].x, near[1].y);
-    roll.room.send(MSG.target, { id: near[0] });
-    roll.room.send(MSG.cast, { slot: 0 });
-    const moved = () => roll.me().x !== from.x || roll.me().y !== from.y;
-    await until(() => moved() || roll.notices.includes("Sem espaço para rolar"), 2000, "o Rolamento não moveu o herói nem avisou que não havia espaço");
-    if (moved()) before = from;
-    else if (roll.me().mana < mana - 9) throw new Error("o Rolamento sem espaço gastou mana");
-    roll.notices.length = 0;
-  }
-  const after = roll.me();
-  const dungeon = generateDungeon(roll.room.state.seed, roll.room.state.mapId);
-  if (tileAt(dungeon, after.x, after.y) === Tile.Portal) throw new Error("o Rolamento caiu no portal");
-  const monster = roll.room.state.monsters.get(near![0]);
-  const gapAfter = monster ? tileDistance(after.x, after.y, monster.x, monster.y) : Infinity;
-  console.log(`paladino: rolou de ${before.x},${before.y} para ${after.x},${after.y} (distância do monstro ${gap} → ${gapAfter})`);
-  if (gapAfter < gap) throw new Error("o Rolamento devia afastar o herói do monstro");
-  roll.room.send(MSG.cast, { slot: 1 });
-  await until(() => roll.me().buff === "sniper_stance", 2000, "a Postura do Atirador não ficou ativa");
-  await roll.room.leave();
-}
-
-/** Dano do herói (sem o que ele recebeu) desde a posição `from` da lista. */
-function hitsFrom(damage: { attacker: string; toPlayer: boolean }[], me: string, from: number) {
-  return damage.slice(from).filter((d) => d.attacker === me && !d.toPlayer).length;
-}
-
-async function paladinLight() {
-  const { room, me, damage, spells } = await enter(client, "paladin", "paladinLight");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "light_shield" });
-  room.send(MSG.chooseSpell, { slot: 1, spellId: "consecrated_ground" });
-  // Escudo da Luz no toque rápido: sozinho, o mais ferido ao alcance é o próprio herói.
-  room.send(MSG.cast, { slot: 0 });
-  await until(() => me().barrier > 0, 2000, "o Escudo da Luz não protegeu o herói");
-  const shield = me().barrier;
-
-  // Solo Consagrado: o campo aparece no chão e fere os monstros em cima dele.
-  await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
-  const seen = inSight(room, me(), 5)[0];
-  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
-  const before = damage.length;
-  room.send(MSG.cast, { slot: 1, aim: { x: seen[1].x, y: seen[1].y } });
-  await until(() => [...room.state.fields.values()].some((f: any) => f.spellId === "consecrated_ground" && f.kind === "zone"), 2000, "o Solo Consagrado não criou o campo");
-  await until(() => hitsFrom(damage, room.sessionId, before) > 0, 4000, "o Solo Consagrado não feriu ninguém");
-  console.log(`paladino: Escudo da Luz de ${shield} em si mesmo; Solo Consagrado feriu ${hitsFrom(damage, room.sessionId, before)} vezes`);
-  if (!spells.some((s) => s.spellId === "light_shield")) throw new Error("o Escudo da Luz não saiu");
-  await room.leave();
-}
-
-async function paladinScout() {
-  const { room, me, spells } = await enter(client, "paladin", "paladinScout");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "bear_trap" });
-  room.send(MSG.chooseSpell, { slot: 1, spellId: "arrow_cordon" });
-  await approach(room, me, 2, () => inSight(room, me(), 4).length > 0);
-  const seen = inSight(room, me(), 4)[0];
-  if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
-  const [id] = seen;
-
-  // Armadilha no tile do monstro: se ele continua em cima, dispara no pulso seguinte e o prende. Se ele saiu do
-  // tile no meio-tempo, a armadilha fica esperando: arma outra no tile novo dele (recarga de 6 s).
-  const rooted = () => [...room.state.monsters.values()].some((m: any) => m.rooted);
-  for (let i = 0; i < 5 && !rooted(); i++) {
-    const m = room.state.monsters.get(id) ?? inSight(room, me(), 4)[0]?.[1];
-    if (m) room.send(MSG.cast, { slot: 0, aim: { x: m.x, y: m.y } });
-    await until(rooted, 6500, "").catch(() => {});
-  }
-  if (!rooted()) throw new Error("a armadilha não prendeu nenhum monstro");
-
-  // Estaca do Cordão de Flechas: atira sozinha nos monstros a até 3 tiles.
-  room.send(MSG.cast, { slot: 1, aim: { x: me().x, y: me().y } });
-  await until(() => [...room.state.fields.values()].some((f: any) => f.kind === "turret"), 2000, "a estaca não apareceu");
-  await until(() => spells.some((s) => s.spellId === "arrow_cordon" && s.echo && (s.x !== s.tx || s.y !== s.ty)), 5000, "a estaca não atirou");
-  console.log("paladino: armadilha prendeu o monstro e a estaca atirou");
-  await room.leave();
-
-  // Artilheiro: Flecha Relâmpago salta e Barragem acerta em leque.
-  const art = await enter(client, "paladin", "paladinArtillery");
-  art.room.send(MSG.chooseSpell, { slot: 0, spellId: "lightning_arrow" });
-  art.room.send(MSG.chooseSpell, { slot: 1, spellId: "barrage" });
-  await approach(art.room, art.me, 2, () => inSight(art.room, art.me(), 5).length > 0);
-  const near = inSight(art.room, art.me(), 5)[0];
-  if (!near) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(art.room, art.me)}`);
-  const before = art.damage.length;
-  art.room.send(MSG.cast, { slot: 1, aim: { x: near[1].x, y: near[1].y } });
-  await until(() => hitsFrom(art.damage, art.room.sessionId, before) > 0, 2000, "a Barragem não acertou ninguém");
-  const deadline = Date.now() + 90_000;
-  let tries = 0;
-  const pairOf = () => {
-    const seenNow = inSight(art.room, art.me(), 6);
-    return seenNow.find(([a, m]) => seenNow.some(([b, o]) => a !== b && tileDistance(m.x, m.y, o.x, o.y) <= 3));
-  };
-  while (art.chains.length === 0) {
-    if (Date.now() > deadline) throw new Error("a Flecha Relâmpago não saltou");
-    // Lança no par (ou em qualquer monstro à vista: o salto pode achar um vizinho que o herói não enxerga).
-    const pair = pairOf() ?? inSight(art.room, art.me(), 6)[0];
-    if (pair) art.room.send(MSG.cast, { slot: 0, aim: { x: pair[1].x, y: pair[1].y, targetId: pair[0] } });
-    else await gather(art.room, art.me, () => pairOf() !== undefined, ++tries);
-    await wait(500);
-  }
-  console.log(`paladino: Barragem acertou, Flecha Relâmpago saltou por ${Math.max(...art.chains.map((c) => c.points.length))} monstros`);
-  await art.room.leave();
-}
-
-/**
- * Sem dois monstros juntos à vista: anda 4 s atrás de outro monstro (o 2º, 3º ou 4º mais próximo, alternando a cada
- * tentativa). Os monstros que notam o herói vêm atrás dele e acabam formando o par que o salto em cadeia precisa.
- */
-async function gather(room: any, me: () => any, done: () => boolean, tries: number) {
-  const until = Date.now() + 4000;
-  await approach(room, me, 1, () => done() || Date.now() > until, 1 + (tries % 3));
-}
-
-/** Uma sala de Feiticeiro com as duas magias de uma especialização, já perto de um monstro à vista. */
-async function sorcerer(label: string, slot1: string, slot2: string) {
-  const hunt = await enter(client, "sorcerer", label);
-  hunt.room.send(MSG.chooseSpell, { slot: 0, spellId: slot1 });
-  hunt.room.send(MSG.chooseSpell, { slot: 1, spellId: slot2 });
-  await approach(hunt.room, hunt.me, 2, () => inSight(hunt.room, hunt.me(), 4).length > 0);
-  const seen = inSight(hunt.room, hunt.me(), 4)[0];
-  if (!seen) throw new Error(`${label}: nenhum monstro à vista em 30 s: ${whereAmI(hunt.room, hunt.me)}`);
-  return { ...hunt, seen };
-}
-
-/** Golpes do herói (sem os que ele recebeu) depois da posição `from` da lista de dano. */
-function myHits(hunt: { damage: { attacker: string; toPlayer: boolean }[]; room: any }, from: number) {
-  return hunt.damage.slice(from).filter((d) => d.attacker === hunt.room.sessionId && !d.toPlayer).length;
-}
-
-async function sorcererSpecs() {
-  // Tempestuoso: o feixe fere quem está na reta; a nuvem solta raios sozinha.
-  {
-    const h = await sorcerer("tempestuoso", "energy_beam", "sky_fury");
-    let from = h.damage.length;
-    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y } });
-    await until(() => myHits(h, from) > 0, 2000, "o Feixe de Energia não feriu ninguém");
-    from = h.damage.length;
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => [...h.room.state.fields.values()].some((f: any) => f.style === "storm"), 2000, "a Fúria dos Céus não criou a nuvem");
-    await until(() => myHits(h, from) > 0, 4000, "a nuvem não soltou raios");
-    await h.room.leave();
-  }
-  // Piromante: a bola de fogo queima; o núcleo infernal fere em volta.
-  {
-    const h = await sorcerer("piromante", "fireball", "infernal_core");
-    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y } });
-    await until(() => [...h.room.state.monsters.values()].some((m: any) => m.dot === "burn"), 3000, "a Bola de Fogo não queimou ninguém");
-    await approach(h.room, h.me, 2, () => inSight(h.room, h.me(), 3).length > 0);
-    const from = h.damage.length;
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => myHits(h, from) > 0, 2000, "o Núcleo Infernal não feriu ninguém");
-    await h.room.leave();
-  }
-  // Criomante: o cone deixa lento; a prisão prende.
-  {
-    const h = await sorcerer("criomante", "cone_of_cold", "ice_prison");
-    h.room.send(MSG.cast, { slot: 1, aim: { x: h.seen[1].x, y: h.seen[1].y } });
-    await until(() => h.room.state.monsters.get(h.seen[0])?.rooted === true, 2000, "a Prisão de Gelo não prendeu o alvo");
-    const near = inSight(h.room, h.me(), 4)[0];
-    if (near) h.room.send(MSG.cast, { slot: 0, aim: { x: near[1].x, y: near[1].y } });
-    await until(() => [...h.room.state.monsters.values()].some((m: any) => m.slowed), 2000, "o Cone de Frio não deixou ninguém lento");
-    await h.room.leave();
-  }
-  // Arcanista: o passo nebuloso teleporta; a muralha sobe no chão.
-  {
-    const h = await sorcerer("arcanista", "misty_step", "magic_wall");
-    const start = { x: h.me().x, y: h.me().y };
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => h.me().x !== start.x || h.me().y !== start.y || h.notices.includes("Sem espaço para rolar"), 2000, "o Passo Nebuloso não levou o herói");
-    if (h.me().x === start.x && h.me().y === start.y) throw new Error("o Passo Nebuloso não achou lugar livre");
-    const target = inSight(h.room, h.me(), 5)[0] ?? h.seen;
-    h.room.send(MSG.cast, { slot: 1, aim: { x: target[1].x, y: target[1].y } });
-    await until(() => [...h.room.state.fields.values()].some((f: any) => f.kind === "wall"), 2000, "a Muralha Mágica não subiu");
-    console.log(`feiticeiro: teleportou de ${start.x},${start.y} para ${h.me().x},${h.me().y}; muralha de ${[...h.room.state.fields.values()].filter((f: any) => f.kind === "wall").length} tiles`);
-    await h.room.leave();
-  }
-  // Necromante: a morte súbita fere; os esqueletos aparecem (3 com a Maestria).
-  {
-    const h = await sorcerer("necromante", "sudden_death", "raise_skeletons");
-    const from = h.damage.length;
-    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
-    await until(() => myHits(h, from) > 0, 2000, "a Morte Súbita não feriu o alvo");
-    h.room.send(MSG.cast, { slot: 1 });
-    const mine = () => [...h.room.state.summons.values()].filter((x: any) => x.owner === h.room.sessionId && x.kind === "skeleton");
-    await until(() => mine().length === 3, 2000, "os esqueletos não apareceram");
-    await h.room.leave();
-  }
-  // Bruxo: a rajada empurra o alvo para longe (precisa de espaço livre atrás dele); os tentáculos prendem.
-  {
-    const h = await sorcerer("bruxo", "eldritch_blast", "black_tentacles");
-    const map = generateDungeon(h.room.state.seed, h.room.state.mapId);
-    const behindFree = (m: any) => {
-      const p = h.me();
-      const bx = m.x + Math.sign(m.x - p.x);
-      const by = m.y + Math.sign(m.y - p.y);
-      return isWalkable(map, bx, by) && ![...h.room.state.monsters.values()].some((o: any) => o.x === bx && o.y === by);
-    };
-    let pushed = false;
-    for (let i = 0; i < 6 && !pushed; i++) {
-      const pick = inSight(h.room, h.me(), 6).find(([, m]) => behindFree(m));
-      if (!pick) { await approach(h.room, h.me, 1, () => inSight(h.room, h.me(), 6).some(([, m]) => behindFree(m))); continue; }
-      const [id, m] = pick;
-      const before = { x: m.x, y: m.y };
-      h.room.send(MSG.cast, { slot: 0, aim: { x: m.x, y: m.y, targetId: id } });
-      await until(() => {
-        const now = h.room.state.monsters.get(id);
-        return !!now && (now.x !== before.x || now.y !== before.y);
-      }, 4800, "").then(() => { pushed = true; }, () => {});
-    }
-    if (!pushed) throw new Error(`a Rajada Mística não empurrou o alvo: ${whereAmI(h.room, h.me)}`);
-    await approach(h.room, h.me, 2, () => inSight(h.room, h.me(), 5).length > 0);
-    const seen = inSight(h.room, h.me(), 5)[0];
-    if (!seen) throw new Error(`bruxo: nenhum monstro à vista: ${whereAmI(h.room, h.me)}`);
-    h.room.send(MSG.cast, { slot: 1, aim: { x: seen[1].x, y: seen[1].y } });
-    await until(() => [...h.room.state.monsters.values()].some((x: any) => x.rooted), 3000, "os Tentáculos Negros não prenderam ninguém");
-    await h.room.leave();
-  }
-  // Maestria do Meteoro (nível 5 com KUSA_ALL_SPELLS): a cratera fica em chamas.
-  {
-    const h = await sorcerer("meteoro", "shadow_orb", "meteor");
-    h.room.send(MSG.cast, { slot: 1, aim: { x: h.seen[1].x, y: h.seen[1].y } });
-    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "meteor" && f.style === "fire"), 4000, "o Meteoro não deixou a cratera em chamas");
-    await h.room.leave();
-  }
-  console.log("feiticeiro: as 12 magias das especializações funcionaram");
-}
-
-/** Uma sala de Druida com as duas magias de uma especialização, já perto de um monstro à vista. */
-async function druid(label: string, slot1: string, slot2: string) {
-  const hunt = await enter(client, "druid", label);
-  hunt.room.send(MSG.chooseSpell, { slot: 0, spellId: slot1 });
-  hunt.room.send(MSG.chooseSpell, { slot: 1, spellId: slot2 });
-  await approach(hunt.room, hunt.me, 2, () => inSight(hunt.room, hunt.me(), 4).length > 0);
-  const seen = inSight(hunt.room, hunt.me(), 4)[0];
-  if (!seen) throw new Error(`${label}: nenhum monstro à vista em 30 s: ${whereAmI(hunt.room, hunt.me)}`);
-  return { ...hunt, seen };
-}
-
-async function druidSpecs() {
-  // Mestre das Feras: a águia aparece e o mergulho atordoa; o grito (Maestria) chama um lobo.
-  {
-    const h = await druid("feras", "beast_cry", "giant_eagle");
-    const mine = (kind: string) => [...h.room.state.summons.values()].filter((x: any) => x.owner === h.room.sessionId && x.kind === kind);
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => mine("eagle").length === 2, 2000, "as águias não apareceram");
-    await until(() => [...h.room.state.monsters.values()].some((m: any) => m.stunned), 8000, "a águia não atordoou ninguém");
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => mine("wolf").length === 1, 2000, "o Grito da Fera não chamou o lobo");
-    await h.room.leave();
-  }
-  // Metamorfo: a pantera salta no alvo; o urso soma vida e dá patadas em quem está colado.
-  {
-    const h = await druid("metamorfo", "panther_form", "bear_form");
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => h.me().form === "panther", 2000, "a Forma de Pantera não transformou o druida");
-    h.room.send(MSG.attacking, { on: true });
-    await until(() => h.spells.some((s) => s.spellId === "panther_form" && s.echo), 4000, "a pantera não saltou no alvo");
-    h.room.send(MSG.attacking, { on: false });
-    const hp = h.me().maxHp;
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => h.me().form === "bear", 2000, "a Forma de Urso não transformou o druida");
-    if (h.me().maxHp <= hp * 1.4) throw new Error(`o urso não somou vida: ${hp} → ${h.me().maxHp}`);
-    await approach(h.room, h.me, 1, () => inSight(h.room, h.me(), 1).length > 0);
-    h.room.send(MSG.attacking, { on: true });
-    await until(() => h.spells.some((s) => s.spellId === "bear_form" && s.echo), 6000, `o urso não deu patada: ${whereAmI(h.room, h.me)}`);
-    console.log(`druida: pantera saltou; urso com vida ${hp} → ${h.me().maxHp}`);
-    await h.room.leave();
-  }
-  // Círculo da Vida: a semente salva o druida da morte; depois, a cura em quem está cheio vira escudo (Florescer).
-  // A semente vem antes da cura: o escudo do Florescer atrasaria a morte.
-  {
-    const h = await druid("circulo", "distant_heal", "rebirth_seed");
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => h.me().seeded === true, 2000, "a semente não foi plantada");
-    // Batendo nos monstros e indo atrás de outros, junta vários em volta até morrer: a semente faz o druida renascer.
-    // Com um monstro só, a regeneração empata com o dano; por isso ele vai buscar mais.
-    h.room.send(MSG.attacking, { on: true });
-    const reborn = () => h.notices.includes("Renasceu!");
-    const deadline = Date.now() + 50_000;
-    for (let tries = 0; !reborn(); tries++) {
-      if (Date.now() > deadline) throw new Error(`o druida não morreu (nem renasceu) em 50 s: vida ${h.me().hp}/${h.me().maxHp}`);
-      await gather(h.room, h.me, reborn, tries);
-    }
-    h.room.send(MSG.attacking, { on: false });
-    // O aviso chega na hora; o estado (a semente que some) vem na próxima sincronização.
-    await until(() => h.me().status === "playing" && !h.me().seeded, 2000, `renasceu errado: ${h.me().status}, semente ${h.me().seeded}`);
-    console.log(`druida: renasceu da semente com ${h.me().hp}/${h.me().maxHp} de vida`);
-    // Cura além da vida máxima vira escudo: espera a vida encher (a cura de 45% também enche) e cura de novo.
-    await until(() => h.me().mana >= 40, 15000, "círculo: a mana não voltou");
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => h.me().barrier > 0 || h.me().hp === h.me().maxHp, 3000, "a Cura Distante não curou");
-    if (h.me().barrier === 0) {
-      await until(() => h.me().mana >= 40, 15000, "círculo: a mana não voltou");
-      await wait(8000);
-      h.room.send(MSG.cast, { slot: 0 });
-      await until(() => h.me().barrier > 0, 3000, "a Cura Distante não virou escudo com o Florescer");
-    }
-    await h.room.leave();
-  }
-  // Guardião da Natureza: a casca protege; a chuva cai no chão.
-  {
-    const h = await druid("guardiao", "barkskin", "reviving_rain");
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => h.me().barrier > 0, 2000, "a Pele de Casca não deu escudo");
-    h.room.send(MSG.cast, { slot: 1, aim: { x: h.me().x, y: h.me().y } });
-    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "reviving_rain"), 2000, "a Chuva Revigorante não caiu");
-    await h.room.leave();
-  }
-  // Peste: a picada e a nuvem envenenam.
-  {
-    const h = await druid("peste", "mamba_bite", "poison_cloud");
-    h.seen = await dotTarget(h.room, h.me, "poison");
-    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
-    await until(() => h.room.state.monsters.get(h.seen[0])?.dot === "poison", 3000, "a Picada da Mamba não envenenou o alvo");
-    const other = inSight(h.room, h.me(), 5).find(([id]) => id !== h.seen[0]) ?? h.seen;
-    h.room.send(MSG.cast, { slot: 1, aim: { x: other[1].x, y: other[1].y } });
-    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "poison_cloud"), 2000, "a Nuvem Venenosa não apareceu");
-    await h.room.leave();
-  }
-  // Tempestade: a onda fere quem está perto; a nuvem do relâmpago solta raios.
-  {
-    const h = await druid("tempestade", "thunderwave", "call_lightning");
-    await approach(h.room, h.me, 1, () => inSight(h.room, h.me(), 2).length > 0);
-    let from = h.damage.length;
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => myHits(h, from) > 0, 2000, "a Onda Trovejante não feriu ninguém");
-    const target = inSight(h.room, h.me(), 6)[0];
-    if (!target) throw new Error(`tempestade: nenhum monstro à vista: ${whereAmI(h.room, h.me)}`);
-    from = h.damage.length;
-    h.room.send(MSG.cast, { slot: 1, aim: { x: target[1].x, y: target[1].y } });
-    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "call_lightning"), 2000, "a nuvem do relâmpago não apareceu");
-    await until(() => myHits(h, from) > 0, 4000, "a nuvem não soltou raios");
-    await h.room.leave();
-  }
-  console.log("druida: as 12 magias das especializações funcionaram");
-}
-
-/** Uma sala de Cavaleiro com as duas magias de uma especialização, já colado num monstro. */
-async function knight(label: string, slot1: string, slot2: string) {
-  const hunt = await enter(client, "knight", label);
-  hunt.room.send(MSG.chooseSpell, { slot: 0, spellId: slot1 });
-  hunt.room.send(MSG.chooseSpell, { slot: 1, spellId: slot2 });
-  await approach(hunt.room, hunt.me, 1, () => inSight(hunt.room, hunt.me(), 1).length > 0);
-  const seen = inSight(hunt.room, hunt.me(), 1)[0];
-  if (!seen) throw new Error(`${label}: nenhum monstro colado em 30 s: ${whereAmI(hunt.room, hunt.me)}`);
-  return { ...hunt, seen };
-}
-
-/** Anda para longe do monstro mais perto até ficar a 2–4 tiles de algum à vista (para a Investida e a Corrente). */
-async function backOff(room: any, me: () => any) {
-  const dungeon = generateDungeon(room.state.seed, room.state.mapId);
-  const far = () => inSight(room, me(), 4).find(([, m]) => tileDistance(me().x, me().y, m.x, m.y) >= 2);
-  const deadline = Date.now() + 8000;
-  while (!far() && Date.now() < deadline) {
-    const p = me();
-    const near = inSight(room, p, 2)[0];
-    const away = near ? [Math.sign(p.x - near[1].x), Math.sign(p.y - near[1].y)] : [1, 0];
-    const options = [away, [away[0], 0], [0, away[1]], [-away[1], away[0]], [away[1], -away[0]]]
-      .filter(([dx, dy]) => (dx !== 0 || dy !== 0) && isWalkable(dungeon, p.x + dx, p.y + dy) && tileAt(dungeon, p.x + dx, p.y + dy) !== Tile.Portal);
-    if (options[0]) room.send(MSG.move, { dx: options[0][0], dy: options[0][1] });
-    await wait(250);
-  }
-  return far();
-}
-
-async function knightSpecs() {
-  // Berserker: o redemoinho gira 3 vezes; a fúria fica ativa no herói.
-  {
-    const h = await knight("berserker", "steel_whirlwind", "berserk_rage");
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => h.spells.filter((s) => s.spellId === "steel_whirlwind").length >= 3, 3000, "o Redemoinho de Aço não girou 3 vezes");
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => h.me().buff === "berserk_rage", 2000, "a Fúria Berserker não ficou ativa");
-    await h.room.leave();
-  }
-  // Duelista: a lâmina faz sangrar; os mil cortes repetem no alvo.
-  {
-    const h = await knight("duelista", "thrown_blade", "thousand_cuts");
-    h.seen = await dotTarget(h.room, h.me, "bleed");
-    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
-    await until(() => h.room.state.monsters.get(h.seen[0])?.dot === "bleed", 3000, "a Lâmina Arremessada não fez sangrar");
-    const near = inSight(h.room, h.me(), 1)[0] ?? h.seen;
-    h.room.send(MSG.cast, { slot: 1, aim: { x: near[1].x, y: near[1].y, targetId: near[0] } });
-    await until(() => h.spells.filter((s) => s.spellId === "thousand_cuts").length >= 5, 3000, "os Mil Cortes não repetiram");
-    await h.room.leave();
-  }
-  // Guardião: a pancada atordoa; a égide dá escudo.
-  {
-    const h = await knight("guardiao", "shield_bash", "shared_aegis");
-    h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
-    await until(() => h.room.state.monsters.get(h.seen[0])?.stunned === true, 2000, "o Bater com Escudo não atordoou");
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => h.me().barrier > 0, 2000, "a Égide Compartilhada não deu escudo");
-    await h.room.leave();
-  }
-  // Inabalável: os espinhos ferem quem bate; na fortaleza, o herói não anda.
-  {
-    const h = await knight("inabalavel", "iron_thorns", "living_fortress");
-    const from = h.damage.length;
-    h.room.send(MSG.cast, { slot: 0 });
-    await until(() => myHits(h, from) > 0, 8000, "os Espinhos de Ferro não devolveram nenhum golpe");
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => h.me().buff === "living_fortress" && h.me().guarded, 2000, "a Fortaleza Viva não ficou ativa");
-    const at = { x: h.me().x, y: h.me().y };
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { h.room.send(MSG.move, { dx, dy }); await wait(300); }
-    if (h.me().x !== at.x || h.me().y !== at.y) throw new Error("o herói andou durante a Fortaleza Viva");
-    await h.room.leave();
-  }
-  // Senhor da Guerra: a investida leva o herói até o alvo; o estandarte sobe.
-  {
-    const h = await knight("senhor", "charge", "war_banner");
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "war_banner"), 2000, "o Estandarte de Guerra não subiu");
-    const target = await backOff(h.room, h.me);
-    if (!target) throw new Error(`senhor: nenhum monstro a 2–4 tiles: ${whereAmI(h.room, h.me)}`);
-    // O cavaleiro tem pouca mana: o estandarte gasta quase tudo, espera voltar o da investida.
-    await until(() => h.me().mana >= 25, 15000, `senhor: a mana não voltou (${h.me().mana})`);
-    h.room.send(MSG.cast, { slot: 0, aim: { x: target[1].x, y: target[1].y, targetId: target[0] } });
-    await until(() => {
-      const m = h.room.state.monsters.get(target[0]);
-      return !m || tileDistance(h.me().x, h.me().y, m.x, m.y) <= 1;
-    }, 2000, `a Investida não levou o herói até o alvo (avisos: ${h.notices.slice(-3).join(", ")})`);
-    await h.room.leave();
-  }
-  // Desafiante: a corrente puxa o monstro para perto; o desafio protege.
-  {
-    const h = await knight("desafiante", "iron_chain", "supreme_challenge");
-    h.room.send(MSG.cast, { slot: 1 });
-    await until(() => h.me().guarded, 2000, "o Desafio Supremo não protegeu o herói");
-    const target = await backOff(h.room, h.me);
-    if (!target) throw new Error(`desafiante: nenhum monstro a 2–4 tiles: ${whereAmI(h.room, h.me)}`);
-    await until(() => h.me().mana >= 20, 15000, `desafiante: a mana não voltou (${h.me().mana})`);
-    h.room.send(MSG.cast, { slot: 0, aim: { x: target[1].x, y: target[1].y, targetId: target[0] } });
-    await until(() => {
-      const m = h.room.state.monsters.get(target[0]);
-      return !!m && tileDistance(h.me().x, h.me().y, m.x, m.y) <= 1 && m.rooted;
-    }, 3000, "a Corrente de Ferro não puxou o monstro");
-    await h.room.leave();
-  }
-  console.log("cavaleiro: as 12 magias das especializações funcionaram");
-}
-
-/**
- * Monstro à vista que pega o dano contínuo `dot` (morto-vivo não envenena nem sangra): vai atrás dos mais próximos,
- * pulando os imunes.
- */
-async function dotTarget(room: any, me: () => any, dot: DotKind): Promise<[string, any]> {
-  const ok = () => inSight(room, me(), 5).find(([, m]) => !immuneToDot(m.kind as MonsterKind, dot));
-  for (let skip = 0; skip < 6 && !ok(); skip++) await approach(room, me, 2, () => ok() !== undefined, skip);
-  const found = ok();
-  if (!found) throw new Error(`nenhum monstro que pegue ${dot} à vista: ${whereAmI(room, me)}`);
-  return found;
-}
-

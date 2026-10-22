@@ -355,6 +355,11 @@ export interface HuntOptions {
   /** Só para testes: multiplica a vida dos monstros (efeitos como veneno e lentidão aparecem antes de eles morrerem). */
   monsterHp?: number;
   /**
+   * Só para testes: os sorteios da hunt (dano, chances, loot, recargas dos monstros). Com uma função de seed fixa
+   * (ex.: `createRng(1).next`), a mesma hunt dá sempre o mesmo resultado. Sem isto, `Math.random`.
+   */
+  random?: () => number;
+  /**
    * Continua uma hunt de outro aparelho (`Hunt.exportInternals`), com o `state` já restaurado: não sorteia
    * monstros de novo. Sala hospedada por um jogador, quando o anfitrião sai e outro assume.
    */
@@ -377,6 +382,8 @@ export class Hunt {
   private startLevel: number;
   private allSpells: boolean;
   private monsterHp: number;
+  /** Sorteios da hunt (`HuntOptions.random`); não vai no retrato: quem continua a hunt usa o seu. */
+  private random: () => number;
   private seats = new Map<string, Seat>();
   private elapsedMs = 0;
   private regenMs = 0;
@@ -405,6 +412,7 @@ export class Hunt {
     this.startLevel = Math.min(MAX_LEVEL, Math.max(1, Math.floor(options.startLevel ?? 1) || 1));
     this.allSpells = options.allSpells ?? false;
     this.monsterHp = Math.max(1, options.monsterHp ?? 1);
+    this.random = options.random ?? Math.random;
     this.state.mapId = this.map.id;
     this.state.seed = options.seed;
     this.dungeon = generateDungeon(this.state.seed, this.map.id);
@@ -422,6 +430,7 @@ export class Hunt {
       dungeon: this.dungeon,
       brains: this.brains,
       now: () => this.host.now(),
+      random: () => this.random(),
       after: (ms, fn) => this.after(ms, fn),
       broadcast: (type, msg) => this.host.broadcast(type, msg),
       notice: (x, y, text, color, ms) => this.notice(x, y, text, color, ms),
@@ -850,7 +859,7 @@ export class Hunt {
     // Flechas Consagradas (Traço): mais dano em morto-vivo e uma queimadura curta no alvo.
     const holy = seat.traits.find((t) => t.holyBasic)?.holyBasic;
     const undead = holy && MONSTERS[m.kind as MonsterKind]?.undead ? 1 + holy.undead : 1;
-    const amount = rollDamage(this.baseDamage(sessionId, p, "basic") * (1 + (buff?.basicDamage ?? 0)) * this.farBonus(seat, p, m) * undead);
+    const amount = rollDamage(this.random, this.baseDamage(sessionId, p, "basic") * (1 + (buff?.basicDamage ?? 0)) * this.farBonus(seat, p, m) * undead);
     // Rolamento: a próxima flecha atordoa (gasta no disparo, mesmo que o monstro morra antes).
     const stunMs = seat.nextBasicStunMs;
     seat.nextBasicStunMs = 0;
@@ -894,7 +903,7 @@ export class Hunt {
       if (!this.canHit(p, m, 1)) continue;
       const brain = this.brains.get(m.id);
       if (brain) brain.targetId = sessionId;
-      this.damageMonster(m, rollDamage(base), hit, "bear_form");
+      this.damageMonster(m, rollDamage(this.random, base), hit, "bear_form");
     }
   }
 
@@ -921,7 +930,7 @@ export class Hunt {
       seat.stats.ccMs.stun += form.pounceStunMs;
     }
     const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "bite" };
-    this.damageMonster(m, rollDamage(this.baseDamage(sessionId, p, "basic") * power), hit, "panther_form");
+    this.damageMonster(m, rollDamage(this.random, this.baseDamage(sessionId, p, "basic") * power), hit, "panther_form");
   }
 
   /** Tile livre colado no monstro e mais perto do herói, à vista dele (null se o herói já está colado ou não há lugar). */
@@ -1145,7 +1154,7 @@ export class Hunt {
     const target = this.nearestMonsterTo(p.x, p.y, sky.range);
     if (!target) return;
     this.host.broadcast(MSG.spell, { from: sessionId, spellId: "call_lightning", x: p.x, y: p.y, tx: target.x, ty: target.y, ms: 150, echo: true } satisfies SpellMessage);
-    const amount = rollDamage(this.baseDamage(sessionId, p, "spell") * sky.damage);
+    const amount = rollDamage(this.random, this.baseDamage(sessionId, p, "spell") * sky.damage);
     this.after(150, () => {
       const alive = this.state.monsters.get(target.id);
       if (alive) this.damageMonster(alive, amount, { attacker: sessionId, fromX: alive.x, fromY: alive.y, fx: "nature" }, "charged_sky");
@@ -1245,7 +1254,7 @@ export class Hunt {
         brain.markUntil = Math.max(brain.markUntil, now + spell.mark.ms);
         m.marked = true;
       }
-      if (stunChance && Math.random() < stunChance.chance) {
+      if (stunChance && this.random() < stunChance.chance) {
         brain.stunnedUntil = Math.max(brain.stunnedUntil, now + stunChance.ms);
         m.stunned = true;
         seat.stats.ccMs.stun += stunChance.ms;
@@ -1271,7 +1280,7 @@ export class Hunt {
           brain.rootedUntil = now;
           m.rooted = false;
         }
-        const value = Math.min(m.hp, rollDamage(amount * power[i] * execute * undead * shattered * this.farBonus(seat, p, m)));
+        const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * this.farBonus(seat, p, m)));
         dealt += value;
         this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id);
         if (m.hp === 0) {
@@ -1463,7 +1472,7 @@ export class Hunt {
       if (tileDistance(x, y, m.x, m.y) > burst.radius || !hasLineOfSight(this.dungeon, x, y, m.x, m.y)) continue;
       const brain = this.brains.get(m.id);
       if (brain) this.applyDot(m, brain, attacker, burst.source, burst.amount * 0.2, 3000, "poison", now);
-      this.damageMonster(m, rollDamage(burst.amount), hit, burst.source);
+      this.damageMonster(m, rollDamage(this.random, burst.amount), hit, burst.source);
     }
   }
 
@@ -1697,7 +1706,7 @@ export class Hunt {
       if (now < brain.nextAttackAt) return;
       brain.nextAttackAt = now + def.attackCooldownMs * (now < brain.hasteUntil ? 1 - brain.haste : 1);
       const m = target;
-      const amount = rollDamage(brain.damage);
+      const amount = rollDamage(this.random, brain.damage);
       const hit: Hit = { attacker: s.id, fromX: s.x, fromY: s.y, fx: def.attackFx };
       // À distância (vespa), o ferrão voa; o cliente desenha o projétil pelo `fx` do dano.
       this.after(def.attackRange > 1 ? 200 : 0, () => {
@@ -1857,7 +1866,7 @@ export class Hunt {
     // Loot: vai para quem deu o último golpe.
     const killer = this.state.players.get(killerId);
     if (killer?.status === "playing") {
-      const value = rollRange(brain.loot);
+      const value = rollRange(this.random, brain.loot);
       killer.loot += value;
       const stats = this.seats.get(killerId)?.stats;
       if (stats) {
@@ -1872,10 +1881,10 @@ export class Hunt {
     // O boss que morre no centro da sala larga ao lado: ali abre o portal, que esconderia o loot
     // (e pegar o loot faria a equipe sair da dungeon).
     const at = brain.def.rank === "boss" ? this.besidePortal(m.x, m.y) : { x: m.x, y: m.y };
-    const drops = GUARANTEED_DROPS[brain.def.rank] || (Math.random() < COMMON_DROP_CHANCE ? 1 : 0);
-    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random, 0, this.partyClasses()), at.x, at.y);
-    const potions = GUARANTEED_POTIONS[brain.def.rank] || (Math.random() < COMMON_POTION_CHANCE ? 1 : 0);
-    for (let i = 0; i < potions; i++) this.dropItem(rollPotion(Math.random), at.x, at.y);
+    const drops = GUARANTEED_DROPS[brain.def.rank] || (this.random() < COMMON_DROP_CHANCE ? 1 : 0);
+    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0, this.partyClasses()), at.x, at.y);
+    const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
+    for (let i = 0; i < potions; i++) this.dropItem(rollPotion(this.random), at.x, at.y);
 
     // Mímico: guarda o loot do baú que fingia ser (vai para quem deu o último golpe).
     const mimicDepth = this.mimicDepth.get(m.id);
@@ -1935,7 +1944,7 @@ export class Hunt {
     p.perksQueued = seat.perkLevels.length;
     p.perkLevel = level ?? 0;
     if (level === undefined) return;
-    p.perkOffer.push(...rollPerkOffer(seat.perks, p.level, Math.random));
+    p.perkOffer.push(...rollPerkOffer(seat.perks, p.level, this.random));
   }
 
   /** Escolha de uma das melhorias oferecidas. Vale até o fim da hunt. */
@@ -2079,9 +2088,9 @@ export class Hunt {
     }
     // Riposta (Traço): às vezes devolve o golpe na hora.
     const riposte = seat.traits.find((t) => t.riposte)?.riposte;
-    if (riposte && this.state.monsters.has(attacker.id) && Math.random() < riposte.chance) {
+    if (riposte && this.state.monsters.has(attacker.id) && this.random() < riposte.chance) {
       this.host.broadcast(MSG.attack, { from: sessionId, x: p.x, y: p.y, tx: attacker.x, ty: attacker.y, ms: 0 } satisfies AttackMessage);
-      const counter = rollDamage(this.baseDamage(sessionId, p, "basic") * riposte.damage);
+      const counter = rollDamage(this.random, this.baseDamage(sessionId, p, "basic") * riposte.damage);
       this.damageMonster(attacker, counter, { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "slash" }, "riposte");
     }
     // Fortaleza Viva: quem bate fica lento.
@@ -2237,7 +2246,7 @@ export class Hunt {
 
   /** O que um baú dá (aberto ou o Mímico morto): loot para quem abriu, um item melhor que o do mini-boss e poções. */
   private chestReward(sessionId: string, p: Player, x: number, y: number, depth: number) {
-    const value = Math.round(rollRange(CHEST_LOOT) * (1 + DEPTH_SCALING * depth));
+    const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + DEPTH_SCALING * depth));
     p.loot += value;
     const stats = this.seats.get(sessionId)?.stats;
     if (stats) {
@@ -2245,7 +2254,7 @@ export class Hunt {
       stats.chestsOpened++;
     }
     this.notice(x, y, `Baú: +${value} loot`, 0xf1c40f);
-    this.dropItem(rollItem("miniboss", depth, Math.random, 1, this.partyClasses()), x, y);
+    this.dropItem(rollItem("miniboss", depth, this.random, 1, this.partyClasses()), x, y);
     for (const potion of POTION_IDS) this.dropItem(potion, x, y);
   }
 
@@ -2411,7 +2420,7 @@ export class Hunt {
     let lostBag: string[] = [];
     if (!survived) {
       const worn = ITEM_SLOTS.filter((slot) => player[slot]);
-      const slot = worn[Math.floor(Math.random() * worn.length)];
+      const slot = worn[Math.floor(this.random() * worn.length)];
       if (slot) {
         lost = player[slot];
         this.dropItem(lost, player.x, player.y);
@@ -2702,7 +2711,7 @@ export class Hunt {
           // Nuvem Venenosa: cada pulso envenena (com a Toxina, acumula).
           const dot = brain.spell.dot;
           if (dot && mBrain) this.applyDot(m, mBrain, f.owner, brain.spell.id, this.baseDamage(f.owner, owner, "spell") * dot.perSec, dot.ms, dot.kind, now);
-          if (brain.amount > 0) this.damageMonster(m, Math.max(1, rollDamage(brain.amount)), hit, brain.spell.id);
+          if (brain.amount > 0) this.damageMonster(m, Math.max(1, rollDamage(this.random, brain.amount)), hit, brain.spell.id);
         }
         // Chuva Revigorante: cura e devolve mana a quem está dentro.
         if (brain.allyHeal > 0 || brain.allyMana > 0) {
@@ -2737,14 +2746,14 @@ export class Hunt {
         const ms = f.style === "storm" ? 150 : flightMs(18, f.x, f.y, target.x, target.y);
         this.host.broadcast(MSG.spell, { from: f.owner, spellId: brain.spell.id, x: f.x, y: f.y, tx: target.x, ty: target.y, ms, echo: true } satisfies SpellMessage);
         const hit: Hit = { attacker: f.owner, fromX: f.x, fromY: f.y, fx: "arrow" };
-        const amount = rollDamage(brain.amount);
+        const amount = rollDamage(this.random, brain.amount);
         // Estática (Traço) vale também para os raios da Fúria dos Céus (magia de energia).
         const stun = seat.traits.find((t) => t.stunChance && t.stunChance.element === brain.spell.element)?.stunChance;
         this.after(ms, () => {
           const alive = this.state.monsters.get(target.id);
           const aliveBrain = alive && this.brains.get(alive.id);
           if (!alive || !aliveBrain) return;
-          if (stun && Math.random() < stun.chance) {
+          if (stun && this.random() < stun.chance) {
             aliveBrain.stunnedUntil = Math.max(aliveBrain.stunnedUntil, this.host.now() + stun.ms);
             alive.stunned = true;
             seat.stats.ccMs.stun += stun.ms;
@@ -2896,6 +2905,6 @@ function equipment(p: Player) {
   return ITEM_SLOTS.map((slot) => p[slot]);
 }
 
-function rollRange([min, max]: [number, number]) {
-  return min + Math.floor(Math.random() * (max - min + 1));
+function rollRange(random: () => number, [min, max]: [number, number]) {
+  return min + Math.floor(random() * (max - min + 1));
 }
