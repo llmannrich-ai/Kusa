@@ -1,3 +1,4 @@
+import { TILE_SIZE } from "@kusa/shared";
 import { makeCanvas } from "./pixels.ts";
 
 /**
@@ -17,8 +18,10 @@ import { makeCanvas } from "./pixels.ts";
 export const ART_SCALE = 2;
 /** Tamanho dos heróis no jogo em relação ao tile (monstros e invocações ficam do tamanho do tile). */
 export const HERO_SCALE = 1.38;
-/** Escala do sprite do herói (textura refinada) para ficar do tamanho `HERO_SCALE`. */
-export const HERO_SPRITE_SCALE = HERO_SCALE / ART_SCALE;
+/** Quadro da arte dos heróis (`hero/raster.ts`): 48 px para 1,38 tile, a mesma densidade dos monstros. */
+const HERO_ART = 48;
+/** Escala do sprite do herói (textura ampliada `ART_SCALE` vezes) para ficar do tamanho `HERO_SCALE`. */
+export const HERO_SPRITE_SCALE = (HERO_SCALE * TILE_SIZE) / (HERO_ART * ART_SCALE);
 /** Escala do sprite de monstro ou invocação (textura refinada) para ficar do tamanho do tile. */
 export const CREATURE_SPRITE_SCALE = 1 / ART_SCALE;
 
@@ -47,7 +50,7 @@ export function refineArt(source: HTMLCanvasElement | HTMLImageElement, options:
 
   const W = w * 2;
   const H = h * 2;
-  const px = scale2x(input, w, h);
+  const px = epx(input, w, h);
   const outline = options.outline ? rgba(options.outline) : undefined;
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : px[y * W + x]);
   const opaque = (c: number) => (c & 0xff) > 0;
@@ -94,6 +97,20 @@ export function refineArt(source: HTMLCanvasElement | HTMLImageElement, options:
   return canvas;
 }
 
+/** Só o Scale2x (sem luz nem contorno): para arte que já vem sombreada, como a dos heróis. */
+export function scale2x(source: HTMLCanvasElement): HTMLCanvasElement {
+  const w = source.width;
+  const h = source.height;
+  const input = readPixels(source.getContext("2d")!, w, h);
+  const out = epx(input, w, h);
+  const { canvas, ctx } = makeCanvas(w * 2, h * 2);
+  const image = ctx.createImageData(w * 2, h * 2);
+  const view = new DataView(image.data.buffer);
+  out.forEach((c, i) => view.setUint32(i * 4, c));
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+}
+
 /** Pixels como RGBA em 32 bits (0 = transparente). */
 function readPixels(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const data = ctx.getImageData(0, 0, w, h).data;
@@ -106,7 +123,7 @@ function readPixels(ctx: CanvasRenderingContext2D, w: number, h: number) {
   return pixels;
 }
 
-function scale2x(p: Uint32Array, w: number, h: number) {
+function epx(p: Uint32Array, w: number, h: number) {
   const W = w * 2;
   const out = new Uint32Array(W * h * 2);
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : p[y * w + x]);

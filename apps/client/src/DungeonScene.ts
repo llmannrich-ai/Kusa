@@ -53,7 +53,8 @@ import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
-import { ART_SCALE, CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
+import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
+import { CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
 import {
   CHEST_TEXTURE,
   MONSTER_TEXTURE,
@@ -147,6 +148,8 @@ interface Unit {
   flies?: boolean;
   /** Escudo da Fé (e outros escudos): bolha + brasão, enquanto houver escudo. */
   barrier?: BarrierFx;
+  /** Brilho do equipamento raro ou mágico (`gearFx.ts`) e a chave do que ele mostra. */
+  gear?: { key: string; fx: Phaser.GameObjects.Container | null };
 }
 
 interface BarrierFx {
@@ -884,11 +887,21 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.avatars.get(sessionId);
     if (!unit) return;
     // O equipamento aparece no personagem: troca a roupa quando ele pega, larga ou recebe itens.
-    const heroKey = heroArt(this, unit.classId!, outfitOf(player));
+    const outfit = outfitOf(player);
+    const heroKey = heroArt(this, unit.classId!, outfit);
     if (heroKey !== unit.heroKey) {
       unit.heroKey = heroKey;
       unit.sprite.setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
     }
+    // Equipamento raro ou mágico brilha no herói.
+    const signs = gearSigns(outfit);
+    if (unit.gear?.key !== gearKey(signs)) {
+      unit.gear?.fx?.destroy();
+      const fx = gearFx(this, signs, unit.sprite.displayHeight);
+      if (fx) unit.body.add(fx);
+      unit.gear = { key: gearKey(signs), fx };
+    }
+    unit.gear.fx?.setVisible(player.status === "playing" && unit.sprite.visible);
     const alpha = player.status === "playing" ? 1 : 0.35;
     unit.body.setAlpha(alpha);
     unit.overlay.setAlpha(alpha);
@@ -978,7 +991,7 @@ export class DungeonScene extends Phaser.Scene {
     const x = this.toPx(tileX);
     const y = this.toPx(tileY);
     sprite.setOrigin(0.5, 1).setPosition(0, TILE_SIZE / 2);
-    const shadow = this.add.ellipse(0, TILE_SIZE / 2 - 3, sprite.displayWidth * 0.55, 6 * sprite.scaleY * ART_SCALE, 0x000000, 0.35);
+    const shadow = this.add.ellipse(0, TILE_SIZE / 2 - 3, sprite.displayWidth * 0.55, (6 * sprite.displayHeight) / TILE_SIZE, 0x000000, 0.35);
     const body = this.add.container(x, y, [shadow, sprite]);
     const bar = this.add.graphics();
     const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);
