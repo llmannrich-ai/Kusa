@@ -60,6 +60,16 @@ comprar **e usar** as anteriores do mesmo ramo.
   fraco), **devolver recarga ao matar** e **roubar mana**.
 - **Áureas** (quadrado no desenho): dano +4%/nível, vida +6%/nível, mana +8%/nível (3 níveis cada) e
   velocidade +4%/nível (2 níveis). Valem sempre, desde o nível 1.
+- **Sinergias** (inspiradas no Diablo 2): cada nível de uso de uma magia **vizinha** na árvore (ligada por galho,
+  pai ou filha, inclusive o segundo pai) dá **+2% de força** a esta (`SYNERGY_PER_LEVEL`). Força = dano, dano
+  contínuo, cura, escudo, armadura, marca, campos e criaturas, como o nível da magia (multiplica a força do nível).
+  Vizinha que a conta não tem não conta. Assim, usar magias variadas entre as hunts fortalece as que ficam no slot.
+- **Tomos** (livro no desenho, um por ramo: 📕 📗 📘): +5% de força em todas as magias do ramo por nível, 3 níveis,
+  300 de gold e ×1,8 por nível. Ficam na linha 2, na ponta oposta às costelas, e pedem o primeiro nó do tronco.
+  A raiz (magia inicial do slot 1) não é de nenhum ramo: não ganha Tomo.
+- A força extra (sinergia + Tomo) é calculada pelo servidor ao entrar na sala (`spellBonuses`) e vai para o cliente em
+  `Player.spellBonus`: as cartas da hunt mostram "Nv 2 · +26%" e os números já somados. Não muda durante a hunt.
+  Na ficha da magia, o menu mostra as vizinhas (com o nível de cada) e a força extra de hoje.
 - **Especializações** (losango no desenho): no fim de alguns ramos, a árvore se divide em dois lados. Cada lado
   tem um **Traço** (passiva que vale sempre, nível único, 1.000 de gold) e duas magias, uma de cada slot, que pedem o
   Traço. **A escolha é permanente:** comprar o Traço de um lado fecha o outro lado do ramo para sempre, com as
@@ -208,8 +218,7 @@ Magias das costelas (números do nível 0). Todas combinam efeitos que o servido
 | Druida | Espinhos | Espinho Venenoso → Esporos → Explosão de Espinhos (+ Enxame de Vespas) | 🍄 **Esporos** (S2): raio 2, 0,6×, veneno e 30% de lentidão · Maestria: raio 3 · 🌵 **Explosão de Espinhos** (S2): raio 2 em volta de si, 1,6×, sangra e prende 1,5 s · Maestria: raio 3 |
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.
-- Ainda por fazer (fase 5b, depois do PR da hunt solo): **sinergias** (magias e passivas que fortalecem um grupo de
-  magias do mesmo ramo) e a escolha sorteada (3 opções por slot).
+- Ainda por fazer: a escolha sorteada (3 opções por slot, fase 5f).
 
 #### Maestrias
 

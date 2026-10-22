@@ -18,10 +18,13 @@ import { stacksOf } from "./perkchoice.ts";
 
 const SLOTS: SpellSlot[] = [0, 1];
 
-/** A magia como o herói a conjura: no nível ganho com o uso, com a Maestria no último (alcance e área podem mudar). */
+/**
+ * A magia como o herói a conjura: no nível ganho com o uso, com a Maestria no último (alcance e área podem mudar) e a
+ * força extra das sinergias e do Tomo.
+ */
 export function rankedSpell(p: PlayerView | undefined, id: string): SpellDef | undefined {
   const base = SPELLS[id as SpellId] as SpellDef | undefined;
-  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 0);
+  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 0, p?.spellBonus.get(id) ?? 0);
 }
 
 interface SlotView {
@@ -214,13 +217,14 @@ export class SpellBar {
       onDismiss: () => this.closeChooser(),
       cards: spellChoices(p.classId as ClassId, slot, [...p.knownSpells]).map((spell) => {
         const rank = p.spellRanks.get(spell.id) ?? 0;
+        const bonus = p.spellBonus.get(spell.id) ?? 0;
         return {
           icon: spell.icon,
           name: spell.name,
           description: spell.description,
-          badge: `Nv ${rank}`,
+          badge: `Nv ${rank}${bonus > 0 ? ` · +${Math.round(bonus * 100)}%` : ""}`,
           // A última linha é mana e recarga.
-          details: spellFacts(spell, rank),
+          details: spellFacts(spell, rank, bonus),
           onPick: () => {
             this.room.send(MSG.chooseSpell, { slot, spellId: spell.id });
             this.closeChooser();
