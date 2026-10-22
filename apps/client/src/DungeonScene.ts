@@ -5,6 +5,7 @@ import {
   MONSTERS,
   MSG,
   POTIONS,
+  RUNES,
   DOT_KINDS,
   SPELLS,
   lineTiles,
@@ -16,6 +17,7 @@ import {
   generateDungeon,
   hasLineOfSight,
   isPotion,
+  isRune,
   mapIdOf,
   tileDistance,
   type AttackMessage,
@@ -702,7 +704,8 @@ export class DungeonScene extends Phaser.Scene {
    * Vários itens no mesmo tile se espalham um pouco para dar para ver todos.
    */
   private addGroundItem(id: string, item: GroundItemView) {
-    const color = isPotion(item.itemId) ? POTIONS[item.itemId].color : TIER_COLORS[ITEMS[item.itemId]?.tier];
+    const color = isPotion(item.itemId) ? POTIONS[item.itemId].color
+      : isRune(item.itemId) ? RUNES[item.itemId].color : TIER_COLORS[ITEMS[item.itemId]?.tier];
     if (color === undefined) return;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];

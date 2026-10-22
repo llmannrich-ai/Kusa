@@ -25,6 +25,8 @@ export class Player extends Schema {
   @type("string") shield = "";
   /** Bag: itens pegos no chão (e o que sobrou da hunt anterior), até `BAG_SIZE`. Vai para o cofre ao sair vivo. */
   @type(["string"]) bag = new ArraySchema<string>();
+  /** Runas equipadas no menu (ids de `RUNES`, até `RUNE_SLOTS`): valem a hunt inteira e não se trocam na dungeon. */
+  @type(["string"]) runes = new ArraySchema<string>();
   /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
   @type("string") spell1 = "";
   @type("string") spell2 = "";
@@ -96,7 +98,7 @@ export class Chest extends Schema {
 /** Item ou poção largado no chão: qualquer jogador que passar por cima pega (item vai para o equipamento se for melhor, senão para a bag). */
 export class GroundItem extends Schema {
   @type("string") id = "";
-  /** Chave de `ITEMS` ou de `POTIONS` em `@kusa/shared`. */
+  /** Chave de `ITEMS`, `POTIONS` ou `RUNES` em `@kusa/shared`. */
   @type("string") itemId = "";
   @type("number") x = 0;
   @type("number") y = 0;

@@ -27,7 +27,7 @@ Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
-- **Itens:** o equipamento que vai para a próxima hunt (um item por slot), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
+- **Itens:** o equipamento que vai para a próxima hunt (um item por slot), logo abaixo os **3 slots de runa** (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens até Aço (entregues no cofre) e vende qualquer item da conta. Itens de Dragão só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
 - Ainda por fazer: modo, cosméticos e amigos.
@@ -83,6 +83,38 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
   - item vestido: **Guardar na bag**, se couber.
 - O que o jogador larga não volta para a bag enquanto ele estiver em cima do item: precisa sair do tile e voltar.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 10, 25, 60, 130 e Dragão 300.
+
+### Runas
+
+Pedras mágicas que **só caem dos bosses** (o Dragão jovem e a Hidra dropam 1 runa cada; o nome sobe sobre o drop).
+Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `market_items` e `profile_items` como os itens.
+
+- Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220). O mercado não vende runas.
+- Na aba Itens, **3 slots de runa logo abaixo do equipamento**. Tocar numa runa do cofre equipa num slot livre; não dá para
+  equipar duas iguais. Tirar a runa devolve ao cofre (precisa de espaço). Funções no banco: `equip_item` (limite de 3 e sem repetir) e `finish_run`.
+- As runas equipadas **entram com o herói e valem a hunt inteira**; na dungeon não se trocam (o menu da bag só mostra quais estão equipadas).
+- **Morrer não perde as runas equipadas** (o equipamento sorteado é sempre de arma, capacete, armadura ou escudo). Runa na bag
+  cai no chão na morte, como os itens. Runa pega no chão vai sempre para a bag (nunca equipa sozinha).
+- O bônus soma com as áureas do Grimório e as melhorias de nível.
+
+| Runa | Efeito | Peso no drop |
+|---|---|---|
+| ⚔️ Fúria | +15% de dano | 3 |
+| ❤️ Vida | +18% de vida máxima | 3 |
+| 🛡️ Pedra | +4 de armadura | 3 |
+| 👟 Vento | +8% de velocidade | 3 |
+| 💧 Arcana | +20% de mana máxima e +1% de mana por segundo | 3 |
+| 🩸 Sangue | cura 5% do dano causado | 3 |
+| ⏳ Tempo | recarga das magias 12% menor | 3 |
+| 💗 Troll | +1,5% de vida por segundo | 3 |
+| ⚡ Relâmpago | o Relâmpago (Feiticeiro) vira opção no slot 1 | 1 |
+| 🛡️ Fé | o Escudo da Fé (Cavaleiro) vira opção no slot 1 | 1 |
+| ☄️ Meteoro | o Meteoro (Feiticeiro) vira opção no slot 2 | 1 |
+| ☀️ Aurora | a Luz Curativa (Paladino) vira opção no slot 2 | 1 |
+
+- **Runas de magia:** a magia aparece como opção extra na escolha do slot, para qualquer classe, no nível 1 (ou no nível
+  comprado no Grimório, se for da própria classe). Magia de outra classe custa no máximo **40% da mana máxima** do herói
+  (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
 
 ## Salas e sala de espera
 
@@ -182,7 +214,7 @@ uma de cada vez. O jogo não pausa; a escolha de magia e a de melhoria nunca abr
 
 | Fim | Loot | Observação |
 |---|---|---|
-| **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
+| **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. As runas equipadas ficam. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
 | **Fuga** | Leva tudo | Basta voltar à sala inicial e entrar no portal. |
 | **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
 | **Soterrado** (o tempo acabou) | Igual à morte | Conta como morte. |

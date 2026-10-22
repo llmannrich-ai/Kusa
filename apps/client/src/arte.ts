@@ -1,6 +1,6 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
 import {
-  CLASS_IDS, CLASSES, ITEMS, ITEM_SLOTS, MAX_TIER, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId, type ItemTier,
+  CLASS_IDS, CLASSES, ITEMS, ITEM_SLOTS, MAX_TIER, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId, type ItemTier,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroPoses, heroSheet } from "./art/heroes.ts";
@@ -82,6 +82,9 @@ for (const slot of ITEM_SLOTS) {
     show(row, itemIcon(id), ITEMS[id].name);
   }
 }
+
+const runeRow = section("Runas (caem dos bosses)");
+for (const id of RUNE_IDS) show(runeRow, itemIcon(id), RUNES[id].name);
 
 const fullSet = (tier: ItemTier): Outfit => ({
   weapon: itemId("weapon", tier), helmet: itemId("helmet", tier), armor: itemId("armor", tier), shield: itemId("shield", tier),

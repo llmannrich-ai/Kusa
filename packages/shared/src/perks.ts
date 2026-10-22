@@ -102,12 +102,12 @@ export function rollPerkOffer(stacks: PerkStacks, level: number, roll: () => num
   return offer;
 }
 
-/** Recarga do ataque básico com a Fúria. */
-export function attackCooldownMs(stacks: PerkStacks): number {
-  return Math.round(BASIC_ATTACK_COOLDOWN_MS * (1 - perkBonuses(stacks).attackHaste));
+/** Recarga do ataque básico com a Fúria (`bonus`: melhorias e runas somadas, ver `heroBonuses`). */
+export function attackCooldownMs(bonus: PerkBonuses): number {
+  return Math.round(BASIC_ATTACK_COOLDOWN_MS * (1 - bonus.attackHaste));
 }
 
-/** Recarga de uma magia com o Foco. */
-export function spellCooldownMs(cooldownMs: number, stacks: PerkStacks): number {
-  return Math.round(cooldownMs * (1 - perkBonuses(stacks).castHaste));
+/** Recarga de uma magia com o Foco e a Runa do Tempo. */
+export function spellCooldownMs(cooldownMs: number, bonus: PerkBonuses): number {
+  return Math.round(cooldownMs * (1 - bonus.castHaste));
 }

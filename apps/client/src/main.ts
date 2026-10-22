@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
-  ITEMS,
+  lootName,
   MAPS,
   MAX_LEVEL,
   MSG,
@@ -360,13 +360,13 @@ function showResult(msg: RunEndedMessage) {
     : `Todo o loot ficou para trás. Nível alcançado: ${msg.level}.`;
   // Só com conta o equipamento e a bag voltam (convidado não salva nada).
   if (account && msg.items.length > 0) {
-    $("result-detail").textContent += ` Equipamento guardado: ${msg.items.map((id) => ITEMS[id]?.name ?? id).join(", ")}.`;
+    $("result-detail").textContent += ` Equipamento guardado: ${msg.items.map(lootName).join(", ")}.`;
   }
   if (account && msg.bag.length > 0) {
-    $("result-detail").textContent += ` Bag para o cofre: ${msg.bag.map((id) => ITEMS[id]?.name ?? id).join(", ")}`
+    $("result-detail").textContent += ` Bag para o cofre: ${msg.bag.map(lootName).join(", ")}`
       + ` (com o cofre cheio, o resto fica na bag).`;
   }
-  if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${ITEMS[msg.lost]?.name ?? msg.lost}.`;
+  if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${lootName(msg.lost)}.`;
   show("result", true);
 }
 

@@ -654,3 +654,7 @@ body.busy #hub-body { opacity: 0.7; }
 .market-row > div { flex: 1; min-width: 0; }
 .market-row strong { display: block; font-size: 14px; }
 .market-row small { display: block; font-size: 12px; }
+
+/* Runas: 3 slots embaixo do equipamento (menu Itens) e na bag da hunt. */
+.loadout.runes { grid-template-columns: repeat(3, 1fr); }
+.bag-runes { grid-template-columns: repeat(3, minmax(0, 60px)); }

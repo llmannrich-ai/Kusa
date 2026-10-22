@@ -1,10 +1,12 @@
-import { BAG_SIZE, ITEMS, ITEM_SLOTS, MSG, SLOT_NAMES, TIER_COLORS, TIER_NAMES, type ItemSlot } from "@kusa/shared";
+import {
+  BAG_SIZE, ITEMS, ITEM_SLOTS, MSG, RUNES, RUNE_SLOTS, SLOT_NAMES, TIER_NAMES, lootColor, lootName, runeEffect, type ItemSlot,
+} from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
 import { itemEffect } from "./menu.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
-/** Item escolhido no menu: uma posição da bag ou um slot do corpo. */
-type Selection = { bag: number } | { slot: ItemSlot } | null;
+/** Item escolhido no menu: uma posição da bag, um slot do corpo ou uma runa equipada. */
+type Selection = { bag: number } | { slot: ItemSlot } | { rune: number } | null;
 
 /** Ícones gerados uma vez por item. */
 const iconUrls = new Map<string, string>();
@@ -14,8 +16,7 @@ function iconUrl(id: string) {
 }
 
 function tierColor(id: string) {
-  const item = ITEMS[id];
-  return item ? `#${TIER_COLORS[item.tier].toString(16).padStart(6, "0")}` : "";
+  return ITEMS[id] || RUNES[id] ? `#${lootColor(id).toString(16).padStart(6, "0")}` : "";
 }
 
 /**
@@ -70,7 +71,7 @@ export class BagBar {
     const sel = this.selected;
     if (sel && "bag" in sel && sel.bag >= bag.length) this.selected = null;
     if (sel && "slot" in sel && !p[sel.slot]) this.selected = null;
-    const menuKey = `${hudKey}|${ITEM_SLOTS.map((s) => p[s]).join(",")}|${JSON.stringify(this.selected)}`;
+    const menuKey = `${hudKey}|${ITEM_SLOTS.map((s) => p[s]).join(",")}|${[...p.runes].join(",")}|${JSON.stringify(this.selected)}`;
     if (menuKey === this.menuKey) return;
     this.menuKey = menuKey;
     this.renderMenu(p, bag);
@@ -117,6 +118,15 @@ export class BagBar {
       gear.append(cell);
     }
 
+    // Runas equipadas no menu: valem a hunt inteira e não se trocam aqui.
+    const runes = el("div", "bag-gear bag-runes");
+    for (let i = 0; i < RUNE_SLOTS; i++) {
+      const cell = this.cell(p.runes[i], "bag-cell", "Runa");
+      if (p.runes[i]) cell.dataset.rune = String(i);
+      if (this.isSelected({ rune: i })) cell.classList.add("selected");
+      runes.append(cell);
+    }
+
     const grid = el("div", "bag-grid");
     for (let i = 0; i < Math.max(BAG_SIZE, bag.length); i++) {
       const cell = this.cell(bag[i], "bag-cell");
@@ -125,14 +135,29 @@ export class BagBar {
       grid.append(cell);
     }
 
-    this.menu.replaceChildren(head, el("h3", "", "Equipado"), gear, el("h3", "", "Bag"), grid, this.details(p, bag));
+    this.menu.replaceChildren(head, el("h3", "", "Equipado"), gear, el("h3", "", "Runas"), runes, el("h3", "", "Bag"), grid, this.details(p, bag));
   }
 
   /** O que o item selecionado faz, comparado com o vestido, e as ações. */
   private details(p: PlayerView, bag: string[]) {
     const box = el("div", "bag-details");
     const sel = this.selected;
-    const id = sel ? ("bag" in sel ? bag[sel.bag] : p[sel.slot]) : "";
+    const id = sel ? ("bag" in sel ? bag[sel.bag] : "rune" in sel ? p.runes[sel.rune] ?? "" : p[sel.slot]) : "";
+    const rune = RUNES[id];
+    if (sel && rune) {
+      const name = el("strong", "", rune.name);
+      name.style.color = tierColor(id);
+      box.append(name, el("small", "muted", `${rune.icon} Runa · ${runeEffect(rune)}`));
+      if ("bag" in sel) {
+        box.append(el("small", "muted", "Runas se equipam no menu Itens, fora da hunt."));
+        const actions = el("div", "bag-actions");
+        actions.append(button("Largar", "drop"));
+        box.append(actions);
+      } else {
+        box.append(el("small", "muted", "Equipada: vale até o fim da hunt e volta com você, mesmo se morrer."));
+      }
+      return box;
+    }
     const def = ITEMS[id];
     if (!sel || !def) {
       box.append(el("p", "muted", bag.length > 0 || ITEM_SLOTS.some((s) => p[s])
@@ -163,14 +188,13 @@ export class BagBar {
 
   private cell(id: string | undefined, className: string, emptyLabel = "", tag: "button" | "span" = "button") {
     const cell = el(tag, className);
-    const item = id ? ITEMS[id] : undefined;
-    if (item) {
+    if (id && (ITEMS[id] || RUNES[id])) {
       const img = el("img", "item-img");
-      img.src = iconUrl(item.id);
-      img.alt = item.name;
+      img.src = iconUrl(id);
+      img.alt = lootName(id);
       cell.append(img);
-      cell.style.borderColor = tierColor(item.id);
-      cell.title = item.name;
+      cell.style.borderColor = tierColor(id);
+      cell.title = lootName(id);
     } else {
       cell.classList.add("vazio");
       if (emptyLabel) cell.append(el("small", "muted", emptyLabel));
@@ -188,6 +212,7 @@ export class BagBar {
     else if (action === "drop" && sel && "bag" in sel) this.room.send(MSG.bagDrop, { index: sel.bag });
     else if (action === "unequip" && sel && "slot" in sel) this.room.send(MSG.unequip, { slot: sel.slot });
     else if (target.dataset.bag !== undefined) this.select({ bag: Number(target.dataset.bag) });
+    else if (target.dataset.rune !== undefined) this.select({ rune: Number(target.dataset.rune) });
     else if (target.dataset.slot && this.me()?.[target.dataset.slot as ItemSlot]) this.select({ slot: target.dataset.slot as ItemSlot });
     else return;
     // Depois de uma ação o item muda de lugar: limpa a seleção.

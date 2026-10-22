@@ -1,4 +1,4 @@
-import { ITEMS, isPotion, type ItemSlot, type ItemTier, type PotionId } from "@kusa/shared";
+import { ITEMS, RUNES, isPotion, isRune, type ItemSlot, type ItemTier, type PotionId, type RuneKind } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
 
 /**
@@ -359,11 +359,55 @@ const LIQUIDS: Record<PotionId, Palette> = {
 
 const GLASS: Palette = { o: "#140d0a", c: "#a9794a", g: "#f4f7fb" };
 
-/** Ícone 16×16 de um item do equipamento ou de uma poção. */
+/** Pedra das runas: "s"/"S" = pedra clara/escura; o símbolo de cada runa é entalhado por cima na cor dela. */
+const RUNE_STONE: Grid = [
+  "................",
+  "....oooooooo....",
+  "...osssssssSo...",
+  "..ossssssssSSo..",
+  "..osssssssssSo..",
+  "..osssssssssSo..",
+  "..osssssssssSo..",
+  "..osssssssssSo..",
+  "..osssssssssSo..",
+  "..osssssssssSo..",
+  "..osssssssssSo..",
+  "..osssssssssSo..",
+  "..oSssssssssSo..",
+  "...oSSSSSSSSo...",
+  "....oooooooo....",
+  "................",
+];
+
+const STONE: Palette = { o: "#14121a", s: "#6b6f7a", S: "#3f424b" };
+
+/** Símbolo 6×8 de cada runa ("g" = brilho na cor da runa), entalhado no meio da pedra. */
+const RUNE_GLYPHS: Record<RuneKind, Grid> = {
+  fury: ["..gg..", ".gggg.", "g.gg.g", "..gg..", "..gg..", "..gg..", "..gg..", "..gg.."],
+  life: ["g.gg.g", "g.gg.g", ".gggg.", "..gg..", "..gg..", "..gg..", "..gg..", "..gg.."],
+  stone: ["..gg..", ".g..g.", "g....g", ".g..g.", "..gg..", ".g..g.", "g....g", "g....g"],
+  wind: ["gg....", ".gg...", "..gg..", "...gg.", "..gg..", ".gg...", "gg....", "g....."],
+  arcane: ["..g...", "..gg..", ".gggg.", ".gggg.", "gggggg", "gggggg", ".gggg.", "..gg.."],
+  blood: ["gg....", "gg.g..", "gg..g.", "gg...g", "gg..g.", "gg.g..", "gg....", "gg...."],
+  time: ["gggggg", "g....g", ".g..g.", "..gg..", "..gg..", ".g..g.", "g....g", "gggggg"],
+  troll: ["..gg..", "..gg..", "gggggg", "gggggg", "..gg..", "..gg..", "..gg..", "..gg.."],
+  lightning: ["...gg.", "..gg..", ".gg...", "ggggg.", "...gg.", "..gg..", ".gg...", "gg...."],
+  faith: ["gggggg", "g.gg.g", "gggggg", "g.gg.g", "g.gg.g", ".g..g.", "..gg..", "......"],
+  meteor: ["g.....", ".g....", "..g...", "...gg.", "..gggg", "..gggg", "...gg.", "......"],
+  dawn: ["..gg..", "g....g", "..gg..", ".gggg.", ".gggg.", "..gg..", "g....g", "..gg.."],
+};
+
+/** Ícone 16×16 de um item do equipamento, de uma poção ou de uma runa. */
 export function itemIcon(itemId: string) {
   const { canvas, ctx } = makeCanvas(ITEM_ICON_SIZE, ITEM_ICON_SIZE);
   if (isPotion(itemId)) {
     paintGrid(ctx, POTION_GRID, { ...GLASS, ...LIQUIDS[itemId] }, 0, 0);
+    return canvas;
+  }
+  if (isRune(itemId)) {
+    const rune = RUNES[itemId];
+    paintGrid(ctx, RUNE_STONE, STONE, 0, 0);
+    paintGrid(ctx, RUNE_GLYPHS[rune.kind], { g: `#${rune.color.toString(16).padStart(6, "0")}` }, 5, 4);
     return canvas;
   }
   const item = ITEMS[itemId];

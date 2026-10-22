@@ -23,6 +23,8 @@ import {
   MONSTER_SPEED_SCALE,
   MSG,
   PERKS,
+  RUNES,
+  RUNE_DROPS,
   POTIONS,
   POTION_COOLDOWN_MS,
   POTION_FIELD,
@@ -36,6 +38,7 @@ import {
   SUMMONS,
   TIER_COLORS,
   Tile,
+  activeRunes,
   armorOf,
   attackCooldownMs,
   auraBonuses,
@@ -52,8 +55,10 @@ import {
   damageReduction,
   flightMs,
   hasLineOfSight,
+  heroBonuses,
   isPerk,
   isPotion,
+  isRune,
   isUpgrade,
   isBagIndex,
   isItemSlot,
@@ -66,14 +71,16 @@ import {
   lineEnd,
   mapIdOf,
   monsterStats,
-  perkBonuses,
   rankPower,
   rollItem,
   rollPerkOffer,
   rollPotion,
+  rollRune,
+  runeSpells,
   spellAtRank,
   spellChoices,
   spellCooldownMs,
+  spellManaCost,
   spellRanks,
   statsFor,
   summonStats,
@@ -153,10 +160,10 @@ interface Seat {
   armorUntil: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
-  /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
+  /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas com o das runas equipadas. */
   perks: PerkStacks;
   perkBonus: PerkBonuses;
-  /** Áureas + melhorias: o que `statsFor` usa para vida, mana, dano e velocidade. */
+  /** Áureas + melhorias + runas: o que `statsFor` usa para vida, mana, dano e velocidade. */
   bonus: Bonuses;
   /** Até quando não repete o aviso de bag cheia. */
   bagFullNoticeUntil: number;
@@ -230,6 +237,8 @@ const BAG_FULL_NOTICE_MS = 3000;
 const START_LEVEL = Math.min(MAX_LEVEL, Math.max(1, Number(process.env.KUSA_START_LEVEL) || 1));
 /** Só para testes: KUSA_ALL_SPELLS=1 dá a todo mundo o Grimório inteiro da classe no nível máximo. */
 const ALL_SPELLS = process.env.KUSA_ALL_SPELLS === "1";
+/** Só para testes: KUSA_RUNES=rune-life,rune-meteor faz todo mundo começar a hunt com essas runas equipadas. */
+const TEST_RUNES = (process.env.KUSA_RUNES ?? "").split(",").filter(Boolean);
 
 /** Uma hunt: a equipe (1 a 4 jogadores) entra junta e cada um sai morto, fugindo ou após o boss. */
 export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetadata }> {
@@ -321,7 +330,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, armorBonus: 0, armorUntil: 0,
-      aura: bonus, perks: {}, perkBonus: perkBonuses({}), bonus, bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
+      aura: bonus, perks: {}, perkBonus: heroBonuses({}), bonus, bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
     });
     if (!this.state.leaderId) {
       this.state.leaderId = client.sessionId;
@@ -448,6 +457,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.players.forEach((p, sessionId) => this.trackDepth(sessionId, p));
     // O equipamento escolhido no menu e a bag saem da conta e entram na dungeon (chegam logo depois do início).
     this.seats.forEach((seat, sessionId) => {
+      if (TEST_RUNES.length > 0) this.equipRunes(this.state.players.get(sessionId)!, seat, TEST_RUNES);
       if (!seat.userId) return;
       void takeLoadout(seat.userId).then((items) => {
         const p = this.state.players.get(sessionId);
@@ -455,6 +465,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         seat.stats.items.loadout = items;
         const best = bestPerSlot(items);
         for (const slot of ITEM_SLOTS) if (isUpgrade(best[slot], p[slot])) p[slot] = best[slot];
+        this.equipRunes(p, seat, items);
       });
       void takeBag(seat.userId).then((items) => {
         const p = this.state.players.get(sessionId);
@@ -519,7 +530,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!seat) return;
     seat.attacking = msg?.on === true;
     // O toque vale por uma recarga inteira: se o golpe anterior ainda recarrega, sai assim que puder.
-    if (seat.attacking) seat.attackUntil = this.clock.currentTime + attackCooldownMs(seat.perks);
+    if (seat.attacking) seat.attackUntil = this.clock.currentTime + attackCooldownMs(seat.perkBonus);
   }
 
   private tick(dt: number) {
@@ -586,7 +597,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     if (!this.canHit(p, m, cls.attackRange)) return;
 
-    seat.nextAttackAt = now + attackCooldownMs(seat.perks);
+    seat.nextAttackAt = now + attackCooldownMs(seat.perkBonus);
     seat.attackUntil = 0;
     // Flecha e luzes voam até o alvo: o dano entra quando chegam (se o monstro ainda estiver vivo).
     const ms = flightMs(BASIC_ATTACKS[cls.id].projectileSpeed, p.x, p.y, m.x, m.y);
@@ -615,7 +626,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const slot = msg?.slot;
     if (slot !== 0 && slot !== 1) return;
     if (p.level < SPELL_SLOT_LEVELS[slot] || spellIn(p, slot)) return;
-    const spell = spellChoices(p.classId as ClassId, slot, [...p.knownSpells]).find((s) => s.id === msg.spellId);
+    const spell = spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).find((s) => s.id === msg.spellId);
     if (!spell) return;
     if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
     const seat = this.seats.get(client.sessionId);
@@ -637,7 +648,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     const now = this.clock.currentTime;
     if (now < seat.spellReadyAt[slot]) return;
-    if (p.mana < spell.manaCost) {
+    const manaCost = spellManaCost(spell, p.classId, p.maxMana);
+    if (p.mana < manaCost) {
       seat.stats.castFails.noMana++;
       client.send(MSG.notice, { x: p.x, y: p.y - 1, text: "Sem mana", color: 0x5dade2 } satisfies NoticeMessage);
       return;
@@ -688,9 +700,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       target = undefined;
     }
 
-    p.mana -= spell.manaCost;
+    p.mana -= manaCost;
     bump(seat.stats.casts, spell.id);
-    seat.spellReadyAt[slot] = now + spellCooldownMs(spell.cooldownMs, seat.perks);
+    seat.spellReadyAt[slot] = now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
     const ms = flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty);
     this.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms } satisfies SpellMessage);
     // Disparo Certeiro: mais forte quanto mais longe estava o alvo na hora do tiro.
@@ -1133,6 +1145,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random), at.x, at.y);
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (Math.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) this.dropItem(rollPotion(Math.random), at.x, at.y);
+    // Runas só caem dos bosses.
+    for (let i = 0; i < RUNE_DROPS[brain.def.rank]; i++) {
+      const rune = RUNES[this.dropItem(rollRune(Math.random), at.x, at.y).itemId];
+      this.notice(at.x, at.y - 2, `${rune.name}!`, rune.color);
+    }
 
     if (brain.chestId) {
       const chest = this.state.chests.get(brain.chestId);
@@ -1198,15 +1215,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     seat.perks[perk] = (seat.perks[perk] ?? 0) + 1;
     p.perks.set(perk, seat.perks[perk]!);
-    seat.perkBonus = perkBonuses(seat.perks);
-    const b = seat.perkBonus;
-    seat.bonus = { hp: seat.aura.hp + b.hp, mana: seat.aura.mana + b.mana, damage: seat.aura.damage + b.damage, speed: seat.aura.speed + b.speed };
-    // Vida e mana máximas crescem na hora, e o que cresceu entra cheio.
-    const stats = statsFor(p.classId as ClassId, p.level, seat.bonus);
-    p.hp = Math.min(stats.maxHp, p.hp + Math.max(0, stats.maxHp - p.maxHp));
-    p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
-    p.maxHp = stats.maxHp;
-    p.maxMana = stats.maxMana;
+    this.applyBonuses(p, seat);
     seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.level, at: this.seconds() });
     this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f);
 
@@ -1216,6 +1225,27 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     } else {
       p.perkOffer.clear();
     }
+  }
+
+  /** As runas equipadas no menu entram com o herói e valem desde já (vida, dano, magias extras na escolha do slot). */
+  private equipRunes(p: Player, seat: Seat, ids: readonly string[]) {
+    const runes = activeRunes([...p.runes, ...ids]);
+    if (runes.length === p.runes.length) return;
+    p.runes.clear();
+    p.runes.push(...runes);
+    this.applyBonuses(p, seat);
+  }
+
+  /** Recalcula o bônus de melhorias e runas. Vida e mana máximas crescem na hora, e o que cresceu entra cheio. */
+  private applyBonuses(p: Player, seat: Seat) {
+    seat.perkBonus = heroBonuses(seat.perks, [...p.runes]);
+    const b = seat.perkBonus;
+    seat.bonus = { hp: seat.aura.hp + b.hp, mana: seat.aura.mana + b.mana, damage: seat.aura.damage + b.damage, speed: seat.aura.speed + b.speed };
+    const stats = statsFor(p.classId as ClassId, p.level, seat.bonus);
+    p.hp = Math.min(stats.maxHp, p.hp + Math.max(0, stats.maxHp - p.maxHp));
+    p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
+    p.maxHp = stats.maxHp;
+    p.maxMana = stats.maxMana;
   }
 
   private damagePlayer(sessionId: string, raw: number, hit: Hit) {
@@ -1536,17 +1566,24 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
           this.notice(p.x, p.y - 1, POTIONS[ground.itemId].name, POTIONS[ground.itemId].color);
           continue;
         }
+        const seat = this.seats.get(sessionId);
+        if (isRune(ground.itemId)) {
+          // Runa vai sempre para a bag (só se equipa no menu, fora da dungeon).
+          if (p.bag.length >= BAG_SIZE) {
+            this.bagFull(p, seat);
+            continue;
+          }
+          p.bag.push(ground.itemId);
+          seat?.stats.items.picked.push(ground.itemId);
+          this.removeGroundItem(ground.id);
+          this.notice(p.x, p.y - 1, `${RUNES[ground.itemId].name} 🎒${p.bag.length}/${BAG_SIZE}`, RUNES[ground.itemId].color);
+          continue;
+        }
         const def = ITEMS[ground.itemId];
         if (!def) continue;
-        const seat = this.seats.get(sessionId);
         const action = pickupAction(def.id, p[def.slot], p.bag.length);
         if (action === "full") {
-          const now = this.clock.currentTime;
-          if (seat && now >= seat.bagFullNoticeUntil) {
-            seat.bagFullNoticeUntil = now + BAG_FULL_NOTICE_MS;
-            seat.stats.items.bagFull++;
-            this.notice(p.x, p.y - 1, "Bag cheia", 0xe74c3c);
-          }
+          this.bagFull(p, seat);
           continue;
         }
         if (action === "bag") p.bag.push(def.id);
@@ -1559,6 +1596,15 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         this.notice(p.x, p.y - 1, action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}` : def.name, TIER_COLORS[def.tier]);
       }
     });
+  }
+
+  /** Aviso de bag cheia, no máximo um a cada `BAG_FULL_NOTICE_MS`. */
+  private bagFull(p: Player, seat: Seat | undefined) {
+    const now = this.clock.currentTime;
+    if (!seat || now < seat.bagFullNoticeUntil) return;
+    seat.bagFullNoticeUntil = now + BAG_FULL_NOTICE_MS;
+    seat.stats.items.bagFull++;
+    this.notice(p.x, p.y - 1, "Bag cheia", 0xe74c3c);
   }
 
   private expireItems(now: number) {
@@ -1579,7 +1625,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
     // Quem morre (ou fica soterrado) perde 1 equipamento sorteado, a bag inteira e as poções: caem no chão e
-    // os outros podem saquear. O resto do equipamento volta para a conta.
+    // os outros podem saquear. O resto do equipamento e as runas equipadas voltam para a conta.
     const seat = this.seats.get(sessionId);
     let lost: string | undefined;
     if (!survived) {
@@ -1612,8 +1658,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.barrier = 0;
     this.state.summons.forEach((s) => { if (s.owner === sessionId) this.removeSummon(s.id); });
 
-    // O equipamento que sobrou no corpo volta equipado para a conta; a bag de quem sai vivo vai para o cofre.
-    const items = equipment(player).filter(Boolean);
+    // O equipamento que sobrou no corpo e as runas voltam equipados para a conta; a bag de quem sai vivo vai para o cofre.
+    const items = [...equipment(player).filter(Boolean), ...player.runes];
     const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost };
     this.clients.getById(sessionId)?.send(MSG.runEnded, result);
 

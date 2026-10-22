@@ -3,7 +3,10 @@ import {
   SPELLS,
   SPELL_SLOT_LEVELS,
   spellChoices,
+  heroBonuses,
+  runeSpells,
   spellCooldownMs,
+  spellManaCost,
   spellFacts,
   type ClassId,
   type SpellDef,
@@ -71,7 +74,7 @@ export class SpellBar {
     const spell = SPELLS[spellId];
     const view = this.slots[spell.slot];
     const p = this.me();
-    view.cooldownMs = spellCooldownMs(spell.cooldownMs, p ? stacksOf(p) : {});
+    view.cooldownMs = spellCooldownMs(spell.cooldownMs, heroBonuses(p ? stacksOf(p) : {}, p ? [...p.runes] : []));
     view.readyAt = performance.now() + view.cooldownMs;
   }
 
@@ -112,7 +115,7 @@ export class SpellBar {
     const p = this.me();
     const spell = p && SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
     const ready = performance.now() >= this.slots[slot].readyAt;
-    if (!p || !spell || spell.aim !== "target" || !ready || p.mana < spell.manaCost) return this.press(slot);
+    if (!p || !spell || spell.aim !== "target" || !ready || p.mana < spellManaCost(spell, p.classId, p.maxMana)) return this.press(slot);
     // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
     this.slots[slot].button.setPointerCapture(e.pointerId);
     this.aiming = { slot, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY };
@@ -143,11 +146,13 @@ export class SpellBar {
     const spell = SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
     const left = Math.max(0, view.readyAt - performance.now());
 
+    // Magia de runa de outra classe pode custar menos (ver `spellManaCost`).
+    const manaCost = spell ? spellManaCost(spell, p.classId, p.maxMana) : 0;
     let state: "locked" | "empty" | "ready" | "cooldown" | "nomana";
     if (p.level < unlockAt) state = "locked";
     else if (!spell) state = "empty";
     else if (left > 0) state = "cooldown";
-    else if (p.mana < spell.manaCost) state = "nomana";
+    else if (p.mana < manaCost) state = "nomana";
     else state = "ready";
 
     // Liberou agora: abre a escolha sozinha (uma vez; depois, pelo botão ✨).
@@ -158,7 +163,7 @@ export class SpellBar {
     }
 
     view.button.style.setProperty("--cd", state === "cooldown" ? String(left / view.cooldownMs) : "0");
-    const key = `${state}|${spell?.id ?? ""}|${state === "cooldown" ? Math.ceil(left / 1000) : ""}`;
+    const key = `${state}|${spell?.id ?? ""}|${manaCost}|${state === "cooldown" ? Math.ceil(left / 1000) : ""}`;
     if (key === view.key) return;
     view.key = key;
     view.button.dataset.state = state;
@@ -172,8 +177,8 @@ export class SpellBar {
       view.button.setAttribute("aria-label", `Escolher magia do slot ${slot + 1}`);
     } else {
       view.icon.textContent = spell.icon;
-      view.label.textContent = state === "cooldown" ? `${Math.ceil(left / 1000)}s` : `${spell.manaCost}`;
-      view.button.setAttribute("aria-label", `${spell.name} (${spell.manaCost} de mana)`);
+      view.label.textContent = state === "cooldown" ? `${Math.ceil(left / 1000)}s` : `${manaCost}`;
+      view.button.setAttribute("aria-label", `${spell.name} (${manaCost} de mana)`);
     }
     view.button.title = view.button.getAttribute("aria-label") ?? "";
   }
@@ -192,7 +197,7 @@ export class SpellBar {
     hint.textContent = "Escolha a magia deste slot. Ela fica com você até o fim da hunt.";
     const list = document.createElement("div");
     list.className = "spell-options";
-    for (const spell of spellChoices(p.classId as ClassId, slot, [...p.knownSpells])) {
+    for (const spell of spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes]))) {
       const option = document.createElement("button");
       option.className = "spell-option";
       option.innerHTML = `<span class="spell-option-icon"></span><span><strong></strong><small></small><em></em></span>`;

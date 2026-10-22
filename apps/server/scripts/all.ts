@@ -5,6 +5,7 @@
  * - Servidor normal: smoke, combat, items, maps, potions, perks e bag.
  * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos; o cavaleiro aguenta apanhar parado): spells e specials.
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio.
+ * - Servidor com KUSA_START_LEVEL=8 e KUSA_RUNES (runas equipadas em todo mundo): runes.
  *
  * Os bots caçam no nível 1 e às vezes morrem por azar. Só nesse caso (a hunt terminou com "died")
  * o teste roda de novo, até 5 vezes (o bot de nível 1 morre em cerca de
@@ -24,6 +25,7 @@ const SUITES: Suite[] = [
   { port: 2610, env: {}, tests: ["smoke", "combat", "items", "maps", "potions", "perks", "bag"] },
   { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["spells", "specials"] },
   { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["grimorio"] },
+  { port: 2613, env: { KUSA_START_LEVEL: "8", KUSA_RUNES: "rune-life,rune-time,rune-meteor,rune-life" }, tests: ["runes"] },
 ];
 
 const only = process.argv.slice(2);
