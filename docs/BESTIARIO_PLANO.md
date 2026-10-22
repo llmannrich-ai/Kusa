@@ -15,8 +15,8 @@ a fase como feita. As decisões em aberto estão na seção 10.
 |---|---|---|
 | Monstros | 12 (4 comuns + 1 mini-boss + 1 boss por mapa) | ~65 em 5 mapas (8–9 comuns, 3 mini-bosses e 1–2 bosses por mapa) |
 | Comportamentos | 1: anda até o alvo e bate corpo a corpo | 8 papéis: bruto, escaramuçador, artilheiro, controlador, líder, enxame, emboscador, sentinela |
-| Ataque à distância | só os bosses (alcance 2) | artilheiros e conjuradores comuns, com projétil visível e desviável |
-| Habilidades | 1 especial por mini-boss/boss, sem aviso | lista de habilidades por monstro, com **aviso no chão** (telegraph) e recarga variável (a "Recarga 5–6" do D&D) |
+| Ataque à distância | só os bosses (alcance 2) | artilheiros e conjuradores comuns, com projétil visível (o dano vale no disparo: não dá para desviar) |
+| Habilidades | 1 especial por mini-boss/boss, sem aviso | lista de habilidades por monstro, **sem aviso** (princípio do jogo, ver 3) e com recarga variável (a "Recarga 5–6" do D&D): o jogador não sabe quando o golpe volta |
 | Tipos de criatura | só o flag `undead` | 14 tipos do D&D (morto-vivo, constructo, limo, aberração...) com resistências e imunidades |
 | Elementos | só nas magias do Feiticeiro | todo dano tem elemento; monstros resistem ou são vulneráveis (o Troll só para de regenerar com fogo ou ácido) |
 | Salas | lista fixa por profundidade: toda hunt tem a mesma composição | **encontros** sorteados pela seed com orçamento de ameaça (como o "XP budget" do D&D) |
@@ -70,9 +70,10 @@ por encontros (fase 5) e só então abrir mapas novos (fases 6 a 8). Cada fase �
    - **A Cobra-d'água está fora da curva** (recarga de 1,0 s, a menor do jogo). Se a cobra matar mais que o Afogado na
      telemetria (`telemetry_deaths`), é isso.
 
-4. **Especial sem aviso é injusto no celular.** O golpe sai "na hora, sem aviso" (GDD). No toque, com polegar no
-   joystick, o jogador não tem como reagir: o dano vira imposto, não desafio. O D&D resolve com a Recarga (o jogador
-   sabe que o sopro voltou) e os jogos de ação com o telegraph. O cliente já tem cor de aviso no `MonsterSpecial`, mas não usa.
+4. **O golpe sem aviso é intencional e fica.** O jogo é difícil e injusto como a vida (princípio da seção 3). O que
+   falta não é aviso, é **previsibilidade de longo prazo**: hoje a recarga é fixa (8 s no Ogro, 7 s no Dragão), e quem
+   decora o ritmo neutraliza o especial. A Recarga 5–6 (variação aleatória) tira esse atalho. O campo `color` do
+   `MonsterSpecial` serve só para o efeito do golpe, nunca para avisar antes.
 
 5. **Em equipe, o boss cai antes de mostrar o que tem.** A dificuldade não muda com o número de jogadores, e isso é
    princípio do jogo (jogar em equipe tem que ser mais fácil, para estimular a equipe). O efeito colateral: com 4 heróis
@@ -100,8 +101,10 @@ por encontros (fase 5) e só então abrir mapas novos (fases 6 a 8). Cada fase �
 2. **Cada monstro tem um papel e uma assinatura.** Papel = como ele joga (tabela 3.1). Assinatura = uma mecânica
    tirada do bloco de estatísticas do D&D (Táticas de Bando do kobold, Regeneração do troll, Fortitude do zumbi).
    Um comum tem no máximo 1 assinatura; mini-boss 2; boss 3 a 4.
-3. **Legível em 9 tiles de largura.** Silhueta e cor únicas dentro do mapa, toda habilidade com dano alto tem aviso
-   no chão (≥ 600 ms em comuns, ≥ 800 ms em bosses) e projéteis viajam (dá para sair da frente).
+3. **Difícil e injusto como a vida: nenhum golpe tem aviso.** Habilidades saem na hora, projéteis acertam no
+   disparo e a recarga varia. O jogador se defende **antes** (posição, quem matar primeiro, distância de artilheiros,
+   não ficar atrás do boss), não reagindo a um sinal. O que precisa ser legível é o monstro, não o golpe: silhueta e
+   cor únicas dentro do mapa, em 9 tiles de largura.
 4. **Controle no herói é curto.** Nenhum efeito tira o controle do jogador por mais de 2 s, e depois de um controle o
    herói fica imune ao mesmo efeito por 4 s (a "jogada de resistência" do D&D, sem dado).
 5. **A dificuldade não depende do tamanho da equipe.** Os monstros são os mesmos com 1 ou 4 heróis: jogar em equipe é
@@ -184,7 +187,7 @@ O número aparece colorido sobre o monstro ("Resiste!" em cinza, "Vulnerável!" 
 | D&D | Kusa |
 |---|---|
 | **Multiataque** | um golpe acerta 2–3 vezes seguidas (efeito repetido), ou acerta alvos diferentes (cabeças da Hidra) |
-| **Recarga 5–6** | recarga com variação aleatória de ±30%; o monstro brilha quando a habilidade está pronta |
+| **Recarga 5–6** | recarga com variação aleatória de ±30%, sem sinal de que voltou |
 | **Ações Lendárias** | o boss age fora da vez: um golpe rápido entre os ataques (ex.: batida de cauda quando alguém fica atrás) |
 | **Ações de Covil** | a cada 12 s a sala do boss faz algo: estalactites caem (Profundezas), lava sobe (Fornalha), mortos levantam (Necrópole) |
 | **Resistência Lendária** | 2 cargas por luta: o boss ignora um controle (atordoar, prender) e mostra "Resiste!" |
@@ -242,7 +245,6 @@ export interface MonsterAbility {
   shape: SpecialShape | "cone" | "projectile" | "summon" | "dash" | "pull";
   range: number; radius: number; length?: number;
   cooldownMs: number; cooldownJitter?: number;              // Recarga 5–6
-  windupMs: number;                                         // aviso no chão antes do golpe
   power: number; element?: DamageElement;
   effects?: HeroEffect[];                                   // preso, atordoado, corroído...
   when?: { belowHp?: number; alliesNear?: number; targetFarther?: number };
@@ -252,13 +254,13 @@ export interface MonsterAbility {
 O `art` sai daqui e fica num registro do cliente (`apps/client/src/art/bestiary.ts`), para não pôr dado visual no
 `packages/shared`. O `MonsterDef` fica com o que o servidor precisa; `shape` e `color` provisórios saem.
 
-### 4.7 Aviso no chão (telegraph)
+### 4.7 Golpes sem aviso
 
-- Mensagem nova `MSG.monsterWindup` `{ id, ability, tiles, until }`: o cliente pinta os tiles em vermelho que enche
-  até `until`; o servidor guarda o golpe pendente e resolve no fim (quem saiu da área não toma).
-- O monstro fica parado durante o aviso (é a janela para o jogador bater ou sair).
-- Atordoar o monstro durante o aviso cancela o golpe (recompensa para Bater com Escudo, Flecha Atordoante, Estática).
-- Projéteis de monstro (`MSG.monsterShot`) viajam a 8 tiles/s; o servidor resolve no tile em que o projétil chega.
+- As habilidades usam a mesma mensagem de hoje (`MSG.monsterStrike`): o dano e o efeito saem juntos, na hora.
+- Projéteis de monstro (`MSG.monsterShot`) são só desenho: o dano vale no disparo, no alvo escolhido (como o ataque
+  à distância dos bosses hoje). O desenho mostra de onde veio, para o jogador aprender quem matar primeiro.
+- O que dá chance ao jogador é o desenho dos encontros: no máximo 2 artilheiros por sala, habilidades fortes com
+  recarga longa, e controle no herói com teto de 2 s e imunidade de 4 s (pilar 4).
 
 ### 4.8 Encontros sorteados (substitui `pathSpawns`)
 
@@ -299,19 +301,19 @@ Os ids (`rat`, `goblin`...) **não mudam**, para não quebrar a telemetria (`kil
 | Goblin | Goblin | escaramuçador | velocidade 3 → 3,4 | **Fuga Ágil:** depois de acertar, recua 1 tile (recarga 4 s); obriga a perseguir |
 | Esqueleto | Skeleton | bruto | sem mudança | tipo morto-vivo: **imune a veneno e sangramento**, vulnerável a luz (já) |
 | Orc guerreiro | Orc | bruto | sem mudança | **Agressivo:** com o alvo a 3–5 tiles, avança 2 tiles de uma vez (recarga 6 s) |
-| Ogro (mini-boss) | Ogre | bruto | dano 14 → 18, recarga 1,6 → 1,8 s | Pisão Sísmico ganha aviso de 700 ms; nova: **Arremesso de Pedra** (alvo a 3–6 tiles, área 1, empurra 1) |
-| Dragão jovem (boss) | Young Red Dragon | — | sem mudança; fases por % de vida | Sopro Infernal vira **cone** com aviso de 900 ms e Recarga 5–6; **Multiataque** (mordida + 2 garras); **imune a fogo**; abaixo de 50%: **Voo** (some 2 s e cai sobre um herói, área 2 com aviso) |
+| Ogro (mini-boss) | Ogre | bruto | dano 14 → 18, recarga 1,6 → 1,8 s | Pisão Sísmico com Recarga 5–6; nova: **Arremesso de Pedra** (alvo a 3–6 tiles, área 1, empurra 1) |
+| Dragão jovem (boss) | Young Red Dragon | — | sem mudança; fases por % de vida | Sopro Infernal vira **cone** com Recarga 5–6; **Multiataque** (mordida + 2 garras); **imune a fogo**; abaixo de 50%: **Voo** (some 2 s e cai sobre um herói, área 2) |
 
 ### 5.2 Pântano das Ruínas
 
 | Monstro | Base D&D | Papel | Ajuste de número | Assinatura nova |
 |---|---|---|---|---|
-| Sapo gigante | Giant Frog | controlador | sem mudança | **Língua:** puxa um herói a até 3 tiles para colado (recarga 7 s, aviso de linha) |
+| Sapo gigante | Giant Frog | controlador | sem mudança | **Língua:** puxa um herói a até 3 tiles para colado (Recarga 5–6, ~7 s) |
 | Cobra-d'água | Giant Poisonous Snake | escaramuçador | dano 8 → 6, recarga 1,0 → 1,2 s (corrige 2.2.3) | **Picada Venenosa:** veneno de 3 s no golpe |
 | Afogado | Zombie (afogado) | bruto | velocidade 2,6 → 2,0, HP 120 → 140 | **Fortitude Morta-viva:** o primeiro golpe que o mataria o deixa com 1 HP, exceto dano de luz ou fogo |
 | Naga guerreira | Guardian Naga (versão menor) | sentinela | sem mudança | **Constrição:** golpe que prende 1,5 s (recarga 6 s) |
 | Troll do brejo (mini-boss) | Troll | bruto | dano 20 → 24 | **Regeneração** passiva de 2% por segundo, que **para por 5 s se levar fogo ou ácido** (troca a Fúria Regenerante); **Dilacerar** (multiataque com sangramento) |
-| Hidra do pântano (boss) | Hydra | — | sem mudança; fases por % de vida | **Cabeças:** começa com 3 (cada cabeça morde um alvo diferente); a cada 20% de vida perdida, perde uma; se não levar fogo em 6 s, nascem 2 no lugar (máx. 5) e cura 5%. Chuva Ácida ganha aviso. **Mergulho:** some na água e surge longe |
+| Hidra do pântano (boss) | Hydra | — | sem mudança; fases por % de vida | **Cabeças:** começa com 3 (cada cabeça morde um alvo diferente); a cada 20% de vida perdida, perde uma; se não levar fogo em 6 s, nascem 2 no lugar (máx. 5) e cura 5%. Chuva Ácida com Recarga 5–6. **Mergulho:** some na água e surge longe |
 
 O Troll e a Hidra são os exemplos mais famosos de "resistência como quebra-cabeça" do D&D, e hoje são números.
 Com elementos (4.3), o Feiticeiro de fogo e o Druida de veneno/ácido passam a ser a resposta, e a equipe sente isso.
@@ -343,7 +345,7 @@ comum e da profundidade. "SRD" = criatura do SRD 5.1. Arte: arquivo candidato no
 |---|---|---|---|
 | Ogro | Ogre | (5.1) | atual |
 | **Mímico** | Mimic (SRD) | Disfarçado de baú: 1 em 3 salas laterais (seed) não tem baú, tem o Mímico. Ao chegar a 1 tile, abre a boca: **Adesivo** (prende quem estiver colado 2 s), mordida ácida. Morto, **vira o baú** com o loot de sempre | baú do pack + boca e dentes (própria) |
-| **Cubo Gelatinoso** | Gelatinous Cube (SRD) | Quase transparente (35%), ocupa 2×2, anda devagar pelos corredores. **Engolfar** (aviso de 800 ms): quem fica no caminho é engolido 3 s com ácido; aliados batendo no cubo soltam antes. Itens e ossos visíveis dentro | própria (semitransparente) |
+| **Cubo Gelatinoso** | Gelatinous Cube (SRD) | Quase transparente (35%), ocupa 2×2, anda devagar pelos corredores. **Engolfar:** quem fica no caminho é engolido 3 s com ácido; aliados batendo no cubo soltam antes. Itens e ossos visíveis dentro | própria (semitransparente) |
 | Bugbear chefe | Bugbear (SRD) | **Ataque Surpresa:** o primeiro golpe em quem não estava na mira dele causa 2,5×; **Braços Longos:** alcance 2 | `monster/bugbear` (conferir) ou própria |
 
 **Boss:** Dragão jovem vermelho (5.1). Alternativa futura: **Rei Goblin** (Goblin Boss, SRD) com ondas de goblins e arqueiros.
@@ -352,7 +354,7 @@ comum e da profundidade. "SRD" = criatura do SRD 5.1. Arte: arquivo candidato no
 
 | Monstro | D&D | ND | Papel | Números | Assinatura | Contra-jogo | Arte |
 |---|---|---|---|---|---|---|---|
-| Bullywug | Bullywug | 3 | escaramuçador | 55 / 6 / 1,3 / 3,2 / 1 | **Salto Parado:** salta 3 tiles até o alvo (aviso de 500 ms); camuflado na água até notar alguém | sair do ponto de pouso | própria (sapo humanoide) |
+| Bullywug | Bullywug | 3 | escaramuçador | 55 / 6 / 1,3 / 3,2 / 1 | **Salto Parado:** salta 3 tiles até o alvo, na hora; camuflado na água até notar alguém | matar antes; não ficar sozinho | própria (sapo humanoide) |
 | Enxame de estirges | Swarm (Stirge) | 3 | enxame | 3× Estirge da Cripta, ND ajustado | ver Estirge | área | `vampire_mosquito` |
 | Homem-lagarto | Lizardfolk (SRD) | 4 | bruto | 120 / 9 / 1,5 / 2,8 / 1 | **Couraça Natural:** −20% de dano físico; **Multiataque** (mordida + clava) | magia | `monster/lizardfolk` (conferir) ou própria |
 | Carniçal afogado | Ghoul (SRD) | 4 | controlador | 85 / 7 / 1,4 / 3,2 / 1 | morto-vivo; **Garras Paralisantes:** 25% de chance de atordoar 1 s | luz, distância | `monster/undead/ghoul` |
@@ -362,7 +364,7 @@ comum e da profundidade. "SRD" = criatura do SRD 5.1. Arte: arquivo candidato no
 | Monte Errante | Shambling Mound (SRD) | 6 | sentinela (planta) | 260 / 12 / 1,8 / 1,6 / 1 | **Absorver Raio:** energia cura em vez de ferir; **Engolfar** (3 s); vulnerável a fogo | fogo; não usar energia | própria |
 
 **Mini-bosses:** Troll do brejo (5.2) · **Bruxa Verde** (Green Hag, SRD): **Ilusão** (cria 2 cópias de 1 HP e fica
-invisível 3 s), **Nuvem Venenosa** com aviso, ri quando um herói cai · **Naga Espiritual** (Spirit Naga, SRD):
+invisível 3 s), **Nuvem Venenosa**, ri quando um herói cai · **Naga Espiritual** (Spirit Naga, SRD):
 conjuradora, **Raio** em linha, **Rejuvenescimento** (se ninguém matar o baú-ninho dela em 20 s, volta com 30% da vida).
 
 **Bosses:** Hidra (5.2) · alternativa: **Dragão negro jovem** (Young Black Dragon, SRD): sopro ácido em linha que deixa
@@ -376,7 +378,7 @@ herói), monstros que caem do teto e saem da pedra. Duração sugerida: 9 min.
 | Monstro | D&D | ND | Papel | Assinatura |
 |---|---|---|---|---|
 | Drow | Drow (SRD) | 5 | artilheiro | Besta de mão com **veneno de sono** (atordoa 1 s se o herói estiver acima de 50% da vida); **Globo de Escuridão** |
-| Duergar | Duergar (SRD) | 5 | bruto | **Aumentar** (aviso: cresce, 6 s com dano 2×); **Invisibilidade** ao ficar abaixo de 30% |
+| Duergar | Duergar (SRD) | 5 | bruto | **Aumentar** (cresce na hora, 6 s com dano 2×; dá para ver que cresceu); **Invisibilidade** ao ficar abaixo de 30% |
 | Grick | Grick (SRD) | 5 | emboscador | camuflado na pedra; tentáculos + bico (multiataque); resiste a físico |
 | Manto Sombrio | Darkmantle (SRD) | 5 | emboscador (voa) | cai do teto num herói e o **cega** (não mira além de 2 tiles por 2 s) |
 | Monstro da Ferrugem | Rust Monster (SRD) | 6 | controlador | **Corrosão** forte (−armadura 3×). Não destrói item (ver 10.4) |
@@ -385,12 +387,12 @@ herói), monstros que caem do teto e saem da pedra. Duração sugerida: 9 min.
 | Chuul | Chuul (SRD) | 7 | bruto | **Pinças** que prendem; tentáculos que atordoam quem já está preso |
 | Otyugh | Otyugh (SRD) | 8 | sentinela | **Batida** que atordoa; mordida com doença (sem regeneração por 8 s) |
 
-**Mini-bosses:** **Drider** (SRD: teia + arco + veneno) · **Basilisco** (SRD: **Olhar Petrificante** em cone com aviso;
+**Mini-bosses:** **Drider** (SRD: teia + arco + veneno) · **Basilisco** (SRD: **Olhar Petrificante** em cone;
 quem fica dentro vira pedra 1,5 s: atordoado, mas com +10 de armadura) · **Roper** (SRD: parado, puxa com 4 gavinhas de 6 tiles).
 
 **Boss:** **Verme Púrpura** (Purple Worm, SRD, 4×4): **Escavar** (some, um tremor anda pelo chão até um herói e ele
-emerge com aviso de 1 s), **Engolir** (3 s), **Ferrão** venenoso na cauda. Ação de Covil: estalactites caem em 3
-pontos com aviso. Alternativa: **Aboleth** (SRD) com **Escravizar** (o herói fica 3 s andando sozinho até o aboleth;
+emerge sob ele; o tremor mostra que o verme está embaixo, não quando sai), **Engolir** (3 s), **Ferrão** venenoso na cauda. Ação de Covil: estalactites caem em 3
+pontos. Alternativa: **Aboleth** (SRD) com **Escravizar** (o herói fica 3 s andando sozinho até o aboleth;
 sem dano em aliados, para não virar PvP).
 
 ### 6.4 Necrópole (★4, mapa novo) — a Torre do Lich
@@ -404,12 +406,12 @@ Mausoléus, criptas nobres e um laboratório no topo. Muitos mortos-vivos: aqui 
 | Wight | Wight (SRD) | 7 | líder | **Dreno de Vida** (enfraquece); **ergue zumbis** dos cadáveres próximos |
 | Espectro | Specter/Wraith (SRD) | 7 | emboscador | **Incorpóreo:** atravessa paredes, resiste a físico 50% |
 | Múmia | Mummy (SRD) | 8 | bruto | **Podridão de Múmia:** amaldiçoado (sem cura) 5 s; **Olhar Aterrador**; vulnerável a fogo |
-| Banshee | Banshee (SRD) | 8 | controlador | **Lamento** (aviso de 1 s, raio 4): dano de 40% da vida atual; incorpórea |
+| Banshee | Banshee (SRD) | 8 | controlador | **Lamento** (raio 4, na hora): dano de 40% da vida atual; incorpórea |
 
 **Mini-bosses:** **Vampiro** (SRD: vira névoa, invoca morcegos, Recarga de mordida) · **Senhor Múmia** (SRD:
 Redemoinho de Areia, Palavra Blasfema) · **Cavaleiro Sepulcral** (próprio, inspirado no Death Knight: Bola de Fogo Infernal).
 
-**Boss:** **Lich** (SRD). Fase 1: Raio de Frio, Paralisar Pessoa, Escudo; fase 2 (50%): **Círculo da Morte** com aviso,
+**Boss:** **Lich** (SRD). Fase 1: Raio de Frio, Paralisar Pessoa, Escudo; fase 2 (50%): **Círculo da Morte**,
 Ações de Covil (mortos levantam). **Filactério:** fica numa sala lateral; se não for quebrado antes do Lich cair, ele
 volta uma vez com 30% da vida. Dá motivo para a equipe se dividir, como em D&D.
 
@@ -423,14 +425,14 @@ volta uma vez com 30% da vida. Dá motivo para a equipe se dividir, como em D&D.
 | Cão infernal | Hell Hound (SRD) | 8 | escaramuçador | **Táticas de Bando** + **Sopro de Fogo** em cone curto (Recarga 5–6) |
 | Salamandra | Salamander (SRD) | 9 | controlador | lança de alcance 2; **Constrição Ardente** (preso + queimadura) |
 | Elemental do fogo | Fire Elemental (SRD) | 9 | escaramuçador | atravessa heróis e deixa chão em chamas; gelo fere 2× |
-| Golem de ferro | Iron Golem (SRD) | 10 | sentinela | resiste a físico 50%, **fogo o cura**; **Sopro Venenoso** com aviso |
+| Golem de ferro | Iron Golem (SRD) | 10 | sentinela | resiste a físico 50%, **fogo o cura**; **Sopro Venenoso** |
 
-**Mini-bosses:** **Gigante do Fogo** (SRD: arremessa pedras com aviso em círculo, longe) · **Efreeti** (SRD: voa,
+**Mini-bosses:** **Gigante do Fogo** (SRD: arremessa pedras em círculo, longe) · **Efreeti** (SRD: voa,
 Muralha de Fogo, invisível por instantes) · **Quimera** (SRD: três cabeças, sopro de fogo).
 
 **Boss:** **Dragão vermelho adulto** (SRD): **Presença Aterradora** (enfraquece quem estiver a até 6 tiles na primeira
-vez que o vê), sopro em cone grande com aviso, **Ações Lendárias** (batida de asa que empurra), **Resistência
-Lendária** (2), Ação de Covil: a lava sobe em faixas com aviso.
+vez que o vê), sopro em cone grande, **Ações Lendárias** (batida de asa que empurra), **Resistência
+Lendária** (2), Ação de Covil: a lava sobe em faixas.
 
 ### 6.6 Contagem
 
@@ -466,7 +468,7 @@ Os sprites do pack têm um quadro só. Dá para dar vida com tweens no `DungeonS
 | Parado | "respira": escala Y entre 0,97 e 1,0 em 1,2 s, fase aleatória por monstro |
 | Andando | pulinho de 2 px por passo; voadores flutuam com sombra no chão |
 | Ataque básico | avança 4 px na direção do alvo e volta (80 ms) |
-| Aviso de habilidade | brilho pulsando na cor da habilidade + área vermelha enchendo no chão |
+| Habilidade | o monstro brilha na cor dela e o efeito cobre a área **no mesmo instante do dano** (como hoje) |
 | Levou dano | pisca branco 60 ms (já existe o sangue) |
 | Morte | por tipo: sangue (vermelho, verde, roxo), poeira (morto-vivo), gosma (limo), cinza (elemental), faísca (constructo) |
 | Invisível/camuflado | opacidade 15–35% com distorção leve; sem barra de vida |
@@ -474,7 +476,7 @@ Os sprites do pack têm um quadro só. Dá para dar vida com tweens no `DungeonS
 
 ### 7.3 Registro visual único
 
-`apps/client/src/art/bestiary.ts` junta textura, olha para a esquerda, sangue, voa, escala e cor do aviso de cada
+`apps/client/src/art/bestiary.ts` junta textura, olha para a esquerda, sangue, voa, escala e cor das habilidades de cada
 monstro. Substitui `MONSTER_TEXTURE`, `FACES_LEFT` e `BLOODLESS`. A galeria `arte.html` ganha a seção **Bestiário**
 (todos os monstros lado a lado no tamanho do jogo e 4×, para conferir silhueta e cor no celular).
 
@@ -518,16 +520,14 @@ Metas de partida (ajustar depois com telemetria):
 
 - `stats.kills`, `killed_by` e `stats.damageTaken` já são por monstro: nada muda para os novos.
 - `stats.specialDamage` passa a ser por habilidade (`"dragon:breath"`), não só por monstro.
-- Novos contadores em `RunStats`: `ccTaken` (tempo preso/atordoado por efeito), `dodged` (golpes com aviso que o herói
-  evitou: mede se o telegraph está justo), `resisted` (dano perdido por resistência) e `encounters` (composição de cada sala).
-- **Metas no mapa:** nenhum monstro com mais de 35% das mortes; taxa de chegada ao boss entre 40% e 70%; `dodged`
-  entre 30% e 70% (abaixo, o aviso é curto; acima, é fácil demais).
+- Novos contadores em `RunStats`: `ccTaken` (tempo preso/atordoado por efeito), `resisted` (dano perdido por resistência) e `encounters` (composição de cada sala).
+- **Metas no mapa:** nenhum monstro com mais de 35% das mortes; taxa de chegada ao boss entre 40% e 70%; nenhuma habilidade sozinha com mais de 20% das mortes do mapa (golpe sem aviso pode ser injusto, mas não pode ser a única coisa que mata).
 - Views: `telemetry_bestiary` (por monstro: abates, mortes causadas, dano médio, TTK médio) e a aba "O que mais mata" do
   painel passa a mostrar a habilidade.
 
 ### 8.3 Testes
 
-- Teste unitário que confere todo `MonsterDef` contra a curva de ND (±25%) e se toda habilidade com `power ≥ 1,5` tem `windupMs`.
+- Teste unitário que confere todo `MonsterDef` contra a curva de ND (±25%) e se toda habilidade com `power ≥ 2` tem recarga de pelo menos 6 s.
 - Teste de fumaça por mecânica nova (agarrar, engolir, dividir, regenerar com fogo, mímico) na lista `SUITES` de
   `apps/server/scripts/all.ts`.
 
@@ -540,7 +540,7 @@ Cada fase é um ou mais PRs que mantêm o jogo jogável. Toda mudança em `maps.
 | Fase | Conteúdo | PRs | Depende de |
 |---|---|---|---|
 | **0. Preparação** | Registro visual `bestiary.ts`; tirar `shape`/`color` provisórios; simulador; levantar no pack os arquivos de cada monstro novo; ler `telemetry_deaths` e `telemetry_classes` por mapa e por `party_size` | 1–2 | — |
-| **1. Motor** | `abilities[]` (com `special` migrado), aviso no chão, projétil de monstro, comportamentos (manter distância, recuar, fugir, investir), elementos em todo dano, resistências, efeitos novos no herói com imunidade de 4 s, Recarga 5–6 | 3–4 | 0 |
+| **1. Motor** | `abilities[]` (com `special` migrado), projétil de monstro (desenho; dano no disparo), comportamentos (manter distância, recuar, fugir, investir), elementos em todo dano, resistências, efeitos novos no herói com imunidade de 4 s, Recarga 5–6 | 3–4 | 0 |
 | **2. Retrabalho dos 12** | Seção 5 inteira; correção da Cobra e dos mini-bosses; fases dos bosses por % de vida | 2 (um por mapa) | 1 |
 | **3. Cripta 2.0** | 8 comuns + Mímico, Cubo e Bugbear (6.1); animação procedural (7.2) | 2–3 | 2 |
 | **4. Pântano 2.0** | 8 comuns + Bruxa e Naga Espiritual; Dragão negro como 2º boss (6.2) | 2–3 | 2 |
@@ -559,9 +559,9 @@ inimigos" que o jogador sente; os mapas novos são a parte cara e devem esperar 
   funções `start_solo_run`/`finish_solo_run` (banco) mudam juntos, em migration nova, com os advisors de segurança.
 - **Mapa novo** = `MapId` novo no `packages/shared`, no banco (checagens de `map_id`, `SOLO_LIMITS`) e na telemetria
   (`map_id`), gerador próprio em `dungeon.ts` e `RULES_VERSION`.
-- **Schema sincronizado:** `Monster` ganha poucos campos (`invisible`, `windup`, `champion`); efeitos do herói entram no
+- **Schema sincronizado:** `Monster` ganha poucos campos (`invisible`, `champion`); efeitos do herói entram no
   `Player` como um campo de texto com os efeitos ativos (como o `dot` de hoje), para não inflar o estado.
-- **Desempenho no celular:** encontros por orçamento limitam o número de monstros por sala (máx. 7); projéteis e avisos
+- **Desempenho no celular:** encontros por orçamento limitam o número de monstros por sala (máx. 7); projéteis
   são efeitos locais do cliente, não estado sincronizado.
 - **`hunt.ts` já tem 2.800 linhas.** A IA e as habilidades dos monstros saem para `apps/server/src/monsterAi.ts` na fase 1,
   com as mesmas restrições (sem Node, sem Colyseus, sem Supabase).
@@ -570,9 +570,8 @@ inimigos" que o jogador sente; os mapas novos são a parte cara e devem esperar 
 
 ## 10. Riscos e decisões para o Leonardo
 
-1. **Aviso no chão (telegraph) troca a regra do GDD** ("sem aviso"). Recomendo trocar: no celular o golpe sem aviso é
-   dano que o jogador não consegue evitar. Contraponto: deixa os bosses mais fáceis, então o dano das habilidades com
-   aviso sobe ~20% para compensar.
+1. **Aviso antes dos golpes (decidido): não tem.** O jogo é difícil e injusto como a vida. O plano mantém o "sem
+   aviso" do GDD, troca a recarga fixa pela Recarga 5–6 e equilibra pelo desenho dos encontros.
 2. **Propriedade intelectual.** O SRD 5.1 é CC-BY-4.0 (pode usar com crédito). Beholder, Devorador de Mentes, Besta
    Deslocadora, Umber Hulk e Yuan-ti **não estão no SRD** e são marcas da Wizards. Para um jogo entre amigos o risco é
    baixo; se o Kusa for publicado ou monetizado, é real. Recomendo ficar no SRD e, se quiser um "olho flutuante",

@@ -385,6 +385,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   na hora, sem aviso, sempre que a recarga deixa e o alvo está ao alcance. O nome do golpe sobe sobre o monstro, ele
   brilha na cor da habilidade e o efeito cobre a área atingida. Monstros comuns só têm o ataque básico.
   Bosses abaixo de 50% da vida se enfurecem e usam o golpe mais vezes.
+- **Princípio: difícil e injusto como a vida.** Nenhum golpe de monstro tem aviso antes (área marcada no chão, brilho de carga, contagem); o jogador se defende pela posição e pela escolha de quem matar primeiro, não reagindo a um sinal.
 
 | Monstro | Habilidade | Efeito |
 |---|---|---|
