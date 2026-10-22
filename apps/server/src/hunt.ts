@@ -289,6 +289,8 @@ const SAFE_RADIUS = 6;
 const ITEM_LIFETIME_MS = 120_000;
 /** Intervalo mínimo entre dois avisos de bag cheia para o mesmo jogador. */
 const BAG_FULL_NOTICE_MS = 3000;
+/** Nome da melhoria escolhida no nível: fica 30% mais que os outros avisos (900 ms) para dar tempo de ler. */
+const PERK_NOTICE_MS = 1170;
 /**
  * Onde a hunt roda: a sala do Colyseus (`DungeonRoom`) no servidor ou a hunt solo no navegador.
  * A simulação só fala com o mundo por aqui.
@@ -1717,7 +1719,7 @@ export class Hunt {
     seat.perkBonus = perkBonuses(seat.perks);
     this.applyBonuses(p, seat);
     seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.perkLevel, at: this.seconds() });
-    this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f);
+    this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f, PERK_NOTICE_MS);
 
     this.offerPerks(p, seat);
   }
@@ -2141,8 +2143,8 @@ export class Hunt {
     });
   }
 
-  private notice(x: number, y: number, text: string, color: number) {
-    this.host.broadcast(MSG.notice, { x, y, text, color } satisfies NoticeMessage);
+  private notice(x: number, y: number, text: string, color: number, ms?: number) {
+    this.host.broadcast(MSG.notice, { x, y, text, color, ms } satisfies NoticeMessage);
   }
 
   private endRun(sessionId: string, outcome: RunOutcome) {

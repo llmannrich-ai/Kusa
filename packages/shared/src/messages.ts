@@ -63,6 +63,8 @@ export interface NoticeMessage {
   y: number;
   text: string;
   color: number;
+  /** Tempo do texto na tela, em ms (padrão do cliente: 900). */
+  ms?: number;
 }
 
 /** Cliente → servidor: põe uma magia num slot liberado. */
