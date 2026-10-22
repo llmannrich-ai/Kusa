@@ -53,60 +53,73 @@ Pequenos achados de código: `KNIGHT_WEAPONS[1]` (porrete) nunca é usado; o com
 
 Princípios, nesta ordem de prioridade:
 
-1. **Silhueta antes de detalhe.** No celular o herói tem ~60 px CSS. Cada nível precisa mudar a **forma**
+1. **Cada item tem a sua arte, igual em qualquer classe.** Um item do catálogo (`ITEMS`) tem uma
+   representação vestida só sua, e quem o veste não muda o desenho: o Manto rúnico é o mesmo no feiticeiro e
+   no druida; as Botas de mithral, o mesmo nas 4 classes. Nenhum item fica só tingido ou reaproveita o
+   desenho de outro.
+2. **Silhueta antes de detalhe.** No celular o herói tem ~60 px CSS. Cada nível precisa mudar a **forma**
    (ombreira, crista, gola, comprimento da bota), não só a cor.
-2. **Identidade de classe sempre visível.** Cada classe tem uma "camada de identidade" que nenhum item cobre
-   e que ocupa ~25–30% da silhueta na cor da classe.
-3. **Três materiais por figura.** Material do item (dominante) + couro/tecido (correias, forro) + metal de
+3. **A classe aparece no que não é item.** Rosto, cabelo, barba e as roupas de baixo da classe aparecem onde
+   o equipamento não cobre (seção 3.1).
+4. **Três materiais por figura.** Material do item (dominante) + couro/tecido (correias, forro) + metal de
    guarnição. Nunca um conjunto de cor única.
-4. **O item mostra a regra.** Atributos do item viram sinais visuais (fogo em quem tem `burn`, espinhos em
+5. **O item mostra a regra.** Atributos do item viram sinais visuais (fogo em quem tem `burn`, espinhos em
    `thorns`...). Mudou a regra, a arte acompanha sozinha.
-5. **Vocabulário do D&D** para formas e nomes: armadura leve/média/pesada, símbolo sagrado, foco arcano,
-   druida sem metal.
+6. **O desenho segue o nome do catálogo.** "Capuz de lã" é capuz; "Grevas de ferro" cobrem a canela.
 
-### 3.1 Camada de identidade por classe
+### 3.1 O que identifica a classe
 
-| Classe | Arquétipo D&D | Identidade (nunca coberta) | Peso de armadura no corpo |
-|---|---|---|---|
-| Cavaleiro | Guerreiro / cavaleiro | tabardo e capa vermelhos, penacho do elmo e brasão do escudo na cor da classe | **pesada** (malha, talas, placas) |
-| Paladino | Paladino-arqueiro (patrulheiro sagrado) | tabardo dourado com sol, aljava, faixa na testa ou elmo alado | **média** (couro cravejado, peitoral, meia-armadura) |
-| Feiticeiro | Mago | barba, faixa roxa na cintura, grimório no cinto, gema do foco | tecido (manto) |
-| Druida | Druida | manto verde com broche de folha, peles nos ombros, folhas/galhos na cabeça | couro e peles (**sem metal**) |
+Como os itens são iguais em todas as classes, a classe é reconhecida pelo corpo base e pelo que nenhum item
+substitui. A arte do item é desenhada sobre um "manequim" único (mesmo tronco, mesmos encaixes) e serve em
+qualquer classe.
 
-O mesmo item do catálogo **veste diferente por classe** (só no cliente): "Cota de malha" no cavaleiro é cota
-longa com tabardo; no paladino é camisa de malha com peitoral de couro. "Manto rúnico" no feiticeiro é túnica
-com runas; no druida é manto de peles com runas entalhadas em osso. Não muda catálogo nem banco.
-
-### 3.2 Progressão de forma por nível
-
-| Slot | 1 Rústico | 2 Bronze | 3 Ferro | 4 Mithral | 5 Dragão |
-|---|---|---|---|---|---|
-| Armadura (cavaleiro) | gibão acolchoado | couraça | cota de malha longa + ombreiras pequenas | placas com ombreiras grandes e gola | placas de escamas, ombreiras com espinhos |
-| Armadura (paladino) | couro batido | couro cravejado + peitoral | camisa de malha + tabardo | meia-armadura leve | escamas com asas de couro na gola |
-| Manto (feiticeiro) | túnica de linho | manto de viagem com capuz nas costas | túnica com runas que brilham | vestes com fios prateados e gola alta | seda de dragão com gola de escamas e capa |
-| Manto (druida) | túnica de linho com corda | manto de lã com pele no ombro | peles com runas de osso | manto de folhas prateadas | couro de dragão com musgo e penas |
-| Elmo de guerra | coifa de couro | elmo aberto com crista | elmo nórdico com nasal | grande elmo com viseira e penacho (cor da classe) | elmo com chifres de dragão |
-| Chapéu (feiticeiro) | capuz de lã | chapéu pontudo | capuz rúnico | chapéu largo com estrelas | coroa de chifres de dragão |
-| Chapéu (druida) | capuz de lã | coroa de folhas | capuz com galhos | chifres de cervo | coroa de chifres de dragão com musgo |
-| Calça / perneiras | calça com joelheira de couro | joelheiras de bronze | malha nas coxas | coxotes articulados | escamas |
-| Botas | botinas | botas com caneleira | grevas (cobrem a canela) | sabatons | garras de dragão |
-| Escudo | broquel | redondo com bossa | escudo "heater" | escudo alto com brasão da classe | escudo do dragão (olho) |
-| Espada | espada curta | gládio de bronze | espada longa | espada bastarda | lâmina do dragão |
-| Machado | machadinha | machado de mão | machado barbado | machado duplo | grande machado com cabeça de dragão |
-| Arco | arco curto | arco de caça | arco longo (mais alto que o herói) | arco composto recurvo | arco de osso |
-| Besta | besta leve | besta de bronze | besta de ferro | besta pesada com manivela | balestra de osso |
-| Varinha | salgueiro | bronze | rúnica | mithral com cristal | dente de dragão |
-| Cajado | carvalho nodoso | anel de bronze | rúnico com cristal | mithral com orbe flutuante | presa de dragão com chama |
-
-No druida, escudos de qualquer nível são de madeira (o nível muda o aro e o entalhe) e cajados são galhos vivos.
-
-### 3.3 Raridade e propriedades mágicas no corpo
-
-| Raridade | Sinal visual |
+| Classe | Corpo e detalhes que ficam visíveis |
 |---|---|
-| Comum | nada |
-| Raro (+1) | brilho que percorre a borda da peça a cada ~2 s, na cor da raridade (azul) |
-| Mágico | aura leve roxa + um sinal por propriedade mágica do item |
+| Cavaleiro | cabelo castanho curto, rosto com cicatriz, roupa de baixo vermelha nas mangas e na barra |
+| Paladino | cabelo loiro, faixa na testa (some sob capacete fechado), aljava nas costas |
+| Feiticeiro | barba branca longa (aparece sob capacete aberto e chapéu), roupa de baixo roxa |
+| Druida | cabelo castanho com folhas, pintura verde no rosto, roupa de baixo verde |
+
+Consequência aceita: quando o equipamento cobre quase tudo, duas classes com o mesmo conjunto ficam parecidas.
+Pelo catálogo, isso só acontece entre feiticeiro e druida (mesmas vestes arcanas e mesmas armas). Cavaleiro e
+paladino dividem a armadura, mas seguram armas diferentes (espada/machado × arco/besta). Se a confusão
+aparecer no jogo, a saída é o nome ou um anel na cor da classe sob o herói, nunca variar o item.
+
+### 3.2 Arte de cada item
+
+Os nomes são os do catálogo (`packages/shared/src/items.ts`). Cada célula é um desenho próprio.
+
+| Família | 1 Rústico | 2 Bronze | 3 Ferro | 4 Mithral | 5 Dragão |
+|---|---|---|---|---|---|
+| Armadura de guerra | Gibão de couro: acolchoado com amarração | Couraça de bronze: peitoral e saiote de tiras | Cota de malha: malha até a coxa, ombreiras pequenas | Placas de mithral: placas com ombreiras grandes e gola | Escamas de dragão: escamas, ombreiras com espinhos |
+| Manto arcano | Túnica de linho: com corda na cintura | Manto de viagem: capuz caído nas costas | Manto rúnico: runas acesas na barra | Vestes de mithral: fios prateados, gola alta | Manto de seda de dragão: gola de escamas e capa |
+| Elmo de guerra | Gorro de couro | Elmo de bronze: aberto, com crista | Elmo de ferro: nórdico, com nasal | Elmo de mithral: fechado, viseira e penacho | Elmo do dragão: chifres de dragão |
+| Chapéu arcano | Capuz de lã | Chapéu pontudo | Capuz rúnico: capuz com runas na borda | Chapéu do mago: aba larga com estrelas | Coroa de chifres de dragão |
+| Perneiras de guerra | Calças de couro: joelheira de couro | Perneiras de bronze: joelheiras | Perneiras de malha: malha nas coxas | Coxotes de mithral: placas articuladas | Perneiras de escamas de dragão |
+| Calças arcanas | Calças de linho | Calças de lã: faixa na barra | Calças rúnicas: runas na lateral | Calças de mithral: fios prateados | Calças de couro de dragão |
+| Botas | Botas de couro: botinas | Botas de bronze: com caneleira | Grevas de ferro: cobrem a canela | Botas de mithral: sabatons | Botas de escamas de dragão: garras |
+| Escudo | Broquel de madeira | Escudo de bronze: redondo com bossa | Escudo de ferro: "heater" | Escudo de mithral: alto, com cruz | Escudo do dragão: olho de dragão |
+| Espada | Espada curta | Espada de bronze: gládio | Espada longa | Espada de mithral: bastarda | Lâmina do dragão |
+| Machado | Machadinha | Machado de bronze | Machado de batalha: barbado | Machado de mithral: duplo | Grande machado do dragão |
+| Arco | Arco curto | Arco de caça | Arco longo (mais alto que o herói) | Arco de mithral: recurvo | Arco de osso de dragão |
+| Besta | Besta leve | Besta de bronze | Besta de ferro | Besta pesada de mithral: com manivela | Balestra de osso de dragão |
+| Varinha | Varinha de salgueiro | Varinha de bronze | Varinha rúnica | Varinha de mithral: com cristal | Varinha de dente de dragão |
+| Cajado | Cajado de carvalho: nodoso | Cajado de bronze: anel de bronze | Cajado rúnico: cristal | Cajado de mithral: orbe flutuante | Cajado de presa de dragão: chama |
+
+São 70 desenhos (14 famílias × 5 níveis). Sem item na mão, cada classe segura a arma básica dela
+(espada de treino, arco simples, cajado da classe), que não é item.
+
+### 3.3 Raridade e itens mágicos no corpo
+
+| Raridade | Arte |
+|---|---|
+| Comum | o desenho da tabela 3.2 |
+| Raro (+1) | o mesmo desenho + brilho que percorre a borda a cada ~2 s, na cor da raridade (azul) |
+| Mágico | **desenho próprio** de cada item com nome (Espada Vorpal, Manto das Estrelas...): a base do nível com um ornamento único (gema, runa, forma da lâmina ou da gola) + aura roxa + o sinal da propriedade mágica |
+
+Exemplos de itens mágicos: Lâmina Flamejante com a lâmina em brasa; Manto das Estrelas azul-noite com estrelas;
+Botas Aladas com asinhas no tornozelo; Machado dos Reis Anões com runas anãs; Escudo Animado com um rosto.
+São mais 70 desenhos (um por item mágico), feitos como variação do desenho do nível para caber no prazo.
 
 | Propriedade (`ItemStats`) | Sinal |
 |---|---|
@@ -124,22 +137,27 @@ texturas. Os estáticos (espinhos, runas) entram na arte.
 ## 4. Regras de vestimenta (o "contrato" das camadas)
 
 Ordem de pintura por direção (de trás para a frente):
-capa e itens nas costas → braço de trás → pernas/perneiras → botas → tronco base → armadura → cinto →
-**camada de identidade** (tabardo, faixa, broche) → ombreiras → cabeça → capacete → cabelo/barba expostos →
+capa e itens nas costas (aljava da classe, escudo de costas) → braço de trás → corpo base da classe →
+calça → botas → armadura → ombreiras → cabeça da classe → capacete → barba e cabelo expostos →
 braço da frente → arma e escudo da frente → efeitos.
 
-| Slot | Cobre | Nunca cobre | Regra de conflito |
+| Slot | Cobre | Deixa à mostra | Regra de conflito |
 |---|---|---|---|
-| Capacete fechado (nível 4–5 de guerra) | cabeça, cabelo, barba | penacho na cor da classe | — |
-| Capacete aberto / chapéu | topo da cabeça | rosto, barba, cabelo da nuca | chapéu pontudo pula o capuz da classe |
-| Armadura | tronco e braços (mangas pelo peso) | tabardo, faixa, broche, aljava | túnica arcana cobre as pernas (perneiras aparecem só no passo) |
-| Calça | coxas e canelas | — | grevas de nível 3+ cobrem a canela da calça |
-| Botas | pés até a canela (altura pelo nível) | — | — |
-| Escudo | antebraço | — | com arco/besta vai nas costas; no druida é sempre madeira |
+| Capacete fechado (Elmo de mithral, Elmo do dragão) | cabeça, cabelo, barba | — | — |
+| Capacete aberto / chapéu / capuz | topo da cabeça (capuz: também as laterais) | rosto e barba | substitui o chapéu ou capuz da classe |
+| Armadura | tronco e braços (mangas pelo modelo) | mãos | manto arcano desce até a canela: a calça aparece só abaixo da barra e no passo |
+| Calça | coxas e canelas | — | grevas cobrem a canela da calça |
+| Botas | pés até a altura do modelo | — | — |
+| Escudo | antebraço | — | quem segura arco ou besta leva o escudo nas costas |
 | Arma | mão | — | cajado e arco longo podem passar do quadro (área de folga) |
 
-Cada camada declara pontos de encaixe por quadro (mão, cabeça, ombros, cintura, pés) em vez de posições fixas.
-Assim uma peça nova encaixa em todos os quadros e poses, inclusive nas de ataque da Fase 4.
+A arte de cada item é desenhada uma vez sobre o manequim e encaixada por pontos de encaixe por quadro
+(mão, cabeça, ombros, cintura, pés). Os corpos das 4 classes usam os mesmos encaixes, e é isso que garante
+que o item fique igual em qualquer classe. Vale também para as poses de ataque da Fase 4.
+
+**Garantia automática:** um teste percorre `ITEMS` e falha se algum item não tiver arte vestida (ou se dois
+itens diferentes apontarem para o mesmo desenho, exceto o raro, que usa o do comum). Item novo no catálogo sem
+arte quebra o CI.
 
 ## 5. Decisão técnica: resolução e origem da arte
 
@@ -166,28 +184,31 @@ Cada fase é entregável sozinha e termina com conferência na galeria em retrat
 raridade, direção, animação), no tamanho real do celular e ampliada. Script de Playwright que renderiza todo
 item em toda classe e acusa peça fora do quadro ou camada faltando. Sem isso, cada ajuste vira tentativa e erro.
 
-**Fase 1 — Motor de camadas e regras (3–5 dias).** Pontos de encaixe por quadro, ordem de pintura da seção 4,
-variantes por classe, camada de identidade, rampas de material com 4 tons + brilho (Mithral prata-azulado em
-vez de branco) e terceiro material (couro/ouro) nas peças. Ainda com a arte 32×32, já resolve os problemas 1, 2 e 4.
+**Fase 1 — Motor de camadas e regras (3–5 dias).** Manequim com pontos de encaixe por quadro, corpos das 4
+classes nos mesmos encaixes, ordem de pintura da seção 4, catálogo de arte por item (`id` → desenho) com o
+teste de cobertura, rampas de material com 4 tons + brilho (Mithral prata-azulado em vez de branco) e
+terceiro material (couro/ouro) nas peças. Arco, cajado e o resto deixam de ser só tingidos.
 
-**Fase 2 — Arte 48×48 (2–4 semanas, maior parte do esforço).** Corpo base novo e, por ordem de impacto:
-armadura → capacete/chapéu → arma → escudo → botas/calça. Tabela 3.2 completa nas 4 classes e 3 direções.
+**Fase 2 — Os 70 desenhos dos itens comuns em 48×48 (2–4 semanas, maior parte do esforço).** Tabela 3.2
+completa nas 3 direções, por ordem de impacto: armadura e manto → capacete e chapéu → armas → escudo →
+botas e calças.
 
-**Fase 3 — Raridade e magia (3–5 dias).** Brilho do raro, aura do mágico e sinais por propriedade (seção 3.3),
-inclusive na ficha do item e no retrato do menu.
+**Fase 3 — Raridade e itens mágicos (1–2 semanas).** Brilho do raro, os 70 itens mágicos com ornamento
+próprio, aura e sinais por propriedade (seção 3.3), inclusive na ficha do item e no retrato do menu.
 
 **Fase 4 — Poses de ação (1–2 semanas).** Golpe, tiro, conjuração (2–3 quadros por direção), recuo ao levar
 dano e queda na morte, ligados aos eventos de ataque que o cliente já recebe.
 
 **Fase 5 — Base para cosméticos (opcional).** A tabela `cosmetics` já existe no banco. Com as camadas prontas,
-tinturas da camada de identidade, capas e "transmog" viram itens de loja. Só esta fase mexe no banco
+tinturas da roupa de baixo da classe, capas e "transmog" (aparência de outro item) viram itens de loja. Só esta fase mexe no banco
 (catálogo de cosméticos), seguindo as regras do `CLAUDE.md`.
 
 ## 7. Riscos e cuidados
 
 - **Legibilidade no celular**: detalhe abaixo de 1 texel some. Toda peça é aprovada no tamanho real, não ampliada.
-- **Explosão combinatória**: 4 classes × 6 slots × 5 níveis × 3 raridades. Proibido desenhar combinações:
-  só peças + encaixes + regras. O provador da Fase 0 é o controle.
+- **Volume de arte**: 70 itens comuns + 70 mágicos, cada um em 3 direções e nos quadros de pose. Como o item
+  é igual em toda classe, não há multiplicador por classe, mas é proibido desenhar combinações: só peças +
+  encaixes + regras. O provador da Fase 0 e o teste de cobertura são o controle.
 - **Desempenho**: a folha é gerada no cliente por combinação. Com 48×48 e mais quadros, medir em Android
   médio; meta < 30 ms por folha, com cache (já existe em `textures.ts`).
 - **Estilo dos monstros**: os heróis não podem destoar do pack Dungeon Crawl. Manter contorno escuro, luz de
@@ -199,5 +220,8 @@ tinturas da camada de identidade, capas e "transmog" viram itens de loja. Só es
 
 1. Origem da arte: A, B, C ou **D (recomendado)**.
 2. Resolução: **48×48 (recomendado)** ou manter 32×32 e só aplicar as Fases 1 e 3.
-3. Paladino como arqueiro com armadura média (recomendado, mantém o Tibia) ou paladino de armadura pesada (D&D clássico).
+3. Itens mágicos: desenho próprio para cada um (recomendado, 70 variações) ou só aura e sinal de propriedade
+   sobre o desenho do nível.
 4. Poses de ação (Fase 4) agora ou depois do resto.
+
+Decidido: cada item tem a sua arte vestida, igual em qualquer classe (seção 3).
