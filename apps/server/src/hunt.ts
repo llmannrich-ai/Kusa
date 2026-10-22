@@ -62,6 +62,7 @@ import {
   lineTiles,
   coneTiles,
   isWalkable,
+  activeSpells,
   knownSpells,
   levelForXp,
   lineEnd,
@@ -363,6 +364,8 @@ export interface Recruit {
   talents: TalentRanks;
   /** XP de uso de cada magia, que dá o nível dela (convidado: vazio). */
   spellXp: SpellXp;
+  /** Magias ativadas no Grimório (ids de nó, todas as classes): até 3 por slot vão para a hunt (`activeSpells`). */
+  activeSpells?: readonly string[];
 }
 
 export interface HuntOptions {
@@ -434,7 +437,10 @@ export class Hunt {
     player.xp = xpForLevel(this.startLevel);
     player.hp = player.maxHp = stats.maxHp;
     player.mana = player.maxMana = stats.maxMana;
-    player.knownSpells.push(...knownSpells(classId, talents));
+    // Só as magias ativas no Grimório (até 3 por slot) aparecem na escolha; nos testes com o Grimório inteiro, todas.
+    player.knownSpells.push(...(this.allSpells
+      ? knownSpells(classId, talents)
+      : activeSpells(classId, talents, spellXp, recruit.activeSpells ?? [])));
     for (const [spellId, rank] of Object.entries(spellRanks(classId, talents, spellXp))) player.spellRanks.set(spellId, rank);
     // Sinergias e Tomos: a força extra fica parada durante a hunt (o XP ganho só conta depois dela).
     for (const [spellId, bonus] of Object.entries(spellBonuses(classId, talents, spellXp))) player.spellBonus.set(spellId, bonus!);
@@ -457,6 +463,7 @@ export class Hunt {
     });
     const joined = this.seats.get(sessionId)!;
     joined.stats.specs = joined.traits.map((t) => t.id);
+    joined.stats.spellsActive = [...player.knownSpells];
     if (!this.state.leaderId) this.state.leaderId = sessionId;
   }
 
