@@ -70,7 +70,8 @@ contra um servidor já aberto, passando a URL:
   e as 12 magias das especializações do Paladino funcionam na hunt (marca, bônus em si, salto, campo no chão, armadilha,
   estaca, leque e escudo num aliado), as 12 do Feiticeiro (tempestade, fogo, gelo, teleporte, parede, esqueletos,
   empurrão e tentáculos) e as 12 do Druida (águia, formas de pantera e urso, semente que faz renascer, escudos de cura,
-  chuva, venenos e relâmpago).
+  chuva, venenos e relâmpago) e as 12 do Cavaleiro (giros, fúria, cortes, escudos, espinhos, fortaleza, investida,
+  estandarte, corrente e desafio).
 
 ## Variáveis de ambiente
 
