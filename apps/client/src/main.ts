@@ -19,9 +19,11 @@ import { ArtLoader, artReady } from "./ArtLoader.ts";
 import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
-import { createMapId, mapLine, renderMapPicker, renderWaitingRoom } from "./lobby.ts";
+import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
+import { SERVER_CHOICES, createMapId, createServer, mapLine, renderMapPicker, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
+import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt } from "./solo.ts";
@@ -128,7 +130,10 @@ async function enter(connect: () => Promise<DungeonRoom>) {
 function setEntering(on: boolean) {
   entering = on;
   const create = $<HTMLButtonElement>("create");
-  create.textContent = on ? "Conectando… (o servidor pode levar 1 min para acordar)" : `Criar sala · ${MAPS[createMapId()].name}`;
+  const server = SERVER_CHOICES[createServer()];
+  create.textContent = !on
+    ? `Criar sala · ${MAPS[createMapId()].name} · ${server.icon} ${server.name}`
+    : createServer() === "cloud" ? "Conectando… (o servidor pode levar 1 min para acordar)" : "Conectando…";
   create.disabled = on;
   const solo = $<HTMLButtonElement>("solo");
   solo.textContent = `Jogar sozinho · ${MAPS[createMapId()].name}`;
@@ -160,10 +165,16 @@ function onVersionMismatch(message: string) {
 // --- Lista de salas -------------------------------------------------------
 
 let unwatch: (() => void) | null = null;
+let unwatchHosted: (() => void) | null = null;
+/** Salas abertas: as da nuvem (lobby do Colyseus) e as hospedadas por jogadores (Realtime do Supabase). */
+let cloudHunts: HuntListing[] = [];
+let hostedHunts: HostedListing[] = [];
 
 function stopWatching() {
   unwatch?.();
   unwatch = null;
+  unwatchHosted?.();
+  unwatchHosted = null;
 }
 
 async function openRooms() {
@@ -172,27 +183,51 @@ async function openRooms() {
   show("rooms-error", false);
   setEntering(false);
   renderMapPicker(() => setEntering(entering));
-  renderHunts([]);
+  renderServerPicker(() => setEntering(entering));
+  cloudHunts = [];
+  hostedHunts = [];
+  renderHunts();
+  // As salas hospedadas aparecem mesmo com o servidor de jogo dormindo.
+  unwatchHosted = watchHostedRooms((rooms) => { hostedHunts = rooms; renderHunts(); });
   try {
-    unwatch = await watchHunts(renderHunts);
+    const stop = await watchHunts((hunts) => { cloudHunts = hunts; renderHunts(); });
     // Saiu da tela (voltou ou entrou numa sala) antes de a lista conectar.
-    if ($("rooms").hidden) stopWatching();
+    if ($("rooms").hidden) stop();
+    else unwatch = stop;
   } catch (err) {
     showError(`Servidor indisponível: ${(err as Error).message}`);
   }
 }
 
-function renderHunts(hunts: HuntListing[]) {
+function renderHunts() {
   const list = $("room-list");
   list.innerHTML = "";
-  for (const hunt of hunts) {
+  const rooms = [
+    ...cloudHunts.map((h) => ({
+      leader: h.metadata?.leader ?? "?", mapId: h.metadata?.mapId, clients: h.clients, maxClients: h.maxClients,
+      server: SERVER_CHOICES.cloud, join: async () => joinHunt(h.roomId, await joinOptions()),
+    })),
+    ...hostedHunts.map((h) => ({
+      leader: h.leader, mapId: h.mapId, clients: h.clients, maxClients: h.maxClients, server: SERVER_CHOICES.device,
+      join: async () => {
+        stopWatching();
+        return joinHostedRoom(h.roomId, h.hostPeer, mapIdOf(h.mapId), await myRecruit(account?.username ?? "Aventureiro", hub.classId));
+      },
+    })),
+  ];
+  for (const room of rooms) {
     const li = document.createElement("li");
     const button = document.createElement("button");
     button.className = "room";
     button.disabled = entering;
-    const map = MAPS[mapIdOf(hunt.metadata?.mapId)];
+    const map = MAPS[mapIdOf(room.mapId)];
     const title = document.createElement("span");
-    title.textContent = `Hunt de ${hunt.metadata?.leader ?? "?"}`;
+    title.textContent = `Hunt de ${room.leader}`;
+    const badge = document.createElement("span");
+    badge.className = "room-badge";
+    badge.textContent = room.server.icon;
+    badge.title = room.server.name;
+    title.append(badge);
     const where = document.createElement("small");
     where.className = "muted";
     where.textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)}`;
@@ -202,14 +237,14 @@ function renderHunts(hunts: HuntListing[]) {
     join.className = "room-join";
     const count = document.createElement("small");
     count.className = "muted";
-    count.textContent = `${hunt.clients}/${hunt.maxClients} jogadores`;
+    count.textContent = `${room.clients}/${room.maxClients} jogadores`;
     join.append("Entrar ›", count);
     button.append(title, join);
-    button.onclick = () => enter(async () => joinHunt(hunt.roomId, await joinOptions()));
+    button.onclick = () => enter(room.join);
     li.append(button);
     list.append(li);
   }
-  show("rooms-empty", hunts.length === 0);
+  show("rooms-empty", rooms.length === 0);
 }
 
 // --- Configurações --------------------------------------------------------
@@ -270,7 +305,12 @@ $("rooms-back").onclick = () => {
   show("rooms", false);
   show("menu", true);
 };
-$("create").onclick = () => enter(async () => createHunt(await joinOptions()));
+$("create").onclick = () => enter(async () => {
+  if (createServer() === "cloud") return createHunt(await joinOptions());
+  // Sala hospedada: a hunt roda neste aparelho e os amigos se conectam direto.
+  stopWatching();
+  return createHostedRoom(await myRecruit(account?.username ?? "Aventureiro", hub.classId), createMapId());
+});
 // Solo roda no aparelho, sem sala de espera: a hunt começa na hora.
 $("solo").onclick = () => enter(async () => {
   const room = await createSoloHunt(account?.username ?? "Aventureiro", hub.classId, createMapId());
@@ -335,6 +375,27 @@ function bindRoom(room: DungeonRoom) {
   });
 
   room.onMessage(MSG.runEnded, (msg: RunEndedMessage) => showResult(msg));
+  (room as Partial<HostedRoom>).onReplaced?.((next, hostName) => switchRoom(next, hostName));
+}
+
+/**
+ * Sala hospedada: o anfitrião saiu e outro jogador assumiu. O estado antigo para de mudar, então a sala de espera
+ * ou a dungeon são montadas de novo sobre a sala nova. Quem já saiu da hunt fica no resultado.
+ */
+function switchRoom(next: HostedRoom, hostName: string) {
+  const me = next.state.players.get(next.sessionId);
+  if (next.state.phase !== "lobby" && me?.status !== "playing") return;
+  game?.scene.remove("dungeon");
+  bindRoom(next);
+  showToast(`${hostName} agora hospeda a sala`);
+}
+
+/** Aviso rápido no topo da tela. */
+function showToast(text: string) {
+  const toast = $("game-toast");
+  toast.textContent = text;
+  toast.hidden = false;
+  window.setTimeout(() => { toast.hidden = true; }, 3000);
 }
 
 /** Cria o Phaser (uma vez) com a cena que carrega a arte; a dungeon entra depois, em `startGame`. */

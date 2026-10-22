@@ -102,12 +102,15 @@
       <h3 class="rooms-section">Criar sala</h3>
       <p class="muted hint">Escolha o cenário. Quem entrar na sua sala joga nele.</p>
       <div id="map-list" class="map-list" role="radiogroup" aria-label="Cenário"></div>
+      <p class="muted hint">Onde a hunt roda:</p>
+      <!-- Preenchido por lobby.ts (renderServerPicker). -->
+      <div id="server-list" class="server-list" role="radiogroup" aria-label="Servidor"></div>
       <div class="actions">
         <button id="create" class="primary">Criar sala</button>
         <button id="solo">Jogar sozinho</button>
         <button id="rooms-back">Voltar</button>
       </div>
-      <p class="muted hint">Criar a sala pode levar até 1 minuto se o servidor estiver acordando. Sozinho, a hunt roda no seu aparelho e começa na hora.</p>
+      <p class="muted hint">Na nuvem, criar a sala pode levar até 1 minuto se o servidor estiver acordando. No seu aparelho, a sala abre na hora e os amigos se conectam direto a você. Sozinho, a hunt roda no seu aparelho e começa na hora.</p>
       <p id="rooms-error" class="error" hidden></p>
     </section>
 
@@ -164,5 +167,7 @@
     </section>
 
     <script type="module" src="/src/main.ts"></script>
+    <!-- Aviso durante a hunt (troca de anfitrião da sala hospedada). -->
+    <p id="game-toast" class="toast game-toast" role="status" hidden></p>
   </body>
 </html>

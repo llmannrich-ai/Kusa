@@ -19,6 +19,43 @@ export const mapLine = (id: MapId) => {
   return `${map.icon} ${map.name} · dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min`;
 };
 
+// --- Servidor da sala criada ----------------------------------------------
+
+/** Onde a hunt da sala criada roda: no servidor da nuvem ou no aparelho de quem cria (sala hospedada). */
+export type ServerChoice = "cloud" | "device";
+
+export const SERVER_CHOICES: Record<ServerChoice, { icon: string; name: string; hint: string }> = {
+  cloud: { icon: "☁️", name: "Nuvem", hint: "Servidor do jogo. Pode levar 1 min para acordar." },
+  device: { icon: "📱", name: "Meu aparelho", hint: "Abre na hora; os amigos se conectam direto a você." },
+};
+
+let chosenServer: ServerChoice = storageGet("kusa:server") === "device" ? "device" : "cloud";
+
+/** Servidor das salas que este jogador criar (fica salvo no aparelho). */
+export const createServer = () => chosenServer;
+
+/** Os dois botões de servidor na tela de criar sala; tocar escolhe. `onPick` atualiza o botão de criar. */
+export function renderServerPicker(onPick: () => void) {
+  const list = $("server-list");
+  list.replaceChildren();
+  for (const id of Object.keys(SERVER_CHOICES) as ServerChoice[]) {
+    const choice = SERVER_CHOICES[id];
+    const card = el("button", "server-card");
+    card.type = "button";
+    card.setAttribute("role", "radio");
+    card.setAttribute("aria-checked", String(id === chosenServer));
+    card.classList.toggle("selected", id === chosenServer);
+    card.append(el("strong", "", `${choice.icon} ${choice.name}`), el("small", "muted", choice.hint));
+    card.onclick = () => {
+      chosenServer = id;
+      storageSet("kusa:server", id);
+      renderServerPicker(onPick);
+      onPick();
+    };
+    list.append(card);
+  }
+}
+
 // --- Cenário da sala criada -----------------------------------------------
 
 let chosenMap: MapId = mapIdOf(storageGet("kusa:map"));

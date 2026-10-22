@@ -1,6 +1,7 @@
 -- Bestiário 2.0: encontros sorteados, Mímicos (que guardam o loot do baú) e Campeões (loot × 2,5) sobem o loot
 -- máximo possível de uma hunt. O teto da hunt solo acompanha `SOLO_LIMITS.maxLoot` do packages/shared:
--- Cripta 1050 → 1200 e Pântano 2700 → 3000. O resto da função não muda.
+-- Cripta 1050 → 1200 e Pântano 2700 → 3000. O resto da função não muda (inclusive o tamanho da equipe na telemetria,
+-- de 20261022130000_sala_hospedada.sql).
 
 create or replace function public.finish_solo_run(
   p_run_id uuid,
@@ -127,7 +128,9 @@ begin
     match_id, profile_id, player_name, class_id, party_size, map_id, seed, build, outcome, abandoned,
     level, duration_s, loot, max_depth, path_rooms, killed_by, stats, solo
   )
-  select v_run.id, v_uid, p.username, v_run.class_id, 1, v_run.map_id, v_run.seed, 'solo', v_outcome,
+  select v_run.id, v_uid, p.username, v_run.class_id,
+    least(greatest(coalesce((p_report ->> 'party_size')::int, 1), 1), 4),
+    v_run.map_id, v_run.seed, 'solo', v_outcome,
     coalesce((p_report ->> 'abandoned')::boolean, false),
     least(greatest(coalesce(p_level, 1), 1), 20),
     least(greatest(coalesce((p_report ->> 'duration_s')::numeric, v_elapsed), 0), v_elapsed),
