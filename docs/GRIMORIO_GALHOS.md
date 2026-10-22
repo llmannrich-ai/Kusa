@@ -5,9 +5,10 @@ peixe) e **mais magias por classe**. Continua o `GRIMORIO_PLANO.md` (fases 0 a 4
 existe é removido, e os ids comprados no banco continuam valendo. Quando uma fase é entregue, o `GDD.md` passa a
 descrever o que vale e este arquivo marca a fase como feita.
 
-**Andamento:** fase 5a feita (estrutura em espinha de peixe, abas no menu, nó de dois pais e 27 magias nas costelas
-das 4 classes; ver "Como foi entregue" na seção 5). Próxima: fase 5b (sinergias e passivas), depois que o PR #60
-(hunt solo, que move a simulação para `apps/server/src/hunt.ts`) entrar no `main`.
+**Andamento:** fases 5a (estrutura em espinha de peixe, abas no menu, nó de dois pais e 27 magias nas costelas) e 5b
+(sinergias e Tomos) feitas; ver "Como foi entregue" na seção 5. A 5f mudou por decisão do Leonardo: em vez de 3
+opções sorteadas, o jogador ativa no Grimório até 3 magias por slot, que são as opções da escolha na hunt (com 3 ou
+menos no slot, todas ficam ativas sozinhas). Ver "Magias ativas" no `GDD.md`.
 
 **Decisões do Leonardo:** "aleatória" quer dizer **ramos não uniformes**, como no Diablo 2 (leitura A da seção 3.2);
 as **sinergias** entram, inclusive magias e passivas que fortalecem um grupo de magias.
@@ -177,6 +178,21 @@ conflito com o PR #60). Diferenças em relação à seção 4:
 - Teste de fumaça novo `costelas`: regras das costelas e uma hunt de verdade conjurando cada magia nova.
 - Riscos que continuam: balanceamento (números de partida, sem telemetria ainda) e a lista longa na janela de escolha
   (agora rola; a escolha sorteada da 5f resolve de vez).
+
+**Fase 5b, como foi entregue:** depois do #74, o nível da magia sobe com o uso (0 a 5) em vez de ser comprado, e as
+sinergias passaram a usar esse nível, como os pontos do Diablo 2:
+
+- **Sinergia:** +2% de força por nível de cada magia vizinha na árvore (pai e filhas ligadas por galho), em vez de uma
+  lista escrita à mão por magia: a espinha de peixe já junta magias do mesmo tema, e a regra cobre as 115 magias
+  sem tabela nova. Até 3 vizinhas no nível 5 = +30%.
+- **Tomos** no lugar das "passivas de costela": um nó por ramo (3 níveis, +5% de força nas magias do ramo cada), o
+  "melhora um grupo de magias" que o Leonardo pediu. Passivas com efeito novo (como a Hemorragia) ficaram de fora:
+  pedem código de Traço no servidor para cada uma.
+- Teto: +45% de força extra (sinergia + Tomo) por cima dos +50% do nível 5. É de longo prazo (o nível 5 pede dezenas
+  de hunts), mas é o primeiro número a conferir na telemetria (`spellsChosen.bonus`).
+- Banco: só os 12 Tomos em `talents` (`20261022150000_grimorio_tomos.sql`); `buy_talent` não muda. As sinergias não
+  passam pelo banco.
+- Teste de fumaça novo `sinergias`.
 
 Meta de medição (telemetria): magia mais escolhida num slot < 35% das escolhas da classe; gold gasto no Grimório por
 jogador ativo subindo; nenhuma costela com menos de 10% de compra depois de 2 semanas.

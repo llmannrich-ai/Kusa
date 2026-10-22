@@ -23,7 +23,12 @@ const SESSION_ID = "solo";
  * O banco sorteia a seed e corta recompensas impossíveis (`start_solo_run`/`finish_solo_run`).
  */
 export async function createSoloHunt(name: string, classId: ClassId, mapId: MapId): Promise<DungeonRoom> {
-  const { data, error } = await supabase.rpc("start_solo_run", { p_class_id: classId, p_map_id: mapId });
+  const { data: session } = await supabase.auth.getSession();
+  const [{ data, error }, { data: profile }] = await Promise.all([
+    supabase.rpc("start_solo_run", { p_class_id: classId, p_map_id: mapId }),
+    // As magias ativas do Grimório (até 3 por slot) são as opções da escolha, como na hunt do servidor.
+    supabase.from("profiles").select("active_spells").eq("id", session.session?.user.id ?? "").maybeSingle(),
+  ]);
   if (error) throw new Error("não foi possível começar a hunt solo");
   const run = data as SoloRunStart;
   const finish = (result: RunEndedMessage, report: HuntReport) => finishSolo(run.run_id, classId, result, report);
@@ -50,7 +55,9 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     runEnded: (_sessionId, result, report) => void finish(result, report).then((msg) => emit(MSG.runEnded, msg)),
     ended: () => window.setTimeout(stop, 10_000),
   }, { mapId, seed: run.seed });
-  hunt.join(SESSION_ID, { name, classId, talents: run.talents ?? {}, spellXp: run.spell_xp ?? {} });
+  hunt.join(SESSION_ID, {
+    name, classId, talents: run.talents ?? {}, spellXp: run.spell_xp ?? {}, activeSpells: profile?.active_spells ?? [],
+  });
 
   // Mesmo caminho do servidor: o cliente decodifica um estado refletido, com callbacks.
   const encoder = new Encoder(state);

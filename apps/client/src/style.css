@@ -747,6 +747,8 @@ body.busy #hub-body { opacity: 0.7; }
   box-shadow: 0 2px 6px #000a;
 }
 .gnode.aura .gnode-orb { border-radius: 14px; }
+/* Tomo (fortalece o ramo todo): canto vivo de um lado, como a lombada de um livro. */
+.gnode.tome .gnode-orb { border-radius: 4px 16px 16px 4px; border-left-width: 6px; }
 /* Traço (especialização): losango menor, com o ícone desvirado. */
 .gnode.trait .gnode-orb { width: 46px; height: 46px; margin: 5px 0; border-radius: 8px; transform: rotate(45deg); }
 .gnode.trait .gnode-icon { transform: rotate(-45deg); font-size: 22px; }
@@ -765,6 +767,12 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
   background: var(--accent); border-radius: 9px;
 }
 .gnode-lock { position: absolute; left: -4px; bottom: -2px; font-size: 13px; }
+/* Magia ativa: vai para a escolha do slot na hunt (até 3 por slot). */
+.gnode-active {
+  position: absolute; right: -4px; top: -2px;
+  min-width: 18px; font-size: 11px; line-height: 18px; color: #fff; background: #2e8b57; border-radius: 9px;
+}
+.grim-active-note { font-size: 13px; }
 .gnode-pips { display: flex; gap: 3px; padding: 1px 4px; background: #150f0c; border-radius: 6px; }
 .gnode-pips i { width: 8px; height: 8px; background: #000; border: 1px solid var(--border); border-radius: 50%; }
 .gnode-pips i.on { background: #c9a0ff; border-color: #fff; }

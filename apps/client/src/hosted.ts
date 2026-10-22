@@ -530,9 +530,13 @@ async function loadSimulation() {
   return { Hunt, DungeonState, stateFromJSON };
 }
 
-/** Talentos e XP das magias da conta (precisam entrar na hunt antes do início, como no servidor). */
+/** Talentos, XP e magias ativas da conta (precisam entrar na hunt antes do início, como no servidor). */
 export async function myRecruit(name: string, classId: ClassId): Promise<Me> {
-  const { data } = await supabase.from("profile_talents").select("talent_id, rank, xp");
+  const { data: session } = await supabase.auth.getSession();
+  const [{ data }, { data: profile }] = await Promise.all([
+    supabase.from("profile_talents").select("talent_id, rank, xp"),
+    supabase.from("profiles").select("active_spells").eq("id", session.session?.user.id ?? "").maybeSingle(),
+  ]);
   const rows = (data ?? []) as { talent_id: string; rank: number; xp: number }[];
   return {
     name,
@@ -541,6 +545,7 @@ export async function myRecruit(name: string, classId: ClassId): Promise<Me> {
       name, classId,
       talents: Object.fromEntries(rows.map((t) => [t.talent_id, t.rank])),
       spellXp: Object.fromEntries(rows.filter((t) => t.xp > 0).map((t) => [t.talent_id, t.xp])),
+      activeSpells: (profile?.active_spells as string[] | null) ?? [],
     },
   };
 }
