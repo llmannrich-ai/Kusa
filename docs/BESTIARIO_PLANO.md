@@ -20,7 +20,7 @@ a fase como feita. As decisões em aberto estão na seção 10.
 | Tipos de criatura | só o flag `undead` | 14 tipos do D&D (morto-vivo, constructo, limo, aberração...) com resistências e imunidades |
 | Elementos | só nas magias do Feiticeiro | todo dano tem elemento; monstros resistem ou são vulneráveis (o Troll só para de regenerar com fogo ou ácido) |
 | Salas | lista fixa por profundidade: toda hunt tem a mesma composição | **encontros** sorteados pela seed com orçamento de ameaça (como o "XP budget" do D&D) |
-| Tamanho da equipe | não muda os monstros | mini-bosses e bosses escalam com a equipe |
+| Tamanho da equipe | não muda os monstros | **continua não mudando** (princípio do jogo, ver 3); as fases do boss saem por % de vida, então aparecem também em equipe |
 | Arte | 12 sprites estáticos do pack DCSS (CC0) | +50 sprites do mesmo pack ou arte própria, animação procedural, morte por tipo |
 
 **Ordem recomendada:** medir e preparar o código (fase 0), construir o motor de comportamentos e habilidades
@@ -74,8 +74,10 @@ por encontros (fase 5) e só então abrir mapas novos (fases 6 a 8). Cada fase �
    joystick, o jogador não tem como reagir: o dano vira imposto, não desafio. O D&D resolve com a Recarga (o jogador
    sabe que o sopro voltou) e os jogos de ação com o telegraph. O cliente já tem cor de aviso no `MonsterSpecial`, mas não usa.
 
-5. **Tamanho da equipe não muda a dificuldade.** Com 4 heróis, o Dragão (900 HP) derrete; o D&D ajusta o encontro pelo
-   tamanho do grupo. Hoje só a XP muda (+20% por participante).
+5. **Em equipe, o boss cai antes de mostrar o que tem.** A dificuldade não muda com o número de jogadores, e isso é
+   princípio do jogo (jogar em equipe tem que ser mais fácil, para estimular a equipe). O efeito colateral: com 4 heróis
+   o Dragão (900 HP) cai em ~1/4 do tempo, e mecânica de boss presa a tempo (recarga longa) não chega a sair. O
+   plano resolve pelo desenho do boss, não pela vida dele (ver 4.4).
 
 6. **Composição fixa por sala.** `pathSpawns` é uma lista fixa: a sala 3 da Cripta sempre tem 3 orcs e 2 esqueletos.
    A seed só sorteia a posição. Na décima hunt, não há surpresa.
@@ -102,9 +104,12 @@ por encontros (fase 5) e só então abrir mapas novos (fases 6 a 8). Cada fase �
    no chão (≥ 600 ms em comuns, ≥ 800 ms em bosses) e projéteis viajam (dá para sair da frente).
 4. **Controle no herói é curto.** Nenhum efeito tira o controle do jogador por mais de 2 s, e depois de um controle o
    herói fica imune ao mesmo efeito por 4 s (a "jogada de resistência" do D&D, sem dado).
-5. **Uma novidade por sala.** Monstros novos entram aos poucos: a primeira vez que um tipo aparece numa hunt, o nome
+5. **A dificuldade não depende do tamanho da equipe.** Os monstros são os mesmos com 1 ou 4 heróis: jogar em equipe é
+   mais fácil de propósito, para estimular a equipe. Nenhuma regra deste plano escala vida, dano ou quantidade de
+   monstros pelo número de jogadores.
+6. **Uma novidade por sala.** Monstros novos entram aos poucos: a primeira vez que um tipo aparece numa hunt, o nome
    e a assinatura sobem sobre ele ("Kobold — Táticas de Bando").
-6. **Servidor autoritativo e dados no `packages/shared`.** Comportamento e habilidades são dados (`MonsterDef`);
+7. **Servidor autoritativo e dados no `packages/shared`.** Comportamento e habilidades são dados (`MonsterDef`);
    o `Hunt` interpreta. Nada de lógica por `if (kind === "...")` espalhada.
 
 ### 3.1 Papéis (inspirados nos papéis de monstro do D&D 4e e do Monster Manual 5e)
@@ -183,6 +188,7 @@ O número aparece colorido sobre o monstro ("Resiste!" em cinza, "Vulnerável!" 
 | **Ações Lendárias** | o boss age fora da vez: um golpe rápido entre os ataques (ex.: batida de cauda quando alguém fica atrás) |
 | **Ações de Covil** | a cada 12 s a sala do boss faz algo: estalactites caem (Profundezas), lava sobe (Fornalha), mortos levantam (Necrópole) |
 | **Resistência Lendária** | 2 cargas por luta: o boss ignora um controle (atordoar, prender) e mostra "Resiste!" |
+| **Fases do boss** | trocas de fase saem por % de vida (75%, 50%, 25%), nunca por tempo: com 1 ou 4 heróis, toda fase aparece. Na troca, o boss usa na hora a habilidade da fase nova |
 | **Agarrar** | o herói fica preso (sem andar) até o tempo acabar ou bater 2 vezes no monstro |
 | **Engolir/Engolfar** | o herói some dentro do monstro, toma dano por segundo e sai quando o monstro morre, leva X de dano ou o tempo acaba |
 | **Invisível/Camuflado** | sprite a 15–35% de opacidade, sem barra de vida e não pode ser alvo até atacar ou levar dano |
@@ -271,8 +277,7 @@ encounters: [
 - Cada monstro custa a XP dele; a sala recebe monstros até gastar o orçamento.
 - Limites: no máximo 2 artilheiros e 1 líder por sala; enxames vêm em grupo (`groupWith`).
 - Mini-boss das salas laterais e boss podem ter rotação: o mapa lista 2–3 opções e a seed escolhe.
-- **Escala com a equipe:** orçamento × `[1, 1,4, 1,75, 2,1]` e HP de mini-boss/boss × `[1, 1,5, 2, 2,5]` para 1–4 heróis
-  (números de partida; validar com `party_size` na telemetria antes de fixar).
+- **O orçamento não muda com o tamanho da equipe** (princípio da seção 3): a sala é a mesma para 1 ou 4 heróis.
 
 ### 4.9 Variantes de elite (fase 5)
 
@@ -295,7 +300,7 @@ Os ids (`rat`, `goblin`...) **não mudam**, para não quebrar a telemetria (`kil
 | Esqueleto | Skeleton | bruto | sem mudança | tipo morto-vivo: **imune a veneno e sangramento**, vulnerável a luz (já) |
 | Orc guerreiro | Orc | bruto | sem mudança | **Agressivo:** com o alvo a 3–5 tiles, avança 2 tiles de uma vez (recarga 6 s) |
 | Ogro (mini-boss) | Ogre | bruto | dano 14 → 18, recarga 1,6 → 1,8 s | Pisão Sísmico ganha aviso de 700 ms; nova: **Arremesso de Pedra** (alvo a 3–6 tiles, área 1, empurra 1) |
-| Dragão jovem (boss) | Young Red Dragon | — | HP escala com a equipe | Sopro Infernal vira **cone** com aviso de 900 ms e Recarga 5–6; **Multiataque** (mordida + 2 garras); **imune a fogo**; abaixo de 50%: **Voo** (some 2 s e cai sobre um herói, área 2 com aviso) |
+| Dragão jovem (boss) | Young Red Dragon | — | sem mudança; fases por % de vida | Sopro Infernal vira **cone** com aviso de 900 ms e Recarga 5–6; **Multiataque** (mordida + 2 garras); **imune a fogo**; abaixo de 50%: **Voo** (some 2 s e cai sobre um herói, área 2 com aviso) |
 
 ### 5.2 Pântano das Ruínas
 
@@ -306,7 +311,7 @@ Os ids (`rat`, `goblin`...) **não mudam**, para não quebrar a telemetria (`kil
 | Afogado | Zombie (afogado) | bruto | velocidade 2,6 → 2,0, HP 120 → 140 | **Fortitude Morta-viva:** o primeiro golpe que o mataria o deixa com 1 HP, exceto dano de luz ou fogo |
 | Naga guerreira | Guardian Naga (versão menor) | sentinela | sem mudança | **Constrição:** golpe que prende 1,5 s (recarga 6 s) |
 | Troll do brejo (mini-boss) | Troll | bruto | dano 20 → 24 | **Regeneração** passiva de 2% por segundo, que **para por 5 s se levar fogo ou ácido** (troca a Fúria Regenerante); **Dilacerar** (multiataque com sangramento) |
-| Hidra do pântano (boss) | Hydra | — | HP escala com a equipe | **Cabeças:** começa com 3 (cada cabeça morde um alvo diferente); a cada 20% de vida perdida, perde uma; se não levar fogo em 6 s, nascem 2 no lugar (máx. 5) e cura 5%. Chuva Ácida ganha aviso. **Mergulho:** some na água e surge longe |
+| Hidra do pântano (boss) | Hydra | — | sem mudança; fases por % de vida | **Cabeças:** começa com 3 (cada cabeça morde um alvo diferente); a cada 20% de vida perdida, perde uma; se não levar fogo em 6 s, nascem 2 no lugar (máx. 5) e cura 5%. Chuva Ácida ganha aviso. **Mergulho:** some na água e surge longe |
 
 O Troll e a Hidra são os exemplos mais famosos de "resistência como quebra-cabeça" do D&D, e hoje são números.
 Com elementos (4.3), o Feiticeiro de fogo e o Druida de veneno/ácido passam a ser a resposta, e a equipe sente isso.
@@ -507,7 +512,7 @@ Metas de partida (ajustar depois com telemetria):
 | Um comum sozinho mata um herói do nível esperado em | > 20 s |
 | Encontro de sala (solo) | tira 40–70% da vida sem poção |
 | Mini-boss solo | 20–40 s |
-| Boss solo | 60–120 s; em equipe de 4, 45–90 s com a escala de equipe |
+| Boss solo | 60–120 s (em equipe cai mais rápido, de propósito; toda fase precisa aparecer mesmo assim) |
 
 ### 8.2 Telemetria
 
@@ -536,7 +541,7 @@ Cada fase é um ou mais PRs que mantêm o jogo jogável. Toda mudança em `maps.
 |---|---|---|---|
 | **0. Preparação** | Registro visual `bestiary.ts`; tirar `shape`/`color` provisórios; simulador; levantar no pack os arquivos de cada monstro novo; ler `telemetry_deaths` e `telemetry_classes` por mapa e por `party_size` | 1–2 | — |
 | **1. Motor** | `abilities[]` (com `special` migrado), aviso no chão, projétil de monstro, comportamentos (manter distância, recuar, fugir, investir), elementos em todo dano, resistências, efeitos novos no herói com imunidade de 4 s, Recarga 5–6 | 3–4 | 0 |
-| **2. Retrabalho dos 12** | Seção 5 inteira; correção da Cobra e dos mini-bosses; escala de equipe em mini-boss e boss | 2 (um por mapa) | 1 |
+| **2. Retrabalho dos 12** | Seção 5 inteira; correção da Cobra e dos mini-bosses; fases dos bosses por % de vida | 2 (um por mapa) | 1 |
 | **3. Cripta 2.0** | 8 comuns + Mímico, Cubo e Bugbear (6.1); animação procedural (7.2) | 2–3 | 2 |
 | **4. Pântano 2.0** | 8 comuns + Bruxa e Naga Espiritual; Dragão negro como 2º boss (6.2) | 2–3 | 2 |
 | **5. Encontros** | Orçamento de ameaça e tabelas por profundidade (4.8); rotação de mini-boss e boss; Campeões (4.9); `SOLO_LIMITS` e funções do banco atualizados | 1–2 | 3, 4 |
@@ -572,8 +577,8 @@ inimigos" que o jogador sente; os mapas novos são a parte cara e devem esperar 
    Deslocadora, Umber Hulk e Yuan-ti **não estão no SRD** e são marcas da Wizards. Para um jogo entre amigos o risco é
    baixo; se o Kusa for publicado ou monetizado, é real. Recomendo ficar no SRD e, se quiser um "olho flutuante",
    criar uma criatura própria com nome e visual diferentes.
-3. **Escala por tamanho de equipe.** Recomendo, mas muda a sensação de quem joga em 4 (hoje é mais fácil). Validar com
-   `party_size` na telemetria antes de fixar os números.
+3. **Tamanho da equipe (decidido): a dificuldade não muda.** Jogar em equipe é mais fácil de propósito. O plano não
+   escala monstros pela equipe; as fases dos bosses saem por % de vida para aparecerem também em grupo.
 4. **Monstro da Ferrugem destrói item?** No D&D, sim. No Kusa, perder item já é a punição da morte; recomendo só a
    corrosão temporária de armadura.
 5. **Elementos em todo dano mexem no equilíbrio das classes.** O Cavaleiro (só físico) sofre contra limos e golems.
