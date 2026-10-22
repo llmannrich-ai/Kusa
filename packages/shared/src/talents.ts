@@ -15,6 +15,9 @@ import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 // Cada ramo é uma espinha de peixe (inspirada no Diablo 2): o tronco desce no meio e as costelas (`RIBS`) saem
 // para os lados em alturas e tamanhos diferentes, então nenhum ramo tem a mesma forma. Um nó de costela pode
 // pedir dois pais (`alsoRequires`), como a Nevasca do Diablo 2 pede duas magias.
+// Sinergias (também do Diablo 2): cada nível de uso de uma magia vizinha na árvore (ligada por galho) deixa a magia
+// mais forte, e o Tomo de cada ramo (`kind: "tome"`, comprado com gold) fortalece todas as magias do ramo. A força
+// extra soma com a do nível (`spellAtRank`) e é calculada pelo servidor ao entrar na sala (`spellBonuses`).
 // As 2 magias iniciais da classe já vêm compradas (`freeRank`) e no nível 1. A tabela `talents` no Supabase
 // repete id, níveis, custo, nível grátis e pré-requisito de cada nó; mude os dois juntos.
 
@@ -35,13 +38,15 @@ export interface TalentDef {
   row: number;
   /** Posição de lado dentro do ramo: 0 = tronco, −2 a 2 = costelas e lados das especializações. */
   lane: number;
-  kind: "spell" | "aura" | "trait";
+  kind: "spell" | "aura" | "trait" | "tome";
   name: string;
   icon: string;
   /** Magia liberada (só `kind: "spell"`). */
   spellId?: SpellId;
   /** Bônus por nível da áurea, em fração (0.05 = +5%). */
   aura?: { stat: AuraStat; perRank: number };
+  /** Força extra por nível do Tomo nas magias do ramo dele (só `kind: "tome"`), em fração. */
+  tome?: { perRank: number };
   /** Traço liberado (só `kind: "trait"`). */
   traitId?: TraitId;
   /** Lado da especialização (0 ou 1) no fim do ramo; ausente no tronco. */
@@ -239,6 +244,33 @@ const RIBS: Record<ClassId, Rib[]> = {
   ],
 };
 
+/** Tomo de cada ramo: +força em todas as magias do ramo por nível. */
+const TOME_RULE = { perRank: 0.05, maxRank: 3, baseCost: 300, costGrowth: 1.8 };
+
+/** Nome do Tomo de cada ramo (na ordem de `TREE_BRANCHES`). */
+const TOME_NAMES: Record<ClassId, [string, string, string]> = {
+  knight: ["Tomo da Lâmina", "Tomo do Bastião", "Tomo do Comando"],
+  paladin: ["Tomo da Mira", "Tomo da Luz", "Tomo do Batedor"],
+  sorcerer: ["Tomo do Raio", "Tomo do Gelo", "Tomo das Trevas"],
+  druid: ["Tomo da Matilha", "Tomo do Bosque", "Tomo dos Espinhos"],
+};
+
+const TOME_ICONS = ["📕", "📗", "📘"];
+
+/**
+ * Lado de cada Tomo na tela do ramo (coluna 0 a 2): fica na linha 2, na ponta oposta às costelas, e pede o
+ * primeiro nó do tronco do ramo.
+ */
+const TOME_LANES: Record<ClassId, [number, number, number]> = {
+  knight: [2, -2, -2],
+  paladin: [2, -2, 2],
+  sorcerer: [2, -2, 2],
+  druid: [-2, 2, 2],
+};
+
+/** Força extra que cada nível de uso de uma magia vizinha na árvore dá (Diablo 2: sinergia). */
+export const SYNERGY_PER_LEVEL = 0.02;
+
 const isAura = (key: string): key is AuraStat => key in AURA_RULES;
 
 function classTree(classId: ClassId): TalentDef[] {
@@ -286,7 +318,16 @@ function classTree(classId: ClassId): TalentDef[] {
       requires: { id: id(parent), rank: 1 }, alsoRequires: also ? { id: id(also), rank: 1 } : undefined,
     };
   });
-  const tree = [...trunk, ...ribs];
+  const tomes = TOME_LANES[classId].map((lane, col): TalentDef => {
+    const first = trunk.find((t) => t.col === col && t.row === 1);
+    if (!first) throw new Error(`${classId}: ramo ${col} sem o primeiro nó do tronco`);
+    return {
+      id: id(`tome${col}`), classId, col, row: 2, lane, kind: "tome", name: TOME_NAMES[classId][col], icon: TOME_ICONS[col],
+      tome: { perRank: TOME_RULE.perRank }, maxRank: TOME_RULE.maxRank, freeRank: 0,
+      baseCost: TOME_RULE.baseCost, costGrowth: TOME_RULE.costGrowth, requires: { id: first.id, rank: 1 },
+    };
+  });
+  const tree = [...trunk, ...ribs, ...tomes];
   // Dois nós no mesmo lugar do desenho seriam um erro de digitação na forma.
   const spots = new Set<string>();
   for (const t of tree) {
@@ -378,6 +419,51 @@ export function spellXpGains(classId: ClassId, spells: { id: string; gained: num
   return Object.fromEntries(spells.map((s) => [spellTalentId(classId, s.id as SpellId), s.gained]));
 }
 
+/**
+ * Magias vizinhas de uma magia na árvore: os pais e as filhas que são magias (ligadas por galho, inclusive o
+ * segundo pai). Cada nível de uso delas dá `SYNERGY_PER_LEVEL` de força a esta.
+ */
+export function spellNeighbors(classId: ClassId, spellId: SpellId): SpellId[] {
+  const self = TALENTS[spellTalentId(classId, spellId)];
+  if (!self) return [];
+  const linked = (a: TalentDef, b: TalentDef) => a.requires?.id === b.id || a.alsoRequires?.id === b.id;
+  return talentTree(classId)
+    .filter((t) => t.spellId && t !== self && (linked(self, t) || linked(t, self)))
+    .map((t) => t.spellId!);
+}
+
+/** Força extra de uma magia: sinergia (níveis das vizinhas) e o Tomo do ramo dela (a raiz não tem ramo). */
+export interface SpellBonus {
+  synergy: number;
+  tome: number;
+  total: number;
+}
+
+/**
+ * Força extra de uma magia na conta. `levels` é o nível de uso das magias conhecidas (de `spellRanks`): uma vizinha
+ * que a conta não tem não conta.
+ */
+export function spellBonus(
+  classId: ClassId, spellId: SpellId, ranks: TalentRanks, levels: Partial<Record<SpellId, number>>,
+): SpellBonus {
+  const synergy = spellNeighbors(classId, spellId).reduce((sum, id) => sum + (levels[id] ?? 0) * SYNERGY_PER_LEVEL, 0);
+  const self = TALENTS[spellTalentId(classId, spellId)];
+  const book = self && self.row > 0 ? talentTree(classId).find((t) => t.kind === "tome" && t.col === self.col) : undefined;
+  const tome = book ? talentRank(book, ranks) * book.tome!.perRank : 0;
+  return { synergy, tome, total: synergy + tome };
+}
+
+/** Força extra (fração) de cada magia conhecida, como o servidor manda para o cliente (`Player.spellBonus`). */
+export function spellBonuses(classId: ClassId, ranks: TalentRanks, xp: SpellXp): Partial<Record<SpellId, number>> {
+  const levels = spellRanks(classId, ranks, xp);
+  const out: Partial<Record<SpellId, number>> = {};
+  for (const id of Object.keys(levels) as SpellId[]) {
+    const { total } = spellBonus(classId, id, ranks, levels);
+    if (total > 0) out[id] = Math.round(total * 1000) / 1000;
+  }
+  return out;
+}
+
 /** Traços que a conta tem na classe (um por ramo especializado, no máximo). */
 export function activeTraits(classId: ClassId, ranks: TalentRanks): TraitId[] {
   return talentTree(classId).filter((t) => t.traitId && talentRank(t, ranks) > 0).map((t) => t.traitId!);
@@ -394,8 +480,9 @@ export function knownSpells(classId: ClassId, ranks: TalentRanks): SpellId[] {
   return talentTree(classId).filter((t) => t.spellId && talentRank(t, ranks) > 0).map((t) => t.spellId!);
 }
 
-/** Texto curto do efeito de um nível de áurea. */
+/** Texto curto do efeito de um nível de áurea ou de Tomo. */
 export function auraText(def: TalentDef, rank: number): string {
+  if (def.tome) return `+${Math.round(def.tome.perRank * rank * 100)}% de força nas magias do ramo ${TREE_BRANCHES[def.classId][def.col]}`;
   if (!def.aura) return "";
   return `+${Math.round(def.aura.perRank * rank * 100)}% de ${AURA_STAT_NAMES[def.aura.stat]}`;
 }

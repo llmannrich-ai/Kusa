@@ -741,6 +741,8 @@ body.busy #hub-body { opacity: 0.7; }
   box-shadow: 0 2px 6px #000a;
 }
 .gnode.aura .gnode-orb { border-radius: 14px; }
+/* Tomo (fortalece o ramo todo): canto vivo de um lado, como a lombada de um livro. */
+.gnode.tome .gnode-orb { border-radius: 4px 16px 16px 4px; border-left-width: 6px; }
 /* Traço (especialização): losango menor, com o ícone desvirado. */
 .gnode.trait .gnode-orb { width: 46px; height: 46px; margin: 5px 0; border-radius: 8px; transform: rotate(45deg); }
 .gnode.trait .gnode-icon { transform: rotate(-45deg); font-size: 22px; }

@@ -119,8 +119,11 @@ async function knightShield() {
   room.send(MSG.cast, { slot: 0 });
   await wait(200);
   const shield = me().barrier;
-  // Nível 5: 40% × 1,5 = 60% da vida máxima.
-  if (shield !== Math.round(me().maxHp * 0.6)) throw new Error(`escudo ${shield}, vida máxima ${me().maxHp}`);
+  // Nível 5: 40% × 1,5 = 60% da vida máxima, vezes a força extra das sinergias e do Tomo do Bastião.
+  const bonus = me().spellBonus.get("holy_shield") ?? 0;
+  const expected = Math.round(me().maxHp * spellAtRank(SPELLS.holy_shield, MASTERY_RANK, bonus).barrier!);
+  if (bonus <= 0) throw new Error("o Escudo da Fé devia ter força extra com o Grimório inteiro");
+  if (shield !== expected) throw new Error(`escudo ${shield}, esperado ${expected} (força extra ${bonus}), vida máxima ${me().maxHp}`);
   if (me().maxBarrier !== shield) throw new Error("maxBarrier devia acompanhar o escudo novo");
 
   // Anda até os monstros e deixa apanhar: o escudo absorve antes da vida.

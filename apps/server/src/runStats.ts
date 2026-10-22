@@ -9,8 +9,11 @@ export interface RunStats {
   depthAt: Record<number, number>;
   /** Traços das especializações escolhidas no Grimório (ids de TRAITS). */
   specs: string[];
-  /** Magia escolhida em cada slot, nível de uso dela (0 a 5) e quando: { "1": { id, rank, at } }. */
-  spellsChosen: Record<number, { id: string; rank: number; at: number }>;
+  /**
+   * Magia escolhida em cada slot, nível de uso dela (0 a 5), força extra das sinergias e do Tomo (fração) e quando:
+   * { "1": { id, rank, bonus, at } }.
+   */
+  spellsChosen: Record<number, { id: string; rank: number; bonus: number; at: number }>;
   /** Melhorias escolhidas ao subir de nível, com as opções sorteadas, o nível e o segundo. */
   perksChosen: { id: string; offer: string[]; level: number; at: number }[];
   casts: Record<string, number>;

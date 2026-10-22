@@ -78,6 +78,7 @@ import {
   spellAtRank,
   spellChoices,
   spellCooldownMs,
+  spellBonuses,
   spellRanks,
   spellLevelFromXp,
   spellTalentId,
@@ -432,6 +433,8 @@ export class Hunt {
     player.mana = player.maxMana = stats.maxMana;
     player.knownSpells.push(...knownSpells(classId, talents));
     for (const [spellId, rank] of Object.entries(spellRanks(classId, talents, spellXp))) player.spellRanks.set(spellId, rank);
+    // Sinergias e Tomos: a força extra fica parada durante a hunt (o XP ganho só conta depois dela).
+    for (const [spellId, bonus] of Object.entries(spellBonuses(classId, talents, spellXp))) player.spellBonus.set(spellId, bonus!);
     // A equipe nasce junta, ao redor do portal de fuga: cada um num canto livre (quem saiu da sala de espera libera o seu).
     const { x: px, y: py } = this.dungeon.portal;
     const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([dx, dy]) => ({ x: px + dx, y: py + dy }));
@@ -926,7 +929,11 @@ export class Hunt {
     if (!spell) return;
     if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
     const seat = this.seats.get(sessionId);
-    if (seat) seat.stats.spellsChosen[slot + 1] = { id: spell.id, rank: p.spellRanks.get(spell.id) ?? 0, at: this.seconds() };
+    if (seat) {
+      seat.stats.spellsChosen[slot + 1] = {
+        id: spell.id, rank: p.spellRanks.get(spell.id) ?? 0, bonus: p.spellBonus.get(spell.id) ?? 0, at: this.seconds(),
+      };
+    }
     this.notice(p.x, p.y - 1, spell.name, 0x9b59b6);
   }
 
@@ -938,8 +945,8 @@ export class Hunt {
     if (slot !== 0 && slot !== 1) return;
     const base = SPELLS[spellIn(p, slot) as SpellId];
     if (!base) return;
-    // Os níveis 2 e 3 comprados no Grimório deixam a magia mais forte.
-    let spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0);
+    // O nível de uso, as sinergias e o Tomo do ramo deixam a magia mais forte.
+    let spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0, p.spellBonus.get(base.id) ?? 0);
 
     const now = this.host.now();
     if (now < seat.spellReadyAt[slot]) return;
@@ -1564,7 +1571,7 @@ export class Hunt {
       if (s.owner === sessionId && this.summonBrains.get(s.id)?.spellId === spell.id) this.removeSummon(s.id);
     });
     const now = this.host.now();
-    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "spell"), rankPower(rank));
+    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "spell"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0)));
     // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
     const boost = 1 + (this.seats.get(sessionId)?.traits.reduce((sum, t) => sum + (t.summonBoost ?? 0), 0) ?? 0);
     stats.maxHp = Math.round(stats.maxHp * boost);
