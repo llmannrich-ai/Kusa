@@ -271,7 +271,7 @@ export class DungeonScene extends Phaser.Scene {
     callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
 
     this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
-    this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
+    this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
     this.room.onMessage(MSG.cooldown, (msg: CooldownMessage) => this.spellBar.setCooldown(msg.slot, msg.ms));
@@ -319,7 +319,7 @@ export class DungeonScene extends Phaser.Scene {
       const unit = this.avatars.get(id) ?? this.monsters.get(id);
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
-    this.spellBar = new SpellBar(this.room, actions, this.aim);
+    this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.aboveMe());
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing, () => this.aboveMe());
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
