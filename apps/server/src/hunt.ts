@@ -965,7 +965,8 @@ export class Hunt {
       // Alvo único: vale o monstro em que a mira grudou (com 1 tile de folga para o atraso da rede).
       // Errou a mira: a magia sai do mesmo jeito, gasta mana e recarga, e só acerta quem estiver no ponto.
       const snapped = isSingleTarget(spell) && typeof aim.targetId === "string" ? this.state.monsters.get(aim.targetId) : undefined;
-      if (snapped && this.canHit(p, snapped, spell.range) && tileDistance(snapped.x, snapped.y, aim.x, aim.y) <= AIM_SNAP_TILES + 1) {
+      // Monstro escondido (camuflado, invisível, voando) não pode ser mirado.
+      if (snapped && !snapped.hidden && this.canHit(p, snapped, spell.range) && tileDistance(snapped.x, snapped.y, aim.x, aim.y) <= AIM_SNAP_TILES + 1) {
         target = snapped;
         tx = snapped.x;
         ty = snapped.y;
@@ -2096,13 +2097,13 @@ export class Hunt {
   private affectHero(sessionId: string, effect: HeroEffect, m: Monster, damage: number) {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
-    if (!p || !seat || p.status !== "playing") return;
+    if (!p || !seat || p.status !== "playing") return false;
     const now = this.host.now();
     const kind = effect.kind;
     const current = seat.effects[kind];
     if (CONTROL_EFFECTS.includes(kind)) {
-      if (current && now < current.until) return;
-      if (now < (seat.effectImmuneUntil[kind] ?? 0)) return;
+      if (current && now < current.until) return false;
+      if (now < (seat.effectImmuneUntil[kind] ?? 0)) return false;
       const ms = Math.min(effect.ms, CONTROL_MAX_MS);
       seat.effects[kind] = {
         until: now + ms, stacks: 1,
@@ -2116,6 +2117,7 @@ export class Hunt {
       bump(seat.stats.ccTaken, kind, effect.ms);
     }
     this.syncEffects(p, seat);
+    return true;
   }
 
   /** Solta o herói engolido (o monstro morreu ou apanhou demais). */

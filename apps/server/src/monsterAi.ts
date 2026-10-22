@@ -134,8 +134,8 @@ export interface MonsterWorld {
   notice(x: number, y: number, text: string, color: number, ms?: number): void;
   damagePlayer(sessionId: string, raw: number, hit: Hit): void;
   damageSummon(s: Summon, raw: number, hit: Hit): void;
-  /** Efeito de monstro num herói (preso, atordoado, engolido...). */
-  affectHero(sessionId: string, effect: HeroEffect, m: Monster, damage: number): void;
+  /** Efeito de monstro num herói (preso, atordoado, engolido...). Devolve false se não pegou (imune, já sob o efeito). */
+  affectHero(sessionId: string, effect: HeroEffect, m: Monster, damage: number): boolean;
   /** Veneno, queimadura ou sangramento de monstro num herói. */
   dotHero(sessionId: string, kind: DotKind, damage: number, ms: number, m: Monster): void;
   slowHero(sessionId: string, factor: number, ms: number): void;
@@ -387,13 +387,11 @@ export class MonsterAi {
     }
     const tiles = a.shape === "leap" && a.power === 0 ? [] : abilityTiles(this.w.dungeon, a, m.x, m.y, tx, ty);
     this.strike(m, a, tx, ty, tiles);
-    this.hitArea(m, brain, a, tiles);
-    if (a.effect?.kind === "engulf") {
-      const hero = this.w.state.players.get(targetId);
-      if (hero?.status === "playing" && tiles.some((t) => t.x === hero.x && t.y === hero.y)) {
-        brain.engulfing = targetId;
-        brain.engulfTaken = 0;
-      }
+    const affected = this.hitArea(m, brain, a, tiles);
+    // Engolfar: só segura quem de fato foi engolido (imune ou já engolido não conta).
+    if (a.effect?.kind === "engulf" && affected.length > 0) {
+      brain.engulfing = affected[0];
+      brain.engulfTaken = 0;
     }
     if (a.selfHeal && m.hp > 0) {
       const healed = Math.min(m.maxHp - m.hp, Math.round(m.maxHp * a.selfHeal));
@@ -416,9 +414,13 @@ export class MonsterAi {
     } satisfies MonsterStrikeMessage);
   }
 
-  /** Acerta os heróis e as criaturas invocadas nos tiles: dano, dano contínuo, lentidão, efeito e empurrão. */
+  /**
+   * Acerta os heróis e as criaturas invocadas nos tiles: dano, dano contínuo, lentidão, efeito e empurrão. Devolve
+   * quem ficou sob o efeito da habilidade.
+   */
   private hitArea(m: Monster, brain: Brain, a: MonsterAbility, tiles: { x: number; y: number }[]) {
-    if (tiles.length === 0) return;
+    const affected: string[] = [];
+    if (tiles.length === 0) return affected;
     const inArea = (x: number, y: number) => tiles.some((t) => t.x === x && t.y === y);
     const raw = brain.damage * a.power;
     const hit: Hit = { attacker: m.id, fromX: m.x, fromY: m.y, fx: brain.def.attackFx, special: true, ability: a.id };
@@ -431,9 +433,10 @@ export class MonsterAi {
       if (p.status !== "playing") return;
       if (a.dot) this.w.dotHero(sessionId, a.dot.kind, Math.max(1, Math.round(brain.damage * a.dot.power)), a.dot.durationMs, m);
       if (a.slow) this.w.slowHero(sessionId, a.slow.factor, a.slow.durationMs);
-      if (a.effect) this.w.affectHero(sessionId, a.effect, m, brain.damage);
+      if (a.effect && this.w.affectHero(sessionId, a.effect, m, brain.damage)) affected.push(sessionId);
       if (a.push) this.pushHero(m, p, a.push);
     });
+    return affected;
   }
 
   /** Voo ou mergulho: some (invulnerável) e cai colado no alvo, acertando a área em volta. */

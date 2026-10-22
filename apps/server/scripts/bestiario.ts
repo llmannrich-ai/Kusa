@@ -263,6 +263,11 @@ function check(ok: boolean, what: string) {
   check(p.x === x, "engolido não devia andar");
   hit(cube, Math.ceil(cube.maxHp * 0.16), "basic");
   check(!p.effects.includes("engulf") && brain(cube).engulfing === null, "apanhar muito devia fazer o Cubo cuspir o herói");
+  // Logo depois, o herói está imune: o Cubo não pode ficar "engolindo" ninguém (e parado para sempre).
+  brain(cube).abilityReadyAt = { engulf: 0 };
+  brain(cube).nextAttackAt = 0;
+  advance(hunt, 100);
+  check(!p.effects.includes("engulf") && brain(cube).engulfing === null, "herói imune não devia ser engolido nem travar o Cubo");
   void any;
   console.log("Cubo Gelatinoso OK");
 }
