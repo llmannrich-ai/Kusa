@@ -110,8 +110,13 @@ async function paladinMira() {
   room.send(MSG.cast, { slot: 1 });
   await until(() => me().buff === "swift_quiver", 2000, "a Aljava Veloz não ficou ativa");
   // Atira por 6 s (a aljava dura 8,25 s no nível 5), trocando para outro monstro à vista se o alvo sair do alcance.
-  // Sem a aljava, saem no máximo 6 flechas em 6 s (1 por segundo); com ela, uma a cada 0,4 s.
+  // Sem a aljava, sai 1 flecha por segundo; com ela, uma a cada 0,4 s. Conta o intervalo entre flechas seguidas, não
+  // o total: com o Bestiário os monstros fogem e se escondem, e o herói passa parte dos 6 s sem alvo ao alcance.
   const hitsBefore = damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer && !d.dot).length;
+  const arrows: number[] = [];
+  room.onMessage(MSG.damage, (d: { attacker: string; toPlayer: boolean; dot?: unknown }) => {
+    if (d.attacker === room.sessionId && !d.toPlayer && !d.dot) arrows.push(Date.now());
+  });
   room.send(MSG.target, { id });
   room.send(MSG.attacking, { on: true });
   for (let t = 0; t < 20; t++) {
@@ -125,8 +130,10 @@ async function paladinMira() {
   }
   room.send(MSG.attacking, { on: false });
   const hits = damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer && !d.dot).length - hitsBefore;
-  console.log(`paladino: alvo marcado, ${hits} golpes em 6 s com a Aljava Veloz`);
-  if (hits < 7) throw new Error(`as flechas não ficaram mais rápidas (${hits} golpes em 6 s)`);
+  const fast = arrows.slice(1).filter((t, i) => t - arrows[i] < 700).length;
+  console.log(`paladino: alvo marcado, ${hits} golpes em 6 s com a Aljava Veloz (${fast} intervalos abaixo de 0,7 s)`);
+  if (hits < 3) throw new Error(`o paladino quase não atirou (${hits} golpes em 6 s)`);
+  if (fast < 2) throw new Error(`as flechas não ficaram mais rápidas (${hits} golpes em 6 s, ${fast} intervalos abaixo de 0,7 s)`);
   await room.leave();
 
   // Rolamento: o herói salta para longe do monstro e nunca cai no portal.
