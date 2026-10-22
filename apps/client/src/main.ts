@@ -480,6 +480,8 @@ function showResult(msg: RunEndedMessage) {
   if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
   showLost(msg);
   renderSpellProgress(msg);
+  // "Voltar ao menu" recarrega a página: espera o banco gravar para não cortar a gravação.
+  ($("back") as HTMLButtonElement).disabled = !!msg.saving;
   show("result", true);
 }
 
