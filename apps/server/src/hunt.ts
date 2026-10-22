@@ -372,7 +372,7 @@ export interface HuntOptions {
 
 /** Campos internos que vão no retrato da hunt (o resto se recalcula: mapa, dungeon). */
 const INTERNALS = [
-  "startLevel", "allSpells", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
+  "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
   "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked",
 ] as const;
 
