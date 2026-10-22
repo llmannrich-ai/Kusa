@@ -236,6 +236,21 @@ Código em `apps/client/src/lobby.ts` e `main.ts`.
    Os outros veem "Aguardando o líder iniciar…". Ao começar, a sala sai da lista (ninguém mais entra).
 4. **Sair da sala** volta para a tela de salas. Se o líder sai, o próximo da sala vira líder.
 
+### Jogar sozinho
+
+O botão **"Jogar sozinho · <cenário>"** da tela de salas começa uma hunt solo na hora, sem sala de espera e sem
+servidor de jogo: a mesma simulação do servidor (`apps/server/src/hunt.ts`) roda no aparelho
+(`apps/client/src/solo.ts`). Não há espera para o servidor acordar nem atraso de rede.
+
+Como o aparelho pode ser adulterado, o banco não confia no resultado (`start_solo_run` / `finish_solo_run`,
+limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
+- o banco sorteia a seed e tira equipamento e bag da conta no início, como numa hunt em equipe;
+- o loot tem teto por mapa (pouco acima do máximo possível) e esse teto cresce com o tempo de hunt;
+- resultado que chega depois da duração do mapa mais 1 minuto vale como soterrado;
+- o que entrou com o jogador volta sem custo; itens novos (até 15) e gold somam no **teto de 12.000 por dia**;
+  o que passar disso fica para trás, e a tela de resultado avisa;
+- hunt solo deixada aberta (aba fechada) conta como morte na próxima.
+
 ## Mapas
 
 O jogador escolhe o mapa (cenário) na tela de criar sala (a escolha fica salva no aparelho). O mapa vale para as salas
