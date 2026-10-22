@@ -46,7 +46,9 @@ export async function approach(room: any, me: () => any, range: number, done: ()
     // O herói nasce colado no portal de fuga: pisar nele no caminho encerra a hunt.
     blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
     // O monstro mais próximo que tem caminho (o mais perto em linha reta pode estar atrás de uma parede sem passagem).
+    // Escondidos (Mímico disfarçado, camuflados) não podem ser alvo: o bot não vai atrás deles.
     const byDistance = ([...room.state.monsters.values()] as any[])
+      .filter((m) => !m.hidden)
       .map((m) => ({ m, d: tileDistance(p.x, p.y, m.x, m.y) }))
       .sort((a, b) => a.d - b.d);
     const wanted = byDistance.slice(Math.min(skip, Math.max(0, byDistance.length - 1)));
@@ -68,13 +70,13 @@ export async function approach(room: any, me: () => any, range: number, done: ()
 export function inSight(room: any, p: { x: number; y: number }, range: number): [string, any][] {
   const dungeon = generateDungeon(room.state.seed, room.state.mapId);
   return ([...room.state.monsters.entries()] as [string, any][]).filter(([, m]) =>
-    tileDistance(p.x, p.y, m.x, m.y) <= range && hasLineOfSight(dungeon, p.x, p.y, m.x, m.y));
+    !m.hidden && tileDistance(p.x, p.y, m.x, m.y) <= range && hasLineOfSight(dungeon, p.x, p.y, m.x, m.y));
 }
 
 /** Distância até o monstro mais próximo. */
 export function nearestMonster(room: any, p: { x: number; y: number }) {
   let best = Infinity;
-  room.state.monsters.forEach((m: any) => { best = Math.min(best, tileDistance(p.x, p.y, m.x, m.y)); });
+  room.state.monsters.forEach((m: any) => { if (!m.hidden) best = Math.min(best, tileDistance(p.x, p.y, m.x, m.y)); });
   return best;
 }
 

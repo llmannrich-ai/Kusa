@@ -55,10 +55,12 @@ export class Player extends Schema {
   @type("number") barrier = 0;
   /** Tamanho do escudo quando foi erguido, para desenhar quanto falta. */
   @type("number") maxBarrier = 0;
-  /** Dano contínuo de uma habilidade de monstro: "poison", "burn" ou "" (nenhum). */
+  /** Dano contínuo de uma habilidade de monstro: "poison", "burn", "bleed" ou "" (nenhum). */
   @type("string") dot = "";
   /** Mais lento por uma habilidade de monstro (Pisão Sísmico, Lodo Sufocante). */
   @type("boolean") slowed = false;
+  /** Efeitos de monstro ativos (`HeroEffectKind`, separados por vírgula: "root,corrode"), para o desenho. */
+  @type("string") effects = "";
   /** Magia de bônus em si ativa agora (Postura do Atirador, Aljava Veloz), para o desenho; vazio = nenhuma. */
   @type("string") buff = "";
   /** Forma animal do Druida ("panther", "bear"; vazio = nenhuma), para o desenho. */
@@ -87,6 +89,12 @@ export class Monster extends Schema {
   @type("string") dot = "";
   /** Marcado (Marca do Caçador): recebe mais dano de toda a equipe. */
   @type("boolean") marked = false;
+  /** Invisível, camuflado, voando ou submerso: não pode ser alvo (o cliente desenha quase transparente). */
+  @type("boolean") hidden = false;
+  /** Variante do desenho: cabeças da Hidra. */
+  @type("number") variant = 0;
+  /** Campeão: id do afixo (`CHAMPION_AFFIXES`); vazio = monstro comum. */
+  @type("string") champion = "";
 }
 
 /** Criatura aliada invocada por um jogador (lobo, urso, vespa...). */

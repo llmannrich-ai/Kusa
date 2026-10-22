@@ -1,6 +1,6 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
 import {
-  CLASS_IDS, CLASSES, ITEMS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
+  CLASS_IDS, CLASSES, ITEMS, MONSTERS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
   type ClassId, type ItemSlot, type ItemTier,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
@@ -9,7 +9,8 @@ import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, MONSTER_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
+import { BESTIARY_ART, monsterTextures } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
@@ -196,7 +197,7 @@ const loadImage = (key: string) => new Promise<HTMLImageElement>((resolve) => {
 });
 const [floor, ...monsters] = await Promise.all([
   loadImage(FLOOR_TEXTURE.normal),
-  ...Object.values(MONSTER_TEXTURE).map(loadImage),
+  ...monsterTextures().map(loadImage),
 ]);
 const isWall = (_x: number, y: number) => y === 0 || y === H - 1;
 /** Personagem do tamanho do jogo (heróis em `HERO_SCALE`, monstros no tile), com os pés na base do tile. */
@@ -268,7 +269,7 @@ show(crypt, onGround(dustCanvas(), "#3a2e22"), "poeira", 8);
 
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
-  ...Object.values(MONSTER_TEXTURE), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
+  ...monsterTextures(), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
   ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
   ...Object.values(SWAMP_TEXTURE),
 ];
@@ -277,4 +278,18 @@ for (const key of packKeys) {
 }
 
 const refined = section("Monstros refinados (como no jogo)");
-Object.keys(MONSTER_TEXTURE).forEach((kind, i) => show(refined, refinedMonsters[i], kind, 2));
+monsterTextures().forEach((key, i) => show(refined, refinedMonsters[i], key, 2));
+
+// Bestiário: cada monstro com nome, mapa e papel, no tamanho do jogo (1×) e ampliado, para conferir silhueta e cor.
+const bestiary = section("Bestiário");
+const cloneCanvas = (source: HTMLCanvasElement) => {
+  const { canvas, ctx } = makeCanvas(source.width, source.height);
+  ctx.drawImage(source, 0, 0);
+  return canvas;
+};
+const textureIndex = new Map(monsterTextures().map((key, i) => [key, i]));
+for (const def of Object.values(MONSTERS)) {
+  const art = refinedMonsters[textureIndex.get(BESTIARY_ART[def.kind].texture)!];
+  show(bestiary, cloneCanvas(art), `${def.name} · ${def.rank} · ND ${def.cr}`, 1);
+  show(bestiary, cloneCanvas(art), def.lore.slice(0, 40) + "…", 2);
+}

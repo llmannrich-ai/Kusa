@@ -27,6 +27,8 @@ import {
   TIER_NAMES,
   VAULT_SIZE,
   difficultyStars,
+  mapMonsters,
+  CHAMPION_CHANCE,
   type ItemTier,
 } from "@kusa/shared";
 
@@ -96,11 +98,27 @@ export function renderRules(root: HTMLElement) {
     section("🗺️ Mapas e tempo", false,
       table(["Mapa", "Dificuldade", "Tempo", "Boss"], MAP_IDS.map((id) => {
         const m = MAPS[id];
-        return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), MONSTERS[m.boss].name];
+        return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), m.bosses.map(([k]) => MONSTERS[k].name).join(" ou ")];
       })),
       `Quem cria a sala escolhe o mapa. Cada sala mais funda é ${pct(DEPTH_SCALING)} mais forte que a anterior (vida, dano, XP e loot). `
-      + "Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro.",
+      + "Os monstros de cada sala são sorteados a cada hunt. Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro. "
+      + "Na Cripta, alguns baús são Mímicos.",
       "Quando o tempo acaba, o mapa desaba e quem ainda estiver lá dentro morre soterrado.",
+    ),
+
+    section("👹 Bestiário", false,
+      "Nenhum golpe de monstro tem aviso: conheça cada um antes de entrar. Monstros resistem a alguns elementos e são "
+      + "vulneráveis a outros (o número aparece em cinza ou amarelo). Mortos-vivos não envenenam nem sangram. "
+      + `${pct(CHAMPION_CHANCE)} dos monstros comuns nascem Campeões (nome dourado): mais vida, mais loot e um poder extra.`,
+      ...MAP_IDS.map((id) => {
+        const m = MAPS[id];
+        return table([`${m.icon} ${m.name}`, "Como joga"], mapMonsters(m).map((kind) => {
+          const def = MONSTERS[kind];
+          const rank = def.rank === "boss" ? " (boss)" : def.rank === "miniboss" ? " (mini-boss)" : "";
+          return [`${def.name}${rank}`, def.lore];
+        }));
+      }),
+      "Controle num herói (preso, atordoado, engolido, cego) dura no máximo 2 s, e depois ele fica 4 s imune ao mesmo efeito.",
     ),
 
     section("🏁 Como a hunt termina", false,
