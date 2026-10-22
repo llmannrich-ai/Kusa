@@ -5,7 +5,7 @@
  * - Servidor normal: smoke, combat, items, maps, potions, perks e bag (e solo, que não usa o servidor).
  * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos; o cavaleiro aguenta apanhar parado): spells, specials
  *   e magiaxp.
- * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio e costelas.
+ * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio, costelas e sinergias.
  * - O mesmo com KUSA_MONSTER_HP=20 (monstros aguentam mais de um golpe): efeitos.
  *
  * Os bots caçam no nível 1 e às vezes morrem por azar. Só nesse caso (a hunt terminou com "died")
@@ -25,7 +25,7 @@ interface Suite { port: number; env: Record<string, string>; tests: string[] }
 const SUITES: Suite[] = [
   { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo"] },
   { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["spells", "specials", "magiaxp"] },
-  { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["grimorio", "costelas"] },
+  { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["grimorio", "costelas", "sinergias"] },
   { port: 2613, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1", KUSA_MONSTER_HP: "20" }, tests: ["efeitos"] },
 ];
 
