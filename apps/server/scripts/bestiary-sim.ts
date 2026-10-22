@@ -8,7 +8,7 @@
  *   npx tsx scripts/bestiary-sim.ts [mapa] [repetições]
  */
 import {
-  CLASS_IDS, MAPS, MAP_IDS, MONSTERS, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
+  CLASS_IDS, MAPS, MAP_IDS, MONSTERS, generateDungeon, mapMonsters, hasLineOfSight, isWalkable, tileDistance,
   type ClassId, type MapId, type MonsterKind,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
@@ -71,7 +71,8 @@ function duel(mapId: MapId, classId: ClassId, kind: MonsterKind, seed: number): 
   let lastHp = p.hp;
   hunt.target("h", { id: m.id });
   hunt.attacking("h", { on: true });
-  const range = classId === "knight" ? 1 : 4;
+  // O Mímico só se revela com o herói encostado.
+  const range = classId === "knight" || MONSTERS[kind].traits?.mimic ? 1 : 4;
   for (let t = 0; t < LIMIT_MS; t += TICK) {
     clock += TICK;
     for (const timer of timers.filter((x) => x.at <= clock)) {
@@ -89,15 +90,14 @@ function duel(mapId: MapId, classId: ClassId, kind: MonsterKind, seed: number): 
     if (tileDistance(p.x, p.y, alive.x, alive.y) > range || !hasLineOfSight(d, p.x, p.y, alive.x, alive.y)) {
       const blocked = new Set<number>([...state.monsters.values()].map((o) => o.y * d.width + o.x));
       const step = nextStep(d, p, alive, range, (x, y) => blocked.has(y * d.width + x));
-      if (step) hunt.move("h", { dx: step.x - p.x, dy: step.y - p.y });
+      if (step) hunt.move("h", { dx: (step.x - p.x) as -1 | 0 | 1, dy: (step.y - p.y) as -1 | 0 | 1 });
     }
   }
   return { ttk: LIMIT_MS / 1000, hpLost: lost / startHp, died: false, timeout: true };
 }
 
 function kindsOf(mapId: MapId): MonsterKind[] {
-  const map = MAPS[mapId];
-  return [...new Set([...map.pathSpawns.flat(), map.miniboss, map.boss])];
+  return mapMonsters(MAPS[mapId]);
 }
 
 for (const mapId of onlyMap ? [onlyMap] : MAP_IDS) {

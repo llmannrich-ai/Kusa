@@ -35,6 +35,14 @@ import {
   centerOf,
   clampToRange,
   createRng,
+  encounterAt,
+  pickWeighted,
+  CHAMPION_AFFIX_IDS,
+  CHAMPION_CHANCE,
+  MAX_ROOM_ARTILLERY,
+  MAX_ROOM_LEADERS,
+  MAX_ROOM_MONSTERS,
+  type Encounter,
   generateDungeon,
   grantsPerk,
   damageReduction,
@@ -358,6 +366,8 @@ export class Hunt {
   private regenMs = 0;
   private brains = new Map<string, Brain>();
   private chestDepth = new Map<string, number>();
+  /** Mímicos (id → profundidade da sala): morto, o Mímico dá o loot do baú que fingia ser. */
+  private mimicDepth = new Map<string, number>();
   private nextMonsterId = 1;
   private nextItemId = 1;
   private nextSummonId = 1;
@@ -467,40 +477,49 @@ export class Hunt {
     let total = 0;
     this.brains.forEach((b) => { total += b.loot[1]; });
     this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth)); });
+    this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth)); });
     return Math.round(total * (1 + BOSS_LOOT_BONUS));
   }
 
   // --- Spawn ------------------------------------------------------------
 
-  /** Popula o mapa: comuns nas salas do caminho (e nas campinas), mini-boss + baú nas laterais e o boss no centro. */
+  /**
+   * Popula o mapa: encontros sorteados nas salas do caminho (e nas campinas), mini-boss + baú (ou o Mímico) nas
+   * laterais e o boss no centro. Tudo pelo RNG da seed; alguns comuns nascem Campeões.
+   */
   private spawnMonsters() {
     const d = this.dungeon;
     // RNG próprio derivado da seed, separado do gerador do mapa.
     const rng = createRng(this.state.seed ^ 0x9e3779b9);
+    const roll = () => rng.int(0, 1_000_000);
 
-    const spawns = this.map.pathSpawns;
     d.path.forEach((room, depth) => {
-      const kinds = spawns[Math.min(depth, spawns.length - 1)];
-      for (const kind of kinds) {
-        const spot = this.freeSpotIn(room, () => rng.int(0, 1_000_000));
-        if (spot) this.addMonster(kind, spot.x, spot.y, depth);
+      for (const kind of this.rollEncounter(encounterAt(this.map, depth), rng.next)) {
+        const spot = this.freeSpotIn(room, roll);
+        if (spot) this.spawnCommon(kind, spot.x, spot.y, depth, rng.next);
       }
     });
 
-    // Campinas: dois monstros da sala do caminho mais próxima.
+    // Campinas: dois monstros da tabela da sala do caminho mais próxima.
     d.meadows.forEach((room) => {
       const depth = this.nearestPathDepth(room);
-      const kinds = spawns[Math.min(depth, spawns.length - 1)];
+      const table = encounterAt(this.map, depth).table.filter(([kind]) => !MONSTERS[kind].group);
       for (let i = 0; i < 2; i++) {
-        const spot = this.freeSpotIn(room, () => rng.int(0, 1_000_000));
-        if (spot) this.addMonster(rng.pick(kinds), spot.x, spot.y, depth);
+        const spot = this.freeSpotIn(room, roll);
+        if (spot) this.spawnCommon(pickWeighted(table, rng.next()), spot.x, spot.y, depth, rng.next);
       }
     });
 
     d.side.forEach((room, i) => {
       const depth = this.nearestPathDepth(room);
+      // Mímico: a sala não tem baú; ele fica onde o baú estaria e guarda o loot dele.
+      if (rng.next() < this.map.mimicChance) {
+        const mimic = this.addMonster("mimic", room.x + 1, room.y + 1, depth);
+        this.mimicDepth.set(mimic.id, depth);
+        return;
+      }
       const c = centerOf(room);
-      const boss = this.addMonster(this.map.miniboss, c.x, c.y, depth);
+      const boss = this.addMonster(pickWeighted(this.map.minibosses, rng.next()), c.x, c.y, depth);
       const chest = new Chest();
       chest.id = `c${i + 1}`;
       chest.x = room.x + 1;
@@ -511,7 +530,41 @@ export class Hunt {
     });
 
     const c = centerOf(d.boss);
-    this.addMonster(this.map.boss, c.x, c.y, d.path.length);
+    this.addMonster(pickWeighted(this.map.bosses, rng.next()), c.x, c.y, d.path.length);
+  }
+
+  /**
+   * Monstros de uma sala: sorteia da tabela pelo peso até gastar o orçamento (XP da tabela). Enxames vêm em grupo;
+   * no máximo `MAX_ROOM_ARTILLERY` artilheiros, `MAX_ROOM_LEADERS` líder e `MAX_ROOM_MONSTERS` monstros.
+   */
+  private rollEncounter(encounter: Encounter, next: () => number): MonsterKind[] {
+    const kinds: MonsterKind[] = [];
+    let left = encounter.budget;
+    const count = (role: string) => kinds.filter((k) => MONSTERS[k].role === role).length;
+    for (let attempt = 0; attempt < 30 && left > 0 && kinds.length < MAX_ROOM_MONSTERS; attempt++) {
+      const options = encounter.table.filter(([kind]) => {
+        const def = MONSTERS[kind];
+        if (def.xp > left && kinds.length > 0) return false;
+        if (def.role === "artillery" && count("artillery") >= MAX_ROOM_ARTILLERY) return false;
+        return !(def.role === "leader" && count("leader") >= MAX_ROOM_LEADERS);
+      });
+      if (options.length === 0) break;
+      const kind = pickWeighted(options, next());
+      const group = MONSTERS[kind].group;
+      const size = group ? group[0] + Math.floor(next() * (group[1] - group[0] + 1)) : 1;
+      for (let i = 0; i < size && kinds.length < MAX_ROOM_MONSTERS; i++) {
+        kinds.push(kind);
+        left -= MONSTERS[kind].xp;
+      }
+    }
+    return kinds;
+  }
+
+  /** Monstro comum dos encontros: às vezes nasce Campeão (vida, XP e loot maiores e um afixo). */
+  private spawnCommon(kind: MonsterKind, x: number, y: number, depth: number, next: () => number) {
+    const m = this.addMonster(kind, x, y, depth);
+    if (next() < CHAMPION_CHANCE) this.ai.makeChampion(m, this.brains.get(m.id)!, CHAMPION_AFFIX_IDS[Math.floor(next() * CHAMPION_AFFIX_IDS.length)]);
+    return m;
   }
 
   private addMonster(kind: MonsterKind, x: number, y: number, depth: number) {
@@ -1742,6 +1795,16 @@ export class Hunt {
     this.brains.delete(m.id);
     this.state.players.forEach((p) => { if (p.target === m.id) p.target = ""; });
 
+    // Ilusão (cópia da Bruxa Verde): some sem dar nada.
+    if (brain.traits.illusion) {
+      this.notice(m.x, m.y - 1, "Era uma ilusão!", 0x9ccc65);
+      return;
+    }
+    // Quem chamou morreu: as ilusões dele somem junto.
+    for (const [id, other] of [...this.brains]) {
+      if (other.summonedBy === m.id && other.traits.illusion) this.vanishMonster(id);
+    }
+
     // XP: a equipe que participou divide (com bônus por participante).
     const sharers = [...brain.participants].filter((id) => this.state.players.get(id)?.status === "playing");
     const share = xpShare(brain.xp, sharers.length);
@@ -1769,6 +1832,13 @@ export class Hunt {
     for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, Math.random, 0, this.partyClasses()), at.x, at.y);
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (Math.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) this.dropItem(rollPotion(Math.random), at.x, at.y);
+
+    // Mímico: guarda o loot do baú que fingia ser (vai para quem deu o último golpe).
+    const mimicDepth = this.mimicDepth.get(m.id);
+    if (mimicDepth !== undefined) {
+      this.mimicDepth.delete(m.id);
+      if (killer?.status === "playing") this.chestReward(killerId, killer, m.x, m.y, mimicDepth);
+    }
 
     if (brain.chestId) {
       const chest = this.state.chests.get(brain.chestId);
@@ -2115,20 +2185,34 @@ export class Hunt {
       this.state.players.forEach((p, sessionId) => {
         if (chest.opened || p.status !== "playing" || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
         chest.opened = true;
-        const k = 1 + DEPTH_SCALING * (this.chestDepth.get(chest.id) ?? 0);
-        const value = Math.round(rollRange(CHEST_LOOT) * k);
-        p.loot += value;
-        const stats = this.seats.get(sessionId)?.stats;
-        if (stats) {
-          stats.loot.chests += value;
-          stats.chestsOpened++;
-        }
-        this.notice(chest.x, chest.y, `Baú: +${value} loot`, 0xf1c40f);
-        // O baú guarda um item melhor que o do mini-boss.
-        this.dropItem(rollItem("miniboss", this.chestDepth.get(chest.id) ?? 0, Math.random, 1, this.partyClasses()), chest.x, chest.y);
-        for (const potion of POTION_IDS) this.dropItem(potion, chest.x, chest.y);
+        this.chestReward(sessionId, p, chest.x, chest.y, this.chestDepth.get(chest.id) ?? 0);
       });
     });
+  }
+
+  /** O que um baú dá (aberto ou o Mímico morto): loot para quem abriu, um item melhor que o do mini-boss e poções. */
+  private chestReward(sessionId: string, p: Player, x: number, y: number, depth: number) {
+    const value = Math.round(rollRange(CHEST_LOOT) * (1 + DEPTH_SCALING * depth));
+    p.loot += value;
+    const stats = this.seats.get(sessionId)?.stats;
+    if (stats) {
+      stats.loot.chests += value;
+      stats.chestsOpened++;
+    }
+    this.notice(x, y, `Baú: +${value} loot`, 0xf1c40f);
+    this.dropItem(rollItem("miniboss", depth, Math.random, 1, this.partyClasses()), x, y);
+    for (const potion of POTION_IDS) this.dropItem(potion, x, y);
+  }
+
+  /** Tira um monstro do mapa sem morte nem recompensa (ilusões que somem). */
+  private vanishMonster(id: string) {
+    const m = this.state.monsters.get(id);
+    const brain = this.brains.get(id);
+    if (!m || !brain) return;
+    this.ai.died(brain);
+    this.state.monsters.delete(id);
+    this.brains.delete(id);
+    this.state.players.forEach((p) => { if (p.target === id) p.target = ""; });
   }
 
   // --- Itens ------------------------------------------------------------

@@ -20,6 +20,10 @@ export interface MonsterArt {
   flies?: boolean;
   /** Texturas por `Monster.variant` (cabeças da Hidra: índice = número de cabeças). */
   variants?: Record<number, string>;
+  /** Disfarce enquanto escondido (o Mímico parece um baú, sem transparência nem barra). */
+  disguise?: string;
+  /** Opacidade normal do sprite (o Cubo Gelatinoso é translúcido). */
+  alpha?: number;
 }
 
 /**
@@ -42,6 +46,31 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
     texture: "monster-hydra", blood: "green",
     variants: { 1: "monster-hydra-1", 2: "monster-hydra-2", 3: "monster-hydra-3", 4: "monster-hydra-4", 5: "monster-hydra" },
   },
+  // Cripta 2.0
+  kobold: { texture: "monster-kobold", blood: "red" },
+  stirge: { texture: "monster-stirge", facesLeft: true, blood: "red", flies: true },
+  goblinArcher: { texture: "monster-goblin-archer", blood: "red" },
+  zombie: { texture: "monster-zombie", blood: "none" },
+  skeletonArcher: { texture: "monster-skeleton-archer", blood: "none" },
+  giantSpider: { texture: "monster-giant-spider", blood: "green" },
+  hobgoblin: { texture: "monster-hobgoblin", blood: "red" },
+  gnoll: { texture: "monster-gnoll", blood: "red" },
+  mimic: { texture: "monster-mimic", blood: "purple", disguise: "monster-mimic-disguise" },
+  gelatinousCube: { texture: "monster-gelatinous-cube", blood: "green", alpha: 0.75 },
+  bugbear: { texture: "monster-bugbear", blood: "red" },
+  // Pântano 2.0
+  bullywug: { texture: "monster-bullywug", facesLeft: true, blood: "green" },
+  lizardfolk: { texture: "monster-lizardfolk", blood: "red" },
+  ghoul: { texture: "monster-ghoul", blood: "none" },
+  blackPudding: { texture: "monster-black-pudding", blood: "black" },
+  crocodile: { texture: "monster-crocodile", facesLeft: true, blood: "red" },
+  willOWisp: { texture: "monster-will-o-wisp", blood: "none", flies: true },
+  shamblingMound: { texture: "monster-shambling-mound", blood: "green" },
+  greenHag: { texture: "monster-green-hag", blood: "red" },
+  // A ilusão é igual à Bruxa: não dá para saber qual é a verdadeira.
+  hagIllusion: { texture: "monster-green-hag", blood: "none" },
+  spiritNaga: { texture: "monster-spirit-naga", blood: "red" },
+  blackDragon: { texture: "monster-black-dragon", facesLeft: true, blood: "red" },
 };
 
 /** Todas as texturas de monstro (as variantes incluídas), para carregar e refinar. */
@@ -49,6 +78,7 @@ export function monsterTextures() {
   const keys = new Set<string>();
   for (const art of Object.values(BESTIARY_ART)) {
     keys.add(art.texture);
+    if (art.disguise) keys.add(art.disguise);
     for (const v of Object.values(art.variants ?? {})) keys.add(v);
   }
   return [...keys];

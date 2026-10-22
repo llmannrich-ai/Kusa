@@ -89,6 +89,8 @@ export class Monster extends Schema {
   @type("boolean") hidden = false;
   /** Variante do desenho: cabeças da Hidra. */
   @type("number") variant = 0;
+  /** Campeão: id do afixo (`CHAMPION_AFFIXES`); vazio = monstro comum. */
+  @type("string") champion = "";
 }
 
 /** Criatura aliada invocada por um jogador (lobo, urso, vespa...). */

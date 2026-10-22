@@ -23,7 +23,8 @@ for (const mapId of MAP_IDS) {
   const c = centerOf(d.boss);
   for (const kind of Object.keys(MONSTERS) as MonsterKind[]) {
     const { rank, abilities = [] } = MONSTERS[kind];
-    if (rank !== "common" && !abilities.some((a) => a.power > 1)) throw new Error(`${kind}: ${rank} sem habilidade forte`);
+    // Mini-boss e boss: um golpe forte ou um controle (o Cubo engole).
+    if (rank !== "common" && !abilities.some((a) => a.power > 1 || a.effect)) throw new Error(`${kind}: ${rank} sem habilidade forte`);
     const ids = new Set(abilities.map((a) => a.id));
     if (ids.size !== abilities.length) throw new Error(`${kind}: habilidades com id repetido`);
     for (const ability of abilities) {
@@ -39,7 +40,8 @@ for (const mapId of MAP_IDS) {
       const tiles = abilityTiles(d, ability, c.x, c.y, target.x, target.y);
       const again = abilityTiles(d, ability, c.x, c.y, target.x, target.y);
       if (JSON.stringify(tiles) !== JSON.stringify(again)) throw new Error(`${name}: área não determinística`);
-      if (ability.shape === "leap" && ability.power === 0) continue;
+      // Sem dano nem efeito (o salto do Orc, o Rejuvenescer): não tem área para conferir.
+      if (ability.power === 0 && !ability.effect) continue;
       if (tiles.length === 0) throw new Error(`${name}: área vazia no centro da sala do boss (${mapId})`);
       if (tiles.some((t) => blocksSight(d, t.x, t.y))) throw new Error(`${name}: área atravessa parede`);
       if (tiles.some((t) => t.x === c.x && t.y === c.y)) throw new Error(`${name}: o monstro se acerta`);

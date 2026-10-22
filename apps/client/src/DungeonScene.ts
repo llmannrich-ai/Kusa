@@ -18,6 +18,7 @@ import {
   hasLineOfSight,
   isPotion,
   mapIdOf,
+  CHAMPION_AFFIXES,
   tileDistance,
   type AttackMessage,
   type ClassId,
@@ -26,6 +27,7 @@ import {
   type DrankMessage,
   type Dungeon,
   type MonsterKind,
+  type ChampionAffix,
   type NoticeMessage,
   type ChainMessage,
   type CooldownMessage,
@@ -141,6 +143,11 @@ interface Unit {
   /** Monstro: textura da variante atual (cabeças da Hidra) e se está escondido. */
   texture?: string;
   hidden?: boolean;
+  /** Monstro: escala do sprite e fase da respiração (cada um respira num ritmo). */
+  baseScale?: number;
+  breath?: number;
+  /** Campeão: afixo já desenhado (nome e brilho dourados). */
+  champion?: string;
   dead: boolean;
   /** Efeitos que ficam na unidade enquanto duram: guarda, raízes, atordoamento. */
   statuses: Map<string, Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible>;
@@ -966,11 +973,13 @@ export class DungeonScene extends Phaser.Scene {
     const art = BESTIARY_ART[kind];
     // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia).
     const scale = (def.rank === "boss" ? 2 : 1) * CREATURE_SPRITE_SCALE;
-    const texture = monsterTexture(kind, monster.variant);
+    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
     unit.texture = texture;
+    unit.baseScale = scale;
+    unit.breath = Math.random() * Math.PI * 2;
     unit.bleeds = art.blood !== "none";
     if (art.blood !== "none" && art.blood !== "red") unit.bloodTint = BLOOD_TINT[art.blood];
     unit.flies = art.flies;
@@ -980,14 +989,27 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.monsters.set(id, unit);
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
-    this.syncHidden(unit, monster.hidden);
+    this.syncHidden(unit, kind, monster.hidden);
+    this.syncChampion(unit, kind, monster.champion);
+  }
+
+  /** Campeão: nome dourado com o afixo e um brilho dourado nos pés. */
+  private syncChampion(unit: Unit, kind: MonsterKind, affix: string) {
+    if (!affix || unit.champion === affix || !(affix in CHAMPION_AFFIXES)) return;
+    unit.champion = affix;
+    const name = `${MONSTERS[kind].name} ${CHAMPION_AFFIXES[affix as ChampionAffix].name}`;
+    unit.overlay.add(this.add.text(0, unit.barY - 2, name, { ...this.textStyle(), color: "#f7d774" }).setOrigin(0.5, 1));
+    const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 26, 9, 0xf7d774, 0.4);
+    unit.body.addAt(glow, 0);
+    this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
   }
 
   private syncMonster(id: string, monster: MonsterView) {
     const unit = this.monsters.get(id);
     if (!unit) return;
     // Variante (cabeças da Hidra): troca a textura quando muda.
-    const texture = monsterTexture(monster.kind as MonsterKind, monster.variant);
+    const art = BESTIARY_ART[monster.kind as MonsterKind] ?? BESTIARY_ART.rat;
+    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(monster.kind as MonsterKind, monster.variant);
     if (texture !== unit.texture && this.textures.exists(texture)) {
       unit.texture = texture;
       unit.sprite.setTexture(texture);
@@ -998,16 +1020,22 @@ export class DungeonScene extends Phaser.Scene {
     this.setStatus(unit, "slow", monster.slowed, () => this.frostAt());
     this.setStatus(unit, "mark", monster.marked, () => this.markAt(unit.barY - 14));
     for (const kind of DOT_KINDS) this.setStatus(unit, `dot:${kind}`, monster.dot === kind, () => this.dotAt(kind));
-    this.syncHidden(unit, monster.hidden);
+    this.syncHidden(unit, monster.kind as MonsterKind, monster.hidden);
+    this.syncChampion(unit, monster.kind as MonsterKind, monster.champion);
     this.moveTo(unit, monster.x, monster.y);
   }
 
-  /** Escondido (camuflado, invisível, voando, submerso): quase transparente, sem barra nem nome, e não dá para tocar. */
-  private syncHidden(unit: Unit, hidden: boolean) {
+  /**
+   * Escondido (camuflado, invisível, voando, submerso): quase transparente, sem barra nem nome, e não dá para tocar.
+   * Disfarçado (Mímico): igual a um baú, sem transparência.
+   */
+  private syncHidden(unit: Unit, kind: MonsterKind, hidden: boolean) {
     if (unit.hidden === hidden) return;
     unit.hidden = hidden;
+    const art = BESTIARY_ART[kind] ?? BESTIARY_ART.rat;
+    const alpha = hidden ? (art.disguise ? 1 : 0.18) : art.alpha ?? 1;
     this.tweens.killTweensOf(unit.body);
-    this.tweens.add({ targets: unit.body, alpha: hidden ? 0.18 : 1, duration: 220 });
+    this.tweens.add({ targets: unit.body, alpha, duration: 220 });
     unit.overlay.setVisible(!hidden);
   }
 
@@ -1113,6 +1141,11 @@ export class DungeonScene extends Phaser.Scene {
       : !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
     unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
     if (unit.dead) return;
+    // Monstros respiram: o sprite (com os pés no chão) encolhe e estica de leve, cada um no seu ritmo.
+    if (unit.baseScale && !this.tweens.isTweening(unit.sprite)) {
+      const breath = 1 - 0.03 * (0.5 + 0.5 * Math.sin(time / 380 + (unit.breath ?? 0)));
+      unit.sprite.setScale(unit.baseScale, unit.baseScale * breath);
+    }
     if (unit.heroKey) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);
       else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {

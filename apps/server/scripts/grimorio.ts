@@ -74,9 +74,9 @@ function rules() {
       if (cone.some((t) => Math.max(Math.abs(t.x - x), Math.abs(t.y - y)) > 5)) throw new Error("o leque passou do alcance");
     }
   }
-  // Mortos-vivos: o Esqueleto e o Afogado (a luz do Paladino fere mais).
+  // Mortos-vivos (a luz do Paladino fere mais): o tipo de criatura decide.
   const undead = Object.values(MONSTERS).filter((m) => m.undead).map((m) => m.kind).sort().join();
-  if (undead !== "bogBody,skeleton") throw new Error(`mortos-vivos: ${undead}`);
+  if (undead !== "bogBody,ghoul,skeleton,skeletonArcher,willOWisp,zombie") throw new Error(`mortos-vivos: ${undead}`);
 }
 
 /** Especializações: os dois Traços de um ramo se excluem, cada lado tem 1 magia por slot e elas pedem o Traço. */

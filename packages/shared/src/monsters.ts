@@ -5,8 +5,12 @@ import { coneTiles } from "./spells.ts";
 export type MonsterKind =
   // Cripta (dificuldade 1)
   | "rat" | "goblin" | "skeleton" | "orc" | "ogre" | "dragon"
+  | "kobold" | "stirge" | "goblinArcher" | "zombie" | "skeletonArcher" | "giantSpider" | "hobgoblin" | "gnoll"
+  | "mimic" | "gelatinousCube" | "bugbear"
   // Pântano das Ruínas (dificuldade 2)
-  | "frog" | "moccasin" | "bogBody" | "naga" | "troll" | "hydra";
+  | "frog" | "moccasin" | "bogBody" | "naga" | "troll" | "hydra"
+  | "bullywug" | "lizardfolk" | "ghoul" | "blackPudding" | "crocodile" | "willOWisp" | "shamblingMound"
+  | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -163,6 +167,13 @@ export interface MonsterTraits {
    * `step` da vida perdida, perde uma; se não levar fogo em `regrowMs`, nascem duas no lugar (até `max`).
    */
   heads?: { start: number; max: number; step: number; regrowMs: number; regrowHeal: number };
+  /**
+   * Mímico: nasce disfarçado de baú (não pode ser alvo, não anda) e abre a boca quando alguém chega a `revealRange`
+   * tiles ou o acerta. Morto, deixa o que o baú daria.
+   */
+  mimic?: { revealRange: number };
+  /** Ilusão (cópia da Bruxa Verde): não ataca, some com qualquer golpe e não dá XP, loot nem item. */
+  illusion?: boolean;
 }
 
 export interface MonsterDef {
@@ -194,6 +205,8 @@ export interface MonsterDef {
   traits?: MonsterTraits;
   /** Habilidades, em ordem de prioridade (a primeira pronta e possível sai). */
   abilities?: MonsterAbility[];
+  /** Enxame: nasce em grupo deste tamanho (mínimo, máximo) nos encontros. */
+  group?: [number, number];
   /** Frase curta de lore (Bestiário). */
   lore: string;
   /** Morto-vivo (derivado do tipo): a luz sagrada do Paladino fere mais (Flechas Consagradas, Caldeira Divina). */
@@ -228,7 +241,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   rat: monster({
     kind: "rat", name: "Ratazana", rank: "common", type: "beast", role: "swarm", cr: 1,
     hp: 20, damage: 3, xp: 20, loot: [1, 2], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
-    traits: { packTactics: 0.4 },
+    traits: { packTactics: 0.3 },
     lore: "Ratazanas gigantes caçam em bando: sozinhas fogem, juntas mordem fundo.",
   }),
   goblin: monster({
@@ -277,6 +290,92 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     lore: "Dragão vermelho jovem: mordida e duas garras, sopro em leque e, ferido, alça voo e cai sobre a presa. Imune a fogo.",
   }),
 
+  kobold: monster({
+    kind: "kobold", name: "Kobold", rank: "common", type: "humanoid", role: "swarm", cr: 1, group: [2, 3],
+    hp: 16, damage: 2, xp: 15, loot: [1, 2], speed: 3.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "slash",
+    traits: { packTactics: 0.4 },
+    lore: "Pequenos e covardes, mas nunca andam sozinhos: cercam a presa e furam juntos (Táticas de Bando).",
+  }),
+  stirge: monster({
+    kind: "stirge", name: "Estirge", rank: "common", type: "beast", role: "lurker", cr: 1, group: [2, 3],
+    hp: 12, damage: 2, xp: 14, loot: [1, 2], speed: 4.5, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
+    traits: { onHit: { dot: { kind: "bleed", power: 0.5, durationMs: 3000 }, lifesteal: 1 } },
+    lore: "Mosquito do tamanho de um gato. Fura, suga e sai mais forte do que chegou (Drenar Sangue).",
+  }),
+  goblinArcher: monster({
+    kind: "goblinArcher", name: "Goblin arqueiro", rank: "common", type: "humanoid", role: "artillery", cr: 2,
+    hp: 28, damage: 5, xp: 30, loot: [2, 3], speed: 3, aggroRange: 7, attackRange: 4, attackCooldownMs: 1600, attackFx: "arrow",
+    traits: { keepDistance: 3 },
+    lore: "Atira de trás dos outros e recua quando alguém chega perto. Pegue-o primeiro.",
+  }),
+  zombie: monster({
+    kind: "zombie", name: "Zumbi", rank: "common", type: "undead", role: "brute", cr: 2,
+    hp: 70, damage: 6, xp: 40, loot: [2, 4], speed: 1.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1800, attackFx: "smash",
+    traits: { fortitude: { except: ["radiant", "fire"] } },
+    lore: "Lento e teimoso: o golpe que devia derrubá-lo não derruba, a não ser luz ou fogo (Fortitude Morta-viva).",
+  }),
+  skeletonArcher: monster({
+    kind: "skeletonArcher", name: "Esqueleto arqueiro", rank: "common", type: "undead", role: "artillery", cr: 3,
+    hp: 45, damage: 7, xp: 45, loot: [3, 5], speed: 2.6, aggroRange: 7, attackRange: 5, attackCooldownMs: 1800, attackFx: "arrow",
+    traits: { keepDistance: 3 },
+    lore: "Arqueiro de ossos: mira de longe, não sente veneno e não sangra.",
+  }),
+  giantSpider: monster({
+    kind: "giantSpider", name: "Aranha gigante", rank: "common", type: "beast", role: "controller", cr: 3,
+    hp: 55, damage: 6, xp: 50, loot: [3, 5], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
+    traits: { onHit: { dot: { kind: "poison", power: 0.25, durationMs: 2000 } } },
+    abilities: [
+      { id: "web", name: "Teia", shape: "bolt", range: 5, minRange: 2, radius: 0, cooldownMs: 7000, power: 0.3, effect: { kind: "root", ms: 1500 }, color: 0xf5f5f5, fx: "web" },
+    ],
+    lore: "Prende de longe com a teia e chega antes de o herói se soltar. A picada envenena.",
+  }),
+  hobgoblin: monster({
+    kind: "hobgoblin", name: "Hobgoblin capitão", rank: "common", type: "humanoid", role: "leader", cr: 3,
+    hp: 70, damage: 6, xp: 60, loot: [4, 7], speed: 2.8, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    traits: { leader: { radius: 3, damage: 0.15, haste: 0.15 } },
+    lore: "Disciplina militar: perto dele, goblins e kobolds batem mais forte e mais rápido (Comando).",
+  }),
+  gnoll: monster({
+    kind: "gnoll", name: "Gnoll", rank: "common", type: "humanoid", role: "skirmisher", cr: 4,
+    hp: 90, damage: 9, xp: 75, loot: [4, 8], speed: 3.4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "bite",
+    traits: { frenzy: { belowHp: 0.5, haste: 0.4 } },
+    lore: "Hiena do demônio Yeenoghu. Ferido, entra em frenesi e ataca cada vez mais rápido (Rompante).",
+  }),
+  mimic: monster({
+    kind: "mimic", name: "Mímico", rank: "miniboss", type: "monstrosity", role: "lurker", cr: 5,
+    hp: 240, damage: 16, xp: 220, loot: [12, 20], speed: 2.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
+    traits: { mimic: { revealRange: 1 } },
+    abilities: [
+      { id: "adhesive", name: "Adesivo", shape: "self", range: 1, radius: 1, cooldownMs: 8000, power: 1, effect: { kind: "root", ms: 2000 }, color: 0xc9a66b, fx: "constrict" },
+      {
+        id: "acidBite", name: "Mordida Ácida", shape: "target", range: 1, radius: 0, cooldownMs: 6000, power: 2,
+        effect: { kind: "corrode", ms: 6000 }, color: 0x9acd32, fx: "rend",
+      },
+    ],
+    lore: "Parece um baú. Não é. Quem encosta fica grudado; morto, guarda o tesouro que fingia guardar.",
+  }),
+  gelatinousCube: monster({
+    kind: "gelatinousCube", name: "Cubo Gelatinoso", rank: "miniboss", type: "ooze", role: "sentinel", cr: 5,
+    hp: 280, damage: 12, xp: 240, loot: [12, 20], speed: 1.4, aggroRange: 3, attackRange: 1, attackCooldownMs: 2000, attackFx: "smash",
+    traits: { camouflage: true },
+    abilities: [
+      {
+        id: "engulf", name: "Engolfar", shape: "target", range: 1, radius: 0, cooldownMs: 9000, power: 0.5,
+        effect: { kind: "engulf", ms: 2000, power: 0.6 }, color: 0x7cb342, fx: "engulf",
+      },
+    ],
+    lore: "Transparente, enche o corredor de parede a parede. Engole quem esbarra e digere com ácido; os aliados batendo o fazem cuspir.",
+  }),
+  bugbear: monster({
+    kind: "bugbear", name: "Bugbear chefe", rank: "miniboss", type: "humanoid", role: "brute", cr: 5,
+    hp: 280, damage: 15, xp: 230, loot: [12, 20], speed: 3, aggroRange: 6, attackRange: 2, attackCooldownMs: 1600, attackFx: "smash",
+    traits: { ambush: 2.5 },
+    abilities: [
+      { id: "brutalBlow", name: "Golpe Brutal", shape: "target", range: 2, radius: 0, cooldownMs: 7000, power: 2, push: 1, color: 0xa0522d, fx: "slam" },
+    ],
+    lore: "Goblinoide peludo de braços longos (alcance 2). O primeiro golpe em quem não esperava sai brutal (Ataque Surpresa).",
+  }),
+
   // --- Pântano: mais vida e dano que os equivalentes da cripta, e loot maior ------------------------------
   frog: monster({
     kind: "frog", name: "Sapo gigante", rank: "common", type: "beast", role: "controller", cr: 3,
@@ -318,6 +417,114 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     ],
     lore: "Regenera sem parar. Só fogo ou ácido (natureza) fecham as feridas por alguns segundos.",
   }),
+  bullywug: monster({
+    kind: "bullywug", name: "Bullywug", rank: "common", type: "humanoid", role: "skirmisher", cr: 3,
+    hp: 55, damage: 6, xp: 45, loot: [2, 5], speed: 3.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    traits: { camouflage: true },
+    abilities: [
+      { id: "standingLeap", name: "Salto Parado", shape: "leap", range: 4, minRange: 2, radius: 1, cooldownMs: 6000, power: 1.2, color: 0x9ccc65, fx: "leap" },
+    ],
+    lore: "Homem-sapo do brejo. Fica parado na lama até a presa passar e então salta em cima dela.",
+  }),
+  lizardfolk: monster({
+    kind: "lizardfolk", name: "Homem-lagarto", rank: "common", type: "humanoid", role: "brute", cr: 4,
+    hp: 120, damage: 9, xp: 90, loot: [5, 9], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
+    elements: { physical: 0.8 },
+    traits: { multiattack: { hits: 2, power: 0.6 } },
+    lore: "Escamas grossas seguram lâminas e flechas (Couraça Natural). Morde e bate com a clava no mesmo golpe.",
+  }),
+  ghoul: monster({
+    kind: "ghoul", name: "Carniçal", rank: "common", type: "undead", role: "controller", cr: 4,
+    hp: 85, damage: 7, xp: 70, loot: [4, 8], speed: 3.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    traits: { onHit: { chance: 0.25, effect: { kind: "stun", ms: 1000 } } },
+    lore: "Devorador de mortos. As garras paralisam por um instante (Garras Paralisantes).",
+  }),
+  blackPudding: monster({
+    kind: "blackPudding", name: "Pudim Negro", rank: "common", type: "ooze", role: "brute", cr: 5,
+    hp: 150, damage: 10, xp: 110, loot: [6, 10], speed: 2, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    elements: { ice: 0.5 },
+    traits: { split: { by: ["physical", "energy"], minHit: 0.1, max: 4 }, onHit: { corrode: 6000 } },
+    lore: "Gosma ácida que corrói armadura e resiste ao gelo. Golpe forte de lâmina ou raio o divide em dois; fogo, não.",
+  }),
+  crocodile: monster({
+    kind: "crocodile", name: "Crocodilo gigante", rank: "common", type: "beast", role: "lurker", cr: 5,
+    hp: 130, damage: 12, xp: 105, loot: [6, 10], speed: 2.4, aggroRange: 5, attackRange: 1, attackCooldownMs: 1800, attackFx: "bite",
+    traits: { camouflage: true },
+    abilities: [
+      { id: "clamp", name: "Mordida que Prende", shape: "target", range: 1, radius: 0, cooldownMs: 7000, power: 1.4, effect: { kind: "root", ms: 1500 }, color: 0x8d6e63, fx: "rend" },
+      { id: "tailSwipe", name: "Rabada", shape: "self", range: 1, radius: 1, cooldownMs: 8000, power: 0.8, push: 2, color: 0x6d4c41, fx: "quake" },
+    ],
+    lore: "Submerso, só os olhos aparecem. Morde e não solta; quem fica por perto leva a rabada.",
+  }),
+  willOWisp: monster({
+    kind: "willOWisp", name: "Fogo-fátuo", rank: "common", type: "undead", role: "controller", cr: 5,
+    hp: 60, damage: 9, xp: 80, loot: [5, 8], speed: 4, aggroRange: 7, attackRange: 2, attackCooldownMs: 1500, attackFx: "energy",
+    traits: { blink: { everyMs: 6000, ms: 2000 } },
+    lore: "Luz fria que leva viajantes para o brejo. Some e reaparece, e o toque é um choque.",
+  }),
+  shamblingMound: monster({
+    kind: "shamblingMound", name: "Monte Errante", rank: "common", type: "plant", role: "sentinel", cr: 6,
+    hp: 200, damage: 10, xp: 160, loot: [8, 13], speed: 1.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1800, attackFx: "smash",
+    traits: { absorb: ["energy"] },
+    abilities: [
+      {
+        id: "engulf", name: "Engolfar", shape: "target", range: 1, radius: 0, cooldownMs: 10000, power: 0.4,
+        effect: { kind: "engulf", ms: 2000, power: 0.5 }, color: 0x558b2f, fx: "engulf",
+      },
+    ],
+    lore: "Monte de plantas podres que anda. Raio o alimenta (Absorver Raio); fogo o queima mais.",
+  }),
+  greenHag: monster({
+    kind: "greenHag", name: "Bruxa Verde", rank: "miniboss", type: "fey", role: "controller", cr: 7,
+    hp: 420, damage: 18, xp: 380, loot: [24, 36], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1500, attackFx: "slash",
+    abilities: [
+      {
+        id: "illusion", name: "Ilusão", shape: "vanish", range: 6, radius: 0, cooldownMs: 14000, power: 0, vanishMs: 3000,
+        summon: { kind: "hagIllusion", count: 2 }, color: 0x9ccc65, fx: "vanish",
+      },
+      {
+        id: "poisonCloud", name: "Nuvem Venenosa", shape: "target", range: 5, radius: 1, cooldownMs: 7000, power: 1.2,
+        dot: { kind: "poison", power: 0.3, durationMs: 4000 }, color: 0x7cb342, fx: "acidRain",
+      },
+    ],
+    lore: "Bruxa do pântano. Some no ar e deixa cópias de si; só uma delas sangra.",
+  }),
+  hagIllusion: monster({
+    kind: "hagIllusion", name: "Bruxa Verde", rank: "common", type: "fey", role: "swarm", cr: 1,
+    hp: 1, damage: 0, xp: 0, loot: [0, 0], speed: 3, aggroRange: 8, attackRange: 1, attackCooldownMs: 1500, attackFx: "slash",
+    traits: { illusion: true },
+    lore: "Cópia ilusória da Bruxa Verde: some com qualquer golpe.",
+  }),
+  spiritNaga: monster({
+    kind: "spiritNaga", name: "Naga Espiritual", rank: "miniboss", type: "monstrosity", role: "artillery", cr: 7,
+    hp: 460, damage: 16, xp: 400, loot: [24, 36], speed: 2.8, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
+    abilities: [
+      {
+        id: "rejuvenate", name: "Rejuvenescer", shape: "self", range: 9, radius: 0, cooldownMs: 30000, power: 0, selfHeal: 0.3,
+        belowHp: 0.25, phase: true, once: true, color: 0x80deea, fx: "summon",
+      },
+      { id: "lightning", name: "Relâmpago", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 7000, power: 1.8, color: 0x9ec5ff, fx: "lightning" },
+    ],
+    lore: "Conjuradora das ruínas. Lança raios em linha e, quase morta, se refaz uma vez (Rejuvenescer).",
+  }),
+  blackDragon: monster({
+    kind: "blackDragon", name: "Dragão negro jovem", rank: "boss", type: "dragon", role: "brute", cr: 8,
+    hp: 1450, damage: 26, xp: 1300, loot: [120, 180], speed: 2.4, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
+    elements: { nature: 0.5 },
+    traits: { multiattack: { hits: 3, power: 0.4 } },
+    abilities: [
+      {
+        id: "submerge", name: "Mergulho", shape: "dive", range: 9, radius: 2, cooldownMs: 15000, power: 1.5, vanishMs: 1800,
+        belowHp: 0.5, phase: true, color: 0x4db6ac, fx: "dive",
+      },
+      {
+        id: "acidBreath", name: "Sopro Ácido", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 7000, power: 1.9,
+        dot: { kind: "poison", power: 0.25, durationMs: 5000 }, color: 0x9acd32, fx: "breath",
+      },
+      { id: "darkness", name: "Escuridão", shape: "target", range: 6, radius: 2, cooldownMs: 12000, power: 0, effect: { kind: "blind", ms: 2000 }, color: 0x37305a, fx: "vanish" },
+    ],
+    lore: "Dragão do brejo: sopro ácido em linha, nuvem de Escuridão que cega e mergulhos na lama. Resiste a ácido e veneno.",
+  }),
   hydra: monster({
     kind: "hydra", name: "Hidra do pântano", rank: "boss", type: "monstrosity", role: "brute", cr: 8,
     hp: 1600, damage: 16, xp: 1300, loot: [120, 180], speed: 2.2, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
@@ -335,6 +542,29 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     lore: "Cada cabeça morde alguém. Corte uma e nascem duas, a não ser que o fogo cauterize o toco.",
   }),
 };
+
+/**
+ * Afixos dos Campeões: monstro comum que nasce mais forte (`CHAMPION_CHANCE` em `maps.ts`), com nome e contorno
+ * dourados, vida × `CHAMPION_HP` e XP e loot × `CHAMPION_REWARD`, mais um afixo.
+ */
+export type ChampionAffix = "swift" | "vampiric" | "fiery" | "shielded" | "commander";
+export const CHAMPION_AFFIXES: Record<ChampionAffix, {
+  name: string;
+  /** Velocidade × este valor. */
+  speed?: number;
+  traits?: MonsterTraits;
+  /** Multiplicador de dano recebido por elemento. */
+  elements?: Partial<Record<DamageElement, number>>;
+}> = {
+  swift: { name: "Veloz", speed: 1.4 },
+  vampiric: { name: "Vampírico", traits: { onHit: { lifesteal: 0.3 } } },
+  fiery: { name: "Ígneo", traits: { onHit: { dot: { kind: "burn", power: 0.3, durationMs: 3000 } } } },
+  shielded: { name: "Escudado", elements: { physical: 0.5 } },
+  commander: { name: "Comandante", traits: { leader: { radius: 3, damage: 0.15, haste: 0.15 } } },
+};
+export const CHAMPION_AFFIX_IDS = Object.keys(CHAMPION_AFFIXES) as ChampionAffix[];
+export const CHAMPION_HP = 2;
+export const CHAMPION_REWARD = 2.5;
 
 /** Abaixo desta fração da vida, o boss se enfurece e usa as habilidades mais vezes. */
 export const ENRAGE_HP = 0.5;

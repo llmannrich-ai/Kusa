@@ -36,7 +36,10 @@ favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa funç�
 | `stats.basicRetargets` | Golpes básicos que foram no monstro mais próximo porque o alvo travado estava fora do alcance (muito alto = o jogador trava alvo sem querer) |
 | `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou; o salto da pantera e a patada do urso em `panther_form` e `bear_form`; o raio do Céu Carregado em `charged_sky`; o contragolpe da Riposta em `riposte`; os Espinhos de Ferro em `iron_thorns`). Itens mágicos: `item:burn`, `item:poison` (chamas e veneno das armas) e `item:thorns` (espinhos) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |
-| `stats.specialDamage` | Dano das habilidades especiais dos mini-bosses e bosses (golpe + veneno/queimadura), por monstro |
+| `stats.specialDamage` | Dano das habilidades dos monstros (golpe + veneno/queimadura/sangramento + engolido), por monstro |
+| `stats.abilityDamage` | O mesmo, por habilidade: `"<monstro>:<habilidade>"` (ex.: `dragon:breath`, `gelatinousCube:engulf`). Meta: nenhuma habilidade sozinha com mais de 20% das mortes do mapa |
+| `stats.ccTaken` | Tempo (ms) sob efeito de monstro: `root`, `stun`, `engulf`, `blind`, `corrode` |
+| `stats.resisted` | Dano que o herói deixou de causar por resistência ou imunidade dos monstros (negativo = a vulnerabilidade rendeu a mais) |
 | `stats.healing` | Cura feita (druida), incluindo o roubo de vida da Sede de sangue e dos itens mágicos |
 | `stats.manaGiven` | Mana devolvida aos aliados por magias e criaturas (Fogo-Fátuo), sem as poções |
 | `stats.absorbed` | Dano que os escudos (magias e Traços) absorveram no herói |

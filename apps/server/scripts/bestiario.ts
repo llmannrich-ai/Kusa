@@ -5,10 +5,13 @@
  * - Efeitos no herói: controle tem teto de 2 s, impede andar e dá imunidade de 4 s; Corroído acumula até 3.
  * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável e cai colado.
  * - Táticas de Bando: a ratazana bate mais com outra colada no mesmo alvo.
+ * - Pudim Negro se divide com lâmina e raio (fogo não); Monte Errante se cura com raio; Cubo engole e cospe ao apanhar.
+ * - Mímico fica disfarçado até o herói encostar e dá o loot do baú; a Bruxa Verde some e deixa cópias que somem com ela.
+ * - Arqueiro recua, Bullywug nasce camuflado, Campeão ganha vida, XP e afixo; os encontros saem iguais pela seed.
  * Uso: npx tsx apps/server/scripts/bestiario.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CONTROL_IMMUNE_MS, CONTROL_MAX_MS, CORRODE_MAX, MONSTERS, MSG, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
+  CONTROL_IMMUNE_MS, CONTROL_MAX_MS, CORRODE_MAX, MAPS, MONSTERS, MSG, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
   type DamageMessage, type MapId, type MonsterKind,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
@@ -150,7 +153,7 @@ function check(ok: boolean, what: string) {
   const x = p.x;
   const y = p.y;
   const dir = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => isWalkable(d, x + dx, y + dy))!;
-  hunt.move("h", { dx: dir[0], dy: dir[1] });
+  hunt.move("h", { dx: dir[0] as -1 | 0 | 1, dy: dir[1] as -1 | 0 | 1 });
   check(p.x === x && p.y === y, "preso não devia andar");
   advance(hunt, CONTROL_MAX_MS + 100);
   check(p.effects === "", "o efeito devia acabar");
@@ -225,6 +228,129 @@ function check(ok: boolean, what: string) {
   const pack = average(true);
   check(pack > alone * 1.25, `Táticas de Bando: ${pack.toFixed(1)} com bando contra ${alone.toFixed(1)} sozinha`);
   console.log(`Táticas de Bando OK (${alone.toFixed(1)} → ${pack.toFixed(1)})`);
+}
+
+// --- Pudim Negro, Monte Errante, Cubo Gelatinoso ------------------------------------
+{
+  const { spawn, hit, state } = arena("swamp");
+  const pudding = spawn("blackPudding", 3);
+  const total = pudding.hp;
+  hit(pudding, Math.ceil(pudding.maxHp * 0.2), "basic");
+  const parts = [...state.monsters.values()].filter((m) => m.kind === "blackPudding");
+  check(parts.length === 2, `golpe forte de lâmina devia dividir o pudim (${parts.length})`);
+  check(parts.reduce((sum, m) => sum + m.hp, 0) === total - Math.ceil(pudding.maxHp * 0.2), "a divisão não devia criar vida");
+  const before = parts.length;
+  hit(parts[0], Math.ceil(parts[0].maxHp * 0.2), "fireball");
+  check([...state.monsters.values()].filter((m) => m.kind === "blackPudding").length === before, "fogo não devia dividir");
+  const mound = spawn("shamblingMound", 3);
+  mound.hp -= 50;
+  const hp = mound.hp;
+  check(hit(mound, 40, "lightning_bolt") === 0 && mound.hp === hp + 40, "energia devia curar o Monte Errante");
+  console.log("Divisão e Absorver OK");
+}
+{
+  const { spawn, hit, hunt, p, brain, any } = arena();
+  p.hp = p.maxHp = 1_000_000;
+  const cube = spawn("gelatinousCube");
+  check(cube.hidden, "o Cubo devia nascer camuflado");
+  brain(cube).abilityReadyAt = { engulf: 0 };
+  advance(hunt, 100);
+  check(!cube.hidden, "o Cubo devia aparecer ao notar o herói");
+  check(p.effects.includes("engulf") && brain(cube).engulfing === "h", `o herói devia ser engolido (${p.effects})`);
+  const x = p.x;
+  hunt.move("h", { dx: 1, dy: 0 });
+  hunt.move("h", { dx: -1, dy: 0 });
+  check(p.x === x, "engolido não devia andar");
+  hit(cube, Math.ceil(cube.maxHp * 0.16), "basic");
+  check(!p.effects.includes("engulf") && brain(cube).engulfing === null, "apanhar muito devia fazer o Cubo cuspir o herói");
+  void any;
+  console.log("Cubo Gelatinoso OK");
+}
+
+// --- Mímico e Bruxa Verde ------------------------------------------------------------
+{
+  const { spawn, hunt, p, state, any, hit } = arena();
+  p.hp = p.maxHp = 1_000_000;
+  const mimic = spawn("mimic", 3);
+  any.mimicDepth.set(mimic.id, 0);
+  advance(hunt, 2000);
+  check(mimic.hidden && tileDistance(p.x, p.y, mimic.x, mimic.y) >= 3, "o Mímico devia ficar parado, disfarçado");
+  hunt.target("h", { id: mimic.id });
+  check(p.target === "", "o Mímico disfarçado não devia ser alvo");
+  any.mimicDepth.delete(mimic.id);
+  const near = spawn("mimic", 1);
+  any.mimicDepth.set(near.id, 0);
+  advance(hunt, 100);
+  check(!near.hidden, "o Mímico devia se revelar quando o herói encosta");
+  const loot = p.loot;
+  hit(near, 1_000_000, "basic");
+  check(!state.monsters.has(near.id) && p.loot - loot >= 30, `o Mímico devia dar o loot do baú (+${p.loot - loot})`);
+  console.log("Mímico OK");
+}
+{
+  const { spawn, hunt, p, state, brain, hit } = arena("swamp");
+  p.hp = p.maxHp = 1_000_000;
+  const hag = spawn("greenHag", 3);
+  brain(hag).targetId = "h";
+  brain(hag).abilityReadyAt = { illusion: 0, poisonCloud: 999_999 };
+  advance(hunt, 100);
+  const copies = [...state.monsters.values()].filter((m) => m.kind === "hagIllusion");
+  check(hag.hidden && copies.length === 2, `a Bruxa devia sumir e deixar 2 cópias (${copies.length})`);
+  check(copies.every((c) => c.hp === hag.hp && c.maxHp === hag.maxHp), "as cópias deviam aparentar a vida da Bruxa");
+  const xp = p.xp;
+  hit(copies[0], 1, "basic");
+  check(!state.monsters.has(copies[0].id) && p.xp === xp, "a cópia devia sumir com um golpe e sem dar XP");
+  hit(hag, 1_000_000, "basic");
+  check(![...state.monsters.values()].some((m) => m.kind === "hagIllusion"), "as cópias deviam sumir com a Bruxa");
+  console.log("Bruxa Verde OK");
+}
+
+// --- Líder, artilheiro, camuflado, Campeão ----------------------------------------------
+{
+  const { spawn, hunt, p, brain } = arena();
+  p.hp = p.maxHp = 1_000_000;
+  const archer = spawn("goblinArcher", 2);
+  brain(archer).targetId = "h";
+  advance(hunt, 3000);
+  check(tileDistance(p.x, p.y, archer.x, archer.y) >= 3, `o arqueiro devia recuar até 3 tiles (${tileDistance(p.x, p.y, archer.x, archer.y)})`);
+  const frog = arena("swamp");
+  const bully = frog.spawn("bullywug", 8);
+  check(bully.hidden, "o Bullywug devia nascer camuflado");
+  console.log("Artilheiro e camuflagem OK");
+}
+{
+  const { spawn, any, brain } = arena();
+  const orc = spawn("orc", 3);
+  const hp = orc.maxHp;
+  const xp = brain(orc).xp;
+  any.ai.makeChampion(orc, brain(orc), "shielded");
+  check(orc.champion === "shielded" && orc.maxHp === hp * 2 && brain(orc).xp === Math.round(xp * 2.5), "o Campeão devia ter vida e XP maiores");
+  check(brain(orc).elements.physical === 0.5, "o Escudado devia resistir a físico");
+  const leader = spawn("goblin", 3);
+  any.ai.makeChampion(leader, brain(leader), "commander");
+  check(!!brain(leader).traits.leader, "o Comandante devia ganhar a aura de líder");
+  check(!MONSTERS.goblin.traits?.leader, "o afixo não devia mudar a tabela do monstro");
+  console.log("Campeões OK");
+}
+
+// --- Encontros -----------------------------------------------------------------------
+{
+  for (const mapId of ["crypt", "swamp"] as MapId[]) {
+    const counts = new Map<string, number>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const state = new DungeonState();
+      new Hunt(state, host, { mapId, seed });
+      const again = new DungeonState();
+      new Hunt(again, host, { mapId, seed });
+      const list = (st: DungeonState) => [...st.monsters.values()].map((m) => `${m.kind}@${m.x},${m.y}`).sort().join();
+      check(list(state) === list(again), `${mapId}: os monstros deviam sair iguais pela seed`);
+      state.monsters.forEach((m) => counts.set(m.kind, (counts.get(m.kind) ?? 0) + 1));
+    }
+    const missing = MAPS[mapId].encounters.flatMap((e) => e.table.map(([k]) => k)).filter((k) => !counts.has(k));
+    check(missing.length === 0, `${mapId}: monstros que nunca nasceram em 40 seeds: ${missing.join()}`);
+    console.log(`${mapId}: ${[...counts].map(([k, n]) => `${k} ${n}`).join(", ")}`);
+  }
+  console.log("Encontros OK");
 }
 
 console.log("BESTIÁRIO OK");

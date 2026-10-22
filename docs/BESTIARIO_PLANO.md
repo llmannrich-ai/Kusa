@@ -5,7 +5,10 @@ Dragons 5e (Monster Manual e SRD 5.1). Cobre balanceamento, mecânicas, arte e a
 Documento de planejamento: quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este arquivo marca
 a fase como feita. As decisões em aberto estão na seção 10.
 
-**Andamento:** nenhuma fase começou.
+**Andamento:** fases 0 a 5 feitas (motor, retrabalho dos 12, Cripta 2.0, Pântano 2.0, encontros, Campeões): 35
+inimigos em 2 mapas. O `GDD.md` (seção "Bestiário") descreve o que vale. Faltam os mapas novos (fases 6 a 8, decididos
+depois da telemetria) e a aba Bestiário do menu (fase 9; por ora, a lista está em Configurações > Regras). As decisões
+do Leonardo e as diferenças entre o plano e o que foi feito estão na seção 11.
 
 ---
 
@@ -587,3 +590,48 @@ inimigos" que o jogador sente; os mapas novos são a parte cara e devem esperar 
    sozinhas já levam de 12 para ~38 monstros e dão rotação de mini-boss e boss, sem mapa novo.
 7. **Nomes:** "Afogado" e "Naga guerreira" não são criaturas do D&D como estão. Proposta: o Afogado vira um Zumbi
    afogado (mesmo nome, regra do zumbi) e a Naga guerreira fica como versão menor da Guardian Naga. Os ids não mudam.
+
+---
+
+## 11. Decisões e o que foi feito
+
+### 11.1 Decisões do Leonardo
+
+| Tema | Decisão |
+|---|---|
+| Tamanho da equipe | A dificuldade **não** muda com o número de jogadores: jogar em equipe é mais fácil de propósito |
+| Aviso antes dos golpes | **Nenhum.** O jogo é difícil e injusto como a vida; a recarga varia (Recarga 5–6) |
+| Teto de controle | Mantido: no máximo 2 s e 4 s de imunidade ao mesmo efeito |
+| Dificuldade alvo | Meta por mapa, subindo com as estrelas (chegada ao boss em hunts solo): Cripta 55–75%, Pântano 35–55%, Profundezas 25–40%, Necrópole 15–30%, Fornalha 10–20% |
+| Escopo | Fases 0 a 5 agora; mapas novos depois da telemetria |
+| Elementos | Em todo dano, com no máximo 2 monstros por mapa que resistem a físico |
+| Propriedade intelectual | Só criaturas do SRD 5.1 (as de fora viram criaturas próprias) |
+| Variedade | Encontros sorteados, rodízio de mini-boss e boss (o principal na maioria das hunts) e Mímico no lugar do baú |
+| Monstro da Ferrugem | Só corrói (sem destruir item) |
+| Campeões | Sim |
+| Nomes | Afogado e Naga guerreira continuam, com as regras do Zumbi e da Naga Guardiã |
+| Aba Bestiário no menu | Sim, por último |
+| Aboleth | Só sem ferir aliados |
+
+### 11.2 Onde o feito difere do plano
+
+- **Estirge:** em vez de grudar no herói, o golpe sangra e cura a estirge (mesmo efeito, sem estado novo no herói).
+- **Corroído:** +8% de dano recebido por acúmulo (até 3), em vez de tirar armadura: assim pesa também em quem não tem armadura.
+- **Cubo Gelatinoso:** ocupa 1 tile (2×2 pediria mudar o pathfinding); é translúcido, camuflado e lento.
+- **Elementos e o Druida:** o simulador mostrou o Druida sem dano contra monstros imunes a natureza (quase todo o kit
+  dele). O Pudim Negro passou a resistir a gelo, o Dragão negro resiste (0,5) a natureza em vez de ser imune, e o Cubo
+  não tem imunidade. O Dragão vermelho continua imune a fogo (o Feiticeiro tem outros 3 elementos).
+- **Números ajustados pelo simulador:** Monte Errante (vida 200, dano 10), Cubo (vida 280), Crocodilo (dano 12).
+- **Simplificados:** o Rompante do Gnoll não tem o avanço ao matar criatura invocada; o Rejuvenescer da Naga Espiritual
+  cura 30% uma vez abaixo de 25% da vida; a Bruxa não ri. Amaldiçoado e Enfraquecido entram com a Necrópole e a Fornalha.
+- **Telemetria:** `RunStats` ganhou `abilityDamage`, `ccTaken` e `resisted`; a view `telemetry_bestiary` fica para
+  quando houver acesso ao banco nesta frente de trabalho.
+- **Hunt solo:** Mímicos e Campeões sobem o loot máximo; o teto passou a Cripta 1200 e Pântano 3000 (`SOLO_LIMITS` e a
+  migration `20261022180000_bestiario_teto_solo.sql`).
+
+### 11.3 Simulador (linha de base)
+
+`npx tsx scripts/bestiary-sim.ts [mapa] [repetições]` (de dentro de `apps/server`): herói sozinho, só ataque básico,
+sem equipamento, magias nem poções, no nível típico. Serve para comparar antes e depois; os números absolutos são
+mais duros que a hunt real (o herói de verdade tem magias, itens, poções e melhorias).
+

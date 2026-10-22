@@ -1,4 +1,7 @@
 import {
+  CHAMPION_AFFIXES,
+  CHAMPION_HP,
+  CHAMPION_REWARD,
   COOLDOWN_JITTER,
   ENRAGE_COOLDOWN,
   ENRAGE_HP,
@@ -22,6 +25,8 @@ import {
   type MonsterKind,
   type MonsterStats,
   type MonsterStrikeMessage,
+  type MonsterTraits,
+  type ChampionAffix,
 } from "@kusa/shared";
 import { nextStep } from "./pathfinding.ts";
 import type { DungeonState, Monster, Summon } from "./state.ts";
@@ -43,6 +48,12 @@ const MULTIATTACK_GAP_MS = 120;
 /** Dados do monstro que só o servidor precisa (o cliente vê só o schema `Monster`). */
 export interface Brain {
   def: MonsterDef;
+  /** Passivas deste monstro: as da tabela, mais o afixo de Campeão. */
+  traits: MonsterTraits;
+  /** Multiplicador extra de dano recebido por elemento (afixo Escudado), por cima de `elementMultiplier`. */
+  elements: Partial<Record<DamageElement, number>>;
+  /** Tiles por segundo (o afixo Veloz aumenta). */
+  speed: number;
   depth: number;
   damage: number;
   xp: number;
@@ -108,6 +119,8 @@ export interface Brain {
   engulfTaken: number;
   lastElementNotice: number;
   lastRegenNotice: number;
+  /** Monstro que chamou este (cópias da Bruxa Verde somem quando ela morre). */
+  summonedBy: string | null;
 }
 
 /** O que a IA dos monstros precisa da hunt (a `Hunt` liga cada função aos seus métodos). */
@@ -136,15 +149,29 @@ export class MonsterAi {
   constructor(private w: MonsterWorld) {}
 
   newBrain(def: MonsterDef, depth: number, stats: MonsterStats): Brain {
-    const heads = def.traits?.heads?.start ?? 0;
+    const traits = { ...def.traits };
+    const heads = traits.heads?.start ?? 0;
     return {
-      def, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
+      def, traits, elements: {}, speed: def.speed, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
       nextMoveAt: 0, nextAttackAt: 0, targetId: null, participants: new Set(), rootedUntil: 0, stunnedUntil: 0, slowUntil: 0, slowPct: 0,
       markUntil: 0, markPct: 0, dot: null, tauntedBy: null, abilityReadyAt: {}, phased: new Set(), used: new Set(), enraged: false,
-      invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!def.traits?.camouflage, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
-      regenBlockedUntil: 0, fortitudeUsed: false, family: def.traits?.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,
-      hitAndRunAt: 0, struck: new Set(), engulfing: null, engulfTaken: 0, lastElementNotice: 0, lastRegenNotice: 0,
+      invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
+      regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,
+      hitAndRunAt: 0, struck: new Set(), engulfing: null, engulfTaken: 0, lastElementNotice: 0, lastRegenNotice: 0, summonedBy: null,
     };
+  }
+
+  /** Campeão: vida em dobro, XP e loot maiores e o afixo (velocidade, passivas ou resistência). */
+  makeChampion(m: Monster, brain: Brain, affix: ChampionAffix) {
+    const def = CHAMPION_AFFIXES[affix];
+    m.champion = affix;
+    m.maxHp = m.hp = Math.round(m.maxHp * CHAMPION_HP);
+    brain.xp = Math.round(brain.xp * CHAMPION_REWARD);
+    brain.loot = [Math.round(brain.loot[0] * CHAMPION_REWARD), Math.round(brain.loot[1] * CHAMPION_REWARD)];
+    brain.speed *= def.speed ?? 1;
+    brain.traits = { ...brain.traits, ...def.traits, onHit: { ...brain.traits.onHit, ...def.traits?.onHit } };
+    if (!brain.traits.onHit || Object.keys(brain.traits.onHit).length === 0) delete brain.traits.onHit;
+    brain.elements = { ...brain.elements, ...def.elements };
   }
 
   /** O monstro acabou de nascer: camuflado começa escondido; a Hidra mostra as cabeças. */
@@ -169,6 +196,14 @@ export class MonsterAi {
       const t = this.foe(brain.targetId);
       if (!t || tileDistance(m.x, m.y, t.x, t.y) > def.aggroRange + LEASH_TILES) brain.targetId = null;
     }
+    // Mímico disfarçado: parado como um baú até alguém encostar (ou acertá-lo).
+    const mimic = brain.traits.mimic;
+    if (mimic && brain.camouflaged) {
+      const near = this.nearestVisibleFoe(m, mimic.revealRange);
+      if (!near) return;
+      brain.targetId = near;
+      this.w.notice(m.x, m.y - 1, "É um Mímico!", 0xe67e22);
+    }
     if (!brain.targetId) brain.targetId = this.nearestVisibleFoe(m, def.aggroRange);
     if (!brain.targetId) return;
     // Camuflado: aparece quando nota alguém.
@@ -189,7 +224,7 @@ export class MonsterAi {
     }
 
     // Artilheiro: recua se o alvo chegar perto demais (e ainda dá tempo de atirar depois).
-    const keep = def.traits?.keepDistance;
+    const keep = brain.traits.keepDistance;
     if (keep && dist < keep && now >= brain.nextMoveAt && !m.rooted && !brain.engulfing && this.stepAway(m, brain, target, now)) return;
 
     if (dist <= def.attackRange && sees) {
@@ -217,19 +252,21 @@ export class MonsterAi {
   adjustDamage(m: Monster, brain: Brain, raw: number, element: DamageElement): number {
     const now = this.w.now();
     if (now < brain.invulnerableUntil) return 0;
-    const traits = brain.def.traits;
-    if (traits?.absorb?.includes(element)) {
+    const traits = brain.traits;
+    // Ilusão: qualquer golpe a desfaz.
+    if (traits.illusion) return m.hp;
+    if (traits.absorb?.includes(element)) {
       const healed = Math.min(m.maxHp - m.hp, raw);
       if (healed > 0) m.hp += healed;
       this.elementNotice(m, brain, "Absorve!", 0x2ecc71);
       return 0;
     }
-    const mult = elementMultiplier(m.kind as MonsterKind, element);
+    const mult = elementMultiplier(m.kind as MonsterKind, element) * (brain.elements[element] ?? 1);
     let amount = mult === 0 ? 0 : Math.max(1, Math.round(raw * mult));
     if (mult === 0) this.elementNotice(m, brain, "Imune", 0xbdc3c7);
     else if (mult < 1) this.elementNotice(m, brain, "Resiste", 0xbdc3c7);
     else if (mult > 1) this.elementNotice(m, brain, "Vulnerável!", 0xf1c40f);
-    const fortitude = traits?.fortitude;
+    const fortitude = traits.fortitude;
     if (fortitude && !brain.fortitudeUsed && amount >= m.hp && !fortitude.except.includes(element)) {
       brain.fortitudeUsed = true;
       amount = m.hp - 1;
@@ -241,10 +278,10 @@ export class MonsterAi {
   /** Depois do dano: aparece, para de regenerar, perde cabeça, se divide, solta quem engoliu, muda de fase. */
   afterDamage(m: Monster, brain: Brain, dealt: number, element: DamageElement) {
     const now = this.w.now();
-    const traits = brain.def.traits;
+    const traits = brain.traits;
     if (dealt <= 0) return;
     if (brain.camouflaged) this.reveal(m, brain);
-    const regen = traits?.regeneration;
+    const regen = traits.regeneration;
     if (regen && regen.stopBy.includes(element)) {
       if (now >= brain.regenBlockedUntil && now - brain.lastRegenNotice > 2000) {
         brain.lastRegenNotice = now;
@@ -252,7 +289,7 @@ export class MonsterAi {
       }
       brain.regenBlockedUntil = now + regen.stopMs;
     }
-    const heads = traits?.heads;
+    const heads = traits.heads;
     if (heads) {
       while (brain.heads > 1 && m.hp <= m.maxHp * (1 - heads.step * (brain.headCuts + 1))) {
         brain.headCuts++;
@@ -266,7 +303,7 @@ export class MonsterAi {
         this.w.notice(m.x, m.y - 1, "Cauterizada!", 0xff9f43);
       }
     }
-    const split = traits?.split;
+    const split = traits.split;
     if (split && brain.family && m.hp > 1 && split.by.includes(element) && dealt >= m.maxHp * split.minHit && brain.family.count < split.max) {
       this.split(m, brain);
     }
@@ -440,7 +477,14 @@ export class MonsterAi {
       if (!spot) return;
       const minion = this.w.spawnMonster(kind, spot.x, spot.y, brain.depth);
       const mb = this.w.brains.get(minion.id);
-      if (mb) mb.targetId = brain.targetId;
+      if (!mb) continue;
+      mb.targetId = brain.targetId;
+      mb.summonedBy = m.id;
+      // Cópia: mesma vida que aparenta ter (a barra engana), mas qualquer golpe a desfaz.
+      if (mb.traits.illusion) {
+        minion.maxHp = m.maxHp;
+        minion.hp = m.hp;
+      }
     }
   }
 
@@ -467,15 +511,20 @@ export class MonsterAi {
 
   private basicAttack(m: Monster, brain: Brain, targetId: string, target: { x: number; y: number }, now: number) {
     const def = brain.def;
-    const traits = def.traits;
+    const traits = brain.traits;
+    // Ilusão: só finge atacar.
+    if (traits.illusion) {
+      brain.nextAttackAt = now + def.attackCooldownMs;
+      return;
+    }
     const leader = this.leaderAura(m);
-    const frenzy = traits?.frenzy && m.hp <= m.maxHp * traits.frenzy.belowHp ? traits.frenzy.haste : 0;
+    const frenzy = traits.frenzy && m.hp <= m.maxHp * traits.frenzy.belowHp ? traits.frenzy.haste : 0;
     brain.nextAttackAt = now + def.attackCooldownMs * Math.max(0.4, 1 - frenzy - leader.haste);
     let damage = brain.damage * (1 + leader.damage);
     // Táticas de Bando: outro monstro colado no mesmo alvo.
-    if (traits?.packTactics && this.allyBeside(m, target)) damage *= 1 + traits.packTactics;
+    if (traits.packTactics && this.allyBeside(m, target)) damage *= 1 + traits.packTactics;
     // Ataque Surpresa: o primeiro golpe em cada alvo.
-    if (traits?.ambush && !brain.struck.has(targetId)) {
+    if (traits.ambush && !brain.struck.has(targetId)) {
       brain.struck.add(targetId);
       damage *= traits.ambush;
       this.w.notice(m.x, m.y - 1, "Ataque Surpresa!", 0xe67e22);
@@ -493,14 +542,14 @@ export class MonsterAi {
       });
       return;
     }
-    const multi = traits?.multiattack;
+    const multi = traits.multiattack;
     if (multi) {
       for (let i = 0; i < multi.hits; i++) this.w.after(i * MULTIATTACK_GAP_MS, () => this.bite(m, brain, targetId, damage * multi.power, hit));
     } else {
       this.bite(m, brain, targetId, damage, hit);
     }
     // Fuga Ágil: depois de acertar de perto, recua 1 tile.
-    if (traits?.hitAndRun && def.attackRange === 1 && now >= brain.hitAndRunAt && !m.rooted) {
+    if (traits.hitAndRun && def.attackRange === 1 && now >= brain.hitAndRunAt && !m.rooted) {
       if (this.stepAway(m, brain, target, now)) brain.hitAndRunAt = now + traits.hitAndRun.cooldownMs;
     }
   }
@@ -514,7 +563,7 @@ export class MonsterAi {
     const p = this.w.state.players.get(id);
     if (!p || p.status !== "playing") return;
     this.w.damagePlayer(id, amount, { ...hit, fromX: m.x, fromY: m.y });
-    const onHit = brain.def.traits?.onHit;
+    const onHit = brain.traits.onHit;
     if (!onHit || p.status !== "playing" || Math.random() >= (onHit.chance ?? 1)) return;
     if (onHit.dot) this.w.dotHero(id, onHit.dot.kind, Math.max(1, Math.round(brain.damage * onHit.dot.power)), onHit.dot.durationMs, m);
     if (onHit.effect) this.w.affectHero(id, onHit.effect, m, brain.damage);
@@ -530,7 +579,7 @@ export class MonsterAi {
     let damage = 0;
     let haste = 0;
     this.w.state.monsters.forEach((o) => {
-      const aura = o.id !== m.id ? this.w.brains.get(o.id)?.def.traits?.leader : undefined;
+      const aura = o.id !== m.id ? this.w.brains.get(o.id)?.traits.leader : undefined;
       if (!aura || tileDistance(m.x, m.y, o.x, o.y) > aura.radius) return;
       damage = Math.max(damage, aura.damage);
       haste = Math.max(haste, aura.haste);
@@ -548,18 +597,18 @@ export class MonsterAi {
   // --- Manutenção (todo tick) -----------------------------------------------------
 
   private upkeep(m: Monster, brain: Brain, now: number) {
-    const traits = brain.def.traits;
+    const traits = brain.traits;
     // Fim da invisibilidade de habilidade ou de piscar.
     if (brain.hiddenUntil > 0 && now >= brain.hiddenUntil) {
       brain.hiddenUntil = 0;
       if (!brain.diving && !brain.camouflaged) m.hidden = false;
     }
-    const regen = traits?.regeneration;
+    const regen = traits.regeneration;
     if (regen && now >= brain.nextRegenAt) {
       brain.nextRegenAt = now + 1000;
       if (now >= brain.regenBlockedUntil && m.hp < m.maxHp) m.hp = Math.min(m.maxHp, m.hp + Math.max(1, Math.round(m.maxHp * regen.perSec)));
     }
-    const heads = traits?.heads;
+    const heads = traits.heads;
     if (heads && brain.regrowAt > 0 && now >= brain.regrowAt) {
       brain.regrowAt = 0;
       brain.heads = Math.min(heads.max, brain.heads + 2);
@@ -567,7 +616,7 @@ export class MonsterAi {
       m.hp = Math.min(m.maxHp, m.hp + Math.round(m.maxHp * heads.regrowHeal));
       this.w.notice(m.x, m.y - 1, "Duas cabeças nascem!", 0x2ecc71);
     }
-    const blink = traits?.blink;
+    const blink = traits.blink;
     if (blink && brain.targetId && !brain.diving && brain.hiddenUntil === 0) {
       if (brain.nextBlinkAt === 0) brain.nextBlinkAt = now + blink.everyMs * jitter();
       else if (now >= brain.nextBlinkAt) {
@@ -582,7 +631,7 @@ export class MonsterAi {
   private stepTo(m: Monster, brain: Brain, step: { x: number; y: number }, now: number) {
     const diagonal = step.x !== m.x && step.y !== m.y;
     const slow = m.slowed ? 1 - brain.slowPct : 1;
-    brain.nextMoveAt = now + (1000 / (brain.def.speed * MONSTER_SPEED_SCALE * slow)) * (diagonal ? Math.SQRT2 : 1);
+    brain.nextMoveAt = now + (1000 / (brain.speed * MONSTER_SPEED_SCALE * slow)) * (diagonal ? Math.SQRT2 : 1);
     m.x = step.x;
     m.y = step.y;
   }
