@@ -130,8 +130,12 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   return room as unknown as DungeonRoom;
 }
 
-/** Grava o resultado no banco e devolve a mensagem de fim com o que foi de fato creditado. */
-async function finishSolo(runId: string, classId: ClassId, result: RunEndedMessage, report: HuntReport): Promise<RunEndedMessage> {
+/**
+ * Grava o resultado no banco e devolve a mensagem de fim com o que foi de fato creditado. Vale também para a sala
+ * hospedada por um jogador (cada um grava o seu). Sem `runId` (a hunt não abriu no banco), nada é salvo.
+ */
+export async function finishSolo(runId: string | null, classId: ClassId, result: RunEndedMessage, report: HuntReport): Promise<RunEndedMessage> {
+  if (!runId) return { ...result, loot: 0, items: [], bag: [], note: "A hunt não abriu no banco: a recompensa não foi salva." };
   const { data, error } = await supabase.rpc("finish_solo_run", {
     p_run_id: runId,
     p_outcome: result.outcome,
@@ -145,6 +149,7 @@ async function finishSolo(runId: string, classId: ClassId, result: RunEndedMessa
       path_rooms: report.pathRooms,
       killed_by: report.stats.death?.by ?? null,
       abandoned: report.stats.abandoned,
+      party_size: report.partySize,
       stats: report.stats,
       // XP de uso das magias da hunt; o banco corta pelo tempo de hunt.
       spell_xp: spellXpGains(classId, result.spells),

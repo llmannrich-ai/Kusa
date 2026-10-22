@@ -156,6 +156,7 @@ import {
 import { MonsterAi, rollDamage, type Brain, type Hit } from "./monsterAi.ts";
 import { nextStep } from "./pathfinding.ts";
 import { bump, newRunStats, type RunStats } from "./runStats.ts";
+import { fromPlain, toPlain } from "./snapshot.ts";
 import { Chest, DungeonState, Field, GroundItem, Monster, Player, Summon } from "./state.ts";
 
 /** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
@@ -362,7 +363,18 @@ export interface HuntOptions {
   monsterHp?: number;
   /** Só para testes: todo mundo começa a hunt com estas runas equipadas. */
   runes?: string[];
+  /**
+   * Continua uma hunt de outro aparelho (`Hunt.exportInternals`), com o `state` já restaurado: não sorteia
+   * monstros de novo. Sala hospedada por um jogador, quando o anfitrião sai e outro assume.
+   */
+  restore?: unknown;
 }
+
+/** Campos internos que vão no retrato da hunt (o resto se recalcula: mapa, dungeon). */
+const INTERNALS = [
+  "startLevel", "allSpells", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
+  "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked",
+] as const;
 
 /**
  * Uma hunt: a equipe (1 a 4 jogadores) entra junta e cada um sai morto, fugindo ou após o boss.
@@ -407,6 +419,15 @@ export class Hunt {
     this.state.mapId = this.map.id;
     this.state.seed = options.seed;
     this.dungeon = generateDungeon(this.state.seed, this.map.id);
+    // Continuando a hunt de outro aparelho, o interno vem do retrato (antes da IA, que usa os `brains`).
+    if (options.restore) {
+      Object.assign(this, fromPlain(options.restore));
+      // O portal do boss abre mudando o tile: a dungeon regenerada pela seed ainda não tem.
+      if (this.state.bossDefeated) {
+        const c = centerOf(this.dungeon.boss);
+        this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
+      }
+    }
     this.ai = new MonsterAi({
       state: this.state,
       dungeon: this.dungeon,
@@ -424,7 +445,15 @@ export class Hunt {
       occupiedTiles: () => this.occupiedTiles(),
       spawnMonster: (kind, x, y, depth) => this.addMonster(kind, x, y, depth),
     });
-    this.spawnMonsters();
+    if (!options.restore) this.spawnMonsters();
+  }
+
+  /**
+   * Interno da hunt em JSON (com Map e Set marcados), para outro aparelho continuar com `HuntOptions.restore`.
+   * Os tempos são do relógio do `HuntHost`: quem continua precisa seguir o mesmo relógio.
+   */
+  exportInternals() {
+    return toPlain(Object.fromEntries(INTERNALS.map((key) => [key, this[key]])));
   }
 
   join(sessionId: string, recruit: Recruit) {
