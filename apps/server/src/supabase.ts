@@ -80,7 +80,7 @@ export interface RunResult {
   spellXp: Record<string, number>;
 }
 
-/** Grava o resultado da hunt, credita o gold e devolve equipamento e bag (`finish_run` e `store_bag` no banco). */
+/** Grava o resultado da hunt, credita o gold, devolve equipamento e bag e soma o XP das magias (`finish_run`, `record_spell_xp` e `store_bag`). */
 export async function recordRun(matchId: string, result: RunResult) {
   if (!supabase) return;
   const { error } = await supabase.rpc("finish_run", {
@@ -91,12 +91,19 @@ export async function recordRun(matchId: string, result: RunResult) {
     p_level: result.level,
     p_loot: result.loot,
     p_items: result.items,
-    p_spell_xp: result.spellXp,
   });
   if (error) {
     console.error("Falha ao salvar resultado da hunt", error);
     return;
   }
+  // O nível das magias pelo uso (a morte tira um pouco do XP das magias da hunt).
+  const { error: xpError } = await supabase.rpc("record_spell_xp", {
+    p_profile_id: result.userId,
+    p_class_id: result.classId,
+    p_outcome: result.outcome,
+    p_spell_xp: result.spellXp,
+  });
+  if (xpError) console.error("Falha ao gravar o XP das magias", xpError);
   // A bag de quem sai vivo vai para o cofre (o que não couber fica na bag).
   if (result.bag.length === 0) return;
   const { error: bagError } = await supabase.rpc("store_bag", { p_profile_id: result.userId, p_bag: result.bag });

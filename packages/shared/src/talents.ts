@@ -100,6 +100,8 @@ const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
 const SIDE_SPELL_COST = [1200, 1600];
 /** Preço do Traço de uma especialização (nível único). */
 const TRAIT_COST = 1000;
+/** As iniciais já vêm compradas: o preço nunca é cobrado (o banco só pede um valor positivo). */
+const STARTER_BASE_COST = 150;
 
 /** Nome dos 3 ramos (colunas) do Grimório de cada classe. */
 export const TREE_BRANCHES: Record<ClassId, [string, string, string]> = {
@@ -268,7 +270,7 @@ function classTree(classId: ClassId): TalentDef[] {
     return {
       id: id(key), classId, col, row, lane: laneOf(side), side, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
       maxRank: 1, freeRank: starter ? 1 : 0,
-      baseCost: starter ? 0 : side === undefined ? SPELL_COST_BY_ROW[row] : SIDE_SPELL_COST[isTrait(parent!) ? 0 : 1],
+      baseCost: starter ? STARTER_BASE_COST : side === undefined ? SPELL_COST_BY_ROW[row] : SIDE_SPELL_COST[isTrait(parent!) ? 0 : 1],
       costGrowth: 1, requires,
     };
   });
@@ -369,6 +371,11 @@ export function spellRanks(classId: ClassId, ranks: TalentRanks, xp: SpellXp): P
 /** Id do nó do Grimório de uma magia (é por ele que o banco guarda o XP). */
 export function spellTalentId(classId: ClassId, spellId: SpellId): string {
   return `${classId}_${spellId}`;
+}
+
+/** XP ganho na hunt por nó do Grimório, como o banco recebe (`record_spell_xp`). */
+export function spellXpGains(classId: ClassId, spells: { id: string; gained: number }[]): Record<string, number> {
+  return Object.fromEntries(spells.map((s) => [spellTalentId(classId, s.id as SpellId), s.gained]));
 }
 
 /** Traços que a conta tem na classe (um por ramo especializado, no máximo). */

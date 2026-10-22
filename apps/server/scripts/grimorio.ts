@@ -183,7 +183,7 @@ async function paladinShots() {
   room.send(MSG.cast, { slot: 0 });
   await until(() => spells.some((s) => s.spellId === "piercing_shot"), 2000, "o Disparo Perfurante não saiu");
   const shot = spells.find((s) => s.spellId === "piercing_shot")!;
-  const line = lineTiles(generateDungeon(room.state.seed), shot.x, shot.y, shot.tx, shot.ty, spellAtRank(SPELLS.piercing_shot, 3).range);
+  const line = lineTiles(generateDungeon(room.state.seed), shot.x, shot.y, shot.tx, shot.ty, spellAtRank(SPELLS.piercing_shot, MASTERY_RANK).range);
   const end = line[line.length - 1];
   if (!end || end.x !== shot.tx || end.y !== shot.ty) throw new Error(`a flecha devia ir até o fim da linha: ${JSON.stringify({ shot, end })}`);
   await until(() => damage.some((d) => d.attacker === room.sessionId && !d.toPlayer), 2000, "a flecha não acertou ninguém");
