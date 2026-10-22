@@ -93,6 +93,7 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 #room-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .room { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; }
 .room small { display: block; }
+.room-join { flex: none; margin-left: 12px; color: var(--accent); text-align: right; }
 #lobby-map { margin: 0 0 12px; color: var(--accent); }
 
 /* Criar sala: o cenário fica nesta tela, logo acima do botão. */
@@ -578,6 +579,7 @@ button { min-height: 44px; touch-action: manipulation; }
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
 #rooms .hint { margin: 8px 0 0; font-size: 13px; text-align: center; }
+#rooms h2 + .hint { margin: 0 0 12px; }
 #login input { font-size: 16px; } /* 16px evita o zoom automático do iOS ao focar. */
 button:disabled { opacity: 0.6; cursor: wait; }
 

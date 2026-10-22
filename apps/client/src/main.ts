@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { Callbacks } from "@colyseus/sdk";
+import { Callbacks, CloseCode } from "@colyseus/sdk";
 import {
   ITEMS,
   MAPS,
@@ -197,10 +197,14 @@ function renderHunts(hunts: HuntListing[]) {
     where.className = "muted";
     where.textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)}`;
     title.append(where);
-    const count = document.createElement("span");
+    // Sem um "Entrar" visível, o card parecia só informação e ninguém tocava nele.
+    const join = document.createElement("span");
+    join.className = "room-join";
+    const count = document.createElement("small");
     count.className = "muted";
-    count.textContent = `${hunt.clients}/${hunt.maxClients}`;
-    button.append(title, count);
+    count.textContent = `${hunt.clients}/${hunt.maxClients} jogadores`;
+    join.append("Entrar ›", count);
+    button.append(title, join);
     button.onclick = () => enter(async () => joinHunt(hunt.roomId, await joinOptions()));
     li.append(button);
     list.append(li);
@@ -287,13 +291,25 @@ function bindRoom(room: DungeonRoom) {
   $("start").onclick = () => room.send(MSG.start);
 
   let started = false;
+  let left = false;
   // Sair na sala de espera devolve à lista de salas; durante a hunt, sair conta como morte (servidor).
-  $("lobby-leave").onclick = () => void room.leave();
-  room.onLeave(() => {
-    if (started) return;
+  const backToRooms = async (error?: string) => {
+    if (started || left) return;
+    left = true;
     joined = false;
     show("lobby", false);
-    void openRooms();
+    await openRooms();
+    if (error) showError(error);
+  };
+  // Volta na hora, sem esperar o servidor confirmar: com a conexão ruim do celular a resposta
+  // demorava ou nunca vinha, e o botão parecia não funcionar.
+  $("lobby-leave").onclick = () => {
+    void backToRooms();
+    void room.leave();
+  };
+  room.onLeave((code) => {
+    const clean = code === 1000 || code === CloseCode.CONSENTED;
+    void backToRooms(clean ? undefined : "A conexão com a sala caiu. Entre de novo.");
   });
 
   const callbacks = Callbacks.get(room);
