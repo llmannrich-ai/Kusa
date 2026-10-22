@@ -14,7 +14,7 @@ import type { DungeonState } from "../../server/src/state.ts";
 import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
 import { Listing, Signaling, answerCalls, dial, randomId, type Link } from "./p2p.ts";
-import { finishSolo } from "./solo.ts";
+import { finishSolo, flushPendingSolo } from "./solo.ts";
 
 // Sala hospedada por um jogador: o aparelho dele roda a `Hunt` (a mesma do servidor) e os outros recebem o
 // estado por conexão direta. Se o anfitrião sai, o próximo da lista assume a partir do último retrato.
@@ -439,6 +439,8 @@ class HostedSession {
 
   /** A hunt começou: abre a hunt deste jogador no banco e manda o equipamento e a bag para a dungeon. */
   private async beginRun(client: RoomClient) {
+    // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
+    await flushPendingSolo();
     const { data, error } = await supabase.rpc("start_solo_run", { p_class_id: this.me.classId, p_map_id: this.mapId });
     if (error) {
       console.error("Falha ao abrir a hunt no banco", error);
