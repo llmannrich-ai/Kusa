@@ -12,7 +12,7 @@ teclado e mouse no desktop são um extra.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
 - **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
 - **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
-- **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele.
+- **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
@@ -120,6 +120,22 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
     troca a outra. A vida extra do urso entra cheia e sai quando a forma acaba.
   - **Renascer da Semente**: uma semente por druida (plantar outra tira a anterior); na mesma pessoa, salva uma vez. Vale
     contra golpes e venenos; não vale contra o desabamento da dungeon. Uma semente com broto flutua sobre quem a tem.
+  - **Cavaleiro** (os 3 ramos especializados):
+
+    | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
+    |---|---|---|---|---|
+    | Lâmina | **Berserker** | 💢 Sede de Batalha: +5% de dano por monstro colado (até 5) | 🌪️ Redemoinho de Aço: 3 giros seguidos em raio 1 (1,1× cada) | 😤 Fúria Berserker: 8 s com básico +40% e 30% mais rápido, recebendo +20% de dano |
+    | Lâmina | **Duelista** | 🤺 Riposta: 20% de chance de devolver na hora o golpe corpo a corpo recebido | 🗡️ Lâmina Arremessada: 1,8× num alvo a até 4 tiles, que sangra | 🔪 Mil Cortes: 5 cortes de 0,9× no monstro colado, que fica atordoado enquanto apanha |
+    | Bastião | **Guardião** | 🤝 Intervir: 30% do dano que os aliados a até 2 tiles levam de monstros vem para você | 💥 Bater com Escudo: 1,2×, empurra 2 tiles e atordoa 1 s | 🏛️ Égide Compartilhada: escudo de 25% em você e nos aliados a até 3 tiles, e provoca |
+    | Bastião | **Inabalável** | 🏯 Último Bastião: abaixo de 25% da vida, escudo de 30% por 6 s (uma vez a cada 60 s) | 🦔 Espinhos de Ferro: 8 s devolvendo 40% do golpe corpo a corpo recebido | 🗿 Fortaleza Viva: 5 s sem andar, cortando 90% do dano; quem bate fica 50% mais lento |
+    | Comando | **Senhor da Guerra** | 👑 Liderança: você e os aliados a até 4 tiles causam +8% de dano | 🐎 Investida: corre até um monstro a até 4 tiles, 1,5× e atordoa 1 s | 🚩 Estandarte de Guerra: campo de raio 2 por 10 s, aliados dentro com +20% de dano e +5 de armadura |
+    | Comando | **Desafiante** | 😠 Intimidar: monstros que você provocou causam 25% menos dano em você | 🔗 Corrente de Ferro: puxa um monstro de até 5 tiles para perto e o prende 2 s | 👊 Desafio Supremo: provoca em raio 5, corta 40% do dano por 6 s e cura 3% por monstro provocado |
+
+  - Maestrias: Redemoinho em raio 2; a fúria não deixa mais frágil; a lâmina ricocheteia em mais um; 7 cortes; a
+    pancada atinge quem está colado no alvo; Égide em raio 5; espinhos devolvem 70%; a fortaleza cura 20%; a investida
+    atinge quem está colado no alvo; estandarte em raio 3; a corrente faz sangrar; o desafio corta 60%.
+  - **Investida**: sem alvo à vista ou sem lugar livre colado nele, não sai nem gasta mana. **Corrente**: o monstro vem
+    para o tile livre colado no cavaleiro mais perto dele.
 - Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade (1.200 e 1.600 nas magias das
   especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
@@ -127,7 +143,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 
 | Classe | Ramo 1 | Ramo 2 | Ramo 3 |
 |---|---|---|---|
-| Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante |
+| Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução → ✦ Berserker **ou** Duelista | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço → ✦ Guardião **ou** Inabalável | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante → ✦ Senhor da Guerra **ou** Desafiante |
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo → ✦ Mestre das Feras **ou** Metamorfo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta → ✦ Círculo da Vida **ou** Guardião da Natureza | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza → ✦ Peste **ou** Tempestade |
@@ -280,7 +296,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 ## Combate (protótipo)
 
-- O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado, o servidor escolhe o monstro mais próximo ao alcance.
+- O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado (ou com ele fora do alcance), o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
 - Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
