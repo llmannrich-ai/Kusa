@@ -8,6 +8,7 @@
 import { Client } from "@colyseus/sdk";
 import {
   MAPS,
+  mapMonsters,
   MAP_IDS,
   MSG,
   ROOM_NAME,
@@ -73,11 +74,11 @@ async function playMap(mapId: MapId) {
 
   await wait(300);
   if (room.state.mapId !== mapId) throw new Error(`mapId esperado ${mapId}, veio ${room.state.mapId}`);
-  const allowed = new Set([...map.pathSpawns.flat(), map.miniboss, map.boss]);
+  const allowed = new Set<string>(mapMonsters(map));
   const kinds = new Set<string>();
   room.state.monsters.forEach((m: { kind: string }) => kinds.add(m.kind));
-  for (const kind of kinds) if (!allowed.has(kind as never)) throw new Error(`${mapId}: monstro de outro mapa (${kind})`);
-  if (!kinds.has(map.boss)) throw new Error(`${mapId}: sem boss`);
+  for (const kind of kinds) if (!allowed.has(kind)) throw new Error(`${mapId}: monstro de outro mapa (${kind})`);
+  if (!map.bosses.some(([boss]) => kinds.has(boss))) throw new Error(`${mapId}: sem boss`);
 
   room.send(MSG.start);
   await wait(300);

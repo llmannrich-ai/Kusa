@@ -53,8 +53,10 @@ export interface DamageMessage {
    * contínuo: o cliente não desenha o ataque básico de quem bateu, só o impacto.
    */
   special?: boolean;
-  /** Dano de veneno ou queimadura que ainda está fazendo efeito. */
+  /** Dano de veneno, queimadura ou sangramento que ainda está fazendo efeito. */
   dot?: DotKind;
+  /** Habilidade de monstro que causou o dano (id em `MonsterDef.abilities`), para a telemetria. */
+  ability?: string;
 }
 
 /** Servidor → todos: aviso flutuante no mapa (XP, nível, loot, baú, boss). */
@@ -141,16 +143,20 @@ export interface ChainMessage {
   points: { x: number; y: number }[];
 }
 
-/** Servidor → todos: a habilidade especial de um mini-boss ou boss saiu (efeito do golpe); o dano chega em seguida por `MSG.damage`. */
+/** Servidor → todos: a habilidade de um monstro saiu (efeito do golpe, sem aviso antes); o dano chega em seguida por `MSG.damage`. */
 export interface MonsterStrikeMessage {
   id: string;
   kind: MonsterKind;
+  /** Id da habilidade em `MonsterDef.abilities`. */
+  ability: string;
   x: number;
   y: number;
   tx: number;
   ty: number;
   /** Tiles atingidos, em pares [x0, y0, x1, y1, ...], do centro para fora. */
   tiles: number[];
+  /** `dive`: a decolagem (sem dano) sai com `rising`; a queda, sem. */
+  rising?: boolean;
 }
 
 export type RunOutcome = "died" | "escaped" | "completed" | "buried";

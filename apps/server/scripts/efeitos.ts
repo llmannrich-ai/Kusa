@@ -27,7 +27,7 @@
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
  */
 import { Client } from "@colyseus/sdk";
-import { MONSTERS, MSG, Tile, generateDungeon, isWalkable, tileAt, tileDistance, type MonsterKind } from "@kusa/shared";
+import { MONSTERS, MSG, Tile, generateDungeon, immuneToDot, isWalkable, tileAt, tileDistance, type DotKind, type MonsterKind } from "@kusa/shared";
 import { approach, enter, inSight, until, wait, whereAmI } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -47,8 +47,7 @@ process.exit(0);
 async function venom() {
   const { room, me } = await enter(client, "druid", "venom");
   room.send(MSG.chooseSpell, { slot: 0, spellId: "venom_thorn" });
-  await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
-  const seen = inSight(room, me(), 5)[0];
+  const seen = await dotTarget(room, me, "poison");
   if (!seen) throw new Error(`nenhum monstro à vista em 30 s: ${whereAmI(room, me)}`);
   const [id, target] = seen;
   if (target.maxHp < 300) throw new Error(`o servidor precisa de KUSA_MONSTER_HP=20 (vida ${target.maxHp})`);
@@ -455,6 +454,7 @@ async function druidSpecs() {
   // Peste: a picada e a nuvem envenenam.
   {
     const h = await druid("peste", "mamba_bite", "poison_cloud");
+    h.seen = await dotTarget(h.room, h.me, "poison");
     h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
     await until(() => h.room.state.monsters.get(h.seen[0])?.dot === "poison", 3000, "a Picada da Mamba não envenenou o alvo");
     const other = inSight(h.room, h.me(), 5).find(([id]) => id !== h.seen[0]) ?? h.seen;
@@ -521,6 +521,7 @@ async function knightSpecs() {
   // Duelista: a lâmina faz sangrar; os mil cortes repetem no alvo.
   {
     const h = await knight("duelista", "thrown_blade", "thousand_cuts");
+    h.seen = await dotTarget(h.room, h.me, "bleed");
     h.room.send(MSG.cast, { slot: 0, aim: { x: h.seen[1].x, y: h.seen[1].y, targetId: h.seen[0] } });
     await until(() => h.room.state.monsters.get(h.seen[0])?.dot === "bleed", 3000, "a Lâmina Arremessada não fez sangrar");
     const near = inSight(h.room, h.me(), 1)[0] ?? h.seen;
@@ -583,3 +584,16 @@ async function knightSpecs() {
   }
   console.log("cavaleiro: as 12 magias das especializações funcionaram");
 }
+
+/**
+ * Monstro à vista que pega o dano contínuo `dot` (morto-vivo não envenena nem sangra): vai atrás dos mais próximos,
+ * pulando os imunes.
+ */
+async function dotTarget(room: any, me: () => any, dot: DotKind): Promise<[string, any]> {
+  const ok = () => inSight(room, me(), 5).find(([, m]) => !immuneToDot(m.kind as MonsterKind, dot));
+  for (let skip = 0; skip < 6 && !ok(); skip++) await approach(room, me, 2, () => ok() !== undefined, skip);
+  const found = ok();
+  if (!found) throw new Error(`nenhum monstro que pegue ${dot} à vista: ${whereAmI(room, me)}`);
+  return found;
+}
+

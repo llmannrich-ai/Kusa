@@ -2,7 +2,7 @@
  * Roda todos os testes de fumaça (`npm test`): sobe os servidores de teste em portas próprias, roda cada
  * script, mostra o resumo e derruba os servidores. Não precisa de servidor rodando antes.
  *
- * - Servidor normal: smoke, combat, items, maps, potions, perks e bag (e solo, ativas e arte, que não usam o servidor).
+ * - Servidor normal: smoke, combat, items, maps, potions, perks e bag (e solo, ativas, arte e bestiario, que não usam o servidor).
  * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos; o cavaleiro aguenta apanhar parado): spells, specials
  *   e magiaxp.
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio, costelas e sinergias.
@@ -23,7 +23,7 @@ const ATTEMPTS = 5;
 
 interface Suite { port: number; env: Record<string, string>; tests: string[] }
 const SUITES: Suite[] = [
-  { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo", "ativas", "arte", "anfitriao"] },
+  { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo", "ativas", "arte", "bestiario", "anfitriao"] },
   { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["spells", "specials", "magiaxp"] },
   { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["grimorio", "costelas", "sinergias"] },
   { port: 2613, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1", KUSA_MONSTER_HP: "20" }, tests: ["efeitos"] },

@@ -1,9 +1,20 @@
-import type { MonsterKind } from "./monsters.ts";
+import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
 export type MapId = "crypt" | "swamp";
 
 /** Nível de dificuldade mostrado no menu (estrelas). */
 export type MapDifficulty = 1 | 2;
+
+/**
+ * Encontro das salas do caminho numa faixa de profundidade, como o orçamento de XP do D&D: a sala recebe monstros
+ * sorteados da tabela (pelo peso) até gastar o orçamento (a XP da tabela de cada um, sem o ganho por profundidade).
+ */
+export interface Encounter {
+  /** Primeira e última profundidade (sala do caminho) em que vale. */
+  depth: [number, number];
+  budget: number;
+  table: [MonsterKind, number][];
+}
 
 export interface MapDef {
   id: MapId;
@@ -14,43 +25,97 @@ export interface MapDef {
   description: string;
   /** Duração da hunt em segundos. Ao zerar, o mapa desaba e todos morrem soterrados. */
   durationSeconds: number;
-  /** Monstros comuns por sala do caminho principal (índice = profundidade). Salas além da tabela repetem a última. */
-  pathSpawns: MonsterKind[][];
-  /** Mini-boss das salas laterais (destranca o baú). */
-  miniboss: MonsterKind;
-  /** Boss final, no centro do mapa. */
-  boss: MonsterKind;
+  /** Encontros por profundidade. Salas além da última faixa usam a última. */
+  encounters: Encounter[];
+  /** Mini-bosses das salas laterais (destrancam o baú), sorteados pelo peso em cada sala. */
+  minibosses: [MonsterKind, number][];
+  /** Fração das salas laterais em que o baú é um Mímico (ele é o mini-boss da sala e guarda o loot do baú). */
+  mimicChance: number;
+  /** Boss final, no centro do mapa, sorteado pelo peso (o primeiro é o principal do mapa). */
+  bosses: [MonsterKind, number][];
 }
+
+/** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
+export const MAX_ROOM_MONSTERS = 8;
+/** Artilheiros e líderes por sala no máximo. */
+export const MAX_ROOM_ARTILLERY = 2;
+export const MAX_ROOM_LEADERS = 1;
+/** Chance de um monstro comum nascer Campeão (ver `CHAMPION_AFFIXES`). */
+export const CHAMPION_CHANCE = 0.05;
 
 export const MAPS: Record<MapId, MapDef> = {
   crypt: {
     id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 1, durationSeconds: 4 * 60,
-    description: "Salas de pedra e corredores apertados. Ratazanas, goblins e orcs até o Dragão jovem.",
-    pathSpawns: [
-      ["rat", "rat", "rat"],
-      ["goblin", "goblin", "rat", "skeleton"],
-      ["skeleton", "skeleton", "goblin", "orc"],
-      ["orc", "orc", "skeleton", "skeleton", "orc"],
+    description: "Salas de pedra e corredores apertados. Kobolds, goblins, mortos-vivos e orcs até o Dragão jovem. Cuidado com os baús.",
+    encounters: [
+      { depth: [0, 0], budget: 60, table: [["rat", 4], ["kobold", 4], ["stirge", 2]] },
+      { depth: [1, 1], budget: 150, table: [["goblin", 4], ["goblinArcher", 2], ["kobold", 2], ["zombie", 2], ["rat", 1], ["hobgoblin", 1]] },
+      {
+        depth: [2, 2], budget: 230,
+        table: [["skeleton", 4], ["skeletonArcher", 2], ["giantSpider", 2], ["goblin", 2], ["hobgoblin", 1], ["zombie", 1], ["orc", 1]],
+      },
+      { depth: [3, 9], budget: 360, table: [["orc", 4], ["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 1], ["giantSpider", 1], ["hobgoblin", 1]] },
     ],
-    miniboss: "ogre",
-    boss: "dragon",
+    minibosses: [["ogre", 2], ["bugbear", 1], ["gelatinousCube", 1]],
+    mimicChance: 1 / 3,
+    bosses: [["dragon", 1]],
   },
   swamp: {
     id: "swamp", name: "Pântano das Ruínas", icon: "🌿", difficulty: 2, durationSeconds: 8 * 60,
     description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor. A Hidra espera nas ruínas do centro.",
-    pathSpawns: [
-      ["frog", "frog", "frog", "frog"],
-      ["frog", "frog", "moccasin", "moccasin", "frog"],
-      ["moccasin", "moccasin", "moccasin", "bogBody", "bogBody"],
-      ["bogBody", "bogBody", "bogBody", "moccasin", "moccasin", "frog"],
-      ["bogBody", "bogBody", "bogBody", "naga", "naga"],
-      ["naga", "naga", "naga", "bogBody", "bogBody", "bogBody"],
-      ["naga", "naga", "naga", "naga", "bogBody", "bogBody"],
+    encounters: [
+      { depth: [0, 0], budget: 160, table: [["frog", 4], ["bullywug", 2], ["stirge", 1]] },
+      { depth: [1, 1], budget: 230, table: [["frog", 3], ["moccasin", 3], ["bullywug", 2]] },
+      { depth: [2, 2], budget: 350, table: [["moccasin", 3], ["bogBody", 3], ["lizardfolk", 2], ["ghoul", 2]] },
+      {
+        depth: [3, 3], budget: 430,
+        table: [["bogBody", 3], ["lizardfolk", 2], ["ghoul", 2], ["crocodile", 2], ["moccasin", 1], ["willOWisp", 1]],
+      },
+      { depth: [4, 4], budget: 520, table: [["bogBody", 2], ["naga", 3], ["blackPudding", 2], ["crocodile", 2], ["willOWisp", 2]] },
+      {
+        depth: [5, 5], budget: 640,
+        table: [["naga", 3], ["bogBody", 2], ["blackPudding", 2], ["shamblingMound", 1], ["willOWisp", 2], ["lizardfolk", 1]],
+      },
+      { depth: [6, 99], budget: 680, table: [["naga", 4], ["shamblingMound", 2], ["blackPudding", 2], ["crocodile", 1], ["bogBody", 1]] },
     ],
-    miniboss: "troll",
-    boss: "hydra",
+    minibosses: [["troll", 2], ["greenHag", 1], ["spiritNaga", 1]],
+    mimicChance: 0,
+    bosses: [["hydra", 3], ["blackDragon", 1]],
   },
 };
+
+/** Encontro de uma profundidade. */
+export function encounterAt(map: MapDef, depth: number): Encounter {
+  return map.encounters.find((e) => depth >= e.depth[0] && depth <= e.depth[1]) ?? map.encounters[map.encounters.length - 1];
+}
+
+/** Boss principal do mapa (o de maior peso), para o menu. */
+export function mainBoss(map: MapDef): MonsterKind {
+  return [...map.bosses].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/** Todos os monstros que podem nascer no mapa (encontros, mini-bosses, Mímico, bosses). */
+export function mapMonsters(map: MapDef): MonsterKind[] {
+  const kinds = new Set<MonsterKind>();
+  for (const e of map.encounters) for (const [kind] of e.table) kinds.add(kind);
+  for (const [kind] of map.minibosses) kinds.add(kind);
+  for (const [kind] of map.bosses) kinds.add(kind);
+  if (map.mimicChance > 0) kinds.add("mimic");
+  // O que as habilidades chamam (cópias da Bruxa Verde).
+  for (const kind of [...kinds]) for (const a of MONSTERS[kind].abilities ?? []) if (a.summon) kinds.add(a.summon.kind);
+  return [...kinds];
+}
+
+/** Sorteio pelo peso (`roll` em [0, 1)). */
+export function pickWeighted<T>(options: [T, number][], roll: number): T {
+  const total = options.reduce((sum, [, w]) => sum + w, 0);
+  let r = roll * total;
+  for (const [value, weight] of options) {
+    r -= weight;
+    if (r < 0) return value;
+  }
+  return options[options.length - 1][0];
+}
 
 export const MAP_IDS = Object.keys(MAPS) as MapId[];
 

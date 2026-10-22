@@ -105,7 +105,7 @@ comprar **e usar** as anteriores do mesmo ramo.
 
   - Maestrias: Lança Etérea atravessa a reta; Caldeira ofusca 1 s; Escudo da Luz dura o dobro; Solo Consagrado em raio 3;
     Flecha Relâmpago salta 5 vezes; Barragem faz sangrar; Armadilha prende quem está colado; Cordão atira 7 vezes.
-  - **Mortos-vivos:** Esqueleto (Cripta) e Afogado (Pântano) (`undead` em `monsters.ts`).
+  - **Mortos-vivos:** Esqueleto, Esqueleto arqueiro e Zumbi (Cripta); Afogado, Carniçal e Fogo-fátuo (Pântano) (tipo `undead` em `monsters.ts`).
   - **Campos no chão** (`state.fields`): a zona brilha nos tiles do raio (laranja no chão em chamas), a armadilha aparece
     como mandíbulas de ferro e a estaca como um poste com o alcance em volta. Conjurar de novo troca o campo mais antigo
     da mesma magia. A estaca e a armadilha atiram e disparam sozinhas; o dano conta para quem as pôs.
@@ -320,10 +320,12 @@ Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram n
 `RULES_VERSION`. Cliente desatualizado se recarrega sozinho; se o servidor ainda está terminando o deploy, o
 cliente pede para tentar de novo em 1 ou 2 minutos.
 
-| Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-boss → boss) |
+| Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
-| 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Goblin, Esqueleto, Orc → Ogro → Dragão jovem |
-| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Cobra-d'água, Afogado, Naga guerreira → Troll do brejo → Hidra do pântano |
+| 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
+| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
+
+Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
 ### Cripta
 
@@ -411,21 +413,89 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado (ou com ele fora do alcance), o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
-- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
+- **A dificuldade não depende do tamanho da equipe:** os monstros são os mesmos com 1 ou 4 heróis. Jogar em equipe é mais fácil de propósito, para estimular a equipe; nenhuma regra escala vida, dano ou quantidade de monstros pelo número de jogadores.
+- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
-- **Habilidades especiais dos mini-bosses e bosses:** além do ataque básico, eles têm um golpe mais forte, que sai
-  na hora, sem aviso, sempre que a recarga deixa e o alvo está ao alcance. O nome do golpe sobe sobre o monstro, ele
-  brilha na cor da habilidade e o efeito cobre a área atingida. Monstros comuns só têm o ataque básico.
-  Bosses abaixo de 50% da vida se enfurecem e usam o golpe mais vezes.
+- **Princípio: difícil e injusto como a vida.** Nenhum golpe de monstro tem aviso antes (área marcada no chão, brilho de carga, contagem); o jogador se defende pela posição e pela escolha de quem matar primeiro, não reagindo a um sinal.
+- Monstros, habilidades e regras dos inimigos: ver "Bestiário".
 
-| Monstro | Habilidade | Efeito |
+## Bestiário
+
+Inspirado no Monster Manual do D&D 5e, quase só com criaturas do SRD 5.1 (licença aberta). Tabelas em
+`packages/shared/src/monsters.ts` (monstros, tipos, afixos), encontros em `maps.ts`, IA em `apps/server/src/monsterAi.ts`
+e arte em `apps/client/src/art/bestiary.ts`. O plano completo e o que falta (mapas novos) estão em `docs/BESTIARIO_PLANO.md`.
+Os jogadores veem tudo em Configurações > Regras > Bestiário.
+
+### Regras gerais
+
+- **Papéis:** bruto, escaramuçador (bate e recua, investe), artilheiro (fica a 3–5 tiles e atira; recua se colarem),
+  controlador (prende, puxa, paralisa), líder (aura nos aliados), enxame (vem em grupo), emboscador (camuflado até
+  atacar) e sentinela (lento, muita vida).
+- **Habilidades sem aviso:** cada monstro tem até 3 habilidades, em ordem de prioridade. Saem na hora, sempre que a
+  recarga deixa e o alvo está ao alcance, e a recarga varia ±30% (a "Recarga 5–6" do D&D): não dá para decorar o
+  ritmo. O nome sobe sobre o monstro, ele brilha na cor da habilidade e o efeito cobre a área. A primeira habilidade
+  só sai depois de meia recarga contada de quando o monstro nota alguém. Projéteis de monstro acertam no disparo.
+- **Fases dos bosses por vida:** a habilidade de fase sai na hora em que a vida cruza o limite (com 1 ou 4 heróis,
+  toda fase aparece). Abaixo de 50% da vida o boss se enfurece e as recargas caem para 60%.
+- **Tipos de criatura e elementos:** todo dano de herói tem elemento (básico do Cavaleiro e do Paladino é físico,
+  do Feiticeiro é energia, do Druida é natureza; cada magia tem o seu, em `elements.ts`). Monstros podem ser imunes (0),
+  resistentes (0,5–0,8) ou vulneráveis (1,5): o aviso sobe em cinza ("Imune", "Resiste") ou amarelo ("Vulnerável!").
+  Mortos-vivos e constructos não pegam veneno nem sangramento; limos não sangram; plantas são vulneráveis a fogo.
+- **Efeitos nos heróis:** preso (não anda), atordoado (não anda, não ataca, não conjura nem bebe poção), engolido
+  (como atordoado, e toma dano por segundo; os aliados batendo no monstro o fazem cuspir), cego (não mira além de 2
+  tiles) e corroído (+8% de dano recebido por acúmulo, até 3). **Controle dura no máximo 2 s** e depois o herói fica
+  **4 s imune** ao mesmo efeito.
+- **Encontros sorteados:** cada sala do caminho recebe monstros sorteados da tabela da profundidade (pelo peso) até
+  gastar um orçamento de ameaça (a XP da tabela), como o orçamento de XP do D&D. Enxames (Kobold, Estirge) vêm em
+  grupo; no máximo 8 monstros, 2 artilheiros e 1 líder por sala. Tudo pela seed.
+- **Campeões:** 5% dos comuns nascem Campeões (nome e brilho dourados): vida × 2, XP e loot × 2,5 e um afixo: Veloz
+  (+40% de velocidade), Vampírico (rouba 30% do golpe), Ígneo (o golpe queima), Escudado (metade do dano físico) ou
+  Comandante (aura de líder).
+- **A dificuldade não muda com o tamanho da equipe** (ver "Partida").
+
+### Cripta (★1)
+
+| Monstro | Papel | Assinatura (D&D) |
 |---|---|---|
-| Ogro (mini-boss) | Pisão Sísmico | 5×5 em volta (2,1×) e deixa lento por 3 s |
-| Dragão jovem (boss) | Sopro Infernal | faixa de fogo 3 de largura × 6 (1,9×) + queimadura |
-| Troll do brejo (mini-boss) | Fúria Regenerante | acerta tudo em volta (2×) e cura 8% da vida |
-| Hidra do pântano (boss) | Chuva Ácida | 5×5 a até 7 tiles (1,7×) + veneno |
+| Ratazana | enxame | Táticas de Bando: +30% de dano com outro monstro colado no mesmo alvo |
+| Kobold | enxame (2–3) | Táticas de Bando +40% |
+| Estirge | emboscador (2–3, voa) | Drenar Sangue: o golpe sangra e cura a estirge |
+| Goblin | escaramuçador | Fuga Ágil: depois de acertar, recua 1 tile (recarga 4 s) |
+| Goblin arqueiro | artilheiro | alcance 4, recua se o herói chegar a menos de 3 tiles |
+| Zumbi | bruto lento | Fortitude Morta-viva: o primeiro golpe fatal o deixa com 1 de vida (menos luz e fogo) |
+| Hobgoblin capitão | líder | Comando: monstros a até 3 tiles com +15% de dano e 15% mais rápidos |
+| Esqueleto | bruto (morto-vivo) | não envenena nem sangra |
+| Esqueleto arqueiro | artilheiro (morto-vivo) | alcance 5, recua |
+| Aranha gigante | controlador | Teia: prende 1,5 s de longe; a picada envenena |
+| Orc guerreiro | bruto | Agressivo: com o alvo a 3–5 tiles, salta até ele |
+| Gnoll | escaramuçador | Rompante: abaixo de 50% da vida, ataca 40% mais rápido |
+| **Ogro** (mini-boss) | bruto | Pisão Sísmico (raio 2, 2,1× e lentidão) · Arremesso de Pedra (de 3 a 6 tiles, área 1, empurra) |
+| **Bugbear chefe** (mini-boss) | bruto | alcance 2 · Ataque Surpresa (primeiro golpe em cada alvo 2,5×) · Golpe Brutal (2×, empurra) |
+| **Cubo Gelatinoso** (mini-boss) | sentinela | translúcido e camuflado · Engolfar (engole 2 s com ácido) |
+| **Mímico** (mini-boss) | emboscador | 1 em 3 salas laterais: no lugar do baú, disfarçado até alguém encostar · Adesivo (prende 2 s em volta) · Mordida Ácida (2× e corrói). Morto, dá o loot do baú |
+| **Dragão jovem** (boss) | — | imune a fogo · Multiataque (3 mordidas de 0,4×) · Sopro Infernal (leque de 6 tiles, 1,9× e queimadura) · abaixo de 50%: Voo (some 2 s, invulnerável, e cai sobre um herói, área 2) |
 
+### Pântano das Ruínas (★2)
+
+| Monstro | Papel | Assinatura (D&D) |
+|---|---|---|
+| Sapo gigante | controlador | Língua: puxa um herói de 2–3 tiles para colado |
+| Bullywug | escaramuçador | camuflado no brejo · Salto Parado (salta 2–4 tiles e acerta em volta) |
+| Cobra-d'água | escaramuçador | a mordida envenena |
+| Afogado | bruto (morto-vivo) | Fortitude Morta-viva |
+| Homem-lagarto | bruto | Couraça Natural (−20% de dano físico) · Multiataque (2 × 0,6) |
+| Carniçal | controlador (morto-vivo) | Garras Paralisantes: 25% de chance de atordoar 1 s |
+| Crocodilo gigante | emboscador | camuflado · Mordida que Prende (prende 1,5 s) · Rabada (em volta, empurra 2) |
+| Fogo-fátuo | controlador (morto-vivo, voa) | alcance 2, choque · some por 2 s a cada ~6 s |
+| Naga guerreira | sentinela | Constrição: prende 1,5 s |
+| Pudim Negro | bruto (limo) | resiste a gelo · Divisão (golpe físico ou de energia de 10%+ da vida o divide, até 4) · o golpe corrói |
+| Monte Errante | sentinela (planta) | Absorver Raio (energia cura) · vulnerável a fogo · Engolfar |
+| **Troll do brejo** (mini-boss) | bruto | Regeneração de 2%/s, parada por 5 s com fogo ou natureza · Dilacerar (1,8× e sangramento) |
+| **Bruxa Verde** (mini-boss) | controlador | Ilusão (some 3 s e deixa 2 cópias iguais a ela, que somem com um golpe ou quando ela morre) · Nuvem Venenosa |
+| **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
+| **Hidra do pântano** (boss) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
+| **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
 
 ## Ataques e magias (protótipo)
 
@@ -484,7 +554,7 @@ As compradas no Grimório, por slot (números do nível 0):
 | Águia Gigante (Mestre das Feras) | 50% | voa por cima da água; o mergulho (1,2×) atordoa 0,8 s |
 
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
-- Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, bola de fogo do dragão).
+- Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça na cor do sangue deles (vermelho, verde, roxo, preto; mortos-vivos viram poeira) (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, flecha dos arqueiros, bola de fogo do dragão), e cada habilidade tem o seu desenho (pedra em arco, teia, língua, salto, sopro, chuva ácida, relâmpago, engolir, voo). Os monstros respiram parados (cada um num ritmo), escondidos ficam quase transparentes e sem barra, o Mímico parece um baú e os Campeões têm nome e brilho dourados. Efeitos no herói: teia nos pés (preso), estrelas (atordoado), bolha verde (engolido), nuvem escura (cego) e gotas ácidas (corroído).
 
 ## Itens
 

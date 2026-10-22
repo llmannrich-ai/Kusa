@@ -35,6 +35,8 @@ let near = "";
 let farDist = -1;
 let nearDist = Infinity;
 room.state.monsters.forEach((m: any, id: string) => {
+  // Escondido (Mímico disfarçado, Cubo camuflado) não pode ser travado.
+  if (m.hidden) return;
   const dist = tileDistance(me().x, me().y, m.x, m.y);
   if (dist > farDist) { farDist = dist; far = id; }
 });

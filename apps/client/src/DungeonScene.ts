@@ -18,6 +18,7 @@ import {
   hasLineOfSight,
   isPotion,
   mapIdOf,
+  CHAMPION_AFFIXES,
   tileDistance,
   type AttackMessage,
   type ClassId,
@@ -26,6 +27,7 @@ import {
   type DrankMessage,
   type Dungeon,
   type MonsterKind,
+  type ChampionAffix,
   type NoticeMessage,
   type ChainMessage,
   type CooldownMessage,
@@ -53,11 +55,11 @@ import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
+import { BESTIARY_ART, BLOOD_TINT, monsterTexture } from "./art/bestiary.ts";
 import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
 import { CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
 import {
   CHEST_TEXTURE,
-  MONSTER_TEXTURE,
   PORTAL_TEXTURE,
   SUMMON_TEXTURE,
   heroArt,
@@ -81,10 +83,6 @@ const DAMAGE_TEXT_MS = 1080;
  */
 const DEPTH = { floor: 0, ui: 100_000 };
 
-/** Sprites do pack que olham para a esquerda (espelhados quando andam para a direita). */
-const FACES_LEFT = new Set<MonsterKind>(["rat", "dragon", "frog", "moccasin"]);
-/** Monstros que não sangram (viram poeira ou lama). */
-const BLOODLESS = new Set<MonsterKind>(["skeleton", "bogBody"]);
 
 const COLORS = {
   void: 0x0b0908,
@@ -141,6 +139,16 @@ interface Unit {
   lunge: Lunge;
   /** Se sangra ao apanhar (esqueleto não). */
   bleeds: boolean;
+  /** Cor do sangue (sem = vermelho). */
+  bloodTint?: number;
+  /** Monstro: textura da variante atual (cabeças da Hidra) e se está escondido. */
+  texture?: string;
+  hidden?: boolean;
+  /** Monstro: escala do sprite e fase da respiração (cada um respira num ritmo). */
+  baseScale?: number;
+  breath?: number;
+  /** Campeão: afixo já desenhado (nome e brilho dourados). */
+  champion?: string;
   dead: boolean;
   /** Efeitos que ficam na unidade enquanto duram: guarda, raízes, atordoamento. */
   statuses: Map<string, Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible>;
@@ -234,7 +242,7 @@ export class DungeonScene extends Phaser.Scene {
     callbacks.onRemove("monsters", (_monster: MonsterView, id: string) => {
       // Monstros só saem do estado quando morrem.
       const unit = this.monsters.get(id);
-      if (unit) this.hits.death(unit.sprite, { x: unit.body.x, y: unit.body.y }, unit.bleeds);
+      if (unit) this.hits.death(unit.sprite, { x: unit.body.x, y: unit.body.y }, unit.bleeds, unit.bloodTint);
       this.destroyUnit(unit);
       this.monsters.delete(id);
     });
@@ -370,6 +378,7 @@ export class DungeonScene extends Phaser.Scene {
     let best: string | null = null;
     let bestDist = TILE_SIZE * 0.9;
     this.monsters.forEach((unit, id) => {
+      if (unit.hidden) return;
       const dist = Math.hypot(unit.body.x - worldX, unit.body.y - worldY);
       if (dist < bestDist) { bestDist = dist; best = id; }
     });
@@ -382,6 +391,7 @@ export class DungeonScene extends Phaser.Scene {
     if (!me) return;
     const near: { id: string; dist: number }[] = [];
     this.room.state.monsters.forEach((m, id) => {
+      if (m.hidden) return;
       const dist = Math.max(Math.abs(m.x - me.x), Math.abs(m.y - me.y));
       if (dist <= TARGET_CYCLE_RANGE) near.push({ id, dist });
     });
@@ -530,19 +540,19 @@ export class DungeonScene extends Phaser.Scene {
    * brilha na cor da habilidade e o efeito cobre os tiles atingidos.
    */
   private onMonsterStrike(msg: MonsterStrikeMessage) {
-    const special = MONSTERS[msg.kind]?.special;
-    if (!special) return;
+    const ability = MONSTERS[msg.kind]?.abilities?.find((a) => a.id === msg.ability);
+    if (!ability) return;
     const unit = this.monsters.get(msg.id);
-    const from = unit ? { x: unit.body.x, y: unit.body.y } : this.tilePoint(msg.x, msg.y);
-    this.floatText(msg.x, msg.y - 0.6, special.name, special.color, 1200);
-    if (unit && !unit.dead) {
+    const from = unit && !msg.rising ? { x: unit.body.x, y: unit.body.y } : this.tilePoint(msg.x, msg.y);
+    if (!msg.rising || ability.shape !== "dive") this.floatText(msg.x, msg.y - 0.6, ability.name, ability.color, 1200);
+    if (unit && !unit.dead && !msg.rising) {
       this.lunge(unit, msg.tx - msg.x, msg.ty - msg.y, 7);
       const base = unit.sprite.scaleX;
       this.tweens.add({ targets: unit.sprite, scaleX: base * 1.15, scaleY: base * 1.15, duration: 110, yoyo: true, ease: "Quad.Out" });
-      unit.sprite.setTint(special.color);
+      unit.sprite.setTint(ability.color);
       this.time.delayedCall(250, () => { if (unit.sprite.active) unit.sprite.clearTint(); });
     }
-    this.fx.monsterStrike(msg.kind, from, this.tilePoints(msg.tiles));
+    this.fx.monsterStrike(ability, from, this.tilePoint(msg.tx, msg.ty), this.tilePoints(msg.tiles), msg.rising);
   }
 
   /** Tiles em pares [x0, y0, x1, y1, ...] para pontos em pixels. */
@@ -585,7 +595,7 @@ export class DungeonScene extends Phaser.Scene {
       if (msg.absorbed && target?.barrier) this.barrierHit(target.barrier);
       if (target?.sprite.active && msg.amount > 0) {
         this.hits.flash(target.sprite);
-        if (target.bleeds && Math.random() < 0.6) this.hits.bleed(to());
+        if (target.bleeds && Math.random() < 0.6) this.hits.bleed(to(), target.bloodTint);
       }
       const color = msg.dot ? DOT_COLORS[msg.dot] : msg.toPlayer ? 0xff5e57 : 0xffffff;
       if (msg.amount > 0) this.floatText(msg.x, msg.y, `-${msg.amount}`, color, DAMAGE_TEXT_MS);
@@ -804,6 +814,37 @@ export class DungeonScene extends Phaser.Scene {
     return thorns;
   }
 
+  /** Preso: fios de teia em volta dos pés. */
+  private webAt() {
+    const g = this.add.graphics();
+    const y = TILE_SIZE / 2 - 4;
+    g.lineStyle(1, 0xf5f5f5, 0.85);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI;
+      g.lineBetween(-Math.cos(a) * 13, y - Math.sin(a) * 10, Math.cos(a) * 13, y + Math.sin(a) * 3);
+    }
+    g.strokeEllipse(0, y - 2, 22, 10).strokeEllipse(0, y - 2, 12, 6);
+    this.tweens.add({ targets: g, alpha: { from: 1, to: 0.6 }, duration: 500, yoyo: true, repeat: -1 });
+    return g;
+  }
+
+  /** Engolido: bolha verde de gosma em volta do herói. */
+  private engulfAt() {
+    const g = this.add.graphics();
+    g.fillStyle(0x7cb342, 0.35).fillCircle(0, 0, TILE_SIZE * 0.6);
+    g.lineStyle(2, 0xb5e655, 0.8).strokeCircle(0, 0, TILE_SIZE * 0.6);
+    this.tweens.add({ targets: g, scale: { from: 0.95, to: 1.05 }, duration: 400, yoyo: true, repeat: -1 });
+    return g;
+  }
+
+  /** Cego: nuvem escura sobre os olhos. */
+  private blindAt(top: number) {
+    const g = this.add.graphics();
+    g.fillStyle(0x1e1e2a, 0.75).fillEllipse(-5, top, 14, 7).fillEllipse(5, top - 1, 14, 8).fillEllipse(0, top + 2, 18, 6);
+    this.tweens.add({ targets: g, x: { from: -2, to: 2 }, duration: 600, yoyo: true, repeat: -1 });
+    return g;
+  }
+
   private drawPortal() {
     const { x, y } = this.dungeon.portal;
     const portal = this.add.image(this.toPx(x), this.toPx(y), PORTAL_TEXTURE.escape).setDepth(y * TILE_SIZE + 1);
@@ -916,6 +957,14 @@ export class DungeonScene extends Phaser.Scene {
     const alive = player.status === "playing";
     this.setStatus(unit, "poison", alive && player.dot === "poison", () => this.dotAura(unit.barY + 2, DOT_COLORS.poison));
     this.setStatus(unit, "burn", alive && player.dot === "burn", () => this.dotAura(unit.barY + 2, DOT_COLORS.burn));
+    this.setStatus(unit, "bleed", alive && player.dot === "bleed", () => this.dotAura(unit.barY + 2, DOT_COLORS.bleed));
+    // Efeitos de monstro: preso (teia), atordoado (estrelas), engolido (bolhas), cego (nuvem) e corroído (ácido).
+    const effects = alive ? player.effects.split(",") : [];
+    this.setStatus(unit, "fx:root", effects.includes("root"), () => this.webAt());
+    this.setStatus(unit, "fx:stun", effects.includes("stun"), () => this.stunStars(unit.barY - 6));
+    this.setStatus(unit, "fx:engulf", effects.includes("engulf"), () => this.engulfAt());
+    this.setStatus(unit, "fx:blind", effects.includes("blind"), () => this.blindAt(unit.barY + 4));
+    this.setStatus(unit, "fx:corrode", effects.includes("corrode"), () => this.dotAura(unit.barY + 2, 0x7cb342));
     // Uma aura por magia de bônus em si, na cor dela.
     for (const id of SELF_BUFFS) this.setStatus(unit, `buff:${id}`, alive && player.buff === id, () => this.buffAura(SPELLS[id].color));
     this.setStatus(unit, "slow", alive && player.slowed, () => this.mudAtFeet());
@@ -934,30 +983,73 @@ export class DungeonScene extends Phaser.Scene {
   private addMonster(id: string, monster: MonsterView) {
     const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
     const def = MONSTERS[kind];
+    const art = BESTIARY_ART[kind];
     // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia).
     const scale = (def.rank === "boss" ? 2 : 1) * CREATURE_SPRITE_SCALE;
-    const sprite = this.add.sprite(0, 0, MONSTER_TEXTURE[kind]).setScale(scale);
+    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
+    const sprite = this.add.sprite(0, 0, texture).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
-    const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, FACES_LEFT.has(kind));
-    unit.bleeds = !BLOODLESS.has(kind);
+    const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
+    unit.texture = texture;
+    unit.baseScale = scale;
+    unit.breath = Math.random() * Math.PI * 2;
+    unit.bleeds = art.blood !== "none";
+    if (art.blood !== "none" && art.blood !== "red") unit.bloodTint = BLOOD_TINT[art.blood];
+    unit.flies = art.flies;
     if (def.rank !== "common") {
       const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
       unit.overlay.add(label);
     }
     this.monsters.set(id, unit);
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
+    this.syncHidden(unit, kind, monster.hidden);
+    this.syncChampion(unit, kind, monster.champion);
+  }
+
+  /** Campeão: nome dourado com o afixo e um brilho dourado nos pés. */
+  private syncChampion(unit: Unit, kind: MonsterKind, affix: string) {
+    if (!affix || unit.champion === affix || !(affix in CHAMPION_AFFIXES)) return;
+    unit.champion = affix;
+    const name = `${MONSTERS[kind].name} ${CHAMPION_AFFIXES[affix as ChampionAffix].name}`;
+    unit.overlay.add(this.add.text(0, unit.barY - 2, name, { ...this.textStyle(), color: "#f7d774" }).setOrigin(0.5, 1));
+    const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 26, 9, 0xf7d774, 0.4);
+    unit.body.addAt(glow, 0);
+    this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
   }
 
   private syncMonster(id: string, monster: MonsterView) {
     const unit = this.monsters.get(id);
     if (!unit) return;
+    // Variante (cabeças da Hidra): troca a textura quando muda.
+    const art = BESTIARY_ART[monster.kind as MonsterKind] ?? BESTIARY_ART.rat;
+    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(monster.kind as MonsterKind, monster.variant);
+    if (texture !== unit.texture && this.textures.exists(texture)) {
+      unit.texture = texture;
+      unit.sprite.setTexture(texture);
+    }
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
     this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
     this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
     this.setStatus(unit, "slow", monster.slowed, () => this.frostAt());
     this.setStatus(unit, "mark", monster.marked, () => this.markAt(unit.barY - 14));
     for (const kind of DOT_KINDS) this.setStatus(unit, `dot:${kind}`, monster.dot === kind, () => this.dotAt(kind));
+    this.syncHidden(unit, monster.kind as MonsterKind, monster.hidden);
+    this.syncChampion(unit, monster.kind as MonsterKind, monster.champion);
     this.moveTo(unit, monster.x, monster.y);
+  }
+
+  /**
+   * Escondido (camuflado, invisível, voando, submerso): quase transparente, sem barra nem nome, e não dá para tocar.
+   * Disfarçado (Mímico): igual a um baú, sem transparência.
+   */
+  private syncHidden(unit: Unit, kind: MonsterKind, hidden: boolean) {
+    if (unit.hidden === hidden) return;
+    unit.hidden = hidden;
+    const art = BESTIARY_ART[kind] ?? BESTIARY_ART.rat;
+    const alpha = hidden ? (art.disguise ? 1 : 0.18) : art.alpha ?? 1;
+    this.tweens.killTweensOf(unit.body);
+    this.tweens.add({ targets: unit.body, alpha, duration: 220 });
+    unit.overlay.setVisible(!hidden);
   }
 
   /** Criatura invocada: sprite do pack (ou o Guardião), barra azul (sem nome, para não poluir a tela) e um brilho ao aparecer. */
@@ -1062,6 +1154,11 @@ export class DungeonScene extends Phaser.Scene {
       : !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
     unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
     if (unit.dead) return;
+    // Monstros respiram: o sprite (com os pés no chão) encolhe e estica de leve, cada um no seu ritmo.
+    if (unit.baseScale && !this.tweens.isTweening(unit.sprite)) {
+      const breath = 1 - 0.03 * (0.5 + 0.5 * Math.sin(time / 380 + (unit.breath ?? 0)));
+      unit.sprite.setScale(unit.baseScale, unit.baseScale * breath);
+    }
     if (unit.heroKey) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);
       else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {

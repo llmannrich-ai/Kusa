@@ -1,5 +1,6 @@
 import type * as Phaser from "phaser";
-import { CLASS_IDS, TILE_SIZE, type ClassId, type MonsterKind, type SummonKind } from "@kusa/shared";
+import { CLASS_IDS, TILE_SIZE, type ClassId, type SummonKind } from "@kusa/shared";
+import { monsterTextures } from "./bestiary.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
@@ -16,21 +17,6 @@ import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, firefl
  */
 
 const DCSS_PATH = "assets/dcss/";
-
-export const MONSTER_TEXTURE: Record<MonsterKind, string> = {
-  rat: "monster-rat",
-  goblin: "monster-goblin",
-  skeleton: "monster-skeleton",
-  orc: "monster-orc",
-  ogre: "monster-ogre",
-  dragon: "monster-dragon",
-  frog: "monster-frog",
-  moccasin: "monster-moccasin",
-  bogBody: "monster-bog-body",
-  naga: "monster-naga",
-  troll: "monster-troll",
-  hydra: "monster-hydra",
-};
 
 /** Criaturas invocadas pelo Druida: as do pack e o Guardião do Bosque (arte própria). */
 export const SUMMON_TEXTURE: Record<SummonKind, string> = {
@@ -95,7 +81,7 @@ export const BLOOD_TEXTURE = { splat: "blood-splat", puddle: "blood-puddle" };
 export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
-    ...Object.values(MONSTER_TEXTURE),
+    ...monsterTextures(),
     ...Object.values(SUMMON_TEXTURE).filter((key) => !OWN_SUMMON_ART.includes(key)),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
@@ -153,7 +139,7 @@ export function createHeroArt(scene: Phaser.Scene) {
  * versão em dobro de resolução, e o Guardião do Bosque e a Águia Gigante já nascem refinados (uma vez por jogo).
  */
 export function createCreatureArt(scene: Phaser.Scene) {
-  const packed = [...new Set([...Object.values(MONSTER_TEXTURE), ...Object.values(SUMMON_TEXTURE)])]
+  const packed = [...new Set([...monsterTextures(), ...Object.values(SUMMON_TEXTURE)])]
     .filter((key) => key !== SUMMON_TEXTURE.treant && key !== SUMMON_TEXTURE.eagle);
   for (const key of packed) {
     const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;

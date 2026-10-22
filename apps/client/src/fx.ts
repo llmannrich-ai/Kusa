@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { MONSTERS, SPELLS, TILE_SIZE, type ClassId, type MonsterKind, type SpellId } from "@kusa/shared";
+import { SPELLS, TILE_SIZE, type ClassId, type MonsterAbility, type SpellId } from "@kusa/shared";
 import { FX } from "./art/combat.ts";
 
 /** Efeitos ficam acima dos personagens e abaixo das barras de vida e números. */
@@ -432,28 +432,112 @@ export class CombatFx {
 
   // --- Habilidades especiais dos monstros --------------------------------------
 
-  /** O golpe especial de um mini-boss ou boss: arte própria de cada um sobre os tiles atingidos. */
-  monsterStrike(kind: MonsterKind, from: Point, tiles: Point[]) {
-    const special = MONSTERS[kind].special;
-    if (!special) return;
-    const color = special.color;
+  /**
+   * Habilidade de monstro (sai sem aviso): o desenho vem do `fx` da habilidade, sobre os tiles atingidos.
+   * `to` é o alvo (ou onde o monstro caiu) e `rising` marca a decolagem do voo/mergulho.
+   */
+  monsterStrike(ability: MonsterAbility, from: Point, to: Point, tiles: Point[], rising = false) {
+    const color = ability.color;
+    const radius = Math.max(1, ability.radius) * TILE_SIZE;
     const flash = (delayPerRing = 0) => this.area(tiles.map((t, i) => ({ ...t, ring: delayPerRing ? i * delayPerRing : 0 })), color, 0);
-    switch (kind) {
-      case "ogre":
-      case "troll":
-        this.ring(from, TILE_SIZE * (kind === "ogre" ? 2.6 : 1.7), color, 520, 9);
-        this.later(120, () => this.ring(from, TILE_SIZE * (kind === "ogre" ? 1.8 : 1.2), 0xffffff, 360, 3));
-        this.debris(from, TILE_SIZE * (kind === "ogre" ? 2 : 1.3), kind === "ogre" ? 0x6b4426 : 0x2d4a1f);
-        flash(0.6);
-        if (kind === "troll") this.heal(from);
-        return;
-      case "dragon":
+    switch (ability.fx) {
+      case "quake":
+        this.ring(from, radius + TILE_SIZE * 0.6, color, 520, 9);
+        this.later(120, () => this.ring(from, radius * 0.7, 0xffffff, 360, 3));
+        this.debris(from, radius, 0x6b4426);
+        return flash(0.6);
+      case "breath":
         this.breath(from, tiles);
         return flash(0.5);
-      case "hydra":
+      case "acidRain":
         this.acidRain(tiles, color);
         return this.later(320, () => flash(0.3));
+      case "boulder":
+        this.lob(from, to, 0x8d6e63, 360);
+        return this.later(360, () => {
+          this.debris(to, radius, 0x6b4426);
+          this.ring(to, radius, color, 380, 6);
+          flash();
+        });
+      case "leap":
+        this.ring({ x: to.x, y: to.y + 8 }, TILE_SIZE * 0.7, color, 360, 4);
+        this.puff(to.x, to.y + 8, 0xbdb3a3, 9);
+        if (tiles.length > 0) flash();
+        return;
+      case "tongue":
+        this.lash(from, to, color, 260);
+        return this.later(140, () => this.sparks(to, color, 5));
+      case "constrict":
+        this.ring(to, TILE_SIZE * 0.55, color, 600, 5);
+        return this.later(150, () => this.ring(to, TILE_SIZE * 0.4, 0x5d6d7e, 500, 4));
+      case "rend":
+        this.slash(from, to);
+        this.later(90, () => this.slash(from, to));
+        return this.later(180, () => this.sparks(to, color, 8));
+      case "dive":
+        if (rising) {
+          this.puff(from.x, from.y, 0xffffff, 14);
+          return this.ring({ x: from.x, y: from.y + 8 }, TILE_SIZE, color, 500, 5);
+        }
+        this.ring(to, radius + TILE_SIZE / 2, color, 480, 8);
+        this.debris(to, radius, 0x6b4426);
+        return flash(0.4);
+      case "web":
+        this.lob(from, to, 0xf5f5f5, 260);
+        return this.later(260, () => this.ring(to, TILE_SIZE * 0.6, 0xf5f5f5, 700, 2));
+      case "spit":
+        this.lob(from, to, color, 300);
+        return this.later(300, () => {
+          this.bubbles(to, color);
+          flash();
+        });
+      case "lightning":
+        for (const t of tiles) this.zap(from, t, color);
+        return flash(0.3);
+      case "bolt":
+        this.lob(from, to, color, 240);
+        return this.later(240, () => this.sparks(to, color, 8));
+      case "engulf":
+        this.bubbles(to, color);
+        return this.ring(to, TILE_SIZE * 0.7, color, 500, 6);
+      case "summon":
+        this.ring({ x: from.x, y: from.y + 8 }, TILE_SIZE * 1.2, color, 520, 4);
+        return this.sparks(from, color, 10);
+      case "vanish":
+        this.puff(from.x, from.y, color, 14);
+        return this.sparks(from, color, 10);
+      case "slam":
+        this.ring(to, radius, color, 420, 7);
+        return flash();
     }
+  }
+
+  /** Coisa arremessada em arco (pedra, teia, cuspe), com sombra no chão. */
+  private lob(from: Point, to: Point, color: number, ms: number) {
+    const ball = this.scene.add.circle(from.x, from.y - 8, 4, color).setDepth(FX_DEPTH).setStrokeStyle(1, 0x000000, 0.5);
+    const shadow = this.scene.add.ellipse(from.x, from.y + 10, 8, 3, 0x000000, 0.35).setDepth(FX_DEPTH - 1);
+    this.scene.tweens.add({ targets: shadow, x: to.x, y: to.y + 10, duration: ms, onComplete: () => shadow.destroy() });
+    this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: ms,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        ball.setPosition(from.x + (to.x - from.x) * t, from.y - 8 + (to.y - from.y) * t - Math.sin(t * Math.PI) * 26);
+      },
+      onComplete: () => ball.destroy(),
+    });
+  }
+
+  /** Língua ou chicote: estica do monstro até o alvo e volta. */
+  private lash(from: Point, to: Point, color: number, ms: number) {
+    const g = this.scene.add.graphics().setDepth(FX_DEPTH);
+    this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: ms, yoyo: true,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        g.clear().lineStyle(4, color, 1).lineBetween(from.x, from.y - 6, from.x + (to.x - from.x) * t, from.y - 6 + (to.y - from.y) * t);
+      },
+      onComplete: () => g.destroy(),
+    });
   }
 
   /** Bolhas de veneno subindo. */
