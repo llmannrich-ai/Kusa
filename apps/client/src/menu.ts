@@ -18,6 +18,11 @@ import {
   knownSpells,
   MASTERIES,
   MASTERY_RANK,
+  SPELL_MAX_LEVEL,
+  DEATH_SPELL_XP_LOSS,
+  nodeLevel,
+  spellLevelProgress,
+  spellXpOf,
   spellFacts,
   statsFor,
   talentBlocker,
@@ -191,7 +196,7 @@ function heroUrl(classId: ClassId, outfit: Outfit, view: HeroDir | "all") {
 }
 
 export class Hub {
-  private profile: Profile = { gold: 0, talents: {}, items: [] };
+  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, items: [] };
   private tab: Tab = "classes";
   private marketMode: "buy" | "sell" = "buy";
   /** Slot mostrado na compra do mercado. */
@@ -218,7 +223,7 @@ export class Hub {
   /** Abre o menu da conta e busca árvore, inventário e gold. */
   async open(username: string, initialGold: number) {
     $("account-name").textContent = username;
-    this.profile = { gold: initialGold, talents: {}, items: [] };
+    this.profile = { gold: initialGold, talents: {}, spellXp: {}, items: [] };
     this.render();
     try {
       this.profile = await loadProfile();
@@ -328,11 +333,13 @@ export class Hub {
 
     const tree = talentTree(this.treeClass);
     const ranks = this.profile.talents;
+    const xp = this.profile.spellXp;
     const spells = tree.filter((t) => t.kind === "spell");
     const learned = spells.filter((t) => talentRank(t, ranks) > 0).length;
     page.append(el("p", "muted hub-hint",
       `${learned}/${spells.length} magias. Um ramo por vez: o tronco desce no meio e os galhos saem para os lados. ` +
       "Toque num nó para ver e comprar; cada um pede o nó de cima (a diagonal pontilhada é um segundo pré-requisito). " +
+      "Magia comprada sobe de nível com o uso nas hunts, devagar; os nós de baixo pedem a magia de cima no nível 1. " +
       "Magias viram opção quando o slot abre na hunt (nível 3 e 6). Ramos com ✦ terminam em duas especializações, " +
       "e a escolha é permanente."));
 
@@ -379,7 +386,7 @@ export class Hub {
       svg.append(path);
     };
     for (const def of shown) {
-      const state = talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open";
+      const state = talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks, xp) ? "" : "open";
       for (const req of [def.requires, def.alsoRequires]) {
         const parent = req && shown.find((t) => t.id === req.id);
         if (parent) link(parent, def, state, req === def.alsoRequires);
@@ -397,6 +404,19 @@ export class Hub {
     return page;
   }
 
+  /** Barra do XP de uso de uma magia comprada até o próximo nível. */
+  private spellXpBar(progress: { level: number; into: number; need: number }) {
+    const box = el("div", "grim-xp");
+    const bar = el("div", "grim-xp-bar");
+    const fill = el("i");
+    fill.style.width = `${progress.need > 0 ? Math.min(100, (progress.into / progress.need) * 100) : 100}%`;
+    bar.append(fill);
+    box.append(bar, el("small", "muted", progress.need > 0
+      ? `${progress.into}/${progress.need} XP para o nível ${progress.level + 1} · morrer tira ${Math.round(DEATH_SPELL_XP_LOSS * 100)}% do XP (nunca abaixo do nível 1)`
+      : "Nível máximo"));
+    return box;
+  }
+
   /** O Traço de um lado de um ramo especializado. */
   private specTrait(classId: ClassId, col: number, side: 0 | 1) {
     return talentTree(classId).find((t) => t.kind === "trait" && t.col === col && t.side === side) ?? null;
@@ -405,18 +425,22 @@ export class Hub {
   private grimNode(def: TalentDef) {
     const ranks = this.profile.talents;
     const rank = talentRank(def, ranks);
-    const blocker = talentBlocker(def, ranks);
-    const maxed = rank >= def.maxRank;
-    const locked = !!blocker && !maxed;
-    const affordable = !blocker && this.profile.gold >= talentCost(def, rank);
+    const blocker = talentBlocker(def, ranks, this.profile.spellXp);
     const spell = def.spellId ? SPELLS[def.spellId] : null;
+    // Magia: as bolinhas são o nível de uso (0 a 5); comprada, ela não tem mais nada à venda.
+    const level = spell && rank > 0 ? nodeLevel(def, ranks, this.profile.spellXp) : 0;
+    const pipCount = spell ? SPELL_MAX_LEVEL : def.maxRank;
+    const pipOn = spell ? level : rank;
+    const maxed = spell ? level >= SPELL_MAX_LEVEL : rank >= def.maxRank;
+    const locked = !!blocker && rank < def.maxRank;
+    const affordable = !blocker && this.profile.gold >= talentCost(def, rank);
 
     const node = el("button", `gnode ${def.kind}`);
     node.classList.toggle("owned", rank > 0);
     node.classList.toggle("maxed", maxed);
     node.classList.toggle("locked", locked);
     node.classList.toggle("ready", affordable);
-    node.setAttribute("aria-label", `${def.name}, nível ${rank} de ${def.maxRank}${locked ? `, ${blocker}` : ""}`);
+    node.setAttribute("aria-label", `${def.name}, ${spell && rank === 0 ? "não aprendida" : `nível ${pipOn} de ${pipCount}`}${locked ? `, ${blocker}` : ""}`);
 
     // O Traço é um losango: o ícone vai num span que desfaz a rotação.
     const orb = el("span", "gnode-orb");
@@ -424,7 +448,7 @@ export class Hub {
     if (spell) orb.append(el("b", "gnode-slot", String(spell.slot + 1)));
     if (locked) orb.append(el("b", "gnode-lock", "🔒"));
     const pips = el("span", "gnode-pips");
-    for (let i = 0; i < def.maxRank; i++) pips.append(el("i", i < rank ? "on" : ""));
+    for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
     // O losango do Traço leva o nome da especialização (Criomante, Arcanista...); o do Traço fica na ficha.
     node.append(orb, pips, el("span", "gnode-name", def.traitId ? TRAITS[def.traitId].spec : def.name));
     node.onclick = () => this.openTalentSheet(def);
@@ -435,9 +459,12 @@ export class Hub {
   private openTalentSheet(def: TalentDef) {
     const ranks = this.profile.talents;
     const rank = talentRank(def, ranks);
-    const blocker = talentBlocker(def, ranks);
+    const blocker = talentBlocker(def, ranks, this.profile.spellXp);
     const maxed = rank >= def.maxRank;
     const spell = def.spellId ? SPELLS[def.spellId] : null;
+    // Magia comprada: o nível vem do XP de uso nas hunts.
+    const spellXp = spell && rank > 0 ? spellXpOf(def, this.profile.spellXp) : 0;
+    const progress = spellLevelProgress(spellXp);
     const branch = TREE_BRANCHES[def.classId][def.col];
     const trait = def.traitId ? TRAITS[def.traitId] : null;
     // Lado de uma especialização: o nome dela aparece na ficha (do Traço e das magias do lado).
@@ -451,7 +478,7 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : ` · nível ${rank}/${def.maxRank}`}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
@@ -465,7 +492,8 @@ export class Hub {
     }
     if (spell) {
       sheet.append(el("p", "", spell.description));
-      if (rank < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
+      if (progress.level < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
+      if (rank > 0) sheet.append(this.spellXpBar(progress));
     }
 
     const levels = el("div", "grim-levels");
@@ -479,17 +507,24 @@ export class Hub {
       levels.append(box);
     };
     // O Traço não tem níveis: a descrição já diz o que ele faz.
-    if (!trait) {
+    if (spell) {
+      // Não aprendida: o que ela faz ao comprar (nível 0). Aprendida: o nível atual e o próximo.
+      level(progress.level, rank > 0);
+      if (rank > 0 && progress.level < SPELL_MAX_LEVEL) level(progress.level + 1, false);
+      sheet.append(levels);
+    } else if (!trait) {
       if (rank > 0) level(rank, true);
       if (!maxed) level(rank + 1, false);
       sheet.append(levels);
     }
 
     const actions = el("div", "actions");
-    if (maxed) {
+    if (spell && rank > 0) {
+      actions.append(el("p", "node-state", progress.level >= SPELL_MAX_LEVEL ? "Nível máximo" : "Use nas hunts para subir de nível"));
+    } else if (maxed) {
       actions.append(el("p", "node-state", trait ? `Você é ${trait.spec}` : "Nível máximo"));
     } else if (blocker) {
-      actions.append(el("p", "node-state", `🔒 ${blocker} (nível ${def.requires?.rank ?? 1})`));
+      actions.append(el("p", "node-state", `🔒 ${blocker}`));
     } else {
       const cost = talentCost(def, rank);
       const verb = rank > 0 ? `Subir para o nível ${rank + 1}` : spell ? "Aprender" : trait ? `Ser ${trait.spec}` : "Comprar";
@@ -500,7 +535,7 @@ export class Hub {
       const purchase = () => void this.run(async () => {
         this.profile.gold = await buyTalent(def.id);
         this.profile.talents[def.id] = rank + 1;
-        this.toast(trait ? `Agora você é ${trait.spec}!` : rank === 0 && spell ? `${def.name} aprendida!` : `${def.name} nível ${rank + 1}!`);
+        this.toast(trait ? `Agora você é ${trait.spec}!` : spell ? `${def.name} aprendida! Use nas hunts para subir de nível.` : `${def.name} nível ${rank + 1}!`);
       }).then(() => this.openTalentSheet(def));
       buy.onclick = () => {
         if (confirmed) return purchase();

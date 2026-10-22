@@ -82,6 +82,17 @@ import {
   spellChoices,
   spellCooldownMs,
   spellRanks,
+  spellLevelFromXp,
+  spellTalentId,
+  spellXpAfterRun,
+  spellXpOf,
+  castXp,
+  SPELL_LEVEL_XP,
+  SPELL_XP_COMBAT_TILES,
+  SPELL_XP_HUNT_CAP,
+  TALENTS,
+  type SpellProgress,
+  type SpellXp,
   statsFor,
   summonStats,
   talentTree,
@@ -191,6 +202,8 @@ interface Seat {
   sapUntil: number;
   /** Céu Carregado (Traço): magias conjuradas na hunt, para o raio a cada 4. */
   castCount: number;
+  /** XP de uso das magias da conta ao entrar (o banco é quem grava o novo, no fim da hunt). */
+  spellXp: SpellXp;
   /** Espinhos de Ferro: fração do golpe corpo a corpo devolvida, até quando. */
   thornsPct: number;
   thornsUntil: number;
@@ -393,6 +406,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const talents = ALL_SPELLS
       ? Object.fromEntries(talentTree(classId).map((t) => [t.id, t.maxRank]))
       : auth.account?.talents ?? {};
+    const spellXp: SpellXp = ALL_SPELLS
+      ? Object.fromEntries(talentTree(classId).filter((t) => t.spellId).map((t) => [t.id, SPELL_LEVEL_XP[SPELL_LEVEL_XP.length - 1]]))
+      : auth.account?.spellXp ?? {};
     const bonus = auraBonuses(classId, talents);
     const stats = statsFor(classId, START_LEVEL, bonus);
 
@@ -404,7 +420,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     player.hp = player.maxHp = stats.maxHp;
     player.mana = player.maxMana = stats.maxMana;
     player.knownSpells.push(...knownSpells(classId, talents));
-    for (const [spellId, rank] of Object.entries(spellRanks(classId, talents))) player.spellRanks.set(spellId, rank);
+    for (const [spellId, rank] of Object.entries(spellRanks(classId, talents, spellXp))) player.spellRanks.set(spellId, rank);
     // A equipe nasce junta, ao redor do portal de fuga: cada um num canto livre (quem saiu da sala de espera libera o seu).
     const { x: px, y: py } = this.dungeon.portal;
     const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([dx, dy]) => ({ x: px + dx, y: py + dy }));
@@ -418,7 +434,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
-      fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0,
+      fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       aura: bonus, perks: {}, perkBonus: perkBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, stats: newRunStats(),
     });
@@ -842,7 +858,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!spell) return;
     if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
     const seat = this.seats.get(client.sessionId);
-    if (seat) seat.stats.spellsChosen[slot + 1] = { id: spell.id, rank: p.spellRanks.get(spell.id) ?? 1, at: this.seconds() };
+    if (seat) seat.stats.spellsChosen[slot + 1] = { id: spell.id, rank: p.spellRanks.get(spell.id) ?? 0, at: this.seconds() };
     this.notice(p.x, p.y - 1, spell.name, 0x9b59b6);
   }
 
@@ -855,8 +871,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (slot !== 0 && slot !== 1) return;
     const base = SPELLS[spellIn(p, slot) as SpellId];
     if (!base) return;
-    // Os níveis 2 e 3 comprados no Grimório deixam a magia mais forte.
-    const spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 1);
+    // O nível ganho com o uso nas hunts deixa a magia mais forte.
+    const spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0);
 
     const now = this.clock.currentTime;
     if (now < seat.spellReadyAt[slot]) return;
@@ -978,6 +994,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     p.mana -= spell.manaCost;
     bump(seat.stats.casts, spell.id);
+    // Nível pelo uso: só conta em combate (algum monstro à vista por perto), para não render XP em sala vazia.
+    if (this.nearestMonsterInRange(p, SPELL_XP_COMBAT_TILES)) bump(seat.stats.spellXp, base.id, castXp(base));
     // Céu Carregado (Traço): a cada tantas magias, um raio cai no monstro mais perto.
     const sky = seat.traits.find((t) => t.chargedSky)?.chargedSky;
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
@@ -987,7 +1005,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Disparo Certeiro: mais forte quanto mais longe estava o alvo na hora do tiro.
     const far = spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, tx, ty) : 1;
     const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0) * far;
-    const rank = p.spellRanks.get(base.id) ?? 1;
+    const rank = p.spellRanks.get(base.id) ?? 0;
     this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount, line, slot, ally));
     // Maestria que repete (Giro da Lâmina, Terremoto, Esfera Sombria): o efeito volta mais fraco, sem gastar mana.
     // Em volta de si, segue o herói; com alvo, segue o monstro se ele ainda estiver vivo.
@@ -2328,12 +2346,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     // O equipamento que sobrou no corpo volta equipado para a conta; a bag de quem sai vivo vai para o cofre.
     const items = equipment(player).filter(Boolean);
-    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost };
+    const spells = seat ? this.spellProgress(player.classId as ClassId, seat, !survived) : [];
+    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost, spells };
     this.clients.getById(sessionId)?.send(MSG.runEnded, result);
 
     const userId = seat?.userId;
     if (userId) {
-      void recordRun(this.matchId, { userId, classId: player.classId, outcome, level: player.level, loot: player.loot, items, bag });
+      const spellXp = Object.fromEntries(spells.map((s) => [spellTalentId(player.classId as ClassId, s.id as SpellId), s.gained]));
+      void recordRun(this.matchId, { userId, classId: player.classId, outcome, level: player.level, loot: player.loot, items, bag, spellXp });
     }
     if (seat) {
       void recordTelemetry({
@@ -2348,6 +2368,19 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.state.phase = "ended";
       this.clock.setTimeout(() => this.disconnect(), 10_000);
     }
+  }
+
+  /**
+   * XP de uso das magias escolhidas na hunt: o ganho (até o teto) e, na morte, a perda. O banco faz a mesma conta
+   * em `finish_run` a partir do XP gravado; aqui é só para mostrar no fim da hunt.
+   */
+  private spellProgress(classId: ClassId, seat: Seat, died: boolean): SpellProgress[] {
+    return Object.values(seat.stats.spellsChosen).map(({ id }) => {
+      const before = spellXpOf(TALENTS[spellTalentId(classId, id as SpellId)], seat.spellXp);
+      const gained = Math.min(seat.stats.spellXp[id] ?? 0, SPELL_XP_HUNT_CAP);
+      const xp = spellXpAfterRun(before, gained, died);
+      return { id, gained, lost: before + gained - xp, xp, level: spellLevelFromXp(xp), levelBefore: spellLevelFromXp(before) };
+    });
   }
 
   /** Segundos desde o início da hunt, para a telemetria. */
@@ -2484,7 +2517,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       f.y = ty;
       this.state.fields.set(f.id, f);
       this.fieldBrains.set(f.id, {
-        spell: { ...spell, field: undefined }, rank: 1, kind: "wall", amount: 0, allyArmor: 0, allyDamage: 0, allyHeal: 0, allyMana: 0, rootMs: 0,
+        spell: { ...spell, field: undefined }, rank: 0, kind: "wall", amount: 0, allyArmor: 0, allyDamage: 0, allyHeal: 0, allyMana: 0, rootMs: 0,
         tickMs: 1000, nextTickAt: now + 1000, until: now + def.ms, shotsLeft: 0,
       });
     }

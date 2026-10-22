@@ -6,6 +6,7 @@ import {
   MAX_LEVEL,
   MSG,
   RULES_VERSION,
+  SPELLS,
   VERSION_MISMATCH_CODE,
   difficultyStars,
   mapIdOf,
@@ -388,7 +389,32 @@ function showResult(msg: RunEndedMessage) {
       + ` (com o cofre cheio, o resto fica na bag).`;
   }
   if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${ITEMS[msg.lost]?.name ?? msg.lost}.`;
+  renderSpellProgress(msg);
   show("result", true);
+}
+
+/** Quanto cada magia escolhida evoluiu com o uso (só a conta guarda; o nível novo vale na próxima hunt). */
+function renderSpellProgress(msg: RunEndedMessage) {
+  const list = $("result-spells");
+  list.replaceChildren();
+  for (const s of msg.spells) {
+    const spell = SPELLS[s.id as keyof typeof SPELLS];
+    if (!spell) continue;
+    const parts = [`${spell.icon} ${spell.name}: +${s.gained} XP`];
+    if (s.lost > 0) parts.push(`−${s.lost} pela morte`);
+    parts.push(s.level > s.levelBefore ? `subiu para o nível ${s.level}!` : s.level < s.levelBefore ? `caiu para o nível ${s.level}` : `nível ${s.level}`);
+    const li = document.createElement("li");
+    li.textContent = parts.join(" · ");
+    if (s.level !== s.levelBefore) li.className = s.level > s.levelBefore ? "up" : "down";
+    list.append(li);
+  }
+  if (!account && msg.spells.length > 0) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "Convidado: entre na conta para suas magias subirem de nível.";
+    list.append(li);
+  }
+  list.hidden = list.childElementCount === 0;
 }
 
 /** No celular, tela cheia e trava na vertical (Android; o iOS ignora e mostra o aviso de girar). */

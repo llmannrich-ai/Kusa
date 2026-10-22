@@ -770,6 +770,13 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 }
 .gnode.locked .gnode-name { color: var(--muted); }
 .sheet-icon { display: grid; place-items: center; width: 48px; height: 48px; font-size: 30px; flex: none; background: #000; border: 2px solid var(--accent); border-radius: 50%; }
+#result-spells { margin: 0 0 12px; padding-left: 18px; font-size: 13px; text-align: left; }
+#result-spells .up { color: #c9a0ff; font-weight: bold; }
+#result-spells .down { color: #e57373; }
+.grim-xp { margin: 8px 0; }
+.grim-xp-bar { height: 8px; background: #000; border: 1px solid var(--border); }
+.grim-xp-bar i { display: block; height: 100%; background: #c9a0ff; }
+.grim-xp small { display: block; margin-top: 3px; }
 .grim-levels { display: grid; gap: 8px; margin: 8px 0 12px; }
 .grim-level { padding: 8px 10px; background: #000; border: 1px solid var(--border); }
 .grim-level.current { border-color: #8e6bbf; }

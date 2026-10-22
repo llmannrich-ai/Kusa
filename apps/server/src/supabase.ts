@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { RunOutcome, TalentRanks } from "@kusa/shared";
+import type { RunOutcome, SpellXp, TalentRanks } from "@kusa/shared";
 
 const url = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -20,6 +20,8 @@ export interface Account {
   name: string;
   /** Árvore de magias comprada (todas as classes). */
   talents: TalentRanks;
+  /** XP de uso de cada magia (id do nó → XP), que dá o nível dela. */
+  spellXp: SpellXp;
 }
 
 /** Valida o JWT do jogador e devolve a conta, ou null se for convidado. */
@@ -29,12 +31,13 @@ export async function resolveAccount(accessToken?: string): Promise<Account | nu
   if (error || !data.user) throw new Error("Sessão inválida");
   const [{ data: profile }, { data: talents }] = await Promise.all([
     supabase.from("profiles").select("username").eq("id", data.user.id).single(),
-    supabase.from("profile_talents").select("talent_id, rank").eq("profile_id", data.user.id),
+    supabase.from("profile_talents").select("talent_id, rank, xp").eq("profile_id", data.user.id),
   ]);
   return {
     userId: data.user.id,
     name: profile?.username ?? data.user.user_metadata.username ?? "Aventureiro",
     talents: Object.fromEntries((talents ?? []).map((t) => [t.talent_id, t.rank])),
+    spellXp: Object.fromEntries((talents ?? []).filter((t) => t.xp > 0).map((t) => [t.talent_id, t.xp])),
   };
 }
 
@@ -73,6 +76,8 @@ export interface RunResult {
   items: string[];
   /** Itens da bag ao sair; vão para o cofre de quem sai vivo (o que não couber fica na bag). */
   bag: string[];
+  /** XP de uso ganho por magia escolhida na hunt (id do nó → XP, 0 se não lançou); a morte tira um pouco no banco. */
+  spellXp: Record<string, number>;
 }
 
 /** Grava o resultado da hunt, credita o gold e devolve equipamento e bag (`finish_run` e `store_bag` no banco). */
@@ -86,6 +91,7 @@ export async function recordRun(matchId: string, result: RunResult) {
     p_level: result.level,
     p_loot: result.loot,
     p_items: result.items,
+    p_spell_xp: result.spellXp,
   });
   if (error) {
     console.error("Falha ao salvar resultado da hunt", error);
