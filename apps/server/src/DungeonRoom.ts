@@ -7,6 +7,8 @@ import {
   SERVER_TICK_MS,
   VERSION_MISMATCH_CODE,
   mapIdOf,
+  spellXpGains,
+  type ClassId,
   type AttackingMessage,
   type BagDropMessage,
   type BagEquipMessage,
@@ -53,7 +55,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       runEnded: (sessionId, result, report) => {
         this.clients.getById(sessionId)?.send(MSG.runEnded, result);
         const userId = this.users.get(sessionId) ?? null;
-        if (userId) void recordRun(this.matchId, { userId, ...result, classId: report.classId });
+        if (userId) void recordRun(this.matchId, { userId, ...result, classId: report.classId, spellXp: spellXpGains(report.classId as ClassId, result.spells) });
         void recordTelemetry({ matchId: this.matchId, userId, ...report });
       },
       ended: () => void this.clock.setTimeout(() => this.disconnect(), 10_000),
@@ -100,6 +102,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       name: auth.account?.name ?? options.name,
       classId: options.classId,
       talents: auth.account?.talents ?? {},
+      spellXp: auth.account?.spellXp ?? {},
     });
     this.updateListing();
   }

@@ -65,7 +65,7 @@ export type SpellId =
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
  * lentidão, atordoamento, guarda, armadura, escudo, roubo de vida, provocação e invocação de criaturas.
  * `aim: "self"` centra a área em quem conjura; `aim: "target"` usa a mira (ou o alvo automático no toque rápido).
- * Os números são do nível 1; `spellAtRank` aplica os níveis 2 e 3 comprados no Grimório.
+ * Os números são do nível 0 (recém-comprada); `spellAtRank` aplica os níveis ganhos com o uso nas hunts.
  */
 export interface SpellDef {
   id: SpellId;
@@ -893,17 +893,20 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
 };
 
-/** Níveis de uma magia no Grimório (o 1 é o aprendido). */
-export const SPELL_MAX_RANK = 3;
+/**
+ * Nível máximo de uma magia. O nível sai do uso nas hunts (`spellxp.ts`): a magia comprada começa no 0
+ * (aprendiz), com os números da tabela, e cada nível acima dela a deixa mais forte.
+ */
+export const SPELL_MAX_LEVEL = 5;
 
-/** Força da magia no nível: +20% de dano (também o contínuo), cura, escudo, armadura e criaturas por nível acima do 1. */
-export const rankPower = (rank: number) => 1 + 0.2 * (Math.max(1, rank) - 1);
-/** Duração dos efeitos no nível: +15% por nível acima do 1. */
-export const rankDuration = (rank: number) => 1 + 0.15 * (Math.max(1, rank) - 1);
+/** Força da magia no nível: +10% de dano (também o contínuo), cura, escudo, armadura e criaturas por nível. */
+export const rankPower = (rank: number) => 1 + 0.1 * Math.max(0, rank);
+/** Duração dos efeitos no nível: +7,5% por nível. */
+export const rankDuration = (rank: number) => 1 + 0.075 * Math.max(0, rank);
 
 /**
- * Maestria: o nível 3 de cada magia muda o efeito, além dos +20%. `changes` troca campos da magia no nível 1
- * (antes de aplicar a força do nível); objetos como `summon` e `chain` entram inteiros.
+ * Maestria: o último nível de cada magia muda o efeito, além dos números. `changes` troca campos da magia na
+ * tabela (antes de aplicar a força do nível); objetos como `summon` e `chain` entram inteiros.
  */
 export interface Mastery {
   text: string;
@@ -911,7 +914,7 @@ export interface Mastery {
 }
 
 /** Nível em que a Maestria entra. */
-export const MASTERY_RANK = 3;
+export const MASTERY_RANK = SPELL_MAX_LEVEL;
 
 export const MASTERIES: Record<SpellId, Mastery> = {
   // Cavaleiro
@@ -1040,7 +1043,7 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   bramble_burst: { text: "Os espinhos brotam em raio 3.", changes: { radius: 3 } },
 };
 
-/** A magia com os números do nível comprado e, no nível 3, a Maestria (mana e recarga não mudam). */
+/** A magia com os números do nível (ganho com o uso) e, no último, a Maestria (mana e recarga não mudam). */
 export function spellAtRank(base: SpellDef, rank: number): SpellDef {
   const def = rank >= MASTERY_RANK ? { ...base, ...MASTERIES[base.id].changes } : base;
   const k = rankPower(rank);
@@ -1084,7 +1087,7 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
 const sec = (ms: number) => `${num(ms / 1000)} s`;
 
 /** Efeitos da magia num nível, em linhas curtas para o menu e a escolha na hunt. */
-export function spellFacts(def: SpellDef, rank = 1): string[] {
+export function spellFacts(def: SpellDef, rank = 0): string[] {
   const s = spellAtRank(def, rank);
   const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque (${s.range} tiles)`
     : s.radius > 0 && !s.field ? ` em raio ${s.radius}` : "";

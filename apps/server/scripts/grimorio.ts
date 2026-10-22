@@ -1,8 +1,9 @@
 /**
  * Teste de fumaça do Grimório contra um servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1
- * (slots abertos e todas as magias da classe no nível 3, com a Maestria):
- *   - regras: toda magia tem Maestria, que só entra no nível 3, e os efeitos sobem com o nível; as especializações
- *     do Grimório se excluem (comprar um lado fecha o outro) e as magias de um lado pedem o Traço dele;
+ * (slots abertos e todas as magias da classe no nível 5, com a Maestria):
+ *   - regras: toda magia tem Maestria, que só entra no último nível, e os efeitos sobem com o nível; as
+ *     especializações do Grimório se excluem (comprar um lado fecha o outro) e as magias de um lado pedem o Traço;
+ *     o nó de baixo pede a magia de cima no nível 1 (ganho com o uso, não com gold);
  *   - o Cavaleiro ergue o Escudo da Fé, que absorve o dano dos monstros antes da vida;
  *   - o Giro da Lâmina gira de novo sozinho (Maestria);
  *   - o Druida invoca 2 Lobos Espirituais e a Matilha de 4 (Maestria), e os lobos ferem os monstros;
@@ -15,9 +16,9 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  CLASS_IDS, MASTERIES, MONSTERS, MSG, SPELLS, TALENTS, activeTraits, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
+  CLASS_IDS, MASTERIES, MASTERY_RANK, SPELL_LEVEL_XP, MONSTERS, MSG, SPELLS, TALENTS, activeTraits, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
   knownSpells, lineTiles, spellAtRank, spellFacts, talentBlocker, talentTree,
-  type MonsterKind, type SpellId, type TalentRanks,
+  type MonsterKind, type SpellId, type SpellXp, type TalentRanks,
 } from "@kusa/shared";
 import { approach, enter, inSight, nearestMonster, until, wait } from "./hunt.ts";
 
@@ -48,20 +49,20 @@ function rules() {
   }
   const venom = spellAtRank(SPELLS.venom_thorn, 2);
   if (Math.abs(venom.dot!.perSec - 0.3 * 1.2) > 1e-9 || venom.dot!.ms !== 4600) throw new Error(`veneno no nível 2: ${JSON.stringify(venom.dot)}`);
-  if (spellAtRank(SPELLS.blizzard, 3).slow!.ms !== 5200) throw new Error("a lentidão devia durar mais no nível 3");
-  // Toda magia tem Maestria, que só vale no nível 3 e muda algo além dos números do nível.
+  if (spellAtRank(SPELLS.blizzard, 4).slow!.ms !== 5200) throw new Error("a lentidão devia durar mais no nível 4");
+  // Toda magia tem Maestria, que só vale no último nível e muda algo além dos números do nível.
   for (const id of Object.keys(SPELLS) as SpellId[]) {
     const changes = MASTERIES[id].changes;
     if (Object.keys(changes).length === 0) throw new Error(`${id}: Maestria sem efeito`);
-    if (!spellFacts(SPELLS[id], 3).some((f) => f.startsWith("★ Maestria"))) throw new Error(`${id}: Maestria fora do texto`);
-    if (spellFacts(SPELLS[id], 2).some((f) => f.includes("Maestria"))) throw new Error(`${id}: Maestria antes do nível 3`);
-    const two = spellAtRank(SPELLS[id], 2);
-    const three = spellAtRank(SPELLS[id], 3);
+    if (!spellFacts(SPELLS[id], MASTERY_RANK).some((f) => f.startsWith("★ Maestria"))) throw new Error(`${id}: Maestria fora do texto`);
+    if (spellFacts(SPELLS[id], MASTERY_RANK - 1).some((f) => f.includes("Maestria"))) throw new Error(`${id}: Maestria antes do nível ${MASTERY_RANK}`);
+    const two = spellAtRank(SPELLS[id], MASTERY_RANK - 1);
+    const three = spellAtRank(SPELLS[id], MASTERY_RANK);
     const changed = (Object.keys(changes) as (keyof typeof changes)[]).some((k) => JSON.stringify(two[k]) !== JSON.stringify(three[k]));
     if (!changed) throw new Error(`${id}: a Maestria não muda nada`);
   }
-  if (spellAtRank(SPELLS.piercing_shot, 3).range !== 9) throw new Error("a Maestria do Disparo Perfurante devia dar alcance 9");
-  if (spellAtRank(SPELLS.spirit_wolf, 3).summon!.count !== 2) throw new Error("a Maestria do Lobo Espiritual devia dar 2 lobos");
+  if (spellAtRank(SPELLS.piercing_shot, MASTERY_RANK).range !== 9) throw new Error("a Maestria do Disparo Perfurante devia dar alcance 9");
+  if (spellAtRank(SPELLS.spirit_wolf, MASTERY_RANK).summon!.count !== 2) throw new Error("a Maestria do Lobo Espiritual devia dar 2 lobos");
   specializations();
   // Leque (Barragem): passa pelo ponto mirado, não volta para trás e fica dentro do alcance.
   for (let ty = y - 4; ty <= y + 4; ty++) {
@@ -91,19 +92,25 @@ function specializations() {
   }
   // Conta com o tronco do ramo Mira comprado: os dois lados abertos; comprou um, o outro fecha, com as magias dele.
   const base: TalentRanks = { paladin_damage: 1, paladin_piercing_shot: 1, paladin_stun_arrow: 1, paladin_deadly_shot: 1 };
-  if (talentBlocker(TALENTS.paladin_eagle_eye, base) || talentBlocker(TALENTS.paladin_light_step, base)) throw new Error("os dois lados deviam estar abertos");
-  if (!talentBlocker(TALENTS.paladin_hunter_mark, base)) throw new Error("a magia do lado não pode sair sem o Traço");
+  // Comprado não basta: o Traço pede o Disparo Certeiro no nível 1, que vem do uso nas hunts.
+  if (!talentBlocker(TALENTS.paladin_eagle_eye, base, {})?.includes("Disparo Certeiro no nível 1")) throw new Error("o Traço devia pedir a magia de cima no nível 1");
+  const xp: SpellXp = { paladin_deadly_shot: SPELL_LEVEL_XP[0] };
+  if (talentBlocker(TALENTS.paladin_eagle_eye, base, xp) || talentBlocker(TALENTS.paladin_light_step, base, xp)) throw new Error("os dois lados deviam estar abertos");
+  if (!talentBlocker(TALENTS.paladin_hunter_mark, base, xp)) throw new Error("a magia do lado não pode sair sem o Traço");
   const picked = { ...base, paladin_eagle_eye: 1 };
-  if (!talentBlocker(TALENTS.paladin_light_step, picked)?.includes("Atirador de Elite")) throw new Error("o outro lado devia fechar");
-  if (talentBlocker(TALENTS.paladin_hunter_mark, picked)) throw new Error("a magia do lado escolhido devia abrir");
-  if (!talentBlocker(TALENTS.paladin_evasive_roll, picked)) throw new Error("a magia do outro lado devia continuar fechada");
+  if (!talentBlocker(TALENTS.paladin_light_step, picked, xp)?.includes("Atirador de Elite")) throw new Error("o outro lado devia fechar");
+  if (talentBlocker(TALENTS.paladin_hunter_mark, picked, xp)) throw new Error("a magia do lado escolhido devia abrir");
+  if (!talentBlocker(TALENTS.paladin_evasive_roll, picked, xp)) throw new Error("a magia do outro lado devia continuar fechada");
+  // A raiz (magia inicial) já vem no nível 1: os primeiros nós de cada ramo abrem numa conta nova.
+  if (talentBlocker(TALENTS.paladin_damage, {}, {})) throw new Error("a raiz devia abrir os nós de baixo");
+  if (talentBlocker(TALENTS.paladin_piercing_shot, base, xp) !== "Já aprendida") throw new Error("magia comprada não se compra de novo");
   if (activeTraits("paladin", picked).join() !== "eagle_eye") throw new Error(`Traços ativos: ${activeTraits("paladin", picked)}`);
   if (!knownSpells("paladin", { ...picked, paladin_hunter_mark: 1 }).includes("hunter_mark")) throw new Error("a magia do lado devia virar opção na hunt");
 }
 
 async function knightShield() {
   const { room, me, damage } = await enter(client, "knight", "knightShield");
-  if (me().spellRanks.get("holy_shield") !== 3) throw new Error("o servidor precisa de KUSA_ALL_SPELLS=1");
+  if (me().spellRanks.get("holy_shield") !== MASTERY_RANK) throw new Error("o servidor precisa de KUSA_ALL_SPELLS=1");
   room.send(MSG.chooseSpell, { slot: 0, spellId: "holy_shield" });
   room.send(MSG.chooseSpell, { slot: 1, spellId: "steel_wall" });
   await wait(200);
@@ -112,8 +119,8 @@ async function knightShield() {
   room.send(MSG.cast, { slot: 0 });
   await wait(200);
   const shield = me().barrier;
-  // Nível 3: 40% × 1,4 = 56% da vida máxima.
-  if (shield !== Math.round(me().maxHp * 0.56)) throw new Error(`escudo ${shield}, vida máxima ${me().maxHp}`);
+  // Nível 5: 40% × 1,5 = 60% da vida máxima.
+  if (shield !== Math.round(me().maxHp * 0.6)) throw new Error(`escudo ${shield}, vida máxima ${me().maxHp}`);
   if (me().maxBarrier !== shield) throw new Error("maxBarrier devia acompanhar o escudo novo");
 
   // Anda até os monstros e deixa apanhar: o escudo absorve antes da vida.
@@ -176,7 +183,7 @@ async function paladinShots() {
   room.send(MSG.cast, { slot: 0 });
   await until(() => spells.some((s) => s.spellId === "piercing_shot"), 2000, "o Disparo Perfurante não saiu");
   const shot = spells.find((s) => s.spellId === "piercing_shot")!;
-  const line = lineTiles(generateDungeon(room.state.seed), shot.x, shot.y, shot.tx, shot.ty, spellAtRank(SPELLS.piercing_shot, 3).range);
+  const line = lineTiles(generateDungeon(room.state.seed), shot.x, shot.y, shot.tx, shot.ty, spellAtRank(SPELLS.piercing_shot, MASTERY_RANK).range);
   const end = line[line.length - 1];
   if (!end || end.x !== shot.tx || end.y !== shot.ty) throw new Error(`a flecha devia ir até o fim da linha: ${JSON.stringify({ shot, end })}`);
   await until(() => damage.some((d) => d.attacker === room.sessionId && !d.toPlayer), 2000, "a flecha não acertou ninguém");

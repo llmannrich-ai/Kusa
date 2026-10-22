@@ -36,9 +36,11 @@ Código em `apps/client/src/menu.ts`.
 
 ### Grimório (árvore de magias)
 
-Cada classe tem uma árvore de verdade, comprada com o gold das hunts (`packages/shared/src/talents.ts`).
+Cada classe tem uma árvore de verdade (`packages/shared/src/talents.ts`). Os nós se compram com o gold das hunts;
+o nível das magias, não: ele sobe com o uso nas hunts (ver "Nível das magias pelo uso").
 A raiz é a magia inicial do slot 1; dela saem **3 ramos** que descem até 5 nós de profundidade. Cada nó pede
-o nó de cima no nível 1, então as magias da ponta só abrem depois das anteriores do mesmo ramo.
+o nó de cima no nível 1 (numa magia, o nível 1 ganho com o uso), então as magias da ponta só abrem depois de
+comprar **e usar** as anteriores do mesmo ramo.
 
 - **Espinha de peixe** (inspirada no Diablo 2, plano em `docs/GRIMORIO_GALHOS.md`): o tronco de cada ramo desce no
   meio e as **costelas** (`RIBS`) saem para a esquerda e a direita em alturas e tamanhos diferentes, então nenhum
@@ -48,10 +50,11 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
   Até 5 colunas: tronco, costelas dos dois lados e, no pé, os dois lados da especialização. O losango do Traço leva
   o nome da especialização.
 
-- **Magias** (círculo no desenho, com o número do slot): têm **3 níveis**. O 1 libera a magia como opção na
-  janela de escolha da hunt; o 2 e o 3 dão +20% de dano, cura, escudo e força das criaturas, e +15% de duração,
-  cada um. As 2 magias iniciais já vêm no nível 1, com os níveis 2 e 3 à venda.
-- **Maestria (nível 3):** além dos números, o nível 3 de toda magia muda o que ela faz (tabela `MASTERIES` em
+- **Magias** (círculo no desenho, com o número do slot; as 5 bolinhas embaixo são o nível): comprar libera a magia
+  no **nível 0 (aprendiz)**, já como opção na janela de escolha da hunt, com os números da tabela. Cada nível, do 1
+  ao **5**, dá +10% de dano, cura, escudo e força das criaturas, e +7,5% de duração. As 2 magias iniciais já vêm
+  compradas e no nível 1.
+- **Maestria (nível 5):** além dos números, o nível 5 de toda magia muda o que ela faz (tabela `MASTERIES` em
   `packages/shared/src/spells.ts`). No menu, a ficha da magia mostra a Maestria antes de comprar; na hunt, a escolha
   mostra "★ Maestria". Três efeitos existem só nas Maestrias: **repetir** (o efeito volta sozinho logo depois, mais
   fraco), **devolver recarga ao matar** e **roubar mana**.
@@ -144,9 +147,32 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
     atinge quem está colado no alvo; estandarte em raio 3; a corrente faz sangrar; o desafio corta 60%.
   - **Investida**: sem alvo à vista ou sem lugar livre colado nele, não sai nem gasta mana. **Corrente**: o monstro vem
     para o tile livre colado no cavaleiro mais perto dele.
-- Preço: o 1º nível de uma magia custa 300, 500, 800 ou 1.200 conforme a profundidade, no tronco e nas costelas (1.200
-  e 1.600 nas magias das especializações), e cada nível seguinte custa ×1,6; as áureas custam 120–300 e ×1,8 por nível.
+- Preço: uma magia custa 150, 300, 500, 800 ou 1.200 conforme a profundidade, no tronco e nas costelas (1.200
+  e 1.600 nas magias das especializações), uma vez só; as áureas custam 120–300 e ×1,8 por nível.
 - No menu, tocar num nó abre os detalhes: o que ele faz no nível atual e no próximo, o pré-requisito e a compra.
+  Na magia comprada, a ficha mostra a barra de XP até o próximo nível.
+
+#### Nível das magias pelo uso
+
+Regras em `packages/shared/src/spellxp.ts`, repetidas no banco (`spell_level`, `spell_xp_after_run` e
+`record_spell_xp`, migration `20261022120000_magias_por_uso.sql`).
+
+- **XP por lançamento:** cada vez que a magia sai **em combate** (algum monstro vivo à vista a até 6 tiles), ela ganha
+  XP igual aos segundos de recarga dela (Esfera Sombria, 4 s → 4 XP; Tempestade do Vazio, 12 s → 12 XP). Assim,
+  usar a magia o tempo todo rende o mesmo para uma de recarga curta e uma longa. Lançar em sala vazia não conta.
+- **Teto:** no máximo 400 XP por magia por hunt. Na hunt solo, que roda no aparelho, o banco também corta em 2 XP
+  por segundo de hunt e aceita só 2 magias (uma por slot).
+- **Níveis** (XP acumulado): 1 = 60, 2 = 400, 3 = 1.200, 4 = 2.800, 5 = 5.500. O nível 1 chega em 1 ou 2 hunts boas
+  (é o pré-requisito da árvore); o 5 pede uma centena de hunts usando a mesma magia.
+- **Morte:** morrer (ou ficar soterrado) tira **5% do XP acumulado** de cada magia escolhida na hunt, depois de somar o
+  que ela ganhou. A perda pode descer níveis, mas **nunca abaixo do nível 1** (nem tira XP de quem ainda é aprendiz).
+  As magias que ficaram fora dos slots não perdem nada. Hunt solo abandonada (aba fechada) conta como morte, mas sem
+  perda de XP: o banco não sabe quais magias estavam nos slots.
+- **Quando vale:** o nível novo vale da próxima hunt em diante; durante a hunt os números ficam fixos. No fim da hunt,
+  a tela de resultado mostra cada magia escolhida com o XP ganho, a perda da morte e se subiu ou caiu de nível.
+  Convidado vê o resumo, mas nada é salvo.
+- **Contas antigas:** quem tinha comprado níveis com gold ficou com o nível equivalente (comprada → 1, nível 2 → 2,
+  nível 3 com a Maestria → 5).
 - O servidor lê o Grimório da conta ao entrar na sala; nada disso vem do navegador.
 
 | Classe | Ramo 1 | Ramo 2 | Ramo 3 |
@@ -158,7 +184,7 @@ o nó de cima no nível 1, então as magias da ponta só abrem depois das anteri
 
 #### Costelas
 
-Magias das costelas (números do nível 1). Todas combinam efeitos que o servidor já tinha; a Maestria muda o efeito no nível 3.
+Magias das costelas (números do nível 0). Todas combinam efeitos que o servidor já tinha; a Maestria muda o efeito no nível 5.
 "A + B" = pede os dois pais.
 
 | Classe | Ramo | Costela (pai → magias) | Magias |
@@ -252,8 +278,8 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 | ☄️ Meteoro | o Meteoro (Feiticeiro) vira opção no slot 2 | 1 |
 | ☀️ Aurora | a Luz Curativa (Paladino) vira opção no slot 2 | 1 |
 
-- **Runas de magia:** a magia aparece como opção extra na escolha do slot, para qualquer classe, no nível 1 (ou no nível
-  comprado no Grimório, se for da própria classe). Magia de outra classe custa no máximo **40% da mana máxima** do herói
+- **Runas de magia:** a magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
+  que a magia já tem, se for da própria classe; magia de outra classe não ganha XP de uso). Magia de outra classe custa no máximo **40% da mana máxima** do herói
   (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
 
 ## Salas e sala de espera
@@ -403,8 +429,8 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 - Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
 - O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
-- Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível comprado, mana e recarga; sem rolagem: com 3 a 6 magias as cartas viram uma grade de 3 colunas só com o efeito principal e o custo, e com 7 ou mais, 4 colunas com nome e custo); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
-- Toda classe tem uma magia inicial por slot; as compradas no Grimório viram opções extras na escolha, já com o nível comprado (ver "Grimório").
+- Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível da magia, mana e recarga; sem rolagem: com 3 a 6 magias as cartas viram uma grade de 3 colunas só com o efeito principal e o custo, e com 7 ou mais, 4 colunas com nome e custo); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
+- Toda classe tem uma magia inicial por slot; as compradas no Grimório viram opções extras na escolha, já no nível que a magia tem na conta (ver "Grimório").
 - Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por
   segundo, que renova em vez de acumular), cura, raízes (não anda), **lentidão** (anda mais devagar), atordoamento (não anda nem ataca),
   guarda (corta parte do dano), armadura extra, **escudo** (absorve dano antes da vida, por alguns segundos), roubo de vida, provocação e invocação.
@@ -427,7 +453,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 | Feiticeiro | 🔮 Esfera Sombria: explode no alvo, raio 1 (1,9× dano) | 🌑 Tempestade do Vazio: raio 3 em volta de si (2,3× dano) |
 | Druida | 🌿 Bênção da Floresta: cura 35% da vida de quem está a até 4 tiles | 🌱 Raízes Espinhosas: raio 2 no alvo, fere (1,2×) e prende por 3,5 s |
 
-As compradas no Grimório, por slot (números do nível 1):
+As compradas no Grimório, por slot (números do nível 0):
 
 | Classe | Slot 1 | Slot 2 |
 | --- | --- | --- |

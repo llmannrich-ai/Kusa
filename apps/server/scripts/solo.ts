@@ -46,7 +46,7 @@ for (const mapId of MAP_IDS) {
 {
   const state = new DungeonState();
   const hunt = new Hunt(state, host, { mapId: "crypt", seed: 12345 });
-  hunt.join("solo", { name: "Solo", classId: "knight", talents: {} });
+  hunt.join("solo", { name: "Solo", classId: "knight", talents: {}, spellXp: {} });
   if (!hunt.start("solo")) throw new Error("a hunt solo não começou");
   // Itens comuns que o cavaleiro pode usar.
   const knightItem = (slot: ItemSlot, tier: number) => Object.values(ITEMS).find((d) =>
@@ -77,7 +77,7 @@ for (const mapId of MAP_IDS) {
 {
   const state = new DungeonState();
   const hunt = new Hunt(state, host, { mapId: "swamp", seed: 777 });
-  hunt.join("solo", { name: "Solo", classId: "druid", talents: {} });
+  hunt.join("solo", { name: "Solo", classId: "druid", talents: {}, spellXp: {} });
   hunt.start("solo");
   advance(hunt, 2000);
   hunt.leave("solo");

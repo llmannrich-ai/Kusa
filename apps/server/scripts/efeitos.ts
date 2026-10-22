@@ -110,7 +110,7 @@ async function paladinMira() {
   // Aljava Veloz: o bônus aparece no herói (a aura) e as flechas saem mais rápido.
   room.send(MSG.cast, { slot: 1 });
   await until(() => me().buff === "swift_quiver", 2000, "a Aljava Veloz não ficou ativa");
-  // Atira por 6 s (a aljava dura 7,8 s no nível 3), trocando para outro monstro à vista se o alvo sair do alcance.
+  // Atira por 6 s (a aljava dura 8,25 s no nível 5), trocando para outro monstro à vista se o alvo sair do alcance.
   // Sem a aljava, saem no máximo 6 flechas em 6 s (1 por segundo); com ela, uma a cada 0,4 s.
   const hitsBefore = damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer && !d.dot).length;
   room.send(MSG.target, { id });
@@ -361,7 +361,7 @@ async function sorcererSpecs() {
     await until(() => [...h.room.state.monsters.values()].some((x: any) => x.rooted), 3000, "os Tentáculos Negros não prenderam ninguém");
     await h.room.leave();
   }
-  // Maestria do Meteoro (nível 3 com KUSA_ALL_SPELLS): a cratera fica em chamas.
+  // Maestria do Meteoro (nível 5 com KUSA_ALL_SPELLS): a cratera fica em chamas.
   {
     const h = await sorcerer("meteoro", "shadow_orb", "meteor");
     h.room.send(MSG.cast, { slot: 1, aim: { x: h.seen[1].x, y: h.seen[1].y } });

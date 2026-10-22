@@ -1,5 +1,5 @@
 import type { MapId } from "./maps.ts";
-import type { TalentRanks } from "./talents.ts";
+import type { SpellXp, TalentRanks } from "./talents.ts";
 
 /**
  * Limites de plausibilidade da hunt solo. Ela roda no aparelho do jogador, então o banco não confia
@@ -17,6 +17,12 @@ export const SOLO_LIMITS = {
   maxNewItems: 15,
   /** Valor máximo (gold + preço de venda dos itens novos) que o solo rende em 24 horas. */
   dailyValue: 12_000,
+  /**
+   * XP de uso máximo por segundo de hunt, por magia: lançar sem parar rende 1 XP por segundo de recarga, e a
+   * melhoria Foco e as recargas devolvidas ao matar encurtam a recarga. Além disso valem o teto por hunt
+   * (SPELL_XP_HUNT_CAP) e as 2 magias dos slots.
+   */
+  spellXpPerSecond: 2,
 };
 
 /** Resposta de `start_solo_run`: a hunt começou e o equipamento e a bag saíram da conta. */
@@ -29,6 +35,8 @@ export interface SoloRunStart {
   /** Bag da conta, que entra na dungeon. */
   bag: string[];
   talents: TalentRanks;
+  /** XP de uso de cada magia da conta. */
+  spell_xp: SpellXp;
 }
 
 /** Resposta de `finish_solo_run`: o que de fato foi creditado depois dos limites. */
