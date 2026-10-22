@@ -47,6 +47,8 @@ export interface RunStats {
   /** true se fechou o jogo ou caiu durante a hunt (conta como morte). */
   abandoned: boolean;
   death: { by: string; depth: number; x: number; y: number; at: number } | null;
+  /** Intervir (Traço do Guardião): dano que este herói puxou dos aliados para si. */
+  intercepted: number;
   /** Renascer da Semente: nomes de quem este jogador salvou com a semente. */
   revives: string[];
   /** Este jogador renasceu de uma semente: de quem, quando e quanto dano levou depois de renascer. */
@@ -58,7 +60,7 @@ export function newRunStats(): RunStats {
     levelAt: {}, depthAt: {}, specs: [], spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 },
     damageDealt: {}, damageTaken: {}, specialDamage: {}, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
-    minHpPct: 1, abandoned: false, death: null, revives: [], revived: null,
+    minHpPct: 1, abandoned: false, death: null, intercepted: 0, revives: [], revived: null,
   };
 }
 
