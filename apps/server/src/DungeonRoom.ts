@@ -22,7 +22,7 @@ import {
 } from "@kusa/shared";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
-import { recordRun, resolveAccount, takeBag, takeLoadout, type Account } from "./supabase.ts";
+import { recordRun, resolveAccount, storeBag, takeBag, takeLoadout, type Account } from "./supabase.ts";
 import { recordTelemetry } from "./telemetry.ts";
 
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
@@ -115,8 +115,13 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       const classId = this.state.players.get(sessionId)?.classId;
       if (!userId || !classId) return;
       // Sai da conta só o equipamento que a classe usa (a espada de um druida fica em casa).
-      void takeLoadout(userId, classId).then((items) => this.hunt.equip(sessionId, items));
-      void takeBag(userId).then((items) => this.hunt.fillBag(sessionId, items));
+      // Morreu ou saiu antes de os itens chegarem: eles nem entraram na dungeon e voltam inteiros para o cofre.
+      void takeLoadout(userId, classId).then((items) => {
+        if (!this.hunt.equip(sessionId, items)) void storeBag(userId, items);
+      });
+      void takeBag(userId).then((items) => {
+        if (!this.hunt.fillBag(sessionId, items)) void storeBag(userId, items);
+      });
     });
   }
 
