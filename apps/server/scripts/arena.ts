@@ -8,7 +8,7 @@
  */
 import {
   MSG, SERVER_TICK_MS, Tile, createRng, generateDungeon, hasLineOfSight, isWalkable, tileAt, tileDistance,
-  type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type SpellId, type SpellMessage,
+  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type SpellId, type SpellMessage,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { DungeonState, type Monster, type Player } from "../src/state.ts";
@@ -40,6 +40,7 @@ export function arena(options: ArenaOptions = {}) {
   const chains: ChainMessage[] = [];
   const cooldowns: CooldownMessage[] = [];
   const strikes: MonsterStrikeMessage[] = [];
+  const attacks: AttackMessage[] = [];
   const notices: string[] = [];
   let ended: unknown = null;
   const collect = (type: string, msg: any) => {
@@ -48,6 +49,7 @@ export function arena(options: ArenaOptions = {}) {
     else if (type === MSG.chain) chains.push(msg);
     else if (type === MSG.cooldown) cooldowns.push(msg);
     else if (type === MSG.monsterStrike) strikes.push(msg);
+    else if (type === MSG.attack) attacks.push(msg);
     else if (type === MSG.notice) notices.push(msg.text);
   };
   const host: HuntHost = {
@@ -181,7 +183,7 @@ export function arena(options: ArenaOptions = {}) {
   const seat = () => any.seats.get(HERO);
   const now = () => clock;
   return {
-    hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, notices,
+    hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices,
     advance, until, place, spawn, choose, cast, ready, hitsFrom, where, brain, seat, now, free,
   };
 }

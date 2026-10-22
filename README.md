@@ -58,7 +58,7 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx apps/server/scripts/potions.ts`: um cavaleiro caça até cair uma poção de vida, guarda, apanha e bebe.
 - `npx tsx apps/server/scripts/bag.ts`: um cavaleiro veste um item, guarda na bag, veste de novo, larga, pega de volta e foge levando o item na bag.
 - `npx tsx apps/server/scripts/perks.ts`: um cavaleiro caça até o nível 2, recebe 2 melhorias, uma fora da oferta é recusada e a escolhida é aplicada.
-- `npx tsx apps/server/scripts/spells.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, um feiticeiro conjura no toque rápido e com a mira.
+- `npx tsx scripts/spells.ts` (de dentro de `apps/server`; sem servidor): numa arena, um feiticeiro no nível 8 conjura no toque rápido e com a mira.
 - `npx tsx scripts/specials.ts` (de dentro de `apps/server`; sem servidor): confere as regras e as áreas das habilidades dos monstros e, numa arena, cada mini-boss e boss acerta o golpe especial num cavaleiro colado.
 - `npx tsx apps/server/scripts/bestiario.ts` (sem servidor): as mecânicas do Bestiário (elementos, Fortitude, Regeneração, cabeças da Hidra, efeitos no herói com teto e imunidade, Língua, salto, Voo, Táticas de Bando, Divisão, Engolfar, Mímico, Bruxa Verde, artilheiro, camuflagem, Campeões) e os encontros determinísticos pela seed.
 - `npx tsx scripts/bestiary-sim.ts [mapa] [repetições]` (de dentro de `apps/server`; não é teste): simulador de balanceamento, um herói de cada classe contra cada monstro do mapa.

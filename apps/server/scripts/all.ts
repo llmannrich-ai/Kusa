@@ -3,8 +3,8 @@
  * script, mostra o resumo e derruba os servidores. Não precisa de servidor rodando antes.
  *
  * - Servidor normal: smoke, combat, items, maps, potions, perks e bag (e solo, ativas, arte, bestiario, efeitos, grimorio,
- *   costelas e specials, que não usam o servidor: rodam a `Hunt` direto, com relógio falso e sorteios de seed fixa).
- * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos): spells e magiaxp.
+ *   costelas, specials e spells, que não usam o servidor: rodam a `Hunt` direto, com relógio falso e sorteios de seed fixa).
+ * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos): magiaxp.
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): sinergias.
  *
  * Os bots caçam no nível 1 e às vezes morrem por azar. Só nesse caso (a hunt terminou com "died")
@@ -22,8 +22,8 @@ const ATTEMPTS = 5;
 
 interface Suite { port: number; env: Record<string, string>; tests: string[] }
 const SUITES: Suite[] = [
-  { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo", "ativas", "arte", "bestiario", "anfitriao", "efeitos", "grimorio", "costelas", "specials"] },
-  { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["spells", "magiaxp"] },
+  { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo", "ativas", "arte", "bestiario", "anfitriao", "efeitos", "grimorio", "costelas", "specials", "spells"] },
+  { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["magiaxp"] },
   { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["sinergias"] },
 ];
 
