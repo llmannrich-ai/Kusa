@@ -27,7 +27,7 @@ Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
-- **Itens:** o equipamento que vai para a próxima hunt (um item por slot), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
+- **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
   - **Telemetria** (`apps/client/src/telemetry.ts`): os números de todas as hunts, para qualquer jogador logado, com filtro de mapa e período: visão geral, hunts por dia, como as hunts terminam, sobrevivência por classe, o que mais mata, fontes de dano, magias e melhorias escolhidas, curva de nível e as suas hunts. Só agregados, sem nomes (função `telemetry_dashboard`).
@@ -147,7 +147,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 | Lugar | Espaços | Onde se mexe | Na hunt |
 |---|---|---|---|
-| **Equipamento** | 1 por slot | aba Itens | entra vestido no personagem |
+| **Equipamento** | 1 por slot, por classe | aba Itens | entra vestido no personagem da classe escolhida |
 | **Cofre** | 20 (o equipamento não ocupa) | só na aba Itens | fica seguro na conta |
 | **Bag** | 8 | aba Itens (guardar no cofre ou vender) | entra com o jogador e recebe o que ele pega no chão |
 
@@ -157,6 +157,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 - Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
   **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
 - Quem morre perde **1 equipamento do corpo, sorteado**, **a bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para a conta.
+- Cada classe tem os próprios 6 slots. A aba Itens mostra o equipamento da classe escolhida, e só a classe que usa o item pode vesti-lo. O mesmo item fica num corpo por vez: equipar no Druida um item vestido pelo Feiticeiro tira dele. O equipamento das outras classes não ocupa o cofre e fica em casa na hunt; quem volta vivo devolve o vestido à classe com que jogou.
 - Na aba Itens: equipar um item do cofre devolve o do slot ao cofre; tirar do equipamento e guardar da bag precisam de espaço no cofre.
 - Funções no banco: `buy_item`, `equip_item`, `store_item` e `sell_item` (jogador); `take_loadout`, `take_bag`, `finish_run` e `store_bag` (servidor de jogo).
 
@@ -371,7 +372,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   | Raro | azul | +30% | "Espada longa +1" |
   | Mágico | roxo | +60% e uma propriedade mágica | nome próprio: "Vingadora Sagrada", "Manto das Estrelas"... |
 
-- **Restrição de classe** (a classe que não usa não veste: na hunt vai só para a bag; no menu, equipado, fica em casa):
+- **Restrição de classe** (a classe que não usa não veste: na hunt vai só para a bag; no menu, não dá para equipar nela):
 
   | Família | Classes | O que dá |
   |---|---|---|

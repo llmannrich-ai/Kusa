@@ -39,8 +39,8 @@ export async function resolveAccount(accessToken?: string): Promise<Account | nu
 }
 
 /**
- * A hunt começou: tira do inventário os itens equipados no menu que a classe pode usar e devolve os ids
- * (`take_loadout`). O que a classe não usa (a espada, para um druida) fica equipado na conta.
+ * A hunt começou: tira do inventário o equipamento da classe escolhida e devolve os ids (`take_loadout`).
+ * Cada classe tem os próprios slots; o equipamento das outras fica na conta.
  */
 export async function takeLoadout(userId: string, classId: string): Promise<string[]> {
   if (!supabase) return [];
