@@ -8,6 +8,7 @@ export * from "./monsters.ts";
 export * from "./maps.ts";
 export * from "./items.ts";
 export * from "./spells.ts";
+export * from "./spellxp.ts";
 export * from "./account.ts";
 export * from "./talents.ts";
 export * from "./traits.ts";

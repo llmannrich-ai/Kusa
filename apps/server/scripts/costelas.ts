@@ -1,15 +1,15 @@
 /**
  * Teste de fumaça das costelas do Grimório (galhos laterais do tronco) contra um servidor com KUSA_START_LEVEL=8 e
- * KUSA_ALL_SPELLS=1 (todas as magias no nível 3, com a Maestria):
+ * KUSA_ALL_SPELLS=1 (todas as magias no nível 5, com a Maestria):
  *   - regras: as costelas ficam no ramo do pai e acima da bifurcação das especializações, e o nó de dois pais só
- *     abre com os dois comprados;
+ *     abre com os dois no nível 1;
  *   - na hunt, cada magia das costelas sai (uma de cada slot por hunt) e, se tem dano, fere algum monstro.
  * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
  *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/costelas.ts http://localhost:2602
  */
 import { Client } from "@colyseus/sdk";
-import { CLASS_IDS, MSG, SPELLS, TALENTS, talentBlocker, talentTree, type ClassId, type SpellId } from "@kusa/shared";
+import { CLASS_IDS, MSG, SPELL_LEVEL_XP, SPELLS, TALENTS, talentBlocker, talentTree, type ClassId, type SpellId } from "@kusa/shared";
 import { approach, enter, inSight, until, wait } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -37,9 +37,12 @@ function rules() {
     }
   }
   const rift = TALENTS.knight_seismic_rift;
-  if (!talentBlocker(rift, { knight_open_wound: 1 })?.includes("Terremoto")) throw new Error("a Fenda Sísmica devia pedir o Terremoto");
-  if (!talentBlocker(rift, { knight_earthquake: 1 })?.includes("Ferida Aberta")) throw new Error("a Fenda Sísmica devia pedir a Ferida Aberta");
-  if (talentBlocker(rift, { knight_earthquake: 1, knight_open_wound: 1 })) throw new Error("a Fenda Sísmica devia abrir com os dois pais");
+  const both = { knight_earthquake: 1, knight_open_wound: 1 };
+  const xp = { knight_earthquake: SPELL_LEVEL_XP[0], knight_open_wound: SPELL_LEVEL_XP[0] };
+  if (!talentBlocker(rift, { knight_open_wound: 1 }, xp)?.includes("Terremoto")) throw new Error("a Fenda Sísmica devia pedir o Terremoto");
+  if (!talentBlocker(rift, { knight_earthquake: 1 }, xp)?.includes("Ferida Aberta")) throw new Error("a Fenda Sísmica devia pedir a Ferida Aberta");
+  if (!talentBlocker(rift, both, { knight_earthquake: SPELL_LEVEL_XP[0] })?.includes("Ferida Aberta no nível 1")) throw new Error("a Fenda Sísmica devia pedir a Ferida Aberta no nível 1");
+  if (talentBlocker(rift, both, xp)) throw new Error("a Fenda Sísmica devia abrir com os dois pais no nível 1");
 }
 
 /** Uma hunt por par (uma magia de cada slot); a classe com mais magias num slot repete a última do outro. */

@@ -168,8 +168,22 @@ export interface RunEndedMessage {
   lost?: string;
   /** Itens da bag que ficaram no chão na morte. */
   lostBag?: string[];
+  /** Progresso das magias escolhidas na hunt; o nível novo vale da próxima hunt em diante. */
+  spells: SpellProgress[];
   /** Aviso extra na tela de resultado (hunt solo: limite de recompensa ou falha ao salvar). */
   note?: string;
+}
+
+/** XP de uso que uma magia ganhou (e perdeu, na morte) numa hunt. */
+export interface SpellProgress {
+  id: string;
+  gained: number;
+  /** XP tirado pela morte (0 para quem sai vivo). */
+  lost: number;
+  /** XP acumulado e nível depois da hunt. */
+  xp: number;
+  level: number;
+  levelBefore: number;
 }
 
 export type MatchPhase = "lobby" | "running" | "ended";

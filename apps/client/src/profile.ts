@@ -1,4 +1,4 @@
-import { ITEMS, type ClassId, type TalentRanks } from "@kusa/shared";
+import { ITEMS, type ClassId, type SpellXp, type TalentRanks } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
 // Dados do menu: árvore de magias, itens (equipamento, cofre e bag) e gold. O navegador só lê as tabelas;
@@ -22,6 +22,8 @@ export interface OwnedItem {
 export interface Profile {
   gold: number;
   talents: TalentRanks;
+  /** XP de uso de cada magia (o nível sobe nas hunts; o navegador só lê). */
+  spellXp: SpellXp;
   items: OwnedItem[];
 }
 
@@ -34,19 +36,20 @@ export async function loadProfile(): Promise<Profile> {
   if (!uid) throw new ProfileError("Sessão expirada. Entre de novo.");
   const [profile, talents, items] = await Promise.all([
     supabase.from("profiles").select("gold").eq("id", uid).single(),
-    supabase.from("profile_talents").select("talent_id, rank"),
+    supabase.from("profile_talents").select("talent_id, rank, xp"),
     supabase.from("profile_items").select("id, item_id, equipped, class_id, source, location").order("acquired_at", { ascending: false }),
   ]);
   if (!profile.data || !talents.data || !items.data) throw new ProfileError("Não foi possível carregar a conta.");
   return {
     gold: profile.data.gold,
     talents: Object.fromEntries(talents.data.map((t) => [t.talent_id, t.rank])),
+    spellXp: Object.fromEntries(talents.data.filter((t) => t.xp > 0).map((t) => [t.talent_id, t.xp])),
     // Id fora do catálogo (banco e cliente em versões diferentes durante uma atualização): não aparece.
     items: items.data.filter((i) => ITEMS[i.item_id]).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, classId: i.class_id, source: i.source, location: i.location })),
   };
 }
 
-/** Compra o próximo nível de um nó da árvore; devolve o gold que sobrou. */
+/** Compra uma magia, uma áurea (próximo nível) ou um Traço; devolve o gold que sobrou. */
 export function buyTalent(talentId: string): Promise<number> {
   return call("buy_talent", { p_talent_id: talentId });
 }
@@ -75,7 +78,7 @@ export async function storeItem(id: string): Promise<void> {
 }
 
 /** Mensagens do banco (`raise exception`) que já servem para o jogador. */
-const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "item fora de venda", "item não está no inventário", "cofre cheio", "item está na bag", "item não está na bag", "classe não usa este item", "slot ocupado por outra classe"];
+const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "magia já aprendida", "item fora de venda", "item não está no inventário", "cofre cheio", "item está na bag", "item não está na bag", "classe não usa este item", "slot ocupado por outra classe"];
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);

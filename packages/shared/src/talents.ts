@@ -1,11 +1,13 @@
 import { CLASS_IDS, type ClassId } from "./classes.ts";
-import { SPELL_MAX_RANK, STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
+import { STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
+import { STARTER_SPELL_XP, spellLevelFromXp } from "./spellxp.ts";
 import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 
 // Grimório: a árvore de magias de cada classe, comprada no menu com o gold das hunts.
 // É uma árvore de verdade: cada nó (fora a raiz) pede o nó pai no nível 1, então as magias da
 // ponta só abrem depois das anteriores do mesmo ramo. Três tipos de nó:
-//   magia: vira opção quando o slot libera na hunt; os níveis 2 e 3 deixam a magia mais forte;
+//   magia: comprada uma vez, vira opção quando o slot libera na hunt. O nível dela não se compra: sobe com o uso
+//          nas hunts (`spellxp.ts`), e o nível 1 é o que os nós de baixo pedem;
 //   áurea: bônus passivo de dano, vida, mana ou velocidade, com vários níveis;
 //   traço: a passiva de uma especialização. No fim de um ramo, a árvore se divide em dois lados (`side`);
 //          comprar o Traço de um lado tranca o outro para sempre (`exclusiveWith`), e as magias do lado
@@ -13,7 +15,7 @@ import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 // Cada ramo é uma espinha de peixe (inspirada no Diablo 2): o tronco desce no meio e as costelas (`RIBS`) saem
 // para os lados em alturas e tamanhos diferentes, então nenhum ramo tem a mesma forma. Um nó de costela pode
 // pedir dois pais (`alsoRequires`), como a Nevasca do Diablo 2 pede duas magias.
-// As 2 magias iniciais da classe já vêm no nível 1 (`freeRank`). A tabela `talents` no Supabase
+// As 2 magias iniciais da classe já vêm compradas (`freeRank`) e no nível 1. A tabela `talents` no Supabase
 // repete id, níveis, custo, nível grátis e pré-requisito de cada nó; mude os dois juntos.
 
 export type AuraStat = "damage" | "hp" | "mana" | "speed";
@@ -52,14 +54,17 @@ export interface TalentDef {
   /** Custo do nível n+1 = baseCost * costGrowth^n. */
   baseCost: number;
   costGrowth: number;
-  /** Nó pai, que precisa ter pelo menos `rank` níveis antes. */
+  /** Nó pai, que precisa ter pelo menos `rank` níveis antes (numa magia, o nível ganho com o uso). */
   requires?: { id: string; rank: number };
   /** Segundo pai (nó de costela que cruza com o tronco): também precisa ter `rank` níveis. */
   alsoRequires?: { id: string; rank: number };
 }
 
-/** Níveis comprados por nó (id → nível). Nó ausente = 0. */
+/** Níveis comprados por nó (id → nível). Nó ausente = 0. Uma magia tem no máximo 1: comprada. */
 export type TalentRanks = Record<string, number>;
+
+/** XP de uso de cada magia da conta (id do nó → XP acumulado). Magia ausente = 0. */
+export type SpellXp = Record<string, number>;
 
 /** Bônus das áureas somados, em fração. */
 export interface Bonuses {
@@ -95,7 +100,7 @@ const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
 const SIDE_SPELL_COST = [1200, 1600];
 /** Preço do Traço de uma especialização (nível único). */
 const TRAIT_COST = 1000;
-/** As iniciais já vêm no nível 1: o 2 custa base × 1,6. */
+/** As iniciais já vêm compradas: o preço nunca é cobrado (o banco só pede um valor positivo). */
 const STARTER_BASE_COST = 150;
 
 /** Nome dos 3 ramos (colunas) do Grimório de cada classe. */
@@ -264,9 +269,9 @@ function classTree(classId: ClassId): TalentDef[] {
     const starter = STARTER_SPELLS.includes(key);
     return {
       id: id(key), classId, col, row, lane: laneOf(side), side, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
-      maxRank: SPELL_MAX_RANK, freeRank: starter ? 1 : 0,
+      maxRank: 1, freeRank: starter ? 1 : 0,
       baseCost: starter ? STARTER_BASE_COST : side === undefined ? SPELL_COST_BY_ROW[row] : SIDE_SPELL_COST[isTrait(parent!) ? 0 : 1],
-      costGrowth: 1.6, requires,
+      costGrowth: 1, requires,
     };
   });
   const keys = new Set(shape.map(([key]) => key));
@@ -277,7 +282,7 @@ function classTree(classId: ClassId): TalentDef[] {
     keys.add(key);
     return {
       id: id(key), classId, col, row, lane, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
-      maxRank: SPELL_MAX_RANK, freeRank: 0, baseCost: SPELL_COST_BY_ROW[row], costGrowth: 1.6,
+      maxRank: 1, freeRank: 0, baseCost: SPELL_COST_BY_ROW[row], costGrowth: 1,
       requires: { id: id(parent), rank: 1 }, alsoRequires: also ? { id: id(also), rank: 1 } : undefined,
     };
   });
@@ -314,14 +319,32 @@ export function talentRank(def: TalentDef, ranks: TalentRanks): number {
   return Math.min(def.maxRank, Math.max(ranks[def.id] ?? 0, def.freeRank));
 }
 
+/** XP de uso da magia na conta (as iniciais nunca ficam abaixo do nível 1). O banco calcula igual. */
+export function spellXpOf(def: TalentDef, xp: SpellXp): number {
+  return Math.max(xp[def.id] ?? 0, def.kind === "spell" && def.freeRank > 0 ? STARTER_SPELL_XP : 0);
+}
+
+/**
+ * Nível do nó para os pré-requisitos: numa magia comprada, o nível ganho com o uso (0 a 5); numa magia que a
+ * conta não tem, −1; numa áurea ou num Traço, os níveis comprados.
+ */
+export function nodeLevel(def: TalentDef, ranks: TalentRanks, xp: SpellXp): number {
+  const rank = talentRank(def, ranks);
+  if (def.kind !== "spell") return rank;
+  return rank > 0 ? spellLevelFromXp(spellXpOf(def, xp)) : -1;
+}
+
 /** Por que o nó não pode ser comprado agora (null = pode, se houver gold). */
-export function talentBlocker(def: TalentDef, ranks: TalentRanks): string | null {
-  if (talentRank(def, ranks) >= def.maxRank) return "Nível máximo";
+export function talentBlocker(def: TalentDef, ranks: TalentRanks, xp: SpellXp): string | null {
+  if (talentRank(def, ranks) >= def.maxRank) return def.kind === "spell" ? "Já aprendida" : "Nível máximo";
   const rival = def.exclusiveWith && TALENTS[def.exclusiveWith];
   if (rival && talentRank(rival, ranks) > 0) return `Você escolheu ${TRAITS[rival.traitId!].spec}`;
   const missing = [def.requires, def.alsoRequires]
-    .filter((r): r is { id: string; rank: number } => !!r && talentRank(TALENTS[r.id], ranks) < r.rank)
-    .map((r) => TALENTS[r.id].name);
+    .filter((r): r is { id: string; rank: number } => !!r && nodeLevel(TALENTS[r.id], ranks, xp) < r.rank)
+    .map((r) => {
+      const parent = TALENTS[r.id];
+      return parent.kind === "spell" ? `${parent.name} no nível ${r.rank}` : parent.name;
+    });
   if (missing.length > 0) return `Requer ${missing.join(" e ")}`;
   return null;
 }
@@ -336,14 +359,23 @@ export function auraBonuses(classId: ClassId, ranks: TalentRanks): Bonuses {
   return bonus;
 }
 
-/** Nível de cada magia que a classe conhece (as iniciais e as compradas no Grimório). */
-export function spellRanks(classId: ClassId, ranks: TalentRanks): Partial<Record<SpellId, number>> {
+/** Nível de uso (0 a 5) de cada magia que a classe conhece (as iniciais e as compradas no Grimório). */
+export function spellRanks(classId: ClassId, ranks: TalentRanks, xp: SpellXp): Partial<Record<SpellId, number>> {
   const out: Partial<Record<SpellId, number>> = {};
   for (const t of talentTree(classId)) {
-    const rank = talentRank(t, ranks);
-    if (t.spellId && rank > 0) out[t.spellId] = rank;
+    if (t.spellId && talentRank(t, ranks) > 0) out[t.spellId] = spellLevelFromXp(spellXpOf(t, xp));
   }
   return out;
+}
+
+/** Id do nó do Grimório de uma magia (é por ele que o banco guarda o XP). */
+export function spellTalentId(classId: ClassId, spellId: SpellId): string {
+  return `${classId}_${spellId}`;
+}
+
+/** XP ganho na hunt por nó do Grimório, como o banco recebe (`record_spell_xp`). */
+export function spellXpGains(classId: ClassId, spells: { id: string; gained: number }[]): Record<string, number> {
+  return Object.fromEntries(spells.map((s) => [spellTalentId(classId, s.id as SpellId), s.gained]));
 }
 
 /** Traços que a conta tem na classe (um por ramo especializado, no máximo). */
@@ -359,7 +391,7 @@ export function chosenSide(classId: ClassId, col: number, ranks: TalentRanks): 0
 
 /** Magias que a classe conhece: as iniciais e as compradas no Grimório. */
 export function knownSpells(classId: ClassId, ranks: TalentRanks): SpellId[] {
-  return Object.keys(spellRanks(classId, ranks)) as SpellId[];
+  return talentTree(classId).filter((t) => t.spellId && talentRank(t, ranks) > 0).map((t) => t.spellId!);
 }
 
 /** Texto curto do efeito de um nível de áurea. */

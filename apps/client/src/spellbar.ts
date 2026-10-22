@@ -18,10 +18,10 @@ import { stacksOf } from "./perkchoice.ts";
 
 const SLOTS: SpellSlot[] = [0, 1];
 
-/** A magia como o herói a conjura: no nível comprado no Grimório, com a Maestria no 3 (alcance e área podem mudar). */
+/** A magia como o herói a conjura: no nível ganho com o uso, com a Maestria no último (alcance e área podem mudar). */
 export function rankedSpell(p: PlayerView | undefined, id: string): SpellDef | undefined {
   const base = SPELLS[id as SpellId] as SpellDef | undefined;
-  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 1);
+  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 0);
 }
 
 interface SlotView {
@@ -202,7 +202,7 @@ export class SpellBar {
 
   /**
    * Escolha da magia do slot (a inicial da classe e as compradas no Grimório): as mesmas cartas da
-   * melhoria de nível, acima do personagem, com os efeitos já no nível comprado no Grimório.
+   * melhoria de nível, acima do personagem, com os efeitos já no nível que a magia tem na conta.
    */
   private openChooser(slot: SpellSlot) {
     const p = this.me();
@@ -213,7 +213,7 @@ export class SpellBar {
       title: `Nova magia · slot ${slot + 1}`,
       onDismiss: () => this.closeChooser(),
       cards: spellChoices(p.classId as ClassId, slot, [...p.knownSpells]).map((spell) => {
-        const rank = p.spellRanks.get(spell.id) ?? 1;
+        const rank = p.spellRanks.get(spell.id) ?? 0;
         return {
           icon: spell.icon,
           name: spell.name,

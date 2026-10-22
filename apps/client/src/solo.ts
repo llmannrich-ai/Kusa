@@ -8,6 +8,7 @@ import {
   type RunEndedMessage,
   type SoloRunResult,
   type SoloRunStart,
+  spellXpGains,
 } from "@kusa/shared";
 import type { HuntReport } from "../../server/src/hunt.ts";
 import { supabase } from "./auth.ts";
@@ -25,6 +26,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   const { data, error } = await supabase.rpc("start_solo_run", { p_class_id: classId, p_map_id: mapId });
   if (error) throw new Error("não foi possível começar a hunt solo");
   const run = data as SoloRunStart;
+  const finish = (result: RunEndedMessage, report: HuntReport) => finishSolo(run.run_id, classId, result, report);
 
   // A simulação só é baixada por quem joga solo.
   const [{ Hunt }, { DungeonState }] = await Promise.all([
@@ -45,10 +47,10 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     send: (_sessionId, type, msg) => outbox.push([type, msg]),
     broadcast: (type, msg) => outbox.push([type, msg]),
     // Entrega direta: o banco pode responder depois de o tick parar, no fim da hunt.
-    runEnded: (_sessionId, result, report) => void finish(run.run_id, result, report).then((msg) => emit(MSG.runEnded, msg)),
+    runEnded: (_sessionId, result, report) => void finish(result, report).then((msg) => emit(MSG.runEnded, msg)),
     ended: () => window.setTimeout(stop, 10_000),
   }, { mapId, seed: run.seed });
-  hunt.join(SESSION_ID, { name, classId, talents: run.talents ?? {} });
+  hunt.join(SESSION_ID, { name, classId, talents: run.talents ?? {}, spellXp: run.spell_xp ?? {} });
 
   // Mesmo caminho do servidor: o cliente decodifica um estado refletido, com callbacks.
   const encoder = new Encoder(state);
@@ -122,7 +124,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
 }
 
 /** Grava o resultado no banco e devolve a mensagem de fim com o que foi de fato creditado. */
-async function finish(runId: string, result: RunEndedMessage, report: HuntReport): Promise<RunEndedMessage> {
+async function finishSolo(runId: string, classId: ClassId, result: RunEndedMessage, report: HuntReport): Promise<RunEndedMessage> {
   const { data, error } = await supabase.rpc("finish_solo_run", {
     p_run_id: runId,
     p_outcome: result.outcome,
@@ -137,6 +139,8 @@ async function finish(runId: string, result: RunEndedMessage, report: HuntReport
       killed_by: report.stats.death?.by ?? null,
       abandoned: report.stats.abandoned,
       stats: report.stats,
+      // XP de uso das magias da hunt; o banco corta pelo tempo de hunt.
+      spell_xp: spellXpGains(classId, result.spells),
     },
   });
   if (error) {

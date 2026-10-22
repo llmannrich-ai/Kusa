@@ -32,6 +32,7 @@ favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa funç�
 | `stats.perksChosen` | Melhoria escolhida em cada nível, as duas oferecidas, o nível e o segundo |
 | `stats.specs` | Traços das especializações que o jogador tinha na hunt (ex.: `eagle_eye`) |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo / sem espaço para o Rolamento) |
+| `stats.spellXp` | XP de uso ganho por magia (lançamentos em combate × segundos de recarga), antes do teto por hunt e da perda na morte; `spellsChosen.rank` é o nível de uso (0 a 5) |
 | `stats.basicRetargets` | Golpes básicos que foram no monstro mais próximo porque o alvo travado estava fora do alcance (muito alto = o jogador trava alvo sem querer) |
 | `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou; o salto da pantera e a patada do urso em `panther_form` e `bear_form`; o raio do Céu Carregado em `charged_sky`; o contragolpe da Riposta em `riposte`; os Espinhos de Ferro em `iron_thorns`). Itens mágicos: `item:burn`, `item:poison` (chamas e veneno das armas) e `item:thorns` (espinhos) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |
