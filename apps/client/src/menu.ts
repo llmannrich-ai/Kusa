@@ -21,6 +21,10 @@ import {
   SPELL_MAX_LEVEL,
   DEATH_SPELL_XP_LOSS,
   nodeLevel,
+  SYNERGY_PER_LEVEL,
+  spellBonus,
+  spellNeighbors,
+  spellRanks,
   spellLevelProgress,
   spellXpOf,
   spellFacts,
@@ -340,6 +344,7 @@ export class Hub {
       `${learned}/${spells.length} magias. Um ramo por vez: o tronco desce no meio e os galhos saem para os lados. ` +
       "Toque num nó para ver e comprar; cada um pede o nó de cima (a diagonal pontilhada é um segundo pré-requisito). " +
       "Magia comprada sobe de nível com o uso nas hunts, devagar; os nós de baixo pedem a magia de cima no nível 1. " +
+      "Cada nível de uma magia vizinha (ligada por galho) dá força a esta (sinergia), e o Tomo 📕📗📘 fortalece o ramo todo. " +
       "Magias viram opção quando o slot abre na hunt (nível 3 e 6). Ramos com ✦ terminam em duas especializações, " +
       "e a escolha é permanente."));
 
@@ -455,6 +460,21 @@ export class Hub {
     return node;
   }
 
+  /** Na ficha da magia: de quem vem a sinergia (as vizinhas na árvore, com o nível de cada) e a força extra de hoje. */
+  private synergyNote(def: TalentDef, synergy: number, tome: number) {
+    const levels = spellRanks(def.classId, this.profile.talents, this.profile.spellXp);
+    const names = spellNeighbors(def.classId, def.spellId!).map((id) => {
+      const level = levels[id];
+      return `${SPELLS[id].name} (${level === undefined ? "não aprendida" : `nível ${level}`})`;
+    });
+    const pct = (v: number) => `+${Math.round(v * 100)}%`;
+    const parts = [synergy > 0 ? `${pct(synergy)} de sinergia` : "", tome > 0 ? `${pct(tome)} do Tomo` : ""].filter(Boolean);
+    const note = el("p", "muted grim-synergy");
+    note.textContent = `Sinergia: ${pct(SYNERGY_PER_LEVEL)} de força por nível de ${names.join(", ") || "nenhuma vizinha"}. ` +
+      (parts.length > 0 ? `Hoje: ${parts.join(" e ")}.` : "Hoje: nenhuma força extra.");
+    return note;
+  }
+
   /** Detalhes de um nó: o que faz no nível atual e no próximo, o pré-requisito e a compra. */
   private openTalentSheet(def: TalentDef) {
     const ranks = this.profile.talents;
@@ -465,6 +485,10 @@ export class Hub {
     // Magia comprada: o nível vem do XP de uso nas hunts.
     const spellXp = spell && rank > 0 ? spellXpOf(def, this.profile.spellXp) : 0;
     const progress = spellLevelProgress(spellXp);
+    // Sinergias e Tomo: os números dos níveis já vêm com a força extra que a conta tem hoje.
+    const bonus = spell
+      ? spellBonus(def.classId, spell.id, ranks, spellRanks(def.classId, ranks, this.profile.spellXp))
+      : { synergy: 0, tome: 0, total: 0 };
     const branch = TREE_BRANCHES[def.classId][def.col];
     const trait = def.traitId ? TRAITS[def.traitId] : null;
     // Lado de uma especialização: o nome dela aparece na ficha (do Traço e das magias do lado).
@@ -478,7 +502,7 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
@@ -494,13 +518,14 @@ export class Hub {
       sheet.append(el("p", "", spell.description));
       if (progress.level < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
       if (rank > 0) sheet.append(this.spellXpBar(progress));
+      sheet.append(this.synergyNote(def, bonus.synergy, bonus.tome));
     }
 
     const levels = el("div", "grim-levels");
     const level = (n: number, current: boolean) => {
       const box = el("div", `grim-level${current ? " current" : ""}`);
       box.append(el("strong", "", `Nível ${n}${current ? " (atual)" : ""}`));
-      const lines = spell ? spellFacts(spell, n) : [auraText(def, n)];
+      const lines = spell ? spellFacts(spell, n, bonus.total) : [auraText(def, n)];
       const list = el("ul");
       for (const line of lines) list.append(el("li", "", line));
       box.append(list);
