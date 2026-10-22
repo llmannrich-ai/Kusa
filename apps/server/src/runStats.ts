@@ -9,6 +9,8 @@ export interface RunStats {
   depthAt: Record<number, number>;
   /** Traços das especializações escolhidas no Grimório (ids de TRAITS). */
   specs: string[];
+  /** Magias levadas para a hunt (as ativas no Grimório, até 3 por slot): as opções da escolha de cada slot. */
+  spellsActive: string[];
   /**
    * Magia escolhida em cada slot, nível de uso dela (0 a 5), força extra das sinergias e do Tomo (fração) e quando:
    * { "1": { id, rank, bonus, at } }.
@@ -74,7 +76,7 @@ export interface RunStats {
 
 export function newRunStats(): RunStats {
   return {
-    levelAt: {}, depthAt: {}, specs: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
+    levelAt: {}, depthAt: {}, specs: [], spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
     minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null,

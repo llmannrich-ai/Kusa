@@ -6,7 +6,9 @@ existe é removido, e os ids comprados no banco continuam valendo. Quando uma fa
 descrever o que vale e este arquivo marca a fase como feita.
 
 **Andamento:** fases 5a (estrutura em espinha de peixe, abas no menu, nó de dois pais e 27 magias nas costelas) e 5b
-(sinergias e Tomos) feitas; ver "Como foi entregue" na seção 5. Próxima: 5f (escolha sorteada na hunt).
+(sinergias e Tomos) feitas; ver "Como foi entregue" na seção 5. A 5f mudou por decisão do Leonardo: em vez de 3
+opções sorteadas, o jogador ativa no Grimório até 3 magias por slot, que são as opções da escolha na hunt (com 3 ou
+menos no slot, todas ficam ativas sozinhas). Ver "Magias ativas" no `GDD.md`.
 
 **Decisões do Leonardo:** "aleatória" quer dizer **ramos não uniformes**, como no Diablo 2 (leitura A da seção 3.2);
 as **sinergias** entram, inclusive magias e passivas que fortalecem um grupo de magias.

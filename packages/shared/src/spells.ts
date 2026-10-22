@@ -1185,12 +1185,11 @@ export const STARTER_SPELLS: readonly SpellId[] = [
 ];
 
 /**
- * Magias que a classe pode pôr num slot: as iniciais mais as compradas no Grimório (`known`).
- * Aparecem como opções quando o slot libera na hunt.
+ * Magias que a classe pode pôr num slot: as que o herói leva para a hunt (`known`: as ativas do Grimório, até 3 por
+ * slot, ver `activeSpells` em talents.ts). Aparecem como opções quando o slot libera na hunt.
  */
-export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly string[] = []): SpellDef[] {
-  return Object.values(SPELLS).filter((s) =>
-    s.classId === classId && s.slot === slot && (STARTER_SPELLS.includes(s.id) || known.includes(s.id)));
+export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly string[]): SpellDef[] {
+  return Object.values(SPELLS).filter((s) => s.classId === classId && s.slot === slot && known.includes(s.id));
 }
 
 /**
