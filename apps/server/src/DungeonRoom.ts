@@ -679,11 +679,18 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p.target) p.target = this.nearestMonsterInRange(p, range) ?? "";
     if (!p.target) return;
 
-    const m = this.state.monsters.get(p.target)!;
     if (!seat.attacking && now >= seat.attackUntil) return;
     if (now < seat.nextAttackAt) return;
 
-    if (!this.canHit(p, m, range)) return;
+    // Alvo travado fora do alcance (ou atrás de parede) não trava o botão: o golpe vai no mais próximo ao alcance
+    // e o alvo continua travado para quando voltar ao alcance.
+    let m = this.state.monsters.get(p.target)!;
+    if (!this.canHit(p, m, range)) {
+      const near = this.nearestMonsterInRange(p, range);
+      if (!near) return;
+      m = this.state.monsters.get(near)!;
+      seat.stats.basicRetargets++;
+    }
 
     // Arma e botas mudam o ritmo (machado e besta são mais lentos; varinha e itens mágicos, mais rápidos).
     seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perks) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste));
