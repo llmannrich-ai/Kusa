@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3 e 4 (4a a 4d) feitas: as 4 classes têm os 3 ramos especializados (24 especializações). Próximas: fases 5 e 6.
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3 e 4 (4a a 4d) feitas: as 4 classes têm os 3 ramos especializados (24 especializações). Fase 5 feita (as peças grandes entraram na fase 4; sobraram as Maestrias que esperavam por elas). Próxima: fase 6 (balanceamento).
 
 ---
 
@@ -374,6 +374,13 @@ mais vida (reanimar um corpo caído continua fora). Telemetria: `revives` e `rev
 de dano por monstro colado, contragolpe, dano puxado dos aliados (Intervir), escudo de última hora, liderança e
 intimidação. Ajustes em relação à seção 6.1: Mil Cortes atordoa durante os cortes (não só no último); a Investida não
 sai sem lugar livre colado no alvo. Telemetria: `intercepted`.
+
+**Fase 5, como foi entregue:** as peças 10–16 (campo, armadilha, mirar em aliado, transformação, parede e semente) já
+tinham entrado com as classes na fase 4, porque uma especialização só abre com o Traço e as 2 magias prontas. Ficaram
+para esta fase as Maestrias da seção 4.2 que esperavam por essas peças: a **cratera em chamas** do Meteoro (campo), o
+**empurrão ao quebrar** do Escudo da Fé (empurrar) e a **cura ao morrer** do Urso Ancestral (gancho de morte da
+criatura). Na telemetria entraram `absorbed` (dano que os escudos seguraram) e `buffMs` (tempo com bônus em si ou forma
+animal), que a seção 5 pedia.
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).
