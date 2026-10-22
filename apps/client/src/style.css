@@ -157,6 +157,74 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .setting input:checked { background: #4a3417; border-color: var(--accent); }
 .setting input:checked::after { transform: translateX(20px); background: var(--accent); }
 
+/* Links para as subpáginas (Telemetria, Regras): mesma linha das opções, com uma seta no lugar do interruptor. */
+#settings-pages { display: grid; gap: 8px; margin-top: 8px; }
+.setting-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 12px; text-align: left; background: #000; }
+.setting-link small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.setting-link b { flex: none; font-size: 24px; color: var(--accent); }
+
+/* Subpágina: ocupa a altura toda, com o título e o "‹" presos no topo enquanto o conteúdo rola. */
+.panel.page { height: calc(100dvh - 24px); padding-top: 0; }
+.page-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -24px 12px;
+  padding: 12px 24px 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.page-top h2 { margin: 0; }
+.page-top .page-back { font-size: 28px; line-height: 1; }
+
+/* Telemetria */
+.tm-filters { display: grid; gap: 8px; margin-bottom: 12px; }
+.tm-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { min-height: 36px; padding: 6px 12px; font-size: 14px; border-radius: 18px; }
+.chip[aria-pressed="true"] { background: #4a3417; border-color: var(--accent); color: var(--accent); }
+.tm-body { display: grid; gap: 12px; }
+.tm-status { text-align: center; margin: 24px 0; }
+.tm-card { padding: 12px; background: #000; border: 1px solid var(--border); }
+.tm-card.mine { border-color: var(--accent); }
+.tm-card h3 { margin: 0 0 10px; font-size: 15px; color: var(--accent); }
+.tm-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.tm-tile { min-width: 0; padding: 8px; background: #1c1714; border: 1px solid #3a2f27; }
+.tm-tile dt { font-size: 11px; color: var(--muted); }
+.tm-tile dd { margin: 2px 0 0; font-size: 17px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tm-bars { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.tm-bar-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.tm-bar-head strong { flex: none; font-variant-numeric: tabular-nums; }
+.tm-bars small { display: block; margin-top: 2px; font-size: 12px; }
+.tm-track { height: 8px; margin-top: 4px; background: #1c1714; border-radius: 4px; overflow: hidden; }
+.tm-track i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.tm-columns { display: flex; align-items: flex-end; gap: 2px; height: 96px; border-bottom: 1px solid var(--border); }
+.tm-col { flex: 1; display: flex; align-items: flex-end; height: 100%; min-height: 0; padding: 0; background: none; border: none; }
+.tm-col i { display: block; width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; }
+.tm-col.active i { background: var(--text); }
+.tm-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.tm-readout { margin: 6px 0 0; font-size: 13px; }
+.tm-metrics { margin-bottom: 10px; }
+.tm-awards { grid-template-columns: repeat(2, 1fr); }
+.tm-awards .tm-tile small { display: block; margin-top: 2px; font-size: 11px; }
+.tm-tile.eu { border-color: var(--accent); }
+.tm-bars li.mine .tm-bar-head span { color: var(--accent); font-weight: bold; }
+.tm-bars li.mine .tm-track i { background: var(--text); }
+.tm-note { margin: 0 0 12px; font-size: 12px; }
+
+/* Regras: seções que abrem e fecham. */
+.rule { margin-bottom: 8px; border: 1px solid var(--border); background: #000; }
+.rule summary { padding: 12px; min-height: 44px; font-weight: bold; color: var(--accent); cursor: pointer; }
+.rule[open] summary { border-bottom: 1px solid #3a2f27; }
+.rule > p, .rule > ul, .rule > table { margin: 10px 12px; font-size: 14px; line-height: 1.45; }
+.rule ul { padding-left: 18px; }
+.rule li + li { margin-top: 6px; }
+.rule-table { width: calc(100% - 24px); border-collapse: collapse; font-size: 13px; }
+.rule-table th, .rule-table td { padding: 6px 4px; text-align: left; vertical-align: top; border-bottom: 1px solid #3a2f27; }
+.rule-table th { color: var(--muted); font-weight: normal; font-size: 12px; }
+
 input, button { -webkit-user-select: text; user-select: text; }
 button { min-height: 44px; touch-action: manipulation; }
 
@@ -223,7 +291,8 @@ button { min-height: 44px; touch-action: manipulation; }
 #bag-menu h3 { margin: 8px 0 4px; font-size: 12px; color: var(--muted); font-weight: normal; text-transform: uppercase; letter-spacing: 1px; }
 .bag-head { display: flex; justify-content: space-between; align-items: center; }
 .bag-head .icon-button { min-height: 36px; width: 36px; font-size: 16px; }
-.bag-gear, .bag-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 60px)); justify-content: center; gap: 8px; }
+.bag-gear { display: grid; grid-template-columns: repeat(3, minmax(0, 60px)); justify-content: center; gap: 8px; }
+.bag-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 60px)); justify-content: center; gap: 8px; }
 .bag-cell { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; min-height: 0; padding: 0; background: #000; border: 2px solid #3a2f27; }
 .bag-cell .item-img { width: 70%; height: 70%; image-rendering: pixelated; }
 .bag-cell.vazio, .bag-hud-cell.vazio { border-style: dashed; }
@@ -374,40 +443,137 @@ button { min-height: 44px; touch-action: manipulation; }
 }
 .action.attack.held { transform: scale(0.94); background: #4a3417; }
 
-/* Escolha de magia: na parte de cima, longe do joystick; o jogo continua rodando atrás. */
-.panel.spell-choice {
-  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
-  transform: translateX(-50%);
-  width: min(380px, calc(var(--col-w) - 24px));
-  padding: 16px;
+/* Escolha de melhoria (nível) e de magia (slot novo): cartas logo acima do personagem; a posição vem do
+   ChoiceCards. O jogo continua rodando atrás. Nunca rola: com mais de 2 cartas vira grade (data-density). */
+.choice {
+  --tone: #c9a227;
+  --glow: rgba(241, 196, 15, 0.6);
+  --card-bg: rgba(43, 36, 20, 0.92);
+  --card-w: 132px;
+  position: fixed;
   z-index: 15;
+  max-width: calc(var(--col-w) - 16px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
 }
-.spell-choice h2 { margin-bottom: 4px; font-size: 20px; }
-.spell-choice p { margin: 0 0 12px; font-size: 13px; }
-.spell-options { display: grid; gap: 8px; margin-bottom: 8px; }
-.spell-option { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 12px; border-color: #8e6bbf; background: #221a2b; }
-.spell-option-icon { font-size: 32px; flex: none; }
-.spell-option strong { display: block; color: var(--accent); }
-.spell-option small { display: block; margin: 2px 0 4px; font-size: 12px; }
-.spell-option em { display: block; font-size: 11px; font-style: normal; color: #9ec5ff; }
-.spell-choice > button:last-child { width: 100%; }
-
-/* Escolha de melhoria ao subir de nível: duas cartas lado a lado, no alto, um toque escolhe. */
-.panel.perk-choice {
-  top: calc(max(8px, env(safe-area-inset-top)) + 96px);
-  transform: translateX(-50%);
-  width: min(380px, calc(var(--col-w) - 24px));
-  padding: 12px;
-  z-index: 15;
+.choice-spell {
+  --tone: #8e6bbf;
+  --glow: rgba(175, 130, 240, 0.6);
+  --card-bg: rgba(34, 26, 43, 0.94);
+  --card-w: 168px;
 }
-.perk-choice h2 { margin: 0 0 8px; font-size: 17px; text-align: center; }
-.perk-choice p { margin: 8px 0 0; font-size: 12px; text-align: center; }
-.perk-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.perk-option { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; min-height: 120px; border-color: #c9a227; background: #2b2414; text-align: center; }
-.perk-icon { font-size: 34px; line-height: 1.1; }
-.perk-option strong { color: var(--accent); font-size: 15px; }
-.perk-option small { font-size: 12px; line-height: 1.25; }
-.perk-option em { font-size: 11px; font-style: normal; color: #9ec5ff; }
+.choice-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--tone);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.choice-later {
+  min-height: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+}
+.choice-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+  padding: 4px;
+  pointer-events: auto;
+}
+.choice-card {
+  position: relative;
+  flex: none;
+  /* Duas cartas inteiras sempre lado a lado, mesmo em tela estreita. */
+  width: min(var(--card-w), calc((var(--col-w) - 32px) / 2));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px 9px;
+  border: 2px solid var(--tone);
+  border-radius: 10px;
+  background: var(--card-bg);
+  text-align: center;
+  box-shadow: 0 0 6px var(--glow), 0 4px 10px #000a;
+  animation: choice-pulse 1.4s ease-in-out infinite;
+}
+.choice-card:active { transform: scale(0.96); }
+@keyframes choice-pulse { 50% { box-shadow: 0 0 14px var(--glow), 0 4px 10px #000a; } }
+.choice-icon { font-size: 30px; line-height: 1.1; }
+.choice-card strong { color: var(--accent); font-size: 14px; line-height: 1.15; }
+.choice-card small { font-size: 11.5px; line-height: 1.3; color: var(--text); }
+.choice-badge {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--tone);
+  color: #120e08;
+  font-size: 9.5px;
+  font-weight: bold;
+}
+.choice-card ul {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 5px 0 0;
+  border-top: 1px solid #ffffff22;
+  list-style: none;
+  text-align: left;
+}
+.choice-card li { font-size: 10.5px; line-height: 1.3; color: #9ec5ff; }
+.choice-card li + li { margin-top: 2px; }
+.choice-card li:last-child { color: var(--muted); }
+.choice-pips { display: flex; gap: 4px; margin-top: 4px; }
+.choice-pips i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--tone); }
+.choice-pips i.on { background: var(--tone); }
+.choice-pips i.next { background: #fff3b0; box-shadow: 0 0 5px #fff3b0; }
+/* Grade: 3 colunas (3 a 6 cartas, efeito principal e custo) ou 4 (7 ou mais, só nome e custo). */
+.choice[data-density] { width: calc(var(--col-w) - 16px); }
+.choice[data-density] .choice-row { width: 100%; }
+.choice[data-density] .choice-card {
+  width: calc((100% - (var(--cols) - 1) * 8px) / var(--cols));
+  padding: 8px 5px 7px;
+  gap: 2px;
+}
+.choice[data-density] .choice-icon { font-size: 24px; }
+.choice[data-density] .choice-card strong { font-size: 12px; }
+.choice[data-density] .choice-card small {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 10.5px;
+}
+.choice[data-density] .choice-card ul { margin-top: 2px; padding-top: 3px; }
+.choice[data-density] .choice-card li { font-size: 9.5px; }
+.choice[data-density] .choice-card li:not(.main):not(.cost) { display: none; }
+.choice[data-density] .choice-badge { top: 3px; right: 3px; padding: 0 4px; font-size: 8.5px; }
+.choice[data-density="mini"] .choice-card { padding-top: 12px; }
+.choice[data-density="mini"] .choice-icon { font-size: 20px; }
+.choice[data-density="mini"] .choice-card strong { font-size: 11px; }
+.choice[data-density="mini"] .choice-card small,
+.choice[data-density="mini"] .choice-card li.main:not(.cost) { display: none; }
+.choice[data-density="mini"] .choice-card ul { border-top: 0; padding-top: 0; }
+.choice[data-density="mini"] .choice-card li { font-size: 9px; line-height: 1.2; }
 
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
@@ -524,7 +690,7 @@ body.busy #hub-body { opacity: 0.7; }
 .class-foot { display: flex; justify-content: space-between; font-size: 13px; }
 .class-foot .link { padding: 4px 0; }
 
-/* Grimório: árvore de verdade, raiz no alto e 3 ramos descendo (ver GRIM_ROW e GRIM_ORB em menu.ts). */
+/* Grimório: um ramo por tela (abas), raiz no alto, tronco no meio e costelas em até 5 colunas (ver GRIM_ROW e GRIM_ORB em menu.ts). */
 .chips { display: flex; gap: 6px; margin: 8px 0 12px; overflow-x: auto; }
 .chip { min-height: 36px; padding: 6px 12px; font-size: 13px; border-radius: 18px; white-space: nowrap; }
 .chip[aria-pressed="true"] { color: #000; background: var(--accent); border-color: var(--accent); }
@@ -542,12 +708,13 @@ body.busy #hub-body { opacity: 0.7; }
   box-shadow: inset 0 0 40px #000;
   overflow: hidden;
 }
-.grim-branches { position: absolute; top: 6px; left: 0; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
-.grim-branches span { text-align: center; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.grim-tabs { margin-top: 0; }
 .grim-links { position: absolute; top: 28px; left: 0; width: 100%; height: calc(var(--rows) * var(--row)); overflow: visible; }
 .grim-links path { fill: none; stroke: #3a2f27; stroke-width: 4; stroke-linejoin: round; }
 .grim-links path.open { stroke: #7a6040; stroke-dasharray: 6 4; }
 .grim-links path.on { stroke: var(--accent); filter: drop-shadow(0 0 3px #c9a24a88); }
+/* Segundo pré-requisito de um nó (costela que cruza com o tronco). */
+.grim-links path.also { stroke-width: 3; stroke-dasharray: 3 5; }
 .gnode {
   position: absolute;
   margin-top: 28px;
@@ -555,7 +722,7 @@ body.busy #hub-body { opacity: 0.7; }
   display: grid;
   justify-items: center;
   gap: 3px;
-  width: 31%;
+  width: 20%;
   min-height: 0;
   padding: 0;
   background: none;
@@ -574,6 +741,13 @@ body.busy #hub-body { opacity: 0.7; }
   box-shadow: 0 2px 6px #000a;
 }
 .gnode.aura .gnode-orb { border-radius: 14px; }
+/* Traço (especialização): losango menor, com o ícone desvirado. */
+.gnode.trait .gnode-orb { width: 46px; height: 46px; margin: 5px 0; border-radius: 8px; transform: rotate(45deg); }
+.gnode.trait .gnode-icon { transform: rotate(-45deg); font-size: 22px; }
+.gnode.trait .gnode-lock { transform: rotate(-45deg); }
+.gnode.trait .gnode-name { color: var(--accent); }
+.grim-warning { padding: 8px 10px; font-size: 13px; color: #ffd8a8; background: #3a1e0c; border: 1px solid #a0522d; }
+button.danger { background: #5a1e12; border-color: #e67e22; }
 .gnode.owned .gnode-orb { border-color: #8e6bbf; background: radial-gradient(circle at 35% 30%, #4a3466, #160f1e 75%); }
 .gnode.maxed .gnode-orb { border-color: var(--accent); box-shadow: 0 0 12px #c9a24a88; }
 .gnode.locked .gnode-orb { filter: grayscale(1) brightness(0.55); }
@@ -607,23 +781,103 @@ body.busy #hub-body { opacity: 0.7; }
 
 /* Itens */
 .item-img { width: 32px; height: 32px; flex: none; image-rendering: pixelated; }
-.loadout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.loadout-slot {
+/* Quadro do equipamento (estilo Tibia) ao lado do herói vestido. */
+.equip-row { display: flex; gap: 8px; align-items: stretch; }
+.equip-panel {
+  flex: 1;
+  min-width: 0;
+  max-width: 300px;
   display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 4px;
-  min-height: 84px;
-  padding: 6px 4px;
-  background: #000;
-  border: 2px solid #3a2f27;
+  background: #120d0a;
+  border: 2px solid #5a4632;
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 6px 18px #000a;
 }
-.loadout-slot small { font-size: 10px; line-height: 1.2; text-align: center; }
-.loadout-slot .item-img { width: 40px; height: 40px; }
+.equip-title {
+  position: relative;
+  padding: 5px 8px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--accent);
+  background: linear-gradient(#3d2e21, #1d150f);
+  border-bottom: 1px solid #000;
+}
+/* Rebites nos cantos da barra de título. */
+.equip-title::before, .equip-title::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e8cf8a, #6b5022 70%);
+  box-shadow: 0 0 0 1px #000;
+}
+.equip-title::before { left: 6px; }
+.equip-title::after { right: 6px; }
+.loadout { position: relative; width: 100%; aspect-ratio: 100 / 110; overflow: hidden; }
+.loadout-body { position: absolute; inset: 0; width: 100%; height: 100%; }
+.loadout-slot {
+  position: absolute;
+  width: 21%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 0;
+  background: radial-gradient(circle at 50% 40%, #1d1611, #070504 80%);
+  border: 2px solid #5a4632;
+  /* Moldura afundada, como os slots do inventário do Tibia. */
+  box-shadow: inset 2px 2px 0 #000, inset -1px -1px 0 #3a2f27, 0 0 0 1px #000, 0 3px 6px #000c;
+}
+.loadout-slot.vacant { border-color: #3a2f27; }
+.loadout-slot .item-img { width: 78%; height: 78%; image-rendering: pixelated; filter: drop-shadow(0 2px 1px #000); }
+.slot-tag {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 13px;
+  white-space: nowrap;
+  color: var(--muted);
+  background: #120d0a;
+  border: 1px solid #3a2f27;
+}
+/* Coluna do corpo (cabeça, peito, pernas, pés) e as mãos dos lados, como no Tibia. */
+.at-helmet { left: 39.5%; top: 2%; }
+.at-armor { left: 39.5%; top: 26.5%; }
+.at-legs { left: 39.5%; top: 51%; }
+.at-boots { left: 39.5%; top: 75.5%; }
+.at-weapon { left: 7%; top: 38%; }
+.at-shield { left: 72%; top: 38%; }
+.equip-stats {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  font-size: 11px;
+  background: linear-gradient(#1d150f, #120d0a);
+  border-top: 1px solid #000;
+}
+.equip-hero {
+  flex: none;
+  width: 84px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  background: radial-gradient(ellipse at 50% 50%, #2a211b, #120d0a 75%);
+  border: 1px solid #3a2f27;
+}
+.hero-poses { display: grid; gap: 2px; }
+.hero-pose { width: 72px; height: 72px; image-rendering: pixelated; }
 /* Prévia do personagem vestido (frente, lado e costas): escala inteira para o pixel não borrar. */
 .doll { display: grid; justify-items: center; gap: 2px; margin-bottom: 8px; }
 .doll-img { width: 288px; max-width: 100%; image-rendering: pixelated; background: radial-gradient(#3a2f27, #0000 70%); }
-.slot-empty { font-size: 24px; color: var(--border); }
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
 .item-cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; background: #000; border: 2px solid; }
 .item-cell .item-img { width: 40px; height: 40px; }
@@ -658,3 +912,8 @@ body.busy #hub-body { opacity: 0.7; }
 /* Runas: 3 slots embaixo do equipamento (menu Itens) e na bag da hunt. */
 .loadout.runes { grid-template-columns: repeat(3, 1fr); }
 .bag-runes { grid-template-columns: repeat(3, minmax(0, 60px)); }
+/* Itens que a classe escolhida não usa: apagados, e o aviso em vermelho. */
+.unusable .item-img { opacity: 0.4; filter: grayscale(0.7); }
+.warn { color: #ff7b6b; }
+.item-stats { margin: 4px 0 8px; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+.bag-details .item-stats { margin: 2px 0 4px; font-size: 12px; }

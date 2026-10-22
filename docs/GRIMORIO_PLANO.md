@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fase 0 feita (slot 2 no nível 6). Fase 1 feita com escopo reduzido (ver seção 7). Próxima: fase 2.
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3 e 4 (4a a 4d) feitas: as 4 classes têm os 3 ramos especializados (24 especializações). Fase 5 feita (as peças grandes entraram na fase 4; sobraram as Maestrias que esperavam por elas). Fase 6 começou: medição pronta e primeira leitura (seção 8.1); os ajustes de números esperam dados das especializações.
 
 ---
 
@@ -334,6 +334,54 @@ Coração da Floresta. **Cone (4), investida (6), empurrar/puxar (7), bônus em 
 da primeira classe que os usar**: sem nenhuma magia usando, seriam código sem teste de verdade e um desenho no escuro.
 A Nevasca ganhou lentidão em vez de campo no chão; o campo (peça 10) vem na fase 5.
 
+**Fase 2, como foi entregue:** as 39 magias têm Maestria no nível 3 (tabela no GDD). A maioria combina efeitos que já
+existiam (veneno, lentidão, cadeia, área maior, mais criaturas); três efeitos novos nasceram para ela: repetir,
+devolver recarga ao matar e roubar mana. Mudanças em relação à seção 4.2: o Escudo da Fé cobre aliados (o empurrão ao
+quebrar fica para quando existir empurrar), o Meteoro queima os atingidos (a cratera espera o campo no chão), a Bênção
+da Floresta brota uma mariposa (o excesso de cura virando escudo é o Traço Florescer do Círculo da Vida) e o Urso
+Ancestral dura o dobro (curar ao morrer pede um gancho de morte de criatura). A mira e o efeito na tela passaram a usar a
+magia no nível de quem conjura. A reta das magias em linha foi corrigida para sempre passar pelo ponto mirado.
+
+**Fase 3, como foi entregue:** a estrutura das especializações (nó de Traço com `exclusiveWith`, regra permanente no
+`buy_talent`, ramo em foco no menu, confirmação em dois toques, Traços no servidor e `stats.specs`) e, para ela não
+nascer vazia, o ramo **Mira do Paladino** inteiro: os Traços Olho de Águia e Passo Leve e as magias Marca do Caçador,
+Postura do Atirador, Rolamento e Aljava Veloz. Isso trouxe 3 peças do motor: marca (9), bônus em si (parte da 8) e
+salto (6). Os outros ramos especializam conforme o conteúdo deles fica pronto (os dois lados juntos).
+
+**Fase 4a, como foi entregue:** ramos Luz (Cruzado ou Guardião da Luz) e Batedor (Artilheiro ou Armadilheiro) do
+Paladino, como na seção 6.2. Peças novas do motor: campo no chão (10, com zona, armadilha e estaca, que cobre também a
+peça 12), cone (4), mira em aliado (13) e a marca de morto-vivo nos monstros. Ajuste: o Solo Consagrado fere 0,35× por
+segundo (a seção 6.2 não dava número).
+
+**Fase 4b, como foi entregue:** as 6 especializações do Feiticeiro, como na seção 6.3. Peças novas: teleporte
+(6), parede temporária (15), empurrar (7), campo que prende (Tentáculos), nuvem de raios (uma variação da estaca),
+elemento nas magias e o esqueleto invocado. Ajustes: as magias de especialização passaram a custar 1.200 e 1.600
+pela posição no lado (o ramo Trevas é um nó mais fundo); o Passo Nebuloso tenta as diagonais e as laterais quando a
+reta está bloqueada, como o Rolamento (#57).
+
+**Fase 4c, como foi entregue:** as 6 especializações do Druida, como na seção 6.4, com o Renascer da Semente (peça 16)
+e a forma animal (Wild Shape). Peças novas: forma animal (pantera com salto no alvo; urso com vida extra e patada que
+provoca), semente que salva da morte, cura e armadura num aliado mirado, cura além da vida virando escudo (Florescer),
+veneno que acumula (Toxina), explosão quando o monstro morre envenenado, campo que cura e devolve mana, criatura que voa
+por cima da água (Águia Gigante) e o raio a cada 4 magias (Céu Carregado). Ajustes em relação à seção 6.4: a Pele de
+Casca vai num aliado mirado (como o Escudo da Luz) e também dá +4 de armadura, para não ser uma cópia; a Águia mergulha
+em quem está perto em vez de voar sobre obstáculos que barram a visão; a Maestria da semente é durar mais e renascer com
+mais vida (reanimar um corpo caído continua fora). Telemetria: `revives` e `revived`.
+
+**Fase 4d, como foi entregue:** as 6 especializações do Cavaleiro, como na seção 6.1. Peças novas: repetir N vezes
+(Redemoinho, Mil Cortes), investida até o alvo, puxar o alvo (Corrente), espinhos temporários, ficar preso no lugar
+(Fortaleza), lentidão em quem bate, campo que dá dano aos aliados (Estandarte), cura por monstro provocado, e os Traços
+de dano por monstro colado, contragolpe, dano puxado dos aliados (Intervir), escudo de última hora, liderança e
+intimidação. Ajustes em relação à seção 6.1: Mil Cortes atordoa durante os cortes (não só no último); a Investida não
+sai sem lugar livre colado no alvo. Telemetria: `intercepted`.
+
+**Fase 5, como foi entregue:** as peças 10–16 (campo, armadilha, mirar em aliado, transformação, parede e semente) já
+tinham entrado com as classes na fase 4, porque uma especialização só abre com o Traço e as 2 magias prontas. Ficaram
+para esta fase as Maestrias da seção 4.2 que esperavam por essas peças: a **cratera em chamas** do Meteoro (campo), o
+**empurrão ao quebrar** do Escudo da Fé (empurrar) e a **cura ao morrer** do Urso Ancestral (gancho de morte da
+criatura). Na telemetria entraram `absorbed` (dano que os escudos seguraram) e `buffMs` (tempo com bônus em si ou forma
+animal), que a seção 5 pedia.
+
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).
 
@@ -364,6 +412,37 @@ Já dá para medir com a telemetria (`stats.spellsChosen`, `casts`, `damageDealt
 | Magias por minuto | não cair (efeitos novos não podem deixar o jogo lento de jogar) |
 
 ---
+
+### 8.1 Fase 6: primeira leitura (22/10/2026)
+
+Duas views novas medem o Grimório: `telemetry_grimoire` (por classe e build: hunts que chegam a cada slot, nível médio
+das magias escolhidas, especializações por herói, escudo absorvido, tempo de bônus em si, Intervir e reanimações) e
+`telemetry_specs` (por Traço: hunts, sobrevivência e chegada ao boss).
+
+Leitura de produção até 22/10 (43 hunts válidas, 3 contas; nenhuma ainda com as especializações, que entraram no ar agora):
+
+| Métrica (seção 8) | Hoje | Meta | Leitura |
+|---|---|---|---|
+| Hunts que chegam ao slot 2 | 30% (cavaleiro 31%, feiticeiro 29%, paladino 50%, druida 0% em 4 hunts) | > 40% | melhorou desde o slot no nível 6, mas as mortes antes do nível 6 seguram o número |
+| Magia mais escolhida num slot | ~100% (as iniciais) | < 50% | ninguém comprou o suficiente para ter escolha: 9 compras no Grimório, nível médio das magias = 1 |
+| Especializações escolhidas | sem dados | nenhuma < 20% | entraram no ar nesta fase |
+| Gold gasto no Grimório | 2 contas compraram; ouro médio 188 (máx. 501) | subir semana a semana | o ouro vem quase todo das fugas (~80 por hunt); morrer zera o loot e só 2 hunts concluíram (~700 cada) |
+| Taxa de conclusão | 5% (2 de 43) | diferença < 10 p.p. entre classes | amostra pequena; 7 das 27 mortes foram no Dragão (boss da Cripta), com o herói no nível ~7 |
+| Magias por minuto | slot 2 usado 1–3 vezes por hunt | não cair | o slot 2 chega por volta dos 105 s, perto do boss |
+
+**Conclusão:** com 43 hunts e nenhuma especialização em uso, mexer em dano, recarga ou preço agora seria chute. Os
+números das magias ficam como estão. O que os dados mostram é que o gargalo do Grimório hoje é **ganhar ouro**, e isso
+vem da sobrevivência, não do Grimório:
+- uma especialização completa (tronco + Traço + 2 magias) custa ~5.500–6.700 de ouro: ~8–10 hunts concluídas, como a
+  meta da seção 7, mas ~100 hunts no ritmo atual (~60 de ouro por hunt, contando as mortes);
+- recomendações para quem cuida de monstros e economia (fora do escopo do Grimório): rever o Dragão (boss da Cripta)
+  e as mortes antes do nível 6 (orc, esqueleto e ogro nas salas 1–2), e conferir por que as poções quase não são
+  bebidas nas mortes.
+
+**Próxima leitura:** depois de ~100 hunts com as especializações no ar (`telemetry_specs` e `telemetry_grimoire` por
+build). Se a conclusão continuar abaixo de 15%, baixar os preços das especializações (`SIDE_SPELL_COST` e `TRAIT_COST`,
+com uma migration que atualize `talents.base_cost` junto); se algum lado de ramo ficar abaixo de 20% das escolhas, subir
+o Traço ou a magia dele.
 
 ## 9. Riscos e como reduzir
 

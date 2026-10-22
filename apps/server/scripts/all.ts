@@ -2,9 +2,10 @@
  * Roda todos os testes de fumaça (`npm test`): sobe os servidores de teste em portas próprias, roda cada
  * script, mostra o resumo e derruba os servidores. Não precisa de servidor rodando antes.
  *
- * - Servidor normal: smoke, combat, items, maps, potions, perks e bag.
+ * - Servidor normal: smoke, combat, items, maps, potions, perks e bag (e solo, que não usa o servidor).
  * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos; o cavaleiro aguenta apanhar parado): spells e specials.
- * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio.
+ * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): grimorio e costelas.
+ * - O mesmo com KUSA_MONSTER_HP=20 (monstros aguentam mais de um golpe): efeitos.
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_RUNES (runas equipadas em todo mundo): runes.
  *
  * Os bots caçam no nível 1 e às vezes morrem por azar. Só nesse caso (a hunt terminou com "died")
@@ -22,10 +23,11 @@ const ATTEMPTS = 5;
 
 interface Suite { port: number; env: Record<string, string>; tests: string[] }
 const SUITES: Suite[] = [
-  { port: 2610, env: {}, tests: ["smoke", "combat", "items", "maps", "potions", "perks", "bag"] },
+  { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo"] },
   { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["spells", "specials"] },
-  { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["grimorio"] },
-  { port: 2613, env: { KUSA_START_LEVEL: "8", KUSA_RUNES: "rune-life,rune-time,rune-meteor,rune-life" }, tests: ["runes"] },
+  { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["grimorio", "costelas"] },
+  { port: 2613, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1", KUSA_MONSTER_HP: "20" }, tests: ["efeitos"] },
+  { port: 2614, env: { KUSA_START_LEVEL: "8", KUSA_RUNES: "rune-life,rune-time,rune-meteor,rune-life" }, tests: ["runes"] },
 ];
 
 const only = process.argv.slice(2);

@@ -24,8 +24,9 @@ export class CombatFx {
     }
   }
 
-  spell(spellId: SpellId, from: Point, to: Point, ms: number) {
-    const radius = SPELLS[spellId].radius * TILE_SIZE;
+  /** `radiusTiles`: a área no nível de quem conjurou (a Maestria pode aumentar). */
+  spell(spellId: SpellId, from: Point, to: Point, ms: number, radiusTiles = SPELLS[spellId].radius) {
+    const radius = radiusTiles * TILE_SIZE;
     switch (spellId) {
       case "blade_spin": return this.bladeSpin(from);
       case "war_cry": return this.ring(from, radius, 0xe67e22, 500, 4);
@@ -50,8 +51,7 @@ export class CombatFx {
       case "iron_skin": return this.ring(from, TILE_SIZE * 0.8, 0xa4b0be, 500, 5);
       case "earthquake":
         this.ring(from, radius, 0x8d6e4a, 500, 8);
-        this.debris(from, radius, 0x6b4426);
-        return this.scene.cameras.main.shake(220, 0.006);
+        return this.debris(from, radius, 0x6b4426);
       case "steel_wall":
         this.ring(from, radius, 0x95a5a6, 550, 6);
         return this.shieldRaise(from);
@@ -62,6 +62,43 @@ export class CombatFx {
         this.slash(from, to);
         this.later(80, () => this.slash(from, to));
         return this.later(160, () => this.sparks(to, 0xff7675, 10));
+      // Especializações do Cavaleiro.
+      case "steel_whirlwind": return this.bladeSpin(from);
+      case "berserk_rage":
+        this.ring(from, TILE_SIZE, 0xc0392b, 500, 6);
+        return this.sparks(from, 0xff7675, 10);
+      case "thrown_blade":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xdcdde1, glow: 0xa4b0be, impact: 0xffffff, scale: 1.6 });
+        return this.later(ms, () => this.sparks(to, 0xc0392b, 6));
+      case "thousand_cuts":
+        this.slash(from, to);
+        return this.later(60, () => this.sparks(to, 0xffffff, 4));
+      case "shield_bash":
+        this.shieldRaise(from);
+        return this.later(100, () => this.ring(to, TILE_SIZE / 2, 0x7fc8ff, 300, 6));
+      case "shared_aegis":
+        this.ring(from, radius, 0x9fd8ff, 600, 5);
+        return this.shieldRaise(from);
+      case "iron_thorns":
+        this.ring(from, TILE_SIZE * 0.9, 0x95a5a6, 450, 4);
+        return this.sparks(from, 0xdcdde1, 10);
+      case "living_fortress":
+        this.ring(from, TILE_SIZE, 0x7f8c8d, 550, 8);
+        return this.debris(from, TILE_SIZE, 0x6b4426);
+      // O cavaleiro já está colado no alvo (to): poeira do ponto de partida (from) até ele, e o golpe.
+      case "charge":
+        for (let i = 0; i <= 4; i++) this.later(i * 25, () => this.puff(from.x + ((to.x - from.x) * i) / 4, from.y + ((to.y - from.y) * i) / 4 + 10, 0xc8a165, 6));
+        return this.later(110, () => { this.slash(to, to); this.sparks(to, 0xf1c40f, 8); });
+      case "war_banner":
+        this.ring(from, radius, 0xf1c40f, 600, 4);
+        return this.sparks(from, 0xf1c40f, 8);
+      // A corrente vai até o alvo e o traz (o monstro já aparece colado pelo estado).
+      case "iron_chain":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0x95a5a6, glow: 0x7f8c8d, scale: 1.2 });
+        return this.later(ms, () => this.drain(to, from, 0x95a5a6));
+      case "supreme_challenge":
+        this.ring(from, radius, 0xe74c3c, 600, 5);
+        return this.later(120, () => this.ring(from, radius * 0.6, 0xf39c12, 450, 3));
       // A flecha voa até o fim da linha; os tiles atravessados acendem pelo `area` (DungeonScene).
       case "piercing_shot": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf1c40f, glow: 0xf1c40f, scale: 1.4 });
       case "stun_arrow":
@@ -96,7 +133,6 @@ export class CombatFx {
         return this.later(ms, () => {
           this.ring(to, radius, 0xe74c3c, 500, 8);
           this.debris(to, radius, 0x5a2a1a);
-          this.scene.cameras.main.shake(200, 0.006);
         });
       case "blizzard":
         this.snow(to, radius);
@@ -108,6 +144,200 @@ export class CombatFx {
       case "nature_wrath":
         this.projectile(FX.leaf, from, to, ms, { trail: 0x7bd36a, glow: 0x3fbf3a, impact: 0x9cff7a, scale: 1.5 });
         return this.later(ms, () => this.ring(to, radius, 0x3fbf3a, 450, 5));
+      // Especializações do Paladino (ramo Mira).
+      case "hunter_mark":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xe74c3c, glow: 0xe74c3c, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xe74c3c, 8));
+      case "sniper_stance":
+        this.ring(from, TILE_SIZE * 0.9, 0xf7d774, 500, 4);
+        return this.sparks(from, 0xffffff, 6);
+      // O herói já está no destino: um rastro de folhas do ponto de partida (from) até ele (to).
+      case "evasive_roll":
+        for (let i = 0; i <= 4; i++) this.later(i * 30, () => this.puff(from.x + ((to.x - from.x) * i) / 4, from.y + ((to.y - from.y) * i) / 4 + 10, 0x9be15d, 5));
+        return;
+      case "swift_quiver":
+        this.ring(from, TILE_SIZE * 0.9, 0x9be15d, 500, 3);
+        return this.later(120, () => this.ring(from, TILE_SIZE * 0.6, 0xffffff, 400, 2));
+      // Especializações do Paladino (ramos Luz e Batedor).
+      case "holy_spear":
+        this.projectile(FX.holyArrow, from, to, ms, { trail: 0xfff6c8, glow: 0xfff6c8, impact: 0xffffff, scale: 1.3 });
+        return this.later(ms, () => this.holyFlash(to));
+      case "divine_caldera":
+        this.ring(from, radius, 0xf7d774, 550, 6);
+        return this.later(120, () => this.ring(from, radius * 0.6, 0xffffff, 400, 3));
+      case "light_shield":
+        this.drain(from, to, 0x7fc8ff);
+        return this.later(200, () => this.shieldRaise(to));
+      case "consecrated_ground":
+        this.beam(to, 0xfff6c8);
+        return this.later(120, () => this.ring(to, radius, 0xfff6c8, 500, 4));
+      case "lightning_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0x9ec5ff, glow: 0x5dade2, impact: 0xffffff, scale: 1.3 });
+        return this.later(ms, () => this.sparks(to, 0x9ec5ff, 8));
+      case "barrage":
+        // O leque acende pelo `showCone` (DungeonScene); aqui saem algumas flechas na direção do tiro.
+        for (let i = 0; i < 5; i++) {
+          const spread = { x: to.x + Phaser.Math.Between(-24, 24), y: to.y + Phaser.Math.Between(-24, 24) };
+          this.later(i * 40, () => this.projectile(FX.arrow, from, spread, 220, { trail: 0xe67e22, glow: 0xe67e22 }));
+        }
+        return;
+      // Armadilha e estaca: ao lançar, o objeto aparece pelo estado (campo); o disparo chega como eco.
+      case "bear_trap":
+        return this.sparks(to, 0xbdc3c7, from.x === to.x && from.y === to.y ? 12 : 4);
+      case "arrow_cordon":
+        return from.x === to.x && from.y === to.y ? undefined : this.projectile(FX.arrow, from, to, ms, { trail: 0xc8a165, glow: 0xc8a165 });
+      // Especializações do Feiticeiro.
+      case "energy_beam": return this.zap(from, to, 0x9ec5ff);
+      // Os raios da nuvem chegam como eco, de cima para o monstro; o lançamento só faz a nuvem (campo).
+      case "sky_fury":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE, 0x9ec5ff, 400, 3);
+        this.beam(to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 8);
+      case "fireball":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xff7f27, glow: 0xe74c3c, impact: 0xf1c40f, scale: 1.3 });
+        return this.later(ms, () => { this.ring(to, radius, 0xff7f27, 450, 7); this.sparks(to, 0xf1c40f, 12); });
+      case "infernal_core":
+        this.ring(from, radius, 0xe74c3c, 650, 9);
+        this.later(100, () => this.ring(from, radius * 0.7, 0xff7f27, 500, 6));
+        return this.debris(from, radius, 0x5a2a1a);
+      case "cone_of_cold": return this.sparks(from, 0xd6f1ff, 10);
+      case "ice_prison":
+        this.snow(to, radius);
+        return this.ring(to, radius, 0xd6f1ff, 500, 5);
+      // O feiticeiro já está no destino (to): névoa onde estava e onde aparece.
+      case "misty_step":
+        for (const at of [from, to]) for (let i = 0; i < 5; i++) this.puff(at.x + Phaser.Math.Between(-10, 10), at.y + Phaser.Math.Between(-8, 8), 0xc7b8ff, 6);
+        return;
+      case "magic_wall": return this.ring(to, TILE_SIZE, 0x8e7cc3, 400, 4);
+      case "sudden_death":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0x2d0a40, glow: 0x000000, impact: 0x8e44ad, scale: 1.1 });
+        return this.later(ms, () => this.drain(to, to, 0x5a1c7a));
+      case "raise_skeletons":
+        this.ring(from, TILE_SIZE * 1.5, 0xdcdde1, 550, 3);
+        return this.debris(from, TILE_SIZE, 0xdcdde1);
+      case "eldritch_blast":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0xb04ae0, glow: 0x6b2a9a, impact: 0xe0b0ff, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xb04ae0, 8));
+      case "black_tentacles": return this.ring(to, radius, 0x9b59b6, 500, 5);
+      // Especializações do Druida. As formas: no lançamento, folhas em volta; o salto da pantera e a patada do urso
+      // chegam como eco (de onde o druida estava até o monstro).
+      case "panther_form":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE, 0x4b4b6b, 450, 4);
+        for (let i = 0; i <= 4; i++) this.later(i * 25, () => this.puff(from.x + ((to.x - from.x) * i) / 4, from.y + ((to.y - from.y) * i) / 4, 0x4b4b6b, 6));
+        return this.later(100, () => this.sparks(to, 0xffffff, 8));
+      case "bear_form":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(from, TILE_SIZE * 1.2, 0x8d6e4a, 500, 6);
+          return this.debris(from, TILE_SIZE, 0x6b4426);
+        }
+        return this.ring(from, TILE_SIZE * 1.5, 0x8d6e4a, 300, 5);
+      case "beast_cry":
+        this.ring(from, TILE_SIZE * 3, 0xe67e22, 550, 5);
+        return this.later(120, () => this.ring(from, TILE_SIZE * 1.8, 0xf1c40f, 450, 3));
+      // As folhas da cura no aliado saem pela cena (`spell.heal`).
+      case "distant_heal": return this.drain(from, to, 0xff8fab);
+      // A semente voa até o aliado; quando ela salva (eco no próprio aliado), uma flor se abre.
+      case "rebirth_seed":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 1.5, 0x9cff7a, 700, 5);
+          this.later(150, () => this.ring(to, TILE_SIZE, 0xf7d774, 500, 3));
+          return this.heal(to);
+        }
+        this.projectile(FX.leaf, from, to, 260, { trail: 0xc8a165, glow: 0x9cff7a, impact: 0x9cff7a });
+        return this.later(260, () => this.sparks(to, 0x9cff7a, 8));
+      case "barkskin":
+        this.drain(from, to, 0x8d6e4a);
+        return this.later(200, () => { this.shieldRaise(to); this.debris(to, TILE_SIZE / 2, 0x8d6e4a); });
+      case "reviving_rain":
+        this.beam(to, 0x7fc8ff);
+        return this.ring(to, radius, 0x7fc8ff, 600, 3);
+      // A explosão do veneno chega como eco no monstro morto.
+      case "mamba_bite":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 2.5, 0x9acd32, 450, 7);
+          return this.sparks(to, 0x9acd32, 14);
+        }
+        return this.projectile(FX.greenLight, from, to, ms, { trail: 0x2d6a1f, glow: 0x1e4d14, impact: 0x9acd32, scale: 1.2 });
+      case "poison_cloud":
+        this.projectile(FX.greenLight, from, to, 200, { trail: 0x9acd32, glow: 0x6ab04c });
+        return this.later(200, () => this.ring(to, radius, 0x9acd32, 500, 5));
+      case "thunderwave":
+        this.ring(from, radius, 0x9ec5ff, 400, 8);
+        this.later(80, () => this.ring(from, radius * 0.6, 0xffffff, 300, 4));
+        return this.sparks(from, 0x9ec5ff, 10);
+      // Raio do céu: da nuvem (Chamar Relâmpago) ou do Céu Carregado, sempre caindo no ponto `to`.
+      case "call_lightning":
+        this.beam(to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 8);
+      case "giant_eagle":
+        this.ring(from, TILE_SIZE * 1.5, 0xc8a165, 550, 3);
+        return this.sparks(from, 0xf7d774, 8);
+      // Costelas do Grimório. As áreas, linhas e leques acendem pelo `area` e pelo `showCone` (DungeonScene).
+      case "twin_slash": return this.slash(from, to);
+      case "cross_cut":
+        this.slash(from, to);
+        return this.sparks(to, 0xd2d6de, 6);
+      case "open_wound":
+        this.slash(from, to);
+        return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      case "seismic_rift": return this.debris(to, TILE_SIZE, 0x6b4426);
+      case "aegis_strike":
+        this.slash(from, to);
+        return this.shieldRaise(from);
+      case "shield_quake":
+        this.ring(from, radius, 0x5dade2, 500, 6);
+        return this.debris(from, radius, 0x6b4426);
+      case "stunning_roar":
+        this.ring(from, radius, 0xe67e22, 550, 6);
+        return this.later(120, () => this.ring(from, radius * 0.6, 0xf1c40f, 450, 4));
+      case "battle_order": return this.ring(from, TILE_SIZE * 0.8, 0xe67e22, 500, 4);
+      case "challenge_mark":
+        this.zap(from, to, 0xe67e22);
+        return this.ring(to, TILE_SIZE / 2, 0xe74c3c, 400, 4);
+      case "double_shot": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf1c40f, glow: 0xf1c40f });
+      case "barbed_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xc0392b, glow: 0xc0392b, scale: 1.3 });
+        return this.later(ms, () => this.sparks(to, 0xc0392b, 8));
+      case "sunbeam": return this.zap(from, to, 0xfff6c8);
+      case "holy_hammer":
+        this.projectile(FX.holyArrow, from, to, ms, { trail: 0xffe9a3, glow: 0xf7d774, impact: 0xfff6c8, scale: 1.8 });
+        return this.later(ms, () => this.holyFlash(to));
+      case "net_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xc8a165, glow: 0xc8a165 });
+        return this.later(ms, () => this.ring(to, radius + TILE_SIZE / 2, 0xc8a165, 450, 3));
+      case "fire_arrows":
+        this.arrowRain(to, radius, ms);
+        return this.later(ms, () => this.sparks(to, 0xff7f27, 12));
+      case "spark": return this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.8 });
+      case "ember_rain":
+        this.beam(to, 0xff7f27);
+        return this.sparks(to, 0xf1c40f, 10);
+      case "frostbite":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xd6f1ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.9 });
+        return this.later(ms, () => this.snow(to, TILE_SIZE));
+      case "frozen_orb":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xd6f1ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 1.5 });
+        return this.later(ms, () => { this.ring(to, radius, 0xd6f1ff, 500, 6); this.snow(to, radius); });
+      case "dark_seal":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0x2d0a40, glow: 0x8e44ad, impact: 0xc77dff });
+        return this.later(ms, () => this.ring(to, TILE_SIZE / 2, 0x8e44ad, 450, 4));
+      case "plague":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0x6b8e23, glow: 0x556b2f, impact: 0x9acd32 });
+        return this.later(ms, () => this.ring(to, radius, 0x6b8e23, 500, 5));
+      case "howl": return this.ring(from, radius, 0xb0c4de, 600, 4);
+      case "purifying_sap":
+        this.zap(from, to, 0x7bed9f);
+        return this.heal(to);
+      case "blossom_burst":
+        this.ring(from, radius, 0xff9ff3, 600, 4);
+        return this.heal(from);
+      case "vine_lash": return this.zap(from, to, 0x6b7a2a);
+      case "spore_burst":
+        this.projectile(FX.greenLight, from, to, ms, { trail: 0x9acd32, glow: 0x6b8e23, impact: 0x9cff7a });
+        return this.later(ms, () => this.ring(to, radius, 0x9acd32, 500, 5));
+      case "bramble_burst":
+        this.ring(from, radius, 0x6b7a2a, 450, 7);
+        return this.debris(from, radius, 0x3d5a1e);
       // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
       case "spirit_wolf":
       case "healing_moth":
@@ -167,6 +397,23 @@ export class CombatFx {
     }
   }
 
+  /** Raio reto e tremido de `from` a `to` (Feixe de Energia). */
+  private zap(from: Point, to: Point, color: number) {
+    const g = this.scene.add.graphics().setDepth(FX_DEPTH);
+    const steps = Math.max(3, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / 16));
+    const line = (width: number, tint: number, alpha: number) => {
+      g.lineStyle(width, tint, alpha).beginPath().moveTo(from.x, from.y);
+      for (let k = 1; k < steps; k++) {
+        const t = k / steps;
+        g.lineTo(from.x + (to.x - from.x) * t + Phaser.Math.Between(-3, 3), from.y + (to.y - from.y) * t + Phaser.Math.Between(-3, 3));
+      }
+      g.lineTo(to.x, to.y).strokePath();
+    };
+    line(6, color, 0.45);
+    line(2, 0xffffff, 0.95);
+    this.scene.tweens.add({ targets: g, alpha: { from: 1, to: 0 }, duration: 300, onComplete: () => g.destroy() });
+  }
+
   /** Brilho de cura subindo de um aliado (Bênção da Floresta). */
   heal(at: Point) {
     for (let i = 0; i < 6; i++) {
@@ -191,7 +438,6 @@ export class CombatFx {
     if (!special) return;
     const color = special.color;
     const flash = (delayPerRing = 0) => this.area(tiles.map((t, i) => ({ ...t, ring: delayPerRing ? i * delayPerRing : 0 })), color, 0);
-    const shake = (ms: number, k: number) => this.scene.cameras.main.shake(ms, k);
     switch (kind) {
       case "ogre":
       case "troll":
@@ -200,15 +446,13 @@ export class CombatFx {
         this.debris(from, TILE_SIZE * (kind === "ogre" ? 2 : 1.3), kind === "ogre" ? 0x6b4426 : 0x2d4a1f);
         flash(0.6);
         if (kind === "troll") this.heal(from);
-        return shake(kind === "ogre" ? 260 : 180, kind === "ogre" ? 0.009 : 0.006);
+        return;
       case "dragon":
         this.breath(from, tiles);
-        flash(0.5);
-        return shake(300, 0.008);
+        return flash(0.5);
       case "hydra":
         this.acidRain(tiles, color);
-        this.later(320, () => flash(0.3));
-        return this.later(320, () => shake(220, 0.006));
+        return this.later(320, () => flash(0.3));
     }
   }
 
@@ -375,7 +619,6 @@ export class CombatFx {
         onComplete: () => orb.destroy(),
       });
     }
-    this.scene.cameras.main.shake(180, 0.004);
   }
 
   /** Escudo da Fé: o brasão desce sobre o cavaleiro com um clarão azul. */

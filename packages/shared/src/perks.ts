@@ -26,12 +26,12 @@ export interface PerkDef {
 export const PERKS: Record<PerkId, PerkDef> = {
   vigor: { id: "vigor", name: "Vigor", icon: "❤️", description: "+12% de vida máxima", perStack: 0.12, maxStacks: 5 },
   arcana: { id: "arcana", name: "Reserva arcana", icon: "💧", description: "+15% de mana máxima", perStack: 0.15, maxStacks: 4, needsSpell: true },
-  regen: { id: "regen", name: "Regeneração", icon: "💗", description: "+1% de vida por segundo", perStack: 0.01, maxStacks: 3 },
+  regen: { id: "regen", name: "Regeneração", icon: "🌿", description: "+1% de vida por segundo", perStack: 0.01, maxStacks: 3 },
   clarity: { id: "clarity", name: "Clareza", icon: "🔷", description: "+1,5% de mana por segundo", perStack: 0.015, maxStacks: 3, needsSpell: true },
   might: { id: "might", name: "Força", icon: "⚔️", description: "+10% de dano", perStack: 0.1, maxStacks: 5 },
   haste: { id: "haste", name: "Agilidade", icon: "👟", description: "+6% de velocidade de movimento", perStack: 0.06, maxStacks: 3 },
   guard: { id: "guard", name: "Escudo", icon: "🛡️", description: "+3 de armadura (corta dano recebido)", perStack: 3, maxStacks: 4 },
-  frenzy: { id: "frenzy", name: "Fúria", icon: "🗡️", description: "Ataque básico 10% mais rápido", perStack: 0.1, maxStacks: 3 },
+  frenzy: { id: "frenzy", name: "Fúria", icon: "⚡", description: "Ataque básico 10% mais rápido", perStack: 0.1, maxStacks: 3 },
   focus: { id: "focus", name: "Foco", icon: "⏳", description: "Recarga das magias 10% menor", perStack: 0.1, maxStacks: 3, needsSpell: true },
   leech: { id: "leech", name: "Sede de sangue", icon: "🩸", description: "Cura 4% do dano que causa", perStack: 0.04, maxStacks: 3 },
 };

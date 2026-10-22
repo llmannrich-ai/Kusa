@@ -4,36 +4,52 @@ import {
   CLASS_IDS,
   ITEMS,
   ITEM_BUY_PRICES,
-  ITEM_SELL_PRICES,
+  ITEM_FAMILIES,
   ITEM_SLOTS,
+  ITEM_TIERS,
+  RARITY_NAMES,
   RUNES,
   RUNE_SLOTS,
   SLOT_NAMES,
   SPELLS,
-  TIER_COLORS,
   TREE_BRANCHES,
   TIER_NAMES,
   VAULT_SIZE,
   auraBonuses,
   auraText,
   knownSpells,
+  MASTERIES,
+  MASTERY_RANK,
   lootColor,
   lootName,
+  lootSellPrice,
   runeEffect,
-  sellPrice,
   spellFacts,
   statsFor,
   talentBlocker,
   talentCost,
   talentRank,
   talentTree,
+  TALENTS,
+  TRAITS,
+  damageReduction,
+  gearStats,
+  canUse,
+  classesText,
+  describeStats,
+  itemColor,
+  itemId,
+  itemScore,
+  itemSummary,
+  sellPrice,
   type ClassId,
   type ItemDef,
+  type ItemSlot,
   type RuneDef,
   type TalentDef,
 } from "@kusa/shared";
-import { heroPoses } from "./art/heroes.ts";
-import { itemIcon } from "./art/items.ts";
+import { heroPoses, type HeroDir } from "./art/heroes.ts";
+import { itemIcon, slotGhost } from "./art/items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
 import {
   ProfileError,
@@ -86,6 +102,62 @@ function itemImg(itemId: string) {
   return img;
 }
 
+function ghostImg(slot: ItemSlot) {
+  const key = `ghost:${slot}`;
+  if (!iconCache.has(key)) iconCache.set(key, slotGhost(slot).toDataURL());
+  const img = el("img", "item-img");
+  img.src = iconCache.get(key)!;
+  img.alt = "";
+  return img;
+}
+
+/**
+ * Manequim atrás dos slots do equipamento (viewBox no mesmo formato do `.loadout`): parede de
+ * pedra, corpo com volume, ombreiras, cinto, joelheiras e botas. Os slots cobrem cabeça, peito,
+ * pernas, pés e mãos; o resto do corpo aparece em volta deles.
+ */
+const BODY_SVG = `<svg class="loadout-body" viewBox="0 0 100 110" aria-hidden="true">
+  <defs>
+    <pattern id="doll-bricks" width="12" height="7" patternUnits="userSpaceOnUse">
+      <rect width="12" height="7" fill="#17110e"/>
+      <path d="M0 .5h12M0 4h12M3 .5v3.5M9 4v3" stroke="#0c0907" stroke-width=".6"/>
+    </pattern>
+    <linearGradient id="doll-skin" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2b221c"/><stop offset=".45" stop-color="#4a3c30"/><stop offset="1" stop-color="#241c17"/>
+    </linearGradient>
+    <radialGradient id="doll-light" cx=".5" cy=".42" r=".6">
+      <stop offset="0" stop-color="#c9a24a" stop-opacity=".16"/><stop offset="1" stop-color="#000" stop-opacity=".55"/>
+    </radialGradient>
+  </defs>
+  <rect width="100" height="110" fill="url(#doll-bricks)"/>
+  <rect width="100" height="110" fill="url(#doll-light)"/>
+  <ellipse cx="50" cy="106.5" rx="25" ry="2.6" fill="#000" opacity=".6"/>
+  <g fill="url(#doll-skin)" stroke="#6b5640" stroke-width=".7" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32 37 22 49l-6 11 6 4 7-11 6-8zM68 37l10 12 6 11-6 4-7-11-6-8z"/>
+    <path d="M37 66h11l-.5 18 .5 14h-9l-1-14zM52 66h11l-1 18-1 14h-9l.5-14z"/>
+    <path d="M36 97h12v6q0 2-2 2H33q-2 0-1-2zM52 97h12l4 6q1 2-1 2H54q-2 0-2-2z"/>
+    <path d="M45 23h10v9H45z"/>
+    <circle cx="50" cy="14" r="10"/>
+    <path d="M31 34q19-6 38 0l2 6-4 14-3 12H36l-3-12-4-14z"/>
+    <path d="M26 37q4-7 12-5l1 7q-6 3-12 1zM74 37q-4-7-12-5l-1 7q6 3 12 1z"/>
+  </g>
+  <g fill="none" stroke="#0d0a08" stroke-width=".8" stroke-linecap="round">
+    <path d="M50 38v26M40 44q10 4 20 0M38 55q12 3 24 0"/>
+    <path d="M24 46l5 4M76 46l-5 4"/>
+  </g>
+  <g stroke="#0d0a08" stroke-width=".6">
+    <rect x="35" y="62" width="30" height="5" fill="#3a2a1c"/>
+    <rect x="47" y="61.5" width="6" height="6" fill="#8a6d2c" stroke="#c9a24a"/>
+    <rect x="49" y="63.5" width="2" height="2" fill="#17110e"/>
+    <path d="M40 83h5l-1 4.5h-3z" fill="#3a2f27"/>
+    <path d="M55 83h5l-1 4.5h-3z" fill="#3a2f27"/>
+  </g>
+  <g fill="#c9a24a" opacity=".45">
+    <circle cx="29" cy="35.5" r=".9"/><circle cx="33" cy="33.2" r=".9"/>
+    <circle cx="71" cy="35.5" r=".9"/><circle cx="67" cy="33.2" r=".9"/>
+  </g>
+</svg>`;
+
 /** Retrato da classe vestindo `outfit`: quadro parado, de frente. */
 function portrait(classId: ClassId, outfit: Outfit = NO_OUTFIT) {
   const img = el("img", "hero-img");
@@ -102,10 +174,24 @@ function outfitPreview(classId: ClassId, outfit: Outfit) {
   return img;
 }
 
-function heroUrl(classId: ClassId, outfit: Outfit, view: "down" | "all") {
+/** O personagem vestido em pé, um quadro por direção (frente, lado e costas), para a coluna ao lado do boneco. */
+function heroColumn(classId: ClassId, outfit: Outfit) {
+  const column = el("div", "hero-poses");
+  for (const dir of ["down", "side", "up"] as const) {
+    const img = el("img", "hero-pose");
+    img.src = heroUrl(classId, outfit, dir);
+    img.alt = "";
+    column.append(img);
+  }
+  column.setAttribute("role", "img");
+  column.setAttribute("aria-label", `${CLASSES[classId].name} com o equipamento`);
+  return column;
+}
+
+function heroUrl(classId: ClassId, outfit: Outfit, view: HeroDir | "all") {
   const key = `hero:${classId}:${outfitKey(outfit)}:${view}`;
   if (!iconCache.has(key)) {
-    const canvas = view === "down" ? heroPoses(classId, outfit, ["down"]) : heroPoses(classId, outfit);
+    const canvas = view === "all" ? heroPoses(classId, outfit) : heroPoses(classId, outfit, [view]);
     iconCache.set(key, canvas.toDataURL());
   }
   return iconCache.get(key)!;
@@ -115,11 +201,15 @@ export class Hub {
   private profile: Profile = { gold: 0, talents: {}, items: [] };
   private tab: Tab = "classes";
   private marketMode: "buy" | "sell" = "buy";
+  /** Slot mostrado na compra do mercado. */
+  private marketSlot: ItemSlot = "weapon";
   private busy = false;
   private toastTimer = 0;
   /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
   classId: ClassId;
   private treeClass: ClassId;
+  /** Ramo aberto no Grimório (0 a 2): um por tela. */
+  private treeBranch = 0;
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
@@ -227,8 +317,8 @@ export class Hub {
   // --- Grimório ---------------------------------------------------------------
 
   /**
-   * O Grimório desenhado como uma árvore de verdade: a raiz (magia inicial do slot 1) no alto e
-   * 3 ramos descendo, ligados por galhos. Cada nó pede o anterior do ramo; tocar abre os detalhes.
+   * O Grimório desenhado como uma árvore de verdade, um ramo por tela: a raiz (magia inicial do slot 1) no alto,
+   * o tronco do ramo descendo no meio e as costelas para os lados, ligados por galhos. Tocar abre os detalhes.
    */
   private renderTree() {
     const page = el("div", "hub-page");
@@ -248,45 +338,75 @@ export class Hub {
     const spells = tree.filter((t) => t.kind === "spell");
     const learned = spells.filter((t) => talentRank(t, ranks) > 0).length;
     page.append(el("p", "muted hub-hint",
-      `${learned}/${spells.length} magias. Toque num nó para ver e comprar; os da ponta pedem os anteriores do ramo. ` +
-      "Magias viram opção quando o slot abre na hunt (nível 3 e 6); os níveis 2 e 3 deixam a magia mais forte."));
+      `${learned}/${spells.length} magias. Um ramo por vez: o tronco desce no meio e os galhos saem para os lados. ` +
+      "Toque num nó para ver e comprar; cada um pede o nó de cima (a diagonal pontilhada é um segundo pré-requisito). " +
+      "Magias viram opção quando o slot abre na hunt (nível 3 e 6). Ramos com ✦ terminam em duas especializações, " +
+      "e a escolha é permanente."));
 
-    const rows = Math.max(...tree.map((t) => t.row)) + 1;
+    // Um ramo por tela, como as abas do Diablo 2: a raiz no alto, o tronco no meio e as costelas para os lados.
+    const col = this.treeBranch;
+    const tabs = el("div", "chips grim-tabs");
+    TREE_BRANCHES[this.treeClass].forEach((name, c) => {
+      const branch = tree.filter((t) => t.col === c && t.kind === "spell" && t.row > 0);
+      const owned = branch.filter((t) => talentRank(t, ranks) > 0).length;
+      const spec = tree.some((t) => t.col === c && t.side !== undefined);
+      const tab = el("button", "chip", `${name}${spec ? " ✦" : ""} · ${owned}/${branch.length}`);
+      tab.setAttribute("aria-pressed", String(c === col));
+      tab.onclick = () => { this.treeBranch = c; this.render(); };
+      tabs.append(tab);
+    });
+    page.append(tabs);
+
+    const shown = tree.filter((t) => t.col === col || t.row === 0);
+    const xOf = (def: TalentDef) => 0.5 + def.lane * 0.2;
+    const rows = Math.max(...shown.map((t) => t.row)) + 1;
     const grim = el("div", "grimoire");
     grim.style.setProperty("--rows", String(rows));
     grim.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
 
-    const branches = el("div", "grim-branches");
-    for (const name of TREE_BRANCHES[this.treeClass]) branches.append(el("span", "", name));
-    grim.append(branches);
-
-    // Galhos: SVG atrás dos nós, em unidades de coluna (100 por ramo) × pixels de linha.
+    // Galhos: SVG atrás dos nós, em unidades de 300 na largura × pixels de linha.
     const svgNs = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNs, "svg");
     svg.setAttribute("class", "grim-links");
     svg.setAttribute("viewBox", `0 0 300 ${rows * GRIM_ROW}`);
     svg.setAttribute("preserveAspectRatio", "none");
-    for (const def of tree) {
-      const parent = def.requires && tree.find((t) => t.id === def.requires!.id);
-      if (!parent) continue;
-      const x0 = parent.col * 100 + 50;
+    const link = (parent: TalentDef, child: TalentDef, state: string, also: boolean) => {
+      const x0 = xOf(parent) * 300;
       const y0 = parent.row * GRIM_ROW + GRIM_ORB / 2;
-      const x1 = def.col * 100 + 50;
-      const y1 = def.row * GRIM_ROW + GRIM_ORB / 2;
+      const x1 = xOf(child) * 300;
+      const y1 = child.row * GRIM_ROW + GRIM_ORB / 2;
       // O galho se divide logo abaixo do nome do pai, antes do nó filho.
-      const mid = parent.row * GRIM_ROW + GRIM_NODE + (def.row * GRIM_ROW - parent.row * GRIM_ROW - GRIM_NODE) / 2;
+      const mid = parent.row * GRIM_ROW + GRIM_NODE + ((child.row - parent.row) * GRIM_ROW - GRIM_NODE) / 2;
       const path = document.createElementNS(svgNs, "path");
-      path.setAttribute("d", x0 === x1 ? `M${x0} ${y0} V${y1}` : `M${x0} ${y0} V${mid} H${x1} V${y1}`);
+      // O segundo pai liga em diagonal reta, para não se confundir com os galhos do ramo.
+      path.setAttribute("d", also ? `M${x0} ${y0} L${x1} ${y1}` : x0 === x1 ? `M${x0} ${y0} V${y1}` : `M${x0} ${y0} V${mid} H${x1} V${y1}`);
       path.setAttribute("vector-effect", "non-scaling-stroke");
-      const state = talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open";
       if (state) path.classList.add(state);
+      if (also) path.classList.add("also");
       svg.append(path);
+    };
+    for (const def of shown) {
+      const state = talentRank(def, ranks) > 0 ? "on" : talentBlocker(def, ranks) ? "" : "open";
+      for (const req of [def.requires, def.alsoRequires]) {
+        const parent = req && shown.find((t) => t.id === req.id);
+        if (parent) link(parent, def, state, req === def.alsoRequires);
+      }
     }
     grim.append(svg);
 
-    for (const def of tree) grim.append(this.grimNode(def));
+    for (const def of shown) {
+      const node = this.grimNode(def);
+      node.style.left = `${xOf(def) * 100}%`;
+      node.style.top = `${def.row * GRIM_ROW}px`;
+      grim.append(node);
+    }
     page.append(grim);
     return page;
+  }
+
+  /** O Traço de um lado de um ramo especializado. */
+  private specTrait(classId: ClassId, col: number, side: 0 | 1) {
+    return talentTree(classId).find((t) => t.kind === "trait" && t.col === col && t.side === side) ?? null;
   }
 
   private grimNode(def: TalentDef) {
@@ -299,20 +419,21 @@ export class Hub {
     const spell = def.spellId ? SPELLS[def.spellId] : null;
 
     const node = el("button", `gnode ${def.kind}`);
-    node.style.left = `${((def.col + 0.5) / 3) * 100}%`;
-    node.style.top = `${def.row * GRIM_ROW}px`;
     node.classList.toggle("owned", rank > 0);
     node.classList.toggle("maxed", maxed);
     node.classList.toggle("locked", locked);
     node.classList.toggle("ready", affordable);
     node.setAttribute("aria-label", `${def.name}, nível ${rank} de ${def.maxRank}${locked ? `, ${blocker}` : ""}`);
 
-    const orb = el("span", "gnode-orb", def.icon);
+    // O Traço é um losango: o ícone vai num span que desfaz a rotação.
+    const orb = el("span", "gnode-orb");
+    orb.append(def.kind === "trait" ? el("span", "gnode-icon", def.icon) : def.icon);
     if (spell) orb.append(el("b", "gnode-slot", String(spell.slot + 1)));
     if (locked) orb.append(el("b", "gnode-lock", "🔒"));
     const pips = el("span", "gnode-pips");
     for (let i = 0; i < def.maxRank; i++) pips.append(el("i", i < rank ? "on" : ""));
-    node.append(orb, pips, el("span", "gnode-name", def.name));
+    // O losango do Traço leva o nome da especialização (Criomante, Arcanista...); o do Traço fica na ficha.
+    node.append(orb, pips, el("span", "gnode-name", def.traitId ? TRAITS[def.traitId].spec : def.name));
     node.onclick = () => this.openTalentSheet(def);
     return node;
   }
@@ -325,6 +446,11 @@ export class Hub {
     const maxed = rank >= def.maxRank;
     const spell = def.spellId ? SPELLS[def.spellId] : null;
     const branch = TREE_BRANCHES[def.classId][def.col];
+    const trait = def.traitId ? TRAITS[def.traitId] : null;
+    // Lado de uma especialização: o nome dela aparece na ficha (do Traço e das magias do lado).
+    const sideTrait = def.side === undefined ? null : this.specTrait(def.classId, def.col, def.side);
+    const spec = sideTrait ? TRAITS[sideTrait.traitId!].spec : null;
+    const rival = def.exclusiveWith ? TALENTS[def.exclusiveWith] : null;
 
     const sheet = $("sheet");
     sheet.replaceChildren();
@@ -332,11 +458,22 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : "Áurea"} · ramo ${branch} · nível ${rank}/${def.maxRank}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
-    if (spell) sheet.append(el("p", "", spell.description));
+    if (trait) {
+      sheet.append(el("p", "", trait.description));
+      if (rank === 0 && rival) {
+        sheet.append(el("p", "grim-warning",
+          `Escolha permanente: comprar ${trait.name} faz de você ${trait.spec} e fecha para sempre o outro lado do ramo ` +
+          `(${TRAITS[rival.traitId!].spec}), com as magias dele.`));
+      }
+    }
+    if (spell) {
+      sheet.append(el("p", "", spell.description));
+      if (rank < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
+    }
 
     const levels = el("div", "grim-levels");
     const level = (n: number, current: boolean) => {
@@ -348,25 +485,36 @@ export class Hub {
       box.append(list);
       levels.append(box);
     };
-    if (rank > 0) level(rank, true);
-    if (!maxed) level(rank + 1, false);
-    sheet.append(levels);
+    // O Traço não tem níveis: a descrição já diz o que ele faz.
+    if (!trait) {
+      if (rank > 0) level(rank, true);
+      if (!maxed) level(rank + 1, false);
+      sheet.append(levels);
+    }
 
     const actions = el("div", "actions");
     if (maxed) {
-      actions.append(el("p", "node-state", "Nível máximo"));
+      actions.append(el("p", "node-state", trait ? `Você é ${trait.spec}` : "Nível máximo"));
     } else if (blocker) {
       actions.append(el("p", "node-state", `🔒 ${blocker} (nível ${def.requires?.rank ?? 1})`));
     } else {
       const cost = talentCost(def, rank);
-      const verb = rank > 0 ? `Subir para o nível ${rank + 1}` : spell ? "Aprender" : "Comprar";
+      const verb = rank > 0 ? `Subir para o nível ${rank + 1}` : spell ? "Aprender" : trait ? `Ser ${trait.spec}` : "Comprar";
       const buy = el("button", "primary", `${verb} · ${gold(cost)}`);
       buy.disabled = this.profile.gold < cost;
-      buy.onclick = () => void this.run(async () => {
+      // Escolha permanente: o primeiro toque só pede a confirmação.
+      let confirmed = !trait;
+      const purchase = () => void this.run(async () => {
         this.profile.gold = await buyTalent(def.id);
         this.profile.talents[def.id] = rank + 1;
-        this.toast(rank === 0 && spell ? `${def.name} aprendida!` : `${def.name} nível ${rank + 1}!`);
+        this.toast(trait ? `Agora você é ${trait.spec}!` : rank === 0 && spell ? `${def.name} aprendida!` : `${def.name} nível ${rank + 1}!`);
       }).then(() => this.openTalentSheet(def));
+      buy.onclick = () => {
+        if (confirmed) return purchase();
+        confirmed = true;
+        buy.textContent = `Confirmar: ${trait!.spec} para sempre`;
+        buy.classList.add("danger");
+      };
       actions.append(buy);
     }
     const close = el("button", "", "Fechar");
@@ -383,25 +531,46 @@ export class Hub {
     const page = el("div", "hub-page");
     page.append(el("h2", "", "Itens"));
     page.append(el("p", "muted hub-hint",
-      "O equipamento e a bag entram com você na hunt. Quem foge volta vestido e esvazia a bag no cofre; quem morre perde os dois."));
+      `Cada classe tem o próprio equipamento: este é o do ${CLASSES[this.classId].name}. Ele e a bag entram com você na hunt. Quem foge volta vestido e esvazia a bag no cofre; quem morre perde os dois.`));
 
+    // Quadro do equipamento como no Tibia (cada slot no lugar do corpo) ao lado do herói vestido.
     const loadout = el("div", "loadout");
+    loadout.innerHTML = BODY_SVG;
+    const equipped: string[] = [];
     for (const slot of ITEM_SLOTS) {
-      const owned = this.profile.items.find((i) => i.equipped && ITEMS[i.itemId]?.slot === slot);
-      const cell = el("button", "loadout-slot");
+      const owned = this.wornItems().find((i) => ITEMS[i.itemId]?.slot === slot);
+      const cell = el("button", `loadout-slot at-${slot}`);
+      cell.append(el("span", "slot-tag", SLOT_NAMES[slot]));
       if (owned) {
-        cell.append(itemImg(owned.itemId), el("small", "", ITEMS[owned.itemId].name));
-        cell.style.borderColor = hex(TIER_COLORS[ITEMS[owned.itemId].tier]);
+        const def = ITEMS[owned.itemId];
+        cell.append(itemImg(owned.itemId));
+        cell.style.borderColor = hex(itemColor(owned.itemId));
+        cell.title = def.name;
+        equipped.push(owned.itemId);
+        cell.setAttribute("aria-label", `${SLOT_NAMES[slot]}: ${def.name}`);
         cell.onclick = () => this.openItemSheet(owned);
       } else {
-        cell.append(el("span", "slot-empty", "＋"), el("small", "muted", SLOT_NAMES[slot]));
+        cell.append(ghostImg(slot));
+        cell.classList.add("vacant");
+        cell.setAttribute("aria-label", `${SLOT_NAMES[slot]} (vazio)`);
         cell.onclick = () => this.toast(`Toque num item do cofre para equipar ${SLOT_NAMES[slot].toLowerCase()}.`);
       }
       loadout.append(cell);
     }
-    const doll = el("div", "doll");
-    doll.append(outfitPreview(this.classId, this.loadout()), el("small", "muted", `${CLASSES[this.classId].name} na próxima hunt`));
-    page.append(el("h3", "", "Para a próxima hunt"), doll, loadout);
+    const gear = gearStats(equipped);
+    const stats = el("div", "equip-stats");
+    stats.append(
+      el("span", "", `🛡️ Armadura ${gear.armor}${gear.armor ? ` (−${Math.round(damageReduction(gear.armor) * 100)}% de dano)` : ""}`),
+      el("span", "", `⚔️ Dano +${Math.round(gear.damage * 100)}%`),
+    );
+    if (gear.spellPower) stats.append(el("span", "", `✨ Magias +${Math.round(gear.spellPower * 100)}%`));
+    const panel = el("div", "equip-panel");
+    panel.append(el("div", "equip-title", "Equipamento"), loadout, stats);
+    const hero = el("div", "equip-hero");
+    hero.append(heroColumn(this.classId, this.loadout()), el("small", "muted", CLASSES[this.classId].name));
+    const row = el("div", "equip-row");
+    row.append(panel, hero);
+    page.append(el("h3", "", "Para a próxima hunt"), row);
 
     // Runas: até 3 diferentes, logo embaixo do equipamento.
     const equippedRunes = this.equippedRunes();
@@ -444,7 +613,12 @@ export class Hub {
     return grid;
   }
 
-  /** Itens no cofre (o equipamento não ocupa espaço). */
+  /** Equipamento da classe escolhida. */
+  private wornItems() {
+    return this.profile.items.filter((i) => i.equipped && i.classId === this.classId);
+  }
+
+  /** Itens no cofre (o equipamento, de qualquer classe, não ocupa espaço). */
   private vaultItems() {
     return this.profile.items.filter((i) => i.location === "vault" && !i.equipped);
   }
@@ -453,14 +627,16 @@ export class Hub {
     return this.profile.items.filter((i) => i.location === "bag");
   }
 
-  /** Runas marcadas para a próxima hunt. */
+  /** Runas da classe escolhida para a próxima hunt. */
   private equippedRunes() {
-    return this.profile.items.filter((i) => i.equipped && RUNES[i.itemId]);
+    return this.wornItems().filter((i) => RUNES[i.itemId]);
   }
 
   private itemCell(owned: OwnedItem, onclick: () => void) {
     const cell = el("button", "item-cell");
     cell.style.borderColor = hex(lootColor(owned.itemId));
+    // Runa serve em qualquer classe.
+    cell.classList.toggle("unusable", !!ITEMS[owned.itemId] && !canUse(owned.itemId, this.classId));
     cell.append(itemImg(owned.itemId));
     cell.setAttribute("aria-label", lootName(owned.itemId));
     cell.onclick = onclick;
@@ -476,16 +652,21 @@ export class Hub {
     const head = el("div", "sheet-head");
     const title = el("div");
     const name = el("strong", "", def.name);
-    name.style.color = hex(TIER_COLORS[def.tier]);
-    title.append(name, el("small", "muted", `${SLOT_NAMES[def.slot]} · ${TIER_NAMES[def.tier]}`));
+    name.style.color = hex(itemColor(def.id));
+    title.append(name, el("small", "muted", itemLabel(def)));
     head.append(itemImg(def.id), title);
-    sheet.append(head, el("p", "", itemEffect(def)));
+    sheet.append(head, statList(def));
+    const usable = canUse(def.id, this.classId);
+    if (!usable) sheet.append(el("p", "warn", `${CLASSES[this.classId].name} não usa este item.`));
+    // Vestido pela classe escolhida ou por outra (cada classe tem os próprios slots).
+    const worn = owned.equipped && owned.classId === this.classId;
+    const wearer = owned.equipped && owned.classId && !worn ? CLASSES[owned.classId].name : null;
     // Como fica vestido: o equipamento atual com este item no slot dele.
     const tryOn = el("div", "doll");
     tryOn.append(outfitPreview(this.classId, { ...this.loadout(), [def.slot]: def.id }),
-      el("small", "muted", owned.equipped ? "Vestido" : "Como fica vestido"));
+      el("small", "muted", worn ? "Vestido" : "Como fica vestido"));
     sheet.append(tryOn);
-    const where = owned.equipped ? "Equipado" : owned.location === "bag" ? "Na bag" : "No cofre";
+    const where = owned.equipped ? `Equipado no ${wearer ?? CLASSES[this.classId].name}` : owned.location === "bag" ? "Na bag" : "No cofre";
     sheet.append(el("p", "muted", `${where} · ${owned.source === "hunt" ? "trazido de uma hunt" : "comprado no mercado"}.`));
 
     const actions = el("div", "actions");
@@ -502,19 +683,28 @@ export class Hub {
         this.closeSheet();
       });
     } else {
-      main = el("button", "primary", owned.equipped ? (vaultFull ? "Cofre cheio" : "Tirar do equipamento") : "Equipar para a hunt");
-      // Tirar do equipamento devolve o item ao cofre; trocar no slot não muda a lotação.
-      main.disabled = owned.equipped && vaultFull;
+      const label = worn ? (vaultFull ? "Cofre cheio" : "Tirar do equipamento")
+        : !usable ? "Não serve nesta classe"
+        : wearer ? `Passar para o ${CLASSES[this.classId].name}` : "Equipar para a hunt";
+      main = el("button", "primary", label);
+      // Tirar do equipamento devolve o item ao cofre; trocar no slot (ou de classe) não muda a lotação.
+      main.disabled = worn ? vaultFull : !usable;
       main.onclick = () => this.run(async () => {
-        await equipItem(owned.id, !owned.equipped);
+        const classId = this.classId;
+        await equipItem(owned.id, !worn, classId);
         for (const other of this.profile.items) {
-          if (other.id === owned.id) other.equipped = !owned.equipped;
-          else if (!owned.equipped && other.equipped && ITEMS[other.itemId]?.slot === def.slot) other.equipped = false;
+          if (other.id === owned.id) {
+            other.equipped = !worn;
+            other.classId = worn ? null : classId;
+          } else if (!worn && other.equipped && other.classId === classId && ITEMS[other.itemId]?.slot === def.slot) {
+            other.equipped = false;
+            other.classId = null;
+          }
         }
         this.closeSheet();
       });
     }
-    const sell = el("button", "", `Vender por ${gold(ITEM_SELL_PRICES[def.tier])}`);
+    const sell = el("button", "", `Vender por ${gold(sellPrice(def.id))}`);
     sell.onclick = () => this.run(async () => {
       this.profile.gold = await sellItem(owned.id);
       this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
@@ -529,7 +719,7 @@ export class Hub {
     $("sheet-backdrop").hidden = false;
   }
 
-  /** Ficha de uma runa: o que ela faz, equipar num dos 3 slots (sem repetir), guardar e vender. */
+  /** Ficha de uma runa: o que ela faz, equipar num dos 3 slots da classe (sem repetir), guardar e vender. */
   private openRuneSheet(owned: OwnedItem, rune: RuneDef) {
     const sheet = $("sheet");
     sheet.replaceChildren();
@@ -543,7 +733,10 @@ export class Hub {
     sheet.append(el("p", "muted", rune.spell
       ? "A magia aparece como opção extra quando o slot dela abrir na hunt, para qualquer classe."
       : "O bônus vale a hunt inteira e soma com as áureas e as melhorias de nível."));
-    const where = owned.equipped ? "Equipada" : owned.location === "bag" ? "Na bag" : "No cofre";
+    // Equipada na classe escolhida ou em outra (cada classe tem os próprios 3 slots).
+    const worn = owned.equipped && owned.classId === this.classId;
+    const wearer = owned.equipped && owned.classId && !worn ? CLASSES[owned.classId].name : null;
+    const where = owned.equipped ? `Equipada no ${wearer ?? CLASSES[this.classId].name}` : owned.location === "bag" ? "Na bag" : "No cofre";
     sheet.append(el("p", "muted", `${where} · runas equipadas voltam com você mesmo se morrer; na bag, se perdem.`));
 
     const actions = el("div", "actions");
@@ -558,24 +751,28 @@ export class Hub {
         this.toast(`${rune.name} foi para o cofre.`);
         this.closeSheet();
       });
-    } else if (owned.equipped) {
+    } else if (worn) {
       main = el("button", "primary", vaultFull ? "Cofre cheio" : "Tirar a runa");
       main.disabled = vaultFull;
       main.onclick = () => this.run(async () => {
-        await equipItem(owned.id, false);
+        await equipItem(owned.id, false, this.classId);
         owned.equipped = false;
+        owned.classId = null;
         this.closeSheet();
       });
     } else {
       const equipped = this.equippedRunes();
       const same = equipped.some((i) => i.itemId === owned.itemId);
       const full = equipped.length >= RUNE_SLOTS;
-      main = el("button", "primary", same ? "Já equipada" : full ? "Slots de runa cheios" : "Equipar runa");
+      main = el("button", "primary", same ? "Já equipada" : full ? "Slots de runa cheios"
+        : wearer ? `Passar para o ${CLASSES[this.classId].name}` : "Equipar runa");
       main.disabled = same || full;
       main.onclick = () => this.run(async () => {
-        await equipItem(owned.id, true);
+        const classId = this.classId;
+        await equipItem(owned.id, true, classId);
         owned.equipped = true;
-        this.toast(`${rune.name} equipada.`);
+        owned.classId = classId;
+        this.toast(`${rune.name} equipada no ${CLASSES[classId].name}.`);
         this.closeSheet();
       });
     }
@@ -594,12 +791,12 @@ export class Hub {
     $("sheet-backdrop").hidden = false;
   }
 
-  /** Equipamento marcado para a próxima hunt, como roupa do personagem. */
+  /** Equipamento da classe escolhida para a próxima hunt, como roupa do personagem. */
   private loadout(): Outfit {
     const outfit = { ...NO_OUTFIT };
-    for (const owned of this.profile.items) {
+    for (const owned of this.wornItems()) {
       const def = ITEMS[owned.itemId];
-      if (owned.equipped && def) outfit[def.slot] = def.id;
+      if (def) outfit[def.slot] = def.id;
     }
     return outfit;
   }
@@ -628,11 +825,21 @@ export class Hub {
       const vaultFull = this.vaultItems().length >= VAULT_SIZE;
       page.append(el("p", "muted hub-hint", vaultFull
         ? `Cofre cheio (${VAULT_SIZE}/${VAULT_SIZE}): venda ou equipe algo para comprar.`
-        : "Equipamento até Aço, entregue no cofre. Itens de Dragão só saem das hunts."));
+        : `Itens comuns até Mithral, entregues no cofre. Raros, mágicos e de Dragão só saem das hunts. Mostrando o que o ${CLASSES[this.classId].name} usa.`));
+      const slots = el("div", "chips");
       for (const slot of ITEM_SLOTS) {
-        list.append(el("h3", "", SLOT_NAMES[slot]));
-        for (const def of Object.values(ITEMS).filter((i) => i.slot === slot)) {
-          const price = ITEM_BUY_PRICES[def.tier];
+        const chip = el("button", "chip", SLOT_NAMES[slot]);
+        chip.setAttribute("aria-pressed", String(slot === this.marketSlot));
+        chip.onclick = () => { this.marketSlot = slot; this.render(); };
+        slots.append(chip);
+      }
+      page.append(slots);
+      const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === this.marketSlot && (!f.classes || f.classes.includes(this.classId)));
+      for (const family of families) {
+        if (families.length > 1) list.append(el("h3", "", family.name));
+        for (const tier of ITEM_TIERS) {
+          const def = ITEMS[itemId(family.slot, family.key, tier)];
+          const price = ITEM_BUY_PRICES[tier];
           if (price === null) continue;
           const buy = el("button", "buy", gold(price));
           buy.disabled = vaultFull || this.profile.gold < price;
@@ -649,13 +856,13 @@ export class Hub {
       page.append(el("p", "muted hub-hint", "O mercado compra qualquer item ou runa sua: equipado, no cofre ou na bag. Runas não são vendidas aqui: só caem dos bosses."));
       if (this.profile.items.length === 0) list.append(el("p", "muted empty", "Nada para vender."));
       for (const owned of sortItems(this.profile.items)) {
-        const sell = el("button", "buy", gold(sellPrice(owned.itemId)));
+        const sell = el("button", "buy", gold(lootSellPrice(owned.itemId)));
         sell.onclick = () => this.run(async () => {
           this.profile.gold = await sellItem(owned.id);
           this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
           this.toast(`${lootName(owned.itemId)} vendido.`);
         });
-        const note = owned.equipped ? "Equipado" : owned.location === "bag" ? "Na bag" : "";
+        const note = owned.equipped && owned.classId ? `Equipado no ${CLASSES[owned.classId].name}` : owned.location === "bag" ? "Na bag" : "";
         const rune = RUNES[owned.itemId];
         list.append(rune ? this.runeRow(rune, sell, note) : this.marketRow(ITEMS[owned.itemId], sell, note));
       }
@@ -668,8 +875,8 @@ export class Hub {
     const row = el("div", "market-row");
     const text = el("div");
     const name = el("strong", "", def.name);
-    name.style.color = hex(TIER_COLORS[def.tier]);
-    text.append(name, el("small", "muted", `${TIER_NAMES[def.tier]} · ${itemEffect(def)}${note ? ` · ${note}` : ""}`));
+    name.style.color = hex(itemColor(def.id));
+    text.append(name, el("small", "muted", `${itemLabel(def)} · ${itemEffect(def)}${note ? ` · ${note}` : ""}`));
     row.append(itemImg(def.id), text, action);
     return row;
   }
@@ -713,20 +920,31 @@ export class Hub {
 }
 
 export function itemEffect(def: ItemDef) {
-  return def.slot === "weapon" ? `+${def.power}% de dano` : `+${def.power} de armadura`;
+  return itemSummary(def);
 }
 
-/** Runas primeiro (as de magia na frente); depois os itens, melhores primeiro e, dentro do nível, na ordem dos slots. */
+const CLASS_NAMES = Object.fromEntries(CLASS_IDS.map((id) => [id, CLASSES[id].name])) as Record<ClassId, string>;
+
+/** "Arma · Raro · Ferro · Só Cavaleiro". */
+export function itemLabel(def: ItemDef) {
+  return `${SLOT_NAMES[def.slot]} · ${RARITY_NAMES[def.rarity]} · ${TIER_NAMES[def.tier]} · ${classesText(def, CLASS_NAMES)}`;
+}
+
+/** Lista do que o item faz, uma linha por atributo. */
+export function statList(def: ItemDef) {
+  const list = el("ul", "item-stats");
+  for (const line of describeStats(def.stats)) list.append(el("li", "", line));
+  return list;
+}
+
+/** Runas primeiro (as de magia na frente); depois os itens, melhores primeiro (material e raridade) e, empatados, na ordem dos slots. */
 function sortItems(items: OwnedItem[]) {
-  const key = (id: string) => {
-    const rune = RUNES[id];
-    if (rune) return [0, -rune.sellPrice, Object.keys(RUNES).indexOf(id)];
-    const item = ITEMS[id];
-    return [1, -item.tier, ITEM_SLOTS.indexOf(item.slot)];
-  };
+  const runeKey = (id: string) => RUNES[id] ? -RUNES[id].sellPrice * 100 + Object.keys(RUNES).indexOf(id) : 0;
   return [...items].sort((a, b) => {
-    const x = key(a.itemId), y = key(b.itemId);
-    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+    const ra = RUNES[a.itemId], rb = RUNES[b.itemId];
+    if (ra || rb) return ra && rb ? runeKey(a.itemId) - runeKey(b.itemId) : ra ? -1 : 1;
+    const x = ITEMS[a.itemId], y = ITEMS[b.itemId];
+    return itemScore(y.id) - itemScore(x.id) || ITEM_SLOTS.indexOf(x.slot) - ITEM_SLOTS.indexOf(y.slot);
   });
 }
 

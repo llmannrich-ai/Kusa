@@ -19,7 +19,10 @@ import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type A
 import { createMapId, mapLine, renderMapPicker, renderWaitingRoom } from "./lobby.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
+import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
+import { createSoloHunt } from "./solo.ts";
+import { renderTelemetry } from "./telemetry.ts";
 import "./style.css";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -124,6 +127,9 @@ function setEntering(on: boolean) {
   const create = $<HTMLButtonElement>("create");
   create.textContent = on ? "Conectando… (o servidor pode levar 1 min para acordar)" : `Criar sala · ${MAPS[createMapId()].name}`;
   create.disabled = on;
+  const solo = $<HTMLButtonElement>("solo");
+  solo.textContent = `Jogar sozinho · ${MAPS[createMapId()].name}`;
+  solo.disabled = on;
   $<HTMLButtonElement>("rooms-back").disabled = on;
   document.querySelectorAll<HTMLButtonElement>("#room-list button").forEach((b) => { b.disabled = on; });
 }
@@ -233,12 +239,37 @@ $("settings-back").onclick = () => {
   show("menu", true);
 };
 
+// Subpáginas das configurações: Telemetria e Regras, para qualquer jogador logado.
+const SETTINGS_PAGES: Record<string, (root: HTMLElement) => void> = {
+  telemetry: (root) => renderTelemetry(root),
+  rules: (root) => renderRules(root),
+};
+document.querySelectorAll<HTMLButtonElement>("#settings-pages [data-page]").forEach((button) => {
+  const page = button.dataset.page!;
+  button.onclick = () => {
+    SETTINGS_PAGES[page]($(`${page}-body`));
+    show("settings", false);
+    show(page, true);
+    $(page).scrollTop = 0;
+  };
+  $(page).querySelector<HTMLButtonElement>(".page-back")!.onclick = () => {
+    show(page, false);
+    show("settings", true);
+  };
+});
+
 $("rooms-back").onclick = () => {
   stopWatching();
   show("rooms", false);
   show("menu", true);
 };
 $("create").onclick = () => enter(async () => createHunt(await joinOptions()));
+// Solo roda no aparelho, sem sala de espera: a hunt começa na hora.
+$("solo").onclick = () => enter(async () => {
+  const room = await createSoloHunt(account?.username ?? "Aventureiro", hub.classId, createMapId());
+  window.setTimeout(() => room.send(MSG.start));
+  return room;
+});
 $("back").onclick = () => location.reload();
 
 // --- Sala ---------------------------------------------------------------
@@ -367,6 +398,7 @@ function showResult(msg: RunEndedMessage) {
       + ` (com o cofre cheio, o resto fica na bag).`;
   }
   if (msg.lost) $("result-detail").textContent += ` Perdido na dungeon: ${lootName(msg.lost)}.`;
+  if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
   show("result", true);
 }
 

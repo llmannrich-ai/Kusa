@@ -63,10 +63,33 @@
       <h2>Configurações</h2>
       <!-- Preenchido por main.ts a partir de SETTING_DEFS. -->
       <div id="settings-list"></div>
+      <!-- Subpáginas: abrem por cima das configurações e o "‹" volta para cá. -->
+      <nav id="settings-pages">
+        <button data-page="telemetry" class="setting-link"><span>📊 Telemetria<small>Números de todas as hunts: sobrevivência, mortes, magias e as suas.</small></span><b aria-hidden="true">›</b></button>
+        <button data-page="rules" class="setting-link"><span>📜 Regras<small>Como o jogo funciona: hunt, níveis, itens e poções.</small></span><b aria-hidden="true">›</b></button>
+      </nav>
       <div class="actions">
         <button id="settings-back" class="primary">Voltar</button>
         <button id="sign-out">Sair da conta</button>
       </div>
+    </section>
+
+    <section id="telemetry" class="panel page" hidden>
+      <header class="page-top">
+        <button class="page-back icon-button" aria-label="Voltar às configurações">‹</button>
+        <h2>Telemetria</h2>
+      </header>
+      <!-- Preenchido por telemetry.ts. -->
+      <div id="telemetry-body"></div>
+    </section>
+
+    <section id="rules" class="panel page" hidden>
+      <header class="page-top">
+        <button class="page-back icon-button" aria-label="Voltar às configurações">‹</button>
+        <h2>Regras</h2>
+      </header>
+      <!-- Preenchido por rules.ts. -->
+      <div id="rules-body"></div>
     </section>
 
     <!-- Jogar: entrar numa sala aberta ou criar uma, escolhendo o cenário aqui mesmo. -->
@@ -80,9 +103,10 @@
       <div id="map-list" class="map-list" role="radiogroup" aria-label="Cenário"></div>
       <div class="actions">
         <button id="create" class="primary">Criar sala</button>
+        <button id="solo">Jogar sozinho</button>
         <button id="rooms-back">Voltar</button>
       </div>
-      <p class="muted hint">Criar a sala pode levar até 1 minuto se o servidor estiver acordando.</p>
+      <p class="muted hint">Criar a sala pode levar até 1 minuto se o servidor estiver acordando. Sozinho, a hunt roda no seu aparelho e começa na hora.</p>
       <p id="rooms-error" class="error" hidden></p>
     </section>
 

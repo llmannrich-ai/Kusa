@@ -72,6 +72,8 @@ export interface MonsterDef {
   size: number;
   /** Ataque extra, mais forte (só mini-bosses e bosses; ver `MonsterSpecial`). */
   special?: MonsterSpecial;
+  /** Morto-vivo: a luz sagrada do Paladino fere mais (Flechas Consagradas, Caldeira Divina). */
+  undead?: boolean;
 }
 
 export const MONSTERS: Record<MonsterKind, MonsterDef> = {
@@ -84,7 +86,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     hp: 45, damage: 5, xp: 35, loot: [2, 4], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "slash",
   },
   skeleton: {
-    kind: "skeleton", name: "Esqueleto", rank: "common", shape: "diamond", color: 0xdcdde1, size: 0.65,
+    kind: "skeleton", name: "Esqueleto", rank: "common", undead: true, shape: "diamond", color: 0xdcdde1, size: 0.65,
     hp: 70, damage: 7, xp: 55, loot: [3, 6], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
   },
   orc: {
@@ -111,7 +113,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     hp: 70, damage: 8, xp: 55, loot: [3, 6], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
   },
   bogBody: {
-    kind: "bogBody", name: "Afogado", rank: "common", shape: "diamond", color: 0x556b2f, size: 0.7,
+    kind: "bogBody", name: "Afogado", rank: "common", undead: true, shape: "diamond", color: 0x556b2f, size: 0.7,
     hp: 120, damage: 11, xp: 85, loot: [5, 9], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
   },
   naga: {
@@ -190,6 +192,12 @@ export const CHEST_LOOT: [number, number] = [30, 55];
 /** Fração extra de loot ao concluir a dungeon pelo portal do boss. */
 export const BOSS_LOOT_BONUS = 0.5;
 
+/** Dano extra dos monstros comuns (mini-bosses e bosses ficam de fora). */
+export const COMMON_DAMAGE_BONUS = 0.2;
+
+/** Vida extra dos monstros comuns (mini-bosses e bosses ficam de fora). */
+export const COMMON_HP_BONUS = 0.25;
+
 /** XP extra por participante além do primeiro, antes da divisão (incentiva jogar em equipe). */
 export const PARTY_XP_BONUS = 0.2;
 
@@ -204,9 +212,12 @@ export interface MonsterStats {
 export function monsterStats(kind: MonsterKind, depth: number): MonsterStats {
   const m = MONSTERS[kind];
   const k = 1 + DEPTH_SCALING * Math.max(0, depth);
+  const common = m.rank === "common";
+  const hit = common ? 1 + COMMON_DAMAGE_BONUS : 1;
+  const life = common ? 1 + COMMON_HP_BONUS : 1;
   return {
-    maxHp: Math.round(m.hp * k),
-    damage: Math.round(m.damage * k),
+    maxHp: Math.round(m.hp * k * life),
+    damage: Math.round(m.damage * k * hit),
     xp: Math.round(m.xp * k),
     loot: [Math.round(m.loot[0] * k), Math.round(m.loot[1] * k)],
   };

@@ -7,6 +7,7 @@ import {
   runeSpells,
   spellCooldownMs,
   spellManaCost,
+  spellAtRank,
   spellFacts,
   type ClassId,
   type SpellDef,
@@ -14,10 +15,17 @@ import {
   type SpellSlot,
 } from "@kusa/shared";
 import type { SpellAim } from "./aim.ts";
+import { ChoiceCards, type Anchor } from "./choicecards.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 import { stacksOf } from "./perkchoice.ts";
 
 const SLOTS: SpellSlot[] = [0, 1];
+
+/** A magia como o herói a conjura: no nível comprado no Grimório, com a Maestria no 3 (alcance e área podem mudar). */
+export function rankedSpell(p: PlayerView | undefined, id: string): SpellDef | undefined {
+  const base = SPELLS[id as SpellId] as SpellDef | undefined;
+  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 1);
+}
 
 interface SlotView {
   button: HTMLButtonElement;
@@ -34,18 +42,26 @@ interface SlotView {
 
 /**
  * Botões dos 2 slots de magia (acima do ⚔️, na zona do polegar direito) e a janela de escolha
- * que abre quando o personagem alcança o nível de um slot. Magia com alvo (única ou de área) mira
+ * (cartas acima do personagem) que abre quando ele alcança o nível de um slot. Magia com alvo (única ou de área) mira
  * enquanto o polegar segura o botão (ver `SpellAim`); magia em volta de si sai no toque. O servidor valida tudo; aqui só
  * mostramos estado, recarga e mandamos as intenções.
  */
 export class SpellBar {
   private slots: SlotView[];
-  private chooser: HTMLElement | null = null;
+  private chooser: ChoiceCards | null = null;
   /** Slot mirando agora e o dedo que segura o botão. */
   private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
 
-  /** `busy` diz se outra janela (a escolha de melhoria) está aberta: a escolha de magia espera. */
-  constructor(private room: DungeonRoom, private actions: HTMLElement, private aim: SpellAim, private busy: () => boolean) {
+  /**
+   * A escolha de magia tem prioridade: o nível que abre um slot não dá melhoria, e uma melhoria que
+   * ficou pendente de um nível anterior espera esta janela fechar (ver `PerkChoice`).
+   */
+  constructor(
+    private room: DungeonRoom,
+    private actions: HTMLElement,
+    private aim: SpellAim,
+    private anchor: Anchor,
+  ) {
     // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
     actions.prepend(this.slots[1].button, this.slots[0].button);
@@ -59,9 +75,14 @@ export class SpellBar {
     const p = this.me();
     if (!p || p.status !== "playing") return;
     if (p.level < SPELL_SLOT_LEVELS[slot]) return;
-    const spell = SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    const spell = rankedSpell(p, spellIn(p, slot));
     if (!spell) return this.openChooser(slot);
     this.room.send(MSG.cast, { slot });
+  }
+
+  /** O servidor mudou a recarga de um slot (a Maestria do Disparo Certeiro corta a recarga ao matar). */
+  setCooldown(slot: SpellSlot, ms: number) {
+    this.slots[slot].readyAt = performance.now() + ms;
   }
 
   /** Janela de escolha de magia aberta. */
@@ -82,6 +103,7 @@ export class SpellBar {
     const p = this.me();
     if (!p) return;
     for (const slot of SLOTS) this.render(slot, p);
+    this.chooser?.place(this.anchor);
   }
 
   destroy() {
@@ -113,9 +135,9 @@ export class SpellBar {
   private down(slot: SpellSlot, e: PointerEvent) {
     if (this.aiming) return;
     const p = this.me();
-    const spell = p && SPELLS[spellIn(p, slot) as SpellId] as SpellDef | undefined;
+    const spell = p && rankedSpell(p, spellIn(p, slot));
     const ready = performance.now() >= this.slots[slot].readyAt;
-    if (!p || !spell || spell.aim !== "target" || !ready || p.mana < spellManaCost(spell, p.classId, p.maxMana)) return this.press(slot);
+    if (!p || !spell || spell.aim === "self" || !ready || p.mana < spellManaCost(spell, p.classId, p.maxMana)) return this.press(slot);
     // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
     this.slots[slot].button.setPointerCapture(e.pointerId);
     this.aiming = { slot, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY };
@@ -157,7 +179,7 @@ export class SpellBar {
 
     // Liberou agora: abre a escolha sozinha (uma vez; depois, pelo botão ✨).
     // Com dois slots liberados ao mesmo tempo, um de cada vez: o próximo abre quando este fechar.
-    if (state === "empty" && !view.offered && !this.chooser && !this.busy() && p.status === "playing") {
+    if (state === "empty" && !view.offered && !this.chooser && p.status === "playing") {
       view.offered = true;
       this.openChooser(slot);
     }
@@ -183,42 +205,35 @@ export class SpellBar {
     view.button.title = view.button.getAttribute("aria-label") ?? "";
   }
 
-  /** Janela de escolha da magia do slot: a inicial da classe e as compradas no Grimório. */
+  /**
+   * Escolha da magia do slot (a inicial da classe e as compradas no Grimório): as mesmas cartas da
+   * melhoria de nível, acima do personagem, com os efeitos já no nível comprado no Grimório.
+   */
   private openChooser(slot: SpellSlot) {
     const p = this.me();
     if (!p) return;
     this.chooser?.remove();
-    const panel = document.createElement("section");
-    panel.className = "panel spell-choice";
-    const title = document.createElement("h2");
-    title.textContent = `Nova magia — slot ${slot + 1}`;
-    const hint = document.createElement("p");
-    hint.className = "muted";
-    hint.textContent = "Escolha a magia deste slot. Ela fica com você até o fim da hunt.";
-    const list = document.createElement("div");
-    list.className = "spell-options";
-    for (const spell of spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes]))) {
-      const option = document.createElement("button");
-      option.className = "spell-option";
-      option.innerHTML = `<span class="spell-option-icon"></span><span><strong></strong><small></small><em></em></span>`;
-      option.querySelector(".spell-option-icon")!.textContent = spell.icon;
-      option.querySelector("strong")!.textContent = spell.name;
-      option.querySelector("small")!.textContent = spell.description;
-      const rank = p.spellRanks.get(spell.id) ?? 1;
-      // Efeitos já com o nível comprado no Grimório (a última linha é mana e recarga).
-      option.querySelector("em")!.textContent = `Nível ${rank} · ${spellFacts(spell, rank).join(" · ")}`;
-      option.onclick = () => {
-        this.room.send(MSG.chooseSpell, { slot, spellId: spell.id });
-        this.closeChooser();
-      };
-      list.append(option);
-    }
-    const later = document.createElement("button");
-    later.textContent = "Depois";
-    later.onclick = () => this.closeChooser();
-    panel.append(title, hint, list, later);
-    document.body.append(panel);
-    this.chooser = panel;
+    this.chooser = new ChoiceCards({
+      kind: "spell",
+      title: `Nova magia · slot ${slot + 1}`,
+      onDismiss: () => this.closeChooser(),
+      cards: spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).map((spell) => {
+        const rank = p.spellRanks.get(spell.id) ?? 1;
+        return {
+          icon: spell.icon,
+          name: spell.name,
+          description: spell.description,
+          badge: `Nv ${rank}`,
+          // A última linha é mana e recarga.
+          details: spellFacts(spell, rank),
+          onPick: () => {
+            this.room.send(MSG.chooseSpell, { slot, spellId: spell.id });
+            this.closeChooser();
+          },
+        };
+      }),
+    });
+    this.chooser.place(this.anchor);
   }
 
   private closeChooser() {

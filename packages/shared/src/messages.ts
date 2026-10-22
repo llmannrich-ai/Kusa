@@ -63,6 +63,8 @@ export interface NoticeMessage {
   y: number;
   text: string;
   color: number;
+  /** Tempo do texto na tela, em ms (padrão do cliente: 900). */
+  ms?: number;
 }
 
 /** Cliente → servidor: põe uma magia num slot liberado. */
@@ -120,6 +122,14 @@ export interface SpellMessage {
   tx: number;
   ty: number;
   ms: number;
+  /** Repetição de uma magia já conjurada (Maestria): só o efeito, sem recarga nem tranco. */
+  echo?: boolean;
+}
+
+/** Servidor → quem conjurou: a recarga de um slot mudou (Maestria do Disparo Certeiro); falta `ms` agora. */
+export interface CooldownMessage {
+  slot: SpellSlot;
+  ms: number;
 }
 
 /**
@@ -156,6 +166,8 @@ export interface RunEndedMessage {
   bag: string[];
   /** Equipamento sorteado que ficou no chão na morte. */
   lost?: string;
+  /** Aviso extra na tela de resultado (hunt solo: limite de recompensa ou falha ao salvar). */
+  note?: string;
 }
 
 export type MatchPhase = "lobby" | "running" | "ended";
@@ -174,6 +186,7 @@ export const MSG = {
   cast: "cast",
   spell: "spell",
   chain: "chain",
+  cooldown: "cooldown",
   drink: "drink",
   drank: "drank",
   bagEquip: "bagEquip",

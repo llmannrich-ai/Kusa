@@ -1,8 +1,8 @@
 import {
-  BAG_SIZE, ITEMS, ITEM_SLOTS, MSG, RUNES, RUNE_SLOTS, SLOT_NAMES, TIER_NAMES, lootColor, lootName, runeEffect, type ItemSlot,
+  BAG_SIZE, CLASSES, ITEMS, ITEM_SLOTS, MSG, RUNES, RUNE_SLOTS, SLOT_NAMES, canUse, lootColor, lootName, runeEffect, type ClassId, type ItemSlot,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
-import { itemEffect } from "./menu.ts";
+import { itemEffect, itemLabel, statList } from "./menu.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
 /** Item escolhido no menu: uma posição da bag, um slot do corpo ou uma runa equipada. */
@@ -15,7 +15,7 @@ function iconUrl(id: string) {
   return iconUrls.get(id)!;
 }
 
-function tierColor(id: string) {
+function rarityColor(id: string) {
   return ITEMS[id] || RUNES[id] ? `#${lootColor(id).toString(16).padStart(6, "0")}` : "";
 }
 
@@ -130,6 +130,8 @@ export class BagBar {
     const grid = el("div", "bag-grid");
     for (let i = 0; i < Math.max(BAG_SIZE, bag.length); i++) {
       const cell = this.cell(bag[i], "bag-cell");
+      // A classe não usa (arma de outra classe, armadura de guerra num feiticeiro): só serve para vender.
+      if (bag[i] && !canUse(bag[i], p.classId as ClassId)) cell.classList.add("unusable");
       if (bag[i]) cell.dataset.bag = String(i);
       if (this.isSelected({ bag: i })) cell.classList.add("selected");
       grid.append(cell);
@@ -146,7 +148,7 @@ export class BagBar {
     const rune = RUNES[id];
     if (sel && rune) {
       const name = el("strong", "", rune.name);
-      name.style.color = tierColor(id);
+      name.style.color = rarityColor(id);
       box.append(name, el("small", "muted", `${rune.icon} Runa · ${runeEffect(rune)}`));
       if ("bag" in sel) {
         box.append(el("small", "muted", "Runas se equipam no menu Itens, fora da hunt."));
@@ -166,13 +168,15 @@ export class BagBar {
       return box;
     }
     const name = el("strong", "", def.name);
-    name.style.color = tierColor(id);
-    box.append(name, el("small", "muted", `${SLOT_NAMES[def.slot]} · ${TIER_NAMES[def.tier]} · ${itemEffect(def)}`));
+    name.style.color = rarityColor(id);
+    box.append(name, el("small", "muted", itemLabel(def)), statList(def));
     const actions = el("div", "bag-actions");
     if ("bag" in sel) {
       const worn = ITEMS[p[def.slot]];
       if (worn) box.append(el("small", "muted", `Vestido: ${worn.name} (${itemEffect(worn)})`));
-      actions.append(button("Equipar", "equip", true), button("Largar", "drop"));
+      const usable = canUse(def.id, p.classId as ClassId);
+      if (!usable) box.append(el("small", "warn", `${CLASSES[p.classId as ClassId].name} não usa: leve para vender ou para outra classe.`));
+      actions.append(button("Equipar", "equip", true, !usable), button("Largar", "drop"));
     } else {
       const full = bag.length >= BAG_SIZE;
       actions.append(button(full ? "Bag cheia" : "Guardar na bag", "unequip", !full, full));
@@ -193,7 +197,7 @@ export class BagBar {
       img.src = iconUrl(id);
       img.alt = lootName(id);
       cell.append(img);
-      cell.style.borderColor = tierColor(id);
+      cell.style.borderColor = rarityColor(id);
       cell.title = lootName(id);
     } else {
       cell.classList.add("vazio");

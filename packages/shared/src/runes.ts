@@ -1,4 +1,4 @@
-import { ITEMS, ITEM_SELL_PRICES, TIER_COLORS } from "./items.ts";
+import { ITEMS, itemColor, sellPrice } from "./items.ts";
 import type { MonsterRank } from "./monsters.ts";
 import { perkBonuses, type PerkBonuses, type PerkStacks } from "./perks.ts";
 import { SPELLS, type SpellDef, type SpellId } from "./spells.ts";
@@ -120,14 +120,13 @@ export function lootName(id: string) {
   return ITEMS[id]?.name ?? RUNES[id]?.name ?? id;
 }
 
-/** Cor de destaque: a do nível do item ou o brilho da runa. */
+/** Cor de destaque: a da raridade do item ou o brilho da runa. */
 export function lootColor(id: string): number {
-  if (ITEMS[id]) return TIER_COLORS[ITEMS[id].tier];
+  if (ITEMS[id]) return itemColor(id);
   return RUNES[id]?.color ?? 0xdcdde1;
 }
 
 /** Quanto o mercado paga por um item ou runa (repete `market_items.sell_price`). */
-export function sellPrice(id: string): number {
-  if (ITEMS[id]) return ITEM_SELL_PRICES[ITEMS[id].tier];
-  return RUNES[id]?.sellPrice ?? 0;
+export function lootSellPrice(id: string): number {
+  return ITEMS[id] ? sellPrice(id) : RUNES[id]?.sellPrice ?? 0;
 }

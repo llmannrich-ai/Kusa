@@ -9,8 +9,9 @@ import {
   DOT_KINDS,
   SPELLS,
   lineTiles,
+  coneTiles,
   SUMMONS,
-  TIER_COLORS,
+  itemColor,
   TILE_SIZE,
   blocksSight,
   centerOf,
@@ -29,8 +30,10 @@ import {
   type MonsterKind,
   type NoticeMessage,
   type ChainMessage,
+  type CooldownMessage,
   type DotKind,
   type SpellDef,
+  type SpellId,
   type SpellMessage,
   type SummonKind,
 } from "@kusa/shared";
@@ -38,7 +41,7 @@ import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
 import { PotionBar } from "./potionbar.ts";
 import { BagBar } from "./bagbar.ts";
-import { SpellBar } from "./spellbar.ts";
+import { SpellBar, rankedSpell } from "./spellbar.ts";
 import { PerkChoice } from "./perkchoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
@@ -49,7 +52,7 @@ import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { loadSettings } from "./settings.ts";
-import type { ChestView, DungeonRoom, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
+import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
 import { ART_SCALE, CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
@@ -96,10 +99,18 @@ const COLORS = {
 };
 
 /** Cor dos números do veneno e da queimadura (e das bolhas no herói). */
+/** Magias com bônus em si (`selfBuff`): cada uma tem sua aura no herói. */
+const SELF_BUFFS = (Object.keys(SPELLS) as SpellId[]).filter((id) => SPELLS[id].selfBuff);
+
 const DOT_COLORS: Record<DotKind, number> = { poison: 0x9acd32, burn: 0xff9f43, bleed: 0xc0392b };
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
-const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp"]);
+const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp", "eagle"]);
+/** Formas animais do Druida: o sprite da fera no lugar do herói (a pantera é o lobo do pack em tons de noite). */
+const FORMS = {
+  panther: { texture: SUMMON_TEXTURE.wolf, tint: 0x4b4b6b, scale: 1.1 },
+  bear: { texture: SUMMON_TEXTURE.bear, tint: 0xffffff, scale: 1.35 },
+} as const;
 /** Sprites do pack que olham para a esquerda. */
 const SUMMON_FACES_LEFT = new Set<SummonKind>(["wolf", "bear"]);
 
@@ -155,6 +166,8 @@ export class DungeonScene extends Phaser.Scene {
   private avatars = new Map<string, Unit>();
   private monsters = new Map<string, Unit>();
   private summons = new Map<string, Unit>();
+  /** Campos no chão (Solo Consagrado, chão em chamas, armadilhas, estacas). */
+  private fields = new Map<string, Phaser.GameObjects.Container>();
   private chests = new Map<string, Phaser.GameObjects.Image>();
   private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
@@ -173,6 +186,8 @@ export class DungeonScene extends Phaser.Scene {
   private bagBar!: BagBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
+  /** Monstro que este jogador travou como alvo (o alvo automático não conta). */
+  private locked: string | null = null;
   private nextSendAt = 0;
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
   private textResolution = 1;
@@ -227,6 +242,12 @@ export class DungeonScene extends Phaser.Scene {
       this.addSummon(id, summon);
       callbacks.onChange(summon, () => this.syncSummon(id, summon));
     });
+    callbacks.onAdd("fields", (field: FieldView, id: string) => this.addField(id, field));
+    callbacks.onRemove("fields", (_field: FieldView, id: string) => {
+      const view = this.fields.get(id);
+      this.fields.delete(id);
+      if (view) this.tweens.add({ targets: view, alpha: 0, duration: 250, onComplete: () => view.destroy() });
+    });
     callbacks.onRemove("summons", (_summon: SummonView, id: string) => {
       // A criatura some quando morre ou quando o tempo dela acaba: some num brilho, sem sangue.
       const unit = this.summons.get(id);
@@ -252,9 +273,10 @@ export class DungeonScene extends Phaser.Scene {
     callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
 
     this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
-    this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color));
+    this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
+    this.room.onMessage(MSG.cooldown, (msg: CooldownMessage) => this.spellBar.setCooldown(msg.slot, msg.ms));
     this.room.onMessage(MSG.chain, (msg: ChainMessage) => {
       const spell = SPELLS[msg.spellId];
       if (spell) this.fx.chain(msg.points.map((p) => this.tilePoint(p.x, p.y)), spell.color);
@@ -265,14 +287,14 @@ export class DungeonScene extends Phaser.Scene {
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
     // Sem alvo travado, o ataque vai no monstro mais próximo ao alcance (o anel vermelho mostra qual).
-    // Tocar num monstro trava o alvo; no desktop, Tab troca para o próximo e Esc destrava.
+    // Tocar num monstro trava o alvo e tocar nele de novo destrava; no desktop, Tab troca para o próximo e Esc destrava.
     // Espaço segura o ataque básico; 1 e 2 conjuram no alvo automático.
     const kb = this.input.keyboard;
     kb?.addCapture("TAB,SPACE");
     kb?.on("keydown-TAB", () => this.cycleTarget());
     kb?.on("keydown-ESC", () => {
       if (this.bagBar.isOpen) this.bagBar.close();
-      else this.room.send(MSG.target, { id: null });
+      else this.lockTarget(null);
     });
     kb?.on("keydown-SPACE", () => this.attack.hold("key"));
     kb?.on("keyup-SPACE", () => this.attack.release("key"));
@@ -283,7 +305,7 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keydown-B", () => this.bagBar.toggle());
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
-      if (id) this.room.send(MSG.target, { id });
+      if (id) this.lockTarget(id === this.locked ? null : id);
     });
 
     this.move = new MoveInput(this, this.game.canvas, (clientX, clientY) => {
@@ -299,8 +321,8 @@ export class DungeonScene extends Phaser.Scene {
       const unit = this.avatars.get(id) ?? this.monsters.get(id);
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
-    this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.perkChoice.open);
-    this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing);
+    this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.aboveMe());
+    this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing, () => this.aboveMe());
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
@@ -365,7 +387,13 @@ export class DungeonScene extends Phaser.Scene {
     if (near.length === 0) return;
     near.sort((a, b) => a.dist - b.dist || a.id.localeCompare(b.id));
     const current = near.findIndex((n) => n.id === me.target);
-    this.room.send(MSG.target, { id: near[(current + 1) % near.length].id });
+    this.lockTarget(near[(current + 1) % near.length].id);
+  }
+
+  /** Trava (ou, com `null`, destrava) o alvo. O estado só tem o alvo atual, que também pode ser o automático. */
+  private lockTarget(id: string | null) {
+    this.locked = id;
+    this.room.send(MSG.target, { id });
   }
 
   private drawTargetRing() {
@@ -388,16 +416,23 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private onSpell(msg: SpellMessage) {
-    const spell = SPELLS[msg.spellId];
+    // No nível de quem conjurou: a Maestria pode mudar a área e o alcance.
+    const spell = rankedSpell(this.room.state.players.get(msg.from), msg.spellId);
     if (!spell) return;
-    if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
-    this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
-    this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
+    // A repetição da Maestria (`echo`) é só o efeito: sem recarga nem tranco.
+    if (!msg.echo) {
+      if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
+      this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
+    }
+    this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms, spell.radius);
     if (spell.shape === "line") this.showLine(spell, msg);
-    else if (spell.radius > 0) this.showArea(spell, msg);
+    else if (spell.shape === "cone") this.showCone(spell, msg);
+    else if (spell.radius > 0 && !spell.field) this.showArea(spell, msg);
     if (spell.heal) {
+      // Em volta de quem conjura, ou no aliado mirado (Cura Distante).
+      const at = spell.aim === "self" ? { x: msg.x, y: msg.y } : { x: msg.tx, y: msg.ty };
       this.room.state.players.forEach((p, id) => {
-        if (p.status !== "playing" || tileDistance(msg.x, msg.y, p.x, p.y) > spell.radius) return;
+        if (p.status !== "playing" || tileDistance(at.x, at.y, p.x, p.y) > spell.radius) return;
         const unit = this.avatars.get(id);
         if (unit) this.fx.heal({ x: unit.body.x, y: unit.body.y });
       });
@@ -420,6 +455,66 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
     this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
+  }
+
+  /** Magia em cone: acende o leque (a mesma conta do servidor), do herói para fora. */
+  private showCone(spell: SpellDef, msg: SpellMessage) {
+    const tiles = coneTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
+    this.fx.area(tiles.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: tileDistance(msg.x, msg.y, t.x, t.y) })), spell.color, 0);
+  }
+
+  /**
+   * Campo no chão. Zona: os tiles do raio (com linha de visão do centro) brilham na cor da magia, ou em laranja
+   * no chão em chamas da Pólvora. Armadilha: mandíbulas de ferro no tile. Estaca: um poste com o alcance em volta.
+   */
+  private addField(id: string, field: FieldView) {
+    const spell = SPELLS[field.spellId as SpellId];
+    const color = field.style === "fire" ? 0xff7f27 : spell?.color ?? 0xffffff;
+    const view = this.add.container(this.toPx(field.x), this.toPx(field.y)).setDepth(field.y * TILE_SIZE - 1);
+    const g = this.add.graphics();
+    const half = TILE_SIZE / 2;
+    if (field.kind === "zone") {
+      for (let y = field.y - field.radius; y <= field.y + field.radius; y++) {
+        for (let x = field.x - field.radius; x <= field.x + field.radius; x++) {
+          if (blocksSight(this.dungeon, x, y) || !hasLineOfSight(this.dungeon, field.x, field.y, x, y)) continue;
+          const px = (x - field.x) * TILE_SIZE;
+          const py = (y - field.y) * TILE_SIZE;
+          // Cada tile do campo com preenchimento e borda: o contorno segue as paredes em vez de atravessá-las.
+          g.fillStyle(color, 0.3).fillRect(px - half + 1, py - half + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+          g.lineStyle(1, color, 0.75).strokeRect(px - half + 2, py - half + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        }
+      }
+      this.tweens.add({ targets: g, alpha: { from: 1, to: 0.55 }, duration: field.style === "fire" ? 180 : 700, yoyo: true, repeat: -1 });
+    } else if (field.kind === "wall") {
+      // Muralha Mágica: um bloco de energia roxa, com brilho pulsando.
+      g.fillStyle(color, 0.55).fillRect(-half + 1, -half - 6, TILE_SIZE - 2, TILE_SIZE + 4);
+      g.lineStyle(2, 0xd7c8ff, 0.9).strokeRect(-half + 1, -half - 6, TILE_SIZE - 2, TILE_SIZE + 4);
+      g.fillStyle(0xffffff, 0.35).fillRect(-half + 4, -half - 3, TILE_SIZE - 8, 3);
+      this.tweens.add({ targets: g, alpha: { from: 1, to: 0.7 }, duration: 400, yoyo: true, repeat: -1 });
+    } else if (field.style === "storm") {
+      // Fúria dos Céus: nuvem escura sobre o feiticeiro e o alcance dos raios tracejado.
+      const reach = (field.radius + 0.5) * TILE_SIZE;
+      g.lineStyle(1, color, 0.4).strokeCircle(0, 0, reach);
+      for (const [cx, cy, r] of [[-10, -40, 12], [6, -44, 14], [18, -38, 10], [-2, -34, 11]]) g.fillStyle(0x2c3e50, 0.85).fillCircle(cx, cy, r);
+      g.fillStyle(0x9ec5ff, 0.5).fillCircle(4, -36, 6);
+      this.tweens.add({ targets: g, alpha: { from: 1, to: 0.75 }, duration: 300, yoyo: true, repeat: -1 });
+    } else if (field.kind === "trap") {
+      // Mandíbulas abertas: arco de dentes de ferro.
+      g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);
+      for (let i = -3; i <= 3; i++) g.fillStyle(0xbdc3c7, 1).fillTriangle(i * 3 - 1, 4, i * 3 + 1, 4, i * 3, -1);
+      g.fillStyle(0x7f8c8d, 1).fillCircle(0, 6, 2);
+    } else {
+      // Estaca com flechas e o alcance tracejado.
+      const reach = (field.radius + 0.5) * TILE_SIZE;
+      g.lineStyle(1, color, 0.45).strokeCircle(0, 0, reach);
+      g.fillStyle(0x6b4426, 1).fillRect(-2, -14, 4, 22);
+      g.fillStyle(color, 1).fillTriangle(-6, -14, 6, -14, 0, -22);
+      for (const dx of [-4, 4]) g.lineStyle(1, 0xdcdde1, 1).lineBetween(dx, -10, dx * 2, -18);
+    }
+    view.add(g);
+    view.setScale(0.6).setAlpha(0);
+    this.tweens.add({ targets: view, scale: 1, alpha: 1, duration: 220, ease: "Back.Out" });
+    this.fields.set(id, view);
   }
 
   /** Magia em linha: acende os tiles atravessados (a mesma conta do servidor), do herói para a ponta, no ritmo da flecha. */
@@ -610,6 +705,43 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: fx.crest, x: { from: -11, to: -9 }, duration: 80, ease: "Quad.Out" });
   }
 
+  /** Marca do Caçador: uma mira vermelha girando sobre o monstro. */
+  private markAt(top: number) {
+    const g = this.add.graphics().setPosition(0, top);
+    g.lineStyle(2, 0xe74c3c, 0.95).strokeCircle(0, 0, 6);
+    g.fillStyle(0xe74c3c, 0.95).fillRect(-1, -10, 2, 5).fillRect(-1, 5, 2, 5).fillRect(-10, -1, 5, 2).fillRect(5, -1, 5, 2);
+    this.tweens.add({ targets: g, angle: 360, duration: 2400, repeat: -1 });
+    return g;
+  }
+
+  /** Forma de Pantera ou de Urso: o sprite da fera com os pés na base do tile (olha para a esquerda, como no pack). */
+  private formSprite(kind: keyof typeof FORMS, facingRight: boolean) {
+    const form = FORMS[kind];
+    const sprite = this.add.sprite(0, TILE_SIZE / 2, form.texture).setOrigin(0.5, 1).setScale(CREATURE_SPRITE_SCALE * form.scale)
+      .setTint(form.tint).setFlipX(facingRight);
+    this.tweens.add({ targets: sprite, scale: { from: CREATURE_SPRITE_SCALE * 0.6, to: CREATURE_SPRITE_SCALE * form.scale }, duration: 220, ease: "Back.Out" });
+    return sprite;
+  }
+
+  /** Renascer da Semente: uma semente com um broto sobre a cabeça, balançando enquanto ela vale. */
+  private seedAt(top: number) {
+    const g = this.add.graphics().setPosition(0, top);
+    g.fillStyle(0x8d5a2b, 1).fillEllipse(0, 2, 8, 9);
+    g.fillStyle(0xc8a165, 1).fillEllipse(-1, 1, 3, 4);
+    g.fillStyle(0x9cff7a, 1).fillTriangle(0, -2, 6, -7, 2, -1).fillTriangle(0, -2, -5, -6, -1, -1);
+    this.tweens.add({ targets: g, y: top - 3, duration: 700, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    return g;
+  }
+
+  /** Bônus em si (Postura do Atirador, Aljava Veloz): um anel na cor da magia pulsando nos pés do herói. */
+  private buffAura(color: number) {
+    const g = this.add.graphics();
+    g.lineStyle(2, color, 0.9).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE + 2, 13);
+    g.lineStyle(1, 0xffffff, 0.5).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE - 6, 9);
+    this.tweens.add({ targets: g, alpha: { from: 1, to: 0.35 }, duration: 450, yoyo: true, repeat: -1 });
+    return g;
+  }
+
   /** Lento: uma crosta de gelo azul nos pés, piscando devagar. */
   private frostAt() {
     const g = this.add.graphics();
@@ -700,12 +832,12 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /**
-   * Item ou poção no chão: brilho na cor do nível embaixo do ícone, acima do chão e abaixo dos personagens.
+   * Item ou poção no chão: brilho na cor da raridade embaixo do ícone, acima do chão e abaixo dos personagens.
    * Vários itens no mesmo tile se espalham um pouco para dar para ver todos.
    */
   private addGroundItem(id: string, item: GroundItemView) {
     const color = isPotion(item.itemId) ? POTIONS[item.itemId].color
-      : isRune(item.itemId) ? RUNES[item.itemId].color : TIER_COLORS[ITEMS[item.itemId]?.tier];
+      : isRune(item.itemId) ? RUNES[item.itemId].color : ITEMS[item.itemId] && itemColor(item.itemId);
     if (color === undefined) return;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
@@ -739,6 +871,18 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  /** Ponto da página logo acima do nome do nosso personagem (onde ficam os ícones de melhoria). */
+  private aboveMe() {
+    const unit = this.avatars.get(this.room.sessionId);
+    if (!unit) return null;
+    const cam = this.cameras.main;
+    const rect = this.game.canvas.getBoundingClientRect();
+    const scale = rect.width / this.game.canvas.width;
+    const x = rect.left + (unit.body.x - cam.worldView.x) * cam.zoom * scale;
+    const y = rect.top + (unit.body.y + unit.barY - 14 - cam.worldView.y) * cam.zoom * scale;
+    return x < rect.left || x > rect.right || y < rect.top || y > rect.bottom ? null : { x, y };
+  }
+
   private syncAvatar(sessionId: string, player: PlayerView) {
     const unit = this.avatars.get(sessionId);
     if (!unit) return;
@@ -762,7 +906,17 @@ export class DungeonScene extends Phaser.Scene {
     const alive = player.status === "playing";
     this.setStatus(unit, "poison", alive && player.dot === "poison", () => this.dotAura(unit.barY + 2, DOT_COLORS.poison));
     this.setStatus(unit, "burn", alive && player.dot === "burn", () => this.dotAura(unit.barY + 2, DOT_COLORS.burn));
+    // Uma aura por magia de bônus em si, na cor dela.
+    for (const id of SELF_BUFFS) this.setStatus(unit, `buff:${id}`, alive && player.buff === id, () => this.buffAura(SPELLS[id].color));
     this.setStatus(unit, "slow", alive && player.slowed, () => this.mudAtFeet());
+    // Forma animal: a fera aparece no lugar do herói enquanto a forma dura.
+    for (const kind of Object.keys(FORMS) as (keyof typeof FORMS)[]) {
+      const on = alive && player.form === kind;
+      this.setStatus(unit, `form:${kind}`, on, () => this.formSprite(kind, unit.sprite.flipX));
+    }
+    unit.sprite.setVisible(!alive || !(player.form in FORMS));
+    this.setStatus(unit, "seed", alive && player.seeded, () => this.seedAt(unit.barY - 12));
+    this.setStatus(unit, "reborn", alive && player.reborn, () => this.buffAura(0xf7d774));
     this.syncBarrier(unit, player.status === "playing" ? player.barrier : 0, player.maxBarrier);
     this.moveTo(unit, player.x, player.y);
   }
@@ -791,6 +945,7 @@ export class DungeonScene extends Phaser.Scene {
     this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
     this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
     this.setStatus(unit, "slow", monster.slowed, () => this.frostAt());
+    this.setStatus(unit, "mark", monster.marked, () => this.markAt(unit.barY - 14));
     for (const kind of DOT_KINDS) this.setStatus(unit, `dot:${kind}`, monster.dot === kind, () => this.dotAt(kind));
     this.moveTo(unit, monster.x, monster.y);
   }
@@ -880,6 +1035,8 @@ export class DungeonScene extends Phaser.Scene {
     if (dx !== 0) {
       unit.dir = "side";
       unit.sprite.setFlipX(unit.classId ? dx > 0 : unit.facesLeft && dx > 0);
+      // A fera da forma animal (do pack, olhando para a esquerda) vira junto com o herói.
+      for (const kind of Object.keys(FORMS)) (unit.statuses.get(`form:${kind}`) as Phaser.GameObjects.Sprite | undefined)?.setFlipX(dx > 0);
     } else {
       unit.dir = dy < 0 ? "up" : "down";
     }
