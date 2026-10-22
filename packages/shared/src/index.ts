@@ -5,6 +5,7 @@ export * from "./messages.ts";
 export * from "./rng.ts";
 export * from "./dungeon.ts";
 export * from "./monsters.ts";
+export * from "./elements.ts";
 export * from "./maps.ts";
 export * from "./items.ts";
 export * from "./spells.ts";

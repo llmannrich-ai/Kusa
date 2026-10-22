@@ -67,3 +67,34 @@ Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0
 | `ruin-column.png` | `dngn/statues/crumbled_column_1..6.png` | juntos numa faixa |
 | `grass-fringe.png` | `dngn/floor/grass/grass_n`, `_e`, `_s`, `_w` | só o capim (terra recortada), brilho ×1,1; franja sobre lama e pedra |
 | `water-shore.png` | `dngn/water/shallow_water_wave_N/E/S/W` e `_corner_NE/NW/SE/SW` | tom esverdeado e mais escuro, 60% de opacidade; espuma da margem das lagoas |
+
+### Bestiário 2.0
+
+Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0), pasta `releases/Nov-2015/`.
+O Mímico e o Cubo Gelatinoso são arte própria (o Mímico parte do `chest-locked.png` acima).
+
+| Arquivo | Original | Alteração |
+|---|---|---|
+| `monster-hydra-1.png` … `-4.png` | `mon/dragons/hydra1..4.png` | — (cabeças da Hidra; a de 5 é o `monster-hydra.png`) |
+| `monster-kobold.png` | `mon/kobold.png` | — |
+| `monster-stirge.png` | `mon/animals/vampire_mosquito.png` | — |
+| `monster-goblin-archer.png` | `mon/goblin.png` | arco desenhado por cima |
+| `monster-zombie.png` | `mon/undead/necrophage.png` | — |
+| `monster-skeleton-archer.png` | `mon/undead/skeletons/skeleton_humanoid_small.png` | arco desenhado por cima |
+| `monster-giant-spider.png` | `mon/animals/wolf_spider.png` | — |
+| `monster-hobgoblin.png` | `mon/hobgoblin.png` | — |
+| `monster-gnoll.png` | `mon/gnoll.png` | — |
+| `monster-bugbear.png` | `mon/gnoll_sergeant.png` | — |
+| `monster-mimic.png` | `chest-locked.png` (acima) | boca, dentes, língua e olhos desenhados |
+| `monster-mimic-disguise.png` | `chest-locked.png` (acima) | — (cópia: o Mímico disfarçado, refinado como os monstros) |
+| `monster-gelatinous-cube.png` | — | arte própria |
+| `monster-bullywug.png` | `mon/animals/spiny_frog.png` | — |
+| `monster-lizardfolk.png` | `mon/draco/draco-base-green.png` | — |
+| `monster-ghoul.png` | `mon/undead/ghoul.png` | — |
+| `monster-black-pudding.png` | `mon/amorphous/jelly.png` | escurecida (quase preta, brilho roxo) |
+| `monster-crocodile.png` | `mon/animals/iguana.png` | — |
+| `monster-will-o-wisp.png` | `mon/nonliving/insubstantial_wisp.png` | névoa tingida de azul frio |
+| `monster-shambling-mound.png` | `mon/fungi_plants/vine_stalker.png` | — |
+| `monster-green-hag.png` | `mon/undead/jiangshi.png` | manto roxo trocado por verde-musgo |
+| `monster-spirit-naga.png` | `mon/naga_mage.png` | — |
+| `monster-black-dragon.png` | `mon/dragons/shadow_dragon.png` | — |

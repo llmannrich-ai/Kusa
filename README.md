@@ -59,7 +59,9 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx apps/server/scripts/bag.ts`: um cavaleiro veste um item, guarda na bag, veste de novo, larga, pega de volta e foge levando o item na bag.
 - `npx tsx apps/server/scripts/perks.ts`: um cavaleiro caça até o nível 2, recebe 2 melhorias, uma fora da oferta é recusada e a escolhida é aplicada.
 - `npx tsx apps/server/scripts/spells.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, um feiticeiro conjura no toque rápido e com a mira.
-- `npx tsx apps/server/scripts/specials.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, confere as áreas das habilidades especiais (só mini-bosses e bosses) e um cavaleiro apanha do golpe especial de um mini-boss.
+- `npx tsx apps/server/scripts/specials.ts <url>`: com um servidor iniciado com `KUSA_START_LEVEL=8`, confere as regras e as áreas das habilidades dos monstros e um cavaleiro apanha do golpe de um mini-boss.
+- `npx tsx apps/server/scripts/bestiario.ts` (sem servidor): as mecânicas do Bestiário (elementos, Fortitude, Regeneração, cabeças da Hidra, efeitos no herói com teto e imunidade, Língua, salto, Voo, Táticas de Bando, Divisão, Engolfar, Mímico, Bruxa Verde, artilheiro, camuflagem, Campeões) e os encontros determinísticos pela seed.
+- `npx tsx scripts/bestiary-sim.ts [mapa] [repetições]` (de dentro de `apps/server`; não é teste): simulador de balanceamento, um herói de cada classe contra cada monstro do mapa.
 - `npx tsx apps/server/scripts/maps.ts`: cada mapa gera mapas conectados e determinísticos e cria a sala certa (monstros, tempo).
 - `npx tsx apps/server/scripts/arte.ts`: sem servidor; todo item do catálogo aparece vestido em todas as classes e
   direções, com um desenho único (o raro usa o do comum) e sem sair do quadro.
