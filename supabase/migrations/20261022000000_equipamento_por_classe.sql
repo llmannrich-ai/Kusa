@@ -25,7 +25,7 @@ update public.profile_items set class_id = null where not equipped;
 alter table public.profile_items
   add constraint profile_items_equipped_class check (equipped = (class_id is not null));
 
-drop index public.profile_items_one_equipped_per_slot;
+drop index if exists public.profile_items_one_equipped_per_slot;
 create unique index profile_items_one_equipped_per_class_slot
   on public.profile_items (profile_id, class_id, slot) where equipped;
 
@@ -57,7 +57,12 @@ begin
     if v_classes is not null and not p_class_id = any (v_classes) then raise exception 'classe não usa este item'; end if;
     update public.profile_items set equipped = false, class_id = null
     where profile_id = v_uid and class_id = p_class_id and slot = v_item.slot and equipped and id <> p_item;
-    update public.profile_items set equipped = true, class_id = p_class_id where id = p_item;
+    -- Só dispara se o índice antigo (um item por slot na conta) ainda existir.
+    begin
+      update public.profile_items set equipped = true, class_id = p_class_id where id = p_item;
+    exception when unique_violation then
+      raise exception 'slot ocupado por outra classe';
+    end;
   else
     if not v_item.equipped then return; end if;
     if public.vault_count(v_uid) >= 20 then raise exception 'cofre cheio'; end if;
@@ -145,8 +150,13 @@ begin
                     and slot = split_part(v_item, '-', 1)) then
       v_rest := v_rest || v_item;
     else
-      insert into public.profile_items (profile_id, item_id, source, equipped, class_id)
-      values (p_profile_id, v_item, 'hunt', true, p_class_id);
+      -- Slot ocupado por outra classe enquanto o índice antigo existir: vai para o cofre, sem derrubar o resultado.
+      begin
+        insert into public.profile_items (profile_id, item_id, source, equipped, class_id)
+        values (p_profile_id, v_item, 'hunt', true, p_class_id);
+      exception when unique_violation then
+        v_rest := v_rest || v_item;
+      end;
     end if;
   end loop;
   perform public.store_bag(p_profile_id, v_rest);
