@@ -1,5 +1,6 @@
 import { blocksSight, hasLineOfSight, type Dungeon } from "./dungeon.ts";
 import type { AttackFx } from "./messages.ts";
+import { coneTiles } from "./spells.ts";
 
 export type MonsterKind =
   // Cripta (dificuldade 1)
@@ -9,46 +10,169 @@ export type MonsterKind =
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
-/**
- * Onde a habilidade especial acerta:
- * - `target`: área em volta do tile do alvo (`radius` 0 = só o tile dele);
- * - `self`: área em volta do próprio monstro;
- * - `line`: faixa reta do monstro na direção do alvo, `length` tiles, `radius` tiles para cada lado.
- */
-export type SpecialShape = "target" | "self" | "line";
+/** Tipo de criatura do D&D: dá imunidades e fraquezas padrão (`CREATURE_TYPES`). */
+export type CreatureType =
+  | "aberration" | "beast" | "construct" | "dragon" | "elemental" | "fey" | "fiend" | "giant" | "humanoid"
+  | "monstrosity" | "ooze" | "plant" | "undead";
+
+/** Papel do monstro na luta (ver `docs/BESTIARIO_PLANO.md`, 3.1): muda a IA e serve de guia para os números. */
+export type MonsterRole = "brute" | "skirmisher" | "artillery" | "controller" | "leader" | "swarm" | "lurker" | "sentinel";
 
 /**
- * Habilidade especial de mini-bosses e bosses: um golpe mais forte que o ataque básico, sem aviso,
- * que sai sempre que a recarga deixa e o alvo está ao alcance.
+ * Elemento de um dano. Todo dano dos heróis tem um (`damageElement`), e os monstros resistem, são imunes ou
+ * vulneráveis a alguns (`MonsterDef.elements`). `nature` junta veneno, ácido e espinhos.
  */
-export interface MonsterSpecial {
-  name: string;
-  shape: SpecialShape;
-  /** Distância máxima (tiles, Chebyshev) até o alvo para usar. */
-  range: number;
-  radius: number;
-  /** Comprimento da faixa (só `line`). */
-  length?: number;
-  cooldownMs: number;
-  /** Multiplicador do dano do monstro. */
-  power: number;
-  /** Dano por segundo depois do golpe (veneno ou queimadura), em fração do dano do monstro. */
-  dot?: { kind: DotKind; power: number; durationMs: number };
-  /** Deixa quem foi atingido mais lento (`factor` = fração da velocidade que sobra). */
-  slow?: { factor: number; durationMs: number };
-  /** Cura o monstro nesta fração da vida máxima quando o golpe sai. */
-  selfHeal?: number;
-  /** Cor do aviso e do efeito. */
-  color: number;
-}
+export type DamageElement = "physical" | "fire" | "ice" | "energy" | "dark" | "radiant" | "nature";
+export const DAMAGE_ELEMENTS: readonly DamageElement[] = ["physical", "fire", "ice", "energy", "dark", "radiant", "nature"];
 
 export type DotKind = "poison" | "burn" | "bleed";
 export const DOT_KINDS: readonly DotKind[] = ["poison", "burn", "bleed"];
+
+/**
+ * Efeitos que os monstros deixam nos heróis (além do dano contínuo e da lentidão, que já existiam):
+ * - `root`: preso (teia, constrição): não anda;
+ * - `stun`: atordoado (paralisia): não anda, não ataca, não conjura nem bebe poção;
+ * - `engulf`: engolido: como atordoado, e toma dano por segundo de quem engoliu;
+ * - `blind`: cego: não mira nada além de 2 tiles;
+ * - `corrode`: corroído: recebe mais dano por acúmulo (até `CORRODE_MAX`).
+ * Os quatro primeiros são **controle**: duram no máximo `CONTROL_MAX_MS` e depois o herói fica `CONTROL_IMMUNE_MS`
+ * imune ao mesmo efeito.
+ */
+export type HeroEffectKind = "root" | "stun" | "engulf" | "blind" | "corrode";
+export const HERO_EFFECTS: readonly HeroEffectKind[] = ["root", "stun", "engulf", "blind", "corrode"];
+export const CONTROL_EFFECTS: readonly HeroEffectKind[] = ["root", "stun", "engulf", "blind"];
+export const CONTROL_MAX_MS = 2000;
+export const CONTROL_IMMUNE_MS = 4000;
+/** Corroído: dano recebido a mais por acúmulo, e o máximo de acúmulos. */
+export const CORRODE_PER_STACK = 0.08;
+export const CORRODE_MAX = 3;
+/** Cego: alcance máximo do ataque básico e das magias com alvo. */
+export const BLIND_RANGE = 2;
+
+export interface HeroEffect {
+  kind: HeroEffectKind;
+  ms: number;
+  /** Engolido: dano por segundo, em fração do dano do monstro. */
+  power?: number;
+}
+
+/**
+ * Forma da habilidade:
+ * - `target`: área em volta do tile do alvo (`radius` 0 = só o tile dele);
+ * - `self`: área em volta do próprio monstro;
+ * - `line`: faixa reta do monstro na direção do alvo, `length` tiles, `radius` tiles para cada lado;
+ * - `cone`: leque de 90° na direção do alvo, `length` tiles (como o Cone de Frio);
+ * - `bolt`: projétil que acerta só o alvo (teia, raio, cuspe);
+ * - `leap`: o monstro salta para colar no alvo e acerta a área `radius` em volta de onde caiu (`power` 0 = só o salto);
+ * - `pull`: puxa o alvo para colar no monstro (língua, corrente);
+ * - `dive`: o monstro some (voa, mergulha) por `vanishMs`, invulnerável, e cai sobre o alvo com área `radius`;
+ * - `vanish`: o monstro fica invisível por `vanishMs` (pode deixar cópias com `summon`);
+ * - `summon`: chama monstros em volta de si.
+ */
+export type AbilityShape = "target" | "self" | "line" | "cone" | "bolt" | "leap" | "pull" | "dive" | "vanish" | "summon";
+
+/** Desenho da habilidade no cliente (`fx.ts`). */
+export type AbilityFx =
+  | "quake" | "breath" | "acidRain" | "boulder" | "leap" | "tongue" | "constrict" | "rend" | "dive" | "web" | "bolt"
+  | "engulf" | "summon" | "vanish" | "slam" | "spit" | "lightning";
+
+/**
+ * Habilidade de monstro. Sai **na hora, sem aviso** (princípio do jogo: difícil e injusto como a vida), sempre que a
+ * recarga deixa e o alvo está ao alcance. A recarga varia ±`COOLDOWN_JITTER` (a "Recarga 5–6" do D&D): ninguém sabe
+ * quando o golpe volta.
+ */
+export interface MonsterAbility {
+  id: string;
+  name: string;
+  shape: AbilityShape;
+  /** Distância máxima (tiles, Chebyshev) até o alvo para usar. */
+  range: number;
+  /** Distância mínima até o alvo (investidas e puxões não saem com o alvo colado). */
+  minRange?: number;
+  radius: number;
+  /** Comprimento da faixa ou do leque. */
+  length?: number;
+  cooldownMs: number;
+  /** Multiplicador do dano do monstro (0 = sem dano). */
+  power: number;
+  /** Dano por segundo depois do golpe (veneno, queimadura ou sangramento), em fração do dano do monstro. */
+  dot?: { kind: DotKind; power: number; durationMs: number };
+  /** Deixa quem foi atingido mais lento (`factor` = fração da velocidade que sobra). */
+  slow?: { factor: number; durationMs: number };
+  /** Efeito nos heróis atingidos. */
+  effect?: HeroEffect;
+  /** Empurra os heróis atingidos para longe do monstro. */
+  push?: number;
+  /** Cura o monstro nesta fração da vida máxima quando o golpe sai. */
+  selfHeal?: number;
+  /** Monstros chamados (`summon`) ou cópias deixadas ao sumir (`vanish`). */
+  summon?: { kind: MonsterKind; count: number };
+  /** `dive` e `vanish`: quanto tempo fica sumido. */
+  vanishMs?: number;
+  /** Só sai com a vida abaixo desta fração. */
+  belowHp?: number;
+  /** Troca de fase: sai na hora em que a vida cruza `belowHp` (com 1 ou 4 heróis, a fase sempre aparece). */
+  phase?: boolean;
+  /** Sai uma vez só na luta. */
+  once?: boolean;
+  /** Cor do efeito e do nome. */
+  color: number;
+  fx: AbilityFx;
+}
+
+/** Passivas tiradas dos blocos de estatística do D&D. */
+export interface MonsterTraits {
+  /** Táticas de Bando: dano extra (fração) se outro monstro estiver colado no mesmo alvo. */
+  packTactics?: number;
+  /** Fuga Ágil: depois de acertar, recua 1 tile (com recarga). */
+  hitAndRun?: { cooldownMs: number };
+  /** Artilheiro: recua se o alvo chegar mais perto que isto (tiles). */
+  keepDistance?: number;
+  /** Rompante: abaixo de `belowHp` da vida, ataca `haste` (fração) mais rápido. */
+  frenzy?: { belowHp: number; haste: number };
+  /** Comando: monstros a até `radius` tiles causam `damage` (fração) a mais e atacam `haste` mais rápido. */
+  leader?: { radius: number; damage: number; haste: number };
+  /** Ataque Surpresa: o primeiro golpe em cada alvo sai com este multiplicador. */
+  ambush?: number;
+  /** Multiataque: o golpe básico acerta `hits` vezes, cada uma com `power` do dano. */
+  multiattack?: { hits: number; power: number };
+  /** Efeito do golpe básico (com chance `chance`, padrão 1). */
+  onHit?: {
+    chance?: number;
+    dot?: { kind: DotKind; power: number; durationMs: number };
+    effect?: HeroEffect;
+    /** Acumula Corroído. */
+    corrode?: number;
+    /** Cura esta fração do dano causado. */
+    lifesteal?: number;
+  };
+  /** Regeneração: `perSec` da vida máxima por segundo, interrompida por `stopMs` ao levar dano de `stopBy`. */
+  regeneration?: { perSec: number; stopBy: DamageElement[]; stopMs: number };
+  /** Fortitude Morta-viva: o primeiro golpe que o mataria o deixa com 1 de vida (exceto os elementos de `except`). */
+  fortitude?: { except: DamageElement[] };
+  /** Divisão: golpe de `by` com pelo menos `minHit` da vida máxima divide o monstro em dois (até `max` pedaços). */
+  split?: { by: DamageElement[]; minHit: number; max: number };
+  /** Absorve: dano destes elementos cura em vez de ferir. */
+  absorb?: DamageElement[];
+  /** Camuflado: invisível (não pode ser alvo) até notar alguém ou levar dano. */
+  camouflage?: boolean;
+  /** Pisca: a cada `everyMs`, fica invisível por `ms`. */
+  blink?: { everyMs: number; ms: number };
+  /**
+   * Cabeças (Hidra): cada cabeça morde um alvo diferente (as que sobram mordem o alvo com metade do dano). A cada
+   * `step` da vida perdida, perde uma; se não levar fogo em `regrowMs`, nascem duas no lugar (até `max`).
+   */
+  heads?: { start: number; max: number; step: number; regrowMs: number; regrowHeal: number };
+}
 
 export interface MonsterDef {
   kind: MonsterKind;
   name: string;
   rank: MonsterRank;
+  type: CreatureType;
+  role: MonsterRole;
+  /** Nível de Desafio do Kusa (`crStats`). */
+  cr: number;
   /** Atributos na profundidade 0; `monsterStats` aplica o ganho por profundidade. */
   hp: number;
   damage: number;
@@ -65,85 +189,182 @@ export interface MonsterDef {
   attackCooldownMs: number;
   /** Efeito visual do ataque. */
   attackFx: AttackFx;
-  /** Forma e cor provisórias até termos sprites. */
-  shape: "circle" | "square" | "diamond" | "triangle";
-  color: number;
-  /** Escala do desenho em relação a um tile. */
-  size: number;
-  /** Ataque extra, mais forte (só mini-bosses e bosses; ver `MonsterSpecial`). */
-  special?: MonsterSpecial;
-  /** Morto-vivo: a luz sagrada do Paladino fere mais (Flechas Consagradas, Caldeira Divina). */
-  undead?: boolean;
+  /** Multiplicador do dano recebido por elemento (0 = imune, 0,5 = resiste, 1,5 = vulnerável), por cima do tipo. */
+  elements?: Partial<Record<DamageElement, number>>;
+  traits?: MonsterTraits;
+  /** Habilidades, em ordem de prioridade (a primeira pronta e possível sai). */
+  abilities?: MonsterAbility[];
+  /** Frase curta de lore (Bestiário). */
+  lore: string;
+  /** Morto-vivo (derivado do tipo): a luz sagrada do Paladino fere mais (Flechas Consagradas, Caldeira Divina). */
+  undead: boolean;
 }
 
-export const MONSTERS: Record<MonsterKind, MonsterDef> = {
-  rat: {
-    kind: "rat", name: "Ratazana", rank: "common", shape: "circle", color: 0x8d7b68, size: 0.5,
-    hp: 25, damage: 3, xp: 20, loot: [1, 2], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
-  },
-  goblin: {
-    kind: "goblin", name: "Goblin", rank: "common", shape: "triangle", color: 0x6ab04c, size: 0.6,
-    hp: 45, damage: 5, xp: 35, loot: [2, 4], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "slash",
-  },
-  skeleton: {
-    kind: "skeleton", name: "Esqueleto", rank: "common", undead: true, shape: "diamond", color: 0xdcdde1, size: 0.65,
-    hp: 70, damage: 7, xp: 55, loot: [3, 6], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
-  },
-  orc: {
-    kind: "orc", name: "Orc guerreiro", rank: "common", shape: "square", color: 0x4b6584, size: 0.7,
-    hp: 110, damage: 9, xp: 85, loot: [5, 9], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
-  },
-  ogre: {
-    kind: "ogre", name: "Ogro", rank: "miniboss", shape: "square", color: 0xa0522d, size: 0.9,
-    hp: 260, damage: 14, xp: 220, loot: [12, 20], speed: 2.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
-    special: { name: "Pisão Sísmico", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 2.1, slow: { factor: 0.5, durationMs: 3000 }, color: 0xb07a45 },
-  },
-  dragon: {
-    kind: "dragon", name: "Dragão jovem", rank: "boss", shape: "diamond", color: 0xb33939, size: 1.4,
-    hp: 900, damage: 24, xp: 700, loot: [60, 100], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
-    special: { name: "Sopro Infernal", shape: "line", range: 6, radius: 1, length: 6, cooldownMs: 7000, power: 1.9, dot: { kind: "burn", power: 0.25, durationMs: 4000 }, color: 0xff6b1a },
-  },
-  // Pântano: mais vida e dano que os equivalentes da cripta, e loot maior.
-  frog: {
-    kind: "frog", name: "Sapo gigante", rank: "common", shape: "circle", color: 0x4caf50, size: 0.55,
-    hp: 50, damage: 5, xp: 40, loot: [2, 4], speed: 3.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1100, attackFx: "bite",
-  },
-  moccasin: {
-    kind: "moccasin", name: "Cobra-d'água", rank: "common", shape: "triangle", color: 0x8d5a3b, size: 0.55,
-    hp: 70, damage: 8, xp: 55, loot: [3, 6], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
-  },
-  bogBody: {
-    kind: "bogBody", name: "Afogado", rank: "common", undead: true, shape: "diamond", color: 0x556b2f, size: 0.7,
-    hp: 120, damage: 11, xp: 85, loot: [5, 9], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
-  },
-  naga: {
-    kind: "naga", name: "Naga guerreira", rank: "common", shape: "square", color: 0x9aa0a6, size: 0.7,
-    hp: 160, damage: 13, xp: 120, loot: [7, 12], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
-  },
-  troll: {
-    kind: "troll", name: "Troll do brejo", rank: "miniboss", shape: "square", color: 0x2e4a7d, size: 0.95,
-    hp: 520, damage: 20, xp: 400, loot: [24, 36], speed: 2.8, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
-    special: { name: "Fúria Regenerante", shape: "self", range: 1, radius: 1, cooldownMs: 8000, power: 2.0, selfHeal: 0.08, color: 0x2ecc71 },
-  },
-  hydra: {
-    kind: "hydra", name: "Hidra do pântano", rank: "boss", shape: "diamond", color: 0x2e8b57, size: 1.4,
-    hp: 1600, damage: 28, xp: 1300, loot: [120, 180], speed: 2.2, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
-    special: { name: "Chuva Ácida", shape: "target", range: 7, radius: 2, cooldownMs: 7000, power: 1.7, dot: { kind: "poison", power: 0.25, durationMs: 5000 }, color: 0xa3e635 },
-  },
+/** O que cada tipo de criatura muda: imunidade a dano contínuo e multiplicadores por elemento. */
+export const CREATURE_TYPES: Record<CreatureType, { name: string; immuneDots?: DotKind[]; elements?: Partial<Record<DamageElement, number>> }> = {
+  aberration: { name: "Aberração" },
+  beast: { name: "Besta" },
+  construct: { name: "Constructo", immuneDots: ["poison", "bleed"] },
+  dragon: { name: "Dragão" },
+  elemental: { name: "Elemental", immuneDots: ["poison", "bleed"] },
+  fey: { name: "Fada" },
+  fiend: { name: "Corruptor", elements: { physical: 0.75, radiant: 1.5 } },
+  giant: { name: "Gigante" },
+  humanoid: { name: "Humanoide" },
+  monstrosity: { name: "Monstruosidade" },
+  ooze: { name: "Limo", immuneDots: ["bleed"] },
+  plant: { name: "Planta", elements: { fire: 1.5 } },
+  undead: { name: "Morto-vivo", immuneDots: ["poison", "bleed"] },
 };
 
-/** Abaixo desta fração da vida, o boss se enfurece e usa a habilidade especial mais vezes. */
+/** Variação da recarga das habilidades (±30%): a "Recarga 5–6" do D&D. */
+export const COOLDOWN_JITTER = 0.3;
+
+type MonsterInput = Omit<MonsterDef, "undead">;
+const monster = (def: MonsterInput): MonsterDef => ({ ...def, undead: def.type === "undead" });
+
+export const MONSTERS: Record<MonsterKind, MonsterDef> = {
+  // --- Cripta -----------------------------------------------------------------
+  rat: monster({
+    kind: "rat", name: "Ratazana", rank: "common", type: "beast", role: "swarm", cr: 1,
+    hp: 20, damage: 3, xp: 20, loot: [1, 2], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
+    traits: { packTactics: 0.4 },
+    lore: "Ratazanas gigantes caçam em bando: sozinhas fogem, juntas mordem fundo.",
+  }),
+  goblin: monster({
+    kind: "goblin", name: "Goblin", rank: "common", type: "humanoid", role: "skirmisher", cr: 2,
+    hp: 45, damage: 5, xp: 35, loot: [2, 4], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "slash",
+    traits: { hitAndRun: { cooldownMs: 4000 } },
+    lore: "Covardes e ágeis: golpeiam e saltam para trás antes do troco (Fuga Ágil).",
+  }),
+  skeleton: monster({
+    kind: "skeleton", name: "Esqueleto", rank: "common", type: "undead", role: "brute", cr: 3,
+    hp: 70, damage: 7, xp: 55, loot: [3, 6], speed: 2.8, aggroRange: 6, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    lore: "Ossos erguidos por magia antiga. Veneno e sangramento não pegam em quem não tem sangue.",
+  }),
+  orc: monster({
+    kind: "orc", name: "Orc guerreiro", rank: "common", type: "humanoid", role: "brute", cr: 4,
+    hp: 110, damage: 9, xp: 85, loot: [5, 9], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    abilities: [
+      { id: "aggressive", name: "Agressivo", shape: "leap", range: 5, minRange: 3, radius: 0, cooldownMs: 6000, power: 0, color: 0xc0392b, fx: "leap" },
+    ],
+    lore: "Orcs não esperam: veem o inimigo e avançam de uma vez (Agressivo).",
+  }),
+  ogre: monster({
+    kind: "ogre", name: "Ogro", rank: "miniboss", type: "giant", role: "brute", cr: 5,
+    hp: 260, damage: 18, xp: 220, loot: [12, 20], speed: 2.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1800, attackFx: "smash",
+    abilities: [
+      { id: "stomp", name: "Pisão Sísmico", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 2.1, slow: { factor: 0.5, durationMs: 3000 }, color: 0xb07a45, fx: "quake" },
+      { id: "boulder", name: "Arremesso de Pedra", shape: "target", range: 6, minRange: 3, radius: 1, cooldownMs: 7000, power: 1.6, push: 1, color: 0x8d6e63, fx: "boulder" },
+    ],
+    lore: "Força bruta sem pressa. De perto pisa, de longe arremessa o que estiver à mão.",
+  }),
+  dragon: monster({
+    kind: "dragon", name: "Dragão jovem", rank: "boss", type: "dragon", role: "brute", cr: 6,
+    hp: 900, damage: 24, xp: 700, loot: [60, 100], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
+    elements: { fire: 0 },
+    traits: { multiattack: { hits: 3, power: 0.4 } },
+    abilities: [
+      {
+        id: "flight", name: "Voo", shape: "dive", range: 8, radius: 2, cooldownMs: 16000, power: 1.6, vanishMs: 2000,
+        belowHp: 0.5, phase: true, color: 0xff9f43, fx: "dive",
+      },
+      {
+        id: "breath", name: "Sopro Infernal", shape: "cone", range: 6, radius: 0, length: 6, cooldownMs: 7000, power: 1.9,
+        dot: { kind: "burn", power: 0.25, durationMs: 4000 }, color: 0xff6b1a, fx: "breath",
+      },
+    ],
+    lore: "Dragão vermelho jovem: mordida e duas garras, sopro em leque e, ferido, alça voo e cai sobre a presa. Imune a fogo.",
+  }),
+
+  // --- Pântano: mais vida e dano que os equivalentes da cripta, e loot maior ------------------------------
+  frog: monster({
+    kind: "frog", name: "Sapo gigante", rank: "common", type: "beast", role: "controller", cr: 3,
+    hp: 50, damage: 5, xp: 40, loot: [2, 4], speed: 3.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1100, attackFx: "bite",
+    abilities: [
+      { id: "tongue", name: "Língua", shape: "pull", range: 3, minRange: 2, radius: 0, cooldownMs: 7000, power: 0.8, color: 0xe57373, fx: "tongue" },
+    ],
+    lore: "A língua pegajosa puxa a presa de longe para a boca.",
+  }),
+  moccasin: monster({
+    kind: "moccasin", name: "Cobra-d'água", rank: "common", type: "beast", role: "skirmisher", cr: 4,
+    hp: 70, damage: 6, xp: 55, loot: [3, 6], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
+    traits: { onHit: { dot: { kind: "poison", power: 0.3, durationMs: 3000 } } },
+    lore: "Cobra venenosa gigante: a mordida é fraca, o veneno não.",
+  }),
+  bogBody: monster({
+    kind: "bogBody", name: "Afogado", rank: "common", type: "undead", role: "brute", cr: 5,
+    hp: 140, damage: 11, xp: 95, loot: [5, 9], speed: 2.0, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
+    traits: { fortitude: { except: ["radiant", "fire"] } },
+    lore: "Zumbi do brejo. O primeiro golpe que deveria derrubá-lo não derruba, a não ser luz ou fogo (Fortitude Morta-viva).",
+  }),
+  naga: monster({
+    kind: "naga", name: "Naga guerreira", rank: "common", type: "monstrosity", role: "sentinel", cr: 6,
+    hp: 160, damage: 13, xp: 120, loot: [7, 12], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    abilities: [
+      { id: "constrict", name: "Constrição", shape: "target", range: 1, radius: 0, cooldownMs: 6000, power: 1, effect: { kind: "root", ms: 1500 }, color: 0x9aa0a6, fx: "constrict" },
+    ],
+    lore: "Guarda das ruínas. Enrola a cauda em quem chega perto e não solta tão cedo.",
+  }),
+  troll: monster({
+    kind: "troll", name: "Troll do brejo", rank: "miniboss", type: "giant", role: "brute", cr: 7,
+    hp: 520, damage: 24, xp: 400, loot: [24, 36], speed: 2.8, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    traits: { regeneration: { perSec: 0.02, stopBy: ["fire", "nature"], stopMs: 5000 } },
+    abilities: [
+      {
+        id: "rend", name: "Dilacerar", shape: "target", range: 1, radius: 0, cooldownMs: 6000, power: 1.8,
+        dot: { kind: "bleed", power: 0.3, durationMs: 4000 }, color: 0xc0392b, fx: "rend",
+      },
+    ],
+    lore: "Regenera sem parar. Só fogo ou ácido (natureza) fecham as feridas por alguns segundos.",
+  }),
+  hydra: monster({
+    kind: "hydra", name: "Hidra do pântano", rank: "boss", type: "monstrosity", role: "brute", cr: 8,
+    hp: 1600, damage: 16, xp: 1300, loot: [120, 180], speed: 2.2, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
+    traits: { heads: { start: 3, max: 5, step: 0.2, regrowMs: 6000, regrowHeal: 0.05 } },
+    abilities: [
+      {
+        id: "submerge", name: "Mergulho", shape: "dive", range: 9, radius: 1, cooldownMs: 15000, power: 1.2, vanishMs: 1500,
+        belowHp: 0.5, phase: true, color: 0x4fc3f7, fx: "dive",
+      },
+      {
+        id: "acid", name: "Chuva Ácida", shape: "target", range: 7, radius: 2, cooldownMs: 7000, power: 1.7,
+        dot: { kind: "poison", power: 0.25, durationMs: 5000 }, color: 0xa3e635, fx: "acidRain",
+      },
+    ],
+    lore: "Cada cabeça morde alguém. Corte uma e nascem duas, a não ser que o fogo cauterize o toco.",
+  }),
+};
+
+/** Abaixo desta fração da vida, o boss se enfurece e usa as habilidades mais vezes. */
 export const ENRAGE_HP = 0.5;
-/** Multiplicador da recarga da habilidade especial com o boss enfurecido. */
+/** Multiplicador da recarga das habilidades com o boss enfurecido. */
 export const ENRAGE_COOLDOWN = 0.6;
-/** A primeira habilidade especial só sai depois desta fração da recarga, contada de quando o monstro nota alguém. */
+/** A primeira habilidade só sai depois desta fração da recarga, contada de quando o monstro nota alguém. */
 export const SPECIAL_FIRST_DELAY = 0.5;
 
+/** Multiplicador do dano de `element` num monstro (tipo de criatura e o próprio monstro). */
+export function elementMultiplier(kind: MonsterKind, element: DamageElement) {
+  const def = MONSTERS[kind];
+  return (def.elements?.[element] ?? 1) * (CREATURE_TYPES[def.type].elements?.[element] ?? 1);
+}
+
+/** O monstro não pega este dano contínuo (morto-vivo não envenena nem sangra). */
+export function immuneToDot(kind: MonsterKind, dot: DotKind) {
+  return CREATURE_TYPES[MONSTERS[kind].type].immuneDots?.includes(dot) ?? false;
+}
+
+/** Faixa de vida e de dano por segundo do Nível de Desafio (seção 4.1 do plano do Bestiário). */
+export function crStats(cr: number) {
+  return { hp: 25 * 1.55 ** (cr - 1), dps: 2.5 * 1.35 ** (cr - 1) };
+}
+
 /**
- * Tiles atingidos pela habilidade especial de um monstro em (x, y) mirando (tx, ty), na ordem do centro
- * para fora. Paredes, o que estiver atrás delas (sem linha de visão do centro) e o tile do monstro ficam de fora.
+ * Tiles atingidos por uma habilidade de monstro em (x, y) mirando (tx, ty), na ordem do centro para fora. Paredes, o
+ * que estiver atrás delas (sem linha de visão do centro) e o tile do monstro ficam de fora. `leap` e `dive` usam
+ * (tx, ty) como o ponto onde o monstro cai.
  */
-export function specialTiles(dungeon: Dungeon, special: MonsterSpecial, x: number, y: number, tx: number, ty: number) {
+export function abilityTiles(dungeon: Dungeon, ability: MonsterAbility, x: number, y: number, tx: number, ty: number) {
   const tiles: { x: number; y: number }[] = [];
   const add = (cx: number, cy: number, tileX: number, tileY: number) => {
     // O próprio monstro não se acerta.
@@ -151,28 +372,40 @@ export function specialTiles(dungeon: Dungeon, special: MonsterSpecial, x: numbe
     if (blocksSight(dungeon, tileX, tileY) || !hasLineOfSight(dungeon, cx, cy, tileX, tileY)) return;
     tiles.push({ x: tileX, y: tileY });
   };
-  if (special.shape === "line") {
-    const len = Math.hypot(tx - x, ty - y) || 1;
-    const dx = (tx - x) / len;
-    const dy = (ty - y) / len;
-    const reach = special.length ?? 1;
-    const box = reach + special.radius;
-    const hits: { x: number; y: number; along: number }[] = [];
-    for (let oy = -box; oy <= box; oy++) {
-      for (let ox = -box; ox <= box; ox++) {
-        const along = ox * dx + oy * dy;
-        if (along < 0.5 || along > reach + 0.5 || Math.abs(ox * dy - oy * dx) > special.radius + 0.5) continue;
-        hits.push({ x: x + ox, y: y + oy, along });
+  switch (ability.shape) {
+    case "line": {
+      const len = Math.hypot(tx - x, ty - y) || 1;
+      const dx = (tx - x) / len;
+      const dy = (ty - y) / len;
+      const reach = ability.length ?? 1;
+      const box = reach + ability.radius;
+      const hits: { x: number; y: number; along: number }[] = [];
+      for (let oy = -box; oy <= box; oy++) {
+        for (let ox = -box; ox <= box; ox++) {
+          const along = ox * dx + oy * dy;
+          if (along < 0.5 || along > reach + 0.5 || Math.abs(ox * dy - oy * dx) > ability.radius + 0.5) continue;
+          hits.push({ x: x + ox, y: y + oy, along });
+        }
       }
+      // Do monstro para fora, para o efeito correr pela faixa.
+      hits.sort((a, b) => a.along - b.along);
+      for (const h of hits) add(x, y, h.x, h.y);
+      return tiles;
     }
-    // Do monstro para fora, para o efeito correr pela faixa.
-    hits.sort((a, b) => a.along - b.along);
-    for (const h of hits) add(x, y, h.x, h.y);
-    return tiles;
+    case "cone":
+      return coneTiles(dungeon, x, y, tx, ty, ability.length ?? 1)
+        .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+    case "bolt":
+    case "pull":
+      return [{ x: tx, y: ty }];
+    case "vanish":
+    case "summon":
+      return [];
   }
-  const cx = special.shape === "self" ? x : tx;
-  const cy = special.shape === "self" ? y : ty;
-  for (let r = 0; r <= special.radius; r++) {
+  // Área: em volta do monstro (`self`), do alvo (`target`) ou de onde cai (`leap`, `dive`).
+  const cx = ability.shape === "self" ? x : tx;
+  const cy = ability.shape === "self" ? y : ty;
+  for (let r = 0; r <= ability.radius; r++) {
     for (let oy = -r; oy <= r; oy++) {
       for (let ox = -r; ox <= r; ox++) {
         if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;

@@ -85,16 +85,16 @@ export class CombatFx {
   }
 
   /** Respingo de sangue no chão perto de `at`. */
-  bleed(at: Point) {
+  bleed(at: Point, tint?: number) {
     const jitter = () => Phaser.Math.Between(-6, 6);
-    this.decal(BLOOD_TEXTURE.splat, { x: at.x + jitter(), y: at.y + jitter() + 6 }, 0.85, 6000);
+    this.decal(BLOOD_TEXTURE.splat, { x: at.x + jitter(), y: at.y + jitter() + 6 }, 0.85, 6000, tint);
   }
 
   /**
    * Morte: o sprite cai de lado e some; no lugar fica uma poça de sangue (ou poeira, se não sangra).
    * `sprite` é copiado, porque a unidade original é destruída em seguida.
    */
-  death(sprite: Phaser.GameObjects.Sprite, at: Point, bleeds: boolean) {
+  death(sprite: Phaser.GameObjects.Sprite, at: Point, bleeds: boolean, tint?: number) {
     const corpse = this.scene.add.sprite(at.x, at.y + sprite.y, sprite.texture.key, sprite.frame.name)
       .setOrigin(0.5, 1)
       .setScale(sprite.scaleX, sprite.scaleY)
@@ -112,7 +112,7 @@ export class CombatFx {
         this.scene.tweens.add({ targets: corpse, alpha: 0, delay: 1800, duration: 900, onComplete: () => corpse.destroy() });
       },
     });
-    if (bleeds) this.decal(BLOOD_TEXTURE.puddle, { x: at.x, y: at.y + 8 }, 1, 15000);
+    if (bleeds) this.decal(BLOOD_TEXTURE.puddle, { x: at.x, y: at.y + 8 }, 1, 15000, tint);
     else this.impact(FX_ANIM.smash, true, at, false);
   }
 
@@ -141,13 +141,14 @@ export class CombatFx {
     this.scene.tweens.add({ targets: image, scale: 1, alpha: 0, duration: 260, ease: "Quad.Out", onComplete: () => image.destroy() });
   }
 
-  /** Mancha no chão (variação aleatória da faixa) que desbota e some. */
-  private decal(key: string, at: Point, alpha: number, lifeMs: number) {
+  /** Mancha no chão (variação aleatória da faixa, na cor `tint` se o sangue não for vermelho) que desbota e some. */
+  private decal(key: string, at: Point, alpha: number, lifeMs: number, tint?: number) {
     const frames = this.scene.textures.get(key).frameTotal - 1;
     const image = this.scene.add.image(at.x, at.y, key, Phaser.Math.Between(0, frames - 1))
       .setDepth(this.decalDepth)
       .setAlpha(alpha)
       .setFlipX(Math.random() < 0.5);
+    if (tint !== undefined) image.setTint(tint);
     this.decals.push(image);
     if (this.decals.length > MAX_DECALS) this.decals.shift()?.destroy();
     this.scene.tweens.add({
