@@ -514,18 +514,44 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
 
 ### Arte dos itens e equipamento visível
 
-Cada família tem arte própria em dois formatos, pintada com o material do nível, e o que o personagem veste aparece nele para todos da equipe.
+Cada família tem arte própria em dois formatos, e o que o personagem veste aparece nele para todos da equipe.
+Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`.
 
 - **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por família (espada, machado, arco, besta, varinha, cajado, elmo, chapéu, armadura, manto, calça, botas, escudo), na cor do material; as vestes arcanas usam tecido (linho, lã, seda rúnica, mithral, seda de dragão), e varinhas e cajados têm uma gema por nível. Raros e mágicos levam uma gema azul ou roxa no canto (`apps/client/src/art/items.ts`).
-- **Vestido no herói** (`apps/client/src/art/outfit.ts`), por cima do corpo da classe:
-  - Armadura de guerra recobre o tronco com o padrão do material (amarração de couro, couraça, malha, placas com ombreiras, escamas). O manto arcano tinge a túnica inteira (tronco e saia) com o tecido.
-  - Calça tinge a calça da classe e botas tingem as botas (a túnica de feiticeiro e druida cobre a calça; as botas aparecem).
-  - Capacete substitui o chapéu ou capuz da classe (gorro, elmo com crista, elmo com nasal, elmo fechado com penacho, elmo com chifres; chapéu pontudo de mago nas vestes arcanas).
-  - Escudo vai na mão esquerda (nas costas quando o herói está de costas ou, para quem usa arco/cajado, de lado).
-  - Arma: o cavaleiro empunha a espada (curta, longa, lâmina do dragão) ou o machado. O paladino com arco e o feiticeiro e o druida com cajado mantêm a arma da classe, feita do material da arma equipada; a besta e a varinha trocam a arma da mão.
+- **Vestido no herói** (`apps/client/src/art/hero/`): **cada item tem o seu desenho, igual em qualquer classe**.
+  - Heróis em 48×48 (a mesma densidade de pixel dos monstros), ampliados 2× com Scale2x. Cada pixel guarda material,
+    tom e peça; a luz sai da forma de cada peça (cilindro, esfera, chanfro) e o contorno é seletivo (`raster.ts`).
+    Os materiais são rampas de 6 tons com desvio de matiz (`materials.ts`).
+  - Um esqueleto único (`rig.ts`) dá a forma de cabeça, tronco, braços e pernas em cada direção e quadro; o corpo das
+    classes (`look.ts`) e os itens pintam sobre essas formas, por isso um item encaixa em qualquer classe e passo.
+  - A classe aparece no que não é item: rosto, cabelo, barba, a roupa por baixo e o que a identifica por cima de tudo
+    (aljava e faixa do paladino, broche do druida).
+  - Ordem das camadas (`compose.ts`): costas → braço de lá → pernas (calça, botas) → tronco (roupa, armadura, saia) →
+    braços → por cima (cinto, ombreiras) → capa (de costas) → cabeça (rosto, cabelo, capacete) → arma e escudo.
+  - Armaduras (`gear.ts`): gibão acolchoado, couraça com saiote de tiras, cota de malha, placas de mithral com ombreiras
+    e manoplas, escamas de dragão com espinhos; mantos de linho, de viagem (capinha e capuz), rúnico (runas acesas), de
+    mithral (gola alta) e de seda de dragão (mantelete de escamas e capa). Calças e botas mudam de forma por nível
+    (joelheiras, coxotes, grevas até o joelho, sabatons, garras).
+  - Capacetes e chapéus (`headgear.ts`): gorro, elmo com crista, elmo nórdico com nasal e malha, elmo fechado com
+    penacho, elmo do dragão com chifres; capuz de lã, chapéu pontudo, capuz rúnico, chapéu do mago, coroa de chifres.
+    Cada um diz o que cobre (cabelo, nuca, rosto e barba).
+  - Armas (`weapons.ts`): espadas, machados, bestas e varinhas desenhadas pixel a pixel e inclinadas para fora;
+    arcos por curva (recurvos, longo, de osso com espinhos) e cajados por haste com ponta própria. Sem arma, cada
+    classe segura a sua (espada de treino, arco simples, cajado com orbe, galho). De lado, arco, cajado e arma sem
+    escudo vão à frente; com escudo, a arma vai no braço de lá e o escudo no de cá.
+  - Escudos (`shields.ts`): broquel, redondo, "ferro de engomar", pipa, do dragão; de lado em perspectiva, de costas
+    o verso de madeira, nas costas de quem usa arco ou cajado.
+  - **Itens mágicos** (`magic.ts` e o fim de `weapons.ts`): o desenho do nível com materiais próprios e, em vários, um
+    enfeite que só ele tem (a Lâmina Flamejante em brasa, a Espada Vorpal de obsidiana, a Couraça do Leão com a cara do
+    leão, o Elmo do Cavaleiro Grifo com asas, as Botas Aladas, o Escudo Animado com rosto, o Manto das Estrelas).
+  - **Raridade no jogo** (`apps/client/src/gearFx.ts`): item raro faz piscar uma estrelinha azul no herói; item mágico
+    põe uma aura roxa nos pés e partículas das suas propriedades (brasas, veneno, roubo de vida, faíscas arcanas,
+    poeira de velocidade, luz dourada), no máximo duas.
 - Sem equipamento, o herói aparece só com a roupa e a arma básica da classe. Ao pegar, trocar ou largar um item, o sprite muda na hora. Quem morre fica sem o que largou no chão.
 - O menu mostra o personagem vestido de frente, de lado e de costas na aba Itens, e a ficha de cada item mostra "como fica vestido" antes de equipar. Os retratos das classes usam o equipamento da próxima hunt.
-- Galeria de conferência: `apps/client/arte.html` (todas as combinações por classe e nível).
+- Galeria de conferência: `apps/client/arte.html`, com o **provador** (qualquer classe com qualquer item em cada slot,
+  andando, ampliado e no tamanho do celular), as combinações por classe e nível e os itens mágicos.
+- Teste `apps/server/scripts/arte.ts` (no `npm test`): todo item aparece, com desenho único, sem sair do quadro.
 
 ## Poções (protótipo)
 
