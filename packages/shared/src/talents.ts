@@ -115,6 +115,18 @@ const SHAPES: Record<ClassId, Shape> = {
     ["vampiric_blade", 0, 3, "crushing_blow"], ["iron_skin", 1, 3, "holy_shield"], ["speed", 2, 3, "mana"],
     ["earthquake", 0, 4, "vampiric_blade"], ["steel_wall", 1, 4, "iron_skin"], ["commander_shout", 2, 4, "speed"],
     ["execution", 0, 5, "earthquake"],
+    // Lâmina: Berserker (lado 0) ou Duelista (lado 1).
+    ["battle_thirst", 0, 6, "execution", 0], ["riposte", 0, 6, "execution", 1],
+    ["steel_whirlwind", 0, 7, "battle_thirst", 0], ["thrown_blade", 0, 7, "riposte", 1],
+    ["berserk_rage", 0, 8, "steel_whirlwind", 0], ["thousand_cuts", 0, 8, "thrown_blade", 1],
+    // Bastião: Guardião (lado 0) ou Inabalável (lado 1).
+    ["intervene", 1, 5, "steel_wall", 0], ["last_bastion", 1, 5, "steel_wall", 1],
+    ["shield_bash", 1, 6, "intervene", 0], ["iron_thorns", 1, 6, "last_bastion", 1],
+    ["shared_aegis", 1, 7, "shield_bash", 0], ["living_fortress", 1, 7, "iron_thorns", 1],
+    // Comando: Senhor da Guerra (lado 0) ou Desafiante (lado 1).
+    ["leadership", 2, 5, "commander_shout", 0], ["intimidate", 2, 5, "commander_shout", 1],
+    ["charge", 2, 6, "leadership", 0], ["iron_chain", 2, 6, "intimidate", 1],
+    ["war_banner", 2, 7, "charge", 0], ["supreme_challenge", 2, 7, "iron_chain", 1],
   ],
   paladin: [
     ["holy_arrow", 1, 0],

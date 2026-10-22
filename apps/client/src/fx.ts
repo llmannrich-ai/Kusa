@@ -62,6 +62,43 @@ export class CombatFx {
         this.slash(from, to);
         this.later(80, () => this.slash(from, to));
         return this.later(160, () => this.sparks(to, 0xff7675, 10));
+      // Especializações do Cavaleiro.
+      case "steel_whirlwind": return this.bladeSpin(from);
+      case "berserk_rage":
+        this.ring(from, TILE_SIZE, 0xc0392b, 500, 6);
+        return this.sparks(from, 0xff7675, 10);
+      case "thrown_blade":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xdcdde1, glow: 0xa4b0be, impact: 0xffffff, scale: 1.6 });
+        return this.later(ms, () => this.sparks(to, 0xc0392b, 6));
+      case "thousand_cuts":
+        this.slash(from, to);
+        return this.later(60, () => this.sparks(to, 0xffffff, 4));
+      case "shield_bash":
+        this.shieldRaise(from);
+        return this.later(100, () => this.ring(to, TILE_SIZE / 2, 0x7fc8ff, 300, 6));
+      case "shared_aegis":
+        this.ring(from, radius, 0x9fd8ff, 600, 5);
+        return this.shieldRaise(from);
+      case "iron_thorns":
+        this.ring(from, TILE_SIZE * 0.9, 0x95a5a6, 450, 4);
+        return this.sparks(from, 0xdcdde1, 10);
+      case "living_fortress":
+        this.ring(from, TILE_SIZE, 0x7f8c8d, 550, 8);
+        return this.debris(from, TILE_SIZE, 0x6b4426);
+      // O cavaleiro já está colado no alvo (to): poeira do ponto de partida (from) até ele, e o golpe.
+      case "charge":
+        for (let i = 0; i <= 4; i++) this.later(i * 25, () => this.puff(from.x + ((to.x - from.x) * i) / 4, from.y + ((to.y - from.y) * i) / 4 + 10, 0xc8a165, 6));
+        return this.later(110, () => { this.slash(to, to); this.sparks(to, 0xf1c40f, 8); });
+      case "war_banner":
+        this.ring(from, radius, 0xf1c40f, 600, 4);
+        return this.sparks(from, 0xf1c40f, 8);
+      // A corrente vai até o alvo e o traz (o monstro já aparece colado pelo estado).
+      case "iron_chain":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0x95a5a6, glow: 0x7f8c8d, scale: 1.2 });
+        return this.later(ms, () => this.drain(to, from, 0x95a5a6));
+      case "supreme_challenge":
+        this.ring(from, radius, 0xe74c3c, 600, 5);
+        return this.later(120, () => this.ring(from, radius * 0.6, 0xf39c12, 450, 3));
       // A flecha voa até o fim da linha; os tiles atravessados acendem pelo `area` (DungeonScene).
       case "piercing_shot": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf1c40f, glow: 0xf1c40f, scale: 1.4 });
       case "stun_arrow":

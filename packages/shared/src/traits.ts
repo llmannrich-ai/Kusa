@@ -10,7 +10,8 @@ export type TraitId =
   | "consecrated_arrows" | "sacred_aura"
   | "gunpowder" | "ingenious"
   | "static_charge" | "combustion" | "shatter" | "mana_shield" | "harvest" | "hex"
-  | "wild_bond" | "wild_hide" | "bloom" | "protective_sap" | "toxin" | "charged_sky";
+  | "wild_bond" | "wild_hide" | "bloom" | "protective_sap" | "toxin" | "charged_sky"
+  | "battle_thirst" | "riposte" | "intervene" | "last_bastion" | "leadership" | "intimidate";
 
 export interface TraitDef {
   id: TraitId;
@@ -61,6 +62,18 @@ export interface TraitDef {
   toxin?: { perSec: number; ms: number; maxStacks: number };
   /** A cada `every` magias, um raio (`damage` ×) cai no monstro mais perto a até `range` tiles. */
   chargedSky?: { every: number; damage: number; range: number };
+  /** +`perMonster` (fração) de dano por monstro colado no herói, até `max` monstros (básico e magias). */
+  crowdDamage?: { perMonster: number; max: number };
+  /** Golpe corpo a corpo recebido tem `chance` de ser devolvido: `damage` × dano base no monstro que bateu. */
+  riposte?: { chance: number; damage: number };
+  /** `pct` do dano que os aliados a até `radius` tiles levam de monstros vem para este herói. */
+  intervene?: { radius: number; pct: number };
+  /** Ao cair abaixo de `hpPct` da vida, ganha escudo de `barrier` (fração da vida) por `ms`, uma vez a cada `cooldownMs`. */
+  lastStand?: { hpPct: number; barrier: number; ms: number; cooldownMs: number };
+  /** O herói e os aliados a até `radius` tiles causam +`pct` (fração) de dano. Não acumula entre líderes. */
+  leadership?: { radius: number; pct: number };
+  /** Monstros provocados pelo herói (e ainda atrás dele) causam `pct` a menos de dano nele. */
+  intimidate?: { pct: number };
 }
 
 /** Elemento de uma magia do Feiticeiro (Estática vale para energia). */
@@ -134,6 +147,39 @@ export const TRAITS: Record<TraitId, TraitDef> = {
     id: "hex", classId: "sorcerer", spec: "Bruxo", name: "Maldição", icon: "👁️",
     description: "Suas magias de alvo único amaldiçoam o alvo: ele recebe +15% de dano de toda a equipe por 5 s.",
     hex: { pct: 0.15, ms: 5000 },
+  }),
+  // Cavaleiro, ramo Lâmina.
+  battle_thirst: trait({
+    id: "battle_thirst", classId: "knight", spec: "Berserker", name: "Sede de Batalha", icon: "💢",
+    description: "+5% de dano por monstro colado em você (até 5 monstros).",
+    crowdDamage: { perMonster: 0.05, max: 5 },
+  }),
+  riposte: trait({
+    id: "riposte", classId: "knight", spec: "Duelista", name: "Riposta", icon: "🤺",
+    description: "20% de chance de devolver na hora o golpe corpo a corpo que você leva.",
+    riposte: { chance: 0.2, damage: 1 },
+  }),
+  // Cavaleiro, ramo Bastião.
+  intervene: trait({
+    id: "intervene", classId: "knight", spec: "Guardião", name: "Intervir", icon: "🤝",
+    description: "30% do dano que os aliados a até 2 tiles levam de monstros vem para você.",
+    intervene: { radius: 2, pct: 0.3 },
+  }),
+  last_bastion: trait({
+    id: "last_bastion", classId: "knight", spec: "Inabalável", name: "Último Bastião", icon: "🏯",
+    description: "Ao cair abaixo de 25% da vida, ganha um escudo de 30% da vida por 6 s (uma vez a cada 60 s).",
+    lastStand: { hpPct: 0.25, barrier: 0.3, ms: 6000, cooldownMs: 60000 },
+  }),
+  // Cavaleiro, ramo Comando.
+  leadership: trait({
+    id: "leadership", classId: "knight", spec: "Senhor da Guerra", name: "Liderança", icon: "👑",
+    description: "Você e os aliados a até 4 tiles causam +8% de dano.",
+    leadership: { radius: 4, pct: 0.08 },
+  }),
+  intimidate: trait({
+    id: "intimidate", classId: "knight", spec: "Desafiante", name: "Intimidar", icon: "😠",
+    description: "Monstros que você provocou causam 25% menos dano em você.",
+    intimidate: { pct: 0.25 },
   }),
   // Druida, ramo Matilha.
   wild_bond: trait({

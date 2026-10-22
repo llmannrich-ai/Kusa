@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3, 4a, 4b e 4c feitas: Paladino, Feiticeiro e Druida têm os 3 ramos especializados. Próxima: fase 4d (Cavaleiro).
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3 e 4 (4a a 4d) feitas: as 4 classes têm os 3 ramos especializados (24 especializações). Próximas: fases 5 e 6.
 
 ---
 
@@ -367,6 +367,13 @@ por cima da água (Águia Gigante) e o raio a cada 4 magias (Céu Carregado). Aj
 Casca vai num aliado mirado (como o Escudo da Luz) e também dá +4 de armadura, para não ser uma cópia; a Águia mergulha
 em quem está perto em vez de voar sobre obstáculos que barram a visão; a Maestria da semente é durar mais e renascer com
 mais vida (reanimar um corpo caído continua fora). Telemetria: `revives` e `revived`.
+
+**Fase 4d, como foi entregue:** as 6 especializações do Cavaleiro, como na seção 6.1. Peças novas: repetir N vezes
+(Redemoinho, Mil Cortes), investida até o alvo, puxar o alvo (Corrente), espinhos temporários, ficar preso no lugar
+(Fortaleza), lentidão em quem bate, campo que dá dano aos aliados (Estandarte), cura por monstro provocado, e os Traços
+de dano por monstro colado, contragolpe, dano puxado dos aliados (Intervir), escudo de última hora, liderança e
+intimidação. Ajustes em relação à seção 6.1: Mil Cortes atordoa durante os cortes (não só no último); a Investida não
+sai sem lugar livre colado no alvo. Telemetria: `intercepted`.
 
 **Ordem das classes na fase 4:** Paladino (tem o maior problema de identidade) → Feiticeiro (falta o fogo; e é a
 classe mais jogada: 21 de 32 hunts) → Druida → Cavaleiro (o que está mais redondo hoje).
