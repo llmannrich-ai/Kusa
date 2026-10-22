@@ -444,7 +444,7 @@ button { min-height: 44px; touch-action: manipulation; }
 .action.attack.held { transform: scale(0.94); background: #4a3417; }
 
 /* Escolha de melhoria (nível) e de magia (slot novo): cartas logo acima do personagem; a posição vem do
-   ChoiceCards. O jogo continua rodando atrás; com muitas cartas, a fileira rola para o lado. */
+   ChoiceCards. O jogo continua rodando atrás. Nunca rola: com mais de 2 cartas vira grade (data-density). */
 .choice {
   --tone: #c9a227;
   --glow: rgba(241, 196, 15, 0.6);
@@ -491,20 +491,17 @@ button { min-height: 44px; touch-action: manipulation; }
 .choice-row {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
   max-width: 100%;
-  /* Folga para o brilho das cartas (a rolagem corta o que passa da borda). */
-  padding: 14px 14px 18px;
-  margin: -8px 0 -10px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-  touch-action: pan-x;
+  padding: 4px;
   pointer-events: auto;
 }
 .choice-card {
   position: relative;
   flex: none;
-  width: var(--card-w);
+  /* Duas cartas inteiras sempre lado a lado, mesmo em tela estreita. */
+  width: min(var(--card-w), calc((var(--col-w) - 32px) / 2));
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -515,7 +512,6 @@ button { min-height: 44px; touch-action: manipulation; }
   border-radius: 10px;
   background: var(--card-bg);
   text-align: center;
-  scroll-snap-align: center;
   box-shadow: 0 0 6px var(--glow), 0 4px 10px #000a;
   animation: choice-pulse 1.4s ease-in-out infinite;
 }
@@ -550,6 +546,34 @@ button { min-height: 44px; touch-action: manipulation; }
 .choice-pips i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--tone); }
 .choice-pips i.on { background: var(--tone); }
 .choice-pips i.next { background: #fff3b0; box-shadow: 0 0 5px #fff3b0; }
+/* Grade: 3 colunas (3 a 6 cartas, efeito principal e custo) ou 4 (7 ou mais, só nome e custo). */
+.choice[data-density] { width: calc(var(--col-w) - 16px); }
+.choice[data-density] .choice-row { width: 100%; }
+.choice[data-density] .choice-card {
+  width: calc((100% - (var(--cols) - 1) * 8px) / var(--cols));
+  padding: 8px 5px 7px;
+  gap: 2px;
+}
+.choice[data-density] .choice-icon { font-size: 24px; }
+.choice[data-density] .choice-card strong { font-size: 12px; }
+.choice[data-density] .choice-card small {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 10.5px;
+}
+.choice[data-density] .choice-card ul { margin-top: 2px; padding-top: 3px; }
+.choice[data-density] .choice-card li { font-size: 9.5px; }
+.choice[data-density] .choice-card li:not(.main):not(.cost) { display: none; }
+.choice[data-density] .choice-badge { top: 3px; right: 3px; padding: 0 4px; font-size: 8.5px; }
+.choice[data-density="mini"] .choice-card { padding-top: 12px; }
+.choice[data-density="mini"] .choice-icon { font-size: 20px; }
+.choice[data-density="mini"] .choice-card strong { font-size: 11px; }
+.choice[data-density="mini"] .choice-card small,
+.choice[data-density="mini"] .choice-card li.main:not(.cost) { display: none; }
+.choice[data-density="mini"] .choice-card ul { border-top: 0; padding-top: 0; }
+.choice[data-density="mini"] .choice-card li { font-size: 9px; line-height: 1.2; }
 
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
