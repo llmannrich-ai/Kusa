@@ -68,6 +68,9 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx scripts/grimorio.ts` (de dentro de `apps/server`; sem servidor): confere as Maestrias de todas as magias e a
   reta das magias em linha; numa arena, o Escudo da Fé absorve dano, o Giro da Lâmina gira de novo, os lobos do druida
   atacam, a flecha perfurante vai até o fim da reta e o Disparo Certeiro que mata devolve a recarga.
+- `npm run test:caos [seeds]` (não entra no `npm test`): roda os testes da arena (efeitos, grimorio, costelas, specials,
+  spells e bestiario) com mapas e seeds sorteados. Roda todo dia no CI (`.github/workflows/caos.yml`) e, se falhar, abre
+  uma issue com o rótulo `caos` e o comando que reproduz a falha (`KUSA_MAP=... KUSA_SEED=... npx tsx scripts/<teste>.ts`).
 - `npx tsx scripts/efeitos.ts` (de dentro de `apps/server`; sem servidor): a `Hunt` roda direto, com relógio falso,
   sorteios de seed fixa e o monstro posto onde o teste precisa (`scripts/arena.ts`), então o resultado é sempre o mesmo.
   O veneno continua ferindo, a Nevasca deixa lento, o Raio em Cadeia salta, e as magias das especializações funcionam:
