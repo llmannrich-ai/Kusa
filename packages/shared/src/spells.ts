@@ -52,6 +52,8 @@ export type SpellId =
   | "misty_step" | "magic_wall" | "sudden_death" | "raise_skeletons" | "eldritch_blast" | "black_tentacles"
   | "beast_cry" | "giant_eagle" | "panther_form" | "bear_form" | "distant_heal" | "rebirth_seed"
   | "barkskin" | "reviving_rain" | "mamba_bite" | "poison_cloud" | "thunderwave" | "call_lightning"
+  | "steel_whirlwind" | "berserk_rage" | "thrown_blade" | "thousand_cuts" | "shield_bash" | "shared_aegis"
+  | "iron_thorns" | "living_fortress" | "charge" | "war_banner" | "iron_chain" | "supreme_challenge"
   // Costelas (galhos laterais que saem do tronco de um ramo do Grimório).
   | "twin_slash" | "cross_cut" | "open_wound" | "seismic_rift" | "aegis_strike" | "shield_quake"
   | "stunning_roar" | "battle_order" | "challenge_mark"
@@ -105,6 +107,8 @@ export interface SpellDef {
     /** Zona: a cada pulso, cura esta fração da vida máxima e devolve `allyMana` da mana máxima dos aliados dentro. */
     allyHeal?: number;
     allyMana?: number;
+    /** Zona: aliados dentro causam +`allyDamage` (fração) de dano (Estandarte de Guerra). */
+    allyDamage?: number;
     /** Zona: prende os monstros dentro a cada pulso por este tempo (Tentáculos Negros). */
     rootMs?: number;
     /** Parede: quantos tiles, de lado para a direção do herói até o ponto mirado. */
@@ -138,8 +142,11 @@ export interface SpellDef {
   distanceBonus?: number;
   /** Armadura extra em quem conjura (ou no aliado mirado, com `aim: "ally"`), somada ao equipamento, por `ms`. */
   armor?: { points: number; ms: number };
-  /** O efeito inteiro se repete `delayMs` depois do primeiro, com `power` do dano (sem gastar mana de novo). */
-  repeat?: { delayMs: number; power: number };
+  /**
+   * O efeito inteiro se repete `delayMs` depois do primeiro, com `power` do dano (sem gastar mana de novo), `times` vezes
+   * (1 se omitido), um a cada `delayMs`.
+   */
+  repeat?: { delayMs: number; power: number; times?: number };
   /** Se a magia matar algum monstro, a recarga cai esta fração do que ainda falta. */
   killRefund?: number;
   /** Fração do dano causado que volta como mana para quem conjura. */
@@ -150,7 +157,23 @@ export interface SpellDef {
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
    */
-  selfBuff?: { ms: number; basicDamage?: number; attackRange?: number; moveSpeed?: number; attackHaste?: number };
+  selfBuff?: {
+    ms: number; basicDamage?: number; attackRange?: number; moveSpeed?: number; attackHaste?: number;
+    /** Recebe +fração de dano enquanto dura (Fúria Berserker). */
+    damageTaken?: number;
+    /** Não anda enquanto dura (Fortaleza Viva). */
+    rooted?: boolean;
+    /** Monstro que bate em quem conjura (corpo a corpo) fica `pct` mais lento por `ms`. */
+    slowAttackers?: { pct: number; ms: number };
+  };
+  /** Espinhos de Ferro: por `ms`, `pct` do golpe corpo a corpo recebido volta para o monstro. */
+  thorns?: { pct: number; ms: number };
+  /** Investida: antes do golpe, quem conjura corre até ficar colado no alvo (precisa ver o alvo e ter lugar livre). */
+  charge?: boolean;
+  /** Corrente de Ferro: puxa o alvo para um tile colado em quem conjura (se houver lugar livre). */
+  pull?: boolean;
+  /** Cura esta fração da vida de quem conjura por monstro provocado (Desafio Supremo). */
+  tauntHeal?: number;
   /**
    * Quem conjura salta até `tiles` tiles na direção mirada (no toque rápido, para longe do alvo), parando em parede ou
    * monstro. `teleport`: some e aparece no ponto mirado (passa por cima de monstros; precisa ver o ponto e ele estar livre).
@@ -248,6 +271,79 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Um golpe devastador no monstro colado, que ainda o deixa atordoado. Dano dobrado em quem já está quase morto.",
     manaCost: 35, cooldownMs: 16000, aim: "target", range: 1, radius: 0, damage: 4.5, stunMs: 1000,
     execute: { hpPct: 0.3, bonus: 1 },
+  }),
+
+  // --- Cavaleiro: especializações. ------------------------------------------------
+  // Berserker (ramo Lâmina).
+  steel_whirlwind: spell({
+    id: "steel_whirlwind", classId: "knight", slot: 0, name: "Redemoinho de Aço", icon: "🌪️", color: 0xd2d6de,
+    description: "Gira três vezes seguidas, cortando todos os monstros colados em você.",
+    manaCost: 25, cooldownMs: 7000, aim: "self", range: 0, radius: 1, damage: 1.1, repeat: { delayMs: 350, power: 1, times: 2 },
+  }),
+  berserk_rage: spell({
+    id: "berserk_rage", classId: "knight", slot: 1, name: "Fúria Berserker", icon: "😤", color: 0xc0392b,
+    description: "Entra em fúria: golpes mais fortes e mais rápidos por alguns segundos, mas você apanha mais.",
+    manaCost: 35, cooldownMs: 18000, aim: "self", range: 0, radius: 0,
+    selfBuff: { ms: 8000, basicDamage: 0.4, attackHaste: 0.3, damageTaken: 0.2 },
+  }),
+  // Duelista (ramo Lâmina).
+  thrown_blade: spell({
+    id: "thrown_blade", classId: "knight", slot: 0, name: "Lâmina Arremessada", icon: "🗡️", color: 0xa4b0be,
+    description: "Arremessa a espada num monstro distante, que fica sangrando.",
+    manaCost: 20, cooldownMs: 5000, aim: "target", range: 4, radius: 0, damage: 1.8, projectileSpeed: 18,
+    dot: { perSec: 0.3, ms: 4000, kind: "bleed" },
+  }),
+  thousand_cuts: spell({
+    id: "thousand_cuts", classId: "knight", slot: 1, name: "Mil Cortes", icon: "🔪", color: 0xe74c3c,
+    description: "Cinco cortes rápidos no monstro colado em você, que fica atordoado enquanto apanha.",
+    manaCost: 40, cooldownMs: 14000, aim: "target", range: 1, radius: 0, damage: 0.9, stunMs: 900,
+    repeat: { delayMs: 180, power: 1, times: 4 },
+  }),
+  // Guardião (ramo Bastião).
+  shield_bash: spell({
+    id: "shield_bash", classId: "knight", slot: 0, name: "Bater com Escudo", icon: "💥", color: 0x7fc8ff,
+    description: "Uma pancada com o escudo no monstro colado: ele é empurrado e fica atordoado.",
+    manaCost: 20, cooldownMs: 7000, aim: "target", range: 1, radius: 0, damage: 1.2, push: 2, stunMs: 1000,
+  }),
+  shared_aegis: spell({
+    id: "shared_aegis", classId: "knight", slot: 1, name: "Égide Compartilhada", icon: "🏛️", color: 0x9fd8ff,
+    description: "Um escudo em você e nos aliados por perto, e os monstros em volta passam a te perseguir.",
+    manaCost: 45, cooldownMs: 18000, aim: "self", range: 0, radius: 3, taunt: true, barrier: 0.25, barrierMs: 7000, barrierAllies: true,
+  }),
+  // Inabalável (ramo Bastião).
+  iron_thorns: spell({
+    id: "iron_thorns", classId: "knight", slot: 0, name: "Espinhos de Ferro", icon: "🦔", color: 0x95a5a6,
+    description: "Sua armadura cria espinhos: parte de cada golpe corpo a corpo que você leva volta para o monstro.",
+    manaCost: 25, cooldownMs: 15000, aim: "self", range: 0, radius: 0, thorns: { pct: 0.4, ms: 8000 },
+  }),
+  living_fortress: spell({
+    id: "living_fortress", classId: "knight", slot: 1, name: "Fortaleza Viva", icon: "🗿", color: 0x7f8c8d,
+    description: "Finca os pés: não anda, quase não sente os golpes, e quem bate em você fica lento.",
+    manaCost: 40, cooldownMs: 20000, aim: "self", range: 0, radius: 0, guard: 0.9, guardMs: 5000,
+    selfBuff: { ms: 5000, rooted: true, slowAttackers: { pct: 0.5, ms: 2000 } },
+  }),
+  // Senhor da Guerra (ramo Comando).
+  charge: spell({
+    id: "charge", classId: "knight", slot: 0, name: "Investida", icon: "🐎", color: 0xe67e22,
+    description: "Corre até um monstro a até 4 tiles e o atinge, deixando-o atordoado.",
+    manaCost: 25, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 1.5, stunMs: 1000, charge: true,
+  }),
+  war_banner: spell({
+    id: "war_banner", classId: "knight", slot: 1, name: "Estandarte de Guerra", icon: "🚩", color: 0xf1c40f,
+    description: "Finca um estandarte: aliados perto dele causam mais dano e ganham armadura.",
+    manaCost: 45, cooldownMs: 20000, aim: "self", range: 0, radius: 2,
+    field: { kind: "zone", ms: 10000, tickMs: 1000, allyArmor: 5, allyDamage: 0.2 },
+  }),
+  // Desafiante (ramo Comando).
+  iron_chain: spell({
+    id: "iron_chain", classId: "knight", slot: 0, name: "Corrente de Ferro", icon: "🔗", color: 0x95a5a6,
+    description: "Laça um monstro de até 5 tiles, puxa-o para perto de você e o prende no lugar.",
+    manaCost: 20, cooldownMs: 8000, aim: "target", range: 5, radius: 0, damage: 0.8, rootMs: 2000, pull: true, projectileSpeed: 20,
+  }),
+  supreme_challenge: spell({
+    id: "supreme_challenge", classId: "knight", slot: 1, name: "Desafio Supremo", icon: "👊", color: 0xe74c3c,
+    description: "Desafia todos os monstros por perto: passam a te perseguir, você corta o dano e se cura por cada um.",
+    manaCost: 45, cooldownMs: 20000, aim: "self", range: 0, radius: 5, taunt: true, guard: 0.4, guardMs: 6000, tauntHeal: 0.03,
   }),
 
   // --- Paladino: tiros fortes de longe e luz que protege. ------------------------
@@ -627,7 +723,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   // --- Costelas do Grimório: galhos laterais do tronco (ver talents.ts). ------
   // Cavaleiro, ramo Lâmina.
   twin_slash: spell({
-    id: "twin_slash", classId: "knight", slot: 0, name: "Corte Duplo", icon: "🗡️", color: 0xd2d6de,
+    id: "twin_slash", classId: "knight", slot: 0, name: "Corte Duplo", icon: "✂️", color: 0xd2d6de,
     description: "Dois cortes seguidos no mesmo monstro.",
     manaCost: 14, cooldownMs: 5000, aim: "target", range: 1, radius: 0, damage: 1.5, repeat: { delayMs: 350, power: 0.9 },
   }),
@@ -637,7 +733,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 16, cooldownMs: 5500, aim: "target", range: 2, radius: 0, shape: "cone", damage: 1.7,
   }),
   open_wound: spell({
-    id: "open_wound", classId: "knight", slot: 1, name: "Ferida Aberta", icon: "🔪", color: 0xc0392b,
+    id: "open_wound", classId: "knight", slot: 1, name: "Ferida Aberta", icon: "💔", color: 0xc0392b,
     description: "Um golpe fundo que faz o monstro sangrar por 6 s.",
     manaCost: 30, cooldownMs: 12000, aim: "target", range: 1, radius: 0, damage: 2.4,
     dot: { perSec: 0.5, ms: 6000, kind: "bleed" },
@@ -654,7 +750,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 18, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 1.4, barrier: 0.15, barrierMs: 6000,
   }),
   shield_quake: spell({
-    id: "shield_quake", classId: "knight", slot: 1, name: "Tremor do Escudo", icon: "💢", color: 0x5dade2,
+    id: "shield_quake", classId: "knight", slot: 1, name: "Tremor do Escudo", icon: "🥁", color: 0x5dade2,
     description: "Bate o escudo no chão: fere, provoca e deixa lentos os monstros a até 2 tiles.",
     manaCost: 35, cooldownMs: 14000, aim: "self", range: 0, radius: 2, damage: 1.2, taunt: true,
     slow: { pct: 0.4, ms: 4000 },
@@ -672,7 +768,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     selfBuff: { ms: 6000, basicDamage: 0.4, attackHaste: 0.3 },
   }),
   challenge_mark: spell({
-    id: "challenge_mark", classId: "knight", slot: 0, name: "Desafio", icon: "🚩", color: 0xe67e22,
+    id: "challenge_mark", classId: "knight", slot: 0, name: "Desafio", icon: "🤜", color: 0xe67e22,
     description: "Desafia um monstro: ele vem atrás de você e recebe +20% de dano de toda a equipe por 8 s.",
     manaCost: 16, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 0.6, taunt: true,
     mark: { pct: 0.2, ms: 8000 },
@@ -892,6 +988,18 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   mamba_bite: { text: "A explosão cobre raio 3.", changes: { burst: { radius: 3, damage: 1.5 } } },
   poison_cloud: { text: "A nuvem cobre raio 3.", changes: { radius: 3 } },
   thunderwave: { text: "O trovão atordoa os atingidos por 1 s.", changes: { stunMs: 1000 } },
+  steel_whirlwind: { text: "Os giros cortam em raio 2.", changes: { radius: 2 } },
+  berserk_rage: { text: "A fúria não deixa você mais frágil.", changes: { selfBuff: { ms: 8000, basicDamage: 0.4, attackHaste: 0.3, damageTaken: 0 } } },
+  thrown_blade: { text: "A espada ricocheteia em mais um monstro perto do alvo.", changes: { chain: { jumps: 1, range: 3, falloff: 0.3 } } },
+  thousand_cuts: { text: "Sete cortes.", changes: { repeat: { delayMs: 180, power: 1, times: 6 } } },
+  shield_bash: { text: "A pancada atinge também quem está colado no alvo.", changes: { radius: 1 } },
+  shared_aegis: { text: "O escudo e a provocação alcançam 5 tiles.", changes: { radius: 5 } },
+  iron_thorns: { text: "Devolve 70% do golpe.", changes: { thorns: { pct: 0.7, ms: 8000 } } },
+  living_fortress: { text: "Ao fincar os pés, cura 20% da vida.", changes: { heal: 0.2 } },
+  charge: { text: "A investida atinge também quem está colado no alvo.", changes: { radius: 1 } },
+  war_banner: { text: "O estandarte cobre raio 3.", changes: { radius: 3 } },
+  iron_chain: { text: "A corrente faz o monstro sangrar.", changes: { dot: { perSec: 0.3, ms: 4000, kind: "bleed" } } },
+  supreme_challenge: { text: "Corta 60% do dano.", changes: { guard: 0.6 } },
   call_lightning: { text: "A nuvem solta 8 raios.", changes: { field: { kind: "turret", ms: 12000, tickMs: 1500, damage: 1.6, reach: 3, shots: 8, look: "storm" } } },
   // Costelas.
   twin_slash: { text: "O segundo corte faz sangrar por 4 s.", changes: { dot: { perSec: 0.3, ms: 4000, kind: "bleed" } } },
@@ -949,6 +1057,8 @@ export function spellAtRank(base: SpellDef, rank: number): SpellDef {
     packCall: def.packCall && { ...def.packCall, ms: Math.round(def.packCall.ms * t), heal: def.packCall.heal * k },
     seed: def.seed && { ...def.seed, ms: Math.round(def.seed.ms * t) },
     burst: def.burst && { ...def.burst, damage: def.burst.damage * k },
+    thorns: def.thorns && { pct: def.thorns.pct * k, ms: Math.round(def.thorns.ms * t) },
+    tauntHeal: def.tauntHeal && def.tauntHeal * k,
     nextBasicStunMs: ms(def.nextBasicStunMs),
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
@@ -988,6 +1098,7 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
     const effects = [
       s.field.damage ? `${num(s.field.damage)}× por segundo nos monstros` : "",
       s.field.allyArmor ? `+${s.field.allyArmor} de armadura nos aliados` : "",
+      s.field.allyDamage ? `+${pct(s.field.allyDamage)} de dano nos aliados` : "",
       s.field.allyHeal ? `cura ${pct(s.field.allyHeal)} da vida e devolve ${pct(s.field.allyMana ?? 0)} da mana por segundo` : "",
     ].filter(Boolean);
     facts.push(`Campo de raio ${s.radius} por ${sec(s.field.ms)}${effects.length ? `: ${effects.join(", ")}` : ""}`);
@@ -1009,6 +1120,10 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
   if (s.packCall) facts.push(`Suas criaturas atacam ${pct(s.packCall.haste)} mais rápido por ${sec(s.packCall.ms)} e recuperam ${pct(s.packCall.heal)} da vida`);
   if (s.seed) facts.push(`Semente por ${sec(s.seed.ms)}: se o aliado morrer, renasce com ${pct(s.seed.hp)} da vida, sem perder nada`);
   if (s.cleanse) facts.push("Tira veneno, queimadura e lentidão");
+  if (s.thorns) facts.push(`Devolve ${pct(s.thorns.pct)} de cada golpe corpo a corpo recebido por ${sec(s.thorns.ms)}`);
+  if (s.charge) facts.push("Corre até o alvo antes do golpe");
+  if (s.pull) facts.push("Puxa o alvo para perto de você");
+  if (s.tauntHeal) facts.push(`Cura ${pct(s.tauntHeal)} da vida por monstro provocado`);
   if (s.burst) facts.push(`Se o alvo morrer envenenado, explode: ${num(s.burst.damage)}× em raio ${s.burst.radius}, e envenena`);
   if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
   if (s.selfBuff) {
@@ -1018,10 +1133,18 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
       b.attackRange ? `alcance +${b.attackRange}` : "",
       b.attackHaste ? `básico ${pct(b.attackHaste)} mais rápido` : "",
       b.moveSpeed ? `anda ${pct(Math.abs(b.moveSpeed))} mais ${b.moveSpeed < 0 ? "devagar" : "rápido"}` : "",
+      b.damageTaken ? `recebe +${pct(b.damageTaken)} de dano` : "",
+      b.rooted ? "não anda" : "",
+      b.slowAttackers ? `quem bate fica ${pct(b.slowAttackers.pct)} mais lento` : "",
     ].filter(Boolean);
     facts.push(`Por ${sec(b.ms)}: ${parts.join(", ")}`);
   }
-  if (s.repeat) facts.push(`Repete depois de ${sec(s.repeat.delayMs)} com ${pct(s.repeat.power)} do dano`);
+  if (s.repeat) {
+    const times = s.repeat.times ?? 1;
+    facts.push(times > 1
+      ? `Repete ${times} vezes, uma a cada ${sec(s.repeat.delayMs)}, com ${pct(s.repeat.power)} do dano`
+      : `Repete depois de ${sec(s.repeat.delayMs)} com ${pct(s.repeat.power)} do dano`);
+  }
   if (s.killRefund) facts.push(`Se matar, a recarga cai ${pct(s.killRefund)}`);
   if (s.taunt) facts.push(`Provoca monstros a até ${s.radius} tiles`);
   if (s.summon) {

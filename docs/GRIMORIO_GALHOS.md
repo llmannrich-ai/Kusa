@@ -166,7 +166,8 @@ de Ferro do Desafiante (`GRIMORIO_PLANO.md` 6.1).
 porque as magias novas usam só peças que o servidor já tinha (nenhuma linha de `DungeonRoom.ts` mudou; assim não há
 conflito com o PR #60). Diferenças em relação à seção 4:
 
-- 27 magias novas: Cavaleiro +9 (19 no total), Paladino, Feiticeiro e Druida +6 (27 a 29). Lista no `GDD.md` ("Costelas").
+- 27 magias novas: Cavaleiro +9, Paladino, Feiticeiro e Druida +6 cada. Com as especializações do Cavaleiro (fase 4d,
+  que entrou junto), as 4 classes ficam com 27 a 31 magias. Lista no `GDD.md` ("Costelas").
 - O exemplo do ramo Lâmina (4.3) mudou: Ciclone de Aço precisava de "puxar" (peça nova) e Hemorragia era passiva; no
   lugar entraram Corte Largo (leque curto) e a Ferida Aberta virou magia de slot 2. Os nomes das magias de
   especialização do Cavaleiro no `GRIMORIO_PLANO.md` 6.1 foram evitados, para a fase 4d não colidir.
