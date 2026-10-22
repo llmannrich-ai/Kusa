@@ -586,10 +586,10 @@ export class Hunt {
   }
 
   /** O equipamento escolhido no menu entra na dungeon (chega logo depois do início). */
-  equip(sessionId: string, items: string[]) {
+  equip(sessionId: string, items: string[]): boolean {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
-    if (!p || !seat || p.status !== "playing") return;
+    if (!p || !seat || p.status !== "playing") return false;
     seat.stats.items.loadout = items;
     const classId = p.classId as ClassId;
     const best = bestPerSlot(items, classId);
@@ -604,16 +604,18 @@ export class Hunt {
     // O que não foi vestido vai para a bag (pode passar de BAG_SIZE, raro): nada se perde.
     p.bag.push(...rest);
     this.refreshGear(sessionId);
+    return true;
   }
 
   /** A bag da conta entra na dungeon com o jogador. */
-  fillBag(sessionId: string, items: string[]) {
+  fillBag(sessionId: string, items: string[]): boolean {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
-    if (!p || !seat || p.status !== "playing") return;
+    if (!p || !seat || p.status !== "playing") return false;
     seat.stats.items.bag = items;
     // Pode passar de BAG_SIZE se o equipamento não coube no slot ao voltar (raro): nada se perde.
     p.bag.push(...items);
+    return true;
   }
 
   move(sessionId: string, msg: MoveMessage) {
@@ -2324,6 +2326,7 @@ export class Hunt {
     // os outros podem saquear. O resto do equipamento volta para a conta.
     const seat = this.seats.get(sessionId);
     let lost: string | undefined;
+    let lostBag: string[] = [];
     if (!survived) {
       const worn = ITEM_SLOTS.filter((slot) => player[slot]);
       const slot = worn[Math.floor(Math.random() * worn.length)];
@@ -2335,6 +2338,7 @@ export class Hunt {
       }
       for (const id of player.bag) this.dropItem(id, player.x, player.y);
       if (seat) seat.stats.items.lost = [...(lost ? [lost] : []), ...player.bag];
+      lostBag = [...player.bag];
       for (const potion of POTION_IDS) {
         for (let i = 0; i < player[POTION_FIELD[potion]]; i++) this.dropItem(potion, player.x, player.y);
       }
@@ -2366,7 +2370,7 @@ export class Hunt {
     // O equipamento que sobrou no corpo volta equipado para a conta; a bag de quem sai vivo vai para o cofre.
     const items = equipment(player).filter(Boolean);
     const spells = seat ? this.spellProgress(player.classId as ClassId, seat, !survived) : [];
-    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost, spells };
+    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost, lostBag, spells };
     // O host avisa o jogador e grava o resultado na conta e na telemetria.
     this.host.runEnded(sessionId, result, {
       name: player.name, classId: player.classId, partySize: this.state.players.size, mapId: this.map.id,

@@ -105,7 +105,15 @@ export async function recordRun(matchId: string, result: RunResult) {
   });
   if (xpError) console.error("Falha ao gravar o XP das magias", xpError);
   // A bag de quem sai vivo vai para o cofre (o que não couber fica na bag).
-  if (result.bag.length === 0) return;
-  const { error: bagError } = await supabase.rpc("store_bag", { p_profile_id: result.userId, p_bag: result.bag });
-  if (bagError) console.error("Falha ao guardar a bag no cofre", bagError);
+  await storeBag(result.userId, result.bag);
+}
+
+/**
+ * Guarda itens no cofre da conta; o que não couber fica na bag (`store_bag`). Também devolve o equipamento
+ * e a bag que só saíram da conta depois que a hunt do jogador já tinha acabado: eles nem chegaram ao corpo.
+ */
+export async function storeBag(userId: string, items: string[]) {
+  if (!supabase || items.length === 0) return;
+  const { error } = await supabase.rpc("store_bag", { p_profile_id: userId, p_bag: items });
+  if (error) console.error("Falha ao guardar itens no cofre", items, error);
 }

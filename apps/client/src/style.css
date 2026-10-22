@@ -921,3 +921,16 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .warn { color: #ff7b6b; }
 .item-stats { margin: 4px 0 8px; padding-left: 18px; font-size: 13px; line-height: 1.45; }
 .bag-details .item-stats { margin: 2px 0 4px; font-size: 12px; }
+
+/* Tela de morte: o que ficou no chão da dungeon. */
+.result-lost {
+  margin: 12px 0 16px;
+  padding: 10px 12px;
+  border: 2px solid #a33;
+  background: #2a0b0b;
+}
+.result-lost h3 { margin: 0 0 8px; font-size: 15px; color: #f66; letter-spacing: 1px; text-transform: uppercase; }
+.result-lost ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.result-lost li { display: flex; align-items: center; gap: 8px; }
+.result-lost img { width: 28px; height: 28px; image-rendering: pixelated; flex: none; }
+.result-lost small { margin-left: auto; color: var(--muted); }
