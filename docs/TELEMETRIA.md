@@ -47,6 +47,8 @@ favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa funç�
 
 | View | Pergunta que responde |
 |---|---|
+| `telemetry_grimoire` | O Grimório está sendo usado? Hunts que chegam a cada slot, nível médio das magias escolhidas, especializações por herói, escudo absorvido, tempo de bônus em si, Intervir e reanimações |
+| `telemetry_specs` | Cada especialização (Traço) vai bem? Hunts, sobrevivência e chegada ao boss por Traço |
 | `telemetry_classes` | Alguma classe sobrevive muito mais ou menos? Quanto loot leva e até onde chega? |
 | `telemetry_deaths` | O que mata, em que sala e em que momento? (soterrado = tempo curto demais) |
 | `telemetry_damage` | Quanto do dano vem do ataque básico e de cada magia? DPS médio |

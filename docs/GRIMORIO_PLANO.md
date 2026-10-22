@@ -4,7 +4,7 @@ Estudo para enriquecer a árvore de magias das 4 classes, com base em Dungeons &
 Documento de planejamento. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este
 arquivo marca a fase como feita. As decisões do Leonardo estão na seção 10 e já valem no resto do texto.
 
-**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3 e 4 (4a a 4d) feitas: as 4 classes têm os 3 ramos especializados (24 especializações). Fase 5 feita (as peças grandes entraram na fase 4; sobraram as Maestrias que esperavam por elas). Próxima: fase 6 (balanceamento).
+**Andamento:** fases 0, 1 (com escopo reduzido, ver seção 7), 2, 3 e 4 (4a a 4d) feitas: as 4 classes têm os 3 ramos especializados (24 especializações). Fase 5 feita (as peças grandes entraram na fase 4; sobraram as Maestrias que esperavam por elas). Fase 6 começou: medição pronta e primeira leitura (seção 8.1); os ajustes de números esperam dados das especializações.
 
 ---
 
@@ -412,6 +412,37 @@ Já dá para medir com a telemetria (`stats.spellsChosen`, `casts`, `damageDealt
 | Magias por minuto | não cair (efeitos novos não podem deixar o jogo lento de jogar) |
 
 ---
+
+### 8.1 Fase 6: primeira leitura (22/10/2026)
+
+Duas views novas medem o Grimório: `telemetry_grimoire` (por classe e build: hunts que chegam a cada slot, nível médio
+das magias escolhidas, especializações por herói, escudo absorvido, tempo de bônus em si, Intervir e reanimações) e
+`telemetry_specs` (por Traço: hunts, sobrevivência e chegada ao boss).
+
+Leitura de produção até 22/10 (43 hunts válidas, 3 contas; nenhuma ainda com as especializações, que entraram no ar agora):
+
+| Métrica (seção 8) | Hoje | Meta | Leitura |
+|---|---|---|---|
+| Hunts que chegam ao slot 2 | 30% (cavaleiro 31%, feiticeiro 29%, paladino 50%, druida 0% em 4 hunts) | > 40% | melhorou desde o slot no nível 6, mas as mortes antes do nível 6 seguram o número |
+| Magia mais escolhida num slot | ~100% (as iniciais) | < 50% | ninguém comprou o suficiente para ter escolha: 9 compras no Grimório, nível médio das magias = 1 |
+| Especializações escolhidas | sem dados | nenhuma < 20% | entraram no ar nesta fase |
+| Gold gasto no Grimório | 2 contas compraram; ouro médio 188 (máx. 501) | subir semana a semana | o ouro vem quase todo das fugas (~80 por hunt); morrer zera o loot e só 2 hunts concluíram (~700 cada) |
+| Taxa de conclusão | 5% (2 de 43) | diferença < 10 p.p. entre classes | amostra pequena; 7 das 27 mortes foram no Dragão (boss da Cripta), com o herói no nível ~7 |
+| Magias por minuto | slot 2 usado 1–3 vezes por hunt | não cair | o slot 2 chega por volta dos 105 s, perto do boss |
+
+**Conclusão:** com 43 hunts e nenhuma especialização em uso, mexer em dano, recarga ou preço agora seria chute. Os
+números das magias ficam como estão. O que os dados mostram é que o gargalo do Grimório hoje é **ganhar ouro**, e isso
+vem da sobrevivência, não do Grimório:
+- uma especialização completa (tronco + Traço + 2 magias) custa ~5.500–6.700 de ouro: ~8–10 hunts concluídas, como a
+  meta da seção 7, mas ~100 hunts no ritmo atual (~60 de ouro por hunt, contando as mortes);
+- recomendações para quem cuida de monstros e economia (fora do escopo do Grimório): rever o Dragão (boss da Cripta)
+  e as mortes antes do nível 6 (orc, esqueleto e ogro nas salas 1–2), e conferir por que as poções quase não são
+  bebidas nas mortes.
+
+**Próxima leitura:** depois de ~100 hunts com as especializações no ar (`telemetry_specs` e `telemetry_grimoire` por
+build). Se a conclusão continuar abaixo de 15%, baixar os preços das especializações (`SIDE_SPELL_COST` e `TRAIT_COST`,
+com uma migration que atualize `talents.base_cost` junto); se algum lado de ramo ficar abaixo de 20% das escolhas, subir
+o Traço ou a magia dele.
 
 ## 9. Riscos e como reduzir
 
