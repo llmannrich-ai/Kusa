@@ -297,6 +297,8 @@ const SAFE_RADIUS = 6;
 const ITEM_LIFETIME_MS = 120_000;
 /** Intervalo mínimo entre dois avisos de bag cheia para o mesmo jogador. */
 const BAG_FULL_NOTICE_MS = 3000;
+/** Nome da melhoria escolhida no nível: fica 30% mais que os outros avisos (900 ms) para dar tempo de ler. */
+const PERK_NOTICE_MS = 1170;
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
 const START_LEVEL = Math.min(MAX_LEVEL, Math.max(1, Number(process.env.KUSA_START_LEVEL) || 1));
 /** Só para testes: KUSA_ALL_SPELLS=1 dá a todo mundo o Grimório inteiro da classe no nível máximo. */
@@ -1700,7 +1702,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     seat.perkBonus = perkBonuses(seat.perks);
     this.applyBonuses(p, seat);
     seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.perkLevel, at: this.seconds() });
-    this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f);
+    this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f, PERK_NOTICE_MS);
 
     this.offerPerks(p, seat);
   }
@@ -2124,8 +2126,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     });
   }
 
-  private notice(x: number, y: number, text: string, color: number) {
-    this.broadcast(MSG.notice, { x, y, text, color } satisfies NoticeMessage);
+  private notice(x: number, y: number, text: string, color: number, ms?: number) {
+    this.broadcast(MSG.notice, { x, y, text, color, ms } satisfies NoticeMessage);
   }
 
   private endRun(sessionId: string, outcome: RunOutcome) {
