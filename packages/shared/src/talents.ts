@@ -480,6 +480,66 @@ export function knownSpells(classId: ClassId, ranks: TalentRanks): SpellId[] {
   return talentTree(classId).filter((t) => t.spellId && talentRank(t, ranks) > 0).map((t) => t.spellId!);
 }
 
+/** Quantas magias de cada slot o herói leva para a hunt (as que aparecem na escolha quando o slot abre). */
+export const ACTIVE_SPELLS_PER_SLOT = 3;
+
+/**
+ * Magias ativas de um slot: as que aparecem na escolha da hunt. `chosen` são os ids de nó (`spellTalentId`) que o
+ * jogador ativou no Grimório (todas as classes; `profiles.active_spells` no banco).
+ * - Até 3 magias conhecidas no slot: todas, sozinhas.
+ * - Mais de 3: as ativadas (até 3, na ordem da árvore).
+ * - Mais de 3 e nenhuma ativada (conta antiga, ou a escolha ficou com magias que a conta não tem): as 3 de maior
+ *   nível de uso, para a escolha da hunt nunca ficar vazia.
+ */
+export function activeSlotSpells(
+  classId: ClassId, slot: number, ranks: TalentRanks, xp: SpellXp, chosen: readonly string[],
+): SpellId[] {
+  const known = knownSpells(classId, ranks).filter((id) => SPELLS[id].slot === slot);
+  if (known.length <= ACTIVE_SPELLS_PER_SLOT) return known;
+  const picked = known.filter((id) => chosen.includes(spellTalentId(classId, id))).slice(0, ACTIVE_SPELLS_PER_SLOT);
+  if (picked.length > 0) return picked;
+  const levels = spellRanks(classId, ranks, xp);
+  const byLevel = [...known].sort((a, b) => (levels[b] ?? 0) - (levels[a] ?? 0));
+  const top = byLevel.slice(0, ACTIVE_SPELLS_PER_SLOT);
+  return known.filter((id) => top.includes(id));
+}
+
+/** Magias ativas da classe nos dois slots (as que vão para a hunt). */
+export function activeSpells(classId: ClassId, ranks: TalentRanks, xp: SpellXp, chosen: readonly string[]): SpellId[] {
+  return [0, 1].flatMap((slot) => activeSlotSpells(classId, slot, ranks, xp, chosen));
+}
+
+/**
+ * Liga ou desliga uma magia no Grimório e devolve a nova escolha (`chosen` inteira, para gravar), ou o motivo de
+ * não poder. Ao mexer num slot, a escolha desse slot passa a ser a lista ativa de hoje (inclusive a automática).
+ */
+export function toggleActiveSpell(
+  classId: ClassId, spellId: SpellId, ranks: TalentRanks, xp: SpellXp, chosen: readonly string[],
+): { chosen: string[] } | { error: string } {
+  const slot = SPELLS[spellId].slot;
+  const known = knownSpells(classId, ranks).filter((id) => SPELLS[id].slot === slot);
+  if (!known.includes(spellId)) return { error: "Aprenda a magia antes de ativar" };
+  if (known.length <= ACTIVE_SPELLS_PER_SLOT) {
+    return { error: `Com ${ACTIVE_SPELLS_PER_SLOT} magias ou menos no slot ${slot + 1}, todas ficam ativas` };
+  }
+  const active = activeSlotSpells(classId, slot, ranks, xp, chosen);
+  let next: SpellId[];
+  if (active.includes(spellId)) {
+    if (active.length === 1) return { error: `Deixe pelo menos uma magia ativa no slot ${slot + 1}` };
+    next = active.filter((id) => id !== spellId);
+  } else {
+    if (active.length >= ACTIVE_SPELLS_PER_SLOT) {
+      return { error: `Já há ${ACTIVE_SPELLS_PER_SLOT} magias ativas no slot ${slot + 1}: desative uma antes` };
+    }
+    next = [...active, spellId];
+  }
+  const others = chosen.filter((id) => {
+    const t = TALENTS[id];
+    return !(t?.classId === classId && t.spellId && SPELLS[t.spellId].slot === slot);
+  });
+  return { chosen: [...others, ...next.map((id) => spellTalentId(classId, id))] };
+}
+
 /** Texto curto do efeito de um nível de áurea ou de Tomo. */
 export function auraText(def: TalentDef, rank: number): string {
   if (def.tome) return `+${Math.round(def.tome.perRank * rank * 100)}% de força nas magias do ramo ${TREE_BRANCHES[def.classId][def.col]}`;

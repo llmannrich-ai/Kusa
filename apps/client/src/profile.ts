@@ -24,6 +24,8 @@ export interface Profile {
   talents: TalentRanks;
   /** XP de uso de cada magia (o nível sobe nas hunts; o navegador só lê). */
   spellXp: SpellXp;
+  /** Magias ativadas no Grimório (ids de nó, todas as classes): até 3 por slot vão para a hunt. */
+  activeSpells: string[];
   items: OwnedItem[];
 }
 
@@ -35,7 +37,7 @@ export async function loadProfile(): Promise<Profile> {
   const uid = session.session?.user.id;
   if (!uid) throw new ProfileError("Sessão expirada. Entre de novo.");
   const [profile, talents, items] = await Promise.all([
-    supabase.from("profiles").select("gold").eq("id", uid).single(),
+    supabase.from("profiles").select("gold, active_spells").eq("id", uid).single(),
     supabase.from("profile_talents").select("talent_id, rank, xp"),
     supabase.from("profile_items").select("id, item_id, equipped, class_id, source, location").order("acquired_at", { ascending: false }),
   ]);
@@ -44,6 +46,7 @@ export async function loadProfile(): Promise<Profile> {
     gold: profile.data.gold,
     talents: Object.fromEntries(talents.data.map((t) => [t.talent_id, t.rank])),
     spellXp: Object.fromEntries(talents.data.filter((t) => t.xp > 0).map((t) => [t.talent_id, t.xp])),
+    activeSpells: profile.data.active_spells ?? [],
     // Id fora do catálogo (banco e cliente em versões diferentes durante uma atualização): não aparece.
     items: items.data.filter((i) => ITEMS[i.item_id]).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, classId: i.class_id, source: i.source, location: i.location })),
   };
@@ -52,6 +55,11 @@ export async function loadProfile(): Promise<Profile> {
 /** Compra uma magia, uma áurea (próximo nível) ou um Traço; devolve o gold que sobrou. */
 export function buyTalent(talentId: string): Promise<number> {
   return call("buy_talent", { p_talent_id: talentId });
+}
+
+/** Grava as magias ativadas no Grimório (a lista inteira, de todas as classes; ver `toggleActiveSpell`). */
+export async function setActiveSpells(spells: string[]): Promise<void> {
+  await call("set_active_spells", { p_spells: spells });
 }
 
 /** Compra um item no mercado; devolve o gold que sobrou. */
@@ -78,7 +86,7 @@ export async function storeItem(id: string): Promise<void> {
 }
 
 /** Mensagens do banco (`raise exception`) que já servem para o jogador. */
-const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "magia já aprendida", "item fora de venda", "item não está no inventário", "cofre cheio", "item está na bag", "item não está na bag", "classe não usa este item", "slot ocupado por outra classe"];
+const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "magia já aprendida", "item fora de venda", "item não está no inventário", "cofre cheio", "item está na bag", "item não está na bag", "classe não usa este item", "slot ocupado por outra classe", "magias ativas demais"];
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);

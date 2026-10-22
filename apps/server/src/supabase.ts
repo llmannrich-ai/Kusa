@@ -22,6 +22,8 @@ export interface Account {
   talents: TalentRanks;
   /** XP de uso de cada magia (id do nó → XP), que dá o nível dela. */
   spellXp: SpellXp;
+  /** Magias ativadas no Grimório (ids de nó): até 3 por slot vão para a hunt. */
+  activeSpells: string[];
 }
 
 /** Valida o JWT do jogador e devolve a conta, ou null se for convidado. */
@@ -30,7 +32,7 @@ export async function resolveAccount(accessToken?: string): Promise<Account | nu
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) throw new Error("Sessão inválida");
   const [{ data: profile }, { data: talents }] = await Promise.all([
-    supabase.from("profiles").select("username").eq("id", data.user.id).single(),
+    supabase.from("profiles").select("username, active_spells").eq("id", data.user.id).single(),
     supabase.from("profile_talents").select("talent_id, rank, xp").eq("profile_id", data.user.id),
   ]);
   return {
@@ -38,6 +40,7 @@ export async function resolveAccount(accessToken?: string): Promise<Account | nu
     name: profile?.username ?? data.user.user_metadata.username ?? "Aventureiro",
     talents: Object.fromEntries((talents ?? []).map((t) => [t.talent_id, t.rank])),
     spellXp: Object.fromEntries((talents ?? []).filter((t) => t.xp > 0).map((t) => [t.talent_id, t.xp])),
+    activeSpells: profile?.active_spells ?? [],
   };
 }
 

@@ -64,6 +64,14 @@ comprar **e usar** as anteriores do mesmo ramo.
   pai ou filha, inclusive o segundo pai) dá **+2% de força** a esta (`SYNERGY_PER_LEVEL`). Força = dano, dano
   contínuo, cura, escudo, armadura, marca, campos e criaturas, como o nível da magia (multiplica a força do nível).
   Vizinha que a conta não tem não conta. Assim, usar magias variadas entre as hunts fortalece as que ficam no slot.
+- **Magias ativas** (✔ verde no nó): só elas aparecem na escolha quando o slot abre na hunt, **até 3 por slot**
+  (`ACTIVE_SPELLS_PER_SLOT`). Na ficha de uma magia aprendida, o botão **Ativar / Desativar na hunt** liga e
+  desliga e mostra quantas estão ativas no slot ("2/3 ativas no slot 1"). Regras (`activeSlotSpells` em `talents.ts`):
+  - com **3 magias ou menos** no slot, todas ficam ativas sozinhas (a ficha avisa e não mostra o botão);
+  - com mais de 3, valem as ativadas; a quarta é recusada ("desative uma antes") e a última não pode sair;
+  - com mais de 3 e nenhuma ativada (conta antiga), entram as 3 de maior nível de uso, para a escolha nunca ficar vazia.
+  A escolha fica na conta (`profiles.active_spells`, gravada por `set_active_spells`) e vale em qualquer aparelho. O
+  servidor lê ao entrar na sala e só oferece (e só aceita) as ativas; a hunt solo usa a mesma regra.
 - **Tomos** (livro no desenho, um por ramo: 📕 📗 📘): +5% de força em todas as magias do ramo por nível, 3 níveis,
   300 de gold e ×1,8 por nível. Ficam na linha 2, na ponta oposta às costelas, e pedem o primeiro nó do tronco.
   A raiz (magia inicial do slot 1) não é de nenhum ramo: não ganha Tomo.
@@ -218,7 +226,7 @@ Magias das costelas (números do nível 0). Todas combinam efeitos que o servido
 | Druida | Espinhos | Espinho Venenoso → Esporos → Explosão de Espinhos (+ Enxame de Vespas) | 🍄 **Esporos** (S2): raio 2, 0,6×, veneno e 30% de lentidão · Maestria: raio 3 · 🌵 **Explosão de Espinhos** (S2): raio 2 em volta de si, 1,6×, sangra e prende 1,5 s · Maestria: raio 3 |
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.
-- Ainda por fazer: a escolha sorteada (3 opções por slot, fase 5f).
+- A escolha sorteada da fase 5f deu lugar às magias ativas: o jogador escolhe no Grimório as até 3 por slot.
 
 #### Maestrias
 
