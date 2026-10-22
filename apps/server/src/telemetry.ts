@@ -19,6 +19,8 @@ export interface RunStats {
   perksChosen: { id: string; offer: string[]; level: number; at: number }[];
   casts: Record<string, number>;
   castFails: { noMana: number; noTarget: number; noRoom: number };
+  /** Golpes básicos que foram no monstro mais próximo porque o alvo travado estava fora do alcance. */
+  basicRetargets: number;
   /** Dano efetivo causado (sem contar o que passa da vida do monstro), por fonte: "basic", id da magia ou "summon:<tipo>" (criaturas invocadas). */
   damageDealt: Record<string, number>;
   /** Dano recebido por tipo de monstro, depois da armadura e do Grito de Guerra. */
@@ -51,6 +53,10 @@ export interface RunStats {
   /** true se fechou o jogo ou caiu durante a hunt (conta como morte). */
   abandoned: boolean;
   death: { by: string; depth: number; x: number; y: number; at: number } | null;
+  /** Dano que os escudos (magias e Traços) absorveram neste herói (fora do `damageMitigated` da armadura). */
+  absorbed: number;
+  /** Tempo (ms) com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração. */
+  buffMs: number;
   /** Intervir (Traço do Guardião): dano que este herói puxou dos aliados para si. */
   intercepted: number;
   /** Renascer da Semente: nomes de quem este jogador salvou com a semente. */
@@ -61,10 +67,10 @@ export interface RunStats {
 
 export function newRunStats(): RunStats {
   return {
-    levelAt: {}, depthAt: {}, specs: [], spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 },
+    levelAt: {}, depthAt: {}, specs: [], spellsChosen: {}, perksChosen: [], casts: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
     damageDealt: {}, damageTaken: {}, specialDamage: {}, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
-    minHpPct: 1, abandoned: false, death: null, intercepted: 0, revives: [], revived: null,
+    minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null,
   };
 }
 

@@ -156,6 +156,8 @@ interface Seat {
   guardUntil: number;
   /** Até quando dura o escudo (`Player.barrier`). */
   barrierUntil: number;
+  /** Escudo da Fé (Maestria): ao quebrar, empurra os monstros colados estes tiles (0 = não). */
+  barrierPush: number;
   /** Pele de Ferro: armadura extra e até quando. */
   armorBonus: number;
   armorUntil: number;
@@ -274,6 +276,8 @@ interface SummonBrain {
   nextAttackAt: number;
   /** Id do monstro que está caçando. */
   targetId: string | null;
+  /** Urso Ancestral (Maestria): ao morrer, cura a equipe por perto. */
+  deathHeal: { pct: number; radius: number } | null;
   /** Grito da Fera: ataca `haste` (fração da recarga cortada) mais rápido até `hasteUntil`. */
   haste: number;
   hasteUntil: number;
@@ -412,7 +416,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.state.players.set(client.sessionId, player);
     this.seats.set(client.sessionId, {
       userId: auth.account?.userId ?? null, nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
-      spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, armorBonus: 0, armorUntil: 0,
+      spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
@@ -699,11 +703,18 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (!p.target) p.target = this.nearestMonsterInRange(p, range) ?? "";
     if (!p.target) return;
 
-    const m = this.state.monsters.get(p.target)!;
     if (!seat.attacking && now >= seat.attackUntil) return;
     if (now < seat.nextAttackAt) return;
 
-    if (!this.canHit(p, m, range)) return;
+    // Alvo travado fora do alcance (ou atrás de parede) não trava o botão: o golpe vai no mais próximo ao alcance
+    // e o alvo continua travado para quando voltar ao alcance.
+    let m = this.state.monsters.get(p.target)!;
+    if (!this.canHit(p, m, range)) {
+      const near = this.nearestMonsterInRange(p, range);
+      if (!near) return;
+      m = this.state.monsters.get(near)!;
+      seat.stats.basicRetargets++;
+    }
 
     // Arma e botas mudam o ritmo (machado e besta são mais lentos; varinha e itens mágicos, mais rápidos).
     seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perks) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste));
@@ -1153,6 +1164,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       seat.thornsPct = spell.thorns.pct;
       seat.thornsUntil = now + spell.thorns.ms;
     }
+    // Meteoro (Maestria): a cratera fica em chamas.
+    if (spell.groundFire && p.status === "playing") {
+      const crater: SpellDef = { ...spell, radius: Math.max(1, spell.radius), field: { kind: "zone", ms: spell.groundFire.ms, tickMs: 1000 } };
+      this.placeField(sessionId, p, seat, crater, rank, cx, cy, this.baseDamage(sessionId, p, "spell") * spell.groundFire.perSec, "fire");
+    }
     if (spell.lifesteal && dealt > 0 && p.status === "playing") this.healPlayer(p, Math.round(dealt * spell.lifesteal), sessionId);
     if (spell.manaSteal && dealt > 0 && p.status === "playing") this.giveMana(p, Math.round(dealt * spell.manaSteal), sessionId);
     // Disparo Certeiro (Maestria): matar corta o que falta da recarga; o botão do jogador acompanha.
@@ -1179,6 +1195,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         const amountBarrier = Math.round(ally.maxHp * spell.barrier!);
         if (amountBarrier >= ally.barrier) {
           ally.barrier = ally.maxBarrier = amountBarrier;
+          allySeat.barrierPush = spell.breakPush ?? 0;
         }
         allySeat.barrierUntil = Math.max(allySeat.barrierUntil, now + spell.barrierMs!);
       });
@@ -1198,6 +1215,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         damageTaken: b.damageTaken ?? 0, rooted: b.rooted ?? false, slowAttackers: b.slowAttackers ?? null,
       };
       p.buff = spell.id;
+      seat.stats.buffMs += b.ms;
     }
 
     if (spell.armor && p.status === "playing") {
@@ -1209,7 +1227,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       }
     }
 
-    if (spell.form && p.status === "playing") this.startForm(p, seat, spell.form, now);
+    if (spell.form && p.status === "playing") {
+      this.startForm(p, seat, spell.form, now);
+      seat.stats.buffMs += spell.form.ms;
+    }
 
     // Grito da Fera: as criaturas do druida atacam mais rápido e recuperam vida.
     if (spell.packCall && p.status === "playing") {
@@ -1398,7 +1419,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.seats.forEach((seat, sessionId) => {
       const p = this.state.players.get(sessionId);
       if (p?.guarded && now >= seat.guardUntil) p.guarded = false;
-      if (p && p.barrier > 0 && now >= seat.barrierUntil) p.barrier = 0;
+      if (p && p.barrier > 0 && now >= seat.barrierUntil) {
+        p.barrier = 0;
+        seat.barrierPush = 0;
+      }
       if (seat.armorBonus > 0 && now >= seat.armorUntil) seat.armorBonus = 0;
       if (seat.buff && now >= seat.buff.until) {
         seat.buff = null;
@@ -1471,6 +1495,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       this.summonBrains.set(s.id, {
         def: SUMMONS[kind], spellId: spell.id, damage: stats.damage, heal: stats.heal, mana: stats.mana,
         expiresAt: now + durationMs, nextMoveAt: now + 300, nextAttackAt: now + 300, targetId: null, haste: 0, hasteUntil: 0,
+        deathHeal: spell.summonDeathHeal ?? null,
       });
     }
   }
@@ -1600,7 +1625,18 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const amount = Math.max(1, Math.round(raw));
     s.hp = Math.max(0, s.hp - amount);
     this.broadcast(MSG.damage, { x: s.x, y: s.y, amount, toPlayer: true, ...hit } satisfies DamageMessage);
-    if (s.hp === 0) this.removeSummon(s.id);
+    if (s.hp === 0) {
+      // Urso Ancestral (Maestria): ao cair, cura a equipe por perto.
+      const heal = this.summonBrains.get(s.id)?.deathHeal;
+      if (heal) {
+        this.state.players.forEach((ally) => {
+          if (ally.status === "playing" && tileDistance(s.x, s.y, ally.x, ally.y) <= heal.radius) {
+            this.healPlayer(ally, Math.round(ally.maxHp * heal.pct), s.owner);
+          }
+        });
+      }
+      this.removeSummon(s.id);
+    }
   }
 
   private canHit(p: Player, m: Monster, range: number) {
@@ -1836,6 +1872,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     if (absorbed > 0) {
       p.barrier -= absorbed;
       amount -= absorbed;
+      if (seat) seat.stats.absorbed += absorbed;
+      // Escudo da Fé (Maestria): ao quebrar, joga longe quem está colado.
+      if (p.barrier === 0 && seat?.barrierPush) {
+        const tiles = seat.barrierPush;
+        seat.barrierPush = 0;
+        this.state.monsters.forEach((m) => { if (tileDistance(p.x, p.y, m.x, m.y) <= 1) this.push(m, p, tiles); });
+        this.notice(p.x, p.y - 1, "Escudo quebrou!", 0x7fc8ff);
+      }
     }
     if (seat) {
       const kind = this.state.monsters.get(hit.attacker)?.kind ?? seat.dot?.kind ?? "?";

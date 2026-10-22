@@ -201,6 +201,12 @@ export interface SpellDef {
   cleanse?: boolean;
   /** Picada da Mamba: se o monstro morrer com o veneno desta magia, ele explode em `radius` com `damage` × e envenena quem pegar. */
   burst?: { radius: number; damage: number };
+  /** Deixa o chão em chamas no raio da magia: `perSec` × dano base por segundo, por `ms` (cratera do Meteoro). */
+  groundFire?: { perSec: number; ms: number };
+  /** Quando o escudo desta magia quebra, empurra `breakPush` tiles os monstros colados em quem o tinha. */
+  breakPush?: number;
+  /** As criaturas desta magia, ao morrer, curam `pct` da vida dos heróis a até `radius` tiles. */
+  summonDeathHeal?: { pct: number; radius: number };
   /** Escudo temporário que absorve dano, em fração do HP máximo, por `barrierMs`. */
   barrier?: number;
   barrierMs?: number;
@@ -912,7 +918,7 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   blade_spin: { text: "Gira de novo logo depois, com metade do dano.", changes: { repeat: { delayMs: 450, power: 0.5 } } },
   war_cry: { text: "O grito também cura 15% da sua vida.", changes: { heal: 0.15 } },
   crushing_blow: { text: "A pancada atordoa o monstro por 1 s.", changes: { stunMs: 1000 } },
-  holy_shield: { text: "O escudo cobre também os aliados a até 2 tiles.", changes: { radius: 2, barrierAllies: true } },
+  holy_shield: { text: "O escudo cobre também os aliados a até 2 tiles e, ao quebrar, empurra os monstros colados.", changes: { radius: 2, barrierAllies: true, breakPush: 2 } },
   vampiric_blade: { text: "Corta todos os monstros colados no alvo.", changes: { radius: 1 } },
   iron_skin: { text: "Provoca os monstros a até 3 tiles e a cura chega aos aliados nessa área.", changes: { radius: 3, taunt: true } },
   earthquake: { text: "Réplica: o chão treme de novo, com metade do dano, e atordoa outra vez.", changes: { repeat: { delayMs: 900, power: 0.5 } } },
@@ -937,7 +943,7 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   ice_lance: { text: "Quando o gelo solta, o monstro fica 50% mais lento.", changes: { slow: { pct: 0.5, ms: 4000 } } },
   drain_life: { text: "Também rouba mana: 30% do dano volta como mana.", changes: { manaSteal: 0.3 } },
   frost_nova: { text: "Quando o gelo solta, os monstros ficam 50% mais lentos.", changes: { slow: { pct: 0.5, ms: 4000 } } },
-  meteor: { text: "Deixa os atingidos em chamas.", changes: { dot: { perSec: 0.4, ms: 4000, kind: "burn" } } },
+  meteor: { text: "Queima os atingidos e deixa uma cratera em chamas por 4 s.", changes: { dot: { perSec: 0.4, ms: 4000, kind: "burn" }, groundFire: { perSec: 0.3, ms: 4000 } } },
   blizzard: { text: "A tempestade cobre raio 4.", changes: { radius: 4 } },
   dark_pact: { text: "Devolve 50% do dano como vida.", changes: { lifesteal: 0.5 } },
   // Druida
@@ -949,7 +955,10 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   hornet_swarm: { text: "Solta 5 vespas.", changes: { summon: { kind: "hornet", count: 5, durationMs: 12000 } } },
   nature_wrath: { text: "O redemoinho prende os monstros por 1,5 s.", changes: { rootMs: 1500 } },
   wolf_pack: { text: "A matilha vem com 4 lobos.", changes: { summon: { kind: "wolf", count: 4, durationMs: 18000 } } },
-  ancient_bear: { text: "O urso fica o dobro do tempo.", changes: { summon: { kind: "bear", count: 1, durationMs: 50000 } } },
+  ancient_bear: {
+    text: "O urso fica o dobro do tempo e, ao morrer, cura 15% da vida da equipe a até 3 tiles.",
+    changes: { summon: { kind: "bear", count: 1, durationMs: 50000 }, summonDeathHeal: { pct: 0.15, radius: 3 } },
+  },
   grove_guardian: { text: "Ao despertar, a árvore cura 20% da vida da equipe a até 3 tiles.", changes: { heal: 0.2, radius: 3 } },
   forest_heart: { text: "Dois fogos-fátuos.", changes: { summon: { kind: "wisp", count: 2, durationMs: 20000 } } },
   // Especializações
@@ -1059,6 +1068,8 @@ export function spellAtRank(base: SpellDef, rank: number): SpellDef {
     burst: def.burst && { ...def.burst, damage: def.burst.damage * k },
     thorns: def.thorns && { pct: def.thorns.pct * k, ms: Math.round(def.thorns.ms * t) },
     tauntHeal: def.tauntHeal && def.tauntHeal * k,
+    groundFire: def.groundFire && { perSec: def.groundFire.perSec * k, ms: Math.round(def.groundFire.ms * t) },
+    summonDeathHeal: def.summonDeathHeal && { ...def.summonDeathHeal, pct: def.summonDeathHeal.pct * k },
     nextBasicStunMs: ms(def.nextBasicStunMs),
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
@@ -1124,6 +1135,9 @@ export function spellFacts(def: SpellDef, rank = 1): string[] {
   if (s.charge) facts.push("Corre até o alvo antes do golpe");
   if (s.pull) facts.push("Puxa o alvo para perto de você");
   if (s.tauntHeal) facts.push(`Cura ${pct(s.tauntHeal)} da vida por monstro provocado`);
+  if (s.groundFire) facts.push(`O chão fica em chamas por ${sec(s.groundFire.ms)} (${num(s.groundFire.perSec)}× por segundo)`);
+  if (s.breakPush) facts.push(`Ao quebrar, empurra ${s.breakPush} tiles os monstros colados`);
+  if (s.summonDeathHeal) facts.push(`A criatura, ao morrer, cura ${pct(s.summonDeathHeal.pct)} da equipe a até ${s.summonDeathHeal.radius} tiles`);
   if (s.burst) facts.push(`Se o alvo morrer envenenado, explode: ${num(s.burst.damage)}× em raio ${s.burst.radius}, e envenena`);
   if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
   if (s.selfBuff) {

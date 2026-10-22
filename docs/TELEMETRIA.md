@@ -29,11 +29,14 @@ favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa funç�
 | `stats.perksChosen` | Melhoria escolhida em cada nível, as duas oferecidas, o nível e o segundo |
 | `stats.specs` | Traços das especializações que o jogador tinha na hunt (ex.: `eagle_eye`) |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo / sem espaço para o Rolamento) |
+| `stats.basicRetargets` | Golpes básicos que foram no monstro mais próximo porque o alvo travado estava fora do alcance (muito alto = o jogador trava alvo sem querer) |
 | `stats.damageDealt` | Dano efetivo por fonte (`basic` ou id da magia; o dano contínuo, como o veneno, entra no id da magia que o aplicou; o salto da pantera e a patada do urso em `panther_form` e `bear_form`; o raio do Céu Carregado em `charged_sky`; o contragolpe da Riposta em `riposte`; os Espinhos de Ferro em `iron_thorns`). Itens mágicos: `item:burn`, `item:poison` (chamas e veneno das armas) e `item:thorns` (espinhos) |
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |
 | `stats.specialDamage` | Dano das habilidades especiais dos mini-bosses e bosses (golpe + veneno/queimadura), por monstro |
 | `stats.healing` | Cura feita (druida), incluindo o roubo de vida da Sede de sangue e dos itens mágicos |
 | `stats.manaGiven` | Mana devolvida aos aliados por magias e criaturas (Fogo-Fátuo), sem as poções |
+| `stats.absorbed` | Dano que os escudos (magias e Traços) absorveram no herói |
+| `stats.buffMs` | Tempo com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração |
 | `stats.intercepted` | Intervir (Guardião): dano que o cavaleiro puxou dos aliados para si |
 | `stats.revives`, `stats.revived` | Renascer da Semente: nomes de quem o druida salvou; em quem renasceu, de quem veio a semente, o segundo e o dano que levou depois |
 | `stats.ccMs` | Tempo de controle aplicado nos monstros (ms somados por monstro): `root`, `stun` e `slow` |
@@ -45,6 +48,8 @@ favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa funç�
 
 | View | Pergunta que responde |
 |---|---|
+| `telemetry_grimoire` | O Grimório está sendo usado? Hunts que chegam a cada slot, nível médio das magias escolhidas, especializações por herói, escudo absorvido, tempo de bônus em si, Intervir e reanimações |
+| `telemetry_specs` | Cada especialização (Traço) vai bem? Hunts, sobrevivência e chegada ao boss por Traço |
 | `telemetry_classes` | Alguma classe sobrevive muito mais ou menos? Quanto loot leva e até onde chega? |
 | `telemetry_deaths` | O que mata, em que sala e em que momento? (soterrado = tempo curto demais) |
 | `telemetry_damage` | Quanto do dano vem do ataque básico e de cada magia? DPS médio |

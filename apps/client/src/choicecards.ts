@@ -29,7 +29,8 @@ const MARGIN = 8;
 /**
  * Cartas de escolha logo acima do personagem, acompanhando ele, enquanto o jogo segue rodando:
  * usada na melhoria de nível (`PerkChoice`) e na magia de um slot novo (`SpellBar`). Um toque na
- * carta escolhe; com mais cartas do que cabem na coluna, a fileira rola para o lado.
+ * carta escolhe. Nunca rola: com 1 ou 2 cartas elas vêm inteiras; com mais, viram uma grade de 3 ou 4
+ * colunas que ocupa a largura da coluna, e cada carta mostra menos (o texto inteiro fica no rótulo).
  */
 export class ChoiceCards {
   readonly el: HTMLElement;
@@ -37,6 +38,11 @@ export class ChoiceCards {
   constructor(opts: ChoiceOptions) {
     const el = document.createElement("div");
     el.className = `choice choice-${opts.kind}`;
+    const n = opts.cards.length;
+    if (n > 2) {
+      el.dataset.density = n > 6 ? "mini" : "compact";
+      el.style.setProperty("--cols", String(n > 6 ? 4 : 3));
+    }
     el.setAttribute("role", "group");
     el.setAttribute("aria-label", opts.title);
 
@@ -102,11 +108,14 @@ function cardButton(card: ChoiceCard) {
   }
   if (card.details?.length) {
     const list = document.createElement("ul");
-    for (const line of card.details) {
+    card.details.forEach((line, i) => {
       const item = document.createElement("li");
+      // Na grade compacta só ficam o efeito principal (1ª linha) e mana e recarga (última).
+      if (i === 0) item.className = "main";
+      if (i === card.details!.length - 1) item.className = "cost";
       item.textContent = line;
       list.append(item);
-    }
+    });
     button.append(list);
   }
   let label = `${card.name}: ${card.description}`;

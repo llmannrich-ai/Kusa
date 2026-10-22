@@ -184,6 +184,8 @@ export class DungeonScene extends Phaser.Scene {
   private bagBar!: BagBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
+  /** Monstro que este jogador travou como alvo (o alvo automático não conta). */
+  private locked: string | null = null;
   private nextSendAt = 0;
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
   private textResolution = 1;
@@ -283,14 +285,14 @@ export class DungeonScene extends Phaser.Scene {
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
     // Sem alvo travado, o ataque vai no monstro mais próximo ao alcance (o anel vermelho mostra qual).
-    // Tocar num monstro trava o alvo; no desktop, Tab troca para o próximo e Esc destrava.
+    // Tocar num monstro trava o alvo e tocar nele de novo destrava; no desktop, Tab troca para o próximo e Esc destrava.
     // Espaço segura o ataque básico; 1 e 2 conjuram no alvo automático.
     const kb = this.input.keyboard;
     kb?.addCapture("TAB,SPACE");
     kb?.on("keydown-TAB", () => this.cycleTarget());
     kb?.on("keydown-ESC", () => {
       if (this.bagBar.isOpen) this.bagBar.close();
-      else this.room.send(MSG.target, { id: null });
+      else this.lockTarget(null);
     });
     kb?.on("keydown-SPACE", () => this.attack.hold("key"));
     kb?.on("keyup-SPACE", () => this.attack.release("key"));
@@ -301,7 +303,7 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keydown-B", () => this.bagBar.toggle());
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
-      if (id) this.room.send(MSG.target, { id });
+      if (id) this.lockTarget(id === this.locked ? null : id);
     });
 
     this.move = new MoveInput(this, this.game.canvas, (clientX, clientY) => {
@@ -383,7 +385,13 @@ export class DungeonScene extends Phaser.Scene {
     if (near.length === 0) return;
     near.sort((a, b) => a.dist - b.dist || a.id.localeCompare(b.id));
     const current = near.findIndex((n) => n.id === me.target);
-    this.room.send(MSG.target, { id: near[(current + 1) % near.length].id });
+    this.lockTarget(near[(current + 1) % near.length].id);
+  }
+
+  /** Trava (ou, com `null`, destrava) o alvo. O estado só tem o alvo atual, que também pode ser o automático. */
+  private lockTarget(id: string | null) {
+    this.locked = id;
+    this.room.send(MSG.target, { id });
   }
 
   private drawTargetRing() {

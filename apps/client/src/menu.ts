@@ -524,14 +524,14 @@ export class Hub {
     const page = el("div", "hub-page");
     page.append(el("h2", "", "Itens"));
     page.append(el("p", "muted hub-hint",
-      "O equipamento e a bag entram com você na hunt. Quem foge volta vestido e esvazia a bag no cofre; quem morre perde os dois."));
+      `Cada classe tem o próprio equipamento: este é o do ${CLASSES[this.classId].name}. Ele e a bag entram com você na hunt. Quem foge volta vestido e esvazia a bag no cofre; quem morre perde os dois.`));
 
     // Quadro do equipamento como no Tibia (cada slot no lugar do corpo) ao lado do herói vestido.
     const loadout = el("div", "loadout");
     loadout.innerHTML = BODY_SVG;
     const equipped: string[] = [];
     for (const slot of ITEM_SLOTS) {
-      const owned = this.profile.items.find((i) => i.equipped && ITEMS[i.itemId]?.slot === slot);
+      const owned = this.wornItems().find((i) => ITEMS[i.itemId]?.slot === slot);
       const cell = el("button", `loadout-slot at-${slot}`);
       cell.append(el("span", "slot-tag", SLOT_NAMES[slot]));
       if (owned) {
@@ -539,15 +539,8 @@ export class Hub {
         cell.append(itemImg(owned.itemId));
         cell.style.borderColor = hex(itemColor(owned.itemId));
         cell.title = def.name;
-        // A classe escolhida não usa: o item fica em casa nesta hunt (e não entra na soma).
-        if (canUse(owned.itemId, this.classId)) {
-          equipped.push(owned.itemId);
-          cell.setAttribute("aria-label", `${SLOT_NAMES[slot]}: ${def.name}`);
-        } else {
-          cell.classList.add("unusable");
-          cell.title += " (fica em casa)";
-          cell.setAttribute("aria-label", `${SLOT_NAMES[slot]}: ${def.name}, fica em casa`);
-        }
+        equipped.push(owned.itemId);
+        cell.setAttribute("aria-label", `${SLOT_NAMES[slot]}: ${def.name}`);
         cell.onclick = () => this.openItemSheet(owned);
       } else {
         cell.append(ghostImg(slot));
@@ -595,7 +588,12 @@ export class Hub {
     return grid;
   }
 
-  /** Itens no cofre (o equipamento não ocupa espaço). */
+  /** Equipamento da classe escolhida. */
+  private wornItems() {
+    return this.profile.items.filter((i) => i.equipped && i.classId === this.classId);
+  }
+
+  /** Itens no cofre (o equipamento, de qualquer classe, não ocupa espaço). */
   private vaultItems() {
     return this.profile.items.filter((i) => i.location === "vault" && !i.equipped);
   }
@@ -626,15 +624,17 @@ export class Hub {
     title.append(name, el("small", "muted", itemLabel(def)));
     head.append(itemImg(def.id), title);
     sheet.append(head, statList(def));
-    if (!canUse(def.id, this.classId)) {
-      sheet.append(el("p", "warn", `${CLASSES[this.classId].name} não usa este item: equipado, ele fica em casa nas hunts de ${CLASSES[this.classId].name}.`));
-    }
+    const usable = canUse(def.id, this.classId);
+    if (!usable) sheet.append(el("p", "warn", `${CLASSES[this.classId].name} não usa este item.`));
+    // Vestido pela classe escolhida ou por outra (cada classe tem os próprios slots).
+    const worn = owned.equipped && owned.classId === this.classId;
+    const wearer = owned.equipped && owned.classId && !worn ? CLASSES[owned.classId].name : null;
     // Como fica vestido: o equipamento atual com este item no slot dele.
     const tryOn = el("div", "doll");
     tryOn.append(outfitPreview(this.classId, { ...this.loadout(), [def.slot]: def.id }),
-      el("small", "muted", owned.equipped ? "Vestido" : "Como fica vestido"));
+      el("small", "muted", worn ? "Vestido" : "Como fica vestido"));
     sheet.append(tryOn);
-    const where = owned.equipped ? "Equipado" : owned.location === "bag" ? "Na bag" : "No cofre";
+    const where = owned.equipped ? `Equipado no ${wearer ?? CLASSES[this.classId].name}` : owned.location === "bag" ? "Na bag" : "No cofre";
     sheet.append(el("p", "muted", `${where} · ${owned.source === "hunt" ? "trazido de uma hunt" : "comprado no mercado"}.`));
 
     const actions = el("div", "actions");
@@ -651,14 +651,23 @@ export class Hub {
         this.closeSheet();
       });
     } else {
-      main = el("button", "primary", owned.equipped ? (vaultFull ? "Cofre cheio" : "Tirar do equipamento") : "Equipar para a hunt");
-      // Tirar do equipamento devolve o item ao cofre; trocar no slot não muda a lotação.
-      main.disabled = owned.equipped && vaultFull;
+      const label = worn ? (vaultFull ? "Cofre cheio" : "Tirar do equipamento")
+        : !usable ? "Não serve nesta classe"
+        : wearer ? `Passar para o ${CLASSES[this.classId].name}` : "Equipar para a hunt";
+      main = el("button", "primary", label);
+      // Tirar do equipamento devolve o item ao cofre; trocar no slot (ou de classe) não muda a lotação.
+      main.disabled = worn ? vaultFull : !usable;
       main.onclick = () => this.run(async () => {
-        await equipItem(owned.id, !owned.equipped);
+        const classId = this.classId;
+        await equipItem(owned.id, !worn, classId);
         for (const other of this.profile.items) {
-          if (other.id === owned.id) other.equipped = !owned.equipped;
-          else if (!owned.equipped && other.equipped && ITEMS[other.itemId]?.slot === def.slot) other.equipped = false;
+          if (other.id === owned.id) {
+            other.equipped = !worn;
+            other.classId = worn ? null : classId;
+          } else if (!worn && other.equipped && other.classId === classId && ITEMS[other.itemId]?.slot === def.slot) {
+            other.equipped = false;
+            other.classId = null;
+          }
         }
         this.closeSheet();
       });
@@ -678,12 +687,12 @@ export class Hub {
     $("sheet-backdrop").hidden = false;
   }
 
-  /** Equipamento marcado para a próxima hunt, como roupa do personagem. */
+  /** Equipamento da classe escolhida para a próxima hunt, como roupa do personagem. */
   private loadout(): Outfit {
     const outfit = { ...NO_OUTFIT };
-    for (const owned of this.profile.items) {
+    for (const owned of this.wornItems()) {
       const def = ITEMS[owned.itemId];
-      if (owned.equipped && def) outfit[def.slot] = def.id;
+      if (def) outfit[def.slot] = def.id;
     }
     return outfit;
   }
@@ -750,7 +759,7 @@ export class Hub {
           this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
           this.toast(`${def.name} vendido.`);
         });
-        list.append(this.marketRow(def, sell, owned.equipped ? "Equipado" : owned.location === "bag" ? "Na bag" : ""));
+        list.append(this.marketRow(def, sell, owned.equipped && owned.classId ? `Equipado no ${CLASSES[owned.classId].name}` : owned.location === "bag" ? "Na bag" : ""));
       }
     }
     page.append(list);

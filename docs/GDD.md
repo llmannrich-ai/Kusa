@@ -12,7 +12,7 @@ teclado e mouse no desktop são um extra.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
 - **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
 - **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
-- **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele.
+- **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
@@ -27,7 +27,7 @@ Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
-- **Itens:** o equipamento que vai para a próxima hunt (um item por slot), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
+- **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
   - **Telemetria** (`apps/client/src/telemetry.ts`): os números de todas as hunts, para qualquer jogador logado, com filtro de mapa e período: visão geral, hunts por dia, como as hunts terminam, sobrevivência por classe, o que mais mata, fontes de dano, magias e melhorias escolhidas, curva de nível e as suas hunts. Só agregados, sem nomes (função `telemetry_dashboard`).
@@ -189,10 +189,10 @@ Magias das costelas (números do nível 1). Todas combinam efeitos que o servido
 
 | Classe | Magia → Maestria |
 |---|---|
-| Cavaleiro | Giro da Lâmina: gira de novo (50%) · Grito de Guerra: cura 15% · Golpe Esmagador: atordoa 1 s · Escudo da Fé: cobre aliados a até 2 tiles · Lâmina Sedenta: corta todos os colados no alvo · Pele de Ferro: provoca e cura aliados a até 3 tiles · Terremoto: réplica (50%) · Muralha de Aço: corta 30% do dano · Brado do Comandante: alcança 6 tiles · Execução: dobro abaixo de 50% da vida |
+| Cavaleiro | Giro da Lâmina: gira de novo (50%) · Grito de Guerra: cura 15% · Golpe Esmagador: atordoa 1 s · Escudo da Fé: cobre aliados a até 2 tiles e, ao quebrar, empurra os monstros colados · Lâmina Sedenta: corta todos os colados no alvo · Pele de Ferro: provoca e cura aliados a até 3 tiles · Terremoto: réplica (50%) · Muralha de Aço: corta 30% do dano · Brado do Comandante: alcança 6 tiles · Execução: dobro abaixo de 50% da vida |
 | Paladino | Flecha Sagrada: salta para mais um · Chuva de Flechas: 30% de lentidão · Disparo Perfurante: alcance 9 e sangra · Flecha Atordoante: atordoa os colados no alvo · Bênção Protetora: ofusca 0,7 s · Luz Curativa: ofusca 1 s · Disparo Certeiro: matar corta metade da recarga · Julgamento Divino: queima · Saraivada Explosiva: queima |
-| Feiticeiro | Esfera Sombria: explode duas vezes (50%) · Tempestade do Vazio: rouba 20% de vida · Relâmpago: atordoa 0,5 s · Raio em Cadeia: salta 5 vezes · Lança de Gelo: lentidão depois do gelo · Drenar Vida: rouba 30% em mana · Nova de Gelo: lentidão depois do gelo · Meteoro: queima · Nevasca: raio 4 · Pacto Sombrio: rouba 50% de vida |
-| Druida | Bênção da Floresta: brota uma mariposa · Raízes Espinhosas: envenenam · Espinho Venenoso: o veneno pula para mais 2 · Lobo Espiritual: 2 lobos · Mariposa Curandeira: 2 mariposas · Enxame de Vespas: 5 vespas · Fúria da Natureza: prende 1,5 s · Chamado da Matilha: 4 lobos · Urso Ancestral: dobro do tempo · Guardião do Bosque: cura 20% da equipe · Coração da Floresta: 2 fogos-fátuos |
+| Feiticeiro | Esfera Sombria: explode duas vezes (50%) · Tempestade do Vazio: rouba 20% de vida · Relâmpago: atordoa 0,5 s · Raio em Cadeia: salta 5 vezes · Lança de Gelo: lentidão depois do gelo · Drenar Vida: rouba 30% em mana · Nova de Gelo: lentidão depois do gelo · Meteoro: queima e deixa uma cratera em chamas · Nevasca: raio 4 · Pacto Sombrio: rouba 50% de vida |
+| Druida | Bênção da Floresta: brota uma mariposa · Raízes Espinhosas: envenenam · Espinho Venenoso: o veneno pula para mais 2 · Lobo Espiritual: 2 lobos · Mariposa Curandeira: 2 mariposas · Enxame de Vespas: 5 vespas · Fúria da Natureza: prende 1,5 s · Chamado da Matilha: 4 lobos · Urso Ancestral: dobro do tempo e, ao morrer, cura 15% da equipe · Guardião do Bosque: cura 20% da equipe · Coração da Floresta: 2 fogos-fátuos |
 
 ### Cofre, bag e mercado (extração)
 
@@ -200,7 +200,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 | Lugar | Espaços | Onde se mexe | Na hunt |
 |---|---|---|---|
-| **Equipamento** | 1 por slot | aba Itens | entra vestido no personagem |
+| **Equipamento** | 1 por slot, por classe | aba Itens | entra vestido no personagem da classe escolhida |
 | **Cofre** | 20 (o equipamento não ocupa) | só na aba Itens | fica seguro na conta |
 | **Bag** | 8 | aba Itens (guardar no cofre ou vender) | entra com o jogador e recebe o que ele pega no chão |
 
@@ -210,6 +210,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 - Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
   **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
 - Quem morre perde **1 equipamento do corpo, sorteado**, **a bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para a conta.
+- Cada classe tem os próprios 6 slots. A aba Itens mostra o equipamento da classe escolhida, e só a classe que usa o item pode vesti-lo. O mesmo item fica num corpo por vez: equipar no Druida um item vestido pelo Feiticeiro tira dele. O equipamento das outras classes não ocupa o cofre e fica em casa na hunt; quem volta vivo devolve o vestido à classe com que jogou.
 - Na aba Itens: equipar um item do cofre devolve o do slot ao cofre; tirar do equipamento e guardar da bag precisam de espaço no cofre.
 - Funções no banco: `buy_item`, `equip_item`, `store_item` e `sell_item` (jogador); `take_loadout`, `take_bag`, `finish_run` e `store_bag` (servidor de jogo).
 
@@ -332,7 +333,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 ## Combate (protótipo)
 
-- O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado, o servidor escolhe o monstro mais próximo ao alcance.
+- O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado (ou com ele fora do alcance), o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
 - Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss (Ogro na cripta, Troll no pântano) que destranca um baú; o boss do mapa fica no centro.
@@ -355,7 +356,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 - Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
 - O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
-- Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível comprado, mana e recarga; com mais magias do que cabem, a fileira rola para o lado); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
+- Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível comprado, mana e recarga; sem rolagem: com 3 a 6 magias as cartas viram uma grade de 3 colunas só com o efeito principal e o custo, e com 7 ou mais, 4 colunas com nome e custo); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
 - Toda classe tem uma magia inicial por slot; as compradas no Grimório viram opções extras na escolha, já com o nível comprado (ver "Grimório").
 - Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por
   segundo, que renova em vez de acumular), cura, raízes (não anda), **lentidão** (anda mais devagar), atordoamento (não anda nem ataca),
@@ -424,7 +425,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   | Raro | azul | +30% | "Espada longa +1" |
   | Mágico | roxo | +60% e uma propriedade mágica | nome próprio: "Vingadora Sagrada", "Manto das Estrelas"... |
 
-- **Restrição de classe** (a classe que não usa não veste: na hunt vai só para a bag; no menu, equipado, fica em casa):
+- **Restrição de classe** (a classe que não usa não veste: na hunt vai só para a bag; no menu, não dá para equipar nela):
 
   | Família | Classes | O que dá |
   |---|---|---|
