@@ -59,17 +59,26 @@ async function castRibs(classId: ClassId) {
       const id = pair[slot];
       const def = SPELLS[id];
       const hits = () => damage.filter((d) => d.attacker === room.sessionId && !d.toPlayer).length;
-      const cast = () => spells.some((s) => s.from === room.sessionId && s.spellId === id);
-      const before = hits();
-      // Colado num monstro à vista, toda forma de magia acerta: em volta de si, corpo a corpo, linha, leque e área.
-      // O servidor recusa sem alvo (o monstro da magia anterior pode ter morrido): chega de novo e tenta outra vez.
-      for (let tries = 0; tries < 3 && !cast(); tries++) {
-        await approach(room, me, 1, () => inSight(room, me(), 1).length > 0 && me().mana >= def.manaCost);
-        room.send(MSG.cast, { slot });
-        await until(() => cast(), 1500, "").catch(() => {});
+      const casts = () => spells.filter((s) => s.from === room.sessionId && s.spellId === id).length;
+      const harms = Boolean(def.damage || def.field?.damage);
+      // A magia em volta de si sai mesmo sem ninguém perto: se o monstro morreu ou se afastou entre o herói chegar
+      // e a magia sair, ela não fere ninguém. Espera a recarga e tenta de novo (falhou no CI assim, à toa).
+      let hit = false;
+      for (let round = 0; round < 3 && !hit; round++) {
+        if (round > 0) await wait(def.cooldownMs);
+        const castsBefore = casts();
+        const hitsBefore = hits();
+        // Colado num monstro à vista, toda forma de magia acerta: em volta de si, corpo a corpo, linha, leque e área.
+        // O servidor recusa sem alvo (o monstro da magia anterior pode ter morrido): chega de novo e tenta outra vez.
+        for (let tries = 0; tries < 3 && casts() === castsBefore; tries++) {
+          await approach(room, me, 1, () => inSight(room, me(), 1).length > 0 && me().mana >= def.manaCost);
+          room.send(MSG.cast, { slot });
+          await until(() => casts() > castsBefore, 1500, "").catch(() => {});
+        }
+        if (casts() === castsBefore) throw new Error(`${id} não saiu (avisos: ${notices.slice(-3).join(" | ") || "nenhum"})`);
+        hit = !harms || await until(() => hits() > hitsBefore, 3000, "").then(() => true, () => false);
       }
-      if (!cast()) throw new Error(`${id} não saiu (avisos: ${notices.slice(-3).join(" | ") || "nenhum"})`);
-      if (def.damage || def.field?.damage) await until(() => hits() > before, 3000, `${id} não feriu nenhum monstro`);
+      if (!hit) throw new Error(`${id} não feriu nenhum monstro em 3 tentativas`);
       console.log(`${classId}: ${def.name} ok`);
     }
     await room.leave();
