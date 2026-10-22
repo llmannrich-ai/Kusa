@@ -10,6 +10,9 @@ import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 //   traço: a passiva de uma especialização. No fim de um ramo, a árvore se divide em dois lados (`side`);
 //          comprar o Traço de um lado tranca o outro para sempre (`exclusiveWith`), e as magias do lado
 //          pedem o Traço.
+// Cada ramo é uma espinha de peixe (inspirada no Diablo 2): o tronco desce no meio e as costelas (`RIBS`) saem
+// para os lados em alturas e tamanhos diferentes, então nenhum ramo tem a mesma forma. Um nó de costela pode
+// pedir dois pais (`alsoRequires`), como a Nevasca do Diablo 2 pede duas magias.
 // As 2 magias iniciais da classe já vêm no nível 1 (`freeRank`). A tabela `talents` no Supabase
 // repete id, níveis, custo, nível grátis e pré-requisito de cada nó; mude os dois juntos.
 
@@ -28,6 +31,8 @@ export interface TalentDef {
   /** Posição no desenho do Grimório: coluna (ramo, 0 a 2) e linha (0 = raiz). */
   col: number;
   row: number;
+  /** Posição de lado dentro do ramo: 0 = tronco, −2 a 2 = costelas e lados das especializações. */
+  lane: number;
   kind: "spell" | "aura" | "trait";
   name: string;
   icon: string;
@@ -49,6 +54,8 @@ export interface TalentDef {
   costGrowth: number;
   /** Nó pai, que precisa ter pelo menos `rank` níveis antes. */
   requires?: { id: string; rank: number };
+  /** Segundo pai (nó de costela que cruza com o tronco): também precisa ter `rank` níveis. */
+  alsoRequires?: { id: string; rank: number };
 }
 
 /** Níveis comprados por nó (id → nível). Nó ausente = 0. */
@@ -82,7 +89,7 @@ const AURA_RULES: Record<AuraStat, { perRank: number; maxRank: number; baseCost:
   speed: { perRank: 0.04, maxRank: 2, baseCost: 300 },
 };
 
-/** Preço do 1º nível de uma magia do tronco, pela profundidade na árvore (a ponta é mais cara). */
+/** Preço do 1º nível de uma magia do tronco ou de uma costela, pela profundidade na árvore (a ponta é mais cara). */
 const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
 /** Preço do 1º nível das magias de uma especialização: a 1ª do lado (logo abaixo do Traço) e a 2ª. */
 const SIDE_SPELL_COST = [1200, 1600];
@@ -189,12 +196,50 @@ const SHAPES: Record<ClassId, Shape> = {
   ],
 };
 
+/**
+ * Costelas de cada ramo: [magia, coluna, linha, pai, lado, segundo pai]. `lado` é a posição na tela do ramo
+ * (−1 e −2 à esquerda do tronco, 1 e 2 à direita). Uma costela nasce num nó do tronco e desce em diagonal; o
+ * segundo pai, quando existe, é um nó do tronco que a costela cruza (uma diagonal pontilhada no desenho).
+ * As costelas ficam acima da bifurcação das especializações, que usa os lados −1 e 1.
+ */
+type Rib = [key: SpellId, col: number, row: number, parent: ShapeKey, lane: number, also?: ShapeKey];
+
+const RIBS: Record<ClassId, Rib[]> = {
+  knight: [
+    // Lâmina: costela longa à esquerda; à direita, a Fenda pede o Terremoto do tronco.
+    ["twin_slash", 0, 3, "crushing_blow", -1], ["cross_cut", 0, 4, "twin_slash", -2],
+    ["open_wound", 0, 4, "vampiric_blade", 1], ["seismic_rift", 0, 5, "open_wound", 1, "earthquake"],
+    // Bastião: uma costela só, à direita.
+    ["aegis_strike", 1, 3, "holy_shield", 1], ["shield_quake", 1, 4, "aegis_strike", 2],
+    // Comando: costela curta à esquerda e outra à direita que cruza com a Áurea da Investida.
+    ["stunning_roar", 2, 2, "war_cry", -1],
+    ["battle_order", 2, 3, "mana", 1], ["challenge_mark", 2, 4, "battle_order", 1, "speed"],
+  ],
+  paladin: [
+    ["double_shot", 0, 3, "piercing_shot", -1], ["barbed_arrow", 0, 4, "double_shot", -2],
+    ["sunbeam", 1, 2, "hp", 1], ["holy_hammer", 1, 4, "sunbeam", 1, "blessed_ward"],
+    ["net_arrow", 2, 2, "arrow_rain", -1], ["fire_arrows", 2, 4, "speed", 1],
+  ],
+  sorcerer: [
+    ["spark", 0, 3, "lightning_bolt", -1], ["ember_rain", 0, 4, "spark", -2],
+    // Gelo: o Orbe Congelado pede a Geada e a Lança de Gelo (no Diablo 2, pede a Nevasca e a Nova de Gelo).
+    ["frostbite", 1, 3, "frost_nova", 1], ["frozen_orb", 1, 4, "frostbite", 1, "ice_lance"],
+    ["dark_seal", 2, 2, "void_storm", -1], ["plague", 2, 4, "drain_life", 1],
+  ],
+  druid: [
+    ["howl", 0, 3, "spirit_wolf", 1],
+    ["purifying_sap", 1, 3, "healing_moth", -1], ["blossom_burst", 1, 4, "purifying_sap", -2],
+    ["vine_lash", 2, 2, "thorn_roots", 1],
+    ["spore_burst", 2, 3, "venom_thorn", -1], ["bramble_burst", 2, 4, "spore_burst", -1, "hornet_swarm"],
+  ],
+};
+
 const isAura = (key: string): key is AuraStat => key in AURA_RULES;
 
 function classTree(classId: ClassId): TalentDef[] {
   const id = (key: string) => `${classId}_${key}`;
   const shape = SHAPES[classId];
-  return shape.map(([key, col, row, parent, side]): TalentDef => {
+  const trunk = shape.map(([key, col, row, parent, side]): TalentDef => {
     const requires = parent ? { id: id(parent), rank: 1 } : undefined;
     if (isTrait(key)) {
       const trait = TRAITS[key];
@@ -202,14 +247,14 @@ function classTree(classId: ClassId): TalentDef[] {
       const other = shape.find(([k, c, r, , s]) => isTrait(k) && k !== key && c === col && r === row && s !== side);
       if (!other) throw new Error(`${key}: Traço sem o outro lado`);
       return {
-        id: id(key), classId, col, row, side, kind: "trait", name: trait.name, icon: trait.icon, traitId: key,
+        id: id(key), classId, col, row, lane: laneOf(side), side, kind: "trait", name: trait.name, icon: trait.icon, traitId: key,
         maxRank: 1, freeRank: 0, baseCost: TRAIT_COST, costGrowth: 1, requires, exclusiveWith: id(other[0]),
       };
     }
     if (isAura(key)) {
       const rule = AURA_RULES[key];
       return {
-        id: id(key), classId, col, row, kind: "aura", name: AURA_NAMES[classId][key], icon: AURA_ICONS[key],
+        id: id(key), classId, col, row, lane: 0, kind: "aura", name: AURA_NAMES[classId][key], icon: AURA_ICONS[key],
         aura: { stat: key, perRank: rule.perRank }, maxRank: rule.maxRank, freeRank: 0,
         baseCost: rule.baseCost, costGrowth: 1.8, requires,
       };
@@ -218,13 +263,37 @@ function classTree(classId: ClassId): TalentDef[] {
     if (spell.classId !== classId) throw new Error(`${key} não é magia de ${classId}`);
     const starter = STARTER_SPELLS.includes(key);
     return {
-      id: id(key), classId, col, row, side, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
+      id: id(key), classId, col, row, lane: laneOf(side), side, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
       maxRank: SPELL_MAX_RANK, freeRank: starter ? 1 : 0,
       baseCost: starter ? STARTER_BASE_COST : side === undefined ? SPELL_COST_BY_ROW[row] : SIDE_SPELL_COST[isTrait(parent!) ? 0 : 1],
       costGrowth: 1.6, requires,
     };
   });
+  const keys = new Set(shape.map(([key]) => key));
+  const ribs = RIBS[classId].map(([key, col, row, parent, lane, also]): TalentDef => {
+    const spell = SPELLS[key];
+    if (spell.classId !== classId) throw new Error(`${key} não é magia de ${classId}`);
+    for (const p of [parent, also]) if (p && !keys.has(p)) throw new Error(`${key}: pai ${p} fora do Grimório de ${classId}`);
+    keys.add(key);
+    return {
+      id: id(key), classId, col, row, lane, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
+      maxRank: SPELL_MAX_RANK, freeRank: 0, baseCost: SPELL_COST_BY_ROW[row], costGrowth: 1.6,
+      requires: { id: id(parent), rank: 1 }, alsoRequires: also ? { id: id(also), rank: 1 } : undefined,
+    };
+  });
+  const tree = [...trunk, ...ribs];
+  // Dois nós no mesmo lugar do desenho seriam um erro de digitação na forma.
+  const spots = new Set<string>();
+  for (const t of tree) {
+    const spot = `${t.col}:${t.row}:${t.lane}`;
+    if (spots.has(spot)) throw new Error(`${t.id}: já existe um nó em ${spot}`);
+    spots.add(spot);
+  }
+  return tree;
 }
+
+/** Lado da especialização na tela do ramo: o lado 0 à esquerda do tronco, o 1 à direita. */
+const laneOf = (side?: 0 | 1) => (side === undefined ? 0 : side === 0 ? -1 : 1);
 
 export const TALENTS: Record<string, TalentDef> = Object.fromEntries(
   CLASS_IDS.flatMap(classTree).map((t) => [t.id, t]),
@@ -250,8 +319,10 @@ export function talentBlocker(def: TalentDef, ranks: TalentRanks): string | null
   if (talentRank(def, ranks) >= def.maxRank) return "Nível máximo";
   const rival = def.exclusiveWith && TALENTS[def.exclusiveWith];
   if (rival && talentRank(rival, ranks) > 0) return `Você escolheu ${TRAITS[rival.traitId!].spec}`;
-  const parent = def.requires && TALENTS[def.requires.id];
-  if (parent && talentRank(parent, ranks) < def.requires!.rank) return `Requer ${parent.name}`;
+  const missing = [def.requires, def.alsoRequires]
+    .filter((r): r is { id: string; rank: number } => !!r && talentRank(TALENTS[r.id], ranks) < r.rank)
+    .map((r) => TALENTS[r.id].name);
+  if (missing.length > 0) return `Requer ${missing.join(" e ")}`;
   return null;
 }
 

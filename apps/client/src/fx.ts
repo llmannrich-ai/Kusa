@@ -272,6 +272,72 @@ export class CombatFx {
       case "giant_eagle":
         this.ring(from, TILE_SIZE * 1.5, 0xc8a165, 550, 3);
         return this.sparks(from, 0xf7d774, 8);
+      // Costelas do Grimório. As áreas, linhas e leques acendem pelo `area` e pelo `showCone` (DungeonScene).
+      case "twin_slash": return this.slash(from, to);
+      case "cross_cut":
+        this.slash(from, to);
+        return this.sparks(to, 0xd2d6de, 6);
+      case "open_wound":
+        this.slash(from, to);
+        return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      case "seismic_rift": return this.debris(to, TILE_SIZE, 0x6b4426);
+      case "aegis_strike":
+        this.slash(from, to);
+        return this.shieldRaise(from);
+      case "shield_quake":
+        this.ring(from, radius, 0x5dade2, 500, 6);
+        return this.debris(from, radius, 0x6b4426);
+      case "stunning_roar":
+        this.ring(from, radius, 0xe67e22, 550, 6);
+        return this.later(120, () => this.ring(from, radius * 0.6, 0xf1c40f, 450, 4));
+      case "battle_order": return this.ring(from, TILE_SIZE * 0.8, 0xe67e22, 500, 4);
+      case "challenge_mark":
+        this.zap(from, to, 0xe67e22);
+        return this.ring(to, TILE_SIZE / 2, 0xe74c3c, 400, 4);
+      case "double_shot": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf1c40f, glow: 0xf1c40f });
+      case "barbed_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xc0392b, glow: 0xc0392b, scale: 1.3 });
+        return this.later(ms, () => this.sparks(to, 0xc0392b, 8));
+      case "sunbeam": return this.zap(from, to, 0xfff6c8);
+      case "holy_hammer":
+        this.projectile(FX.holyArrow, from, to, ms, { trail: 0xffe9a3, glow: 0xf7d774, impact: 0xfff6c8, scale: 1.8 });
+        return this.later(ms, () => this.holyFlash(to));
+      case "net_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xc8a165, glow: 0xc8a165 });
+        return this.later(ms, () => this.ring(to, radius + TILE_SIZE / 2, 0xc8a165, 450, 3));
+      case "fire_arrows":
+        this.arrowRain(to, radius, ms);
+        return this.later(ms, () => this.sparks(to, 0xff7f27, 12));
+      case "spark": return this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.8 });
+      case "ember_rain":
+        this.beam(to, 0xff7f27);
+        return this.sparks(to, 0xf1c40f, 10);
+      case "frostbite":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xd6f1ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.9 });
+        return this.later(ms, () => this.snow(to, TILE_SIZE));
+      case "frozen_orb":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xd6f1ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 1.5 });
+        return this.later(ms, () => { this.ring(to, radius, 0xd6f1ff, 500, 6); this.snow(to, radius); });
+      case "dark_seal":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0x2d0a40, glow: 0x8e44ad, impact: 0xc77dff });
+        return this.later(ms, () => this.ring(to, TILE_SIZE / 2, 0x8e44ad, 450, 4));
+      case "plague":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0x6b8e23, glow: 0x556b2f, impact: 0x9acd32 });
+        return this.later(ms, () => this.ring(to, radius, 0x6b8e23, 500, 5));
+      case "howl": return this.ring(from, radius, 0xb0c4de, 600, 4);
+      case "purifying_sap":
+        this.zap(from, to, 0x7bed9f);
+        return this.heal(to);
+      case "blossom_burst":
+        this.ring(from, radius, 0xff9ff3, 600, 4);
+        return this.heal(from);
+      case "vine_lash": return this.zap(from, to, 0x6b7a2a);
+      case "spore_burst":
+        this.projectile(FX.greenLight, from, to, ms, { trail: 0x9acd32, glow: 0x6b8e23, impact: 0x9cff7a });
+        return this.later(ms, () => this.ring(to, radius, 0x9acd32, 500, 5));
+      case "bramble_burst":
+        this.ring(from, radius, 0x6b7a2a, 450, 7);
+        return this.debris(from, radius, 0x3d5a1e);
       // Invocações: um círculo de folhas em volta do druida; as criaturas brotam pelo estado (`summonBurst`).
       case "spirit_wolf":
       case "healing_moth":

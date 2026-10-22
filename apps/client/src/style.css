@@ -690,7 +690,7 @@ body.busy #hub-body { opacity: 0.7; }
 .class-foot { display: flex; justify-content: space-between; font-size: 13px; }
 .class-foot .link { padding: 4px 0; }
 
-/* Grimório: árvore de verdade, raiz no alto e 3 ramos descendo (ver GRIM_ROW e GRIM_ORB em menu.ts). */
+/* Grimório: um ramo por tela (abas), raiz no alto, tronco no meio e costelas em até 5 colunas (ver GRIM_ROW e GRIM_ORB em menu.ts). */
 .chips { display: flex; gap: 6px; margin: 8px 0 12px; overflow-x: auto; }
 .chip { min-height: 36px; padding: 6px 12px; font-size: 13px; border-radius: 18px; white-space: nowrap; }
 .chip[aria-pressed="true"] { color: #000; background: var(--accent); border-color: var(--accent); }
@@ -708,12 +708,13 @@ body.busy #hub-body { opacity: 0.7; }
   box-shadow: inset 0 0 40px #000;
   overflow: hidden;
 }
-.grim-branches { position: absolute; top: 6px; left: 0; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
-.grim-branches span { text-align: center; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.grim-tabs { margin-top: 0; }
 .grim-links { position: absolute; top: 28px; left: 0; width: 100%; height: calc(var(--rows) * var(--row)); overflow: visible; }
 .grim-links path { fill: none; stroke: #3a2f27; stroke-width: 4; stroke-linejoin: round; }
 .grim-links path.open { stroke: #7a6040; stroke-dasharray: 6 4; }
 .grim-links path.on { stroke: var(--accent); filter: drop-shadow(0 0 3px #c9a24a88); }
+/* Segundo pré-requisito de um nó (costela que cruza com o tronco). */
+.grim-links path.also { stroke-width: 3; stroke-dasharray: 3 5; }
 .gnode {
   position: absolute;
   margin-top: 28px;
@@ -721,7 +722,7 @@ body.busy #hub-body { opacity: 0.7; }
   display: grid;
   justify-items: center;
   gap: 3px;
-  width: 31%;
+  width: 20%;
   min-height: 0;
   padding: 0;
   background: none;
@@ -744,15 +745,7 @@ body.busy #hub-body { opacity: 0.7; }
 .gnode.trait .gnode-orb { width: 46px; height: 46px; margin: 5px 0; border-radius: 8px; transform: rotate(45deg); }
 .gnode.trait .gnode-icon { transform: rotate(-45deg); font-size: 22px; }
 .gnode.trait .gnode-lock { transform: rotate(-45deg); }
-/* Nó ✦ da visão geral: abre o ramo em foco com os dois lados. */
-.gnode.fork .gnode-orb { border-style: dashed; border-color: var(--accent); color: var(--accent); }
-.gnode.fork.owned .gnode-orb { border-style: solid; }
-.grim-branch-spec {
-  min-height: 0; padding: 0; font: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--accent); background: none; border: none;
-}
-.grim-spec-name { color: var(--accent) !important; letter-spacing: 1px !important; }
-.grim-back { display: block; min-height: 36px; padding: 4px 0; background: none; border: none; font-size: 14px; }
+.gnode.trait .gnode-name { color: var(--accent); }
 .grim-warning { padding: 8px 10px; font-size: 13px; color: #ffd8a8; background: #3a1e0c; border: 1px solid #a0522d; }
 button.danger { background: #5a1e12; border-color: #e67e22; }
 .gnode.owned .gnode-orb { border-color: #8e6bbf; background: radial-gradient(circle at 35% 30%, #4a3466, #160f1e 75%); }
