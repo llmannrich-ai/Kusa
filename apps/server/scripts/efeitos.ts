@@ -20,7 +20,8 @@
  *   - especializações do Cavaleiro: o Redemoinho gira 3 vezes, a Fúria Berserker fica ativa, a Lâmina Arremessada sangra,
  *     os Mil Cortes repetem, o Bater com Escudo atordoa, a Égide dá escudo, os Espinhos de Ferro devolvem o golpe, a
  *     Fortaleza Viva prende o herói no lugar, a Investida leva o herói até o alvo, o Estandarte sobe, a Corrente de Ferro
- *     puxa o monstro e o Desafio Supremo protege.
+ *     puxa o monstro e o Desafio Supremo protege;
+ *   - a cratera em chamas do Meteoro (Maestria).
  * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
  *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 KUSA_MONSTER_HP=20 PORT=2603 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/efeitos.ts http://localhost:2603
@@ -358,6 +359,13 @@ async function sorcererSpecs() {
     if (!seen) throw new Error(`bruxo: nenhum monstro à vista: ${whereAmI(h.room, h.me)}`);
     h.room.send(MSG.cast, { slot: 1, aim: { x: seen[1].x, y: seen[1].y } });
     await until(() => [...h.room.state.monsters.values()].some((x: any) => x.rooted), 3000, "os Tentáculos Negros não prenderam ninguém");
+    await h.room.leave();
+  }
+  // Maestria do Meteoro (nível 3 com KUSA_ALL_SPELLS): a cratera fica em chamas.
+  {
+    const h = await sorcerer("meteoro", "shadow_orb", "meteor");
+    h.room.send(MSG.cast, { slot: 1, aim: { x: h.seen[1].x, y: h.seen[1].y } });
+    await until(() => [...h.room.state.fields.values()].some((f: any) => f.spellId === "meteor" && f.style === "fire"), 4000, "o Meteoro não deixou a cratera em chamas");
     await h.room.leave();
   }
   console.log("feiticeiro: as 12 magias das especializações funcionaram");
