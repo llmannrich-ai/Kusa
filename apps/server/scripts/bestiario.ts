@@ -11,7 +11,7 @@
  * Uso: npx tsx apps/server/scripts/bestiario.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CONTROL_IMMUNE_MS, CONTROL_MAX_MS, CORRODE_MAX, MAPS, MONSTERS, MSG, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
+  CONTROL_IMMUNE_MS, CONTROL_MAX_MS, CORRODE_MAX, MAPS, MONSTERS, MSG, createRng, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
   type DamageMessage, type MapId, type MonsterKind,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
@@ -46,7 +46,8 @@ function arena(mapId: MapId = "crypt", classId: "knight" | "sorcerer" = "knight"
   timers = [];
   damage = [];
   const state = new DungeonState();
-  const hunt = new Hunt(state, host, { mapId, seed: 4242, startLevel });
+  // Sorteios de seed fixa (dano, chances): a comparação das Táticas de Bando falhava 1 vez em 20 com Math.random.
+  const hunt = new Hunt(state, host, { mapId, seed: 4242, startLevel, random: createRng(Number(process.env.KUSA_SEED) || 4242).next });
   hunt.join("h", { name: "Teste", classId, talents: {}, spellXp: {} });
   hunt.start("h");
   state.monsters.clear();
@@ -220,7 +221,8 @@ function check(ok: boolean, what: string) {
       any.brains.get(other.id).abilityReadyAt = {};
     }
     damage = [];
-    advance(hunt, 30_000);
+    // 2 minutos (cerca de 100 mordidas): a média sai da variação de ±15% de cada mordida com folga para os 30% do bando.
+    advance(hunt, 120_000);
     const bites = damage.filter((m) => m.toPlayer && m.attacker === rat.id);
     return bites.reduce((sum, m) => sum + m.amount, 0) / Math.max(1, bites.length);
   };
