@@ -23,6 +23,13 @@ import {
   SPELL_MAX_LEVEL,
   DEATH_SPELL_XP_LOSS,
   nodeLevel,
+  ACTIVE_SPELLS_PER_SLOT,
+  activeSlotSpells,
+  toggleActiveSpell,
+  SYNERGY_PER_LEVEL,
+  spellBonus,
+  spellNeighbors,
+  spellRanks,
   spellLevelProgress,
   spellXpOf,
   lootColor,
@@ -60,6 +67,7 @@ import {
   ProfileError,
   buyItem,
   buyTalent,
+  setActiveSpells,
   equipItem,
   loadProfile,
   sellItem,
@@ -203,7 +211,7 @@ function heroUrl(classId: ClassId, outfit: Outfit, view: HeroDir | "all") {
 }
 
 export class Hub {
-  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, items: [] };
+  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [] };
   private tab: Tab = "classes";
   private marketMode: "buy" | "sell" = "buy";
   /** Slot mostrado na compra do mercado. */
@@ -230,7 +238,7 @@ export class Hub {
   /** Abre o menu da conta e busca árvore, inventário e gold. */
   async open(username: string, initialGold: number) {
     $("account-name").textContent = username;
-    this.profile = { gold: initialGold, talents: {}, spellXp: {}, items: [] };
+    this.profile = { gold: initialGold, talents: {}, spellXp: {}, activeSpells: [], items: [] };
     this.render();
     try {
       this.profile = await loadProfile();
@@ -347,6 +355,8 @@ export class Hub {
       `${learned}/${spells.length} magias. Um ramo por vez: o tronco desce no meio e os galhos saem para os lados. ` +
       "Toque num nó para ver e comprar; cada um pede o nó de cima (a diagonal pontilhada é um segundo pré-requisito). " +
       "Magia comprada sobe de nível com o uso nas hunts, devagar; os nós de baixo pedem a magia de cima no nível 1. " +
+      "Cada nível de uma magia vizinha (ligada por galho) dá força a esta (sinergia), e o Tomo 📕📗📘 fortalece o ramo todo. " +
+      `Só as magias ativas (✔, até ${ACTIVE_SPELLS_PER_SLOT} por slot) aparecem na escolha da hunt: ative na ficha da magia. ` +
       "Magias viram opção quando o slot abre na hunt (nível 3 e 6). Ramos com ✦ terminam em duas especializações, " +
       "e a escolha é permanente."));
 
@@ -454,12 +464,70 @@ export class Hub {
     orb.append(def.kind === "trait" ? el("span", "gnode-icon", def.icon) : def.icon);
     if (spell) orb.append(el("b", "gnode-slot", String(spell.slot + 1)));
     if (locked) orb.append(el("b", "gnode-lock", "🔒"));
+    // Ativa: vai para a escolha do slot na hunt (até 3 por slot).
+    if (spell && rank > 0 && this.isActive(def)) {
+      node.classList.add("active");
+      orb.append(el("b", "gnode-active", "✔"));
+    }
     const pips = el("span", "gnode-pips");
     for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
     // O losango do Traço leva o nome da especialização (Criomante, Arcanista...); o do Traço fica na ficha.
     node.append(orb, pips, el("span", "gnode-name", def.traitId ? TRAITS[def.traitId].spec : def.name));
     node.onclick = () => this.openTalentSheet(def);
     return node;
+  }
+
+  /** A magia está entre as que vão para a escolha do slot na hunt (ativas no Grimório, até 3 por slot)? */
+  private isActive(def: TalentDef) {
+    const spell = SPELLS[def.spellId!];
+    const { talents, spellXp, activeSpells } = this.profile;
+    return activeSlotSpells(def.classId, spell.slot, talents, spellXp, activeSpells).includes(spell.id);
+  }
+
+  /**
+   * Na ficha da magia aprendida: se ela vai para a hunt e o botão de ativar ou desativar. Até 3 magias no slot, todas
+   * ficam ativas sozinhas e o botão não aparece.
+   */
+  private activeToggle(def: TalentDef): HTMLElement[] {
+    const spell = SPELLS[def.spellId!];
+    const { talents, spellXp, activeSpells } = this.profile;
+    const slotLabel = `slot ${spell.slot + 1}`;
+    const known = knownSpells(def.classId, talents).filter((id) => SPELLS[id].slot === spell.slot);
+    if (known.length <= ACTIVE_SPELLS_PER_SLOT) {
+      return [el("p", "node-state grim-active-note",
+        `✔ Ativa na hunt: com ${ACTIVE_SPELLS_PER_SLOT} magias ou menos no ${slotLabel}, todas aparecem na escolha.`)];
+    }
+    const active = activeSlotSpells(def.classId, spell.slot, talents, spellXp, activeSpells);
+    const on = active.includes(spell.id);
+    const note = el("p", "node-state grim-active-note",
+      `${on ? "✔ Ativa" : "Fora"} da hunt · ${active.length}/${ACTIVE_SPELLS_PER_SLOT} ativas no ${slotLabel} ` +
+      `(você tem ${known.length}; só as ativas aparecem na escolha)`);
+    const button = el("button", on ? "" : "primary", on ? "Desativar na hunt" : "Ativar na hunt");
+    button.onclick = () => {
+      const result = toggleActiveSpell(def.classId, spell.id, talents, spellXp, activeSpells);
+      if ("error" in result) return this.toast(result.error, true);
+      void this.run(async () => {
+        await setActiveSpells(result.chosen);
+        this.profile.activeSpells = result.chosen;
+        this.toast(on ? `${def.name} fora da hunt` : `${def.name} ativa na hunt`);
+      }).then(() => this.openTalentSheet(def));
+    };
+    return [note, button];
+  }
+
+  /** Na ficha da magia: de quem vem a sinergia (as vizinhas na árvore, com o nível de cada) e a força extra de hoje. */
+  private synergyNote(def: TalentDef, synergy: number, tome: number) {
+    const levels = spellRanks(def.classId, this.profile.talents, this.profile.spellXp);
+    const names = spellNeighbors(def.classId, def.spellId!).map((id) => {
+      const level = levels[id];
+      return `${SPELLS[id].name} (${level === undefined ? "não aprendida" : `nível ${level}`})`;
+    });
+    const pct = (v: number) => `+${Math.round(v * 100)}%`;
+    const parts = [synergy > 0 ? `${pct(synergy)} de sinergia` : "", tome > 0 ? `${pct(tome)} do Tomo` : ""].filter(Boolean);
+    const note = el("p", "muted grim-synergy");
+    note.textContent = `Sinergia: ${pct(SYNERGY_PER_LEVEL)} de força por nível de ${names.join(", ") || "nenhuma vizinha"}. ` +
+      (parts.length > 0 ? `Hoje: ${parts.join(" e ")}.` : "Hoje: nenhuma força extra.");
+    return note;
   }
 
   /** Detalhes de um nó: o que faz no nível atual e no próximo, o pré-requisito e a compra. */
@@ -472,6 +540,10 @@ export class Hub {
     // Magia comprada: o nível vem do XP de uso nas hunts.
     const spellXp = spell && rank > 0 ? spellXpOf(def, this.profile.spellXp) : 0;
     const progress = spellLevelProgress(spellXp);
+    // Sinergias e Tomo: os números dos níveis já vêm com a força extra que a conta tem hoje.
+    const bonus = spell
+      ? spellBonus(def.classId, spell.id, ranks, spellRanks(def.classId, ranks, this.profile.spellXp))
+      : { synergy: 0, tome: 0, total: 0 };
     const branch = TREE_BRANCHES[def.classId][def.col];
     const trait = def.traitId ? TRAITS[def.traitId] : null;
     // Lado de uma especialização: o nome dela aparece na ficha (do Traço e das magias do lado).
@@ -485,7 +557,7 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
@@ -501,13 +573,14 @@ export class Hub {
       sheet.append(el("p", "", spell.description));
       if (progress.level < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
       if (rank > 0) sheet.append(this.spellXpBar(progress));
+      sheet.append(this.synergyNote(def, bonus.synergy, bonus.tome));
     }
 
     const levels = el("div", "grim-levels");
     const level = (n: number, current: boolean) => {
       const box = el("div", `grim-level${current ? " current" : ""}`);
       box.append(el("strong", "", `Nível ${n}${current ? " (atual)" : ""}`));
-      const lines = spell ? spellFacts(spell, n) : [auraText(def, n)];
+      const lines = spell ? spellFacts(spell, n, bonus.total) : [auraText(def, n)];
       const list = el("ul");
       for (const line of lines) list.append(el("li", "", line));
       box.append(list);
@@ -527,6 +600,7 @@ export class Hub {
 
     const actions = el("div", "actions");
     if (spell && rank > 0) {
+      actions.append(...this.activeToggle(def));
       actions.append(el("p", "node-state", progress.level >= SPELL_MAX_LEVEL ? "Nível máximo" : "Use nas hunts para subir de nível"));
     } else if (maxed) {
       actions.append(el("p", "node-state", trait ? `Você é ${trait.spec}` : "Nível máximo"));

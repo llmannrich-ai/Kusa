@@ -1043,10 +1043,13 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   bramble_burst: { text: "Os espinhos brotam em raio 3.", changes: { radius: 3 } },
 };
 
-/** A magia com os números do nível (ganho com o uso) e, no último, a Maestria (mana e recarga não mudam). */
-export function spellAtRank(base: SpellDef, rank: number): SpellDef {
+/**
+ * A magia com os números do nível (ganho com o uso) e, no último, a Maestria (mana e recarga não mudam).
+ * `bonus` é a força extra das sinergias e do Tomo (`spellBonus` em talents.ts), em fração: multiplica a força do nível.
+ */
+export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
   const def = rank >= MASTERY_RANK ? { ...base, ...MASTERIES[base.id].changes } : base;
-  const k = rankPower(rank);
+  const k = rankPower(rank) * (1 + bonus);
   const t = rankDuration(rank);
   const ms = (v?: number) => (v === undefined ? undefined : Math.round(v * t));
   return {
@@ -1087,8 +1090,8 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
 const sec = (ms: number) => `${num(ms / 1000)} s`;
 
 /** Efeitos da magia num nível, em linhas curtas para o menu e a escolha na hunt. */
-export function spellFacts(def: SpellDef, rank = 0): string[] {
-  const s = spellAtRank(def, rank);
+export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
+  const s = spellAtRank(def, rank, bonus);
   const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque (${s.range} tiles)`
     : s.radius > 0 && !s.field ? ` em raio ${s.radius}` : "";
   const facts: string[] = [];
@@ -1166,7 +1169,7 @@ export function spellFacts(def: SpellDef, rank = 0): string[] {
   if (s.taunt) facts.push(`Provoca monstros a até ${s.radius} tiles`);
   if (s.summon) {
     const sum = SUMMONS[s.summon.kind];
-    const power = rankPower(rank);
+    const power = rankPower(rank) * (1 + bonus);
     const what = s.summon.count > 1 ? `${s.summon.count}× ${sum.name}` : sum.name;
     facts.push(`Invoca ${what} por ${sec(s.summon.durationMs)}`);
     facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
@@ -1182,13 +1185,13 @@ export const STARTER_SPELLS: readonly SpellId[] = [
 ];
 
 /**
- * Magias que a classe pode pôr num slot: as iniciais mais as compradas no Grimório (`known`) e as
- * liberadas pelas runas equipadas (`fromRunes`, de qualquer classe; ver `runeSpells`).
- * Aparecem como opções quando o slot libera na hunt.
+ * Magias que a classe pode pôr num slot: as que o herói leva para a hunt (`known`: as ativas do Grimório, até 3 por
+ * slot, ver `activeSpells` em talents.ts) e as liberadas pelas runas equipadas (`fromRunes`, de qualquer classe, além
+ * das 3 ativas; ver `runeSpells`). Aparecem como opções quando o slot libera na hunt.
  */
-export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly string[] = [], fromRunes: readonly string[] = []): SpellDef[] {
+export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly string[], fromRunes: readonly string[] = []): SpellDef[] {
   return Object.values(SPELLS).filter((s) => s.slot === slot && (
-    (s.classId === classId && (STARTER_SPELLS.includes(s.id) || known.includes(s.id))) || fromRunes.includes(s.id)));
+    (s.classId === classId && known.includes(s.id)) || fromRunes.includes(s.id)));
 }
 
 /**

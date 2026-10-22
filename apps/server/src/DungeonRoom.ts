@@ -103,6 +103,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       classId: options.classId,
       talents: auth.account?.talents ?? {},
       spellXp: auth.account?.spellXp ?? {},
+      activeSpells: auth.account?.activeSpells ?? [],
     });
     this.updateListing();
   }

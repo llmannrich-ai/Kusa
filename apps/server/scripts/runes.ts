@@ -36,7 +36,7 @@ function rules() {
   // Repetida não conta; só as 3 primeiras diferentes valem (a da Vida fica de fora).
   if (Math.abs(bonus.damage - (0.2 + 0.15)) > 1e-9) throw new Error(`dano ${bonus.damage}`);
   if (bonus.armor !== 4 || Math.abs(bonus.speed - 0.08) > 1e-9 || bonus.hp !== 0) throw new Error(`bônus ${JSON.stringify(bonus)}`);
-  const choices = spellChoices("knight", 1, [], ["meteor"]).map((s) => s.id);
+  const choices = spellChoices("knight", 1, ["war_cry"], ["meteor"]).map((s) => s.id);
   if (!choices.includes("meteor") || !choices.includes("war_cry")) throw new Error(`escolhas ${choices}`);
   if (spellChoices("knight", 0, [], ["meteor"]).some((s) => s.id === "meteor")) throw new Error("o Meteoro é do slot 2");
   console.log(`regras ok (magia em ${Math.round(spellShare * 100)}% dos drops)`);

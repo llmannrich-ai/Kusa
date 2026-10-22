@@ -34,8 +34,10 @@ export class Player extends Schema {
   @type("string") spell2 = "";
   /** Magias que o jogador pode escolher quando um slot libera: as iniciais e as compradas no Grimório. */
   @type(["string"]) knownSpells = new ArraySchema<string>();
-  /** Nível de cada magia conhecida no Grimório (1 a 3). */
+  /** Nível de uso de cada magia conhecida (0 a 5). */
   @type({ map: "number" }) spellRanks = new MapSchema<number>();
+  /** Força extra de cada magia conhecida (sinergias e Tomo, em fração; ausente = 0). Ver `spellBonus` em talents.ts. */
+  @type({ map: "number" }) spellBonus = new MapSchema<number>();
   /** Melhorias da hunt já escolhidas (id de `PERKS` → quantas vezes). */
   @type({ map: "number" }) perks = new MapSchema<number>();
   /** Melhorias oferecidas agora, para escolher uma (vazio = nenhuma escolha pendente). */
