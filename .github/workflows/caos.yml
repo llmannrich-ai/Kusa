@@ -1,0 +1,48 @@
+# Job de caos: todo dia, os testes da arena rodam com mapas e seeds sorteados (`apps/server/scripts/caos.ts`), para
+# achar por acaso o bug que o `npm test` (sempre a mesma seed) não pega. Não roda em PR e não bloqueia merge.
+# Se falhar, abre uma issue com o rótulo "caos" (ou comenta na que estiver aberta) com o comando que reproduz a falha.
+name: Caos
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # 03:17 em Brasília
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: Seeds por mapa e suíte
+        default: "25"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: caos
+  cancel-in-progress: false
+
+jobs:
+  caos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:caos -- ${{ inputs.seeds || '25' }}
+      - name: Avisar numa issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create caos --color b60205 --description "Falha achada pelo job de caos" --force
+          body="O job de caos falhou em ${RUN_URL} (commit ${GITHUB_SHA::7}). O resumo da execução tem cada falha e o comando que a reproduz com a mesma seed."
+          open=$(gh issue list --label caos --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "$body"
+          else
+            gh issue create --label caos --title "Caos: teste da arena falhou com mapa e seed sorteados" --body "$body"
+          fi
