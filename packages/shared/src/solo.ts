@@ -13,6 +13,11 @@ export const SOLO_LIMITS = {
   fullLootSeconds: { crypt: 90, swamp: 180 } satisfies Record<MapId, number>,
   /** Folga além da duração do mapa para o resultado chegar ao banco; depois disso vale como soterrado. */
   graceSeconds: 60,
+  /**
+   * Resultado que chega atrasado (a rede caiu e o aparelho reenviou) vale por até estas horas, com o tempo de
+   * hunt medido no aparelho em vez do atraso.
+   */
+  lateResultHours: 24,
   /** Itens novos (que não entraram com o jogador) no máximo por hunt: equipamento, runas e a bag cheia. */
   maxNewItems: 15,
   /** Valor máximo (gold + preço de venda dos itens novos) que o solo rende em 24 horas. */
