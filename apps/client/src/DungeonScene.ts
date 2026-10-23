@@ -4,6 +4,7 @@ import {
   ITEMS,
   MONSTERS,
   MSG,
+  MOVE_RESEND_MS,
   POTIONS,
   RUNES,
   DOT_KINDS,
@@ -73,6 +74,16 @@ import {
 
 /** Campo de visão mínimo com o celular na vertical: 9 tiles de largura e pelo menos 13 de altura. */
 const VIEW_TILES = { w: 9, h: 13 };
+/** Ritmo de quem ainda não anunciou o seu (ms por tile). */
+const DEFAULT_STEP_MS = 250;
+/** Folga (ms) que a fila de passos junta ao começar a andar, contra o atraso irregular dos próximos. */
+const GLIDE_BUFFER_MS = 60;
+/** Duração de cada passo quando a fila acumulou (lote atrasado chegou de uma vez). */
+const GLIDE_CATCH_UP = 0.75;
+/** Duração (ms) de um deslocamento de mais de um tile de uma vez (investida, teleporte curto, empurrão). */
+const DASH_MS = 150;
+/** Salto maior que isso (tiles) não desliza: aparece no destino. */
+const SNAP_TILES = 4;
 /** Quanto o jogador fica acima do centro da tela, em fração da altura (a parte de baixo é dos polegares). */
 const FOLLOW_LIFT = 0.12;
 /** Até onde a troca de alvo (Tab) procura monstros (tiles). */
@@ -136,8 +147,20 @@ interface Unit {
   heroKey?: string;
   facesLeft: boolean;
   dir: HeroDir;
-  lastStepAt: number;
   walkUntil: number;
+  /** Passos que chegaram do servidor e esperam a vez de serem desenhados, com a hora em que chegaram. */
+  steps: { x: number; y: number; at: number; dash: boolean }[];
+  /** Passo sendo desenhado agora (posição de saída, destino, início e duração). */
+  leg: { fromX: number; fromY: number; x: number; y: number; start: number; ms: number } | null;
+  /** Fim do último passo desenhado: o próximo emenda nele, sem parada. */
+  legEnd: number;
+  /** Destino (px) do último passo recebido. */
+  goal: { x: number; y: number };
+  /** Ritmo (ms por tile em linha reta): o que o servidor anuncia, ajustado ao intervalo medido entre os passos. */
+  stepMs: number;
+  serverStepMs: number;
+  lastStepAt: number;
+  lastStepDiagonal: boolean;
   /** Avanço do golpe (px), somado à posição do sprite. */
   lunge: Lunge;
   /** Se sangra ao apanhar (esqueleto não). */
@@ -201,6 +224,7 @@ export class DungeonScene extends Phaser.Scene {
   /** Monstro que este jogador travou como alvo (o alvo automático não conta). */
   private locked: string | null = null;
   private nextSendAt = 0;
+  private sentMove: { dx: number; dy: number } = { dx: 0, dy: 0 };
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
   private textResolution = 1;
 
@@ -352,11 +376,16 @@ export class DungeonScene extends Phaser.Scene {
 
   update(time: number) {
     const { dx, dy } = this.move.vector();
-    // O servidor decide a velocidade real; o cliente só reenvia a intenção enquanto o comando está ativo.
-    if ((dx || dy) && time >= this.nextSendAt) {
-      this.room.send(MSG.move, { dx, dy });
-      this.nextSendAt = time + 60;
+    // O servidor anda sozinho na direção segurada e decide a velocidade real: o cliente avisa quando a direção muda
+    // (inclusive ao soltar) e a reenvia de tempos em tempos para o servidor saber que o comando continua ativo.
+    if (dx !== this.sentMove.dx || dy !== this.sentMove.dy || ((dx || dy) && time >= this.nextSendAt)) {
+      this.room.send(MSG.move, { dx, dy, hold: true });
+      this.sentMove = { dx, dy };
+      this.nextSendAt = time + MOVE_RESEND_MS;
     }
+    this.avatars.forEach((unit) => this.glide(unit, time));
+    this.monsters.forEach((unit) => this.glide(unit, time));
+    this.summons.forEach((unit) => this.glide(unit, time));
     this.avatars.forEach((unit) => this.animateUnit(unit, time));
     this.monsters.forEach((unit) => this.animateUnit(unit, time));
     this.summons.forEach((unit) => this.animateUnit(unit, time));
@@ -982,7 +1011,7 @@ export class DungeonScene extends Phaser.Scene {
     this.setStatus(unit, "seed", alive && player.seeded, () => this.seedAt(unit.barY - 12));
     this.setStatus(unit, "reborn", alive && player.reborn, () => this.buffAura(0xf7d774));
     this.syncBarrier(unit, player.status === "playing" ? player.barrier : 0, player.maxBarrier);
-    this.moveTo(unit, player.x, player.y);
+    this.moveTo(unit, player.x, player.y, player.stepMs);
   }
 
   private addMonster(id: string, monster: MonsterView) {
@@ -1040,7 +1069,7 @@ export class DungeonScene extends Phaser.Scene {
     for (const kind of DOT_KINDS) this.setStatus(unit, `dot:${kind}`, monster.dot === kind, () => this.dotAt(kind));
     this.syncHidden(unit, monster.kind as MonsterKind, monster.hidden);
     this.syncChampion(unit, monster.kind as MonsterKind, monster.champion);
-    this.moveTo(unit, monster.x, monster.y);
+    this.moveTo(unit, monster.x, monster.y, monster.stepMs);
   }
 
   /**
@@ -1080,7 +1109,7 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.summons.get(id);
     if (!unit) return;
     this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
-    this.moveTo(unit, summon.x, summon.y);
+    this.moveTo(unit, summon.x, summon.y, summon.stepMs);
   }
 
   /** Sprite com os pés na base do tile, sombra no chão e barra/nome numa camada separada por cima de tudo. */
@@ -1094,7 +1123,8 @@ export class DungeonScene extends Phaser.Scene {
     const overlay = this.add.container(x, y, [bar]).setDepth(DEPTH.ui);
     return {
       body, sprite, overlay, bar, barWidth, barY, facesLeft,
-      dir: "down", lastStepAt: 0, walkUntil: 0, lunge: { x: 0, y: 0 }, bleeds: true, dead: false, statuses: new Map(),
+      dir: "down", walkUntil: 0, steps: [], leg: null, legEnd: 0, goal: { x, y }, stepMs: DEFAULT_STEP_MS, serverStepMs: 0,
+      lastStepAt: 0, lastStepDiagonal: false, lunge: { x: 0, y: 0 }, bleeds: true, dead: false, statuses: new Map(),
     };
   }
 
@@ -1118,23 +1148,66 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /**
-   * Anda até o tile novo. A duração acompanha o ritmo dos passos que chegam do servidor,
-   * para a caminhada sair contínua (sem "pula e para") em qualquer velocidade.
+   * Passo novo que chegou do servidor: entra na fila para ser desenhado no ritmo da unidade.
+   * Os passos chegam com atraso irregular (tick do servidor, lote de estado, rede); desenhar cada um na hora em
+   * que chega dava "trava e corre". A fila toca os passos com duração constante, emendados um no outro.
    */
-  private moveTo(unit: Unit, tileX: number, tileY: number) {
+  private moveTo(unit: Unit, tileX: number, tileY: number, stepMs: number) {
+    if (stepMs > 0 && stepMs !== unit.serverStepMs) unit.serverStepMs = unit.stepMs = stepMs;
     const x = this.toPx(tileX);
     const y = this.toPx(tileY);
-    const dx = x - unit.body.x;
-    const dy = y - unit.body.y;
+    const dx = x - unit.goal.x;
+    const dy = y - unit.goal.y;
     if (dx === 0 && dy === 0) return;
+    unit.goal = { x, y };
     const now = this.time.now;
-    const sinceLast = now - unit.lastStepAt;
+    // Salto (teleporte, empurrão longo): aparece direto no destino.
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > SNAP_TILES * TILE_SIZE) {
+      unit.steps.length = 0;
+      unit.leg = null;
+      unit.legEnd = now;
+      unit.body.setPosition(x, y);
+      return;
+    }
+    // Mais de um tile de uma vez (investida, teleporte curto, empurrão): arrancada rápida, fora do ritmo da caminhada.
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > TILE_SIZE) {
+      unit.steps.push({ x, y, at: now, dash: true });
+      return;
+    }
+    // Ritmo medido: o intervalo desde o passo anterior (andando sem parar) puxa o ritmo para o real.
+    // Monstros só andam no tick do servidor e ficam um pouco mais lentos que a ficha.
+    const base = unit.serverStepMs || DEFAULT_STEP_MS;
+    const gap = (now - unit.lastStepAt) / (unit.lastStepDiagonal ? Math.SQRT2 : 1);
+    if (gap < base * 2) unit.stepMs += (Phaser.Math.Clamp(gap, base * 0.7, base * 1.5) - unit.stepMs) * 0.3;
     unit.lastStepAt = now;
-    const duration = sinceLast < 1000 ? Phaser.Math.Clamp(sinceLast, 80, 1000) : 150;
-    unit.walkUntil = now + duration + 120;
-    this.face(unit, dx, dy);
-    this.tweens.killTweensOf(unit.body);
-    this.tweens.add({ targets: unit.body, x, y, duration });
+    unit.lastStepDiagonal = dx !== 0 && dy !== 0;
+    unit.steps.push({ x, y, at: now, dash: false });
+  }
+
+  /** Desenha a unidade andando pela fila de passos. */
+  private glide(unit: Unit, now: number) {
+    for (;;) {
+      if (!unit.leg) {
+        const next = unit.steps.shift();
+        if (!next) return;
+        // Emenda no passo anterior; se a fila tinha esvaziado, espera um pouco para juntar folga contra o próximo atraso.
+        const start = Math.max(unit.legEnd, next.at > unit.legEnd && !next.dash ? next.at + GLIDE_BUFFER_MS : next.at);
+        const tiles = Math.hypot(next.x - unit.body.x, next.y - unit.body.y) / TILE_SIZE;
+        // Fila acumulada (lote atrasado de uma vez): anda mais rápido até alcançar.
+        const pace = unit.steps.length >= 2 ? GLIDE_CATCH_UP : 1;
+        const ms = next.dash ? DASH_MS : unit.stepMs * tiles * pace;
+        unit.leg = { fromX: unit.body.x, fromY: unit.body.y, x: next.x, y: next.y, start, ms };
+      }
+      const leg = unit.leg;
+      if (now < leg.start) return;
+      const k = leg.ms > 0 ? Math.min(1, (now - leg.start) / leg.ms) : 1;
+      unit.body.setPosition(leg.fromX + (leg.x - leg.fromX) * k, leg.fromY + (leg.y - leg.fromY) * k);
+      this.face(unit, leg.x - leg.fromX, leg.y - leg.fromY);
+      unit.walkUntil = now + 120;
+      if (k < 1) return;
+      unit.legEnd = leg.start + leg.ms;
+      unit.leg = null;
+    }
   }
 
   /** Diagonais olham para o lado, como no Tibia. */
