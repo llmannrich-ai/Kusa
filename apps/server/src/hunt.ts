@@ -71,7 +71,14 @@ import {
   lineEnd,
   mapIdOf,
   monsterStats,
-  perkBonuses,
+  heroBonuses,
+  isRune,
+  RUNES,
+  RUNE_DROPS,
+  activeRunes,
+  rollRune,
+  runeSpells,
+  spellManaCost,
   rankPower,
   rollItem,
   rollPerkOffer,
@@ -354,6 +361,8 @@ export interface HuntOptions {
   allSpells?: boolean;
   /** Só para testes: multiplica a vida dos monstros (efeitos como veneno e lentidão aparecem antes de eles morrerem). */
   monsterHp?: number;
+  /** Só para testes: todo mundo começa a hunt com estas runas equipadas. */
+  runes?: string[];
   /**
    * Só para testes: os sorteios da hunt (dano, chances, loot, recargas dos monstros). Com uma função de seed fixa
    * (ex.: `createRng(1).next`), a mesma hunt dá sempre o mesmo resultado. Sem isto, `Math.random`.
@@ -368,7 +377,7 @@ export interface HuntOptions {
 
 /** Campos internos que vão no retrato da hunt (o resto se recalcula: mapa, dungeon). */
 const INTERNALS = [
-  "startLevel", "allSpells", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
+  "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
   "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked",
 ] as const;
 
@@ -381,6 +390,7 @@ export class Hunt {
   private map: MapDef;
   private startLevel: number;
   private allSpells: boolean;
+  private testRunes: string[];
   private monsterHp: number;
   /** Sorteios da hunt (`HuntOptions.random`); não vai no retrato: quem continua a hunt usa o seu. */
   private random: () => number;
@@ -411,6 +421,7 @@ export class Hunt {
     this.map = MAPS[mapIdOf(options.mapId)];
     this.startLevel = Math.min(MAX_LEVEL, Math.max(1, Math.floor(options.startLevel ?? 1) || 1));
     this.allSpells = options.allSpells ?? false;
+    this.testRunes = options.runes ?? [];
     this.monsterHp = Math.max(1, options.monsterHp ?? 1);
     this.random = options.random ?? Math.random;
     this.state.mapId = this.map.id;
@@ -494,7 +505,7 @@ export class Hunt {
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
-      aura: bonus, perks: {}, perkBonus: perkBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(),
+      aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(),
     });
     const joined = this.seats.get(sessionId)!;
     joined.stats.specs = joined.traits.map((t) => t.id);
@@ -668,6 +679,9 @@ export class Hunt {
     this.state.phase = "running";
     this.state.timeLeft = this.map.durationSeconds;
     this.state.players.forEach((p, id) => this.trackDepth(id, p));
+    if (this.testRunes.length > 0) {
+      this.state.players.forEach((p, id) => this.equipRunes(p, this.seats.get(id)!, this.testRunes));
+    }
     return true;
   }
 
@@ -677,6 +691,9 @@ export class Hunt {
     const seat = this.seats.get(sessionId);
     if (!p || !seat || p.status !== "playing") return false;
     seat.stats.items.loadout = items;
+    // As runas equipadas no menu entram com o herói; o resto é equipamento.
+    this.equipRunes(p, seat, items.filter(isRune));
+    items = items.filter((id) => !isRune(id));
     const classId = p.classId as ClassId;
     const best = bestPerSlot(items, classId);
     const rest = [...items];
@@ -761,7 +778,7 @@ export class Hunt {
     if (!seat) return;
     seat.attacking = msg?.on === true;
     // O toque vale por uma recarga inteira: se o golpe anterior ainda recarrega, sai assim que puder.
-    if (seat.attacking) seat.attackUntil = this.host.now() + attackCooldownMs(seat.perks);
+    if (seat.attacking) seat.attackUntil = this.host.now() + attackCooldownMs(seat.perkBonus);
   }
 
   tick(dt: number) {
@@ -849,7 +866,7 @@ export class Hunt {
     }
 
     // Arma e botas mudam o ritmo (machado e besta são mais lentos; varinha e itens mágicos, mais rápidos).
-    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perks) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste));
+    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste));
     seat.attackUntil = 0;
     if (form?.maul) return this.maul(sessionId, p, m);
     if (form && form.pounce > 0) return this.pounce(sessionId, p, seat, m, form, now);
@@ -970,7 +987,7 @@ export class Hunt {
     const slot = msg?.slot;
     if (slot !== 0 && slot !== 1) return;
     if (p.level < SPELL_SLOT_LEVELS[slot] || spellIn(p, slot)) return;
-    const spell = spellChoices(p.classId as ClassId, slot, [...p.knownSpells]).find((s) => s.id === msg.spellId);
+    const spell = spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).find((s) => s.id === msg.spellId);
     if (!spell) return;
     if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
     const seat = this.seats.get(sessionId);
@@ -998,7 +1015,9 @@ export class Hunt {
     // Atordoado ou engolido: não conjura. Cego: magia com alvo só alcança perto.
     if (this.held(seat, "stun", "engulf")) return;
     if (this.held(seat, "blind") && spell.aim === "target") spell = { ...spell, range: Math.min(spell.range, BLIND_RANGE) };
-    if (p.mana < spell.manaCost) {
+    // Magia de runa de outra classe custa no máximo uma parte da mana máxima.
+    const manaCost = spellManaCost(spell, p.classId, p.maxMana);
+    if (p.mana < manaCost) {
       seat.stats.castFails.noMana++;
       this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Sem mana", color: 0x5dade2 } satisfies NoticeMessage);
       return;
@@ -1115,14 +1134,14 @@ export class Hunt {
     // Passo Leve (Traço): toda magia dá um pouco de velocidade.
     for (const t of seat.traits) if (t.castHaste) seat.hasteUntil = now + t.castHaste.ms;
 
-    p.mana -= spell.manaCost;
+    p.mana -= manaCost;
     bump(seat.stats.casts, spell.id);
     // Nível pelo uso: só conta em combate (algum monstro à vista por perto), para não render XP em sala vazia.
     if (this.nearestMonsterInRange(p, SPELL_XP_COMBAT_TILES)) bump(seat.stats.spellXp, base.id, castXp(base));
     // Céu Carregado (Traço): a cada tantas magias, um raio cai no monstro mais perto.
     const sky = seat.traits.find((t) => t.chargedSky)?.chargedSky;
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
-    seat.spellReadyAt[slot] = now + spellCooldownMs(spell.cooldownMs, seat.perks);
+    seat.spellReadyAt[slot] = now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
     const ms = flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty);
     this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms } satisfies SpellMessage);
     // Disparo Certeiro: mais forte quanto mais longe estava o alvo na hora do tiro.
@@ -1885,6 +1904,11 @@ export class Hunt {
     for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0, this.partyClasses()), at.x, at.y);
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) this.dropItem(rollPotion(this.random), at.x, at.y);
+    // Runas só caem dos bosses.
+    for (let i = 0; i < RUNE_DROPS[brain.def.rank]; i++) {
+      const rune = RUNES[this.dropItem(rollRune(this.random), at.x, at.y).itemId];
+      this.notice(at.x, at.y - 2, `${rune.name}!`, rune.color);
+    }
 
     // Mímico: guarda o loot do baú que fingia ser (vai para quem deu o último golpe).
     const mimicDepth = this.mimicDepth.get(m.id);
@@ -1957,7 +1981,7 @@ export class Hunt {
 
     seat.perks[perk] = (seat.perks[perk] ?? 0) + 1;
     p.perks.set(perk, seat.perks[perk]!);
-    seat.perkBonus = perkBonuses(seat.perks);
+    seat.perkBonus = heroBonuses(seat.perks, [...p.runes]);
     this.applyBonuses(p, seat);
     seat.stats.perksChosen.push({ id: perk, offer: [...p.perkOffer], level: p.perkLevel, at: this.seconds() });
     this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f, PERK_NOTICE_MS);
@@ -1982,6 +2006,16 @@ export class Hunt {
     p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
     p.maxHp = maxHp;
     p.maxMana = stats.maxMana;
+  }
+
+  /** As runas equipadas no menu entram com o herói e valem desde já (vida, dano, magias extras na escolha do slot). */
+  private equipRunes(p: Player, seat: Seat, ids: readonly string[]) {
+    const runes = activeRunes([...p.runes, ...ids]);
+    if (runes.length === p.runes.length) return;
+    p.runes.clear();
+    p.runes.push(...runes);
+    seat.perkBonus = heroBonuses(seat.perks, runes);
+    this.applyBonuses(p, seat);
   }
 
   /** O equipamento vestido mudou (pegou, trocou, guardou ou largou): recalcula os atributos dos itens. */
@@ -2370,17 +2404,24 @@ export class Hunt {
           this.notice(p.x, p.y - 1, POTIONS[ground.itemId].name, POTIONS[ground.itemId].color);
           continue;
         }
+        const seat = this.seats.get(sessionId);
+        if (isRune(ground.itemId)) {
+          // Runa vai sempre para a bag (só se equipa no menu, fora da dungeon).
+          if (p.bag.length >= BAG_SIZE) {
+            this.bagFull(p, seat);
+            continue;
+          }
+          p.bag.push(ground.itemId);
+          seat?.stats.items.picked.push(ground.itemId);
+          this.removeGroundItem(ground.id);
+          this.notice(p.x, p.y - 1, `${RUNES[ground.itemId].name} 🎒${p.bag.length}/${BAG_SIZE}`, RUNES[ground.itemId].color);
+          continue;
+        }
         const def = ITEMS[ground.itemId];
         if (!def) continue;
-        const seat = this.seats.get(sessionId);
         const action = pickupAction(def.id, p[def.slot], p.bag.length, p.classId as ClassId);
         if (action === "full") {
-          const now = this.host.now();
-          if (seat && now >= seat.bagFullNoticeUntil) {
-            seat.bagFullNoticeUntil = now + BAG_FULL_NOTICE_MS;
-            seat.stats.items.bagFull++;
-            this.notice(p.x, p.y - 1, "Bag cheia", 0xe74c3c);
-          }
+          this.bagFull(p, seat);
           continue;
         }
         if (action === "bag") p.bag.push(def.id);
@@ -2394,6 +2435,15 @@ export class Hunt {
         this.notice(p.x, p.y - 1, action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}` : def.name, itemColor(def.id));
       }
     });
+  }
+
+  /** Aviso de bag cheia, no máximo um a cada `BAG_FULL_NOTICE_MS`. */
+  private bagFull(p: Player, seat: Seat | undefined) {
+    const now = this.host.now();
+    if (!seat || now < seat.bagFullNoticeUntil) return;
+    seat.bagFullNoticeUntil = now + BAG_FULL_NOTICE_MS;
+    seat.stats.items.bagFull++;
+    this.notice(p.x, p.y - 1, "Bag cheia", 0xe74c3c);
   }
 
   private expireItems(now: number) {
@@ -2458,8 +2508,8 @@ export class Hunt {
     }
     this.state.summons.forEach((s) => { if (s.owner === sessionId) this.removeSummon(s.id); });
 
-    // O equipamento que sobrou no corpo volta equipado para a conta; a bag de quem sai vivo vai para o cofre.
-    const items = equipment(player).filter(Boolean);
+    // O equipamento que sobrou no corpo e as runas voltam equipados para a conta; a bag de quem sai vivo vai para o cofre.
+    const items = [...equipment(player).filter(Boolean), ...player.runes];
     const spells = seat ? this.spellProgress(player.classId as ClassId, seat, !survived) : [];
     const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost, lostBag, spells };
     // O host avisa o jogador e grava o resultado na conta e na telemetria.
@@ -2481,7 +2531,8 @@ export class Hunt {
    * em `record_spell_xp` a partir do XP gravado; aqui é para mostrar no fim da hunt.
    */
   private spellProgress(classId: ClassId, seat: Seat, died: boolean): SpellProgress[] {
-    return Object.values(seat.stats.spellsChosen).map(({ id }) => {
+    // Magia de runa de outra classe não ganha XP: ela não está no Grimório desta classe.
+    return Object.values(seat.stats.spellsChosen).filter(({ id }) => SPELLS[id as SpellId]?.classId === classId).map(({ id }) => {
       const before = spellXpOf(TALENTS[spellTalentId(classId, id as SpellId)], seat.spellXp);
       const gained = Math.min(seat.stats.spellXp[id] ?? 0, SPELL_XP_HUNT_CAP);
       const xp = spellXpAfterRun(before, gained, died);

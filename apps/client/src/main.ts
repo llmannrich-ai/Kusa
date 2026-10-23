@@ -1,7 +1,8 @@
 import * as Phaser from "phaser";
 import { Callbacks, CloseCode } from "@colyseus/sdk";
 import {
-  ITEMS,
+  lootColor,
+  lootName,
   MAPS,
   MAX_LEVEL,
   MSG,
@@ -471,10 +472,10 @@ function showResult(msg: RunEndedMessage) {
     : `Todo o loot ficou para trás. Nível alcançado: ${msg.level}.`;
   // Só com conta o equipamento e a bag voltam (convidado não salva nada).
   if (account && msg.items.length > 0) {
-    $("result-detail").textContent += ` Equipamento guardado: ${msg.items.map((id) => ITEMS[id]?.name ?? id).join(", ")}.`;
+    $("result-detail").textContent += ` Equipamento guardado: ${msg.items.map(lootName).join(", ")}.`;
   }
   if (account && msg.bag.length > 0) {
-    $("result-detail").textContent += ` Bag para o cofre: ${msg.bag.map((id) => ITEMS[id]?.name ?? id).join(", ")}`
+    $("result-detail").textContent += ` Bag para o cofre: ${msg.bag.map(lootName).join(", ")}`
       + ` (com o cofre cheio, o resto fica na bag).`;
   }
   if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
@@ -496,8 +497,9 @@ function showLost(msg: RunEndedMessage) {
     icon.src = itemIcon(id).toDataURL();
     icon.alt = "";
     const name = document.createElement("span");
-    name.textContent = ITEMS[id]?.name ?? id;
-    if (ITEMS[id]) name.style.color = `#${itemColor(id).toString(16).padStart(6, "0")}`;
+    // Runas da bag também se perdem (as equipadas não).
+    name.textContent = lootName(id);
+    name.style.color = `#${lootColor(id).toString(16).padStart(6, "0")}`;
     const where = document.createElement("small");
     where.textContent = from;
     li.append(icon, name, where);

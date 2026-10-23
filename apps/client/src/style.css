@@ -932,6 +932,9 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .market-row strong { display: block; font-size: 14px; }
 .market-row small { display: block; font-size: 12px; }
 
+/* Runas: 3 slots embaixo do equipamento (menu Itens) e na bag da hunt. */
+.loadout.runes { grid-template-columns: repeat(3, 1fr); }
+.bag-runes { grid-template-columns: repeat(3, minmax(0, 60px)); }
 /* Itens que a classe escolhida não usa: apagados, e o aviso em vermelho. */
 .unusable .item-img { opacity: 0.4; filter: grayscale(0.7); }
 .warn { color: #ff7b6b; }

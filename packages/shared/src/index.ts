@@ -16,4 +16,5 @@ export * from "./traits.ts";
 export * from "./potions.ts";
 export * from "./summons.ts";
 export * from "./perks.ts";
+export * from "./runes.ts";
 export * from "./solo.ts";

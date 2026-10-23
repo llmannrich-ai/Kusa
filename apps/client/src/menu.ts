@@ -8,6 +8,8 @@ import {
   ITEM_SLOTS,
   ITEM_TIERS,
   RARITY_NAMES,
+  RUNES,
+  RUNE_SLOTS,
   SLOT_NAMES,
   SPELLS,
   TREE_BRANCHES,
@@ -30,6 +32,10 @@ import {
   spellRanks,
   spellLevelProgress,
   spellXpOf,
+  lootColor,
+  lootName,
+  lootSellPrice,
+  runeEffect,
   spellFacts,
   statsFor,
   talentBlocker,
@@ -51,6 +57,7 @@ import {
   type ClassId,
   type ItemDef,
   type ItemSlot,
+  type RuneDef,
   type TalentDef,
 } from "@kusa/shared";
 import { heroPoses, type HeroDir } from "./art/heroes.ts";
@@ -104,7 +111,7 @@ function itemImg(itemId: string) {
   if (!iconCache.has(itemId)) iconCache.set(itemId, itemIcon(itemId).toDataURL());
   const img = el("img", "item-img");
   img.src = iconCache.get(itemId)!;
-  img.alt = ITEMS[itemId]?.name ?? "";
+  img.alt = lootName(itemId);
   return img;
 }
 
@@ -674,6 +681,24 @@ export class Hub {
     row.append(panel, hero);
     page.append(el("h3", "", "Para a próxima hunt"), row);
 
+    // Runas: até 3 diferentes, logo embaixo do equipamento.
+    const equippedRunes = this.equippedRunes();
+    const runes = el("div", "loadout runes");
+    for (let i = 0; i < RUNE_SLOTS; i++) {
+      const owned = equippedRunes[i];
+      const cell = el("button", "loadout-slot");
+      if (owned) {
+        cell.append(itemImg(owned.itemId), el("small", "", RUNES[owned.itemId].name));
+        cell.style.borderColor = hex(lootColor(owned.itemId));
+        cell.onclick = () => this.openItemSheet(owned);
+      } else {
+        cell.append(el("span", "slot-empty", "ᚱ"), el("small", "muted", `Runa ${i + 1}`));
+        cell.onclick = () => this.toast("Runas caem dos bosses. Toque numa runa do cofre para equipar.");
+      }
+      runes.append(cell);
+    }
+    page.append(el("h3", "", `Runas (${equippedRunes.length}/${RUNE_SLOTS})`), runes);
+
     const vault = this.vaultItems();
     page.append(el("h3", "", `Cofre (${vault.length}/${VAULT_SIZE})`));
     page.append(el("p", "muted hub-hint", vault.length >= VAULT_SIZE
@@ -711,18 +736,25 @@ export class Hub {
     return this.profile.items.filter((i) => i.location === "bag");
   }
 
+  /** Runas da classe escolhida para a próxima hunt. */
+  private equippedRunes() {
+    return this.wornItems().filter((i) => RUNES[i.itemId]);
+  }
+
   private itemCell(owned: OwnedItem, onclick: () => void) {
-    const def = ITEMS[owned.itemId];
     const cell = el("button", "item-cell");
-    cell.style.borderColor = hex(itemColor(def.id));
-    cell.classList.toggle("unusable", !canUse(def.id, this.classId));
+    cell.style.borderColor = hex(lootColor(owned.itemId));
+    // Runa serve em qualquer classe.
+    cell.classList.toggle("unusable", !!ITEMS[owned.itemId] && !canUse(owned.itemId, this.classId));
     cell.append(itemImg(owned.itemId));
-    cell.setAttribute("aria-label", def.name);
+    cell.setAttribute("aria-label", lootName(owned.itemId));
     cell.onclick = onclick;
     return cell;
   }
 
   private openItemSheet(owned: OwnedItem) {
+    const rune = RUNES[owned.itemId];
+    if (rune) return this.openRuneSheet(owned, rune);
     const def = ITEMS[owned.itemId];
     const sheet = $("sheet");
     sheet.replaceChildren();
@@ -796,6 +828,78 @@ export class Hub {
     $("sheet-backdrop").hidden = false;
   }
 
+  /** Ficha de uma runa: o que ela faz, equipar num dos 3 slots da classe (sem repetir), guardar e vender. */
+  private openRuneSheet(owned: OwnedItem, rune: RuneDef) {
+    const sheet = $("sheet");
+    sheet.replaceChildren();
+    const head = el("div", "sheet-head");
+    const title = el("div");
+    const name = el("strong", "", rune.name);
+    name.style.color = hex(rune.color);
+    title.append(name, el("small", "muted", rune.spell ? "Runa de magia" : "Runa"));
+    head.append(itemImg(owned.itemId), title);
+    sheet.append(head, el("p", "", `${rune.icon} ${runeEffect(rune)}`));
+    sheet.append(el("p", "muted", rune.spell
+      ? "A magia aparece como opção extra quando o slot dela abrir na hunt, para qualquer classe."
+      : "O bônus vale a hunt inteira e soma com as áureas e as melhorias de nível."));
+    // Equipada na classe escolhida ou em outra (cada classe tem os próprios 3 slots).
+    const worn = owned.equipped && owned.classId === this.classId;
+    const wearer = owned.equipped && owned.classId && !worn ? CLASSES[owned.classId].name : null;
+    const where = owned.equipped ? `Equipada no ${wearer ?? CLASSES[this.classId].name}` : owned.location === "bag" ? "Na bag" : "No cofre";
+    sheet.append(el("p", "muted", `${where} · runas equipadas voltam com você mesmo se morrer; na bag, se perdem.`));
+
+    const actions = el("div", "actions");
+    const vaultFull = this.vaultItems().length >= VAULT_SIZE;
+    let main: HTMLButtonElement;
+    if (owned.location === "bag") {
+      main = el("button", "primary", vaultFull ? "Cofre cheio" : "Guardar no cofre");
+      main.disabled = vaultFull;
+      main.onclick = () => this.run(async () => {
+        await storeItem(owned.id);
+        owned.location = "vault";
+        this.toast(`${rune.name} foi para o cofre.`);
+        this.closeSheet();
+      });
+    } else if (worn) {
+      main = el("button", "primary", vaultFull ? "Cofre cheio" : "Tirar a runa");
+      main.disabled = vaultFull;
+      main.onclick = () => this.run(async () => {
+        await equipItem(owned.id, false, this.classId);
+        owned.equipped = false;
+        owned.classId = null;
+        this.closeSheet();
+      });
+    } else {
+      const equipped = this.equippedRunes();
+      const same = equipped.some((i) => i.itemId === owned.itemId);
+      const full = equipped.length >= RUNE_SLOTS;
+      main = el("button", "primary", same ? "Já equipada" : full ? "Slots de runa cheios"
+        : wearer ? `Passar para o ${CLASSES[this.classId].name}` : "Equipar runa");
+      main.disabled = same || full;
+      main.onclick = () => this.run(async () => {
+        const classId = this.classId;
+        await equipItem(owned.id, true, classId);
+        owned.equipped = true;
+        owned.classId = classId;
+        this.toast(`${rune.name} equipada no ${CLASSES[classId].name}.`);
+        this.closeSheet();
+      });
+    }
+    const sell = el("button", "", `Vender por ${gold(rune.sellPrice)}`);
+    sell.onclick = () => this.run(async () => {
+      this.profile.gold = await sellItem(owned.id);
+      this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
+      this.toast(`${rune.name} vendida.`);
+      this.closeSheet();
+    });
+    const close = el("button", "", "Fechar");
+    close.onclick = () => this.closeSheet();
+    actions.append(main, sell, close);
+    sheet.append(actions);
+    $("sheet").hidden = false;
+    $("sheet-backdrop").hidden = false;
+  }
+
   /** Equipamento da classe escolhida para a próxima hunt, como roupa do personagem. */
   private loadout(): Outfit {
     const outfit = { ...NO_OUTFIT };
@@ -858,17 +962,18 @@ export class Hub {
         }
       }
     } else {
-      page.append(el("p", "muted hub-hint", "O mercado compra qualquer item seu: equipado, no cofre ou na bag."));
+      page.append(el("p", "muted hub-hint", "O mercado compra qualquer item ou runa sua: equipado, no cofre ou na bag. Runas não são vendidas aqui: só caem dos bosses."));
       if (this.profile.items.length === 0) list.append(el("p", "muted empty", "Nada para vender."));
       for (const owned of sortItems(this.profile.items)) {
-        const def = ITEMS[owned.itemId];
-        const sell = el("button", "buy", gold(sellPrice(def.id)));
+        const sell = el("button", "buy", gold(lootSellPrice(owned.itemId)));
         sell.onclick = () => this.run(async () => {
           this.profile.gold = await sellItem(owned.id);
           this.profile.items = this.profile.items.filter((i) => i.id !== owned.id);
-          this.toast(`${def.name} vendido.`);
+          this.toast(`${lootName(owned.itemId)} vendido.`);
         });
-        list.append(this.marketRow(def, sell, owned.equipped && owned.classId ? `Equipado no ${CLASSES[owned.classId].name}` : owned.location === "bag" ? "Na bag" : ""));
+        const note = owned.equipped && owned.classId ? `Equipado no ${CLASSES[owned.classId].name}` : owned.location === "bag" ? "Na bag" : "";
+        const rune = RUNES[owned.itemId];
+        list.append(rune ? this.runeRow(rune, sell, note) : this.marketRow(ITEMS[owned.itemId], sell, note));
       }
     }
     page.append(list);
@@ -882,6 +987,16 @@ export class Hub {
     name.style.color = hex(itemColor(def.id));
     text.append(name, el("small", "muted", `${itemLabel(def)} · ${itemEffect(def)}${note ? ` · ${note}` : ""}`));
     row.append(itemImg(def.id), text, action);
+    return row;
+  }
+
+  private runeRow(rune: RuneDef, action: HTMLButtonElement, note = "") {
+    const row = el("div", "market-row");
+    const text = el("div");
+    const name = el("strong", "", rune.name);
+    name.style.color = hex(rune.color);
+    text.append(name, el("small", "muted", `Runa · ${rune.description}${note ? ` · ${note}` : ""}`));
+    row.append(itemImg(rune.id), text, action);
     return row;
   }
 
@@ -931,9 +1046,12 @@ export function statList(def: ItemDef) {
   return list;
 }
 
-/** Melhores primeiro (material e raridade); empatados, na ordem dos slots. */
+/** Runas primeiro (as de magia na frente); depois os itens, melhores primeiro (material e raridade) e, empatados, na ordem dos slots. */
 function sortItems(items: OwnedItem[]) {
+  const runeKey = (id: string) => RUNES[id] ? -RUNES[id].sellPrice * 100 + Object.keys(RUNES).indexOf(id) : 0;
   return [...items].sort((a, b) => {
+    const ra = RUNES[a.itemId], rb = RUNES[b.itemId];
+    if (ra || rb) return ra && rb ? runeKey(a.itemId) - runeKey(b.itemId) : ra ? -1 : 1;
     const x = ITEMS[a.itemId], y = ITEMS[b.itemId];
     return itemScore(y.id) - itemScore(x.id) || ITEM_SLOTS.indexOf(x.slot) - ITEM_SLOTS.indexOf(y.slot);
   });
