@@ -1,6 +1,6 @@
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp";
+export type MapId = "crypt" | "swamp" | "desert";
 
 /** Nível de dificuldade mostrado no menu (estrelas). */
 export type MapDifficulty = 1 | 2;
@@ -31,7 +31,7 @@ export interface MapDef {
   minibosses: [MonsterKind, number][];
   /** Fração das salas laterais em que o baú é um Mímico (ele é o mini-boss da sala e guarda o loot do baú). */
   mimicChance: number;
-  /** Boss final, no centro do mapa, sorteado pelo peso (o primeiro é o principal do mapa). */
+  /** Boss final, no centro do mapa, sorteado pelo peso (o primeiro é o principal do mapa). Vazio: mapa ainda sem monstros. */
   bosses: [MonsterKind, number][];
 }
 
@@ -82,6 +82,14 @@ export const MAPS: Record<MapId, MapDef> = {
     mimicChance: 0,
     bosses: [["hydra", 3], ["blackDragon", 1]],
   },
+  desert: {
+    id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,
+    description: "Em construção: só o cenário, ainda sem monstros. Dunas, oásis e bosques de coqueiros para explorar.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
+  },
 };
 
 /** Encontro de uma profundidade. */
@@ -89,9 +97,9 @@ export function encounterAt(map: MapDef, depth: number): Encounter {
   return map.encounters.find((e) => depth >= e.depth[0] && depth <= e.depth[1]) ?? map.encounters[map.encounters.length - 1];
 }
 
-/** Boss principal do mapa (o de maior peso), para o menu. */
-export function mainBoss(map: MapDef): MonsterKind {
-  return [...map.bosses].sort((a, b) => b[1] - a[1])[0][0];
+/** Boss principal do mapa (o de maior peso), para o menu; nenhum no mapa ainda sem monstros. */
+export function mainBoss(map: MapDef): MonsterKind | undefined {
+  return [...map.bosses].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
 /** Todos os monstros que podem nascer no mapa (encontros, mini-bosses, Mímico, bosses). */

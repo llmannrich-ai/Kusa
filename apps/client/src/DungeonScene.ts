@@ -53,6 +53,7 @@ import { Minimap } from "./minimap.ts";
 import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
+import { DESERT_VOID, drawDesert } from "./desertMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -216,14 +217,15 @@ export class DungeonScene extends Phaser.Scene {
     this.fx = new CombatFx(this);
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
-    const swamp = this.dungeon.mapId === "swamp";
-    this.ambience = (swamp ? drawSwamp : drawCrypt)(this, this.dungeon, DEPTH.floor, DEPTH.ui);
+    const mapId = this.dungeon.mapId;
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert }[mapId];
+    this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    this.cameras.main.setBackgroundColor(swamp ? SWAMP_VOID : COLORS.void).setRoundPixels(true);
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID }[mapId];
+    this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    document.getElementById("game")?.classList.toggle("swamp", swamp);
-    document.getElementById("game")?.classList.toggle("crypt", !swamp);
+    for (const id of ["crypt", "swamp", "desert"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
 

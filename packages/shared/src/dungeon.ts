@@ -2,11 +2,11 @@ import { DEFAULT_MAP, type MapId } from "./maps.ts";
 import { createRng } from "./rng.ts";
 
 export const Tile = {
-  /** Parede da cripta ou mata fechada do pântano: bloqueia passo e visão. */
+  /** Parede da cripta, mata fechada do pântano ou duna e coqueiro do deserto: bloqueia passo e visão. */
   Wall: 0,
   Floor: 1,
   Portal: 2,
-  /** Lagoa do pântano: bloqueia o passo, mas não a visão (flechas e magias passam por cima). */
+  /** Lagoa do pântano ou do oásis: bloqueia o passo, mas não a visão (flechas e magias passam por cima). */
   Water: 3,
   /** Muro ou coluna em ruínas: bloqueia passo e visão. */
   Ruin: 4,
@@ -44,7 +44,9 @@ const SIDE_OFFSETS: readonly (readonly [number, number])[] = [[-14, -14], [-14, 
 
 /** Gera o mapa da hunt a partir da seed (cliente e servidor chegam ao mesmo resultado). */
 export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dungeon {
-  return mapId === "swamp" ? generateSwamp(seed) : generateCrypt(seed);
+  if (mapId === "swamp") return generateSwamp(seed);
+  if (mapId === "desert") return generateDesert(seed);
+  return generateCrypt(seed);
 }
 
 /**
@@ -344,6 +346,196 @@ function buildSwamp(seed: number): Dungeon {
   set(portal.x, portal.y, Tile.Portal);
 
   return { mapId: "swamp", width: size, height: size, tiles, spawn, boss, path, side, meadows, portal };
+}
+
+const DESERT_SIZE = 104;
+/** Zonas do caminho entre a entrada e o centro (ainda sem monstros: guardam a profundidade para os encontros). */
+const DESERT_STEPS = 6;
+/** Lado do descampado do centro, marcado por 4 coqueiros grandes. */
+const DESERT_ARENA = 14;
+
+/**
+ * Mar de Areia: campo aberto de areia cercado por dunas altas. Por cima vão oásis (lagoas rodeadas de
+ * coqueiros), bosques de coqueiros, coqueiros soltos e cristas de duna, sempre deixando passagem, como no
+ * pântano. Coqueiro é um tile de mata (`Tile.Wall`) sem vizinho de mata nos 4 lados; mata encostada em mata
+ * é duna. O cliente usa essa regra para desenhar cada um.
+ */
+function generateDesert(seed: number): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildDesert(seed + attempt);
+    if (attempt >= 20 || connected(d.tiles, d.width, swampGoals(d))) return d;
+  }
+}
+
+function buildDesert(seed: number): Dungeon {
+  const rng = createRng(seed);
+  const size = DESERT_SIZE;
+  const tiles = new Uint8Array(size * size).fill(Tile.Floor);
+  const inside = (x: number, y: number) => x > 0 && y > 0 && x < size - 1 && y < size - 1;
+  const get = (x: number, y: number) => (inside(x, y) ? tiles[y * size + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * size + x] = t; };
+  /** Coqueiros postos de propósito: a limpeza final não os confunde com sobra de duna. */
+  const palms = new Set<number>();
+
+  // Dunas altas na borda, com a espessura ondulando devagar (o vento as empurra para dentro aos poucos).
+  for (let side = 0; side < 4; side++) {
+    let depth = rng.int(3, 5);
+    let goal = depth;
+    for (let i = 0; i < size; i++) {
+      if (i % 6 === 0) goal = rng.int(3, 7);
+      if (rng.next() < 0.5) depth += Math.sign(goal - depth);
+      for (let d = 0; d < depth; d++) {
+        const [x, y] = side === 0 ? [i, d] : side === 1 ? [size - 1 - d, i] : side === 2 ? [i, size - 1 - d] : [d, i];
+        tiles[y * size + x] = Tile.Wall;
+      }
+    }
+  }
+
+  const center = { x: size / 2, y: size / 2 };
+  const boss: Rect = { x: center.x - DESERT_ARENA / 2, y: center.y - DESERT_ARENA / 2, w: DESERT_ARENA, h: DESERT_ARENA };
+
+  // Entrada perto de uma das 4 bordas.
+  const along = rng.int(18, size - 28);
+  const spawnPos = rng.pick([
+    { x: along, y: 9 },
+    { x: size - 19, y: along },
+    { x: along, y: size - 19 },
+    { x: 9, y: along },
+  ]);
+  const spawn: Rect = { ...spawnPos, w: 10, h: 10 };
+  const s = centerOf(spawn);
+  for (let y = spawn.y; y < spawn.y + spawn.h; y++) for (let x = spawn.x; x < spawn.x + spawn.w; x++) set(x, y, Tile.Floor);
+
+  // Zonas em arco da entrada até perto do centro, como no pântano.
+  const r0 = Math.hypot(s.x - center.x, s.y - center.y);
+  const a0 = Math.atan2(s.y - center.y, s.x - center.x);
+  const turn = (rng.next() < 0.5 ? -1 : 1) * Math.PI * (1 + rng.next() * 0.4);
+  const anchors: { x: number; y: number }[] = [];
+  const path: Rect[] = [];
+  for (let i = 1; i <= DESERT_STEPS; i++) {
+    const t = i / DESERT_STEPS;
+    const r = r0 + (20 - r0) * t;
+    const a = a0 + turn * t;
+    const half = rng.int(5, 7);
+    const cx = clamp(center.x + Math.cos(a) * r + rng.int(-3, 3), half + 9, size - half - 10);
+    const cy = clamp(center.y + Math.sin(a) * r + rng.int(-3, 3), half + 9, size - half - 10);
+    anchors.push({ x: cx, y: cy });
+    path.push({ x: cx - half, y: cy - half, w: half * 2 + 1, h: half * 2 + 1 });
+  }
+
+  const keep = [grow(spawn, 3), grow(boss, 2), ...anchors.map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 }))];
+  const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const goals = [...swampGoals({ portal: s, boss, path, side: [], meadows: [] }), ...anchors];
+
+  /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
+  const obstacle = (place: () => void) => {
+    const before = tiles.slice();
+    const palmsBefore = new Set(palms);
+    place();
+    let undo = false;
+    for (let i = 0; i < tiles.length && !undo; i++) {
+      if (tiles[i] !== before[i] && kept(i % size, Math.floor(i / size))) undo = true;
+    }
+    if (undo || !connected(tiles, size, goals)) {
+      tiles.set(before);
+      palms.clear();
+      palmsBefore.forEach((i) => palms.add(i));
+    }
+  };
+  const orthoWall = (x: number, y: number) =>
+    get(x - 1, y) === Tile.Wall || get(x + 1, y) === Tile.Wall || get(x, y - 1) === Tile.Wall || get(x, y + 1) === Tile.Wall;
+  /** Coqueiro só em areia e sem mata nos 4 lados (senão vira pedaço de duna). */
+  const palm = (x: number, y: number) => {
+    if (!inside(x, y) || get(x, y) !== Tile.Floor || orthoWall(x, y)) return;
+    set(x, y, Tile.Wall);
+    palms.add(y * size + x);
+  };
+
+  // Descampado do centro: 4 coqueiros grandes nos cantos (o lugar do futuro chefe).
+  for (const [dx, dy] of [[1, 1], [DESERT_ARENA - 2, 1], [1, DESERT_ARENA - 2], [DESERT_ARENA - 2, DESERT_ARENA - 2]]) {
+    palm(boss.x + dx, boss.y + dy);
+  }
+
+  // Cristas de duna no campo: manchas compridas na direção do vento (leste-oeste), com a ponta afinando.
+  for (let i = 0; i < 16; i++) {
+    const x = rng.int(10, size - 11);
+    const y = rng.int(10, size - 11);
+    const rx = 3 + rng.next() * 5;
+    const ry = 1.2 + rng.next() * 1.4;
+    const slant = (rng.next() - 0.5) * 0.6;
+    obstacle(() => {
+      for (let yy = Math.floor(y - ry - 3); yy <= y + ry + 3; yy++)
+        for (let xx = Math.floor(x - rx - 1); xx <= x + rx + 1; xx++) {
+          const u = (xx - x) / rx;
+          const v = (yy - y - u * rx * slant) / (ry * (1 - 0.5 * u * u));
+          if (u * u + v * v <= 1 - rng.next() * 0.15 && get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Wall);
+        }
+    });
+  }
+
+  // Oásis: lagoa de borda irregular com coqueiros na margem.
+  const oases: { x: number; y: number; r: number }[] = [];
+  for (let tries = 0; tries < 40 && oases.length < 6; tries++) {
+    const o = { x: rng.int(14, size - 15), y: rng.int(14, size - 15), r: 2.2 + rng.next() * 2.8 };
+    if (oases.some((p) => Math.hypot(p.x - o.x, p.y - o.y) < p.r + o.r + 12)) continue;
+    const before = oases.length;
+    obstacle(() => {
+      const reach = Math.ceil(o.r + 4);
+      for (let y = o.y - reach; y <= o.y + reach; y++)
+        for (let x = o.x - reach; x <= o.x + reach; x++) {
+          const edge = o.r - 0.25 + rng.next() * 0.5;
+          if (Math.hypot(x - o.x, (y - o.y) * 1.15) <= edge && get(x, y) === Tile.Floor) set(x, y, Tile.Water);
+        }
+      // Pontas de água de 1 tile (com água em 1 lado só) voltam a ser areia: a margem fica redonda.
+      for (let y = o.y - reach; y <= o.y + reach; y++)
+        for (let x = o.x - reach; x <= o.x + reach; x++) {
+          const wet = [get(x - 1, y), get(x + 1, y), get(x, y - 1), get(x, y + 1)].filter((t) => t === Tile.Water).length;
+          if (get(x, y) === Tile.Water && wet <= 1) set(x, y, Tile.Floor);
+        }
+      // Margem: coqueiros a 2 tiles da água, espaçados.
+      for (let k = 0; k < 22; k++) {
+        const a = rng.next() * Math.PI * 2;
+        const d = o.r + 1.8 + rng.next() * 1.6;
+        palm(Math.round(o.x + Math.cos(a) * d), Math.round(o.y + Math.sin(a) * d));
+      }
+      oases.push(o);
+    });
+    // Oásis desfeito (fechava passagem): não conta.
+    if (oases.length > before && get(o.x, o.y) !== Tile.Water) oases.pop();
+  }
+
+  // Bosques de coqueiros: 3 a 8 coqueiros juntos, com espaço entre eles.
+  for (let i = 0; i < 30; i++) {
+    const x = rng.int(9, size - 10);
+    const y = rng.int(9, size - 10);
+    const count = rng.int(3, 8);
+    obstacle(() => {
+      for (let k = 0; k < count * 2; k++) palm(x + rng.int(-3, 3), y + rng.int(-3, 3));
+    });
+  }
+
+  // Coqueiros soltos: só com areia em volta, para nunca fechar passagem.
+  for (let y = 4; y < size - 4; y++)
+    for (let x = 4; x < size - 4; x++) {
+      if (kept(x, y) || !openAround(get, x, y, 2)) continue;
+      if (rng.next() < 0.012) palm(x, y);
+    }
+
+  // Mata solta que não é coqueiro (ponta de duna) volta a ser areia.
+  for (let y = 1; y < size - 1; y++)
+    for (let x = 1; x < size - 1; x++) {
+      const i = y * size + x;
+      if (tiles[i] === Tile.Wall && !palms.has(i) && !orthoWall(x, y)) tiles[i] = Tile.Floor;
+    }
+
+  // Bolsões de areia que ficaram sem acesso viram duna.
+  const reach = reachableFrom(tiles, size, s);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+
+  const portal = s;
+  set(portal.x, portal.y, Tile.Portal);
+
+  return { mapId: "desert", width: size, height: size, tiles, spawn, boss, path, side: [], meadows: [], portal };
 }
 
 /** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */
