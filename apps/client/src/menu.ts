@@ -61,6 +61,7 @@ import {
   type TalentDef,
 } from "@kusa/shared";
 import { heroPoses, type HeroDir } from "./art/heroes.ts";
+import { branchIcon } from "./branchIcons.ts";
 import { itemIcon, slotGhost } from "./art/items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
 import {
@@ -337,42 +338,51 @@ export class Hub {
     const page = el("div", "hub-page");
     page.append(el("h2", "", "Grimório"));
 
-    const chips = el("div", "chips");
+    // Um botão por personagem, com o retrato vestido e a cor da classe.
+    const heroes = el("div", "grim-heroes");
     for (const id of CLASS_IDS) {
-      const chip = el("button", "chip", CLASSES[id].name);
-      chip.setAttribute("aria-pressed", String(id === this.treeClass));
-      chip.onclick = () => { this.treeClass = id; this.render(); };
-      chips.append(chip);
+      const pick = el("button", "grim-hero");
+      pick.style.setProperty("--class-color", hex(CLASSES[id].color));
+      pick.setAttribute("aria-pressed", String(id === this.treeClass));
+      const frame = el("span", "grim-hero-frame");
+      frame.append(portrait(id, this.loadout(id)));
+      pick.append(frame, el("span", "grim-hero-name", CLASSES[id].name));
+      pick.onclick = () => { this.treeClass = id; this.render(); };
+      heroes.append(pick);
     }
-    page.append(chips);
+    page.append(heroes);
 
     const tree = talentTree(this.treeClass);
     const ranks = this.profile.talents;
     const xp = this.profile.spellXp;
-    const spells = tree.filter((t) => t.kind === "spell");
-    const learned = spells.filter((t) => talentRank(t, ranks) > 0).length;
-    page.append(el("p", "muted hub-hint",
-      `${learned}/${spells.length} magias. Um ramo por vez: o tronco desce no meio e os galhos saem para os lados. ` +
-      "Toque num nó para ver e comprar; cada um pede o nó de cima (a diagonal pontilhada é um segundo pré-requisito). " +
-      "Magia comprada sobe de nível com o uso nas hunts, devagar; os nós de baixo pedem a magia de cima no nível 1. " +
-      "Cada nível de uma magia vizinha (ligada por galho) dá força a esta (sinergia), e o Tomo 📕📗📘 fortalece o ramo todo. " +
-      `Só as magias ativas (✔, até ${ACTIVE_SPELLS_PER_SLOT} por slot) aparecem na escolha da hunt: ative na ficha da magia. ` +
-      "Magias viram opção quando o slot abre na hunt (nível 3 e 6). Ramos com ✦ terminam em duas especializações, " +
-      "e a escolha é permanente."));
 
     // Um ramo por tela, como as abas do Diablo 2: a raiz no alto, o tronco no meio e as costelas para os lados.
+    // Cada aba é o símbolo do ramo; o nome do ramo aberto fica no título acima da árvore.
     const col = this.treeBranch;
-    const tabs = el("div", "chips grim-tabs");
-    TREE_BRANCHES[this.treeClass].forEach((name, c) => {
+    const tabs = el("div", "grim-tabs");
+    tabs.setAttribute("role", "tablist");
+    tabs.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
+    const branchName = TREE_BRANCHES[this.treeClass];
+    const counts = branchName.map((_, c) => {
       const branch = tree.filter((t) => t.col === c && t.kind === "spell" && t.row > 0);
-      const owned = branch.filter((t) => talentRank(t, ranks) > 0).length;
-      const spec = tree.some((t) => t.col === c && t.side !== undefined);
-      const tab = el("button", "chip", `${name}${spec ? " ✦" : ""} · ${owned}/${branch.length}`);
-      tab.setAttribute("aria-pressed", String(c === col));
+      return { owned: branch.filter((t) => talentRank(t, ranks) > 0).length, total: branch.length, spec: tree.some((t) => t.col === c && t.side !== undefined) };
+    });
+    branchName.forEach((name, c) => {
+      const { owned, total, spec } = counts[c];
+      const tab = el("button", "grim-tab");
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-selected", String(c === col));
+      tab.setAttribute("aria-label", `${name}${spec ? ", com especialização" : ""}: ${owned} de ${total} magias`);
+      const emblem = el("span", "grim-tab-emblem");
+      emblem.append(branchIcon(this.treeClass, c));
+      if (spec) emblem.append(el("i", "grim-tab-spec", "✦"));
+      tab.append(emblem, el("small", "", `${owned}/${total}`));
       tab.onclick = () => { this.treeBranch = c; this.render(); };
       tabs.append(tab);
     });
     page.append(tabs);
+    const title = el("h3", "grim-branch-title", `${branchName[col]}${counts[col].spec ? " ✦" : ""}`);
+    page.append(title);
 
     const shown = tree.filter((t) => t.col === col || t.row === 0);
     const xOf = (def: TalentDef) => 0.5 + def.lane * 0.2;
