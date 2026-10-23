@@ -81,7 +81,8 @@ async function run() {
   const bag = () => [...me().bag] as string[];
 
   // 1. Passar por cima veste (o slot estava vazio).
-  await until("vestir o item do chão", () => { walkToward(ground, 0); return me()[def.slot] === def.id; });
+  await until("vestir o item do chão", () => reach(ground) && me()[def.slot] === def.id, 60_000);
+  room.send(MSG.attacking, { on: false });
   const spot = { x: me().x, y: me().y };
 
   // 2. Guardar na bag e vestir de novo pela bag.
@@ -106,15 +107,7 @@ async function run() {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) room.send(MSG.move, { dx, dy });
     return false;
   });
-  // Um monstro pode parar em cima do item para atacar: mata antes de voltar ao tile.
-  await until("pegar de novo", () => {
-    let blocker: string | null = null;
-    room.state.monsters.forEach((m: any, id: string) => { if (m.x === spot.x && m.y === spot.y) blocker = id; });
-    room.send(MSG.target, { id: blocker });
-    room.send(MSG.attacking, { on: blocker !== null });
-    if (!blocker) walkToward(spot, 0);
-    return me()[def.slot] === def.id;
-  }, 60_000);
+  await until("pegar de novo", () => reach(spot) && me()[def.slot] === def.id, 60_000);
   room.send(MSG.attacking, { on: false });
 
   // 5. Guarda na bag e foge: o item da bag volta no resultado.
@@ -137,6 +130,19 @@ async function until(what: string, check: () => boolean, ms = 30_000) {
     if (Date.now() > end) throw new Error(`timeout ao ${what}`);
     await wait(100);
   }
+}
+
+/**
+ * Anda até o tile `to`. Um monstro pode parar em cima dele para atacar (e o caminho trata tile com
+ * monstro como bloqueado): aí mata o monstro antes. Devolve `true` quando não há monstro no tile.
+ */
+function reach(to: { x: number; y: number }) {
+  let blocker: string | null = null;
+  room.state.monsters.forEach((m: any, id: string) => { if (m.x === to.x && m.y === to.y) blocker = id; });
+  room.send(MSG.target, { id: blocker });
+  room.send(MSG.attacking, { on: blocker !== null });
+  if (!blocker) walkToward(to, 0);
+  return blocker === null;
 }
 
 function walkToward(to: { x: number; y: number }, range: number) {
