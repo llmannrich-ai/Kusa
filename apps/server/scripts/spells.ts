@@ -30,7 +30,8 @@ check(p.spell1 === "shadow_orb" && p.spell2 === "void_storm", `slots: ${p.spell1
 
 // Toque rápido com um monstro ao alcance (e à vista): sai uma Esfera; o segundo toque cai na recarga.
 const range = SPELLS.shadow_orb.range;
-const target = a.place("lizardfolk", range - 1, 0);
+// A 3 tiles: dentro do alcance e da área que a arena garante livre em volta do herói.
+const target = a.place("lizardfolk", Math.min(3, range - 1), 0);
 a.hunt.target(HERO, { id: target.id });
 a.hunt.attacking(HERO, { on: true });
 const manaBefore = p.mana;
