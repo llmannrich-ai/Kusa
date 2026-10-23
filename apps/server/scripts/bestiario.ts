@@ -3,7 +3,7 @@
  * - Elementos: o Dragão é imune a fogo; mortos-vivos não envenenam; a Fortitude segura o primeiro golpe fatal (menos luz).
  * - Troll: regenera, e fogo interrompe. Hidra: perde cabeça a cada 20% e nascem duas sem fogo; fogo cauteriza.
  * - Efeitos no herói: controle tem teto de 2 s, impede andar e dá imunidade de 4 s; Corroído acumula até 3.
- * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável e cai colado.
+ * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável, cai colado e se recompõe antes de bater de novo.
  * - Táticas de Bando: a ratazana bate mais com outra colada no mesmo alvo.
  * - Pudim Negro se divide com lâmina e raio (fogo não); Monte Errante se cura com raio; Cubo engole e cospe ao apanhar.
  * - Mímico fica disfarçado até o herói encostar e dá o loot do baú; a Bruxa Verde some e deixa cópias que somem com ela.
@@ -207,6 +207,13 @@ function check(ok: boolean, what: string) {
   check(hit(dragon, 100, "basic") === 0, "voando, o Dragão não devia levar dano");
   advance(hunt, (MONSTERS.dragon.abilities!.find((a) => a.id === "flight")!.vanishMs ?? 2000) + 100);
   check(!dragon.hidden && tileDistance(p.x, p.y, dragon.x, dragon.y) <= 1, "o Dragão devia cair colado no herói");
+  // A queda é o golpe: o Multiataque e o sopro não saem colados nela (antes vinham juntos e matavam de uma vez).
+  const landed = damage.length;
+  const blows = () => damage.slice(landed).filter((x) => x.toPlayer && x.attacker === dragon.id && !x.dot).length;
+  advance(hunt, 1200);
+  check(blows() === 0, `logo depois de cair, o Dragão devia se recompor (${blows()} golpes)`);
+  advance(hunt, 1500);
+  check(blows() > 0, "recomposto, o Dragão devia voltar a atacar");
   console.log("Voo do Dragão OK");
 }
 

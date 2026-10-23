@@ -438,6 +438,8 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   só sai depois de meia recarga contada de quando o monstro nota alguém. Projéteis de monstro acertam no disparo.
 - **Fases dos bosses por vida:** a habilidade de fase sai na hora em que a vida cruza o limite (com 1 ou 4 heróis,
   toda fase aparece). Abaixo de 50% da vida o boss se enfurece e as recargas caem para 60%.
+- **Voo e Mergulho:** o monstro some invulnerável e cai colado no alvo; a queda é o golpe. Depois dela, ele se
+  recompõe por 1,5 s (sem ataque básico nem outra habilidade): é a janela para reagir.
 - **Tipos de criatura e elementos:** todo dano de herói tem elemento (básico do Cavaleiro e do Paladino é físico,
   do Feiticeiro é energia, do Druida é natureza; cada magia tem o seu, em `elements.ts`). Monstros podem ser imunes (0),
   resistentes (0,5–0,8) ou vulneráveis (1,5): o aviso sobe em cinza ("Imune", "Resiste") ou amarelo ("Vulnerável!").
