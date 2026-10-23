@@ -228,7 +228,7 @@ export class Hub {
     const saved = storageGet("kusa:class") as ClassId | null;
     this.classId = saved && saved in CLASSES ? saved : "knight";
     this.treeClass = this.classId;
-    document.querySelectorAll<HTMLButtonElement>(".hub-tabs button").forEach((b) => {
+    document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => {
       b.onclick = () => this.setTab(b.dataset.tab as Tab);
     });
     $("play").onclick = () => this.onPlay();
@@ -257,8 +257,8 @@ export class Hub {
 
   private render() {
     $("account-gold").textContent = gold(this.profile.gold);
-    $("play").textContent = `Jogar · ${CLASSES[this.classId].name}`;
-    document.querySelectorAll<HTMLButtonElement>(".hub-tabs button").forEach((b) => {
+    $("play").setAttribute("aria-label", `Batalhas · ${CLASSES[this.classId].name}`);
+    document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => {
       b.setAttribute("aria-selected", String(b.dataset.tab === this.tab));
     });
     const body = $("hub-body");
