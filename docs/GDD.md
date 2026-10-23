@@ -357,6 +357,7 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
+| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104, campo aberto com 6 zonas (ainda vazias) | Em construção: só o cenário, sem monstros |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -388,11 +389,31 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
+### Mar de Areia (em construção)
+
+- **Só o cenário por enquanto:** a tabela de monstros, mini-bosses e boss está vazia, então a hunt não tem
+  inimigos nem baús (dá para explorar e fugir pelo portal). O gerador já marca as 6 zonas do caminho e o
+  descampado do centro, para os encontros entrarem depois sem mudar o mapa.
+- **Campo aberto, como o pântano:** dunas altas na borda e, por cima, cristas de duna compridas no sentido do
+  vento, oásis (lagoas com coqueiros na margem), bosques de coqueiros e coqueiros soltos. Obstáculo que fecharia a
+  passagem até uma zona ou ao centro é descartado. **Coqueiro** é um tile de mata sem mata nos 4 lados; mata
+  encostada em mata é **duna** (o cliente desenha cada um por essa regra). Os dois bloqueiam passo e visão; a água
+  do oásis bloqueia só o passo. No centro, um descampado marcado por 4 coqueiros grandes.
+- **Visual** (só no cliente, `apps/client/src/desertMap.ts`, com toda a arte própria em `art/desertDecor.ts`, sem
+  pack): sol de cima à esquerda em tudo. Areia com ondulações de vento (fortes, suaves ou lisa, em manchas grandes),
+  ladrilhos que fecham nas bordas; dunas com encosta iluminada, encosta na sombra, frente com crista e areia
+  escorrendo, e sombra na areia baixa; oásis com água rasa e funda, espuma, margem arredondada, areia molhada,
+  papiro, lótus e brilhos do sol na água; coqueiros em 4 formas (tronco curvo com anéis, copa de folhas penadas com
+  cocos, folha seca em alguns), com variação de tom e tamanho, sombra no chão, copa que balança e fica transparente
+  quando o jogador passa por baixo; cocos e folhas secas caídas, capim seco, arbustos, arenito, pedrinhas,
+  conchas, crânio de boi, rastro de cobra e pegadas; grãos de areia e poeira levados pelo vento. Como nos outros
+  mapas, só os sprites perto da câmera são desenhados.
+
 ## Partida (hunt)
 
 - Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto.
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano, 6 min no Mar de Areia). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;
@@ -510,7 +531,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Bugbear chefe** (mini-boss) | bruto | alcance 2 · Ataque Surpresa (primeiro golpe em cada alvo 2,5×) · Golpe Brutal (2×, empurra) |
 | **Cubo Gelatinoso** (mini-boss) | sentinela | translúcido e camuflado · Engolfar (engole 2 s com ácido) |
 | **Mímico** (mini-boss) | emboscador | 1 em 3 salas laterais: no lugar do baú, disfarçado até alguém encostar · Adesivo (prende 2 s em volta) · Mordida Ácida (2× e corrói). Morto, dá o loot do baú |
-| **Dragão jovem** (boss) | — | imune a fogo · Multiataque (3 mordidas de 0,4×) · Sopro Infernal (leque de 6 tiles, 1,9× e queimadura) · abaixo de 50%: Voo (some 2 s, invulnerável, e cai sobre um herói, área 2) |
+| **Dragão jovem** (boss) | — | imune a fogo · Multiataque (3 mordidas de 0,3×) · Sopro Infernal (leque de 6 tiles, 1,9× e queimadura) · abaixo de 50%: Voo (some 2 s, invulnerável, e cai sobre um herói, área 2) |
 
 ### Pântano das Ruínas (★2)
 
@@ -531,7 +552,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Bruxa Verde** (mini-boss) | controlador | Ilusão (some 3 s e deixa 2 cópias iguais a ela, que somem com um golpe ou quando ela morre) · Nuvem Venenosa |
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
 | **Hidra do pântano** (boss) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
-| **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
+| **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
 
 ## Ataques e magias (protótipo)
 
