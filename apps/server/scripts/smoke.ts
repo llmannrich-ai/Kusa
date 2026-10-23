@@ -4,7 +4,8 @@
  * Uso: npx tsx apps/server/scripts/smoke.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { MSG, ROOM_NAME, RULES_VERSION, type RunEndedMessage } from "@kusa/shared";
+import { MSG, ROOM_NAME, type RunEndedMessage } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);

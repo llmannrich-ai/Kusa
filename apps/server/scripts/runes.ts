@@ -11,9 +11,10 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MSG, ROOM_NAME, RULES_VERSION, RUNES, SPELLS, heroBonuses, isRune, rollRune, spellChoices, spellCooldownMs, spellManaCost, statsFor,
+  MSG, ROOM_NAME, RUNES, SPELLS, heroBonuses, isRune, rollRune, spellChoices, spellCooldownMs, spellManaCost, statsFor,
   type SpellMessage,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);

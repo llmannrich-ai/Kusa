@@ -7,9 +7,10 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, canUse, describeStats, gearStats, generateDungeon, itemId, pickupAction,
+  BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, canUse, describeStats, gearStats, generateDungeon, itemId, pickupAction,
   rollItem, tileDistance, type ClassId, type ItemRarity, type ItemTier, type MonsterKind,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 
 // Regras da bag: slot vazio equipa, melhor troca (o antigo vai para a bag), pior vai para a bag,

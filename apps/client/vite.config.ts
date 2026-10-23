@@ -1,8 +1,32 @@
-import { defineConfig } from "vite";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { defineConfig, type Plugin } from "vite";
+import { RULES_FILES, rulesHash } from "../../packages/shared/src/rulesVersion.ts";
 
 const gameServer = process.env.GAME_SERVER_URL ?? "http://localhost:2567";
 
+/**
+ * `virtual:rules-version`: a versão das regras (hash dos arquivos de `RULES_FILES`), calculada como o servidor calcula.
+ * Em desenvolvimento, mudar um desses arquivos recarrega a página com a versão nova.
+ */
+function rulesVersion(): Plugin {
+  const id = "virtual:rules-version";
+  const shared = new URL("../../packages/shared/src/", import.meta.url);
+  return {
+    name: "kusa-rules-version",
+    resolveId: (source) => (source === id ? `\0${id}` : undefined),
+    load(resolved) {
+      if (resolved !== `\0${id}`) return;
+      const files = RULES_FILES.map((name) => ({ name, path: fileURLToPath(new URL(name, shared)) }));
+      for (const f of files) this.addWatchFile(f.path);
+      const version = rulesHash(files.map((f) => ({ name: f.name, text: readFileSync(f.path, "utf8") })));
+      return `export const RULES_VERSION = ${JSON.stringify(version)};`;
+    },
+  };
+}
+
 export default defineConfig({
+  plugins: [rulesVersion()],
   // No GitHub Pages o jogo fica em /Kusa/ (definido pelo workflow de deploy).
   base: process.env.BASE_PATH ?? "/",
   server: {

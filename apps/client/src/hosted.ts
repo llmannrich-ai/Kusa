@@ -2,13 +2,13 @@ import { Encoder, Reflection, type Decoder } from "@colyseus/schema";
 import {
   MAX_PARTY_SIZE,
   MSG,
-  RULES_VERSION,
   SERVER_TICK_MS,
   type ClassId,
   type MapId,
   type RunEndedMessage,
   type SoloRunStart,
 } from "@kusa/shared";
+import { RULES_VERSION } from "virtual:rules-version";
 import type { Hunt, HuntReport, Recruit } from "../../server/src/hunt.ts";
 import type { DungeonState } from "../../server/src/state.ts";
 import { supabase } from "./auth.ts";
@@ -51,7 +51,7 @@ type Down =
 
 /** Jogador → anfitrião. */
 type Up =
-  | { k: "hello"; recruit: Recruit; rulesVersion: number; resume: boolean }
+  | { k: "hello"; recruit: Recruit; rulesVersion: string; resume: boolean }
   | { k: "msg"; type: string; msg: unknown }
   | { k: "loadout"; items: string[]; bag: string[] }
   | { k: "bye" };
