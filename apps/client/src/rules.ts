@@ -98,7 +98,7 @@ export function renderRules(root: HTMLElement) {
     section("🗺️ Mapas e tempo", false,
       table(["Mapa", "Dificuldade", "Tempo", "Boss"], MAP_IDS.map((id) => {
         const m = MAPS[id];
-        return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), m.bosses.map(([k]) => MONSTERS[k].name).join(" ou ")];
+        return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), m.bosses.map(([k]) => MONSTERS[k].name).join(" ou ") || "— (ainda sem monstros)"];
       })),
       `Quem cria a sala escolhe o mapa. Cada sala mais funda é ${pct(DEPTH_SCALING)} mais forte que a anterior (vida, dano, XP e loot). `
       + "Os monstros de cada sala são sorteados a cada hunt. Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro. "
@@ -110,7 +110,7 @@ export function renderRules(root: HTMLElement) {
       "Nenhum golpe de monstro tem aviso: conheça cada um antes de entrar. Monstros resistem a alguns elementos e são "
       + "vulneráveis a outros (o número aparece em cinza ou amarelo). Mortos-vivos não envenenam nem sangram. "
       + `${pct(CHAMPION_CHANCE)} dos monstros comuns nascem Campeões (nome dourado): mais vida, mais loot e um poder extra.`,
-      ...MAP_IDS.map((id) => {
+      ...MAP_IDS.filter((id) => mapMonsters(MAPS[id]).length > 0).map((id) => {
         const m = MAPS[id];
         return table([`${m.icon} ${m.name}`, "Como joga"], mapMonsters(m).map((kind) => {
           const def = MONSTERS[kind];

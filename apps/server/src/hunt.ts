@@ -548,6 +548,8 @@ export class Hunt {
    */
   private spawnMonsters() {
     const d = this.dungeon;
+    // Mapa ainda em construção (só o cenário): ninguém nasce.
+    if (this.map.bosses.length === 0) return;
     // RNG próprio derivado da seed, separado do gerador do mapa.
     const rng = createRng(this.state.seed ^ 0x9e3779b9);
     const roll = () => rng.int(0, 1_000_000);
