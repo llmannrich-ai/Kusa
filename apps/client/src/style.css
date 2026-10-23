@@ -122,7 +122,17 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .slot-info { display: grid; flex: 1; min-width: 0; }
 .slot-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slot-info small { font-size: 13px; }
-.slot-tag { flex: none; font-size: 12px; color: var(--accent); }
+/* Pelo id: a `.slot-tag` do equipamento (mais abaixo) é posicionada sobre o slot e não vale aqui. */
+#lobby-slots .slot-tag {
+  position: static; transform: none; flex: none; padding: 0; font-size: 12px; line-height: inherit;
+  color: var(--accent); background: none; border: 0;
+}
+.slot-remove { flex: none; min-width: 40px; min-height: 40px; padding: 0; font-size: 16px; }
+.slot.bot-slot { flex-direction: column; align-items: stretch; gap: 8px; }
+.bot-picks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.bot-pick { display: grid; justify-items: center; gap: 2px; min-height: 64px; padding: 4px 2px; }
+.bot-pick .slot-portrait { width: 36px; height: 36px; }
+.bot-pick small { font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #lobby .hint { margin: 12px 0 0; font-size: 13px; text-align: center; }
 #lobby-wait { margin: 0; text-align: center; }
 
@@ -226,6 +236,26 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .tm-bars li.mine .tm-bar-head span { color: var(--accent); font-weight: bold; }
 .tm-bars li.mine .tm-track i { background: var(--text); }
 .tm-note { margin: 0 0 12px; font-size: 12px; }
+
+/* Histórico de partidas */
+.hist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.hist-head h3 { margin: 0; }
+.hist-head small { font-size: 12px; }
+.hist-player { padding: 8px; background: #1c1714; border: 1px solid #3a2f27; }
+.hist-player + .hist-player { margin-top: 6px; }
+.hist-player.eu { border-color: var(--accent); }
+.hist-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.hist-top strong { min-width: 0; overflow-wrap: anywhere; }
+.hist-outcome { flex: none; color: #8fd18f; }
+.hist-outcome.lost { color: #e07a6a; }
+.hist-player > small { display: block; margin-top: 2px; font-size: 12px; }
+.hist-line { margin-top: 6px; font-size: 13px; }
+.hist-line b { margin-right: 6px; color: var(--muted); font-weight: normal; }
+.hist-line.lost span { color: #e07a6a; }
+.hist-items { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; }
+.hist-items li { padding: 2px 6px; font-size: 12px; border: 1px solid; border-radius: 4px; background: #000; }
+.hist-xp { margin-top: 6px; }
+.hist-more { width: 100%; }
 
 /* Regras: seções que abrem e fecham. */
 .rule { margin-bottom: 8px; border: 1px solid var(--border); background: #000; }

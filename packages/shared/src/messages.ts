@@ -81,6 +81,12 @@ export interface ChoosePerkMessage { perk: PerkId }
 /** Cliente → servidor: leva a runa do baú de runa ao lado (sala dos baús da caverna). Uma por jogador. */
 export interface ChooseRuneMessage { chest: string }
 
+/** Cliente → servidor (só o líder, na sala de espera): põe um bot da classe numa vaga livre. */
+export interface AddBotMessage { classId: ClassId }
+
+/** Cliente → servidor (só o líder, na sala de espera): tira o bot da vaga. */
+export interface RemoveBotMessage { id: string }
+
 /** Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe. */
 export interface AttackingMessage { on: boolean }
 
@@ -224,4 +230,6 @@ export const MSG = {
   unequip: "unequip",
   bagDrop: "bagDrop",
   monsterStrike: "monsterStrike",
+  addBot: "addBot",
+  removeBot: "removeBot",
 } as const;

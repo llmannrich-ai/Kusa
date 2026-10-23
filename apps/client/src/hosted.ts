@@ -173,6 +173,10 @@ class HostRuntime {
         this.sinks.forEach((sink) => sink.down({ k: "begin" }));
         this.onChange();
         return;
+      case MSG.addBot:
+      case MSG.removeBot:
+        if (type === MSG.addBot ? this.hunt.addBot(sessionId, msg) : this.hunt.removeBot(sessionId, msg)) this.onChange();
+        return;
       case MSG.move: return this.hunt.move(sessionId, msg);
       case MSG.target: return this.hunt.target(sessionId, msg);
       case MSG.attacking: return this.hunt.attacking(sessionId, msg);

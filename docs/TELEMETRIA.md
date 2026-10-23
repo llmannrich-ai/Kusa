@@ -16,11 +16,16 @@ Como o jogo é entre amigos, a tela também tem **Prêmios da galera** e **Ranki
 (hunts, sobrevivência, abates, dano causado e recebido, cura, gold, bosses, mortes, melhor nível, minutos e classe
 favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa função e em `METRICS` do cliente.
 
+**Configurações > Histórico** (`apps/client/src/history.ts`) lista as partidas, uma por `match_id`, com cada jogador:
+classe, nível, desfecho, loot (gold e itens que saíram da hunt) e penalidades da morte (gold juntado, itens perdidos e
+a perda de XP das magias dos slots). Vem de `match_history(p_mine, p_before, p_limit)` (`security definer`, só para
+logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before` pagina. Seed, build e ids ficam de fora.
+
 ## O que é medido
 
 | Coluna / campo | Para que serve |
 |---|---|
-| `class_id`, `party_size`, `outcome`, `level`, `duration_s`, `loot` | Resultado da hunt |
+| `class_id`, `party_size` (humanos + bots), `outcome`, `level`, `duration_s`, `loot` | Resultado da hunt |
 | `map_id` | Mapa da hunt (`crypt`, `swamp`). **Compare também por mapa**: as dificuldades são diferentes. `telemetry_classes`, `telemetry_deaths`, `telemetry_levels` e `telemetry_economy` têm a coluna `map_id` |
 | `build` | Commit do servidor (`RENDER_GIT_COMMIT`). **Sempre compare por build**: é o antes e o depois de cada ajuste |
 | `solo` | Hunt solo, simulada no aparelho do jogador (`build` = `solo`) |
@@ -47,6 +52,7 @@ favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa funç�
 | `stats.buffMs` | Tempo com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração |
 | `stats.intercepted` | Intervir (Guardião): dano que o cavaleiro puxou dos aliados para si |
 | `stats.revives`, `stats.revived` | Renascer da Semente: nomes de quem o druida salvou; em quem renasceu, de quem veio a semente, o segundo e o dano que levou depois |
+| `stats.bots` | Bots na equipe quando a hunt começou (já contados em `party_size`). Bot não gera linha de telemetria |
 | `stats.ccMs` | Tempo de controle aplicado nos monstros (ms somados por monstro): `root`, `stun` e `slow` |
 | `stats.potions` | Poções guardadas e bebidas por tipo e mana devolvida (a vida das poções entra em `healing`) |
 | `stats.kills`, `firstKillAt`, `xp` | Abates por monstro, tempo até o primeiro abate, XP total |

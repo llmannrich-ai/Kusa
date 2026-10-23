@@ -8,6 +8,7 @@ import {
   mapIdOf,
   spellXpGains,
   type ClassId,
+  type AddBotMessage,
   type AttackingMessage,
   type BagDropMessage,
   type BagEquipMessage,
@@ -19,6 +20,7 @@ import {
   type HuntMetadata,
   type JoinOptions,
   type MoveMessage,
+  type RemoveBotMessage,
   type TargetMessage,
   type UnequipMessage,
 } from "@kusa/shared";
@@ -71,6 +73,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     this.onMessage(MSG.start, (client) => {
       if (this.hunt.start(client.sessionId)) this.startRun();
+    });
+
+    // Bot ocupa uma vaga: a sala aceita um humano a menos.
+    this.onMessage(MSG.addBot, (client, msg: AddBotMessage) => {
+      if (this.hunt.addBot(client.sessionId, msg)) this.updateListing();
+    });
+    this.onMessage(MSG.removeBot, (client, msg: RemoveBotMessage) => {
+      if (this.hunt.removeBot(client.sessionId, msg)) this.updateListing();
     });
 
     this.onMessage(MSG.move, (client, msg: MoveMessage) => this.hunt.move(client.sessionId, msg));
@@ -136,11 +146,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     });
   }
 
-  /** A lista de salas mostra o líder e o mapa. */
+  /** A lista de salas mostra o líder e o mapa; as vagas dos bots saem do total. */
   private updateListing() {
     const leader = this.state.players.get(this.state.leaderId);
     if (this.state.phase === "lobby" && leader) {
-      void this.setMatchmaking({ metadata: { leader: leader.name, mapId: mapIdOf(this.state.mapId) } });
+      void this.setMatchmaking({
+        maxClients: MAX_PARTY_SIZE - this.hunt.botCount(),
+        metadata: { leader: leader.name, mapId: mapIdOf(this.state.mapId) },
+      });
     }
   }
 }
