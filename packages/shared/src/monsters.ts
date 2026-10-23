@@ -12,7 +12,7 @@ export type MonsterKind =
   | "bullywug" | "lizardfolk" | "ghoul" | "blackPudding" | "crocodile" | "willOWisp" | "shamblingMound"
   | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon"
   // Mar de Areia (dificuldade 1)
-  | "sandScorpion" | "giantVulture" | "mummy" | "sandWorm";
+  | "sandScorpion" | "giantVulture" | "mummy" | "blackScorpion" | "mummyPriest" | "sandElemental" | "sandWorm";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -568,6 +568,53 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       { id: "dreadfulGlare", name: "Olhar Pavoroso", shape: "target", range: 4, radius: 0, cooldownMs: 10000, power: 0, effect: { kind: "stun", ms: 1000 }, color: 0x7fd36b, fx: "vanish" },
     ],
     lore: "Guarda as ruínas enterradas. O Olhar Pavoroso paralisa de medo, e o toque apodrece (Podridão). Queima fácil.",
+  }),
+  // Mini-bosses das ruínas soterradas (destrancam o baú da sala).
+  blackScorpion: monster({
+    kind: "blackScorpion", name: "Escorpião Negro Gigante", rank: "miniboss", type: "beast", role: "brute", cr: 5,
+    hp: 270, damage: 12, xp: 220, loot: [12, 20], speed: 2.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
+    traits: { onHit: { dot: { kind: "poison", power: 0.3, durationMs: 3000 } } },
+    abilities: [
+      { id: "pincers", name: "Pinças", shape: "target", range: 1, radius: 0, cooldownMs: 8000, power: 1, effect: { kind: "root", ms: 1500 }, color: 0x4a3a5a, fx: "constrict" },
+      {
+        id: "deathSting", name: "Ferrão Letal", shape: "target", range: 2, radius: 0, cooldownMs: 9000, power: 1.8,
+        dot: { kind: "poison", power: 0.5, durationMs: 4000 }, color: 0xb03a2e, fx: "rend",
+      },
+    ],
+    lore: "Do tamanho de um camelo, couraça negra. Prende com as pinças e, preso, o ferrão não erra (Ferrão Letal).",
+  }),
+  mummyPriest: monster({
+    kind: "mummyPriest", name: "Sacerdote Mumificado", rank: "miniboss", type: "undead", role: "controller", cr: 5,
+    hp: 240, damage: 12, xp: 230, loot: [12, 20], speed: 1.9, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    elements: { fire: 1.5 },
+    abilities: [
+      {
+        id: "scarabs", name: "Praga de Escaravelhos", shape: "summon", range: 6, radius: 0, cooldownMs: 15000, power: 0,
+        summon: { kind: "sandScorpion", count: 2 }, color: 0xd9a35b, fx: "summon",
+      },
+      {
+        id: "tombCurse", name: "Maldição da Tumba", shape: "target", range: 5, radius: 1, cooldownMs: 8000, power: 1.3,
+        dot: { kind: "poison", power: 0.3, durationMs: 4000 }, slow: { factor: 0.6, durationMs: 3000 }, color: 0x7fd36b, fx: "acidRain",
+      },
+    ],
+    lore: "Guardião do templo enterrado. Chama os bichos da areia para a briga e amaldiçoa quem invade (lento e apodrecendo). Queima fácil.",
+  }),
+  sandElemental: monster({
+    kind: "sandElemental", name: "Elemental de Areia", rank: "miniboss", type: "elemental", role: "skirmisher", cr: 5,
+    hp: 220, damage: 13, xp: 220, loot: [12, 20], speed: 3.6, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "smash",
+    // Areia solta: corte e perfuração passam por ela; o gelo a endurece.
+    elements: { physical: 0.75, ice: 1.4 },
+    abilities: [
+      {
+        id: "whirlwind", name: "Redemoinho", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 1.5, push: 2,
+        color: 0xe0b46c, fx: "quake",
+      },
+      {
+        id: "sandBlast", name: "Rajada de Areia", shape: "line", range: 5, radius: 0, length: 5, cooldownMs: 9000, power: 1.2,
+        effect: { kind: "blind", ms: 1500 }, color: 0xf0d29c, fx: "breath",
+      },
+    ],
+    lore: "Redemoinho que pensa. Joga longe quem chega perto e cega com a areia (Rajada). Espada e flecha atravessam; gelo, não.",
   }),
   sandWorm: monster({
     kind: "sandWorm", name: "Verme da Areia", rank: "boss", type: "monstrosity", role: "lurker", cr: 6,
