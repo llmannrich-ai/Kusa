@@ -3,7 +3,6 @@ import { Room, ServerError, type Client } from "colyseus";
 import {
   MAX_PARTY_SIZE,
   MSG,
-  RULES_VERSION,
   SERVER_TICK_MS,
   VERSION_MISMATCH_CODE,
   mapIdOf,
@@ -23,6 +22,7 @@ import {
   type TargetMessage,
   type UnequipMessage,
 } from "@kusa/shared";
+import { RULES_VERSION } from "./rulesVersion.ts";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
 import { recordRun, resolveAccount, storeBag, takeBag, takeLoadout, type Account } from "./supabase.ts";
@@ -92,7 +92,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     // Cliente de outra versão geraria outro mapa a partir da mesma seed. A mensagem leva a versão do
     // servidor para o cliente decidir se recarrega (ele está velho) ou espera (o servidor está atualizando).
     if (options?.rulesVersion !== RULES_VERSION) {
-      throw new ServerError(VERSION_MISMATCH_CODE, `O jogo foi atualizado: recarregue a página. (servidor v${RULES_VERSION})`);
+      // "v999": cliente de antes da versão por hash lê o número depois de "servidor v" e só recarrega se for maior que
+      // o dele (o último foi 26). O cliente atual lê o hash depois de "regras ".
+      throw new ServerError(VERSION_MISMATCH_CODE, `O jogo foi atualizado: recarregue a página. (servidor v999, regras ${RULES_VERSION})`);
     }
     // Sempre um objeto (verdadeiro): sem conta, entra como convidado.
     return { account: await resolveAccount(options.accessToken) };

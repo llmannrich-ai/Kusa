@@ -7,9 +7,10 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MONSTERS, MSG, POTIONS, POTION_FIELD, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance,
+  MONSTERS, MSG, POTIONS, POTION_FIELD, ROOM_NAME, generateDungeon, tileDistance,
   type DrankMessage, type MonsterKind,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";

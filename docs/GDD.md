@@ -353,9 +353,9 @@ então funcionam com o servidor do jogo dormindo.
 O jogador escolhe o mapa (cenário) na tela de criar sala (a escolha fica salva no aparelho). O mapa vale para as salas
 que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
-Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma
-`RULES_VERSION`. Cliente desatualizado se recarrega sozinho; se o servidor ainda está terminando o deploy, o
-cliente pede para tentar de novo em 1 ou 2 minutos.
+Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
+regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
+recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|

@@ -4,9 +4,10 @@
  */
 import type { Client } from "@colyseus/sdk";
 import {
-  MSG, ROOM_NAME, RULES_VERSION, generateDungeon, hasLineOfSight, tileDistance,
+  MSG, ROOM_NAME, generateDungeon, hasLineOfSight, tileDistance,
   type ChainMessage, type CooldownMessage, type DamageMessage, type SpellMessage,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 
 /** Cria uma sala com um herói da classe e começa a hunt. `label` aparece no erro se o herói morrer. */
