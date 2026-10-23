@@ -314,7 +314,23 @@ Código em `apps/client/src/lobby.ts` e `main.ts`.
    de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".
 3. Só o líder vê o botão de começar: **"Começar sozinho"** com 1 jogador, "Começar hunt · N jogadores" com mais.
    Os outros veem "Aguardando o líder iniciar…". Ao começar, a sala sai da lista (ninguém mais entra).
-4. **Sair da sala** volta para a tela de salas. Se o líder sai, o próximo da sala vira líder.
+4. **Sair da sala** volta para a tela de salas. Se o líder sai, o próximo humano da sala vira líder.
+
+### Bots na equipe
+
+O líder completa a equipe com bots: cada vaga livre mostra os retratos das 4 classes, e tocar num põe um bot daquela
+classe ("Bot Paladino", com 🤖 na vaga); o ✕ tira. O bot ocupa a vaga (a sala aceita um humano a menos) e nunca vira líder.
+Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espera, então não tem bot.
+
+- **Força:** entra como um convidado, sem Grimório comprado nem equipamento, no mesmo nível inicial dos humanos.
+- **Comportamento** (`apps/server/src/botAi.ts`): segue o líder (ou o humano vivo mais perto), enfrenta o alvo do líder ou o monstro
+  mais perto da equipe, escolhe a 1ª magia oferecida em cada slot e a 1ª melhoria de cada nível, e conjura assim que a magia recarrega:
+  cura e escudo em quem está ferido, dano em quem está ao alcance, bônus e campos quando a luta está perto. Longe demais do líder
+  (passou pela caverna, ficou preso), reaparece ao lado dele. Não pisa no portal nem na caverna.
+- **Sem loot nem gold:** o que o bot mata não dá loot a ninguém, ele não abre baú, não pega item nem poção do chão e não entra na
+  divisão dos drops ("só cai o que alguém da equipe pode usar" conta só os humanos). O bot ganha XP para subir de nível junto, mas
+  não divide: cada humano ganha o mesmo que ganharia sem o bot.
+- Quando o último humano sai da dungeon (morto, fugindo ou pelo portal do boss), os bots saem junto e a hunt acaba.
 
 ### Jogar sozinho
 
