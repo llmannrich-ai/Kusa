@@ -23,7 +23,7 @@ export const MOVE_RESEND_MS = 150;
  * outra versão, e o cliente desatualizado se recarrega sozinho. Sem isso, cliente e servidor desenhariam
  * mapas diferentes (o personagem atravessa árvores ou trava no nada).
  */
-export const RULES_VERSION = 26;
+export const RULES_VERSION = 27;
 
 /** Código do erro de entrada numa sala quando a versão das regras do cliente não é a do servidor. */
 export const VERSION_MISMATCH_CODE = 4409;

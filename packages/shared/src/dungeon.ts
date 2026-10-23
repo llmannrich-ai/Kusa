@@ -414,7 +414,10 @@ function generateDesert(seed: number): Dungeon {
 /** Superfície ligada a pé do portal até as zonas e a boca; subterrâneo, da saída até o boss, o portal e os baús. */
 function desertConnected(d: Dungeon) {
   const cave = d.cave!;
-  const surface = [d.portal, ...d.path.map(centerOf), ...d.meadows.map(centerOf), cave.entrance];
+  const surface = [
+    d.portal, ...d.path.map(centerOf), ...d.meadows.map(centerOf), cave.entrance,
+    ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
   const below = [cave.exit, centerOf(d.boss), d.bossPortal, ...cave.chests.map((c) => ({ x: c.x, y: c.y + 1 }))];
   return connected(d.tiles, d.width, surface) && connected(d.tiles, d.width, below);
 }
@@ -494,12 +497,51 @@ function buildDesert(seed: number): Dungeon {
     meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
   }
 
+  // Ruínas soterradas: salas laterais perto das zonas, com muro de arenito caído e 2 portões (mini-boss e baú),
+  // longe da entrada, da caverna, das campinas e umas das outras.
+  const side: Rect[] = [];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (rng.next() < 0.4) continue;
+    const anchor = anchors[i];
+    const w = rng.int(7, 9);
+    const h = rng.int(7, 9);
+    const room = shuffled(rng, SWAMP_SIDE_DIRS)
+      .map(([dx, dy]): Rect => ({
+        x: clamp(anchor.x + dx * 12 - w / 2, 7, size - w - 8),
+        y: clamp(anchor.y + dy * 12 - h / 2, 7, size - h - 8),
+        w, h,
+      }))
+      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP && gapBetween(r, mouth) >= 4
+        && side.every((o) => gapBetween(r, o) >= 4)
+        && [...anchors, ...meadows.map(centerOf)].every((p) => gapBetween(r, { x: p.x, y: p.y, w: 1, h: 1 }) >= 3));
+    if (!room) continue;
+    for (let y = room.y; y < room.y + room.h; y++)
+      for (let x = room.x; x < room.x + room.w; x++) {
+        const border = x === room.x || y === room.y || x === room.x + room.w - 1 || y === room.y + room.h - 1;
+        if (border && rng.next() >= 0.25) set(x, y, Tile.Ruin);
+      }
+    // Dois portões de 3 tiles, em lados sorteados.
+    const cx = room.x + Math.floor(room.w / 2);
+    const cy = room.y + Math.floor(room.h / 2);
+    for (const gate of shuffled(rng, [0, 1, 2, 3]).slice(0, 2))
+      for (let k = -1; k <= 1; k++) {
+        if (gate === 0) set(cx + k, room.y, Tile.Floor);
+        if (gate === 1) set(room.x + room.w - 1, cy + k, Tile.Floor);
+        if (gate === 2) set(cx + k, room.y + room.h - 1, Tile.Floor);
+        if (gate === 3) set(room.x, cy + k, Tile.Floor);
+      }
+    side.push(room);
+  }
+
   const keep = [
-    grow(spawn, 3), mouth,
+    grow(spawn, 3), mouth, ...side.map((r) => grow(r, 2)),
     ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
   ];
   const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
-  const goals = [s, ...path.map(centerOf), ...anchors, ...meadows.map(centerOf), entrance];
+  const goals = [
+    s, ...path.map(centerOf), ...anchors, ...meadows.map(centerOf), entrance,
+    ...side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
 
   /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
   const obstacle = (place: () => void) => {
@@ -619,7 +661,7 @@ function buildDesert(seed: number): Dungeon {
 
   return {
     mapId: "desert", width, height: size, tiles: grid, spawn, boss: under.lair, bossPortal: under.portal,
-    path, side: [], meadows, portal,
+    path, side, meadows, portal,
     cave: { entrance, exit: under.exit, under: under.area, reward: under.reward, chests: under.chests },
   };
 }

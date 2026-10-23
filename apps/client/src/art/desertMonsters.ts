@@ -55,11 +55,18 @@ class Pixels {
 
 // --- Escorpião da Areia ------------------------------------------------------------------
 
-const CHITIN = ["#c27a35", "#94511f", "#5a2e10"] as const;
-const CHITIN_GLOW = "#e6a45c";
+type Shell = { chitin: readonly [string, string, string]; glow: string; joint: string };
+const AMBER: Shell = { chitin: ["#c27a35", "#94511f", "#5a2e10"], glow: "#e6a45c", joint: "#6e3a14" };
+/** Escorpião Negro Gigante (mini-boss): couraça negra com reflexo roxo. */
+export const BLACK_SHELL: Shell = { chitin: ["#5e4c74", "#2e2438", "#141018"], glow: "#9a86ba", joint: "#0c0810" };
 
-/** Escorpião: corpo em placas cor de âmbar, pinças para a frente e a cauda em arco por cima, com o ferrão escuro. */
-export function scorpionCanvas() {
+/**
+ * Escorpião: corpo em placas, pinças para a frente e a cauda em arco por cima, com o ferrão escuro. Âmbar no comum;
+ * o mini-boss usa a couraça negra (e o mapa o desenha maior).
+ */
+export function scorpionCanvas(shell: Shell = AMBER) {
+  const CHITIN = shell.chitin;
+  const CHITIN_GLOW = shell.glow;
   const g = new Pixels();
   // Patas (quatro de cada lado; as de trás mais escuras), saindo de baixo do corpo até o chão.
   for (let i = 0; i < 4; i++) {
@@ -77,11 +84,11 @@ export function scorpionCanvas() {
   g.set(16, 11, "#f4ead2");
   // Corpo (abdômen em placas) e cefalotórax na frente.
   g.oval(19, 21, 7.5, 3.8, CHITIN, CHITIN_GLOW);
-  for (const x of [15, 18, 21, 24]) g.line(x, 18.5, x, 23.5, "#6e3a14");
+  for (const x of [15, 18, 21, 24]) g.line(x, 18.5, x, 23.5, shell.joint);
   g.oval(11.5, 21.5, 4, 3.4, CHITIN, CHITIN_GLOW);
   // Pinças: braço e garra aberta, uma alta e outra baixa.
   for (const [ax, ay, cy] of [[9, 20, 17], [9, 23, 25]] as const) {
-    g.line(ax, ay, 5, cy, "#6e3a14");
+    g.line(ax, ay, 5, cy, shell.joint);
     g.oval(4, cy, 2.6, 1.9, CHITIN, CHITIN_GLOW);
     g.set(1, cy, "#3a240c");
     g.set(2, cy, "#3a240c");
@@ -148,7 +155,7 @@ const WRAP = { light: "#ece2c4", mid: "#cfc19a", dark: "#9c8d68", gap: "#3a2e22"
  * Múmia de pé, de três quartos para a esquerda, braços esticados para a frente: faixas de linho em diagonal com
  * frestas escuras entre elas, manchas de resina, pontas soltas penduradas e os olhos verdes acesos.
  */
-export function mummyCanvas() {
+export function mummyCanvas(priest = false) {
   const g = new Pixels();
   /** Faixa: tom pela luz (esquerda clara) e pelas listras diagonais do enrolado. */
   const wrap = (x: number, y: number, shade = 0) => {
@@ -186,5 +193,58 @@ export function mummyCanvas() {
   g.line(6, 18, 5, 21, WRAP.mid);
   g.line(10, 18, 9, 23, WRAP.dark);
   g.line(20, 21, 22, 26, WRAP.mid);
+  if (priest) {
+    // Sacerdote: toucado listrado de azul e ouro caindo nos ombros, gola larga de ouro e o cajado com o ankh.
+    for (let y = 2; y <= 13; y++)
+      for (let x = 10; x <= 21; x++) {
+        const inHead = ((x - 15.5) / 4) ** 2 + ((y - 7) / 4.6) ** 2 <= 1;
+        const cloth = y <= 4 ? Math.abs(x - 15.5) <= 4.5 : (x <= 12 || x >= 19) && y <= 13 - Math.abs(x - 15.5) * 0.2;
+        if (!cloth || (inHead && y > 4 && x > 12 && x < 19)) continue;
+        g.set(x, y, Math.floor(y / 2) % 2 ? "#2f5fa8" : "#e0b23a");
+      }
+    for (let x = 11; x <= 20; x++) {
+      g.set(x, 12, x % 2 ? "#e0b23a" : "#3a8f8a");
+      g.set(x, 13, "#b8892a");
+    }
+    g.line(2, 9, 2, 29, "#c99a2e");
+    g.line(3, 10, 3, 29, "#8a6418");
+    for (let a = 0; a < Math.PI * 2; a += 0.5) g.set(2.5 + Math.cos(a) * 1.6, 6 + Math.sin(a) * 2, "#f0c84a");
+    g.line(0, 9, 5, 9, "#f0c84a");
+  }
+  return g.canvas();
+}
+
+// --- Elemental de Areia -------------------------------------------------------------------
+
+/**
+ * Elemental de Areia: um redemoinho que pensa. Funil estreito embaixo (tocando o chão numa nuvem de poeira) e largo
+ * em cima, feito de faixas de areia que giram (claras do lado do sol), com pedrinhas presas no vento e dois olhos
+ * acesos no meio da tempestade.
+ */
+export function sandElementalCanvas() {
+  const g = new Pixels();
+  const bands = ["#f6e2b4", "#c9995a", "#94643a", "#5a381c"];
+  for (let y = 2; y <= 27; y++) {
+    const t = (27 - y) / 25; // 0 embaixo, 1 em cima
+    const half = 2 + t * 11;
+    const cx = 16 + Math.sin(y * 0.45) * 2.2 * (1 - t * 0.4);
+    for (let x = Math.floor(cx - half); x <= cx + half; x++) {
+      const u = (x - cx) / half; // -1 esquerda .. 1 direita
+      // Faixas inclinadas que dão a ideia de giro; o lado esquerdo pega a luz.
+      const swirl = Math.floor((x * 0.6 + y * 1.4) / 3) % 4;
+      let k = swirl === 0 ? 3 : swirl === 1 ? 2 : u < -0.3 ? 0 : 1;
+      if (Math.abs(u) > 0.85 && hash(x, y, 630) < 0.5) continue; // borda desfiada
+      if (u > 0.5 && k < 2) k = 2;
+      g.set(x, y, bands[k]);
+    }
+  }
+  // Olhos no meio da tempestade.
+  g.set(13, 9, "#fff1c4"); g.set(14, 9, "#ffb84d");
+  g.set(18, 9, "#ffb84d"); g.set(19, 9, "#fff1c4");
+  g.line(13, 10, 19, 10, "#5a3a20");
+  // Pedrinhas presas no vento.
+  for (const [x, y] of [[7, 6], [26, 8], [9, 15], [24, 17], [20, 4]]) g.set(x, y, "#6e4a2a");
+  // Nuvem de poeira no chão.
+  g.oval(16, 28.5, 8, 2.2, ["#ecd09a", "#d4aa70", "#b9874f"]);
   return g.canvas();
 }
