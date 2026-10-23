@@ -28,30 +28,56 @@ export interface HostedListing {
 /** Id curto e aleatório (sala ou aparelho). */
 export const randomId = () => Math.random().toString(36).slice(2, 10);
 
+/**
+ * Canais saindo, por nome. Até o Realtime confirmar a saída, `supabase.channel()` devolve o canal velho para o
+ * mesmo nome, e ele nunca mais conecta: "Criar sala" logo depois de largar a lista de salas abria a sala sem
+ * anunciá-la (ninguém a via), e entrar de novo na mesma sala travava em "Conectando…".
+ */
+const leaving = new Map<string, Promise<unknown>>();
+
+/** Abre um canal do Realtime depois que um anterior com o mesmo nome terminou de sair. */
+async function openChannel(name: string, config?: Parameters<typeof supabase.channel>[1]) {
+  await leaving.get(name);
+  return supabase.channel(name, config);
+}
+
+/** Fecha o canal e marca o nome como saindo até o Realtime confirmar. */
+function closeChannel(name: string, channel: Promise<RealtimeChannel>) {
+  const done = channel.then((c) => supabase.removeChannel(c));
+  leaving.set(name, done);
+  void done.finally(() => { if (leaving.get(name) === done) leaving.delete(name); });
+}
+
+/** Resolve quando o canal conecta (o Realtime tenta de novo sozinho se falhar). */
+function subscribed(channel: RealtimeChannel) {
+  return new Promise<void>((resolve) => channel.subscribe((status) => { if (status === "SUBSCRIBED") resolve(); }));
+}
+
 /** Acompanha as salas hospedadas que aceitam jogadores. Devolve a função que para de acompanhar. */
 export function watchHostedRooms(onChange: (rooms: HostedListing[]) => void): () => void {
-  const channel = supabase.channel(LISTING_CHANNEL);
-  channel.on("presence", { event: "sync" }, () => {
-    const rooms = Object.values(channel.presenceState<HostedListing>()).map((entries) => entries[entries.length - 1]);
-    onChange(rooms.filter((r) => r && !r.locked && r.clients < r.maxClients));
-  }).subscribe();
-  return () => void supabase.removeChannel(channel);
+  const channel = openChannel(LISTING_CHANNEL).then((c) => {
+    c.on("presence", { event: "sync" }, () => {
+      const rooms = Object.values(c.presenceState<HostedListing>()).map((entries) => entries[entries.length - 1]);
+      onChange(rooms.filter((r) => r && !r.locked && r.clients < r.maxClients));
+    }).subscribe();
+    return c;
+  });
+  return () => closeChannel(LISTING_CHANNEL, channel);
 }
 
 /** Anuncia a sala na lista enquanto este aparelho hospeda. */
 export class Listing {
-  private channel: RealtimeChannel;
-  private joined = false;
+  private channel: Promise<RealtimeChannel>;
+  private joined: RealtimeChannel | null = null;
   private last: HostedListing | null = null;
 
   constructor(roomId: string) {
-    this.channel = supabase.channel(LISTING_CHANNEL, { config: { presence: { key: roomId } } });
     // No celular o socket cai à toa (app em segundo plano, troca de rede): o canal volta sozinho, mas a presença
     // não, e a sala sumia da lista de todo mundo. Anuncia de novo a cada vez que o canal (re)conecta.
-    this.channel.subscribe((status) => {
-      this.joined = status === "SUBSCRIBED";
+    this.channel = openChannel(LISTING_CHANNEL, { config: { presence: { key: roomId } } }).then((c) => c.subscribe((status) => {
+      this.joined = status === "SUBSCRIBED" ? c : null;
       this.announce();
-    });
+    }));
   }
 
   update(listing: HostedListing) {
@@ -60,12 +86,12 @@ export class Listing {
   }
 
   private announce() {
-    if (this.joined && this.last) void this.channel.track(this.last);
+    if (this.joined && this.last) void this.joined.track(this.last);
   }
 
   close() {
-    void this.channel.untrack();
-    void supabase.removeChannel(this.channel);
+    void this.channel.then((c) => c.untrack());
+    closeChannel(LISTING_CHANNEL, this.channel);
   }
 }
 
@@ -78,17 +104,18 @@ interface Signal {
 
 /** Canal de sinalização de uma sala: ofertas e respostas do WebRTC entre os aparelhos. */
 export class Signaling {
-  private channel: RealtimeChannel;
+  private name: string;
+  private channel: Promise<RealtimeChannel>;
   private ready: Promise<void>;
   private handlers = new Set<(signal: Signal) => void>();
 
   constructor(roomId: string, private me: string) {
-    this.channel = supabase.channel(`kusa-sala-${roomId}`, { config: { broadcast: { self: false } } });
-    this.channel.on("broadcast", { event: "sinal" }, ({ payload }) => {
+    this.name = `kusa-sala-${roomId}`;
+    this.channel = openChannel(this.name, { config: { broadcast: { self: false } } }).then((c) => c.on("broadcast", { event: "sinal" }, ({ payload }) => {
       const signal = payload as Signal;
       if (signal?.to === this.me) this.handlers.forEach((h) => h(signal));
-    });
-    this.ready = new Promise((resolve) => this.channel.subscribe((status) => { if (status === "SUBSCRIBED") resolve(); }));
+    }));
+    this.ready = this.channel.then(subscribed);
   }
 
   onSignal(handler: (signal: Signal) => void) {
@@ -98,11 +125,11 @@ export class Signaling {
 
   async send(to: string, kind: Signal["kind"], sdp: string) {
     await this.ready;
-    await this.channel.send({ type: "broadcast", event: "sinal", payload: { to, from: this.me, kind, sdp } satisfies Signal });
+    await (await this.channel).send({ type: "broadcast", event: "sinal", payload: { to, from: this.me, kind, sdp } satisfies Signal });
   }
 
   close() {
-    void supabase.removeChannel(this.channel);
+    closeChannel(this.name, this.channel);
   }
 }
 
@@ -128,7 +155,7 @@ export async function dial(signaling: Signaling, hostPeer: string): Promise<Link
         resolve(s.sdp);
       });
     });
-    await signaling.send(hostPeer, "offer", pc.localDescription!.sdp);
+    await timeout(signaling.send(hostPeer, "offer", pc.localDescription!.sdp), "a sala não respondeu");
     const sdp = await timeout(answered, "o anfitrião não respondeu");
     await pc.setRemoteDescription({ type: "answer", sdp });
     await timeout(new Promise<void>((resolve, reject) => {
