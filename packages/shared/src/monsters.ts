@@ -276,7 +276,8 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     kind: "dragon", name: "Dragão jovem", rank: "boss", type: "dragon", role: "brute", cr: 6,
     hp: 900, damage: 24, xp: 700, loot: [60, 100], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
     elements: { fire: 0 },
-    traits: { multiattack: { hits: 3, power: 0.4 } },
+    // Multiataque: 3 × 0,3 (era 0,4: só as mordidas matavam um feiticeiro solo nível 8 em ~6 s).
+    traits: { multiattack: { hits: 3, power: 0.3 } },
     abilities: [
       {
         id: "flight", name: "Voo", shape: "dive", range: 8, radius: 2, cooldownMs: 16000, power: 1.6, vanishMs: 2000,
@@ -511,7 +512,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     kind: "blackDragon", name: "Dragão negro jovem", rank: "boss", type: "dragon", role: "brute", cr: 8,
     hp: 1450, damage: 26, xp: 1300, loot: [120, 180], speed: 2.4, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
     elements: { nature: 0.5 },
-    traits: { multiattack: { hits: 3, power: 0.4 } },
+    traits: { multiattack: { hits: 3, power: 0.3 } },
     abilities: [
       {
         id: "submerge", name: "Mergulho", shape: "dive", range: 9, radius: 2, cooldownMs: 15000, power: 1.5, vanishMs: 1800,
