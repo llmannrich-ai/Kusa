@@ -3,7 +3,8 @@
  * - Elementos: o Dragão é imune a fogo; mortos-vivos não envenenam; a Fortitude segura o primeiro golpe fatal (menos luz).
  * - Troll: regenera, e fogo interrompe. Hidra: perde cabeça a cada 20% e nascem duas sem fogo; fogo cauteriza.
  * - Efeitos no herói: controle tem teto de 2 s, impede andar e dá imunidade de 4 s; Corroído acumula até 3.
- * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável, cai colado e se recompõe antes de bater de novo.
+ * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável, cai colado e se recompõe antes de bater de novo;
+ *   boss espera 1 s entre uma habilidade e outra.
  * - Táticas de Bando: a ratazana bate mais com outra colada no mesmo alvo.
  * - Pudim Negro se divide com lâmina e raio (fogo não); Monte Errante se cura com raio; Cubo engole e cospe ao apanhar.
  * - Mímico fica disfarçado até o herói encostar e dá o loot do baú; a Bruxa Verde some e deixa cópias que somem com ela.
@@ -12,7 +13,7 @@
  */
 import {
   CONTROL_IMMUNE_MS, CONTROL_MAX_MS, CORRODE_MAX, MAPS, MONSTERS, MSG, createRng, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
-  type DamageMessage, type MapId, type MonsterKind,
+  type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { DungeonState, type Monster, type Player } from "../src/state.ts";
@@ -20,11 +21,17 @@ import { DungeonState, type Monster, type Player } from "../src/state.ts";
 let clock = 0;
 let timers: { at: number; fn: () => void }[] = [];
 let damage: DamageMessage[] = [];
+/** Habilidades de monstro soltas: quem, qual e quando (ms do relógio falso). */
+let strikes: { id: string; ability: string; at: number }[] = [];
 const host: HuntHost = {
   now: () => clock,
   setTimeout: (fn, ms) => void timers.push({ at: clock + ms, fn }),
   send: () => {},
-  broadcast: (type, msg) => { if (type === MSG.damage) damage.push(msg as DamageMessage); },
+  broadcast: (type, msg) => {
+    if (type === MSG.damage) damage.push(msg as DamageMessage);
+    const strike = msg as MonsterStrikeMessage;
+    if (type === MSG.monsterStrike && !strike.rising) strikes.push({ id: strike.id, ability: strike.ability, at: clock });
+  },
   runEnded: () => {},
   ended: () => {},
 };
@@ -45,6 +52,7 @@ function arena(mapId: MapId = "crypt", classId: "knight" | "sorcerer" = "knight"
   clock = 0;
   timers = [];
   damage = [];
+  strikes = [];
   const state = new DungeonState();
   // Sorteios de seed fixa (dano, chances): a comparação das Táticas de Bando falhava 1 vez em 20 com Math.random.
   const hunt = new Hunt(state, host, { mapId, seed: 4242, startLevel, random: createRng(Number(process.env.KUSA_SEED) || 4242).next });
@@ -215,6 +223,21 @@ function check(ok: boolean, what: string) {
   advance(hunt, 1500);
   check(blows() > 0, "recomposto, o Dragão devia voltar a atacar");
   console.log("Voo do Dragão OK");
+}
+{
+  // Boss enfurecido: as habilidades não saem coladas (antes, sopro e Escuridão vinham com 50 ms de diferença).
+  const { spawn, hit, hunt, p, brain } = arena("swamp", "sorcerer", 12);
+  p.hp = p.maxHp = 1_000_000;
+  const dragon = spawn("blackDragon", 3);
+  brain(dragon).targetId = "h";
+  advance(hunt, 100);
+  hit(dragon, Math.ceil(dragon.maxHp * 0.55), "basic");
+  advance(hunt, 20_000);
+  const used = strikes.filter((s) => s.id === dragon.id);
+  const gaps = used.slice(1).map((s, i) => s.at - used[i].at);
+  check(used.length >= 4, `o Dragão negro enfurecido devia usar várias habilidades (${used.length})`);
+  check(gaps.every((g) => g >= 1000), `as habilidades do boss deviam ter 1 s entre elas (${gaps.join(", ")} ms)`);
+  console.log("Intervalo entre habilidades do boss OK");
 }
 
 // --- Táticas de Bando ----------------------------------------------------------------
