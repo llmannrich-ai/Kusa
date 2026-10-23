@@ -17,6 +17,7 @@ import {
   MAPS,
   MONSTERS,
   MAX_LEVEL,
+  MAX_PARTY_SIZE,
   MAX_SUMMONS_PER_PLAYER,
   MOVE_HOLD_MS,
   MSG,
@@ -109,7 +110,9 @@ import {
   xpForLevel,
   xpShare,
   type AttackMessage,
+  type AddBotMessage,
   type AttackingMessage,
+  type RemoveBotMessage,
   type Bonuses,
   type CastMessage,
   type ChoosePerkMessage,
@@ -156,6 +159,7 @@ import {
   type SummonDef,
   type TargetMessage,
 } from "@kusa/shared";
+import { BotAi } from "./botAi.ts";
 import { MonsterAi, rollDamage, type Brain, type Hit } from "./monsterAi.ts";
 import { nextStep } from "./pathfinding.ts";
 import { bump, newRunStats, type RunStats } from "./runStats.ts";
@@ -389,7 +393,7 @@ const MOVE_SLACK_MS = 100;
 /** Campos internos que vão no retrato da hunt (o resto se recalcula: mapa, dungeon). */
 const INTERNALS = [
   "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
-  "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked",
+  "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked", "nextBotId",
 ] as const;
 
 /**
@@ -427,6 +431,10 @@ export class Hunt {
   private pickupBlocked = new Map<string, string>();
   /** IA dos monstros (`monsterAi.ts`), ligada aos métodos da hunt. */
   private ai: MonsterAi;
+  /** Número do próximo bot posto na sala de espera (o id é `bot<n>`). */
+  private nextBotId = 1;
+  /** IA dos bots que completam a equipe (`botAi.ts`): manda as mesmas intenções de um jogador. */
+  private bots: BotAi;
 
   constructor(readonly state: DungeonState, private host: HuntHost, options: HuntOptions) {
     this.map = MAPS[mapIdOf(options.mapId)];
@@ -464,6 +472,21 @@ export class Hunt {
       releaseEngulf: (id) => this.releaseEngulf(id),
       occupiedTiles: () => this.occupiedTiles(),
       spawnMonster: (kind, x, y, depth) => this.addMonster(kind, x, y, depth),
+    });
+    this.bots = new BotAi({
+      state: this.state,
+      dungeon: this.dungeon,
+      now: () => this.host.now(),
+      occupiedTiles: () => this.occupiedTiles(),
+      canStep: (id) => this.host.now() >= (this.seats.get(id)?.nextMoveAt ?? Infinity),
+      spellReadyAt: (id, slot) => this.seats.get(id)?.spellReadyAt[slot] ?? Infinity,
+      bringBeside: (id, toId) => this.bringBeside(id, toId),
+      move: (id, msg) => this.move(id, msg),
+      target: (id, msg) => this.target(id, msg),
+      attacking: (id, msg) => this.attacking(id, msg),
+      cast: (id, msg) => this.cast(id, msg),
+      chooseSpell: (id, msg) => this.chooseSpell(id, msg),
+      choosePerk: (id, msg) => this.choosePerk(id, msg),
     });
     if (!options.restore) this.spawnMonsters();
   }
@@ -535,8 +558,40 @@ export class Hunt {
     if (this.state.phase === "lobby") {
       this.state.players.delete(sessionId);
       this.seats.delete(sessionId);
-      if (this.state.leaderId === sessionId) this.state.leaderId = this.state.players.keys().next().value ?? "";
+      // A liderança passa para outro humano; sem nenhum, os bots saem junto.
+      const humans = [...this.state.players].filter(([, p]) => !p.bot).map(([id]) => id);
+      if (humans.length === 0) {
+        for (const id of [...this.state.players.keys()]) {
+          this.state.players.delete(id);
+          this.seats.delete(id);
+        }
+      }
+      if (this.state.leaderId === sessionId) this.state.leaderId = humans[0] ?? "";
     }
+  }
+
+  /** O líder põe um bot da classe numa vaga livre da sala de espera. Devolve o id do bot (null se não puder). */
+  addBot(sessionId: string, msg: AddBotMessage): string | null {
+    if (sessionId !== this.state.leaderId || this.state.phase !== "lobby") return null;
+    if (this.state.players.size >= MAX_PARTY_SIZE || typeof msg?.classId !== "string" || !(msg.classId in CLASSES)) return null;
+    const id = `bot${this.nextBotId++}`;
+    // Bot entra como um convidado: sem Grimório comprado nem equipamento.
+    this.join(id, { name: `Bot ${CLASSES[msg.classId].name}`, classId: msg.classId, talents: {}, spellXp: {} });
+    this.state.players.get(id)!.bot = true;
+    return id;
+  }
+
+  /** O líder tira um bot da sala de espera. */
+  removeBot(sessionId: string, msg: RemoveBotMessage): boolean {
+    if (sessionId !== this.state.leaderId || this.state.phase !== "lobby") return false;
+    if (!this.state.players.get(msg?.id)?.bot) return false;
+    this.leave(msg.id);
+    return true;
+  }
+
+  /** Quantos bots estão na equipe. */
+  botCount() {
+    return [...this.state.players.values()].filter((p) => p.bot).length;
   }
 
   /**
@@ -708,6 +763,8 @@ export class Hunt {
     this.state.phase = "running";
     this.state.timeLeft = this.map.durationSeconds;
     this.state.players.forEach((p, id) => this.trackDepth(id, p));
+    const bots = this.botCount();
+    this.seats.forEach((seat) => { seat.stats.bots = bots; });
     if (this.testRunes.length > 0) {
       this.state.players.forEach((p, id) => this.equipRunes(p, this.seats.get(id)!, this.testRunes));
     }
@@ -785,6 +842,8 @@ export class Hunt {
     const nx = player.x + dx;
     const ny = player.y + dy;
     if (!isWalkable(this.dungeon, nx, ny) || this.monsterAt(nx, ny) || this.wallAt(nx, ny)) return;
+    // Bot não sai da dungeon nem atravessa a caverna sozinho: sai junto com os humanos.
+    if (player.bot && this.specialTile(nx, ny)) return;
     // Na diagonal, não atravessa quina de parede.
     if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, player.y) || !isWalkable(this.dungeon, player.x, ny))) return;
 
@@ -850,6 +909,7 @@ export class Hunt {
     const now = this.host.now();
     this.regen(dt);
     this.expireEffects(now);
+    this.bots.think(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
@@ -1021,6 +1081,29 @@ export class Hunt {
       }
     }
     return best;
+  }
+
+  /** Bot longe ou preso: reaparece num tile livre a até 2 do herói `toId` (fica onde está se não houver lugar). */
+  private bringBeside(botId: string, toId: string) {
+    const bot = this.state.players.get(botId);
+    const to = this.state.players.get(toId);
+    if (!bot || !to || bot.status !== "playing") return;
+    const blocked = this.occupiedTiles();
+    for (let r = 1; r <= 2; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const x = to.x + dx;
+          const y = to.y + dy;
+          if (!isWalkable(this.dungeon, x, y) || this.specialTile(x, y) || blocked.has(y * this.dungeon.width + x)) continue;
+          if (!hasLineOfSight(this.dungeon, to.x, to.y, x, y)) continue;
+          bot.x = x;
+          bot.y = y;
+          bot.stepMs = 0;
+          this.trackDepth(botId, bot);
+          return;
+        }
+      }
+    }
   }
 
   /** Roda `fn` depois de `ms` (na hora se 0), só enquanto a hunt estiver rolando. */
@@ -1929,14 +2012,16 @@ export class Hunt {
       if (other.summonedBy === m.id && other.traits.illusion) this.vanishMonster(id);
     }
 
-    // XP: a equipe que participou divide (com bônus por participante).
+    // XP: a equipe que participou divide (com bônus por participante). Os bots não contam na divisão: ganham a mesma
+    // parte de um humano, para subirem de nível junto, sem tirar XP de ninguém.
     const sharers = [...brain.participants].filter((id) => this.state.players.get(id)?.status === "playing");
-    const share = xpShare(brain.xp, sharers.length);
+    const humans = sharers.filter((id) => !this.state.players.get(id)!.bot).length;
+    const share = xpShare(brain.xp, humans || sharers.length);
     for (const id of sharers) this.gainXp(id, share);
 
-    // Loot: vai para quem deu o último golpe.
+    // Loot: vai para quem deu o último golpe (o que um bot mata não dá loot a ninguém).
     const killer = this.state.players.get(killerId);
-    if (killer?.status === "playing") {
+    if (killer?.status === "playing" && !killer.bot) {
       const value = rollRange(this.random, brain.loot);
       killer.loot += value;
       const stats = this.seats.get(killerId)?.stats;
@@ -1966,7 +2051,7 @@ export class Hunt {
     const mimicDepth = this.mimicDepth.get(m.id);
     if (mimicDepth !== undefined) {
       this.mimicDepth.delete(m.id);
-      if (killer?.status === "playing") this.chestReward(killerId, killer, m.x, m.y, mimicDepth);
+      if (killer?.status === "playing" && !killer.bot) this.chestReward(killerId, killer, m.x, m.y, mimicDepth);
     }
 
     if (brain.chestId) {
@@ -2396,7 +2481,7 @@ export class Hunt {
     this.state.chests.forEach((chest) => {
       if (chest.locked || chest.opened || chest.rune) return;
       this.state.players.forEach((p, sessionId) => {
-        if (chest.opened || p.status !== "playing" || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
+        if (chest.opened || p.status !== "playing" || p.bot || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
         chest.opened = true;
         this.chestReward(sessionId, p, chest.x, chest.y, this.chestDepth.get(chest.id) ?? 0);
       });
@@ -2440,9 +2525,9 @@ export class Hunt {
     return { x, y };
   }
 
-  /** Classes da equipe: os drops saem só do que alguém dela pode usar. */
+  /** Classes da equipe (sem os bots): os drops saem só do que alguém dela pode usar. */
   private partyClasses() {
-    return [...new Set([...this.state.players.values()].map((p) => p.classId as ClassId))];
+    return [...new Set([...this.state.players.values()].filter((p) => !p.bot).map((p) => p.classId as ClassId))];
   }
 
   private dropItem(itemId: string, x: number, y: number) {
@@ -2513,7 +2598,8 @@ export class Hunt {
       if (!p || !it || p.x !== it.x || p.y !== it.y) this.pickupBlocked.delete(id);
     });
     this.state.players.forEach((p, sessionId) => {
-      if (p.status !== "playing") return;
+      // Bot não pega nada do chão: itens e poções ficam para os humanos.
+      if (p.status !== "playing" || p.bot) return;
       const here = [...this.state.items.values()]
         .filter((it) => it.x === p.x && it.y === p.y && this.pickupBlocked.get(it.id) !== sessionId)
         .sort((a, b) => itemScore(b.itemId) - itemScore(a.itemId));
@@ -2637,15 +2723,22 @@ export class Hunt {
     const items = [...equipment(player).filter(Boolean), ...player.runes];
     const spells = seat ? this.spellProgress(player.classId as ClassId, seat, !survived) : [];
     const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost, lostBag, spells };
-    // O host avisa o jogador e grava o resultado na conta e na telemetria.
-    this.host.runEnded(sessionId, result, {
-      name: player.name, classId: player.classId, partySize: this.state.players.size, mapId: this.map.id,
-      seed: this.state.seed, outcome, level: player.level, durationS: this.seconds(), loot: player.loot,
-      pathRooms: this.dungeon.path.length, stats: seat?.stats ?? newRunStats(),
-    });
+    // O host avisa o jogador e grava o resultado na conta e na telemetria (bot não tem conta nem telemetria).
+    if (!player.bot) {
+      this.host.runEnded(sessionId, result, {
+        name: player.name, classId: player.classId, partySize: this.state.players.size, mapId: this.map.id,
+        seed: this.state.seed, outcome, level: player.level, durationS: this.seconds(), loot: player.loot,
+        pathRooms: this.dungeon.path.length, stats: seat?.stats ?? newRunStats(),
+      });
+      // O último humano saiu: os bots saem junto.
+      const players = [...this.state.players];
+      if (!players.some(([, p]) => !p.bot && p.status === "playing")) {
+        for (const [id, p] of players) if (p.bot) this.endRun(id, "escaped");
+      }
+    }
 
     const everyoneOut = [...this.state.players.values()].every((p) => p.status !== "playing");
-    if (everyoneOut) {
+    if (everyoneOut && this.state.phase !== "ended") {
       this.state.phase = "ended";
       this.host.ended();
     }

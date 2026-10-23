@@ -5,6 +5,8 @@ export type PlayerStatus = "playing" | "died" | "escaped" | "completed" | "burie
 export class Player extends Schema {
   @type("string") name = "";
   @type("string") classId = "knight";
+  /** Bot que completa a equipe (controlado pela `BotAi`): não leva loot, gold nem itens. */
+  @type("boolean") bot = false;
   @type("number") x = 0;
   @type("number") y = 0;
   /** Duração (ms) do último passo em linha reta: o cliente desliza a unidade nesse ritmo. */
