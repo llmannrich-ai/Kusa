@@ -14,6 +14,7 @@ import {
   ROOM_NAME,
   RULES_VERSION,
   VERSION_MISMATCH_CODE,
+  caveDestination,
   centerOf,
   generateDungeon,
   isWalkable,
@@ -32,8 +33,10 @@ for (const mapId of MAP_IDS) {
     if (d.tiles.some((t, k) => again.tiles[k] !== t)) throw new Error(`${mapId}: seed ${seed} não é determinística`);
     const reach = reachable(d);
     const goals = [
-      centerOf(d.boss), ...d.path.map(centerOf), ...d.meadows.map(centerOf),
+      centerOf(d.boss), d.bossPortal, ...d.path.map(centerOf), ...d.meadows.map(centerOf),
       ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+      // Baús de runa da caverna: alcançáveis pelo tile da frente.
+      ...(d.cave?.chests ?? []).map((c) => ({ x: c.x, y: c.y + 1 })),
     ];
     for (const g of goals) {
       if (!reach[g.y * d.width + g.x]) throw new Error(`${mapId}: seed ${seed}, ponto (${g.x}, ${g.y}) inalcançável`);
@@ -96,7 +99,7 @@ async function playMap(mapId: MapId) {
   await room.leave();
 }
 
-/** Tiles alcançáveis a partir do portal, andando como o servidor deixa (8 direções, sem cortar quina). */
+/** Tiles alcançáveis a partir do portal, andando como o servidor deixa (8 direções, sem cortar quina) e passando pela caverna. */
 function reachable(d: Dungeon) {
   const seen = new Uint8Array(d.width * d.height);
   const start = d.portal.y * d.width + d.portal.x;
@@ -114,6 +117,12 @@ function reachable(d: Dungeon) {
         if (dx && dy && (!isWalkable(d, nx, y) || !isWalkable(d, x, ny))) continue;
         seen[k] = 1;
         queue.push(k);
+        // Caverna do deserto: pisar numa ponta leva à outra.
+        const to = caveDestination(d, nx, ny);
+        if (to && !seen[to.y * d.width + to.x]) {
+          seen[to.y * d.width + to.x] = 1;
+          queue.push(to.y * d.width + to.x);
+        }
       }
     }
   }

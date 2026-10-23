@@ -104,6 +104,7 @@ export function renderRules(root: HTMLElement) {
       })),
       `Quem cria a sala escolhe o mapa. Cada sala mais funda é ${pct(DEPTH_SCALING)} mais forte que a anterior (vida, dano, XP e loot). `
       + "Os monstros de cada sala são sorteados a cada hunt. Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro. "
+      + "No Mar de Areia, o boss mora numa caverna escondida em algum lugar do deserto; atrás dele, 4 baús de runa: cada jogador leva uma. "
       + "Na Cripta, alguns baús são Mímicos.",
       "Quando o tempo acaba, o mapa desaba e quem ainda estiver lá dentro morre soterrado.",
     ),

@@ -393,7 +393,8 @@ herói), monstros que caem do teto e saem da pedra. Duração sugerida: 9 min.
 **Mini-bosses:** **Drider** (SRD: teia + arco + veneno) · **Basilisco** (SRD: **Olhar Petrificante** em cone;
 quem fica dentro vira pedra 1,5 s: atordoado, mas com +10 de armadura) · **Roper** (SRD: parado, puxa com 4 gavinhas de 6 tiles).
 
-**Boss:** **Verme Púrpura** (Purple Worm, SRD, 4×4): **Escavar** (some, um tremor anda pelo chão até um herói e ele
+**Boss:** (o Mar de Areia já tem um parente menor, o **Verme da Areia**, boss da caverna do deserto: mergulho,
+Engolir e Tremor; ver o GDD) **Verme Púrpura** (Purple Worm, SRD, 4×4): **Escavar** (some, um tremor anda pelo chão até um herói e ele
 emerge sob ele; o tremor mostra que o verme está embaixo, não quando sai), **Engolir** (3 s), **Ferrão** venenoso na cauda. Ação de Covil: estalactites caem em 3
 pontos. Alternativa: **Aboleth** (SRD) com **Escravizar** (o herói fica 3 s andando sozinho até o aboleth;
 sem dano em aliados, para não virar PvP).

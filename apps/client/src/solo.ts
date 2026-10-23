@@ -97,6 +97,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     [MSG.attacking]: (msg) => hunt.attacking(SESSION_ID, msg),
     [MSG.chooseSpell]: (msg) => hunt.chooseSpell(SESSION_ID, msg),
     [MSG.choosePerk]: (msg) => hunt.choosePerk(SESSION_ID, msg),
+    [MSG.chooseRune]: (msg) => hunt.chooseRune(SESSION_ID, msg),
     [MSG.cast]: (msg) => hunt.cast(SESSION_ID, msg),
     [MSG.drink]: (msg) => hunt.drink(SESSION_ID, msg),
     [MSG.bagEquip]: (msg) => hunt.bagEquip(SESSION_ID, msg),

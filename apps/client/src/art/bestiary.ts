@@ -1,4 +1,6 @@
 import type { MonsterKind } from "@kusa/shared";
+import { mummyCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
+import { sandWormCanvas } from "./sandWorm.ts";
 
 /** Sangue do monstro: cor da mancha no chão (`none` = não sangra, vira poeira ao morrer). */
 export type BloodKind = "red" | "green" | "purple" | "black" | "none";
@@ -9,6 +11,16 @@ export const BLOOD_TINT: Record<Exclude<BloodKind, "none" | "red">, number> = {
   purple: 0x9b59b6,
   black: 0x2b2b2b,
 };
+
+/** Texturas de monstro desenhadas aqui mesmo (não há PNG no pack para carregar): chave → desenho 32×32. */
+export const OWN_SAND_WORM = "monster-sand-worm";
+export const OWN_MONSTER_DRAW: Record<string, () => HTMLCanvasElement> = {
+  [OWN_SAND_WORM]: sandWormCanvas,
+  "monster-sand-scorpion": scorpionCanvas,
+  "monster-giant-vulture": vultureCanvas,
+  "monster-mummy": mummyCanvas,
+};
+export const OWN_MONSTER_ART: string[] = Object.keys(OWN_MONSTER_DRAW);
 
 export interface MonsterArt {
   /** Chave da textura (e nome do PNG em `assets/dcss/`). */
@@ -71,6 +83,11 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   hagIllusion: { texture: "monster-green-hag", blood: "none" },
   spiritNaga: { texture: "monster-spirit-naga", blood: "red" },
   blackDragon: { texture: "monster-black-dragon", facesLeft: true, blood: "red" },
+  // Mar de Areia (arte própria, `desertMonsters.ts` e `sandWorm.ts`: não vem do pack).
+  sandScorpion: { texture: "monster-sand-scorpion", facesLeft: true, blood: "green" },
+  giantVulture: { texture: "monster-giant-vulture", facesLeft: true, blood: "red", flies: true },
+  mummy: { texture: "monster-mummy", facesLeft: true, blood: "none" },
+  sandWorm: { texture: OWN_SAND_WORM, facesLeft: true, blood: "red" },
 };
 
 /** Todas as texturas de monstro (as variantes incluídas), para carregar e refinar. */

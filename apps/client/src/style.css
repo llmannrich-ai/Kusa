@@ -44,6 +44,10 @@ html, body {
   pointer-events: none;
   background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 236, 190, 0.08) 0%, transparent 50%, rgba(92, 48, 12, 0.38) 100%);
 }
+/* Caverna do deserto: escura, só o meio da tela iluminado (pelos cristais e pelo buraco da saída). */
+#game.desert.cave::after {
+  background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 30%, rgba(10, 5, 2, 0.78) 100%);
+}
 /* Cripta: mais escura nos cantos, como corredor iluminado só por tochas. */
 #game.crypt::after {
   content: "";

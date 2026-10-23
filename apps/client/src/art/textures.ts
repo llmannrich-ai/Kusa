@@ -1,6 +1,7 @@
 import type * as Phaser from "phaser";
 import { CLASS_IDS, TILE_SIZE, type ClassId, type SummonKind } from "@kusa/shared";
-import { monsterTextures } from "./bestiary.ts";
+import { OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./bestiary.ts";
+import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
@@ -14,6 +15,10 @@ import {
   duneShadeStrip, duneStrip, dustCloudCanvas, glintStrip, palmCrownSheet, palmShadowCanvas, palmTrunkSheet, sandGrainCanvas, sandStrip,
   shoreStrip, waterStrip, wetStrip,
 } from "./desertDecor.ts";
+import {
+  caveDecorStrip, caveFloorStrip, caveGlowCanvas, caveMouthCanvas, caveShadeStrip, caveShaftCanvas, caveTallStrip, hallFloorStrip,
+  rockFaceStrip, rockRimStrip, rockTopStrip,
+} from "./caveDecor.ts";
 import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./swampDecor.ts";
 
 /**
@@ -86,7 +91,7 @@ export const BLOOD_TEXTURE = { splat: "blood-splat", puddle: "blood-puddle" };
 export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
-    ...monsterTextures(),
+    ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)),
     ...Object.values(SUMMON_TEXTURE).filter((key) => !OWN_SUMMON_ART.includes(key)),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
@@ -145,7 +150,7 @@ export function createHeroArt(scene: Phaser.Scene) {
  */
 export function createCreatureArt(scene: Phaser.Scene) {
   const packed = [...new Set([...monsterTextures(), ...Object.values(SUMMON_TEXTURE)])]
-    .filter((key) => key !== SUMMON_TEXTURE.treant && key !== SUMMON_TEXTURE.eagle);
+    .filter((key) => key !== SUMMON_TEXTURE.treant && key !== SUMMON_TEXTURE.eagle && !OWN_MONSTER_ART.includes(key));
   for (const key of packed) {
     const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
     if (source.width !== TILE_SIZE) continue;
@@ -155,6 +160,9 @@ export function createCreatureArt(scene: Phaser.Scene) {
   }
   if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
     scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
+  }
+  for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
+    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
   }
   if (!scene.textures.exists(SUMMON_TEXTURE.eagle)) {
     scene.textures.addCanvas(SUMMON_TEXTURE.eagle, refineArt(eagleCanvas(), { outline: TREANT_OUTLINE }));
@@ -262,6 +270,18 @@ export const DESERT_TEXTURE = {
   glint: "desert-glint",
   grain: "desert-grain",
   dust: "desert-dust",
+  // Caverna (`caveDecor.ts`)
+  caveFloor: "cave-floor",
+  hall: "cave-hall",
+  rockTop: "cave-rock-top",
+  rockFace: "cave-rock-face",
+  rockRim: "cave-rock-rim",
+  caveShade: "cave-shade",
+  caveDecor: "cave-decor-floor",
+  caveTall: "cave-decor-tall",
+  caveGlow: "cave-glow",
+  caveShaft: "cave-shaft",
+  caveMouth: "cave-mouth",
 };
 
 /** Gera as texturas do deserto (uma vez por jogo): faixas 32×32, folhas dos coqueiros e o brilho na água. */
@@ -279,7 +299,20 @@ export function createDesertArt(scene: Phaser.Scene) {
     [DESERT_TEXTURE.waterDecor, desertWaterStrip],
     [DESERT_TEXTURE.tall, desertTallStrip],
     [DESERT_TEXTURE.glint, glintStrip],
+    [DESERT_TEXTURE.caveFloor, caveFloorStrip],
+    [DESERT_TEXTURE.hall, hallFloorStrip],
+    [DESERT_TEXTURE.rockTop, rockTopStrip],
+    [DESERT_TEXTURE.rockFace, rockFaceStrip],
+    [DESERT_TEXTURE.rockRim, rockRimStrip],
+    [DESERT_TEXTURE.caveShade, caveShadeStrip],
+    [DESERT_TEXTURE.caveDecor, caveDecorStrip],
+    [DESERT_TEXTURE.caveTall, caveTallStrip],
   ]);
+  for (const [key, draw] of [
+    [DESERT_TEXTURE.caveGlow, caveGlowCanvas], [DESERT_TEXTURE.caveShaft, caveShaftCanvas], [DESERT_TEXTURE.caveMouth, caveMouthCanvas],
+  ] as const) {
+    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, draw());
+  }
   for (const [key, draw, size] of [[DESERT_TEXTURE.trunk, palmTrunkSheet, PALM_TRUNK], [DESERT_TEXTURE.crown, palmCrownSheet, PALM_CROWN]] as const) {
     if (scene.textures.exists(key)) continue;
     const texture = scene.textures.addCanvas(key, draw())!;
