@@ -621,9 +621,6 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .hub-page h3 { margin: 20px 0 8px; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
 .hub-hint { margin: 0 0 12px; font-size: 13px; }
 .empty { padding: 16px; text-align: center; border: 1px dashed var(--border); }
-.hub-play { padding: 8px 16px; background: var(--bg); border-top: 1px solid #2a211b; }
-.hub-play { display: grid; gap: 6px; }
-.hub-play .primary { min-height: 52px; font-size: 18px; }
 
 /* Escolha do cenário (tela de criar sala) */
 .map-list { display: grid; gap: 8px; }
@@ -640,7 +637,8 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .map-icon { font-size: 28px; }
 .hub-tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
+  align-items: end;
   padding-bottom: env(safe-area-inset-bottom);
   background: var(--panel);
   border-top: 2px solid var(--border);
@@ -659,6 +657,23 @@ button:disabled { opacity: 0.6; cursor: wait; }
 }
 .hub-tabs button span { font-size: 20px; line-height: 1; }
 .hub-tabs button[aria-selected="true"] { color: var(--accent); border-top-color: var(--accent); background: #2a211b; }
+/* Batalhas: redondo, um pouco maior que as abas e saltado acima da barra. */
+.hub-tabs .hub-battle {
+  place-items: center;
+  justify-self: center;
+  width: 64px;
+  height: 64px;
+  min-height: 0;
+  margin: -24px 0 6px;
+  padding: 0;
+  color: var(--bg);
+  background: var(--accent);
+  border: 3px solid var(--panel);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--border), 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+.hub-tabs .hub-battle svg { width: 34px; height: 34px; }
+.hub-tabs .hub-battle:active { transform: scale(0.94); }
 body.busy .hub button { pointer-events: none; }
 body.busy #hub-body { opacity: 0.7; }
 

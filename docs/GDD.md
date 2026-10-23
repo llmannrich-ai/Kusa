@@ -23,8 +23,9 @@ teclado e mouse no desktop são um extra.
 
 ## Menu inicial (estilo Zooba / Clash)
 
-Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e o botão **Jogar** logo acima delas.
-O **Jogar** abre a tela de salas (ver "Salas e sala de espera").
+Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e, no centro da barra, o botão
+redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
+O **Batalhas** abre a tela de salas (ver "Salas e sala de espera").
 Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
@@ -305,7 +306,7 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 
 Código em `apps/client/src/lobby.ts` e `main.ts`.
 
-1. **Jogar** (menu) abre a tela de salas: em cima, as **salas abertas** (líder, cenário e vagas); embaixo, **Criar sala**
+1. **Batalhas** (botão central do menu) abre a tela de salas: em cima, as **salas abertas** (líder, cenário e vagas); embaixo, **Criar sala**
    com os cartões dos cenários e o botão "Criar sala · <cenário>".
 2. Criar ou entrar numa sala leva à **sala de espera**: 4 vagas (`MAX_PARTY_SIZE`), cada uma com retrato, nome e classe
    de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".

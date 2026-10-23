@@ -45,12 +45,18 @@
         <button id="open-settings" class="icon-button" aria-label="Configurações">⚙️</button>
       </header>
       <div id="hub-body"></div>
-      <div class="hub-play">
-        <button id="play" class="primary">Jogar</button>
-      </div>
       <nav class="hub-tabs" role="tablist">
         <button data-tab="classes" role="tab"><span aria-hidden="true">🛡️</span>Classes</button>
         <button data-tab="spells" role="tab"><span aria-hidden="true">📖</span>Grimório</button>
+        <!-- Batalhas: botão redondo no centro da barra, abre a tela de salas. -->
+        <button id="play" class="hub-battle" aria-label="Batalhas">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 17.5 3 6V3h3l11.5 11.5" />
+            <path d="m13 19 6-6M16 16l4 4M19 21l2-2" />
+            <path d="M14.5 6.5 18 3h3v3l-3.5 3.5" />
+            <path d="m5 14 4 4M7 17l-3 3M3 19l2 2" />
+          </svg>
+        </button>
         <button data-tab="items" role="tab"><span aria-hidden="true">🎒</span>Itens</button>
         <button data-tab="market" role="tab"><span aria-hidden="true">⚖️</span>Mercado</button>
       </nav>
