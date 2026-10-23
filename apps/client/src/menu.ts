@@ -666,6 +666,26 @@ export class Hub {
       }
       loadout.append(cell);
     }
+    // Runas: até 3 diferentes, nos cantos livres do quadro (em cima dos dois lados e embaixo da arma).
+    const equippedRunes = this.equippedRunes();
+    for (let i = 0; i < RUNE_SLOTS; i++) {
+      const owned = equippedRunes[i];
+      const cell = el("button", `loadout-slot rune-slot at-rune${i + 1}`);
+      if (owned) {
+        const rune = RUNES[owned.itemId];
+        cell.append(itemImg(owned.itemId), el("span", "slot-tag", rune.name));
+        cell.style.borderColor = hex(lootColor(owned.itemId));
+        cell.title = rune.name;
+        cell.setAttribute("aria-label", `Runa ${i + 1}: ${rune.name}`);
+        cell.onclick = () => this.openItemSheet(owned);
+      } else {
+        cell.append(el("span", "slot-empty", "ᚱ"), el("span", "slot-tag", "Runa"));
+        cell.classList.add("vacant");
+        cell.setAttribute("aria-label", `Runa ${i + 1} (vazia)`);
+        cell.onclick = () => this.toast("Runas caem dos bosses. Toque numa runa do cofre para equipar.");
+      }
+      loadout.append(cell);
+    }
     const gear = gearStats(equipped);
     const stats = el("div", "equip-stats");
     stats.append(
@@ -673,6 +693,7 @@ export class Hub {
       el("span", "", `⚔️ Dano +${Math.round(gear.damage * 100)}%`),
     );
     if (gear.spellPower) stats.append(el("span", "", `✨ Magias +${Math.round(gear.spellPower * 100)}%`));
+    stats.append(el("span", "", `ᚱ Runas ${equippedRunes.length}/${RUNE_SLOTS}`));
     const panel = el("div", "equip-panel");
     panel.append(el("div", "equip-title", "Equipamento"), loadout, stats);
     const hero = el("div", "equip-hero");
@@ -680,24 +701,6 @@ export class Hub {
     const row = el("div", "equip-row");
     row.append(panel, hero);
     page.append(el("h3", "", "Para a próxima hunt"), row);
-
-    // Runas: até 3 diferentes, logo embaixo do equipamento.
-    const equippedRunes = this.equippedRunes();
-    const runes = el("div", "loadout runes");
-    for (let i = 0; i < RUNE_SLOTS; i++) {
-      const owned = equippedRunes[i];
-      const cell = el("button", "loadout-slot");
-      if (owned) {
-        cell.append(itemImg(owned.itemId), el("small", "", RUNES[owned.itemId].name));
-        cell.style.borderColor = hex(lootColor(owned.itemId));
-        cell.onclick = () => this.openItemSheet(owned);
-      } else {
-        cell.append(el("span", "slot-empty", "ᚱ"), el("small", "muted", `Runa ${i + 1}`));
-        cell.onclick = () => this.toast("Runas caem dos bosses. Toque numa runa do cofre para equipar.");
-      }
-      runes.append(cell);
-    }
-    page.append(el("h3", "", `Runas (${equippedRunes.length}/${RUNE_SLOTS})`), runes);
 
     const vault = this.vaultItems();
     page.append(el("h3", "", `Cofre (${vault.length}/${VAULT_SIZE})`));
