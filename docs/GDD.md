@@ -8,7 +8,7 @@ RPG de dungeon cooperativo para navegador, com tema de Dungeons & Dragons e visu
 O jogo roda no navegador, mas **o alvo principal é o celular**. Toda mecânica nasce pensada para o toque;
 teclado e mouse no desktop são um extra.
 
-- **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado, aparece um aviso para voltar à vertical.
+- **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado fora da hunt (ou na hunt sem o Jogar deitado), aparece um aviso que explica e oferece ligar o Jogar deitado ali mesmo.
 - **Jogar deitado (beta):** opção nas Configurações. Da largada da hunt até o resultado, o jogo ocupa a tela deitada
   (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo, ataque, magias e poções no direito e
   o HUD todo no canto de cima à esquerda. Os menus continuam na vertical. A telemetria compara as hunts em pé e
