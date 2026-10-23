@@ -108,11 +108,35 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   marsh: {
     id: "marsh", name: "Pântano", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
-    description: "Em construção: só o cenário, ainda sem monstros. Floresta alagada, o maior mapa, para jogar sozinho: ciprestes com barba-de-velho, salgueiros, mangues, lagoas e passarelas de madeira.",
-    encounters: [],
-    minibosses: [],
+    description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
+    encounters: [
+      { depth: [0, 0], budget: 70, table: [["orcScout", 3], ["orcGrunt", 2]] },
+      { depth: [1, 1], budget: 110, table: [["orcScout", 3], ["orcGrunt", 3], ["orcArcher", 1]] },
+      { depth: [2, 2], budget: 150, table: [["orcGrunt", 3], ["orcSpearman", 2], ["orcArcher", 2], ["orcScout", 1]] },
+      {
+        depth: [3, 3], budget: 190,
+        table: [["orcGrunt", 2], ["orcSpearman", 2], ["orcArcher", 2], ["orcShaman", 1], ["orcCaptain", 1]],
+      },
+      {
+        depth: [4, 4], budget: 230,
+        table: [["orcSpearman", 2], ["orcShaman", 2], ["orcBerserker", 2], ["orcCaptain", 1], ["orcGrunt", 1]],
+      },
+      {
+        depth: [5, 5], budget: 260,
+        table: [["orcBerserker", 2], ["ogreYoung", 2], ["orcShaman", 1], ["orcArcher", 1], ["orcCaptain", 1]],
+      },
+      {
+        depth: [6, 6], budget: 290,
+        table: [["ogreYoung", 3], ["orcBerserker", 2], ["orcSpearman", 1], ["orcShaman", 1], ["orcCaptain", 1]],
+      },
+      {
+        depth: [7, 99], budget: 330,
+        table: [["ogreYoung", 3], ["orcBerserker", 2], ["orcCaptain", 1], ["orcShaman", 1], ["orcArcher", 1]],
+      },
+    ],
+    minibosses: [["ogreBruiser", 2], ["ogreShaman", 1], ["orcWarlord", 1]],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["ogreKing", 1]],
   },
 };
 

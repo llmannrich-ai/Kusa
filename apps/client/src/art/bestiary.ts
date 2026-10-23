@@ -1,6 +1,31 @@
 import type { MonsterKind } from "@kusa/shared";
 import { BLACK_SHELL, mummyCanvas, sandElementalCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
 import { sandWormCanvas } from "./sandWorm.ts";
+import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
+import type { Clip } from "./rig.ts";
+import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
+
+/**
+ * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
+ * lado, olhando para a esquerda. No jogo vira uma textura refinada com uma animação por clipe.
+ */
+export interface MonsterAnim {
+  size: number;
+  sheet: () => HTMLCanvasElement;
+  /** Primeiro quadro, para a galeria e para quem não anima. */
+  portrait: () => HTMLCanvasElement;
+  outline: string;
+  /** Quadros por segundo de cada clipe (o andar acompanha o passo do monstro no jogo). */
+  fps: Record<Clip, number>;
+}
+
+const ANIM_FPS: Record<Clip, number> = { idle: 4, walk: 9, attack: 12, cast: 7 };
+
+/** Monstro do clã do brejo, em arte própria animada. */
+function marshAnim(kind: MarshSpecies): MonsterAnim {
+  const sp = MARSH_SPECIES[kind];
+  return { size: sp.size, sheet: () => speciesSheet(sp), portrait: () => speciesPortrait(sp), outline: MARSH_MONSTER_OUTLINE, fps: ANIM_FPS };
+}
 
 /** Sangue do monstro: cor da mancha no chão (`none` = não sangra, vira poeira ao morrer). */
 export type BloodKind = "red" | "green" | "purple" | "black" | "none";
@@ -23,7 +48,6 @@ export const OWN_MONSTER_DRAW: Record<string, () => HTMLCanvasElement> = {
   "monster-mummy-priest": () => mummyCanvas(true),
   "monster-sand-elemental": sandElementalCanvas,
 };
-export const OWN_MONSTER_ART: string[] = Object.keys(OWN_MONSTER_DRAW);
 
 export interface MonsterArt {
   /** Chave da textura (e nome do PNG em `assets/dcss/`). */
@@ -40,7 +64,11 @@ export interface MonsterArt {
   /** Opacidade normal do sprite (o Cubo Gelatinoso é translúcido). */
   alpha?: number;
   /**
-   * Tamanho do sprite em relação ao tile (padrão 1; o boss é sempre 2). Mini-boss que é a versão grande de um comum
+   * Animado: folha de quadros (o tamanho do quadro já dá o tamanho no jogo: 32 px = 1 tile; `scale` multiplica).
+   */
+  anim?: MonsterAnim;
+  /**
+   * Tamanho do sprite em relação ao tile (padrão 1; o boss é sempre 2, menos o animado, que usa o quadro). Mini-boss que é a versão grande de um comum
    * (o Escorpião Negro) fica maior para não ser confundido com ele.
    */
   scale?: number;
@@ -99,7 +127,34 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   mummyPriest: { texture: "monster-mummy-priest", facesLeft: true, blood: "none", scale: 1.15 },
   sandElemental: { texture: "monster-sand-elemental", facesLeft: true, blood: "none", scale: 1.3 },
   sandWorm: { texture: OWN_SAND_WORM, facesLeft: true, blood: "red" },
+  // Pântano (arte própria animada, `marshMonsters.ts` e `ogreKing.ts`).
+  orcScout: { texture: "monster-orc-scout", facesLeft: true, blood: "red", anim: marshAnim("orcScout") },
+  orcGrunt: { texture: "monster-orc-grunt", facesLeft: true, blood: "red", anim: marshAnim("orcGrunt") },
+  orcSpearman: { texture: "monster-orc-spearman", facesLeft: true, blood: "red", anim: marshAnim("orcSpearman") },
+  orcArcher: { texture: "monster-orc-archer", facesLeft: true, blood: "red", anim: marshAnim("orcArcher") },
+  orcShaman: { texture: "monster-orc-shaman", facesLeft: true, blood: "red", anim: marshAnim("orcShaman") },
+  orcBerserker: { texture: "monster-orc-berserker", facesLeft: true, blood: "red", anim: marshAnim("orcBerserker") },
+  orcCaptain: { texture: "monster-orc-captain", facesLeft: true, blood: "red", anim: marshAnim("orcCaptain") },
+  ogreYoung: { texture: "monster-ogre-young", facesLeft: true, blood: "red", anim: marshAnim("ogreYoung") },
+  ogreBruiser: { texture: "monster-ogre-bruiser", facesLeft: true, blood: "red", anim: marshAnim("ogreBruiser") },
+  ogreShaman: { texture: "monster-ogre-shaman", facesLeft: true, blood: "red", anim: marshAnim("ogreShaman") },
+  orcWarlord: { texture: "monster-orc-warlord", facesLeft: true, blood: "red", anim: marshAnim("orcWarlord") },
+  ogreKing: {
+    texture: "monster-ogre-king", facesLeft: true, blood: "red", scale: 1.35,
+    anim: { size: KING_SIZE, sheet: ogreKingSheet, portrait: ogreKingPortrait, outline: KING_OUTLINE, fps: { idle: 3.5, walk: 8, attack: 9, cast: 6 } },
+  },
 };
+
+/** Monstros animados: textura → animação. */
+export const MONSTER_ANIMS: Record<string, MonsterAnim> = Object.fromEntries(
+  Object.values(BESTIARY_ART).filter((a) => a.anim).map((a) => [a.texture, a.anim!]),
+);
+/** Chave da animação de um clipe de um monstro animado. */
+export const monsterAnimKey = (texture: string, clip: Clip) => `${texture}:${clip}`;
+
+// Os animados entram com o primeiro quadro (a galeria usa; no jogo a folha inteira vira textura antes).
+for (const [key, anim] of Object.entries(MONSTER_ANIMS)) OWN_MONSTER_DRAW[key] = anim.portrait;
+export const OWN_MONSTER_ART: string[] = Object.keys(OWN_MONSTER_DRAW);
 
 /** Todas as texturas de monstro (as variantes incluídas), para carregar e refinar. */
 export function monsterTextures() {

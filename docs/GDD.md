@@ -378,7 +378,7 @@ recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
-| 🐸 Pântano | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas (ainda vazias), 8 campinas e a clareira do boss | Em construção: só o cenário, sem monstros |
+| 🐸 Pântano | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 8 campinas e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -469,14 +469,21 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
   Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
-### Pântano (em construção)
+### Pântano
 
 - **Para jogar sozinho e mais fácil:** o mapa aceita 1 jogador só (`MapDef.maxParty`; bots contam), então não há
-  "Criar sala" nele, só "Jogar sozinho". É o maior mapa (128×128) e o mais longo (10 min), pensado para ter mais
-  monstros que os outros, render mais níveis e terminar num boss.
-- **Só o cenário por enquanto:** a tabela de monstros, mini-bosses e boss está vazia (a hunt não tem inimigos nem
-  baús; dá para explorar e fugir pelo portal). O gerador já marca as **9 zonas** do caminho em arco, as **8 campinas**,
-  a **clareira do boss** no centro e as **clareiras dos baús**, para os encontros entrarem depois sem mudar o mapa.
+  "Criar sala" nele, só "Jogar sozinho". É o maior mapa (128×128) e o mais longo (10 min): mais monstros que os
+  outros, mais níveis e um boss no fim.
+- **O clã do brejo:** orcs e ogros em **9 zonas** do caminho em arco (cada uma mais forte), **8 campinas** com
+  monstros extras, mini-bosses nas **clareiras dos baús** e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**.
+  Os monstros são mais fracos que os da Cripta na base (o ganho de 12% por zona dobra os do fim), em bandos maiores:
+  o mapa inteiro tem cerca de 61 monstros e 7.200 de XP (a Cripta, 23 e 2.800), então quem limpa boa parte chega
+  no Rei perto do nível 12. Teto de loot da hunt solo: 2.500.
+- **Arte e animação próprias** (`art/rig.ts`, `art/marshMonsters.ts`, `art/ogreKing.ts`): cada monstro é montado de
+  peças com volume (membros em cápsula, tronco, barriga, cabeça) postas por ângulos de articulação, então todos
+  têm quadros de **parado** (respirando), **andando** (passo no ritmo do monstro; os ogros com passo pesado),
+  **golpe** (preparo, golpe, fim, volta) e **especial** (rugido ou cajado no alto), tocados pelo cliente
+  (`MonsterArt.anim`). Orcs em 32 px, ogros em 40 e 48 px, o Rei em quadros de 112 px (corpo de 2,5 tiles).
 - **Floresta alagada:** mata fechada na borda; por cima, lagoas grandes e poças, ilhas de mata fechada, troncos
   caídos e muitas árvores soltas, algumas de pé dentro da água. **Passarelas de madeira** cruzam algumas lagoas em
   linha reta (atalho; às vezes levam a uma ilha). A clareira do boss é um círculo aberto cercado por um anel de
@@ -644,6 +651,27 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
 | **Hidra do pântano** (boss) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
 | **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
+
+### Pântano (★1)
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Orc batedor | escaramuçador (bando de 2–3) | faca e tanga · Fuga Ágil (fura e pula para trás) |
+| Orc do Brejo | bruto | machadinha e escudo de tábua |
+| Orc lanceiro | sentinela | lança de mangue: acerta a 2 tiles |
+| Orc arqueiro | artilheiro | arco de osso, alcance 5 · recua se alguém chega a 3 |
+| Orc xamã | controlador | máscara de caveira de sapo, cajado · Lama Agarrada (prende 1,2 s, de longe) |
+| Orc berserker | bruto | dois machados, pintura vermelha · Agressivo (salta) · Rompante (ferido, bate 40% mais rápido) |
+| Orc capitão | líder | elmo e estandarte · Comando (orcs perto batem 15% mais forte e mais rápido) |
+| Ogro jovem | bruto | porrete · Pancada (1,8× e empurra) |
+| **Ogro do Brejo** (mini-boss) | bruto | porrete de cravos · Pisão Sísmico (em volta, deixa lento) · Arremesso de Pedra |
+| **Ogro Xamã** (mini-boss) | controlador | Chamado do Clã (chama 2 Orcs do Brejo) · Maldição do Brejo (área: lento e envenena) |
+| **Chefe de Guerra Orc** (mini-boss) | líder | armadura de placas e cutelo · Investida · Golpe Giratório · Comando |
+| **Grumak, o Rei-Ogro** (boss) | bruto | coroa de ferro torta e um tronco de porrete (alcance 2) · Esmagar (2,2× e atordoa 1 s) · Pisão do Pântano · Investida do Rei · Tronco Arremessado · com metade da vida, Rugido do Rei (chama 2 Orcs do Brejo, uma vez) · abaixo de 30%, frenesi |
+
+No simulador de duelo (herói sozinho, só ataque básico), os orcs comuns ficam entre o Goblin e o Esqueleto da
+Cripta, o Ogro jovem perto do Orc guerreiro, os mini-bosses abaixo do Ogro da Cripta, e o Rei-Ogro (herói nível
+12) dura de 10 a 15 s contra o herói, contra 4 a 7 s do Dragão jovem (herói nível 6).
 
 ## Ataques e magias (protótipo)
 

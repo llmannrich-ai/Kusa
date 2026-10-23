@@ -1,6 +1,8 @@
 import type * as Phaser from "phaser";
 import { CLASS_IDS, TILE_SIZE, type ClassId, type SummonKind } from "@kusa/shared";
-import { OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./bestiary.ts";
+import { MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures } from "./bestiary.ts";
+import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
+import { makeCanvas } from "./pixels.ts";
 import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
@@ -165,6 +167,31 @@ export function createCreatureArt(scene: Phaser.Scene) {
   }
   if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
     scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
+  }
+  // Animados: cada quadro da folha é refinado à parte (o contorno não vaza para o vizinho) e vira um quadro da textura.
+  for (const [key, anim] of Object.entries(MONSTER_ANIMS)) {
+    if (scene.textures.exists(key)) continue;
+    const sheet = anim.sheet();
+    const n = sheet.width / anim.size;
+    const big = anim.size * 2;
+    const { canvas, ctx } = makeCanvas(big * n, big);
+    const frame = makeCanvas(anim.size, anim.size);
+    for (let i = 0; i < n; i++) {
+      frame.ctx.clearRect(0, 0, anim.size, anim.size);
+      frame.ctx.drawImage(sheet, i * anim.size, 0, anim.size, anim.size, 0, 0, anim.size, anim.size);
+      ctx.drawImage(refineArt(frame.canvas, { outline: anim.outline }), i * big, 0);
+    }
+    const texture = scene.textures.addCanvas(key, canvas)!;
+    for (let i = 0; i < n; i++) texture.add(i, 0, i * big, 0, big, big);
+    for (const clip of CLIP_ORDER) {
+      const start = clipStart(clip);
+      scene.anims.create({
+        key: monsterAnimKey(key, clip),
+        frames: Array.from({ length: CLIPS[clip] }, (_, k) => ({ key, frame: start + k })),
+        frameRate: anim.fps[clip],
+        repeat: clip === "idle" || clip === "walk" ? -1 : 0,
+      });
+    }
   }
   for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));

@@ -25,7 +25,7 @@ const LEVEL: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
   crypt: { common: 3, miniboss: 5, boss: 6 },
   swamp: { common: 6, miniboss: 8, boss: 10 },
   desert: { common: 3, miniboss: 5, boss: 6 },
-  marsh: { common: 4, miniboss: 6, boss: 8 },
+  marsh: { common: 5, miniboss: 8, boss: 12 },
 };
 /** Profundidade típica (sala do caminho) de cada rank. */
 const DEPTH: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
