@@ -1,5 +1,5 @@
 import type { MonsterKind } from "@kusa/shared";
-import { mummyCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
+import { BLACK_SHELL, mummyCanvas, sandElementalCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
 import { sandWormCanvas } from "./sandWorm.ts";
 
 /** Sangue do monstro: cor da mancha no chão (`none` = não sangra, vira poeira ao morrer). */
@@ -16,9 +16,12 @@ export const BLOOD_TINT: Record<Exclude<BloodKind, "none" | "red">, number> = {
 export const OWN_SAND_WORM = "monster-sand-worm";
 export const OWN_MONSTER_DRAW: Record<string, () => HTMLCanvasElement> = {
   [OWN_SAND_WORM]: sandWormCanvas,
-  "monster-sand-scorpion": scorpionCanvas,
+  "monster-sand-scorpion": () => scorpionCanvas(),
   "monster-giant-vulture": vultureCanvas,
-  "monster-mummy": mummyCanvas,
+  "monster-mummy": () => mummyCanvas(),
+  "monster-black-scorpion": () => scorpionCanvas(BLACK_SHELL),
+  "monster-mummy-priest": () => mummyCanvas(true),
+  "monster-sand-elemental": sandElementalCanvas,
 };
 export const OWN_MONSTER_ART: string[] = Object.keys(OWN_MONSTER_DRAW);
 
@@ -36,6 +39,11 @@ export interface MonsterArt {
   disguise?: string;
   /** Opacidade normal do sprite (o Cubo Gelatinoso é translúcido). */
   alpha?: number;
+  /**
+   * Tamanho do sprite em relação ao tile (padrão 1; o boss é sempre 2). Mini-boss que é a versão grande de um comum
+   * (o Escorpião Negro) fica maior para não ser confundido com ele.
+   */
+  scale?: number;
 }
 
 /**
@@ -87,6 +95,9 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   sandScorpion: { texture: "monster-sand-scorpion", facesLeft: true, blood: "green" },
   giantVulture: { texture: "monster-giant-vulture", facesLeft: true, blood: "red", flies: true },
   mummy: { texture: "monster-mummy", facesLeft: true, blood: "none" },
+  blackScorpion: { texture: "monster-black-scorpion", facesLeft: true, blood: "green", scale: 1.45 },
+  mummyPriest: { texture: "monster-mummy-priest", facesLeft: true, blood: "none", scale: 1.15 },
+  sandElemental: { texture: "monster-sand-elemental", facesLeft: true, blood: "none", scale: 1.3 },
   sandWorm: { texture: OWN_SAND_WORM, facesLeft: true, blood: "red" },
 };
 

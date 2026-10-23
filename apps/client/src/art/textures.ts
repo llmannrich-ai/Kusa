@@ -13,7 +13,7 @@ import { TORCH_FRAMES, cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanv
 import {
   GLINT_FRAMES, PALM_CROWN, PALM_TRUNK, PALM_VARIANTS, desertFloorStrip, desertTallStrip, desertWaterStrip, dryFringeStrip, duneLipStrip,
   duneShadeStrip, duneStrip, dustCloudCanvas, glintStrip, palmCrownSheet, palmShadowCanvas, palmTrunkSheet, sandGrainCanvas, sandStrip,
-  shoreStrip, waterStrip, wetStrip,
+  pavingStrip, ruinStrip, shoreStrip, waterStrip, wetStrip,
 } from "./desertDecor.ts";
 import {
   caveDecorStrip, caveFloorStrip, caveGlowCanvas, caveMouthCanvas, caveShadeStrip, caveShaftCanvas, caveTallStrip, hallFloorStrip,
@@ -270,6 +270,8 @@ export const DESERT_TEXTURE = {
   glint: "desert-glint",
   grain: "desert-grain",
   dust: "desert-dust",
+  ruins: "desert-ruins",
+  paving: "desert-paving",
   // Caverna (`caveDecor.ts`)
   caveFloor: "cave-floor",
   hall: "cave-hall",
@@ -307,6 +309,8 @@ export function createDesertArt(scene: Phaser.Scene) {
     [DESERT_TEXTURE.caveShade, caveShadeStrip],
     [DESERT_TEXTURE.caveDecor, caveDecorStrip],
     [DESERT_TEXTURE.caveTall, caveTallStrip],
+    [DESERT_TEXTURE.ruins, ruinStrip],
+    [DESERT_TEXTURE.paving, pavingStrip],
   ]);
   for (const [key, draw] of [
     [DESERT_TEXTURE.caveGlow, caveGlowCanvas], [DESERT_TEXTURE.caveShaft, caveShaftCanvas], [DESERT_TEXTURE.caveMouth, caveMouthCanvas],

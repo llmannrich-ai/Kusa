@@ -70,7 +70,7 @@ function rules() {
   }
   // Mortos-vivos (a luz do Paladino fere mais): o tipo de criatura decide.
   const undead = Object.values(MONSTERS).filter((m) => m.undead).map((m) => m.kind).sort().join();
-  if (undead !== "bogBody,ghoul,mummy,skeleton,skeletonArcher,willOWisp,zombie") throw new Error(`mortos-vivos: ${undead}`);
+  if (undead !== "bogBody,ghoul,mummy,mummyPriest,skeleton,skeletonArcher,willOWisp,zombie") throw new Error(`mortos-vivos: ${undead}`);
 }
 
 /** Especializações: os dois Traços de um ramo se excluem, cada lado tem 1 magia por slot e elas pedem o Traço. */

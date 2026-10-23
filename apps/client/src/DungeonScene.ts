@@ -1046,8 +1046,8 @@ export class DungeonScene extends Phaser.Scene {
     const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
     const def = MONSTERS[kind];
     const art = BESTIARY_ART[kind];
-    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia).
-    const scale = (def.rank === "boss" ? 2 : 1) * CREATURE_SPRITE_SCALE;
+    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia); alguns mini-bosses um pouco maiores.
+    const scale = (def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
