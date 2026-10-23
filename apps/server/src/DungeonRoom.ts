@@ -11,6 +11,7 @@ import {
   type AddBotMessage,
   type AttackingMessage,
   type BagDropMessage,
+  type ScreenMessage,
   type BagEquipMessage,
   type CastMessage,
   type ChoosePerkMessage,
@@ -95,6 +96,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.onMessage(MSG.bagEquip, (client, msg: BagEquipMessage) => this.hunt.bagEquip(client.sessionId, msg));
     this.onMessage(MSG.unequip, (client, msg: UnequipMessage) => this.hunt.unequip(client.sessionId, msg));
     this.onMessage(MSG.bagDrop, (client, msg: BagDropMessage) => this.hunt.bagDrop(client.sessionId, msg));
+    this.onMessage(MSG.screen, (client, msg: ScreenMessage) => this.hunt.screen(client.sessionId, msg));
 
     this.setSimulationInterval((dt) => this.hunt.tick(dt), SERVER_TICK_MS);
   }

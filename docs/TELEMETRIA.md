@@ -16,6 +16,11 @@ Como o jogo é entre amigos, a tela também tem **Prêmios da galera** e **Ranki
 (hunts, sobrevivência, abates, dano causado e recebido, cura, gold, bosses, mortes, melhor nível, minutos e classe
 favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa função e em `METRICS` do cliente.
 
+O card **Em pé × deitado (beta)** compara as hunts jogadas com a tela em pé e deitada (Jogar deitado, nas
+Configurações): `telemetry_screen(p_map, p_days)` conta como deitada a hunt com pelo menos metade do tempo deitada
+(`stats.landscapeMs`) e devolve hunts, jogadores, abandono, sobrevivência, nível, loot e duração de cada grupo. O card
+só aparece depois que alguém jogou deitado.
+
 **Configurações > Histórico** (`apps/client/src/history.ts`) lista as partidas, uma por `match_id`, com cada jogador:
 classe, nível, desfecho, loot (gold e itens que saíram da hunt) e penalidades da morte (gold juntado, itens perdidos e
 a perda de XP das magias dos slots). Vem de `match_history(p_mine, p_before, p_limit)` (`security definer`, só para
@@ -53,6 +58,7 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.intercepted` | Intervir (Guardião): dano que o cavaleiro puxou dos aliados para si |
 | `stats.revives`, `stats.revived` | Renascer da Semente: nomes de quem o druida salvou; em quem renasceu, de quem veio a semente, o segundo e o dano que levou depois |
 | `stats.bots` | Bots na equipe quando a hunt começou (já contados em `party_size`). Bot não gera linha de telemetria |
+| `stats.landscapeMs` | Tempo (ms) de hunt com a tela deitada (o cliente avisa com `MSG.screen`); o resto foi em pé |
 | `stats.ccMs` | Tempo de controle aplicado nos monstros (ms somados por monstro): `root`, `stun` e `slow` |
 | `stats.potions` | Poções guardadas e bebidas por tipo e mana devolvida (a vida das poções entra em `healing`) |
 | `stats.kills`, `firstKillAt`, `xp` | Abates por monstro, tempo até o primeiro abate, XP total |

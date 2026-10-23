@@ -267,7 +267,10 @@ function renderSettings() {
     toggle.type = "checkbox";
     toggle.role = "switch";
     toggle.checked = settings[def.key];
-    toggle.onchange = () => saveSetting(def.key, toggle.checked);
+    toggle.onchange = () => {
+      saveSetting(def.key, toggle.checked);
+      paintRotate();
+    };
     row.append(text, toggle);
     list.append(row);
   }
@@ -423,6 +426,8 @@ function createGame() {
 }
 
 function startGame(room: DungeonRoom) {
+  inHunt = true;
+  enterHuntLayout();
   show("lobby", false);
   show("hud", true);
   show("actions", true);
@@ -538,13 +543,56 @@ function renderSpellProgress(msg: RunEndedMessage) {
 
 /** No celular, tela cheia e trava na vertical (Android; o iOS ignora e mostra o aviso de girar). */
 async function goFullscreenPortrait() {
+  await lockOrientation("portrait");
+}
+
+/**
+ * Tela cheia e trava a orientação no celular (Android). O iOS não trava: o jogador gira o aparelho, e o aviso
+ * de girar (`#rotate`) só some na orientação certa.
+ */
+async function lockOrientation(orientation: "portrait" | "landscape") {
   if (!matchMedia("(pointer: coarse)").matches) return;
   try {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
-    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("portrait");
+    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.(orientation);
   } catch {
     // Navegador não permite: segue normal.
   }
+}
+
+/**
+ * Jogar deitado (beta, nas configurações): da largada da hunt até o resultado, o jogo ocupa a tela deitada
+ * (`body.deitado` em style.css) e o Android vira sozinho. Em pé, o mesmo jogo continua valendo.
+ */
+let inHunt = false;
+
+/**
+ * Aviso de celular deitado (`#rotate`): antes só pedia para voltar à vertical, e quem testava deitado achava que o
+ * jogo não tinha esse modo. Agora oferece ligar o Jogar deitado ali mesmo e explica que os menus ficam em pé.
+ */
+function paintRotate() {
+  const on = loadSettings().landscape;
+  $("rotate-text").textContent = on
+    ? "Jogar deitado está ligado. Os menus ficam na vertical: gire o celular para escolher a hunt e, ao começar, ela vira deitada sozinha."
+    : "O Kusa é feito para a vertical, mas a hunt também pode ser jogada com o celular deitado.";
+  $("rotate-landscape").textContent = on ? "Desligar jogar deitado" : "Jogar deitado (beta)";
+}
+
+$("rotate-landscape").onclick = () => {
+  const on = !loadSettings().landscape;
+  saveSetting("landscape", on);
+  paintRotate();
+  // No meio da hunt, vale na hora (o toque permite a tela cheia e a trava deitada no Android).
+  if (on && inHunt) enterHuntLayout();
+};
+paintRotate();
+
+function enterHuntLayout() {
+  if (!loadSettings().landscape) return;
+  document.body.classList.add("deitado");
+  // O Phaser nasceu na sala de espera, na coluna em pé: mede a tela de novo com o layout deitado.
+  window.dispatchEvent(new Event("resize"));
+  void lockOrientation("landscape");
 }
 
 function localStorageGet(key: string) {

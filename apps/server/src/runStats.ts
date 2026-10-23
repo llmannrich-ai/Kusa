@@ -74,6 +74,8 @@ export interface RunStats {
   revived: { by: string; at: number; damageAfter: number } | null;
   /** Bots na equipe quando a hunt começou (já contados em `partySize`). */
   bots: number;
+  /** Tempo (ms) de hunt jogado com a tela deitada (Jogar deitado, beta); o resto foi em pé. */
+  landscapeMs: number;
 }
 
 export function newRunStats(): RunStats {
@@ -81,7 +83,7 @@ export function newRunStats(): RunStats {
     levelAt: {}, depthAt: {}, specs: [], spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
-    minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0,
+    minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0,
   };
 }
 

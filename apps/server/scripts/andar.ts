@@ -5,7 +5,8 @@
  *     um tick;
  *   - soltar (`{ dx: 0, dy: 0, hold: true }`) para na hora;
  *   - sem o cliente reenviar a direção, o herói para sozinho depois de `MOVE_HOLD_MS`;
- *   - a mensagem sem `hold` continua sendo um passo só.
+ *   - a mensagem sem `hold` continua sendo um passo só;
+ *   - o tempo com a tela deitada (`MSG.screen`) soma em `RunStats.landscapeMs` e para de somar em pé.
  * Uso: npx tsx apps/server/scripts/andar.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { MOVE_HOLD_MS, MOVE_RESEND_MS, SERVER_TICK_MS } from "@kusa/shared";
@@ -87,6 +88,19 @@ test("mensagem sem hold é um passo só", (a) => {
   check(a.p.x === x + 1, "o passo não saiu");
   a.advance(2000);
   check(a.p.x === x + 1, `andou além do passo: x=${a.p.x}, esperado ${x + 1}`);
+});
+
+test("tempo deitado soma na telemetria", (a) => {
+  const stats = () => (a.hunt as unknown as { seats: Map<string, { stats: { landscapeMs: number } }> }).seats.get(HERO)!.stats;
+  a.advance(1000);
+  check(stats().landscapeMs === 0, `contou ${stats().landscapeMs} ms deitado sem a tela deitar`);
+  a.hunt.screen(HERO, { landscape: true });
+  a.advance(3000);
+  const lying = stats().landscapeMs;
+  check(Math.abs(lying - 3000) <= SERVER_TICK_MS, `deitado por 3000 ms contou ${lying} ms`);
+  a.hunt.screen(HERO, { landscape: false });
+  a.advance(2000);
+  check(stats().landscapeMs === lying, `continuou contando em pé: ${stats().landscapeMs} ms`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falha(s)`);

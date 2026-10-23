@@ -37,6 +37,7 @@ import {
   type DotKind,
   type SpellDef,
   type SpellId,
+  type ScreenMessage,
   type SpellMessage,
   type SummonKind,
 } from "@kusa/shared";
@@ -50,7 +51,7 @@ import { RuneChoice } from "./runechoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
-import { MoveInput } from "./input.ts";
+import { MoveInput, inJoystickZone } from "./input.ts";
 import { Minimap } from "./minimap.ts";
 import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
@@ -75,8 +76,11 @@ import {
   itemTexture,
 } from "./art/textures.ts";
 
-/** Campo de visão mínimo com o celular na vertical: 9 tiles de largura e pelo menos 13 de altura. */
-const VIEW_TILES = { w: 9, h: 13 };
+/**
+ * Campo de visão: 9 tiles no lado curto da tela e pelo menos 13 no lado longo. Em pé fica 9 de largura; deitado,
+ * 9 de altura: quem joga deitado vê a mesma área de quem joga em pé, só girada (sem vantagem na equipe).
+ */
+const VIEW_TILES = { short: 9, long: 13 };
 /** Salto maior que isto (tiles) é a caverna do deserto: a câmera corta em vez de deslizar. */
 const CAVE_CUT_TILES = 12;
 /** Ritmo de quem ainda não anunciou o seu (ms por tile). */
@@ -89,7 +93,10 @@ const GLIDE_CATCH_UP = 0.75;
 const DASH_MS = 150;
 /** Salto maior que isso (tiles) não desliza: aparece no destino. */
 const SNAP_TILES = 4;
-/** Quanto o jogador fica acima do centro da tela, em fração da altura (a parte de baixo é dos polegares). */
+/**
+ * Quanto o jogador fica acima do centro da tela, em fração da altura (a parte de baixo é dos polegares). Deitado,
+ * os polegares ficam nas laterais e a tela é baixa: o jogador fica no centro.
+ */
 const FOLLOW_LIFT = 0.12;
 /** Até onde a troca de alvo (Tab) procura monstros (tiles). */
 const TARGET_CYCLE_RANGE = 8;
@@ -236,6 +243,8 @@ export class DungeonScene extends Phaser.Scene {
   private sentMove: { dx: number; dy: number } = { dx: 0, dy: 0 };
   /** Resolução dos textos, para continuarem nítidos com o zoom da câmera. */
   private textResolution = 1;
+  /** Última orientação avisada ao servidor (`MSG.screen`); a hunt começa contando em pé. */
+  private landscape = false;
 
   constructor() {
     super("dungeon");
@@ -351,16 +360,18 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
     kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
     kb?.on("keydown-B", () => this.bagBar.toggle());
+    // Na zona do joystick, o toque no monstro só vale ao soltar rápido (ver MoveInput); fora dela, na hora.
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      const id = this.monsterAtWorld(pointer.worldX, pointer.worldY);
-      if (id) this.lockTarget(id === this.locked ? null : id);
+      const { width, height } = this.scale.gameSize;
+      if (inJoystickZone(pointer.x / width, pointer.y / height, width > height)) return;
+      this.tapMonster(pointer.worldX, pointer.worldY);
     });
 
     this.move = new MoveInput(this, this.game.canvas, (clientX, clientY) => {
       const rect = this.game.canvas.getBoundingClientRect();
       const scale = this.game.canvas.width / rect.width;
       const world = this.cameras.main.getWorldPoint((clientX - rect.left) * scale, (clientY - rect.top) * scale);
-      return this.monsterAtWorld(world.x, world.y) !== null;
+      this.tapMonster(world.x, world.y);
     });
     // O ⚔️ fica embaixo, mais perto do polegar; os slots de magia entram acima dele.
     const actions = document.getElementById("actions")!;
@@ -421,6 +432,12 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** Monstro sob um ponto do mundo, com folga de quase um tile (o dedo é impreciso). */
+  /** Tocar num monstro trava o alvo nele; tocar no travado destrava. */
+  private tapMonster(worldX: number, worldY: number) {
+    const id = this.monsterAtWorld(worldX, worldY);
+    if (id) this.lockTarget(id === this.locked ? null : id);
+  }
+
   private monsterAtWorld(worldX: number, worldY: number): string | null {
     let best: string | null = null;
     let bestDist = TILE_SIZE * 0.9;
@@ -1327,13 +1344,21 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
-  /** Celular na vertical: 9 tiles de largura em qualquer aparelho, com o jogador um pouco acima do centro. */
+  /** 9 tiles no lado curto em qualquer aparelho; em pé, com o jogador um pouco acima do centro. */
   private fitCamera() {
     const { width, height } = this.scale.gameSize;
-    const zoom = Math.min(width / (VIEW_TILES.w * TILE_SIZE), height / (VIEW_TILES.h * TILE_SIZE));
+    const landscape = width > height;
+    const short = Math.min(width, height);
+    const long = Math.max(width, height);
+    const zoom = Math.min(short / (VIEW_TILES.short * TILE_SIZE), long / (VIEW_TILES.long * TILE_SIZE));
     this.textResolution = Math.max(1, Math.ceil(zoom));
     this.cameras.main.setZoom(zoom);
-    this.cameras.main.setFollowOffset(0, -(height * FOLLOW_LIFT) / zoom);
+    this.cameras.main.setFollowOffset(0, landscape ? 0 : -(height * FOLLOW_LIFT) / zoom);
+    // Telemetria: quanto da hunt foi jogado deitado.
+    if (landscape !== this.landscape) {
+      this.landscape = landscape;
+      this.room.send(MSG.screen, { landscape } satisfies ScreenMessage);
+    }
   }
 
   private tilePoint(x: number, y: number) {

@@ -137,6 +137,7 @@ import {
   type PerkStacks,
   type Rect,
   type RunEndedMessage,
+  type ScreenMessage,
   type RunOutcome,
   type SpellDef,
   type SpellMessage,
@@ -261,6 +262,8 @@ interface Seat {
   effectImmuneUntil: Partial<Record<HeroEffectKind, number>>;
   /** Números da hunt para a telemetria. */
   stats: RunStats;
+  /** A tela do jogador está deitada (`MSG.screen`): o tempo assim soma em `stats.landscapeMs`. */
+  landscape: boolean;
 }
 
 /** Dados da criatura invocada que só o servidor precisa. */
@@ -540,6 +543,7 @@ export class Hunt {
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(),
+      landscape: false,
     });
     const joined = this.seats.get(sessionId)!;
     joined.stats.specs = joined.traits.map((t) => t.id);
@@ -886,6 +890,12 @@ export class Hunt {
     if (seat) seat.targetLocked = player.target !== "";
   }
 
+  /** Só telemetria: quanto da hunt cada jogador passou com a tela deitada. */
+  screen(sessionId: string, msg: ScreenMessage) {
+    const seat = this.seats.get(sessionId);
+    if (seat) seat.landscape = msg?.landscape === true;
+  }
+
   attacking(sessionId: string, msg: AttackingMessage) {
     const seat = this.seats.get(sessionId);
     if (!seat) return;
@@ -913,6 +923,7 @@ export class Hunt {
 
     const now = this.host.now();
     this.regen(dt);
+    this.tallyScreen(dt);
     this.expireEffects(now);
     this.bots.think(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
@@ -925,6 +936,13 @@ export class Hunt {
   }
 
   // --- Combate -----------------------------------------------------------
+
+  private tallyScreen(dt: number) {
+    this.state.players.forEach((p, sessionId) => {
+      const seat = this.seats.get(sessionId);
+      if (seat?.landscape && p.status === "playing") seat.stats.landscapeMs += dt;
+    });
+  }
 
   private regen(dt: number) {
     this.regenMs += dt;

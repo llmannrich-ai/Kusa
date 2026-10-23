@@ -8,15 +8,22 @@ RPG de dungeon cooperativo para navegador, com tema de Dungeons & Dragons e visu
 O jogo roda no navegador, mas **o alvo principal é o celular**. Toda mecânica nasce pensada para o toque;
 teclado e mouse no desktop são um extra.
 
-- **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado, aparece um aviso para voltar à vertical.
+- **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado fora da hunt (ou na hunt sem o Jogar deitado), aparece um aviso que explica e oferece ligar o Jogar deitado ali mesmo.
+- **Jogar deitado (beta):** opção nas Configurações. Da largada da hunt até o resultado, o jogo ocupa a tela deitada
+  (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo; ataque e magias em arco no canto de
+  baixo à direita, com as poções numa fileira ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
+  direita, para o meio da tela ficar livre (no iPhone, as barras do Safari deixam só uns 330 px de altura). Os menus continuam na vertical. A telemetria compara as hunts em pé e
+  deitado (`stats.landscapeMs`) para decidir se o modo fica.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
-- **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura), com 8 direções.
+- **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura; deitado, 40%), com 8 direções.
+  Na zona do joystick todo toque vira joystick, até em cima de um monstro; um toque rápido parado (menos de 250 ms) trava o alvo ali.
+  Curso de 72 px; o pino que passa da borda arrasta a base junto, e perto da divisa entre duas direções fica na que já estava (sem tremer na diagonal).
   Enquanto o polegar segura uma direção, o servidor anda nela sozinho, no ritmo da velocidade do herói, e o
   cliente desenha os passos emendados, com duração constante (sem "trava e corre" quando a rede oscila).
 - **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
-- **Tela:** sempre 9 tiles de largura (pelo menos 13 de altura), com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
+- **Tela:** sempre 9 tiles no lado curto (pelo menos 13 no longo): em pé, 9 de largura, com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares; deitado, 9 de altura, com o jogador no centro. Assim quem joga deitado vê a mesma área de quem joga em pé. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
 - **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias no alvo automático), Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.

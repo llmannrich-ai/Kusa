@@ -1,10 +1,12 @@
 /** Preferências do jogador, salvas só neste aparelho. */
 export interface Settings {
   minimap: boolean;
+  landscape: boolean;
 }
 
 const DEFAULTS: Settings = {
   minimap: true,
+  landscape: false,
 };
 
 /** Uma opção como aparece na tela de configurações; novas opções entram aqui e em `Settings`. */
@@ -16,6 +18,11 @@ export interface SettingDef {
 
 export const SETTING_DEFS: SettingDef[] = [
   { key: "minimap", label: "Minimapa", hint: "Mostra o mapa da dungeon no canto da tela durante a hunt." },
+  {
+    key: "landscape",
+    label: "Jogar deitado (beta)",
+    hint: "A hunt vira o celular na horizontal: joystick no polegar esquerdo, botões no direito. Os menus continuam na vertical.",
+  },
 ];
 
 const STORAGE_KEY = "kusa:settings";
