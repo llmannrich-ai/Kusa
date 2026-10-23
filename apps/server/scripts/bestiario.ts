@@ -118,6 +118,22 @@ function check(ok: boolean, what: string) {
   console.log("Fortitude Morta-viva OK");
 }
 
+// --- Chamados (Chamado do Clã, Rugido do Rei) ----------------------------------------
+{
+  const { spawn, hit, p, brain, state } = arena("marsh");
+  const grunt = spawn("orcGrunt");
+  const minion = spawn("orcGrunt", 2);
+  brain(minion).summonedBy = "m-chamou";
+  const xp0 = p.xp;
+  const loot0 = p.loot;
+  hit(minion, 99_999, "basic");
+  check(p.xp === xp0 && p.loot === loot0, `orc chamado não devia dar XP nem loot (XP +${p.xp - xp0}, loot +${p.loot - loot0})`);
+  check(state.items.size === 0, "orc chamado não devia largar item");
+  hit(grunt, 99_999, "basic");
+  check(p.xp > xp0 && p.loot > loot0, "orc do mapa devia dar XP e loot");
+  console.log("monstro chamado não rende XP nem loot OK");
+}
+
 // --- Troll e Hidra ----------------------------------------------------------------
 {
   const { spawn, hit, hunt, p } = arena("swamp");

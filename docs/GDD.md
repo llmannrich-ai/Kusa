@@ -591,6 +591,9 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 - **Papéis:** bruto, escaramuçador (bate e recua, investe), artilheiro (fica a 3–5 tiles e atira; recua se colarem),
   controlador (prende, puxa, paralisa), líder (aura nos aliados), enxame (vem em grupo), emboscador (camuflado até
   atacar) e sentinela (lento, muita vida).
+- **Monstros chamados não rendem nada:** quem nasce de uma habilidade de outro monstro (Chamado do Clã, Rugido do
+  Rei, Praga de Escaravelhos) não dá XP, loot, item nem poção ao morrer. Sem isso, bastava ficar ao lado de quem chama
+  para subir de nível sem fim.
 - **Habilidades sem aviso:** cada monstro tem até 3 habilidades, em ordem de prioridade. Saem na hora, sempre que a
   recarga deixa e o alvo está ao alcance, e a recarga varia ±30% (a "Recarga 5–6" do D&D): não dá para decorar o
   ritmo. O nome sobe sobre o monstro, ele brilha na cor da habilidade e o efeito cobre a área. A primeira habilidade

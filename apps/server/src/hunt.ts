@@ -2035,6 +2035,14 @@ export class Hunt {
       if (other.summonedBy === m.id && other.traits.illusion) this.vanishMonster(id);
     }
 
+    // Chamado por outro monstro (Chamado do Clã, Rugido do Rei, Praga de Escaravelhos): não rende XP, loot nem item,
+    // senão bastava ficar ao lado de quem chama para subir de nível sem fim.
+    if (brain.summonedBy) {
+      const stats = this.seats.get(killerId)?.stats;
+      if (stats) bump(stats.kills, m.kind);
+      return;
+    }
+
     // XP: a equipe que participou divide (com bônus por participante). Os bots não contam na divisão: ganham a mesma
     // parte de um humano, para subirem de nível junto, sem tirar XP de ninguém.
     const sharers = [...brain.participants].filter((id) => this.state.players.get(id)?.status === "playing");
