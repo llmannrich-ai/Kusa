@@ -68,16 +68,25 @@ export function watchHostedRooms(onChange: (rooms: HostedListing[]) => void): ()
 /** Anuncia a sala na lista enquanto este aparelho hospeda. */
 export class Listing {
   private channel: Promise<RealtimeChannel>;
-  private ready: Promise<void>;
+  private joined: RealtimeChannel | null = null;
+  private last: HostedListing | null = null;
 
   constructor(roomId: string) {
-    this.channel = openChannel(LISTING_CHANNEL, { config: { presence: { key: roomId } } });
-    this.ready = this.channel.then(subscribed);
+    // No celular o socket cai à toa (app em segundo plano, troca de rede): o canal volta sozinho, mas a presença
+    // não, e a sala sumia da lista de todo mundo. Anuncia de novo a cada vez que o canal (re)conecta.
+    this.channel = openChannel(LISTING_CHANNEL, { config: { presence: { key: roomId } } }).then((c) => c.subscribe((status) => {
+      this.joined = status === "SUBSCRIBED" ? c : null;
+      this.announce();
+    }));
   }
 
-  async update(listing: HostedListing) {
-    await this.ready;
-    await (await this.channel).track({ ...listing, maxClients: MAX_PARTY_SIZE });
+  update(listing: HostedListing) {
+    this.last = { ...listing, maxClients: MAX_PARTY_SIZE };
+    this.announce();
+  }
+
+  private announce() {
+    if (this.joined && this.last) void this.joined.track(this.last);
   }
 
   close() {
