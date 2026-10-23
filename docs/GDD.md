@@ -10,8 +10,9 @@ teclado e mouse no desktop são um extra.
 
 - **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado fora da hunt (ou na hunt sem o Jogar deitado), aparece um aviso que explica e oferece ligar o Jogar deitado ali mesmo.
 - **Jogar deitado (beta):** opção nas Configurações. Da largada da hunt até o resultado, o jogo ocupa a tela deitada
-  (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo, ataque, magias e poções no direito e
-  o HUD todo no canto de cima à esquerda. Os menus continuam na vertical. A telemetria compara as hunts em pé e
+  (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo; ataque e magias em arco no canto de
+  baixo à direita, com as poções numa fileira ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
+  direita, para o meio da tela ficar livre (no iPhone, as barras do Safari deixam só uns 330 px de altura). Os menus continuam na vertical. A telemetria compara as hunts em pé e
   deitado (`stats.landscapeMs`) para decidir se o modo fica.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
 - **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura; deitado, 40%), com 8 direções.
