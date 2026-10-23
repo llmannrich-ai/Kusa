@@ -649,7 +649,9 @@ export class MonsterAi {
   private stepTo(m: Monster, brain: Brain, step: { x: number; y: number }, now: number) {
     const diagonal = step.x !== m.x && step.y !== m.y;
     const slow = m.slowed ? 1 - brain.slowPct : 1;
-    brain.nextMoveAt = now + (1000 / (brain.speed * MONSTER_SPEED_SCALE * slow)) * (diagonal ? Math.SQRT2 : 1);
+    const stepMs = 1000 / (brain.speed * MONSTER_SPEED_SCALE * slow);
+    brain.nextMoveAt = now + stepMs * (diagonal ? Math.SQRT2 : 1);
+    m.stepMs = Math.round(stepMs);
     m.x = step.x;
     m.y = step.y;
   }

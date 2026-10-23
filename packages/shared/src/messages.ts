@@ -28,8 +28,11 @@ export interface HuntMetadata {
   mapId: MapId;
 }
 
-/** Cliente → servidor: um passo de tile. */
-export interface MoveMessage { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }
+/**
+ * Cliente → servidor: um passo de tile. Com `hold`, é a direção segurada: o servidor anda nela a cada tick, no ritmo
+ * da velocidade, até chegar outra direção, `{ dx: 0, dy: 0, hold: true }` (parou) ou passar `MOVE_HOLD_MS` sem notícia.
+ */
+export interface MoveMessage { dx: -1 | 0 | 1; dy: -1 | 0 | 1; hold?: boolean }
 
 /** Cliente → servidor: seleciona o monstro alvo do auto-attack (null limpa). */
 export interface TargetMessage { id: string | null }

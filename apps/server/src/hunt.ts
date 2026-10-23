@@ -18,6 +18,7 @@ import {
   MONSTERS,
   MAX_LEVEL,
   MAX_SUMMONS_PER_PLAYER,
+  MOVE_HOLD_MS,
   MSG,
   PERKS,
   POTIONS,
@@ -164,6 +165,8 @@ import { Chest, DungeonState, Field, GroundItem, Monster, Player, Summon } from 
 interface Seat {
   /** Momento (ms) em que o jogador pode dar o próximo passo. */
   nextMoveAt: number;
+  /** Direção segurada (`MoveMessage.hold`) e até quando vale sem o cliente reenviar. */
+  heading: { dx: -1 | 0 | 1; dy: -1 | 0 | 1; until: number } | null;
   /** Momento (ms) em que o ataque básico volta a poder sair. */
   nextAttackAt: number;
   /** Segurando o botão de ataque: o golpe se repete no ritmo da recarga. */
@@ -375,6 +378,12 @@ export interface HuntOptions {
   restore?: unknown;
 }
 
+/**
+ * Atraso (ms) do tick que ainda conta como andar sem parar: o passo seguinte conta da hora em que este podia sair.
+ * Mais que isso o jogador estava parado, e o relógio do passo recomeça agora.
+ */
+const MOVE_SLACK_MS = 100;
+
 /** Campos internos que vão no retrato da hunt (o resto se recalcula: mapa, dungeon). */
 const INTERNALS = [
   "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
@@ -500,7 +509,7 @@ export class Hunt {
 
     this.state.players.set(sessionId, player);
     this.seats.set(sessionId, {
-      nextMoveAt: 0, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
+      nextMoveAt: 0, heading: null, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
@@ -728,12 +737,27 @@ export class Hunt {
     const seat = this.seats.get(sessionId);
     if (!player || !seat || player.status !== "playing" || this.state.phase === "ended") return;
 
-    const dx = Math.sign(msg?.dx ?? 0);
-    const dy = Math.sign(msg?.dy ?? 0);
-    if (dx === 0 && dy === 0) return;
-
-    // Velocidade de movimento controlada pelo servidor: um passo a cada 1/speed segundos.
+    const dx = Math.sign(msg?.dx ?? 0) as -1 | 0 | 1;
+    const dy = Math.sign(msg?.dy ?? 0) as -1 | 0 | 1;
     const now = this.host.now();
+    // Direção segurada: o tick continua andando nela, sem depender de quando as mensagens chegam.
+    if (msg?.hold === true) seat.heading = dx || dy ? { dx, dy, until: now + MOVE_HOLD_MS } : null;
+    if (dx === 0 && dy === 0) return;
+    this.step(sessionId, player, seat, dx, dy, now);
+  }
+
+  /** Anda na direção segurada de cada jogador, assim que a velocidade deixar. */
+  private walkHeld(now: number) {
+    this.state.players.forEach((player, sessionId) => {
+      const seat = this.seats.get(sessionId);
+      if (!seat?.heading) return;
+      if (player.status !== "playing" || now >= seat.heading.until) seat.heading = null;
+      else this.step(sessionId, player, seat, seat.heading.dx, seat.heading.dy, now);
+    });
+  }
+
+  private step(sessionId: string, player: Player, seat: Seat, dx: number, dy: number, now: number) {
+    // Velocidade de movimento controlada pelo servidor: um passo a cada 1/speed segundos.
     if (now < seat.nextMoveAt) return;
     // Fortaleza Viva: pés fincados no chão.
     if (seat.buff?.rooted && now < seat.buff.until) return;
@@ -746,8 +770,12 @@ export class Hunt {
     // Na diagonal, não atravessa quina de parede.
     if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, player.y) || !isWalkable(this.dungeon, player.x, ny))) return;
 
-    const speed = this.moveSpeed(player, seat, now);
-    seat.nextMoveAt = now + (1000 / speed) * (dx !== 0 && dy !== 0 ? Math.SQRT2 : 1);
+    const stepMs = 1000 / this.moveSpeed(player, seat, now);
+    // Andando sem parar, o próximo passo conta da hora em que este podia sair, não de quando o tick chegou:
+    // o atraso do tick não se acumula e a velocidade real fica igual à da ficha.
+    const from = now - seat.nextMoveAt <= MOVE_SLACK_MS ? seat.nextMoveAt : now;
+    seat.nextMoveAt = from + stepMs * (dx !== 0 && dy !== 0 ? Math.SQRT2 : 1);
+    player.stepMs = Math.round(stepMs);
     player.x = nx;
     player.y = ny;
     if (this.state.phase === "running") this.trackDepth(sessionId, player);
@@ -784,6 +812,8 @@ export class Hunt {
   }
 
   tick(dt: number) {
+    if (this.state.phase === "ended") return;
+    this.walkHeld(this.host.now());
     if (this.state.phase !== "running") return;
 
     this.elapsedMs += dt;
@@ -1768,6 +1798,7 @@ export class Hunt {
     }
     const diagonal = step.x !== s.x && step.y !== s.y;
     brain.nextMoveAt = now + (1000 / brain.def.speed) * (diagonal ? Math.SQRT2 : 1);
+    s.stepMs = Math.round(1000 / brain.def.speed);
     s.x = step.x;
     s.y = step.y;
   }

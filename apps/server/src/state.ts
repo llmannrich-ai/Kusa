@@ -7,6 +7,8 @@ export class Player extends Schema {
   @type("string") classId = "knight";
   @type("number") x = 0;
   @type("number") y = 0;
+  /** Duração (ms) do último passo em linha reta: o cliente desliza a unidade nesse ritmo. */
+  @type("number") stepMs = 0;
   @type("number") hp = 0;
   @type("number") maxHp = 0;
   @type("number") mana = 0;
@@ -77,6 +79,8 @@ export class Monster extends Schema {
   @type("string") kind = "rat";
   @type("number") x = 0;
   @type("number") y = 0;
+  /** Duração (ms) do último passo em linha reta: o cliente desliza a unidade nesse ritmo. */
+  @type("number") stepMs = 0;
   @type("number") hp = 0;
   @type("number") maxHp = 0;
   /** Preso por Raízes Espinhosas: não anda. */
@@ -106,6 +110,8 @@ export class Summon extends Schema {
   @type("string") owner = "";
   @type("number") x = 0;
   @type("number") y = 0;
+  /** Duração (ms) do último passo em linha reta: o cliente desliza a unidade nesse ritmo. */
+  @type("number") stepMs = 0;
   @type("number") hp = 0;
   @type("number") maxHp = 0;
 }
