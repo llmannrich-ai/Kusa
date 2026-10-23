@@ -16,6 +16,11 @@ Como o jogo é entre amigos, a tela também tem **Prêmios da galera** e **Ranki
 (hunts, sobrevivência, abates, dano causado e recebido, cura, gold, bosses, mortes, melhor nível, minutos e classe
 favorita). Convidados ficam de fora. Métrica nova no ranking entra nessa função e em `METRICS` do cliente.
 
+**Configurações > Histórico** (`apps/client/src/history.ts`) lista as partidas, uma por `match_id`, com cada jogador:
+classe, nível, desfecho, loot (gold e itens que saíram da hunt) e penalidades da morte (gold juntado, itens perdidos e
+a perda de XP das magias dos slots). Vem de `match_history(p_mine, p_before, p_limit)` (`security definer`, só para
+logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before` pagina. Seed, build e ids ficam de fora.
+
 ## O que é medido
 
 | Coluna / campo | Para que serve |

@@ -72,6 +72,7 @@
       <!-- Subpáginas: abrem por cima das configurações e o "‹" volta para cá. -->
       <nav id="settings-pages">
         <button data-page="telemetry" class="setting-link"><span>📊 Telemetria<small>Números de todas as hunts: sobrevivência, mortes, magias e as suas.</small></span><b aria-hidden="true">›</b></button>
+        <button data-page="history" class="setting-link"><span>🗂️ Histórico<small>Cada partida: quem jogou, personagem, desfecho, loot e penalidades.</small></span><b aria-hidden="true">›</b></button>
         <button data-page="rules" class="setting-link"><span>📜 Regras<small>Como o jogo funciona: hunt, níveis, itens e poções.</small></span><b aria-hidden="true">›</b></button>
       </nav>
       <div class="actions">
@@ -87,6 +88,15 @@
       </header>
       <!-- Preenchido por telemetry.ts. -->
       <div id="telemetry-body"></div>
+    </section>
+
+    <section id="history" class="panel page" hidden>
+      <header class="page-top">
+        <button class="page-back icon-button" aria-label="Voltar às configurações">‹</button>
+        <h2>Histórico</h2>
+      </header>
+      <!-- Preenchido por history.ts. -->
+      <div id="history-body"></div>
     </section>
 
     <section id="rules" class="panel page" hidden>
