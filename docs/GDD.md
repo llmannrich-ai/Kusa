@@ -27,7 +27,7 @@ Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
-- **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
+- **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
   - **Telemetria** (`apps/client/src/telemetry.ts`): os números de todas as hunts, para qualquer jogador logado, com filtro de mapa e período: visão geral, hunts por dia, como as hunts terminam, sobrevivência por classe, o que mais mata, fontes de dano, magias e melhorias escolhidas, curva de nível e as suas hunts. Só agregados, sem nomes (função `telemetry_dashboard`).
@@ -267,6 +267,38 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 - O que o jogador larga não volta para a bag enquanto ele estiver em cima do item: precisa sair do tile e voltar.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 10, 25, 60, 130 e Dragão 300.
 
+### Runas
+
+Pedras mágicas que **só caem dos bosses** (o Dragão jovem e a Hidra dropam 1 runa cada; o nome sobe sobre o drop).
+Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `market_items` e `profile_items` como os itens.
+
+- Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220). O mercado não vende runas.
+- Na aba Itens, **3 slots de runa logo abaixo do equipamento**, separados por classe como o equipamento. Tocar numa runa do
+  cofre equipa num slot livre da classe escolhida; não dá para equipar duas iguais na mesma classe. Tirar a runa devolve ao cofre (precisa de espaço). Funções no banco: `equip_item` (limite de 3 por classe e sem repetir), `finish_run` e `drop_random_item` (nunca sorteia runa).
+- As runas equipadas **entram com o herói e valem a hunt inteira**, também na hunt solo; na dungeon não se trocam (o menu da bag só mostra quais estão equipadas).
+- **Morrer não perde as runas equipadas** (o equipamento sorteado é sempre de arma, capacete, armadura ou escudo). Runa na bag
+  cai no chão na morte, como os itens. Runa pega no chão vai sempre para a bag (nunca equipa sozinha).
+- O bônus soma com as áureas do Grimório e as melhorias de nível.
+
+| Runa | Efeito | Peso no drop |
+|---|---|---|
+| ⚔️ Fúria | +15% de dano | 3 |
+| ❤️ Vida | +18% de vida máxima | 3 |
+| 🛡️ Pedra | +4 de armadura | 3 |
+| 👟 Vento | +8% de velocidade | 3 |
+| 💧 Arcana | +20% de mana máxima e +1% de mana por segundo | 3 |
+| 🩸 Sangue | cura 5% do dano causado | 3 |
+| ⏳ Tempo | recarga das magias 12% menor | 3 |
+| 💗 Troll | +1,5% de vida por segundo | 3 |
+| ⚡ Relâmpago | o Relâmpago (Feiticeiro) vira opção no slot 1 | 1 |
+| 🛡️ Fé | o Escudo da Fé (Cavaleiro) vira opção no slot 1 | 1 |
+| ☄️ Meteoro | o Meteoro (Feiticeiro) vira opção no slot 2 | 1 |
+| ☀️ Aurora | a Luz Curativa (Paladino) vira opção no slot 2 | 1 |
+
+- **Runas de magia:** a magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
+  que a magia já tem, se for da própria classe; magia de outra classe não ganha XP de uso). Magia de outra classe custa no máximo **40% da mana máxima** do herói
+  (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
+
 ## Salas e sala de espera
 
 Código em `apps/client/src/lobby.ts` e `main.ts`.
@@ -403,7 +435,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 | Fim | Loot | Observação |
 |---|---|---|
-| **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
+| **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. As runas equipadas ficam. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
 | **Fuga** | Leva tudo | Basta voltar à sala inicial e entrar no portal. |
 | **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
 | **Soterrado** (o tempo acabou) | Igual à morte | Conta como morte. |
@@ -437,7 +469,10 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   ritmo. O nome sobe sobre o monstro, ele brilha na cor da habilidade e o efeito cobre a área. A primeira habilidade
   só sai depois de meia recarga contada de quando o monstro nota alguém. Projéteis de monstro acertam no disparo.
 - **Fases dos bosses por vida:** a habilidade de fase sai na hora em que a vida cruza o limite (com 1 ou 4 heróis,
-  toda fase aparece). Abaixo de 50% da vida o boss se enfurece e as recargas caem para 60%.
+  toda fase aparece). Abaixo de 50% da vida o boss se enfurece e as recargas caem para 60%. Boss espera 1 s
+  entre uma habilidade e outra, para não soltar sopro, cegueira e mergulho em sequência.
+- **Voo e Mergulho:** o monstro some invulnerável e cai colado no alvo; a queda é o golpe. Depois dela, ele se
+  recompõe por 1,5 s (sem ataque básico nem outra habilidade): é a janela para reagir.
 - **Tipos de criatura e elementos:** todo dano de herói tem elemento (básico do Cavaleiro e do Paladino é físico,
   do Feiticeiro é energia, do Druida é natureza; cada magia tem o seu, em `elements.ts`). Monstros podem ser imunes (0),
   resistentes (0,5–0,8) ou vulneráveis (1,5): o aviso sobe em cinza ("Imune", "Resiste") ou amarelo ("Vulnerável!").

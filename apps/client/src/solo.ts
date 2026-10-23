@@ -33,7 +33,6 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   ]);
   if (error) throw new Error("não foi possível começar a hunt solo");
   const run = data as SoloRunStart;
-  const finish = (result: RunEndedMessage, report: HuntReport) => finishSolo(run.run_id, classId, result, report);
 
   // A simulação só é baixada por quem joga solo.
   const [{ Hunt }, { DungeonState }] = await Promise.all([
@@ -54,7 +53,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     send: (_sessionId, type, msg) => outbox.push([type, msg]),
     broadcast: (type, msg) => outbox.push([type, msg]),
     // Entrega direta: o banco pode responder depois de o tick parar, no fim da hunt.
-    runEnded: (_sessionId, result, report) => void finish(result, report).then((msg) => emit(MSG.runEnded, msg)),
+    runEnded: (_sessionId, result, report) => reportSolo(run.run_id, classId, result, report, (msg) => emit(MSG.runEnded, msg)),
     ended: () => window.setTimeout(stop, 10_000),
   }, { mapId, seed: run.seed });
   hunt.join(SESSION_ID, {
@@ -191,6 +190,17 @@ export async function flushPendingSolo(): Promise<boolean> {
     dropPending(pending.params.p_run_id);
   }
   return left;
+}
+
+/**
+ * Mostra o resultado na hora (sem esperar o banco, que pode levar segundos) e de novo com o que foi gravado.
+ * Entrega direta: o banco pode responder depois de o tick parar, no fim da hunt.
+ */
+export function reportSolo(
+  runId: string | null, classId: ClassId, result: RunEndedMessage, report: HuntReport, emit: (msg: RunEndedMessage) => void,
+): void {
+  if (runId) emit({ ...result, saving: true, note: "Salvando a recompensa…" });
+  void finishSolo(runId, classId, result, report).then(emit);
 }
 
 /**

@@ -178,6 +178,8 @@ export interface RunEndedMessage {
   spells: SpellProgress[];
   /** Aviso extra na tela de resultado (hunt solo: limite de recompensa ou falha ao salvar). */
   note?: string;
+  /** Hunt solo/hospedada: resultado provisório, mostrado enquanto o banco grava (a versão gravada vem em seguida). */
+  saving?: boolean;
 }
 
 /** XP de uso que uma magia ganhou (e perdeu, na morte) numa hunt. */
