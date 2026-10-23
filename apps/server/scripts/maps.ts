@@ -78,7 +78,9 @@ async function playMap(mapId: MapId) {
   const kinds = new Set<string>();
   room.state.monsters.forEach((m: { kind: string }) => kinds.add(m.kind));
   for (const kind of kinds) if (!allowed.has(kind)) throw new Error(`${mapId}: monstro de outro mapa (${kind})`);
-  if (!map.bosses.some(([boss]) => kinds.has(boss))) throw new Error(`${mapId}: sem boss`);
+  // Mapa ainda em construção (sem boss na tabela): não nasce ninguém.
+  if (map.bosses.length === 0 && kinds.size > 0) throw new Error(`${mapId}: mapa sem monstros com ${kinds.size} tipos de monstro`);
+  if (map.bosses.length > 0 && !map.bosses.some(([boss]) => kinds.has(boss))) throw new Error(`${mapId}: sem boss`);
 
   room.send(MSG.start);
   await wait(300);
