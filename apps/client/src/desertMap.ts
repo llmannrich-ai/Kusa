@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { TILE_SIZE, Tile, tileAt, type Dungeon, type Rect } from "@kusa/shared";
+import { TILE_SIZE, Tile, isUnderground, tileAt, type Dungeon } from "@kusa/shared";
 import { hash, makeCanvas } from "./art/pixels.ts";
 import {
   DESERT_FLOOR, DESERT_TALL, DESERT_WATER, DUNE_VARIANTS, PALM_CROWN, PALM_CROWN_ANCHOR, PALM_TRUNK, PALM_VARIANTS, SAND_VARIANTS,
@@ -7,6 +7,7 @@ import {
 } from "./art/desertDecor.ts";
 import { DESERT_TEXTURE, createDesertArt } from "./art/textures.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
+import { CAVE_VOID, caveTilesets, drawCave, drawCaveMouth } from "./caveMap.ts";
 
 /** Fundo além das dunas: areia na sombra, para a borda do mapa não parecer um buraco. */
 export const DESERT_VOID = 0xb98a4f;
@@ -74,11 +75,14 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   const dune = tileset(DESERT_TEXTURE.dune, DUNE_VARIANTS);
   const decorFloor = tileset(DESERT_TEXTURE.floor, frames(DESERT_TEXTURE.floor));
   const decorWater = tileset(DESERT_TEXTURE.waterDecor, frames(DESERT_TEXTURE.waterDecor));
+  const cave = d.cave ? caveTilesets(scene, d, tileset) : null;
+  const under = (x: number) => isUnderground(d, x);
 
   // Bordas: cada combinação usada vira um quadro de uma textura montada aqui.
   const edgeMasks = new Uint32Array(d.width * d.height);
   for (let y = 0; y < d.height; y++) {
     for (let x = 0; x < d.width; x++) {
+      if (under(x)) continue;
       const t = at(x, y);
       let mask = 0;
       if (isDune(x, y)) {
@@ -100,7 +104,8 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   const edgeFrames = buildEdgeTexture(scene, edgeMasks);
   const edges = tileset(EDGE_TEXTURE, Math.max(1, edgeFrames.size));
 
-  const sets = [sand, wetSand, waterSet, dune, decorFloor, decorWater, edges].map((t) => t.set);
+  const caveSets = cave ? [cave.floor, cave.hall, cave.rockTop, cave.rockFace, cave.decor, cave.edges] : [];
+  const sets = [sand, wetSand, waterSet, dune, decorFloor, decorWater, edges, ...caveSets].map((t) => t.set);
   const groundLayer = map.createBlankLayer("chao", sets)!.setDepth(floorDepth);
   const edgeLayer = map.createBlankLayer("bordas", sets)!.setDepth(floorDepth);
   const decorLayer = map.createBlankLayer("enfeites", sets)!.setDepth(floorDepth);
@@ -112,16 +117,14 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
       scene.add.image(x * TILE_SIZE, y * TILE_SIZE, DESERT_TEXTURE.tall, frame).setOrigin(0).setDepth((y + 1) * TILE_SIZE - 0.25), x, y);
     if (hash(x, y, 41) < 0.5) img.setFlipX(true);
   };
-  const center = { x: Math.floor(d.boss.x + d.boss.w / 2), y: Math.floor(d.boss.y + d.boss.h / 2) };
-  const special = new Set([d.portal.y * d.width + d.portal.x, center.y * d.width + center.x]);
+  const special = new Set([d.portal.y * d.width + d.portal.x]);
 
   /** Coqueiro no tile: sombra no chão, tronco e copa (que balança e fica transparente com alguém embaixo). */
   const palm = (x: number, y: number) => {
     const variant = Math.floor(hash(x, y, 50) * PALM_VARIANTS);
     const flip = hash(x, y, 51) < 0.5;
     const tint = PALM_TINTS[Math.floor(hash(x, y, 52) * PALM_TINTS.length)];
-    // Os 4 coqueiros do descampado do centro são mais velhos e maiores.
-    const scale = inside(d.boss, x, y) ? 1.25 : 0.92 + hash(x, y, 53) * 0.16;
+    const scale = 0.92 + hash(x, y, 53) * 0.16;
     const base = { x: x * TILE_SIZE + 16, y: y * TILE_SIZE + 28 };
     const foot = { x: PALM_TRUNK.w / 2, y: PALM_TRUNK.h - 4 };
     const top = palmTop(variant);
@@ -140,6 +143,7 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
 
   for (let y = 0; y < d.height; y++) {
     for (let x = 0; x < d.width; x++) {
+      if (under(x)) continue;
       const t = at(x, y);
       const i = y * d.width + x;
       if (edgeMasks[i]) edgeLayer.putTileAt(edges.gid + edgeFrames.get(edgeMasks[i])!, x, y);
@@ -173,7 +177,8 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
         tile.tint = shadeTint(patchTint(x, y, 0.84, SAND_SHADE), damp);
       }
       if (isPalm(x, y)) { palm(x, y); continue; }
-      if (special.has(i)) continue;
+      // Monte de rocha e boca da caverna: só a areia por baixo (o desenho do monte vem depois, inteiro).
+      if (special.has(i) || t === Tile.Ruin || t === Tile.Cave) continue;
 
       const decor = (frame: number) => decorLayer.putTileAt(decorFloor.gid + frame, x, y);
       const n = hash(x, y, 23);
@@ -211,7 +216,14 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
     }
   }
 
-  return createAmbience(scene, d, uiDepth, culler, crowns);
+  // Caverna: a boca na superfície e o subterrâneo inteiro.
+  let lights: Phaser.GameObjects.Image[] = [];
+  if (cave) {
+    drawCaveMouth(scene, d, culler);
+    lights = drawCave(scene, d, cave, { ground: groundLayer, edges: edgeLayer, decor: decorLayer }, culler, floorDepth);
+  }
+
+  return createAmbience(scene, d, uiDepth, culler, crowns, lights);
 }
 
 /** Manchas de vento (0..1): onde a areia tem ondulação forte, suave ou nenhuma. Ruído suave em grade de 6 tiles. */
@@ -274,8 +286,12 @@ const GLINT_EVERY_MS = 160;
  * Ambiente que acompanha a câmera: grãos de areia levados pelo vento, nuvens de poeira baixas passando, o sol
  * brilhando na água dos oásis e as copas dos coqueiros balançando (a copa fica transparente com alguém embaixo).
  */
-function createAmbience(scene: Phaser.Scene, d: Dungeon, uiDepth: number, culler: ChunkCuller, crowns: Phaser.GameObjects.Image[]): MapAmbience {
+function createAmbience(
+  scene: Phaser.Scene, d: Dungeon, uiDepth: number, culler: ChunkCuller, crowns: Phaser.GameObjects.Image[], lights: Phaser.GameObjects.Image[],
+): MapAmbience {
   const cam = scene.cameras.main;
+  const game = document.getElementById("game");
+  let below: boolean | null = null;
 
   const grains = scene.add.particles(0, 0, DESERT_TEXTURE.grain, {
     lifespan: { min: 1400, max: 2600 },
@@ -307,8 +323,25 @@ function createAmbience(scene: Phaser.Scene, d: Dungeon, uiDepth: number, culler
     update(time: number) {
       const v = cam.worldView;
       if (v.width === 0) return;
-      zone.setTo(v.x - 40, v.y, v.width + 40, v.height);
       culler.update(v);
+
+      // Na caverna: sem vento nem poeira, fundo quase preto e cantos bem escuros; as luzes dos cristais respiram.
+      const inCave = isUnderground(d, Math.floor(v.centerX / TILE_SIZE));
+      if (inCave !== below) {
+        below = inCave;
+        grains.setVisible(!inCave);
+        grains.emitting = !inCave;
+        dust.forEach((m) => m.setVisible(!inCave));
+        cam.setBackgroundColor(inCave ? CAVE_VOID : DESERT_VOID);
+        game?.classList.toggle("cave", inCave);
+      }
+      if (inCave) {
+        for (const l of lights) {
+          if (l.visible) l.setAlpha(l.getData("alpha") * (0.85 + 0.15 * Math.sin(time / 700 + l.getData("phase"))));
+        }
+        return;
+      }
+      zone.setTo(v.x - 40, v.y, v.width + 40, v.height);
 
       // Poeira: espalha na primeira vez; depois anda com o vento e reaparece do outro lado da tela.
       const dt = scene.game.loop.delta / 1000;
@@ -350,9 +383,6 @@ function createAmbience(scene: Phaser.Scene, d: Dungeon, uiDepth: number, culler
   };
 }
 
-function inside(r: Rect, x: number, y: number) {
-  return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
-}
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smooth = (t: number) => t * t * (3 - 2 * t);

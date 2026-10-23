@@ -10,7 +10,9 @@ export type MonsterKind =
   // Pântano das Ruínas (dificuldade 2)
   | "frog" | "moccasin" | "bogBody" | "naga" | "troll" | "hydra"
   | "bullywug" | "lizardfolk" | "ghoul" | "blackPudding" | "crocodile" | "willOWisp" | "shamblingMound"
-  | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon";
+  | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon"
+  // Mar de Areia
+  | "sandWorm";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -541,6 +543,29 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "Cada cabeça morde alguém. Corte uma e nascem duas, a não ser que o fogo cauterize o toco.",
+  }),
+
+  // --- Mar de Areia ------------------------------------------------------------------------------------------
+  sandWorm: monster({
+    kind: "sandWorm", name: "Verme da Areia", rank: "boss", type: "monstrosity", role: "lurker", cr: 4,
+    hp: 520, damage: 11, xp: 600, loot: [50, 80], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
+    // Couro grosso de areia: o frio da caverna o deixa lento de reagir (vulnerável a gelo); resiste ao calor.
+    elements: { ice: 1.3, fire: 0.75 },
+    abilities: [
+      {
+        id: "burrow", name: "Emboscada da Areia", shape: "dive", range: 7, radius: 1, cooldownMs: 11000, power: 1.5, vanishMs: 1600,
+        color: 0xd9a35b, fx: "dive",
+      },
+      {
+        id: "swallow", name: "Engolir", shape: "target", range: 1, radius: 0, cooldownMs: 10000, power: 0.4,
+        effect: { kind: "engulf", ms: 1800, power: 0.5 }, color: 0xb5651d, fx: "engulf",
+      },
+      {
+        id: "quake", name: "Tremor", shape: "self", range: 2, radius: 2, cooldownMs: 9000, power: 1.2, slow: { factor: 0.6, durationMs: 3000 },
+        belowHp: 0.5, color: 0xc8a165, fx: "quake",
+      },
+    ],
+    lore: "Verme gigante das dunas, dono da caverna. Some na areia e irrompe debaixo da presa, engole quem fica colado e, ferido, faz o chão tremer.",
   }),
 };
 

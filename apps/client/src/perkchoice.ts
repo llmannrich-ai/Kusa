@@ -15,6 +15,11 @@ export class PerkChoice {
   private shownKey = "";
   private sentKey = "";
 
+  /** Cartas na tela agora (a escolha de runa espera). */
+  get open() {
+    return this.cards !== null;
+  }
+
   /** `busy` diz se a escolha de magia está aberta: ela tem prioridade, uma janela de cada vez. */
   constructor(private room: DungeonRoom, private busy: () => boolean, private anchor: Anchor) {}
 

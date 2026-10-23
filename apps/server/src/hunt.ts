@@ -33,6 +33,7 @@ import {
   attackCooldownMs,
   auraBonuses,
   bestPerSlot,
+  caveDestination,
   centerOf,
   clampToRange,
   createRng,
@@ -112,6 +113,7 @@ import {
   type Bonuses,
   type CastMessage,
   type ChoosePerkMessage,
+  type ChooseRuneMessage,
   type ChooseSpellMessage,
   type ClassId,
   type DamageMessage,
@@ -441,7 +443,7 @@ export class Hunt {
       Object.assign(this, fromPlain(options.restore));
       // O portal do boss abre mudando o tile: a dungeon regenerada pela seed ainda não tem.
       if (this.state.bossDefeated) {
-        const c = centerOf(this.dungeon.boss);
+        const c = this.dungeon.bossPortal;
         this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
       }
     }
@@ -563,7 +565,10 @@ export class Hunt {
     const rng = createRng(this.state.seed ^ 0x9e3779b9);
     const roll = () => rng.int(0, 1_000_000);
 
+    // Mapa só com o boss (o deserto, por enquanto): sem encontros nas zonas nem nas campinas.
+    const encounters = this.map.encounters.length > 0;
     d.path.forEach((room, depth) => {
+      if (!encounters) return;
       for (const kind of this.rollEncounter(encounterAt(this.map, depth), rng.next)) {
         const spot = this.freeSpotIn(room, roll);
         if (spot) this.spawnCommon(kind, spot.x, spot.y, depth, rng.next);
@@ -572,6 +577,7 @@ export class Hunt {
 
     // Campinas: dois monstros da tabela da sala do caminho mais próxima.
     d.meadows.forEach((room) => {
+      if (!encounters) return;
       const depth = this.nearestPathDepth(room);
       const table = encounterAt(this.map, depth).table.filter(([kind]) => !MONSTERS[kind].group);
       for (let i = 0; i < 2; i++) {
@@ -601,6 +607,18 @@ export class Hunt {
 
     const c = centerOf(d.boss);
     this.addMonster(pickWeighted(this.map.bosses, rng.next()), c.x, c.y, d.path.length);
+
+    // Baús de runa da caverna: trancados até o boss morrer; cada jogador leva a runa de um.
+    (this.map.rewardRunes ?? []).forEach((rune, i) => {
+      const at = d.cave?.chests[i];
+      if (!at) return;
+      const chest = new Chest();
+      chest.id = `r${i + 1}`;
+      chest.x = at.x;
+      chest.y = at.y;
+      chest.rune = rune;
+      this.state.chests.set(chest.id, chest);
+    });
   }
 
   /**
@@ -658,7 +676,7 @@ export class Hunt {
     for (let attempt = 0; attempt < 30; attempt++) {
       const x = room.x + (roll() % room.w);
       const y = room.y + (roll() % room.h);
-      if (!isWalkable(this.dungeon, x, y) || tileAt(this.dungeon, x, y) === Tile.Portal) continue;
+      if (!isWalkable(this.dungeon, x, y) || this.specialTile(x, y)) continue;
       if (tileDistance(x, y, portal.x, portal.y) <= SAFE_RADIUS) continue;
       if (this.monsterAt(x, y)) continue;
       return { x, y };
@@ -780,8 +798,9 @@ export class Hunt {
     player.y = ny;
     if (this.state.phase === "running") this.trackDepth(sessionId, player);
 
+    if (tileAt(this.dungeon, nx, ny) === Tile.Cave) this.throughCave(sessionId, player);
     if (this.state.phase === "running" && tileAt(this.dungeon, nx, ny) === Tile.Portal) {
-      const bossPortal = centerOf(this.dungeon.boss);
+      const bossPortal = this.dungeon.bossPortal;
       if (nx === bossPortal.x && ny === bossPortal.y) {
         // Concluir a dungeon dá um bônus sobre o loot carregado.
         const bonus = Math.round(player.loot * BOSS_LOOT_BONUS);
@@ -992,7 +1011,7 @@ export class Hunt {
       for (let dx = -1; dx <= 1; dx++) {
         const x = m.x + dx;
         const y = m.y + dy;
-        if ((dx === 0 && dy === 0) || !isWalkable(this.dungeon, x, y) || tileAt(this.dungeon, x, y) === Tile.Portal) continue;
+        if ((dx === 0 && dy === 0) || !isWalkable(this.dungeon, x, y) || this.specialTile(x, y)) continue;
         if (blocked.has(y * this.dungeon.width + x) || !hasLineOfSight(this.dungeon, p.x, p.y, x, y)) continue;
         const dist = Math.hypot(x - p.x, y - p.y);
         if (dist < bestDist) {
@@ -1937,8 +1956,8 @@ export class Hunt {
     for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0, this.partyClasses()), at.x, at.y);
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) this.dropItem(rollPotion(this.random), at.x, at.y);
-    // Runas só caem dos bosses.
-    for (let i = 0; i < RUNE_DROPS[brain.def.rank]; i++) {
+    // Runas só caem dos bosses (o da caverna, não: a runa sai dos baús, à escolha).
+    for (let i = 0; i < (this.map.rewardRunes ? 0 : RUNE_DROPS[brain.def.rank]); i++) {
       const rune = RUNES[this.dropItem(rollRune(this.random), at.x, at.y).itemId];
       this.notice(at.x, at.y - 2, `${rune.name}!`, rune.color);
     }
@@ -1959,10 +1978,15 @@ export class Hunt {
     }
 
     if (brain.def.rank === "boss") {
-      const c = centerOf(this.dungeon.boss);
+      const c = this.dungeon.bossPortal;
       this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
       this.state.bossDefeated = true;
       this.notice(c.x, c.y, "O portal se abriu!", 0x3fa7d6);
+      this.state.chests.forEach((chest) => {
+        if (!chest.rune) return;
+        chest.locked = false;
+        this.notice(chest.x, chest.y, "Escolha uma runa!", RUNES[chest.rune]?.color ?? 0xf39c12);
+      });
     }
   }
 
@@ -2020,6 +2044,74 @@ export class Hunt {
     this.notice(p.x, p.y - 1, PERKS[perk].name, 0xf1c40f, PERK_NOTICE_MS);
 
     this.offerPerks(p, seat);
+  }
+
+  /**
+   * Baú de runa: o jogador colado nele leva a runa para a bag. Uma por jogador; o baú continua cheio para os outros
+   * (cada um escolhe a sua). Só depois do boss morto.
+   */
+  chooseRune(sessionId: string, msg: ChooseRuneMessage) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    const chest = typeof msg?.chest === "string" ? this.state.chests.get(msg.chest) : undefined;
+    if (!p || !seat || p.status !== "playing" || this.state.phase !== "running" || !chest?.rune || chest.locked) return;
+    if (p.chosenRune || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
+    if (p.bag.length >= BAG_SIZE) {
+      this.bagFull(p, seat);
+      return;
+    }
+    p.chosenRune = chest.rune;
+    p.bag.push(chest.rune);
+    seat.stats.items.picked.push(chest.rune);
+    seat.stats.chestsOpened++;
+    const rune = RUNES[chest.rune];
+    this.notice(p.x, p.y - 1, `${rune.name} 🎒${p.bag.length}/${BAG_SIZE}`, rune.color);
+  }
+
+  /**
+   * Caverna: quem pisa numa ponta sai do lado da outra (na boca, logo na frente dela; no subterrâneo, logo acima da
+   * saída), e as criaturas que invocou vão junto.
+   */
+  private throughCave(sessionId: string, p: Player) {
+    const to = caveDestination(this.dungeon, p.x, p.y);
+    if (!to) return;
+    const land = this.landingNear(to.x, to.y, to === this.dungeon.cave?.exit ? -1 : 1);
+    if (!land) return;
+    const seat = this.seats.get(sessionId);
+    if (seat) seat.heading = null;
+    p.x = land.x;
+    p.y = land.y;
+    p.stepMs = 0;
+    this.state.summons.forEach((s) => {
+      if (s.owner !== sessionId) return;
+      const spot = this.landingNear(land.x, land.y, 0);
+      if (!spot) return;
+      s.x = spot.x;
+      s.y = spot.y;
+      s.stepMs = 0;
+    });
+  }
+
+  /** Tile livre perto de (x, y) para chegar pela caverna: primeiro o lado `dy` (para onde a caverna abre). */
+  private landingNear(x: number, y: number, dy: number) {
+    const blocked = this.occupiedTiles();
+    const w = this.dungeon.width;
+    const free = (tx: number, ty: number) =>
+      isWalkable(this.dungeon, tx, ty) && !this.specialTile(tx, ty) && !blocked.has(ty * w + tx);
+    if (dy && free(x, y + dy)) return { x, y: y + dy };
+    for (let r = 1; r <= 3; r++)
+      for (let oy = -r; oy <= r; oy++)
+        for (let ox = -r; ox <= r; ox++) {
+          if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;
+          if (free(x + ox, y + oy) && hasLineOfSight(this.dungeon, x, y, x + ox, y + oy)) return { x: x + ox, y: y + oy };
+        }
+    return null;
+  }
+
+  /** Portal ou caverna: ninguém nasce, cai, salta ou levanta parede ali. */
+  private specialTile(x: number, y: number) {
+    const t = tileAt(this.dungeon, x, y);
+    return t === Tile.Portal || t === Tile.Cave;
   }
 
   /**
@@ -2302,7 +2394,7 @@ export class Hunt {
 
   private openChests() {
     this.state.chests.forEach((chest) => {
-      if (chest.locked || chest.opened) return;
+      if (chest.locked || chest.opened || chest.rune) return;
       this.state.players.forEach((p, sessionId) => {
         if (chest.opened || p.status !== "playing" || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
         chest.opened = true;
@@ -2338,9 +2430,9 @@ export class Hunt {
 
   // --- Itens ------------------------------------------------------------
 
-  /** O tile dado, ou um vizinho andável se ele for o centro da sala do boss (onde abre o portal). */
+  /** O tile dado, ou um vizinho andável se ele for onde abre o portal do boss. */
   private besidePortal(x: number, y: number) {
-    const c = centerOf(this.dungeon.boss);
+    const c = this.dungeon.bossPortal;
     if (x !== c.x || y !== c.y) return { x, y };
     for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
       if (isWalkable(this.dungeon, x + dx, y + dy)) return { x: x + dx, y: y + dy };
@@ -2699,7 +2791,7 @@ export class Hunt {
     for (let k = -half; k <= half; k++) {
       const tx = x + sx * k;
       const ty = y + sy * k;
-      if (!isWalkable(this.dungeon, tx, ty) || tileAt(this.dungeon, tx, ty) === Tile.Portal || blocked.has(ty * this.dungeon.width + tx)) continue;
+      if (!isWalkable(this.dungeon, tx, ty) || this.specialTile(tx, ty) || blocked.has(ty * this.dungeon.width + tx)) continue;
       const f = new Field();
       f.id = `f${this.nextFieldId++}`;
       f.kind = "wall";
@@ -2743,7 +2835,7 @@ export class Hunt {
   private teleportLanding(p: Player, tx: number, ty: number, tiles: number, threat?: { x: number; y: number }) {
     const blocked = this.occupiedTiles();
     const free = (t: { x: number; y: number }) =>
-      isWalkable(this.dungeon, t.x, t.y) && tileAt(this.dungeon, t.x, t.y) !== Tile.Portal && !blocked.has(t.y * this.dungeon.width + t.x);
+      isWalkable(this.dungeon, t.x, t.y) && !this.specialTile(t.x, t.y) && !blocked.has(t.y * this.dungeon.width + t.x);
     const base = Math.atan2(ty - p.y, tx - p.x);
     let best: { x: number; y: number } | null = null;
     let bestGap = threat ? tileDistance(p.x, p.y, threat.x, threat.y) : 0;
@@ -2899,7 +2991,7 @@ export class Hunt {
     const w = this.dungeon.width;
     let last = { x: p.x, y: p.y };
     for (const t of path) {
-      if (!isWalkable(this.dungeon, t.x, t.y) || tileAt(this.dungeon, t.x, t.y) === Tile.Portal || blocked.has(t.y * w + t.x)) break;
+      if (!isWalkable(this.dungeon, t.x, t.y) || this.specialTile(t.x, t.y) || blocked.has(t.y * w + t.x)) break;
       if (t.x !== last.x && t.y !== last.y && (!isWalkable(this.dungeon, t.x, last.y) || !isWalkable(this.dungeon, last.x, t.y))) break;
       last = t;
     }
@@ -2966,7 +3058,7 @@ export class Hunt {
       for (let dx = -1; dx <= 1; dx++) {
         const x = p.x + dx;
         const y = p.y + dy;
-        if ((dx === 0 && dy === 0) || !isWalkable(this.dungeon, x, y) || tileAt(this.dungeon, x, y) === Tile.Portal) continue;
+        if ((dx === 0 && dy === 0) || !isWalkable(this.dungeon, x, y) || this.specialTile(x, y)) continue;
         if (blocked.has(y * this.dungeon.width + x) || !hasLineOfSight(this.dungeon, m.x, m.y, x, y)) continue;
         const dist = Math.hypot(x - m.x, y - m.y);
         if (dist < bestDist) {

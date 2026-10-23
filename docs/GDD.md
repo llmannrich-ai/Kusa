@@ -359,7 +359,7 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
-| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104, campo aberto com 6 zonas (ainda vazias) | Em construção: só o cenário, sem monstros |
+| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície (6 zonas ainda vazias) + caverna pequena | → → Verme da Areia (na caverna) |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -391,25 +391,45 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
-### Mar de Areia (em construção)
+### Mar de Areia
 
-- **Só o cenário por enquanto:** a tabela de monstros, mini-bosses e boss está vazia, então a hunt não tem
-  inimigos nem baús (dá para explorar e fugir pelo portal). O gerador já marca as 6 zonas do caminho e o
-  descampado do centro, para os encontros entrarem depois sem mudar o mapa.
+- **Por enquanto, só o boss:** a superfície ainda não tem monstros nem baús (as 6 zonas do caminho já estão
+  marcadas, para os encontros entrarem depois sem mudar o mapa). O objetivo é achar a caverna.
+- **Caverna:** a boca fica num monte de arenito num lugar sorteado pela seed, longe da entrada (pelo menos 40
+  tiles) e fora das zonas, aberta para o sul. Pisar nela leva ao **subterrâneo**, pequeno, com o celular na vertical:
+  câmara de chegada (com a corda de volta), túnel, o **covil do Verme da Areia** (caverna larga com alguns pilares de
+  rocha) e, depois de uma passagem estreita, o **salão dos baús**. Pisar na saída (a corda) leva de volta para a
+  frente da boca. As criaturas invocadas vão junto. No minimapa a boca aparece quando é vista, e a caverna tem o
+  próprio mapa (aberto, mostra só a área onde o jogador está). Por dentro, o subterrâneo fica na mesma grade da
+  superfície, à direita dela e separado por rocha: não há passagem a pé, só pela caverna.
+- **Baús de runa:** 4 baús no fundo do salão, sempre com as mesmas runas (`MapDef.rewardRunes`): Fúria, Vida, Tempo e
+  Meteoro, cada uma com a pedra flutuando em cima. Ficam trancados até o Verme morrer. Colado num baú aparece a
+  carta da runa; um toque leva a runa para a bag. **Cada jogador escolhe uma** (os baús não esvaziam: na equipe,
+  cada um leva a sua, igual ou diferente). Com a bag cheia, não leva. O Verme não dropa runa (a recompensa são os
+  baús); dropa loot, itens e poções como os outros bosses.
+- **Portal do boss:** abre no meio do salão dos baús (não no covil), depois da escolha.
+- **Verme da Areia** (boss): mergulha na areia e irrompe debaixo de quem estiver até 7 tiles (Emboscada da Areia),
+  engole quem fica colado (Engolir: controle de 1,8 s com dano por segundo) e, abaixo de metade da vida, faz o chão
+  tremer em volta (Tremor, deixa lento). Vulnerável a gelo, resiste a fogo. Como a superfície ainda não tem monstros,
+  a equipe chega nele no nível 1: os números foram acertados para isso (no simulador de duelo, só ataque básico,
+  ele fica no nível de um mini-boss da Cripta). Quando os encontros entrarem, precisa de novo acerto.
 - **Campo aberto, como o pântano:** dunas altas na borda e, por cima, cristas de duna compridas no sentido do
   vento, oásis (lagoas com coqueiros na margem), bosques de coqueiros e coqueiros soltos. Obstáculo que fecharia a
   passagem até uma zona ou ao centro é descartado. **Coqueiro** é um tile de mata sem mata nos 4 lados; mata
   encostada em mata é **duna** (o cliente desenha cada um por essa regra). Os dois bloqueiam passo e visão; a água
-  do oásis bloqueia só o passo. No centro, um descampado marcado por 4 coqueiros grandes.
-- **Visual** (só no cliente, `apps/client/src/desertMap.ts`, com toda a arte própria em `art/desertDecor.ts`, sem
-  pack): sol de cima à esquerda em tudo. Areia com ondulações de vento (fortes, suaves ou lisa, em manchas grandes),
+  do oásis bloqueia só o passo.
+- **Visual** (só no cliente, `apps/client/src/desertMap.ts` e `caveMap.ts`, com toda a arte própria em
+  `art/desertDecor.ts`, `art/caveDecor.ts` e `art/sandWorm.ts`, sem pack): sol de cima à esquerda em tudo. Areia com ondulações de vento (fortes, suaves ou lisa, em manchas grandes),
   ladrilhos que fecham nas bordas; dunas com encosta iluminada, encosta na sombra, frente com crista e areia
   escorrendo, e sombra na areia baixa; oásis com água rasa e funda, espuma, margem arredondada, areia molhada,
   papiro, lótus e brilhos do sol na água; coqueiros em 4 formas (tronco curvo com anéis, copa de folhas penadas com
   cocos, folha seca em alguns), com variação de tom e tamanho, sombra no chão, copa que balança e fica transparente
   quando o jogador passa por baixo; cocos e folhas secas caídas, capim seco, arbustos, arenito, pedrinhas,
-  conchas, crânio de boi, rastro de cobra e pegadas; grãos de areia e poeira levados pelo vento. Como nos outros
-  mapas, só os sprites perto da câmera são desenhados.
+  conchas, crânio de boi, rastro de cobra e pegadas; grãos de areia e poeira levados pelo vento. Na caverna: chão
+  de areia batida, rocha com paredão em camadas de sedimento, sulcos e pele trocada do verme no covil, ossos,
+  estalagmites, cristais âmbar que brilham, o facho de luz e a corda da saída, e o salão em lajes de arenito com
+  glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
+  Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
 ## Partida (hunt)
 

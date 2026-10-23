@@ -46,6 +46,7 @@ import { PotionBar } from "./potionbar.ts";
 import { BagBar } from "./bagbar.ts";
 import { SpellBar, rankedSpell } from "./spellbar.ts";
 import { PerkChoice } from "./perkchoice.ts";
+import { RuneChoice } from "./runechoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
@@ -74,6 +75,8 @@ import {
 
 /** Campo de visão mínimo com o celular na vertical: 9 tiles de largura e pelo menos 13 de altura. */
 const VIEW_TILES = { w: 9, h: 13 };
+/** Salto maior que isto (tiles) é a caverna do deserto: a câmera corta em vez de deslizar. */
+const CAVE_CUT_TILES = 12;
 /** Ritmo de quem ainda não anunciou o seu (ms por tile). */
 const DEFAULT_STEP_MS = 250;
 /** Folga (ms) que a fila de passos junta ao começar a andar, contra o atraso irregular dos próximos. */
@@ -217,6 +220,7 @@ export class DungeonScene extends Phaser.Scene {
   private hits!: HitFx;
   private spellBar!: SpellBar;
   private perkChoice!: PerkChoice;
+  private runeChoice!: RuneChoice;
   private potionBar!: PotionBar;
   private bagBar!: BagBar;
   private aim!: SpellAim;
@@ -250,6 +254,7 @@ export class DungeonScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
     for (const id of ["crypt", "swamp", "desert"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
 
@@ -297,6 +302,7 @@ export class DungeonScene extends Phaser.Scene {
       const image = this.add.image(this.toPx(chest.x), this.toPx(chest.y), CHEST_TEXTURE.locked)
         .setDepth((chest.y + 1) * TILE_SIZE - 1);
       this.chests.set(id, image);
+      if (chest.rune) this.addRuneMark(chest);
       this.syncChest(id, chest);
       callbacks.onChange(chest, () => this.syncChest(id, chest));
     });
@@ -360,6 +366,7 @@ export class DungeonScene extends Phaser.Scene {
     }, DEPTH.ui - 1);
     this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.aboveMe());
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing, () => this.aboveMe());
+    this.runeChoice = new RuneChoice(this.room, () => this.spellBar.choosing || this.perkChoice.open, () => this.aboveMe());
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
     this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
@@ -369,6 +376,7 @@ export class DungeonScene extends Phaser.Scene {
       this.attack.destroy();
       this.spellBar.destroy();
       this.perkChoice.destroy();
+      this.runeChoice.destroy();
       this.potionBar.destroy();
       this.bagBar.destroy();
     });
@@ -394,6 +402,7 @@ export class DungeonScene extends Phaser.Scene {
     this.ambience?.update(time);
     this.spellBar.update();
     this.perkChoice.update();
+    this.runeChoice.update();
     this.aim.update();
     this.attack.update();
     this.potionBar.update();
@@ -884,9 +893,9 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: portal, alpha: { from: 1, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
   }
 
-  /** O servidor abre o portal de conclusão no centro da sala do boss quando ele morre. */
+  /** O servidor abre o portal de conclusão quando o boss morre (no centro da sala dele, ou na sala dos baús da caverna). */
   private drawBossPortal() {
-    const c = centerOf(this.dungeon.boss);
+    const c = this.dungeon.bossPortal;
     const x = this.toPx(c.x);
     const y = this.toPx(c.y);
     // A arte do pack é quase preta e some no chão escuro: um brilho roxo (a cor do portal no minimapa) pulsa por baixo.
@@ -903,7 +912,25 @@ export class DungeonScene extends Phaser.Scene {
   private syncChest(id: string, chest: ChestView) {
     const image = this.chests.get(id);
     if (!image) return;
-    image.setTexture(chest.opened ? CHEST_TEXTURE.open : chest.locked ? CHEST_TEXTURE.locked : CHEST_TEXTURE.unlocked);
+    // Baú de runa: aberto só para quem já levou a runa dele (para os outros, continua cheio).
+    const mine = this.room.state.players.get(this.room.sessionId)?.chosenRune;
+    const opened = chest.opened || (!!chest.rune && mine === chest.rune);
+    image.setTexture(opened ? CHEST_TEXTURE.open : chest.locked ? CHEST_TEXTURE.locked : CHEST_TEXTURE.unlocked);
+  }
+
+  /**
+   * Baú de runa: a pedra da runa flutua acima dele com um brilho da cor dela, para escolher de longe. O brilho
+   * pulsa mais forte quando o baú destranca (o boss morreu).
+   */
+  private addRuneMark(chest: ChestView) {
+    const color = RUNES[chest.rune]?.color ?? 0xffffff;
+    const x = this.toPx(chest.x);
+    const y = this.toPx(chest.y);
+    const glow = this.add.ellipse(x, y + 6, 40, 18, color, 0.35).setDepth(chest.y * TILE_SIZE + 0.4)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    const icon = this.add.image(x, y - 22, itemTexture(this, chest.rune)).setDepth((chest.y + 1) * TILE_SIZE - 0.5);
+    this.tweens.add({ targets: icon, y: y - 26, duration: 1100, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    this.tweens.add({ targets: glow, alpha: { from: 0.2, to: 0.5 }, duration: 900, yoyo: true, repeat: -1 });
   }
 
   /**
@@ -961,6 +988,7 @@ export class DungeonScene extends Phaser.Scene {
   private syncAvatar(sessionId: string, player: PlayerView) {
     const unit = this.avatars.get(sessionId);
     if (!unit) return;
+    if (sessionId === this.room.sessionId && player.chosenRune) this.room.state.chests.forEach((c, id) => this.syncChest(id, c));
     // O equipamento aparece no personagem: troca a roupa quando ele pega, larga ou recebe itens.
     const outfit = outfitOf(player);
     const heroKey = heroArt(this, unit.classId!, outfit);
@@ -1161,12 +1189,17 @@ export class DungeonScene extends Phaser.Scene {
     if (dx === 0 && dy === 0) return;
     unit.goal = { x, y };
     const now = this.time.now;
-    // Salto (teleporte, empurrão longo): aparece direto no destino.
+    // Salto (teleporte, empurrão longo, caverna): aparece direto no destino.
     if (Math.max(Math.abs(dx), Math.abs(dy)) > SNAP_TILES * TILE_SIZE) {
       unit.steps.length = 0;
       unit.leg = null;
       unit.legEnd = now;
       unit.body.setPosition(x, y);
+      // O próprio jogador passou pela caverna: a câmera corta junto (sem atravessar o mapa) e a tela clareia.
+      if (unit === this.avatars.get(this.room.sessionId) && Math.max(Math.abs(dx), Math.abs(dy)) > CAVE_CUT_TILES * TILE_SIZE) {
+        this.cameras.main.centerOn(x, y);
+        this.cameras.main.fadeIn(350, 0, 0, 0);
+      }
       return;
     }
     // Mais de um tile de uma vez (investida, teleporte curto, empurrão): arrancada rápida, fora do ritmo da caminhada.

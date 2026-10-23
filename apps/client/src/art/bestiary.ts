@@ -10,6 +10,10 @@ export const BLOOD_TINT: Record<Exclude<BloodKind, "none" | "red">, number> = {
   black: 0x2b2b2b,
 };
 
+/** Texturas de monstro desenhadas aqui mesmo (não há PNG no pack para carregar). */
+export const OWN_SAND_WORM = "monster-sand-worm";
+export const OWN_MONSTER_ART: string[] = [OWN_SAND_WORM];
+
 export interface MonsterArt {
   /** Chave da textura (e nome do PNG em `assets/dcss/`). */
   texture: string;
@@ -71,6 +75,8 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   hagIllusion: { texture: "monster-green-hag", blood: "none" },
   spiritNaga: { texture: "monster-spirit-naga", blood: "red" },
   blackDragon: { texture: "monster-black-dragon", facesLeft: true, blood: "red" },
+  // Mar de Areia (arte própria, `sandWorm.ts`: não vem do pack).
+  sandWorm: { texture: OWN_SAND_WORM, facesLeft: true, blood: "red" },
 };
 
 /** Todas as texturas de monstro (as variantes incluídas), para carregar e refinar. */

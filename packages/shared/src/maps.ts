@@ -33,6 +33,11 @@ export interface MapDef {
   mimicChance: number;
   /** Boss final, no centro do mapa, sorteado pelo peso (o primeiro é o principal do mapa). Vazio: mapa ainda sem monstros. */
   bosses: [MonsterKind, number][];
+  /**
+   * Baús de runa depois do boss (caverna do deserto): destrancam quando o boss morre e cada jogador leva uma das
+   * runas, à escolha. Com eles, o boss não dropa runa.
+   */
+  rewardRunes?: string[];
 }
 
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
@@ -84,11 +89,12 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   desert: {
     id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,
-    description: "Em construção: só o cenário, ainda sem monstros. Dunas, oásis e bosques de coqueiros para explorar.",
+    description: "Dunas, oásis e coqueiros. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
     encounters: [],
     minibosses: [],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["sandWorm", 1]],
+    rewardRunes: ["rune-fury", "rune-life", "rune-time", "rune-meteor"],
   },
 };
 

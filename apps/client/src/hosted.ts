@@ -178,6 +178,7 @@ class HostRuntime {
       case MSG.attacking: return this.hunt.attacking(sessionId, msg);
       case MSG.chooseSpell: return this.hunt.chooseSpell(sessionId, msg);
       case MSG.choosePerk: return this.hunt.choosePerk(sessionId, msg);
+      case MSG.chooseRune: return this.hunt.chooseRune(sessionId, msg);
       case MSG.cast: return this.hunt.cast(sessionId, msg);
       case MSG.drink: return this.hunt.drink(sessionId, msg);
       case MSG.bagEquip: return this.hunt.bagEquip(sessionId, msg);

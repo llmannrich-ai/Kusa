@@ -1,4 +1,4 @@
-import { CLASSES, Tile, centerOf, hasLineOfSight, type ClassId, type Dungeon, type MapId } from "@kusa/shared";
+import { CLASSES, Tile, hasLineOfSight, isUnderground, type ClassId, type Dungeon, type MapId, type Rect } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
 
 /** Quanto cada jogador revela ao redor (tiles): o mesmo que cabe na tela, 9 de largura e 13+ de altura. */
@@ -14,6 +14,8 @@ const TILE_COLORS = {
   swamp: { floor: [86, 118, 56], bossFloor: [128, 120, 98], wall: [20, 36, 20], water: [46, 86, 104], ruin: [160, 150, 128] },
   desert: { floor: [214, 178, 118], bossFloor: [226, 196, 140], wall: [150, 108, 60], water: [48, 140, 156], ruin: [150, 108, 60] },
 } satisfies Record<MapId, Record<string, number[]>>;
+/** Subterrâneo do deserto: rocha escura, chão de areia batida e o salão dos baús em arenito. */
+const CAVE_COLORS = { floor: [104, 82, 60], bossFloor: [128, 74, 52], wall: [34, 24, 18], hall: [150, 126, 92] };
 
 const COLORS = {
   me: "#ffffff",
@@ -22,6 +24,7 @@ const COLORS = {
   bossPortal: "#b36bff",
   bossRoom: "#e74c3c",
   chest: "#f1c40f",
+  cave: "#e08a2c",
 };
 
 /**
@@ -113,8 +116,10 @@ export class Minimap {
     const b = d.boss;
     const tile = d.tiles[y * d.width + x];
     const colors = TILE_COLORS[d.mapId];
-    const inBoss = x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h;
-    const [r, g, bl] = tile === Tile.Wall ? colors.wall : tile === Tile.Water ? colors.water : tile === Tile.Ruin ? colors.ruin
+    const inBoss = inRect(b, x, y);
+    const [r, g, bl] = isUnderground(d, x)
+      ? (tile === Tile.Wall ? CAVE_COLORS.wall : d.cave && inRect(d.cave.reward, x, y) ? CAVE_COLORS.hall : inBoss ? CAVE_COLORS.bossFloor : CAVE_COLORS.floor)
+      : tile === Tile.Wall ? colors.wall : tile === Tile.Water ? colors.water : tile === Tile.Ruin ? colors.ruin
       : inBoss ? colors.bossFloor : colors.floor;
     const i = (y * d.width + x) * 4;
     this.fogPixels.data.set([r, g, bl, 255], i);
@@ -131,11 +136,12 @@ export class Minimap {
     if (canvas.width !== size) { canvas.width = size; canvas.height = size; }
 
     const me = this.room.state.players.get(this.room.sessionId);
-    // Compacto: janela centrada no jogador. Aberto: a dungeon inteira.
-    const tiles = this.expanded ? d.width : COMPACT_TILES;
+    // Compacto: janela centrada no jogador. Aberto: a área inteira onde ele está (no deserto, a superfície ou a caverna).
+    const area = this.areaOf(me);
+    const tiles = this.expanded ? Math.max(area.w, area.h) : COMPACT_TILES;
     const scale = size / tiles;
-    const originX = this.expanded || !me ? 0 : me.x + 0.5 - tiles / 2;
-    const originY = this.expanded || !me ? 0 : me.y + 0.5 - tiles / 2;
+    const originX = this.expanded || !me ? area.x + (area.w - tiles) / 2 : me.x + 0.5 - tiles / 2;
+    const originY = this.expanded || !me ? area.y + (area.h - tiles) / 2 : me.y + 0.5 - tiles / 2;
 
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -147,18 +153,21 @@ export class Minimap {
     // Um pixel da tela em tiles: marcadores e linhas têm tamanho fixo na tela nos dois modos.
     const px = dpr / scale;
 
-    // A sala do boss é o objetivo: sempre marcada, mesmo antes de ser vista.
+    // A sala do boss é o objetivo: sempre marcada, mesmo antes de ser vista (no deserto, só quando já se está na
+    // caverna: achar a caverna faz parte da hunt).
     const b = d.boss;
-    ctx.strokeStyle = COLORS.bossRoom;
-    ctx.lineWidth = 1.5 * px;
-    ctx.setLineDash([4 * px, 3 * px]);
-    ctx.strokeRect(b.x, b.y, b.w, b.h);
-    ctx.setLineDash([]);
+    if (inRect(area, b.x, b.y)) {
+      ctx.strokeStyle = COLORS.bossRoom;
+      ctx.lineWidth = 1.5 * px;
+      ctx.setLineDash([4 * px, 3 * px]);
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.setLineDash([]);
+    }
 
     this.mark(d.portal.x, d.portal.y, COLORS.portal, 5 * px, px);
-    if (this.room.state.bossDefeated) {
-      const c = centerOf(b);
-      this.mark(c.x, c.y, COLORS.bossPortal, 6 * px, px);
+    if (this.room.state.bossDefeated) this.mark(d.bossPortal.x, d.bossPortal.y, COLORS.bossPortal, 6 * px, px);
+    for (const c of d.cave ? [d.cave.entrance, d.cave.exit] : []) {
+      if (this.explored[c.y * d.width + c.x]) this.mark(c.x, c.y, COLORS.cave, 5 * px, px);
     }
     this.room.state.chests.forEach((chest) => {
       if (!chest.opened && this.explored[chest.y * d.width + chest.x]) this.mark(chest.x, chest.y, COLORS.chest, 4 * px, px);
@@ -171,6 +180,15 @@ export class Minimap {
     if (me) this.mark(me.x, me.y, COLORS.me, 6 * px, px);
   }
 
+  /** A parte do mapa onde o jogador está: no deserto, a superfície ou o subterrâneo; nos outros, a dungeon toda. */
+  private areaOf(me: { x: number; y: number } | undefined): Rect {
+    const d = this.dungeon;
+    const under = d.cave?.under;
+    if (!under) return { x: 0, y: 0, w: d.width, h: d.height };
+    if (me && isUnderground(d, me.x)) return under;
+    return { x: 0, y: 0, w: under.x, h: d.height };
+  }
+
   /** Quadrado com contorno escuro centrado num tile (`size` e `px` em tiles). */
   private mark(x: number, y: number, color: string, size: number, px: number) {
     const ctx = this.ctx;
@@ -181,4 +199,8 @@ export class Minimap {
     ctx.fillStyle = color;
     ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
   }
+}
+
+function inRect(r: Rect, x: number, y: number) {
+  return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
 }

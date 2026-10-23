@@ -78,6 +78,9 @@ export interface ChooseSpellMessage { slot: SpellSlot; spellId: SpellId }
 /** Cliente → servidor: escolhe uma das melhorias oferecidas na subida de nível (`Player.perkOffer`). */
 export interface ChoosePerkMessage { perk: PerkId }
 
+/** Cliente → servidor: leva a runa do baú de runa ao lado (sala dos baús da caverna). Uma por jogador. */
+export interface ChooseRuneMessage { chest: string }
+
 /** Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe. */
 export interface AttackingMessage { on: boolean }
 
@@ -210,6 +213,7 @@ export const MSG = {
   attacking: "attacking",
   chooseSpell: "chooseSpell",
   choosePerk: "choosePerk",
+  chooseRune: "chooseRune",
   cast: "cast",
   spell: "spell",
   chain: "chain",
