@@ -2,13 +2,13 @@ import { Encoder, Reflection, type Decoder } from "@colyseus/schema";
 import {
   MAX_PARTY_SIZE,
   MSG,
-  RULES_VERSION,
   SERVER_TICK_MS,
   type ClassId,
   type MapId,
   type RunEndedMessage,
   type SoloRunStart,
 } from "@kusa/shared";
+import { RULES_VERSION } from "virtual:rules-version";
 import type { Hunt, HuntReport, Recruit } from "../../server/src/hunt.ts";
 import type { DungeonState } from "../../server/src/state.ts";
 import { supabase } from "./auth.ts";
@@ -51,7 +51,7 @@ type Down =
 
 /** Jogador → anfitrião. */
 type Up =
-  | { k: "hello"; recruit: Recruit; rulesVersion: number; resume: boolean }
+  | { k: "hello"; recruit: Recruit; rulesVersion: string; resume: boolean }
   | { k: "msg"; type: string; msg: unknown }
   | { k: "loadout"; items: string[]; bag: string[] }
   | { k: "bye" };
@@ -178,6 +178,7 @@ class HostRuntime {
       case MSG.attacking: return this.hunt.attacking(sessionId, msg);
       case MSG.chooseSpell: return this.hunt.chooseSpell(sessionId, msg);
       case MSG.choosePerk: return this.hunt.choosePerk(sessionId, msg);
+      case MSG.chooseRune: return this.hunt.chooseRune(sessionId, msg);
       case MSG.cast: return this.hunt.cast(sessionId, msg);
       case MSG.drink: return this.hunt.drink(sessionId, msg);
       case MSG.bagEquip: return this.hunt.bagEquip(sessionId, msg);

@@ -49,7 +49,9 @@ comprar **e usar** as anteriores do mesmo ramo.
   meio e as **costelas** (`RIBS`) saem para a esquerda e a direita em alturas e tamanhos diferentes, então nenhum
   ramo tem a mesma forma. A costela nasce num nó do tronco; algumas magias pedem **dois pais** (um da costela e um do
   tronco, como a Nevasca do Diablo 2), ligados no desenho por uma diagonal pontilhada (`also_requires_id` no banco).
-- **No menu, um ramo por tela**, com abas no topo (nome, magias compradas/total e ✦ se termina em especialização).
+- **No menu, um ramo por tela.** No alto, um botão por personagem (o retrato vestido na cor da classe); abaixo, uma
+  aba por ramo com o símbolo dele (magias compradas/total e ✦ se termina em especialização) e o nome do ramo aberto
+  como título acima da árvore. As explicações ficam em Configurações › Regras, não na tela.
   Até 5 colunas: tronco, costelas dos dois lados e, no pé, os dois lados da especialização. O losango do Traço leva
   o nome da especialização.
 
@@ -351,15 +353,15 @@ então funcionam com o servidor do jogo dormindo.
 O jogador escolhe o mapa (cenário) na tela de criar sala (a escolha fica salva no aparelho). O mapa vale para as salas
 que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
-Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma
-`RULES_VERSION`. Cliente desatualizado se recarrega sozinho; se o servidor ainda está terminando o deploy, o
-cliente pede para tentar de novo em 1 ou 2 minutos.
+Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
+regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
+recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
-| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104, campo aberto com 6 zonas (ainda vazias) | Em construção: só o cenário, sem monstros |
+| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → (sem mini-boss) → Verme da Areia (na caverna) |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -391,25 +393,55 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
-### Mar de Areia (em construção)
+### Mar de Areia
 
-- **Só o cenário por enquanto:** a tabela de monstros, mini-bosses e boss está vazia, então a hunt não tem
-  inimigos nem baús (dá para explorar e fugir pelo portal). O gerador já marca as 6 zonas do caminho e o
-  descampado do centro, para os encontros entrarem depois sem mudar o mapa.
+- **Monstros:** 6 zonas em arco da entrada até perto do centro, cada uma mais forte, e 4 campinas com monstros
+  extras (como no pântano). Começa com bandos de Escorpiões da Areia e Abutres Gigantes; no meio, esqueletos,
+  arqueiros, Aranhas gigantes e os primeiros Gnolls; no fim, Gnolls e Múmias. Sem mini-bosses nem baús na
+  superfície: a recompensa grande são os baús de runa da caverna. O objetivo é achar a caverna.
+  - **Escorpião da Areia** (enxame, 2 a 3): metade das ferroadas envenena.
+  - **Abutre Gigante** (voa): bica e sobe antes do troco (Fuga Ágil) e, em dupla, bica mais fundo (Táticas de Bando).
+  - **Múmia** (bruto lento, morto-vivo): Olhar Pavoroso (atordoa 1 s, até 4 tiles), toque que apodrece (dano contínuo);
+    vulnerável a fogo.
+  - Reaproveitados da Cripta: Gnoll, Esqueleto, Esqueleto arqueiro e Aranha gigante.
+- **Caverna:** a boca fica num monte de arenito num lugar sorteado pela seed, longe da entrada (pelo menos 40
+  tiles) e fora das zonas, aberta para o sul. Pisar nela leva ao **subterrâneo**, pequeno, com o celular na vertical:
+  câmara de chegada (com a corda de volta), túnel, o **covil do Verme da Areia** (caverna larga com alguns pilares de
+  rocha) e, depois de uma passagem estreita, o **salão dos baús**. Pisar na saída (a corda) leva de volta para a
+  frente da boca. As criaturas invocadas vão junto. No minimapa a boca aparece quando é vista, e a caverna tem o
+  próprio mapa (aberto, mostra só a área onde o jogador está). Por dentro, o subterrâneo fica na mesma grade da
+  superfície, à direita dela e separado por rocha: não há passagem a pé, só pela caverna.
+- **Baús de runa:** 4 baús no fundo do salão, sempre com as mesmas runas (`MapDef.rewardRunes`): Fúria, Vida, Tempo e
+  Meteoro, cada uma com a pedra flutuando em cima. Ficam trancados até o Verme morrer. Colado num baú aparece a
+  carta da runa; um toque leva a runa para a bag. **Cada jogador escolhe uma** (os baús não esvaziam: na equipe,
+  cada um leva a sua, igual ou diferente). Com a bag cheia, não leva. O Verme não dropa runa (a recompensa são os
+  baús); dropa loot, itens e poções como os outros bosses.
+- **Portal do boss:** abre no meio do salão dos baús (não no covil), depois da escolha.
+- **Verme da Areia** (boss): mergulha na areia e irrompe debaixo de quem estiver até 7 tiles (Emboscada da Areia),
+  engole quem fica colado (Engolir: controle de 1,8 s com dano por segundo) e, abaixo de metade da vida, faz o chão
+  tremer em volta (Tremor, deixa lento). Vulnerável a gelo, resiste a fogo.
+- **Balanceamento:** o caminho rende um pouco mais de XP que a Cripta (cerca de 36 monstros e 2.700 XP, contra 21 e
+  1.700), então a equipe chega na caverna perto do nível 6 a 8. O covil é a profundidade 6 (+72%): o Verme fica com a
+  vida do Dragão jovem no covil dele (~1.340) e, no simulador de duelo (herói nível 6 sozinho, só ataque básico),
+  derruba o herói entre o Ogro e o Dragão (6,5 a 9,7 s). Os comuns ficam no nível dos da Cripta: Escorpião como a
+  Ratazana, Abutre como o Goblin, Múmia como o Orc.
 - **Campo aberto, como o pântano:** dunas altas na borda e, por cima, cristas de duna compridas no sentido do
   vento, oásis (lagoas com coqueiros na margem), bosques de coqueiros e coqueiros soltos. Obstáculo que fecharia a
   passagem até uma zona ou ao centro é descartado. **Coqueiro** é um tile de mata sem mata nos 4 lados; mata
   encostada em mata é **duna** (o cliente desenha cada um por essa regra). Os dois bloqueiam passo e visão; a água
-  do oásis bloqueia só o passo. No centro, um descampado marcado por 4 coqueiros grandes.
-- **Visual** (só no cliente, `apps/client/src/desertMap.ts`, com toda a arte própria em `art/desertDecor.ts`, sem
-  pack): sol de cima à esquerda em tudo. Areia com ondulações de vento (fortes, suaves ou lisa, em manchas grandes),
+  do oásis bloqueia só o passo.
+- **Visual** (só no cliente, `apps/client/src/desertMap.ts` e `caveMap.ts`, com toda a arte própria em
+  `art/desertDecor.ts`, `art/caveDecor.ts` e `art/sandWorm.ts`, sem pack): sol de cima à esquerda em tudo. Areia com ondulações de vento (fortes, suaves ou lisa, em manchas grandes),
   ladrilhos que fecham nas bordas; dunas com encosta iluminada, encosta na sombra, frente com crista e areia
   escorrendo, e sombra na areia baixa; oásis com água rasa e funda, espuma, margem arredondada, areia molhada,
   papiro, lótus e brilhos do sol na água; coqueiros em 4 formas (tronco curvo com anéis, copa de folhas penadas com
   cocos, folha seca em alguns), com variação de tom e tamanho, sombra no chão, copa que balança e fica transparente
   quando o jogador passa por baixo; cocos e folhas secas caídas, capim seco, arbustos, arenito, pedrinhas,
-  conchas, crânio de boi, rastro de cobra e pegadas; grãos de areia e poeira levados pelo vento. Como nos outros
-  mapas, só os sprites perto da câmera são desenhados.
+  conchas, crânio de boi, rastro de cobra e pegadas; grãos de areia e poeira levados pelo vento. Na caverna: chão
+  de areia batida, rocha com paredão em camadas de sedimento, sulcos e pele trocada do verme no covil, ossos,
+  estalagmites, cristais âmbar que brilham, o facho de luz e a corda da saída, e o salão em lajes de arenito com
+  glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
+  Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
 ## Partida (hunt)
 

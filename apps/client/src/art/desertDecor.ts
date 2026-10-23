@@ -142,13 +142,13 @@ export function duneStrip() {
 // --- Bordas -----------------------------------------------------------------------
 
 /** Borda irregular: quantos pixels a faixa avança no ponto `i` (0..31) do lado, sem emenda com o vizinho. */
-function ragged(i: number, base: number, amp: number, seed: number) {
+export function ragged(i: number, base: number, amp: number, seed: number) {
   const k = Math.min(i, T - 1 - i) < 2 ? 0 : 1; // nas pontas a faixa fica na base, para casar com o tile do lado
   return Math.round(base + k * (Math.sin(i * 0.9 + seed) * amp * 0.6 + (hash(i, seed) - 0.5) * amp));
 }
 
 /** Pinta uma faixa colada num lado (0 N, 1 L, 2 S, 3 O), `depth(i)` pixels para dentro, cor por distância. */
-function sideBand(ctx: Ctx, side: number, depth: (i: number) => number, color: (d: number, i: number) => string | null) {
+export function sideBand(ctx: Ctx, side: number, depth: (i: number) => number, color: (d: number, i: number) => string | null) {
   for (let i = 0; i < T; i++) {
     const n = depth(i);
     for (let d = 0; d < n; d++) {

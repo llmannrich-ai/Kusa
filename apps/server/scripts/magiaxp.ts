@@ -10,9 +10,10 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MSG, ROOM_NAME, RULES_VERSION, SPELLS, SPELL_LEVEL_XP, SPELL_XP_COMBAT_TILES, SPELL_XP_HUNT_CAP, castXp,
+  MSG, ROOM_NAME, SPELLS, SPELL_LEVEL_XP, SPELL_XP_COMBAT_TILES, SPELL_XP_HUNT_CAP, castXp,
   generateDungeon, spellLevelFromXp, spellLevelProgress, spellXpAfterRun, type RunEndedMessage,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 import { approach, inSight, nearestMonster, until, wait } from "./hunt.ts";
 

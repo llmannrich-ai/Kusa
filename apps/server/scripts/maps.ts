@@ -2,9 +2,11 @@
  * Teste dos mapas. Primeiro, sem servidor: para várias seeds, o gerador de cada mapa é determinístico
  * e todos os pontos importantes (salas, campinas, baús, boss) são alcançáveis a pé a partir do portal.
  * Depois, contra um servidor rodando: cada mapa cria a sala certa (monstros, tempo) e a fuga funciona,
- * e cliente de outra versão das regras (`RULES_VERSION`) é recusado.
+ * e cliente de outra versão das regras (`RULES_VERSION`, o hash de `RULES_FILES`) é recusado; o gerador só depende
+ * de arquivos dessa lista.
  * Uso: npx tsx apps/server/scripts/maps.ts [url]
  */
+import { readFileSync } from "node:fs";
 import { Client } from "@colyseus/sdk";
 import {
   MAPS,
@@ -12,8 +14,9 @@ import {
   MAP_IDS,
   MSG,
   ROOM_NAME,
-  RULES_VERSION,
+  RULES_FILES,
   VERSION_MISMATCH_CODE,
+  caveDestination,
   centerOf,
   generateDungeon,
   isWalkable,
@@ -21,6 +24,7 @@ import {
   type MapId,
   type RunEndedMessage,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 
 const SEEDS = 150;
 
@@ -32,8 +36,10 @@ for (const mapId of MAP_IDS) {
     if (d.tiles.some((t, k) => again.tiles[k] !== t)) throw new Error(`${mapId}: seed ${seed} não é determinística`);
     const reach = reachable(d);
     const goals = [
-      centerOf(d.boss), ...d.path.map(centerOf), ...d.meadows.map(centerOf),
+      centerOf(d.boss), d.bossPortal, ...d.path.map(centerOf), ...d.meadows.map(centerOf),
       ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+      // Baús de runa da caverna: alcançáveis pelo tile da frente.
+      ...(d.cave?.chests ?? []).map((c) => ({ x: c.x, y: c.y + 1 })),
     ];
     for (const g of goals) {
       if (!reach[g.y * d.width + g.x]) throw new Error(`${mapId}: seed ${seed}, ponto (${g.x}, ${g.y}) inalcançável`);
@@ -42,16 +48,27 @@ for (const mapId of MAP_IDS) {
   console.log(`${MAPS[mapId].name}: ${SEEDS} seeds conectadas e determinísticas`);
 }
 
+// A versão das regras é o hash de RULES_FILES: o gerador não pode depender (em tempo de execução) de arquivo fora da
+// lista, senão o mapa mudaria sem mudar a versão e cliente e servidor desenhariam mapas diferentes.
+for (const file of ["dungeon.ts", "rng.ts"]) {
+  const text = readFileSync(new URL(`../../../packages/shared/src/${file}`, import.meta.url), "utf8");
+  for (const [, clause, dep] of text.matchAll(/^import\s+(type\s+)?[^;]*?from\s+"\.\/([\w.]+)";/gm)) {
+    if (clause) continue;
+    if (!(RULES_FILES as readonly string[]).includes(dep)) throw new Error(`${file} importa ${dep}, que não está em RULES_FILES (rulesVersion.ts)`);
+  }
+}
+console.log(`versão das regras ${RULES_VERSION}: o gerador só depende de ${RULES_FILES.join(", ")}`);
+
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 for (const mapId of MAP_IDS) await playMap(mapId);
 // Cliente sem versão (antigo) ou de outra versão: recusado, com a versão do servidor na mensagem.
-for (const rulesVersion of [undefined, RULES_VERSION + 1]) {
+for (const rulesVersion of [undefined, "00000000"]) {
   const err = await client.create<any>(ROOM_NAME, { name: "Velho", classId: "knight", rulesVersion }).then(
     (room) => { void room.leave(); return null; },
     (e: { code?: number; message: string }) => e,
   );
-  if (err?.code !== VERSION_MISMATCH_CODE || !err.message.includes(`servidor v${RULES_VERSION}`)) {
+  if (err?.code !== VERSION_MISMATCH_CODE || !err.message.includes(`regras ${RULES_VERSION}`) || !err.message.includes("servidor v999")) {
     throw new Error(`versão ${rulesVersion} deveria ser recusada, veio ${err ? `${err.code} ${err.message}` : "entrada aceita"}`);
   }
 }
@@ -96,7 +113,7 @@ async function playMap(mapId: MapId) {
   await room.leave();
 }
 
-/** Tiles alcançáveis a partir do portal, andando como o servidor deixa (8 direções, sem cortar quina). */
+/** Tiles alcançáveis a partir do portal, andando como o servidor deixa (8 direções, sem cortar quina) e passando pela caverna. */
 function reachable(d: Dungeon) {
   const seen = new Uint8Array(d.width * d.height);
   const start = d.portal.y * d.width + d.portal.x;
@@ -114,6 +131,12 @@ function reachable(d: Dungeon) {
         if (dx && dy && (!isWalkable(d, nx, y) || !isWalkable(d, x, ny))) continue;
         seen[k] = 1;
         queue.push(k);
+        // Caverna do deserto: pisar numa ponta leva à outra.
+        const to = caveDestination(d, nx, ny);
+        if (to && !seen[to.y * d.width + to.x]) {
+          seen[to.y * d.width + to.x] = 1;
+          queue.push(to.y * d.width + to.x);
+        }
       }
     }
   }

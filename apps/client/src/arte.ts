@@ -10,7 +10,7 @@ import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
 import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
-import { BESTIARY_ART, monsterTextures } from "./art/bestiary.ts";
+import { BESTIARY_ART, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
@@ -197,7 +197,9 @@ const loadImage = (key: string) => new Promise<HTMLImageElement>((resolve) => {
 });
 const [floor, ...monsters] = await Promise.all([
   loadImage(FLOOR_TEXTURE.normal),
-  ...monsterTextures().map(loadImage),
+  // Arte própria de monstro não tem PNG: entra o desenho direto.
+  ...monsterTextures().map((key): Promise<HTMLCanvasElement | HTMLImageElement> =>
+    key in OWN_MONSTER_DRAW ? Promise.resolve(OWN_MONSTER_DRAW[key]()) : loadImage(key)),
 ]);
 const isWall = (_x: number, y: number) => y === 0 || y === H - 1;
 /** Personagem do tamanho do jogo (heróis em `HERO_SCALE`, monstros no tile), com os pés na base do tile. */
@@ -269,7 +271,7 @@ show(crypt, onGround(dustCanvas(), "#3a2e22"), "poeira", 8);
 
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
-  ...monsterTextures(), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
+  ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
   ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
   ...Object.values(SWAMP_TEXTURE),
 ];

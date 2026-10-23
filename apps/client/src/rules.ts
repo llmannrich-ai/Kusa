@@ -1,5 +1,7 @@
 import {
+  ACTIVE_SPELLS_PER_SLOT,
   BAG_SIZE,
+  DEATH_SPELL_XP_LOSS,
   BOSS_LOOT_BONUS,
   CLASSES,
   CLASS_IDS,
@@ -102,6 +104,7 @@ export function renderRules(root: HTMLElement) {
       })),
       `Quem cria a sala escolhe o mapa. Cada sala mais funda é ${pct(DEPTH_SCALING)} mais forte que a anterior (vida, dano, XP e loot). `
       + "Os monstros de cada sala são sorteados a cada hunt. Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro. "
+      + "No Mar de Areia, o boss mora numa caverna escondida em algum lugar do deserto; atrás dele, 4 baús de runa: cada jogador leva uma. "
       + "Na Cripta, alguns baús são Mímicos.",
       "Quando o tempo acaba, o mapa desaba e quem ainda estiver lá dentro morre soterrado.",
     ),
@@ -153,9 +156,16 @@ export function renderRules(root: HTMLElement) {
     section("✨ Grimório", false,
       "Na aba Grimório cada classe tem uma árvore de magias comprada com gold. Ela não se perde ao morrer.",
       list([
-        "Magias novas viram opção na escolha do slot durante a hunt. Os níveis 2 e 3 de uma magia a deixam mais forte e mais longa.",
+        "Escolha o personagem no alto da tela. Cada classe tem três ramos, um por aba: o símbolo da aba mostra o ramo e quantas magias dele você já tem.",
+        "No ramo aberto, a raiz fica no alto, o tronco desce no meio e os galhos saem para os lados. Toque num nó para ver os detalhes e comprar.",
+        "Cada nó pede o nó de cima do mesmo ramo (a diagonal pontilhada é um segundo pré-requisito): as magias da ponta são as mais caras.",
+        "Magia comprada sobe de nível com o uso nas hunts, devagar. Os nós de baixo pedem a magia de cima no nível 1. Os níveis deixam a magia mais forte e mais longa.",
+        `Morrer tira ${Math.round(DEATH_SPELL_XP_LOSS * 100)}% do XP de uso das magias, mas nunca abaixo do nível 1.`,
+        "Sinergia: cada nível de uma magia vizinha (ligada por galho) dá força a esta. O Tomo 📕📗📘 fortalece o ramo todo.",
+        `Só as magias ativas (✔, até ${ACTIVE_SPELLS_PER_SLOT} por slot) aparecem na escolha da hunt. Ative na ficha da magia.`,
+        `Magias novas viram opção quando o slot abre na hunt (nível ${SLOT1} e ${SLOT2}).`,
+        "Ramos com ✦ terminam em duas especializações, e a escolha é permanente.",
         "Áureas (dano, vida, mana e velocidade) valem sempre, desde o nível 1 da hunt.",
-        "Cada nó pede o anterior do mesmo ramo: as magias da ponta são as mais caras.",
       ]),
     ),
 

@@ -8,8 +8,10 @@ export const Tile = {
   Portal: 2,
   /** Lagoa do pântano ou do oásis: bloqueia o passo, mas não a visão (flechas e magias passam por cima). */
   Water: 3,
-  /** Muro ou coluna em ruínas: bloqueia passo e visão. */
+  /** Muro ou coluna em ruínas, ou rocha do deserto: bloqueia passo e visão. */
   Ruin: 4,
+  /** Boca da caverna do deserto (e a saída dela no subterrâneo): andável; pisar leva à outra ponta. */
+  Cave: 5,
 } as const;
 
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -22,8 +24,10 @@ export interface Dungeon {
   tiles: Uint8Array;
   /** Sala inicial (com o portal de fuga), numa borda aleatória. */
   spawn: Rect;
-  /** Sala do boss, no centro. */
+  /** Sala do boss (no centro; no deserto, o covil no subterrâneo). */
   boss: Rect;
+  /** Onde abre o portal do boss, a saída com bônus: o centro da sala do boss, ou a sala dos baús da caverna. */
+  bossPortal: { x: number; y: number };
   /** Salas do caminho principal entre a entrada e o boss, em ordem de profundidade. */
   path: Rect[];
   /** Salas laterais (baús, mini-bosses). */
@@ -31,6 +35,38 @@ export interface Dungeon {
   /** Pontos de monstros extras fora das zonas do caminho (só no pântano). */
   meadows: Rect[];
   portal: { x: number; y: number };
+  /** Caverna do deserto: a boca na superfície leva ao subterrâneo (e a saída de lá traz de volta). */
+  cave?: CaveLink;
+}
+
+export interface CaveLink {
+  /** Boca da caverna na superfície (tile `Cave`). */
+  entrance: { x: number; y: number };
+  /** Saída no subterrâneo (tile `Cave`), na câmara de chegada. */
+  exit: { x: number; y: number };
+  /** O subterrâneo: o escavado e um pouco de rocha em volta (o minimapa aberto mostra isto), à direita da superfície. */
+  under: Rect;
+  /** Sala dos baús, depois do covil do boss. */
+  reward: Rect;
+  /** Os baús de runa da sala, da esquerda para a direita. */
+  chests: { x: number; y: number }[];
+}
+
+/** Ponta oposta da caverna: quem pisa na boca vai para a saída, e vice-versa. */
+export function caveDestination(d: Dungeon, x: number, y: number) {
+  if (!d.cave) return null;
+  if (x === d.cave.entrance.x && y === d.cave.entrance.y) return d.cave.exit;
+  if (x === d.cave.exit.x && y === d.cave.exit.y) return d.cave.entrance;
+  return null;
+}
+
+/**
+ * O tile está no subterrâneo: a faixa inteira à direita da superfície (para desenhar rocha em vez de duna e
+ * mostrar só aquela área no minimapa).
+ */
+export function isUnderground(d: Dungeon, x: number) {
+  const u = d.cave?.under;
+  return !!u && x >= u.x && x < u.x + u.w;
 }
 
 const SIZE = 72;
@@ -127,7 +163,7 @@ function generateCrypt(seed: number): Dungeon {
   const portal = centerOf(spawn);
   tiles[portal.y * width + portal.x] = Tile.Portal;
 
-  return { mapId: "crypt", width, height, tiles, spawn, boss, path: path.slice(1, -1), side, meadows: [], portal };
+  return { mapId: "crypt", width, height, tiles, spawn, boss, bossPortal: centerOf(boss), path: path.slice(1, -1), side, meadows: [], portal };
 }
 
 const SWAMP_SIZE = 112;
@@ -345,26 +381,42 @@ function buildSwamp(seed: number): Dungeon {
   const portal = s;
   set(portal.x, portal.y, Tile.Portal);
 
-  return { mapId: "swamp", width: size, height: size, tiles, spawn, boss, path, side, meadows, portal };
+  return { mapId: "swamp", width: size, height: size, tiles, spawn, boss, bossPortal: centerOf(boss), path, side, meadows, portal };
 }
 
 const DESERT_SIZE = 104;
 /** Zonas do caminho entre a entrada e o centro (ainda sem monstros: guardam a profundidade para os encontros). */
 const DESERT_STEPS = 6;
-/** Lado do descampado do centro, marcado por 4 coqueiros grandes. */
-const DESERT_ARENA = 14;
+/** Largura do subterrâneo (rocha em volta incluída), colado à direita da superfície. */
+const DESERT_UNDER_W = 40;
+/** Campinas (pontos de monstros extras fora das zonas) no deserto. */
+const DESERT_MEADOWS = 4;
+/** Distância mínima (tiles) da boca da caverna até a entrada do mapa. */
+const CAVE_MIN_DISTANCE = 40;
 
 /**
  * Mar de Areia: campo aberto de areia cercado por dunas altas. Por cima vão oásis (lagoas rodeadas de
  * coqueiros), bosques de coqueiros, coqueiros soltos e cristas de duna, sempre deixando passagem, como no
  * pântano. Coqueiro é um tile de mata (`Tile.Wall`) sem vizinho de mata nos 4 lados; mata encostada em mata
- * é duna. O cliente usa essa regra para desenhar cada um.
+ * é duna. O cliente usa essa regra para desenhar cada um (na superfície; no subterrâneo, mata é rocha).
+ *
+ * Num lugar sorteado longe da entrada fica a boca de uma caverna, num monte de rocha. Ela leva ao subterrâneo,
+ * pequeno, na mesma grade à direita da superfície (separado por rocha, sem passagem a pé): câmara de chegada,
+ * túnel, o covil do boss e, depois dele, a sala dos 4 baús de runa, onde abre o portal do boss.
  */
 function generateDesert(seed: number): Dungeon {
   for (let attempt = 0; ; attempt++) {
     const d = buildDesert(seed + attempt);
-    if (attempt >= 20 || connected(d.tiles, d.width, swampGoals(d))) return d;
+    if (attempt >= 20 || desertConnected(d)) return d;
   }
+}
+
+/** Superfície ligada a pé do portal até as zonas e a boca; subterrâneo, da saída até o boss, o portal e os baús. */
+function desertConnected(d: Dungeon) {
+  const cave = d.cave!;
+  const surface = [d.portal, ...d.path.map(centerOf), ...d.meadows.map(centerOf), cave.entrance];
+  const below = [cave.exit, centerOf(d.boss), d.bossPortal, ...cave.chests.map((c) => ({ x: c.x, y: c.y + 1 }))];
+  return connected(d.tiles, d.width, surface) && connected(d.tiles, d.width, below);
 }
 
 function buildDesert(seed: number): Dungeon {
@@ -392,7 +444,6 @@ function buildDesert(seed: number): Dungeon {
   }
 
   const center = { x: size / 2, y: size / 2 };
-  const boss: Rect = { x: center.x - DESERT_ARENA / 2, y: center.y - DESERT_ARENA / 2, w: DESERT_ARENA, h: DESERT_ARENA };
 
   // Entrada perto de uma das 4 bordas.
   const along = rng.int(18, size - 28);
@@ -423,9 +474,32 @@ function buildDesert(seed: number): Dungeon {
     path.push({ x: cx - half, y: cy - half, w: half * 2 + 1, h: half * 2 + 1 });
   }
 
-  const keep = [grow(spawn, 3), grow(boss, 2), ...anchors.map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 }))];
+  // Boca da caverna: num lugar sorteado longe da entrada e fora das zonas, virada para o sul.
+  let entrance = { x: Math.round(center.x), y: Math.round(center.y) };
+  for (let tries = 0; tries < 200; tries++) {
+    const p = { x: rng.int(14, size - 15), y: rng.int(14, size - 15) };
+    if (Math.hypot(p.x - s.x, p.y - s.y) < CAVE_MIN_DISTANCE) continue;
+    if (anchors.some((a) => Math.hypot(a.x - p.x, a.y - p.y) < 9)) continue;
+    entrance = p;
+    break;
+  }
+  const mouth: Rect = { x: entrance.x - 3, y: entrance.y - 2, w: 7, h: 6 };
+
+  // Campinas: pontos de monstros extras pelo campo, longe da entrada, das zonas e da caverna (como no pântano).
+  const meadows: Rect[] = [];
+  for (let tries = 0; tries < 60 && meadows.length < DESERT_MEADOWS; tries++) {
+    const p = { x: rng.int(14, size - 15), y: rng.int(14, size - 15) };
+    const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+    if (!far(s, 24) || !far(entrance, 10) || !anchors.every((a) => far(a, 13)) || !meadows.every((m) => far(centerOf(m), 14))) continue;
+    meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
+  }
+
+  const keep = [
+    grow(spawn, 3), mouth,
+    ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
+  ];
   const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
-  const goals = [...swampGoals({ portal: s, boss, path, side: [], meadows: [] }), ...anchors];
+  const goals = [s, ...path.map(centerOf), ...anchors, ...meadows.map(centerOf), entrance];
 
   /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
   const obstacle = (place: () => void) => {
@@ -450,11 +524,6 @@ function buildDesert(seed: number): Dungeon {
     set(x, y, Tile.Wall);
     palms.add(y * size + x);
   };
-
-  // Descampado do centro: 4 coqueiros grandes nos cantos (o lugar do futuro chefe).
-  for (const [dx, dy] of [[1, 1], [DESERT_ARENA - 2, 1], [1, DESERT_ARENA - 2], [DESERT_ARENA - 2, DESERT_ARENA - 2]]) {
-    palm(boss.x + dx, boss.y + dy);
-  }
 
   // Cristas de duna no campo: manchas compridas na direção do vento (leste-oeste), com a ponta afinando.
   for (let i = 0; i < 16; i++) {
@@ -528,14 +597,97 @@ function buildDesert(seed: number): Dungeon {
       if (tiles[i] === Tile.Wall && !palms.has(i) && !orthoWall(x, y)) tiles[i] = Tile.Floor;
     }
 
+  // Monte de rocha em volta da boca (atrás e dos lados): a caverna se abre para o sul.
+  for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-2, 0], [2, 0], [-1, -2], [0, -2], [1, -2]]) {
+    set(entrance.x + dx, entrance.y + dy, Tile.Ruin);
+  }
+  set(entrance.x, entrance.y, Tile.Floor);
+
   // Bolsões de areia que ficaram sem acesso viram duna.
   const reach = reachableFrom(tiles, size, s);
   for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
 
   const portal = s;
   set(portal.x, portal.y, Tile.Portal);
+  set(entrance.x, entrance.y, Tile.Cave);
 
-  return { mapId: "desert", width: size, height: size, tiles, spawn, boss, path, side: [], meadows: [], portal };
+  // A grade cresce para a direita: o subterrâneo fica ao lado, todo de rocha, e é escavado por cima.
+  const width = size + DESERT_UNDER_W;
+  const grid = new Uint8Array(width * size).fill(Tile.Wall);
+  for (let y = 0; y < size; y++) grid.set(tiles.subarray(y * size, (y + 1) * size), y * width);
+  const under = carveUnderground(createRng(seed ^ 0x5eed_ca7e), grid, width, size, { x: size, y: 0, w: DESERT_UNDER_W, h: size });
+
+  return {
+    mapId: "desert", width, height: size, tiles: grid, spawn, boss: under.lair, bossPortal: under.portal,
+    path, side: [], meadows, portal,
+    cave: { entrance, exit: under.exit, under: under.area, reward: under.reward, chests: under.chests },
+  };
+}
+
+/**
+ * Subterrâneo do deserto, de baixo para cima (o celular fica na vertical): câmara de chegada com a saída, túnel
+ * sinuoso, o covil do boss (caverna larga com alguns pilares de rocha), passagem estreita e a sala dos baús, um
+ * salão antigo e retangular com os 4 baús de runa encostados no fundo e o lugar do portal no meio.
+ */
+function carveUnderground(rng: ReturnType<typeof createRng>, tiles: Uint8Array, width: number, height: number, area: Rect) {
+  const set = (x: number, y: number, t: number) => {
+    if (x > area.x + 1 && y > area.y + 1 && x < area.x + area.w - 2 && y < area.y + area.h - 2) tiles[y * width + x] = t;
+  };
+  const get = (x: number, y: number) => tiles[y * width + x];
+  /** Mancha de borda irregular. */
+  const blob = (cx: number, cy: number, rx: number, ry: number) => {
+    for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++)
+      for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
+        const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+        if (d <= 1 - rng.next() * 0.18) set(x, y, Tile.Floor);
+      }
+  };
+  /** Túnel de `w` tiles de largura entre dois pontos, desviando um pouco para os lados. */
+  const tunnel = (from: { x: number; y: number }, to: { x: number; y: number }, w: number) => {
+    let x = from.x;
+    for (let y = from.y; y >= to.y; y--) {
+      const left = to.y === from.y ? 1 : (y - to.y) / (from.y - to.y);
+      // Perto do fim, puxa para o x de chegada.
+      if (left < 0.35) x += Math.sign(to.x - x);
+      else if (rng.next() < 0.4) x += rng.int(-1, 1);
+      for (let k = 0; k < w; k++) set(x + k - Math.floor(w / 2), y, Tile.Floor);
+    }
+  };
+
+  const cx = area.x + Math.floor(area.w / 2);
+  const height0 = Math.min(area.h, 64);
+  const top = area.y + Math.floor((height - height0) / 2) + 4;
+
+  // Sala dos baús: 14×6, os baús a cada 3 tiles na linha de cima.
+  const reward: Rect = { x: cx - 7, y: top, w: 14, h: 6 };
+  for (let y = reward.y; y < reward.y + reward.h; y++) for (let x = reward.x; x < reward.x + reward.w; x++) set(x, y, Tile.Floor);
+  const chests = [2, 5, 8, 11].map((dx) => ({ x: reward.x + dx, y: reward.y + 1 }));
+  const portal = { x: reward.x + 7, y: reward.y + 4 };
+
+  // Covil do boss, mais abaixo; passagem estreita até os baús.
+  const lairC = { x: cx + rng.int(-2, 2), y: reward.y + reward.h + 12 };
+  const lairR = { x: 8 + rng.int(0, 1), y: 6.5 };
+  blob(lairC.x, lairC.y, lairR.x, lairR.y);
+  tunnel({ x: lairC.x, y: lairC.y - 4 }, { x: portal.x, y: reward.y + reward.h }, 2);
+  const lair: Rect = { x: Math.round(lairC.x - lairR.x), y: Math.round(lairC.y - lairR.y), w: Math.round(lairR.x * 2) + 1, h: Math.round(lairR.y * 2) + 1 };
+  // Pilares de rocha soltos no covil, longe do centro (onde o boss nasce).
+  for (let i = 0; i < 4; i++) {
+    const a = rng.next() * Math.PI * 2;
+    const r = 3.5 + rng.next() * 2;
+    const px = Math.round(lairC.x + Math.cos(a) * r * 1.15);
+    const py = Math.round(lairC.y + Math.sin(a) * r * 0.8);
+    if (get(px, py) === Tile.Floor && openAround((x, y) => get(x, y), px, py, 1)) set(px, py, Tile.Wall);
+  }
+
+  // Câmara de chegada embaixo, com a saída no meio, e o túnel até o covil.
+  const exit = { x: cx + rng.int(-3, 3), y: lairC.y + 17 };
+  blob(exit.x, exit.y, 3.4, 2.8);
+  tunnel({ x: exit.x, y: exit.y - 2 }, { x: lairC.x, y: lairC.y + 5 }, 3);
+  set(exit.x, exit.y, Tile.Cave);
+
+  // A área do subterrâneo vai só um pouco além do que foi escavado: é o que o minimapa mostra aberto.
+  const under: Rect = { x: area.x, y: reward.y - 8, w: area.w, h: exit.y + 8 - (reward.y - 8) };
+  return { area: under, lair, portal, reward, chests, exit };
 }
 
 /** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */
@@ -559,7 +711,7 @@ function connected(tiles: Uint8Array, size: number, goals: readonly { x: number;
 
 /** Tiles andáveis alcançáveis a partir de um ponto (busca em largura, 4 direções). */
 function reachableFrom(tiles: Uint8Array, size: number, from: { x: number; y: number }) {
-  const walk = (i: number) => tiles[i] === Tile.Floor || tiles[i] === Tile.Portal;
+  const walk = (i: number) => tiles[i] === Tile.Floor || tiles[i] === Tile.Portal || tiles[i] === Tile.Cave;
   const seen = new Uint8Array(tiles.length);
   const start = from.y * size + from.x;
   if (!walk(start)) return seen;
@@ -587,7 +739,7 @@ export function tileAt(d: Dungeon, x: number, y: number): number {
 
 export function isWalkable(d: Dungeon, x: number, y: number): boolean {
   const t = tileAt(d, x, y);
-  return t === Tile.Floor || t === Tile.Portal;
+  return t === Tile.Floor || t === Tile.Portal || t === Tile.Cave;
 }
 
 /** Paredes, mata e ruínas tapam a visão; chão e água, não. */

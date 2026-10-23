@@ -3,6 +3,7 @@ export * from "./classes.ts";
 export * from "./progression.ts";
 export * from "./messages.ts";
 export * from "./rng.ts";
+export * from "./rulesVersion.ts";
 export * from "./dungeon.ts";
 export * from "./monsters.ts";
 export * from "./elements.ts";

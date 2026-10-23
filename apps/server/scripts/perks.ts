@@ -7,9 +7,10 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MONSTERS, MSG, PERK_CHOICES, PERK_IDS, ROOM_NAME, RULES_VERSION, generateDungeon, isPerk, tileDistance,
+  MONSTERS, MSG, PERK_CHOICES, PERK_IDS, ROOM_NAME, generateDungeon, isPerk, tileDistance,
   type MonsterKind, type PerkId,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";

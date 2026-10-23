@@ -33,6 +33,11 @@ export interface MapDef {
   mimicChance: number;
   /** Boss final, no centro do mapa, sorteado pelo peso (o primeiro é o principal do mapa). Vazio: mapa ainda sem monstros. */
   bosses: [MonsterKind, number][];
+  /**
+   * Baús de runa depois do boss (caverna do deserto): destrancam quando o boss morre e cada jogador leva uma das
+   * runas, à escolha. Com eles, o boss não dropa runa.
+   */
+  rewardRunes?: string[];
 }
 
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
@@ -84,11 +89,19 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   desert: {
     id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,
-    description: "Em construção: só o cenário, ainda sem monstros. Dunas, oásis e bosques de coqueiros para explorar.",
-    encounters: [],
+    description: "Dunas, oásis e coqueiros. Escorpiões, abutres, gnolls, esqueletos e múmias. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
+    encounters: [
+      { depth: [0, 0], budget: 60, table: [["sandScorpion", 4], ["giantVulture", 2]] },
+      { depth: [1, 1], budget: 130, table: [["sandScorpion", 3], ["giantVulture", 3], ["skeleton", 1], ["giantSpider", 1]] },
+      { depth: [2, 2], budget: 200, table: [["giantVulture", 2], ["skeleton", 3], ["skeletonArcher", 2], ["giantSpider", 2], ["gnoll", 1]] },
+      { depth: [3, 3], budget: 270, table: [["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 2], ["mummy", 1], ["giantSpider", 1]] },
+      { depth: [4, 4], budget: 330, table: [["gnoll", 3], ["mummy", 2], ["skeletonArcher", 2], ["giantVulture", 1]] },
+      { depth: [5, 99], budget: 380, table: [["mummy", 3], ["gnoll", 3], ["skeletonArcher", 1], ["giantVulture", 1]] },
+    ],
     minibosses: [],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["sandWorm", 1]],
+    rewardRunes: ["rune-fury", "rune-life", "rune-time", "rune-meteor"],
   },
 };
 

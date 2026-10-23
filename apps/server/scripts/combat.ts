@@ -7,9 +7,10 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  BASIC_ATTACK_COOLDOWN_MS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance,
+  BASIC_ATTACK_COOLDOWN_MS, MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance,
   type AttackMessage, type DamageMessage, type MonsterKind,
 } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";

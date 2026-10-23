@@ -9,6 +9,8 @@ export class Player extends Schema {
   @type("number") y = 0;
   /** Duração (ms) do último passo em linha reta: o cliente desliza a unidade nesse ritmo. */
   @type("number") stepMs = 0;
+  /** Runa escolhida num baú de runa (vazio: ainda não escolheu). Uma por jogador. */
+  @type("string") chosenRune = "";
   @type("number") hp = 0;
   @type("number") maxHp = 0;
   @type("number") mana = 0;
@@ -123,6 +125,8 @@ export class Chest extends Schema {
   @type("number") y = 0;
   @type("boolean") locked = true;
   @type("boolean") opened = false;
+  /** Baú de runa (sala dos baús da caverna): a runa que ele guarda. Cada jogador leva uma, e o baú não esvazia. */
+  @type("string") rune = "";
 }
 
 /** Item ou poção largado no chão: qualquer jogador que passar por cima pega (item vai para o equipamento se for melhor, senão para a bag). */

@@ -6,7 +6,6 @@ import {
   MAPS,
   MAX_LEVEL,
   MSG,
-  RULES_VERSION,
   SPELLS,
   VERSION_MISMATCH_CODE,
   difficultyStars,
@@ -16,6 +15,7 @@ import {
   type JoinOptions,
   type RunEndedMessage,
 } from "@kusa/shared";
+import { RULES_VERSION } from "virtual:rules-version";
 import { ArtLoader, artReady } from "./ArtLoader.ts";
 import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
@@ -145,19 +145,14 @@ function setEntering(on: boolean) {
 }
 
 /**
- * Cliente e servidor em versões diferentes gerariam mapas diferentes. Se o servidor é mais novo, recarrega a
- * página com `?v=` na URL (fura o cache do index.html); se o cliente é que está na frente, o servidor ainda
- * está terminando o deploy e basta esperar.
+ * Cliente e servidor em versões diferentes gerariam mapas diferentes. A versão é um hash (`rulesVersion.ts`), sem
+ * "mais nova": recarrega a página uma vez com `?v=` (fura o cache do index.html). Se depois disso continua diferente,
+ * o servidor ainda está terminando o deploy (ou a hospedagem ainda entrega o cliente velho): basta esperar.
  */
 function onVersionMismatch(message: string) {
-  const server = Number(/servidor v(\d+)/.exec(message)?.[1] ?? 0);
-  if (server <= RULES_VERSION) {
-    showError("O servidor está sendo atualizado. Tente de novo em 1 ou 2 minutos.");
-    return;
-  }
-  // Já recarregou para esta versão e ela ainda não chegou (cache da hospedagem): não entra em loop.
-  if (new URLSearchParams(location.search).get("v") === String(server)) {
-    showError("Versão nova do jogo ainda chegando. Aguarde um minuto e recarregue a página.");
+  const server = /regras ([0-9a-f]+)/.exec(message)?.[1] ?? "";
+  if (!server || new URLSearchParams(location.search).get("v") === server) {
+    showError("O jogo está sendo atualizado. Aguarde 1 ou 2 minutos e recarregue a página.");
     return;
   }
   showError("Versão nova do jogo: atualizando…");
