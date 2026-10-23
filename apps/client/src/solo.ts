@@ -103,6 +103,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     [MSG.bagEquip]: (msg) => hunt.bagEquip(SESSION_ID, msg),
     [MSG.unequip]: (msg) => hunt.unequip(SESSION_ID, msg),
     [MSG.bagDrop]: (msg) => hunt.bagDrop(SESSION_ID, msg),
+    [MSG.screen]: (msg) => hunt.screen(SESSION_ID, msg),
   };
 
   const room = {

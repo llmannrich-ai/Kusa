@@ -23,6 +23,12 @@ interface Dashboard {
   minhas: { hunts: number; sobrevivencia_pct: number | null; bosses: number; melhor_nivel: number | null; loot_total: number; abates: number; classe_favorita: string | null };
 }
 
+/** Hunts em pé e deitado (Jogar deitado, beta), da função `telemetry_screen`. */
+interface Screen {
+  tela: "em_pe" | "deitado"; hunts: number; jogadores: number; abandono_pct: number | null;
+  sobrevivencia_pct: number | null; nivel_medio: number | null; loot_medio_vivos: number | null; duracao_media_s: number | null;
+}
+
 /** Uma linha por conta (convidados ficam de fora). */
 interface Player {
   nome: string; eu: boolean; hunts: number; sobrevivencia_pct: number | null; bosses: number; mortes: number;
@@ -120,9 +126,10 @@ async function load(body: HTMLElement) {
   const id = ++requestId;
   body.replaceChildren(el("p", "muted tm-status", "Carregando…"));
   const args = { p_map: filters.map, p_days: filters.days };
-  const [dash, rank] = await Promise.all([
+  const [dash, rank, screen] = await Promise.all([
     supabase.rpc("telemetry_dashboard", args),
     supabase.rpc("telemetry_ranking", args),
+    supabase.rpc("telemetry_screen", args),
   ]);
   // Trocou o filtro antes de chegar: vale só a resposta mais nova.
   if (id !== requestId) return;
@@ -134,6 +141,8 @@ async function load(body: HTMLElement) {
   // O ranking falhar não esconde o resto: entra logo depois de "Suas hunts".
   const players = (rank.data ?? []) as Player[];
   if (players.length) out.splice(1, 0, awards(players), ranking(players));
+  const screens = (screen.data ?? []) as Screen[];
+  if (screens.some((s) => s.tela === "deitado")) out.push(screenCard(screens));
   body.replaceChildren(...out);
 }
 
@@ -275,6 +284,22 @@ function mine(d: Dashboard) {
     ["Gold de loot", num(m.loot_total)],
     ["Classe favorita", m.classe_favorita ? className(m.classe_favorita) : "—"],
   ]), "mine");
+}
+
+/** Em pé × deitado: o beta só aparece quando alguém já jogou deitado. */
+function screenCard(screens: Screen[]) {
+  const wrap = el("div");
+  for (const s of screens) {
+    wrap.append(el("h4", "", s.tela === "deitado" ? "📱 Deitado" : "📱 Em pé"), tiles([
+      ["Hunts", `${num(s.hunts)} (${num(s.jogadores)} jog.)`],
+      ["Sobrevivência", pct(s.sobrevivencia_pct)],
+      ["Abandono", pct(s.abandono_pct)],
+      ["Nível médio", s.nivel_medio == null ? "—" : String(s.nivel_medio).replace(".", ",")],
+      ["Loot médio (vivos)", num(s.loot_medio_vivos)],
+      ["Duração média", time(s.duracao_media_s)],
+    ]));
+  }
+  return card("Em pé × deitado (beta)", wrap);
 }
 
 function card(title: string, content: HTMLElement, extra = "") {

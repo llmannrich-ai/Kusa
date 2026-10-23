@@ -419,6 +419,7 @@ function createGame() {
 }
 
 function startGame(room: DungeonRoom) {
+  enterHuntLayout();
   show("lobby", false);
   show("hud", true);
   show("actions", true);
@@ -534,13 +535,33 @@ function renderSpellProgress(msg: RunEndedMessage) {
 
 /** No celular, tela cheia e trava na vertical (Android; o iOS ignora e mostra o aviso de girar). */
 async function goFullscreenPortrait() {
+  await lockOrientation("portrait");
+}
+
+/**
+ * Tela cheia e trava a orientação no celular (Android). O iOS não trava: o jogador gira o aparelho, e o aviso
+ * de girar (`#rotate`) só some na orientação certa.
+ */
+async function lockOrientation(orientation: "portrait" | "landscape") {
   if (!matchMedia("(pointer: coarse)").matches) return;
   try {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
-    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("portrait");
+    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.(orientation);
   } catch {
     // Navegador não permite: segue normal.
   }
+}
+
+/**
+ * Jogar deitado (beta, nas configurações): da largada da hunt até o resultado, o jogo ocupa a tela deitada
+ * (`body.deitado` em style.css) e o Android vira sozinho. Em pé, o mesmo jogo continua valendo.
+ */
+function enterHuntLayout() {
+  if (!loadSettings().landscape) return;
+  document.body.classList.add("deitado");
+  // O Phaser nasceu na sala de espera, na coluna em pé: mede a tela de novo com o layout deitado.
+  window.dispatchEvent(new Event("resize"));
+  void lockOrientation("landscape");
 }
 
 function localStorageGet(key: string) {
