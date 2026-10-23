@@ -23,6 +23,8 @@ const SESSION_ID = "solo";
  * O banco sorteia a seed e corta recompensas impossíveis (`start_solo_run`/`finish_solo_run`).
  */
 export async function createSoloHunt(name: string, classId: ClassId, mapId: MapId): Promise<DungeonRoom> {
+  // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
+  if (await flushPendingSolo()) throw new Error("sem conexão para salvar a hunt anterior; tente de novo com internet");
   const { data: session } = await supabase.auth.getSession();
   const [{ data, error }, { data: profile }] = await Promise.all([
     supabase.rpc("start_solo_run", { p_class_id: classId, p_map_id: mapId }),
@@ -31,7 +33,6 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   ]);
   if (error) throw new Error("não foi possível começar a hunt solo");
   const run = data as SoloRunStart;
-  const finish = (result: RunEndedMessage, report: HuntReport) => finishSolo(run.run_id, classId, result, report);
 
   // A simulação só é baixada por quem joga solo.
   const [{ Hunt }, { DungeonState }] = await Promise.all([
@@ -52,7 +53,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     send: (_sessionId, type, msg) => outbox.push([type, msg]),
     broadcast: (type, msg) => outbox.push([type, msg]),
     // Entrega direta: o banco pode responder depois de o tick parar, no fim da hunt.
-    runEnded: (_sessionId, result, report) => void finish(result, report).then((msg) => emit(MSG.runEnded, msg)),
+    runEnded: (_sessionId, result, report) => reportSolo(run.run_id, classId, result, report, (msg) => emit(MSG.runEnded, msg)),
     ended: () => window.setTimeout(stop, 10_000),
   }, { mapId, seed: run.seed });
   hunt.join(SESSION_ID, {
@@ -130,13 +131,87 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   return room as unknown as DungeonRoom;
 }
 
+/** Resultado de hunt que ainda não chegou ao banco: fica no aparelho até `finish_solo_run` responder. */
+const PENDING_KEY = "kusa:solo-pendente";
+/** Esperas entre as tentativas de gravar o fim da hunt (ms): a rede do celular costuma voltar em segundos. */
+const FINISH_RETRY_MS = [1000, 3000, 8000];
+
+interface PendingFinish {
+  /** Conta dona da hunt: outra conta no mesmo aparelho não reenvia (o banco recusaria). */
+  uid: string;
+  params: Record<string, unknown>;
+}
+
+function readPending(): PendingFinish[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "[]");
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePending(list: PendingFinish[]) {
+  try {
+    if (list.length > 0) localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+    else localStorage.removeItem(PENDING_KEY);
+  } catch { /* armazenamento indisponível: fica só a tentativa em memória */ }
+}
+
+function dropPending(runId: unknown) {
+  writePending(readPending().filter((p) => p.params.p_run_id !== runId));
+}
+
+/**
+ * Erro do próprio banco (SQLSTATE de 5 caracteres, como a hunt já fechada): tentar de novo não adianta.
+ * Sem código (o fetch falhou) ou com erro do PostgREST/gateway, a rede pode voltar.
+ */
+function isFinal(error: { code?: string }) {
+  return /^[0-9A-Z]{5}$/.test(error.code ?? "");
+}
+
+/**
+ * Reenvia os resultados que ficaram no aparelho (a rede caiu no fim da hunt ou a página recarregou antes de
+ * gravar). Roda ao entrar no menu e antes de abrir outra hunt: `start_solo_run` fecha como morte a hunt que
+ * estiver aberta. Devolve se ainda sobrou algo desta conta sem gravar.
+ */
+export async function flushPendingSolo(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  const uid = data.session?.user.id;
+  if (!uid) return false;
+  let left = false;
+  for (const pending of readPending().filter((p) => p.uid === uid)) {
+    const { error } = await supabase.rpc("finish_solo_run", pending.params);
+    if (error && !isFinal(error)) {
+      left = true;
+      continue;
+    }
+    if (error) console.error("Resultado guardado recusado pelo banco", error);
+    dropPending(pending.params.p_run_id);
+  }
+  return left;
+}
+
+/**
+ * Mostra o resultado na hora (sem esperar o banco, que pode levar segundos) e de novo com o que foi gravado.
+ * Entrega direta: o banco pode responder depois de o tick parar, no fim da hunt.
+ */
+export function reportSolo(
+  runId: string | null, classId: ClassId, result: RunEndedMessage, report: HuntReport, emit: (msg: RunEndedMessage) => void,
+): void {
+  if (runId) emit({ ...result, saving: true, note: "Salvando a recompensa…" });
+  void finishSolo(runId, classId, result, report).then(emit);
+}
+
 /**
  * Grava o resultado no banco e devolve a mensagem de fim com o que foi de fato creditado. Vale também para a sala
  * hospedada por um jogador (cada um grava o seu). Sem `runId` (a hunt não abriu no banco), nada é salvo.
+ * O resultado fica guardado no aparelho antes de ir para o banco: se a rede cair (ou a página recarregar), ele
+ * é reenviado depois e a hunt não vira morte.
  */
 export async function finishSolo(runId: string | null, classId: ClassId, result: RunEndedMessage, report: HuntReport): Promise<RunEndedMessage> {
   if (!runId) return { ...result, loot: 0, items: [], bag: [], note: "A hunt não abriu no banco: a recompensa não foi salva." };
-  const { data, error } = await supabase.rpc("finish_solo_run", {
+  const params = {
     p_run_id: runId,
     p_outcome: result.outcome,
     p_level: result.level,
@@ -154,10 +229,29 @@ export async function finishSolo(runId: string | null, classId: ClassId, result:
       // XP de uso das magias da hunt; o banco corta pelo tempo de hunt.
       spell_xp: spellXpGains(classId, result.spells),
     },
-  });
+  };
+  const { data: session } = await supabase.auth.getSession();
+  const uid = session.session?.user.id;
+  if (uid) writePending([...readPending(), { uid, params }]);
+
+  let { data, error } = await supabase.rpc("finish_solo_run", params);
+  for (const wait of FINISH_RETRY_MS) {
+    if (!error || isFinal(error)) break;
+    await new Promise((resolve) => window.setTimeout(resolve, wait));
+    ({ data, error } = await supabase.rpc("finish_solo_run", params));
+  }
+  if (error && !isFinal(error)) {
+    console.error("Falha ao salvar a hunt solo (fica guardada no aparelho)", error);
+    return {
+      ...result,
+      note: "Sem conexão com o banco: o resultado ficou guardado neste aparelho e vai ser salvo quando a conexão voltar"
+        + " (abra o jogo de novo com internet). Nada foi perdido.",
+    };
+  }
+  dropPending(runId);
   if (error) {
     console.error("Falha ao salvar a hunt solo", error);
-    return { ...result, loot: 0, items: [], bag: [], note: "Sem conexão com o banco: a recompensa desta hunt não foi salva." };
+    return { ...result, loot: 0, items: [], bag: [], note: "O banco recusou o resultado: a recompensa desta hunt não foi salva." };
   }
   const saved = data as SoloRunResult;
   const names = (ids: string[]) => ids.map((id) => ITEMS[id]?.name ?? id).join(", ");

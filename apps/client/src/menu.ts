@@ -289,7 +289,7 @@ export class Hub {
       const head = el("div", "class-head");
       const title = el("div");
       title.append(el("strong", "", c.name), el("small", "muted", ROLES[id]));
-      head.append(portrait(id, this.loadout()), title);
+      head.append(portrait(id, this.loadout(id)), title);
       if (id === this.classId) head.append(el("span", "badge", "Escolhida"));
 
       const stats = el("dl", "class-stats");
@@ -726,8 +726,8 @@ export class Hub {
   }
 
   /** Equipamento da classe escolhida. */
-  private wornItems() {
-    return this.profile.items.filter((i) => i.equipped && i.classId === this.classId);
+  private wornItems(classId: ClassId = this.classId) {
+    return this.profile.items.filter((i) => i.equipped && i.classId === classId);
   }
 
   /** Itens no cofre (o equipamento, de qualquer classe, não ocupa espaço). */
@@ -903,10 +903,10 @@ export class Hub {
     $("sheet-backdrop").hidden = false;
   }
 
-  /** Equipamento da classe escolhida para a próxima hunt, como roupa do personagem. */
-  private loadout(): Outfit {
+  /** Equipamento de `classId` (por padrão, a escolhida para a próxima hunt) como roupa do personagem. */
+  private loadout(classId: ClassId = this.classId): Outfit {
     const outfit = { ...NO_OUTFIT };
-    for (const owned of this.wornItems()) {
+    for (const owned of this.wornItems(classId)) {
       const def = ITEMS[owned.itemId];
       if (def) outfit[def.slot] = def.id;
     }
