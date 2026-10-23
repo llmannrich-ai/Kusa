@@ -23,7 +23,7 @@ export async function enter(client: Client, classId: string, label: string) {
   const notices: string[] = [];
   room.onMessage(MSG.notice, (msg: { text: string }) => notices.push(msg.text));
   for (const type of [MSG.attack, MSG.monsterStrike]) room.onMessage(type, () => {});
-  room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora (${label}, ${classId}): ${JSON.stringify(msg)}`); });
+  room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora (${label}, ${classId}, seed ${room.state.seed}): ${JSON.stringify(msg)}`); });
   await wait(300);
   room.send(MSG.start);
   await wait(300);
@@ -99,5 +99,5 @@ export function whereAmI(room: any, me: () => any) {
   const near = ([...room.state.monsters.values()] as any[])
     .map((m) => ({ k: m.kind, d: tileDistance(p.x, p.y, m.x, m.y), v: hasLineOfSight(dungeon, p.x, p.y, m.x, m.y) }))
     .sort((a, b) => a.d - b.d).slice(0, 3);
-  return `herói em ${p.x},${p.y} (${p.status}); perto: ${JSON.stringify(near)}`;
+  return `seed ${room.state.seed} (${room.state.mapId}), herói em ${p.x},${p.y} (${p.status}); perto: ${JSON.stringify(near)}`;
 }

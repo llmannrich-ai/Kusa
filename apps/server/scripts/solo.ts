@@ -1,11 +1,11 @@
 /**
  * Teste da hunt solo, sem servidor: a simulação (`Hunt`) roda sozinha, como no navegador.
  * - O loot máximo de cada mapa cabe em SOLO_LIMITS.maxLoot (o teto do banco em `finish_solo_run`).
- * - Um cavaleiro entra, recebe equipamento e bag, foge pelo portal e o resultado sai pelo host.
+ * - Um cavaleiro entra, recebe equipamento, runas e bag, foge pelo portal e o resultado sai pelo host.
  * - Outro sai no meio da hunt e conta como morte.
  * Uso: npx tsx apps/server/scripts/solo.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { ITEMS, MAP_IDS, SOLO_LIMITS, type ItemSlot, type RunEndedMessage } from "@kusa/shared";
+import { ITEMS, MAP_IDS, SOLO_LIMITS, spellChoices, runeSpells, type ItemSlot, type RunEndedMessage } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { DungeonState } from "../src/state.ts";
 
@@ -53,10 +53,15 @@ for (const mapId of MAP_IDS) {
     d.slot === slot && d.tier === tier && d.rarity === "common" && (!d.classes || d.classes.includes("knight")))!.id;
   const weapon = knightItem("weapon", 2);
   const armor = knightItem("armor", 1);
-  hunt.equip("solo", [weapon, knightItem("helmet", 1)]);
+  const hpBefore = state.players.get("solo")!.maxHp;
+  // As runas equipadas vêm no mesmo loadout do equipamento (take_loadout).
+  hunt.equip("solo", [weapon, "rune-life", knightItem("helmet", 1), "rune-meteor"]);
   hunt.fillBag("solo", [armor]);
   const p = state.players.get("solo")!;
   if (p.weapon !== weapon || p.bag.length !== 1) throw new Error(`equipamento/bag não entraram: ${p.weapon} ${[...p.bag]}`);
+  if ([...p.runes].join() !== "rune-life,rune-meteor") throw new Error(`runas não entraram: ${[...p.runes]}`);
+  if (p.maxHp <= hpBefore) throw new Error(`a Runa da Vida não deu vida: ${hpBefore} → ${p.maxHp}`);
+  if (!spellChoices("knight", 1, [], runeSpells([...p.runes])).some((sp) => sp.id === "meteor")) throw new Error("Meteoro não virou opção");
   advance(hunt, 500);
   hunt.move("solo", { dx: 1, dy: 1 });
   advance(hunt, 100);
@@ -64,6 +69,7 @@ for (const mapId of MAP_IDS) {
   console.log("fuga:", result);
   if (result?.outcome !== "escaped") throw new Error(`esperava fuga, veio ${result?.outcome}`);
   if (!result.items.includes(weapon) || !result.bag.includes(armor)) throw new Error("equipamento ou bag não voltaram");
+  if (!result.items.includes("rune-life") || !result.items.includes("rune-meteor")) throw new Error("as runas não voltaram equipadas");
   if (state.phase !== "ended") throw new Error(`fase esperada ended, veio ${state.phase}`);
 }
 

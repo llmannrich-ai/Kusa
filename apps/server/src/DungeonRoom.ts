@@ -33,6 +33,8 @@ const START_LEVEL = Number(process.env.KUSA_START_LEVEL) || 1;
 const ALL_SPELLS = process.env.KUSA_ALL_SPELLS === "1";
 /** Só para testes: KUSA_MONSTER_HP=20 multiplica a vida dos monstros (efeitos como veneno e lentidão aparecem antes de eles morrerem). */
 const MONSTER_HP = Number(process.env.KUSA_MONSTER_HP) || 1;
+/** Só para testes: KUSA_RUNES=rune-life,rune-meteor faz todo mundo começar a hunt com essas runas equipadas. */
+const TEST_RUNES = (process.env.KUSA_RUNES ?? "").split(",").filter(Boolean);
 
 /** Sala do Colyseus de uma hunt em equipe: a simulação fica em `Hunt`; aqui ficam a rede, o banco e a telemetria. */
 export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetadata }> {
@@ -63,6 +65,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       startLevel: START_LEVEL,
       allSpells: ALL_SPELLS,
       monsterHp: MONSTER_HP,
+      runes: TEST_RUNES,
     });
 
     this.onMessage(MSG.start, (client) => {

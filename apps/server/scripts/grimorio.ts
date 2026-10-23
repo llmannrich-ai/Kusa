@@ -1,6 +1,6 @@
 /**
- * Teste de fumaça do Grimório contra um servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1
- * (slots abertos e todas as magias da classe no nível 5, com a Maestria):
+ * Teste do Grimório: as regras no `packages/shared` e, sem servidor, as Maestrias em ação numa arena (`arena.ts`:
+ * relógio falso, sorteios de seed fixa, monstro posto onde o teste precisa; nível 8 com o Grimório inteiro):
  *   - regras: toda magia tem Maestria, que só entra no último nível, e os efeitos sobem com o nível; as
  *     especializações do Grimório se excluem (comprar um lado fecha o outro) e as magias de um lado pedem o Traço;
  *     o nó de baixo pede a magia de cima no nível 1 (ganho com o uso, não com gold);
@@ -10,26 +10,20 @@
  *   - o Disparo Perfurante vai em linha até o alcance inteiro (9 com a Maestria) e fere quem está nela;
  *   - o Disparo Certeiro que mata devolve metade da recarga (Maestria).
  * Veneno, lentidão e cadeia ficam no `efeitos`, com monstros que aguentam mais de um golpe.
- * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
- *      KUSA_START_LEVEL=8 KUSA_ALL_SPELLS=1 PORT=2602 npx tsx apps/server/src/index.ts
- *      npx tsx apps/server/scripts/grimorio.ts http://localhost:2602
+ * Uso: npx tsx scripts/grimorio.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { Client } from "@colyseus/sdk";
 import {
-  CLASS_IDS, MASTERIES, MASTERY_RANK, SPELL_LEVEL_XP, MONSTERS, MSG, SPELLS, TALENTS, activeTraits, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
+  CLASS_IDS, MASTERIES, MASTERY_RANK, SPELL_LEVEL_XP, MONSTERS, SPELLS, TALENTS, activeTraits, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
   knownSpells, lineTiles, spellAtRank, spellFacts, talentBlocker, talentTree,
-  type MonsterKind, type SpellId, type SpellXp, type TalentRanks,
+  type SpellId, type SpellXp, type TalentRanks,
 } from "@kusa/shared";
-import { approach, enter, inSight, nearestMonster, until, wait } from "./hunt.ts";
-
-const url = process.argv[2] ?? "http://localhost:2567";
-const client = new Client(url);
+import { HERO, arena, check } from "./arena.ts";
 
 rules();
-await knightShield();
-await knightEcho();
-await druidSummons();
-await paladinShots();
+knightShield();
+knightEcho();
+druidSummons();
+paladinShots();
 console.log("GRIMÓRIO OK");
 process.exit(0);
 
@@ -108,101 +102,93 @@ function specializations() {
   if (!knownSpells("paladin", { ...picked, paladin_hunter_mark: 1 }).includes("hunter_mark")) throw new Error("a magia do lado devia virar opção na hunt");
 }
 
-async function knightShield() {
-  const { room, me, damage } = await enter(client, "knight", "knightShield");
-  if (me().spellRanks.get("holy_shield") !== MASTERY_RANK) throw new Error("o servidor precisa de KUSA_ALL_SPELLS=1");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "holy_shield" });
-  room.send(MSG.chooseSpell, { slot: 1, spellId: "steel_wall" });
-  await wait(200);
-  if (me().spell1 !== "holy_shield") throw new Error(`slot 1: ${me().spell1}`);
-
-  room.send(MSG.cast, { slot: 0 });
-  await wait(200);
-  const shield = me().barrier;
+function knightShield() {
+  const a = arena({ classId: "knight" });
+  check(a.p.spellRanks.get("holy_shield") === MASTERY_RANK, "o Grimório inteiro devia deixar o Escudo da Fé com a Maestria");
+  a.choose("holy_shield", "steel_wall");
+  check(a.p.spell1 === "holy_shield", `slot 1: ${a.p.spell1}`);
+  a.cast(0);
+  a.advance(100);
+  const shield = a.p.barrier;
   // Nível 5: 40% × 1,5 = 60% da vida máxima, vezes a força extra das sinergias e do Tomo do Bastião.
-  const bonus = me().spellBonus.get("holy_shield") ?? 0;
-  const expected = Math.round(me().maxHp * spellAtRank(SPELLS.holy_shield, MASTERY_RANK, bonus).barrier!);
-  if (bonus <= 0) throw new Error("o Escudo da Fé devia ter força extra com o Grimório inteiro");
-  if (shield !== expected) throw new Error(`escudo ${shield}, esperado ${expected} (força extra ${bonus}), vida máxima ${me().maxHp}`);
-  if (me().maxBarrier !== shield) throw new Error("maxBarrier devia acompanhar o escudo novo");
-
-  // Anda até os monstros e deixa apanhar: o escudo absorve antes da vida.
-  await approach(room, me, 1, () => damage.some((d) => d.toPlayer && (d.absorbed ?? 0) > 0));
-  await wait(150); // o estado chega depois da mensagem de dano
-  const absorbed = damage.filter((d) => d.toPlayer).reduce((sum, d) => sum + (d.absorbed ?? 0), 0);
-  console.log(`cavaleiro: escudo ${shield}, absorvido ${absorbed}, escudo agora ${me().barrier}, vida ${me().hp}/${me().maxHp}`);
-  if (absorbed === 0) throw new Error("o escudo não absorveu nenhum golpe");
-  if (me().barrier >= shield) throw new Error("o escudo não diminuiu com o dano");
-  await room.leave();
+  const bonus = a.p.spellBonus.get("holy_shield") ?? 0;
+  const expected = Math.round(a.p.maxHp * spellAtRank(SPELLS.holy_shield, MASTERY_RANK, bonus).barrier!);
+  check(bonus > 0, "o Escudo da Fé devia ter força extra com o Grimório inteiro");
+  check(shield === expected, `escudo ${shield}, esperado ${expected} (força extra ${bonus}), vida máxima ${a.p.maxHp}`);
+  check(a.p.maxBarrier === shield, "maxBarrier devia acompanhar o escudo novo");
+  // Um monstro colado bate: o escudo absorve antes da vida.
+  a.place("orc", 1, 0);
+  const hp = a.p.hp;
+  a.until(() => a.damage.some((d) => d.toPlayer && (d.absorbed ?? 0) > 0), 5000, "o escudo não absorveu nenhum golpe");
+  const absorbed = a.damage.filter((d) => d.toPlayer).reduce((sum, d) => sum + (d.absorbed ?? 0), 0);
+  console.log(`cavaleiro: escudo ${shield}, absorvido ${absorbed}, escudo agora ${a.p.barrier}, vida ${a.p.hp}/${a.p.maxHp}`);
+  check(a.p.barrier < shield, "o escudo não diminuiu com o dano");
+  check(a.p.hp === hp, `com escudo sobrando, a vida não devia cair (${hp} → ${a.p.hp})`);
 }
 
-async function knightEcho() {
-  const { room, me, spells } = await enter(client, "knight", "knightEcho");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "blade_spin" });
-  await approach(room, me, 1, () => nearestMonster(room, me()) <= 1);
-  room.send(MSG.cast, { slot: 0 });
+function knightEcho() {
+  const a = arena({ classId: "knight" });
+  a.choose("blade_spin");
+  a.place("orc", 1, 0);
+  a.cast(0);
   // A Maestria repete o giro sozinha, sem outro toque: chega um `echo` do mesmo herói.
-  const mine = () => spells.filter((s) => s.from === room.sessionId && s.spellId === "blade_spin");
-  await until(() => mine().some((s) => s.echo), 2000, "o Giro da Lâmina não girou de novo");
+  const mine = () => a.spells.filter((s) => s.from === HERO && s.spellId === "blade_spin");
+  a.until(() => mine().some((s) => s.echo), 2000, "o Giro da Lâmina não girou de novo");
+  a.advance(2000);
   console.log(`cavaleiro: giro + repetição (${mine().length} efeitos)`);
-  if (mine().length !== 2) throw new Error(`esperava 2 giros, vieram ${mine().length}`);
-  await room.leave();
+  check(mine().length === 2, `esperava 2 giros, vieram ${mine().length}`);
 }
 
-async function druidSummons() {
-  const { room, me, damage } = await enter(client, "druid", "druidSummons");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "spirit_wolf" });
-  room.send(MSG.chooseSpell, { slot: 1, spellId: "wolf_pack" });
-  // Chega perto dos monstros antes de invocar: os lobos têm tempo de vida e sumiam no caminho.
-  await approach(room, me, 4, () => nearestMonster(room, me()) <= 4);
-  room.send(MSG.cast, { slot: 0 });
-  await wait(200);
-  const mine = () => [...room.state.summons.values()].filter((s: any) => s.owner === room.sessionId);
+function druidSummons() {
+  const a = arena({ classId: "druid", monsterHp: 20 });
+  a.choose("spirit_wolf", "wolf_pack");
+  a.place("orc", 3, 0);
+  const mine = () => [...a.state.summons.values()].filter((s) => s.owner === HERO);
   // Maestria: o Lobo Espiritual vem em dupla e a Matilha com 4 (o limite é 6 por jogador).
-  if (mine().length !== 2 || mine().some((s: any) => s.kind !== "wolf")) throw new Error(`invocou ${mine().map((s: any) => s.kind)}`);
-  room.send(MSG.cast, { slot: 1 });
-  await wait(200);
-  if (mine().length !== 6) throw new Error(`esperava 6 lobos, há ${mine().length}`);
+  a.cast(0);
+  a.advance(100);
+  check(mine().length === 2 && mine().every((s) => s.kind === "wolf"), `invocou ${mine().map((s) => s.kind)}`);
+  a.cast(1);
+  a.advance(100);
+  check(mine().length === 6, `esperava 6 lobos, há ${mine().length}`);
   // Conjurar de novo (em recarga) não invoca mais.
-  room.send(MSG.cast, { slot: 0 });
-  await wait(200);
-  if (mine().length !== 6) throw new Error("invocou durante a recarga");
-
-  // Os lobos caçam os monstros por perto: algum golpe vem de uma criatura invocada.
-  await approach(room, me, 1, () => damage.some((d) => !d.toPlayer && d.attacker.startsWith("s")));
-  const bites = damage.filter((d) => !d.toPlayer && d.attacker.startsWith("s")).length;
-  console.log(`druida: ${mine().length} lobos, ${bites} mordidas`);
-  if (bites === 0) throw new Error("os lobos não atacaram");
-  await room.leave();
+  a.cast(0);
+  a.advance(100);
+  check(mine().length === 6, "invocou durante a recarga");
+  // Os lobos caçam o monstro: algum golpe vem de uma criatura invocada.
+  const bites = () => a.damage.filter((d) => !d.toPlayer && d.attacker.startsWith("s")).length;
+  a.until(() => bites() > 0, 5000, "os lobos não atacaram");
+  console.log(`druida: ${mine().length} lobos, ${bites()} mordidas`);
 }
 
-async function paladinShots() {
-  const { room, me, damage, spells, cooldowns } = await enter(client, "paladin", "paladinShots");
-  room.send(MSG.chooseSpell, { slot: 0, spellId: "piercing_shot" });
-  room.send(MSG.chooseSpell, { slot: 1, spellId: "deadly_shot" });
-
+function paladinShots() {
   // Disparo Perfurante: a flecha vai até o fim da reta (alcance 9 com a Maestria) e fere quem está nela.
-  await approach(room, me, 2, () => inSight(room, me(), 5).length > 0);
-  room.send(MSG.cast, { slot: 0 });
-  await until(() => spells.some((s) => s.spellId === "piercing_shot"), 2000, "o Disparo Perfurante não saiu");
-  const shot = spells.find((s) => s.spellId === "piercing_shot")!;
-  const line = lineTiles(generateDungeon(room.state.seed), shot.x, shot.y, shot.tx, shot.ty, spellAtRank(SPELLS.piercing_shot, MASTERY_RANK).range);
-  const end = line[line.length - 1];
-  if (!end || end.x !== shot.tx || end.y !== shot.ty) throw new Error(`a flecha devia ir até o fim da linha: ${JSON.stringify({ shot, end })}`);
-  await until(() => damage.some((d) => d.attacker === room.sessionId && !d.toPlayer), 2000, "a flecha não acertou ninguém");
-  console.log(`paladino: linha de ${line.length} tiles até ${shot.tx},${shot.ty}`);
-
-  // Disparo Certeiro (Maestria): no nível 8 ele mata um monstro comum e o servidor manda a recarga cortada.
-  const deadline = Date.now() + 60_000;
-  while (cooldowns.length === 0) {
-    if (Date.now() > deadline) throw new Error("o Disparo Certeiro não devolveu a recarga ao matar");
-    await approach(room, me, 2, () => inSight(room, me(), 8).length > 0);
-    const common = inSight(room, me(), 8).find(([, m]) => MONSTERS[m.kind as MonsterKind].rank === "common");
-    if (common) room.send(MSG.cast, { slot: 1, aim: { x: common[1].x, y: common[1].y, targetId: common[0] } });
-    await wait(800);
+  {
+    const a = arena({ classId: "paladin", monsterHp: 20 });
+    a.choose("piercing_shot", "deadly_shot");
+    const m = a.place("orc", 3, 0);
+    a.hunt.target(HERO, { id: m.id });
+    a.cast(0);
+    a.until(() => a.spells.some((s) => s.spellId === "piercing_shot"), 2000, "o Disparo Perfurante não saiu");
+    const shot = a.spells.find((s) => s.spellId === "piercing_shot")!;
+    const range = spellAtRank(SPELLS.piercing_shot, MASTERY_RANK).range;
+    const line = lineTiles(a.d, shot.x, shot.y, m.x, m.y, range);
+    const end = line[line.length - 1];
+    check(!!end && end.x === shot.tx && end.y === shot.ty, `a flecha devia ir até o fim da linha: ${JSON.stringify({ shot, end })}`);
+    check(line.length === range || !a.free(end.x + Math.sign(end.x - shot.x), end.y), `a linha parou antes do alcance sem parede: ${line.length} tiles`);
+    a.until(() => a.hitsFrom(0) > 0, 2000, "a flecha não acertou ninguém");
+    console.log(`paladino: linha de ${line.length} tiles até ${shot.tx},${shot.ty}`);
   }
-  const full = SPELLS.deadly_shot.cooldownMs;
-  console.log(`paladino: Disparo Certeiro matou, recarga agora ${cooldowns[0].ms} ms (cheia ${full})`);
-  if (cooldowns[0].slot !== 1 || cooldowns[0].ms > full / 2) throw new Error(`recarga devolvida errada: ${JSON.stringify(cooldowns[0])}`);
-  await room.leave();
+  // Disparo Certeiro (Maestria): no nível 8 ele mata um monstro comum e a recarga volta cortada pela metade.
+  {
+    const a = arena({ classId: "paladin" });
+    a.choose("piercing_shot", "deadly_shot");
+    const m = a.place("goblin", 3, 0);
+    a.cast(1, m);
+    a.until(() => !a.state.monsters.has(m.id), 2000, "o Disparo Certeiro não matou o goblin");
+    a.until(() => a.cooldowns.length > 0, 1000, "o Disparo Certeiro não devolveu a recarga ao matar");
+    const full = SPELLS.deadly_shot.cooldownMs;
+    console.log(`paladino: Disparo Certeiro matou, recarga agora ${a.cooldowns[0].ms} ms (cheia ${full})`);
+    check(a.cooldowns[0].slot === 1 && a.cooldowns[0].ms <= full / 2, `recarga devolvida errada: ${JSON.stringify(a.cooldowns[0])}`);
+  }
 }
