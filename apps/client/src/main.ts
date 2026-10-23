@@ -27,7 +27,7 @@ import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } 
 import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
-import { createSoloHunt } from "./solo.ts";
+import { createSoloHunt, flushPendingSolo } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import "./style.css";
 
@@ -57,7 +57,8 @@ function showMenu(acc: Account) {
   account = acc;
   show("login", false);
   show("menu", true);
-  void hub.open(acc.username, acc.gold);
+  // Resultado de hunt solo que ficou no aparelho (a rede caiu no fim) é gravado antes de mostrar a conta.
+  void flushPendingSolo().finally(() => hub.open(acc.username, acc.gold));
 }
 
 function showLogin() {
@@ -481,6 +482,8 @@ function showResult(msg: RunEndedMessage) {
   if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
   showLost(msg);
   renderSpellProgress(msg);
+  // "Voltar ao menu" recarrega a página: espera o banco gravar para não cortar a gravação.
+  ($("back") as HTMLButtonElement).disabled = !!msg.saving;
   show("result", true);
 }
 

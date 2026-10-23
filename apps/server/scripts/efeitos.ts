@@ -25,7 +25,7 @@
  * Cada caso roda numa arena nova; no fim, a lista do que falhou (com a seed e a posição para reproduzir).
  * Uso: npx tsx apps/server/scripts/efeitos.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { Tile, tileAt, tileDistance, type ClassId, type MonsterKind } from "@kusa/shared";
+import { Tile, hasLineOfSight, tileAt, tileDistance, type ClassId, type MonsterKind } from "@kusa/shared";
 import { HERO, arena, check, type ArenaOptions } from "./arena.ts";
 
 /** Alvo padrão: humanoide parrudo, sem fuga nem salto, pega veneno e sangramento. */
@@ -110,7 +110,21 @@ test("Aljava Veloz deixa as flechas mais rápidas", "paladin", (a) => {
 });
 test("Rolamento afasta do monstro e Postura do Atirador fica ativa", "paladin", (a) => {
   a.choose("evasive_roll", "sniper_stance");
-  const m = a.place(TARGET, 1, 0);
+  // Fugindo, o Rolamento fica com o pouso que mais se afasta do monstro: com a reta para trás livre, é o lado
+  // oposto; com parede atrás, pode ser de lado (foi o que o job de caos achou, issue #93). O monstro fica no lado
+  // cuja reta oposta está livre pelo salto inteiro (até 6 tiles), para conferir que o herói foge para trás.
+  // Se a sala não tem esse espaço em volta do herói, ele vai para o tile mais perto que tenha.
+  const sideAt = (x: number, y: number) => ([[1, 0], [-1, 0], [0, 1], [0, -1]] as const).find(([dx, dy]) =>
+    a.free(x + dx, y + dy) && Array.from({ length: 6 }, (_, k) => k + 1).every((k) => a.free(x - k * dx, y - k * dy)));
+  const spots = Array.from({ length: 13 * 13 }, (_, i) => ({ x: a.p.x - 6 + (i % 13), y: a.p.y - 6 + Math.floor(i / 13) }))
+    .filter((t) => a.free(t.x, t.y))
+    .sort((u, v) => tileDistance(u.x, u.y, a.p.x, a.p.y) - tileDistance(v.x, v.y, a.p.x, a.p.y));
+  const spot = spots.find((t) => sideAt(t.x, t.y));
+  if (!spot) throw new Error(`arena: nenhum lugar com 6 tiles livres atrás do herói (${a.where()})`);
+  a.p.x = spot.x;
+  a.p.y = spot.y;
+  const side = sideAt(spot.x, spot.y)!;
+  const m = a.place(TARGET, side[0], side[1]);
   const from = { x: a.p.x, y: a.p.y };
   const start = { x: m.x, y: m.y };
   a.hunt.target(HERO, { id: m.id });
@@ -210,7 +224,12 @@ test("Passo Nebuloso teleporta e Muralha Mágica sobe", "sorcerer", (a) => {
   a.cast(0);
   a.until(() => a.p.x !== start.x || a.p.y !== start.y, 2000, `o Passo Nebuloso não levou o herói (avisos: ${a.notices.join(", ")})`);
   a.ready();
-  a.cast(1, { x: a.p.x + 3, y: a.p.y });
+  // Depois do passo, o herói pode estar perto de parede: mira num tile livre e à vista a 3 tiles.
+  const spot = ([[3, 0], [-3, 0], [0, 3], [0, -3], [3, 3], [-3, -3], [3, -3], [-3, 3]] as const)
+    .map(([dx, dy]) => ({ x: a.p.x + dx, y: a.p.y + dy }))
+    .find((t) => a.free(t.x, t.y) && hasLineOfSight(a.d, a.p.x, a.p.y, t.x, t.y));
+  if (!spot) throw new Error(`arena: nenhum tile livre à vista para a Muralha (${a.where()})`);
+  a.cast(1, spot);
   a.until(() => fieldOf(a, (f) => f.kind === "wall"), 2000, "a Muralha Mágica não subiu");
 });
 test("Morte Súbita fere e os esqueletos aparecem", "sorcerer", (a) => {
