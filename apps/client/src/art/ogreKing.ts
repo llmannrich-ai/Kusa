@@ -59,9 +59,10 @@ function poseOf(clip: Clip, i: number): { pose: Pose; swing: Swing } {
     pose.farArm = { a: 0.05 - Math.sin(t) * 0.04, b: 0.35 };
   } else if (clip === "walk") {
     const t = (i / CLIPS.walk) * Math.PI * 2;
-    pose.nearArm = { a: -0.25 + Math.sin(t * 2) * 0.05, b: 3.05 };
+    // O braço do tronco sobe e desce com o passo; o livre balança largo, com o cotovelo solto.
+    pose.nearArm = { a: -0.25 + Math.sin(t) * 0.22 + Math.sin(t * 2) * 0.06, b: 3.05 - Math.sin(t) * 0.15 };
     pose.lean = 0.04 + Math.sin(t * 2) * 0.02;
-    pose.farArm = { a: 0.1 + Math.sin(t) * 0.35, b: 0.35 + Math.max(0, Math.sin(t)) * 0.3 };
+    pose.farArm = { a: 0.15 + Math.sin(t) * 0.8, b: 0.45 + Math.max(0, Math.sin(t)) * 0.6 };
     // A barriga quica duas vezes por passada, atrasada em relação ao corpo; o manto fica para trás.
     swing = { belly: Math.sin(t * 2 - 1.1) * 0.7, cape: -1.4 - Math.sin(t * 2) * 0.6, chain: Math.sin(t * 2 + 0.5) * 1.2 };
     pose.tilt += Math.sin(t) * 0.05;
@@ -422,7 +423,8 @@ export function drawKing(clip: Clip, frame: number): Sheet {
   furCollar(s, j);
   // Parado e andando, o tronco fica deitado no ombro (para trás e para cima, atrás da cabeça), balançando com o passo.
   const rest = clip === "idle" || clip === "walk";
-  if (rest) trunkClub(s, j.arms[0].hand, 3.75 + (clip === "walk" ? Math.sin((frame / CLIPS.walk) * Math.PI * 4) * 0.06 : 0), u);
+  const phase = (frame / CLIPS.walk) * Math.PI * 2;
+  if (rest) trunkClub(s, j.arms[0].hand, 3.75 + (clip === "walk" ? Math.sin(phase) * 0.18 + Math.sin(phase * 2) * 0.06 : 0), u);
   // No rugido o braço erguido fica atrás da cabeça (a boca aberta aparece inteira).
   const roar = clip === "cast";
   if (roar) nearArm(s, j, j.arms[0].foreAngle + 0.35);

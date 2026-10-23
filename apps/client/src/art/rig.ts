@@ -171,11 +171,13 @@ export interface Pose {
   /** Cabeça: inclinação e boca aberta (0..1). */
   tilt: number;
   jaw: number;
+  /** Giro dos ombros no passo (unidades): o ombro de perto vai para a frente e o de trás para trás. */
+  twist: number;
 }
 
 export const REST: Pose = {
   bob: 0, dx: 0, lean: 0.12, breath: 0, near: { a: 0, b: 0 }, far: { a: 0, b: 0 },
-  nearArm: { a: 0.15, b: 0.3 }, farArm: { a: 0.1, b: 0.25 }, tilt: 0, jaw: 0,
+  nearArm: { a: 0.15, b: 0.3 }, farArm: { a: 0.1, b: 0.25 }, tilt: 0, jaw: 0, twist: 0,
 };
 
 /** Juntas calculadas da pose, em pixels do quadro (olhando para a direita). */
@@ -217,7 +219,7 @@ export function joints(build: Build, pose: Pose, size: number, unit = size / 32)
   const headC = add(add(neck, spine, build.head.neck * u), { x: (build.head.dx + pose.tilt * 1.5) * u, y: pose.tilt * 0.6 * u });
   const bellyC = build.belly ? add(hip, { x: build.belly.dx * u, y: -build.belly.dy * u }) : undefined;
   const arm = (l: Limb, side: number) => {
-    const sh = add(shoulder, { x: side * 0.8 * u, y: side * 0.4 * u });
+    const sh = add(shoulder, { x: (side * 0.8 + side * pose.twist) * u, y: side * 0.4 * u });
     const elbow = add(sh, dir(l.a), build.upperArm * u);
     const foreAngle = l.a + l.b;
     const hand = add(elbow, dir(foreAngle), build.foreArm * u);
@@ -376,10 +378,9 @@ export function posed(clip: Clip, i: number, grip: Grip, weight = 0, castStyle: 
     p.bob = -Math.abs(Math.cos(t)) * (0.9 + heavy * 0.6) + 0.5;
     p.lean = 0.16 + heavy * 0.05 + Math.sin(t * 2) * 0.03;
     p.breath = 0.3;
-    // Braço livre balança contra a perna; o da arma, menos.
-    const armSwing = (0.35 - heavy * 0.15) * Math.sin(t);
-    p.nearArm.a -= armSwing * (grip === "oneHand" || grip === "fists" ? 1 : grip === "club" ? 0.2 : 0.35);
-    p.farArm.a += armSwing * (grip === "fists" || grip === "oneHand" ? 1 : 0.3);
+    walkArms(p, grip, t, heavy);
+    // Os ombros giram contra os quadris: o de perto vai à frente junto com o braço de perto.
+    p.twist = -Math.sin(t) * (0.7 - heavy * 0.2);
     p.tilt = Math.sin(t * 2) * 0.06;
     p.dx = Math.sin(t * 2) * heavy * 0.4;
   } else if (clip === "attack") {
@@ -410,6 +411,48 @@ export function posed(clip: Clip, i: number, grip: Grip, weight = 0, castStyle: 
     }
   }
   return p;
+}
+
+/**
+ * Braços no passo (fase `t` do ciclo), pela pegada. Braço livre balança contra a perna do mesmo lado; mão na arma
+ * leva a arma junto: ela sobe e desce a cada passada e acompanha o giro do corpo. Os ogros (`heavy`) balançam mais
+ * devagar e com o cotovelo mais solto, sem ficar com os braços colados.
+ */
+function walkArms(p: Pose, grip: Grip, t: number, heavy: number) {
+  const s = Math.sin(t);
+  const step = Math.sin(t * 2);
+  const A = 0.55 - heavy * 0.1;
+  const free = (l: Limb, k: number) => { l.a += k * A * s; l.b += Math.max(0, k * s) * 0.25 + heavy * 0.1; };
+  switch (grip) {
+    case "oneHand":
+    case "fists":
+    case "dual":
+      // Cada mão na sua: os dois braços alternam (o berserker leva um machado em cada).
+      free(p.nearArm, -1);
+      free(p.farArm, 1);
+      return;
+    case "club":
+      // Porrete numa mão: balança largo com o peso dele (um pouco menos que o braço livre).
+      free(p.nearArm, -0.75);
+      free(p.farArm, 1);
+      return;
+    case "bow":
+    case "staff": {
+      // Arco ou cajado numa mão, a outra livre. O cajado vai à frente e volta como um apoio a cada passada.
+      const held = grip === "bow" ? p.farArm : p.nearArm;
+      const loose = grip === "bow" ? p.nearArm : p.farArm;
+      held.a += (grip === "bow" ? 1 : -1) * 0.55 * A * s + 0.08 * step;
+      free(loose, grip === "bow" ? -1 : 1);
+      return;
+    }
+    case "spear":
+    case "twoHand":
+      // As duas mãos na arma: ela sobe e desce a cada passada e acompanha o giro do corpo.
+      for (const l of [p.nearArm, p.farArm]) {
+        l.a += -0.28 * s + 0.16 * step;
+        l.b += 0.12 * Math.max(0, step);
+      }
+  }
 }
 
 /**
