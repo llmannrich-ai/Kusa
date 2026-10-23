@@ -1,4 +1,4 @@
-import { CLASSES, MAPS, MAP_IDS, MAX_PARTY_SIZE, difficultyStars, mapIdOf, type ClassId, type MapId } from "@kusa/shared";
+import { CLASSES, CLASS_IDS, MAPS, MAP_IDS, MAX_PARTY_SIZE, MSG, difficultyStars, mapIdOf, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
 import { heroPoses } from "./art/heroes.ts";
 import type { DungeonRoom } from "./net.ts";
 
@@ -101,10 +101,15 @@ function portrait(classId: ClassId) {
   return img;
 }
 
-/** Desenha as `MAX_PARTY_SIZE` vagas: quem já entrou (o líder primeiro) e as vagas livres. */
+/**
+ * Desenha as `MAX_PARTY_SIZE` vagas: quem já entrou (o líder primeiro, os bots por último) e as vagas livres.
+ * O líder põe um bot numa vaga livre tocando na classe, e tira no ✕.
+ */
 export function renderWaitingRoom(room: DungeonRoom) {
   const { players, leaderId } = room.state;
-  const ids = [...players.keys()].sort((a, b) => Number(b === leaderId) - Number(a === leaderId));
+  const isLeader = leaderId === room.sessionId;
+  const rank = (id: string) => (id === leaderId ? 0 : players.get(id)?.bot ? 2 : 1);
+  const ids = [...players.keys()].sort((a, b) => rank(a) - rank(b));
   const list = $("lobby-slots");
   list.replaceChildren();
   for (let i = 0; i < MAX_PARTY_SIZE; i++) {
@@ -117,24 +122,47 @@ export function renderWaitingRoom(room: DungeonRoom) {
       info.append(el("strong", "", p.name), el("small", "muted", CLASSES[classId].name));
       slot.append(portrait(classId), info);
       if (id === leaderId) slot.append(el("span", "slot-tag", "👑 Líder"));
+      else if (p.bot) slot.append(el("span", "slot-tag", "🤖 Bot"));
       else if (id === room.sessionId) slot.append(el("span", "slot-tag", "Você"));
       if (id === room.sessionId) slot.classList.add("me");
+      if (p.bot && isLeader) {
+        const remove = el("button", "slot-remove", "✕");
+        remove.type = "button";
+        remove.setAttribute("aria-label", `Tirar ${p.name}`);
+        remove.onclick = () => room.send(MSG.removeBot, { id } satisfies RemoveBotMessage);
+        slot.append(remove);
+      }
+    } else if (isLeader) {
+      slot.classList.add("bot-slot");
+      const picks = el("div", "bot-picks");
+      for (const classId of CLASS_IDS) {
+        const pick = el("button", "bot-pick");
+        pick.type = "button";
+        pick.setAttribute("aria-label", `Pôr um bot ${CLASSES[classId].name}`);
+        pick.append(portrait(classId), el("small", "", CLASSES[classId].name));
+        pick.onclick = () => room.send(MSG.addBot, { classId } satisfies AddBotMessage);
+        picks.append(pick);
+      }
+      slot.append(el("span", "muted", "Vaga livre · espere um amigo ou ponha um bot 🤖"), picks);
     } else {
       slot.append(el("span", "slot-portrait empty", "+"), el("span", "muted", "Vaga livre · aguardando jogador…"));
     }
     list.append(slot);
   }
 
-  const isLeader = leaderId === room.sessionId;
   const count = players.size;
+  const bots = [...players.values()].filter((p) => p.bot).length;
+  const humans = count - bots;
   const start = $<HTMLButtonElement>("start");
   start.hidden = !isLeader;
-  start.textContent = count === 1 ? "Começar sozinho" : `Começar hunt · ${count} jogadores`;
+  start.textContent = count === 1
+    ? "Começar sozinho"
+    : `Começar hunt · ${humans} ${humans === 1 ? "jogador" : "jogadores"}${bots > 0 ? ` + ${bots} ${bots === 1 ? "bot" : "bots"}` : ""}`;
   $("lobby-wait").hidden = isLeader;
   $("lobby-hint").textContent = count >= MAX_PARTY_SIZE
-    ? "Equipe completa."
+    ? bots > 0 ? "Equipe completa. Bots não levam loot nem gold: o que eles matam não rende nada." : "Equipe completa."
     : isLeader
-      ? "Seus amigos acham esta sala em Jogar → Salas abertas. Você pode começar agora ou esperar."
+      ? "Seus amigos acham esta sala em Jogar → Salas abertas. Bots seguem você e lutam, mas não levam loot nem gold."
       : "O líder decide quando a hunt começa.";
 }
 
