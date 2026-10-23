@@ -375,7 +375,6 @@ export class Hub {
       tab.setAttribute("aria-label", `${name}${spec ? ", com especialização" : ""}: ${owned} de ${total} magias`);
       const emblem = el("span", "grim-tab-emblem");
       emblem.append(branchIcon(this.treeClass, c));
-      if (spec) emblem.append(el("i", "grim-tab-spec", "✦"));
       tab.append(emblem, el("small", "", `${owned}/${total}`));
       tab.onclick = () => { this.treeBranch = c; this.render(); };
       tabs.append(tab);

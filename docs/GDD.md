@@ -50,8 +50,8 @@ comprar **e usar** as anteriores do mesmo ramo.
   ramo tem a mesma forma. A costela nasce num nó do tronco; algumas magias pedem **dois pais** (um da costela e um do
   tronco, como a Nevasca do Diablo 2), ligados no desenho por uma diagonal pontilhada (`also_requires_id` no banco).
 - **No menu, um ramo por tela.** No alto, um botão por personagem (o retrato vestido na cor da classe); abaixo, uma
-  aba por ramo com o símbolo dele (magias compradas/total e ✦ se termina em especialização) e o nome do ramo aberto
-  como título acima da árvore. As explicações ficam em Configurações › Regras, não na tela.
+  aba por ramo com o símbolo dele e as magias compradas/total, e o nome do ramo aberto como título acima da árvore
+  (com ✦ se o ramo termina em especialização). As explicações ficam em Configurações › Regras, não na tela.
   Até 5 colunas: tronco, costelas dos dois lados e, no pé, os dois lados da especialização. O losango do Traço leva
   o nome da especialização.
 
