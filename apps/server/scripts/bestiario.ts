@@ -372,7 +372,7 @@ function check(ok: boolean, what: string) {
 
 // --- Encontros -----------------------------------------------------------------------
 {
-  for (const mapId of ["crypt", "swamp"] as MapId[]) {
+  for (const mapId of ["crypt", "swamp", "desert"] as MapId[]) {
     const counts = new Map<string, number>();
     for (let seed = 1; seed <= 40; seed++) {
       const state = new DungeonState();

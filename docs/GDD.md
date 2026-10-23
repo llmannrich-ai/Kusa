@@ -359,7 +359,7 @@ cliente pede para tentar de novo em 1 ou 2 minutos.
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
-| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície (6 zonas ainda vazias) + caverna pequena | → → Verme da Areia (na caverna) |
+| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → (sem mini-boss) → Verme da Areia (na caverna) |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -393,8 +393,15 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 ### Mar de Areia
 
-- **Por enquanto, só o boss:** a superfície ainda não tem monstros nem baús (as 6 zonas do caminho já estão
-  marcadas, para os encontros entrarem depois sem mudar o mapa). O objetivo é achar a caverna.
+- **Monstros:** 6 zonas em arco da entrada até perto do centro, cada uma mais forte, e 4 campinas com monstros
+  extras (como no pântano). Começa com bandos de Escorpiões da Areia e Abutres Gigantes; no meio, esqueletos,
+  arqueiros, Aranhas gigantes e os primeiros Gnolls; no fim, Gnolls e Múmias. Sem mini-bosses nem baús na
+  superfície: a recompensa grande são os baús de runa da caverna. O objetivo é achar a caverna.
+  - **Escorpião da Areia** (enxame, 2 a 3): metade das ferroadas envenena.
+  - **Abutre Gigante** (voa): bica e sobe antes do troco (Fuga Ágil) e, em dupla, bica mais fundo (Táticas de Bando).
+  - **Múmia** (bruto lento, morto-vivo): Olhar Pavoroso (atordoa 1 s, até 4 tiles), toque que apodrece (dano contínuo);
+    vulnerável a fogo.
+  - Reaproveitados da Cripta: Gnoll, Esqueleto, Esqueleto arqueiro e Aranha gigante.
 - **Caverna:** a boca fica num monte de arenito num lugar sorteado pela seed, longe da entrada (pelo menos 40
   tiles) e fora das zonas, aberta para o sul. Pisar nela leva ao **subterrâneo**, pequeno, com o celular na vertical:
   câmara de chegada (com a corda de volta), túnel, o **covil do Verme da Areia** (caverna larga com alguns pilares de
@@ -410,9 +417,12 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - **Portal do boss:** abre no meio do salão dos baús (não no covil), depois da escolha.
 - **Verme da Areia** (boss): mergulha na areia e irrompe debaixo de quem estiver até 7 tiles (Emboscada da Areia),
   engole quem fica colado (Engolir: controle de 1,8 s com dano por segundo) e, abaixo de metade da vida, faz o chão
-  tremer em volta (Tremor, deixa lento). Vulnerável a gelo, resiste a fogo. Como a superfície ainda não tem monstros,
-  a equipe chega nele no nível 1: os números foram acertados para isso (no simulador de duelo, só ataque básico,
-  ele fica no nível de um mini-boss da Cripta). Quando os encontros entrarem, precisa de novo acerto.
+  tremer em volta (Tremor, deixa lento). Vulnerável a gelo, resiste a fogo.
+- **Balanceamento:** o caminho rende um pouco mais de XP que a Cripta (cerca de 36 monstros e 2.700 XP, contra 21 e
+  1.700), então a equipe chega na caverna perto do nível 6 a 8. O covil é a profundidade 6 (+72%): o Verme fica com a
+  vida do Dragão jovem no covil dele (~1.340) e, no simulador de duelo (herói nível 6 sozinho, só ataque básico),
+  derruba o herói entre o Ogro e o Dragão (6,5 a 9,7 s). Os comuns ficam no nível dos da Cripta: Escorpião como a
+  Ratazana, Abutre como o Goblin, Múmia como o Orc.
 - **Campo aberto, como o pântano:** dunas altas na borda e, por cima, cristas de duna compridas no sentido do
   vento, oásis (lagoas com coqueiros na margem), bosques de coqueiros e coqueiros soltos. Obstáculo que fecharia a
   passagem até uma zona ou ao centro é descartado. **Coqueiro** é um tile de mata sem mata nos 4 lados; mata

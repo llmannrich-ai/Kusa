@@ -11,8 +11,8 @@ export type MonsterKind =
   | "frog" | "moccasin" | "bogBody" | "naga" | "troll" | "hydra"
   | "bullywug" | "lizardfolk" | "ghoul" | "blackPudding" | "crocodile" | "willOWisp" | "shamblingMound"
   | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon"
-  // Mar de Areia
-  | "sandWorm";
+  // Mar de Areia (dificuldade 1)
+  | "sandScorpion" | "giantVulture" | "mummy" | "sandWorm";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -546,9 +546,32 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
 
   // --- Mar de Areia ------------------------------------------------------------------------------------------
+  sandScorpion: monster({
+    kind: "sandScorpion", name: "Escorpião da Areia", rank: "common", type: "beast", role: "swarm", cr: 1, group: [2, 3],
+    hp: 22, damage: 3, xp: 20, loot: [1, 2], speed: 2.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1200, attackFx: "bite",
+    traits: { onHit: { chance: 0.5, dot: { kind: "poison", power: 0.3, durationMs: 3000 } } },
+    lore: "Andam em bando debaixo da areia quente. Metade das ferroadas deixa veneno.",
+  }),
+  giantVulture: monster({
+    kind: "giantVulture", name: "Abutre Gigante", rank: "common", type: "beast", role: "skirmisher", cr: 2,
+    hp: 36, damage: 5, xp: 32, loot: [2, 3], speed: 4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "bite",
+    traits: { hitAndRun: { cooldownMs: 3500 }, packTactics: 0.3 },
+    lore: "Rodeia quem está ferido. Desce, bica e sobe antes do troco (Fuga Ágil); em dupla, bica mais fundo.",
+  }),
+  mummy: monster({
+    kind: "mummy", name: "Múmia", rank: "common", type: "undead", role: "brute", cr: 4,
+    hp: 115, damage: 8, xp: 85, loot: [5, 9], speed: 1.9, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    // As faixas secas pegam fogo.
+    elements: { fire: 1.5 },
+    traits: { onHit: { dot: { kind: "poison", power: 0.25, durationMs: 4000 } } },
+    abilities: [
+      { id: "dreadfulGlare", name: "Olhar Pavoroso", shape: "target", range: 4, radius: 0, cooldownMs: 10000, power: 0, effect: { kind: "stun", ms: 1000 }, color: 0x7fd36b, fx: "vanish" },
+    ],
+    lore: "Guarda as ruínas enterradas. O Olhar Pavoroso paralisa de medo, e o toque apodrece (Podridão). Queima fácil.",
+  }),
   sandWorm: monster({
-    kind: "sandWorm", name: "Verme da Areia", rank: "boss", type: "monstrosity", role: "lurker", cr: 4,
-    hp: 520, damage: 11, xp: 600, loot: [50, 80], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
+    kind: "sandWorm", name: "Verme da Areia", rank: "boss", type: "monstrosity", role: "lurker", cr: 6,
+    hp: 780, damage: 22, xp: 700, loot: [60, 100], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
     // Couro grosso de areia: o frio da caverna o deixa lento de reagir (vulnerável a gelo); resiste ao calor.
     elements: { ice: 1.3, fire: 0.75 },
     abilities: [

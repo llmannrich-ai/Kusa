@@ -389,6 +389,8 @@ const DESERT_SIZE = 104;
 const DESERT_STEPS = 6;
 /** Largura do subterrâneo (rocha em volta incluída), colado à direita da superfície. */
 const DESERT_UNDER_W = 40;
+/** Campinas (pontos de monstros extras fora das zonas) no deserto. */
+const DESERT_MEADOWS = 4;
 /** Distância mínima (tiles) da boca da caverna até a entrada do mapa. */
 const CAVE_MIN_DISTANCE = 40;
 
@@ -412,7 +414,7 @@ function generateDesert(seed: number): Dungeon {
 /** Superfície ligada a pé do portal até as zonas e a boca; subterrâneo, da saída até o boss, o portal e os baús. */
 function desertConnected(d: Dungeon) {
   const cave = d.cave!;
-  const surface = [d.portal, ...d.path.map(centerOf), cave.entrance];
+  const surface = [d.portal, ...d.path.map(centerOf), ...d.meadows.map(centerOf), cave.entrance];
   const below = [cave.exit, centerOf(d.boss), d.bossPortal, ...cave.chests.map((c) => ({ x: c.x, y: c.y + 1 }))];
   return connected(d.tiles, d.width, surface) && connected(d.tiles, d.width, below);
 }
@@ -483,9 +485,21 @@ function buildDesert(seed: number): Dungeon {
   }
   const mouth: Rect = { x: entrance.x - 3, y: entrance.y - 2, w: 7, h: 6 };
 
-  const keep = [grow(spawn, 3), mouth, ...anchors.map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 }))];
+  // Campinas: pontos de monstros extras pelo campo, longe da entrada, das zonas e da caverna (como no pântano).
+  const meadows: Rect[] = [];
+  for (let tries = 0; tries < 60 && meadows.length < DESERT_MEADOWS; tries++) {
+    const p = { x: rng.int(14, size - 15), y: rng.int(14, size - 15) };
+    const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+    if (!far(s, 24) || !far(entrance, 10) || !anchors.every((a) => far(a, 13)) || !meadows.every((m) => far(centerOf(m), 14))) continue;
+    meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
+  }
+
+  const keep = [
+    grow(spawn, 3), mouth,
+    ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
+  ];
   const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
-  const goals = [s, ...path.map(centerOf), ...anchors, entrance];
+  const goals = [s, ...path.map(centerOf), ...anchors, ...meadows.map(centerOf), entrance];
 
   /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
   const obstacle = (place: () => void) => {
@@ -605,7 +619,7 @@ function buildDesert(seed: number): Dungeon {
 
   return {
     mapId: "desert", width, height: size, tiles: grid, spawn, boss: under.lair, bossPortal: under.portal,
-    path, side: [], meadows: [], portal,
+    path, side: [], meadows, portal,
     cave: { entrance, exit: under.exit, under: under.area, reward: under.reward, chests: under.chests },
   };
 }

@@ -89,8 +89,15 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   desert: {
     id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,
-    description: "Dunas, oásis e coqueiros. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
-    encounters: [],
+    description: "Dunas, oásis e coqueiros. Escorpiões, abutres, gnolls, esqueletos e múmias. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
+    encounters: [
+      { depth: [0, 0], budget: 60, table: [["sandScorpion", 4], ["giantVulture", 2]] },
+      { depth: [1, 1], budget: 130, table: [["sandScorpion", 3], ["giantVulture", 3], ["skeleton", 1], ["giantSpider", 1]] },
+      { depth: [2, 2], budget: 200, table: [["giantVulture", 2], ["skeleton", 3], ["skeletonArcher", 2], ["giantSpider", 2], ["gnoll", 1]] },
+      { depth: [3, 3], budget: 270, table: [["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 2], ["mummy", 1], ["giantSpider", 1]] },
+      { depth: [4, 4], budget: 330, table: [["gnoll", 3], ["mummy", 2], ["skeletonArcher", 2], ["giantVulture", 1]] },
+      { depth: [5, 99], budget: 380, table: [["mummy", 3], ["gnoll", 3], ["skeletonArcher", 1], ["giantVulture", 1]] },
+    ],
     minibosses: [],
     mimicChance: 0,
     bosses: [["sandWorm", 1]],

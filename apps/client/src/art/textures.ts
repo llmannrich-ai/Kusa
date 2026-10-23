@@ -1,7 +1,7 @@
 import type * as Phaser from "phaser";
 import { CLASS_IDS, TILE_SIZE, type ClassId, type SummonKind } from "@kusa/shared";
-import { OWN_MONSTER_ART, OWN_SAND_WORM, monsterTextures } from "./bestiary.ts";
-import { SAND_WORM_OUTLINE, sandWormCanvas } from "./sandWorm.ts";
+import { OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./bestiary.ts";
+import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
 import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
@@ -161,8 +161,8 @@ export function createCreatureArt(scene: Phaser.Scene) {
   if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
     scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
   }
-  if (!scene.textures.exists(OWN_SAND_WORM)) {
-    scene.textures.addCanvas(OWN_SAND_WORM, refineArt(sandWormCanvas(), { outline: SAND_WORM_OUTLINE }));
+  for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
+    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
   }
   if (!scene.textures.exists(SUMMON_TEXTURE.eagle)) {
     scene.textures.addCanvas(SUMMON_TEXTURE.eagle, refineArt(eagleCanvas(), { outline: TREANT_OUTLINE }));
