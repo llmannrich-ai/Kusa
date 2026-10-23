@@ -188,6 +188,7 @@ class HostRuntime {
       case MSG.bagEquip: return this.hunt.bagEquip(sessionId, msg);
       case MSG.unequip: return this.hunt.unequip(sessionId, msg);
       case MSG.bagDrop: return this.hunt.bagDrop(sessionId, msg);
+      case MSG.screen: return this.hunt.screen(sessionId, msg);
     }
   }
 

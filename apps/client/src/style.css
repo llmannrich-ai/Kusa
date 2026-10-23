@@ -403,11 +403,12 @@ button { min-height: 44px; touch-action: manipulation; }
 .action.potion[data-state="empty"] { opacity: 0.45; }
 .action.potion[data-state="empty"] .potion-icon { filter: grayscale(1); }
 
+/* Do tamanho do curso do pino (RADIUS em input.ts). */
 .joystick {
   position: fixed;
-  width: 112px;
-  height: 112px;
-  margin: -56px 0 0 -56px;
+  width: 144px;
+  height: 144px;
+  margin: -72px 0 0 -72px;
   border-radius: 50%;
   background: #0006;
   border: 2px solid #e8dcc855;
@@ -418,8 +419,8 @@ button { min-height: 44px; touch-action: manipulation; }
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: #c9a24acc;
   border: 2px solid #000;
@@ -441,6 +442,34 @@ button { min-height: 44px; touch-action: manipulation; }
 /* Só em telas de toque deitadas: o jogo é jogado com o celular na vertical. */
 @media (orientation: landscape) and (pointer: coarse) {
   #rotate { display: flex; }
+}
+
+/*
+ * Jogar deitado (beta, `body.deitado` da largada ao resultado da hunt): o jogo ocupa a tela toda, joystick no
+ * polegar esquerdo e botões no direito. O HUD fica todo no canto de cima à esquerda, para a coluna de botões
+ * subir pela direita sem cobrir as barras.
+ */
+@media (orientation: landscape) and (pointer: coarse) {
+  body.deitado { --col-w: 100vw; --col-x: 0px; }
+  body.deitado #rotate { display: none; }
+  body.deitado #hud { justify-content: flex-start; }
+  body.deitado #actions,
+  body.deitado #potions { bottom: max(16px, env(safe-area-inset-bottom)); }
+  body.deitado #minimap.expanded {
+    top: max(8px, env(safe-area-inset-top));
+    width: min(calc(100dvh - 16px), 360px);
+    height: min(calc(100dvh - 16px), 360px);
+  }
+  /* Bag no meio, entre os dois polegares. */
+  body.deitado #bag-menu {
+    top: max(8px, env(safe-area-inset-top));
+    left: 50%;
+    right: auto;
+    width: min(420px, calc(100vw - 400px));
+    min-width: 300px;
+    max-height: calc(100dvh - 16px);
+    transform: translateX(-50%);
+  }
 }
 
 #help { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(var(--col-w) - 24px); margin: 0; padding: 4px 10px; font-size: 12px; text-align: center; color: var(--muted); background: #000a; border: 1px solid var(--border); pointer-events: none; }

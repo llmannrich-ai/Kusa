@@ -99,6 +99,9 @@ export interface CastAim { x: number; y: number; targetId?: string }
  */
 export interface CastMessage { slot: SpellSlot; aim?: CastAim }
 
+/** Cliente → servidor: a tela está deitada ou em pé (só telemetria: `RunStats.landscapeMs`). */
+export interface ScreenMessage { landscape: boolean }
+
 /** Cliente → servidor: bebe uma poção carregada (recarga compartilhada entre os tipos). */
 export interface DrinkMessage { potion: PotionId }
 
@@ -232,4 +235,5 @@ export const MSG = {
   monsterStrike: "monsterStrike",
   addBot: "addBot",
   removeBot: "removeBot",
+  screen: "screen",
 } as const;
