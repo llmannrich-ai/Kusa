@@ -15,8 +15,9 @@ import { DungeonState, type Monster, type Player } from "../src/state.ts";
 
 export interface ArenaOptions {
   classId?: ClassId;
+  /** Padrão: `KUSA_MAP` ou a Cripta. O job de caos (`caos.ts`) troca os dois para achar bug por acaso. */
   mapId?: MapId;
-  /** Seed do mapa e dos sorteios. */
+  /** Seed do mapa e dos sorteios (padrão: `KUSA_SEED` ou 4242). */
   seed?: number;
   startLevel?: number;
   /** Grimório inteiro no nível máximo (como `KUSA_ALL_SPELLS=1`). */
@@ -32,7 +33,7 @@ export const HERO = "h";
 
 /** Hunt com um herói e nenhum monstro (os do mapa saem). */
 export function arena(options: ArenaOptions = {}) {
-  const { classId = "knight", mapId = "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true } = options;
+  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true } = options;
   let clock = 0;
   const timers: { at: number; fn: () => void }[] = [];
   const damage: DamageMessage[] = [];

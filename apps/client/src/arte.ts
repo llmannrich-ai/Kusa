@@ -1,6 +1,6 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
 import {
-  CLASS_IDS, CLASSES, ITEMS, MONSTERS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
+  CLASS_IDS, CLASSES, ITEMS, MONSTERS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
   type ClassId, type ItemSlot, type ItemTier,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
@@ -142,6 +142,9 @@ for (const family of Object.values(ITEM_FAMILIES)) {
     show(row, itemIcon(id), ITEMS[id].name);
   }
 }
+
+const runeRow = section("Runas (caem dos bosses)");
+for (const id of RUNE_IDS) show(runeRow, itemIcon(id), RUNES[id].name);
 
 /** Conjunto completo de um nível com as famílias que a classe usa (a primeira de cada slot). */
 const fullSet = (classId: ClassId, tier: ItemTier, pick = 0): Outfit => {
