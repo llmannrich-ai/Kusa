@@ -530,7 +530,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Bugbear chefe** (mini-boss) | bruto | alcance 2 · Ataque Surpresa (primeiro golpe em cada alvo 2,5×) · Golpe Brutal (2×, empurra) |
 | **Cubo Gelatinoso** (mini-boss) | sentinela | translúcido e camuflado · Engolfar (engole 2 s com ácido) |
 | **Mímico** (mini-boss) | emboscador | 1 em 3 salas laterais: no lugar do baú, disfarçado até alguém encostar · Adesivo (prende 2 s em volta) · Mordida Ácida (2× e corrói). Morto, dá o loot do baú |
-| **Dragão jovem** (boss) | — | imune a fogo · Multiataque (3 mordidas de 0,4×) · Sopro Infernal (leque de 6 tiles, 1,9× e queimadura) · abaixo de 50%: Voo (some 2 s, invulnerável, e cai sobre um herói, área 2) |
+| **Dragão jovem** (boss) | — | imune a fogo · Multiataque (3 mordidas de 0,3×) · Sopro Infernal (leque de 6 tiles, 1,9× e queimadura) · abaixo de 50%: Voo (some 2 s, invulnerável, e cai sobre um herói, área 2) |
 
 ### Pântano das Ruínas (★2)
 
@@ -551,7 +551,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Bruxa Verde** (mini-boss) | controlador | Ilusão (some 3 s e deixa 2 cópias iguais a ela, que somem com um golpe ou quando ela morre) · Nuvem Venenosa |
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
 | **Hidra do pântano** (boss) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
-| **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
+| **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
 
 ## Ataques e magias (protótipo)
 
