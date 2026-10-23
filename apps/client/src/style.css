@@ -877,6 +877,13 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .at-boots { left: 39.5%; top: 75.5%; }
 .at-weapon { left: 7%; top: 38%; }
 .at-shield { left: 72%; top: 38%; }
+/* Runas nos cantos livres: em cima dos dois lados e embaixo da arma. */
+.at-rune1 { left: 7%; top: 4%; }
+.at-rune2 { left: 72%; top: 4%; }
+.at-rune3 { left: 7%; top: 72%; }
+.rune-slot { border-radius: 50%; }
+.rune-slot.vacant { border-style: dashed; }
+.rune-slot .slot-empty { font-size: 22px; color: #6b5640; }
 .equip-stats {
   display: grid;
   gap: 2px;
@@ -932,6 +939,8 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .market-row strong { display: block; font-size: 14px; }
 .market-row small { display: block; font-size: 12px; }
 
+/* Runas na bag da hunt. */
+.bag-runes { grid-template-columns: repeat(3, minmax(0, 60px)); }
 /* Itens que a classe escolhida não usa: apagados, e o aviso em vermelho. */
 .unusable .item-img { opacity: 0.4; filter: grayscale(0.7); }
 .warn { color: #ff7b6b; }

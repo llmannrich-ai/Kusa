@@ -1,114 +1,66 @@
 /**
- * Teste de fumaça das magias contra um servidor iniciado com KUSA_START_LEVEL=8
- * (os dois slots já abertos): um feiticeiro escolhe as magias, anda até um monstro,
- * conjura a Esfera Sombria no toque rápido e confere mana, recarga, projétil do ataque básico e dano;
- * depois mira a Esfera num ponto fora do alcance e confere que ela cai na borda do alcance.
- * Uso: KUSA_START_LEVEL=8 PORT=2601 npx tsx apps/server/src/index.ts
- *      npx tsx apps/server/scripts/spells.ts http://localhost:2601
+ * Teste das magias, sem servidor, numa arena (`arena.ts`: relógio falso, sorteios de seed fixa, monstro posto onde o
+ * teste precisa), com um feiticeiro convidado no nível 8 (os dois slots já abertos, só as magias iniciais):
+ *   - slot vazio não conjura, magia de outra classe e magia da árvore não comprada não entram no slot;
+ *   - a Esfera Sombria no toque rápido sai uma vez (a recarga segura o segundo toque), gasta mana, voa até o alvo e
+ *     fere; o ataque básico do feiticeiro é um projétil;
+ *   - mirada num ponto fora do alcance, a Esfera cai na borda do alcance (ou na parede, se houver).
+ * Uso: npx tsx scripts/spells.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { Client } from "@colyseus/sdk";
-import {
-  MSG, ROOM_NAME, RULES_VERSION, SPELLS, clampToRange, generateDungeon, hasLineOfSight, lineEnd, tileDistance,
-  type AttackMessage, type DamageMessage, type SpellMessage,
-} from "@kusa/shared";
-import { nextStep } from "../src/pathfinding.ts";
+import { SPELLS, clampToRange, lineEnd } from "@kusa/shared";
+import { HERO, arena, check } from "./arena.ts";
 
-const url = process.argv[2] ?? "http://localhost:2567";
-const client = new Client(url);
-
-const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "sorcerer", rulesVersion: RULES_VERSION });
-const spells: SpellMessage[] = [];
-const attacks: AttackMessage[] = [];
-let hits = 0;
-room.onMessage(MSG.spell, (msg: SpellMessage) => spells.push(msg));
-room.onMessage(MSG.attack, (msg: AttackMessage) => attacks.push(msg));
-room.onMessage(MSG.damage, (msg: DamageMessage) => { if (!msg.toPlayer) hits++; });
-room.onMessage(MSG.notice, () => {});
-room.onMessage(MSG.runEnded, (msg) => { throw new Error(`a hunt terminou antes da hora: ${JSON.stringify(msg)}`); });
-
-await wait(300);
-room.send(MSG.start);
-await wait(300);
-const me = () => room.state.players.get(room.sessionId);
-if (me().level < 8) throw new Error(`o servidor precisa de KUSA_START_LEVEL=8 (nível ${me().level})`);
+const a = arena({ classId: "sorcerer", allSpells: false });
+const p = a.p;
+const mine = () => a.spells.filter((s) => s.from === HERO);
 
 // Slot vazio não conjura; magia de outra classe não entra no slot.
-room.send(MSG.cast, { slot: 0 });
-room.send(MSG.chooseSpell, { slot: 1, spellId: "war_cry" });
-await wait(200);
-if (spells.length) throw new Error("conjurou com o slot vazio");
-if (me().spell2) throw new Error("aceitou magia de outra classe");
+a.cast(0);
+a.hunt.chooseSpell(HERO, { slot: 1, spellId: "war_cry" });
+a.advance(200);
+check(mine().length === 0, "conjurou com o slot vazio");
+check(!p.spell2, "aceitou magia de outra classe");
 
 // Convidado só conhece as magias iniciais: as da árvore precisam ser compradas no menu.
-if ([...me().knownSpells].join(",") !== "shadow_orb,void_storm") throw new Error(`magias conhecidas: ${[...me().knownSpells]}`);
-room.send(MSG.chooseSpell, { slot: 0, spellId: "lightning_bolt" });
-await wait(200);
-if (me().spell1) throw new Error("aceitou magia da árvore sem comprar");
+check([...p.knownSpells].join(",") === "shadow_orb,void_storm", `magias conhecidas: ${[...p.knownSpells]}`);
+a.hunt.chooseSpell(HERO, { slot: 0, spellId: "lightning_bolt" });
+check(!p.spell1, "aceitou magia da árvore sem comprar");
+a.choose("shadow_orb", "void_storm");
+check(p.spell1 === "shadow_orb" && p.spell2 === "void_storm", `slots: ${p.spell1}, ${p.spell2}`);
 
-room.send(MSG.chooseSpell, { slot: 0, spellId: "shadow_orb" });
-room.send(MSG.chooseSpell, { slot: 1, spellId: "void_storm" });
-await wait(200);
-if (me().spell1 !== "shadow_orb" || me().spell2 !== "void_storm") throw new Error(`slots: ${me().spell1}, ${me().spell2}`);
-
-// Anda até ficar ao alcance da Esfera Sombria do monstro mais próximo, com linha de visão
-// (sem ela, o toque rápido não acha alvo e a magia não sai).
-const dungeon = generateDungeon(room.state.seed);
+// Toque rápido com um monstro ao alcance (e à vista): sai uma Esfera; o segundo toque cai na recarga.
 const range = SPELLS.shadow_orb.range;
-const deadline = Date.now() + 30_000;
-while (Date.now() < deadline) {
-  const p = me();
-  let target: any = null;
-  let best = Infinity;
-  room.state.monsters.forEach((m: any) => {
-    const d = tileDistance(p.x, p.y, m.x, m.y);
-    if (d < best) { best = d; target = m; }
-  });
-  if (best <= range - 1 && hasLineOfSight(dungeon, p.x, p.y, target.x, target.y)) break;
-  const blocked = new Set<number>();
-  room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
-  // O herói nasce colado no portal de fuga: pisar nele no caminho encerra a hunt.
-  blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
-  const step = nextStep(dungeon, p, target, 1, (x, y) => blocked.has(y * dungeon.width + x));
-  if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
-  await wait(100);
-}
-
-room.send(MSG.attacking, { on: true });
-const manaBefore = me().mana;
-const hitsBefore = hits;
-room.send(MSG.cast, { slot: 0 });
-await wait(150);
-const manaAfter = me().mana;
-room.send(MSG.cast, { slot: 0 }); // ainda em recarga: ignorado
-await wait(1200);
-
-const cast = spells.filter((s) => s.from === room.sessionId);
-console.log(`magias: ${cast.length}, ataques básicos: ${attacks.length}, golpes: ${hits - hitsBefore}, mana ${manaBefore} → ${manaAfter}`);
-if (cast.length !== 1) throw new Error(`esperava 1 magia conjurada (recarga), vieram ${cast.length}`);
-if (cast[0].spellId !== "shadow_orb" || cast[0].ms <= 0) throw new Error("a Esfera Sombria devia voar até o alvo");
-// Folga para a regeneração de 1 segundo que pode cair no meio.
-if (manaAfter > manaBefore - SPELLS.shadow_orb.manaCost + Math.ceil(me().maxMana * 0.02)) throw new Error("a magia não gastou mana");
-if (hits === hitsBefore) throw new Error("a magia não causou dano");
-if (!attacks.some((a) => a.from === room.sessionId && a.ms > 0)) throw new Error("o ataque básico do feiticeiro devia ser um projétil");
+// A 3 tiles: dentro do alcance e da área que a arena garante livre em volta do herói.
+const target = a.place("lizardfolk", Math.min(3, range - 1), 0);
+a.hunt.target(HERO, { id: target.id });
+a.hunt.attacking(HERO, { on: true });
+const manaBefore = p.mana;
+a.cast(0);
+a.advance(150);
+const manaAfter = p.mana;
+a.cast(0); // ainda em recarga: ignorado
+a.advance(1200);
+const hits = a.hitsFrom(0);
+console.log(`magias: ${mine().length}, ataques básicos: ${a.attacks.length}, golpes: ${hits}, mana ${manaBefore} → ${manaAfter}`);
+check(mine().length === 1, `esperava 1 magia conjurada (recarga), vieram ${mine().length}`);
+check(mine()[0].spellId === "shadow_orb" && mine()[0].ms > 0, "a Esfera Sombria devia voar até o alvo");
+check(manaAfter <= manaBefore - SPELLS.shadow_orb.manaCost, `a magia não gastou mana (${manaBefore} → ${manaAfter})`);
+check(hits > 0, "a magia não causou dano");
+check(a.attacks.some((x) => x.from === HERO && x.ms > 0), "o ataque básico do feiticeiro devia ser um projétil");
 
 // Mira: um ponto longe demais é puxado para a borda do alcance (e para na parede, se houver).
-await wait(SPELLS.shadow_orb.cooldownMs);
-room.send(MSG.attacking, { on: false });
-const p = me();
+a.advance(SPELLS.shadow_orb.cooldownMs);
+a.hunt.attacking(HERO, { on: false });
 const far = { x: p.x - 20, y: p.y };
 const edge = clampToRange(p.x, p.y, far.x, far.y, range);
-const expected = lineEnd(dungeon, p.x, p.y, edge.x, edge.y);
-const manaAim = me().mana;
-room.send(MSG.cast, { slot: 0, aim: far });
-await wait(200);
-const aimed = spells.filter((s) => s.from === room.sessionId)[1];
-if (!aimed) throw new Error("a magia mirada não saiu");
+const expected = lineEnd(a.d, p.x, p.y, edge.x, edge.y);
+const manaAim = p.mana;
+a.cast(0, far);
+a.advance(200);
+const aimed = mine()[1];
+check(!!aimed, "a magia mirada não saiu");
 console.log(`mirada em ${far.x},${far.y}: caiu em ${aimed.tx},${aimed.ty} (esperado ${expected.x},${expected.y})`);
-if (aimed.tx !== expected.x || aimed.ty !== expected.y) throw new Error("a magia mirada não caiu no ponto esperado");
-if (me().mana >= manaAim) throw new Error("a magia mirada não gastou mana");
+check(aimed.tx === expected.x && aimed.ty === expected.y, "a magia mirada não caiu no ponto esperado");
+check(p.mana < manaAim, "a magia mirada não gastou mana");
 console.log("SPELLS OK");
 process.exit(0);
-
-function wait(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}

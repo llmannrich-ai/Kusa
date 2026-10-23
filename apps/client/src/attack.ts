@@ -1,4 +1,4 @@
-import { MSG, attackCooldownMs } from "@kusa/shared";
+import { MSG, attackCooldownMs, heroBonuses } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
 import { stacksOf } from "./perkchoice.ts";
 
@@ -54,7 +54,7 @@ export class AttackButton {
   /** O servidor confirmou um golpe nosso: começa a recarga do botão. */
   onAttack() {
     const p = this.room.state.players.get(this.room.sessionId);
-    this.cooldownMs = attackCooldownMs(p ? stacksOf(p) : {});
+    this.cooldownMs = attackCooldownMs(heroBonuses(p ? stacksOf(p) : {}, p ? [...p.runes] : []));
     this.readyAt = performance.now() + this.cooldownMs;
   }
 
