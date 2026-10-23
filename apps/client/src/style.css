@@ -237,6 +237,26 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .tm-bars li.mine .tm-track i { background: var(--text); }
 .tm-note { margin: 0 0 12px; font-size: 12px; }
 
+/* Histórico de partidas */
+.hist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.hist-head h3 { margin: 0; }
+.hist-head small { font-size: 12px; }
+.hist-player { padding: 8px; background: #1c1714; border: 1px solid #3a2f27; }
+.hist-player + .hist-player { margin-top: 6px; }
+.hist-player.eu { border-color: var(--accent); }
+.hist-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.hist-top strong { min-width: 0; overflow-wrap: anywhere; }
+.hist-outcome { flex: none; color: #8fd18f; }
+.hist-outcome.lost { color: #e07a6a; }
+.hist-player > small { display: block; margin-top: 2px; font-size: 12px; }
+.hist-line { margin-top: 6px; font-size: 13px; }
+.hist-line b { margin-right: 6px; color: var(--muted); font-weight: normal; }
+.hist-line.lost span { color: #e07a6a; }
+.hist-items { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; }
+.hist-items li { padding: 2px 6px; font-size: 12px; border: 1px solid; border-radius: 4px; background: #000; }
+.hist-xp { margin-top: 6px; }
+.hist-more { width: 100%; }
+
 /* Regras: seções que abrem e fecham. */
 .rule { margin-bottom: 8px; border: 1px solid var(--border); background: #000; }
 .rule summary { padding: 12px; min-height: 44px; font-weight: bold; color: var(--accent); cursor: pointer; }
