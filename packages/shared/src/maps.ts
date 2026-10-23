@@ -1,6 +1,7 @@
+import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh";
 
 /** Nível de dificuldade mostrado no menu (estrelas). */
 export type MapDifficulty = 1 | 2;
@@ -38,6 +39,8 @@ export interface MapDef {
    * runas, à escolha. Com eles, o boss não dropa runa.
    */
   rewardRunes?: string[];
+  /** Jogadores por hunt no máximo (bots contam). Sem isto, `MAX_PARTY_SIZE`. */
+  maxParty?: number;
 }
 
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
@@ -103,7 +106,20 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["sandWorm", 1]],
     rewardRunes: ["rune-fury", "rune-life", "rune-time", "rune-meteor"],
   },
+  marsh: {
+    id: "marsh", name: "Pântano", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
+    description: "Em construção: só o cenário, ainda sem monstros. Floresta alagada, o maior mapa, para jogar sozinho: ciprestes com barba-de-velho, salgueiros, mangues, lagoas e passarelas de madeira.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
+  },
 };
+
+/** Jogadores por hunt no mapa, bots incluídos (o Pântano é só para 1). */
+export function partySize(map: MapDef) {
+  return map.maxParty ?? MAX_PARTY_SIZE;
+}
 
 /** Encontro de uma profundidade. */
 export function encounterAt(map: MapDef, depth: number): Encounter {

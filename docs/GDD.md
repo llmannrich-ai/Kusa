@@ -378,6 +378,7 @@ recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
+| 🐸 Pântano | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas (ainda vazias), 8 campinas e a clareira do boss | Em construção: só o cenário, sem monstros |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -468,11 +469,42 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
   Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
+### Pântano (em construção)
+
+- **Para jogar sozinho e mais fácil:** o mapa aceita 1 jogador só (`MapDef.maxParty`; bots contam), então não há
+  "Criar sala" nele, só "Jogar sozinho". É o maior mapa (128×128) e o mais longo (10 min), pensado para ter mais
+  monstros que os outros, render mais níveis e terminar num boss.
+- **Só o cenário por enquanto:** a tabela de monstros, mini-bosses e boss está vazia (a hunt não tem inimigos nem
+  baús; dá para explorar e fugir pelo portal). O gerador já marca as **9 zonas** do caminho em arco, as **8 campinas**,
+  a **clareira do boss** no centro e as **clareiras dos baús**, para os encontros entrarem depois sem mudar o mapa.
+- **Floresta alagada:** mata fechada na borda; por cima, lagoas grandes e poças, ilhas de mata fechada, troncos
+  caídos e muitas árvores soltas, algumas de pé dentro da água. **Passarelas de madeira** cruzam algumas lagoas em
+  linha reta (atalho; às vezes levam a uma ilha). A clareira do boss é um círculo aberto cercado por um anel de
+  ciprestes, com 4 entradas largas. As clareiras dos baús são cercadas de troncos caídos, com 2 passagens. Obstáculo
+  que fecharia a passagem até uma zona, campina, clareira ou ao centro é descartado. **Árvore solta** é um tile de
+  mata sem mata nos 4 lados; mata encostada em mata é **mata fechada**. As duas bloqueiam passo e visão; a água,
+  só o passo; os troncos caídos (pedra), passo e visão.
+- **Visual** (só no cliente, `apps/client/src/marshMap.ts`, com toda a arte própria em `art/marshDecor.ts`, sem
+  pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
+  torrões, água escura cor de chá (rasa e funda) com lodo e lentilha-d'água na margem; capim invadindo a lama com
+  quinas arredondadas. A **mata fechada** é uma copa contínua de tufos (textura de 3×3 tiles, sem emenda) cuja beira
+  recua com borda recortada; do lado sul ela sobe e mostra a sombra, os troncos e a barba-de-velho pendurada. As
+  **árvores soltas** são de 4 espécies: **cipreste-calvo** (pé alargado, copa em camadas achatadas, barba-de-velho;
+  na água, com os "joelhos" saindo em volta), **salgueiro-chorão** (cortina de ramos até perto do chão),
+  **mangue** (raízes em arco) e **árvore morta** (galhos pelados com barba-de-velho); tronco e copa separados, com
+  variação de tom e tamanho, sombra no chão, copa que balança e fica transparente com o jogador embaixo; no meio da
+  mata fechada, copas mais altas dão volume. Passarelas de tábuas com pregos e lodo; troncos caídos com musgo, anéis
+  na ponta e orelhas-de-pau; tocos e pedras com musgo. Enfeites: taboas, juncos e íris amarela na margem, tiririca
+  em manchas pelo campo, samambaias, cogumelos, plantas-jarro, raízes, folhas caídas, ossadas, poças e pegadas de
+  garça na lama, vitórias-régias, lírios e galhos boiando; na clareira do boss, um círculo de cogumelos brancos.
+  Ambiente: vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas de gás subindo da água. Como nos
+  outros mapas, só os sprites perto da câmera são desenhados.
+
 ## Partida (hunt)
 
-- Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto.
+- Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto (o Pântano é só para 1).
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano, 6 min no Mar de Areia). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min no Pântano). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;

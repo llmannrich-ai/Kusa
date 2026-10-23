@@ -19,6 +19,11 @@ import {
   caveDecorStrip, caveFloorStrip, caveGlowCanvas, caveMouthCanvas, caveShadeStrip, caveShaftCanvas, caveTallStrip, hallFloorStrip,
   rockFaceStrip, rockRimStrip, rockTopStrip,
 } from "./caveDecor.ts";
+import {
+  BUBBLE_FRAMES, TREE_CROWN, TREE_TRUNK, TREE_VARIANTS, bubbleStrip, canopyStrip, dragonflyCanvas, grassStrip, leafCanvas as marshLeafCanvas,
+  logStrip, marshFloorStrip, marshFringeStrip, marshShadeStrip, marshShoreStrip, marshTallStrip, marshWaterStrip, mudStrip, plankStrip,
+  treeCrownSheet, treeShadowCanvas, treeTrunkSheet, waterStrip as marshWaterTiles,
+} from "./marshDecor.ts";
 import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./swampDecor.ts";
 
 /**
@@ -332,6 +337,69 @@ export function createDesertArt(scene: Phaser.Scene) {
       frameRate: 8,
       hideOnComplete: true,
     });
+  }
+}
+
+/** Pântano: tudo em arte própria (`marshDecor.ts`), gerado na primeira hunt no Pântano. */
+export const MARSH_TEXTURE = {
+  grass: "marsh-grass",
+  mud: "marsh-mud",
+  water: "marsh-water",
+  planks: "marsh-planks",
+  canopy: "marsh-canopy",
+  shore: "marsh-shore",
+  fringe: "marsh-fringe",
+  shade: "marsh-shade",
+  floor: "marsh-decor-floor",
+  waterDecor: "marsh-decor-water",
+  tall: "marsh-decor-tall",
+  logs: "marsh-logs",
+  trunk: "marsh-tree-trunk",
+  crown: "marsh-tree-crown",
+  treeShadow: "marsh-tree-shadow",
+  ripple: "marsh-ripple",
+  bubble: "marsh-bubble",
+  firefly: "marsh-firefly",
+  mist: "marsh-mist",
+  leaf: "marsh-leaf",
+  dragonfly: "marsh-dragonfly",
+};
+
+/** Gera as texturas do Pântano (uma vez por jogo): faixas 32×32, as árvores, as bolhas e as marolas. */
+export function createMarshArt(scene: Phaser.Scene) {
+  addStrips(scene, [
+    [MARSH_TEXTURE.grass, grassStrip],
+    [MARSH_TEXTURE.mud, mudStrip],
+    [MARSH_TEXTURE.water, marshWaterTiles],
+    [MARSH_TEXTURE.planks, plankStrip],
+    [MARSH_TEXTURE.canopy, canopyStrip],
+    [MARSH_TEXTURE.shore, marshShoreStrip],
+    [MARSH_TEXTURE.fringe, marshFringeStrip],
+    [MARSH_TEXTURE.shade, marshShadeStrip],
+    [MARSH_TEXTURE.floor, marshFloorStrip],
+    [MARSH_TEXTURE.waterDecor, marshWaterStrip],
+    [MARSH_TEXTURE.tall, marshTallStrip],
+    [MARSH_TEXTURE.logs, logStrip],
+    [MARSH_TEXTURE.ripple, rippleStrip],
+  ]);
+  for (const [key, draw, size] of [[MARSH_TEXTURE.trunk, treeTrunkSheet, TREE_TRUNK], [MARSH_TEXTURE.crown, treeCrownSheet, TREE_CROWN]] as const) {
+    if (scene.textures.exists(key)) continue;
+    const texture = scene.textures.addCanvas(key, draw())!;
+    for (let i = 0; i < TREE_VARIANTS; i++) texture.add(i, 0, i * size.w, 0, size.w, size.h);
+  }
+  if (!scene.textures.exists(MARSH_TEXTURE.bubble)) {
+    const texture = scene.textures.addCanvas(MARSH_TEXTURE.bubble, bubbleStrip())!;
+    for (let i = 0; i < BUBBLE_FRAMES; i++) texture.add(i, 0, i * 16, 0, 16, 16);
+  }
+  for (const [key, draw] of [
+    [MARSH_TEXTURE.treeShadow, treeShadowCanvas], [MARSH_TEXTURE.firefly, fireflyCanvas], [MARSH_TEXTURE.mist, mistCanvas],
+    [MARSH_TEXTURE.leaf, marshLeafCanvas], [MARSH_TEXTURE.dragonfly, dragonflyCanvas],
+  ] as const) {
+    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, draw());
+  }
+  for (const [key, frames, frameRate] of [[MARSH_TEXTURE.ripple, RIPPLE_FRAMES, 6], [MARSH_TEXTURE.bubble, BUBBLE_FRAMES, 7]] as const) {
+    if (scene.anims.exists(key)) continue;
+    scene.anims.create({ key, frames: Array.from({ length: frames }, (_, frame) => ({ key, frame })), frameRate, hideOnComplete: true });
   }
 }
 

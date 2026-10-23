@@ -2,7 +2,7 @@ import { DEFAULT_MAP, type MapId } from "./maps.ts";
 import { createRng } from "./rng.ts";
 
 export const Tile = {
-  /** Parede da cripta, mata fechada do pântano ou duna e coqueiro do deserto: bloqueia passo e visão. */
+  /** Parede da cripta, mata do pântano, duna e coqueiro do deserto: bloqueia passo e visão. */
   Wall: 0,
   Floor: 1,
   Portal: 2,
@@ -32,8 +32,10 @@ export interface Dungeon {
   path: Rect[];
   /** Salas laterais (baús, mini-bosses). */
   side: Rect[];
-  /** Pontos de monstros extras fora das zonas do caminho (só no pântano). */
+  /** Pontos de monstros extras fora das zonas do caminho (só nos mapas abertos). */
   meadows: Rect[];
+  /** Passarelas de madeira por cima da água (Pântano): chão comum, o cliente desenha as tábuas. */
+  planks?: Rect[];
   portal: { x: number; y: number };
   /** Caverna do deserto: a boca na superfície leva ao subterrâneo (e a saída de lá traz de volta). */
   cave?: CaveLink;
@@ -82,6 +84,7 @@ const SIDE_OFFSETS: readonly (readonly [number, number])[] = [[-14, -14], [-14, 
 export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dungeon {
   if (mapId === "swamp") return generateSwamp(seed);
   if (mapId === "desert") return generateDesert(seed);
+  if (mapId === "marsh") return generateMarsh(seed);
   return generateCrypt(seed);
 }
 
@@ -730,6 +733,274 @@ function carveUnderground(rng: ReturnType<typeof createRng>, tiles: Uint8Array, 
   // A área do subterrâneo vai só um pouco além do que foi escavado: é o que o minimapa mostra aberto.
   const under: Rect = { x: area.x, y: reward.y - 8, w: area.w, h: exit.y + 8 - (reward.y - 8) };
   return { area: under, lair, portal, reward, chests, exit };
+}
+
+const MARSH_SIZE = 128;
+/** Zonas do caminho entre a entrada e a clareira do boss (mais que nos outros mapas: mais monstros e mais níveis). */
+const MARSH_STEPS = 9;
+/** Raio da clareira do boss, no centro. */
+const MARSH_CLEARING = 8;
+/** Campinas (pontos de monstros extras fora das zonas). */
+const MARSH_MEADOWS = 8;
+/** Passarelas de madeira no máximo (atravessam lagoas). */
+const MARSH_PLANKS = 9;
+
+/**
+ * Pântano: floresta alagada, o maior mapa. Nasce todo andável, cercado de mata fechada, e recebe por cima lagoas
+ * grandes e poças, ilhas de mata, troncos caídos e muitas árvores soltas (ciprestes, salgueiros, mangues e
+ * árvores mortas, algumas de pé dentro da água), sempre deixando passagem. Passarelas de madeira cruzam algumas
+ * lagoas (atalho; às vezes levam a uma ilha). Zonas em arco da entrada até a clareira do centro, cercada de
+ * ciprestes, onde fica o boss; clareiras cercadas de troncos caídos guardam mini-boss e baú.
+ * Árvore solta é mata (`Tile.Wall`) sem mata nos 4 lados; mata encostada em mata é mata fechada (o cliente
+ * desenha cada uma por essa regra, como os coqueiros do deserto).
+ */
+function generateMarsh(seed: number): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildMarsh(seed + attempt);
+    if (attempt >= 20 || connected(d.tiles, d.width, swampGoals(d))) return d;
+  }
+}
+
+function buildMarsh(seed: number): Dungeon {
+  const rng = createRng(seed);
+  const size = MARSH_SIZE;
+  const tiles = new Uint8Array(size * size).fill(Tile.Floor);
+  const inside = (x: number, y: number) => x > 0 && y > 0 && x < size - 1 && y < size - 1;
+  const get = (x: number, y: number) => (inside(x, y) ? tiles[y * size + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * size + x] = t; };
+  const orthoWall = (x: number, y: number) =>
+    get(x - 1, y) === Tile.Wall || get(x + 1, y) === Tile.Wall || get(x, y - 1) === Tile.Wall || get(x, y + 1) === Tile.Wall;
+
+  /** Mancha de borda irregular, alongada (`stretch` > 1 estica na horizontal); `only` limita a troca a um tipo. */
+  const blob = (cx: number, cy: number, r: number, t: number, only: number, stretch = 1) => {
+    const reach = Math.ceil(r * Math.max(stretch, 1 / stretch) + 1);
+    for (let y = cy - reach; y <= cy + reach; y++)
+      for (let x = cx - reach; x <= cx + reach; x++) {
+        const edge = r - 0.6 + rng.next() * 1.2;
+        if (Math.hypot((x - cx) / stretch, (y - cy) * stretch) > edge) continue;
+        if (get(x, y) === only) set(x, y, t);
+      }
+  };
+
+  // Mata fechada na borda, com a espessura ondulando devagar.
+  for (let side = 0; side < 4; side++) {
+    let depth = rng.int(3, 5);
+    let goal = depth;
+    for (let i = 0; i < size; i++) {
+      if (i % 5 === 0) goal = rng.int(3, 8);
+      if (rng.next() < 0.5) depth += Math.sign(goal - depth);
+      for (let d = 0; d < depth; d++) {
+        const [x, y] = side === 0 ? [i, d] : side === 1 ? [size - 1 - d, i] : side === 2 ? [i, size - 1 - d] : [d, i];
+        tiles[y * size + x] = Tile.Wall;
+      }
+    }
+  }
+
+  const center = { x: size / 2, y: size / 2 };
+  const boss: Rect = { x: center.x - MARSH_CLEARING - 1, y: center.y - MARSH_CLEARING - 1, w: MARSH_CLEARING * 2 + 2, h: MARSH_CLEARING * 2 + 2 };
+
+  // Entrada perto de uma das 4 bordas.
+  const along = rng.int(20, size - 30);
+  const spawnPos = rng.pick([
+    { x: along, y: 10 },
+    { x: size - 20, y: along },
+    { x: along, y: size - 20 },
+    { x: 10, y: along },
+  ]);
+  const spawn: Rect = { ...spawnPos, w: 10, h: 10 };
+  const s = centerOf(spawn);
+
+  // Zonas em arco da entrada até perto da clareira, girando em volta do centro (como no Pântano das Ruínas).
+  const r0 = Math.hypot(s.x - center.x, s.y - center.y);
+  const a0 = Math.atan2(s.y - center.y, s.x - center.x);
+  const turn = (rng.next() < 0.5 ? -1 : 1) * Math.PI * (1.3 + rng.next() * 0.4);
+  const anchors: { x: number; y: number }[] = [];
+  const path: Rect[] = [];
+  for (let i = 1; i <= MARSH_STEPS; i++) {
+    const t = i / MARSH_STEPS;
+    const r = r0 + (MARSH_CLEARING + 16 - r0) * t;
+    const a = a0 + turn * t;
+    const half = rng.int(6, 8);
+    const cx = clamp(center.x + Math.cos(a) * r + rng.int(-3, 3), half + 9, size - half - 10);
+    const cy = clamp(center.y + Math.sin(a) * r + rng.int(-3, 3), half + 9, size - half - 10);
+    anchors.push({ x: cx, y: cy });
+    path.push({ x: cx - half, y: cy - half, w: half * 2 + 1, h: half * 2 + 1 });
+  }
+
+  // Clareiras cercadas de troncos caídos perto das zonas (mini-boss e baú), com 2 passagens.
+  const side: Rect[] = [];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (rng.next() < 0.4) continue;
+    const anchor = anchors[i];
+    const w = rng.int(7, 9);
+    const h = rng.int(7, 9);
+    const room = shuffled(rng, SWAMP_SIDE_DIRS)
+      .map(([dx, dy]): Rect => ({
+        x: clamp(anchor.x + dx * 13 - w / 2, 8, size - w - 9),
+        y: clamp(anchor.y + dy * 13 - h / 2, 8, size - h - 9),
+        w, h,
+      }))
+      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP && gapBetween(r, boss) >= 4
+        && side.every((o) => gapBetween(r, o) >= 4)
+        && anchors.every((p) => gapBetween(r, { x: p.x, y: p.y, w: 1, h: 1 }) >= 3));
+    if (!room) continue;
+    for (let y = room.y; y < room.y + room.h; y++)
+      for (let x = room.x; x < room.x + room.w; x++) {
+        const border = x === room.x || y === room.y || x === room.x + room.w - 1 || y === room.y + room.h - 1;
+        if (border && rng.next() >= 0.2) set(x, y, Tile.Ruin);
+      }
+    const cx = room.x + Math.floor(room.w / 2);
+    const cy = room.y + Math.floor(room.h / 2);
+    for (const gate of shuffled(rng, [0, 1, 2, 3]).slice(0, 2))
+      for (let k = -1; k <= 1; k++) {
+        if (gate === 0) set(cx + k, room.y, Tile.Floor);
+        if (gate === 1) set(room.x + room.w - 1, cy + k, Tile.Floor);
+        if (gate === 2) set(cx + k, room.y + room.h - 1, Tile.Floor);
+        if (gate === 3) set(room.x, cy + k, Tile.Floor);
+      }
+    side.push(room);
+  }
+
+  // Campinas: pontos de monstros extras pelo campo, longe da entrada, das zonas, das clareiras e do centro.
+  const meadows: Rect[] = [];
+  for (let tries = 0; tries < 120 && meadows.length < MARSH_MEADOWS; tries++) {
+    const p = { x: rng.int(15, size - 16), y: rng.int(15, size - 16) };
+    const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+    if (!far(s, 26) || !far(center, MARSH_CLEARING + 10) || !anchors.every((a) => far(a, 14))
+      || !meadows.every((m) => far(centerOf(m), 14)) || side.some((r) => gapBetween(r, { ...p, w: 1, h: 1 }) < 4)) continue;
+    meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
+  }
+
+  // Clareira do boss: círculo aberto com um anel de ciprestes soltos em volta (com folgas para entrar).
+  const ring = MARSH_CLEARING + 1.5;
+  const trees = Math.round(ring * 3.4);
+  const gapAt = rng.next() * Math.PI * 2;
+  for (let k = 0; k < trees; k++) {
+    const a = (k / trees) * Math.PI * 2 + gapAt;
+    // 4 entradas largas, em cruz.
+    if (Math.abs(Math.sin(2 * (a - gapAt))) < 0.3) continue;
+    const x = Math.round(center.x + Math.cos(a) * ring);
+    const y = Math.round(center.y + Math.sin(a) * ring);
+    if (!orthoWall(x, y)) set(x, y, Tile.Wall);
+  }
+
+  // Áreas que ficam livres: entrada, clareira, clareiras dos baús e o miolo de cada zona e campina.
+  const clearing = { x: center.x - MARSH_CLEARING, y: center.y - MARSH_CLEARING, w: MARSH_CLEARING * 2 + 1, h: MARSH_CLEARING * 2 + 1 };
+  const keep = [
+    grow(spawn, 3), grow(boss, 2), ...side.map((r) => grow(r, 2)),
+    ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
+  ];
+  const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const goals = [...swampGoals({ portal: s, boss, path, side, meadows }), ...anchors];
+
+  /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
+  const obstacle = (place: () => void) => {
+    const before = tiles.slice();
+    place();
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i] !== before[i] && kept(i % size, Math.floor(i / size))) { tiles.set(before); return; }
+    }
+    if (!connected(tiles, size, goals)) tiles.set(before);
+  };
+
+  // Lagoas grandes, alongadas, com uma ou duas poças coladas (a margem fica recortada).
+  const lakes: { x: number; y: number; r: number }[] = [];
+  for (let tries = 0; tries < 80 && lakes.length < 16; tries++) {
+    const l = { x: rng.int(12, size - 13), y: rng.int(12, size - 13), r: 3.5 + rng.next() * 4 };
+    if (lakes.some((o) => Math.hypot(o.x - l.x, o.y - l.y) < o.r + l.r + 5)) continue;
+    const stretch = 0.75 + rng.next() * 0.6;
+    obstacle(() => {
+      blob(l.x, l.y, l.r, Tile.Water, Tile.Floor, stretch);
+      for (let k = rng.int(1, 2); k > 0; k--) {
+        const a = rng.next() * Math.PI * 2;
+        blob(Math.round(l.x + Math.cos(a) * l.r), Math.round(l.y + Math.sin(a) * l.r), 1.5 + rng.next() * 2, Tile.Water, Tile.Floor);
+      }
+    });
+    if (get(l.x, l.y) === Tile.Water) lakes.push(l);
+  }
+
+  // Poças e brejos menores.
+  for (let i = 0; i < 60; i++) {
+    const x = rng.int(8, size - 9);
+    const y = rng.int(8, size - 9);
+    obstacle(() => blob(x, y, 1.2 + rng.next() * 2.4, Tile.Water, Tile.Floor, 0.8 + rng.next() * 0.5));
+  }
+
+  // Ilhas de mata fechada, de tamanhos variados, às vezes com uma moita ao lado.
+  for (let i = 0; i < 170; i++) {
+    const x = rng.int(7, size - 8);
+    const y = rng.int(7, size - 8);
+    const r = 1.4 + rng.next() * 3.8;
+    obstacle(() => {
+      blob(x, y, r, Tile.Wall, Tile.Floor, 0.8 + rng.next() * 0.5);
+      if (rng.next() < 0.5) blob(x + rng.int(-4, 4), y + rng.int(-4, 4), 1 + rng.next() * 1.5, Tile.Wall, Tile.Floor);
+    });
+  }
+
+  // Troncos caídos pelo campo: trechos curtos e retos.
+  for (let i = 0; i < 18; i++) {
+    const x = rng.int(8, size - 9);
+    const y = rng.int(8, size - 9);
+    const len = rng.int(2, 4);
+    const horizontal = rng.next() < 0.6;
+    obstacle(() => { for (let k = 0; k < len; k++) set(horizontal ? x + k : x, horizontal ? y : y + k, Tile.Ruin); });
+  }
+
+  // Árvores dentro da água: na beira e no meio das lagoas, sem encostar em outra mata (são árvores soltas).
+  for (let y = 2; y < size - 2; y++)
+    for (let x = 2; x < size - 2; x++) {
+      if (get(x, y) !== Tile.Water || orthoWall(x, y)) continue;
+      const wet = [get(x - 1, y), get(x + 1, y), get(x, y - 1), get(x, y + 1)].filter((t) => t === Tile.Water).length;
+      if (rng.next() < (wet === 4 ? 0.05 : 0.09)) set(x, y, Tile.Wall);
+    }
+
+  // Passarelas de madeira: retas por cima da água, de terra a terra (um atalho; nunca fecham passagem).
+  const planks: Rect[] = [];
+  for (let tries = 0; tries < 400 && planks.length < MARSH_PLANKS; tries++) {
+    const x = rng.int(6, size - 7);
+    const y = rng.int(6, size - 7);
+    if (get(x, y) !== Tile.Water) continue;
+    const horizontal = rng.next() < 0.5;
+    const [dx, dy] = horizontal ? [1, 0] : [0, 1];
+    // Anda para os dois lados até sair da água.
+    let a = 0;
+    let b = 0;
+    while (a < 16 && get(x - dx * (a + 1), y - dy * (a + 1)) === Tile.Water) a++;
+    while (b < 16 && get(x + dx * (b + 1), y + dy * (b + 1)) === Tile.Water) b++;
+    const len = a + b + 1;
+    const start = { x: x - dx * a, y: y - dy * a };
+    const end = { x: x + dx * b, y: y + dy * b };
+    if (len < 3 || len > 16) continue;
+    if (get(start.x - dx, start.y - dy) !== Tile.Floor || get(end.x + dx, end.y + dy) !== Tile.Floor) continue;
+    // Água dos dois lados da passarela (fora as pontas, na margem), senão é só uma beirada.
+    let ok = true;
+    for (let k = 1; k < len - 1 && ok; k++) {
+      const px = start.x + dx * k;
+      const py = start.y + dy * k;
+      if (get(px - dy, py - dx) === Tile.Floor || get(px + dy, py + dx) === Tile.Floor) ok = false;
+    }
+    if (!ok || planks.some((p) => gapBetween(p, { x: start.x, y: start.y, w: dx * len + dy, h: dy * len + dx }) < 3)) continue;
+    for (let k = 0; k < len; k++) set(start.x + dx * k, start.y + dy * k, Tile.Floor);
+    planks.push({ x: start.x, y: start.y, w: horizontal ? len : 1, h: horizontal ? 1 : len });
+  }
+  const onPlanks = (x: number, y: number) => planks.some((p) => x >= p.x && y >= p.y && x < p.x + p.w && y < p.y + p.h);
+
+  // Árvores soltas: só com chão em volta, para nunca fechar passagem (mais que nos outros mapas: é uma floresta).
+  for (let y = 4; y < size - 4; y++)
+    for (let x = 4; x < size - 4; x++) {
+      if (kept(x, y) || (x >= clearing.x && y >= clearing.y && x < clearing.x + clearing.w && y < clearing.y + clearing.h) || !openAround(get, x, y, 1) || onPlanks(x, y)) continue;
+      const open = openAround(get, x, y, 2);
+      if (rng.next() < (open ? 0.09 : 0.04) && !orthoWall(x, y)) set(x, y, Tile.Wall);
+    }
+
+  // Bolsões de chão que ficaram sem acesso viram mata (ninguém nasce ou cai lá).
+  const reach = reachableFrom(tiles, size, s);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+
+  const portal = s;
+  set(portal.x, portal.y, Tile.Portal);
+
+  return { mapId: "marsh", width: size, height: size, tiles, spawn, boss, bossPortal: centerOf(boss), path, side, meadows, portal, planks };
 }
 
 /** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */

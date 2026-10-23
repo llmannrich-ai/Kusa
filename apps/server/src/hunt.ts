@@ -17,7 +17,7 @@ import {
   MAPS,
   MONSTERS,
   MAX_LEVEL,
-  MAX_PARTY_SIZE,
+  partySize,
   MAX_SUMMONS_PER_PLAYER,
   MOVE_HOLD_MS,
   MSG,
@@ -573,7 +573,7 @@ export class Hunt {
   /** O líder põe um bot da classe numa vaga livre da sala de espera. Devolve o id do bot (null se não puder). */
   addBot(sessionId: string, msg: AddBotMessage): string | null {
     if (sessionId !== this.state.leaderId || this.state.phase !== "lobby") return null;
-    if (this.state.players.size >= MAX_PARTY_SIZE || typeof msg?.classId !== "string" || !(msg.classId in CLASSES)) return null;
+    if (this.state.players.size >= this.partySize() || typeof msg?.classId !== "string" || !(msg.classId in CLASSES)) return null;
     const id = `bot${this.nextBotId++}`;
     // Bot entra como um convidado: sem Grimório comprado nem equipamento.
     this.join(id, { name: `Bot ${CLASSES[msg.classId].name}`, classId: msg.classId, talents: {}, spellXp: {} });
@@ -587,6 +587,11 @@ export class Hunt {
     if (!this.state.players.get(msg?.id)?.bot) return false;
     this.leave(msg.id);
     return true;
+  }
+
+  /** Jogadores na hunt no máximo, bots incluídos (depende do mapa). */
+  partySize() {
+    return partySize(this.map);
   }
 
   /** Quantos bots estão na equipe. */

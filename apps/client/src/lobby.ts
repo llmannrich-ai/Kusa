@@ -1,4 +1,4 @@
-import { CLASSES, CLASS_IDS, MAPS, MAP_IDS, MAX_PARTY_SIZE, MSG, difficultyStars, mapIdOf, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
+import { CLASSES, CLASS_IDS, MAPS, MAP_IDS, MSG, difficultyStars, mapIdOf, partySize, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
 import { heroPoses } from "./art/heroes.ts";
 import type { DungeonRoom } from "./net.ts";
 
@@ -76,7 +76,8 @@ export function renderMapPicker(onPick: () => void) {
     card.classList.toggle("selected", id === chosenMap);
     const head = el("div", "map-head");
     const title = el("div");
-    title.append(el("strong", "", map.name), el("small", "muted", `Dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min`));
+    const solo = partySize(map) === 1 ? " · só sozinho" : "";
+    title.append(el("strong", "", map.name), el("small", "muted", `Dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min${solo}`));
     head.append(el("span", "map-icon", map.icon), title);
     card.append(head, el("p", "", map.description));
     card.onclick = () => {
@@ -102,7 +103,7 @@ function portrait(classId: ClassId) {
 }
 
 /**
- * Desenha as `MAX_PARTY_SIZE` vagas: quem já entrou (o líder primeiro, os bots por último) e as vagas livres.
+ * Desenha as vagas do mapa (`partySize`): quem já entrou (o líder primeiro, os bots por último) e as vagas livres.
  * O líder põe um bot numa vaga livre tocando na classe, e tira no ✕.
  */
 export function renderWaitingRoom(room: DungeonRoom) {
@@ -110,9 +111,10 @@ export function renderWaitingRoom(room: DungeonRoom) {
   const isLeader = leaderId === room.sessionId;
   const rank = (id: string) => (id === leaderId ? 0 : players.get(id)?.bot ? 2 : 1);
   const ids = [...players.keys()].sort((a, b) => rank(a) - rank(b));
+  const size = partySize(MAPS[mapIdOf(room.state.mapId)]);
   const list = $("lobby-slots");
   list.replaceChildren();
-  for (let i = 0; i < MAX_PARTY_SIZE; i++) {
+  for (let i = 0; i < size; i++) {
     const id = ids[i];
     const p = id ? players.get(id) : undefined;
     const slot = el("li", p ? "slot filled" : "slot open");
@@ -159,11 +161,13 @@ export function renderWaitingRoom(room: DungeonRoom) {
     ? "Começar sozinho"
     : `Começar hunt · ${humans} ${humans === 1 ? "jogador" : "jogadores"}${bots > 0 ? ` + ${bots} ${bots === 1 ? "bot" : "bots"}` : ""}`;
   $("lobby-wait").hidden = isLeader;
-  $("lobby-hint").textContent = count >= MAX_PARTY_SIZE
-    ? bots > 0 ? "Equipe completa. Bots não levam loot nem gold: o que eles matam não rende nada." : "Equipe completa."
-    : isLeader
-      ? "Seus amigos acham esta sala em Jogar → Salas abertas. Bots seguem você e lutam, mas não levam loot nem gold."
-      : "O líder decide quando a hunt começa.";
+  $("lobby-hint").textContent = size === 1
+    ? "Este mapa é só para jogar sozinho."
+    : count >= size
+      ? bots > 0 ? "Equipe completa. Bots não levam loot nem gold: o que eles matam não rende nada." : "Equipe completa."
+      : isLeader
+        ? "Seus amigos acham esta sala em Jogar → Salas abertas. Bots seguem você e lutam, mas não levam loot nem gold."
+        : "O líder decide quando a hunt começa.";
 }
 
 function storageGet(key: string) {

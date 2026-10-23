@@ -1,5 +1,5 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { MAX_PARTY_SIZE, type MapId } from "@kusa/shared";
+import type { MapId } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
 // Rede da sala hospedada por um jogador: a lista das salas e a sinalização passam pelo Realtime do Supabase
@@ -81,7 +81,7 @@ export class Listing {
   }
 
   update(listing: HostedListing) {
-    this.last = { ...listing, maxClients: MAX_PARTY_SIZE };
+    this.last = listing;
     this.announce();
   }
 
