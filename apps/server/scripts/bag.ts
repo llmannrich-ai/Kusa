@@ -6,7 +6,8 @@
  * Uso: npx tsx apps/server/scripts/bag.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, RULES_VERSION, generateDungeon, tileDistance, type MonsterKind } from "@kusa/shared";
+import { BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance, type MonsterKind } from "@kusa/shared";
+import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
