@@ -1,4 +1,4 @@
-import { ITEMS, type ClassId, type SpellXp, type TalentRanks } from "@kusa/shared";
+import { ITEMS, isRune, type ClassId, type SpellXp, type TalentRanks } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
 // Dados do menu: árvore de magias, itens (equipamento, cofre e bag) e gold. O navegador só lê as tabelas;
@@ -8,7 +8,7 @@ import { supabase } from "./auth.ts";
 export interface OwnedItem {
   /** Id da linha (cada cópia do item é uma linha). */
   id: string;
-  /** Chave de `ITEMS` em `@kusa/shared`. */
+  /** Chave de `ITEMS` ou de `RUNES` em `@kusa/shared`. */
   itemId: string;
   /** Vai para a próxima hunt vestido (não ocupa o cofre). */
   equipped: boolean;
@@ -48,7 +48,7 @@ export async function loadProfile(): Promise<Profile> {
     spellXp: Object.fromEntries(talents.data.filter((t) => t.xp > 0).map((t) => [t.talent_id, t.xp])),
     activeSpells: profile.data.active_spells ?? [],
     // Id fora do catálogo (banco e cliente em versões diferentes durante uma atualização): não aparece.
-    items: items.data.filter((i) => ITEMS[i.item_id]).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, classId: i.class_id, source: i.source, location: i.location })),
+    items: items.data.filter((i) => ITEMS[i.item_id] || isRune(i.item_id)).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, classId: i.class_id, source: i.source, location: i.location })),
   };
 }
 
