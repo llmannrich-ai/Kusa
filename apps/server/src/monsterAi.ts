@@ -44,6 +44,10 @@ const ENGULF_BREAK = 0.15;
 const EXTRA_HEAD_POWER = 0.5;
 /** Intervalo entre as mordidas do Multiataque. */
 const MULTIATTACK_GAP_MS = 120;
+/** Depois de cair do Voo/Mergulho, o monstro se recompõe: nem básico nem outra habilidade até passar este tempo. */
+const DIVE_RECOVERY_MS = 1500;
+/** Boss: intervalo mínimo entre duas habilidades (sem ele, a fúria soltava sopro, cegueira e mergulho em sequência). */
+const BOSS_ABILITY_GAP_MS = 1000;
 
 /** Dados do monstro que só o servidor precisa (o cliente vê só o schema `Monster`). */
 export interface Brain {
@@ -369,6 +373,11 @@ export class MonsterAi {
     }
     this.cooldown(brain, a, now);
     if (a.once) brain.used.add(a.id);
+    if (brain.def.rank === "boss") {
+      for (const id of Object.keys(brain.abilityReadyAt)) {
+        if (id !== a.id) brain.abilityReadyAt[id] = Math.max(brain.abilityReadyAt[id], now + BOSS_ABILITY_GAP_MS);
+      }
+    }
     // Não emenda o ataque básico logo depois da habilidade.
     brain.nextAttackAt = Math.max(brain.nextAttackAt, now + brain.def.attackCooldownMs * 0.5);
 
@@ -462,6 +471,10 @@ export class MonsterAi {
       const tiles = abilityTiles(this.w.dungeon, { ...a, shape: "target" }, m.x, m.y, spot ? at.x : m.x, spot ? at.y : m.y);
       this.strike(m, a, at.x, at.y, tiles);
       this.hitArea(m, brain, a, tiles);
+      // A queda é o golpe: sem a recomposição, o Multiataque e o sopro saíam colados nela e matavam de uma vez.
+      const recovered = this.w.now() + DIVE_RECOVERY_MS;
+      brain.nextAttackAt = Math.max(brain.nextAttackAt, recovered);
+      for (const id of Object.keys(brain.abilityReadyAt)) brain.abilityReadyAt[id] = Math.max(brain.abilityReadyAt[id], recovered);
     });
   }
 
