@@ -89,7 +89,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   desert: {
     id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,
-    description: "Dunas, oásis e coqueiros. Escorpiões, abutres, gnolls, esqueletos e múmias. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
+    description: "Dunas, oásis e coqueiros. Escorpiões, abutres, gnolls, esqueletos e múmias; ruínas soterradas com mini-boss e baú. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
     encounters: [
       { depth: [0, 0], budget: 60, table: [["sandScorpion", 4], ["giantVulture", 2]] },
       { depth: [1, 1], budget: 130, table: [["sandScorpion", 3], ["giantVulture", 3], ["skeleton", 1], ["giantSpider", 1]] },
@@ -98,7 +98,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { depth: [4, 4], budget: 330, table: [["gnoll", 3], ["mummy", 2], ["skeletonArcher", 2], ["giantVulture", 1]] },
       { depth: [5, 99], budget: 380, table: [["mummy", 3], ["gnoll", 3], ["skeletonArcher", 1], ["giantVulture", 1]] },
     ],
-    minibosses: [],
+    minibosses: [["blackScorpion", 2], ["mummyPriest", 1], ["sandElemental", 1]],
     mimicChance: 0,
     bosses: [["sandWorm", 1]],
     rewardRunes: ["rune-fury", "rune-life", "rune-time", "rune-meteor"],

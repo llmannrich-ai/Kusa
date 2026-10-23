@@ -1,9 +1,9 @@
 import * as Phaser from "phaser";
-import { TILE_SIZE, Tile, isUnderground, tileAt, type Dungeon } from "@kusa/shared";
+import { TILE_SIZE, Tile, isUnderground, tileAt, tileDistance, type Dungeon, type Rect } from "@kusa/shared";
 import { hash, makeCanvas } from "./art/pixels.ts";
 import {
-  DESERT_FLOOR, DESERT_TALL, DESERT_WATER, DUNE_VARIANTS, PALM_CROWN, PALM_CROWN_ANCHOR, PALM_TRUNK, PALM_VARIANTS, SAND_VARIANTS,
-  WET_VARIANTS, palmTop,
+  DESERT_FLOOR, DESERT_TALL, DESERT_WATER, DUNE_VARIANTS, PALM_CROWN, PALM_CROWN_ANCHOR, PALM_TRUNK, PALM_VARIANTS, PAVING_VARIANTS,
+  RUIN_COLUMN_VARIANTS, RUIN_WALL_VARIANTS, SAND_VARIANTS, WET_VARIANTS, palmTop,
 } from "./art/desertDecor.ts";
 import { DESERT_TEXTURE, createDesertArt } from "./art/textures.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
@@ -51,6 +51,10 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
     return false;
   };
   const water = (t: number) => t === Tile.Water;
+  // Ruínas soterradas (salas dos mini-bosses): muro de arenito; a rocha do monte da caverna é desenhada à parte.
+  const mouth = d.cave?.entrance;
+  const isRuin = (x: number, y: number) => at(x, y) === Tile.Ruin && !(mouth && tileDistance(x, y, mouth.x, mouth.y) <= 2);
+  const inRuins = (x: number, y: number) => d.side.some((r) => inRect(r, x, y));
 
   // Areia molhada: o anel em volta da água (inclusive debaixo dos coqueiros da margem).
   const wet = new Uint8Array(d.width * d.height);
@@ -75,6 +79,7 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   const dune = tileset(DESERT_TEXTURE.dune, DUNE_VARIANTS);
   const decorFloor = tileset(DESERT_TEXTURE.floor, frames(DESERT_TEXTURE.floor));
   const decorWater = tileset(DESERT_TEXTURE.waterDecor, frames(DESERT_TEXTURE.waterDecor));
+  const paving = tileset(DESERT_TEXTURE.paving, PAVING_VARIANTS);
   const cave = d.cave ? caveTilesets(scene, d, tileset) : null;
   const under = (x: number) => isUnderground(d, x);
 
@@ -95,8 +100,8 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
         });
       } else {
         if (isWet(x, y)) DIRS.forEach(([dx, dy], i) => { if (isDry(x + dx, y + dy)) mask |= EDGE.fringe[i]; });
-        if (isDune(x, y - 1)) mask |= EDGE.shadeN;
-        if (isDune(x - 1, y)) mask |= EDGE.shadeW;
+        if (isDune(x, y - 1) || isRuin(x, y - 1)) mask |= EDGE.shadeN;
+        if (isDune(x - 1, y) || isRuin(x - 1, y)) mask |= EDGE.shadeW;
       }
       edgeMasks[y * d.width + x] = mask;
     }
@@ -105,7 +110,7 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   const edges = tileset(EDGE_TEXTURE, Math.max(1, edgeFrames.size));
 
   const caveSets = cave ? [cave.floor, cave.hall, cave.rockTop, cave.rockFace, cave.decor, cave.edges] : [];
-  const sets = [sand, wetSand, waterSet, dune, decorFloor, decorWater, edges, ...caveSets].map((t) => t.set);
+  const sets = [sand, wetSand, waterSet, dune, decorFloor, decorWater, paving, edges, ...caveSets].map((t) => t.set);
   const groundLayer = map.createBlankLayer("chao", sets)!.setDepth(floorDepth);
   const edgeLayer = map.createBlankLayer("bordas", sets)!.setDepth(floorDepth);
   const decorLayer = map.createBlankLayer("enfeites", sets)!.setDepth(floorDepth);
@@ -167,7 +172,10 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
       // Chão (também debaixo dos coqueiros): molhado na beira da água; seco em manchas de vento forte, fraco ou parado.
       const variant = hash(x, y, 7);
       const damp = near(x, y, 2, water) ? 0.9 : 1;
-      if (isWet(x, y)) {
+      if (inRuins(x, y)) {
+        // Piso das ruínas: lajes meio cobertas de areia.
+        groundLayer.putTileAt(paving.gid + Math.floor(variant * PAVING_VARIANTS), x, y).tint = patchTint(x, y, 0.88, SAND_SHADE);
+      } else if (isWet(x, y)) {
         groundLayer.putTileAt(wetSand.gid + Math.floor(variant * WET_VARIANTS), x, y);
       } else {
         const wind = windField(x, y);
@@ -177,6 +185,13 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
         tile.tint = shadeTint(patchTint(x, y, 0.84, SAND_SHADE), damp);
       }
       if (isPalm(x, y)) { palm(x, y); continue; }
+      if (isRuin(x, y)) {
+        // Pedra ligada a outra vira trecho de muro; pedra sozinha, coluna caída (como nas ruínas do pântano).
+        const joined = DIRS.some(([dx, dy]) => isRuin(x + dx, y + dy));
+        const frame = joined ? Math.floor(hash(x, y, 60) * RUIN_WALL_VARIANTS) : RUIN_WALL_VARIANTS + Math.floor(hash(x, y, 61) * RUIN_COLUMN_VARIANTS);
+        culler.add(scene.add.image(x * TILE_SIZE, y * TILE_SIZE, DESERT_TEXTURE.ruins, frame).setOrigin(0).setDepth((y + 1) * TILE_SIZE - 0.3), x, y);
+        continue;
+      }
       // Monte de rocha e boca da caverna: só a areia por baixo (o desenho do monte vem depois, inteiro).
       if (special.has(i) || t === Tile.Ruin || t === Tile.Cave) continue;
 
@@ -186,6 +201,12 @@ export function drawDesert(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
       const byWater = DIRS.some(([dx, dy]) => at(x + dx, y + dy) === Tile.Water);
       const byPalm = near(x, y, 1, (v) => v === Tile.Wall) && [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => isPalm(x + dx, y + dy)));
       const byDune = near(x, y, 1, (v) => v === Tile.Wall) && !byPalm;
+
+      if (inRuins(x, y)) {
+        // Dentro das ruínas: entulho, ossos de quem não saiu e uma pedra caída de vez em quando.
+        if (n < 0.08) decor(m < 0.5 ? DESERT_FLOOR.pebblesB : m < 0.8 ? DESERT_FLOOR.stone : DESERT_FLOOR.skull);
+        continue;
+      }
 
       if (byWater) {
         // Margem: papiro de pé junto da água; no resto, conchas e pegadas na areia molhada.
@@ -386,3 +407,7 @@ function createAmbience(
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smooth = (t: number) => t * t * (3 - 2 * t);
+
+function inRect(r: Rect, x: number, y: number) {
+  return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+}

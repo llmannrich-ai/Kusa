@@ -742,3 +742,102 @@ export function duneShadeStrip() {
   const west = (ctx: Ctx) => bands.forEach((a, i) => sideBand(ctx, 3, (k) => (i + 1) * 2 + (hash(k, i, 481) < 0.3 ? 1 : 0), (d) => (d >= i * 2 ? `rgba(${rgb},${a})` : null)));
   return strip([north, west, (ctx) => { north(ctx); west(ctx); }]);
 }
+
+// --- Ruínas soterradas (salas dos mini-bosses) ------------------------------------------------
+
+const SANDSTONE = { cap: "#e8c48e", top: "#d4aa70", face: "#b9874f", shade: "#8e6236", mortar: "#6e4a2a", crack: "#5a3a20" };
+
+/**
+ * Trecho de muro de arenito (sprite 32×32, de pé no tile): tampo claro em cima, face de blocos com rejunte, alguns
+ * blocos do alto caídos e areia acumulada no pé, do lado do vento. Luz de cima à esquerda.
+ */
+function ruinWall(variant: number) {
+  return (ctx: Ctx) => {
+    const top = 6 + Math.round(hash(variant, 700) * 4);
+    // Face: fileiras de blocos de 8 px de altura, desencontradas.
+    for (let y = top + 4; y < T; y++)
+      for (let x = 0; x < T; x++) {
+        const row = Math.floor((y - top - 4) / 7);
+        const off = row % 2 ? 5 : 0;
+        const joint = (y - top - 4) % 7 === 6 || (x + off) % 11 === 10;
+        let c = joint ? SANDSTONE.mortar : x < 4 ? SANDSTONE.top : x > T - 5 ? SANDSTONE.shade : SANDSTONE.face;
+        if (!joint && hash(x, y, 701 + variant) < 0.06) c = SANDSTONE.shade;
+        px(ctx, x, y, c);
+      }
+    // Tampo, com blocos faltando (a beira de cima quebrada).
+    for (let x = 0; x < T; x++) {
+      const missing = hash(Math.floor(x / 8), variant, 702) < 0.3;
+      const h = missing ? 1 : 4;
+      for (let y = top + 4 - h; y < top + 4; y++) px(ctx, x, y, y === top + 4 - h ? SANDSTONE.cap : SANDSTONE.top);
+      if (missing) px(ctx, x, top + 3, SANDSTONE.crack);
+    }
+    // Rachadura.
+    let cx = 8 + Math.round(hash(variant, 703) * 16);
+    for (let y = top + 6; y < T - 6; y++) {
+      if (hash(y, variant, 704) < 0.4) cx += hash(y, variant, 705) < 0.5 ? -1 : 1;
+      px(ctx, cx, y, SANDSTONE.crack);
+    }
+    // Areia no pé, mais alta à esquerda.
+    for (let x = 0; x < T; x++) {
+      const h = Math.max(1, Math.round(7 - x * 0.18 + Math.sin(x * 0.6 + variant) * 1.5));
+      for (let y = T - h; y < T; y++) px(ctx, x, y, y === T - h ? SAND.light : SAND.mid);
+    }
+  };
+}
+
+/** Coluna caída: tambores de arenito empilhados, o de cima quebrado em ângulo, e areia em volta do pé. */
+function ruinColumn(variant: number) {
+  return (ctx: Ctx) => {
+    const top = 4 + variant * 6;
+    for (let y = top; y < T - 3; y++)
+      for (let x = 10; x <= 21; x++) {
+        const u = (x - 15.5) / 6;
+        let c = u < -0.55 ? SANDSTONE.cap : u < -0.1 ? SANDSTONE.top : u < 0.55 ? SANDSTONE.face : SANDSTONE.shade;
+        if ((y - top) % 9 === 8) c = SANDSTONE.mortar;
+        if ((x === 12 || x === 16 || x === 19) && hash(x, y, 710) < 0.7) c = SANDSTONE.shade; // caneluras
+        px(ctx, x, y, c);
+      }
+    // Topo quebrado: corte inclinado.
+    for (let x = 10; x <= 21; x++) for (let y = top; y < top + Math.round((x - 10) * 0.4); y++) ctx.clearRect(x, y, 1, 1);
+    for (let x = 10; x <= 21; x++) px(ctx, x, top + Math.round((x - 10) * 0.4), SANDSTONE.cap);
+    // Pedaço caído ao lado e a areia.
+    blob(ctx, 25, 27, 3, 2, { o: SANDSTONE.crack, m: SANDSTONE.face, l: SANDSTONE.cap, d: SANDSTONE.shade });
+    for (let x = 6; x < 27; x++) {
+      const h = Math.max(1, Math.round(4 - Math.abs(x - 15) * 0.25));
+      for (let y = T - h; y < T; y++) px(ctx, x, y, y === T - h ? SAND.light : SAND.mid);
+    }
+  };
+}
+
+export const RUIN_WALL_VARIANTS = 3;
+export const RUIN_COLUMN_VARIANTS = 2;
+
+/** Faixa dos muros (quadros 0–2) e das colunas (3–4). */
+export function ruinStrip() {
+  return strip([ruinWall(0), ruinWall(1), ruinWall(2), ruinColumn(0), ruinColumn(1)]);
+}
+
+/**
+ * Piso das ruínas: lajes de arenito (2×2 por tile, rejunte em cima e à esquerda para fechar com o vizinho), meio
+ * cobertas de areia trazida pelo vento. Cada variação cobre um pedaço diferente.
+ */
+function paving(variant: number) {
+  return (ctx: Ctx) => {
+    for (let y = 0; y < T; y++)
+      for (let x = 0; x < T; x++) {
+        const joint = x % 16 === 0 || y % 16 === 0;
+        let c = joint ? "#9c7a4c" : (x % 16 === 1 || y % 16 === 1) ? "#dcb983" : "#c9a46d";
+        if (!joint && hash(x, y, 720 + variant) < 0.05) c = "#b28d58";
+        // Areia por cima: mancha suave periódica, diferente em cada variação.
+        const sand = Math.sin((2 * Math.PI * (x + variant * 7)) / T) + Math.sin((2 * Math.PI * (y + variant * 11)) / T);
+        if (sand > 0.9 - variant * 0.25) c = hash(x, y, 721) < 0.1 ? SAND.light : SAND.mid;
+        px(ctx, x, y, c);
+      }
+  };
+}
+
+export const PAVING_VARIANTS = 4;
+
+export function pavingStrip() {
+  return strip(Array.from({ length: PAVING_VARIANTS }, (_, v) => paving(v)));
+}
