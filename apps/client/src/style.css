@@ -639,7 +639,11 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .map-head { display: flex; align-items: center; gap: 10px; }
 .map-head strong, .map-head small { display: block; }
 .map-icon { font-size: 28px; }
+/* Acima da lista que rola: o botão de Batalhas sai da barra e não pode ser cortado por ela
+   (no iOS a área com rolagem vira camada própria e pinta por cima). Abaixo da folha (13/14). */
 .hub-tabs {
+  position: relative;
+  z-index: 2;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   align-items: end;
