@@ -746,17 +746,20 @@ button:disabled { opacity: 0.6; cursor: wait; }
 
 /* Escolha do cenário (tela de criar sala) */
 .map-list { display: grid; gap: 8px; }
-.map-card { display: grid; gap: 6px; width: 100%; padding: 12px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
+.map-card { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
 .map-card.selected { border-color: var(--accent); background: #2a211b; }
-.map-card p { margin: 0; font-size: 13px; }
+.map-name { flex: 1; }
+/* Cenário só para jogar sozinho: borda verde e o selo "Single player". */
+.map-card.solo { border-color: #3f6b3a; background: linear-gradient(90deg, #13241a, var(--bg)); }
+.map-card.solo.selected { border-color: #7cc243; background: linear-gradient(90deg, #1c3a22, #2a211b); }
+.map-solo { padding: 3px 8px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; color: #10200d; background: #7cc243; border-radius: 10px; white-space: nowrap; }
 .server-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .server-card { display: grid; gap: 4px; padding: 10px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
 .server-card.selected { border-color: var(--accent); background: #2a211b; }
 .server-card small { font-size: 12px; }
 .room-badge { margin-left: 6px; font-size: 12px; }
-.map-head { display: flex; align-items: center; gap: 10px; }
-.map-head strong, .map-head small { display: block; }
-.map-icon { font-size: 28px; }
+.map-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; font-size: 28px; }
+.map-icon svg { width: 44px; height: 44px; }
 /* Acima da lista que rola: o botão de Batalhas sai da barra e não pode ser cortado por ela
    (no iOS a área com rolagem vira camada própria e pinta por cima). Abaixo da folha (13/14). */
 .hub-tabs {
