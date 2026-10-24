@@ -2602,7 +2602,8 @@ export class Hunt {
       stats.chestsOpened++;
     }
     this.notice(x, y, `Baú: +${value} loot`, 0xf1c40f);
-    if (this.keepDrop()) this.dropItem(rollItem("miniboss", depth, this.random, 1, this.partyClasses()), x, y);
+    // O item do baú sai sempre; as poções, com a chance do mapa.
+    this.dropItem(rollItem("miniboss", depth, this.random, 1, this.partyClasses()), x, y);
     for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, x, y);
   }
 
