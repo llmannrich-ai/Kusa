@@ -138,8 +138,6 @@ export class GroundItem extends Schema {
   @type("string") itemId = "";
   @type("number") x = 0;
   @type("number") y = 0;
-  /** sessionId de quem pode pegar (runa do boss, uma por personagem); vazio = qualquer um. */
-  @type("string") owner = "";
 }
 
 /** Campo no chão criado por uma magia (Solo Consagrado, armadilha, estaca, chão em chamas da Pólvora). */
