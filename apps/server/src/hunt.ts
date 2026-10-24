@@ -639,14 +639,19 @@ export class Hunt {
       }
     });
 
-    // Campinas: dois monstros da tabela da sala do caminho mais próxima.
+    // Campinas: monstros da tabela da sala do caminho mais próxima (2, ou `meadowMonsters`) e, em parte delas
+    // (`meadowMinibosses`), um mini-boss solto, sem baú.
     d.meadows.forEach((room) => {
       if (!encounters) return;
       const depth = this.nearestPathDepth(room);
       const table = encounterAt(this.map, depth).table.filter(([kind]) => !MONSTERS[kind].group);
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < (this.map.meadowMonsters ?? 2); i++) {
         const spot = this.freeSpotIn(room, roll);
         if (spot) this.spawnCommon(pickWeighted(table, rng.next()), spot.x, spot.y, depth, rng.next);
+      }
+      if (rng.next() < (this.map.meadowMinibosses ?? 0)) {
+        const spot = this.freeSpotIn(room, roll);
+        if (spot) this.addMonster(pickWeighted(this.map.minibosses, rng.next()), spot.x, spot.y, depth);
       }
     });
 

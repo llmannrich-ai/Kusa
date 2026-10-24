@@ -385,7 +385,7 @@ recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
-| 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 8 campinas e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
+| 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -481,11 +481,12 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - **Para jogar sozinho e mais fácil:** o mapa aceita 1 jogador só (`MapDef.maxParty`; bots contam), então não há
   "Criar sala" nele, só "Jogar sozinho". É o maior mapa (128×128) e o mais longo (10 min): mais monstros que os
   outros, mais níveis e um boss no fim.
-- **O clã do brejo:** orcs e ogros em **9 zonas** do caminho em arco (cada uma mais forte), **8 campinas** com
-  monstros extras, mini-bosses nas **clareiras dos baús** e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**.
-  Os monstros são mais fracos que os da Cripta na base (o ganho de 12% por zona dobra os do fim), em bandos maiores:
-  o mapa inteiro tem cerca de 61 monstros e 7.200 de XP (a Cripta, 23 e 2.800), então quem limpa boa parte chega
-  no Rei perto do nível 12. Teto de loot da hunt solo: 2.500.
+- **O clã do brejo:** orcs e ogros em **9 zonas** do caminho em arco (cada uma mais forte), **14 campinas** com 3
+  monstros extras cada (e, em 40% delas, um mini-boss solto, sem baú), **clareiras de mini-boss com baú** (até 2 por
+  zona, 10 a 15 por mapa) e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**. Os monstros são mais fracos que
+  os da Cripta na base (o ganho de 12% por zona dobra os do fim): o mapa inteiro tem cerca de 100 monstros, 19
+  mini-bosses e 14.700 de XP (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
+  nível 12. Teto de loot da hunt solo: 5.000. Monstro longe da tela não é desenhado nem animado no cliente.
 - **Arte e animação próprias** (`art/rig.ts`, `art/marshMonsters.ts`, `art/ogreKing.ts`): cada monstro é montado de
   peças com volume (membros em cápsula, tronco, barriga, cabeça) postas por ângulos de articulação, então todos
   têm quadros de **parado** (respirando), **andando** (passo no ritmo do monstro; os ogros com passo pesado),
