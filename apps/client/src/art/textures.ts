@@ -1,6 +1,6 @@
 import type * as Phaser from "phaser";
 import { CLASS_IDS, TILE_SIZE, type ClassId, type SummonKind } from "@kusa/shared";
-import { MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures } from "./bestiary.ts";
+import { MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
 import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
 import { makeCanvas } from "./pixels.ts";
 import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
@@ -8,7 +8,7 @@ import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./he
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
-import { TREANT_OUTLINE, eagleCanvas, treantCanvas } from "./summons.ts";
+import { SUMMON_ART, SUMMON_FRAMES, SUMMON_OUTLINE, summonPortrait, summonSheet } from "./summonCreatures.ts";
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 import { TORCH_FRAMES, cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./cryptDecor.ts";
@@ -35,7 +35,7 @@ import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, firefl
 
 const DCSS_PATH = "assets/dcss/";
 
-/** Criaturas invocadas pelo Druida: as do pack e o Guardião do Bosque (arte própria). */
+/** Criaturas invocadas pelo Druida: arte própria e animada (`summonCreatures.ts`). */
 export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   wolf: "summon-wolf",
   hornet: "summon-hornet",
@@ -43,13 +43,20 @@ export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   bear: "summon-bear",
   wisp: "summon-wisp",
   treant: "summon-treant",
-  // O esqueleto erguido usa a arte do Esqueleto monstro (o brilho de aliado nos pés diferencia).
-  skeleton: "monster-skeleton",
+  skeleton: "summon-skeleton",
   eagle: "summon-eagle",
 };
 
-/** Criaturas invocadas com arte própria (não vêm do pack). */
-const OWN_SUMMON_ART: string[] = [SUMMON_TEXTURE.treant, SUMMON_TEXTURE.skeleton, SUMMON_TEXTURE.eagle];
+/** Animação de cada invocação, no formato dos monstros animados (textura → clipes). */
+export const SUMMON_ANIMS: Record<SummonKind, MonsterAnim> = Object.fromEntries(
+  (Object.keys(SUMMON_TEXTURE) as SummonKind[]).map((kind) => {
+    const art = SUMMON_ART[kind];
+    return [kind, {
+      size: art.size, sheet: () => summonSheet(art), portrait: () => summonPortrait(art), outline: SUMMON_OUTLINE,
+      fps: art.fps, frames: SUMMON_FRAMES, stride: art.stride,
+    }];
+  }),
+) as Record<SummonKind, MonsterAnim>;
 
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
 export const PORTAL_TEXTURE = { escape: "portal-escape", boss: "portal-boss" };
@@ -99,7 +106,6 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)),
-    ...Object.values(SUMMON_TEXTURE).filter((key) => !OWN_SUMMON_ART.includes(key)),
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
@@ -152,12 +158,12 @@ export function createHeroArt(scene: Phaser.Scene) {
 }
 
 /**
- * Monstros e invocações com a arte refinada (`refine.ts`): os PNGs do pack são trocados pela
- * versão em dobro de resolução, e o Guardião do Bosque e a Águia Gigante já nascem refinados (uma vez por jogo).
+ * Monstros e invocações com a arte refinada (`refine.ts`): os PNGs do pack são trocados pela versão em dobro de
+ * resolução, e os animados (monstros do Pântano e todas as invocações) viram folhas refinadas com um clipe por
+ * animação (uma vez por jogo).
  */
 export function createCreatureArt(scene: Phaser.Scene) {
-  const packed = [...new Set([...monsterTextures(), ...Object.values(SUMMON_TEXTURE)])]
-    .filter((key) => key !== SUMMON_TEXTURE.treant && key !== SUMMON_TEXTURE.eagle && !OWN_MONSTER_ART.includes(key));
+  const packed = monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key));
   for (const key of packed) {
     const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
     if (source.width !== TILE_SIZE) continue;
@@ -165,39 +171,37 @@ export function createCreatureArt(scene: Phaser.Scene) {
     scene.textures.remove(key);
     scene.textures.addCanvas(key, refined);
   }
-  if (!scene.textures.exists(SUMMON_TEXTURE.treant)) {
-    scene.textures.addCanvas(SUMMON_TEXTURE.treant, refineArt(treantCanvas(), { outline: TREANT_OUTLINE }));
-  }
-  // Animados: cada quadro da folha é refinado à parte (o contorno não vaza para o vizinho) e vira um quadro da textura.
-  for (const [key, anim] of Object.entries(MONSTER_ANIMS)) {
-    if (scene.textures.exists(key)) continue;
-    const sheet = anim.sheet();
-    const n = sheet.width / anim.size;
-    const big = anim.size * 2;
-    const { canvas, ctx } = makeCanvas(big * n, big);
-    const frame = makeCanvas(anim.size, anim.size);
-    for (let i = 0; i < n; i++) {
-      frame.ctx.clearRect(0, 0, anim.size, anim.size);
-      frame.ctx.drawImage(sheet, i * anim.size, 0, anim.size, anim.size, 0, 0, anim.size, anim.size);
-      ctx.drawImage(refineArt(frame.canvas, { outline: anim.outline }), i * big, 0);
-    }
-    const texture = scene.textures.addCanvas(key, canvas)!;
-    for (let i = 0; i < n; i++) texture.add(i, 0, i * big, 0, big, big);
-    for (const clip of CLIP_ORDER) {
-      const start = clipStart(clip);
-      scene.anims.create({
-        key: monsterAnimKey(key, clip),
-        frames: Array.from({ length: CLIPS[clip] }, (_, k) => ({ key, frame: start + k })),
-        frameRate: anim.fps[clip],
-        repeat: clip === "idle" || clip === "walk" ? -1 : 0,
-      });
-    }
-  }
+  for (const [key, anim] of Object.entries(MONSTER_ANIMS)) addAnimatedArt(scene, key, anim);
+  for (const kind of Object.keys(SUMMON_ANIMS) as SummonKind[]) addAnimatedArt(scene, SUMMON_TEXTURE[kind], SUMMON_ANIMS[kind]);
   for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
   }
-  if (!scene.textures.exists(SUMMON_TEXTURE.eagle)) {
-    scene.textures.addCanvas(SUMMON_TEXTURE.eagle, refineArt(eagleCanvas(), { outline: TREANT_OUTLINE }));
+}
+
+/** Folha animada: cada quadro é refinado à parte (o contorno não vaza para o vizinho) e vira um quadro da textura. */
+function addAnimatedArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
+  if (scene.textures.exists(key)) return;
+  const sheet = anim.sheet();
+  const n = sheet.width / anim.size;
+  const big = anim.size * 2;
+  const { canvas, ctx } = makeCanvas(big * n, big);
+  const frame = makeCanvas(anim.size, anim.size);
+  for (let i = 0; i < n; i++) {
+    frame.ctx.clearRect(0, 0, anim.size, anim.size);
+    frame.ctx.drawImage(sheet, i * anim.size, 0, anim.size, anim.size, 0, 0, anim.size, anim.size);
+    ctx.drawImage(refineArt(frame.canvas, { outline: anim.outline }), i * big, 0);
+  }
+  const texture = scene.textures.addCanvas(key, canvas)!;
+  for (let i = 0; i < n; i++) texture.add(i, 0, i * big, 0, big, big);
+  const frames = anim.frames ?? CLIPS;
+  for (const clip of CLIP_ORDER) {
+    const start = clipStart(clip, frames);
+    scene.anims.create({
+      key: monsterAnimKey(key, clip),
+      frames: Array.from({ length: frames[clip] }, (_, k) => ({ key, frame: start + k })),
+      frameRate: anim.fps[clip],
+      repeat: clip === "idle" || clip === "walk" ? -1 : 0,
+    });
   }
 }
 

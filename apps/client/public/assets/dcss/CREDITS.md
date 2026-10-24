@@ -18,11 +18,6 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `monster-orc.png` | `monster/orc_warrior_new.png` | — |
 | `monster-ogre.png` | `monster/ogre_new.png` | — |
 | `monster-dragon.png` | `monster/dragons/dragon.png` | — |
-| `summon-wolf.png` | `monster/animals/wolf.png` | — |
-| `summon-bear.png` | `monster/animals/black_bear.png` | — |
-| `summon-hornet.png` | `monster/animals/hornet.png` | — |
-| `summon-moth.png` | `monster/animals/sun_moth.png` | — |
-| `summon-wisp.png` | `monster/nonliving/will_o_the_wisp.png` | — |
 | `chest-locked.png` | `dungeon/chest_2_closed.png` | — |
 | `chest-unlocked.png` | `dungeon/chest.png` | — |
 | `chest-open.png` | `dungeon/chest_2_open.png` | — |

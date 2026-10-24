@@ -17,6 +17,10 @@ export interface MonsterAnim {
   outline: string;
   /** Quadros por segundo de cada clipe (o andar acompanha o passo do monstro no jogo). */
   fps: Record<Clip, number>;
+  /** Quadros de cada clipe, se não forem os de `CLIPS` (as invocações têm ciclos mais longos). */
+  frames?: Record<Clip, number>;
+  /** Quadros do andar por tile andado (padrão 3: o ciclo de 6 quadros cobre 2 tiles). */
+  stride?: number;
 }
 
 const ANIM_FPS: Record<Clip, number> = { idle: 4, walk: 9, attack: 12, cast: 7 };

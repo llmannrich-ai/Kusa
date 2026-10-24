@@ -762,6 +762,15 @@ As compradas no Grimório, por slot (números do nível 0):
 | Esqueleto Erguido (Feiticeiro Necromante) | 60% | corpo a corpo (0,8×) |
 | Águia Gigante (Mestre das Feras) | 50% | voa por cima da água; o mergulho (1,2×) atordoa 0,8 s |
 
+- **Arte e animação** (só no cliente, `apps/client/src/art/summonCreatures.ts`): todas as criaturas têm arte própria e
+  animada (parada, andando, golpe e especial), no volume de luz dos monstros do Pântano. O lobo trota (patas em
+  diagonal) e o urso anda no passo lateral e pesado; as patas pisam e ficam plantadas no chão enquanto o corpo passa
+  (cinemática inversa), e o andar acompanha a velocidade da criatura. O Guardião e o Esqueleto usam o esqueleto de
+  `rig.ts` (braços balançando contra as pernas); a águia, a vespa e a mariposa batem as asas (a vespa com asas
+  transparentes e as pernas penduradas); o Fogo-Fátuo é uma chama que tremula, com bracinhos de fumaça. O lobo
+  solta rastro de luz e uiva no especial; o urso empina e desce as garras no golpe, com runas no ombro que acendem.
+  As formas animais do Druida usam a mesma arte (andam e respiram com o herói).
+
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça na cor do sangue deles (vermelho, verde, roxo, preto; mortos-vivos viram poeira) (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, flecha dos arqueiros, bola de fogo do dragão), e cada habilidade tem o seu desenho (pedra em arco, teia, língua, salto, sopro, chuva ácida, relâmpago, engolir, voo). Os monstros respiram parados (cada um num ritmo), escondidos ficam quase transparentes e sem barra, o Mímico parece um baú e os Campeões têm nome e brilho dourados. Efeitos no herói: teia nos pés (preso), estrelas (atordoado), bolha verde (engolido), nuvem escura (cego) e gotas ácidas (corroído).
 
