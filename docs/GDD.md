@@ -37,7 +37,7 @@ redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
 O **Batalhas** abre a tela de salas (ver "Salas e sala de espera").
 Código em `apps/client/src/menu.ts`.
 
-- **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
+- **Classes:** as 4 classes com retrato, papel e atributos (vida, mana, dano, alcance e armadura já com as áureas, as runas e os itens vestidos por aquela classe, na mesma conta da hunt). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
@@ -379,7 +379,8 @@ então funcionam com o servidor do jogo dormindo.
 
 ## Mapas
 
-O jogador escolhe o mapa (cenário) na tela de criar sala (a escolha fica salva no aparelho). O mapa vale para as salas
+O jogador escolhe o mapa (cenário) na tela de criar sala. Os cartões vêm na ordem Pântano do Kosaradius, Cripta, Mar
+de Areia e Pântano das Ruínas, e o primeiro já vem escolhido toda vez que a tela abre. O mapa vale para as salas
 que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
@@ -577,8 +578,8 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 | Fim | Loot | Observação |
 |---|---|---|
 | **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. As runas equipadas ficam. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
-| **Fuga** | Leva tudo | Basta voltar à sala inicial e entrar no portal. |
-| **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
+| **Fuga** | Leva tudo | Basta voltar à sala inicial e ficar 1,5 s em cima do portal (um anel enche em volta do herói; sair antes zera a contagem). |
+| **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final; como na fuga, leva quem fica 1,5 s em cima dele. |
 | **Soterrado** (o tempo acabou) | Igual à morte | Conta como morte. |
 
 ## Combate (protótipo)
