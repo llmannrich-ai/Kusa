@@ -70,6 +70,7 @@ import { CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
 import {
   CHEST_TEXTURE,
   PORTAL_TEXTURE,
+  SUMMON_ANIMS,
   SUMMON_TEXTURE,
   heroArt,
   heroIdleFrame,
@@ -133,13 +134,14 @@ const DOT_COLORS: Record<DotKind, number> = { poison: 0x9acd32, burn: 0xff9f43, 
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
 const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp", "eagle"]);
-/** Formas animais do Druida: o sprite da fera no lugar do herói (a pantera é o lobo do pack em tons de noite). */
+/**
+ * Formas animais do Druida: a fera animada das invocações no lugar do herói (a pantera é o lobo espiritual em tons de
+ * noite). As folhas olham para a esquerda.
+ */
 const FORMS = {
   panther: { texture: SUMMON_TEXTURE.wolf, tint: 0x4b4b6b, scale: 1.1 },
-  bear: { texture: SUMMON_TEXTURE.bear, tint: 0xffffff, scale: 1.35 },
+  bear: { texture: SUMMON_TEXTURE.bear, tint: 0xffffff, scale: 1.1 },
 } as const;
-/** Sprites do pack que olham para a esquerda. */
-const SUMMON_FACES_LEFT = new Set<SummonKind>(["wolf", "bear"]);
 
 const TEXT_STYLE = {
   fontFamily: "Georgia, serif",
@@ -850,11 +852,12 @@ export class DungeonScene extends Phaser.Scene {
     return g;
   }
 
-  /** Forma de Pantera ou de Urso: o sprite da fera com os pés na base do tile (olha para a esquerda, como no pack). */
+  /** Forma de Pantera ou de Urso: a fera animada com os pés na base do tile (olha para a esquerda). */
   private formSprite(kind: keyof typeof FORMS, facingRight: boolean) {
     const form = FORMS[kind];
     const sprite = this.add.sprite(0, TILE_SIZE / 2, form.texture).setOrigin(0.5, 1).setScale(CREATURE_SPRITE_SCALE * form.scale)
       .setTint(form.tint).setFlipX(facingRight);
+    sprite.play(monsterAnimKey(form.texture, "idle"));
     this.tweens.add({ targets: sprite, scale: { from: CREATURE_SPRITE_SCALE * 0.6, to: CREATURE_SPRITE_SCALE * form.scale }, duration: 220, ease: "Back.Out" });
     return sprite;
   }
@@ -1023,8 +1026,7 @@ export class DungeonScene extends Phaser.Scene {
   private addGroundItem(id: string, item: GroundItemView) {
     const color = isPotion(item.itemId) ? POTIONS[item.itemId].color
       : isRune(item.itemId) ? RUNES[item.itemId].color : ITEMS[item.itemId] && itemColor(item.itemId);
-    // Runa de boss reservada a outro jogador: só ele vê e pega.
-    if (color === undefined || (item.owner && item.owner !== this.room.sessionId)) return;
+    if (color === undefined) return;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
     const glow = this.add.ellipse(0, 5, 20, 8, color, 0.45);
@@ -1204,14 +1206,22 @@ export class DungeonScene extends Phaser.Scene {
     unit.overlay.setVisible(!hidden);
   }
 
-  /** Criatura invocada: sprite do pack (ou o Guardião), barra azul (sem nome, para não poluir a tela) e um brilho ao aparecer. */
+  /**
+   * Criatura invocada: arte animada (parada, andando, golpe), barra azul (sem nome, para não poluir a tela) e um brilho
+   * ao aparecer.
+   */
   private addSummon(id: string, summon: SummonView) {
     const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
-    const sprite = this.add.sprite(0, 0, SUMMON_TEXTURE[kind]).setScale(CREATURE_SPRITE_SCALE);
+    const texture = SUMMON_TEXTURE[kind];
+    const sprite = this.add.sprite(0, 0, texture).setScale(CREATURE_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
-    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, SUMMON_FACES_LEFT.has(kind));
+    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, true);
     unit.bleeds = false;
     unit.flies = FLYERS.has(kind);
+    unit.texture = texture;
+    unit.anim = SUMMON_ANIMS[kind];
+    unit.busyUntil = 0;
+    sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * SUMMON_ANIMS[kind].frames!.idle) });
     // Brilho de aliado sob os pés, para não confundir com os monstros.
     const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 22, 7, 0x9cff7a, 0.35);
     unit.body.addAt(glow, 0);
@@ -1359,12 +1369,20 @@ export class DungeonScene extends Phaser.Scene {
     if (unit.anim && unit.texture && time >= (unit.busyUntil ?? 0)) {
       const clip = walking ? "walk" : "idle";
       unit.sprite.play(monsterAnimKey(unit.texture, clip), true);
-      unit.sprite.anims.timeScale = walking ? Phaser.Math.Clamp((3000 / unit.stepMs) / unit.anim.fps.walk, 0.5, 2) : 1;
+      unit.sprite.anims.timeScale = walking ? Phaser.Math.Clamp(((unit.anim.stride ?? 3) * 1000 / unit.stepMs) / unit.anim.fps.walk, 0.5, 2) : 1;
     }
     // Monstros respiram: o sprite (com os pés no chão) encolhe e estica de leve, cada um no seu ritmo.
     if (unit.baseScale && !unit.anim && !this.tweens.isTweening(unit.sprite)) {
       const breath = 1 - 0.03 * (0.5 + 0.5 * Math.sin(time / 380 + (unit.breath ?? 0)));
       unit.sprite.setScale(unit.baseScale, unit.baseScale * breath);
+    }
+    // Forma animal: a fera anda no ritmo do passo do herói e respira parada.
+    for (const kind of Object.keys(FORMS) as (keyof typeof FORMS)[]) {
+      const beast = unit.statuses.get(`form:${kind}`) as Phaser.GameObjects.Sprite | undefined;
+      if (!beast?.visible) continue;
+      const anim = SUMMON_ANIMS[kind === "panther" ? "wolf" : "bear"];
+      beast.play(monsterAnimKey(FORMS[kind].texture, walking ? "walk" : "idle"), true);
+      beast.anims.timeScale = walking ? Phaser.Math.Clamp(((anim.stride ?? 3) * 1000 / unit.stepMs) / anim.fps.walk, 0.5, 2) : 1;
     }
     if (unit.heroKey) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);

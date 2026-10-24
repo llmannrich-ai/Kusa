@@ -6,7 +6,7 @@
  * Uso: npx tsx apps/server/scripts/bag.ts [url]
  */
 import { Client } from "@colyseus/sdk";
-import { BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance, type MonsterKind } from "@kusa/shared";
+import { BAG_SIZE, ITEMS, canUse, MONSTERS, MSG, ROOM_NAME, generateDungeon, tileDistance, type MonsterKind } from "@kusa/shared";
 import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
 
@@ -21,8 +21,8 @@ let room: any;
 let dungeon: ReturnType<typeof generateDungeon>;
 let ended: any = null;
 const me = () => room.state.players.get(room.sessionId);
-// Poções também caem no chão: aqui só interessa equipamento.
-const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId]);
+// Poções também caem no chão: aqui só interessa equipamento que o cavaleiro veste (o drop não olha a classe).
+const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId] && canUse(it.itemId, "knight"));
 
 for (let attempt = 1; ; attempt++) {
   try {

@@ -283,11 +283,15 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 ### Runas
 
-Pedras mágicas que **só caem dos bosses** (o Dragão jovem e a Hidra dropam 1 runa cada; o nome sobe sobre o drop).
-**Cada boss dá a runa uma vez por personagem** (conta e classe): na equipe, cada herói que ainda não levou a runa
-daquele boss ganha a sua, que só ele vê e pega do chão; quem já levou vê "Runa deste boss já levada". Vale também para
-os baús de runa atrás do Verme da Areia. O banco anota em `profile_boss_runes` (`record_boss_runes` no servidor de jogo,
-`finish_solo_run` na hunt solo, que só aceita uma runa nova por boss anotado na hunt).
+Pedras mágicas que **só saem dos bosses** (o Dragão jovem e a Hidra dão 1 runa cada) e seguem uma regra própria de loot:
+**não caem no chão, vão direto para a bag.** **Cada boss dá a runa uma vez por personagem** (conta e classe): quando ele
+morre, cada herói da equipe que está jogando e ainda não levou a runa daquele boss recebe a sua na bag, esteja onde
+estiver; quem já levou vê "Runa deste boss já levada" (bots não recebem). Com a bag cheia, o item de menor valor de venda
+cai no chão aos pés do herói (qualquer um pega) e a runa ocupa o lugar dele. Depois disso a runa **passa de mão em mão**
+livremente: largada da bag, qualquer um da equipe pega. Vale também para os baús de runa atrás do Verme da Areia. O banco
+anota em `profile_boss_runes` (`record_boss_runes` no servidor de jogo, `finish_solo_run` na hunt solo e na sala no
+aparelho do jogador, que aceita uma runa nova por boss anotado na hunt mais até 3 recebidas de colegas,
+`SOLO_LIMITS.passedRunes`).
 Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `market_items` e `profile_items` como os itens.
 
 - Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220). O mercado não vende runas.
@@ -340,9 +344,13 @@ Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espe
   mais perto da equipe, escolhe a 1ª magia oferecida em cada slot e a 1ª melhoria de cada nível, e conjura assim que a magia recarrega:
   cura e escudo em quem está ferido, dano em quem está ao alcance, bônus e campos quando a luta está perto. Longe demais do líder
   (passou pela caverna, ficou preso), reaparece ao lado dele. Não pisa no portal nem na caverna.
-- **Sem loot nem gold:** o que o bot mata não dá loot a ninguém, ele não abre baú, não pega item nem poção do chão e não entra na
-  divisão dos drops ("só cai o que alguém da equipe pode usar" conta só os humanos). O bot ganha XP para subir de nível junto, mas
-  não divide: cada humano ganha o mesmo que ganharia sem o bot.
+- **Sem gold nem itens:** o bot não abre baú, não pega item nem poção do chão e não recebe runa. Ele conta na divisão da XP e do
+  gold como qualquer herói da equipe (com 1 humano e 1 bot, cada um leva metade), mas não guarda gold: a parte dele se perde.
+  O que o bot mata rende XP e gold para a equipe como qualquer morte.
+- **Menos itens com bots:** como o bot não pega item do chão, sem corte quem joga com bots levaria sozinho os itens da equipe
+  inteira. Cada item de equipamento (dos monstros, do boss e do baú) só cai com a chance de humanos ÷ equipe na hora do drop
+  (1 humano e 3 bots: 25%; 2 humanos e 2 bots: 50%), o mesmo que cada um levaria numa equipe de humanos. Poções e runas não
+  mudam. A telemetria conta o corte em `items.botCut`.
 - Quando o último humano sai da dungeon (morto, fugindo ou pelo portal do boss), os bots saem junto e a hunt acaba.
 
 ### Jogar sozinho
@@ -586,7 +594,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado (ou com ele fora do alcance), o servidor escolhe o monstro mais próximo ao alcance.
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
-- A XP da morte é dividida entre quem acertou o monstro, com +20% por participante extra; o loot vai para quem deu o último golpe.
+- A XP da morte é dividida em partes iguais por toda a equipe que está jogando na dungeon (bots incluídos; quem morreu ou saiu fica de fora), tenha batido no monstro ou não: 100 XP com 4 heróis dão 25 a cada um. O gold (loot) do monstro, do baú e do Mímico se divide do mesmo jeito.
 - **A dificuldade não depende do tamanho da equipe:** os monstros são os mesmos com 1 ou 4 heróis. Jogar em equipe é mais fácil de propósito, para estimular a equipe; nenhuma regra escala vida, dano ou quantidade de monstros pelo número de jogadores.
 - Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
@@ -754,6 +762,15 @@ As compradas no Grimório, por slot (números do nível 0):
 | Esqueleto Erguido (Feiticeiro Necromante) | 60% | corpo a corpo (0,8×) |
 | Águia Gigante (Mestre das Feras) | 50% | voa por cima da água; o mergulho (1,2×) atordoa 0,8 s |
 
+- **Arte e animação** (só no cliente, `apps/client/src/art/summonCreatures.ts`): todas as criaturas têm arte própria e
+  animada (parada, andando, golpe e especial), no volume de luz dos monstros do Pântano. O lobo trota (patas em
+  diagonal) e o urso anda no passo lateral e pesado; as patas pisam e ficam plantadas no chão enquanto o corpo passa
+  (cinemática inversa), e o andar acompanha a velocidade da criatura. O Guardião e o Esqueleto usam o esqueleto de
+  `rig.ts` (braços balançando contra as pernas); a águia, a vespa e a mariposa batem as asas (a vespa com asas
+  transparentes e as pernas penduradas); o Fogo-Fátuo é uma chama que tremula, com bracinhos de fumaça. O lobo
+  solta rastro de luz e uiva no especial; o urso empina e desce as garras no golpe, com runas no ombro que acendem.
+  As formas animais do Druida usam a mesma arte (andam e respiram com o herói).
+
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça na cor do sangue deles (vermelho, verde, roxo, preto; mortos-vivos viram poeira) (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, flecha dos arqueiros, bola de fogo do dragão), e cada habilidade tem o seu desenho (pedra em arco, teia, língua, salto, sopro, chuva ácida, relâmpago, engolir, voo). Os monstros respiram parados (cada um num ritmo), escondidos ficam quase transparentes e sem barra, o Mímico parece um baú e os Campeões têm nome e brilho dourados. Efeitos no herói: teia nos pés (preso), estrelas (atordoado), bolha verde (engolido), nuvem escura (cego) e gotas ácidas (corroído).
 
@@ -794,8 +811,8 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
 - Armadura corta dano recebido: `armadura / (armadura + 25)`; o conjunto comum de Dragão (33) corta 57%.
 - **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
   Raridade: monstro comum 18% raro e 4% mágico; mini-boss e baú 35% e 12%; boss 40% e 25%.
-  **Só cai o que alguém da equipe pode usar** (um cavaleiro sozinho não acha cajado).
-- O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: não tem dono, então outros jogadores podem "roubar" o que ninguém pegou.
+  **O drop não olha a classe de ninguém:** cai qualquer item, mesmo jogando sozinho (um cavaleiro acha cajado; vai para a bag e se vende).
+- O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
 - Quem morre larga 1 equipamento sorteado e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
 - Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro e ×4 se mágico.
@@ -856,5 +873,5 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`.
 - Se a morte regride os upgrades permanentes, e quanto.
 - Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida); preços do Grimório e do mercado, e a força das magias e criaturas novas, ainda precisam de balanceamento.
 - Balanceamento do Pântano (dificuldade 2) e próximos mapas e bosses.
-- Os jogadores de uma equipe se reanimam? O loot é compartilhado ou individual?
+- Os jogadores de uma equipe se reanimam?
 - Arte: os sprites do Tibia são da CipSoft e **não podem ser usados**. Usaremos assets com licença aberta (OpenGameArt, itch.io) ou arte própria, no mesmo estilo.

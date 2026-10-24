@@ -57,13 +57,12 @@ for (const slot of ["legs", "boots"] as const) {
 }
 const gear = gearStats([itemId("boots", "boots", 3), itemId("armor", "war", 3), itemId("weapon", "staff", 3)]);
 if (!(gear.armor > 0 && gear.speed > 0 && gear.spellPower > 0)) throw new Error("gearStats não somou");
-// Drop da equipe: um cavaleiro sozinho só recebe o que ele usa.
+// O drop não olha a classe: em 500 sorteios cai item que o cavaleiro não usa.
 let seed = 1;
 const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-for (let i = 0; i < 500; i++) {
-  const id = rollItem("boss", 6, random, 0, ["knight"]);
-  if (!ITEMS[id] || !canUse(id, "knight")) throw new Error(`drop inválido para cavaleiro: ${id}`);
-}
+const drops = Array.from({ length: 500 }, () => rollItem("boss", 6, random));
+if (drops.some((id) => !ITEMS[id])) throw new Error(`drop inválido: ${drops.find((id) => !ITEMS[id])}`);
+if (drops.every((id) => canUse(id, "knight"))) throw new Error("o drop filtrou pela classe: só caiu o que o cavaleiro usa");
 console.log("catálogo de itens: ok");
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -77,8 +76,8 @@ let room: any;
 let dungeon: ReturnType<typeof generateDungeon>;
 let died = false;
 const me = () => room.state.players.get(room.sessionId);
-// Poções também caem no chão: aqui só interessa equipamento.
-const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId]);
+// Poções também caem no chão, e o drop não olha a classe: só interessa o equipamento que o cavaleiro veste.
+const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId] && canUse(it.itemId, "knight"));
 
 for (let attempt = 1; ; attempt++) {
   try {
@@ -149,7 +148,8 @@ async function run() {
     await wait(100);
   }
   if (room.state.items.has(ground.id)) throw new Error("o item continua no chão depois de equipado");
-  if (me().bag.length !== 0) throw new Error(`a bag devia estar vazia: ${[...me().bag].join(", ")}`);
+  // Item de outra classe pego no caminho vai para a bag; o que o cavaleiro veste, não.
+  if (me().bag.some((id: string) => canUse(id, "knight"))) throw new Error(`a bag só devia ter itens de outra classe: ${[...me().bag].join(", ")}`);
   console.log(`equipado: ${me()[def.slot]}`);
 }
 
