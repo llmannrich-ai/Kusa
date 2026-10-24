@@ -2,11 +2,13 @@
 export interface Settings {
   minimap: boolean;
   landscape: boolean;
+  fixedStick: boolean;
 }
 
 const DEFAULTS: Settings = {
   minimap: true,
   landscape: false,
+  fixedStick: false,
 };
 
 /** Uma opção como aparece na tela de configurações; novas opções entram aqui e em `Settings`. */
@@ -22,6 +24,11 @@ export const SETTING_DEFS: SettingDef[] = [
     key: "landscape",
     label: "Jogar deitado (beta)",
     hint: "A hunt vira o celular na horizontal: joystick no polegar esquerdo, botões no direito. Os menus continuam na vertical.",
+  },
+  {
+    key: "fixedStick",
+    label: "Joystick fixo",
+    hint: "O joystick fica sempre à vista no canto de baixo à esquerda, em vez de aparecer onde o polegar toca.",
   },
 ];
 
