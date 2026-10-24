@@ -34,6 +34,7 @@ import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt, flushPendingSolo } from "./solo.ts";
+import { loadBossKills } from "./profile.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
@@ -213,12 +214,14 @@ function openSheet() {
   $("sheet-name").textContent = map.name;
   $("sheet-region").textContent = WORLD_POINTS[map.id].region;
   const boss = mainBoss(map);
-  // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista.
+  // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista. Mapa de covis (Travessia): os
+  // dois bosses, um de cada lado da bifurcação.
+  const bosses = map.lairs ? [`☠ ${map.lairs.map((l) => MONSTERS[l.boss].name.split(" ")[0]).join(" · ")}`] : boss ? [`☠ ${MONSTERS[boss].name}`] : [];
   const chips = [
     difficultyStars(map.difficulty),
     `⏱ ${map.durationSeconds / 60} min`,
     partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
-    ...(boss ? [`☠ ${MONSTERS[boss].name}`] : []),
+    ...bosses,
   ];
   $("sheet-chips").replaceChildren(...chips.map((text) => {
     const li = document.createElement("li");
@@ -252,6 +255,9 @@ async function openRooms() {
   show("rooms-sheet", false);
   world ??= createWorldMap($("world-view"), MAP_ART, pickPoint, toast);
   world.setHero(heroSheet(hub.classId).toDataURL());
+  world.setBossKills([]);
+  const classId = hub.classId;
+  void loadBossKills(classId).then((kills) => { if (hub.classId === classId) world?.setBossKills(kills); }).catch(() => {});
   world.select(createMapId(), { instant: true });
   // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
   world.focus(createMapId());

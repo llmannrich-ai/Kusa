@@ -99,7 +99,7 @@ export function renderRules(root: HTMLElement) {
     section("🗺️ Mapas e tempo", false,
       table(["Mapa", "Dificuldade", "Tempo", "Boss"], MAP_IDS.map((id) => {
         const m = MAPS[id];
-        return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), m.bosses.map(([k]) => MONSTERS[k].name).join(" ou ") || "— (ainda sem monstros)"];
+        return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), m.bosses.map(([k]) => MONSTERS[k].name).join(m.lairs ? " e " : " ou ") || "— (ainda sem monstros)"];
       })),
       `Quem cria a sala escolhe o mapa. Cada sala mais funda é ${pct(DEPTH_SCALING)} mais forte que a anterior (vida, dano, XP e loot). `
       + "Os monstros de cada sala são sorteados a cada hunt. Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro. "
