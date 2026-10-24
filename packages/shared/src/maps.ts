@@ -3,8 +3,8 @@ import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
 export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern";
 
-/** Nível de dificuldade mostrado no menu (estrelas). */
-export type MapDifficulty = 1 | 2;
+/** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
+export type MapDifficulty = 1 | 2 | 3 | 4;
 
 /**
  * Encontro das salas do caminho numa faixa de profundidade, como o orçamento de XP do D&D: a sala recebe monstros
@@ -173,23 +173,26 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["ogreKing", 1]],
   },
   cavern: {
-    id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 2, durationSeconds: 8 * 60,
-    description: "Túneis por baixo do mar, entre Solária e o Arquipélago. Da câmara de chegada a caverna se bifurca: a oeste, o Basilisco (médio); a leste, o Observador das Profundezas (muito difícil). Cada boss morto abre o portal do covil dele.",
+    id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 4, durationSeconds: 10 * 60, meadowMonsters: 3,
+    description: "Túneis por baixo do mar, entre Solária e o Arquipélago: o mapa mais difícil do jogo. Depois do tronco, a caverna se bifurca: a oeste, o Basilisco; a leste, mais fundo, o Observador das Profundezas, o boss mais forte de Kosaradius. Cada boss morto abre o portal do covil dele.",
     encounters: [
-      // Túnel oeste (zonas 0 a 2), até o Basilisco.
-      { depth: [0, 0], budget: 120, table: [["kobold", 4], ["stirge", 3], ["giantSpider", 1]] },
-      { depth: [1, 1], budget: 200, table: [["goblin", 3], ["goblinArcher", 2], ["giantSpider", 2], ["kobold", 1], ["hobgoblin", 1]] },
-      { depth: [2, 2], budget: 290, table: [["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 2], ["giantSpider", 1], ["hobgoblin", 1]] },
-      // Túnel leste (zonas 3 a 5), mais fundo e mais forte, até o Observador.
-      { depth: [3, 3], budget: 380, table: [["ghoul", 3], ["giantSpider", 2], ["skeletonArcher", 2], ["lizardfolk", 2]] },
-      { depth: [4, 4], budget: 470, table: [["ghoul", 3], ["blackPudding", 2], ["willOWisp", 2], ["lizardfolk", 1], ["orc", 1]] },
-      { depth: [5, 99], budget: 560, table: [["blackPudding", 2], ["naga", 3], ["ghoul", 2], ["willOWisp", 2]] },
+      // Tronco (zonas 0 e 1): aquecimento, todo mundo começa no nível 1.
+      { depth: [0, 0], budget: 120, table: [["kobold", 4], ["stirge", 3], ["rat", 2]] },
+      { depth: [1, 1], budget: 230, table: [["goblin", 3], ["goblinArcher", 2], ["giantSpider", 2], ["kobold", 1]] },
+      // Túnel oeste (zonas 2 a 4), até o Basilisco.
+      { depth: [2, 2], budget: 420, table: [["skeleton", 3], ["skeletonArcher", 2], ["gnoll", 2], ["hobgoblin", 1], ["giantSpider", 1]] },
+      { depth: [3, 3], budget: 560, table: [["gnoll", 3], ["orc", 2], ["ghoul", 2], ["skeletonArcher", 2]] },
+      { depth: [4, 4], budget: 680, table: [["orc", 3], ["ghoul", 2], ["lizardfolk", 2], ["gnoll", 1], ["skeletonArcher", 1]] },
+      // Túnel leste (zonas 5 a 7), mais fundo e mais forte, até o Observador.
+      { depth: [5, 5], budget: 520, table: [["ghoul", 3], ["lizardfolk", 2], ["bogBody", 2], ["crocodile", 1], ["willOWisp", 1]] },
+      { depth: [6, 6], budget: 600, table: [["naga", 3], ["blackPudding", 2], ["ghoul", 2], ["willOWisp", 2]] },
+      { depth: [7, 99], budget: 680, table: [["naga", 3], ["shamblingMound", 2], ["blackPudding", 2], ["willOWisp", 2]] },
     ],
-    minibosses: [["bugbear", 2], ["gelatinousCube", 1], ["troll", 1]],
+    minibosses: [["bugbear", 2], ["troll", 2], ["gelatinousCube", 1]],
     mimicChance: 1 / 4,
     bosses: [["beholder", 1], ["basilisk", 1]],
     lairs: [
-      { boss: "basilisk", depth: 4, portalBonus: 0.5, side: "oeste" },
+      { boss: "basilisk", depth: 5, portalBonus: 0.5, side: "oeste" },
       { boss: "beholder", depth: 8, portalBonus: 1, side: "leste" },
     ],
   },
@@ -244,6 +247,9 @@ export function mapIdOf(value: unknown): MapId {
   return typeof value === "string" && value in MAPS ? (value as MapId) : DEFAULT_MAP;
 }
 
+/** Maior dificuldade da escala (a Caverna da Travessia). */
+export const MAX_DIFFICULTY = 4;
+
 export function difficultyStars(difficulty: MapDifficulty) {
-  return "★".repeat(difficulty) + "☆".repeat(2 - difficulty);
+  return "★".repeat(difficulty) + "☆".repeat(MAX_DIFFICULTY - difficulty);
 }

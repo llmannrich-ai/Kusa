@@ -1,6 +1,7 @@
 /**
  * Teste da Caverna da Travessia, sem servidor (`arena.ts`: relógio falso, sorteios de seed fixa):
- *   - o gerador faz a chegada embaixo e dois covis em cima, um de cada lado, com 3 zonas e uma câmara lateral por túnel;
+ *   - o gerador faz a chegada embaixo, o tronco de 2 zonas e dois covis em cima, um de cada lado, com 3 zonas, um nicho
+ *     e uma câmara lateral por túnel;
  *   - a hunt põe o Basilisco no covil oeste e o Observador no leste, cada um na profundidade do covil (sem sorteio);
  *   - morto o Basilisco, só o portal do covil oeste abre, com o crédito do boss (runa e `bossKills`) para o herói;
  *   - sair pelo portal oeste dá o bônus dele (50%); morto o Observador, o portal leste dá o bônus maior (100%);
@@ -23,7 +24,10 @@ check(d.lairs?.length === 2, `2 covis, veio ${d.lairs?.length}`);
 const [west, east] = d.lairs!;
 check(centerOf(west.room).x < d.width / 2 && centerOf(east.room).x > d.width / 2, "covil oeste à esquerda e leste à direita");
 check(d.portal.y > centerOf(west.room).y + 40 && d.portal.y > centerOf(east.room).y + 40, "a chegada fica embaixo, longe dos covis");
-check(d.path.length === 6 && d.side.length === 2, `3 zonas e 1 câmara por túnel, veio ${d.path.length} e ${d.side.length}`);
+check(d.path.length === 8 && d.side.length === 2 && d.meadows.length === 2,
+  `2 zonas no tronco, 3 por túnel, 1 câmara e 1 nicho por túnel; veio ${d.path.length}, ${d.side.length} e ${d.meadows.length}`);
+check(d.path.slice(0, 2).every((z) => Math.abs(centerOf(z).x - d.width / 2) <= 3), "o tronco sobe pelo meio, antes da bifurcação");
+check(d.path.slice(2, 5).every((z) => centerOf(z).x < d.width / 2) && d.path.slice(5).every((z) => centerOf(z).x > d.width / 2), "zonas 2-4 a oeste, 5-7 a leste");
 check(d.lairs!.every((l) => tileAt(d, l.portal.x, l.portal.y) === Tile.Floor), "os portais dos covis nascem fechados (chão)");
 check(lairPortalAt(d, east.portal.x, east.portal.y) === 1 && lairPortalAt(d, d.portal.x, d.portal.y) === -1, "lairPortalAt acha o covil");
 console.log(`covis em ${JSON.stringify(centerOf(west.room))} e ${JSON.stringify(centerOf(east.room))}; chegada em ${JSON.stringify(d.portal)}`);

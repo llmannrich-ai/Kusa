@@ -215,7 +215,7 @@ function openSheet() {
   const boss = mainBoss(map);
   // Mapa de covis (Travessia): um boss de cada lado da bifurcação.
   const bosses = map.lairs
-    ? map.lairs.map((l, i) => `${l.side === "oeste" ? "Oeste" : "Leste"}: ${MONSTERS[l.boss].name} (${i === 0 ? "médio" : "muito difícil"})`)
+    ? map.lairs.map((l, i) => `${l.side === "oeste" ? "Oeste" : "Leste"}: ${MONSTERS[l.boss].name} (${i === 0 ? "difícil" : "muito difícil"})`)
     : boss ? [`Boss: ${MONSTERS[boss].name}`] : [];
   const chips = [
     `Dificuldade ${difficultyStars(map.difficulty)}`,

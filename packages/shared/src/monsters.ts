@@ -626,7 +626,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   // dele; o Observador (leste) é o muito difícil, acima da Hidra. A profundidade de cada covil está em `MAPS.cavern.lairs`.
   basilisk: monster({
     kind: "basilisk", name: "Basilisco", rank: "boss", type: "monstrosity", role: "brute", cr: 6,
-    hp: 850, damage: 20, xp: 800, loot: [70, 110], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
+    hp: 840, damage: 20, xp: 800, loot: [70, 110], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
     // Escamas de pedra: corte resvala um pouco; o veneno é dele.
     elements: { physical: 0.85, nature: 0.5 },
     traits: { onHit: { chance: 0.4, dot: { kind: "poison", power: 0.25, durationMs: 4000 } } },
@@ -636,8 +636,8 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         effect: { kind: "stun", ms: 1500 }, color: 0x9be37a, fx: "breath",
       },
       {
-        id: "venomBite", name: "Mordida Venenosa", shape: "target", range: 1, radius: 0, cooldownMs: 7000, power: 1.7,
-        dot: { kind: "poison", power: 0.35, durationMs: 5000 }, color: 0x6fbf3a, fx: "rend",
+        id: "venomBite", name: "Mordida Venenosa", shape: "target", range: 1, radius: 0, cooldownMs: 8000, power: 1.4,
+        dot: { kind: "poison", power: 0.3, durationMs: 4000 }, color: 0x6fbf3a, fx: "rend",
       },
       {
         id: "tailSweep", name: "Cauda de Pedra", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 1.3, push: 2,
@@ -648,18 +648,18 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
   beholder: monster({
     kind: "beholder", name: "Observador das Profundezas", rank: "boss", type: "aberration", role: "controller", cr: 9,
-    hp: 1700, damage: 22, xp: 1600, loot: [150, 230], speed: 1.8, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
+    hp: 1450, damage: 18, xp: 1600, loot: [150, 230], speed: 1.8, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
     // Flutua longe de quem chega perto e atira com os olhos menores.
     elements: { dark: 0.5, radiant: 1.25 },
     traits: { keepDistance: 2 },
     abilities: [
       {
-        id: "disintegrate", name: "Raio Desintegrador", shape: "line", range: 7, radius: 0, length: 7, cooldownMs: 7000, power: 2.1,
+        id: "disintegrate", name: "Raio Desintegrador", shape: "line", range: 7, radius: 0, length: 7, cooldownMs: 8000, power: 1.6,
         color: 0xb06bff, fx: "lightning",
       },
       {
-        id: "paralyzeRay", name: "Raio Paralisante", shape: "bolt", range: 6, radius: 0, cooldownMs: 11000, power: 0.5,
-        effect: { kind: "stun", ms: 1500 }, color: 0xffe066, fx: "bolt",
+        id: "paralyzeRay", name: "Raio Paralisante", shape: "bolt", range: 6, radius: 0, cooldownMs: 12000, power: 0.5,
+        effect: { kind: "stun", ms: 1200 }, color: 0xffe066, fx: "bolt",
       },
       {
         id: "repulse", name: "Raio Repulsor", shape: "self", range: 2, radius: 2, cooldownMs: 9000, power: 0.9, push: 3,

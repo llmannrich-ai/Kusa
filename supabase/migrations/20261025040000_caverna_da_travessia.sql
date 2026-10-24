@@ -1,8 +1,8 @@
 -- Mapa novo: Caverna da Travessia ('cavern'), na ilha entre Solária e o Arquipélago. Dois covis, um boss em cada:
--- o Basilisco ('basilisk', médio) e o Observador das Profundezas ('beholder', muito difícil). Cada boss dá a runa
+-- o Basilisco ('basilisk', o médio do mapa) e o Observador das Profundezas ('beholder', o mais forte do jogo). Cada boss dá a runa
 -- dele uma vez por personagem, e o mapa mundi lê `profile_boss_runes` para liberar o caminho daquele lado da
 -- bifurcação. A hunt solo e a sala no aparelho do jogador aceitam o mapa com os limites de `SOLO_LIMITS`
--- (packages/shared: 8 min, teto de loot 2200, teto cheio em 180 s). Os bosses de cada mapa repetem
+-- (packages/shared: 10 min, teto de loot 3000, teto cheio em 240 s). Os bosses de cada mapa repetem
 -- `MAPS[...].bosses` do packages/shared: mude os dois juntos. As funções partem da versão em produção.
 
 alter table public.solo_runs drop constraint solo_runs_map_id_check;
@@ -39,9 +39,9 @@ declare
   v_maps_old constant text := $q$p_map_id not in ('crypt', 'swamp', 'desert', 'marsh')$q$;
   v_maps_new constant text := $q$p_map_id not in ('crypt', 'swamp', 'desert', 'marsh', 'cavern')$q$;
   v_finish_pairs constant text[][] := array[
-    array[$q$when 'marsh' then 600 else 240 end;$q$, $q$when 'marsh' then 600 when 'cavern' then 480 else 240 end;$q$],
-    array[$q$when 'marsh' then 1900 else 1200 end;$q$, $q$when 'marsh' then 1900 when 'cavern' then 2200 else 1200 end;$q$],
-    array[$q$when 'marsh' then 240 else 90 end;$q$, $q$when 'marsh' then 240 when 'cavern' then 180 else 90 end;$q$]
+    array[$q$when 'marsh' then 600 else 240 end;$q$, $q$when 'marsh' then 600 when 'cavern' then 600 else 240 end;$q$],
+    array[$q$when 'marsh' then 1900 else 1200 end;$q$, $q$when 'marsh' then 1900 when 'cavern' then 3000 else 1200 end;$q$],
+    array[$q$when 'marsh' then 240 else 90 end;$q$, $q$when 'marsh' then 240 when 'cavern' then 240 else 90 end;$q$]
   ];
   i int;
 begin
