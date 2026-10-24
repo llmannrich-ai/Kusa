@@ -58,16 +58,25 @@ export function renderServerPicker(onPick: () => void) {
 
 // --- Cenário da sala criada -----------------------------------------------
 
-let chosenMap: MapId = mapIdOf(storageGet("kusa:map"));
+/** Ordem dos cenários no menu (mapa novo entra no fim): o primeiro já vem escolhido toda vez que o menu de batalha abre. */
+const MENU_ORDER: MapId[] = ["marsh", "crypt", "desert", "swamp"];
+const MENU_MAPS = [...MENU_ORDER, ...MAP_IDS.filter((id) => !MENU_ORDER.includes(id))];
 
-/** Cenário das salas que este jogador criar (fica salvo no aparelho). */
+let chosenMap: MapId = MENU_MAPS[0];
+
+/** Cenário das salas que este jogador criar. */
 export const createMapId = () => chosenMap;
+
+/** Volta a escolha para o primeiro cenário do menu (ao abrir o menu de batalha). */
+export function resetMapChoice() {
+  chosenMap = MENU_MAPS[0];
+}
 
 /** Cartões dos cenários na tela de criar sala; tocar escolhe. `onPick` atualiza o botão de criar. */
 export function renderMapPicker(onPick: () => void) {
   const list = $("map-list");
   list.replaceChildren();
-  for (const id of MAP_IDS) {
+  for (const id of MENU_MAPS) {
     const map = MAPS[id];
     const card = el("button", "map-card");
     card.type = "button";
@@ -82,7 +91,6 @@ export function renderMapPicker(onPick: () => void) {
     card.append(head, el("p", "", map.description));
     card.onclick = () => {
       chosenMap = id;
-      storageSet("kusa:map", id);
       renderMapPicker(onPick);
       onPick();
     };

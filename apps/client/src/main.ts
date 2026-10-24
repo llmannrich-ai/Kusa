@@ -22,7 +22,7 @@ import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
-import { SERVER_CHOICES, createMapId, createServer, mapLine, renderMapPicker, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
+import { SERVER_CHOICES, createMapId, createServer, mapLine, renderMapPicker, renderServerPicker, renderWaitingRoom, resetMapChoice } from "./lobby.ts";
 import { renderHistory } from "./history.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
@@ -184,6 +184,7 @@ async function openRooms() {
   show("rooms", true);
   show("rooms-error", false);
   setEntering(false);
+  resetMapChoice();
   renderMapPicker(() => setEntering(entering));
   renderServerPicker(() => setEntering(entering));
   cloudHunts = [];
