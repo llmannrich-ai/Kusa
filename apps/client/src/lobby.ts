@@ -45,6 +45,7 @@ export function renderServerPicker(onPick: () => void) {
     card.setAttribute("role", "radio");
     card.setAttribute("aria-checked", String(id === chosenServer));
     card.classList.toggle("selected", id === chosenServer);
+    card.title = choice.hint;
     card.append(el("strong", "", `${choice.icon} ${choice.name}`), el("small", "muted", choice.hint));
     card.onclick = () => {
       chosenServer = id;

@@ -306,18 +306,26 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 |---|---|---|
 | ⚔️ Fúria | +15% de dano | 3 |
 | ❤️ Vida | +18% de vida máxima | 3 |
-| 🛡️ Pedra | +4 de armadura | 3 |
-| 👟 Vento | +8% de velocidade | 3 |
+| 🪨 Pedra | +4 de armadura | 3 |
+| 👟 Vento | +12% de velocidade | 3 |
 | 💧 Arcana | +20% de mana máxima e +1% de mana por segundo | 3 |
 | 🩸 Sangue | cura 5% do dano causado | 3 |
 | ⏳ Tempo | recarga das magias 12% menor | 3 |
-| 💗 Troll | +1,5% de vida por segundo | 3 |
+| 💗 Troll | +2% de vida por segundo | 3 |
 | ⚡ Relâmpago | o Relâmpago (Feiticeiro) vira opção no slot 1 | 1 |
 | 🛡️ Fé | o Escudo da Fé (Cavaleiro) vira opção no slot 1 | 1 |
 | ☄️ Meteoro | o Meteoro (Feiticeiro) vira opção no slot 2 | 1 |
 | ☀️ Aurora | a Luz Curativa (Paladino) vira opção no slot 2 | 1 |
+| 🐎 Investida | a Investida (Cavaleiro) vira opção no slot 1 | 1 |
+| 🚩 Estandarte | o Estandarte de Guerra (Cavaleiro) vira opção no slot 2 | 1 |
+| 🤸 Rolamento | o Rolamento (Paladino) vira opção no slot 1 | 1 |
+| 🎯 Caçador | a Marca do Caçador (Paladino) vira opção no slot 1 | 1 |
+| 💨 Névoa | o Passo Nebuloso (Feiticeiro) vira opção no slot 1 | 1 |
+| 🌿 Bosque | a Bênção da Floresta (Druida) vira opção no slot 1 | 1 |
+| 🐺 Lobo | o Lobo Espiritual (Druida) vira opção no slot 1 | 1 |
+| 🦠 Peste | a Nuvem Venenosa (Druida) vira opção no slot 2 | 1 |
 
-- **Runas de magia:** a magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
+- **Runas de magia:** 3 de cada classe (mobilidade, cura, invocação e apoio valem mais emprestadas), cerca de 1 em cada 3 runas sorteadas. A magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
   que a magia já tem, se for da própria classe; magia de outra classe não ganha XP de uso). Magia de outra classe custa no máximo **40% da mana máxima** do herói
   (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
 
@@ -325,8 +333,10 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 
 Código em `apps/client/src/lobby.ts` e `main.ts`.
 
-1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele:
-   **Jogar sozinho**, **Criar sala** (com a escolha ☁️ Nuvem / 📱 Meu aparelho) e as salas abertas daquele cenário.
+1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele,
+   baixa (menos de metade da tela, sem textos) para o mapa seguir à vista: nome, região, etiquetas curtas
+   (dificuldade ★, ⏱ tempo, 👤/👥 jogadores, ☠ boss), **Jogar sozinho** e **Criar sala** lado a lado, a escolha
+   "Sala em ☁️ Nuvem / 📱 Meu aparelho" e, só quando houver, as salas abertas daquele cenário.
    O botão **Salas abertas · N**, no alto do mapa, lista as salas de todos os cenários (líder, cenário e vagas).
 2. Criar ou entrar numa sala leva à **sala de espera**: 4 vagas (`MAX_PARTY_SIZE`), cada uma com retrato, nome e classe
    de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".
@@ -388,18 +398,33 @@ então funcionam com o servidor do jogo dormindo.
 
 ## Mapa mundi
 
-A tela de **Batalhas** é o mapa do mundo de **Kosaradius**, desenhado como um pergaminho de D&D: um planeta quase todo
-mar, com continentes, ilhas e terras em névoa. Código em `apps/client/src/worldMap.ts`; plano completo (história,
-fases, desbloqueio) em `docs/MAPA_MUNDI_PLANO.md`.
+A tela de **Batalhas** é a carta de **Verdemar**, o continente da campanha no mundo de **Kosaradius**, desenhada como
+um pergaminho de D&D. Código em `apps/client/src/worldMap.ts` (câmera, trilhas, nomes, pontos, herói) e
+`apps/client/src/world/verdemar.ts` (catálogo: cenários, trilhas, nomes); plano completo (história, fases, desbloqueio)
+em `docs/MAPA_MUNDI_PLANO.md`.
 
-- **Mobile:** o mapa rola só na vertical e abre já rolado no último cenário escolhido, com o herói da classe em pé em
-  cima dele. O nome do mundo aparece em marca d'água laranja, em arco, no mar.
-- **Pontos:** um por cenário, na ordem da trilha: 🐸 Pântano do Kosaradius (Verdemar) → 🏚️ Cripta (serra de Verdemar)
-  → 🏜️ Mar de Areia (Solária) → 🌿 Pântano das Ruínas (Arquipélago Afundado). Cada ponto mostra o selo 👥 N quando
-  tem salas abertas. Tocar num ponto leva o herói até ele (~1 s) e abre a ficha.
-- **Névoa:** Gelo de Hrimfal, Ilha de Cinza e Cidadela Caída são terras ainda sem cenário; tocar só avisa.
-- **Ainda não:** todos os cenários estão abertos. O desbloqueio por boss (por classe) e a estrela por ponto vêm na
-  fase 3 do plano.
+- **Arte:** biomas pintados (floresta, colinas, deserto, ermos, charco, ruínas, campos, serra nevada), costa recortada
+  com linhas de costa, rios com pontes, lagos, vilas, torres, farol, ruínas do império, navios e monstros no mar,
+  moldura, rosa dos ventos e cartela. A arte é uma imagem pronta (`apps/client/public/mapa/verdemar.svg`), gerada por
+  sorteio com semente por `npm run mapa -w @kusa/client` (`scripts/verdemarArt.ts`); mudou o catálogo, gere de novo.
+- **Mobile:** câmera própria, **arrastar em qualquer direção e pinça** para aproximar (do continente inteiro na tela a
+  1,8×). Abre perto, no último cenário escolhido, com o herói da classe em pé em cima dele. 📍 volta ao herói e ⤢
+  mostra o continente inteiro. Os pontos e o herói têm o mesmo tamanho na tela em qualquer zoom; de longe, os nomes
+  pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Classes, Grimório, Batalhas,
+  Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba.
+- **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
+  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas (trilha vermelha). Daí ao norte, sob a
+  névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a **Cidadela Caída**.
+- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): Encruzilhada (floresta ou
+  deserto), Portões do Império (charco ou ermos) e Sopé da Serra (passo ou garganta). Tocar num cenário por vir só
+  avisa de onde ele abre.
+- **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
+  pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
+  anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
+  (`prefers-reduced-motion`), o herói só troca de ponto.
+- **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
+- **Ainda não:** os 4 cenários de hoje estão abertos e os outros 14 ainda não existem. O desbloqueio por boss (por
+  classe) e a estrela por ponto vêm na fase 3 do plano.
 
 ## Mapas
 

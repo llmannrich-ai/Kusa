@@ -25,7 +25,7 @@ import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
-import { heroPoses } from "./art/heroes.ts";
+import { heroSheet } from "./art/heroes.ts";
 import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
 import { renderHistory } from "./history.ts";
 import { Hub } from "./menu.ts";
@@ -140,12 +140,13 @@ function setEntering(on: boolean) {
   entering = on;
   const create = $<HTMLButtonElement>("create");
   const server = SERVER_CHOICES[createServer()];
-  create.textContent = !on
-    ? `Criar sala · ${server.icon} ${server.name}`
-    : createServer() === "cloud" ? "Conectando… (o servidor pode levar 1 min para acordar)" : "Conectando…";
+  create.textContent = on ? "Conectando…" : "Criar sala";
+  create.setAttribute("aria-label", on ? "Conectando" : `Criar sala, ${server.name}`);
   // Mapa só para 1 jogador: não tem sala para amigos, só o "Jogar sozinho".
   const soloOnly = partySize(MAPS[createMapId()]) === 1;
   show("sheet-create", !soloOnly);
+  show("create", !soloOnly);
+  show("sheet-wait", on && !soloOnly && createServer() === "cloud");
   create.disabled = on || soloOnly;
   const solo = $<HTMLButtonElement>("solo");
   solo.textContent = on && !soloOnly ? "Conectando…" : "Jogar sozinho";
@@ -192,16 +193,16 @@ function toast(message: string) {
   $("world-toast").textContent = message;
   show("world-toast", true);
   window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => show("world-toast", false), 2500);
+  toastTimer = window.setTimeout(() => show("world-toast", false), 3500);
 }
 
-/** Tocar num ponto do mapa: o herói vai até ele e abre a ficha do cenário. */
+/** Tocar num ponto do mapa: o herói anda até ele pela trilha e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
 function pickPoint(id: MapId) {
   if (entering) return;
+  if (world?.walkingTo() === id) return world.skip();
   chooseMap(id);
-  world?.select(id);
-  // A ficha cobre a parte de baixo: o ponto sobe para ficar à vista acima dela.
-  world?.scrollTo(id, 0.22, true);
+  // A ficha cobre a parte de baixo: o mapa rola com o herói e o ponto para à vista acima dela.
+  world?.select(id, { anchor: 0.4 });
   openSheet();
 }
 
@@ -212,18 +213,18 @@ function openSheet() {
   $("sheet-name").textContent = map.name;
   $("sheet-region").textContent = WORLD_POINTS[map.id].region;
   const boss = mainBoss(map);
+  // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista.
   const chips = [
-    `Dificuldade ${difficultyStars(map.difficulty)}`,
-    `${map.durationSeconds / 60} min`,
-    partySize(map) === 1 ? "só 1 jogador" : `até ${partySize(map)} jogadores`,
-    ...(boss ? [`Boss: ${MONSTERS[boss].name}`] : []),
+    difficultyStars(map.difficulty),
+    `⏱ ${map.durationSeconds / 60} min`,
+    partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
+    ...(boss ? [`☠ ${MONSTERS[boss].name}`] : []),
   ];
   $("sheet-chips").replaceChildren(...chips.map((text) => {
     const li = document.createElement("li");
     li.textContent = text;
     return li;
   }));
-  $("sheet-desc").textContent = map.description;
   show("rooms-sheet", false);
   show("map-sheet", true);
   $("map-sheet").scrollTop = 0;
@@ -231,17 +232,29 @@ function openSheet() {
   renderHunts();
 }
 
+/**
+ * Batalhas abre o mapa com a barra de abas do menu embaixo (`body.on-map`): o menu continua aberto, mas só a barra
+ * aparece, e tocar numa aba fecha o mapa e abre a aba.
+ */
+function setMapOpen(open: boolean) {
+  document.body.classList.toggle("on-map", open);
+  show("rooms", open);
+  if (!open) return;
+  show("menu", true);
+  const tabs = document.querySelector<HTMLElement>(".hub-tabs");
+  if (tabs) document.body.style.setProperty("--tabs-h", `${tabs.offsetHeight}px`);
+}
+
 async function openRooms() {
-  show("menu", false);
-  show("rooms", true);
+  setMapOpen(true);
   show("rooms-error", false);
   show("map-sheet", false);
   show("rooms-sheet", false);
-  world ??= createWorldMap($("world-map"), MAP_ART, pickPoint, (name) => toast(`${name}: terra não mapeada. Ainda ninguém voltou de lá.`));
-  world.setHero(heroPoses(hub.classId, undefined, ["down"]).toDataURL());
-  world.select(createMapId(), true);
+  world ??= createWorldMap($("world-view"), MAP_ART, pickPoint, toast);
+  world.setHero(heroSheet(hub.classId).toDataURL());
+  world.select(createMapId(), { instant: true });
   // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
-  world.scrollTo(createMapId());
+  world.focus(createMapId());
   setEntering(false);
   renderServerPicker(() => setEntering(entering));
   cloudHunts = [];
@@ -287,7 +300,7 @@ function renderHunts() {
   show("rooms-empty", rooms.length === 0);
   const here = rooms.filter((r) => r.mapId === createMapId());
   $("sheet-rooms").replaceChildren(...here.map(roomItem));
-  show("sheet-rooms-empty", here.length === 0);
+  show("sheet-rooms-box", here.length > 0);
   $("open-room-list").textContent = `Salas abertas · ${rooms.length}`;
   const counts: Partial<Record<MapId, number>> = {};
   for (const r of rooms) counts[r.mapId] = (counts[r.mapId] ?? 0) + 1;
@@ -385,10 +398,17 @@ document.querySelectorAll<HTMLButtonElement>("#settings-pages [data-page]").forE
 
 $("rooms-back").onclick = () => {
   stopWatching();
-  show("rooms", false);
-  show("menu", true);
+  setMapOpen(false);
 };
+// Uma aba do menu tocada com o mapa aberto: sai do mapa (o Hub troca a aba).
+document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => b.addEventListener("click", () => {
+  if (!document.body.classList.contains("on-map")) return;
+  stopWatching();
+  setMapOpen(false);
+}));
 $("map-sheet-close").onclick = () => show("map-sheet", false);
+// Tocar na ficha pula a caminhada do herói.
+$("map-sheet").addEventListener("pointerdown", () => world?.skip());
 $("rooms-sheet-close").onclick = () => show("rooms-sheet", false);
 $("open-room-list").onclick = () => {
   show("map-sheet", false);
@@ -413,7 +433,8 @@ $("back").onclick = () => location.reload();
 let game: Phaser.Game | null = null;
 
 function bindRoom(room: DungeonRoom) {
-  show("rooms", false);
+  setMapOpen(false);
+  show("menu", false);
   show("lobby", true);
   // A arte começa a carregar já na sala de espera, enquanto a equipe se junta.
   createGame();
