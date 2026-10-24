@@ -113,6 +113,27 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 - Contas atuais: a migration preenche `profile_map_clears` a partir de `profile_boss_runes` (quem levou a runa do
   boss com a classe matou o boss com ela).
 
+## 5b. Continente Verdemar grande (decidido em 24/10)
+
+O continente principal cresce e passa a concentrar os cenários; o mapa deixa de rolar só na vertical.
+
+| Tema | Decisão |
+|---|---|
+| Escala | Verdemar com **10× a área** de hoje (~1100×1430 no desenho, ~3 telas de largura × 1,5 de altura no zoom de hoje) |
+| Navegação | **arrastar em qualquer direção + pinça para zoom**, do continente inteiro na tela até o tamanho de hoje; abre centrado no herói; botão 📍 volta para ele |
+| Campanha | Verdemar é a campanha inteira, do sul ao norte, com **18 cenários** em 13 etapas. Os 4 de hoje ficam **no começo**, na ponta sul (🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas); o resto fica apagado sob a névoa da campanha até a **Cidadela Caída** (a capital do império), no norte |
+| Bifurcações | 3, cada uma com dois caminhos que se reencontram: **Encruzilhada** (5) → floresta (Bosque Velho, Coração da Mata) ou deserto (Dunas Cantantes, Mesas de Solária) → **Portões do Império** (8) → Charco Cinzento ou Ermos Rubros → **Sopé da Serra** (10) → Passo do Lobo e Mosteiro Gelado, ou Garganta do Rio e Forjas Anãs → Cidadela Caída (13). Os dois lados de uma bifurcação têm o mesmo número de etapa |
+| Áreas | Floresta do Kosaradius (oeste), Colinas das Tumbas (sul, a Cripta), Solária (deserto, leste) com a Baía Afundada, Campos de Kusa e Lago Espelho (centro-sul), Ruínas do Império (centro), Charco Cinzento (oeste), Ermos Rubros (nordeste) e Serra do Norte (montanhas e neve). Vilas, torres, farol, rios com pontes e estradas do império dão escala ao mapa |
+| Em volta | mar, com Gelo de Hrimfal e Ilha de Cinza em névoa (a Cidadela Caída entrou no continente) |
+| Nomes | o continente inteiro é **Verdemar**; longe (continente inteiro na tela) só os ícones aparecem, sem os nomes |
+| Maquete | https://claude.ai/artifact/67b1st8XsBSp4MNVURtoxk |
+| Execução | maquete navegável para aprovar no celular antes de mexer no jogo; depois, branch nova a partir do `main` com o #137 |
+
+Impacto técnico previsto: `worldMap.ts` troca a rolagem vertical por câmera própria (translate + scale, ponteiros para
+arrasto e pinça, sem a rolagem do navegador); pontos e herói ficam em camada HTML com tamanho fixo na tela (não
+encolhem com o zoom); `TRAILS`, `WORLD_POINTS` e a arte mudam de coordenadas. A história da seção 3 muda: Solária e o
+Arquipélago Afundado deixam de ser continentes: Solária vira o deserto de Verdemar e o Pântano das Ruínas fica na Baía Afundada. A seção 3 precisa ser reescrita quando a fase for para o jogo.
+
 ## 6. Riscos
 
 1. **Começo pesado por classe.** O primeiro ponto é o Kosaradius: 10 min, o maior mapa, só sozinho. Cada classe nova
@@ -123,7 +144,9 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 3. **Mapa vazio.** Só 4 pontos num planeta. A névoa com nomes e desenhos (gelo, vulcão, cidadela) precisa parecer
    promessa, não buraco. Validar na maquete.
 4. **Salas escondidas.** Sem o contador e o botão fixo, o multijogador some atrás do mapa. Os dois entram na fase 1.
-5. **Retrato e texto pequeno.** Nomes no mapa com fonte mínima de 13 px a 412 px de largura; pontos com área de toque
+5. **Arrasto e pinça no celular.** Câmera própria precisa competir com o gesto de voltar do sistema e com a
+   rolagem da ficha; testar em Android e iPhone. No zoom mínimo, nomes de área precisam continuar com 13 px ou mais.
+6. **Retrato e texto pequeno.** Nomes no mapa com fonte mínima de 13 px a 412 px de largura; pontos com área de toque
    de 44 px.
 
 ## 7. Fases
