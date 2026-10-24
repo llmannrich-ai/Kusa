@@ -2594,21 +2594,24 @@ export class Hunt {
       this.state.players.forEach((p, sessionId) => {
         if (chest.opened || p.status !== "playing" || p.bot || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
         chest.opened = true;
-        this.chestReward(sessionId, chest.x, chest.y, this.chestDepth.get(chest.id) ?? 0);
+        // O item cai aos pés de quem abriu: no tile do baú ficaria escondido embaixo do desenho dele.
+        this.chestReward(sessionId, chest.x, chest.y, this.chestDepth.get(chest.id) ?? 0, { x: p.x, y: p.y });
       });
     });
   }
 
-  /** O que um baú dá (aberto ou o Mímico morto): loot para quem abriu, um item melhor que o do mini-boss e poções. */
-  /** Baú aberto (ou Mímico morto): o gold se divide pela equipe; `openerId` conta o baú na telemetria. */
-  private chestReward(openerId: string, x: number, y: number, depth: number) {
+  /**
+   * O que um baú dá (aberto ou o Mímico morto): um item melhor que o do mini-boss e poções, que caem em `dropAt`
+   * (padrão: o próprio tile). O gold se divide pela equipe; `openerId` conta o baú na telemetria.
+   */
+  private chestReward(openerId: string, x: number, y: number, depth: number, dropAt = { x, y }) {
     const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + DEPTH_SCALING * depth) * (this.map.lootScale ?? 1));
     this.teamLoot(value, "chests", x, y, "Baú: ");
     const stats = this.seats.get(openerId)?.stats;
     if (stats) stats.chestsOpened++;
     // O item do baú sai sempre (menos a parte dos bots); as poções, com a chance do mapa.
-    if (this.keepForHumans()) this.dropItem(rollItem("miniboss", depth, this.random, 1), x, y);
-    for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, x, y);
+    if (this.keepForHumans()) this.dropItem(rollItem("miniboss", depth, this.random, 1), dropAt.x, dropAt.y);
+    for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);
   }
 
   /** Quem está jogando na dungeon agora (bots incluídos): divide a XP e o loot. */
