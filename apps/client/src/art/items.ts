@@ -598,6 +598,14 @@ const RUNE_GLYPHS: Record<RuneKind, Grid> = {
   faith: ["gggggg", "g.gg.g", "gggggg", "g.gg.g", "g.gg.g", ".g..g.", "..gg..", "......"],
   meteor: ["g.....", ".g....", "..g...", "...gg.", "..gggg", "..gggg", "...gg.", "......"],
   dawn: ["..gg..", "g....g", "..gg..", ".gggg.", ".gggg.", "..gg..", "g....g", "..gg.."],
+  charge: ["g..g..", ".g..g.", "..g..g", ".g..g.", "g..g..", "......", "gggggg", "......"],
+  banner: ["gggg..", "ggggg.", "gggg..", "g.....", "g.....", "g.....", "g.....", "g....."],
+  roll: [".ggg..", "g...g.", "g....g", "g....g", "g...g.", "g..g..", ".gggg.", "...g.."],
+  mark: ["..gg..", ".g..g.", "g.gg.g", "gggggg", "g.gg.g", ".g..g.", "..gg..", "......"],
+  mist: ["......", "gg..gg", "..gg..", "......", "gg..gg", "..gg..", "......", "gg..gg"],
+  grove: ["...gg.", "..gggg", ".gggg.", "gggg..", "ggg...", ".g....", "g.....", "......"],
+  wolf: ["g.gg.g", "g.gg.g", "......", ".gggg.", "gggggg", "gggggg", ".gggg.", "......"],
+  plague: [".gg...", "g..g..", ".gg.gg", "...g.g", "gg..g.", "g.g...", ".g..gg", "....gg"],
 };
 
 /** Ícone 16×16 de um item do equipamento, de uma poção ou de uma runa. */
