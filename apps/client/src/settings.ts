@@ -8,7 +8,8 @@ export interface Settings {
 const DEFAULTS: Settings = {
   minimap: true,
   landscape: false,
-  fixedStick: false,
+  // Joystick fixo de padrão desde o retorno dos testadores; o flutuante fica como opção.
+  fixedStick: true,
 };
 
 /** Uma opção como aparece na tela de configurações; novas opções entram aqui e em `Settings`. */
@@ -28,7 +29,7 @@ export const SETTING_DEFS: SettingDef[] = [
   {
     key: "fixedStick",
     label: "Joystick fixo",
-    hint: "O joystick fica sempre à vista no canto de baixo à esquerda, em vez de aparecer onde o polegar toca.",
+    hint: "O joystick fica sempre à vista no canto de baixo à esquerda. Desligado, ele aparece onde o polegar toca.",
   },
 ];
 
@@ -43,7 +44,10 @@ export function loadSettings(): Settings {
   }
 }
 
+/** Grava só o que o jogador mudou: o que ele nunca mexeu segue o padrão (`DEFAULTS`), mesmo que o padrão mude. */
 export function saveSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
-  const settings = { ...loadSettings(), [key]: value };
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch { /* armazenamento indisponível */ }
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as Partial<Settings>;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...saved, [key]: value }));
+  } catch { /* armazenamento indisponível */ }
 }
