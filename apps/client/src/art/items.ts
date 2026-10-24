@@ -606,7 +606,18 @@ const RUNE_GLYPHS: Record<RuneKind, Grid> = {
   grove: ["...gg.", "..gggg", ".gggg.", "gggg..", "ggg...", ".g....", "g.....", "......"],
   wolf: ["g.gg.g", "g.gg.g", "......", ".gggg.", "gggggg", "gggggg", ".gggg.", "......"],
   plague: [".gg...", "g..g..", ".gg.gg", "...g.g", "gg..g.", "g.g...", ".g..gg", "....gg"],
+  phoenix: ["g....g", "gg..gg", ".gggg.", "..gg..", ".gggg.", "g.gg.g", "..gg..", ".g..g."],
+  glass: ["..gg..", ".g..g.", "g....g", "g....g", ".g..g.", "..gg..", "..gg..", "..gg.."],
+  colossus: [".gggg.", "gggggg", "g.gg.g", "gggggg", ".gggg.", ".g..g.", ".g..g.", "gg..gg"],
+  echo: ["gggg..", "g.....", "g.ggg.", "g.g...", "g.g.g.", "g...g.", "ggggg.", "......"],
+  reaper: ["gggg..", "....g.", ".....g", "..g..g", ".g....", "g.....", "g.....", "g....."],
+  regicide: ["g.gg.g", "gggggg", "gggggg", "......", "..gg..", "..gg..", "..gg..", ".gggg."],
+  pact: ["g....g", ".g..g.", "..gg..", "..gg..", ".g..g.", "g....g", "gggggg", "......"],
+  vengeance: ["g..g.g", ".g.g..", "gggggg", "..g.g.", "gggggg", "..g.g.", ".g.g.g", "g....."],
 };
+
+/** Pedra das Runas Mestras: dourada, para se distinguir das outras no cofre e na bag. */
+const MASTER_STONE: Palette = { o: "#2b1d06", s: "#b8892b", S: "#7a5714" };
 
 /** Ícone 16×16 de um item do equipamento, de uma poção ou de uma runa. */
 export function itemIcon(itemId: string) {
@@ -617,7 +628,7 @@ export function itemIcon(itemId: string) {
   }
   if (isRune(itemId)) {
     const rune = RUNES[itemId];
-    paintGrid(ctx, RUNE_STONE, STONE, 0, 0);
+    paintGrid(ctx, RUNE_STONE, rune.master ? MASTER_STONE : STONE, 0, 0);
     paintGrid(ctx, RUNE_GLYPHS[rune.kind], { g: `#${rune.color.toString(16).padStart(6, "0")}` }, 5, 4);
     return canvas;
   }

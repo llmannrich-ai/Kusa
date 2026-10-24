@@ -85,6 +85,8 @@ import {
   activeRunes,
   rollRune,
   runeSpells,
+  masterRune,
+  MASTER_RUNES,
   spellManaCost,
   rankPower,
   rollItem,
@@ -239,6 +241,12 @@ interface Seat {
   thornsUntil: number;
   /** Último Bastião (Traço): o escudo volta a poder sair a partir deste momento. */
   lastStandReadyAt: number;
+  /** Runa da Fênix: já renasceu nesta hunt. */
+  phoenixUsed: boolean;
+  /** Runa do Eco: magias lançadas desde a última grátis. */
+  echoCount: number;
+  /** Runa da Vingança: a onda volta a poder sair a partir deste momento. */
+  vengeanceReadyAt: number;
   /** Estandarte de Guerra: dano extra enquanto o herói está no campo (renovado a cada pulso). */
   fieldDamage: number;
   fieldDamageUntil: number;
@@ -549,7 +557,7 @@ export class Hunt {
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
-      thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
+      thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false,
     });
@@ -1004,8 +1012,10 @@ export class Hunt {
       if (p.status !== "playing") return;
       // Regeneração e Clareza (melhorias) somam à regeneração base.
       const perk = this.seats.get(sessionId)?.perkBonus;
+      // Runa do Pacto: a mana volta mais devagar.
+      const manaRegen = (MANA_REGEN + (perk?.manaRegen ?? 0)) * (masterRune([...p.runes]) === "pact" ? 1 + MASTER_RUNES.pact.manaRegen : 1);
       if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * (HP_REGEN + (perk?.hpRegen ?? 0)))));
-      if (p.mana < p.maxMana) p.mana = Math.min(p.maxMana, p.mana + Math.max(1, Math.round(p.maxMana * (MANA_REGEN + (perk?.manaRegen ?? 0)))));
+      if (p.mana < p.maxMana) p.mana = Math.min(p.maxMana, p.mana + Math.max(1, Math.round(p.maxMana * manaRegen)));
     });
   }
 
@@ -1225,8 +1235,13 @@ export class Hunt {
     if (this.held(seat, "stun", "engulf")) return;
     if (this.held(seat, "blind") && spell.aim === "target") spell = { ...spell, range: Math.min(spell.range, BLIND_RANGE) };
     // Magia de runa de outra classe custa no máximo uma parte da mana máxima.
-    const manaCost = spellManaCost(spell, p.classId, p.maxMana);
-    if (p.mana < manaCost) {
+    const master = masterRune([...p.runes]);
+    // Runa do Eco: as magias custam mais, e a cada tantas a seguinte sai de graça e sem recarga.
+    const echo = master === "echo" && seat.echoCount >= MASTER_RUNES.echo.every;
+    const manaCost = echo ? 0 : Math.round(spellManaCost(spell, p.classId, p.maxMana) * (master === "echo" ? 1 + MASTER_RUNES.echo.extraCost : 1));
+    // Runa do Pacto: a mana que falta sai da vida (sem matar: precisa sobrar vida).
+    const fromHp = master === "pact" ? Math.max(0, manaCost - p.mana) : 0;
+    if ((p.mana < manaCost && !fromHp) || (fromHp && p.hp <= fromHp)) {
       seat.stats.castFails.noMana++;
       this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Sem mana", color: 0x5dade2 } satisfies NoticeMessage);
       return;
@@ -1343,14 +1358,23 @@ export class Hunt {
     // Passo Leve (Traço): toda magia dá um pouco de velocidade.
     for (const t of seat.traits) if (t.castHaste) seat.hasteUntil = now + t.castHaste.ms;
 
-    p.mana -= manaCost;
+    p.mana -= manaCost - fromHp;
+    if (fromHp) {
+      p.hp -= fromHp;
+      bump(seat.stats.runeProcs, "pact", fromHp);
+    }
+    if (master === "echo") {
+      seat.echoCount = echo ? 0 : seat.echoCount + 1;
+      if (echo) bump(seat.stats.runeProcs, "echo");
+    }
     bump(seat.stats.casts, spell.id);
     // Nível pelo uso: só conta em combate (algum monstro à vista por perto), para não render XP em sala vazia.
     if (this.nearestMonsterInRange(p, SPELL_XP_COMBAT_TILES)) bump(seat.stats.spellXp, base.id, castXp(base));
     // Céu Carregado (Traço): a cada tantas magias, um raio cai no monstro mais perto.
     const sky = seat.traits.find((t) => t.chargedSky)?.chargedSky;
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
-    seat.spellReadyAt[slot] = now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
+    seat.spellReadyAt[slot] = echo ? now : now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
+    if (echo) this.notice(p.x, p.y - 1, "Eco!", 0xd6a2ff);
     const ms = flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty);
     this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms } satisfies SpellMessage);
     // Disparo Certeiro: mais forte quanto mais longe estava o alvo na hora do tiro.
@@ -1687,6 +1711,40 @@ export class Hunt {
     this.host.broadcast(MSG.spell, { from: seed.by, spellId: "rebirth_seed", x: p.x, y: p.y, tx: p.x, ty: p.y, ms: 0, echo: true } satisfies SpellMessage);
     this.notice(p.x, p.y - 1, "Renasceu!", 0x9cff7a);
     return true;
+  }
+
+  /** Runa da Fênix: na primeira morte da hunt, renasce no lugar (depois da semente do druida, se houver). */
+  private phoenix(p: Player, seat: Seat, now: number) {
+    if (seat.phoenixUsed || masterRune([...p.runes]) !== "phoenix") return false;
+    seat.phoenixUsed = true;
+    p.hp = Math.max(1, Math.round(p.maxHp * MASTER_RUNES.phoenix.hp));
+    seat.invulnUntil = now + MASTER_RUNES.phoenix.invulnMs;
+    seat.dot = null;
+    p.dot = "";
+    seat.slow = null;
+    p.slowed = false;
+    seat.stats.death = null;
+    bump(seat.stats.runeProcs, "phoenix");
+    this.notice(p.x, p.y - 1, "A Fênix renasce!", 0xff8c1a);
+    return true;
+  }
+
+  /** Runa da Vingança: quase caindo, fere e empurra quem está colado e ganha um escudo (com recarga). */
+  private vengeance(sessionId: string, p: Player, seat: Seat, now: number) {
+    const v = MASTER_RUNES.vengeance;
+    if (p.hp >= p.maxHp * v.hpPct || now < seat.vengeanceReadyAt || masterRune([...p.runes]) !== "vengeance") return;
+    seat.vengeanceReadyAt = now + v.cooldownMs;
+    const shield = Math.round(p.maxHp * v.barrier);
+    if (shield > p.barrier) p.barrier = p.maxBarrier = shield;
+    seat.barrierUntil = Math.max(seat.barrierUntil, now + v.ms);
+    const damage = this.baseDamage(sessionId, p, "basic") * v.damage;
+    for (const m of [...this.state.monsters.values()]) {
+      if (tileDistance(p.x, p.y, m.x, m.y) > 1) continue;
+      this.damageMonster(m, rollDamage(this.random, damage), { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "slash" }, "rune:vengeance");
+      if (this.state.monsters.has(m.id)) this.push(m, p, v.push);
+    }
+    bump(seat.stats.runeProcs, "vengeance");
+    this.notice(p.x, p.y - 1, "Vingança!", 0xff3f34);
   }
 
   /** Picada da Mamba: o monstro que morreu envenenado explode e envenena quem estiver em volta. */
@@ -2036,6 +2094,9 @@ export class Hunt {
   private damageMonster(m: Monster, raw: number, hit: Hit, source: string, creditId = hit.attacker): number {
     const brain = this.brains.get(m.id);
     if (!brain) return 0;
+    // Regicida e Ceifador (Runas Mestras): mais ou menos dano em mini-boss e boss.
+    const elite = this.eliteFactor(creditId, brain);
+    if (elite !== 1) raw = Math.max(1, Math.round(raw * elite));
     // Marca do Caçador: o marcado leva mais dano de qualquer fonte (heróis, magias e criaturas).
     const marked = m.marked ? Math.round(raw * (1 + brain.markPct)) : raw;
     // Elemento: imune, resiste, vulnerável, absorve e a Fortitude Morta-viva (`monsterAi.ts`).
@@ -2062,6 +2123,29 @@ export class Hunt {
     if (m.hp === 0) this.killMonster(m, brain, creditId);
     else this.ai.afterDamage(m, brain, dealt, element);
     return dealt;
+  }
+
+  /** Regicida e Ceifador: fator do dano de quem bateu conforme o rank do monstro. */
+  private eliteFactor(creditId: string, brain: Brain) {
+    const hero = this.state.players.get(creditId);
+    if (!hero) return 1;
+    const master = masterRune([...hero.runes]);
+    const elite = brain.def.rank !== "common";
+    if (master === "regicide") return 1 + (elite ? MASTER_RUNES.regicide.eliteDamage : MASTER_RUNES.regicide.commonDamage);
+    if (master === "reaper" && elite) return 1 + MASTER_RUNES.reaper.eliteDamage;
+    return 1;
+  }
+
+  /** Runa do Ceifador: quem matou recupera um pouco da vida e da mana. */
+  private reap(killerId: string) {
+    const hero = this.state.players.get(killerId);
+    const seat = this.seats.get(killerId);
+    if (!hero || !seat || hero.status !== "playing" || masterRune([...hero.runes]) !== "reaper") return;
+    const healed = Math.min(hero.maxHp - hero.hp, Math.round(hero.maxHp * MASTER_RUNES.reaper.hp));
+    hero.hp += healed;
+    seat.stats.healing += healed;
+    hero.mana = Math.min(hero.maxMana, hero.mana + Math.round(hero.maxMana * MASTER_RUNES.reaper.mana));
+    bump(seat.stats.runeProcs, "reaper");
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
@@ -2094,6 +2178,7 @@ export class Hunt {
       return;
     }
 
+    this.reap(killerId);
     // XP e loot: a equipe inteira divide em partes iguais, tenha batido no monstro ou não (`teamLoot`).
     const team = this.team();
     const share = teamShare(brain.xp, team.length);
@@ -2422,7 +2507,9 @@ export class Hunt {
     if (seat?.stats.revived) seat.stats.revived.damageAfter += amount;
     this.host.broadcast(MSG.damage, { x: p.x, y: p.y, amount, absorbed, toPlayer: true, ...hit } satisfies DamageMessage);
     if (p.hp === 0 && seat && this.rebirth(sessionId, p, seat, now)) return;
+    if (p.hp === 0 && seat && this.phoenix(p, seat, now)) return;
     if (p.hp === 0) return this.endRun(sessionId, "died");
+    if (seat) this.vengeance(sessionId, p, seat, now);
     // Último Bastião (Traço): quase caindo, ganha um escudo (com recarga longa).
     const lastStand = seat?.traits.find((t) => t.lastStand)?.lastStand;
     if (seat && lastStand && p.hp < p.maxHp * lastStand.hpPct && now >= seat.lastStandReadyAt) {

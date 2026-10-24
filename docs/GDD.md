@@ -294,7 +294,7 @@ aparelho do jogador, que aceita uma runa nova por boss anotado na hunt mais até
 `SOLO_LIMITS.passedRunes`).
 Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `market_items` e `profile_items` como os itens.
 
-- Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220). O mercado não vende runas.
+- Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220; as Mestras, 400). O mercado não vende runas.
 - Na aba Itens, **3 slots de runa logo abaixo do equipamento**, separados por classe como o equipamento. Tocar numa runa do
   cofre equipa num slot livre da classe escolhida; não dá para equipar duas iguais na mesma classe. Tirar a runa devolve ao cofre (precisa de espaço). Funções no banco: `equip_item` (limite de 3 por classe e sem repetir), `finish_run` e `drop_random_item` (nunca sorteia runa).
 - As runas equipadas **entram com o herói e valem a hunt inteira**, também na hunt solo; na dungeon não se trocam (o menu da bag só mostra quais estão equipadas).
@@ -325,7 +325,22 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 | 🐺 Lobo | o Lobo Espiritual (Druida) vira opção no slot 1 | 1 |
 | 🦠 Peste | a Nuvem Venenosa (Druida) vira opção no slot 2 | 1 |
 
-- **Runas de magia:** 3 de cada classe (mobilidade, cura, invocação e apoio valem mais emprestadas), cerca de 1 em cada 3 runas sorteadas. A magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
+- **Runas Mestras** (pedra dourada): mudam o jeito de jogar e **sempre cobram um preço**. Só **uma** vale entre as 3 runas
+  equipadas da classe (`equip_item` recusa a segunda; o servidor também confere com `activeRunes`). O mercado compra por 400.
+  Saem dos bosses como as outras, cerca de 1 em cada 5 runas sorteadas. Números em `MASTER_RUNES` (`runes.ts`), efeitos na `Hunt`.
+
+| Mestra | Efeito | Preço |
+|---|---|---|
+| 🔥 Fênix | na primeira morte da hunt, renasce com 40% da vida (1,5 s sem levar dano; a semente do druida vem antes) | -10% de vida máxima |
+| 💎 Vidro | +35% de dano | -25% de vida máxima |
+| 🗿 Colosso | +40% de vida máxima e +3 de armadura | -12% de velocidade |
+| 🔁 Eco | a cada 4 magias, a seguinte não gasta mana nem recarga | magias custam 15% mais mana |
+| ⚰️ Ceifador | cada monstro que o herói mata devolve 3% da vida e da mana | -15% de dano em mini-boss e boss |
+| 👑 Regicida | +30% de dano em mini-boss e boss | -10% de dano nos outros monstros |
+| 🕯️ Pacto | sem mana, a magia sai gastando vida no lugar (nunca a última) | -30% de regeneração de mana |
+| 💢 Vingança | abaixo de 30% da vida, fere (150% do ataque) e empurra quem está colado e ganha escudo de 20% da vida por 6 s; recarga de 45 s | -10% de dano |
+
+- **Runas de magia:** 3 de cada classe (mobilidade, cura, invocação e apoio valem mais emprestadas), cerca de 1 em cada 4 runas sorteadas. A magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
   que a magia já tem, se for da própria classe; magia de outra classe não ganha XP de uso). Magia de outra classe custa no máximo **40% da mana máxima** do herói
   (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
 

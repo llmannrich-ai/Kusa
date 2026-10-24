@@ -861,12 +861,14 @@ export class Hub {
     const title = el("div");
     const name = el("strong", "", rune.name);
     name.style.color = hex(rune.color);
-    title.append(name, el("small", "muted", rune.spell ? "Runa de magia" : "Runa"));
+    title.append(name, el("small", "muted", rune.master ? "Runa Mestra" : rune.spell ? "Runa de magia" : "Runa"));
     head.append(itemImg(owned.itemId), title);
     sheet.append(head, el("p", "", `${rune.icon} ${runeEffect(rune)}`));
-    sheet.append(el("p", "muted", rune.spell
-      ? "A magia aparece como opção extra quando o slot dela abrir na hunt, para qualquer classe."
-      : "O bônus vale a hunt inteira e soma com as áureas e as melhorias de nível."));
+    sheet.append(el("p", "muted", rune.master
+      ? "Muda o jeito de jogar e cobra um preço. Só uma Mestra vale entre as 3 runas equipadas."
+      : rune.spell
+        ? "A magia aparece como opção extra quando o slot dela abrir na hunt, para qualquer classe."
+        : "O bônus vale a hunt inteira e soma com as áureas e as melhorias de nível."));
     // Equipada na classe escolhida ou em outra (cada classe tem os próprios 3 slots).
     const worn = owned.equipped && owned.classId === this.classId;
     const wearer = owned.equipped && owned.classId && !worn ? CLASSES[owned.classId].name : null;
@@ -898,9 +900,10 @@ export class Hub {
       const equipped = this.equippedRunes();
       const same = equipped.some((i) => i.itemId === owned.itemId);
       const full = equipped.length >= RUNE_SLOTS;
-      main = el("button", "primary", same ? "Já equipada" : full ? "Slots de runa cheios"
+      const otherMaster = !!rune.master && equipped.some((i) => RUNES[i.itemId]?.master);
+      main = el("button", "primary", same ? "Já equipada" : full ? "Slots de runa cheios" : otherMaster ? "Já há uma Mestra equipada"
         : wearer ? `Passar para o ${CLASSES[this.classId].name}` : "Equipar runa");
-      main.disabled = same || full;
+      main.disabled = same || full || otherMaster;
       main.onclick = () => this.run(async () => {
         const classId = this.classId;
         await equipItem(owned.id, true, classId);
@@ -1020,7 +1023,7 @@ export class Hub {
     const text = el("div");
     const name = el("strong", "", rune.name);
     name.style.color = hex(rune.color);
-    text.append(name, el("small", "muted", `Runa · ${rune.description}${note ? ` · ${note}` : ""}`));
+    text.append(name, el("small", "muted", `${rune.master ? "Runa Mestra" : "Runa"} · ${runeEffect(rune)}${note ? ` · ${note}` : ""}`));
     row.append(itemImg(rune.id), text, action);
     return row;
   }

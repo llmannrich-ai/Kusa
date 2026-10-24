@@ -56,6 +56,7 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.bossRunes` | Bosses que deram a runa a este personagem nesta hunt (cada boss dá a runa uma vez por personagem) |
 | `stats.absorbed` | Dano que os escudos (magias e Traços) absorveram no herói |
 | `stats.buffMs` | Tempo com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração |
+| `stats.runeProcs` | Runas Mestras: quantas vezes cada efeito disparou (`phoenix`, `echo`, `reaper`, `vengeance`) e, em `pact`, a vida gasta no lugar da mana. A cura do Ceifador soma em `healing`; o dano da Vingança, em `damageDealt["rune:vengeance"]` |
 | `stats.intercepted` | Intervir (Guardião): dano que o cavaleiro puxou dos aliados para si |
 | `stats.revives`, `stats.revived` | Renascer da Semente: nomes de quem o druida salvou; em quem renasceu, de quem veio a semente, o segundo e o dano que levou depois |
 | `stats.bots` | Bots na equipe quando a hunt começou (já contados em `party_size`). Bot não gera linha de telemetria |
