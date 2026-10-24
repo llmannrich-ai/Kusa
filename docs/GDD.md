@@ -396,8 +396,14 @@ fases, desbloqueio) em `docs/MAPA_MUNDI_PLANO.md`.
   cima dele. O nome do mundo aparece em marca d'água laranja, em arco, no mar.
 - **Pontos:** um por cenário, na ordem da trilha: 🐸 Pântano do Kosaradius (Verdemar) → 🏚️ Cripta (serra de Verdemar)
   → 🏜️ Mar de Areia (Solária) → 🌿 Pântano das Ruínas (Arquipélago Afundado). Cada ponto mostra o selo 👥 N quando
-  tem salas abertas. Tocar num ponto leva o herói até ele (~1 s) e abre a ficha.
-- **Névoa:** Gelo de Hrimfal, Ilha de Cinza e Cidadela Caída são terras ainda sem cenário; tocar só avisa.
+  tem salas abertas. Tocar num ponto abre a ficha e leva o herói até ele.
+- **Trilha:** o herói anda pela trilha desenhada (tracejada em terra, pontilhada no mar), passando pelos pontos do
+  meio, em ~1 s no total, e o mapa rola junto até o ponto ficar acima da ficha. O boneco vira para o lado da
+  caminhada (frente, costas, lado) e anima os passos; onde a rota pontilhada sai da terra, vira um barquinho de
+  pergaminho e volta a ser herói ao pisar na costa. Tocar de novo no ponto, ou tocar na ficha, pula a caminhada.
+  Com "reduzir movimento" ligado no aparelho (`prefers-reduced-motion`), o herói só troca de ponto.
+- **Névoa:** Gelo de Hrimfal, Ilha de Cinza e Cidadela Caída são terras ainda sem cenário, com o nome e "terra não
+  mapeada" escritos por cima; tocar clareia a névoa um instante e mostra o aviso embaixo.
 - **Ainda não:** todos os cenários estão abertos. O desbloqueio por boss (por classe) e a estrela por ponto vêm na
   fase 3 do plano.
 

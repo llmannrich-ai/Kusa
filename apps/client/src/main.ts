@@ -25,7 +25,7 @@ import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
-import { heroPoses } from "./art/heroes.ts";
+import { heroSheet } from "./art/heroes.ts";
 import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
 import { renderHistory } from "./history.ts";
 import { Hub } from "./menu.ts";
@@ -195,13 +195,13 @@ function toast(message: string) {
   toastTimer = window.setTimeout(() => show("world-toast", false), 2500);
 }
 
-/** Tocar num ponto do mapa: o herói vai até ele e abre a ficha do cenário. */
+/** Tocar num ponto do mapa: o herói anda até ele pela trilha e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
 function pickPoint(id: MapId) {
   if (entering) return;
+  if (world?.walkingTo() === id) return world.skip();
   chooseMap(id);
-  world?.select(id);
-  // A ficha cobre a parte de baixo: o ponto sobe para ficar à vista acima dela.
-  world?.scrollTo(id, 0.22, true);
+  // A ficha cobre a parte de baixo: o mapa rola com o herói e o ponto para à vista acima dela.
+  world?.select(id, { anchor: 0.22 });
   openSheet();
 }
 
@@ -238,8 +238,8 @@ async function openRooms() {
   show("map-sheet", false);
   show("rooms-sheet", false);
   world ??= createWorldMap($("world-map"), MAP_ART, pickPoint, (name) => toast(`${name}: terra não mapeada. Ainda ninguém voltou de lá.`));
-  world.setHero(heroPoses(hub.classId, undefined, ["down"]).toDataURL());
-  world.select(createMapId(), true);
+  world.setHero(heroSheet(hub.classId).toDataURL());
+  world.select(createMapId(), { instant: true });
   // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
   world.scrollTo(createMapId());
   setEntering(false);
@@ -387,6 +387,8 @@ $("rooms-back").onclick = () => {
   show("menu", true);
 };
 $("map-sheet-close").onclick = () => show("map-sheet", false);
+// Tocar na ficha pula a caminhada do herói.
+$("map-sheet").addEventListener("pointerdown", () => world?.skip());
 $("rooms-sheet-close").onclick = () => show("rooms-sheet", false);
 $("open-room-list").onclick = () => {
   show("map-sheet", false);

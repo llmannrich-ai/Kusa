@@ -22,18 +22,33 @@ const FOG = [
   { name: "Cidadela Caída", x: 262, y: 698, w: 130, h: 110 },
 ];
 
+/** A ordem da jornada: o herói só anda por esta trilha, de um ponto ao vizinho. */
+const ROUTE: MapId[] = ["marsh", "crypt", "desert", "swamp"];
+
+/**
+ * Trecho `i` liga `ROUTE[i]` a `ROUTE[i + 1]`: começa e termina exatamente nos pontos de `WORLD_POINTS`.
+ * `sea`: rota de barco (pontilhada); onde ela passa fora da terra, o herói vira barco.
+ */
+const TRAILS = [
+  { d: "M150 1765C140 1690 210 1610 222 1510", sea: false },
+  { d: "M222 1510C250 1430 330 1330 300 1190", sea: true },
+  { d: "M300 1190C260 1060 140 1010 95 840", sea: true },
+];
+
 const LAND = "#e7dcb2";
 const INK = "#4a3420";
+const LAND_ROUTE = `stroke="#7a2e22" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"`;
+const SEA_ROUTE = `stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"`;
 const HALO = `fill="none" stroke="#8a7458" stroke-width="11" opacity="0.25"`;
 
-/** Costa com o halo de tinta por fora (desenhado antes) e a terra por cima. */
-const coast = (d: string, fill = LAND) => `<path d="${d}" ${HALO}/><path d="${d}" fill="${fill}" stroke="${INK}" stroke-width="1.6"/>`;
+/** Costa com o halo de tinta por fora (desenhado antes) e a terra por cima (`wm-terra`: onde o barco vira herói). */
+const coast = (d: string, fill = LAND) => `<path d="${d}" ${HALO}/><path class="wm-terra" d="${d}" fill="${fill}" stroke="${INK}" stroke-width="1.6"/>`;
 
 const label = (x: number, y: number, text: string, size: number, spacing = 3) =>
   `<text x="${x}" y="${y}" text-anchor="middle" font-size="${size}" letter-spacing="${spacing}" font-variant="small-caps" fill="${INK}">${text}</text>`;
 
 const unmapped = (x: number, y: number) =>
-  `<text x="${x}" y="${y}" text-anchor="middle" font-size="13" font-style="italic" fill="#5a4128">terra não mapeada</text>`;
+  `<text x="${x}" y="${y}" text-anchor="middle" font-size="14" font-style="italic" fill="#4f3820">terra não mapeada</text>`;
 
 /** O desenho (texto fixo, sem nada de fora: pode ir por innerHTML). Pontos e herói vão por cima, em HTML. */
 const ART = `<svg class="world-art" viewBox="0 0 ${W} ${H}" aria-hidden="true" font-family="Georgia, serif">
@@ -119,26 +134,59 @@ const ART = `<svg class="world-art" viewBox="0 0 ${W} ${H}" aria-hidden="true" f
   <path id="wm-arco" d="M14 1446Q206 1268 398 1446" fill="none"/>
   <text font-size="42" letter-spacing="9" font-variant="small-caps" fill="#e07a2c" opacity="0.26"><textPath href="#wm-arco" xlink:href="#wm-arco" startOffset="50%" text-anchor="middle">Kosaradius</textPath></text>
 
-  <path d="M150 1765C140 1690 210 1610 222 1510" fill="none" stroke="#7a2e22" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
-  <path d="M222 1510C250 1430 330 1330 300 1190" fill="none" stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"/>
-  <path d="M300 1190C260 1060 140 1010 95 840" fill="none" stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"/>
+  ${TRAILS.map((trail, i) => `<path id="wm-trilha-${i}" d="${trail.d}" fill="none" ${trail.sea ? SEA_ROUTE : LAND_ROUTE}/>`).join("")}
 
   <rect width="${W}" height="${H}" fill="url(#wm-vinheta)"/>
 </svg>`;
 
 const pct = (value: number, of: number) => `${(value / of) * 100}%`;
 
+/** Duração da caminhada, a mesma passando por um trecho ou por vários. */
+const WALK_MS = 1000;
+/** Altura do herói (px) e quanto ele sobe para ficar de pé em cima do ícone do ponto. */
+const HERO_PX = 40;
+const ON_POINT_LIFT = 22;
+/** Quadros da folha do herói (`heroSheet`): 3 direções × 3 quadros; a caminhada toca `1, 0, 2, 0`. */
+const SHEET_DIRS = ["down", "side", "up"] as const;
+const STEP_FRAMES = [1, 0, 2, 0];
+/** Distância (no desenho) entre um passo e outro. */
+const STEP_LEN = 12;
+
+/** Barquinho de pergaminho: casco de tinta, vela creme e flâmula, virado para a esquerda (como o herói de lado). */
+const BOAT = `<svg class="world-boat" viewBox="0 0 48 40" aria-hidden="true">
+  <path d="M6 33q18 5 36 0" fill="none" stroke="#8f9c83" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M3 25H45L39 32Q24 35 9 32Z" fill="#8a5a36" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M8 28H40" stroke="#5e3b22" stroke-width="1"/>
+  <path d="M26 25V5" stroke="${INK}" stroke-width="1.8"/>
+  <path d="M25 7Q13 14 12 23H25Z" fill="#f3e7c9" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M27 9Q34 15 35 22H27Z" fill="#e7dcb2" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M26 5L19 3L26 1Z" fill="#b8452a" stroke="${INK}" stroke-width="0.8"/>
+</svg>`;
+
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+export interface SelectOptions {
+  /** Sem caminhar (ao abrir a tela). Com `prefers-reduced-motion` é sempre assim. */
+  instant?: boolean;
+  /** Onde o ponto fica na tela ao chegar (fração da altura); o mapa rola junto com o herói. Sem ele, não rola. */
+  anchor?: number;
+}
+
 export interface WorldMapView {
-  /** Marca o cenário escolhido e leva o herói até ele (`instant`: sem caminhar, ao abrir a tela). */
-  select(id: MapId, instant?: boolean): void;
+  /** Marca o cenário escolhido e leva o herói até ele pela trilha. */
+  select(id: MapId, options?: SelectOptions): void;
+  /** Para onde o herói está andando agora (`null` parado). */
+  walkingTo(): MapId | null;
+  /** Termina a caminhada já: o herói aparece no ponto. */
+  skip(): void;
   /** Rola o mapa até o ponto, que fica a `anchor` da altura da tela (com `smooth`, deslizando). */
   scrollTo(id: MapId, anchor?: number, smooth?: boolean): void;
   /** Quantas salas abertas cada cenário tem (o selo 👥 do ponto). */
   setRoomCounts(counts: Partial<Record<MapId, number>>): void;
-  /** Troca o boneco do herói (a classe escolhida no menu). */
-  setHero(url: string): void;
+  /** Troca o boneco do herói: a folha de `heroSheet` da classe escolhida no menu. */
+  setHero(sheetUrl: string): void;
 }
-
 /**
  * Monta o mapa em `root` (dentro de um contêiner que rola na vertical). `icons` são os desenhos dos cenários,
  * `onPoint` recebe o toque num ponto e `onFog` o toque numa terra sem cenário.
@@ -179,23 +227,132 @@ export function createWorldMap(root: HTMLElement, icons: Record<MapId, string>, 
     root.append(button);
     points.set(id, { button, count });
   }
-  const hero = document.createElement("img");
+  const hero = document.createElement("div");
   hero.className = "world-hero";
-  hero.alt = "";
+  const sprite = document.createElement("span");
+  sprite.className = "world-hero-sprite";
+  hero.append(sprite);
+  hero.insertAdjacentHTML("beforeend", BOAT);
   root.append(hero);
+  const scroller = root.parentElement!;
+
+  // A trilha toda é uma linha só (Kosaradius → … → Pântano das Ruínas): a posição do herói é a distância andada
+  // desde o primeiro ponto, e `stops[i]` é onde fica o ponto `ROUTE[i]`. Medida na primeira vez (o SVG precisa estar
+  // na página).
+  let trails: SVGPathElement[] = [];
+  let lands: SVGPathElement[] = [];
+  let stops: number[] = [];
+  const measure = () => {
+    if (stops.length) return;
+    trails = TRAILS.map((_, i) => root.querySelector<SVGPathElement>(`#wm-trilha-${i}`)!);
+    lands = [...root.querySelectorAll<SVGPathElement>(".wm-terra")];
+    stops = [0];
+    for (const trail of trails) stops.push(stops[stops.length - 1] + trail.getTotalLength());
+  };
+  const stopOf = (id: MapId) => stops[ROUTE.indexOf(id)];
+  const pointAt = (s: number) => {
+    let leg = 0;
+    while (leg < trails.length - 1 && s > stops[leg + 1]) leg++;
+    const p = trails[leg].getPointAtLength(Math.max(0, s - stops[leg]));
+    return { x: p.x, y: p.y, leg };
+  };
+
+  let at = 0;
+  let facing: (typeof SHEET_DIRS)[number] = "down";
+  let flip = false;
+  /** Desenha o herói na distância `s`; `heading` é o sentido da caminhada (+1 para a frente na trilha, 0 parado). */
+  const place = (s: number, heading: number) => {
+    at = s;
+    const { x, y, leg } = pointAt(s);
+    if (heading !== 0) {
+      const clamp = (v: number) => Math.min(stops[stops.length - 1], Math.max(0, v));
+      const behind = pointAt(clamp(s - heading * 2));
+      const ahead = pointAt(clamp(s + heading * 2));
+      const dx = ahead.x - behind.x;
+      const dy = ahead.y - behind.y;
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+        facing = Math.abs(dx) > Math.abs(dy) ? "side" : dy < 0 ? "up" : "down";
+        if (Math.abs(dx) > 0.2) flip = dx > 0;
+      }
+    } else facing = "down";
+    // Perto de um ponto o herói sobe no ícone; no meio do caminho pisa na trilha.
+    const near = Math.min(...stops.map((stop) => Math.abs(stop - s)));
+    const lift = ON_POINT_LIFT * Math.max(0, 1 - near / 34);
+    const atSea = heading !== 0 && TRAILS[leg].sea && !lands.some((land) => land.isPointInFill(new DOMPoint(x, y)));
+    hero.classList.toggle("boat", atSea);
+    hero.classList.toggle("flip", flip);
+    hero.style.left = pct(x, W);
+    hero.style.top = pct(y, H);
+    hero.style.transform = `translate(-50%, ${-HERO_PX - lift}px)`;
+    const frame = SHEET_DIRS.indexOf(facing) * 3 + (heading === 0 ? 0 : STEP_FRAMES[Math.floor(s / STEP_LEN) % 4]);
+    sprite.style.backgroundPosition = `${(frame / 8) * 100}% 0`;
+    sprite.style.transform = facing === "side" && flip ? "scaleX(-1)" : "";
+  };
+
+  /** Rola para que o herói (em `y` do desenho) fique a `anchor` da altura da tela. */
+  const follow = (y: number, anchor: number) => {
+    scroller.scrollTop = (y / H) * root.clientHeight - scroller.clientHeight * anchor;
+  };
+
+  let walk: { target: MapId; from: number; to: number; start: number; anchors: [number, number] | null; raf: number } | null = null;
+  // Se o jogador rolar o mapa no meio da caminhada, o mapa para de seguir o herói.
+  const stopFollowing = () => {
+    if (walk) walk.anchors = null;
+  };
+  scroller.addEventListener("wheel", stopFollowing, { passive: true });
+  scroller.addEventListener("touchmove", stopFollowing, { passive: true });
+
+  const finish = () => {
+    if (!walk) return;
+    cancelAnimationFrame(walk.raf);
+    const { to, anchors } = walk;
+    walk = null;
+    place(to, 0);
+    if (anchors) follow(pointAt(to).y, anchors[1]);
+  };
+  const step = (now: number) => {
+    if (!walk) return;
+    const t = Math.min(1, (now - walk.start) / WALK_MS);
+    const e = easeInOut(t);
+    const s = walk.from + (walk.to - walk.from) * e;
+    place(s, Math.sign(walk.to - walk.from));
+    if (walk.anchors) follow(pointAt(s).y, walk.anchors[0] + (walk.anchors[1] - walk.anchors[0]) * e);
+    if (t >= 1) finish();
+    else walk.raf = requestAnimationFrame(step);
+  };
 
   return {
-    select(id, instant = false) {
+    select(id, { instant = false, anchor } = {}) {
       for (const [pid, p] of points) {
         p.button.classList.toggle("selected", pid === id);
         p.button.setAttribute("aria-pressed", String(pid === id));
       }
-      hero.classList.toggle("instant", instant);
-      hero.style.left = pct(WORLD_POINTS[id].x, W);
-      hero.style.top = pct(WORLD_POINTS[id].y, H);
+      measure();
+      if (walk) {
+        // Trocou de destino no meio do caminho: segue de onde está.
+        cancelAnimationFrame(walk.raf);
+        walk = null;
+      }
+      const to = stopOf(id);
+      if (instant || reducedMotion() || Math.abs(to - at) < 0.5) {
+        place(to, 0);
+        if (anchor !== undefined) this.scrollTo(id, anchor, !instant && !reducedMotion());
+        return;
+      }
+      let anchors: [number, number] | null = null;
+      if (anchor !== undefined) {
+        // Começa de onde o herói está na tela (dentro dela) e termina com o ponto em `anchor`.
+        const startY = (pointAt(at).y / H) * root.clientHeight - scroller.scrollTop;
+        anchors = [Math.min(0.85, Math.max(0.15, startY / scroller.clientHeight)), anchor];
+      }
+      walk = { target: id, from: at, to, start: performance.now(), anchors, raf: 0 };
+      walk.raf = requestAnimationFrame(step);
     },
+    walkingTo() {
+      return walk?.target ?? null;
+    },
+    skip: finish,
     scrollTo(id, anchor = 0.55, smooth = false) {
-      const scroller = root.parentElement!;
       const y = (WORLD_POINTS[id].y / H) * root.clientHeight;
       scroller.scrollTo({ top: Math.max(0, y - scroller.clientHeight * anchor), behavior: smooth ? "smooth" : "auto" });
     },
@@ -207,8 +364,8 @@ export function createWorldMap(root: HTMLElement, icons: Record<MapId, string>, 
         p.button.setAttribute("aria-label", `${MAPS[id].name}${n > 0 ? `, ${n} ${n === 1 ? "sala aberta" : "salas abertas"}` : ""}`);
       }
     },
-    setHero(url) {
-      hero.src = url;
+    setHero(sheetUrl) {
+      sprite.style.backgroundImage = `url("${sheetUrl}")`;
     },
   };
 }

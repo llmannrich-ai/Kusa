@@ -1176,7 +1176,10 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .world-map { position: relative; width: 100%; aspect-ratio: 412 / 2000; }
 .world-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.world-fog { position: absolute; padding: 0; background: none; border: 0; }
+.world-fog { position: absolute; padding: 0; background: none; border: 0; border-radius: 50%; }
+/* Resposta ao toque na névoa (o aviso aparece embaixo): a terra clareia um pouco. */
+.world-fog:active { background: radial-gradient(closest-side, rgba(255, 250, 235, 0.55), transparent); }
+.world-fog:focus-visible { outline: 2px dashed var(--ink); outline-offset: -6px; }
 .world-point {
   position: absolute;
   display: flex;
@@ -1196,9 +1199,16 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 @keyframes world-glow { 50% { box-shadow: 0 2px 0 var(--ink), 0 0 0 7px rgba(232, 181, 69, 0.45); } }
 .world-name { padding: 2px 8px; font-size: 14px; white-space: nowrap; background: var(--parchment); border: 1.5px solid var(--ink); border-radius: 4px; }
 .world-count { position: absolute; top: -8px; left: 38px; padding: 2px 7px; font-size: 12px; font-weight: bold; color: var(--parchment); background: #3b2a1a; border-radius: 10px; white-space: nowrap; }
-/* O herói fica de pé em cima do ponto; anda até o novo em ~1 s (sem caminhar ao abrir a tela). */
-.world-hero { position: absolute; width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; transform: translate(-50%, -62px); transition: left 0.9s ease-in-out, top 0.9s ease-in-out; filter: drop-shadow(0 2px 0 rgba(43, 29, 16, 0.4)); }
-.world-hero.instant { transition: none; }
+/* O herói fica de pé em cima do ponto e anda pela trilha em ~1 s (worldMap.ts posiciona quadro a quadro); no mar vira barco. */
+.world-hero { position: absolute; width: 40px; height: 40px; pointer-events: none; transform: translate(-50%, -62px); filter: drop-shadow(0 2px 0 rgba(43, 29, 16, 0.4)); }
+.world-hero-sprite { position: absolute; inset: 0; background-size: 900% 100%; background-repeat: no-repeat; image-rendering: pixelated; }
+.world-boat { position: absolute; left: -4px; bottom: -6px; width: 48px; height: 40px; display: none; }
+.world-hero.boat .world-hero-sprite { display: none; }
+.world-hero.boat .world-boat { display: block; }
+.world-hero.flip .world-boat { transform: scaleX(-1); }
+@media (prefers-reduced-motion: reduce) {
+  .world-point.selected .world-icon { animation: none; box-shadow: 0 2px 0 var(--ink), 0 0 0 5px rgba(232, 181, 69, 0.45); }
+}
 .world-top {
   position: absolute;
   top: 0;

@@ -7,7 +7,7 @@ salas abertas). Documento de planejamento: quando uma fase for entregue, o `GDD.
 este arquivo marca a fase como feita.
 
 **Andamento:** planejamento. Decisões do Leonardo na seção 2; história, nomes das regiões e maquete visual
-(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Fase 1 feita (mapa estático, ficha, salas abertas; o herói já vai até o ponto em linha reta).
+(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Fases 1 (mapa estático, ficha, salas abertas) e 2 (herói andando pela trilha, barco no mar, névoa revisada) feitas.
 
 ---
 
@@ -92,7 +92,9 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
   herói. A arte fica em `apps/client/src/art/world/` (texto SVG fixo, como `MAP_ART`).
 - Catálogo dos pontos (posição, região, trilha até o próximo, trecho de mar) **no cliente**, fora de `maps.ts`, para
   não mudar o `RULES_VERSION`.
-- Herói anda com `SVGPathElement.getPointAtLength` pela trilha; no trecho de mar troca o sprite pelo barco.
+- Herói anda com `SVGPathElement.getPointAtLength` pela trilha (`TRAILS` em `worldMap.ts`, um trecho por par de
+  pontos vizinhos de `ROUTE`): a jornada é uma linha só e a posição do herói é a distância andada nela. Nos trechos de
+  mar troca o sprite pelo barco onde a rota sai das terras (`isPointInFill` nas costas `.wm-terra`).
 - O lobby (`lobby.ts`) perde os cartões de cenário (`renderMapPicker`); `createMapId()` passa a vir do ponto tocado.
 - Pergaminho com textura feita por filtro SVG (`feTurbulence`) pode pesar em celular fraco: renderizar a textura uma
   vez numa imagem (canvas → `ImageBitmap`) e medir a rolagem a 60 fps num Android de entrada.
@@ -130,6 +132,6 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 |---|---|---|
 | 0 | maquete HTML (pergaminho, pontos, névoa, ficha) para aprovar | nada no jogo |
 | 1 | mapa estático com os 4 pontos, ficha, salas abertas; substitui os cartões; tudo aberto | cliente · **feito** |
-| 2 | herói andando, barco no mar, névoa com nomes | cliente |
+| 2 | herói andando, barco no mar, névoa com nomes | cliente · **feito** |
 | 3 | desbloqueio por classe, estrela, crédito do boss, migration e preenchimento das contas atuais | shared, servidor, banco |
 | 4 | cenários novos nas regiões em névoa (gelo, vulcão, cidadela), cada um um projeto à parte | tudo |
