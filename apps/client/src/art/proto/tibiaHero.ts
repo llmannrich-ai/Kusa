@@ -62,18 +62,28 @@ interface Kit {
   pants: "none" | "full" | "knee";
   feet: "bare" | "boots" | "tall" | "shoes" | "wraps";
   waist: "loincloth" | "belt" | "strap" | "sash" | "rope";
-  weapon: "none" | "sword" | "bow" | "staff" | "branch" | "greatsword";
+  weapon: "none" | "sword" | "bow" | "staff" | "branch" | ProtoWeapon;
   quiver?: boolean;
-  /** Capacete vestido por cima da cabeça (itens do piloto). */
-  helmet?: "wolf" | "demon";
+  /** Itens vestidos por cima do kit (protótipo dos itens). */
+  helmet?: ProtoHelmet;
+  armor?: ProtoArmor;
 }
 
-/** Itens do piloto vestidos sobre o kit: trocam o capacete e a arma da classe. */
+export type ProtoWeapon = `sword-${1 | 2 | 3 | 4 | 5}`;
+export type ProtoHelmet = `war-${1 | 2 | 3 | 4 | 5}` | "wolf" | "demon";
+export type ProtoArmor = `armor-${1 | 2 | 3 | 4 | 5}`;
+export const PROTO_SWORDS: ProtoWeapon[] = ["sword-1", "sword-2", "sword-3", "sword-4", "sword-5"];
+export const PROTO_WAR_HELMETS: ProtoHelmet[] = ["war-1", "war-2", "war-3", "war-4", "war-5"];
+export const PROTO_WAR_ARMORS: ProtoArmor[] = ["armor-1", "armor-2", "armor-3", "armor-4", "armor-5"];
+
+/** Itens vestidos sobre o kit: trocam o capacete, a armadura e a arma da classe. */
 export interface ProtoGear {
-  helmet?: "wolf" | "demon";
-  weapon?: "greatsword";
+  helmet?: ProtoHelmet;
+  armor?: ProtoArmor;
+  weapon?: ProtoWeapon;
 }
-export const PROTO_GEAR_NAMES = { wolf: "Capuz do Lobo", demon: "Elmo do Demônio", greatsword: "Lâmina do dragão" } as const;
+
+const tierOf = (id: string) => Number(id.slice(id.lastIndexOf("-") + 1));
 
 const KITS: Record<ProtoClass, Kit> = {
   base: {
@@ -111,7 +121,7 @@ export const mergeLook = (extra: Partial<ProtoLook>): ProtoLook => ({ ...KNIGHT_
 
 // --- Materiais ----------------------------------------------------------------------
 
-const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber }
+const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire }
 
 const OUTLINE: Rgb = rgb("#1a1210");
 
@@ -139,6 +149,13 @@ function ramps(look: ProtoLook): Rgb[][] {
     r("#4a4652", 1.45, 8, true), // ferro negro
     r("#5a3a30", 1.15, 8), // chifre
     r("#d8962a", 1.1, 8, true), // olho âmbar do lobo
+    r("#7a5232", 1, 6), // couro dos itens
+    r("#d09a48", 1.25, 8, true), // bronze
+    r("#a8c0dc", 1.35, 6, true), // mithral
+    r("#9e2a22", 1.1, 8), // escama de dragão
+    r("#b42a24", 1, 8), // crina vermelha
+    r("#4a9a86", 0.9, 4), // azinhavre
+    r("#3a72d0", 1.3, 8, true), // safira
   ];
 }
 
@@ -659,6 +676,7 @@ function arm(c: Canvas, kit: Kit, shoulder: Pt, elbow: Pt, at: Pt, far: boolean,
       }
       break;
   }
+  if (kit.armor) armorArm(c, tierOf(kit.armor), shoulder, elbow, at, far);
   grip?.();
   hand(c, at, far);
 }
@@ -750,7 +768,7 @@ function branch(c: Canvas, at: Pt, top: number, bottom: number) {
 }
 
 /** Folha: elipse girada com nervura central escura e luz de cima. */
-function leaf(c: Canvas, at: Pt, ang: number, len: number, wid: number) {
+function leaf(c: Canvas, at: Pt, ang: number, len: number, wid: number, mat: Mat = Mat.Leaf) {
   const ca = Math.cos(ang), sa = Math.sin(ang);
   const r = Math.max(len, wid) + 0.5;
   const local = (x: number, y: number) => {
@@ -761,11 +779,11 @@ function leaf(c: Canvas, at: Pt, ang: number, len: number, wid: number) {
     const [u, v] = local(x, y);
     // Ponta fina: a largura cai perto das pontas.
     return u * u + (v / (1 - Math.abs(u) * 0.35)) ** 2 <= 1;
-  }, Mat.Leaf, (x, y) => {
+  }, mat, (x, y) => {
     const [u, v] = local(x, y);
     return lit(u * ca * 0.4 - v * sa * 0.8, u * sa * 0.4 + v * ca * 0.8, Math.sqrt(Math.max(0.05, 1 - u * u - v * v)));
   });
-  thread(c, [at[0] - ca * len * 0.8, at[1] - sa * len * 0.8], [at[0] + ca * len * 0.8, at[1] + sa * len * 0.8], Mat.Leaf, 1, [id]);
+  thread(c, [at[0] - ca * len * 0.8, at[1] - sa * len * 0.8], [at[0] + ca * len * 0.8, at[1] + sa * len * 0.8], mat, 1, [id]);
   return id;
 }
 
@@ -975,6 +993,7 @@ const leafCut = (bottom: number) => (x: number, y: number) => {
 
 /** Roupa de cima do kit (ou o tronco nu com a tanga). Devolve as peças do tronco, para cinto e enfeites. */
 function torsoFront(c: Canvas, kit: Kit, top: number, back: boolean, sway: number): number[] {
+  if (kit.armor) return armorTorso(c, tierOf(kit.armor), top, back ? "up" : "down", sway);
   switch (kit.top) {
     case "none": {
       const id = bareTorso(c, top, CX, 12, false);
@@ -992,6 +1011,7 @@ function torsoFront(c: Canvas, kit: Kit, top: number, back: boolean, sway: numbe
 }
 
 function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
+  if (kit.armor) return armorTorso(c, tierOf(kit.armor), top, "side", sway);
   switch (kit.top) {
     case "none": {
       const id = bareTorso(c, top, CX, 9, true);
@@ -1007,6 +1027,10 @@ function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
 
 /** Cintura, barra e gola do kit sobre o tronco, de frente ou de costas. */
 function dressFront(c: Canvas, kit: Kit, ids: number[], top: number, back: boolean) {
+  if (kit.armor) {
+    if (ARMOR_KEEPS_BELT[tierOf(kit.armor)]) belt(c, ids, CX, 10.5, top, !back, kit.waist === "strap" && !back);
+    return;
+  }
   switch (kit.waist) {
     case "belt": belt(c, ids, CX, 10.5, top, !back); break;
     case "strap": belt(c, ids, CX, 10.5, top, !back, !back); break;
@@ -1071,6 +1095,10 @@ function dressFront(c: Canvas, kit: Kit, ids: number[], top: number, back: boole
 }
 
 function dressSide(c: Canvas, kit: Kit, ids: number[], top: number) {
+  if (kit.armor) {
+    if (ARMOR_KEEPS_BELT[tierOf(kit.armor)]) belt(c, ids, CX, 8.5, top, false);
+    return;
+  }
   switch (kit.waist) {
     case "belt": case "strap": belt(c, ids, CX, 8.5, top, false); break;
     case "sash": sash(c, ids, CX, 8.5, top + 12.6, false); break;
@@ -1108,6 +1136,8 @@ const FEET = 91;
 const CX = 47.5;
 
 /** Balanço da caminhada: passo, passagem, outro passo, passagem. */
+/** Comprimento da espada de cada nível, da mão à ponta (o 5 é o montante de duas mãos, em pé). */
+const SWORD_LEN = [0, 15, 18, 21, 22, 0];
 const SWING = [1, 0, -1, 0];
 const BOB = [0, -1, 0, -1];
 
@@ -1117,8 +1147,12 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
     case "bow": return () => bow(c, at, out);
     case "staff": return () => staff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
-    case "greatsword": return () => greatsword(c, at, [at[0] + out * 3, top - 30]);
-    default: return undefined;
+    default:
+      if (kit.weapon.startsWith("sword-")) {
+        const t = tierOf(kit.weapon);
+        return () => swordArt(c, at, t === 5 ? [at[0] + out * 3, top - 30] : [at[0] + out * 4, at[1] + SWORD_LEN[t]], t);
+      }
+      return undefined;
   }
 }
 
@@ -1158,6 +1192,7 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean) {
     arm(c, kit, sh, el, ha, false, holds ? weaponFront(c, kit, ha, side, top) : undefined);
     if (holds && kit.weapon === "sword") sword(c, ha, [ha[0] + side * 4, ha[1] + 21]);
   }
+  if (kit.armor) armorShoulders(c, tierOf(kit.armor), top, back ? "up" : "down", [[CX - 12.8, top + 2], [CX + 12.8, top + 2]]);
   if (back) headBack(c, kit, b, top);
   else headFront(c, kit, b, top);
 }
@@ -1176,6 +1211,7 @@ function side(c: Canvas, kit: Kit, frame: number) {
   leg(c, kit, hip, fk, fa, ft, true, false);
   // Braço de lá, atrás do tronco, balançando ao contrário da perna.
   arm(c, kit, [CX + 2, top + 3], [CX + 3 + s * 2, top + 10], [CX + 3 + s * 4, top + 18], true);
+  if (kit.armor) armorShoulders(c, tierOf(kit.armor), top, "side", [[CX + 3, top + 2]], true);
   const [nk, na, nt] = pose(s);
   leg(c, kit, hip, nk, na, nt, false, false);
 
@@ -1191,9 +1227,13 @@ function side(c: Canvas, kit: Kit, frame: number) {
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
     : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
-    : kit.weapon === "greatsword" ? () => greatsword(c, ha, [ha[0] - 22, top - 22])
+    : kit.weapon.startsWith("sword-") ? () => {
+      const t = tierOf(kit.weapon);
+      swordArt(c, ha, t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68], t);
+    }
     : undefined;
   arm(c, kit, [CX - 1, top + 3], [CX - 2 - s * 1.5, top + 10], ha, false, grip);
+  if (kit.armor) armorShoulders(c, tierOf(kit.armor), top, "side", [[CX - 0.6, top + 2]]);
   if (kit.weapon === "sword") sword(c, ha, [ha[0] - 16, ha[1] + 15]);
   headSide(c, kit, b, top);
 }
@@ -1465,7 +1505,8 @@ function headBack(c: Canvas, kit: Kit, b: number, top: number) {
   }
   if (kit.wild) hairLeaves(c, [[CX - 6.4, cy - 4.6, -0.4], [CX + 5.4, cy - 1.4, 0.7], [CX - 2, top + 1.6, 1.6], [CX + 7.6, top + 2, 2.2]]);
   if (kit.helmet === "wolf") wolfBack(c, cy, top);
-  if (kit.helmet === "demon") demonBack(c, cy);
+  else if (kit.helmet === "demon") demonBack(c, cy);
+  else if (kit.helmet) warHelmet(c, tierOf(kit.helmet), "up", CX, cy, top);
 }
 
 function headSide(c: Canvas, kit: Kit, b: number, top: number) {
@@ -1547,7 +1588,8 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   if (old) for (const [dx, dy] of [[-8, 3], [-7, 4], [-8, 5]]) c.px(X0 + dx, Yc + dy, Mat.Skin, 2);
   if (kit.beard === "stubble") stubble(c, face, X0 - 14, X0 - 2, Yc + 11, Yc + 18, (X, Y) => X > X0 - 12 || Y > Yc + 15);
   if (kit.helmet === "wolf") wolfSide(c, cx, cy, top);
-  if (kit.helmet === "demon") demonSide(c, cx, cy);
+  else if (kit.helmet === "demon") demonSide(c, cx, cy);
+  else if (kit.helmet) warHelmet(c, tierOf(kit.helmet), "side", cx, cy, top);
   if (kit.beard === "long") {
     // Barba de perfil: do queixo e da mandíbula, apontando para baixo e para a frente; bigode caído.
     const pts: Pt[] = [[cx - 8.6, cy + 5.6], [cx - 1, cy + 3.6], [cx + 0.4, cy + 8], [cx - 3, top + 7], [cx - 6.8, top + 12.6], [cx - 8.8, top + 6], [cx - 9.6, cy + 8.6]];
@@ -1710,7 +1752,8 @@ function demonSide(c: Canvas, cx: number, cy: number) {
 
 function helmetFront(c: Canvas, kit: Kit, cy: number, top: number) {
   if (kit.helmet === "wolf") wolfFront(c, cy, top);
-  if (kit.helmet === "demon") demonFront(c, cy);
+  else if (kit.helmet === "demon") demonFront(c, cy);
+  else if (kit.helmet) warHelmet(c, tierOf(kit.helmet), "down", CX, cy, top);
 }
 
 /**
@@ -1780,6 +1823,556 @@ function spotEye(c: Canvas, at: Pt, r: number) {
   c.on(g, F(at[0] - r * 0.5), F(at[1] - r * 0.5), Mat.Ember, 5);
 }
 
+// --- Lote 1: espadas, elmos e armaduras de guerra (docs/ARTE_ITENS.md) -----------------
+
+/** Malha: anéis em fileiras desencontradas, com o furo escuro e o brilho em cima. */
+const mail: Offset = (X, Y) => {
+  const row = Math.floor(Y / 3), r = Y % 3;
+  const k = (X + (row % 2) * 2) % 4;
+  if (k === 0 || (r === 2 && k !== 2)) return -1;
+  return k === 2 && r === 0 ? 1 : 0;
+};
+
+/** Escamas sobrepostas: borda de baixo escura e um brilho no alto de cada uma. */
+const scales = (w: number, h: number): Offset => (X, Y) => {
+  const row = Math.floor(Y / h);
+  const x = (((X + (row % 2) * (w / 2)) % w) + w) % w, y = Y % h;
+  const r = (x - (w - 1) / 2) ** 2 / (w / 2) ** 2 + (y - 1) ** 2 / (h * h * 0.8);
+  if (r > 0.7 && y >= 1) return -1;
+  return y === 1 && Math.abs(x - (w - 1) / 2) < 1 ? 1 : 0;
+};
+
+/** Tom pela luz de uma forma, para tinta com volume. */
+const shaded = (shade: Shade, bias = 0) => (x: number, y: number, X: number, Y: number) =>
+  Math.max(1, Math.min(4, Math.floor(shade(x, y) * 4 + (BAYER[(Y & 1) * 2 + (X & 1)] - 0.5) * 0.55) + 1)) + bias;
+
+/** Peça com volume feita de um polígono qualquer, presa (ou não) às peças `clip`. */
+function plate(c: Canvas, pts: readonly Pt[], mat: Mat, offset?: Offset) {
+  const xs = pts.map((p) => p[0]);
+  return poly(c, pts, mat, Math.min(...xs), Math.max(...xs), offset);
+}
+
+/** Pontinho de rebite com brilho. */
+function rivet(c: Canvas, ids: readonly number[], x: number, y: number, mat: Mat = Mat.Steel) {
+  c.on(ids, F(x), F(y), mat, 5);
+  c.on(ids, F(x) + 1, F(y) + 1, mat, 1);
+}
+
+// --- Espadas -------------------------------------------------------------------------
+
+/**
+ * Lâmina genérica: largura por posição (`width(t)`, t de 0 na guarda a 1 na ponta), curva para o lado
+ * (`curve`), duas faces (a da luz clara), gume claro e sulco escuro até `fuller`.
+ */
+function blade(c: Canvas, guard: Pt, tip: Pt, width: (t: number) => number, mat: Mat, curve = 0, fuller = 0.7, extra?: Offset) {
+  const dx = tip[0] - guard[0], dy = tip[1] - guard[1];
+  const bl = Math.hypot(dx, dy), ux = dx / bl, uy = dy / bl, gx = -uy, gy = ux;
+  const local = (x: number, y: number) => {
+    const px = x + 0.5 - guard[0], py = y + 0.5 - guard[1];
+    const t = (px * ux + py * uy) / bl;
+    return { t, side: px * gx + py * gy - curve * bl * t * t };
+  };
+  const r = 4 + Math.abs(curve) * bl;
+  return c.fill([Math.min(guard[0], tip[0]) - r, Math.min(guard[1], tip[1]) - r, Math.max(guard[0], tip[0]) + r, Math.max(guard[1], tip[1]) + r],
+    (x, y) => { const { t, side } = local(x, y); return t >= 0 && t <= 1 && Math.abs(side) <= width(t); }, mat, (x, y) => {
+      const { t, side } = local(x, y);
+      const u = side / Math.max(0.2, width(t));
+      if (Math.abs(u) > 0.74) return 0.95;
+      return u < 0 ? 0.78 : 0.4;
+    }, (X, Y) => {
+      const { t, side } = local((X + 0.5) / K - 0.5, (Y + 0.5) / K - 0.5);
+      if (fuller > 0 && Math.abs(side) < Math.max(0.3, width(t) * 0.18) && t > 0.04 && t < fuller) return -2;
+      return (extra ? extra(X, Y) : 0) + (noise(X, Y) < 0.035 ? -1 : 0);
+    });
+}
+
+const taper = (w0: number, w1: number, tipAt = 0.86) => (t: number) => (t > tipAt ? (w0 + (w1 - w0) * tipAt) * (1 - t) / (1 - tipAt) + 0.12 : w0 + (w1 - w0) * t);
+
+/** Cabo: couro ou madeira com voltas de cordão em diagonal. */
+function grip(c: Canvas, a: Pt, b: Pt, r: number, mat: Mat, wrap: Mat | null) {
+  const id = limb(c, a, b, r, r, mat, wrap ? undefined : grain);
+  if (!wrap) return id;
+  const n = Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.7);
+  for (let k = 1; k < n; k++) {
+    const p = lerp(a, b, k / n);
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy);
+    thread(c, [p[0] - (dy / l) * r, p[1] + (dx / l) * r - 0.3], [p[0] + (dy / l) * r, p[1] - (dx / l) * r + 0.3], wrap, k % 2 ? 4 : 2, [id]);
+  }
+  return id;
+}
+
+function swordArt(c: Canvas, at: Pt, tip: Pt, tier: number) {
+  const dx = tip[0] - at[0], dy = tip[1] - at[1];
+  const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, gx = -uy, gy = ux;
+  const P = (a: number, g: number): Pt => [at[0] + ux * a + gx * g, at[1] + uy * a + gy * g];
+  switch (tier) {
+    case 1: {
+      // Gládio de treino: lâmina larga e curta, guarda de madeira, cabo com cordão, pomo redondo.
+      blade(c, P(3.4, 0), tip, taper(2, 1.8, 0.8), Mat.Steel, 0, 0.55);
+      limb(c, P(3, -2.8), P(3, 2.8), 0.75, 0.75, Mat.Wood, grain);
+      grip(c, P(-3, 0), P(2.4, 0), 1.05, Mat.Wood, Mat.Linen);
+      ellipse(c, ...P(-3.8, 0), 1.3, 1.3, Mat.Wood);
+      return;
+    }
+    case 2: {
+      // Xiphos de bronze: lâmina em folha, guarda em crescente, pomo em cabeça de touro.
+      blade(c, P(3.4, 0), tip, (t) => (t > 0.86 ? 2.1 * (1 - t) / 0.14 + 0.12 : 1.25 + Math.sin(Math.PI * Math.min(1, t / 0.8)) * 1.05), Mat.Bronze, 0, 0.75);
+      chain(c, [P(4.2, -3.2), P(3, -1.4), P(2.8, 0), P(3, 1.4), P(4.2, 3.2)], 0.75, Mat.Bronze, undefined, 0.75);
+      grip(c, P(-2.8, 0), P(2.4, 0), 1.05, Mat.Leather, Mat.Bronze);
+      const head = P(-4, 0);
+      const h = ellipse(c, head[0], head[1], 1.5, 1.4, Mat.Bronze);
+      for (const s of [-1, 1]) chain(c, [P(-4.4, s * 1.2), P(-5, s * 2.4), P(-6.2, s * 2.4)], 0.45, Mat.Bronze, undefined, 0.2);
+      for (const s of [-1, 1]) rivet(c, [h], ...P(-4.2, s * 0.6), Mat.Eye);
+      return;
+    }
+    case 3: {
+      // Espada longa: lâmina reta com sulco, guarda reta com pontas, cabo negro, pomo de disco.
+      blade(c, P(3.4, 0), tip, taper(1.8, 1.4, 0.88), Mat.Steel, 0, 0.72);
+      const g = limb(c, P(3, -5.6), P(3, 5.6), 0.7, 0.7, Mat.Steel);
+      for (const s of [-1, 1]) ellipse(c, ...P(3, s * 5.8), 0.95, 0.95, Mat.Steel);
+      rivet(c, [g], ...P(3, 0));
+      grip(c, P(-3.4, 0), P(2.4, 0), 1, Mat.Iron, Mat.Leather);
+      const disc = ellipse(c, ...P(-4.4, 0), 1.6, 1.6, Mat.Steel);
+      c.on(disc, ...([F(P(-4.4, 0)[0]), F(P(-4.4, 0)[1])] as [number, number]), Mat.Steel, 1);
+      return;
+    }
+    case 4: {
+      // Lâmina élfica de mithral: levemente curva, folhas gravadas, guarda em galhos, gema azul.
+      const b = blade(c, P(3.4, 0), tip, (t) => (t > 0.84 ? 1.9 * (1 - t) / 0.16 + 0.1 : 1.55 + Math.sin(Math.PI * t) * 0.35), Mat.Mithral, -0.05, 0, (X, Y) => ((X + Y * 2) % 11 === 0 ? -1 : 0));
+      // Gravura: folhinhas ao longo da lâmina.
+      for (let t = 0.15; t < 0.8; t += 0.16) {
+        const p = lerp(P(3.4, 0), tip, t);
+        thread(c, [p[0] - gx * 0.7, p[1] - gy * 0.7], [p[0] + ux * 1.2, p[1] + uy * 1.2], Mat.Mithral, 1, [b]);
+        thread(c, [p[0] + gx * 0.7, p[1] + gy * 0.7], [p[0] + ux * 1.2, p[1] + uy * 1.2], Mat.Mithral, 1, [b]);
+      }
+      for (const s of [-1, 1]) {
+        chain(c, [P(3.2, 0), P(3.8, s * 2.4), P(6, s * 3.4), P(7.6, s * 2.8)], 0.6, Mat.Mithral, undefined, 0.25);
+        leaf(c, P(5, s * 4.2), Math.atan2(uy, ux) + s * 0.6, 1.4, 0.7, Mat.Mithral);
+      }
+      grip(c, P(-3.2, 0), P(2.6, 0), 0.95, Mat.Linen, Mat.Mithral);
+      const gem = ellipse(c, ...P(-4.2, 0), 1.3, 1.5, Mat.Sapphire);
+      c.on(gem, F(P(-4.6, -0.4)[0]), F(P(-4.6, -0.4)[1]), Mat.Sapphire, 5);
+      return;
+    }
+    default:
+      greatsword(c, at, tip);
+  }
+}
+
+// --- Elmos de guerra -----------------------------------------------------------------
+
+/** Gorro de couro: calota acolchoada em gomos, borda virada, abas nas orelhas amarradas embaixo do queixo. */
+function cap1(c: Canvas, view: ProtoDir, cx: number, cy: number) {
+  const test = view === "side"
+    ? (x: number, y: number) => inEllipse(cx + 0.6, cy - 1.2, 9.6, 9.8)(x, y) && (y + 0.5 < cy - 2.4 || (x > cx - 1.6 && x < cx + 4.4 && y < cy + 6.8) || (x > cx + 3 && y < cy + 4))
+    : view === "up"
+      ? (x: number, y: number) => inEllipse(cx, cy - 1.2, 9.8, 9.8)(x, y) && y < cy + 5
+      : (x: number, y: number) => inEllipse(cx, cy - 1.2, 9.8, 9.8)(x, y) && (y + 0.5 < cy - 2.4 || (Math.abs(x + 0.5 - cx) > 7.2 && y < cy + 6.8));
+  const id = c.fill(ebox(cx, cy - 1.2, 10.4, 10.4), test, Mat.Leather, sphere(cx, cy - 1.2, 9.8, 9.8), (X, Y) => leather(X, Y) + (((X - F(cx)) % 9 + 9) % 9 === 0 ? -1 : 0));
+  // Gomos costurados que descem do alto.
+  for (const k of [-6, -3, 0, 3, 6]) thread(c, [cx + k * 0.25, cy - 10.6], [cx + k, cy - 3], Mat.Leather, (j) => (j % 3 === 0 ? 4 : 1), [id]);
+  // Borda virada na testa.
+  if (view !== "up") {
+    const x0 = view === "side" ? cx - 8.6 : cx - 8.8, x1 = view === "side" ? cx + 3 : cx + 8.8;
+    for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(cy - 3.2), Mat.Leather, 5); c.on(id, X, F(cy - 2.8), Mat.Leather, 3); c.on(id, X, F(cy - 2.4), Mat.Leather, 0); }
+  }
+  // Cordões das abas.
+  if (view === "down") for (const s of [-1, 1]) chain(c, [[cx + s * 8.2, cy + 6.6], [cx + s * 7.4, cy + 8.4], [cx + s * 6, cy + 9.4]], 0.35, Mat.Linen);
+  if (view === "side") chain(c, [[cx + 1.4, cy + 6.6], [cx - 0.6, cy + 8.6], [cx - 2.6, cy + 9.4]], 0.35, Mat.Linen);
+  // Pena e brasão (o mágico) ficam para o lote 2.
+}
+
+/** Elmo coríntio de bronze: cobre o rosto com aberturas em amêndoa, protetor de nariz e crista de crina vermelha. */
+function cap2(c: Canvas, view: ProtoDir, cx: number, cy: number) {
+  const patina: Offset = (X, Y) => (noise(X >> 1, Y >> 1) < 0.06 ? 0 : noise(X, Y) < 0.02 ? 1 : 0);
+  if (view === "side") {
+    // Crista em arco, da testa até a nuca.
+    c.fill([cx - 9, cy - 17, cx + 12, cy], (x, y) => inEllipse(cx + 0.8, cy - 0.6, 13, 15.6)(x, y) && !inEllipse(cx + 0.8, cy - 0.6, 9.6, 10.6)(x, y) && y < cy - 3.4 && x > cx - 7 && x < cx + 10.4,
+      Mat.Crest, sphere(cx + 0.8, cy - 2, 13, 15), (X, Y) => ((X * 3 + Y) % 5 === 0 ? -1 : (X + Y * 2) % 7 === 0 ? 1 : 0));
+    const shell = c.fill(ebox(cx + 0.6, cy + 0.2, 10, 11), (x, y) => {
+      if (!inEllipse(cx + 0.6, cy + 0.2, 9.6, 10.8)(x, y)) return false;
+      if (inEllipse(cx - 6, cy + 2.2, 2.6, 1.2)(x, y)) return false;
+      return !(x + 0.5 < cx - 6.6 && y > cy + 5);
+    }, Mat.Bronze, sphere(cx + 0.6, cy - 0.6, 10, 11), patina);
+    thread(c, [cx - 8.8, cy + 0.4], [cx - 3.6, cy + 0.6], Mat.Bronze, 5, [shell]);
+    thread(c, [cx - 3, cy + 3], [cx + 1.6, cy + 9.6], Mat.Bronze, 1, [shell]);
+    return;
+  }
+  if (view === "down") {
+    // Crista de frente: estreita e alta, presa num suporte.
+    plate(c, [[cx - 2.4, cy - 8.6], [cx - 3, cy - 18.6], [cx - 1.4, cy - 20.6], [cx + 1.4, cy - 20.6], [cx + 3, cy - 18.6], [cx + 2.4, cy - 8.6]], Mat.Crest, (X, Y) => ((X * 3 + Y) % 5 === 0 ? -1 : (X + Y) % 7 === 0 ? 1 : 0));
+  }
+  const shell = c.fill(ebox(cx, cy + 0.4, 10.4, 11.2), (x, y) => {
+    if (!inEllipse(cx, cy + 0.4, 9.8, 10.8)(x, y)) return false;
+    if (view === "up") return true;
+    const d = Math.abs(x + 0.5 - cx);
+    if (inEllipse(cx - 3.8, cy + 2.2, 3, 1.6)(x, y) || inEllipse(cx + 3.8, cy + 2.2, 3, 1.6)(x, y)) return false;
+    return !(d < 2.1 + (y - cy - 5) * 0.2 && y > cy + 5);
+  }, Mat.Bronze, sphere(cx, cy - 0.6, 10.4, 11.4), patina);
+  if (view === "down") {
+    // Sobrancelhas gravadas, protetor de nariz, azinhavre nas bordas e o suporte da crista.
+    for (const s of [-1, 1]) {
+      thread(c, [cx + s * 0.8, cy + 0.4], [cx + s * 6.6, cy + 0.9], Mat.Bronze, 1, [shell]);
+      thread(c, [cx + s * 0.8, cy - 0.1], [cx + s * 6.6, cy + 0.4], Mat.Bronze, 5, [shell]);
+      for (let k = 0; k < 6; k++) c.on([shell], F(cx + s * (6 + noise(k, s) * 3)), F(cy + 6 + noise(s, k) * 4), Mat.Patina, 3);
+    }
+    thread(c, [cx, cy + 1], [cx, cy + 5.2], Mat.Bronze, 5, [shell]);
+    limb(c, [cx - 1.4, cy - 9.8], [cx + 1.4, cy - 9.8], 0.8, 0.8, Mat.Bronze);
+  } else {
+    plate(c, [[cx - 2.2, cy - 9.4], [cx - 2, cy - 16], [cx + 2, cy - 16], [cx + 2.2, cy - 9.4]], Mat.Crest, (X, Y) => ((X * 3 + Y) % 5 === 0 ? -1 : 0));
+    thread(c, [cx, cy - 9], [cx, cy + 10], Mat.Bronze, 1, [shell]);
+  }
+}
+
+/** Elmo nórdico de ferro: calota em ponta com tiras e rebites, nasal, e malha caindo na nuca e nos lados. */
+function cap3(c: Canvas, view: ProtoDir, cx: number, cy: number, top: number) {
+  // Malha (camal) atrás da cabeça, até os ombros.
+  if (view === "down") {
+    for (const s of [-1, 1]) plate(c, [[cx + s * 7.2, cy - 1.6], [cx + s * 9.8, cy - 2], [cx + s * 12.2, top + 4.6], [cx + s * 8.6, top + 5.4], [cx + s * 7, cy + 8]], Mat.Steel, (X, Y) => mail(X, Y) - 1);
+  } else if (view === "up") {
+    plate(c, [[cx - 9.8, cy - 2], [cx - 12.4, top + 4.6], [cx + 12.4, top + 4.6], [cx + 9.8, cy - 2]], Mat.Steel, (X, Y) => mail(X, Y) - 1);
+  } else {
+    plate(c, [[cx - 1.6, cy - 2], [cx + 9.8, cy - 2.4], [cx + 11.4, top + 4.8], [cx + 1, top + 5.2], [cx - 1.6, cy + 7]], Mat.Steel, (X, Y) => mail(X, Y) - 1);
+  }
+  const ox = view === "side" ? cx + 0.6 : cx;
+  const dome = c.fill([ox - 10.4, cy - 15, ox + 10.4, cy - 1], (x, y) => {
+    const d = Math.abs(x + 0.5 - ox);
+    return y < cy - 1.6 && (inEllipse(ox, cy - 0.6, 9.8, 10.2)(x, y) || (y < cy - 6 && d < (y + 0.5 - (cy - 14.6)) * 0.95));
+  }, Mat.Steel, sphere(ox, cy - 2.6, 10.4, 11.4), hammered);
+  // Tiras verticais (spangen) com rebites e a faixa da testa.
+  const bands = view === "side" ? [-3.6, 2.4] : [-5, 0, 5];
+  for (const k of bands) {
+    thread(c, [ox + k * 0.2, cy - 13.8], [ox + k, cy - 2.6], Mat.Steel, 5, [dome]);
+    thread(c, [ox + k * 0.2 + 0.4, cy - 13.6], [ox + k + 0.4, cy - 2.6], Mat.Steel, 1, [dome]);
+    for (const t of [0.35, 0.7]) rivet(c, [dome], ox + k * (0.2 + 0.8 * t), cy - 13.8 + 11.2 * t);
+  }
+  const band = limb(c, [ox - 9.8, cy - 2.2], [ox + 9.8, cy - 2.2], 0.9, 0.9, Mat.Steel);
+  for (const k of [-7.4, -3.7, 3.7, 7.4]) rivet(c, [band], ox + k, cy - 2.4);
+  if (view === "down") limb(c, [cx, cy - 2.6], [cx, cy + 5.4], 0.75, 0.6, Mat.Steel);
+  if (view === "side") limb(c, [cx - 8.6, cy - 2.6], [cx - 9.4, cy + 5], 0.75, 0.6, Mat.Steel);
+}
+
+/** Elmo de mithral fechado: barril com fenda em cruz, respiros, coroa de folhas e penacho na cor da classe. */
+function cap4(c: Canvas, view: ProtoDir, cx: number, cy: number) {
+  const ox = view === "side" ? cx + 0.4 : cx;
+  // Penacho: plumas curvas subindo e caindo para trás.
+  const plumeTop: Pt = [ox + (view === "side" ? 2 : 0.6), cy - 18];
+  for (let k = 0; k < 7; k++) {
+    const sx = view === "side" ? 0.6 + k * 0.25 : (k - 3) * 0.45;
+    chain(c, [[ox, cy - 10], [ox + sx * 1.4, cy - 14.4 - (k % 3) * 0.5], [plumeTop[0] + sx * 3.4, plumeTop[1] + Math.abs(k - 3) * 0.6], [plumeTop[0] + sx * 5.6 + (view === "side" ? 3 : 0), plumeTop[1] + 4.4 + Math.abs(k - 3) * 0.8]],
+      1.9 - Math.abs(k - 3) * 0.2, Mat.Primary, (X, Y) => ((X + Y) % 4 === 0 ? -1 : (X + Y * 3) % 9 === 0 ? 1 : 0), 0.4);
+  }
+  limb(c, [ox - 0.8, cy - 10.4], [ox + 0.8, cy - 10.4], 0.9, 0.9, Mat.Trim);
+  const shell = c.fill([ox - 10, cy - 11, ox + 10, cy + 11], (x, y) => {
+    const d = Math.abs(x + 0.5 - ox);
+    if (view === "side" && x + 0.5 < ox - 9.4) return false;
+    return (inEllipse(ox, cy - 4, 9.4, 6.8)(x, y) || (d <= 9.4 && y > cy - 4)) && y < cy + 10.2 - Math.max(0, d - 6.4) * 0.9;
+  }, Mat.Mithral, (x) => lit(Math.max(-0.95, Math.min(0.95, (x + 0.5 - ox) / 9.6)), -0.2, 0.8), (X, Y) => (noise(X, Y) < 0.02 ? 1 : 0));
+  if (view === "up") {
+    thread(c, [ox, cy - 10], [ox, cy + 10], Mat.Mithral, 5, [shell]);
+    for (const k of [-6, 6]) for (const y of [-2, 4]) rivet(c, [shell], ox + k, cy + y, Mat.Mithral);
+  } else if (view === "down") {
+    // Crista central, fenda dos olhos e respiros.
+    limb(c, [ox, cy - 10], [ox, cy + 9.6], 0.55, 0.6, Mat.Mithral);
+    for (const s of [-1, 1]) {
+      c.fill([ox + Math.min(s * 1, s * 8) - 0.5, cy + 0.6, ox + Math.max(s * 1, s * 8) + 0.5, cy + 2], (x, y) => {
+        const d = (x + 0.5 - ox) * s;
+        return d > 1 && d < 8 - (y - cy - 0.8) * 0.8 && y + 0.5 > cy + 0.8 && y + 0.5 < cy + 1.9;
+      }, Mat.Eye, () => 0.1);
+    }
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 3 - r; k++) c.on(shell, F(ox + 3 + k * 1.3 + r * 0.6), F(cy + 4.6 + r * 1.4), Mat.Eye, 0);
+    for (const s of [-1, 1]) thread(c, [ox + s * 1, cy + 0.2], [ox + s * 8, cy + 0.2], Mat.Mithral, 5, [shell]);
+  } else {
+    // De lado: frente do barril com a fenda e os respiros, dobradiça.
+    c.fill([ox - 9.6, cy + 0.6, ox - 2, cy + 2], (x, y) => x + 0.5 > ox - 9.6 && x + 0.5 < ox - 3 && y + 0.5 > cy + 0.8 && y + 0.5 < cy + 1.9, Mat.Eye, () => 0.1);
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) c.on(shell, F(ox - 8 + k * 1.4), F(cy + 4.6 + r * 1.4), Mat.Eye, 0);
+    const hinge = ellipse(c, ox + 1.6, cy + 1.4, 1.2, 1.2, Mat.Mithral);
+    void hinge;
+  }
+  // Coroa de folhas de mithral na altura da testa.
+  if (view !== "up") {
+    const xs = view === "side" ? [-7, -4.4, -1.8, 0.8, 3.4, 6] : [-7.6, -5, -2.4, 0, 2.4, 5, 7.6];
+    for (const k of xs) leaf(c, [ox + k, cy - 5.4 + Math.abs(k) * 0.04], -Math.PI / 2 + k * 0.05, 1.5, 0.75, Mat.Mithral);
+    const band = limb(c, [ox + xs[0] - 0.6, cy - 4.4], [ox + xs[xs.length - 1] + 0.6, cy - 4.4], 0.45, 0.45, Mat.Trim);
+    c.on(band, F(ox), F(cy - 4.6), Mat.Sapphire, 5);
+  }
+}
+
+/** Elmo do dragão: a cabeça de dragão de boca aberta emoldura o rosto; olhos acesos, dentes e chifres para trás. */
+function cap5(c: Canvas, view: ProtoDir, cx: number, cy: number) {
+  const sc = scales(5, 4);
+  if (view === "side") {
+    horn(c, [[cx + 2, cy - 7], [cx + 7, cy - 10], [cx + 11.6, cy - 11.4], [cx + 14.4, cy - 10]], 1.7, -1);
+    const skull = c.fill([cx - 8, cy - 12, cx + 11, cy + 2], (x, y) => inEllipse(cx + 1, cy - 1.8, 9.8, 9.6)(x, y) && (y + 0.5 < cy - 1.4 || x > cx + 1),
+      Mat.Dragon, sphere(cx + 1, cy - 3, 10, 10), sc);
+    const snout = plate(c, [[cx - 6, cy - 9], [cx - 13, cy - 5.6], [cx - 13.4, cy - 3], [cx - 6, cy - 1.6]], Mat.Dragon, sc);
+    ellipse(c, cx - 12.4, cy - 5, 0.7, 0.5, Mat.Eye);
+    for (const x of [-12.4, -11, -9.6, -8.2, -6.8]) fang(c, [cx + x, cy - 1.8], 0.42, x === -11 ? 1.8 : 0.9);
+    // Maxilar de baixo pela bochecha, com dentes para cima.
+    plate(c, [[cx + 0.6, cy + 2], [cx - 6.6, cy + 7.6], [cx - 7.2, cy + 9.2], [cx + 2.4, cy + 6]], Mat.Dragon, sc);
+    for (const x of [-6, -4.6]) fang(c, [cx + x, cy + 7.6], 0.4, 1.2, -1);
+    spotEye(c, [cx - 4, cy - 6.4], 0.9);
+    thread(c, [cx - 6.4, cy - 7.8], [cx - 1.6, cy - 7.6], Mat.Dragon, 0, [skull, snout]);
+    for (const k of [0, 3, 6]) plate(c, [[cx + k - 1, cy - 10.6 + k * 0.3], [cx + k + 1, cy - 10.4 + k * 0.3], [cx + k + 0.8, cy - 13.4 + k * 0.6]], Mat.Horn);
+    horn(c, [[cx + 0.6, cy - 8], [cx + 5.4, cy - 11], [cx + 10.6, cy - 13.4], [cx + 14, cy - 12.6]], 2);
+    return;
+  }
+  for (const s of [-1, 1]) horn(c, [[cx + s * 6.4, cy - 8], [cx + s * 9.6, cy - 11.6], [cx + s * 11.6, cy - 15.6], [cx + s * 11.4, cy - 19]], 1.9, view === "up" ? -1 : 0);
+  if (view === "up") {
+    const back = c.fill(ebox(cx, cy - 0.4, 10.2, 10.6), inEllipse(cx, cy - 0.4, 10, 10.4), Mat.Dragon, sphere(cx, cy - 1, 10.2, 10.6), sc);
+    for (const y of [-9.6, -6, -2.4, 1.2, 4.8]) plate(c, [[cx - 1, cy + y + 1], [cx + 1, cy + y + 1], [cx, cy + y - 2]], Mat.Horn);
+    void back;
+    return;
+  }
+  // Calota (crânio do dragão) até a testa, maxilar de cima com dentes sobre a testa, olhos, narinas.
+  const skull = c.fill(ebox(cx, cy - 2.2, 10.4, 9.6), (x, y) => inEllipse(cx, cy - 2.2, 10.2, 9.4)(x, y) && (y + 0.5 < cy - 1.6 || Math.abs(x + 0.5 - cx) > 7.6),
+    Mat.Dragon, sphere(cx, cy - 3, 10.4, 10), sc);
+  const muzzle = plate(c, [[cx - 4.6, cy - 6], [cx + 4.6, cy - 6], [cx + 3.8, cy - 1.6], [cx - 3.8, cy - 1.6]], Mat.Dragon, sc);
+  for (const s of [-1, 1]) {
+    ellipse(c, cx + s * 1.6, cy - 3.6, 0.6, 0.45, Mat.Eye);
+    spotEye(c, [cx + s * 5, cy - 6.6], 1);
+    thread(c, [cx + s * 2.4, cy - 8.2], [cx + s * 7.2, cy - 7.4], Mat.Dragon, 0, [skull]);
+    // Maxilar de baixo descendo pelas bochechas, dentes apontando para cima.
+    plate(c, [[cx + s * 7.6, cy - 1], [cx + s * 9.6, cy], [cx + s * 7.6, cy + 9.4], [cx + s * 5.6, cy + 9]], Mat.Dragon, sc);
+    fang(c, [cx + s * 6.2, cy + 8.6], 0.5, 1.6, -1);
+    fang(c, [cx + s * 7, cy + 5], 0.4, 1, -1);
+  }
+  for (const k of [-3, -1.8, -0.6, 0.6, 1.8, 3]) fang(c, [cx + k, cy - 1.8], 0.4, Math.abs(k) > 2.5 ? 1.8 : 0.8);
+  for (const k of [-2.4, 0, 2.4]) plate(c, [[cx + k - 0.9, cy - 10.6], [cx + k + 0.9, cy - 10.6], [cx + k * 1.3, cy - 13.6]], Mat.Horn);
+  void muzzle;
+}
+
+function warHelmet(c: Canvas, tier: number, view: ProtoDir, cx: number, cy: number, top: number) {
+  switch (tier) {
+    case 1: return cap1(c, view, cx, cy);
+    case 2: return cap2(c, view, cx, cy);
+    case 3: return cap3(c, view, cx, cy, top);
+    case 4: return cap4(c, view, cx, cy);
+    default: return cap5(c, view, cx, cy);
+  }
+}
+
+// --- Armaduras de guerra -------------------------------------------------------------
+
+/** A armadura tem cinto próprio (couraça, placas) ou deixa o cinto da classe por cima? */
+const ARMOR_KEEPS_BELT = [false, true, false, true, false, true];
+
+/** Tronco da armadura de guerra de nível `tier` (de frente, de costas ou de lado). */
+function armorTorso(c: Canvas, tier: number, top: number, view: ProtoDir, sway: number): number[] {
+  const side = view === "side";
+  const T = (bottom: number, flare: number) => (side ? TORSO_SIDE(top, bottom, flare, sway * 0.4) : TORSO_FRONT(top, bottom, flare));
+  const x0 = side ? CX - 10 : CX - 13, x1 = side ? CX + 10 : CX + 13;
+  switch (tier) {
+    case 1: {
+      const id = poly(c, T(top + 21, 1), Mat.Leather, x0, x1, leather);
+      // Tachas em quincunce, laço na frente, gola e barra costuradas.
+      for (let y = top + 3, r = 0; y < top + 19.5; y += 2.6, r++) {
+        for (let x = -10.4 + (r % 2) * 1.3; x <= 10.4; x += 2.6) {
+          if (!side && view === "down" && Math.abs(x) < 1.8 && y < top + 12.5) continue;
+          rivet(c, [id], CX + x, y);
+        }
+      }
+      if (view === "down") {
+        thread(c, [CX, top + 0.6], [CX, top + 12.4], Mat.Leather, 0, [id]);
+        for (let y = top + 1.6; y < top + 12; y += 1.6) { thread(c, [CX - 1, y], [CX + 1, y + 0.8], Mat.Linen, 4, [id]); thread(c, [CX + 1, y], [CX - 1, y + 0.8], Mat.Linen, 3, [id]); }
+      }
+      for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(top), Mat.Leather, 5); c.on(id, X, F(top) + 1, Mat.Leather, 1); if (X % 3 === 0) c.on(id, X, F(top + 20.2), Mat.Leather, 4); }
+      return [id];
+    }
+    case 2: {
+      // Saiote de tiras de couro (pteruges) com rebite na ponta, e por cima a couraça musculada de bronze.
+      const shape = inPoly(T(top + 23, 1.8));
+      const strip = (x: number) => Math.floor((x + 0.5 - CX + 40) / 2.2);
+      const skirt = c.fill(pbox(T(top + 23, 1.8)), (x, y) => shape(x, y) && y > top + 12.4 && y + 0.5 < top + 20.6 + (strip(x) % 2 ? 1.8 : 0), Mat.Leather,
+        (x) => { const u = (((x + 0.5 - CX + 40) % 2.2) / 1.1) - 1; return lit(u * 0.85, 0, Math.sqrt(1 - u * u * 0.7)); },
+        (X) => ((((X + 0.5) / K - CX + 40) % 2.2) > 2 ? -1 : 0));
+      for (let x = CX - 13; x <= CX + 13; x += 2.2) {
+        const sx = Math.floor(x - CX + 40) ;
+        const y = top + 20 + (Math.floor((x + 0.6 - CX + 40) / 2.2) % 2 ? 1.8 : 0);
+        rivet(c, [skirt], x + 1.1, y, Mat.Bronze);
+        void sx;
+      }
+      const id = poly(c, T(top + 13.8, 0), Mat.Bronze, x0, x1, (X, Y) => (noise(X >> 1, Y >> 1) < 0.04 ? -1 : 0));
+      if (view === "down") {
+        for (const s of [-1, 1]) {
+          const pec: Pt[] = [[CX + s * 0.6, top + 3.6], [CX + s * 3.2, top + 7], [CX + s * 7, top + 6.4], [CX + s * 9, top + 4]];
+          for (let i = 1; i < pec.length; i++) { thread(c, pec[i - 1], pec[i], Mat.Bronze, 1, [id]); thread(c, [pec[i - 1][0], pec[i - 1][1] - 0.5], [pec[i][0], pec[i][1] - 0.5], Mat.Bronze, 5, [id]); }
+          for (const y of [top + 9, top + 11.2]) thread(c, [CX + s * 0.8, y], [CX + s * 3.8, y - 0.3], Mat.Bronze, s < 0 ? 5 : 1, [id]);
+        }
+        thread(c, [CX, top + 7.4], [CX, top + 13], Mat.Bronze, 1, [id]);
+        c.on(id, F(CX), F(top + 12.4), Mat.Bronze, 0);
+      } else if (view === "up") {
+        for (const s of [-1, 1]) for (let i = 0; i < 8; i++) c.on(id, F(CX + s * (3 + Math.sin(i / 2.5) * 2.4)), F(top + 3 + i * 0.7), Mat.Bronze, 1);
+        thread(c, [CX, top + 1], [CX, top + 13], Mat.Bronze, 1, [id]);
+      } else {
+        thread(c, [CX - 8.4, top + 6.6], [CX - 4, top + 7.4], Mat.Bronze, 1, [id]);
+        thread(c, [CX - 8.4, top + 6], [CX - 4, top + 6.8], Mat.Bronze, 5, [id]);
+      }
+      // Bordas viradas no pescoço e na cintura.
+      for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(top), Mat.Bronze, 5); c.on(id, X, F(top + 13.4), Mat.Bronze, 5); c.on(id, X, F(top + 13.4) + 1, Mat.Bronze, 1); }
+      return [id, skirt];
+    }
+    case 3: {
+      // Cota de malha até o meio da coxa e o tabardo na cor da classe por cima, com debrum e brasão em asna.
+      const m = poly(c, T(top + 22.6, 1.6), Mat.Steel, x0, x1, (X, Y) => mail(X, Y) - 1);
+      const panel: Pt[] = side
+        ? [[CX - 9.6, top + 1.4], [CX - 6.4, top + 1], [CX - 6.6, top + 23.6], [CX - 10.8 + sway * 0.4, top + 23.6]]
+        : [[CX - 7, top + 0.4], [CX + 7, top + 0.4], [CX + 7.8, top + 23.6], [CX - 7.8, top + 23.6]];
+      const tab = plate(c, panel, Mat.Primary, linen);
+      for (let i = 0; i < panel.length; i++) {
+        const a = panel[i], b2 = panel[(i + 1) % panel.length];
+        if (i === 0 && !side) continue;
+        thread(c, a, b2, Mat.Trim, (k) => (k % 2 ? 4 : 2), [tab]);
+      }
+      if (!side) {
+        // Brasão: asna dourada com três besantes.
+        const yy = view === "down" ? top + 8 : top + 8;
+        for (let w = 0; w < 3; w++) { thread(c, [CX - 4.6, yy + 3.4 + w * 0.5], [CX, yy + w * 0.5], Mat.Trim, w === 0 ? 5 : 3, [tab]); thread(c, [CX + 4.6, yy + 3.4 + w * 0.5], [CX, yy + w * 0.5], Mat.Trim, w === 0 ? 4 : 2, [tab]); }
+        for (const [bx, by] of [[-3.4, -2.4], [3.4, -2.4], [0, 6.6]] as const) { const b = ellipse(c, CX + bx, yy + by, 0.9, 0.9, Mat.Trim); void b; }
+        // Cinto de couro com fivela simples sobre o tabardo.
+        belt(c, [tab, m], CX, 10, top, view === "down");
+      } else belt(c, [tab, m], CX, 8.5, top, false);
+      // Gola de malha.
+      plate(c, side ? [[CX - 6.4, top - 0.8], [CX + 6, top - 0.8], [CX + 7, top + 1.6], [CX - 6.8, top + 1.6]] : [[CX - 6.6, top - 0.8], [CX + 6.6, top - 0.8], [CX + 8, top + 1.6], [CX - 8, top + 1.6]], Mat.Steel, mail);
+      return [m, tab];
+    }
+    case 4: {
+      // Peitoral de mithral com quilha e filigrana dourada, gorjal, lâminas da cintura e coxotes.
+      const tassets: number[] = [];
+      for (const s of side ? [-1] : [-1, 1]) {
+        const tx = side ? [CX - 9.6, CX + 2] : [CX + s * 1.2, CX + s * 11.8];
+        const pts: Pt[] = [[tx[0], top + 19.4], [tx[1], top + 19.4], [tx[1] + s * -0.6, top + 25], [tx[0] + s * 1.2, top + 25.6]];
+        const t = plate(c, pts, Mat.Mithral);
+        for (const y of [top + 21.2, top + 23]) thread(c, [Math.min(...pts.map((p) => p[0])), y], [Math.max(...pts.map((p) => p[0])), y + 0.2], Mat.Mithral, 1, [t]);
+        rivet(c, [t], (tx[0] + tx[1]) / 2, top + 20.2, Mat.Mithral);
+        tassets.push(t);
+      }
+      const lames: number[] = [];
+      for (let k = 0; k < 3; k++) {
+        const y0 = top + 13.6 + k * 1.95;
+        const w0 = (side ? 9 : 11) + k * 0.5;
+        lames.push(plate(c, [[CX - w0, y0], [CX + w0, y0], [CX + w0 + 0.4, y0 + 2], [CX - w0 - 0.4, y0 + 2]], Mat.Mithral));
+        for (const s of [-1, 1]) rivet(c, [lames[k]], CX + s * (w0 - 1), y0 + 1, Mat.Mithral);
+      }
+      const id = poly(c, T(top + 14.2, 0), Mat.Mithral, x0, x1, (X, Y) => (noise(X, Y) < 0.015 ? 1 : 0));
+      if (view === "down") {
+        thread(c, [CX, top + 1], [CX, top + 13.8], Mat.Mithral, 5, [id]);
+        thread(c, [CX + 0.6, top + 1], [CX + 0.6, top + 13.8], Mat.Mithral, 1, [id]);
+        // Filigrana: volutas douradas nos cantos do peito.
+        for (const s of [-1, 1]) {
+          const pts: Pt[] = [];
+          for (let a = 0; a < 7; a++) { const r = 2.6 - a * 0.32; pts.push([CX + s * (5.4 + Math.cos(a * 0.9) * r), top + 4.4 + Math.sin(a * 0.9) * r]); }
+          for (let i = 1; i < pts.length; i++) thread(c, pts[i - 1], pts[i], Mat.Trim, 4, [id]);
+          thread(c, [CX + s * 1.4, top + 9.4], [CX + s * 8.6, top + 11], Mat.Trim, 3, [id]);
+        }
+      } else if (view === "up") {
+        thread(c, [CX, top + 1], [CX, top + 13.8], Mat.Mithral, 1, [id]);
+      } else {
+        thread(c, [CX - 8.8, top + 5], [CX - 6.4, top + 13.6], Mat.Mithral, 5, [id]);
+      }
+      // Gorjal: duas lâminas no pescoço.
+      for (const k of [0, 1]) plate(c, [[CX - 6 + k, top - 1.4 + k * 1.2], [CX + 6 - k, top - 1.4 + k * 1.2], [CX + 7 - k, top + 0.4 + k * 1.2], [CX - 7 + k, top + 0.4 + k * 1.2]], Mat.Mithral);
+      return [id, ...lames, ...tassets];
+    }
+    default: {
+      // Escamas de dragão em fileiras, barra em escamas pontudas, gola de espinhos.
+      const hem = (x: number, y: number) => y + 0.5 > top + 21.6 + Math.abs(((x + 0.5) / 1.8) % 1 - 0.5) * 2.4;
+      const id = poly(c, T(top + 24, 2), Mat.Dragon, x0, x1, scales(6, 5), hem);
+      if (view === "up") {
+        for (let k = 0; k < 6; k++) { const y = top + 1 + k * 3.2; plate(c, [[CX - 1, y + 1.6], [CX + 1, y + 1.6], [CX, y - 1.2]], Mat.Horn); }
+      } else if (view === "down") {
+        // Placa de peito em escama grande, com a borda de chifre.
+        const chest = plate(c, [[CX - 6, top + 2], [CX + 6, top + 2], [CX + 4.4, top + 10.4], [CX, top + 12.4], [CX - 4.4, top + 10.4]], Mat.Dragon, scales(9, 7));
+        thread(c, [CX - 6, top + 2], [CX, top + 12.4], Mat.Horn, 3, [chest]); thread(c, [CX + 6, top + 2], [CX, top + 12.4], Mat.Horn, 2, [chest]);
+      }
+      for (const s of side ? [1] : [-1, 1]) for (const k of [3, 5.6]) plate(c, [[CX + s * k - 0.8, top + 0.6], [CX + s * k + 0.8, top + 0.6], [CX + s * (k + 0.6), top - 2.4]], Mat.Horn);
+      belt(c, [id], CX, side ? 8.5 : 10.5, top, false);
+      return [id];
+    }
+  }
+}
+
+/** Ombros da armadura (depois dos braços). `sides`: −1/1 de frente e de costas; de lado, só o ombro pedido. */
+function armorShoulders(c: Canvas, tier: number, top: number, view: ProtoDir, at: readonly Pt[], far = false) {
+  const dk = far ? () => -1 : undefined;
+  at.forEach((p, i) => {
+    const s = view === "side" ? -1 : i === 0 ? -1 : 1;
+    switch (tier) {
+      case 1: {
+        // Pele de lobo só no ombro esquerdo do herói (direita da tela de frente).
+        const leftShoulder = view === "down" ? s > 0 : view === "up" ? s < 0 : !far;
+        if (!leftShoulder) return;
+        const pelt = c.fill(ebox(p[0], p[1] - 1, 5, 3.8), (x, y) => inEllipse(p[0], p[1] - 1.2, 4.8, 3.4)(x, y) && !furHem(p[1] + 1.2)(x, y), Mat.Fur, sphere(p[0], p[1] - 1.6, 5, 4), fur);
+        const paw = ellipse(c, p[0] + (view === "side" ? -1 : s * 1.4), p[1] + 3.6, 1.3, 1.1, Mat.Fur, fur);
+        for (const k of [-0.6, 0, 0.6]) c.on(paw, F(p[0] + (view === "side" ? -1 : s * 1.4) + k), F(p[1] + 4.6), Mat.White, 4);
+        void pelt;
+        return;
+      }
+      case 2: {
+        const id = c.fill(ebox(p[0], p[1], 4, 3), (x, y) => inEllipse(p[0], p[1] - 0.4, 3.8, 2.8)(x, y) && y < p[1] + 1.4, Mat.Bronze, sphere(p[0], p[1] - 1, 4, 3.2), dk);
+        for (let X = F(p[0] - 3.6); X <= F(p[0] + 3.6); X++) c.on(id, X, F(p[1] + 1), Mat.Bronze, 5);
+        return;
+      }
+      case 4: {
+        // Três conchas sobrepostas com borda dourada.
+        for (let k = 2; k >= 0; k--) {
+          const cy = p[1] - 1.2 + k * 1.8;
+          const id = c.fill(ebox(p[0], cy, 5.6, 3.6), (x, y) => inEllipse(p[0], cy, 5.4 - k * 0.5, 3.4 - k * 0.3)(x, y) && y < cy + 1.6, Mat.Mithral, sphere(p[0], cy - 1, 5.6, 3.8), dk);
+          for (let X = F(p[0] - 5); X <= F(p[0] + 5); X++) c.on(id, X, F(cy + 1.4), Mat.Trim, 4);
+        }
+        return;
+      }
+      case 5: {
+        // Ombreira em crânio de dragão: órbita escura, dentes e um chifre.
+        horn(c, [[p[0] + s * 1, p[1] - 2], [p[0] + s * 3.6, p[1] - 5.6], [p[0] + s * 4.4, p[1] - 8.4]], 1.2, far ? -1 : 0);
+        const skull = c.fill(ebox(p[0], p[1], 4.8, 3.8), inEllipse(p[0], p[1] - 0.2, 4.6, 3.4), Mat.Dragon, sphere(p[0], p[1] - 1, 4.8, 4), (X, Y) => scales(5, 4)(X, Y) + (far ? -1 : 0));
+        const eye = ellipse(c, p[0] + s * 1.2, p[1] - 0.6, 1.2, 0.8, Mat.Eye);
+        c.on(eye, F(p[0] + s * 1.2), F(p[1] - 0.6), Mat.Ember, 4);
+        for (const k of [-2.4, -1, 0.4, 1.8]) fang(c, [p[0] + k, p[1] + 2.6], 0.35, 1);
+        void skull;
+        return;
+      }
+      default:
+        return;
+    }
+  });
+}
+
+/** O que a armadura põe nos braços (por cima da manga da classe). */
+function armorArm(c: Canvas, tier: number, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) {
+  const dk = (o?: Offset): Offset => (X, Y) => (o ? o(X, Y) : 0) + (far ? -1 : 0);
+  switch (tier) {
+    case 2: {
+      const a = lerp(elbow, at, 0.3), b = lerp(elbow, at, 0.82);
+      limb(c, a, b, 3.3, 3.2, Mat.Leather, dk(leather));
+      return;
+    }
+    case 3:
+      limb(c, shoulder, lerp(elbow, at, 0.18), 4.1, 3.7, Mat.Steel, dk((X, Y) => mail(X, Y) - 1));
+      return;
+    case 4: {
+      const a = lerp(elbow, at, 0.22), b = lerp(elbow, at, 0.84);
+      const v = limb(c, a, b, 3.4, 3.2, Mat.Mithral, dk());
+      for (let X = F(b[0] - 3.4); X <= F(b[0] + 3.4); X++) c.on(v, X, F(b[1] - 1.4), Mat.Trim, far ? 2 : 4);
+      ellipse(c, elbow[0], elbow[1], 2.5, 2.2, Mat.Mithral, dk());
+      return;
+    }
+    case 5:
+      limb(c, shoulder, elbow, 4.1, 3.8, Mat.Dragon, dk(scales(5, 4)));
+      return;
+    default:
+      return;
+  }
+}
+
+/** Nome mostrado no provador para cada arte de item do protótipo. */
+export const PROTO_ITEM_NAMES: Record<string, string> = {
+  "sword-1": "Espada curta", "sword-2": "Espada de bronze", "sword-3": "Espada longa", "sword-4": "Espada de mithral", "sword-5": "Lâmina do dragão",
+  "war-1": "Gorro de couro", "war-2": "Elmo de bronze", "war-3": "Elmo de ferro", "war-4": "Elmo de mithral", "war-5": "Elmo do dragão",
+  "armor-1": "Gibão de couro", "armor-2": "Couraça de bronze", "armor-3": "Cota de malha", "armor-4": "Placas de mithral", "armor-5": "Escamas de dragão",
+  wolf: "Capuz do Lobo", demon: "Elmo do Demônio",
+};
+
 /** Pixels de cada quadro, calculados uma vez (a galeria pede o mesmo quadro várias vezes). */
 const cache = new Map<string, Uint8ClampedArray>();
 
@@ -1788,7 +2381,7 @@ const cache = new Map<string, Uint8ClampedArray>();
  * passagem. `look` troca as cores das zonas (cosmético) sem mudar o desenho.
  */
 export function protoFrame(dir: ProtoDir, frame: number, cls: ProtoClass = "knight", look?: Partial<ProtoLook>, gear: ProtoGear = {}): HTMLCanvasElement {
-  const kit: Kit = { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: false } : {}) };
+  const kit: Kit = { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.armor ? { armor: gear.armor } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: false } : {}) };
   const colors = { ...kit.look, ...look };
   const key = `${cls}${dir}${frame}${JSON.stringify(colors)}${JSON.stringify(gear)}`;
   let data = cache.get(key);
