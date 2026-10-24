@@ -992,8 +992,7 @@ export class DungeonScene extends Phaser.Scene {
   private addGroundItem(id: string, item: GroundItemView) {
     const color = isPotion(item.itemId) ? POTIONS[item.itemId].color
       : isRune(item.itemId) ? RUNES[item.itemId].color : ITEMS[item.itemId] && itemColor(item.itemId);
-    // Runa de boss reservada a outro jogador: só ele vê e pega.
-    if (color === undefined || (item.owner && item.owner !== this.room.sessionId)) return;
+    if (color === undefined) return;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
     const glow = this.add.ellipse(0, 5, 20, 8, color, 0.45);

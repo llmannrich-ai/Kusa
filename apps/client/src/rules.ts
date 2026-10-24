@@ -16,7 +16,6 @@ import {
   MAP_IDS,
   MAX_PARTY_SIZE,
   MONSTERS,
-  PARTY_XP_BONUS,
   PERKS,
   PERK_IDS,
   POTIONS,
@@ -135,7 +134,7 @@ export function renderRules(root: HTMLElement) {
 
     section("⭐ Níveis, magias e melhorias", false, list([
       "Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo.",
-      `A XP de um monstro é dividida entre quem acertou nele, com +${pct(PARTY_XP_BONUS)} por participante extra. O loot vai para quem deu o último golpe.`,
+      "A XP de um monstro é dividida em partes iguais por toda a equipe na dungeon (100 XP com 4 heróis dão 25 a cada um). O loot vai para quem deu o último golpe.",
       `No nível ${SLOT1} abre o 1º slot de magia e no nível ${SLOT2} o 2º: você escolhe uma magia, que fica até o fim da hunt.`,
       "Nos outros níveis aparecem duas melhorias e você toca numa. Elas valem até o fim da hunt e somam com as áureas do Grimório.",
     ]),

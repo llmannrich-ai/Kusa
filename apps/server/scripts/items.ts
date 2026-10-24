@@ -57,13 +57,12 @@ for (const slot of ["legs", "boots"] as const) {
 }
 const gear = gearStats([itemId("boots", "boots", 3), itemId("armor", "war", 3), itemId("weapon", "staff", 3)]);
 if (!(gear.armor > 0 && gear.speed > 0 && gear.spellPower > 0)) throw new Error("gearStats não somou");
-// Drop da equipe: um cavaleiro sozinho só recebe o que ele usa.
+// O drop não olha a classe: em 500 sorteios cai item que o cavaleiro não usa.
 let seed = 1;
 const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-for (let i = 0; i < 500; i++) {
-  const id = rollItem("boss", 6, random, 0, ["knight"]);
-  if (!ITEMS[id] || !canUse(id, "knight")) throw new Error(`drop inválido para cavaleiro: ${id}`);
-}
+const drops = Array.from({ length: 500 }, () => rollItem("boss", 6, random));
+if (drops.some((id) => !ITEMS[id])) throw new Error(`drop inválido: ${drops.find((id) => !ITEMS[id])}`);
+if (drops.every((id) => canUse(id, "knight"))) throw new Error("o drop filtrou pela classe: só caiu o que o cavaleiro usa");
 console.log("catálogo de itens: ok");
 
 const url = process.argv[2] ?? "http://localhost:2567";
