@@ -110,15 +110,13 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .error { color: var(--danger); }
 .muted { color: var(--muted); }
 
-#room-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.room-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .room { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; }
 .room small { display: block; }
 .room-join { flex: none; margin-left: 12px; color: var(--accent); text-align: right; }
 #lobby-map { margin: 0 0 12px; color: var(--accent); }
 
 /* Criar sala: o cenário fica nesta tela, logo acima do botão. */
-.rooms-section { margin: 20px 0 4px; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
-#rooms .map-list { margin-top: 8px; }
 
 /* Sala de espera: uma vaga por jogador, as livres tracejadas. */
 #lobby-slots { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
@@ -708,8 +706,6 @@ button { min-height: 44px; touch-action: manipulation; }
 
 /* Tela inicial (login) e conta no menu. */
 #login .hint { margin: 4px 0 0; font-size: 13px; }
-#rooms .hint { margin: 8px 0 0; font-size: 13px; text-align: center; }
-#rooms h2 + .hint { margin: 0 0 12px; }
 #login input { font-size: 16px; } /* 16px evita o zoom automático do iOS ao focar. */
 button:disabled { opacity: 0.6; cursor: wait; }
 
@@ -744,15 +740,7 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .hub-hint { margin: 0 0 12px; font-size: 13px; }
 .empty { padding: 16px; text-align: center; border: 1px dashed var(--border); }
 
-/* Escolha do cenário (tela de criar sala) */
-.map-list { display: grid; gap: 8px; }
-.map-card { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
-.map-card.selected { border-color: var(--accent); background: #2a211b; }
-.map-name { flex: 1; }
-/* Cenário só para jogar sozinho: borda verde e o selo "Single player". */
-.map-card.solo { border-color: #3f6b3a; background: linear-gradient(90deg, #13241a, var(--bg)); }
-.map-card.solo.selected { border-color: #7cc243; background: linear-gradient(90deg, #1c3a22, #2a211b); }
-.map-solo { padding: 3px 8px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; color: #10200d; background: #7cc243; border-radius: 10px; white-space: nowrap; }
+/* Servidor da sala criada (ficha do cenário no mapa mundi) */
 .server-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .server-card { display: grid; gap: 4px; padding: 10px; text-align: left; background: var(--bg); border: 2px solid #3a2f27; }
 .server-card.selected { border-color: var(--accent); background: #2a211b; }
@@ -1171,3 +1159,97 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .result-lost li { display: flex; align-items: center; gap: 8px; }
 .result-lost img { width: 28px; height: 28px; image-rendering: pixelated; flex: none; }
 .result-lost small { margin-left: auto; color: var(--muted); }
+
+/* --- Batalhas: mapa mundi de Kosaradius (worldMap.ts), em pergaminho. Rola só na vertical. --- */
+.world {
+  --ink: #4a3420;
+  --parchment: #f3e7c9;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--col-x);
+  width: var(--col-w);
+  overflow: hidden;
+  background: #d3d6bd;
+  color: #2b1d10;
+}
+.world-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.world-map { position: relative; width: 100%; aspect-ratio: 412 / 2000; }
+.world-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.world-fog { position: absolute; padding: 0; background: none; border: 0; }
+.world-point {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 52px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  transform: translate(-50%, -26px);
+}
+.world-icon { position: relative; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--parchment); border: 3px solid #2b1d10; box-shadow: 0 2px 0 var(--ink); }
+.world-icon svg { width: 44px; height: 44px; }
+.world-point.selected .world-icon { border-color: #c8962e; animation: world-glow 2.2s ease-in-out infinite; }
+@keyframes world-glow { 50% { box-shadow: 0 2px 0 var(--ink), 0 0 0 7px rgba(232, 181, 69, 0.45); } }
+.world-name { padding: 2px 8px; font-size: 14px; white-space: nowrap; background: var(--parchment); border: 1.5px solid var(--ink); border-radius: 4px; }
+.world-count { position: absolute; top: -8px; left: 38px; padding: 2px 7px; font-size: 12px; font-weight: bold; color: var(--parchment); background: #3b2a1a; border-radius: 10px; white-space: nowrap; }
+/* O herói fica de pé em cima do ponto; anda até o novo em ~1 s (sem caminhar ao abrir a tela). */
+.world-hero { position: absolute; width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; transform: translate(-50%, -62px); transition: left 0.9s ease-in-out, top 0.9s ease-in-out; filter: drop-shadow(0 2px 0 rgba(43, 29, 16, 0.4)); }
+.world-hero.instant { transition: none; }
+.world-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: max(12px, env(safe-area-inset-top)) 12px 0;
+  pointer-events: none;
+}
+.world-top > * { pointer-events: auto; }
+.world-chip, .world-rooms, .world-title { background: var(--parchment); color: #2b1d10; border: 2px solid var(--ink); border-radius: 8px; box-shadow: 0 2px 0 var(--ink); }
+.world-chip { height: 44px; font-size: 26px; }
+.world-title { display: grid; padding: 3px 12px 2px; line-height: 1.1; }
+.world-title strong { font-size: 20px; font-variant: small-caps; letter-spacing: 1px; }
+.world-title small { font-size: 12px; font-style: italic; color: #5a4128; }
+.world-rooms { margin-left: auto; min-height: 44px; padding: 0 14px; font-weight: bold; color: var(--parchment); background: #3b2a1a; border-color: #3b2a1a; border-radius: 22px; }
+.world-toast, .world-error { position: absolute; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 3; margin: 0; padding: 10px 14px; text-align: center; background: var(--parchment); border: 2px solid var(--ink); border-radius: 8px; }
+.world-error { z-index: 4; }
+
+/* Ficha do cenário e lista de salas: folhas que sobem de baixo, no alcance do polegar. */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  max-height: 78%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 16px max(20px, env(safe-area-inset-bottom));
+  background: var(--parchment);
+  border-top: 2px solid var(--ink);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -4px 0 rgba(74, 52, 32, 0.35), 0 -20px 40px rgba(32, 22, 12, 0.35);
+}
+.sheet h2 { margin: 0; color: #2b1d10; font-variant: small-caps; }
+.sheet .hint { margin: 8px 0 0; font-size: 13px; color: #5a4128; text-align: center; }
+.sheet-close { position: absolute; top: 10px; right: 10px; height: 44px; color: #2b1d10; background: none; border: 0; }
+.sheet-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
+.sheet-head .map-icon, .sheet-head .map-icon svg { width: 60px; height: 60px; }
+.sheet-head small { font-style: italic; color: #5a4128; }
+.sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.sheet-chips li { padding: 4px 10px; background: #e6d6ae; border-radius: 12px; }
+.sheet-desc { margin: 10px 0 0; font-size: 14px; line-height: 1.4; }
+.sheet-label { margin: 16px 0 8px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #5a4128; }
+.sheet button { color: #2b1d10; background: #ebdcb8; border: 2px solid var(--ink); border-radius: 8px; min-height: 44px; }
+.sheet button.primary { color: var(--parchment); background: #3b2a1a; border-color: #3b2a1a; font-weight: bold; min-height: 52px; }
+.sheet .sheet-close { border: 0; background: none; }
+.sheet .server-card { background: #ebdcb8; }
+.sheet .server-card.selected { background: #e2c98a; border-color: #c8962e; }
+.sheet .server-card small, .sheet .room small { color: #5a4128; }
+.sheet .room-join { color: #7a4a1c; font-weight: bold; }

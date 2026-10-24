@@ -1,8 +1,8 @@
-import { CLASSES, CLASS_IDS, MAPS, MAP_IDS, MSG, difficultyStars, mapIdOf, partySize, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
+import { CLASSES, CLASS_IDS, MAPS, MSG, difficultyStars, mapIdOf, partySize, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
 import { heroPoses } from "./art/heroes.ts";
 import type { DungeonRoom } from "./net.ts";
 
-// Telas antes da hunt: a escolha do cenário na criação da sala e a sala de espera com as vagas da equipe.
+// Telas antes da hunt: o cenário e o servidor da sala criada e a sala de espera com as vagas da equipe.
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -34,7 +34,7 @@ let chosenServer: ServerChoice = storageGet("kusa:server") === "device" ? "devic
 /** Servidor das salas que este jogador criar (fica salvo no aparelho). */
 export const createServer = () => chosenServer;
 
-/** Os dois botões de servidor na tela de criar sala; tocar escolhe. `onPick` atualiza o botão de criar. */
+/** Os dois botões de servidor na ficha do cenário; tocar escolhe. `onPick` atualiza o botão de criar. */
 export function renderServerPicker(onPick: () => void) {
   const list = $("server-list");
   list.replaceChildren();
@@ -58,20 +58,25 @@ export function renderServerPicker(onPick: () => void) {
 
 // --- Cenário da sala criada -----------------------------------------------
 
-/** Ordem dos cenários no menu (mapa novo entra no fim): o primeiro já vem escolhido toda vez que o menu de batalha abre. */
-const MENU_ORDER: MapId[] = ["marsh", "crypt", "desert", "swamp"];
-const MENU_MAPS = [...MENU_ORDER, ...MAP_IDS.filter((id) => !MENU_ORDER.includes(id))];
+/**
+ * Cenário das salas que este jogador criar: o ponto tocado no mapa mundi (fica salvo no aparelho). Na primeira vez,
+ * o começo da trilha (Pântano do Kosaradius).
+ */
+const savedMap = storageGet("kusa:map");
+let chosenMap: MapId = savedMap ? mapIdOf(savedMap) : "marsh";
 
-let chosenMap: MapId = MENU_MAPS[0];
-
-/** Cenário das salas que este jogador criar. */
 export const createMapId = () => chosenMap;
+
+export function chooseMap(id: MapId) {
+  chosenMap = id;
+  storageSet("kusa:map", id);
+}
 
 /**
  * Símbolo desenhado de cada cenário (SVG 48×48), no lugar do emoji: uma cena com o que marca o mapa.
  * O texto é fixo (não vem de fora), então pode ir por innerHTML.
  */
-const MAP_ART: Record<MapId, string> = {
+export const MAP_ART: Record<MapId, string> = {
   // Cripta: o arco de pedra com a caveira na chave, tochas dos lados e os olhos do Dragão jovem no escuro.
   crypt: `<svg viewBox="0 0 48 48" aria-hidden="true">
     <defs>
@@ -198,37 +203,6 @@ const MAP_ART: Record<MapId, string> = {
   </svg>`,
 };
 
-/** Volta a escolha para o primeiro cenário do menu (ao abrir o menu de batalha). */
-export function resetMapChoice() {
-  chosenMap = MENU_MAPS[0];
-}
-
-/** Cartões dos cenários na tela de criar sala; tocar escolhe. `onPick` atualiza o botão de criar. */
-export function renderMapPicker(onPick: () => void) {
-  const list = $("map-list");
-  list.replaceChildren();
-  for (const id of MENU_MAPS) {
-    const map = MAPS[id];
-    const card = el("button", "map-card");
-    card.type = "button";
-    card.setAttribute("role", "radio");
-    card.setAttribute("aria-checked", String(id === chosenMap));
-    card.classList.toggle("selected", id === chosenMap);
-    const solo = partySize(map) === 1;
-    card.classList.toggle("solo", solo);
-    const icon = el("span", "map-icon");
-    icon.innerHTML = MAP_ART[id];
-    card.append(icon, el("strong", "map-name", map.name));
-    if (solo) card.append(el("span", "map-solo", "Single player"));
-    card.onclick = () => {
-      chosenMap = id;
-      renderMapPicker(onPick);
-      onPick();
-    };
-    list.append(card);
-  }
-}
-
 // --- Sala de espera -------------------------------------------------------
 
 const portraits = new Map<string, string>();
@@ -305,7 +279,7 @@ export function renderWaitingRoom(room: DungeonRoom) {
     : count >= size
       ? bots > 0 ? "Equipe completa. Bots não levam loot nem gold: o que eles matam não rende nada." : "Equipe completa."
       : isLeader
-        ? "Seus amigos acham esta sala em Jogar → Salas abertas. Bots seguem você e lutam, mas não levam loot nem gold."
+        ? "Seus amigos acham esta sala em Batalhas, no cenário dela ou em Salas abertas. Bots seguem você e lutam, mas não levam loot nem gold."
         : "O líder decide quando a hunt começa.";
 }
 

@@ -7,7 +7,7 @@ salas abertas). Documento de planejamento: quando uma fase for entregue, o `GDD.
 este arquivo marca a fase como feita.
 
 **Andamento:** planejamento. Decisões do Leonardo na seção 2; história, nomes das regiões e maquete visual
-(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Próximo passo: fase 1.
+(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Fase 1 feita (mapa estático, ficha, salas abertas; o herói já vai até o ponto em linha reta).
 
 ---
 
@@ -129,7 +129,7 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 | Fase | Entrega | Mexe em |
 |---|---|---|
 | 0 | maquete HTML (pergaminho, pontos, névoa, ficha) para aprovar | nada no jogo |
-| 1 | mapa estático com os 4 pontos, ficha, salas abertas; substitui os cartões; tudo aberto | cliente |
+| 1 | mapa estático com os 4 pontos, ficha, salas abertas; substitui os cartões; tudo aberto | cliente · **feito** |
 | 2 | herói andando, barco no mar, névoa com nomes | cliente |
 | 3 | desbloqueio por classe, estrela, crédito do boss, migration e preenchimento das contas atuais | shared, servidor, banco |
 | 4 | cenários novos nas regiões em névoa (gelo, vulcão, cidadela), cada um um projeto à parte | tudo |
