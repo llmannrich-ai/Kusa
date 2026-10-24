@@ -173,6 +173,23 @@ Bônus: as 4 zonas são exatamente o que um **cosmético de cor** troca (`buy_co
 | 4. Mapas | Parede de 32 px (P3), bordas (P2), grupos de decoração (P4) | médio | sensação de masmorra "tibiana" |
 | 5. Resto | Demais monstros e bosses no padrão | alto | consistência total |
 
+### Fase 0: protótipo (feito)
+
+Código em `apps/client/src/art/proto/tibiaHero.ts`, só na galeria (`arte.html`, seções "Protótipo"); o jogo
+continua com `heroes.ts`. Cavaleiro sem equipamento, frente, lado e costas, 4 quadros de caminhada, pintado em
+grades de letras por **zona** (cabeça, primária, secundária, detalhe), com 3 variações de cor de exemplo.
+
+![Atual × novo na mesma escala](arte/prototipo-tibia-comparacao.png)
+![Quadros do protótipo](arte/prototipo-tibia-quadros.png)
+![No chão com os monstros](arte/prototipo-tibia-cena.png)
+
+Leitura do protótipo:
+- Proporção adulta (cabeça 9 de 32 px) e mesma densidade dos monstros: na cena fica do mesmo "tamanho de mundo"
+  que o goblin e o orc, o que o herói atual não fica.
+- Fica menor e mais escuro que o atual no celular: a identificação passa a depender da silhueta e das zonas de cor.
+- Falta: decidir se a Fase 1 segue (manequim novo em `hero/rig.ts`) ou se o protótipo ainda precisa de ajuste
+  (cabeça 1 px maior, rosto mais marcado, lado com braço mais visível).
+
 ### Riscos
 - **Retrabalho do sistema de itens:** mudar o manequim obriga a reencaixar cada item. Mitigação: manter a API de
   `rig.ts` (mesmos nomes de pontos e máscaras) e mudar só as medidas.
