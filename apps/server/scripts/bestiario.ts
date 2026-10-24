@@ -136,7 +136,7 @@ function check(ok: boolean, what: string) {
 
 // --- Mapa que paga menos (Pântano do Kosaradius: lootScale e dropScale) ----------------
 {
-  const { spawn, brain, state, hit } = arena("marsh");
+  const { spawn, brain, state, hit, any } = arena("marsh");
   const k = MAPS.marsh.lootScale!;
   const grunt = spawn("orcGrunt");
   const full = monsterStats("orcGrunt", 0).loot;
@@ -150,7 +150,15 @@ function check(ok: boolean, what: string) {
     items += [...state.items.values()].slice(before).filter((it) => !it.itemId.startsWith("potion-")).length;
     state.items.clear();
   }
-  check(items > 4 && items < 26, `mini-bosses deviam largar item ~35% das vezes (${items} de 40)`);
+  check(items > 13 && items < 35, `mini-bosses deviam largar item ~60% das vezes (${items} de 40)`);
+  // Baú: o item sai sempre, mesmo no mapa que corta os drops.
+  for (let i = 0; i < 20; i++) {
+    const before = state.items.size;
+    any.chestReward("h", state.players.get("h"), 5, 5, 0);
+    const got = [...state.items.values()].slice(before).filter((it) => !it.itemId.startsWith("potion-")).length;
+    check(got === 1, `baú devia dar sempre 1 item (deu ${got})`);
+    state.items.clear();
+  }
   console.log("Pântano do Kosaradius paga menos loot e drops OK");
 }
 
