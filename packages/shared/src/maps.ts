@@ -54,6 +54,13 @@ export interface MapDef {
   maxParty?: number;
 }
 
+/**
+ * Corte geral do loot, em todos os mapas, por cima de `MapDef.lootScale` e `dropScale`: o gold dos monstros (boss
+ * incluído) e dos baús e a chance de item dos comuns e mini-bosses. Fica aqui (arquivo de regras) para o cliente de
+ * versão antiga, que roda a hunt solo, recarregar. Poções, os itens do boss e o item do baú não mudam.
+ */
+export const LOOT_SCALE = 0.8;
+
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
 export const MAX_ROOM_MONSTERS = 8;
 /** Artilheiros e líderes por sala no máximo. */
