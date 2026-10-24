@@ -70,7 +70,7 @@ interface Kit {
 }
 
 type Tier = 1 | 2 | 3 | 4 | 5;
-export type ProtoWeapon = `sword-${Tier}` | `sword-${Tier}-magic` | `axe-${Tier}` | `axe-${Tier}-magic`;
+export type ProtoWeapon = `${"sword" | "axe" | "bow" | "xbow"}-${Tier}` | `${"sword" | "axe" | "bow" | "xbow"}-${Tier}-magic`;
 export type ProtoHelmet = `war-${Tier}` | `war-${Tier}-magic` | "wolf" | "demon";
 export type ProtoArmor = `armor-${Tier}` | `armor-${Tier}-magic`;
 export const PROTO_SWORDS: ProtoWeapon[] = ["sword-1", "sword-2", "sword-3", "sword-4", "sword-5"];
@@ -81,6 +81,10 @@ export const PROTO_MAGIC_HELMETS: ProtoHelmet[] = ["war-1-magic", "war-2-magic",
 export const PROTO_MAGIC_ARMORS: ProtoArmor[] = ["armor-1-magic", "armor-2-magic", "armor-3-magic", "armor-4-magic", "armor-5-magic"];
 export const PROTO_AXES: ProtoWeapon[] = ["axe-1", "axe-2", "axe-3", "axe-4", "axe-5"];
 export const PROTO_MAGIC_AXES: ProtoWeapon[] = ["axe-1-magic", "axe-2-magic", "axe-3-magic", "axe-4-magic", "axe-5-magic"];
+export const PROTO_BOWS: ProtoWeapon[] = ["bow-1", "bow-2", "bow-3", "bow-4", "bow-5"];
+export const PROTO_MAGIC_BOWS: ProtoWeapon[] = ["bow-1-magic", "bow-2-magic", "bow-3-magic", "bow-4-magic", "bow-5-magic"];
+export const PROTO_XBOWS: ProtoWeapon[] = ["xbow-1", "xbow-2", "xbow-3", "xbow-4", "xbow-5"];
+export const PROTO_MAGIC_XBOWS: ProtoWeapon[] = ["xbow-1-magic", "xbow-2-magic", "xbow-3-magic", "xbow-4-magic", "xbow-5-magic"];
 
 /** Itens vestidos sobre o kit: trocam o capacete, a armadura e a arma da classe. */
 export interface ProtoGear {
@@ -1168,6 +1172,8 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
     case "staff": return () => staff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
     default:
+      if (kit.weapon.startsWith("bow-")) { const id = kit.weapon; return () => bowArt(c, id, at, out); }
+      if (kit.weapon.startsWith("xbow-")) { const id = kit.weapon; return () => crossbowArt(c, id, at, [0, 1], false); }
       if (kit.weapon.startsWith("axe-")) {
         const id = kit.weapon;
         return axeTwoHanded(id)
@@ -1254,6 +1260,8 @@ function side(c: Canvas, kit: Kit, frame: number) {
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
     : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
+    : kit.weapon.startsWith("bow-") ? () => bowArt(c, kit.weapon, ha, -1)
+    : kit.weapon.startsWith("xbow-") ? () => crossbowArt(c, kit.weapon, ha, [-0.97, 0.24], true)
     : kit.weapon.startsWith("axe-") ? () => (axeTwoHanded(kit.weapon)
       ? axeArt(c, kit.weapon, [ha[0] + 3, FEET - 1], [ha[0] - 7, top - 18], -1)
       : axeArt(c, kit.weapon, [ha[0] + 1.6, ha[1] + 3], [ha[0] - 5, ha[1] - AXE_LEN[tierOf(kit.weapon)]], -1))
@@ -2404,6 +2412,10 @@ export const PROTO_ITEM_NAMES: Record<string, string> = {
   "war-1-magic": "Gorro do Escudeiro", "war-2-magic": "Elmo do Vigia", "war-3-magic": "Elmo do Brilho", "war-4-magic": "Elmo do Cavaleiro Grifo", "war-5-magic": "Elmo do Demônio",
   "axe-1": "Machadinha", "axe-2": "Machado de bronze", "axe-3": "Machado de batalha", "axe-4": "Machado de mithral", "axe-5": "Grande machado do dragão",
   "axe-1-magic": "Machado do Berserker", "axe-2-magic": "Machado Uivante", "axe-3-magic": "Machado dos Reis Anões", "axe-4-magic": "Machado da Tempestade", "axe-5-magic": "Ruína dos Gigantes",
+  "bow-1": "Arco curto", "bow-2": "Arco de caça", "bow-3": "Arco longo", "bow-4": "Arco de mithral", "bow-5": "Arco de osso de dragão",
+  "bow-1-magic": "Arco do Caçador Élfico", "bow-2-magic": "Arco do Vento Sul", "bow-3-magic": "Arco Solar", "bow-4-magic": "Arco do Juramento", "bow-5-magic": "Arco de Corda Celestial",
+  "xbow-1": "Besta leve", "xbow-2": "Besta de bronze", "xbow-3": "Besta de ferro", "xbow-4": "Besta pesada de mithral", "xbow-5": "Balestra de osso de dragão",
+  "xbow-1-magic": "Besta do Sentinela", "xbow-2-magic": "Besta do Caça-Vampiros", "xbow-3-magic": "Besta de Repetição Gnoma", "xbow-4-magic": "Besta Trovejante", "xbow-5-magic": "Balestra do Dragão Rubro",
   "armor-1-magic": "Gibão do Aventureiro", "armor-2-magic": "Couraça do Leão", "armor-3-magic": "Cota Élfica", "armor-4-magic": "Armadura de Placas Anã", "armor-5-magic": "Escamas do Dragão Vermelho",
 };
 
@@ -3008,6 +3020,276 @@ function axeArt(c: Canvas, id: string, bottom: Pt, topEnd: Pt, out: number) {
   }
 }
 
+// --- Lote 4: arcos e bestas (docs/ARTE_ITENS.md) ---------------------------------------
+
+/** Perfil de um arco: meia-altura, quanto a barriga sai e quanto as pontas voltam (recurvo). */
+const BOW_SHAPE: Record<string, [number, number, number]> = {
+  "bow-1": [12, 2.4, 0], "bow-2": [14, 3, 1.4], "bow-3": [19, 2.6, 0], "bow-4": [16, 3.2, 1.8], "bow-5": [17, 3.4, 1.2],
+  "bow-1-magic": [14, 3, 0.6], "bow-2-magic": [15, 3.2, 1.2], "bow-3-magic": [16, 3.2, 1], "bow-4-magic": [17, 3, 1.6], "bow-5-magic": [17, 3.6, 0.8],
+};
+
+/** Pontos ao longo do arco, de cima para baixo; a barriga sai para `out` e a empunhadura fica na mão. */
+function bowPoints(at: Pt, out: number, half: number, belly: number, recurve: number, n = 12): Pt[] {
+  const pts: Pt[] = [];
+  for (let k = -n / 2; k <= n / 2; k++) {
+    const t = k / (n / 2);
+    const back = Math.abs(t) > 0.8 ? (Math.abs(t) - 0.8) * 5 * recurve : 0;
+    pts.push([at[0] + out * (belly * (1 - t * t) - belly - back), at[1] + t * half]);
+  }
+  return pts;
+}
+
+/** Corda reta entre as pontas, com o tom dado (ou função do passo, para pontilhar). */
+function bowString(c: Canvas, a: Pt, b: Pt, mat: Mat, tone: number | ((k: number) => number)) {
+  thread(c, a, b, mat, tone);
+}
+
+function bowArt(c: Canvas, id: string, at: Pt, out: number) {
+  const [half, belly, recurve] = BOW_SHAPE[id];
+  const pts = bowPoints(at, out, half, belly, recurve);
+  const top = pts[0], bot = pts[pts.length - 1];
+  const tip = (i: number) => pts[i < 0 ? pts.length + i : i];
+  const grip = (mat: Mat, wrap: Mat) => {
+    const g = limb(c, [at[0], at[1] - 2.4], [at[0], at[1] + 2.4], 1.45, 1.45, mat, (X, Y) => ((X + Y) % 3 === 0 ? -1 : 0));
+    thread(c, [at[0] - 1.4, at[1] - 2.2], [at[0] + 1.4, at[1] - 2.2], wrap, 4, [g]);
+    thread(c, [at[0] - 1.4, at[1] + 2.2], [at[0] + 1.4, at[1] + 2.2], wrap, 4, [g]);
+  };
+  switch (id) {
+    case "bow-1": {
+      // Arco curto de galho: casca com nós, corda de cânhamo.
+      chain(c, pts, 1, Mat.Wood, (X, Y) => grain(X, Y) - (noise(X >> 2, Y >> 2) < 0.2 ? 1 : 0), 0.65);
+      for (const i of [3, 8]) ellipse(c, ...tip(i), 1.1, 0.8, Mat.Wood, () => -1);
+      bowString(c, top, bot, Mat.Linen, 2);
+      grip(Mat.Leather, Mat.Linen);
+      return;
+    }
+    case "bow-2": {
+      // Arco de caça recurvo: madeira clara, couro na empunhadura e penas penduradas nas pontas.
+      chain(c, pts, 1.15, Mat.Wood, grain, 0.7);
+      for (const p of [top, bot]) ellipse(c, p[0], p[1], 0.85, 0.85, Mat.Horn);
+      for (const [p, d] of [[top, 1], [bot, -1]] as const) for (const k of [0, 1]) feather(c, [p[0] - out * 0.4, p[1] + d * 0.6], [p[0] - out * (0.8 + k), p[1] + d * (3.6 + k * 0.8)], 0.55, k ? Mat.Crest : Mat.Linen);
+      bowString(c, top, bot, Mat.Linen, 4);
+      grip(Mat.Leather, Mat.Bronze);
+      return;
+    }
+    case "bow-3": {
+      // Arco longo de teixo: quase da altura do herói, cerne claro e alburno escuro, pontas de chifre.
+      chain(c, pts, 1.2, Mat.Wood, (X, Y) => (X % 3 === 0 ? 1 : 0) + grain(X, Y), 0.75);
+      for (const p of [top, bot]) limb(c, p, [p[0], p[1] + (p === top ? -1.2 : 1.2)], 0.8, 0.5, Mat.Horn);
+      bowString(c, top, bot, Mat.Linen, 4);
+      grip(Mat.Leather, Mat.Leather);
+      return;
+    }
+    case "bow-4": {
+      // Arco de mithral em folha dupla: lâminas prateadas finas, folhas nas pontas e safira na empunhadura.
+      chain(c, pts, 1, Mat.Mithral, undefined, 0.5);
+      for (const [i, a] of [[1, -1.2], [pts.length - 2, 1.2]] as const) leaf(c, [tip(i)[0] + out * 1.2, tip(i)[1]], a * out, 2, 1, Mat.Mithral);
+      for (const i of [3, 9]) leaf(c, [tip(i)[0] + out * 1.4, tip(i)[1]], out * (i < 6 ? -0.6 : 0.6), 1.5, 0.7, Mat.Mithral);
+      bowString(c, top, bot, Mat.White, 5);
+      grip(Mat.Linen, Mat.Mithral);
+      gem(c, [at[0] + out * 1.4, at[1]], 0.8, Mat.Sapphire);
+      return;
+    }
+    case "bow-5": {
+      // Arco de osso de dragão: costelas emendadas por anéis, espinhos nas costas e corda de tendão vermelho.
+      chain(c, pts, 1.25, Mat.White, (X, Y) => ((Y >> 1) % 5 === 0 ? -2 : 0), 0.7);
+      for (const i of [2, 4, 8, 10]) { const p = tip(i); limb(c, [p[0] - 1.2, p[1]], [p[0] + 1.2, p[1]], 0.55, 0.55, Mat.RedDragon); }
+      for (const i of [1, 3, 9, 11]) { const p = tip(i); plate(c, [[p[0] + out * 0.8, p[1] - 0.8], [p[0] + out * 0.8, p[1] + 0.8], [p[0] + out * 3, p[1] + (i < 6 ? -1 : 1)]], Mat.Horn); }
+      bowString(c, top, bot, Mat.Ember, (k) => (k % 4 === 0 ? 2 : 4));
+      grip(Mat.RedDragon, Mat.Horn);
+      return;
+    }
+    case "bow-1-magic": {
+      // Arco do Caçador Élfico: pontas em galhada de cervo, escrita élfica acesa no braço.
+      chain(c, pts, 1.1, Mat.Wood, grain, 0.7);
+      for (const [p, d] of [[top, -1], [bot, 1]] as const) {
+        chain(c, [p, [p[0] - out * 1, p[1] + d * 2.4], [p[0] - out * 0.4, p[1] + d * 4.6]], 0.55, Mat.Horn, undefined, 0.3);
+        chain(c, [[p[0] - out * 0.7, p[1] + d * 1.6], [p[0] + out * 1.6, p[1] + d * 3]], 0.45, Mat.Horn, undefined, 0.25);
+        chain(c, [[p[0] - out * 0.9, p[1] + d * 3.4], [p[0] - out * 2.6, p[1] + d * 4.4]], 0.4, Mat.Horn, undefined, 0.2);
+      }
+      for (const i of [2, 3, 9, 10]) { const p = tip(i); c.px(F(p[0]), F(p[1]), Mat.Leaf, 5); c.px(F(p[0]), F(p[1]) + 1, Mat.Leaf, 4); }
+      bowString(c, top, bot, Mat.Linen, 4);
+      grip(Mat.Leather, Mat.Leaf);
+      return;
+    }
+    case "bow-2-magic": {
+      // Arco do Vento Sul: pontas em asas de gaivota e fitas azuis ao vento.
+      chain(c, pts, 1.1, Mat.Linen, undefined, 0.7);
+      for (const [p, d] of [[top, -1], [bot, 1]] as const) for (let k = 0; k < 4; k++) feather(c, p, [p[0] + out * (2.4 + k * 0.8), p[1] + d * (1.6 + k * 1.1)], 0.6, k % 2 ? Mat.White : Mat.Linen);
+      for (const [p, d] of [[tip(4), 1], [tip(8), -1]] as const) chain(c, [p, [p[0] + out * 2, p[1] + d * 1], [p[0] + out * 3.4, p[1] - d * 0.4], [p[0] + out * 5, p[1] + d * 0.6]], 0.45, Mat.Sapphire, undefined, 0.3);
+      bowString(c, top, bot, Mat.White, 5);
+      grip(Mat.Sapphire, Mat.White);
+      return;
+    }
+    case "bow-3-magic": {
+      // Arco Solar: arco dourado com o disco do sol na empunhadura, raios e corda de luz.
+      chain(c, pts, 1.15, Mat.Trim, undefined, 0.7);
+      const sun: Pt = [at[0] + out * 1.6, at[1]];
+      gem(c, sun, 2, Mat.Trim);
+      for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; thread(c, [sun[0] + Math.cos(a) * 2.3, sun[1] + Math.sin(a) * 2.3], [sun[0] + Math.cos(a) * (3.4 + (k % 2)), sun[1] + Math.sin(a) * (3.4 + (k % 2))], Mat.Amber, 5); }
+      bowString(c, top, bot, Mat.Amber, (k) => (k % 3 === 0 ? 5 : 4));
+      return;
+    }
+    case "bow-4-magic": {
+      // Arco do Juramento (Oathbow): arco élfico de madeira escura com a inscrição do juramento acesa em verde e ouro.
+      chain(c, pts, 1.1, Mat.Wood, () => -1, 0.6);
+      for (let i = 1; i < pts.length - 1; i++) if (i !== 6) { const p = tip(i); c.px(F(p[0]), F(p[1]), i % 2 ? Mat.Leaf : Mat.Trim, 5); c.px(F(p[0]), F(p[1]) + 1, Mat.Leaf, 4); }
+      for (const p of [top, bot]) leaf(c, [p[0] - out * 0.6, p[1]], -Math.PI / 2, 1.6, 0.7);
+      bowString(c, top, bot, Mat.Trim, 4);
+      grip(Mat.Leaf, Mat.Trim);
+      return;
+    }
+    default: {
+      // Arco de Corda Celestial: arco de nuvem com estrelas, corda de luz estelar pontilhada.
+      for (let i = 0; i < pts.length; i++) ellipse(c, pts[i][0], pts[i][1], 1.6 - Math.abs(i - 6) * 0.08, 1.5, Mat.White, () => (i % 2 ? -1 : 0));
+      for (const i of [1, 4, 8, 11]) { const p = tip(i); for (let k = -1; k <= 1; k++) { c.px(F(p[0] + out * 2.2) + k, F(p[1]), Mat.Sapphire, 5); c.px(F(p[0] + out * 2.2), F(p[1]) + k, Mat.Sapphire, 5); } }
+      bowString(c, top, bot, Mat.Sapphire, (k) => (k % 3 === 0 ? 5 : k % 3 === 1 ? 3 : -1));
+      grip(Mat.Sapphire, Mat.White);
+      return;
+    }
+  }
+}
+
+/**
+ * Besta do id. `s` aponta da coronha para a frente (para onde atira), `p` ao longo do arco. De frente ela pende
+ * da mão com a frente para baixo (um T de cabeça para baixo); de lado vai na horizontal, para a frente.
+ */
+function crossbowArt(c: Canvas, id: string, at: Pt, s: Pt, side: boolean) {
+  const tier = tierOf(id), magic = isMagic(id);
+  const len = 9 + tier * 1.2;
+  // Tudo em unidades da besta, ampliadas para ela ter o porte de uma arma de nível no corpo de 128 px.
+  const XK = 1.55;
+  const S0 = (a: number, b = 0): Pt => [at[0] + (s[0] * a - s[1] * b) * XK, at[1] + (s[1] * a + s[0] * b) * XK];
+  const front = S0(len), butt = S0(-4);
+  const stockMat = tier === 5 ? Mat.White : tier >= 3 && !magic ? Mat.Wood : Mat.Wood;
+  // Coronha e o virote carregado em cima.
+  const stock = limb(c, butt, front, 1.6, 1.25, stockMat, tier === 5 ? (X, Y) => ((Y >> 1) % 4 === 0 ? -1 : 0) : grain);
+  void stock;
+  const prodMat = [Mat.Wood, Mat.Wood, Mat.Bronze, Mat.Iron, Mat.Mithral, Mat.White][tier];
+  const prodHalf = side ? 3 : 6 + tier * 0.6;
+  const prodAt = S0(len - 1.6);
+  const prodPts = (half: number, bend: number, back = 0): Pt[] => {
+    const pts: Pt[] = [];
+    for (let k = -4; k <= 4; k++) { const t = k / 4; pts.push(S0(len - 1.6 - back - bend * t * t, t * half)); }
+    return pts;
+  };
+  const drawProd = (mat: Mat, back = 0, r = 0.85) => {
+    const pts = side ? [S0(len - 1.6 - back, -prodHalf), S0(len - 1.6 - back, prodHalf)] : prodPts(prodHalf, 2.2, back);
+    chain(c, pts, r, mat, mat === Mat.Wood ? grain : undefined, r * 0.6);
+    // Corda das pontas até a noz, perto da mão.
+    if (!side) { bowString(c, pts[0], S0(1.6), Mat.Linen, 4); bowString(c, pts[pts.length - 1], S0(1.6), Mat.Linen, 4); }
+    return pts;
+  };
+  // Virote: haste com ponta de metal e penas perto da noz.
+  const bolt = (mat: Mat = Mat.Steel) => {
+    limb(c, S0(1.4), S0(len + 1.2), 0.32, 0.32, Mat.Wood);
+    plate(c, [S0(len + 0.6, -0.7), S0(len + 0.6, 0.7), S0(len + 2.4)], mat);
+    for (const sg of [-1, 1]) plate(c, [S0(1.2, 0), S0(3, 0), S0(1.4, sg * 1)], Mat.Linen);
+  };
+  // Gatilho (embaixo da coronha) e a noz de bronze.
+  limb(c, S0(0.6, side ? 1.2 : 0), S0(-0.6, side ? 2.6 : 0), 0.35, 0.3, Mat.Iron);
+  if (!magic) switch (tier) {
+    case 1: drawProd(Mat.Wood); bolt(); return;
+    case 2: {
+      const pts = drawProd(Mat.Bronze);
+      for (const p of [pts[0], pts[pts.length - 1]]) ellipse(c, p[0], p[1], 0.8, 0.8, Mat.Bronze);
+      const bull = ellipse(c, ...S0(2.6), 1, 0.9, Mat.Bronze);
+      for (const sg of [-1, 1]) chain(c, [S0(2.2, sg * 0.7), S0(1.8, sg * 1.6)], 0.3, Mat.Bronze, undefined, 0.15);
+      void bull;
+      bolt(Mat.Bronze);
+      return;
+    }
+    case 3: {
+      drawProd(Mat.Iron, 0, 0.95);
+      // Estribo na frente e a manivela (cranequim) atrás.
+      const st = S0(len + 1.4);
+      c.fill(ebox(st[0], st[1], 1.8, 1.8), (x, y) => { const d = Math.hypot(x + 0.5 - st[0], y + 0.5 - st[1]); return d < 1.6 && d > 0.9; }, Mat.Iron, () => 0.6);
+      const crank = ellipse(c, ...S0(-3.6), 1.4, 1.4, Mat.Iron);
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.on(crank, F(S0(-3.6)[0] + Math.cos(a) * 1.2), F(S0(-3.6)[1] + Math.sin(a) * 1.2), Mat.Iron, k % 2 ? 1 : 4); }
+      limb(c, S0(-3.6), S0(-3.6, 3), 0.3, 0.3, Mat.Iron);
+      ellipse(c, ...S0(-3.6, 3.2), 0.6, 0.6, Mat.Wood);
+      bolt();
+      return;
+    }
+    case 4: {
+      // Besta pesada élfica de mithral: arco duplo e folhas nas pontas.
+      const a = drawProd(Mat.Mithral, 0, 0.8);
+      drawProd(Mat.Mithral, 1.6, 0.7);
+      if (!side) for (const p of [a[0], a[a.length - 1]]) leaf(c, p, Math.atan2(s[1], s[0]) + Math.PI, 1.6, 0.8, Mat.Mithral);
+      bolt(Mat.Mithral);
+      return;
+    }
+    default: {
+      // Balestra de osso de dragão: o crânio é a frente, os braços do arco são asas de osso.
+      const pts = drawProd(Mat.White, 0, 1);
+      if (!side) for (const sg of [-1, 1]) plate(c, [S0(len - 2, sg * 1.4), S0(len - 1.4, sg * prodHalf), S0(len - 5, sg * prodHalf * 0.7), S0(len - 4.4, sg * 1.4)], Mat.RedDragon, scales(5, 4));
+      void pts;
+      bolt(Mat.Ember);
+      const sk = ellipse(c, ...S0(len + 0.6), 2.2, 2, Mat.White);
+      for (const sg of [-1, 1]) c.on(sk, F(S0(len + 0.2, sg * 0.9)[0]), F(S0(len + 0.2, sg * 0.9)[1]), Mat.Ember, 4);
+      for (const sg of [-1, 1]) horn(c, [S0(len - 0.4, sg * 1.4), S0(len - 2.4, sg * 2.8), S0(len - 3.8, sg * 2.4)], 0.6);
+      return;
+    }
+  }
+  switch (tier) {
+    case 1: {
+      // Besta do Sentinela: pavês preso na frente, com o olho do sentinela pintado.
+      drawProd(Mat.Wood);
+      bolt();
+      const sh = side ? plate(c, [S0(len - 0.6, -3.6), S0(len + 0.6, -3.6), S0(len + 0.6, 3.6), S0(len - 0.6, 3.6)], Mat.Wood, grain)
+        : plate(c, [S0(len - 3.4, -3.2), S0(len - 3.4, 3.2), S0(len + 1.2, 3), S0(len + 1.2, -3)], Mat.Primary, linen);
+      if (!side) { const e = S0(len - 1.2); ellipse(c, e[0], e[1], 1.3, 0.8, Mat.White); ellipse(c, e[0], e[1], 0.5, 0.6, Mat.Sapphire); }
+      void sh;
+      return;
+    }
+    case 2: {
+      // Besta do Caça-Vampiros: prata, estaca de madeira no lugar do virote, símbolo sagrado e réstia de alho.
+      drawProd(Mat.Mithral, 0, 0.8);
+      limb(c, S0(1.4), S0(len + 1.6), 0.45, 0.3, Mat.Wood);
+      const cross = S0(3.4, side ? -1.6 : 0);
+      limb(c, [cross[0] - 0.9, cross[1]], [cross[0] + 0.9, cross[1]], 0.3, 0.3, Mat.Trim);
+      limb(c, [cross[0], cross[1] - 1.3], [cross[0], cross[1] + 0.9], 0.3, 0.3, Mat.Trim);
+      for (let k = 0; k < 3; k++) { const g = S0(-1.4 + k * 1.2, side ? 2.2 : 2.4); ellipse(c, g[0], g[1], 0.75, 0.85, Mat.White); }
+      thread(c, S0(-2.2, 1.6), S0(1.4, 1.6), Mat.Linen, 3);
+      return;
+    }
+    case 3: {
+      // Besta de Repetição Gnoma: caixa de virotes em cima, engrenagens de bronze e alavanca.
+      drawProd(Mat.Iron, 0, 0.9);
+      bolt();
+      const box = plate(c, [S0(0, -1.8), S0(5, -1.8), S0(5, -4.4), S0(0, -4.4)].map((p) => (side ? p : [p[0] + 0.01, p[1]] as Pt)), Mat.Bronze, hammered);
+      void box;
+      for (const [a, r] of [[1.4, 1.3], [3.8, 1]] as const) {
+        const g = S0(a, 2.4);
+        const id2 = ellipse(c, g[0], g[1], r, r, Mat.Bronze);
+        for (let k = 0; k < 8; k++) { const an = k * Math.PI / 4; c.px(F(g[0] + Math.cos(an) * (r + 0.4)), F(g[1] + Math.sin(an) * (r + 0.4)), Mat.Bronze, 3); }
+        c.on(id2, F(g[0]), F(g[1]), Mat.Iron, 0);
+      }
+      limb(c, S0(4.4, -4.4), S0(2, -7), 0.3, 0.3, Mat.Iron);
+      ellipse(c, ...S0(1.8, -7.2), 0.6, 0.6, Mat.Crest);
+      return;
+    }
+    case 4: {
+      // Besta Trovejante: arco de cobre envolto em bobinas, faíscas saltando das pontas.
+      const pts = drawProd(Mat.Bronze, 0, 0.9);
+      for (let i = 1; i < pts.length - 1; i++) if (i !== 4) { const p = pts[i]; limb(c, [p[0] - s[0] * 0.6, p[1] - s[1] * 0.6], [p[0] + s[0] * 0.6, p[1] + s[1] * 0.6], 1.1, 1.1, Mat.Bronze, (X) => (X % 2 ? -1 : 1)); }
+      bolt(Mat.Sapphire);
+      for (const p of [pts[0], pts[pts.length - 1]]) for (let k = 0; k < 5; k++) { const q: Pt = [p[0] + (noise(k, 3) - 0.5) * 4, p[1] + (noise(3, k) - 0.5) * 4]; c.px(F(q[0]), F(q[1]), Mat.Sapphire, 5); c.px(F(q[0]) + 1, F(q[1]), Mat.White, 5); }
+      return;
+    }
+    default: {
+      // Balestra do Dragão Rubro: cabeça de dragão vermelho de boca aberta na frente; o virote sai em chamas.
+      drawProd(Mat.RedDragon, 0, 1.1);
+      const hd = S0(len + 0.4);
+      const head2 = ellipse(c, hd[0], hd[1], 2.4, 2.2, Mat.RedDragon, scales(5, 4));
+      for (const sg of [-1, 1]) { fang(c, S0(len + 2.2, sg * 0.8), 0.35, 1.2, side ? 1 : -1); horn(c, [S0(len - 0.6, sg * 1.6), S0(len - 2.6, sg * 3), S0(len - 4.4, sg * 2.6)], 0.6); }
+      c.on(head2, F(S0(len, -1)[0]), F(S0(len, -1)[1]), Mat.Amber, 5);
+      flame(c, S0(len + 4.6), 4, 1.6, side ? -1 : 0);
+      return;
+    }
+  }
+}
+
 /** Pixels de cada quadro, calculados uma vez (a galeria pede o mesmo quadro várias vezes). */
 const cache = new Map<string, Uint8ClampedArray>();
 
@@ -3016,7 +3298,7 @@ const cache = new Map<string, Uint8ClampedArray>();
  * passagem. `look` troca as cores das zonas (cosmético) sem mudar o desenho.
  */
 export function protoFrame(dir: ProtoDir, frame: number, cls: ProtoClass = "knight", look?: Partial<ProtoLook>, gear: ProtoGear = {}): HTMLCanvasElement {
-  const kit: Kit = { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.armor ? { armor: gear.armor } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: false } : {}) };
+  const kit: Kit = { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.armor ? { armor: gear.armor } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: /^x?bow-/.test(gear.weapon) && KITS[cls].quiver } : {}) };
   const colors = { ...kit.look, ...look };
   const key = `${cls}${dir}${frame}${JSON.stringify(colors)}${JSON.stringify(gear)}`;
   let data = cache.get(key);

@@ -79,20 +79,20 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Arco (paladino)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Arco curto** — galho com casca | **Arco do Caçador Élfico** — pontas em galhada de cervo, escrita élfica *(elfos da floresta)* |
-| 2 | **Arco de caça** — recurvo com couro e penas penduradas | **Arco do Vento Sul** — pontas em asas de gaivota, fitas ao vento |
-| 3 | **Arco longo** — teixo quase da altura do herói | **Arco Solar** — dourado, disco solar na empunhadura, flechas de luz *(como a Sun Blade)* |
-| 4 | **Arco de mithral** — folha dupla prateada | **Arco do Juramento** — arco élfico que sussurra "derrota rápida aos meus inimigos": inscrição élfica que acende *(Oathbow)* |
-| 5 | **Arco de osso de dragão** — costelas de dragão, corda de tendão vermelho | **Arco de Corda Celestial** — arco de nuvem com corda de luz estelar |
+| 1 | **Arco curto** ✅ — galho com casca | **Arco do Caçador Élfico** ✅ — pontas em galhada de cervo, escrita élfica *(elfos da floresta)* |
+| 2 | **Arco de caça** ✅ — recurvo com couro e penas penduradas | **Arco do Vento Sul** ✅ — pontas em asas de gaivota, fitas ao vento |
+| 3 | **Arco longo** ✅ — teixo quase da altura do herói | **Arco Solar** ✅ — dourado, disco solar na empunhadura, flechas de luz *(como a Sun Blade)* |
+| 4 | **Arco de mithral** ✅ — folha dupla prateada | **Arco do Juramento** ✅ — arco élfico que sussurra "derrota rápida aos meus inimigos": inscrição élfica que acende *(Oathbow)* |
+| 5 | **Arco de osso de dragão** ✅ — costelas de dragão, corda de tendão vermelho | **Arco de Corda Celestial** ✅ — arco de nuvem com corda de luz estelar |
 
 ### Besta (paladino)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Besta leve** — madeira e corda de cânhamo | **Besta do Sentinela** — escudo-pavês acoplado na frente |
-| 2 | **Besta de bronze** — coronha gravada com touro | **Besta do Caça-Vampiros** — virotes de prata, símbolo sagrado e réstia de alho *(caçadores de Ravenloft)* |
-| 3 | **Besta de ferro** — manivela e estribo | **Besta de Repetição Gnoma** — tambor giratório e engrenagens *(gnomos inventores)* |
-| 4 | **Besta pesada de mithral** — arco duplo élfico | **Besta Trovejante** — arco de cobre com bobinas e faíscas |
-| 5 | **Balestra de osso de dragão** — crânio de dragão como corpo, arco em asas | **Balestra do Dragão Rubro** — o virote sai em chamas da boca aberta do dragão |
+| 1 | **Besta leve** ✅ — madeira e corda de cânhamo | **Besta do Sentinela** ✅ — escudo-pavês acoplado na frente |
+| 2 | **Besta de bronze** ✅ — coronha gravada com touro | **Besta do Caça-Vampiros** ✅ — virotes de prata, símbolo sagrado e réstia de alho *(caçadores de Ravenloft)* |
+| 3 | **Besta de ferro** ✅ — manivela e estribo | **Besta de Repetição Gnoma** ✅ — tambor giratório e engrenagens *(gnomos inventores)* |
+| 4 | **Besta pesada de mithral** ✅ — arco duplo élfico | **Besta Trovejante** ✅ — arco de cobre com bobinas e faíscas |
+| 5 | **Balestra de osso de dragão** ✅ — crânio de dragão como corpo, arco em asas | **Balestra do Dragão Rubro** ✅ — o virote sai em chamas da boca aberta do dragão |
 
 ### Varinha (feiticeiro e druida)
 | Nível | Comum | Mágico |
@@ -260,7 +260,34 @@ dentes de gigante amarrados):
 
 ![Machados mágicos](arte/lote3-axes-magic.png)
 
-## 9. Ordem de execução
+## 9. Lote 4 desenhado
+
+Os 10 arcos e as 10 bestas do paladino. O arco vai em pé na mão, com a barriga para fora; a besta pende da mão de
+frente (um T de cabeça para baixo) e vai na horizontal, apontando para a frente, de lado.
+
+**Arcos comuns**: galho com casca, recurvo de caça com penas penduradas, arco longo de teixo quase da altura do
+herói, folha dupla de mithral com safira, osso de dragão com espinhos e corda de tendão vermelho:
+
+![Arcos](arte/lote4-bows.png)
+
+**Arcos mágicos**: Caçador Élfico (pontas em galhada de cervo, escrita acesa), Vento Sul (asas de gaivota e fitas),
+Arco Solar (dourado, disco do sol e corda de luz), Arco do Juramento (madeira escura com a inscrição élfica acesa),
+Corda Celestial (arco de nuvem com estrelas e corda pontilhada de luz):
+
+![Arcos mágicos](arte/lote4-bows-magic.png)
+
+**Bestas comuns**: leve de madeira, de bronze com o touro, de ferro com estribo e manivela, pesada de mithral com arco
+duplo, balestra de osso com crânio de dragão na frente:
+
+![Bestas](arte/lote4-crossbows.png)
+
+**Bestas mágicas**: Sentinela (pavês com o olho pintado), Caça-Vampiros (prata, estaca, símbolo sagrado e alho),
+Repetição Gnoma (caixa de virotes, engrenagens e alavanca), Trovejante (bobinas de cobre e faíscas), Dragão Rubro
+(cabeça de dragão de boca aberta e o virote saindo em chamas):
+
+![Bestas mágicas](arte/lote4-crossbows-magic.png)
+
+## 10. Ordem de execução
 
 ![Piloto: Capuz do Lobo no druida e no feiticeiro, Elmo do Demônio e Lâmina do dragão no cavaleiro, Elmo do Demônio no paladino](arte/itens-piloto.png)
 
@@ -268,7 +295,8 @@ dentes de gigante amarrados):
    **Lote 1** ✅: espadas, elmos de guerra e armaduras de guerra comuns (seção 6).
    **Lote 2** ✅: os mágicos dessas 3 famílias (seção 7).
    **Lote 3** ✅: machados (seção 8).
-   **Lote 4**: arcos e bestas (paladino).
+   **Lote 4** ✅: arcos e bestas (seção 9).
+   **Lote 5**: varinhas e cajados (feiticeiro e druida).
 2. Armas (o que mais aparece), depois armaduras e mantos, capacetes, botas, calças e escudos.
 3. Ícones de 32×32 a partir de cada desenho pronto.
 4. Integração no jogo atrás da opção "Arte nova (beta)", com o teste `arte.ts` conferindo cada item.
