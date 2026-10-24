@@ -364,8 +364,8 @@ limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
 - o banco sorteia a seed e tira equipamento e bag da conta no início, como numa hunt em equipe;
 - o loot tem teto por mapa (pouco acima do máximo possível) e esse teto cresce com o tempo de hunt;
 - resultado que chega depois da duração do mapa mais 1 minuto vale como soterrado;
-- o que entrou com o jogador volta sem custo; itens novos (até 15) e gold somam no **teto de 12.000 por dia**;
-  o que passar disso fica para trás, e a tela de resultado avisa;
+- o que entrou com o jogador volta sem custo; itens novos, no máximo 15 por hunt (o que passar disso fica para
+  trás, e a tela de resultado avisa). Não há teto por dia;
 - hunt solo deixada aberta (aba fechada) conta como morte na próxima.
 
 ### Sala no aparelho do jogador
