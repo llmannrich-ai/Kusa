@@ -379,7 +379,8 @@ então funcionam com o servidor do jogo dormindo.
 
 ## Mapas
 
-O jogador escolhe o mapa (cenário) na tela de criar sala (a escolha fica salva no aparelho). O mapa vale para as salas
+O jogador escolhe o mapa (cenário) na tela de criar sala. Os cartões vêm na ordem Pântano do Kosaradius, Cripta, Mar
+de Areia e Pântano das Ruínas, e o primeiro já vem escolhido toda vez que a tela abre. O mapa vale para as salas
 que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
