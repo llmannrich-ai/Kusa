@@ -20,6 +20,7 @@ import {
   partySize,
   MAX_SUMMONS_PER_PLAYER,
   MOVE_HOLD_MS,
+  PORTAL_HOLD_MS,
   MSG,
   PERKS,
   POTIONS,
@@ -177,6 +178,8 @@ interface Seat {
   heading: { dx: -1 | 0 | 1; dy: -1 | 0 | 1; until: number } | null;
   /** Momento (ms) em que o ataque básico volta a poder sair. */
   nextAttackAt: number;
+  /** Desde quando (ms) está em cima de um portal; null fora dele. Sai da dungeon depois de `PORTAL_HOLD_MS`. */
+  portalSince?: number | null;
   /** Segurando o botão de ataque: o golpe se repete no ritmo da recarga. */
   attacking: boolean;
   /** Um toque rápido no ataque ainda vale até este momento (sai assim que a recarga deixar). */
@@ -540,7 +543,7 @@ export class Hunt {
 
     this.state.players.set(sessionId, player);
     this.seats.set(sessionId, {
-      nextMoveAt: 0, heading: null, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
+      nextMoveAt: 0, heading: null, nextAttackAt: 0, portalSince: null, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
@@ -896,9 +899,25 @@ export class Hunt {
     if (this.state.phase === "running") this.trackDepth(sessionId, player);
 
     if (tileAt(this.dungeon, nx, ny) === Tile.Cave) this.throughCave(sessionId, player);
-    if (this.state.phase === "running" && tileAt(this.dungeon, nx, ny) === Tile.Portal) {
+  }
+
+  /**
+   * Portal (fuga ou boss): só leva para fora quem fica `PORTAL_HOLD_MS` em cima dele. Conta pela posição, não pelo
+   * passo: chegar empurrado ou puxado também vale, e sair do tile zera a contagem.
+   */
+  private usePortals(now: number) {
+    this.state.players.forEach((player, sessionId) => {
+      const seat = this.seats.get(sessionId);
+      if (!seat || player.status !== "playing" || player.bot) return;
+      if (tileAt(this.dungeon, player.x, player.y) !== Tile.Portal) {
+        seat.portalSince = null;
+        return;
+      }
+      seat.portalSince ??= now;
+      if (now - seat.portalSince < PORTAL_HOLD_MS) return;
+      seat.portalSince = null;
       const bossPortal = this.dungeon.bossPortal;
-      if (nx === bossPortal.x && ny === bossPortal.y) {
+      if (player.x === bossPortal.x && player.y === bossPortal.y) {
         // Concluir a dungeon dá um bônus sobre o loot carregado.
         const bonus = Math.round(player.loot * BOSS_LOOT_BONUS);
         player.loot += bonus;
@@ -907,7 +926,7 @@ export class Hunt {
       } else {
         this.endRun(sessionId, "escaped");
       }
-    }
+    });
   }
 
   target(sessionId: string, msg: TargetMessage) {
@@ -954,6 +973,8 @@ export class Hunt {
     this.regen(dt);
     this.tallyScreen(dt);
     this.expireEffects(now);
+    this.usePortals(now);
+    if (this.state.phase !== "running") return;
     this.bots.think(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);

@@ -1,11 +1,12 @@
 /**
  * Teste da hunt solo, sem servidor: a simulação (`Hunt`) roda sozinha, como no navegador.
  * - O loot máximo de cada mapa cabe em SOLO_LIMITS.maxLoot (o teto do banco em `finish_solo_run`).
- * - Um cavaleiro entra, recebe equipamento, runas e bag, foge pelo portal e o resultado sai pelo host.
+ * - Um cavaleiro entra, recebe equipamento, runas e bag, foge pelo portal (depois de ficar PORTAL_HOLD_MS em cima dele;
+ *   sair antes zera a contagem) e o resultado sai pelo host.
  * - Outro sai no meio da hunt e conta como morte.
  * Uso: npx tsx apps/server/scripts/solo.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { ITEMS, MAP_IDS, SOLO_LIMITS, spellChoices, runeSpells, type ItemSlot, type RunEndedMessage } from "@kusa/shared";
+import { ITEMS, MAP_IDS, PORTAL_HOLD_MS, SOLO_LIMITS, spellChoices, runeSpells, type ItemSlot, type RunEndedMessage } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { DungeonState } from "../src/state.ts";
 
@@ -63,8 +64,16 @@ for (const mapId of MAP_IDS) {
   if (p.maxHp <= hpBefore) throw new Error(`a Runa da Vida não deu vida: ${hpBefore} → ${p.maxHp}`);
   if (!spellChoices("knight", 1, [], runeSpells([...p.runes])).some((sp) => sp.id === "meteor")) throw new Error("Meteoro não virou opção");
   advance(hunt, 500);
+  // O portal só leva quem fica PORTAL_HOLD_MS em cima dele: sair antes zera a contagem.
   hunt.move("solo", { dx: 1, dy: 1 });
-  advance(hunt, 100);
+  advance(hunt, 1000);
+  if (results.length || p.status !== "playing") throw new Error("o portal levou antes do tempo");
+  hunt.move("solo", { dx: -1, dy: -1 });
+  advance(hunt, 600);
+  hunt.move("solo", { dx: 1, dy: 1 });
+  advance(hunt, 1000);
+  if (results.length) throw new Error("sair do portal não zerou a contagem");
+  advance(hunt, PORTAL_HOLD_MS - 1000 + 100);
   const result = results.pop();
   console.log("fuga:", result);
   if (result?.outcome !== "escaped") throw new Error(`esperava fuga, veio ${result?.outcome}`);
