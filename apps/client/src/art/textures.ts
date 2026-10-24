@@ -186,6 +186,12 @@ function addAnimatedArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
   if (scene.textures.exists(key)) return;
   const sheet = anim.sheet();
   const n = sheet.width / anim.size;
+  if (anim.hd) {
+    const texture = scene.textures.addCanvas(key, sheet)!;
+    for (let i = 0; i < n; i++) texture.add(i, 0, i * anim.size, 0, anim.size, anim.size);
+    addClips(scene, key, anim);
+    return;
+  }
   const big = anim.size * 2;
   const { canvas, ctx } = makeCanvas(big * n, big);
   const frame = makeCanvas(anim.size, anim.size);
@@ -196,6 +202,11 @@ function addAnimatedArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
   }
   const texture = scene.textures.addCanvas(key, canvas)!;
   for (let i = 0; i < n; i++) texture.add(i, 0, i * big, 0, big, big);
+  addClips(scene, key, anim);
+}
+
+/** Uma animação por clipe da folha (parado e andar em laço). */
+function addClips(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
   const frames = anim.frames ?? CLIPS;
   for (const clip of CLIP_ORDER) {
     const start = clipStart(clip, frames);

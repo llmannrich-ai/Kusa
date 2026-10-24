@@ -70,6 +70,11 @@ interface Kit {
   legs?: ProtoLegs;
   boots?: ProtoBoots;
   shield?: ProtoShield;
+  /** Monstro humanoide (só de lado): a cabeça da espécie, o tamanho, a grossura dos membros e a cauda. */
+  species?: Species;
+  size?: number;
+  thin?: number;
+  tail?: boolean;
 }
 
 type Tier = 1 | 2 | 3 | 4 | 5;
@@ -666,8 +671,10 @@ function leg(c: Canvas, kit: Kit, hip: Pt, knee: Pt, ankle: Pt, toe: Pt, far: bo
   // Perna nua: coxa, joelho com luz, canela (e o pé descalço, tudo uma peça só).
   const bare = kit.feet === "bare";
   const skinT = c.together(() => {
-    const id = limb(c, hip, knee, 4, 3.4, Mat.Skin, darker(undefined, far));
-    limb(c, knee, ankle, 3.4, 2.7, Mat.Skin, darker(undefined, far));
+    const th = kit.thin ?? 1;
+    const id = limb(c, hip, knee, 4 * th, 3.4 * th, Mat.Skin, darker(undefined, far));
+    limb(c, knee, ankle, 3.4 * th, 2.7 * th, Mat.Skin, darker(undefined, far));
+    if (th < 1) ellipse(c, knee[0], knee[1], 1.8, 1.8, Mat.Skin, darker(undefined, far));
     if (bare) bareFoot(c, ankle, toe, far, front);
     return id;
   });
@@ -724,8 +731,10 @@ export const lerp = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, 
 function arm(c: Canvas, kit: Kit, shoulder: Pt, elbow: Pt, at: Pt, far: boolean, grip?: () => void) {
   // Braço nu: ombro (deltoide), bíceps e antebraço.
   const up = c.together(() => {
-    const id = limb(c, shoulder, elbow, 3.5, 3, Mat.Skin, darker(undefined, far));
-    limb(c, elbow, at, 3, 2.6, Mat.Skin, darker(undefined, far));
+    const th = kit.thin ?? 1;
+    const id = limb(c, shoulder, elbow, 3.5 * th, 3 * th, Mat.Skin, darker(undefined, far));
+    limb(c, elbow, at, 3 * th, 2.6 * th, Mat.Skin, darker(undefined, far));
+    if (th < 1) ellipse(c, elbow[0], elbow[1], 1.6, 1.6, Mat.Skin, darker(undefined, far));
     return id;
   });
   const fore = up;
@@ -1127,7 +1136,7 @@ function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
   if (kit.armor) return armorTorso(c, kit.armor, top, "side", sway);
   switch (kit.top) {
     case "none": {
-      const id = bareTorso(c, top, CX, 9, true);
+      const id = kit.species === "skeleton" ? ribcageSide(c, top) : bareTorso(c, top, CX, 9, true);
       loincloth(c, top, CX, 8, true, false);
       return [id];
     }
@@ -1326,6 +1335,7 @@ function side(c: Canvas, kit: Kit, frame: number) {
   const s = SWING[frame], b = BOB[frame];
   const hip: Pt = [CX + 1, 66 + b];
   const top = 47 + b;
+  if (kit.tail) chain(c, [[CX + 6, top + 15], [CX + 13, top + 21 + s], [CX + 19, top + 22 - s], [CX + 23, top + 19]], 2.4, Mat.Skin, scales(4, 3), 0.4);
   // Passo: perna da frente à esquerda, a outra atrás com o calcanhar no ar. Passagem: juntas.
   const pose = (fwd: number): [Pt, Pt, Pt] => {
     if (fwd > 0) return [[hip[0] - 4, 77 + b], [hip[0] - 7, FEET - 3], [hip[0] - 12, FEET - 2]];
@@ -1650,6 +1660,7 @@ function headBack(c: Canvas, kit: Kit, b: number, top: number) {
 }
 
 function headSide(c: Canvas, kit: Kit, b: number, top: number) {
+  if (kit.species) { monsterHead(c, kit, b, top); return; }
   const cy = 37 + b;
   const cx = CX + 1;
   collar(c, kit, cy, "side");
@@ -4774,6 +4785,240 @@ function shieldFace(c: Canvas, id: string, at: Pt, view: ProtoDir, side: number)
       void skull; void jaw;
     }
   }
+}
+
+// --- Monstros humanoides (piloto da Cripta, docs/ARTE_TIBIA.md) ----------------------------
+
+export type Species = "goblin" | "kobold" | "hobgoblin" | "orc" | "gnoll" | "skeleton" | "zombie" | "bugbear" | "ogre";
+
+/** Olho de perfil (olhando para a esquerda): pálpebra escura, íris da cor `mat` e um brilho. */
+function eyeSide(c: Canvas, x: number, y: number, mat: Mat, big = false) {
+  const X = F(x), Y = F(y);
+  for (const dx of [-2, -1, 0, 1]) c.px(X + dx, Y - 1, Mat.Eye, 0);
+  c.px(X - 2, Y, Mat.Eye, 0); c.px(X - 1, Y, mat, 5); c.px(X, Y, mat, 3); c.px(X + 1, Y, Mat.Eye, 1);
+  if (big) { c.px(X - 1, Y + 1, mat, 2); c.px(X, Y + 1, mat, 2); }
+}
+
+/** Orelha pontuda virada para trás, com o miolo escuro. */
+function pointedEar(c: Canvas, cx: number, cy: number, len: number) {
+  poly(c, [[cx + 2, cy - 1.6], [cx + 2 + len, cy - 4 - len * 0.3], [cx + len * 0.8, cy - 1], [cx + 3, cy + 3]], Mat.Skin, cx + 2, cx + 2 + len);
+  poly(c, [[cx + 4, cy - 0.6], [cx + len * 0.95, cy - 3.2 - len * 0.25], [cx + len * 0.7, cy - 1], [cx + 4.2, cy + 1.6]], Mat.Lip, cx + 4, cx + len, () => -1);
+}
+
+/** Cabeça da espécie, de perfil, olhando para a esquerda. */
+function monsterHead(c: Canvas, kit: Kit, b: number, top: number) {
+  const cy = 37 + b, cx = CX + 1;
+  ellipse(c, CX - 0.5, cy + 9, 3, 2.5, Mat.Skin);
+  switch (kit.species) {
+    case "goblin": {
+      // Orelhão para trás, nariz comprido, olho amarelo e o sorriso de dentes finos.
+      pointedEar(c, cx, cy - 1, 13);
+      ellipse(c, cx, cy - 1, 7.6, 7.2, Mat.Skin);
+      ellipse(c, cx - 3, cy + 4.4, 5.6, 3.6, Mat.Skin);
+      limb(c, [cx - 6, cy - 0.6], [cx - 13, cy + 2.6], 2, 0.8, Mat.Skin);
+      eyeSide(c, cx - 4.6, cy - 2, Mat.Amber, true);
+      thread(c, [cx - 7.6, cy - 4.6], [cx - 2, cy - 4], Mat.Eye, 0);
+      thread(c, [cx - 9, cy + 5], [cx - 1.6, cy + 6.4], Mat.Eye, 0);
+      for (const x of [-8, -6.6, -5.2, -3.8]) c.px(F(cx + x), F(cy + 5.6), Mat.White, 4);
+      for (const k of [0, 1, 2]) chain(c, [[cx + 1 + k * 1.6, cy - 7.6], [cx + 3 + k * 2.4, cy - 11 + k], [cx + 6 + k * 2.6, cy - 10 + k * 1.4]], 0.7, Mat.Hair, strands, 0.3);
+      return;
+    }
+    case "kobold": {
+      // Cabeça de lagarto: focinho comprido, chifrinhos para trás e escamas.
+      for (const k of [0, 1]) horn(c, [[cx + 3 + k * 2, cy - 5], [cx + 8 + k * 2, cy - 8.6], [cx + 12 + k * 1.6, cy - 9]], 1.2 - k * 0.3);
+      ellipse(c, cx + 1, cy - 1, 7, 6.6, Mat.Skin, scales(4, 3));
+      poly(c, [[cx - 3, cy - 4.4], [cx - 13.6, cy - 1.4], [cx - 14.4, cy + 1.4], [cx - 3, cy + 2.4]], Mat.Skin, cx - 14, cx - 3, scales(4, 3));
+      poly(c, [[cx - 3, cy + 2.2], [cx - 12.4, cy + 2], [cx - 11.6, cy + 4], [cx - 2, cy + 5.4]], Mat.Skin, cx - 12, cx - 2, (X, Y) => scales(4, 3)(X, Y) - 1);
+      for (const x of [-11, -9.2, -7.4, -5.6]) fang(c, [cx + x, cy + 2], 0.35, 0.8);
+      c.px(F(cx - 13.4), F(cy - 1), Mat.Eye, 0);
+      eyeSide(c, cx - 3.4, cy - 2.4, Mat.Amber, true);
+      thread(c, [cx - 5.6, cy - 4.6], [cx - 1, cy - 5], Mat.Skin, 0);
+      return;
+    }
+    case "gnoll": {
+      // Hiena: focinho comprido e escuro na ponta, orelhas redondas em pé e a crina descendo pela nuca.
+      chain(c, [[cx + 4, cy - 7], [cx + 8, cy + 2], [cx + 6, top + 6]], 2.2, Mat.Hair, strands, 1.2);
+      for (const dx of [1.6, 5]) {
+        poly(c, [[cx + dx - 2.4, cy - 5], [cx + dx + 0.6, cy - 13.4], [cx + dx + 2.6, cy - 5]], Mat.Skin, cx + dx - 2.4, cx + dx + 2.6);
+        poly(c, [[cx + dx - 1, cy - 6], [cx + dx + 0.5, cy - 11], [cx + dx + 1.4, cy - 6]], Mat.Eye, cx + dx - 1, cx + dx + 1.4, () => -1);
+      }
+      const spots: Offset = (X, Y) => (noise(X >> 2, Y >> 2) < 0.2 ? -1 : 0);
+      ellipse(c, cx + 1, cy - 1, 7.6, 7.2, Mat.Skin, spots);
+      poly(c, [[cx - 3, cy - 3.6], [cx - 15, cy + 0.4], [cx - 15.4, cy + 3.6], [cx - 3, cy + 5]], Mat.Skin, cx - 15, cx - 3, spots);
+      poly(c, [[cx - 9, cy - 1.4], [cx - 15, cy + 0.4], [cx - 15.4, cy + 3.6], [cx - 9, cy + 4.6]], Mat.Hair, cx - 15, cx - 9);
+      ellipse(c, cx - 14.4, cy + 1.6, 1.8, 1.6, Mat.Eye);
+      thread(c, [cx - 13.6, cy + 3.6], [cx - 4, cy + 4.4], Mat.Eye, 0);
+      for (const x of [-12, -10, -8]) fang(c, [cx + x, cy + 3.6], 0.4, 1);
+      eyeSide(c, cx - 3.6, cy - 2, Mat.Amber, true);
+      return;
+    }
+    case "skeleton": {
+      // Crânio de osso: órbita funda com a brasa no fundo, nariz vazado, dentes e mandíbula solta.
+      const skull = ellipse(c, cx, cy - 1, 8, 8, Mat.Skin);
+      const jaw = ellipse(c, cx - 2.4, cy + 5.6, 5.4, 2.8, Mat.Skin);
+      c.fill(ebox(cx - 4.4, cy, 2.6, 2.6), inEllipse(cx - 4.4, cy, 2.4, 2.6), Mat.Eye, () => 0.1);
+      c.px(F(cx - 4.6), F(cy), Mat.Ember, 5);
+      c.on(skull, F(cx - 7.6), F(cy + 3), Mat.Eye, 0); c.on(skull, F(cx - 7.2), F(cy + 3.6), Mat.Eye, 0);
+      for (const x of [-7, -5.6, -4.2, -2.8]) { c.on([skull, jaw], F(cx + x), F(cy + 4.4), Mat.Eye, 0); c.on([skull, jaw], F(cx + x), F(cy + 6), Mat.Eye, 0); }
+      thread(c, [cx - 7.6, cy + 5.2], [cx + 2, cy + 5.2], Mat.Eye, 0, [skull, jaw]);
+      thread(c, [cx + 2, cy - 8], [cx + 5, cy + 1], Mat.Skin, 1, [skull]);
+      thread(c, [cx - 1, cy + 1.6], [cx + 3, cy + 2.6], Mat.Skin, 1, [skull]);
+      return;
+    }
+    case "zombie": {
+      // Rosto humano apodrecido: olho fundo e leitoso, boca aberta, pontos de costura e cabelo ralo.
+      const face = ellipse(c, cx, cy, 8.2, 9, Mat.Skin, (X, Y) => (noise(X >> 1, Y >> 1) < 0.12 ? -1 : 0));
+      ellipse(c, cx + 1.8, cy + 2.2, 1.4, 2.2, Mat.Skin);
+      c.fill(ebox(cx - 4.4, cy + 1, 2.4, 2), inEllipse(cx - 4.4, cy + 1, 2.2, 1.8), Mat.Eye, () => 0.1);
+      c.px(F(cx - 4.8), F(cy + 1), Mat.White, 4);
+      limb(c, [cx - 7.4, cy + 1.6], [cx - 9.6, cy + 4.6], 1.2, 0.8, Mat.Skin);
+      c.fill(ebox(cx - 5.6, cy + 7, 2.6, 1.8), inEllipse(cx - 5.6, cy + 7, 2.4, 1.6), Mat.Eye, () => 0.1);
+      thread(c, [cx - 1, cy - 6], [cx + 4, cy + 4], Mat.Lip, 1, [face]);
+      for (let k = 0; k < 5; k++) thread(c, [cx - 0.2 + k * 1, cy - 4.6 + k * 2], [cx + 1.4 + k * 1, cy - 5 + k * 2], Mat.Eye, 1, [face]);
+      for (let k = 0; k < 5; k++) chain(c, [[cx - 2 + k * 2.4, cy - 8], [cx + k * 2.6, cy - 6 + k], [cx + 1 + k * 2.2, cy - 2 + k * 1.6]], 0.6, Mat.Hair, strands, 0.3);
+      return;
+    }
+    case "bugbear": {
+      // Goblinoide grandalhão e peludo: focinho de urso, orelhas redondas e presas.
+      for (const dx of [1, 5]) ellipse(c, cx + dx, cy - 8, 2.4, 2.2, Mat.Skin, fur);
+      ellipse(c, cx, cy - 0.6, 9, 8.6, Mat.Skin, fur);
+      ellipse(c, cx - 8, cy + 2.4, 4.6, 3.4, Mat.FurLight, fur);
+      ellipse(c, cx - 12, cy + 1.4, 1.4, 1.2, Mat.Eye);
+      thread(c, [cx - 11, cy + 4.6], [cx - 5, cy + 5], Mat.Eye, 0);
+      fang(c, [cx - 9, cy + 4.4], 0.5, 1.6, -1);
+      eyeSide(c, cx - 4.4, cy - 2.4, Mat.Amber);
+      thread(c, [cx - 7, cy - 4.4], [cx - 1.6, cy - 4], Mat.Eye, 0);
+      return;
+    }
+    default: {
+      // Hobgoblin, orc e ogro: cabeça humana com orelha pontuda, testa pesada e o que cada um tem a mais.
+      const ogre = kit.species === "ogre", orc = kit.species === "orc";
+      if (!ogre) pointedEar(c, cx, cy, orc ? 6 : 7);
+      else ellipse(c, cx + 2, cy + 1.6, 1.8, 2.8, Mat.Skin);
+      const face = ellipse(c, cx, cy, ogre ? 9 : 8.2, ogre ? 9.4 : 8.8, Mat.Skin, (X, Y) => (noise(X >> 1, Y >> 1) < 0.06 ? -1 : 0));
+      // Testa saltada e o nariz: largo e chato no orc e no hobgoblin, uma batata no ogro.
+      limb(c, [cx - 8, cy - 2], [cx - 2, cy - 3.4], 1.2, 1, Mat.Skin);
+      if (ogre) ellipse(c, cx - 9, cy + 1.6, 2.6, 2.4, Mat.Skin);
+      else poly(c, [[cx - 7.6, cy - 1], [cx - 10.4, cy + 2.4], [cx - 7.4, cy + 3.2]], Mat.Skin, cx - 10.4, cx - 7.4);
+      eyeSide(c, cx - 5, cy - 0.4, orc ? Mat.Ember : Mat.Amber);
+      // Queixo para a frente com as presas subindo (no orc e no ogro).
+      ellipse(c, cx - 4.4, cy + 6.4, ogre ? 5.4 : 4.6, 2.8, Mat.Skin);
+      thread(c, [cx - 9, cy + 5.2], [cx - 2, cy + 5.6], Mat.Eye, 0, [face]);
+      if (orc || ogre) fang(c, [cx - (ogre ? 8.2 : 7.6), cy + 5.4], 0.6, ogre ? 2.4 : 2, -1);
+      if (kit.species === "hobgoblin") {
+        // Coque preto preso no alto.
+        ellipse(c, cx + 1, cy - 6.6, 7.6, 3.6, Mat.Hair, strands);
+        ellipse(c, cx + 4, cy - 10, 2.4, 2.2, Mat.Hair, strands);
+        limb(c, [cx + 4.4, cy - 9], [cx + 8, cy - 4], 0.9, 0.5, Mat.Hair, strands);
+      } else if (orc) {
+        // Crista de cabelo preto do meio da cabeça até a nuca.
+        chain(c, [[cx - 3, cy - 8.4], [cx + 2, cy - 9.6], [cx + 6.6, cy - 6], [cx + 8, cy - 1]], 1.6, Mat.Hair, strands, 1);
+      } else {
+        thread(c, [cx - 2, cy - 7.6], [cx + 4, cy - 6], Mat.Skin, 4, [face]);
+        c.px(F(cx - 7), F(cy + 8.4), Mat.Sapphire, 4);
+      }
+      return;
+    }
+  }
+}
+
+/** Costelas, espinha e bacia de perfil (esqueleto). */
+function ribcageSide(c: Canvas, top: number) {
+  const spine = chain(c, [[CX + 4, top], [CX + 5, top + 8], [CX + 4, top + 16]], 1.3, Mat.Skin);
+  for (let k = 0; k < 5; k++) {
+    const y = top + 2.4 + k * 2.6;
+    chain(c, [[CX + 4.4, y], [CX - 1, y + 1], [CX - 5.4 + k * 0.4, y + 3.6]], 0.75, Mat.Skin, undefined, 0.6);
+  }
+  limb(c, [CX - 4.6, top + 3], [CX - 4, top + 12], 0.8, 0.7, Mat.Skin);
+  ellipse(c, CX + 1, top + 17.4, 5.4, 2.8, Mat.Skin);
+  return spine[0];
+}
+
+/** Kit de cada monstro humanoide da Cripta: espécie, cores, tamanho e o que veste e carrega. */
+const MONSTER_KITS: Record<string, Kit> = {
+  goblin: {
+    look: { skin: "#6e8f36", head: "#2a2018", primary: "#6a5034", secondary: "#5a4a34", detail: "#4a3624", trim: "#8a6a3a" },
+    species: "goblin", size: 0.78, hair: "none", beard: "none", top: "tunic", sleeves: "none", pants: "knee", feet: "bare", waist: "rope", weapon: "sword-1",
+  },
+  goblinArcher: {
+    look: { skin: "#6e8f36", head: "#2a2018", primary: "#4e5a34", secondary: "#5a4a34", detail: "#4a3624", trim: "#8a6a3a" },
+    species: "goblin", size: 0.78, hair: "none", beard: "none", top: "tunic", sleeves: "none", pants: "knee", feet: "bare", waist: "strap", weapon: "bow", quiver: true,
+  },
+  kobold: {
+    look: { skin: "#a0522c", head: "#2a2018", primary: "#7a6a4a", secondary: "#6a5034", detail: "#4a3624", trim: "#c09030" },
+    species: "kobold", size: 0.7, tail: true, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "sword-1",
+  },
+  hobgoblin: {
+    look: { skin: "#b4602e", head: "#1e1814", primary: "#7a2420", secondary: "#4a4038", detail: "#3e2a1c", trim: "#a08030" },
+    species: "hobgoblin", size: 1, hair: "none", beard: "none", top: "gambeson", sleeves: "quilt", pants: "full", feet: "boots", waist: "belt", weapon: "sword-2", armor: "armor-3", shield: "shield-1",
+  },
+  orc: {
+    look: { skin: "#7b8a4c", head: "#1a1614", primary: "#5a3a24", secondary: "#4a4038", detail: "#3e2a1c", trim: "#8a6a3a" },
+    species: "orc", size: 1, hair: "none", beard: "none", top: "gambeson", sleeves: "none", pants: "full", feet: "boots", waist: "belt", weapon: "axe-2", armor: "armor-1",
+  },
+  gnoll: {
+    look: { skin: "#b08a52", head: "#3a2a1c", primary: "#6a5a3a", secondary: "#5a4a34", detail: "#4a3624", trim: "#a0803a" },
+    species: "gnoll", size: 1.05, hair: "none", beard: "none", top: "tunic", sleeves: "none", pants: "knee", feet: "bare", waist: "strap", weapon: "axe-1",
+  },
+  skeleton: {
+    look: { skin: "#d8cfb2", head: "#3a3028", primary: "#5a5040", secondary: "#4a4038", detail: "#4a3a2a", trim: "#7a6a4a" },
+    species: "skeleton", size: 0.95, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "sword-1", shield: "shield-1",
+  },
+  skeletonArcher: {
+    look: { skin: "#d8cfb2", head: "#3a3028", primary: "#5a5040", secondary: "#4a4038", detail: "#4a3a2a", trim: "#7a6a4a" },
+    species: "skeleton", size: 0.95, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "bow", quiver: true,
+  },
+  zombie: {
+    look: { skin: "#7d8f6a", head: "#2e2a22", primary: "#5a5040", secondary: "#4a4a44", detail: "#3a3024", trim: "#6a5a40" },
+    species: "zombie", size: 0.97, hair: "none", beard: "none", top: "tunic", sleeves: "short", pants: "full", feet: "bare", waist: "rope", weapon: "none",
+  },
+  bugbear: {
+    look: { skin: "#7a5530", head: "#3a2818", primary: "#5a3a24", secondary: "#4a4038", detail: "#3e2a1c", trim: "#8a6a3a" },
+    species: "bugbear", size: 1.22, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "knee", feet: "bare", waist: "belt", weapon: "axe-3", armor: "armor-1",
+  },
+  ogre: {
+    look: { skin: "#c08a5a", head: "#3a2818", primary: "#6a5a3a", secondary: "#5a4a34", detail: "#4a3624", trim: "#8a6a3a" },
+    species: "ogre", size: 1.45, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "branch",
+  },
+};
+
+export const PROTO_MONSTERS = Object.keys(MONSTER_KITS);
+/** Tamanho do monstro em relação ao herói (1 = da altura do herói). */
+export const monsterSize = (kind: string) => MONSTER_KITS[kind].size ?? 1;
+
+/** Quadros de cada clipe do monstro humanoide: parado (os dois passos de passagem), andar e o resto. */
+export const MONSTER_CLIP_FRAMES = { idle: 4, walk: 4, attack: 4, cast: 4 } as const;
+const CLIP_STEPS = { idle: [1, 1, 3, 3], walk: [0, 1, 2, 3], attack: [0, 0, 2, 2], cast: [1, 3, 1, 3] } as const;
+
+/** Um quadro do monstro (192 px, olhando para a esquerda, pés na mesma linha dos heróis). */
+export function protoMonsterFrame(kind: string, step: number): Uint8ClampedArray {
+  const kit = MONSTER_KITS[kind];
+  const c = new Canvas();
+  c.scaled([CX, FEET], kit.size ?? 1, () => side(c, kit, step));
+  return c.render(kit.look);
+}
+
+/** Primeiro quadro do monstro (parado), para quem não anima e para a galeria. */
+export function protoMonsterPortrait(kind: string): HTMLCanvasElement {
+  const { canvas, ctx } = makeCanvas(S, S);
+  const image = ctx.createImageData(S, S);
+  image.data.set(protoMonsterFrame(kind, 1));
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+}
+
+/** Folha do monstro: os clipes em ordem (parado, andar, ataque, magia), quadros de `PROTO_SIZE`. */
+export function protoMonsterSheet(kind: string): HTMLCanvasElement {
+  const steps = [...CLIP_STEPS.idle, ...CLIP_STEPS.walk, ...CLIP_STEPS.attack, ...CLIP_STEPS.cast];
+  const { canvas, ctx } = makeCanvas(S * steps.length, S);
+  const memo = new Map<number, Uint8ClampedArray>();
+  steps.forEach((step, i) => {
+    if (!memo.has(step)) memo.set(step, protoMonsterFrame(kind, step));
+    const image = ctx.createImageData(S, S);
+    image.data.set(memo.get(step)!);
+    ctx.putImageData(image, i * S, 0);
+  });
+  return canvas;
 }
 
 /** Pixels de cada quadro, calculados uma vez (a galeria pede o mesmo quadro várias vezes). */

@@ -1138,7 +1138,7 @@ export class DungeonScene extends Phaser.Scene {
     const scale = (art.anim ? art.scale ?? 1 : def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
-    const top = TILE_SIZE / 2 - sprite.displayHeight;
+    const top = TILE_SIZE / 2 - sprite.displayHeight * (art.anim?.fill ?? 1);
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
     unit.texture = texture;
     unit.baseScale = scale;
