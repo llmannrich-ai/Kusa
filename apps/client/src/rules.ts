@@ -134,7 +134,7 @@ export function renderRules(root: HTMLElement) {
 
     section("⭐ Níveis, magias e melhorias", false, list([
       "Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo.",
-      "A XP de um monstro é dividida em partes iguais por toda a equipe na dungeon (100 XP com 4 heróis dão 25 a cada um). O loot vai para quem deu o último golpe.",
+      "A XP de um monstro é dividida em partes iguais por toda a equipe na dungeon (100 XP com 4 heróis dão 25 a cada um). O gold do monstro e do baú se divide do mesmo jeito.",
       `No nível ${SLOT1} abre o 1º slot de magia e no nível ${SLOT2} o 2º: você escolhe uma magia, que fica até o fim da hunt.`,
       "Nos outros níveis aparecem duas melhorias e você toca numa. Elas valem até o fim da hunt e somam com as áureas do Grimório.",
     ]),
@@ -179,6 +179,7 @@ export function renderRules(root: HTMLElement) {
         `Monstros comuns têm ${pct(COMMON_DROP_CHANCE)} de chance de dropar item; mini-bosses, bosses e baús sempre dropam. Salas fundas dão material melhor.`,
         "O item no chão é de quem passar por cima primeiro. Se for melhor que o seu, você veste na hora e o antigo vai para a bag.",
         `A bag tem ${BAG_SIZE} espaços e entra com você na hunt. Cheia, você não pega mais nada do chão.`,
+        "A runa do boss não cai no chão: vai direto para a bag de cada herói que ainda não levou a daquele boss. Com a bag cheia, o item mais barato cai no chão para ela entrar. Depois, dá para largar e passar a runa a um colega.",
         `Saindo vivo, a bag vai sozinha para o cofre (${VAULT_SIZE} espaços), que fica seguro na conta.`,
       ]),
       table(["Material", "Compra (comum)", "Venda (comum · raro · mágico)"], TIERS.map((t) => [

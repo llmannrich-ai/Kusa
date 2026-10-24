@@ -1,19 +1,26 @@
 /**
- * Divisão da XP na equipe, sem servidor (`arena.ts`: relógio falso, sorteios de seed fixa):
+ * Divisão da XP e do gold na equipe, sem servidor (`arena.ts`: relógio falso, sorteios de seed fixa):
  *   - sozinho, o herói leva a XP inteira do monstro;
- *   - com 4 na equipe (um deles bot), cada um leva 1/4, mesmo quem não bateu;
+ *   - com 4 na equipe (um deles bot), cada um leva 1/4 da XP, mesmo quem não bateu; o gold também se divide em 4
+ *     partes iguais (a do bot se perde);
+ *   - o gold do baú se divide do mesmo jeito;
  *   - quem morreu fica de fora e a XP se divide pelos que estão jogando.
- * Uso: npx tsx scripts/xpequipe.ts (de dentro de apps/server, pelos decorators do schema)
+ * Uso: npx tsx scripts/divisao.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { HERO, arena, check, type Arena } from "./arena.ts";
 
-/** Mata um orc pelo herói e devolve a XP que o monstro valia e quanto cada um ganhou. */
+/** Mata um orc pelo herói e devolve a XP que o monstro valia e quanto de XP e de gold cada um ganhou. */
 function killOrc(a: Arena, ids: string[]) {
   const before = ids.map((id) => a.state.players.get(id)!.xp);
+  const loot = ids.map((id) => a.state.players.get(id)!.loot);
   const orc = a.spawn("orc", 2);
   const xp = a.brain(orc).xp as number;
   a.any.killMonster(orc, a.brain(orc), HERO);
-  return { xp, gains: ids.map((id, i) => a.state.players.get(id)!.xp - before[i]) };
+  return {
+    xp,
+    gains: ids.map((id, i) => a.state.players.get(id)!.xp - before[i]),
+    gold: ids.map((id, i) => a.state.players.get(id)!.loot - loot[i]),
+  };
 }
 
 // --- Sozinho ------------------------------------------------------------------------------
@@ -29,6 +36,16 @@ const four = killOrc(team, ids);
 const quarter = Math.max(1, Math.round(four.xp / 4));
 check(four.gains.every((g) => g === quarter), `com 4, cada um devia levar ${quarter} de ${four.xp} XP: ${four.gains}`);
 console.log(`equipe de 4: ${four.gains.join(" / ")} de ${four.xp} XP OK`);
+const [g1, g2, g3, bot] = four.gold;
+check(g1 > 0 && g1 === g2 && g2 === g3, `o gold devia sair igual para os 3 humanos: ${four.gold}`);
+check(bot === 0, `o bot não guarda gold: ${bot}`);
+console.log(`gold do orc: ${four.gold.join(" / ")} OK`);
+const chest = ids.map((id) => team.state.players.get(id)!.loot);
+team.any.chestReward("h2", team.p.x, team.p.y, 0);
+const fromChest = ids.map((id, i) => team.state.players.get(id)!.loot - chest[i]);
+check(fromChest[0] > 0 && fromChest[0] === fromChest[1] && fromChest[1] === fromChest[2] && fromChest[3] === 0,
+  `o gold do baú devia sair igual para os 3 humanos: ${fromChest}`);
+console.log(`gold do baú: ${fromChest.join(" / ")} OK`);
 
 // --- Quem morreu fica de fora ------------------------------------------------------------------
 team.state.players.get("h4")!.status = "dead";
@@ -37,5 +54,5 @@ const third = Math.max(1, Math.round(three.xp / 3));
 check(three.gains.slice(0, 3).every((g) => g === third) && three.gains[3] === 0, `com 1 morto, 3 levam ${third} de ${three.xp} XP: ${three.gains}`);
 console.log(`1 morto: ${three.gains.join(" / ")} de ${three.xp} XP OK`);
 
-console.log("XP DA EQUIPE OK");
+console.log("DIVISAO DA EQUIPE OK");
 process.exit(0);

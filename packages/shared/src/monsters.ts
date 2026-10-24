@@ -892,8 +892,8 @@ export function monsterStats(kind: MonsterKind, depth: number): MonsterStats {
   };
 }
 
-/** XP que cada herói da equipe recebe pela morte de um monstro: partes iguais (100 XP com 4 heróis dão 25 a cada um). */
-export function xpShare(totalXp: number, team: number): number {
+/** Parte de cada herói da equipe na XP e no gold de uma morte ou baú: partes iguais (100 com 4 heróis dão 25 a cada um). */
+export function teamShare(total: number, team: number): number {
   if (team <= 0) return 0;
-  return Math.max(1, Math.round(totalXp / team));
+  return Math.max(1, Math.round(total / team));
 }
