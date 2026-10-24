@@ -345,6 +345,8 @@ function renderSettings() {
     toggle.onchange = () => {
       saveSetting(def.key, toggle.checked);
       paintRotate();
+      // A arte dos heróis é gerada uma vez e guardada (texturas e retratos): trocar o desenho pede recarregar.
+      if (def.key === "newArt") location.reload();
     };
     row.append(text, toggle);
     list.append(row);
