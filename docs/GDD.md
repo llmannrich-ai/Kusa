@@ -284,6 +284,10 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 ### Runas
 
 Pedras mágicas que **só caem dos bosses** (o Dragão jovem e a Hidra dropam 1 runa cada; o nome sobe sobre o drop).
+**Cada boss dá a runa uma vez por personagem** (conta e classe): na equipe, cada herói que ainda não levou a runa
+daquele boss ganha a sua, que só ele vê e pega do chão; quem já levou vê "Runa deste boss já levada". Vale também para
+os baús de runa atrás do Verme da Areia. O banco anota em `profile_boss_runes` (`record_boss_runes` no servidor de jogo,
+`finish_solo_run` na hunt solo, que só aceita uma runa nova por boss anotado na hunt).
 Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `market_items` e `profile_items` como os itens.
 
 - Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220). O mercado não vende runas.
@@ -488,7 +492,10 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   zona, 10 a 15 por mapa) e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**. Os monstros são mais fracos que
   os da Cripta na base (o ganho de 12% por zona dobra os do fim): o mapa inteiro tem cerca de 100 monstros, 19
   mini-bosses e 14.700 de XP (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
-  nível 12. Teto de loot da hunt solo: 5.000. Monstro longe da tela não é desenhado nem animado no cliente.
+  nível 12. Monstro longe da tela não é desenhado nem animado no cliente.
+- **Loot por monstro menor:** com tantos monstros, o mapa paga 35% do valor de loot dos monstros e baús e 35% dos
+  drops de item e poção (`MapDef.lootScale` e `dropScale`; o boss fica de fora e larga tudo). O loot máximo de uma
+  hunt fica em ~1.650 (entre o Mar de Areia e o Pântano das Ruínas). Teto de loot da hunt solo: 1.900.
 - **Arte e animação próprias** (`art/rig.ts`, `art/marshMonsters.ts`, `art/ogreKing.ts`): cada monstro é montado de
   peças com volume (membros em cápsula, tronco, barriga, cabeça) postas por ângulos de articulação, então todos
   têm quadros de **parado** (respirando), **andando** (passo no ritmo do monstro; os ogros com passo pesado),
@@ -529,6 +536,9 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - A dungeon é semi-linear: monstros fracos na entrada, ficando mais fortes conforme a equipe se aprofunda.
 - Baús no meio da dungeon trazem itens ou upgrades aleatórios poderosos, possivelmente ao matar mini-bosses.
 - No centro fica o boss final do tipo de mapa.
+- **Bússola no minimapa:** uma agulha gira em volta do jogador e aponta para a sala do boss; no Mar de Areia, da
+  superfície, aponta para a boca da caverna que leva até ele (mesmo antes de a boca ser vista). Depois que o boss
+  morre, aponta para o portal do boss. Some quando o jogador já está na sala do boss (ou em cima do portal).
 - Objetivo: sair com o máximo de loot, que vira gold para os upgrades permanentes.
 
 ### Melhorias de nível
