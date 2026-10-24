@@ -39,6 +39,27 @@ export interface Dungeon {
   portal: { x: number; y: number };
   /** Caverna do deserto: a boca na superfície leva ao subterrâneo (e a saída de lá traz de volta). */
   cave?: CaveLink;
+  /**
+   * Covis da Caverna da Travessia, um boss em cada (na ordem de `MapDef.lairs`), cada um com o próprio portal. O
+   * primeiro também é `boss` e `bossPortal`, para quem só conhece um.
+   */
+  lairs?: LairRoom[];
+}
+
+export interface LairRoom {
+  room: Rect;
+  /** Onde abre o portal quando o boss deste covil morre. */
+  portal: { x: number; y: number };
+}
+
+/** Covis do mapa: os da Caverna da Travessia ou, nos outros, a sala do boss com o portal dela. */
+export function lairsOf(d: Dungeon): LairRoom[] {
+  return d.lairs ?? [{ room: d.boss, portal: d.bossPortal }];
+}
+
+/** Índice do covil cujo portal fica neste tile (-1 se nenhum). */
+export function lairPortalAt(d: Dungeon, x: number, y: number) {
+  return lairsOf(d).findIndex((l) => l.portal.x === x && l.portal.y === y);
 }
 
 export interface CaveLink {
@@ -85,6 +106,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "swamp") return generateSwamp(seed);
   if (mapId === "desert") return generateDesert(seed);
   if (mapId === "marsh") return generateMarsh(seed);
+  if (mapId === "cavern") return generateCavern(seed);
   return generateCrypt(seed);
 }
 
@@ -733,6 +755,137 @@ function carveUnderground(rng: ReturnType<typeof createRng>, tiles: Uint8Array, 
   // A área do subterrâneo vai só um pouco além do que foi escavado: é o que o minimapa mostra aberto.
   const under: Rect = { x: area.x, y: reward.y - 8, w: area.w, h: exit.y + 8 - (reward.y - 8) };
   return { area: under, lair, portal, reward, chests, exit };
+}
+
+const CAVERN_W = 76;
+const CAVERN_H = 96;
+
+/**
+ * Caverna da Travessia: toda subterrânea, com o celular na vertical. A câmara de chegada (com o portal de fuga)
+ * fica embaixo, no meio; dali a caverna se bifurca em dois túneis separados por uma espinha de rocha: o oeste
+ * sobe por 3 zonas até o covil do primeiro boss, e o leste, mais fundo, por outras 3 até o covil do segundo. Cada
+ * túnel tem uma câmara lateral (mini-boss e baú). Poças de água escura (bloqueiam o passo, não a visão) e pilares
+ * soltos nos covis. `path` guarda as zonas do oeste e depois as do leste (profundidade 0 a 5).
+ */
+function generateCavern(seed: number): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildCavern(seed + attempt);
+    if (attempt >= 20 || cavernConnected(d)) return d;
+  }
+}
+
+/** Tudo alcançável a pé da chegada: zonas, câmaras laterais (centro e baú), covis e portais. */
+function cavernConnected(d: Dungeon) {
+  const goals = [
+    d.portal, ...d.path.map(centerOf), ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+    ...d.lairs!.flatMap((l) => [centerOf(l.room), l.portal]),
+  ];
+  return connected(d.tiles, d.width, goals);
+}
+
+function buildCavern(seed: number): Dungeon {
+  const rng = createRng(seed);
+  const width = CAVERN_W;
+  const height = CAVERN_H;
+  const tiles = new Uint8Array(width * height).fill(Tile.Wall);
+  const inside = (x: number, y: number) => x > 1 && y > 1 && x < width - 2 && y < height - 2;
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * width + x] = t; };
+  const get = (x: number, y: number) => (inside(x, y) ? tiles[y * width + x] : Tile.Wall);
+  /** Mancha de borda irregular. */
+  const blob = (cx: number, cy: number, rx: number, ry: number) => {
+    for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++)
+      for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
+        const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+        if (d <= 1 - rng.next() * 0.18) set(x, y, Tile.Floor);
+      }
+  };
+  /** Túnel de `w` tiles de largura de um ponto a outro, desviando um pouco para os lados. */
+  const tunnel = (from: { x: number; y: number }, to: { x: number; y: number }, w: number) => {
+    let x = from.x;
+    let y = from.y;
+    for (let guard = 0; guard < 400 && (x !== to.x || y !== to.y); guard++) {
+      const dx = to.x - x;
+      const dy = to.y - y;
+      // Anda no eixo mais longe, às vezes no outro (a curva do túnel).
+      if (Math.abs(dx) > Math.abs(dy) ? rng.next() < 0.8 : rng.next() < 0.25) x += Math.sign(dx);
+      else y += Math.sign(dy);
+      for (let oy = 0; oy < w; oy++) for (let ox = 0; ox < w; ox++) set(x + ox - Math.floor(w / 2), y + oy - Math.floor(w / 2), Tile.Floor);
+    }
+  };
+  const jitter = (p: { x: number; y: number }, by: number) => ({ x: p.x + rng.int(-by, by), y: p.y + rng.int(-by, by) });
+
+  // Câmara de chegada embaixo, no meio.
+  const arrival = { x: width / 2, y: height - 13 };
+  blob(arrival.x, arrival.y, 6, 4.5);
+  const spawn: Rect = { x: arrival.x - 4, y: arrival.y - 3, w: 8, h: 7 };
+
+  // As duas pontas da bifurcação: zonas (centros) e covil, do oeste e do leste, espelhadas.
+  const branch = (side: -1 | 1) => {
+    const mx = (x: number) => Math.round(width / 2 + side * x);
+    const zones = [jitter({ x: mx(16), y: 72 }, 2), jitter({ x: mx(24), y: 54 }, 2), jitter({ x: mx(18), y: 36 }, 2)];
+    const lair = { x: mx(20) + rng.int(-1, 1), y: 15 };
+    return { zones, lair };
+  };
+  const west = branch(-1);
+  const east = branch(1);
+
+  const path: Rect[] = [];
+  const side: Rect[] = [];
+  const lairs: LairRoom[] = [];
+  for (const [i, b] of [west, east].entries()) {
+    let prev = { x: arrival.x + (i === 0 ? -4 : 4), y: arrival.y - 1 };
+    for (const z of b.zones) {
+      const half = rng.int(4, 5);
+      blob(z.x, z.y, half + 0.5, half - 0.5);
+      tunnel(prev, z, 3);
+      path.push({ x: z.x - half, y: z.y - half + 1, w: half * 2 + 1, h: half * 2 - 1 });
+      prev = z;
+    }
+    // Covil: caverna larga com pilares soltos longe do centro (onde o boss nasce) e o portal no fundo.
+    const lairR = { x: 8, y: 6.5 };
+    blob(b.lair.x, b.lair.y, lairR.x, lairR.y);
+    tunnel(prev, { x: b.lair.x, y: b.lair.y + 4 }, 3);
+    const room: Rect = {
+      x: Math.round(b.lair.x - lairR.x), y: Math.round(b.lair.y - lairR.y), w: lairR.x * 2 + 1, h: Math.round(lairR.y * 2) + 1,
+    };
+    for (let k = 0; k < 4; k++) {
+      const a = rng.next() * Math.PI * 2;
+      const r = 3.5 + rng.next() * 2;
+      const px = Math.round(b.lair.x + Math.cos(a) * r * 1.15);
+      const py = Math.round(b.lair.y + Math.sin(a) * r * 0.8);
+      if (get(px, py) === Tile.Floor && openAround(get, px, py, 1)) set(px, py, Tile.Wall);
+    }
+    const portal = { x: b.lair.x, y: b.lair.y - 4 };
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) set(portal.x + ox, portal.y + oy, Tile.Floor);
+    lairs.push({ room, portal });
+
+    // Câmara lateral, pendurada na zona do meio, do lado da espinha (mini-boss e baú no canto).
+    const mid = b.zones[1];
+    const dir = i === 0 ? 1 : -1;
+    const sr: Rect = { x: mid.x + (dir > 0 ? 7 : -13), y: mid.y - 3 + rng.int(-1, 1), w: 7, h: 6 };
+    for (let y = sr.y; y < sr.y + sr.h; y++) for (let x = sr.x; x < sr.x + sr.w; x++) set(x, y, Tile.Floor);
+    tunnel(mid, centerOf(sr), 2);
+    side.push(sr);
+  }
+
+  // Poças de água escura nas zonas, fora do centro (a conferência a pé descarta a caverna se fecharem passagem).
+  for (const z of path) {
+    if (rng.next() < 0.45) continue;
+    const c = centerOf(z);
+    const px = c.x + rng.pick([-3, 3]);
+    const py = c.y + rng.int(-2, 2);
+    for (let y = py - 1; y <= py + 1; y++)
+      for (let x = px - 1; x <= px + 1; x++)
+        if (get(x, y) === Tile.Floor && rng.next() < 0.75) set(x, y, Tile.Water);
+  }
+
+  const portal = { x: arrival.x, y: arrival.y };
+  set(portal.x, portal.y, Tile.Portal);
+
+  return {
+    mapId: "cavern", width, height, tiles, spawn, boss: lairs[0].room, bossPortal: lairs[0].portal,
+    path, side, meadows: [], portal, lairs,
+  };
 }
 
 const MARSH_SIZE = 128;

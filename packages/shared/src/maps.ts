@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern";
 
 /** Nível de dificuldade mostrado no menu (estrelas). */
 export type MapDifficulty = 1 | 2;
@@ -52,6 +52,21 @@ export interface MapDef {
   meadowMinibosses?: number;
   /** Jogadores por hunt no máximo (bots contam). Sem isto, `MAX_PARTY_SIZE`. */
   maxParty?: number;
+  /**
+   * Covis com boss fixo (Caverna da Travessia): um boss por covil, na ordem de `Dungeon.lairs`, cada um na
+   * profundidade dele (o ganho por profundidade) e com o bônus de loot do portal que abre ao lado quando ele morre.
+   * Com isto não há sorteio: `bosses` só lista os mesmos bosses (menu e banco).
+   */
+  lairs?: Lair[];
+}
+
+export interface Lair {
+  boss: MonsterKind;
+  depth: number;
+  /** Fração extra de loot de quem sai pelo portal deste covil (o padrão é `BOSS_LOOT_BONUS`). */
+  portalBonus: number;
+  /** Nome do lado da bifurcação, para o aviso e o mapa mundi. */
+  side: string;
 }
 
 /**
@@ -157,6 +172,27 @@ export const MAPS: Record<MapId, MapDef> = {
     mimicChance: 0,
     bosses: [["ogreKing", 1]],
   },
+  cavern: {
+    id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 2, durationSeconds: 8 * 60,
+    description: "Túneis por baixo do mar, entre Solária e o Arquipélago. Da câmara de chegada a caverna se bifurca: a oeste, o Basilisco (médio); a leste, o Observador das Profundezas (muito difícil). Cada boss morto abre o portal do covil dele.",
+    encounters: [
+      // Túnel oeste (zonas 0 a 2), até o Basilisco.
+      { depth: [0, 0], budget: 120, table: [["kobold", 4], ["stirge", 3], ["giantSpider", 1]] },
+      { depth: [1, 1], budget: 200, table: [["goblin", 3], ["goblinArcher", 2], ["giantSpider", 2], ["kobold", 1], ["hobgoblin", 1]] },
+      { depth: [2, 2], budget: 290, table: [["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 2], ["giantSpider", 1], ["hobgoblin", 1]] },
+      // Túnel leste (zonas 3 a 5), mais fundo e mais forte, até o Observador.
+      { depth: [3, 3], budget: 380, table: [["ghoul", 3], ["giantSpider", 2], ["skeletonArcher", 2], ["lizardfolk", 2]] },
+      { depth: [4, 4], budget: 470, table: [["ghoul", 3], ["blackPudding", 2], ["willOWisp", 2], ["lizardfolk", 1], ["orc", 1]] },
+      { depth: [5, 99], budget: 560, table: [["blackPudding", 2], ["naga", 3], ["ghoul", 2], ["willOWisp", 2]] },
+    ],
+    minibosses: [["bugbear", 2], ["gelatinousCube", 1], ["troll", 1]],
+    mimicChance: 1 / 4,
+    bosses: [["beholder", 1], ["basilisk", 1]],
+    lairs: [
+      { boss: "basilisk", depth: 4, portalBonus: 0.5, side: "oeste" },
+      { boss: "beholder", depth: 8, portalBonus: 1, side: "leste" },
+    ],
+  },
 };
 
 /** Jogadores por hunt no mapa, bots incluídos (o Pântano do Kosaradius é só para 1). */
@@ -171,6 +207,8 @@ export function encounterAt(map: MapDef, depth: number): Encounter {
 
 /** Boss principal do mapa (o de maior peso), para o menu; nenhum no mapa ainda sem monstros. */
 export function mainBoss(map: MapDef): MonsterKind | undefined {
+  // Mapa de covis: o boss do último covil (o mais difícil).
+  if (map.lairs?.length) return map.lairs[map.lairs.length - 1].boss;
   return [...map.bosses].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 

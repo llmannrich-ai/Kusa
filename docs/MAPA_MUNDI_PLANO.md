@@ -36,7 +36,8 @@ este arquivo marca a fase como feita.
 | Convidado | o bloqueio vale só para **criar sala e jogar sozinho**; entrar na sala de outro jogador é livre |
 | Estrela | uma por ponto, "Venceu o boss", com a mesma regra do desbloqueio |
 | Pontos | 1 por cenário |
-| Ordem | 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas |
+| Ordem | 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🕳️ Caverna da Travessia → (oeste) 🌿 Pântano das Ruínas · (leste) Cidadela Caída |
+| Bifurcação | na Caverna da Travessia: cada covil tem um boss (Basilisco a oeste, Observador a leste); vencer um libera o caminho daquele lado |
 | Contas atuais | desbloqueio pelo histórico: quem já matou um boss com a classe já tem o ponto seguinte aberto |
 | Salas abertas | nos dois lugares: contador no ponto (👥 2) e botão fixo "Salas abertas (N)" com a lista completa |
 | Nome do mundo | **Kosaradius**, escrito no fundo do mapa em marca d'água laranja clara, em arco convexo (ver 3) |
@@ -62,10 +63,11 @@ o brejo deu nome ao mundo. Por isso o jogo começa ali e o cenário mantém o no
 | **Verdemar** (continente do sul, onde começa) | floresta alagada, brejos, ciprestes | 🐸 Pântano do Kosaradius | aberto |
 | Verdemar, serra do norte | montanhas, tumbas do império | 🏚️ Cripta | abre com Grumak |
 | **Solária** (continente do leste) | deserto, dunas, oásis | 🏜️ Mar de Areia | abre com o Dragão jovem |
-| **Arquipélago Afundado** (oeste) | ilhas, ruínas na água | 🌿 Pântano das Ruínas | abre com o Verme da Areia |
+| Ilha da Travessia (entre Solária e o Arquipélago) | túneis por baixo do mar | 🕳️ Caverna da Travessia | abre com o Verme da Areia |
+| **Arquipélago Afundado** (oeste) | ilhas, ruínas na água | 🌿 Pântano das Ruínas | abre com o Basilisco (lado oeste da Travessia) |
 | Gelo de Hrimfal (polo norte) | tundra, geleiras | — | névoa |
 | Ilha de Cinza | vulcão, lava | — | névoa |
-| Cidadela Caída (ilha central) | capital do império, castelo | — | névoa (candidata a mapa final) |
+| Cidadela Caída (ilha central) | capital do império, castelo | — | névoa (candidata a mapa final); o caminho vem do Observador (lado leste da Travessia) |
 
 Mar ocupando cerca de 70% do desenho; trilhas tracejadas em terra, rota de barco pontilhada no mar.
 

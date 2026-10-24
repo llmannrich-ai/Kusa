@@ -1,4 +1,4 @@
-import { CLASSES, Tile, hasLineOfSight, isUnderground, type ClassId, type Dungeon, type MapId, type Rect } from "@kusa/shared";
+import { CLASSES, Tile, hasLineOfSight, isUnderground, lairsOf, type ClassId, type Dungeon, type MapId, type Rect } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
 
 /** Quanto cada jogador revela ao redor (tiles): o mesmo que cabe na tela, 9 de largura e 13+ de altura. */
@@ -14,6 +14,7 @@ const TILE_COLORS = {
   swamp: { floor: [86, 118, 56], bossFloor: [128, 120, 98], wall: [20, 36, 20], water: [46, 86, 104], ruin: [160, 150, 128] },
   marsh: { floor: [74, 96, 52], bossFloor: [96, 118, 64], wall: [22, 40, 24], water: [52, 78, 62], ruin: [92, 70, 44] },
   desert: { floor: [214, 178, 118], bossFloor: [226, 196, 140], wall: [150, 108, 60], water: [48, 140, 156], ruin: [150, 108, 60] },
+  cavern: { floor: [92, 104, 118], bossFloor: [118, 92, 120], wall: [20, 26, 34], water: [40, 84, 100], ruin: [20, 26, 34] },
 } satisfies Record<MapId, Record<string, number[]>>;
 /** Subterrâneo do deserto: rocha escura, chão de areia batida e o salão dos baús em arenito. */
 const CAVE_COLORS = { floor: [104, 82, 60], bossFloor: [128, 74, 52], wall: [34, 24, 18], hall: [150, 126, 92] };
@@ -117,11 +118,10 @@ export class Minimap {
 
   private paintTile(x: number, y: number) {
     const d = this.dungeon;
-    const b = d.boss;
     const tile = d.tiles[y * d.width + x];
     const colors = TILE_COLORS[d.mapId];
-    const inBoss = inRect(b, x, y);
-    const [r, g, bl] = isUnderground(d, x)
+    const inBoss = lairsOf(d).some((l) => inRect(l.room, x, y));
+    const [r, g, bl] = d.cave && isUnderground(d, x)
       ? (tile === Tile.Wall ? CAVE_COLORS.wall : d.cave && inRect(d.cave.reward, x, y) ? CAVE_COLORS.hall : inBoss ? CAVE_COLORS.bossFloor : CAVE_COLORS.floor)
       : tile === Tile.Wall ? colors.wall : tile === Tile.Water ? colors.water : tile === Tile.Ruin ? colors.ruin
       : inBoss ? colors.bossFloor : colors.floor;
@@ -159,8 +159,8 @@ export class Minimap {
 
     // A sala do boss é o objetivo: sempre marcada, mesmo antes de ser vista (no deserto, só quando já se está na
     // caverna: achar a caverna faz parte da hunt).
-    const b = d.boss;
-    if (inRect(area, b.x, b.y)) {
+    for (const { room: b } of lairsOf(d)) {
+      if (!inRect(area, b.x, b.y)) continue;
       ctx.strokeStyle = COLORS.bossRoom;
       ctx.lineWidth = 1.5 * px;
       ctx.setLineDash([4 * px, 3 * px]);
@@ -169,7 +169,8 @@ export class Minimap {
     }
 
     this.mark(d.portal.x, d.portal.y, COLORS.portal, 5 * px, px);
-    if (this.room.state.bossDefeated) this.mark(d.bossPortal.x, d.bossPortal.y, COLORS.bossPortal, 6 * px, px);
+    const down = this.room.state.lairsDown;
+    lairsOf(d).forEach((l, i) => { if (down & (1 << i)) this.mark(l.portal.x, l.portal.y, COLORS.bossPortal, 6 * px, px); });
     for (const c of d.cave ? [d.cave.entrance, d.cave.exit] : []) {
       if (this.explored[c.y * d.width + c.x]) this.mark(c.x, c.y, COLORS.cave, 5 * px, px);
     }
@@ -191,6 +192,7 @@ export class Minimap {
    */
   private compassTarget(me: { x: number; y: number }, area: Rect): { x: number; y: number; color: string } | null {
     const d = this.dungeon;
+    if (d.lairs) return this.lairTarget(me);
     if (this.room.state.bossDefeated) {
       const p = d.bossPortal;
       if (!inRect(area, p.x, p.y)) return d.cave ? { ...d.cave.entrance, color: COLORS.cave } : null;
@@ -200,6 +202,21 @@ export class Minimap {
     if (!inRect(area, b.x, b.y)) return d.cave ? { ...d.cave.entrance, color: COLORS.cave } : null;
     if (inRect(b, me.x, me.y)) return null;
     return { x: b.x + b.w / 2 - 0.5, y: b.y + b.h / 2 - 0.5, color: COLORS.bossRoom };
+  }
+
+  /**
+   * Caverna da Travessia: o portal aberto mais perto; sem nenhum, o covil mais perto com o boss vivo. Nulo dentro
+   * do covil ou ao lado do portal.
+   */
+  private lairTarget(me: { x: number; y: number }): { x: number; y: number; color: string } | null {
+    const down = this.room.state.lairsDown;
+    const lairs = lairsOf(this.dungeon);
+    const dist = (p: { x: number; y: number }) => Math.hypot(p.x - me.x, p.y - me.y);
+    const open = lairs.filter((_, i) => down & (1 << i)).map((l) => l.portal).sort((a, b) => dist(a) - dist(b))[0];
+    if (open) return Math.abs(open.x - me.x) <= 1 && Math.abs(open.y - me.y) <= 1 ? null : { ...open, color: COLORS.bossPortal };
+    const room = lairs.map((l) => l.room).sort((a, b) => dist(centerOfRect(a)) - dist(centerOfRect(b)))[0];
+    if (!room || inRect(room, me.x, me.y)) return null;
+    return { x: room.x + room.w / 2 - 0.5, y: room.y + room.h / 2 - 0.5, color: COLORS.bossRoom };
   }
 
   /** Agulha de bússola girando em volta do jogador: a ponta na cor do destino, a cauda clara. */
@@ -274,4 +291,8 @@ export class Minimap {
 
 function inRect(r: Rect, x: number, y: number) {
   return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+}
+
+function centerOfRect(r: Rect) {
+  return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }

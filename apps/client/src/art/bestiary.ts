@@ -1,6 +1,7 @@
 import type { MonsterKind } from "@kusa/shared";
 import { BLACK_SHELL, mummyCanvas, sandElementalCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
 import { sandWormCanvas } from "./sandWorm.ts";
+import { basiliskCanvas, beholderCanvas } from "./cavernBosses.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
@@ -51,6 +52,8 @@ export const OWN_MONSTER_DRAW: Record<string, () => HTMLCanvasElement> = {
   "monster-black-scorpion": () => scorpionCanvas(BLACK_SHELL),
   "monster-mummy-priest": () => mummyCanvas(true),
   "monster-sand-elemental": sandElementalCanvas,
+  "monster-basilisk": basiliskCanvas,
+  "monster-beholder": beholderCanvas,
 };
 
 export interface MonsterArt {
@@ -131,6 +134,9 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   mummyPriest: { texture: "monster-mummy-priest", facesLeft: true, blood: "none", scale: 1.15 },
   sandElemental: { texture: "monster-sand-elemental", facesLeft: true, blood: "none", scale: 1.3 },
   sandWorm: { texture: OWN_SAND_WORM, facesLeft: true, blood: "red" },
+  // Caverna da Travessia (arte própria, `cavernBosses.ts`).
+  basilisk: { texture: "monster-basilisk", facesLeft: true, blood: "green" },
+  beholder: { texture: "monster-beholder", facesLeft: true, blood: "purple", flies: true },
   // Pântano (arte própria animada, `marshMonsters.ts` e `ogreKing.ts`).
   orcScout: { texture: "monster-orc-scout", facesLeft: true, blood: "red", anim: marshAnim("orcScout") },
   orcGrunt: { texture: "monster-orc-grunt", facesLeft: true, blood: "red", anim: marshAnim("orcGrunt") },

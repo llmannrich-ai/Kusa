@@ -13,7 +13,17 @@ export const WORLD_POINTS: Record<MapId, { x: number; y: number; region: string 
   crypt: { x: 222, y: 1510, region: "Verdemar · serra do norte" },
   desert: { x: 300, y: 1190, region: "Solária" },
   swamp: { x: 95, y: 840, region: "Arquipélago Afundado" },
+  cavern: { x: 196, y: 1004, region: "Ilha da Travessia" },
 };
+
+/**
+ * Bifurcação na Ilha da Travessia: cada lado da caverna leva a um caminho, que fica liberado no mapa quando a
+ * classe vence o boss daquele covil (o oeste vai ao Arquipélago, o leste à Cidadela Caída).
+ */
+export const BRANCHES = [
+  { boss: "basilisk", label: "Basilisco", path: "M196 1004C150 960 110 920 95 840", at: { x: 128, y: 948 } },
+  { boss: "beholder", label: "Observador", path: "M196 1004C250 930 280 820 262 760", at: { x: 270, y: 900 } },
+] as const;
 
 /** Terras ainda sem cenário, debaixo da névoa: tocar só avisa. */
 const FOG = [
@@ -80,9 +90,12 @@ const ART = `<svg class="world-art" viewBox="0 0 ${W} ${H}" aria-hidden="true" f
   ${coast("M150 905C152 885 195 885 200 905C203 925 160 935 150 905Z")}
   ${coast("M70 745C72 732 100 730 104 744C106 758 74 760 70 745Z")}
   <g fill="#c9c1a6" stroke="${INK}" stroke-width="1"><path d="M168 846V828l3-3 3 4V846Z"/><path d="M180 850V836l3 2 3-3V850Z"/><path d="M176 900V888l3-2 3 3V900Z"/></g>
-  ${label(112, 975, "Arquipélago Afundado", 16)}
+  ${label(104, 716, "Arquipélago Afundado", 15)}
 
   ${coast("M138 1110C140 1100 160 1098 163 1108C165 1120 142 1122 138 1110Z")}
+  ${coast("M166 1000C164 978 196 966 220 976C238 984 236 1016 216 1028C194 1040 168 1026 166 1000Z", "#d9d2bb")}
+  <path d="M178 1010L188 994L198 1010ZM204 1008L212 996L220 1008Z" fill="#8d8f93" stroke="${INK}" stroke-width="1"/>
+  <ellipse cx="196" cy="1014" rx="6" ry="3.4" fill="#141a22" stroke="${INK}" stroke-width="0.8"/>
   ${coast("M75 1245C77 1228 115 1225 118 1243C120 1260 80 1265 75 1245Z")}
 
   ${coast("M210 1060C260 1020 360 1030 395 1080C410 1140 400 1240 360 1300C320 1340 250 1330 220 1290C190 1250 230 1200 205 1160C185 1120 180 1090 210 1060Z", "#efd9a4")}
@@ -121,7 +134,9 @@ const ART = `<svg class="world-art" viewBox="0 0 ${W} ${H}" aria-hidden="true" f
 
   <path d="M150 1765C140 1690 210 1610 222 1510" fill="none" stroke="#7a2e22" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
   <path d="M222 1510C250 1430 330 1330 300 1190" fill="none" stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"/>
-  <path d="M300 1190C260 1060 140 1010 95 840" fill="none" stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"/>
+  <path d="M300 1190C270 1120 230 1060 196 1004" fill="none" stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"/>
+  ${BRANCHES.map((b, i) => `<path class="world-branch" data-branch="${i}" d="${b.path}" fill="none" stroke-linecap="round"/>
+  <text class="world-branch-label" data-branch="${i}" x="${b.at.x}" y="${b.at.y}" text-anchor="middle" font-size="12" font-style="italic">${b.label}</text>`).join("")}
 
   <rect width="${W}" height="${H}" fill="url(#wm-vinheta)"/>
 </svg>`;
@@ -137,6 +152,8 @@ export interface WorldMapView {
   setRoomCounts(counts: Partial<Record<MapId, number>>): void;
   /** Troca o boneco do herói (a classe escolhida no menu). */
   setHero(url: string): void;
+  /** Bosses que a classe escolhida já venceu: liberam os caminhos da bifurcação da Travessia. */
+  setBossKills(bosses: readonly string[]): void;
 }
 
 /**
@@ -209,6 +226,12 @@ export function createWorldMap(root: HTMLElement, icons: Record<MapId, string>, 
     },
     setHero(url) {
       hero.src = url;
+    },
+    setBossKills(bosses) {
+      BRANCHES.forEach((b, i) => {
+        const open = bosses.includes(b.boss);
+        for (const el of root.querySelectorAll(`[data-branch="${i}"]`)) el.classList.toggle("open", open);
+      });
     },
   };
 }

@@ -15,7 +15,9 @@ export type MonsterKind =
   | "sandScorpion" | "giantVulture" | "mummy" | "blackScorpion" | "mummyPriest" | "sandElemental" | "sandWorm"
   // Pântano (dificuldade 1, só para 1 jogador): o clã de orcs e ogros do brejo
   | "orcScout" | "orcGrunt" | "orcSpearman" | "orcArcher" | "orcShaman" | "orcBerserker" | "orcCaptain" | "ogreYoung"
-  | "ogreBruiser" | "ogreShaman" | "orcWarlord" | "ogreKing";
+  | "ogreBruiser" | "ogreShaman" | "orcWarlord" | "ogreKing"
+  // Caverna da Travessia (dificuldade 2): os dois bosses dos covis
+  | "basilisk" | "beholder";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -618,6 +620,57 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "Redemoinho que pensa. Joga longe quem chega perto e cega com a areia (Rajada). Espada e flecha atravessam; gelo, não.",
+  }),
+
+  // --- Caverna da Travessia: um boss em cada covil. O Basilisco (oeste) é o médio, perto do Verme da Areia no covil
+  // dele; o Observador (leste) é o muito difícil, acima da Hidra. A profundidade de cada covil está em `MAPS.cavern.lairs`.
+  basilisk: monster({
+    kind: "basilisk", name: "Basilisco", rank: "boss", type: "monstrosity", role: "brute", cr: 6,
+    hp: 850, damage: 20, xp: 800, loot: [70, 110], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
+    // Escamas de pedra: corte resvala um pouco; o veneno é dele.
+    elements: { physical: 0.85, nature: 0.5 },
+    traits: { onHit: { chance: 0.4, dot: { kind: "poison", power: 0.25, durationMs: 4000 } } },
+    abilities: [
+      {
+        id: "petrifyingGaze", name: "Olhar Petrificante", shape: "cone", range: 5, radius: 0, length: 5, cooldownMs: 10000, power: 0.6,
+        effect: { kind: "stun", ms: 1500 }, color: 0x9be37a, fx: "breath",
+      },
+      {
+        id: "venomBite", name: "Mordida Venenosa", shape: "target", range: 1, radius: 0, cooldownMs: 7000, power: 1.7,
+        dot: { kind: "poison", power: 0.35, durationMs: 5000 }, color: 0x6fbf3a, fx: "rend",
+      },
+      {
+        id: "tailSweep", name: "Cauda de Pedra", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 1.3, push: 2,
+        belowHp: 0.5, phase: true, color: 0x8a8f7a, fx: "quake",
+      },
+    ],
+    lore: "Lagarto de oito patas que dorme no covil oeste. O olhar dele vira carne em pedra por um instante, a mordida envenena e, ferido, varre tudo em volta com a cauda.",
+  }),
+  beholder: monster({
+    kind: "beholder", name: "Observador das Profundezas", rank: "boss", type: "aberration", role: "controller", cr: 9,
+    hp: 1700, damage: 22, xp: 1600, loot: [150, 230], speed: 1.8, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
+    // Flutua longe de quem chega perto e atira com os olhos menores.
+    elements: { dark: 0.5, radiant: 1.25 },
+    traits: { keepDistance: 2 },
+    abilities: [
+      {
+        id: "disintegrate", name: "Raio Desintegrador", shape: "line", range: 7, radius: 0, length: 7, cooldownMs: 7000, power: 2.1,
+        color: 0xb06bff, fx: "lightning",
+      },
+      {
+        id: "paralyzeRay", name: "Raio Paralisante", shape: "bolt", range: 6, radius: 0, cooldownMs: 11000, power: 0.5,
+        effect: { kind: "stun", ms: 1500 }, color: 0xffe066, fx: "bolt",
+      },
+      {
+        id: "repulse", name: "Raio Repulsor", shape: "self", range: 2, radius: 2, cooldownMs: 9000, power: 0.9, push: 3,
+        color: 0x7fd6ff, fx: "slam",
+      },
+      {
+        id: "eyeStorm", name: "Tempestade de Olhares", shape: "target", range: 7, radius: 2, cooldownMs: 9000, power: 1.5,
+        effect: { kind: "corrode", ms: 6000 }, belowHp: 0.5, phase: true, color: 0xff4fa3, fx: "acidRain",
+      },
+    ],
+    lore: "Uma esfera que flutua no covil leste, com um olho enorme e dez olhos menores nas hastes. Cada olho dispara um raio: desintegra, paralisa, empurra e, ferido, chove olhares que corroem.",
   }),
   sandWorm: monster({
     kind: "sandWorm", name: "Verme da Areia", rank: "boss", type: "monstrosity", role: "lurker", cr: 6,

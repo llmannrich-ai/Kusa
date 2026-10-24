@@ -201,6 +201,31 @@ export const MAP_ART: Record<MapId, string> = {
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#7cc243" stroke-width="1.5"/>
   </svg>`,
+  // Caverna da Travessia: a rocha que se abre em dois túneis, com os olhos dos dois bosses no escuro (o verde do
+  // Basilisco à esquerda, o roxo do Observador à direita) e gotas pingando sobre a poça da chegada.
+  cavern: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <radialGradient id="cv-fundo" cx="0.5" cy="0.4" r="0.8"><stop offset="0" stop-color="#2a3a4c"/><stop offset="1" stop-color="#070b12"/></radialGradient>
+      <radialGradient id="cv-verde"><stop offset="0" stop-color="#9bff5a" stop-opacity="0.6"/><stop offset="1" stop-color="#9bff5a" stop-opacity="0"/></radialGradient>
+      <radialGradient id="cv-roxo"><stop offset="0" stop-color="#c46bff" stop-opacity="0.65"/><stop offset="1" stop-color="#c46bff" stop-opacity="0"/></radialGradient>
+      <clipPath id="cv-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#cv-roda)">
+      <rect width="48" height="48" fill="url(#cv-fundo)"/>
+      <path d="M0 0H48V48H0Z M8 44Q6 30 12 18Q15 12 20 16Q22 22 24 30Q26 22 28 16Q33 12 36 18Q42 30 40 44Z" fill="#3b4656" fill-rule="evenodd"/>
+      <path d="M10 44Q9 32 13.5 21Q16 16 19 18.5Q21 26 22.5 34L24 38L25.5 34Q27 26 29 18.5Q32 16 34.5 21Q39 32 38 44Z" fill="#05070b"/>
+      <path d="M24 30Q22.5 22 20 16M24 30Q25.5 22 28 16" stroke="#56657a" stroke-width="1.6" fill="none"/>
+      <path d="M2 10L6 16L8 9ZM13 3L15 9L17 3ZM31 3L33 9L35 3ZM40 9L42 16L46 10Z" fill="#56657a"/>
+      <circle cx="15.5" cy="25" r="5" fill="url(#cv-verde)"/><circle cx="32.5" cy="25" r="5.5" fill="url(#cv-roxo)"/>
+      <path d="M13.4 25Q14.4 23.8 15.4 25Q14.4 25.8 13.4 25ZM16 24.6Q17 23.4 18 24.6Q17 25.4 16 24.6Z" fill="#b6ff6a"/>
+      <circle cx="32.5" cy="25" r="2.4" fill="#f4ecd8"/><circle cx="32.2" cy="25" r="1.2" fill="#2f9a43"/><rect x="32" y="23.9" width="0.5" height="2.2" fill="#0b0b0b"/>
+      <ellipse cx="24" cy="42.5" rx="9" ry="2.2" fill="#24506a" opacity="0.85"/>
+      <path d="M19 42.4Q24 41.2 29 42.4" stroke="#8fd3f0" stroke-width="0.7" fill="none" opacity="0.7"/>
+      <path d="M24 34.5V36.5M21 37.5V38.6M27.4 37V38.2" stroke="#8fd3f0" stroke-width="0.8" stroke-linecap="round"/>
+      <path d="M9 40L10.5 34L12 40ZM36 40L37.5 33L39 40Z" fill="#7fe3ff" opacity="0.8"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#6fa8d6" stroke-width="1.5"/>
+  </svg>`,
 };
 
 // --- Sala de espera -------------------------------------------------------
