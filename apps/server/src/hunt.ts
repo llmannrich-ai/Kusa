@@ -9,6 +9,7 @@ import {
   COMMON_DROP_CHANCE,
   COMMON_POTION_CHANCE,
   DEPTH_SCALING,
+  LOOT_SCALE,
   GUARANTEED_DROPS,
   GUARANTEED_POTIONS,
   ITEMS,
@@ -617,8 +618,8 @@ export class Hunt {
   maxLoot() {
     let total = 0;
     this.brains.forEach((b) => { total += b.loot[1]; });
-    this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * (this.map.lootScale ?? 1)); });
-    this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * (this.map.lootScale ?? 1)); });
+    this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
+    this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
     return Math.round(total * (1 + BOSS_LOOT_BONUS));
   }
 
@@ -734,8 +735,8 @@ export class Hunt {
   private addMonster(kind: MonsterKind, x: number, y: number, depth: number) {
     const def = MONSTERS[kind];
     const stats = monsterStats(kind, depth);
-    // Mapa que paga menos loot por monstro (muitos monstros): o boss fica de fora.
-    if (def.rank !== "boss") stats.loot = this.scaleLoot(stats.loot[0], stats.loot[1]);
+    // Corte geral do loot (`LOOT_SCALE`) e o do mapa que paga menos por monstro (muitos monstros), que deixa o boss de fora.
+    stats.loot = this.scaleLoot(stats.loot[0], stats.loot[1], def.rank === "boss");
     const m = new Monster();
     m.id = `m${this.nextMonsterId++}`;
     m.kind = kind;
@@ -2109,10 +2110,10 @@ export class Hunt {
     // (e pegar o loot faria a equipe sair da dungeon).
     const at = brain.def.rank === "boss" ? this.besidePortal(m.x, m.y) : { x: m.x, y: m.y };
     const drops = GUARANTEED_DROPS[brain.def.rank] || (this.random() < COMMON_DROP_CHANCE ? 1 : 0);
-    // O boss sempre larga o que tem; os outros, com a chance do mapa (`MapDef.dropScale`).
+    // O boss sempre larga o que tem; os outros, com a chance do mapa (`MapDef.dropScale`) e o corte geral nos itens.
     const boss = brain.def.rank === "boss";
     for (let i = 0; i < drops; i++) {
-      if ((boss || this.keepDrop()) && this.keepForHumans()) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
+      if ((boss || this.keepDrop(LOOT_SCALE)) && this.keepForHumans()) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
     }
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) if (boss || this.keepDrop()) this.dropItem(rollPotion(this.random), at.x, at.y);
@@ -2605,7 +2606,7 @@ export class Hunt {
    * (padrão: o próprio tile). O gold se divide pela equipe; `openerId` conta o baú na telemetria.
    */
   private chestReward(openerId: string, x: number, y: number, depth: number, dropAt = { x, y }) {
-    const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + DEPTH_SCALING * depth) * (this.map.lootScale ?? 1));
+    const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + DEPTH_SCALING * depth) * this.lootScale());
     this.teamLoot(value, "chests", x, y, "Baú: ");
     const stats = this.seats.get(openerId)?.stats;
     if (stats) stats.chestsOpened++;
@@ -2637,9 +2638,14 @@ export class Hunt {
     this.notice(x, y, label === "loot" ? `+${share} loot` : `${label}+${share} loot`, 0xf1c40f);
   }
 
-  /** Faixa de loot com a fração do mapa (`MapDef.lootScale`). */
-  private scaleLoot(min: number, max: number): [number, number] {
-    const k = this.map.lootScale ?? 1;
+  /** Fração do gold que a hunt paga: o corte geral (`LOOT_SCALE`) vezes o do mapa (`MapDef.lootScale`, sem o boss). */
+  private lootScale(boss = false) {
+    return LOOT_SCALE * (boss ? 1 : this.map.lootScale ?? 1);
+  }
+
+  /** Faixa de loot de um monstro com `lootScale`. */
+  private scaleLoot(min: number, max: number, boss: boolean): [number, number] {
+    const k = this.lootScale(boss);
     return [Math.round(min * k), Math.round(max * k)];
   }
 
@@ -2660,9 +2666,9 @@ export class Hunt {
     return false;
   }
 
-  /** Um drop (item ou poção) sai com a chance do mapa (`MapDef.dropScale`, padrão: sempre). */
-  private keepDrop() {
-    const k = this.map.dropScale ?? 1;
+  /** Um drop (item ou poção) sai com a chance do mapa (`MapDef.dropScale`, padrão: sempre) vezes `extra`. */
+  private keepDrop(extra = 1) {
+    const k = (this.map.dropScale ?? 1) * extra;
     return k >= 1 || this.random() < k;
   }
 
