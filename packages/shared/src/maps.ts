@@ -40,8 +40,9 @@ export interface MapDef {
    */
   rewardRunes?: string[];
   /**
-   * Fração do loot (valor dos monstros e dos baús) e dos drops (itens e poções de comuns, mini-bosses e baús) que o
-   * mapa paga (padrão 1). O boss fica de fora. Mapa com muitos monstros paga menos por cada um.
+   * Fração do loot (valor dos monstros e dos baús) e a chance dos drops (itens e poções de comuns e mini-bosses, e as
+   * poções dos baús) que o mapa paga (padrão 1). O boss fica de fora e o item do baú sai sempre. Mapa com muitos
+   * monstros paga menos por cada um.
    */
   lootScale?: number;
   dropScale?: number;
@@ -118,7 +119,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   marsh: {
     id: "marsh", name: "Pântano do Kosaradius", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
-    meadowMonsters: 3, meadowMinibosses: 0.4, lootScale: 0.35, dropScale: 0.35,
+    meadowMonsters: 3, meadowMinibosses: 0.4, lootScale: 0.35, dropScale: 0.6,
     description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando, e ogros e chefes de guerra em cada clareira: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
     encounters: [
       { depth: [0, 0], budget: 70, table: [["orcScout", 3], ["orcGrunt", 2]] },
