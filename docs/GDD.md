@@ -34,7 +34,7 @@ teclado e mouse no desktop são um extra.
 
 Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e, no centro da barra, o botão
 redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
-O **Batalhas** abre a tela de salas (ver "Salas e sala de espera").
+O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi").
 Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (vida, mana, dano, alcance e armadura já com as áureas, as runas e os itens vestidos por aquela classe, na mesma conta da hunt). Tocar escolhe a classe da próxima hunt.
@@ -325,13 +325,14 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 
 Código em `apps/client/src/lobby.ts` e `main.ts`.
 
-1. **Batalhas** (botão central do menu) abre a tela de salas: em cima, as **salas abertas** (líder, cenário e vagas); embaixo, **Criar sala**
-   com os cartões dos cenários e o botão "Criar sala · <cenário>".
+1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele:
+   **Jogar sozinho**, **Criar sala** (com a escolha ☁️ Nuvem / 📱 Meu aparelho) e as salas abertas daquele cenário.
+   O botão **Salas abertas · N**, no alto do mapa, lista as salas de todos os cenários (líder, cenário e vagas).
 2. Criar ou entrar numa sala leva à **sala de espera**: 4 vagas (`MAX_PARTY_SIZE`), cada uma com retrato, nome e classe
    de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".
 3. Só o líder vê o botão de começar: **"Começar sozinho"** com 1 jogador, "Começar hunt · N jogadores" com mais.
    Os outros veem "Aguardando o líder iniciar…". Ao começar, a sala sai da lista (ninguém mais entra).
-4. **Sair da sala** volta para a tela de salas. Se o líder sai, o próximo humano da sala vira líder.
+4. **Sair da sala** volta para o mapa mundi. Se o líder sai, o próximo humano da sala vira líder.
 
 ### Bots na equipe
 
@@ -355,7 +356,7 @@ Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espe
 
 ### Jogar sozinho
 
-O botão **"Jogar sozinho · <cenário>"** da tela de salas começa uma hunt solo na hora, sem sala de espera e sem
+O botão **"Jogar sozinho"** da ficha do cenário começa uma hunt solo na hora, sem sala de espera e sem
 servidor de jogo: a mesma simulação do servidor (`apps/server/src/hunt.ts`) roda no aparelho
 (`apps/client/src/solo.ts`). Não há espera para o servidor acordar nem atraso de rede.
 
@@ -385,11 +386,25 @@ então funcionam com o servidor do jogo dormindo.
   no último segundo se perde. Quem hospedava conta como morte (abandono). Se ninguém conseguir assumir, a hunt
   acaba para quem ficou.
 
+## Mapa mundi
+
+A tela de **Batalhas** é o mapa do mundo de **Kosaradius**, desenhado como um pergaminho de D&D: um planeta quase todo
+mar, com continentes, ilhas e terras em névoa. Código em `apps/client/src/worldMap.ts`; plano completo (história,
+fases, desbloqueio) em `docs/MAPA_MUNDI_PLANO.md`.
+
+- **Mobile:** o mapa rola só na vertical e abre já rolado no último cenário escolhido, com o herói da classe em pé em
+  cima dele. O nome do mundo aparece em marca d'água laranja, em arco, no mar.
+- **Pontos:** um por cenário, na ordem da trilha: 🐸 Pântano do Kosaradius (Verdemar) → 🏚️ Cripta (serra de Verdemar)
+  → 🏜️ Mar de Areia (Solária) → 🌿 Pântano das Ruínas (Arquipélago Afundado). Cada ponto mostra o selo 👥 N quando
+  tem salas abertas. Tocar num ponto leva o herói até ele (~1 s) e abre a ficha.
+- **Névoa:** Gelo de Hrimfal, Ilha de Cinza e Cidadela Caída são terras ainda sem cenário; tocar só avisa.
+- **Ainda não:** todos os cenários estão abertos. O desbloqueio por boss (por classe) e a estrela por ponto vêm na
+  fase 3 do plano.
+
 ## Mapas
 
-O jogador escolhe o mapa (cenário) na tela de criar sala. Os cartões vêm na ordem Pântano do Kosaradius, Cripta, Mar
-de Areia e Pântano das Ruínas, e o primeiro já vem escolhido toda vez que a tela abre. O mapa vale para as salas
-que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
+O jogador escolhe o mapa (cenário) tocando no ponto dele no mapa mundi. O último escolhido fica salvo no aparelho
+(na primeira vez, o Pântano do Kosaradius). O mapa vale para as salas que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
