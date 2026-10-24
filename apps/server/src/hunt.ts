@@ -847,6 +847,27 @@ export class Hunt {
     });
   }
 
+  /**
+   * Para onde o passo vai: a direção pedida ou, na diagonal bloqueada (parede, quina ou monstro), o eixo livre.
+   * Com o joystick, o polegar um pouco torto num corredor vira diagonal: o herói desliza na parede em vez de parar.
+   */
+  private walkDir(player: Player, dx: number, dy: number) {
+    const open = (sx: number, sy: number) => {
+      const nx = player.x + sx;
+      const ny = player.y + sy;
+      if (!isWalkable(this.dungeon, nx, ny) || this.monsterAt(nx, ny) || this.wallAt(nx, ny)) return false;
+      // Bot não sai da dungeon nem atravessa a caverna sozinho: sai junto com os humanos.
+      if (player.bot && this.specialTile(nx, ny)) return false;
+      // Na diagonal, não atravessa quina de parede.
+      return sx === 0 || sy === 0 || (isWalkable(this.dungeon, nx, player.y) && isWalkable(this.dungeon, player.x, ny));
+    };
+    if (open(dx, dy)) return { dx, dy };
+    if (dx === 0 || dy === 0) return null;
+    if (open(dx, 0)) return { dx, dy: 0 };
+    if (open(0, dy)) return { dx: 0, dy };
+    return null;
+  }
+
   private step(sessionId: string, player: Player, seat: Seat, dx: number, dy: number, now: number) {
     // Velocidade de movimento controlada pelo servidor: um passo a cada 1/speed segundos.
     if (now < seat.nextMoveAt) return;
@@ -855,13 +876,11 @@ export class Hunt {
     // Preso, atordoado ou engolido por um monstro.
     if (this.held(seat, "root", "stun", "engulf")) return;
 
+    const dir = this.walkDir(player, dx, dy);
+    if (!dir) return;
+    ({ dx, dy } = dir);
     const nx = player.x + dx;
     const ny = player.y + dy;
-    if (!isWalkable(this.dungeon, nx, ny) || this.monsterAt(nx, ny) || this.wallAt(nx, ny)) return;
-    // Bot não sai da dungeon nem atravessa a caverna sozinho: sai junto com os humanos.
-    if (player.bot && this.specialTile(nx, ny)) return;
-    // Na diagonal, não atravessa quina de parede.
-    if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, player.y) || !isWalkable(this.dungeon, player.x, ny))) return;
 
     const stepMs = 1000 / this.moveSpeed(player, seat, now);
     // Andando sem parar, o próximo passo conta da hora em que este podia sair, não de quando o tick chegou:
