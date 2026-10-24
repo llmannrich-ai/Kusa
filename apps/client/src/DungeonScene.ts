@@ -1032,7 +1032,9 @@ export class DungeonScene extends Phaser.Scene {
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
     const glow = this.add.ellipse(0, 5, 20, 8, color, 0.45);
-    const icon = this.add.image(0, 0, itemTexture(this, item.itemId));
+    const key = itemTexture(this, item.itemId);
+    // O ícone fica com 16 px no chão (o da arte nova é maior e vai reduzido).
+    const icon = this.add.image(0, 0, key).setScale(16 / this.textures.get(key).getSourceImage().width);
     const container = this.add.container(this.toPx(item.x) + offset[0], this.toPx(item.y) + offset[1] + 4, [glow, icon])
       .setDepth(item.y * TILE_SIZE + 2);
     this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });

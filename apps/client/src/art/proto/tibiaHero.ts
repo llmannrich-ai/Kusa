@@ -230,6 +230,9 @@ export type Shade = (x: number, y: number) => number;
 export type Offset = (X: number, Y: number) => number;
 export type Box = readonly [number, number, number, number];
 
+/** Escala local: em volta de um ponto (`ox`, `oy`) ou afim (`p × k + t`), com a de fora em `parent`. */
+interface Xf { k: number; ox?: number; oy?: number; tx: number; ty: number; parent: Xf | null }
+
 export class Canvas {
   readonly n: number;
   mat: Int8Array;
@@ -264,40 +267,59 @@ export class Canvas {
   }
 
   /** Pinta a forma `test` (no retângulo dado, em unidades) com o material, a luz e o desvio de tom. */
-  private xf: { ox: number; oy: number; k: number } | null = null;
+  private xf: Xf | null = null;
 
   /** Escala local: o que `draw` pintar cresce `k` vezes em volta de `o` (a textura continua fina). */
   scaled<T>(o: Pt, k: number, draw: () => T): T {
     const outer = this.xf;
-    this.xf = { ox: o[0], oy: o[1], k };
+    this.xf = outer
+      ? { k: outer.k * k, tx: outer.tx + o[0] * (1 - k) * outer.k, ty: outer.ty + o[1] * (1 - k) * outer.k, parent: outer }
+      : { k, ox: o[0], oy: o[1], tx: o[0] * (1 - k), ty: o[1] * (1 - k), parent: null };
     try { return draw(); } finally { this.xf = outer; }
   }
 
-  /** Volta à escala normal dentro de um `scaled` (a haste do cajado não cresce com a cabeça). */
+  /** Enquadra: o que `draw` pintar vai para `p × k + t` (em unidades), por cima da escala que já houver (ícones). */
+  placed<T>(k: number, t: Pt, draw: () => T): T {
+    const outer = this.xf;
+    this.xf = outer
+      ? { k: outer.k * k, tx: outer.tx + t[0] * outer.k, ty: outer.ty + t[1] * outer.k, parent: outer }
+      : { k, tx: t[0], ty: t[1], parent: null };
+    try { return draw(); } finally { this.xf = outer; }
+  }
+
+  /** Volta à escala de fora dentro de um `scaled` (a haste do cajado não cresce com a cabeça). */
   unscaled<T>(draw: () => T): T {
     const outer = this.xf;
-    this.xf = null;
+    this.xf = outer?.parent ?? null;
     try { return draw(); } finally { this.xf = outer; }
   }
 
   get scale() { return this.xf?.k ?? 1; }
 
+  /** Unidade levada pela escala local (a forma simples, em volta de um ponto, segue a conta de sempre). */
+  private fwd(u: number, axis: 0 | 1) {
+    const f = this.xf!;
+    const o = axis ? f.oy : f.ox;
+    return o !== undefined ? o + (u - o) * f.k : u * f.k + (axis ? f.ty : f.tx);
+  }
+
   /** Pixel final levado pela escala local. */
   private tx(X: number, Y: number): [number, number] {
-    const f = this.xf;
-    if (!f) return [X, Y];
-    return [(f.ox + (X / K - f.ox) * f.k) * K, (f.oy + (Y / K - f.oy) * f.k) * K];
+    if (!this.xf) return [X, Y];
+    return [this.fwd(X / K, 0) * K, this.fwd(Y / K, 1) * K];
   }
 
   fill(box: Box, test: Test, mat: Mat, shade: Shade, offset?: Offset) {
     const id = this.group || ++this.seq;
     const f = this.xf;
-    const fw = (u: number, o: number) => (f ? o + (u - o) * f.k : u);
-    const [x0, y0, x1, y1] = f ? [fw(box[0], f.ox) - 1, fw(box[1], f.oy) - 1, fw(box[2], f.ox) + 1, fw(box[3], f.oy) + 1] : box;
+    const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
     for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil((y1 + 1) * K)); Y++) {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil((x1 + 1) * K)); X++) {
         let x = (X + 0.5) / K - 0.5, y = (Y + 0.5) / K - 0.5;
-        if (f) { x = f.ox + (x + 0.5 - f.ox) / f.k - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
+        if (f) {
+          if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x + 0.5 - f.ox) / f.k - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
+          else { x = (x + 0.5 - f.tx) / f.k - 0.5; y = (y + 0.5 - f.ty) / f.k - 0.5; }
+        }
         if (!test(x, y, X, Y)) continue;
         const i = Y * this.w + X;
         this.mat[i] = mat;
@@ -314,7 +336,10 @@ export class Canvas {
   /** Um pixel final num tom fixo (detalhe desenhado à mão: olho, brilho, costura). */
   px(X: number, Y: number, mat: Mat, tone: number) {
     [X, Y] = this.tx(X, Y);
-    X = Math.round(X); Y = Math.round(Y);
+    this.rawPx(Math.round(X), Math.round(Y), mat, tone);
+  }
+
+  private rawPx(X: number, Y: number, mat: Mat, tone: number) {
     if (X < 0 || Y < 0 || X >= this.w || Y >= this.h) return;
     const i = Y * this.w + X;
     if (this.mat[i] < 0) this.order[i] = this.part[i] = ++this.seq;
@@ -326,11 +351,16 @@ export class Canvas {
   on(ids: number | readonly number[], X: number, Y: number, mat: Mat, tone: number): void {
     [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
-    if (this.xf) return this.unscaled(() => this.on(ids, X, Y, mat, tone));
     if (X < 0 || Y < 0 || X >= this.w || Y >= this.h || this.mat[Y * this.w + X] < 0) return;
     const p = this.part[Y * this.w + X];
     if (typeof ids === "number" ? p !== ids : !ids.includes(p)) return;
-    this.unscaled(() => this.px(X, Y, mat, tone));
+    this.rawPx(X, Y, mat, tone);
+  }
+
+  /** `is` com o pixel levado pela escala local (varreduras de coluna: sola, fita do chapéu, sombra da aba). */
+  isAt(X: number, Y: number, ids: readonly number[]) {
+    [X, Y] = this.tx(X, Y);
+    return this.is(Math.round(X), Math.round(Y), ids);
   }
 
   /** Muda o tom de quem já está pintado, sem mudar a peça (dobra, costura). */
@@ -560,7 +590,7 @@ const darker = (o: Offset | undefined, far: boolean): Offset | undefined =>
 function sole(c: Canvas, ids: readonly number[], x0: number, x1: number, mat: Mat, far: boolean, stitch = true) {
   for (let X = F(x0); X <= F(x1); X++) {
     for (let Y = c.h - 1; Y > 0; Y--) {
-      if (!c.is(X, Y, ids)) continue;
+      if (!c.isAt(X, Y, ids)) continue;
       c.px(X, Y, mat, 0); c.px(X, Y - 1, mat, 1);
       if (stitch && X % 3 === 0) c.px(X, Y - 2, mat, far ? 2 : 4);
       break;
@@ -3695,7 +3725,7 @@ export function star(c: Canvas, ids: readonly number[] | null, X: number, Y: num
 function shadowBelow(c: Canvas, ids: readonly number[], x0: number, x1: number, rows: number) {
   for (let X = F(x0); X <= F(x1); X++) {
     for (let Y = c.h - 1; Y > 0; Y--) {
-      if (!c.is(X, Y, ids)) continue;
+      if (!c.isAt(X, Y, ids)) continue;
       for (let k = 1; k <= rows; k++) c.nudge(X, Y + k, -1);
       break;
     }
@@ -3706,7 +3736,7 @@ function shadowBelow(c: Canvas, ids: readonly number[], x0: number, x1: number, 
 function bandOver(c: Canvas, ids: readonly number[], x0: number, x1: number, from: number, rows: number, mat: Mat, tone: (k: number, X: number) => number) {
   for (let X = F(x0); X <= F(x1); X++) {
     for (let Y = c.h - 1; Y > 0; Y--) {
-      if (!c.is(X, Y, ids)) continue;
+      if (!c.isAt(X, Y, ids)) continue;
       for (let k = 0; k < rows; k++) c.on(ids, X, Y - from - k, mat, tone(k, X));
       break;
     }
@@ -5034,6 +5064,88 @@ export function protoMonsterSheet(kind: string): HTMLCanvasElement {
     image.data.set(memo.get(step)!);
     ctx.putImageData(image, i * S, 0);
   });
+  return canvas;
+}
+
+// --- Ícones dos itens (mochila, cofre, mercado, equipamento e chão) ------------------------
+
+/** Lado do ícone em pixels e em unidades de projeto. */
+export const PROTO_ICON = 64;
+const ICON_U = PROTO_ICON / K;
+
+/**
+ * O item sozinho, sem o corpo, na pose em que é vestido (o mesmo desenho do herói): arma em diagonal, elmo e
+ * armadura de frente, calça com as duas pernas, botas de lado, escudo de frente.
+ */
+function iconPose(c: Canvas, id: string) {
+  const fam = id.replace(/-\d(-magic)?$/, "");
+  const kit: Kit = { ...KITS.knight, top: "none", waist: "belt" };
+  switch (fam) {
+    case "sword": {
+      const t = tierOf(id), hilt: Pt = [CX - 9, 66], len = t === 5 ? 30 : SWORD_LEN[t] + 4;
+      const tip: Pt = [hilt[0] + len * 0.7, hilt[1] - len * 0.7];
+      if (id === "sword-4-magic") dancingSword(c, hilt, tip);
+      else swordById(c, id, hilt, tip);
+      return;
+    }
+    case "axe": axeArt(c, id, [CX - 6, 72], [CX + 4, 50], 1); return;
+    case "bow": bowArt(c, id, [CX, 55], 1); return;
+    case "xbow": crossbowArt(c, id, [CX, 55], [-0.97, 0.24], true); return;
+    case "wand": wandArt(c, id, [CX - 4, 62], [CX + 5, 52]); return;
+    // Haste mais curta que a vestida: a cabeça do cajado é o que se reconhece no quadradinho.
+    case "staff": staffArt(c, id, [CX, 52], 34, 60); return;
+    case "war": case "arc":
+      if (id === "arc-1-magic") wolfFront(c, 37, 47);
+      else helmetArt(c, id, "down", CX, 37, 47);
+      return;
+    case "armor": case "robe": {
+      kit.armor = id as ProtoArmor;
+      collar(c, kit, 37, "down");
+      const ids = armorTorso(c, id, 47, "down", 0);
+      dressFront(c, kit, ids, 47, false);
+      for (const s of [-1, 1]) armorArm(c, id, [CX + s * 12.5, 50], [CX + s * 14, 57], [CX + s * 13.5, 65], false);
+      armorShoulders(c, id, 47, "down", [[CX - 12.8, 49], [CX + 12.8, 49]]);
+      return;
+    }
+    case "pants": case "greave":
+      for (const s of [-1, 1]) {
+        const x = CX + s * 3.8;
+        (fam === "pants" ? pantsArt : warLegs)(c, id, [x, 66], [x + s * 0.8, 77], [x + s * 1.2, 88], false, true);
+      }
+      // Cós de couro unindo as duas pernas.
+      { const band = limb(c, [CX - 8, 64.4], [CX + 8, 64.4], 1.6, 1.6, Mat.Leather, leather); rivet(c, [band], CX, 64.2, Mat.Bronze); }
+      return;
+    case "boots":
+      bootsArt(c, id, [CX + 4, 76], [CX + 4, 87], [CX - 1, 88.4], true, false);
+      bootsArt(c, id, [CX - 2, 77], [CX - 2, 88.4], [CX - 7, 89.6], false, false);
+      return;
+    case "shield": shieldArt(c, id, [CX, 60], "down", 1); return;
+  }
+}
+
+/** Ícone do item no padrão novo (`PROTO_ICON` px): enquadrado e ampliado até caber, com a gema da raridade no canto. */
+export function protoItemIcon(id: string, rarity: "common" | "rare" | "magic"): HTMLCanvasElement {
+  // 1ª passada: onde o item cai no quadro do herói.
+  const probe = new Canvas();
+  iconPose(probe, id);
+  let x0 = S, y0 = S, x1 = -1, y1 = -1;
+  for (let i = 0; i < probe.n; i++) {
+    if (probe.mat[i] < 0) continue;
+    const X = i % S, Y = (i / S) | 0;
+    if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+  }
+  const c = new Canvas(PROTO_ICON, PROTO_ICON);
+  if (x1 >= 0) {
+    const w = (x1 + 1 - x0) / K, h = (y1 + 1 - y0) / K;
+    const k = Math.min((ICON_U - 3) / w, (ICON_U - 3) / h, 1.6);
+    const mx = (x0 + x1 + 1) / 2 / K, my = (y0 + y1 + 1) / 2 / K;
+    c.placed(k, [ICON_U / 2 - mx * k, ICON_U / 2 - my * k], () => iconPose(c, id));
+  }
+  if (rarity !== "common") gem(c, [ICON_U - 3, 2.6], 1.5, rarity === "magic" ? Mat.Gem : Mat.Sapphire);
+  const { canvas, ctx } = makeCanvas(PROTO_ICON, PROTO_ICON);
+  const image = ctx.createImageData(PROTO_ICON, PROTO_ICON);
+  image.data.set(c.render(KNIGHT_LOOK));
+  ctx.putImageData(image, 0, 0);
   return canvas;
 }
 
