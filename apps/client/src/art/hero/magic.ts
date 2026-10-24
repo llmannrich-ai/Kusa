@@ -98,10 +98,10 @@ const ARMOR: Record<string, Record<ItemTier, MagicLook>> = {
         },
       },
     },
-    5: { remap: [[M.dragon, M.obsidian], [M.ivory, M.gold], [M.fire, M.amethyst], [M.gold, M.amethyst]] }, // Elmo do Senhor dos Dragões
+    5: { remap: [[M.dragon, M.obsidian], [M.ivory, M.gold], [M.fire, M.amethyst], [M.gold, M.amethyst]] }, // Elmo do Demônio
   },
   "helmet-arcane": {
-    1: { remap: [[M.woolBrown, M.ash]] }, // Capuz do Eremita
+    1: { remap: [[M.woolBrown, M.ash]] }, // Capuz do Lobo
     2: { // Chapéu do Ilusionista: roxo, faixa de ouro e uma estrela.
       remap: [[M.wool, M.sorcPurple], [M.leather, M.gold], [M.bronze, M.star]],
     },
