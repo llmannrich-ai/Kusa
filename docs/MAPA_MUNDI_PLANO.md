@@ -49,6 +49,9 @@ subiu numa noite e afundou o império. Sobraram os picos (os continentes de hoje
 Os heróis exploram o que restou, e a névoa no mapa é o mundo que ninguém mapeou ainda. Isso explica as ruínas na água
 (Pântano das Ruínas), as tumbas sob as montanhas (Cripta) e por que cada terra virou um bioma diferente.
 
+**De onde vem o nome:** o Pântano do Kosaradius é o primeiro lugar que os sobreviventes mapearam depois da Maré, e
+o brejo deu nome ao mundo. Por isso o jogo começa ali e o cenário mantém o nome (decisão do Leonardo: não renomear).
+
 | Região | Geografia | Cenário | Estado |
 |---|---|---|---|
 | **Verdemar** (continente do sul, onde começa) | floresta alagada, brejos, ciprestes | 🐸 Pântano do Kosaradius | aberto |
