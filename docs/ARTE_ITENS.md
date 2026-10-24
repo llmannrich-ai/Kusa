@@ -61,11 +61,11 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Espada (cavaleiro)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Espada curta** ✅ — gládio largo, cabo de madeira com cordão | **Espada do Juramento** — sulco vermelho que "bebe" o sangue até a gema da guarda, fita de juramento no cabo *(Sword of Life Stealing)* |
-| 2 | **Espada de bronze** ✅ — lâmina em folha, pomo em cabeça de touro | **Lâmina Flamejante** — lâmina ondulada, chamas acesas ao longo do gume *(Flame Tongue)* |
-| 3 | **Espada longa** ✅ — bastarda, guarda reta, pomo de disco, couro preto | **Vingadora Sagrada** — espada do paladino lendário: guarda em asas de anjo, sol dourado, lâmina com luz *(Holy Avenger)* |
-| 4 | **Espada de mithral** ✅ — lâmina élfica curva com folhas gravadas, guarda em galhos | **Espada Dançarina** — rapieira de guarda em fita espiral que flutua e luta ao lado do herói *(Dancing Sword)* |
-| 5 | **Lâmina do dragão** ✅ — montante de duas mãos, dentes de dragão no gume, runas em brasa, guarda em asas | **Espada Vorpal** — obsidiana negra, gume finíssimo com rastro roxo, crânio na guarda (a que corta cabeças) *(Vorpal Sword)* |
+| 1 | **Espada curta** ✅ — gládio largo, cabo de madeira com cordão | **Espada do Juramento** ✅ — sulco vermelho que "bebe" o sangue até a gema da guarda, fita de juramento no cabo *(Sword of Life Stealing)* |
+| 2 | **Espada de bronze** ✅ — lâmina em folha, pomo em cabeça de touro | **Lâmina Flamejante** ✅ — lâmina ondulada, chamas acesas ao longo do gume *(Flame Tongue)* |
+| 3 | **Espada longa** ✅ — bastarda, guarda reta, pomo de disco, couro preto | **Vingadora Sagrada** ✅ — espada do paladino lendário: guarda em asas de anjo, sol dourado, lâmina com luz *(Holy Avenger)* |
+| 4 | **Espada de mithral** ✅ — lâmina élfica curva com folhas gravadas, guarda em galhos | **Espada Dançarina** ✅ — rapieira de guarda em fita espiral que flutua e luta ao lado do herói *(Dancing Sword)* |
+| 5 | **Lâmina do dragão** ✅ — montante de duas mãos, dentes de dragão no gume, runas em brasa, guarda em asas | **Espada Vorpal** ✅ — obsidiana negra, gume finíssimo com rastro roxo, crânio na guarda (a que corta cabeças) *(Vorpal Sword)* |
 
 ### Machado (cavaleiro)
 | Nível | Comum | Mágico |
@@ -115,20 +115,20 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Elmo de guerra (cavaleiro e paladino)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Gorro de couro** ✅ — capuz acolchoado com abas nas orelhas | **Gorro do Escudeiro** — pena de faisão e brasão costurado |
-| 2 | **Elmo de bronze** ✅ — coríntio com crista de crina vermelha | **Elmo do Vigia** — viseira em cara de corujurso, bico e olhos grandes, penas e pelo *(owlbear)* |
-| 3 | **Elmo de ferro** ✅ — nórdico com nasal e malha | **Elmo do Brilho** — elmo cravejado de gemas (diamante, rubi, opala de fogo) com chamas leves em volta *(Helm of Brilliance)* |
-| 4 | **Elmo de mithral** ✅ — elmo fechado com coroa de folhas e penacho | **Elmo do Cavaleiro Grifo** — viseira em bico de grifo, asas nas laterais *(griffon riders)* |
+| 1 | **Gorro de couro** ✅ — capuz acolchoado com abas nas orelhas | **Gorro do Escudeiro** ✅ — pena de faisão e brasão costurado |
+| 2 | **Elmo de bronze** ✅ — coríntio com crista de crina vermelha | **Elmo do Vigia** ✅ — viseira em cara de corujurso, bico e olhos grandes, penas e pelo *(owlbear)* |
+| 3 | **Elmo de ferro** ✅ — nórdico com nasal e malha | **Elmo do Brilho** ✅ — elmo cravejado de gemas (diamante, rubi, opala de fogo) com chamas leves em volta *(Helm of Brilliance)* |
+| 4 | **Elmo de mithral** ✅ — elmo fechado com coroa de folhas e penacho | **Elmo do Cavaleiro Grifo** ✅ — viseira em bico de grifo, asas nas laterais *(griffon riders)* |
 | 5 | **Elmo do dragão** ✅ — cabeça de dragão de mandíbula aberta emoldurando o rosto | **Elmo do Demônio** ✅ *(hoje "Elmo do Senhor dos Dragões")* — viseira de cara de demônio, olhos em brasa, presas, chifres de carneiro *(Demon Armor, demônios do Abismo)* |
 
 ### Armadura de guerra (cavaleiro e paladino)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Gibão de couro** ✅ — couro com tachas, pele de lobo num ombro | **Gibão do Aventureiro** — bolsos, corda enrolada, mapa e uma bolsa de carga no cinto *(Bag of Holding)* |
-| 2 | **Couraça de bronze** ✅ — peitoral musculado com saiote de tiras | **Couraça do Leão** — cabeça de leão no peito, juba como ombreiras *(mitologia: leão de Nemeia)* |
-| 3 | **Cota de malha** ✅ — malha com tabardo na cor da classe | **Cota Élfica** — malha fina prateada com folhas *(Elven Chain)* |
-| 4 | **Placas de mithral** ✅ — ombreiras em concha, peito com filigrana | **Armadura de Placas Anã** — placas grossas com rosto anão e runas *(Dwarven Plate)* |
-| 5 | **Escamas de dragão** ✅ — escamas sobrepostas, ombreiras em crânio | **Escamas do Dragão Vermelho** — escamas vermelhas, espinhos e asinhas nas costas *(Dragon Scale Mail)* |
+| 1 | **Gibão de couro** ✅ — couro com tachas, pele de lobo num ombro | **Gibão do Aventureiro** ✅ — bolsos, corda enrolada, mapa e uma bolsa de carga no cinto *(Bag of Holding)* |
+| 2 | **Couraça de bronze** ✅ — peitoral musculado com saiote de tiras | **Couraça do Leão** ✅ — cabeça de leão no peito, juba como ombreiras *(mitologia: leão de Nemeia)* |
+| 3 | **Cota de malha** ✅ — malha com tabardo na cor da classe | **Cota Élfica** ✅ — malha fina prateada com folhas *(Elven Chain)* |
+| 4 | **Placas de mithral** ✅ — ombreiras em concha, peito com filigrana | **Armadura de Placas Anã** ✅ — placas grossas com rosto anão e runas *(Dwarven Plate)* |
+| 5 | **Escamas de dragão** ✅ — escamas sobrepostas, ombreiras em crânio | **Escamas do Dragão Vermelho** ✅ — escamas vermelhas, espinhos e asinhas nas costas *(Dragon Scale Mail)* |
 
 ### Perneiras de guerra (cavaleiro e paladino)
 | Nível | Comum | Mágico |
@@ -217,13 +217,40 @@ na cor da classe, placas de mithral com ombreiras em concha, escamas com ombreir
 
 ![Armaduras de guerra](arte/lote1-armors.png)
 
-## 7. Ordem de execução
+## 7. Lote 2 desenhado
+
+Os 15 mágicos de espada, elmo de guerra e armadura de guerra, cada um com forma própria a partir do item de D&D
+(o Elmo do Demônio é o do piloto). Cavaleiro nos níveis ímpares e paladino nos pares.
+
+**Conjunto mágico de cada nível**:
+
+![Conjunto mágico de cada nível](arte/lote2-sets.png)
+
+**Espadas mágicas**: Espada do Juramento (sulco vermelho até a gema e fita), Lâmina Flamejante (lâmina ondulada
+em chamas), Vingadora Sagrada (asas de anjo, sol e luz), Espada Dançarina (flutua sozinha ao lado do herói, com
+rastro), Espada Vorpal (obsidiana com gume violeta e crânio na guarda):
+
+![Espadas mágicas](arte/lote2-swords.png)
+
+**Elmos mágicos**: Gorro do Escudeiro (pena de faisão e brasão), Elmo do Vigia (cara de corujurso), Elmo do Brilho
+(gemas e chamas), Elmo do Cavaleiro Grifo (bico de grifo e asas), Elmo do Demônio:
+
+![Elmos mágicos](arte/lote2-helmets.png)
+
+**Armaduras mágicas**: Gibão do Aventureiro (bandoleira, corda, mapa e bolsa de carga), Couraça do Leão (cabeça de
+leão e juba nos ombros), Cota Élfica (malha prateada com folhas e faixa verde), Armadura de Placas Anã (rosto de rei
+anão, barba trançada e runas), Escamas do Dragão Vermelho (brasa entre as escamas, chama no peito e asinhas):
+
+![Armaduras mágicas](arte/lote2-armors.png)
+
+## 8. Ordem de execução
 
 ![Piloto: Capuz do Lobo no druida e no feiticeiro, Elmo do Demônio e Lâmina do dragão no cavaleiro, Elmo do Demônio no paladino](arte/itens-piloto.png)
 
 1. **Piloto** ✅: Capuz do Lobo, Elmo do Demônio e Lâmina do dragão.
    **Lote 1** ✅: espadas, elmos de guerra e armaduras de guerra comuns (seção 6).
-   **Lote 2**: os mágicos dessas 3 famílias.
+   **Lote 2** ✅: os mágicos dessas 3 famílias (seção 7).
+   **Lote 3**: machados (comuns e mágicos).
 2. Armas (o que mais aparece), depois armaduras e mantos, capacetes, botas, calças e escudos.
 3. Ícones de 32×32 a partir de cada desenho pronto.
 4. Integração no jogo atrás da opção "Arte nova (beta)", com o teste `arte.ts` conferindo cada item.

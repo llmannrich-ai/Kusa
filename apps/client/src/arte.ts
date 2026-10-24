@@ -13,7 +13,7 @@ import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTA
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
-import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_ITEM_NAMES, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
+import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_ITEM_NAMES, PROTO_MAGIC_ARMORS, PROTO_MAGIC_HELMETS, PROTO_MAGIC_SWORDS, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
@@ -162,6 +162,10 @@ const protoSceneRow = (() => {
   gearRow("Itens · lote 1: elmos de guerra", PROTO_WAR_HELMETS.flatMap((helmet, i) => [[i % 2 ? "paladin" : "knight", { helmet }]] as [ProtoClass, ProtoGear][]));
   gearRow("Itens · lote 1: armaduras de guerra", PROTO_WAR_ARMORS.flatMap((armor, i) => [[i % 2 ? "paladin" : "knight", { armor }]] as [ProtoClass, ProtoGear][]));
   gearRow("Itens · lote 1: conjunto de cada nível (elmo, armadura e espada)", [1, 2, 3, 4, 5].map((t) => ["knight", { helmet: PROTO_WAR_HELMETS[t - 1], armor: PROTO_WAR_ARMORS[t - 1], weapon: PROTO_SWORDS[t - 1] }]));
+  gearRow("Itens · lote 2: espadas mágicas", PROTO_MAGIC_SWORDS.map((weapon) => ["knight", { weapon }]));
+  gearRow("Itens · lote 2: elmos mágicos", PROTO_MAGIC_HELMETS.map((helmet, i) => [i % 2 ? "paladin" : "knight", { helmet }]));
+  gearRow("Itens · lote 2: armaduras mágicas", PROTO_MAGIC_ARMORS.map((armor, i) => [i % 2 ? "paladin" : "knight", { armor }]));
+  gearRow("Itens · lote 2: conjunto mágico de cada nível", [0, 1, 2, 3, 4].map((i) => [i % 2 ? "paladin" : "knight", { helmet: PROTO_MAGIC_HELMETS[i], armor: PROTO_MAGIC_ARMORS[i], weapon: PROTO_MAGIC_SWORDS[i] }]));
   gearRow("Itens · piloto: Capuz do Lobo e Elmo do Demônio", [["druid", { helmet: "wolf" }], ["sorcerer", { helmet: "wolf" }], ["knight", { helmet: "demon", weapon: "sword-5" }], ["paladin", { helmet: "demon" }]]);
 
   const cosmetics = section("Protótipo: zonas de cor (cabeça, primária, secundária, detalhe), como um cosmético trocaria");

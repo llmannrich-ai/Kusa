@@ -69,12 +69,16 @@ interface Kit {
   armor?: ProtoArmor;
 }
 
-export type ProtoWeapon = `sword-${1 | 2 | 3 | 4 | 5}`;
-export type ProtoHelmet = `war-${1 | 2 | 3 | 4 | 5}` | "wolf" | "demon";
-export type ProtoArmor = `armor-${1 | 2 | 3 | 4 | 5}`;
+type Tier = 1 | 2 | 3 | 4 | 5;
+export type ProtoWeapon = `sword-${Tier}` | `sword-${Tier}-magic`;
+export type ProtoHelmet = `war-${Tier}` | `war-${Tier}-magic` | "wolf" | "demon";
+export type ProtoArmor = `armor-${Tier}` | `armor-${Tier}-magic`;
 export const PROTO_SWORDS: ProtoWeapon[] = ["sword-1", "sword-2", "sword-3", "sword-4", "sword-5"];
 export const PROTO_WAR_HELMETS: ProtoHelmet[] = ["war-1", "war-2", "war-3", "war-4", "war-5"];
 export const PROTO_WAR_ARMORS: ProtoArmor[] = ["armor-1", "armor-2", "armor-3", "armor-4", "armor-5"];
+export const PROTO_MAGIC_SWORDS: ProtoWeapon[] = ["sword-1-magic", "sword-2-magic", "sword-3-magic", "sword-4-magic", "sword-5-magic"];
+export const PROTO_MAGIC_HELMETS: ProtoHelmet[] = ["war-1-magic", "war-2-magic", "war-3-magic", "war-4-magic", "war-5-magic"];
+export const PROTO_MAGIC_ARMORS: ProtoArmor[] = ["armor-1-magic", "armor-2-magic", "armor-3-magic", "armor-4-magic", "armor-5-magic"];
 
 /** Itens vestidos sobre o kit: trocam o capacete, a armadura e a arma da classe. */
 export interface ProtoGear {
@@ -83,7 +87,7 @@ export interface ProtoGear {
   weapon?: ProtoWeapon;
 }
 
-const tierOf = (id: string) => Number(id.slice(id.lastIndexOf("-") + 1));
+const tierOf = (id: string) => Number(/(\d)(?:-magic)?$/.exec(id)?.[1] ?? 0);
 
 const KITS: Record<ProtoClass, Kit> = {
   base: {
@@ -121,7 +125,7 @@ export const mergeLook = (extra: Partial<ProtoLook>): ProtoLook => ({ ...KNIGHT_
 
 // --- Materiais ----------------------------------------------------------------------
 
-const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire }
+const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon }
 
 const OUTLINE: Rgb = rgb("#1a1210");
 
@@ -156,6 +160,8 @@ function ramps(look: ProtoLook): Rgb[][] {
     r("#b42a24", 1, 8), // crina vermelha
     r("#4a9a86", 0.9, 4), // azinhavre
     r("#3a72d0", 1.3, 8, true), // safira
+    r("#c48a3c", 1.1, 8), // juba do leão
+    r("#d2382a", 1.1, 10, true), // escama de dragão vermelho
   ];
 }
 
@@ -240,6 +246,11 @@ class Canvas {
     if (X < 0 || Y < 0 || X >= S || Y >= S) return;
     const i = Y * S + X;
     if (this.mat[i] >= 0) this.off[i] += delta;
+  }
+
+  /** Troca o material das peças `ids` (mesma forma, outro metal). */
+  recolor(ids: readonly number[], to: Mat) {
+    for (let i = 0; i < N; i++) if (this.mat[i] >= 0 && ids.includes(this.part[i]) && this.fixed[i] < 0) this.mat[i] = to;
   }
 
   /** O pixel é da peça (ou de uma das peças). */
@@ -676,7 +687,7 @@ function arm(c: Canvas, kit: Kit, shoulder: Pt, elbow: Pt, at: Pt, far: boolean,
       }
       break;
   }
-  if (kit.armor) armorArm(c, tierOf(kit.armor), shoulder, elbow, at, far);
+  if (kit.armor) armorArm(c, kit.armor, shoulder, elbow, at, far);
   grip?.();
   hand(c, at, far);
 }
@@ -993,7 +1004,7 @@ const leafCut = (bottom: number) => (x: number, y: number) => {
 
 /** Roupa de cima do kit (ou o tronco nu com a tanga). Devolve as peças do tronco, para cinto e enfeites. */
 function torsoFront(c: Canvas, kit: Kit, top: number, back: boolean, sway: number): number[] {
-  if (kit.armor) return armorTorso(c, tierOf(kit.armor), top, back ? "up" : "down", sway);
+  if (kit.armor) return armorTorso(c, kit.armor, top, back ? "up" : "down", sway);
   switch (kit.top) {
     case "none": {
       const id = bareTorso(c, top, CX, 12, false);
@@ -1011,7 +1022,7 @@ function torsoFront(c: Canvas, kit: Kit, top: number, back: boolean, sway: numbe
 }
 
 function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
-  if (kit.armor) return armorTorso(c, tierOf(kit.armor), top, "side", sway);
+  if (kit.armor) return armorTorso(c, kit.armor, top, "side", sway);
   switch (kit.top) {
     case "none": {
       const id = bareTorso(c, top, CX, 9, true);
@@ -1028,7 +1039,7 @@ function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
 /** Cintura, barra e gola do kit sobre o tronco, de frente ou de costas. */
 function dressFront(c: Canvas, kit: Kit, ids: number[], top: number, back: boolean) {
   if (kit.armor) {
-    if (ARMOR_KEEPS_BELT[tierOf(kit.armor)]) belt(c, ids, CX, 10.5, top, !back, kit.waist === "strap" && !back);
+    if (keepsBelt(kit.armor)) belt(c, ids, CX, 10.5, top, !back, kit.waist === "strap" && !back);
     return;
   }
   switch (kit.waist) {
@@ -1096,7 +1107,7 @@ function dressFront(c: Canvas, kit: Kit, ids: number[], top: number, back: boole
 
 function dressSide(c: Canvas, kit: Kit, ids: number[], top: number) {
   if (kit.armor) {
-    if (ARMOR_KEEPS_BELT[tierOf(kit.armor)]) belt(c, ids, CX, 8.5, top, false);
+    if (keepsBelt(kit.armor)) belt(c, ids, CX, 8.5, top, false);
     return;
   }
   switch (kit.waist) {
@@ -1148,9 +1159,9 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
     case "staff": return () => staff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
     default:
-      if (kit.weapon.startsWith("sword-")) {
-        const t = tierOf(kit.weapon);
-        return () => swordArt(c, at, t === 5 ? [at[0] + out * 3, top - 30] : [at[0] + out * 4, at[1] + SWORD_LEN[t]], t);
+      if (kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic") {
+        const t = tierOf(kit.weapon), id = kit.weapon;
+        return () => swordById(c, id, at, t === 5 ? [at[0] + out * 3, top - 30] : [at[0] + out * 4, at[1] + SWORD_LEN[t]]);
       }
       return undefined;
   }
@@ -1191,8 +1202,9 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean) {
     const holds = (side < 0) === !back;
     arm(c, kit, sh, el, ha, false, holds ? weaponFront(c, kit, ha, side, top) : undefined);
     if (holds && kit.weapon === "sword") sword(c, ha, [ha[0] + side * 4, ha[1] + 21]);
+    if (holds && kit.weapon === "sword-4-magic") dancingSword(c, [ha[0] + side * 6, ha[1] - 10], [ha[0] + side * 8.4, ha[1] + 12]);
   }
-  if (kit.armor) armorShoulders(c, tierOf(kit.armor), top, back ? "up" : "down", [[CX - 12.8, top + 2], [CX + 12.8, top + 2]]);
+  if (kit.armor) armorShoulders(c, kit.armor, top, back ? "up" : "down", [[CX - 12.8, top + 2], [CX + 12.8, top + 2]]);
   if (back) headBack(c, kit, b, top);
   else headFront(c, kit, b, top);
 }
@@ -1211,7 +1223,7 @@ function side(c: Canvas, kit: Kit, frame: number) {
   leg(c, kit, hip, fk, fa, ft, true, false);
   // Braço de lá, atrás do tronco, balançando ao contrário da perna.
   arm(c, kit, [CX + 2, top + 3], [CX + 3 + s * 2, top + 10], [CX + 3 + s * 4, top + 18], true);
-  if (kit.armor) armorShoulders(c, tierOf(kit.armor), top, "side", [[CX + 3, top + 2]], true);
+  if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX + 3, top + 2]], true);
   const [nk, na, nt] = pose(s);
   leg(c, kit, hip, nk, na, nt, false, false);
 
@@ -1227,14 +1239,15 @@ function side(c: Canvas, kit: Kit, frame: number) {
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
     : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
-    : kit.weapon.startsWith("sword-") ? () => {
+    : kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic" ? () => {
       const t = tierOf(kit.weapon);
-      swordArt(c, ha, t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68], t);
+      swordById(c, kit.weapon, ha, t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]);
     }
     : undefined;
   arm(c, kit, [CX - 1, top + 3], [CX - 2 - s * 1.5, top + 10], ha, false, grip);
-  if (kit.armor) armorShoulders(c, tierOf(kit.armor), top, "side", [[CX - 0.6, top + 2]]);
+  if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX - 0.6, top + 2]]);
   if (kit.weapon === "sword") sword(c, ha, [ha[0] - 16, ha[1] + 15]);
+  if (kit.weapon === "sword-4-magic") dancingSword(c, [ha[0] - 7, ha[1] - 9], [ha[0] - 19, ha[1] + 4]);
   headSide(c, kit, b, top);
 }
 
@@ -1506,7 +1519,7 @@ function headBack(c: Canvas, kit: Kit, b: number, top: number) {
   if (kit.wild) hairLeaves(c, [[CX - 6.4, cy - 4.6, -0.4], [CX + 5.4, cy - 1.4, 0.7], [CX - 2, top + 1.6, 1.6], [CX + 7.6, top + 2, 2.2]]);
   if (kit.helmet === "wolf") wolfBack(c, cy, top);
   else if (kit.helmet === "demon") demonBack(c, cy);
-  else if (kit.helmet) warHelmet(c, tierOf(kit.helmet), "up", CX, cy, top);
+  else if (kit.helmet) helmetArt(c, kit.helmet, "up", CX, cy, top);
 }
 
 function headSide(c: Canvas, kit: Kit, b: number, top: number) {
@@ -1589,7 +1602,7 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   if (kit.beard === "stubble") stubble(c, face, X0 - 14, X0 - 2, Yc + 11, Yc + 18, (X, Y) => X > X0 - 12 || Y > Yc + 15);
   if (kit.helmet === "wolf") wolfSide(c, cx, cy, top);
   else if (kit.helmet === "demon") demonSide(c, cx, cy);
-  else if (kit.helmet) warHelmet(c, tierOf(kit.helmet), "side", cx, cy, top);
+  else if (kit.helmet) helmetArt(c, kit.helmet, "side", cx, cy, top);
   if (kit.beard === "long") {
     // Barba de perfil: do queixo e da mandíbula, apontando para baixo e para a frente; bigode caído.
     const pts: Pt[] = [[cx - 8.6, cy + 5.6], [cx - 1, cy + 3.6], [cx + 0.4, cy + 8], [cx - 3, top + 7], [cx - 6.8, top + 12.6], [cx - 8.8, top + 6], [cx - 9.6, cy + 8.6]];
@@ -1753,7 +1766,7 @@ function demonSide(c: Canvas, cx: number, cy: number) {
 function helmetFront(c: Canvas, kit: Kit, cy: number, top: number) {
   if (kit.helmet === "wolf") wolfFront(c, cy, top);
   else if (kit.helmet === "demon") demonFront(c, cy);
-  else if (kit.helmet) warHelmet(c, tierOf(kit.helmet), "down", CX, cy, top);
+  else if (kit.helmet) helmetArt(c, kit.helmet, "down", CX, cy, top);
 }
 
 /**
@@ -2154,11 +2167,9 @@ function warHelmet(c: Canvas, tier: number, view: ProtoDir, cx: number, cy: numb
 
 // --- Armaduras de guerra -------------------------------------------------------------
 
-/** A armadura tem cinto próprio (couraça, placas) ou deixa o cinto da classe por cima? */
-const ARMOR_KEEPS_BELT = [false, true, false, true, false, true];
 
 /** Tronco da armadura de guerra de nível `tier` (de frente, de costas ou de lado). */
-function armorTorso(c: Canvas, tier: number, top: number, view: ProtoDir, sway: number): number[] {
+function armorTorsoCommon(c: Canvas, tier: number, top: number, view: ProtoDir, sway: number): number[] {
   const side = view === "side";
   const T = (bottom: number, flare: number) => (side ? TORSO_SIDE(top, bottom, flare, sway * 0.4) : TORSO_FRONT(top, bottom, flare));
   const x0 = side ? CX - 10 : CX - 13, x1 = side ? CX + 10 : CX + 13;
@@ -2293,7 +2304,7 @@ function armorTorso(c: Canvas, tier: number, top: number, view: ProtoDir, sway: 
 }
 
 /** Ombros da armadura (depois dos braços). `sides`: −1/1 de frente e de costas; de lado, só o ombro pedido. */
-function armorShoulders(c: Canvas, tier: number, top: number, view: ProtoDir, at: readonly Pt[], far = false) {
+function shouldersCommon(c: Canvas, tier: number, top: number, view: ProtoDir, at: readonly Pt[], far = false) {
   const dk = far ? () => -1 : undefined;
   at.forEach((p, i) => {
     const s = view === "side" ? -1 : i === 0 ? -1 : 1;
@@ -2339,7 +2350,7 @@ function armorShoulders(c: Canvas, tier: number, top: number, view: ProtoDir, at
 }
 
 /** O que a armadura põe nos braços (por cima da manga da classe). */
-function armorArm(c: Canvas, tier: number, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) {
+function armorArmCommon(c: Canvas, tier: number, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) {
   const dk = (o?: Offset): Offset => (X, Y) => (o ? o(X, Y) : 0) + (far ? -1 : 0);
   switch (tier) {
     case 2: {
@@ -2371,7 +2382,460 @@ export const PROTO_ITEM_NAMES: Record<string, string> = {
   "war-1": "Gorro de couro", "war-2": "Elmo de bronze", "war-3": "Elmo de ferro", "war-4": "Elmo de mithral", "war-5": "Elmo do dragão",
   "armor-1": "Gibão de couro", "armor-2": "Couraça de bronze", "armor-3": "Cota de malha", "armor-4": "Placas de mithral", "armor-5": "Escamas de dragão",
   wolf: "Capuz do Lobo", demon: "Elmo do Demônio",
+  "sword-1-magic": "Espada do Juramento", "sword-2-magic": "Lâmina Flamejante", "sword-3-magic": "Vingadora Sagrada", "sword-4-magic": "Espada Dançarina", "sword-5-magic": "Espada Vorpal",
+  "war-1-magic": "Gorro do Escudeiro", "war-2-magic": "Elmo do Vigia", "war-3-magic": "Elmo do Brilho", "war-4-magic": "Elmo do Cavaleiro Grifo", "war-5-magic": "Elmo do Demônio",
+  "armor-1-magic": "Gibão do Aventureiro", "armor-2-magic": "Couraça do Leão", "armor-3-magic": "Cota Élfica", "armor-4-magic": "Armadura de Placas Anã", "armor-5-magic": "Escamas do Dragão Vermelho",
 };
+
+// --- Lote 2: os mágicos de espada, elmo e armadura de guerra (docs/ARTE_ITENS.md) -------
+
+/** Gema lapidada: elipse do material com faceta clara e borda escura. */
+function gem(c: Canvas, at: Pt, r: number, mat: Mat) {
+  const id = ellipse(c, at[0], at[1], r, r * 0.9, mat);
+  c.on(id, F(at[0] - r * 0.4), F(at[1] - r * 0.4), mat, 5);
+  c.on(id, F(at[0] + r * 0.3), F(at[1] + r * 0.3), mat, 1);
+  return id;
+}
+
+/** Chama em gota subindo de `at`: borda em brasa e miolo âmbar. `lean` entorta a ponta. */
+function flame(c: Canvas, at: Pt, h: number, w: number, lean = 0) {
+  const test = (scale: number) => (x: number, y: number) => {
+    const v = (at[1] - (y + 0.5)) / (h * scale);
+    if (v < -0.15 || v > 1) return false;
+    const width = w * scale * Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, v * 0.85 + 0.15))), 0.8) * (1 - v * 0.55);
+    return Math.abs(x + 0.5 - at[0] - lean * v * v * h) <= width;
+  };
+  const box: Box = [at[0] - w - Math.abs(lean) * h - 1, at[1] - h - 1, at[0] + w + Math.abs(lean) * h + 1, at[1] + 1];
+  c.fill(box, test(1), Mat.Ember, () => 0.72);
+  c.fill(box, test(0.55), Mat.Amber, () => 0.95);
+}
+
+/** Pena: haste com barbas, do material, ponta clara. */
+function feather(c: Canvas, a: Pt, b: Pt, w: number, mat: Mat, stripes?: Mat) {
+  const id = limb(c, a, b, w * 0.5, w, mat, stripes ? undefined : (X, Y) => ((X + Y) % 3 === 0 ? -1 : 0));
+  thread(c, a, b, mat, 4, [id]);
+  if (stripes) {
+    const n = 5;
+    for (let k = 1; k < n; k++) {
+      const p = lerp(a, b, k / n), dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy);
+      thread(c, [p[0] - (dy / l) * w * 1.2, p[1] + (dx / l) * w * 1.2], [p[0] + (dy / l) * w * 1.2, p[1] - (dx / l) * w * 1.2], stripes, 1, [id]);
+    }
+  }
+  return id;
+}
+
+// --- Espadas mágicas -----------------------------------------------------------------
+
+function swordMagic(c: Canvas, at: Pt, tip: Pt, tier: number) {
+  const dx = tip[0] - at[0], dy = tip[1] - at[1];
+  const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, gx = -uy, gy = ux;
+  const P = (a: number, g: number): Pt => [at[0] + ux * a + gx * g, at[1] + uy * a + gy * g];
+  switch (tier) {
+    case 1: {
+      // Espada do Juramento (Sword of Life Stealing): aço escuro com um sulco vermelho que corre até a gema da guarda,
+      // gota de sangue gravada e a fita do juramento amarrada no pomo.
+      const b = blade(c, P(3.4, 0), tip, taper(2, 1.8, 0.8), Mat.Iron, 0, 0);
+      for (let t = 0.04; t < 0.74; t += 0.01) { const p = lerp(P(3.4, 0), tip, t); c.on(b, F(p[0]), F(p[1]), Mat.Ember, t < 0.2 ? 4 : 2); c.on(b, F(p[0]) + 1, F(p[1]), Mat.Ember, 1); }
+      const drop = lerp(P(3.4, 0), tip, 0.3);
+      plate(c, [[drop[0] - 0.8, drop[1] + 0.3], [drop[0], drop[1] - 1.4], [drop[0] + 0.8, drop[1] + 0.3], [drop[0], drop[1] + 1.1]], Mat.Ember);
+      limb(c, P(3, -3.2), P(3, 3.2), 0.8, 0.8, Mat.Iron);
+      gem(c, P(3, 0), 1, Mat.Ember);
+      grip(c, P(-3, 0), P(2.4, 0), 1.05, Mat.Leather, Mat.Ember);
+      const pm = ellipse(c, ...P(-3.8, 0), 1.2, 1.2, Mat.Iron);
+      void pm;
+      for (const s of [-1, 1]) chain(c, [P(-4.2, s * 0.4), P(-5.6, s * 1.4 + 1), P(-6.4, s * 0.8 + 2.8), P(-7.6, s * 1.6 + 3.6)], 0.5, Mat.Crest, undefined, 0.35);
+      return;
+    }
+    case 2: {
+      // Lâmina Flamejante (Flame Tongue): lâmina ondulada de bronze escurecido com chamas subindo do gume.
+      const w = (t: number) => (t > 0.86 ? 2.2 * (1 - t) / 0.14 + 0.12 : 1.7 + Math.sin(t * Math.PI * 7) * 0.45);
+      blade(c, P(3.4, 0), tip, w, Mat.Steel, 0, 0.75, (X, Y) => (noise(X, Y) < 0.08 ? -1 : 0));
+      const g = chain(c, [P(4.2, -3.4), P(3, -1.4), P(2.8, 0), P(3, 1.4), P(4.2, 3.4)], 0.8, Mat.Bronze, undefined, 0.8);
+      void g;
+      grip(c, P(-2.8, 0), P(2.4, 0), 1.05, Mat.Leather, Mat.Bronze);
+      gem(c, P(-3.8, 0), 1.2, Mat.Ember);
+      for (let t = 0.12; t < 0.9; t += 0.13) {
+        const p = lerp(P(3.4, 0), tip, t);
+        for (const s of [-1, 1]) flame(c, [p[0] + gx * s * 2.2, p[1] + gy * s * 2.2], 3.6 + noise(t * 10, s) * 2.2, 1.25, s * 0.18);
+      }
+      return;
+    }
+    case 3: {
+      // Vingadora Sagrada (Holy Avenger): lâmina larga de prata com sulco dourado, guarda em asas de anjo,
+      // sol no centro e brilhos de luz em volta.
+      const b = blade(c, P(3.6, 0), tip, taper(2.2, 1.7, 0.88), Mat.Mithral, 0, 0);
+      for (let t = 0.04; t < 0.78; t += 0.008) { const p = lerp(P(3.6, 0), tip, t); c.on(b, F(p[0]), F(p[1]), Mat.Trim, 4); c.on(b, F(p[0]) + 1, F(p[1]), Mat.Trim, 2); }
+      for (const s of [-1, 1]) for (let k = 0; k < 4; k++) feather(c, P(3.2, s * 1.4), P(2.2 - k * 1.2, s * (6.4 - k * 0.6)), 0.8, Mat.White, undefined);
+      const sun = gem(c, P(3, 0), 1.6, Mat.Trim);
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; thread(c, [P(3, 0)[0] + Math.cos(a) * 1.8, P(3, 0)[1] + Math.sin(a) * 1.8], [P(3, 0)[0] + Math.cos(a) * 2.8, P(3, 0)[1] + Math.sin(a) * 2.8], Mat.Trim, 5); }
+      void sun;
+      grip(c, P(-3.4, 0), P(2.2, 0), 1, Mat.White, Mat.Trim);
+      gem(c, P(-4.4, 0), 1.3, Mat.Sapphire);
+      // Brilhos em cruz ao longo da lâmina.
+      for (const t of [0.25, 0.55, 0.85]) {
+        const p = lerp(P(3.6, 0), tip, t), q: Pt = [p[0] + gx * 3.4 * (t > 0.5 ? -1 : 1), p[1] + gy * 3.4];
+        for (let k = -2; k <= 2; k++) { c.px(F(q[0]) + k, F(q[1]), Mat.White, Math.abs(k) === 2 ? 3 : 5); c.px(F(q[0]), F(q[1]) + k, Mat.White, Math.abs(k) === 2 ? 3 : 5); }
+      }
+      return;
+    }
+    case 5: {
+      // Espada Vorpal: obsidiana negra com o gume em violeta e um crânio na guarda; o rastro roxo acompanha o fio.
+      const guard: Pt = P(3, 0);
+      const b = blade(c, guard, tip, (t) => (t > 0.88 ? 2.4 * (1 - t) / 0.12 + 0.1 : 2.4 - t * 0.6), Mat.Iron, -0.03, 0.8);
+      const bl = Math.hypot(tip[0] - guard[0], tip[1] - guard[1]);
+      for (let t = 0.02; t < 0.95; t += 0.004) {
+        const p = lerp(guard, tip, t), w = t > 0.88 ? 2.4 * (1 - t) / 0.12 : 2.4 - t * 0.6, bend = -0.03 * bl * t * t;
+        c.on(b, F(p[0] + gx * (w - 0.2 + bend)), F(p[1] + gy * (w - 0.2 + bend)), Mat.Gem, 5);
+        c.on(b, F(p[0] + gx * (w - 0.6 + bend)), F(p[1] + gy * (w - 0.6 + bend)), Mat.Gem, 3);
+        if (noise(t * 300, 1) < 0.35) c.px(F(p[0] + gx * (w + 1.2 + bend + noise(t * 200, 2) * 1.6)), F(p[1] + gy * (w + 1.2 + bend)), Mat.Gem, 2);
+      }
+      for (const s of [-1, 1]) chain(c, [P(3, s * 0.8), P(2.4, s * 3.4), P(0.6, s * 5.2)], 0.75, Mat.Iron, undefined, 0.3);
+      const skull = ellipse(c, guard[0], guard[1], 1.9, 1.7, Mat.White);
+      for (const s of [-1, 1]) { c.on(skull, F(guard[0] + s * 0.7), F(guard[1] - 0.2), Mat.Eye, 0); c.on(skull, F(guard[0] + s * 0.7), F(guard[1]), Mat.Gem, 4); }
+      c.on(skull, F(guard[0]), F(guard[1] + 1), Mat.Eye, 0);
+      grip(c, P(-6.4, 0), P(1.6, 0), 1.1, Mat.Iron, Mat.Gem);
+      gem(c, P(-7.2, 0), 1.3, Mat.Gem);
+      return;
+    }
+    default:
+      return;
+  }
+}
+
+/** Espada Dançarina (Dancing Sword): rapieira de guarda em fita espiral flutuando sozinha ao lado do herói, com rastro. */
+function dancingSword(c: Canvas, hilt: Pt, tip: Pt) {
+  const dx = tip[0] - hilt[0], dy = tip[1] - hilt[1];
+  const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, gx = -uy, gy = ux;
+  // Rastro: duas cópias apagadas atrás, em pontilhado.
+  for (const k of [2.4, 1.2]) {
+    const off: Pt = [-gx * k * 1.4 - ux * k * 0.4, -gy * k * 1.4 - uy * k * 0.4];
+    c.fill([Math.min(hilt[0], tip[0]) - 6, Math.min(hilt[1], tip[1]) - 6, Math.max(hilt[0], tip[0]) + 6, Math.max(hilt[1], tip[1]) + 6], (x, y, X, Y) => {
+      const s = seg(x + 0.5, y + 0.5, [hilt[0] + off[0] + ux * 3, hilt[1] + off[1] + uy * 3], [tip[0] + off[0], tip[1] + off[1]]);
+      return s.d < 0.8 && BAYER[(Y & 1) * 2 + (X & 1)] < (k > 2 ? 0.3 : 0.55);
+    }, Mat.Mithral, () => 0.9);
+  }
+  blade(c, [hilt[0] + ux * 3, hilt[1] + uy * 3], tip, taper(0.95, 0.7, 0.9), Mat.Mithral, 0, 0.6);
+  // Guarda em fita espiral dourada.
+  const pts: Pt[] = [];
+  for (let k = 0; k <= 14; k++) { const a = (k / 14) * Math.PI * 2.2; pts.push([hilt[0] + ux * (1 + k * 0.18) + gx * Math.cos(a) * 2.6, hilt[1] + uy * (1 + k * 0.18) + gy * Math.cos(a) * 2.6 - Math.sin(a) * 0.6]); }
+  chain(c, pts, 0.38, Mat.Trim);
+  grip(c, [hilt[0] - ux * 3.6, hilt[1] - uy * 3.6], [hilt[0] + ux * 1.6, hilt[1] + uy * 1.6], 0.8, Mat.Iron, Mat.Trim);
+  gem(c, [hilt[0] - ux * 4.4, hilt[1] - uy * 4.4], 1, Mat.Sapphire);
+  // Riscos de movimento.
+  for (const k of [-1, 1]) thread(c, [hilt[0] + gx * k * 4 + ux * 6, hilt[1] + gy * k * 4 + uy * 6], [hilt[0] + gx * k * 4.6 + ux * 11, hilt[1] + gy * k * 4.6 + uy * 11], Mat.White, (j) => (j % 4 < 2 ? 4 : -1));
+}
+
+// --- Elmos mágicos -------------------------------------------------------------------
+
+function warHelmetMagic(c: Canvas, tier: number, view: ProtoDir, cx: number, cy: number, top: number) {
+  switch (tier) {
+    case 1: {
+      // Gorro do Escudeiro: o gorro de couro com pena de faisão listrada e o brasão costurado na testa.
+      cap1(c, view, cx, cy);
+      const base: Pt = view === "side" ? [cx + 4, cy - 6] : view === "up" ? [cx - 6, cy - 6] : [cx + 6, cy - 6];
+      const dir = view === "up" ? -1 : 1;
+      feather(c, base, [base[0] + dir * 5, base[1] - 8], 0.9, Mat.Bronze, Mat.Leather);
+      feather(c, [base[0], base[1] + 0.6], [base[0] + dir * 7, base[1] - 5], 0.75, Mat.Crest, Mat.Leather);
+      if (view !== "up") {
+        const ox = view === "side" ? cx - 4 : cx;
+        const crest = plate(c, [[ox - 1.8, cy - 8], [ox + 1.8, cy - 8], [ox + 1.6, cy - 5.6], [ox, cy - 4.4], [ox - 1.6, cy - 5.6]], Mat.Primary);
+        thread(c, [ox - 1.8, cy - 8], [ox + 1.8, cy - 8], Mat.Trim, 4, [crest]);
+        thread(c, [ox, cy - 7.6], [ox, cy - 4.8], Mat.Trim, 4, [crest]);
+      }
+      return;
+    }
+    case 2: {
+      // Elmo do Vigia: cara de corujurso — disco de penas em volta de dois olhos enormes, bico de chifre, tufos de orelha
+      // e pelo de urso na nuca.
+      const ox = view === "side" ? cx + 0.6 : cx;
+      if (view !== "side") for (const s of [-1, 1]) plate(c, [[ox + s * 4, cy - 8], [ox + s * 8.6, cy - 15.6], [ox + s * 8.2, cy - 7.4]], Mat.Fur, fur);
+      else plate(c, [[ox + 1, cy - 8], [ox + 4.6, cy - 16], [ox + 5.6, cy - 7]], Mat.Fur, fur);
+      const shell = c.fill(ebox(ox, cy, 10.2, 11), (x, y) => inEllipse(ox, cy - 0.2, 9.8, 10.6)(x, y) && (view !== "down" || !(Math.abs(x + 0.5 - ox) < 3.4 && y > cy + 6)),
+        Mat.Fur, sphere(ox, cy - 1, 10.2, 11), fur);
+      void shell;
+      if (view === "up") return;
+      if (view === "down") {
+        for (const s of [-1, 1]) {
+          const disk = c.fill(ebox(ox + s * 4, cy + 0.6, 4.6, 4.6), inEllipse(ox + s * 4, cy + 0.6, 4.4, 4.4), Mat.FurLight, sphere(ox + s * 4, cy, 4.6, 4.6),
+            (X, Y) => { const a = Math.atan2(Y - F(cy + 0.6), X - F(ox + s * 4)); return Math.round(a * 6) % 2 ? -1 : 0; });
+          void disk;
+          const eye = ellipse(c, ox + s * 4, cy + 0.6, 2.2, 2.2, Mat.Amber);
+          ellipse(c, ox + s * 4, cy + 0.8, 1, 1.2, Mat.Eye);
+          c.on(eye, F(ox + s * 4 - 1), F(cy - 0.4), Mat.White, 5);
+          thread(c, [ox + s * 1.2, cy - 3], [ox + s * 7.6, cy - 4.4], Mat.Fur, 0);
+        }
+        plate(c, [[ox - 1.6, cy + 1.6], [ox + 1.6, cy + 1.6], [ox + 0.6, cy + 6.4], [ox, cy + 7.4], [ox - 0.6, cy + 6.4]], Mat.Horn);
+      } else {
+        const disk = c.fill(ebox(ox - 4.6, cy + 0.6, 4, 4.4), inEllipse(ox - 4.6, cy + 0.6, 3.6, 4.4), Mat.FurLight, sphere(ox - 4.6, cy, 4, 4.6));
+        void disk;
+        ellipse(c, ox - 5.6, cy + 0.6, 1.6, 2, Mat.Amber);
+        ellipse(c, ox - 6, cy + 0.8, 0.8, 1.2, Mat.Eye);
+        plate(c, [[ox - 8.4, cy + 2], [ox - 12.2, cy + 3.6], [ox - 11.4, cy + 6.4], [ox - 8.2, cy + 5]], Mat.Horn);
+      }
+      return;
+    }
+    case 3: {
+      // Elmo do Brilho (Helm of Brilliance): o elmo de ferro cravejado de diamantes, rubis, opalas de fogo e opalas,
+      // com chamas leves na coroa.
+      cap3(c, view, cx, cy, top);
+      const ox = view === "side" ? cx + 0.6 : cx;
+      const mats = [Mat.White, Mat.Ember, Mat.Amber, Mat.Sapphire];
+      const band = view === "side" ? [-8, -4.6, -1.2, 2.2, 5.6, 8.6] : [-8, -5.4, -2.7, 0, 2.7, 5.4, 8];
+      band.forEach((k, i) => gem(c, [ox + k, cy - 2.2], 1.05, mats[i % 4]));
+      for (const [k, y] of [[0, -12], [-2.6, -9], [2.6, -9]] as const) if (view !== "side" || k <= 0) gem(c, [ox + k, cy + y], 1.15, mats[(Math.round(Math.abs(k)) + 1) % 4]);
+      for (const k of view === "side" ? [-5, 0, 5] : [-6.4, -3.2, 0, 3.2, 6.4]) flame(c, [ox + k, cy - 6.6 - Math.max(0, 6 - Math.abs(k)) * 1.1], 3.6, 1, 0.12);
+      return;
+    }
+    case 4: {
+      // Elmo do Cavaleiro Grifo: viseira em bico de grifo, sobrancelhas de pena e asas abrindo nas laterais.
+      const ox = view === "side" ? cx + 0.4 : cx;
+      const wing = (s: number, far: boolean) => {
+        for (let k = 0; k < 6; k++) {
+          const base: Pt = [ox + s * 7.6, cy - 4 + k * 0.6];
+          const tip: Pt = [ox + s * (14 - k * 0.4), cy - 15 + k * 2.4];
+          feather(c, base, tip, 1.05 - k * 0.06, k % 2 ? Mat.White : Mat.Linen);
+          if (far) void 0;
+        }
+      };
+      if (view === "side") wing(1, true);
+      else for (const s of [-1, 1]) wing(s, false);
+      const shell = c.fill(ebox(ox, cy, 10, 11), (x, y) => inEllipse(ox, cy - 0.4, 9.6, 10.6)(x, y), Mat.Mithral, sphere(ox, cy - 1, 10, 11), (X, Y) => (noise(X, Y) < 0.02 ? 1 : 0));
+      if (view === "up") { thread(c, [ox, cy - 10], [ox, cy + 10], Mat.Trim, 4, [shell]); return; }
+      if (view === "down") {
+        for (const s of [-1, 1]) {
+          c.fill([ox + Math.min(s, s * 7) - 0.5, cy + 0.4, ox + Math.max(s, s * 7) + 0.5, cy + 2.6], (x, y) => { const d = (x + 0.5 - ox) * s; return d > 1.6 && d < 7 && Math.abs(y + 0.5 - (cy + 1.4 + (d - 4) * 0.12)) < 0.8; }, Mat.Eye, () => 0.1);
+          for (let k = 0; k < 5; k++) feather(c, [ox + s * (1.4 + k * 1.3), cy - 1.6], [ox + s * (2.6 + k * 1.4), cy - 3.4 - (k % 2) * 0.6], 0.55, Mat.Trim);
+        }
+        // Bico de grifo descendo sobre o rosto.
+        plate(c, [[ox - 2.4, cy - 1.4], [ox + 2.4, cy - 1.4], [ox + 1.6, cy + 6.4], [ox, cy + 9.4], [ox - 1.6, cy + 6.4]], Mat.Trim);
+        thread(c, [ox - 1.4, cy + 4], [ox + 1.4, cy + 4], Mat.Trim, 1);
+      } else {
+        c.fill([ox - 9.6, cy + 0.4, ox - 3, cy + 2.6], (x, y) => x + 0.5 > ox - 8.6 && x + 0.5 < ox - 3.6 && Math.abs(y + 0.5 - (cy + 1.4)) < 0.8, Mat.Eye, () => 0.1);
+        for (let k = 0; k < 4; k++) feather(c, [ox - 8.6 + k * 1.4, cy - 1.6], [ox - 7.4 + k * 1.6, cy - 3.6], 0.55, Mat.Trim);
+        plate(c, [[ox - 8.8, cy - 1.4], [ox - 13.6, cy + 2.6], [ox - 12.4, cy + 6], [ox - 8.6, cy + 4.6]], Mat.Trim);
+        wing(-1, false);
+      }
+      return;
+    }
+    default:
+      if (view === "down") demonFront(c, cy);
+      else if (view === "up") demonBack(c, cy);
+      else demonSide(c, cx, cy);
+  }
+}
+
+// --- Armaduras mágicas ---------------------------------------------------------------
+
+function armorMagicTorso(c: Canvas, tier: number, top: number, view: ProtoDir, sway: number): number[] {
+  const side = view === "side";
+  const T = (bottom: number, flare: number) => (side ? TORSO_SIDE(top, bottom, flare, sway * 0.4) : TORSO_FRONT(top, bottom, flare));
+  const x0 = side ? CX - 10 : CX - 13, x1 = side ? CX + 10 : CX + 13;
+  switch (tier) {
+    case 1: {
+      // Gibão do Aventureiro: couro com camisa de linho na gola, bandoleira de bolsinhos, mapa enrolado e a bolsa de
+      // carga (Bag of Holding) com o brilho roxo saindo da boca.
+      const id = poly(c, T(top + 21, 1.2), Mat.Leather, x0, x1, leather);
+      if (!side && view === "down") plate(c, [[CX - 3, top - 0.4], [CX + 3, top - 0.4], [CX, top + 4]], Mat.Linen);
+      const a: Pt = side ? [CX + 4, top + 0.6] : view === "down" ? [CX - 9.6, top + 1] : [CX + 9.6, top + 1];
+      const b: Pt = side ? [CX - 6.4, top + 13] : view === "down" ? [CX + 10, top + 14] : [CX - 10, top + 14];
+      quiverStrap(c, [id], a, b);
+      if (view !== "up") for (const t of [0.2, 0.45, 0.7]) {
+        const p = lerp(a, b, t);
+        const bag = plate(c, [[p[0] - 1.3, p[1] - 0.2], [p[0] + 1.3, p[1] - 0.2], [p[0] + 1.1, p[1] + 2.2], [p[0] - 1.1, p[1] + 2.2]], Mat.Leather, leather);
+        thread(c, [p[0] - 1.3, p[1] + 0.6], [p[0] + 1.3, p[1] + 0.6], Mat.Leather, 0, [bag]);
+        rivet(c, [bag], p[0], p[1] + 1, Mat.Bronze);
+      }
+      if (view === "down") {
+        // Mapa enrolado e bolsa de carga no quadril.
+        const map = limb(c, [CX + 5.6, top + 11], [CX + 9.6, top + 8.6], 0.9, 0.9, Mat.Linen);
+        thread(c, [CX + 7, top + 10.6], [CX + 7.4, top + 9], Mat.Crest, 2, [map]);
+        const bx = CX - 7.6, by = top + 17.6;
+        const bag = c.fill(ebox(bx, by, 3, 3), inEllipse(bx, by, 2.6, 2.8), Mat.Primary, sphere(bx, by - 0.6, 3, 3), linen);
+        thread(c, [bx - 1.6, by - 2.2], [bx + 1.6, by - 2.2], Mat.Trim, 4, [bag]);
+        for (let k = 0; k < 6; k++) c.px(F(bx - 1 + k * 0.4), F(by - 3 - (k % 3) * 0.6), Mat.Gem, k % 2 ? 5 : 3);
+      }
+      return [id];
+    }
+    case 2: {
+      // Couraça do Leão: couraça dourada com a cabeça do leão no peito; a juba vira as ombreiras.
+      const skirt = armorTorsoCommon(c, 2, top, view, sway)[1];
+      const id = poly(c, T(top + 13.8, 0), Mat.Trim, x0, x1, (X, Y) => (noise(X >> 1, Y >> 1) < 0.04 ? -1 : 0));
+      for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(top), Mat.Trim, 5); c.on(id, X, F(top + 13.4), Mat.Trim, 1); }
+      if (view === "down") {
+        const fx = CX, fy = top + 6.6;
+        const mane = c.fill(ebox(fx, fy, 5, 5), (x, y, X, Y) => {
+          const d = Math.hypot(x + 0.5 - fx, (y + 0.5 - fy) * 1.05);
+          return d < 4.4 + (Math.round(Math.atan2(Y - F(fy), X - F(fx)) * 4) % 2 ? 0.6 : 0);
+        }, Mat.Mane, sphere(fx, fy - 1, 5, 5), (X, Y) => (Math.round(Math.atan2(Y - F(fy), X - F(fx)) * 8) % 2 ? -1 : 0));
+        const face = c.fill(ebox(fx, fy + 0.4, 2.8, 3.2), inEllipse(fx, fy + 0.4, 2.6, 3), Mat.Trim, sphere(fx, fy - 0.4, 3, 3.2));
+        for (const s of [-1, 1]) { c.on(face, F(fx + s * 1.1), F(fy - 0.6), Mat.Eye, 0); c.on(face, F(fx + s * 1.1) + (s < 0 ? -1 : 1), F(fy - 0.6), Mat.Eye, 0); }
+        plate(c, [[fx - 0.9, fy + 0.8], [fx + 0.9, fy + 0.8], [fx, fy + 1.8]], Mat.Horn);
+        thread(c, [fx - 1.2, fy + 2.6], [fx + 1.2, fy + 2.6], Mat.Eye, 0, [face]);
+        void mane;
+      } else if (view === "up") {
+        thread(c, [CX, top + 1], [CX, top + 13], Mat.Trim, 1, [id]);
+      }
+      return [id, skirt];
+    }
+    case 3: {
+      // Cota Élfica (Elven Chain): malha fina prateada até o meio da coxa, barra em pontas de folha, faixa verde.
+      const hem = (x: number, y: number) => y + 0.5 > top + 21 + Math.abs(((x + 0.5) / 2.2) % 1 - 0.5) * 3.6;
+      const id = poly(c, T(top + 23, 1.6), Mat.Mithral, x0, x1, (X, Y) => mail(X, Y) - 1, hem);
+      if (view !== "up" && !side) for (let y = top + 1.6; y < top + 12; y += 2.4) { leaf(c, [CX - 1.2, y], 2.6, 1.3, 0.6); leaf(c, [CX + 1.2, y + 1.2], 0.5, 1.3, 0.6); }
+      if (!side) thread(c, [CX, top + 0.6], [CX, top + 12.6], Mat.Leaf, 1, [id]);
+      for (let x = CX - 12; x <= CX + 12; x += 2.2) thread(c, [x + 1.1, top + 21.2], [x + 1.1, top + 22.6], Mat.Mithral, 5, [id]);
+      for (let X = F(x0); X <= F(x1); X++) for (let k = 0; k < 4; k++) c.on([id], X, F(top + 13) + k, Mat.Leaf, k === 0 ? 4 : k === 3 ? 1 : 3);
+      if (!side) for (const k of [-4, 4]) leaf(c, [CX + k, top + 3.4], k < 0 ? 2.4 : 0.7, 1.6, 0.8, Mat.Mithral);
+      return [id];
+    }
+    case 4: {
+      // Armadura de Placas Anã: placas grossas de ferro com faixas douradas, rosto de rei anão em relevo no peito
+      // (a barba trançada desce até a cintura) e runas acesas.
+      const ids = armorTorsoCommon(c, 4, top, view, sway);
+      c.recolor(ids, Mat.Iron);
+      const plateId = poly(c, T(top + 14.2, 0), Mat.Iron, x0, x1, hammered);
+      for (let X = F(x0); X <= F(x1); X++) { for (const y of [top + 0.4, top + 13.6]) { c.on(plateId, X, F(y), Mat.Trim, 4); c.on(plateId, X, F(y) + 1, Mat.Trim, 2); } }
+      if (view === "down") {
+        const fy = top + 4.2;
+        const face = c.fill(ebox(CX, fy, 3.4, 3), inEllipse(CX, fy, 3.2, 2.8), Mat.Trim, sphere(CX, fy - 0.8, 3.4, 3));
+        thread(c, [CX - 2.6, fy - 1], [CX - 0.6, fy - 0.4], Mat.Trim, 1, [face]); thread(c, [CX + 2.6, fy - 1], [CX + 0.6, fy - 0.4], Mat.Trim, 1, [face]);
+        for (const s of [-1, 1]) c.on(face, F(CX + s * 1.3), F(fy), Mat.Sapphire, 5);
+        plate(c, [[CX - 0.7, fy - 0.2], [CX + 0.7, fy - 0.2], [CX + 0.9, fy + 1.6], [CX - 0.9, fy + 1.6]], Mat.Trim);
+        // Bigode e barba em duas tranças com anéis.
+        for (const s of [-1, 1]) chain(c, [[CX + s * 0.4, fy + 1.8], [CX + s * 2.4, fy + 2.4], [CX + s * 3.2, fy + 3.6]], 0.6, Mat.Trim, undefined, 0.3);
+        for (const s of [-1, 1]) {
+          const br = chain(c, [[CX + s * 0.8, fy + 2.4], [CX + s * 1.2, fy + 6], [CX + s * 0.9, top + 13.2]], 0.85, Mat.Trim, (X, Y) => ((Y + X * s) % 3 === 0 ? -1 : 0), 0.6);
+          void br;
+          limb(c, [CX + s * 1.1, top + 11], [CX + s * 1.1, top + 11.8], 0.95, 0.95, Mat.Iron);
+        }
+        for (const [rx, ry] of [[-6.6, 3.4], [6.6, 3.4], [-7, 9], [7, 9]] as const) {
+          const g = [[0, -1], [0, 0], [0, 1], [1, -1], [-1, 1]];
+          for (const [ddx, ddy] of g) c.on(plateId, F(CX + rx) + ddx, F(top + ry) + ddy, Mat.Sapphire, 5);
+        }
+      } else if (view === "up") {
+        for (const y of [3, 7, 11]) thread(c, [CX - 9, top + y], [CX + 9, top + y], Mat.Iron, 1, [plateId]);
+      }
+      return [plateId, ...ids.slice(1)];
+    }
+    default: {
+      // Escamas do Dragão Vermelho (Dragon Scale Mail): escamas vermelhas vivas com brasa entre elas, placa de peito
+      // com chama e asinhas nas costas.
+      if (view !== "down") {
+        for (const s of side ? [1] : [-1, 1]) {
+          const base: Pt = [CX + (side ? 6 : s * 4), top + 3];
+          const tipW: Pt = [CX + (side ? 16 : s * 15), top - 8];
+          chain(c, [base, [base[0] + (tipW[0] - base[0]) * 0.5, base[1] - 7], tipW], 0.8, Mat.Horn, undefined, 0.4);
+          plate(c, [base, tipW, [CX + (side ? 15 : s * 14.4), top - 2], [CX + (side ? 12.6 : s * 11.4), top + 1.6], [CX + (side ? 11 : s * 10), top + 6], [CX + (side ? 8 : s * 6.4), top + 7]], Mat.RedDragon, (X, Y) => ((X + Y) % 5 === 0 ? -1 : 0));
+        }
+      }
+      const hem = (x: number, y: number) => y + 0.5 > top + 21.6 + Math.abs(((x + 0.5) / 1.8) % 1 - 0.5) * 2.4;
+      const id = poly(c, T(top + 24, 2), Mat.RedDragon, x0, x1, (X, Y) => { const v = scales(6, 5)(X, Y); return v < 0 && noise(X >> 1, Y) < 0.25 ? 0 : v; }, hem);
+      // Brasa entre as escamas.
+      for (let Y = F(top + 2); Y < F(top + 22); Y++) for (let X = F(x0); X <= F(x1); X++) if (Y % 5 === 4 && noise(X >> 1, Y) < 0.18) c.on([id], X, Y, Mat.Ember, 4);
+      if (view === "down") {
+        const chest = plate(c, [[CX - 6, top + 2], [CX + 6, top + 2], [CX + 4.4, top + 10.4], [CX, top + 12.4], [CX - 4.4, top + 10.4]], Mat.Dragon, scales(9, 7));
+        thread(c, [CX - 6, top + 2], [CX, top + 12.4], Mat.Horn, 3, [chest]); thread(c, [CX + 6, top + 2], [CX, top + 12.4], Mat.Horn, 2, [chest]);
+        flame(c, [CX, top + 9.6], 5, 1.6, 0);
+      }
+      for (const s of side ? [1] : [-1, 1]) for (const k of [2.6, 4.6, 6.6]) plate(c, [[CX + s * k - 0.8, top + 0.6], [CX + s * k + 0.8, top + 0.6], [CX + s * (k + 0.6), top - 3]], Mat.Horn);
+      belt(c, [id], CX, side ? 8.5 : 10.5, top, false);
+      return [id];
+    }
+  }
+}
+
+function shouldersMagic(c: Canvas, tier: number, top: number, view: ProtoDir, at: readonly Pt[], far: boolean) {
+  at.forEach((p, i) => {
+    const s = view === "side" ? -1 : i === 0 ? -1 : 1;
+    const dk: Offset = (X, Y) => (far ? -1 : 0) + fur(X, Y);
+    switch (tier) {
+      case 1: {
+        // Rolo de corda num ombro.
+        if (view === "side" ? far : s < 0) return;
+        for (let k = 0; k < 3; k++) {
+          const ring = c.fill(ebox(p[0], p[1] - 0.6 + k * 0.6, 4, 2.4), (x, y) => { const d = Math.hypot((x + 0.5 - p[0]) / 3.6, (y + 0.5 - (p[1] - 0.6 + k * 0.6)) / 2.2); return d < 1 && d > 0.62; },
+            Mat.Linen, (x) => lit((x + 0.5 - p[0]) / 4, -0.3, 0.8), (X, Y) => ((X + Y) % 3 === 0 ? -1 : 0));
+          void ring;
+        }
+        return;
+      }
+      case 2: {
+        // Juba do leão caindo sobre os ombros.
+        c.fill(ebox(p[0], p[1] + 1, 5.2, 4.6), (x, y) => inEllipse(p[0], p[1] + 0.6, 4.8, 4)(x, y) && !furHem(p[1] + 2.6)(x, y), Mat.Mane, sphere(p[0], p[1] - 0.6, 5, 4.4), dk);
+        return;
+      }
+      case 3: {
+        leaf(c, [p[0], p[1] - 0.4], s < 0 ? 2.6 : 0.5, 2.4, 1.2, Mat.Mithral);
+        return;
+      }
+      case 4: {
+        // Ombreiras redondas de ferro com aro dourado e rebites.
+        const id = c.fill(ebox(p[0], p[1], 5.2, 4.2), (x, y) => inEllipse(p[0], p[1] - 0.2, 5, 3.8)(x, y) && y < p[1] + 2.2, Mat.Iron, sphere(p[0], p[1] - 1.2, 5.2, 4.2), (X, Y) => (far ? -1 : 0) + hammered(X, Y));
+        for (let X = F(p[0] - 4.6); X <= F(p[0] + 4.6); X++) c.on(id, X, F(p[1] + 1.8), Mat.Trim, far ? 2 : 4);
+        for (const k of [-3, 0, 3]) rivet(c, [id], p[0] + k, p[1] - 0.6, Mat.Trim);
+        return;
+      }
+      default: {
+        shouldersCommon(c, 5, top, view, [p], far);
+        horn(c, [[p[0] + s * 0.4, p[1] - 1.6], [p[0] + s * 2, p[1] - 6.6], [p[0] + s * 1, p[1] - 10.4]], 1.3, far ? -1 : 0);
+        return;
+      }
+    }
+  });
+}
+
+function armMagic(c: Canvas, tier: number, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) {
+  const dk = (o?: Offset): Offset => (X, Y) => (o ? o(X, Y) : 0) + (far ? -1 : 0);
+  switch (tier) {
+    case 1: {
+      const a = lerp(elbow, at, 0.3), b = lerp(elbow, at, 0.82);
+      limb(c, a, b, 3.3, 3.2, Mat.Leather, dk(leather));
+      return;
+    }
+    case 2: armorArmCommon(c, 2, shoulder, elbow, at, far); return;
+    case 3: limb(c, shoulder, lerp(elbow, at, 0.5), 3.9, 3.4, Mat.Mithral, dk((X, Y) => ((X + (Y % 2)) % 2 === 0 ? -1 : 0))); return;
+    case 4: {
+      const a = lerp(elbow, at, 0.2), b = lerp(elbow, at, 0.86);
+      const v = limb(c, a, b, 3.6, 3.4, Mat.Iron, dk(hammered));
+      for (const t of [0.2, 0.8]) { const p = lerp(a, b, t); for (let X = F(p[0] - 3.6); X <= F(p[0] + 3.6); X++) c.on(v, X, F(p[1]), Mat.Trim, far ? 2 : 4); }
+      return;
+    }
+    default: {
+      limb(c, shoulder, elbow, 4.1, 3.8, Mat.RedDragon, dk(scales(5, 4)));
+      for (const t of [0.3, 0.7]) { const p = lerp(elbow, at, t); plate(c, [[p[0] + 2.4, p[1] - 0.8], [p[0] + 2.4, p[1] + 0.8], [p[0] + 4.8, p[1] - 0.6]], Mat.Horn); }
+      return;
+    }
+  }
+}
+
+// --- Despacho por id -----------------------------------------------------------------
+
+const isMagic = (id: string) => id.endsWith("-magic");
+
+function armorTorso(c: Canvas, id: string, top: number, view: ProtoDir, sway: number): number[] {
+  return isMagic(id) ? armorMagicTorso(c, tierOf(id), top, view, sway) : armorTorsoCommon(c, tierOf(id), top, view, sway);
+}
+function armorShoulders(c: Canvas, id: string, top: number, view: ProtoDir, at: readonly Pt[], far = false) {
+  if (isMagic(id)) shouldersMagic(c, tierOf(id), top, view, at, far);
+  else shouldersCommon(c, tierOf(id), top, view, at, far);
+}
+function armorArm(c: Canvas, id: string, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) {
+  if (isMagic(id)) armMagic(c, tierOf(id), shoulder, elbow, at, far);
+  else armorArmCommon(c, tierOf(id), shoulder, elbow, at, far);
+}
+/** A armadura deixa o cinto da classe por cima? */
+const keepsBelt = (id: string) => (isMagic(id) ? [false, true, false, false, false, false] : [false, true, false, true, false, true])[tierOf(id)];
+
+function helmetArt(c: Canvas, id: string, view: ProtoDir, cx: number, cy: number, top: number) {
+  if (isMagic(id)) warHelmetMagic(c, tierOf(id), view, cx, cy, top);
+  else warHelmet(c, tierOf(id), view, cx, cy, top);
+}
+
+/** A espada do id na mão `at` apontando para `tip` (a Dançarina não vai na mão: ver `dancingSword`). */
+function swordById(c: Canvas, id: string, at: Pt, tip: Pt) {
+  if (isMagic(id)) swordMagic(c, at, tip, tierOf(id));
+  else swordArt(c, at, tip, tierOf(id));
+}
 
 /** Pixels de cada quadro, calculados uma vez (a galeria pede o mesmo quadro várias vezes). */
 const cache = new Map<string, Uint8ClampedArray>();
