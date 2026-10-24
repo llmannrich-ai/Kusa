@@ -578,8 +578,8 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 | Fim | Loot | Observação |
 |---|---|---|
 | **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. As runas equipadas ficam. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
-| **Fuga** | Leva tudo | Basta voltar à sala inicial e entrar no portal. |
-| **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final. |
+| **Fuga** | Leva tudo | Basta voltar à sala inicial e ficar 1,5 s em cima do portal (um anel enche em volta do herói; sair antes zera a contagem). |
+| **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final; como na fuga, leva quem fica 1,5 s em cima dele. |
 | **Soterrado** (o tempo acabou) | Igual à morte | Conta como morte. |
 
 ## Combate (protótipo)

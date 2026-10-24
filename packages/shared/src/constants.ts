@@ -16,6 +16,9 @@ export const ROOM_NAME = "dungeon";
 export const MOVE_HOLD_MS = 500;
 export const MOVE_RESEND_MS = 150;
 
+/** Tempo (ms) parado em cima de um portal (fuga ou boss) para ele levar o jogador para fora da dungeon. */
+export const PORTAL_HOLD_MS = 1500;
+
 /** Código do erro de entrada numa sala quando a versão das regras do cliente não é a do servidor (`rulesVersion.ts`). */
 export const VERSION_MISMATCH_CODE = 4409;
 
