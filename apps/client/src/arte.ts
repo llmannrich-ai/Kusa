@@ -13,7 +13,7 @@ import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTA
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
-import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_AXES, PROTO_BOWS, PROTO_ITEM_NAMES, PROTO_MAGIC_BOWS, PROTO_MAGIC_STAFFS, PROTO_MAGIC_WANDS, PROTO_MAGIC_XBOWS, PROTO_STAFFS, PROTO_WANDS, PROTO_XBOWS, PROTO_MAGIC_ARMORS, PROTO_MAGIC_AXES, PROTO_MAGIC_HELMETS, PROTO_MAGIC_SWORDS, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
+import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_AXES, PROTO_BOWS, PROTO_ITEM_NAMES, PROTO_MAGIC_BOWS, PROTO_MAGIC_STAFFS, PROTO_MAGIC_WANDS, PROTO_ARC_HATS, PROTO_MAGIC_ARC_HATS, PROTO_ROBES, PROTO_MAGIC_ROBES, PROTO_PANTS, PROTO_MAGIC_PANTS, PROTO_MAGIC_XBOWS, PROTO_STAFFS, PROTO_WANDS, PROTO_XBOWS, PROTO_MAGIC_ARMORS, PROTO_MAGIC_AXES, PROTO_MAGIC_HELMETS, PROTO_MAGIC_SWORDS, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
@@ -154,7 +154,7 @@ const protoSceneRow = (() => {
   const gearRow = (title: string, sets: [ProtoClass, ProtoGear][]) => {
     const row = section(title);
     for (const [cls, gear] of sets) {
-      const names = [gear.helmet, gear.armor, gear.weapon].flatMap((id) => (id ? [PROTO_ITEM_NAMES[id]] : [])).join(" + ");
+      const names = [gear.helmet, gear.armor, gear.legs, gear.weapon].flatMap((id) => (id ? [PROTO_ITEM_NAMES[id]] : [])).join(" + ");
       for (const dir of PROTO_DIRS_ALL) show(row, protoFrame(dir, 0, cls, undefined, gear), `${PROTO_NAMES[cls]} · ${names} · ${dirNames[dir]}`, newZoom);
     }
   };
@@ -177,6 +177,14 @@ const protoSceneRow = (() => {
   gearRow("Itens · lote 5: varinhas mágicas", PROTO_MAGIC_WANDS.map((weapon, i) => [caster(i), { weapon }]));
   gearRow("Itens · lote 5: cajados", PROTO_STAFFS.map((weapon, i) => [caster(i), { weapon }]));
   gearRow("Itens · lote 5: cajados mágicos", PROTO_MAGIC_STAFFS.map((weapon, i) => [caster(i), { weapon }]));
+  gearRow("Itens · lote 6: chapéus arcanos", PROTO_ARC_HATS.map((helmet, i) => [caster(i), { helmet }]));
+  gearRow("Itens · lote 6: chapéus arcanos mágicos", PROTO_MAGIC_ARC_HATS.map((helmet, i) => [caster(i), { helmet }]));
+  gearRow("Itens · lote 6: mantos arcanos", PROTO_ROBES.map((armor, i) => [caster(i), { armor }]));
+  gearRow("Itens · lote 6: mantos arcanos mágicos", PROTO_MAGIC_ROBES.map((armor, i) => [caster(i), { armor }]));
+  gearRow("Itens · lote 6: calças arcanas (no corpo base)", PROTO_PANTS.map((legs) => ["base", { legs }]));
+  gearRow("Itens · lote 6: calças arcanas mágicas (no corpo base)", PROTO_MAGIC_PANTS.map((legs) => ["base", { legs }]));
+  gearRow("Itens · lote 6: conjunto de cada nível (chapéu, manto e cajado)", [0, 1, 2, 3, 4].map((i) => [caster(i), { helmet: PROTO_ARC_HATS[i], armor: PROTO_ROBES[i], weapon: PROTO_STAFFS[i] }]));
+  gearRow("Itens · lote 6: conjunto mágico de cada nível", [0, 1, 2, 3, 4].map((i) => [caster(i), { helmet: PROTO_MAGIC_ARC_HATS[i], armor: PROTO_MAGIC_ROBES[i], weapon: PROTO_MAGIC_STAFFS[i] }]));
   gearRow("Itens · piloto: Capuz do Lobo e Elmo do Demônio", [["druid", { helmet: "wolf" }], ["sorcerer", { helmet: "wolf" }], ["knight", { helmet: "demon", weapon: "sword-5" }], ["paladin", { helmet: "demon" }]]);
 
   const cosmetics = section("Protótipo: zonas de cor (cabeça, primária, secundária, detalhe), como um cosmético trocaria");

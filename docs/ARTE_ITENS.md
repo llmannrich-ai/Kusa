@@ -142,29 +142,29 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Chapéu arcano (feiticeiro e druida)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Capuz de lã** — capuz simples com cordão | **Capuz do Lobo** ✅ *(hoje "Capuz do Eremita")* — pele de lobo com a cabeça por cima da testa, caindo nos ombros *(Forma Selvagem do druida)* |
-| 2 | **Chapéu pontudo** — aba mole, remendos, ponta caída | **Chapéu do Ilusionista** — listras que trocam de cor, ponta torta com estrela *(Hat of Disguise)* |
-| 3 | **Capuz rúnico** — runas acesas na borda | **Capuz da Clarividência** — terceiro olho aberto na testa *(magia Clarividência)* |
-| 4 | **Chapéu do mago** — aba larga com lua e estrelas | **Chapéu do Arquimago** — altíssimo, anéis orbitando *(Hat of Wizardry)* |
-| 5 | **Coroa de chifres de dragão** — coroa de chifres | **Diadema do Dragão Ancião** — dragão mordendo a própria cauda, gema na testa |
+| 1 | **Capuz de lã** ✅ — capuz simples com cordão | **Capuz do Lobo** ✅ *(hoje "Capuz do Eremita")* — pele de lobo com a cabeça por cima da testa, caindo nos ombros *(Forma Selvagem do druida)* |
+| 2 | **Chapéu pontudo** ✅ — aba mole, remendos, ponta caída | **Chapéu do Ilusionista** ✅ — listras que trocam de cor, ponta torta com estrela *(Hat of Disguise)* |
+| 3 | **Capuz rúnico** ✅ — runas acesas na borda | **Capuz da Clarividência** ✅ — terceiro olho aberto na testa *(magia Clarividência)* |
+| 4 | **Chapéu do mago** ✅ — aba larga com lua e estrelas | **Chapéu do Arquimago** ✅ — altíssimo, anéis orbitando *(Hat of Wizardry)* |
+| 5 | **Coroa de chifres de dragão** ✅ — coroa de chifres | **Diadema do Dragão Ancião** ✅ — dragão mordendo a própria cauda, gema na testa |
 
 ### Manto arcano (feiticeiro e druida)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Túnica de linho** — remendos e cordão | **Túnica do Aprendiz** — remendos que são objetos costurados (corda, lanterna, adaga), livro no cinto *(Robe of Useful Items)* |
-| 2 | **Manto de viagem** — capa curta com capuz e broche | **Manto Élfico** — capa de folhas sobrepostas, capuz que esconde o rosto *(Cloak of Elvenkind)* |
-| 3 | **Manto rúnico** — runas acesas na barra | **Manto da Proteção** — ombreiras em escudo com runas *(Cloak of Protection)* |
-| 4 | **Vestes de mithral** — gola alta prateada, constelação bordada | **Manto do Arquimago** — gola enorme, bordado de runas que brilha *(Robe of the Archmagi)* |
-| 5 | **Manto de seda de dragão** — mantelete de escamas, capa em asa | **Manto das Estrelas** — céu noturno dentro do manto, estrelas piscando *(Robe of Stars)* |
+| 1 | **Túnica de linho** ✅ — remendos e cordão | **Túnica do Aprendiz** ✅ — remendos que são objetos costurados (corda, lanterna, adaga), livro no cinto *(Robe of Useful Items)* |
+| 2 | **Manto de viagem** ✅ — capa curta com capuz e broche | **Manto Élfico** ✅ — capa de folhas sobrepostas, capuz que esconde o rosto *(Cloak of Elvenkind)* |
+| 3 | **Manto rúnico** ✅ — runas acesas na barra | **Manto da Proteção** ✅ — ombreiras em escudo com runas *(Cloak of Protection)* |
+| 4 | **Vestes de mithral** ✅ — gola alta prateada, constelação bordada | **Manto do Arquimago** ✅ — gola enorme, bordado de runas que brilha *(Robe of the Archmagi)* |
+| 5 | **Manto de seda de dragão** ✅ — mantelete de escamas, capa em asa | **Manto das Estrelas** ✅ — céu noturno dentro do manto, estrelas piscando *(Robe of Stars)* |
 
 ### Calças arcanas (feiticeiro e druida)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Calças de linho** — barra dobrada | **Calças do Novato** — remendos coloridos |
-| 2 | **Calças de lã** — listras e remendo no joelho | **Calças de Seda Encantada** — brilho furta-cor |
-| 3 | **Calças rúnicas** — runas na lateral | **Calças do Vidente** — olhos bordados |
-| 4 | **Calças de mithral** — bordado prateado | **Calças do Conjurador** — bolsinhos de componentes |
-| 5 | **Calças de couro de dragão** — escamas nas canelas | **Calças da Asa do Dragão** — membranas de asa na lateral |
+| 1 | **Calças de linho** ✅ — barra dobrada | **Calças do Novato** ✅ — remendos coloridos |
+| 2 | **Calças de lã** ✅ — listras e remendo no joelho | **Calças de Seda Encantada** ✅ — brilho furta-cor |
+| 3 | **Calças rúnicas** ✅ — runas na lateral | **Calças do Vidente** ✅ — olhos bordados |
+| 4 | **Calças de mithral** ✅ — bordado prateado | **Calças do Conjurador** ✅ — bolsinhos de componentes |
+| 5 | **Calças de couro de dragão** ✅ — escamas nas canelas | **Calças da Asa do Dragão** ✅ — membranas de asa na lateral |
 
 ### Botas (todos)
 | Nível | Comum | Mágico |
@@ -313,7 +313,55 @@ Poder (esfera de energia com dois anéis em órbita), Arquimago (estrela de 8 po
 
 ![Cajados mágicos](arte/lote5-staffs-magic.png)
 
-## 11. Ordem de execução
+## 11. Lote 6 desenhado
+
+Os 10 chapéus, os 10 mantos e as 10 calças dos magos, no feiticeiro (níveis ímpares) e no druida (pares); as calças
+vão no corpo base, para aparecerem inteiras (o manto comprido as cobre). O manto troca o tronco e as mangas da
+classe e traz a própria gola (capuz abaixado, gola alta ou a gola em leque do Arquimago); o chapéu vai por cima do
+cabelo, que continua caindo por baixo da aba.
+
+**Chapéus comuns**: capuz de lã com cordão e borlas, chapéu pontudo de feltro com aba mole, remendos e ponta caída,
+capuz rúnico com ponta e runas acesas em volta do rosto, chapéu do mago azul-noite com lua e estrelas, coroa de ouro
+com chifres de dragão e rubi:
+
+![Chapéus arcanos](arte/lote6-hats.png)
+
+**Chapéus mágicos**: Capuz do Lobo (o do piloto), Ilusionista (listras de cinco cores e estrela na ponta torta),
+Clarividência (capuz de prata com o terceiro olho), Arquimago (altíssimo, com dois anéis de luz em órbita), Diadema do
+Dragão Ancião (dragão de ouro mordendo a cauda, gema viva por cima):
+
+![Chapéus arcanos mágicos](arte/lote6-hats-magic.png)
+
+**Mantos comuns**: túnica de linho com remendos e cordão, manto de viagem (túnica de lã, capa de feltro, capinha nos
+ombros, capuz abaixado e broche), manto rúnico anil com runas acesas na barra, vestes de mithral com gola alta e
+constelação bordada, seda de dragão com mantelete de escamas e capa em asa:
+
+![Mantos arcanos](arte/lote6-robes.png)
+
+**Mantos mágicos**: Túnica do Aprendiz (remendos com lanterna, adaga, corda e chave; livro no cinto), Manto Élfico
+(capa de folhas e o capuz levantado, o rosto na sombra), Manto da Proteção (ombreiras em escudo com runa, escudo no
+peito), Manto do Arquimago (gola em leque e colunas de runas acesas), Manto das Estrelas (céu da noite dentro do
+manto, lua no peito):
+
+![Mantos arcanos mágicos](arte/lote6-robes-magic.png)
+
+**Calças comuns**: linho com barra dobrada, lã listrada com remendo no joelho, rúnicas com runas na costura, mithral
+(violeta com ramo bordado em prata), couro com caneleiras de escamas de dragão:
+
+![Calças arcanas](arte/lote6-pants.png)
+
+**Calças mágicas**: Novato (remendos coloridos), Seda Encantada (furta-cor), Vidente (olhos bordados), Conjurador
+(bolsinhos e frasco aceso), Asa do Dragão (membrana de asa na canela):
+
+![Calças arcanas mágicas](arte/lote6-pants-magic.png)
+
+**Conjuntos de cada nível** (chapéu, manto e cajado), comum e mágico:
+
+![Conjuntos arcanos](arte/lote6-sets.png)
+
+![Conjuntos arcanos mágicos](arte/lote6-sets-magic.png)
+
+## 12. Ordem de execução
 
 ![Piloto: Capuz do Lobo no druida e no feiticeiro, Elmo do Demônio e Lâmina do dragão no cavaleiro, Elmo do Demônio no paladino](arte/itens-piloto.png)
 
@@ -323,7 +371,8 @@ Poder (esfera de energia com dois anéis em órbita), Arquimago (estrela de 8 po
    **Lote 3** ✅: machados (seção 8).
    **Lote 4** ✅: arcos e bestas (seção 9).
    **Lote 5** ✅: varinhas e cajados (seção 10).
-   **Lote 6**: chapéus arcanos, mantos arcanos e calças arcanas.
+   **Lote 6** ✅: chapéus arcanos, mantos arcanos e calças arcanas (seção 11).
+   **Lote 7**: perneiras de guerra, botas e escudos.
 2. Armas (o que mais aparece), depois armaduras e mantos, capacetes, botas, calças e escudos.
 3. Ícones de 32×32 a partir de cada desenho pronto.
 4. Integração no jogo atrás da opção "Arte nova (beta)", com o teste `arte.ts` conferindo cada item.
