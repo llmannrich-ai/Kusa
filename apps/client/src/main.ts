@@ -232,9 +232,21 @@ function openSheet() {
   renderHunts();
 }
 
+/**
+ * Batalhas abre o mapa com a barra de abas do menu embaixo (`body.on-map`): o menu continua aberto, mas só a barra
+ * aparece, e tocar numa aba fecha o mapa e abre a aba.
+ */
+function setMapOpen(open: boolean) {
+  document.body.classList.toggle("on-map", open);
+  show("rooms", open);
+  if (!open) return;
+  show("menu", true);
+  const tabs = document.querySelector<HTMLElement>(".hub-tabs");
+  if (tabs) document.body.style.setProperty("--tabs-h", `${tabs.offsetHeight}px`);
+}
+
 async function openRooms() {
-  show("menu", false);
-  show("rooms", true);
+  setMapOpen(true);
   show("rooms-error", false);
   show("map-sheet", false);
   show("rooms-sheet", false);
@@ -384,9 +396,14 @@ document.querySelectorAll<HTMLButtonElement>("#settings-pages [data-page]").forE
 
 $("rooms-back").onclick = () => {
   stopWatching();
-  show("rooms", false);
-  show("menu", true);
+  setMapOpen(false);
 };
+// Uma aba do menu tocada com o mapa aberto: sai do mapa (o Hub troca a aba).
+document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => b.addEventListener("click", () => {
+  if (!document.body.classList.contains("on-map")) return;
+  stopWatching();
+  setMapOpen(false);
+}));
 $("map-sheet-close").onclick = () => show("map-sheet", false);
 // Tocar na ficha pula a caminhada do herói.
 $("map-sheet").addEventListener("pointerdown", () => world?.skip());
@@ -414,7 +431,8 @@ $("back").onclick = () => location.reload();
 let game: Phaser.Game | null = null;
 
 function bindRoom(room: DungeonRoom) {
-  show("rooms", false);
+  setMapOpen(false);
+  show("menu", false);
   show("lobby", true);
   // A arte começa a carregar já na sala de espera, enquanto a equipe se junta.
   createGame();
