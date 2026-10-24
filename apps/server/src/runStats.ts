@@ -54,6 +54,8 @@ export interface RunStats {
   chestsOpened: number;
   /** Bosses que deram a runa a este personagem nesta hunt (cada boss dá a runa uma vez por personagem). */
   bossRunes: string[];
+  /** Estava na hunt quando o boss principal morreu: venceu o cenário (abre o seguinte da campanha). */
+  bossClear: boolean;
   /**
    * Itens equipados que vieram da conta, bag que entrou na hunt, itens que pegou no chão, que largou pelo menu
    * da bag, que perdeu ao morrer (equipamento e bag), quantas vezes deixou item no chão por estar com a bag cheia e
@@ -85,7 +87,7 @@ export function newRunStats(): RunStats {
   return {
     levelAt: {}, depthAt: {}, specs: [], spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
-    loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0 },
+    loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], bossClear: false, items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0 },
     minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0,
   };
 }
