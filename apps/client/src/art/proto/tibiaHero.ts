@@ -357,6 +357,13 @@ export class Canvas {
     this.rawPx(X, Y, mat, tone);
   }
 
+  /** Material já pintado no ponto (em unidades, levado pela escala local); −1 se vazio. */
+  matAt(x: number, y: number): number {
+    let [X, Y] = this.tx(F(x), F(y));
+    X = Math.round(X); Y = Math.round(Y);
+    return X < 0 || Y < 0 || X >= this.w || Y >= this.h ? -1 : this.mat[Y * this.w + X];
+  }
+
   /** `is` com o pixel levado pela escala local (varreduras de coluna: sola, fita do chapéu, sombra da aba). */
   isAt(X: number, Y: number, ids: readonly number[]) {
     [X, Y] = this.tx(X, Y);
@@ -5112,8 +5119,7 @@ function iconPose(c: Canvas, id: string) {
         const x = CX + s * 3.8;
         (fam === "pants" ? pantsArt : warLegs)(c, id, [x, 66], [x + s * 0.8, 77], [x + s * 1.2, 88], false, true);
       }
-      // Cós de couro unindo as duas pernas.
-      { const band = limb(c, [CX - 8, 64.4], [CX + 8, 64.4], 1.6, 1.6, Mat.Leather, leather); rivet(c, [band], CX, 64.2, Mat.Bronze); }
+      pantsTop(c, c.matAt(CX - 3.8, 70));
       return;
     case "boots":
       bootsArt(c, id, [CX + 4, 76], [CX + 4, 87], [CX - 1, 88.4], true, false);
@@ -5121,6 +5127,32 @@ function iconPose(c: Canvas, id: string) {
       return;
     case "shield": shieldArt(c, id, [CX, 60], "down", 1); return;
   }
+}
+
+/** Quadril e cinto do ícone da calça: o tecido da calça ligando as pernas e um cinto de couro com fivela. */
+function pantsTop(c: Canvas, cloth: number) {
+  const mat: Mat = cloth >= 0 ? cloth : Mat.Leather;
+  // Quadril numa peça só, com a costura do meio e o gancho entre as pernas.
+  const hip = poly(c, [[CX - 8.6, 63.4], [CX + 8.6, 63.4], [CX + 8.4, 70.6], [CX + 1.6, 73], [CX - 1.6, 73], [CX - 8.4, 70.6]], mat, CX - 8.6, CX + 8.6, twill);
+  thread(c, [CX, 65.6], [CX, 72.6], mat, 1, [hip]);
+  thread(c, [CX + 0.5, 65.6], [CX + 0.5, 72], mat, 4, [hip]);
+  for (const s of [-1, 1]) thread(c, [CX + s * 7.8, 66], [CX + s * 5, 69.4], mat, 1, [hip]);
+  // Cinto largo de couro com borda clara, pesponto, furos e a ponta sobrando.
+  const belt = poly(c, [[CX - 9, 62], [CX + 9, 62], [CX + 9, 65.4], [CX - 9, 65.4]], Mat.Leather, CX - 9, CX + 9, leather);
+  thread(c, [CX - 9, 62.2], [CX + 9, 62.2], Mat.Leather, 5, [belt]);
+  thread(c, [CX - 9, 65.1], [CX + 9, 65.1], Mat.Leather, 0, [belt]);
+  for (const y of [62.9, 64.5]) thread(c, [CX - 8.6, y], [CX + 8.6, y], Mat.Leather, (k) => (k % 3 === 0 ? 4 : -1), [belt]);
+  for (const x of [3.8, 5.4, 7]) rivet(c, [belt], CX + x, 63.7, Mat.Soot);
+  limb(c, [CX + 2.2, 64.6], [CX + 3.4, 69], 0.9, 0.8, Mat.Leather, leather);
+  // Passadores no tecido da calça.
+  for (const x of [-6.6, 6.2]) plate(c, [[CX + x - 0.7, 61.6], [CX + x + 0.7, 61.6], [CX + x + 0.7, 65.8], [CX + x - 0.7, 65.8]], mat, twill);
+  // Fivela de bronze com o pino de aço.
+  const buckle = c.fill([CX - 2.6, 61, CX + 2.6, 66.4], (x, y) => {
+    const dx = Math.abs(x + 0.5 - CX), dy = Math.abs(y + 0.5 - 63.7);
+    return dx <= 2.4 && dy <= 2.5 && (dx >= 1.3 || dy >= 1.4);
+  }, Mat.Bronze, sphere(CX - 0.6, 62.8, 2.8, 2.8));
+  limb(c, [CX - 1.3, 63.7], [CX + 1.4, 63.7], 0.35, 0.35, Mat.Steel);
+  c.on(buckle, F(CX - 2), F(61.6), Mat.Bronze, 5);
 }
 
 /** Ícone do item no padrão novo (`PROTO_ICON` px): enquadrado e ampliado até caber, com a gema da raridade no canto. */
