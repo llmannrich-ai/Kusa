@@ -26,8 +26,6 @@ export const SOLO_LIMITS = {
    * largar a sua para o mesmo herói). `finish_solo_run` aceita no máximo uma por boss anotado mais estas.
    */
   passedRunes: MAX_PARTY_SIZE - 1,
-  /** Valor máximo (gold + preço de venda dos itens novos) que o solo rende em 24 horas. */
-  dailyValue: 12_000,
   /**
    * XP de uso máximo por segundo de hunt, por magia: lançar sem parar rende 1 XP por segundo de recarga, e a
    * melhoria Foco e as recargas devolvidas ao matar encurtam a recarga. Além disso valem o teto por hunt
