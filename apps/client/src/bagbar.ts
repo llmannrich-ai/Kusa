@@ -20,8 +20,8 @@ function rarityColor(id: string) {
 }
 
 /**
- * Bag da hunt (até `BAG_SIZE` itens). No HUD aparecem só os itens da bag; tocar nela abre o menu,
- * o único lugar onde aparece o equipamento vestido. No menu, tocar num item mostra o que ele faz e
+ * Bag da hunt (até `BAG_SIZE` itens). No HUD fica só um botão de bag com a lotação; tocar nele abre
+ * o menu com os itens da bag e o equipamento vestido (o único lugar onde ele aparece). No menu, tocar num item mostra o que ele faz e
  * as ações (equipar, guardar, largar). O servidor valida tudo; aqui só mandamos a intenção.
  */
 export class BagBar {
@@ -32,7 +32,7 @@ export class BagBar {
 
   constructor(private room: DungeonRoom, private hud: HTMLElement, private menu: HTMLElement) {
     hud.hidden = false;
-    hud.addEventListener("click", this.toggle);
+    hud.addEventListener("click", this.onHudClick);
     menu.addEventListener("click", this.onMenuClick);
   }
 
@@ -48,6 +48,12 @@ export class BagBar {
     this.update();
   };
 
+  /** Solta o foco do botão: senão o Espaço (ataque) também "clica" nele e abre/fecha a bag. */
+  private onHudClick = () => {
+    this.hud.blur();
+    this.toggle();
+  };
+
   close() {
     if (!this.isOpen) return;
     this.toggle();
@@ -60,7 +66,7 @@ export class BagBar {
     const hudKey = bag.join(",");
     if (hudKey !== this.hudKey) {
       this.hudKey = hudKey;
-      this.renderHud(bag);
+      this.renderHud(bag.length);
     }
     if (p.status !== "playing") {
       this.close();
@@ -78,7 +84,7 @@ export class BagBar {
   }
 
   destroy() {
-    this.hud.removeEventListener("click", this.toggle);
+    this.hud.removeEventListener("click", this.onHudClick);
     this.menu.removeEventListener("click", this.onMenuClick);
     this.hud.replaceChildren();
     this.hud.hidden = true;
@@ -90,14 +96,11 @@ export class BagBar {
     return this.room.state.players.get(this.room.sessionId);
   }
 
-  /** Fileira compacta do HUD: uma casa por espaço da bag. */
-  private renderHud(bag: string[]) {
-    // A bag vinda do cofre pode passar de BAG_SIZE (raro): mostra tudo, e cheia fica vermelha (nada sai do chão).
-    const cells = Math.max(BAG_SIZE, bag.length);
-    this.hud.style.gridTemplateColumns = `repeat(${cells}, minmax(0, 1fr))`;
-    this.hud.replaceChildren(...Array.from({ length: cells }, (_, i) => this.cell(bag[i], "bag-hud-cell", "", "span")));
-    this.hud.classList.toggle("cheia", bag.length >= BAG_SIZE);
-    const label = `Bag: ${bag.length} de ${BAG_SIZE} (toque para abrir)`;
+  /** Botão do HUD: só a lotação da bag. Cheia fica vermelho (nada mais sai do chão). */
+  private renderHud(count: number) {
+    this.hud.replaceChildren(el("span", "bag-button-icon", "🎒"), el("span", "bag-button-count", `${count}/${BAG_SIZE}`));
+    this.hud.classList.toggle("cheia", count >= BAG_SIZE);
+    const label = `Bag: ${count} de ${BAG_SIZE} (toque para abrir)`;
     this.hud.setAttribute("aria-label", label);
     this.hud.title = label;
   }
@@ -190,8 +193,8 @@ export class BagBar {
     return JSON.stringify(s) === JSON.stringify(this.selected);
   }
 
-  private cell(id: string | undefined, className: string, emptyLabel = "", tag: "button" | "span" = "button") {
-    const cell = el(tag, className);
+  private cell(id: string | undefined, className: string, emptyLabel = "") {
+    const cell = el("button", className);
     if (id && (ITEMS[id] || RUNES[id])) {
       const img = el("img", "item-img");
       img.src = iconUrl(id);
