@@ -75,10 +75,12 @@ import {
 } from "./art/textures.ts";
 
 /**
- * Campo de visão: 9 tiles no lado curto da tela e pelo menos 13 no lado longo. Em pé fica 9 de largura; deitado,
- * 9 de altura: quem joga deitado vê a mesma área de quem joga em pé, só girada (sem vantagem na equipe).
+ * Campo de visão: 9 tiles no lado curto da tela e pelo menos 13 no lado longo (em pé, 9 de largura).
+ * Deitado, o tile tem o mesmo tamanho que teria em pé no mesmo celular: no iPhone, as barras do Safari deixam a
+ * tela deitada baixa (uns 330 px) e 9 tiles de altura deixavam herói e monstros pequenos demais. Deitado se vê menos
+ * na vertical (uns 7 tiles, nunca menos de `minLandscape`) e mais para os lados.
  */
-const VIEW_TILES = { short: 9, long: 13 };
+const VIEW_TILES = { short: 9, long: 13, minLandscape: 6.5 };
 /** Salto maior que isto (tiles) é a caverna do deserto: a câmera corta em vez de deslizar. */
 const CAVE_CUT_TILES = 12;
 /** Ritmo de quem ainda não anunciou o seu (ms por tile). */
@@ -1316,13 +1318,19 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
-  /** 9 tiles no lado curto em qualquer aparelho; em pé, com o jogador um pouco acima do centro. */
+  /** Em pé, 9 tiles de largura com o jogador um pouco acima do centro; deitado, o tile do tamanho de em pé. */
   private fitCamera() {
     const { width, height } = this.scale.gameSize;
     const landscape = width > height;
     const short = Math.min(width, height);
     const long = Math.max(width, height);
-    const zoom = Math.min(short / (VIEW_TILES.short * TILE_SIZE), long / (VIEW_TILES.long * TILE_SIZE));
+    let zoom = Math.min(short / (VIEW_TILES.short * TILE_SIZE), long / (VIEW_TILES.long * TILE_SIZE));
+    if (landscape) {
+      // `screen` é o aparelho inteiro (em CSS px); o canvas tem os pixels do aparelho (ver createGame).
+      const cssToGame = height / (this.game.canvas.getBoundingClientRect().height || height);
+      const portraitTile = (Math.min(screen.width, screen.height) / VIEW_TILES.short) * cssToGame;
+      zoom = Math.max(zoom, Math.min(portraitTile, height / VIEW_TILES.minLandscape) / TILE_SIZE);
+    }
     this.textResolution = Math.max(1, Math.ceil(zoom));
     this.cameras.main.setZoom(zoom);
     this.cameras.main.setFollowOffset(0, landscape ? 0 : -(height * FOLLOW_LIFT) / zoom);
