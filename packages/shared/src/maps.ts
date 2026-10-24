@@ -39,6 +39,10 @@ export interface MapDef {
    * runas, à escolha. Com eles, o boss não dropa runa.
    */
   rewardRunes?: string[];
+  /** Monstros comuns por campina (padrão 2). */
+  meadowMonsters?: number;
+  /** Fração das campinas que ganham também um mini-boss solto, sem baú (padrão 0). */
+  meadowMinibosses?: number;
   /** Jogadores por hunt no máximo (bots contam). Sem isto, `MAX_PARTY_SIZE`. */
   maxParty?: number;
 }
@@ -108,7 +112,8 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   marsh: {
     id: "marsh", name: "Pântano do Kosaradius", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
-    description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
+    meadowMonsters: 3, meadowMinibosses: 0.4,
+    description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando, e ogros e chefes de guerra em cada clareira: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
     encounters: [
       { depth: [0, 0], budget: 70, table: [["orcScout", 3], ["orcGrunt", 2]] },
       { depth: [1, 1], budget: 110, table: [["orcScout", 3], ["orcGrunt", 3], ["orcArcher", 1]] },

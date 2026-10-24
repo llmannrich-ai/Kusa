@@ -413,7 +413,23 @@ export class DungeonScene extends Phaser.Scene {
     this.monsters.forEach((unit) => this.glide(unit, time));
     this.summons.forEach((unit) => this.glide(unit, time));
     this.avatars.forEach((unit) => this.animateUnit(unit, time));
-    this.monsters.forEach((unit) => this.animateUnit(unit, time));
+    // Monstro longe da tela não é desenhado nem animado (o Pântano do Kosaradius passa de 100 monstros).
+    const view = this.cameras.main.worldView;
+    const margin = 4 * TILE_SIZE;
+    this.monsters.forEach((unit) => {
+      const near = unit.body.x > view.x - margin && unit.body.x < view.right + margin
+        && unit.body.y > view.y - margin && unit.body.y < view.bottom + margin;
+      if (near !== unit.body.visible) {
+        unit.body.setVisible(near);
+        if (unit.anim) {
+          if (near) unit.sprite.anims.resume();
+          else unit.sprite.anims.pause();
+        }
+      }
+      // A barra e o nome seguem mesmo fora da tela (senão ficavam parados na borda).
+      if (near) this.animateUnit(unit, time);
+      else unit.overlay.setPosition(unit.body.x, unit.body.y);
+    });
     this.summons.forEach((unit) => this.animateUnit(unit, time));
     this.drawTargetRing();
     this.minimap?.update(time);

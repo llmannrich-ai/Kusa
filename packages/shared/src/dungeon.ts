@@ -741,7 +741,9 @@ const MARSH_STEPS = 9;
 /** Raio da clareira do boss, no centro. */
 const MARSH_CLEARING = 8;
 /** Campinas (pontos de monstros extras fora das zonas). */
-const MARSH_MEADOWS = 8;
+const MARSH_MEADOWS = 14;
+/** Clareiras de mini-boss com baú por zona do caminho, no máximo. */
+const MARSH_SIDE_PER_ZONE = 2;
 /** Passarelas de madeira no máximo (atravessam lagoas). */
 const MARSH_PLANKS = 9;
 
@@ -827,20 +829,23 @@ function buildMarsh(seed: number): Dungeon {
     path.push({ x: cx - half, y: cy - half, w: half * 2 + 1, h: half * 2 + 1 });
   }
 
-  // Clareiras cercadas de troncos caídos perto das zonas (mini-boss e baú), com 2 passagens.
+  // Clareiras cercadas de troncos caídos perto das zonas (mini-boss e baú), com 2 passagens: até
+  // `MARSH_SIDE_PER_ZONE` por zona, a 13 ou 21 tiles dela.
   const side: Rect[] = [];
-  for (let i = 0; i < anchors.length - 1; i++) {
-    if (rng.next() < 0.4) continue;
-    const anchor = anchors[i];
+  for (let i = 0; i < anchors.length * MARSH_SIDE_PER_ZONE; i++) {
+    const anchor = anchors[i % anchors.length];
+    const reach = i < anchors.length ? 13 : 21;
+    // A segunda volta (mais longe da zona) só em parte das zonas: sobra campo para as lagoas.
+    if (i >= anchors.length && rng.next() < 0.5) continue;
     const w = rng.int(7, 9);
     const h = rng.int(7, 9);
     const room = shuffled(rng, SWAMP_SIDE_DIRS)
       .map(([dx, dy]): Rect => ({
-        x: clamp(anchor.x + dx * 13 - w / 2, 8, size - w - 9),
-        y: clamp(anchor.y + dy * 13 - h / 2, 8, size - h - 9),
+        x: clamp(anchor.x + dx * reach - w / 2, 8, size - w - 9),
+        y: clamp(anchor.y + dy * reach - h / 2, 8, size - h - 9),
         w, h,
       }))
-      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP && gapBetween(r, boss) >= 4
+      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP + 4 && gapBetween(r, boss) >= 4
         && side.every((o) => gapBetween(r, o) >= 4)
         && anchors.every((p) => gapBetween(r, { x: p.x, y: p.y, w: 1, h: 1 }) >= 3));
     if (!room) continue;
@@ -863,11 +868,11 @@ function buildMarsh(seed: number): Dungeon {
 
   // Campinas: pontos de monstros extras pelo campo, longe da entrada, das zonas, das clareiras e do centro.
   const meadows: Rect[] = [];
-  for (let tries = 0; tries < 120 && meadows.length < MARSH_MEADOWS; tries++) {
+  for (let tries = 0; tries < 300 && meadows.length < MARSH_MEADOWS; tries++) {
     const p = { x: rng.int(15, size - 16), y: rng.int(15, size - 16) };
     const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
-    if (!far(s, 26) || !far(center, MARSH_CLEARING + 10) || !anchors.every((a) => far(a, 14))
-      || !meadows.every((m) => far(centerOf(m), 14)) || side.some((r) => gapBetween(r, { ...p, w: 1, h: 1 }) < 4)) continue;
+    if (!far(s, 26) || !far(center, MARSH_CLEARING + 10) || !anchors.every((a) => far(a, 12))
+      || !meadows.every((m) => far(centerOf(m), 12)) || side.some((r) => gapBetween(r, { ...p, w: 1, h: 1 }) < 4)) continue;
     meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
   }
 
