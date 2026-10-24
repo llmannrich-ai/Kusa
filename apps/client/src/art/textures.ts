@@ -8,6 +8,7 @@ import { HERO_DIRS, HERO_FRAMES, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
+import { protoCrypt } from "./newArt.ts";
 import { SUMMON_ART, SUMMON_FRAMES, SUMMON_OUTLINE, summonPortrait, summonSheet } from "./summonCreatures.ts";
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
@@ -235,10 +236,24 @@ export const CRYPT_DECOR = {
   shade: "crypt-shade",
   light: "crypt-light",
   dust: "crypt-dust",
+  /** Chão da arte nova (o antigo é `FLOOR_TEXTURE`, do pack). */
+  floorHd: "crypt-floor-hd",
+  bossHd: "crypt-boss-hd",
 };
 
 /** Gera as texturas e a animação da tocha da cripta (uma vez por jogo). */
 export function createCryptArt(scene: Phaser.Scene) {
+  if (protoCrypt) {
+    const hd = protoCrypt.CRYPT_TILE;
+    addStrips(scene, [
+      [CRYPT_DECOR.floorHd, protoCrypt.cryptFloorTiles],
+      [CRYPT_DECOR.bossHd, protoCrypt.cryptBossTiles],
+      [CRYPT_DECOR.floor, protoCrypt.cryptFloorDecor],
+      [CRYPT_DECOR.wall, protoCrypt.cryptWallDecor],
+      [CRYPT_DECOR.tall, protoCrypt.cryptTall],
+      [CRYPT_DECOR.torch, protoCrypt.cryptTorch],
+    ], hd);
+  }
   addStrips(scene, [
     [CRYPT_DECOR.floor, cryptFloorStrip],
     [CRYPT_DECOR.wall, cryptWallStrip],
@@ -258,13 +273,13 @@ export function createCryptArt(scene: Phaser.Scene) {
   }
 }
 
-/** Faixas de quadros 32×32 viram texturas com um quadro por tile. */
-function addStrips(scene: Phaser.Scene, strips: [string, () => HTMLCanvasElement][]) {
+/** Faixas de quadros 32×32 (ou `size`, na arte nova) viram texturas com um quadro por tile. */
+function addStrips(scene: Phaser.Scene, strips: [string, () => HTMLCanvasElement][], size = TILE_SIZE) {
   for (const [key, draw] of strips) {
     if (scene.textures.exists(key)) continue;
     const canvas = draw();
     const texture = scene.textures.addCanvas(key, canvas)!;
-    for (let i = 0; i < canvas.width / TILE_SIZE; i++) texture.add(i, 0, i * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE);
+    for (let i = 0; i < canvas.width / size; i++) texture.add(i, 0, i * size, 0, size, canvas.height);
   }
 }
 
@@ -438,10 +453,12 @@ export function createMarshArt(scene: Phaser.Scene) {
 
 /** Textura de tampa de parede, criada na primeira vez que é pedida. */
 export function wallCapTexture(scene: Phaser.Scene, variant: number, rim: number) {
+  if (protoCrypt) return lazyCanvas(scene, `wall-cap-hd-${variant}-${rim}`, () => protoCrypt!.cryptWallCap(variant, rim));
   return lazyCanvas(scene, `wall-cap-${variant}-${rim}`, () => wallCap(variant, rim));
 }
 
 export function wallFaceTexture(scene: Phaser.Scene, variant: number) {
+  if (protoCrypt) return lazyCanvas(scene, `wall-face-hd-${variant}`, () => protoCrypt!.cryptWallFace(variant));
   return lazyCanvas(scene, `wall-face-${variant}`, () => wallFace(variant));
 }
 
@@ -456,6 +473,6 @@ function lazyCanvas(scene: Phaser.Scene, key: string, draw: () => HTMLCanvasElem
 }
 
 /** Quantas variações de chão cabem numa faixa carregada. */
-export function floorVariants(scene: Phaser.Scene, key: string) {
-  return Math.floor(scene.textures.get(key).getSourceImage().width / TILE_SIZE);
+export function floorVariants(scene: Phaser.Scene, key: string, size = TILE_SIZE) {
+  return Math.floor(scene.textures.get(key).getSourceImage().width / size);
 }

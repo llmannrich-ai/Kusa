@@ -6,7 +6,7 @@ import { heroFrame } from "./hero/hero.ts";
 import { HERO_DIRS, HERO_FRAMES, type HeroDir } from "./hero/rig.ts";
 import { S as CELL } from "./hero/raster.ts";
 import type { ProtoGear } from "./proto/tibiaHero.ts";
-import { loadSettings } from "../settings.ts";
+import { NEW_ART, protoHero as proto } from "./newArt.ts";
 
 /**
  * Folhas de sprites dos heróis. A arte é pintada em 48×48 por `hero/` (corpo da classe + um desenho por
@@ -20,10 +20,7 @@ export { HERO_DIRS, HERO_FRAMES, type HeroDir };
 /** Quadro da textura final. */
 export const HERO_SIZE = CELL * ART_SCALE;
 
-/** Arte nova (beta, `Settings.newArt`): lida uma vez; trocar a opção recarrega o jogo. */
-export const NEW_ART = loadSettings().newArt;
-/** O desenho novo só é baixado por quem ligou a opção. */
-const proto = NEW_ART ? await import("./proto/tibiaHero.ts") : null;
+export { NEW_ART };
 /** 128 px por tile e o quadro de 192 px com os pés na linha 184 (`tibiaHero.ts`). */
 const PROTO_TILE = 128, PROTO_SIZE = 192, PROTO_FEET = 184;
 
