@@ -56,6 +56,7 @@ import { Minimap } from "./minimap.ts";
 import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
+import { drawSwampPainted } from "./swampPainted.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
 import { loadSettings } from "./settings.ts";
@@ -262,7 +263,8 @@ export class DungeonScene extends Phaser.Scene {
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
     const mapId = this.dungeon.mapId;
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh }[mapId];
+    const swamp = loadSettings().paintedSwamp ? drawSwampPainted : drawSwamp;
+    const draw = { crypt: drawCrypt, swamp, desert: drawDesert, marsh: drawMarsh }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 

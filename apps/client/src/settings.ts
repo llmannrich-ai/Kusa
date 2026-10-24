@@ -3,6 +3,7 @@ export interface Settings {
   minimap: boolean;
   landscape: boolean;
   fixedStick: boolean;
+  paintedSwamp: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -10,6 +11,8 @@ const DEFAULTS: Settings = {
   landscape: false,
   // Joystick fixo de padrão desde o retorno dos testadores; o flutuante fica como opção.
   fixedStick: true,
+  // Teste de arte pintada no Pântano das Ruínas; desligado, volta a pixel art.
+  paintedSwamp: true,
 };
 
 /** Uma opção como aparece na tela de configurações; novas opções entram aqui e em `Settings`. */
@@ -30,6 +33,11 @@ export const SETTING_DEFS: SettingDef[] = [
     key: "fixedStick",
     label: "Joystick fixo",
     hint: "O joystick fica sempre à vista no canto de baixo à esquerda. Desligado, ele aparece onde o polegar toca.",
+  },
+  {
+    key: "paintedSwamp",
+    label: "Pântano pintado (teste de arte)",
+    hint: "O Pântano das Ruínas aparece em arte pintada, no estilo do Grimório. Desligado, volta à pixel art.",
   },
 ];
 
