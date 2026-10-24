@@ -82,7 +82,7 @@ tochas com poça de luz na Cripta, equipamento visível (é decisão de jogo do 
 
 | # | Regra | Valor |
 |---|---|---|
-| G1 | Densidade | **128 px de arte por tile** (4× o Tibia, decidido no protótipo para caber detalhe fino; é o limite em que 1 pixel de arte ainda vira ≈1 pixel de tela no celular) em toda arte nova. A arte de 32 px por tile que fica entra ampliada 4× até ser refeita |
+| G1 | Densidade | **384 px de arte por tile** no protótipo atual (12× o Tibia), pedido para caber detalhe fino. No celular (tile de ≈120 px de tela) a arte é reduzida ≈3× com suavização: o detalhe de 1 px vira textura, e só os traços de 2 px ou mais aparecem nítidos. A arte de 32 px por tile que fica entra ampliada até ser refeita |
 | G2 | Refinamento | Sem Scale2x nem luz automática na arte nova: tons e textura pintados na grade. O `refine.ts` fica só para a arte antiga até ser trocada |
 | G3 | Luz | Cima à esquerda, em todos os sprites e na decoração |
 | G4 | Contorno | Externo `#1a1210` (1 px, igual em todas as figuras); interno no tom 0 do material vizinho |
@@ -151,7 +151,7 @@ Bônus: as 4 zonas são exatamente o que um **cosmético de cor** troca (`buy_co
 ---
 
 ## 4. Checklist de aceitação de um sprite
-- [ ] 128 px de arte por tile, sem refinamento automático (Scale2x).
+- [ ] Densidade de G1, sem refinamento automático (Scale2x).
 - [ ] Contorno `#1a1210`, luz de cima à esquerda, 4 tons por material.
 - [ ] Silhueta reconhecível em preto, no tamanho real do celular.
 - [ ] Herói: cabeça ≈27% do corpo, ombros mais largos que a cabeça, 4 zonas de cor visíveis.
@@ -183,28 +183,42 @@ de cor de exemplo.
   mais detalhe fino, pixel menor".
 - **2ª versão (64 px por tile):** formas com volume (esfera, cilindro, membro) e detalhe à mão. Recusada:
   "ainda mais detalhes, dobre mais uma vez".
-- **3ª versão (128 px por tile, atual):** quadro 192×192, corpo de 128 px. As formas são desenhadas em unidades
-  de projeto (o quadro de 96 da 2ª versão) e amostradas na resolução final; texturas e detalhes são pixel a pixel
-  nela. Luz de cima à esquerda em 4 faixas com pontilhado na fronteira, linha escura onde uma peça passa na frente
-  de outra, contorno quase preto na sombra e suave na luz. Detalhe novo: olho com pálpebra, íris, pupila e brilho;
-  sobrancelha afinando; nariz com narina; lábios; barba por fazer; cicatriz; orelha com a curva de dentro; brilho
-  em arco e redemoinho no cabelo; gibão com canais de 8 px e pontos de costura; manga acolchoada; punho bordado;
-  dedos; cinto com costura, furos e fivela com pino; barra com losangos; sarja e dobra da calça; bota com poros,
-  dobra do cano, cadarço e sola costurada; espada com gume, sulco, riscos, guarda gravada e cabo trançado.
+- **3ª versão (128 px por tile):** formas amostradas na resolução final e detalhe pixel a pixel. Recusada:
+  "triplique a quantidade de pixel, capricha no detalhe".
+- **4ª versão (384 px por tile, atual):** quadro 576×576, corpo de 384 px. Pixel a pixel não escala mais: todo
+  detalhe é forma ou traço em unidades de projeto, amostrado na resolução final (traço fino de 1 a 3 px). Luz em 4
+  tons com pontilhado ordenado 4×4; linha de 1 px e sombra de contato de até 4 px onde uma peça passa na frente de
+  outra; contorno com 2 px do lado da sombra. Detalhe novo:
+  - rosto: queixo afinando, cavidade do olho, branco, íris com anel, pupila e dois brilhos, pálpebras e cílio;
+    sobrancelha em 3 traços; nariz com dorso, lateral, ponta, asas e narinas; filtro, lábios com brilho; barba por
+    fazer densa no queixo; maçã do rosto pontilhada; cicatriz com relevo; orelha com hélice, concha e lóbulo;
+  - cabelo em ≈50 mechas curvas que afinam na ponta, cada uma com tom próprio e borda escura, brilho em arco e
+    redemoinho de costas;
+  - gibão com canais estufados e costura tracejada, mangas acolchoadas, dobras da saia, gola em V trançada com
+    clavícula, punho bordado em zigue-zague, mão com polegar, dedos, nós e unhas;
+  - cinto com costura, furos, passador, fivela com volume e pino, ponta com ponteira; barra com losangos;
+  - calça com sarja, costura lateral e dobras em leque no joelho; bota com poros, dobra do cano costurada, ilhoses
+    e cadarço cruzado, biqueira, sola com costura e brilho do couro;
+  - espada com duas faces e gume, sulco com fio de luz, dentes no gume, guarda com pontas em bola, linha gravada e
+    pedra, cabo de couro trançado e pomo gravado.
 
 ![Atual × novo na mesma escala](arte/prototipo-tibia-comparacao.png)
-![Detalhe ampliado 3×](arte/prototipo-tibia-detalhe.png)
+![Detalhe 1:1](arte/prototipo-tibia-detalhe.png)
+![Rosto, perfil e cintura ampliados 3×](arte/prototipo-tibia-zoom.png)
 ![Quadros do protótipo](arte/prototipo-tibia-quadros.png)
 ![No chão com os monstros](arte/prototipo-tibia-cena.png)
 
-Leitura da 3ª versão:
-- É o limite útil: num celular com o tile de ≈120 px de tela, 128 px por tile já põe ≈1 pixel de arte por pixel
-  de tela. Dobrar de novo não aparece no aparelho, só na galeria ampliada.
-- Deixa de ser pixel art "de Tibia" e vira ilustração em pixel fino: o estilo se aproxima de jogos 2D de alta
-  resolução. Os monstros e o chão (32 px por tile) ficam muito mais grossos ao lado.
-- Custo: cada monstro, item vestido e enfeite de mapa no mesmo nível de detalhe custa várias vezes o atual. Arte
-  por código nesse nível tende a ficar cara; vale avaliar desenhar em editor (Aseprite) e carregar PNG.
-- Falta: aprovar o visual e decidir a Fase 1.
+Leitura da 4ª versão:
+- Detalhe de ilustração, mas **acima do que o celular mostra**: no tamanho real o herói tem ≈120 px de tela por
+  tile, então a arte é reduzida ≈3×. Os traços de 1 px (cílio, costura, poros) viram textura; rosto, mechas,
+  fivela, cadarço e espada continuam legíveis. O jogo teria de reduzir com suavização (hoje desenha em `pixelArt`).
+- Não é mais o padrão Tibia: é pintura digital com acabamento de pixel. Monstros e chão em 32 px por tile ficam
+  muito mais grosseiros ao lado.
+- Custo de produção: um quadro leva ≈0,2 s para gerar; 4 classes × equipamento × 12 quadros exigem gerar as folhas
+  uma vez e guardar em PNG (não dá para montar no aparelho a cada troca de item). Textura de 576×576 por quadro
+  pesa ≈1,3 MB de memória de vídeo: a folha de um herói tem ≈16 MB, o que é demais para 4 heróis no celular.
+- Caminho viável se o visual for aprovado: desenhar nessa resolução para **retratos e telas de menu** (ficha do
+  herói, loja, seleção de classe) e usar 64–128 px por tile no mapa, gerados a partir do mesmo desenho reduzido.
 
 ### Riscos
 - **Retrabalho do sistema de itens:** mudar o manequim obriga a reencaixar cada item. Mitigação: manter a API de
