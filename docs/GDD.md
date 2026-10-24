@@ -34,7 +34,7 @@ teclado e mouse no desktop são um extra.
 
 Depois do login, o menu ocupa a tela inteira com 4 abas embaixo (no alcance do polegar) e, no centro da barra, o botão
 redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
-O **Batalhas** abre a tela de salas (ver "Salas e sala de espera").
+O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi").
 Código em `apps/client/src/menu.ts`.
 
 - **Classes:** as 4 classes com retrato, papel e atributos (vida, mana, dano, alcance e armadura já com as áureas, as runas e os itens vestidos por aquela classe, na mesma conta da hunt). Tocar escolhe a classe da próxima hunt.
@@ -325,13 +325,14 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 
 Código em `apps/client/src/lobby.ts` e `main.ts`.
 
-1. **Batalhas** (botão central do menu) abre a tela de salas: em cima, as **salas abertas** (líder, cenário e vagas); embaixo, **Criar sala**
-   com os cartões dos cenários e o botão "Criar sala · <cenário>".
+1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele:
+   **Jogar sozinho**, **Criar sala** (com a escolha ☁️ Nuvem / 📱 Meu aparelho) e as salas abertas daquele cenário.
+   O botão **Salas abertas · N**, no alto do mapa, lista as salas de todos os cenários (líder, cenário e vagas).
 2. Criar ou entrar numa sala leva à **sala de espera**: 4 vagas (`MAX_PARTY_SIZE`), cada uma com retrato, nome e classe
    de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".
 3. Só o líder vê o botão de começar: **"Começar sozinho"** com 1 jogador, "Começar hunt · N jogadores" com mais.
    Os outros veem "Aguardando o líder iniciar…". Ao começar, a sala sai da lista (ninguém mais entra).
-4. **Sair da sala** volta para a tela de salas. Se o líder sai, o próximo humano da sala vira líder.
+4. **Sair da sala** volta para o mapa mundi. Se o líder sai, o próximo humano da sala vira líder.
 
 ### Bots na equipe
 
@@ -355,7 +356,7 @@ Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espe
 
 ### Jogar sozinho
 
-O botão **"Jogar sozinho · <cenário>"** da tela de salas começa uma hunt solo na hora, sem sala de espera e sem
+O botão **"Jogar sozinho"** da ficha do cenário começa uma hunt solo na hora, sem sala de espera e sem
 servidor de jogo: a mesma simulação do servidor (`apps/server/src/hunt.ts`) roda no aparelho
 (`apps/client/src/solo.ts`). Não há espera para o servidor acordar nem atraso de rede.
 
@@ -364,8 +365,8 @@ limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
 - o banco sorteia a seed e tira equipamento e bag da conta no início, como numa hunt em equipe;
 - o loot tem teto por mapa (pouco acima do máximo possível) e esse teto cresce com o tempo de hunt;
 - resultado que chega depois da duração do mapa mais 1 minuto vale como soterrado;
-- o que entrou com o jogador volta sem custo; itens novos (até 15) e gold somam no **teto de 12.000 por dia**;
-  o que passar disso fica para trás, e a tela de resultado avisa;
+- o que entrou com o jogador volta sem custo; itens novos, no máximo 15 por hunt (o que passar disso fica para
+  trás, e a tela de resultado avisa). Não há teto por dia;
 - hunt solo deixada aberta (aba fechada) conta como morte na próxima.
 
 ### Sala no aparelho do jogador
@@ -385,11 +386,25 @@ então funcionam com o servidor do jogo dormindo.
   no último segundo se perde. Quem hospedava conta como morte (abandono). Se ninguém conseguir assumir, a hunt
   acaba para quem ficou.
 
+## Mapa mundi
+
+A tela de **Batalhas** é o mapa do mundo de **Kosaradius**, desenhado como um pergaminho de D&D: um planeta quase todo
+mar, com continentes, ilhas e terras em névoa. Código em `apps/client/src/worldMap.ts`; plano completo (história,
+fases, desbloqueio) em `docs/MAPA_MUNDI_PLANO.md`.
+
+- **Mobile:** o mapa rola só na vertical e abre já rolado no último cenário escolhido, com o herói da classe em pé em
+  cima dele. O nome do mundo aparece em marca d'água laranja, em arco, no mar.
+- **Pontos:** um por cenário, na ordem da trilha: 🐸 Pântano do Kosaradius (Verdemar) → 🏚️ Cripta (serra de Verdemar)
+  → 🏜️ Mar de Areia (Solária) → 🌿 Pântano das Ruínas (Arquipélago Afundado). Cada ponto mostra o selo 👥 N quando
+  tem salas abertas. Tocar num ponto leva o herói até ele (~1 s) e abre a ficha.
+- **Névoa:** Gelo de Hrimfal, Ilha de Cinza e Cidadela Caída são terras ainda sem cenário; tocar só avisa.
+- **Ainda não:** todos os cenários estão abertos. O desbloqueio por boss (por classe) e a estrela por ponto vêm na
+  fase 3 do plano.
+
 ## Mapas
 
-O jogador escolhe o mapa (cenário) na tela de criar sala. Os cartões vêm na ordem Pântano do Kosaradius, Cripta, Mar
-de Areia e Pântano das Ruínas, e o primeiro já vem escolhido toda vez que a tela abre. O mapa vale para as salas
-que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
+O jogador escolhe o mapa (cenário) tocando no ponto dele no mapa mundi. O último escolhido fica salvo no aparelho
+(na primeira vez, o Pântano do Kosaradius). O mapa vale para as salas que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
@@ -505,7 +520,7 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - **Loot por monstro menor:** com tantos monstros, o mapa paga 35% do valor de loot dos monstros e baús e 60% dos
   drops de item e poção dos monstros e das poções dos baús (`MapDef.lootScale` e `dropScale`; o boss fica de fora e
   larga tudo, e o baú sempre dá o item). O loot máximo de uma
-  hunt fica em ~1.650 (entre o Mar de Areia e o Pântano das Ruínas). Teto de loot da hunt solo: 1.900.
+  hunt fica em ~1.400 com o corte geral (entre o Mar de Areia e o Pântano das Ruínas). Teto de loot da hunt solo: 1.900.
 - **Arte e animação próprias** (`art/rig.ts`, `art/marshMonsters.ts`, `art/ogreKing.ts`): cada monstro é montado de
   peças com volume (membros em cápsula, tronco, barriga, cabeça) postas por ângulos de articulação, então todos
   têm quadros de **parado** (respirando), **andando** (passo no ritmo do monstro; os ogros com passo pesado),
@@ -598,6 +613,10 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 - **A dificuldade não depende do tamanho da equipe:** os monstros são os mesmos com 1 ou 4 heróis. Jogar em equipe é mais fácil de propósito, para estimular a equipe; nenhuma regra escala vida, dano ou quantidade de monstros pelo número de jogadores.
 - Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
+- **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold
+  dos monstros (boss incluído) e dos baús, e a chance de item dos comuns e mini-bosses cai para 80% da base (comum:
+  15% → 12%). Vale por cima do corte próprio do mapa (`lootScale`, `dropScale`). Poções, os itens do boss e o item
+  do baú não mudam.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 - **Princípio: difícil e injusto como a vida.** Nenhum golpe de monstro tem aviso antes (área marcada no chão, brilho de carga, contagem); o jogador se defende pela posição e pela escolha de quem matar primeiro, não reagindo a um sinal.
 - Monstros, habilidades e regras dos inimigos: ver "Bestiário".
@@ -762,6 +781,15 @@ As compradas no Grimório, por slot (números do nível 0):
 | Esqueleto Erguido (Feiticeiro Necromante) | 60% | corpo a corpo (0,8×) |
 | Águia Gigante (Mestre das Feras) | 50% | voa por cima da água; o mergulho (1,2×) atordoa 0,8 s |
 
+- **Arte e animação** (só no cliente, `apps/client/src/art/summonCreatures.ts`): todas as criaturas têm arte própria e
+  animada (parada, andando, golpe e especial), no volume de luz dos monstros do Pântano. O lobo trota (patas em
+  diagonal) e o urso anda no passo lateral e pesado; as patas pisam e ficam plantadas no chão enquanto o corpo passa
+  (cinemática inversa), e o andar acompanha a velocidade da criatura. O Guardião e o Esqueleto usam o esqueleto de
+  `rig.ts` (braços balançando contra as pernas); a águia, a vespa e a mariposa batem as asas (a vespa com asas
+  transparentes e as pernas penduradas); o Fogo-Fátuo é uma chama que tremula, com bracinhos de fumaça. O lobo
+  solta rastro de luz e uiva no especial; o urso empina e desce as garras no golpe, com runas no ombro que acendem.
+  As formas animais do Druida usam a mesma arte (andam e respiram com o herói).
+
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
 - Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça na cor do sangue deles (vermelho, verde, roxo, preto; mortos-vivos viram poeira) (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, flecha dos arqueiros, bola de fogo do dragão), e cada habilidade tem o seu desenho (pedra em arco, teia, língua, salto, sopro, chuva ácida, relâmpago, engolir, voo). Os monstros respiram parados (cada um num ritmo), escondidos ficam quase transparentes e sem barra, o Mímico parece um baú e os Campeões têm nome e brilho dourados. Efeitos no herói: teia nos pés (preso), estrelas (atordoado), bolha verde (engolido), nuvem escura (cego) e gotas ácidas (corroído).
 
@@ -803,7 +831,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
 - **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
   Raridade: monstro comum 18% raro e 4% mágico; mini-boss e baú 35% e 12%; boss 40% e 25%.
   **O drop não olha a classe de ninguém:** cai qualquer item, mesmo jogando sozinho (um cavaleiro acha cajado; vai para a bag e se vende).
-- O item cai no chão onde o monstro morreu e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
+- O item cai no chão onde o monstro morreu (o do baú, aos pés de quem abriu, que já pega) e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
 - Quem morre larga 1 equipamento sorteado e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
 - Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro e ×4 se mágico.

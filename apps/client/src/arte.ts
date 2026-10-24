@@ -9,8 +9,8 @@ import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
-import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
+import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures, type MonsterAnim } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_AXES, PROTO_BOWS, PROTO_ITEM_NAMES, PROTO_MAGIC_BOWS, PROTO_MAGIC_STAFFS, PROTO_MAGIC_WANDS, PROTO_ARC_HATS, PROTO_MAGIC_ARC_HATS, PROTO_ROBES, PROTO_MAGIC_ROBES, PROTO_PANTS, PROTO_MAGIC_PANTS, PROTO_GREAVES, PROTO_MAGIC_GREAVES, PROTO_BOOTS, PROTO_MAGIC_BOOTS, PROTO_SHIELDS, PROTO_MAGIC_SHIELDS, PROTO_MAGIC_XBOWS, PROTO_STAFFS, PROTO_WANDS, PROTO_XBOWS, PROTO_MAGIC_ARMORS, PROTO_MAGIC_AXES, PROTO_MAGIC_HELMETS, PROTO_MAGIC_SWORDS, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
@@ -407,9 +407,15 @@ for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);
 }
 
-// Monstros animados (Pântano): a folha inteira refinada, quadro a quadro (parado, andando, golpe, especial).
+// Monstros animados (Pântano) e invocações do Druida: a folha inteira refinada, quadro a quadro (parado, andando, golpe,
+// especial).
 const animated = section("Monstros animados (folhas: parado, andando, golpe, especial)");
-for (const [key, anim] of Object.entries(MONSTER_ANIMS)) {
+const summoned = section("Invocações do Druida (folhas: parado, andando, golpe, especial)");
+const animatedSheets: [HTMLElement, string, MonsterAnim][] = [
+  ...Object.entries(MONSTER_ANIMS).map(([key, anim]) => [animated, key, anim] as [HTMLElement, string, MonsterAnim]),
+  ...Object.entries(SUMMON_ANIMS).map(([kind, anim]) => [summoned, SUMMON_TEXTURE[kind as keyof typeof SUMMON_TEXTURE], anim] as [HTMLElement, string, MonsterAnim]),
+];
+for (const [row, key, anim] of animatedSheets) {
   const sheet = anim.sheet();
   const n = sheet.width / anim.size;
   const { canvas, ctx } = makeCanvas(anim.size * 2 * n, anim.size * 2);
@@ -418,7 +424,7 @@ for (const [key, anim] of Object.entries(MONSTER_ANIMS)) {
     frame.ctx.drawImage(sheet, i * anim.size, 0, anim.size, anim.size, 0, 0, anim.size, anim.size);
     ctx.drawImage(refineArt(frame.canvas, { outline: anim.outline }), i * anim.size * 2, 0);
   }
-  show(animated, canvas, key, 1);
+  show(row, canvas, key, 1);
 }
 
 const refined = section("Monstros refinados (como no jogo)");

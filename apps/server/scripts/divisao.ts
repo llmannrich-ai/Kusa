@@ -3,12 +3,14 @@
  *   - sozinho, o herói leva a XP inteira do monstro;
  *   - com 4 na equipe (um deles bot), cada um leva 1/4 da XP, mesmo quem não bateu; o gold também se divide em 4
  *     partes iguais (a do bot se perde);
- *   - o gold do baú se divide do mesmo jeito;
+ *   - o gold do baú se divide do mesmo jeito; o item do baú cai aos pés de quem abriu (no tile do baú ficava
+ *     escondido embaixo do desenho dele) e o herói já pega;
  *   - quem morreu fica de fora e a XP se divide pelos que estão jogando;
  *   - com bots, os itens de equipamento caem com a chance de humanos ÷ equipe (o bot não pega item do chão).
  * Uso: npx tsx scripts/divisao.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { ITEMS } from "@kusa/shared";
+import { Chest } from "../src/state.ts";
 import { HERO, arena, check, type Arena } from "./arena.ts";
 
 /** Mata um orc pelo herói e devolve a XP que o monstro valia e quanto de XP e de gold cada um ganhou. */
@@ -30,6 +32,23 @@ const solo = arena({ mapId: "crypt" });
 const one = killOrc(solo, [HERO]);
 check(one.gains[0] === one.xp, `sozinho, o herói devia levar ${one.xp} XP, levou ${one.gains[0]}`);
 console.log(`sozinho: ${one.gains[0]} de ${one.xp} XP OK`);
+
+// --- Baú aberto sozinho: o item cai aos pés do herói e vai para ele ----------------------------
+const box = new Chest();
+box.id = "cteste";
+box.x = solo.p.x + 1;
+box.y = solo.p.y;
+box.locked = false;
+solo.state.chests.set(box.id, box);
+solo.state.items.clear();
+const picked = solo.seat().stats.items.picked.length;
+solo.any.openChests();
+check(box.opened, "o baú colado no herói devia abrir");
+check([...solo.state.items.values()].every((it) => it.x === solo.p.x && it.y === solo.p.y), "o item do baú devia cair aos pés de quem abriu");
+solo.any.pickUpItems();
+const got = solo.seat().stats.items.picked.slice(picked).filter((id: string) => ITEMS[id]);
+check(got.length === 1, `o herói devia levar o item do baú: ${got}`);
+console.log(`item do baú: ${got[0]} OK`);
 
 // --- Equipe de 4, com um bot: partes iguais, mesmo quem não bateu --------------------------
 const team = arena({ mapId: "crypt", allies: [{ classId: "sorcerer" }, { classId: "druid" }, { classId: "paladin", bot: true }] });

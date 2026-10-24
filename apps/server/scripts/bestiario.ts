@@ -12,7 +12,7 @@
  * Uso: npx tsx apps/server/scripts/bestiario.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CONTROL_IMMUNE_MS, CONTROL_MAX_MS, CORRODE_MAX, MAPS, MONSTERS, MSG, createRng, monsterStats, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
+  CONTROL_IMMUNE_MS, CONTROL_MAX_MS, CORRODE_MAX, LOOT_SCALE, MAPS, MONSTERS, MSG, createRng, monsterStats, generateDungeon, hasLineOfSight, isWalkable, tileDistance,
   type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
@@ -137,11 +137,11 @@ function check(ok: boolean, what: string) {
 // --- Mapa que paga menos (Pântano do Kosaradius: lootScale e dropScale) ----------------
 {
   const { spawn, brain, state, hit, any } = arena("marsh");
-  const k = MAPS.marsh.lootScale!;
+  const k = MAPS.marsh.lootScale! * LOOT_SCALE;
   const grunt = spawn("orcGrunt");
   const full = monsterStats("orcGrunt", 0).loot;
   check(brain(grunt).loot[1] === Math.round(full[1] * k), `loot do orc devia ser ${k} do normal (${brain(grunt).loot[1]} de ${full[1]})`);
-  // Mini-bosses: dos 40 mortos, só parte larga o item garantido (≈ dropScale).
+  // Mini-bosses: dos 40 mortos, só parte larga o item garantido (≈ dropScale × LOOT_SCALE, 48%).
   let items = 0;
   for (let i = 0; i < 40; i++) {
     const ogre = spawn("ogreBruiser");
@@ -150,7 +150,7 @@ function check(ok: boolean, what: string) {
     items += [...state.items.values()].slice(before).filter((it) => !it.itemId.startsWith("potion-")).length;
     state.items.clear();
   }
-  check(items > 13 && items < 35, `mini-bosses deviam largar item ~60% das vezes (${items} de 40)`);
+  check(items > 9 && items < 30, `mini-bosses deviam largar item ~48% das vezes (${items} de 40)`);
   // Baú: o item sai sempre, mesmo no mapa que corta os drops.
   for (let i = 0; i < 20; i++) {
     const before = state.items.size;

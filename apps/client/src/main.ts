@@ -8,12 +8,15 @@ import {
   MSG,
   SPELLS,
   VERSION_MISMATCH_CODE,
+  MONSTERS,
   difficultyStars,
   itemColor,
+  mainBoss,
   mapIdOf,
   partySize,
   xpForLevel,
   type JoinOptions,
+  type MapId,
   type RunEndedMessage,
 } from "@kusa/shared";
 import { RULES_VERSION } from "virtual:rules-version";
@@ -22,7 +25,8 @@ import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
-import { SERVER_CHOICES, createMapId, createServer, mapLine, renderMapPicker, renderServerPicker, renderWaitingRoom, resetMapChoice } from "./lobby.ts";
+import { heroPoses } from "./art/heroes.ts";
+import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
 import { renderHistory } from "./history.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
@@ -31,6 +35,7 @@ import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt, flushPendingSolo } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
+import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -136,17 +141,17 @@ function setEntering(on: boolean) {
   const create = $<HTMLButtonElement>("create");
   const server = SERVER_CHOICES[createServer()];
   create.textContent = !on
-    ? `Criar sala · ${MAPS[createMapId()].name} · ${server.icon} ${server.name}`
+    ? `Criar sala · ${server.icon} ${server.name}`
     : createServer() === "cloud" ? "Conectando… (o servidor pode levar 1 min para acordar)" : "Conectando…";
   // Mapa só para 1 jogador: não tem sala para amigos, só o "Jogar sozinho".
   const soloOnly = partySize(MAPS[createMapId()]) === 1;
-  if (soloOnly && !on) create.textContent = "Criar sala · este cenário é só para jogar sozinho";
+  show("sheet-create", !soloOnly);
   create.disabled = on || soloOnly;
   const solo = $<HTMLButtonElement>("solo");
-  solo.textContent = `Jogar sozinho · ${MAPS[createMapId()].name}`;
+  solo.textContent = on && !soloOnly ? "Conectando…" : "Jogar sozinho";
   solo.disabled = on;
   $<HTMLButtonElement>("rooms-back").disabled = on;
-  document.querySelectorAll<HTMLButtonElement>("#room-list button").forEach((b) => { b.disabled = on; });
+  document.querySelectorAll<HTMLButtonElement>(".room-list button").forEach((b) => { b.disabled = on; });
 }
 
 /**
@@ -179,13 +184,65 @@ function stopWatching() {
   unwatchHosted = null;
 }
 
+let world: WorldMapView | null = null;
+let toastTimer = 0;
+
+/** Aviso curto sobre o mapa (toque numa terra em névoa). */
+function toast(message: string) {
+  $("world-toast").textContent = message;
+  show("world-toast", true);
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => show("world-toast", false), 2500);
+}
+
+/** Tocar num ponto do mapa: o herói vai até ele e abre a ficha do cenário. */
+function pickPoint(id: MapId) {
+  if (entering) return;
+  chooseMap(id);
+  world?.select(id);
+  // A ficha cobre a parte de baixo: o ponto sobe para ficar à vista acima dela.
+  world?.scrollTo(id, 0.22, true);
+  openSheet();
+}
+
+/** Ficha do cenário escolhido: dados do mapa, jogar sozinho, criar sala e as salas abertas dele. */
+function openSheet() {
+  const map = MAPS[createMapId()];
+  $("sheet-icon").innerHTML = MAP_ART[map.id];
+  $("sheet-name").textContent = map.name;
+  $("sheet-region").textContent = WORLD_POINTS[map.id].region;
+  const boss = mainBoss(map);
+  const chips = [
+    `Dificuldade ${difficultyStars(map.difficulty)}`,
+    `${map.durationSeconds / 60} min`,
+    partySize(map) === 1 ? "só 1 jogador" : `até ${partySize(map)} jogadores`,
+    ...(boss ? [`Boss: ${MONSTERS[boss].name}`] : []),
+  ];
+  $("sheet-chips").replaceChildren(...chips.map((text) => {
+    const li = document.createElement("li");
+    li.textContent = text;
+    return li;
+  }));
+  $("sheet-desc").textContent = map.description;
+  show("rooms-sheet", false);
+  show("map-sheet", true);
+  $("map-sheet").scrollTop = 0;
+  setEntering(entering);
+  renderHunts();
+}
+
 async function openRooms() {
   show("menu", false);
   show("rooms", true);
   show("rooms-error", false);
+  show("map-sheet", false);
+  show("rooms-sheet", false);
+  world ??= createWorldMap($("world-map"), MAP_ART, pickPoint, (name) => toast(`${name}: terra não mapeada. Ainda ninguém voltou de lá.`));
+  world.setHero(heroPoses(hub.classId, undefined, ["down"]).toDataURL());
+  world.select(createMapId(), true);
+  // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
+  world.scrollTo(createMapId());
   setEntering(false);
-  resetMapChoice();
-  renderMapPicker(() => setEntering(entering));
   renderServerPicker(() => setEntering(entering));
   cloudHunts = [];
   hostedHunts = [];
@@ -202,52 +259,69 @@ async function openRooms() {
   }
 }
 
+interface OpenRoom {
+  leader: string;
+  mapId: MapId;
+  clients: number;
+  maxClients: number;
+  server: (typeof SERVER_CHOICES)[keyof typeof SERVER_CHOICES];
+  join: () => Promise<DungeonRoom>;
+}
+
+/** Salas abertas nas duas listas (todas e as do cenário da ficha) e o selo de cada ponto do mapa. */
 function renderHunts() {
-  const list = $("room-list");
-  list.innerHTML = "";
-  const rooms = [
+  const rooms: OpenRoom[] = [
     ...cloudHunts.map((h) => ({
-      leader: h.metadata?.leader ?? "?", mapId: h.metadata?.mapId, clients: h.clients, maxClients: h.maxClients,
+      leader: h.metadata?.leader ?? "?", mapId: mapIdOf(h.metadata?.mapId), clients: h.clients, maxClients: h.maxClients,
       server: SERVER_CHOICES.cloud, join: async () => joinHunt(h.roomId, await joinOptions()),
     })),
     ...hostedHunts.map((h) => ({
-      leader: h.leader, mapId: h.mapId, clients: h.clients, maxClients: h.maxClients, server: SERVER_CHOICES.device,
+      leader: h.leader, mapId: mapIdOf(h.mapId), clients: h.clients, maxClients: h.maxClients, server: SERVER_CHOICES.device,
       join: async () => {
         stopWatching();
         return joinHostedRoom(h.roomId, h.hostPeer, mapIdOf(h.mapId), await myRecruit(account?.username ?? "Aventureiro", hub.classId));
       },
     })),
   ];
-  for (const room of rooms) {
-    const li = document.createElement("li");
-    const button = document.createElement("button");
-    button.className = "room";
-    button.disabled = entering;
-    const map = MAPS[mapIdOf(room.mapId)];
-    const title = document.createElement("span");
-    title.textContent = `Hunt de ${room.leader}`;
-    const badge = document.createElement("span");
-    badge.className = "room-badge";
-    badge.textContent = room.server.icon;
-    badge.title = room.server.name;
-    title.append(badge);
-    const where = document.createElement("small");
-    where.className = "muted";
-    where.textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)}`;
-    title.append(where);
-    // Sem um "Entrar" visível, o card parecia só informação e ninguém tocava nele.
-    const join = document.createElement("span");
-    join.className = "room-join";
-    const count = document.createElement("small");
-    count.className = "muted";
-    count.textContent = `${room.clients}/${room.maxClients} jogadores`;
-    join.append("Entrar ›", count);
-    button.append(title, join);
-    button.onclick = () => enter(room.join);
-    li.append(button);
-    list.append(li);
-  }
+  $("room-list").replaceChildren(...rooms.map(roomItem));
   show("rooms-empty", rooms.length === 0);
+  const here = rooms.filter((r) => r.mapId === createMapId());
+  $("sheet-rooms").replaceChildren(...here.map(roomItem));
+  show("sheet-rooms-empty", here.length === 0);
+  $("open-room-list").textContent = `Salas abertas · ${rooms.length}`;
+  const counts: Partial<Record<MapId, number>> = {};
+  for (const r of rooms) counts[r.mapId] = (counts[r.mapId] ?? 0) + 1;
+  world?.setRoomCounts(counts);
+}
+
+function roomItem(room: OpenRoom) {
+  const li = document.createElement("li");
+  const button = document.createElement("button");
+  button.className = "room";
+  button.disabled = entering;
+  const map = MAPS[room.mapId];
+  const title = document.createElement("span");
+  title.textContent = `Hunt de ${room.leader}`;
+  const badge = document.createElement("span");
+  badge.className = "room-badge";
+  badge.textContent = room.server.icon;
+  badge.title = room.server.name;
+  title.append(badge);
+  const where = document.createElement("small");
+  where.className = "muted";
+  where.textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)}`;
+  title.append(where);
+  // Sem um "Entrar" visível, o card parecia só informação e ninguém tocava nele.
+  const join = document.createElement("span");
+  join.className = "room-join";
+  const count = document.createElement("small");
+  count.className = "muted";
+  count.textContent = `${room.clients}/${room.maxClients} jogadores`;
+  join.append("Entrar ›", count);
+  button.append(title, join);
+  button.onclick = () => enter(room.join);
+  li.append(button);
+  return li;
 }
 
 // --- Configurações --------------------------------------------------------
@@ -311,6 +385,12 @@ $("rooms-back").onclick = () => {
   stopWatching();
   show("rooms", false);
   show("menu", true);
+};
+$("map-sheet-close").onclick = () => show("map-sheet", false);
+$("rooms-sheet-close").onclick = () => show("rooms-sheet", false);
+$("open-room-list").onclick = () => {
+  show("map-sheet", false);
+  show("rooms-sheet", true);
 };
 $("create").onclick = () => enter(async () => {
   if (createServer() === "cloud") return createHunt(await joinOptions());
