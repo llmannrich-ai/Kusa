@@ -6,7 +6,8 @@ mapa do Super Mario World. Tocar num ponto abre a ficha do cenário com os botõ
 salas abertas). Documento de planejamento: quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e
 este arquivo marca a fase como feita.
 
-**Andamento:** planejamento. Decisões do Leonardo na seção 2; maquete visual aprovada antes da fase 1.
+**Andamento:** planejamento. Decisões do Leonardo na seção 2; história, nomes das regiões e maquete visual
+(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Próximo passo: fase 1.
 
 ---
 
@@ -39,10 +40,14 @@ este arquivo marca a fase como feita.
 | Contas atuais | desbloqueio pelo histórico: quem já matou um boss com a classe já tem o ponto seguinte aberto |
 | Salas abertas | nos dois lugares: contador no ponto (👥 2) e botão fixo "Salas abertas (N)" com a lista completa |
 | Nome do mundo | **Kosaradius**, escrito no fundo do mapa em marca d'água laranja clara, em arco convexo (ver 3) |
+| História e regiões | aprovadas como estão na seção 3 |
+| Visual | a maquete aprovada é a referência da implementação |
+| Abertura | Batalhas abre o mapa já rolado no último ponto aberto da classe, com o herói em cima |
+| Caminhada | ~1 s até o ponto tocado; tocar de novo (ou na ficha) pula |
 | Amigos no mapa | depois, quando existir o sistema de amigos |
 | Geografias futuras (na névoa) | gelo / polo, vulcão, cidade em ruínas / castelo |
 
-## 3. Mundo (proposta para aprovar)
+## 3. Mundo
 
 **Kosaradius**, um planeta quase todo mar (nome decidido pelo Leonardo). Há mil anos o Império de Kusa dominava um continente só; a **Grande Maré**
 subiu numa noite e afundou o império. Sobraram os picos (os continentes de hoje), ilhas e ruínas meio submersas.
