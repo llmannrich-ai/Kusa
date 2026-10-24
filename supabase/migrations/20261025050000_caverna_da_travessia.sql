@@ -1,4 +1,4 @@
--- Mapa novo: Caverna da Travessia ('cavern'), na ilha entre Solária e o Arquipélago. Dois covis, um boss em cada:
+-- Mapa novo: Caverna da Travessia ('cavern'), o ponto 5 da campanha de Verdemar (a primeira bifurcação). Dois covis, um boss em cada:
 -- o Basilisco ('basilisk', o médio do mapa) e o Observador das Profundezas ('beholder', o mais forte do jogo). Cada boss dá a runa
 -- dele uma vez por personagem, e o mapa mundi lê `profile_boss_runes` para liberar o caminho daquele lado da
 -- bifurcação. A hunt solo e a sala no aparelho do jogador aceitam o mapa com os limites de `SOLO_LIMITS`
