@@ -46,6 +46,7 @@ import {
   TRAITS,
   damageReduction,
   gearStats,
+  heroBonuses,
   canUse,
   classesText,
   describeStats,
@@ -279,9 +280,19 @@ export class Hub {
     const list = el("div", "class-list");
     for (const id of CLASS_IDS) {
       const c = CLASSES[id];
-      const bonus = auraBonuses(id, this.profile.talents);
+      // Como a hunt soma (`applyBonuses` e `baseDamage` em hunt.ts): áureas, runas e itens vestidos por esta classe.
+      const worn = this.wornItems(id).map((i) => i.itemId);
+      const aura = auraBonuses(id, this.profile.talents);
+      const runes = heroBonuses({}, worn);
+      const gear = gearStats(worn);
+      const bonus = {
+        hp: aura.hp + runes.hp + gear.hp, mana: aura.mana + runes.mana + gear.mana,
+        damage: aura.damage + runes.damage, speed: aura.speed + runes.speed + gear.speed,
+      };
       const base = statsFor(id, 1);
       const boosted = statsFor(id, 1, bonus);
+      const damage = boosted.damage * (1 + gear.damage);
+      const range = c.attackRange + (c.attackRange > 1 ? gear.range : 0);
       const card = el("button", "class-card");
       card.classList.toggle("selected", id === this.classId);
       card.style.setProperty("--class-color", hex(c.color));
@@ -300,8 +311,9 @@ export class Hub {
       };
       stat("Vida", String(boosted.maxHp), boosted.maxHp > base.maxHp);
       stat("Mana", String(boosted.maxMana), boosted.maxMana > base.maxMana);
-      stat("Dano", String(Math.round(boosted.damage)), boosted.damage > base.damage);
-      stat("Alcance", c.attackRange === 1 ? "Corpo a corpo" : `${c.attackRange} tiles`, false);
+      stat("Dano", String(Math.round(damage)), damage > base.damage);
+      stat("Alcance", range === 1 ? "Corpo a corpo" : `${range} tiles`, range > c.attackRange);
+      if (gear.armor) stat("Armadura", `${gear.armor} (−${Math.round(damageReduction(gear.armor) * 100)}%)`, true);
 
       const known = knownSpells(id, this.profile.talents).length;
       const total = Object.values(SPELLS).filter((s) => s.classId === id).length;
