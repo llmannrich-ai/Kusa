@@ -1160,7 +1160,7 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .result-lost img { width: 28px; height: 28px; image-rendering: pixelated; flex: none; }
 .result-lost small { margin-left: auto; color: var(--muted); }
 
-/* --- Batalhas: mapa mundi de Kosaradius (worldMap.ts), em pergaminho. Rola só na vertical. --- */
+/* --- Batalhas: carta de Verdemar (worldMap.ts), em pergaminho. Câmera própria: arrasto e pinça. --- */
 .world {
   --ink: #4a3420;
   --parchment: #f3e7c9;
@@ -1170,42 +1170,57 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
   left: var(--col-x);
   width: var(--col-w);
   overflow: hidden;
-  background: #d3d6bd;
   color: #2b1d10;
 }
-.world-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-.world-map { position: relative; width: 100%; aspect-ratio: 412 / 2000; }
-.world-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.world-fog { position: absolute; padding: 0; background: none; border: 0; border-radius: 50%; }
-/* Resposta ao toque na névoa (o aviso aparece embaixo): a terra clareia um pouco. */
-.world-fog:active { background: radial-gradient(closest-side, rgba(255, 250, 235, 0.55), transparent); }
-.world-fog:focus-visible { outline: 2px dashed var(--ink); outline-offset: -6px; }
+.world { background: #b9c1a8; }
+.world-view { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.world-view.dragging { cursor: grabbing; }
+.world-plane { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.world-art, .world-over { position: absolute; inset: 0; display: block; pointer-events: none; -webkit-user-drag: none; }
+.world-trail-bed { fill: none; stroke: #f3e9cf; stroke-width: 6; opacity: 0.55; stroke-linecap: round; }
+.world-trail-bed.open { stroke-width: 8; opacity: 0.6; }
+.world-trail-next { fill: none; stroke: #3f2c1a; stroke-width: 2.6; stroke-dasharray: 1 8; stroke-linecap: round; opacity: 0.8; }
+.world-trail-open { fill: none; stroke: #8a2f20; stroke-width: 4; stroke-dasharray: 10 7; stroke-linecap: round; }
+.world-label, .world-place { fill: #3f2c1a; text-anchor: middle; paint-order: stroke; stroke: #efe5c9; stroke-linejoin: round; }
+.world-label { font-variant: small-caps; stroke-width: 5; }
+.world-place { font-style: italic; stroke-width: 3.5; }
+.world-place.water { fill: #3d5560; }
+.world-view.far .world-small { display: none; }
+.world-layer { position: absolute; inset: 0; pointer-events: none; }
+/* Pontos e herói: posição pela câmera (transform), tamanho fixo na tela em qualquer zoom. */
 .world-point {
   position: absolute;
+  left: 0;
+  top: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  min-width: 52px;
+  width: 0;
   padding: 0;
   background: none;
   border: 0;
   color: inherit;
-  transform: translate(-50%, -26px);
+  pointer-events: auto;
 }
-.world-icon { position: relative; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--parchment); border: 3px solid #2b1d10; box-shadow: 0 2px 0 var(--ink); }
+.world-point > * { flex: none; }
+.world-icon { position: relative; display: grid; place-items: center; width: 52px; height: 52px; margin-top: -26px; border-radius: 50%; background: var(--parchment); border: 3px solid #2b1d10; box-shadow: 0 2px 0 var(--ink), 0 4px 10px rgba(43, 29, 16, 0.25); }
 .world-icon svg { width: 44px; height: 44px; }
 .world-point.selected .world-icon { border-color: #c8962e; animation: world-glow 2.2s ease-in-out infinite; }
 @keyframes world-glow { 50% { box-shadow: 0 2px 0 var(--ink), 0 0 0 7px rgba(232, 181, 69, 0.45); } }
 .world-name { padding: 2px 8px; font-size: 14px; white-space: nowrap; background: var(--parchment); border: 1.5px solid var(--ink); border-radius: 4px; }
 .world-count { position: absolute; top: -8px; left: 38px; padding: 2px 7px; font-size: 12px; font-weight: bold; color: var(--parchment); background: #3b2a1a; border-radius: 10px; white-space: nowrap; }
-/* O herói fica de pé em cima do ponto e anda pela trilha em ~1 s (worldMap.ts posiciona quadro a quadro); no mar vira barco. */
-.world-hero { position: absolute; width: 40px; height: 40px; pointer-events: none; transform: translate(-50%, -62px); filter: drop-shadow(0 2px 0 rgba(43, 29, 16, 0.4)); }
-.world-hero-sprite { position: absolute; inset: 0; background-size: 900% 100%; background-repeat: no-repeat; image-rendering: pixelated; }
-.world-boat { position: absolute; left: -4px; bottom: -6px; width: 48px; height: 40px; display: none; }
-.world-hero.boat .world-hero-sprite { display: none; }
-.world-hero.boat .world-boat { display: block; }
-.world-hero.flip .world-boat { transform: scaleX(-1); }
+/* Cenários da campanha por vir: medalhão numerado; nas bifurcações, um selo de placa. */
+.world-point.next .world-icon { width: 40px; height: 40px; margin-top: -20px; font-size: 17px; font-weight: bold; font-variant: small-caps; color: #5a4128; background: radial-gradient(circle at 40% 35%, #f6eedb, #e2d4b1); border: 2px solid #7d6446; box-shadow: 0 2px 0 rgba(63, 44, 26, 0.5); }
+.world-point.next.final .world-icon { width: 50px; height: 50px; margin-top: -25px; font-size: 25px; border-width: 3px; border-color: #5a4128; }
+.world-point.next .world-name { font-size: 13px; font-style: italic; color: #4f3820; background: rgba(243, 231, 201, 0.88); border-color: #9c8463; }
+.world-point.fork .world-icon::after { content: ""; position: absolute; right: -9px; top: -9px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--parchment); background: #7a2e22 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 17V9M10 9L5 4M10 9l5-5M5 4v3M5 4h3M15 4v3M15 4h-3' fill='none' stroke='%23f3e7c9' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center / 16px no-repeat; }
+.world-view.far .world-name, .world-view.mid .world-point.next .world-name { display: none; }
+.world-tools { position: absolute; right: 12px; bottom: max(16px, env(safe-area-inset-bottom)); display: grid; gap: 8px; pointer-events: auto; }
+.world-tools .world-chip { width: 44px; height: 44px; padding: 0; font-size: 20px; }
+/* O herói fica de pé em cima do ponto e anda pela trilha em ~1 s (worldMap.ts posiciona quadro a quadro). */
+.world-hero { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; filter: drop-shadow(0 2px 0 rgba(43, 29, 16, 0.4)); }
+.world-hero-sprite { position: absolute; left: -20px; width: 40px; height: 40px; margin-top: -62px; background-size: 900% 100%; background-repeat: no-repeat; image-rendering: pixelated; }
 @media (prefers-reduced-motion: reduce) {
   .world-point.selected .world-icon { animation: none; box-shadow: 0 2px 0 var(--ink), 0 0 0 5px rgba(232, 181, 69, 0.45); }
 }

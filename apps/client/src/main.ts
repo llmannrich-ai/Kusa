@@ -193,7 +193,7 @@ function toast(message: string) {
   $("world-toast").textContent = message;
   show("world-toast", true);
   window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => show("world-toast", false), 2500);
+  toastTimer = window.setTimeout(() => show("world-toast", false), 3500);
 }
 
 /** Tocar num ponto do mapa: o herói anda até ele pela trilha e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
@@ -238,11 +238,11 @@ async function openRooms() {
   show("rooms-error", false);
   show("map-sheet", false);
   show("rooms-sheet", false);
-  world ??= createWorldMap($("world-map"), MAP_ART, pickPoint, (name) => toast(`${name}: terra não mapeada. Ainda ninguém voltou de lá.`));
+  world ??= createWorldMap($("world-view"), MAP_ART, pickPoint, toast);
   world.setHero(heroSheet(hub.classId).toDataURL());
   world.select(createMapId(), { instant: true });
   // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
-  world.scrollTo(createMapId());
+  world.focus(createMapId());
   setEntering(false);
   renderServerPicker(() => setEntering(entering));
   cloudHunts = [];

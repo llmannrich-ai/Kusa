@@ -7,7 +7,7 @@ salas abertas). Documento de planejamento: quando uma fase for entregue, o `GDD.
 este arquivo marca a fase como feita.
 
 **Andamento:** planejamento. Decisões do Leonardo na seção 2; história, nomes das regiões e maquete visual
-(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Fases 1 (mapa estático, ficha, salas abertas) e 2 (herói andando pela trilha, barco no mar, névoa revisada) feitas.
+(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Fases 1 (mapa estático, ficha, salas abertas), 2 (herói andando pela trilha, névoa revisada) e 2b (carta de Verdemar com a campanha, câmera com arrasto e pinça) feitas.
 
 ---
 
@@ -127,7 +127,7 @@ O continente principal cresce e passa a concentrar os cenários; o mapa deixa de
 | Em volta | mar, com Gelo de Hrimfal e Ilha de Cinza em névoa (a Cidadela Caída entrou no continente) |
 | Nomes | o continente inteiro é **Verdemar**; longe (continente inteiro na tela) só os ícones aparecem, sem os nomes |
 | Maquete | https://claude.ai/artifact/67b1st8XsBSp4MNVURtoxk |
-| Execução | maquete navegável para aprovar no celular antes de mexer no jogo; depois, branch nova a partir do `main` com o #137 |
+| Execução | maquete aprovada; no jogo pela fase 2b (arte em `public/mapa/verdemar.svg`, gerada por `npm run mapa -w @kusa/client`) |
 
 Impacto técnico previsto: `worldMap.ts` troca a rolagem vertical por câmera própria (translate + scale, ponteiros para
 arrasto e pinça, sem a rolagem do navegador); pontos e herói ficam em camada HTML com tamanho fixo na tela (não
@@ -155,6 +155,7 @@ Arquipélago Afundado deixam de ser continentes: Solária vira o deserto de Verd
 |---|---|---|
 | 0 | maquete HTML (pergaminho, pontos, névoa, ficha) para aprovar | nada no jogo |
 | 1 | mapa estático com os 4 pontos, ficha, salas abertas; substitui os cartões; tudo aberto | cliente · **feito** |
-| 2 | herói andando, barco no mar, névoa com nomes | cliente · **feito** |
+| 2 | herói andando, barco no mar, névoa com nomes | cliente · **feito** (o barco saiu na 2b: a campanha é toda em terra) |
+| 2b | carta de Verdemar (seção 5b): campanha de 18 cenários com 3 bifurcações, arte gerada no build, câmera com arrasto e pinça | cliente · **feito** |
 | 3 | desbloqueio por classe, estrela, crédito do boss, migration e preenchimento das contas atuais | shared, servidor, banco |
 | 4 | cenários novos nas regiões em névoa (gelo, vulcão, cidadela), cada um um projeto à parte | tudo |

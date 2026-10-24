@@ -390,24 +390,32 @@ então funcionam com o servidor do jogo dormindo.
 
 ## Mapa mundi
 
-A tela de **Batalhas** é o mapa do mundo de **Kosaradius**, desenhado como um pergaminho de D&D: um planeta quase todo
-mar, com continentes, ilhas e terras em névoa. Código em `apps/client/src/worldMap.ts`; plano completo (história,
-fases, desbloqueio) em `docs/MAPA_MUNDI_PLANO.md`.
+A tela de **Batalhas** é a carta de **Verdemar**, o continente da campanha no mundo de **Kosaradius**, desenhada como
+um pergaminho de D&D. Código em `apps/client/src/worldMap.ts` (câmera, trilhas, nomes, pontos, herói) e
+`apps/client/src/world/verdemar.ts` (catálogo: cenários, trilhas, nomes); plano completo (história, fases, desbloqueio)
+em `docs/MAPA_MUNDI_PLANO.md`.
 
-- **Mobile:** o mapa rola só na vertical e abre já rolado no último cenário escolhido, com o herói da classe em pé em
-  cima dele. O nome do mundo aparece em marca d'água laranja, em arco, no mar.
-- **Pontos:** um por cenário, na ordem da trilha: 🐸 Pântano do Kosaradius (Verdemar) → 🏚️ Cripta (serra de Verdemar)
-  → 🏜️ Mar de Areia (Solária) → 🌿 Pântano das Ruínas (Arquipélago Afundado). Cada ponto mostra o selo 👥 N quando
-  tem salas abertas. Tocar num ponto abre a ficha e leva o herói até ele.
-- **Trilha:** o herói anda pela trilha desenhada (tracejada em terra, pontilhada no mar), passando pelos pontos do
-  meio, em ~1 s no total, e o mapa rola junto até o ponto ficar à vista acima da ficha. O boneco vira para o lado da
-  caminhada (frente, costas, lado) e anima os passos; onde a rota pontilhada sai da terra, vira um barquinho de
-  pergaminho e volta a ser herói ao pisar na costa. Tocar de novo no ponto, ou tocar na ficha, pula a caminhada.
-  Com "reduzir movimento" ligado no aparelho (`prefers-reduced-motion`), o herói só troca de ponto.
-- **Névoa:** Gelo de Hrimfal, Ilha de Cinza e Cidadela Caída são terras ainda sem cenário, com o nome e "terra não
-  mapeada" escritos por cima; tocar clareia a névoa um instante e mostra o aviso embaixo.
-- **Ainda não:** todos os cenários estão abertos. O desbloqueio por boss (por classe) e a estrela por ponto vêm na
-  fase 3 do plano.
+- **Arte:** biomas pintados (floresta, colinas, deserto, ermos, charco, ruínas, campos, serra nevada), costa recortada
+  com linhas de costa, rios com pontes, lagos, vilas, torres, farol, ruínas do império, navios e monstros no mar,
+  moldura, rosa dos ventos e cartela. A arte é uma imagem pronta (`apps/client/public/mapa/verdemar.svg`), gerada por
+  sorteio com semente por `npm run mapa -w @kusa/client` (`scripts/verdemarArt.ts`); mudou o catálogo, gere de novo.
+- **Mobile:** câmera própria, **arrastar em qualquer direção e pinça** para aproximar (do continente inteiro na tela a
+  1,8×). Abre perto, no último cenário escolhido, com o herói da classe em pé em cima dele. 📍 volta ao herói e ⤢
+  mostra o continente inteiro. Os pontos e o herói têm o mesmo tamanho na tela em qualquer zoom; de longe, os nomes
+  pequenos somem e os grandes crescem para seguir legíveis.
+- **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
+  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas (trilha vermelha). Daí ao norte, sob a
+  névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a **Cidadela Caída**.
+- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): Encruzilhada (floresta ou
+  deserto), Portões do Império (charco ou ermos) e Sopé da Serra (passo ou garganta). Tocar num cenário por vir só
+  avisa de onde ele abre.
+- **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
+  pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
+  anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
+  (`prefers-reduced-motion`), o herói só troca de ponto.
+- **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
+- **Ainda não:** os 4 cenários de hoje estão abertos e os outros 14 ainda não existem. O desbloqueio por boss (por
+  classe) e a estrela por ponto vêm na fase 3 do plano.
 
 ## Mapas
 
