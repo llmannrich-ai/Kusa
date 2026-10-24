@@ -70,11 +70,11 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Machado (cavaleiro)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Machadinha** — pedra amarrada com couro num galho | **Machado do Berserker** — gume em mandíbula de urso, pelo no cabo, olhos vermelhos de fúria *(Berserker Axe)* |
-| 2 | **Machado de bronze** — meia-lua com dois furos | **Machado Uivante** — a lâmina é uma cabeça de lobo uivando, linhas de vento *(lobisomens e worgs)* |
-| 3 | **Machado de batalha** — lâmina dupla nórdica com corvo gravado | **Machado dos Reis Anões** — rosto de rei anão em relevo, runas, anéis no cabo *(Axe of the Dwarvish Lords)* |
-| 4 | **Machado de mithral** — lâmina em asa de grifo, cabo branco | **Machado da Tempestade** — machado de gigante da tempestade, relâmpago encravado, faíscas *(storm giants)* |
-| 5 | **Grande machado do dragão** — duas lâminas em asas de dragão e crânio no centro | **Ruína dos Gigantes** — machadão maior que o herói com dentes de gigante como troféu *(Giant Slayer)* |
+| 1 | **Machadinha** ✅ — pedra amarrada com couro num galho | **Machado do Berserker** ✅ — gume em mandíbula de urso, pelo no cabo, olhos vermelhos de fúria *(Berserker Axe)* |
+| 2 | **Machado de bronze** ✅ — meia-lua com dois furos | **Machado Uivante** ✅ — a lâmina é uma cabeça de lobo uivando, linhas de vento *(lobisomens e worgs)* |
+| 3 | **Machado de batalha** ✅ — lâmina dupla nórdica com corvo gravado | **Machado dos Reis Anões** ✅ — rosto de rei anão em relevo, runas, anéis no cabo *(Axe of the Dwarvish Lords)* |
+| 4 | **Machado de mithral** ✅ — lâmina em asa de grifo, cabo branco | **Machado da Tempestade** ✅ — machado de gigante da tempestade, relâmpago encravado, faíscas *(storm giants)* |
+| 5 | **Grande machado do dragão** ✅ — duas lâminas em asas de dragão e crânio no centro | **Ruína dos Gigantes** ✅ — machadão maior que o herói com dentes de gigante como troféu *(Giant Slayer)* |
 
 ### Arco (paladino)
 | Nível | Comum | Mágico |
@@ -243,14 +243,32 @@ anão, barba trançada e runas), Escamas do Dragão Vermelho (brasa entre as esc
 
 ![Armaduras mágicas](arte/lote2-armors.png)
 
-## 8. Ordem de execução
+## 8. Lote 3 desenhado
+
+Os 10 machados, comuns e mágicos, no cavaleiro. Os de uma mão são segurados com a cabeça para cima, ao lado do
+corpo; os de nível 5 (Grande machado do dragão e Ruína dos Gigantes) são de duas mãos, do chão até acima da cabeça.
+
+**Machados comuns**: machadinha de pedra amarrada, meia-lua de bronze com furos, lâmina dupla nórdica com corvo,
+asa de grifo de mithral em cabo branco, asas de dragão com crânio:
+
+![Machados](arte/lote3-axes.png)
+
+**Machados mágicos**: Machado do Berserker (mandíbula de urso, olhos em brasa, pelo no cabo), Machado Uivante
+(cabeça de lobo uivando, vento), Machado dos Reis Anões (lâmina dupla de ferro, rosto de rei em ouro, runas e
+anéis), Machado da Tempestade (raio encravado e faíscas), Ruína dos Gigantes (pedra e ferro, maior que o herói, com
+dentes de gigante amarrados):
+
+![Machados mágicos](arte/lote3-axes-magic.png)
+
+## 9. Ordem de execução
 
 ![Piloto: Capuz do Lobo no druida e no feiticeiro, Elmo do Demônio e Lâmina do dragão no cavaleiro, Elmo do Demônio no paladino](arte/itens-piloto.png)
 
 1. **Piloto** ✅: Capuz do Lobo, Elmo do Demônio e Lâmina do dragão.
    **Lote 1** ✅: espadas, elmos de guerra e armaduras de guerra comuns (seção 6).
    **Lote 2** ✅: os mágicos dessas 3 famílias (seção 7).
-   **Lote 3**: machados (comuns e mágicos).
+   **Lote 3** ✅: machados (seção 8).
+   **Lote 4**: arcos e bestas (paladino).
 2. Armas (o que mais aparece), depois armaduras e mantos, capacetes, botas, calças e escudos.
 3. Ícones de 32×32 a partir de cada desenho pronto.
 4. Integração no jogo atrás da opção "Arte nova (beta)", com o teste `arte.ts` conferindo cada item.

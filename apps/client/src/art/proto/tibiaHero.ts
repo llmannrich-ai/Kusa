@@ -70,7 +70,7 @@ interface Kit {
 }
 
 type Tier = 1 | 2 | 3 | 4 | 5;
-export type ProtoWeapon = `sword-${Tier}` | `sword-${Tier}-magic`;
+export type ProtoWeapon = `sword-${Tier}` | `sword-${Tier}-magic` | `axe-${Tier}` | `axe-${Tier}-magic`;
 export type ProtoHelmet = `war-${Tier}` | `war-${Tier}-magic` | "wolf" | "demon";
 export type ProtoArmor = `armor-${Tier}` | `armor-${Tier}-magic`;
 export const PROTO_SWORDS: ProtoWeapon[] = ["sword-1", "sword-2", "sword-3", "sword-4", "sword-5"];
@@ -79,6 +79,8 @@ export const PROTO_WAR_ARMORS: ProtoArmor[] = ["armor-1", "armor-2", "armor-3", 
 export const PROTO_MAGIC_SWORDS: ProtoWeapon[] = ["sword-1-magic", "sword-2-magic", "sword-3-magic", "sword-4-magic", "sword-5-magic"];
 export const PROTO_MAGIC_HELMETS: ProtoHelmet[] = ["war-1-magic", "war-2-magic", "war-3-magic", "war-4-magic", "war-5-magic"];
 export const PROTO_MAGIC_ARMORS: ProtoArmor[] = ["armor-1-magic", "armor-2-magic", "armor-3-magic", "armor-4-magic", "armor-5-magic"];
+export const PROTO_AXES: ProtoWeapon[] = ["axe-1", "axe-2", "axe-3", "axe-4", "axe-5"];
+export const PROTO_MAGIC_AXES: ProtoWeapon[] = ["axe-1-magic", "axe-2-magic", "axe-3-magic", "axe-4-magic", "axe-5-magic"];
 
 /** Itens vestidos sobre o kit: trocam o capacete, a armadura e a arma da classe. */
 export interface ProtoGear {
@@ -125,7 +127,7 @@ export const mergeLook = (extra: Partial<ProtoLook>): ProtoLook => ({ ...KNIGHT_
 
 // --- Materiais ----------------------------------------------------------------------
 
-const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon }
+const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon, Stone }
 
 const OUTLINE: Rgb = rgb("#1a1210");
 
@@ -162,6 +164,7 @@ function ramps(look: ProtoLook): Rgb[][] {
     r("#3a72d0", 1.3, 8, true), // safira
     r("#c48a3c", 1.1, 8), // juba do leão
     r("#d2382a", 1.1, 10, true), // escama de dragão vermelho
+    r("#8a8478", 1.05, 4), // pedra
   ];
 }
 
@@ -246,6 +249,12 @@ class Canvas {
     if (X < 0 || Y < 0 || X >= S || Y >= S) return;
     const i = Y * S + X;
     if (this.mat[i] >= 0) this.off[i] += delta;
+  }
+
+  /** Apaga um pixel (furo de lâmina, recorte). */
+  clear(X: number, Y: number) {
+    if (X < 0 || Y < 0 || X >= S || Y >= S) return;
+    this.mat[Y * S + X] = -1;
   }
 
   /** Troca o material das peças `ids` (mesma forma, outro metal). */
@@ -1159,6 +1168,12 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
     case "staff": return () => staff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
     default:
+      if (kit.weapon.startsWith("axe-")) {
+        const id = kit.weapon;
+        return axeTwoHanded(id)
+          ? () => axeArt(c, id, [at[0], FEET - 0.6], [at[0] + out * 1.6, top - 20], out)
+          : () => axeArt(c, id, [at[0], at[1] + 3], [at[0] + out * 1.2, at[1] - AXE_LEN[tierOf(id)]], out);
+      }
       if (kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic") {
         const t = tierOf(kit.weapon), id = kit.weapon;
         return () => swordById(c, id, at, t === 5 ? [at[0] + out * 3, top - 30] : [at[0] + out * 4, at[1] + SWORD_LEN[t]]);
@@ -1239,6 +1254,9 @@ function side(c: Canvas, kit: Kit, frame: number) {
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
     : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
+    : kit.weapon.startsWith("axe-") ? () => (axeTwoHanded(kit.weapon)
+      ? axeArt(c, kit.weapon, [ha[0] + 3, FEET - 1], [ha[0] - 7, top - 18], -1)
+      : axeArt(c, kit.weapon, [ha[0] + 1.6, ha[1] + 3], [ha[0] - 5, ha[1] - AXE_LEN[tierOf(kit.weapon)]], -1))
     : kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic" ? () => {
       const t = tierOf(kit.weapon);
       swordById(c, kit.weapon, ha, t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]);
@@ -2384,6 +2402,8 @@ export const PROTO_ITEM_NAMES: Record<string, string> = {
   wolf: "Capuz do Lobo", demon: "Elmo do Demônio",
   "sword-1-magic": "Espada do Juramento", "sword-2-magic": "Lâmina Flamejante", "sword-3-magic": "Vingadora Sagrada", "sword-4-magic": "Espada Dançarina", "sword-5-magic": "Espada Vorpal",
   "war-1-magic": "Gorro do Escudeiro", "war-2-magic": "Elmo do Vigia", "war-3-magic": "Elmo do Brilho", "war-4-magic": "Elmo do Cavaleiro Grifo", "war-5-magic": "Elmo do Demônio",
+  "axe-1": "Machadinha", "axe-2": "Machado de bronze", "axe-3": "Machado de batalha", "axe-4": "Machado de mithral", "axe-5": "Grande machado do dragão",
+  "axe-1-magic": "Machado do Berserker", "axe-2-magic": "Machado Uivante", "axe-3-magic": "Machado dos Reis Anões", "axe-4-magic": "Machado da Tempestade", "axe-5-magic": "Ruína dos Gigantes",
   "armor-1-magic": "Gibão do Aventureiro", "armor-2-magic": "Couraça do Leão", "armor-3-magic": "Cota Élfica", "armor-4-magic": "Armadura de Placas Anã", "armor-5-magic": "Escamas do Dragão Vermelho",
 };
 
@@ -2835,6 +2855,157 @@ function helmetArt(c: Canvas, id: string, view: ProtoDir, cx: number, cy: number
 function swordById(c: Canvas, id: string, at: Pt, tip: Pt) {
   if (isMagic(id)) swordMagic(c, at, tip, tierOf(id));
   else swordArt(c, at, tip, tierOf(id));
+}
+
+// --- Lote 3: machados (docs/ARTE_ITENS.md) ---------------------------------------------
+
+/** Pedra lascada: manchas e lascas claras. */
+const stone: Offset = (X, Y) => (noise(X >> 1, Y >> 1) < 0.2 ? -1 : noise(X, Y) < 0.05 ? 1 : 0);
+
+/** Machado de uma mão: tamanho do cabo da mão até a cabeça. Os de duas mãos (5 e Ruína) vão do chão até acima da cabeça. */
+const AXE_LEN = [0, 14, 16, 18, 19];
+/** Escala da cabeça do machado por nível (comum, mágico). */
+const AXE_SCALE = [[0, 0], [1.5, 1.55], [1.55, 1.55], [1.6, 1.6], [1.65, 1.65], [1.3, 1.5]];
+const axeTwoHanded = (id: string) => tierOf(id) === 5;
+
+/**
+ * Machado do id. `bottom` e `topEnd` são as pontas do cabo; `out` (−1/1) é o lado da lâmina, para fora do corpo.
+ * A cabeça é desenhada no referencial do cabo: `a` para fora (lâmina), `b` ao longo do cabo (para cima).
+ */
+function axeArt(c: Canvas, id: string, bottom: Pt, topEnd: Pt, out: number) {
+  const tier = tierOf(id), magic = isMagic(id);
+  const dx = topEnd[0] - bottom[0], dy = topEnd[1] - bottom[1];
+  const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+  // Lado de fora: perpendicular ao cabo, apontando para `out`.
+  let ox = -uy, oy = ux;
+  if (Math.sign(ox) !== Math.sign(out)) { ox = -ox; oy = -oy; }
+  const H: Pt = [topEnd[0] - ux * 2.6, topEnd[1] - uy * 2.6];
+  const k = AXE_SCALE[tier][magic ? 1 : 0];
+  const W = (a: number, b: number): Pt => [H[0] + (ox * a + ux * b) * k, H[1] + (oy * a + uy * b) * k];
+  const head = (pts: readonly (readonly [number, number])[], mat: Mat, offset?: Offset) => plate(c, pts.map(([a, b]) => W(a, b)), mat, offset);
+  const edge = (pts: readonly (readonly [number, number])[], ids: number[], tone = 5) => {
+    for (let i = 1; i < pts.length; i++) thread(c, W(...pts[i - 1]), W(...pts[i]), Mat.Steel, tone, ids);
+  };
+  const hole = (a: number, b: number, r: number) => {
+    const p = W(a, b);
+    for (let Y = F(p[1] - r); Y <= F(p[1] + r); Y++) for (let X = F(p[0] - r); X <= F(p[0] + r); X++) {
+      if (Math.hypot(X / K - p[0], Y / K - p[1]) <= r * k) c.clear(X, Y);
+    }
+  };
+  // Cabo.
+  const haftMat = tier === 4 && !magic ? Mat.White : tier === 1 && !magic ? Mat.Wood : Mat.Wood;
+  const haftR = axeTwoHanded(id) ? 1.15 : 0.85;
+  const haft = limb(c, bottom, topEnd, haftR, haftR * 0.9, haftMat, haftMat === Mat.White ? undefined : grain);
+  if (tier === 1 && !magic) for (let t = 0.15; t < 0.9; t += 0.22) { const p = lerp(bottom, topEnd, t); c.on(haft, F(p[0] + ox * 0.5), F(p[1]), Mat.Wood, 0); }
+  if (tier === 4 && !magic) for (const t of [0.15, 0.5, 0.85]) { const p = lerp(bottom, topEnd, t); limb(c, [p[0] - ux * 0.3, p[1] - uy * 0.3], [p[0] + ux * 0.3, p[1] + uy * 0.3], haftR + 0.25, haftR + 0.25, Mat.Mithral); }
+  // Pomo no pé do cabo.
+  ellipse(c, bottom[0], bottom[1], haftR + 0.3, haftR + 0.3, tier >= 3 ? Mat.Iron : Mat.Bronze);
+
+  if (!magic) switch (tier) {
+    case 1: {
+      // Machadinha: pedra lascada amarrada com tiras de couro.
+      const s = head([[-1, -1.8], [3.6, -1.6], [4.8, 0], [3.8, 1.8], [-1, 2], [-1.8, 0]], Mat.Stone, stone);
+      edge([[3.6, -1.6], [4.8, 0], [3.8, 1.8]], [s], 4);
+      for (const b of [-1, 0, 1]) thread(c, W(-1.4, b - 0.6), W(1, b + 0.6), Mat.Leather, 3);
+      limb(c, W(-0.2, 2.6), W(-0.6, 4.8), 0.3, 0.3, Mat.Leather);
+      return;
+    }
+    case 2: {
+      // Meia-lua de bronze com dois furos e bocal.
+      const pts = [[0, -1.4], [1.2, -3.8], [4.2, -3.4], [5.6, 0], [4.2, 3.4], [1.2, 3.8], [0, 1.4]] as const;
+      const s = head(pts, Mat.Bronze);
+      edge([[4.2, -3.4], [5.6, 0], [4.2, 3.4]], [s]);
+      hole(2.4, -1.5, 0.6); hole(2.4, 1.5, 0.6);
+      limb(c, W(-1, -1.6), W(-1, 1.6), 1.3, 1.3, Mat.Bronze);
+      return;
+    }
+    case 3: {
+      // Machado de batalha nórdico, de lâmina dupla, com o corvo gravado.
+      const blade = [[0, -1.2], [1.6, -2.6], [5, -4.2], [5.8, 0], [5, 4.2], [1.6, 2.6], [0, 1.2]] as const;
+      const r = head(blade, Mat.Steel, hammered);
+      const l = head(blade.map(([a, b]) => [-a * 0.8, b * 0.8] as const), Mat.Steel, hammered);
+      edge([[5, -4.2], [5.8, 0], [5, 4.2]], [r]);
+      // Corvo: corpo, asa e bico gravados.
+      thread(c, W(2.2, -0.8), W(3.8, 0.4), Mat.Steel, 1, [r]); thread(c, W(3.8, 0.4), W(4.4, 1.4), Mat.Steel, 1, [r]);
+      thread(c, W(2.6, 0), W(3, -1.6), Mat.Steel, 1, [r]); thread(c, W(1.8, -1), W(1.4, -1.8), Mat.Steel, 1, [r]);
+      limb(c, W(0, -1.8), W(0, 2.2), 1.2, 1.2, Mat.Iron);
+      void l;
+      return;
+    }
+    case 4: {
+      // Lâmina em asa de grifo, penas gravadas, cabo branco com anéis de mithral.
+      const pts = [[0, -1.4], [2, -4.6], [5.4, -5.6], [6.2, -1.6], [5.6, 2.4], [3.4, 3.8], [0, 1.6]] as const;
+      const s = head(pts, Mat.Mithral);
+      edge([[5.4, -5.6], [6.2, -1.6], [5.6, 2.4]], [s]);
+      for (let k = 0; k < 4; k++) thread(c, W(0.8 + k * 0.4, -0.8 + k * 0.6), W(4.4 + k * 0.4, -4.6 + k * 1.8), Mat.Mithral, 1, [s]);
+      gem(c, W(0, 0), 0.9, Mat.Sapphire);
+      return;
+    }
+    default: {
+      // Grande machado do dragão: duas lâminas em asa de dragão (osso e membrana), crânio no meio.
+      for (const sgn of [-1, 1]) {
+        const mem = head([[sgn * 1, -2], [sgn * 4, -6.4], [sgn * 8.6, -7.4], [sgn * 7.6, -3.6], [sgn * 9, 0], [sgn * 7.6, 3.6], [sgn * 8.6, 7.4], [sgn * 4, 6.4], [sgn * 1, 2]], Mat.RedDragon, scales(5, 4));
+        for (const [a, b] of [[8.6, -7.4], [9, 0], [8.6, 7.4]] as const) chain(c, [W(sgn * 1, 0), W(sgn * a * 0.6, b * 0.6), W(sgn * a, b)], 0.45, Mat.Horn, undefined, 0.25);
+        edge([[sgn * 8.6, -7.4], [sgn * 7.6, -3.6], [sgn * 9, 0], [sgn * 7.6, 3.6], [sgn * 8.6, 7.4]], [mem]);
+      }
+      const sk = ellipse(c, ...H, 2.2, 2.4, Mat.White);
+      for (const s2 of [-1, 1]) c.on(sk, F(H[0] + s2 * 0.8), F(H[1] - 0.2), Mat.Ember, 4);
+      horn(c, [W(-1, 2), W(-2.6, 4.4), W(-2, 6.4)], 0.8);
+      horn(c, [W(1, 2), W(2.6, 4.4), W(2, 6.4)], 0.8);
+      return;
+    }
+  }
+  switch (tier) {
+    case 1: {
+      // Machado do Berserker (Berserker Axe): o gume é a mandíbula de um urso, pelo no cabo e olhos de fúria.
+      const s = head([[-0.6, -2.4], [3.6, -2.6], [5.4, -0.4], [4.4, 2.6], [-0.6, 2.4]], Mat.Iron, hammered);
+      for (let b = -2.2; b <= 2.2; b += 0.9) fang(c, W(4.6 - Math.abs(b) * 0.25, b), 0.35, 1.2);
+      for (const b of [-1.2, 0.6]) c.on(s, F(W(1.6, b)[0]), F(W(1.6, b)[1]), Mat.Ember, 5);
+      c.fill(ebox(...lerp(bottom, topEnd, 0.62), 2, 2.4), (x, y) => seg(x + 0.5, y + 0.5, lerp(bottom, topEnd, 0.5), lerp(bottom, topEnd, 0.78)).d < 1.7, Mat.Fur, (x) => 0.6 + (x % 2) * 0.1, fur);
+      return;
+    }
+    case 2: {
+      // Machado Uivante: a lâmina é a cabeça de um lobo uivando; vento saindo da boca.
+      const s = head([[-0.4, -2], [2, -3.6], [3.6, -5.4], [4.2, -3.4], [6.4, -2.6], [6.2, -1.2], [4.6, -0.8], [5.4, 1.6], [3.4, 3.6], [-0.4, 2.2]], Mat.Steel, hammered);
+      ellipse(c, ...W(3.2, -1.8), 0.6, 0.45, Mat.Amber);
+      thread(c, W(4.6, -0.8), W(6.2, -1.2), Mat.Steel, 0, [s]);
+      for (let k = 0; k < 3; k++) thread(c, W(6.8 + k * 0.6, -1.6 + k * 0.6), W(8.6 + k * 0.6, -2.4 + k * 0.4), Mat.White, (j) => (j % 3 === 2 ? -1 : 4));
+      edge([[6.4, -2.6], [6.2, -1.2], [4.6, -0.8], [5.4, 1.6]], [s], 5);
+      return;
+    }
+    case 3: {
+      // Machado dos Reis Anões: lâmina dupla de ferro com rosto de rei anão em ouro, runas e anéis no cabo.
+      const blade = [[0, -1.4], [1.6, -3], [5.4, -4.6], [6.2, 0], [5.4, 4.6], [1.6, 3], [0, 1.4]] as const;
+      const r = head(blade, Mat.Iron, hammered);
+      head(blade.map(([a, b]) => [-a * 0.85, b * 0.85] as const), Mat.Iron, hammered);
+      edge([[5.4, -4.6], [6.2, 0], [5.4, 4.6]], [r]);
+      const f = ellipse(c, ...H, 1.8, 2.1, Mat.Trim);
+      for (const s2 of [-1, 1]) c.on(f, F(H[0] + s2 * 0.7), F(H[1] - 0.4), Mat.Eye, 0);
+      chain(c, [[H[0], H[1] + 0.8], [H[0], H[1] + 3.4]], 0.7, Mat.Trim, (X, Y) => (Y % 2 ? -1 : 0), 0.3);
+      for (const [a, b] of [[3.4, -1.6], [3.4, 1.6]] as const) { const p = W(a, b); for (const [ddx, ddy] of [[0, -1], [0, 0], [0, 1], [1, 0]]) c.px(F(p[0]) + ddx, F(p[1]) + ddy, Mat.Sapphire, 5); }
+      for (const t of [0.3, 0.55, 0.8]) { const p = lerp(bottom, topEnd, t); limb(c, [p[0] - ux * 0.3, p[1] - uy * 0.3], [p[0] + ux * 0.3, p[1] + uy * 0.3], haftR + 0.3, haftR + 0.3, Mat.Trim); }
+      return;
+    }
+    case 4: {
+      // Machado da Tempestade: lâmina de aço-azul com um raio encravado e faíscas soltas.
+      const pts = [[0, -1.6], [1.6, -4.6], [5.6, -5.4], [6.4, 0], [5.6, 5.4], [1.6, 4.6], [0, 1.6]] as const;
+      const s = head(pts, Mat.Mithral, hammered);
+      edge([[5.6, -5.4], [6.4, 0], [5.6, 5.4]], [s]);
+      const bolt: Pt[] = [W(1.2, -3.6), W(3.4, -1.2), W(2.4, -0.6), W(4.8, 2.4), W(3.2, 0.8), W(4.2, 0.4), W(2, -2.2)];
+      for (let i = 1; i < 5; i++) { thread(c, bolt[i - 1], bolt[i], Mat.Sapphire, 5, [s]); thread(c, [bolt[i - 1][0] + 0.4, bolt[i - 1][1]], [bolt[i][0] + 0.4, bolt[i][1]], Mat.White, 5, [s]); }
+      for (let k = 0; k < 7; k++) { const p = W(6.8 + noise(k, 1) * 3, -4 + k * 1.3); c.px(F(p[0]), F(p[1]), Mat.Sapphire, 5); c.px(F(p[0]) + 1, F(p[1]) - 1, Mat.White, 5); }
+      return;
+    }
+    default: {
+      // Ruína dos Gigantes (Giant Slayer): machadão de pedra e ferro maior que o herói, com dentes de gigante amarrados.
+      const s = head([[-1.6, -4.4], [4, -6.4], [9.6, -8.2], [11, 0], [9.6, 8.2], [4, 6.4], [-1.6, 4.4]], Mat.Stone, stone);
+      const iron = head([[6.6, -8.4], [9.8, -8.4], [11.4, 0], [9.8, 8.4], [6.6, 8.4], [8.4, 0]], Mat.Iron, hammered);
+      edge([[9.8, -8.4], [11.4, 0], [9.8, 8.4]], [iron]);
+      for (const b of [-3, 0, 3]) thread(c, W(-1.4, b - 0.8), W(1.4, b + 0.8), Mat.Leather, 2, [s]);
+      for (const [a, b] of [[-0.4, 5.2], [0.8, 6.2], [2, 5.4]] as const) { thread(c, W(a, 4), W(a, b + 0.4), Mat.Leather, 2); fang(c, W(a, b), 0.55, 1.8); }
+      return;
+    }
+  }
 }
 
 /** Pixels de cada quadro, calculados uma vez (a galeria pede o mesmo quadro várias vezes). */
