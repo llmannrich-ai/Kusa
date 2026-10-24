@@ -128,20 +128,20 @@
           <div><h2 id="sheet-name"></h2><small id="sheet-region"></small></div>
         </div>
         <ul id="sheet-chips" class="sheet-chips"></ul>
-        <p id="sheet-desc" class="sheet-desc"></p>
-        <div class="actions">
+        <div class="sheet-play">
           <button id="solo" class="primary">Jogar sozinho</button>
+          <button id="create">Criar sala</button>
         </div>
-        <div id="sheet-create">
-          <p class="sheet-label">Criar sala · onde a hunt roda:</p>
+        <div id="sheet-create" class="sheet-server">
+          <span class="sheet-server-label">Sala em</span>
           <!-- Preenchido por lobby.ts (renderServerPicker). -->
-          <div id="server-list" class="server-list" role="radiogroup" aria-label="Servidor"></div>
-          <div class="actions"><button id="create">Criar sala</button></div>
+          <div id="server-list" class="server-list" role="radiogroup" aria-label="Onde a sala roda"></div>
         </div>
-        <h3 class="sheet-label">Salas abertas aqui</h3>
-        <ul id="sheet-rooms" class="room-list"></ul>
-        <p id="sheet-rooms-empty" class="hint">Nenhuma sala aguardando neste cenário agora.</p>
-        <p class="hint">Na nuvem, criar a sala pode levar até 1 minuto se o servidor estiver acordando. No seu aparelho, a sala abre na hora e os amigos se conectam direto a você. Sozinho, a hunt roda no seu aparelho e começa na hora.</p>
+        <p id="sheet-wait" class="hint" hidden>O servidor da nuvem pode levar 1 minuto para acordar.</p>
+        <div id="sheet-rooms-box" hidden>
+          <h3 class="sheet-label">Salas abertas aqui</h3>
+          <ul id="sheet-rooms" class="room-list"></ul>
+        </div>
       </section>
 
       <section id="rooms-sheet" class="sheet" aria-labelledby="rooms-sheet-title" hidden>

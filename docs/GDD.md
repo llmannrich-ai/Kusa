@@ -325,8 +325,10 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 
 Código em `apps/client/src/lobby.ts` e `main.ts`.
 
-1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele:
-   **Jogar sozinho**, **Criar sala** (com a escolha ☁️ Nuvem / 📱 Meu aparelho) e as salas abertas daquele cenário.
+1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele,
+   baixa (menos de metade da tela, sem textos) para o mapa seguir à vista: nome, região, etiquetas curtas
+   (dificuldade ★, ⏱ tempo, 👤/👥 jogadores, ☠ boss), **Jogar sozinho** e **Criar sala** lado a lado, a escolha
+   "Sala em ☁️ Nuvem / 📱 Meu aparelho" e, só quando houver, as salas abertas daquele cenário.
    O botão **Salas abertas · N**, no alto do mapa, lista as salas de todos os cenários (líder, cenário e vagas).
 2. Criar ou entrar numa sala leva à **sala de espera**: 4 vagas (`MAX_PARTY_SIZE`), cada uma com retrato, nome e classe
    de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".
@@ -398,7 +400,7 @@ fases, desbloqueio) em `docs/MAPA_MUNDI_PLANO.md`.
   → 🏜️ Mar de Areia (Solária) → 🌿 Pântano das Ruínas (Arquipélago Afundado). Cada ponto mostra o selo 👥 N quando
   tem salas abertas. Tocar num ponto abre a ficha e leva o herói até ele.
 - **Trilha:** o herói anda pela trilha desenhada (tracejada em terra, pontilhada no mar), passando pelos pontos do
-  meio, em ~1 s no total, e o mapa rola junto até o ponto ficar acima da ficha. O boneco vira para o lado da
+  meio, em ~1 s no total, e o mapa rola junto até o ponto ficar à vista acima da ficha. O boneco vira para o lado da
   caminhada (frente, costas, lado) e anima os passos; onde a rota pontilhada sai da terra, vira um barquinho de
   pergaminho e volta a ser herói ao pisar na costa. Tocar de novo no ponto, ou tocar na ficha, pula a caminhada.
   Com "reduzir movimento" ligado no aparelho (`prefers-reduced-motion`), o herói só troca de ponto.

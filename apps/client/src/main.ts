@@ -140,12 +140,13 @@ function setEntering(on: boolean) {
   entering = on;
   const create = $<HTMLButtonElement>("create");
   const server = SERVER_CHOICES[createServer()];
-  create.textContent = !on
-    ? `Criar sala · ${server.icon} ${server.name}`
-    : createServer() === "cloud" ? "Conectando… (o servidor pode levar 1 min para acordar)" : "Conectando…";
+  create.textContent = on ? "Conectando…" : "Criar sala";
+  create.setAttribute("aria-label", on ? "Conectando" : `Criar sala, ${server.name}`);
   // Mapa só para 1 jogador: não tem sala para amigos, só o "Jogar sozinho".
   const soloOnly = partySize(MAPS[createMapId()]) === 1;
   show("sheet-create", !soloOnly);
+  show("create", !soloOnly);
+  show("sheet-wait", on && !soloOnly && createServer() === "cloud");
   create.disabled = on || soloOnly;
   const solo = $<HTMLButtonElement>("solo");
   solo.textContent = on && !soloOnly ? "Conectando…" : "Jogar sozinho";
@@ -201,7 +202,7 @@ function pickPoint(id: MapId) {
   if (world?.walkingTo() === id) return world.skip();
   chooseMap(id);
   // A ficha cobre a parte de baixo: o mapa rola com o herói e o ponto para à vista acima dela.
-  world?.select(id, { anchor: 0.22 });
+  world?.select(id, { anchor: 0.4 });
   openSheet();
 }
 
@@ -212,18 +213,18 @@ function openSheet() {
   $("sheet-name").textContent = map.name;
   $("sheet-region").textContent = WORLD_POINTS[map.id].region;
   const boss = mainBoss(map);
+  // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista.
   const chips = [
-    `Dificuldade ${difficultyStars(map.difficulty)}`,
-    `${map.durationSeconds / 60} min`,
-    partySize(map) === 1 ? "só 1 jogador" : `até ${partySize(map)} jogadores`,
-    ...(boss ? [`Boss: ${MONSTERS[boss].name}`] : []),
+    difficultyStars(map.difficulty),
+    `⏱ ${map.durationSeconds / 60} min`,
+    partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
+    ...(boss ? [`☠ ${MONSTERS[boss].name}`] : []),
   ];
   $("sheet-chips").replaceChildren(...chips.map((text) => {
     const li = document.createElement("li");
     li.textContent = text;
     return li;
   }));
-  $("sheet-desc").textContent = map.description;
   show("rooms-sheet", false);
   show("map-sheet", true);
   $("map-sheet").scrollTop = 0;
@@ -287,7 +288,7 @@ function renderHunts() {
   show("rooms-empty", rooms.length === 0);
   const here = rooms.filter((r) => r.mapId === createMapId());
   $("sheet-rooms").replaceChildren(...here.map(roomItem));
-  show("sheet-rooms-empty", here.length === 0);
+  show("sheet-rooms-box", here.length > 0);
   $("open-room-list").textContent = `Salas abertas · ${rooms.length}`;
   const counts: Partial<Record<MapId, number>> = {};
   for (const r of rooms) counts[r.mapId] = (counts[r.mapId] ?? 0) + 1;

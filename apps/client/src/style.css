@@ -1248,14 +1248,32 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 }
 .sheet h2 { margin: 0; color: #2b1d10; font-variant: small-caps; }
 .sheet .hint { margin: 8px 0 0; font-size: 13px; color: #5a4128; text-align: center; }
-.sheet-close { position: absolute; top: 10px; right: 10px; height: 44px; color: #2b1d10; background: none; border: 0; }
+.sheet-close { position: absolute; top: 6px; right: 6px; height: 44px; color: #2b1d10; background: none; border: 0; }
 .sheet-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
 .sheet-head .map-icon, .sheet-head .map-icon svg { width: 60px; height: 60px; }
 .sheet-head small { font-style: italic; color: #5a4128; }
 .sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 14px; }
 .sheet-chips li { padding: 4px 10px; background: #e6d6ae; border-radius: 12px; }
-.sheet-desc { margin: 10px 0 0; font-size: 14px; line-height: 1.4; }
 .sheet-label { margin: 16px 0 8px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #5a4128; }
+/* Ficha do cenário: baixa (só o básico), para o mapa continuar à vista em cima. */
+#map-sheet { padding: 12px 14px max(14px, env(safe-area-inset-bottom)); }
+#map-sheet .sheet-head { gap: 10px; }
+#map-sheet .sheet-head .map-icon, #map-sheet .sheet-head .map-icon svg { width: 44px; height: 44px; flex: none; }
+#map-sheet .sheet-head > div { min-width: 0; }
+#map-sheet h2 { font-size: 19px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#map-sheet .sheet-head small { font-size: 13px; }
+#map-sheet .sheet-chips { flex-wrap: nowrap; gap: 5px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; font-size: 13px; }
+#map-sheet .sheet-chips li { flex: none; padding: 3px 9px; white-space: nowrap; }
+.sheet-play { display: flex; gap: 8px; margin-top: 10px; }
+.sheet-play button { flex: 1; min-width: 0; }
+.sheet-server { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.sheet-server-label { flex: none; font-size: 13px; color: #5a4128; }
+.sheet-server .server-list { flex: 1; gap: 6px; }
+.sheet-server .server-card { padding: 4px 8px; place-items: center; text-align: center; font-size: 14px; }
+.sheet-server .server-card small { display: none; }
+#map-sheet { max-height: 50%; }
+#map-sheet .sheet-label { margin: 10px 0 6px; }
+#map-sheet .room { min-height: 44px; padding: 6px 12px; }
 .sheet button { color: #2b1d10; background: #ebdcb8; border: 2px solid var(--ink); border-radius: 8px; min-height: 44px; }
 .sheet button.primary { color: var(--parchment); background: #3b2a1a; border-color: #3b2a1a; font-weight: bold; min-height: 52px; }
 .sheet .sheet-close { border: 0; background: none; }
