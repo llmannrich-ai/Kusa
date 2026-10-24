@@ -5,7 +5,7 @@ import { NO_OUTFIT, type Outfit } from "./outfit.ts";
 import { heroFrame } from "./hero/hero.ts";
 import { HERO_DIRS, HERO_FRAMES, type HeroDir } from "./hero/rig.ts";
 import { S as CELL } from "./hero/raster.ts";
-import { PROTO_FEET, PROTO_SIZE, PROTO_TILE, protoFrame, type ProtoGear } from "./proto/tibiaHero.ts";
+import type { ProtoGear } from "./proto/tibiaHero.ts";
 import { loadSettings } from "../settings.ts";
 
 /**
@@ -22,6 +22,10 @@ export const HERO_SIZE = CELL * ART_SCALE;
 
 /** Arte nova (beta, `Settings.newArt`): lida uma vez; trocar a opção recarrega o jogo. */
 export const NEW_ART = loadSettings().newArt;
+/** O desenho novo só é baixado por quem ligou a opção. */
+const proto = NEW_ART ? await import("./proto/tibiaHero.ts") : null;
+/** 128 px por tile e o quadro de 192 px com os pés na linha 184 (`tibiaHero.ts`). */
+const PROTO_TILE = 128, PROTO_SIZE = 192, PROTO_FEET = 184;
 
 /**
  * A arte nova vai 10% maior que o padrão de 128 px por tile: o desenho é mais fino que o antigo e, do mesmo tamanho,
@@ -66,7 +70,7 @@ function protoSheet(classId: ClassId, outfit: Outfit) {
   const gear = protoGear(outfit);
   const { canvas, ctx } = makeCanvas(PROTO_CELL * HERO_DIRS.length * HERO_FRAMES, PROTO_CELL);
   HERO_DIRS.forEach((dir, d) => PROTO_STEPS.forEach((step, f) => {
-    ctx.drawImage(protoFrame(dir, step, classId, undefined, gear), (d * HERO_FRAMES + f) * PROTO_CELL + (PROTO_CELL - PROTO_SIZE) / 2, PROTO_DY);
+    ctx.drawImage(proto!.protoFrame(dir, step, classId, undefined, gear), (d * HERO_FRAMES + f) * PROTO_CELL + (PROTO_CELL - PROTO_SIZE) / 2, PROTO_DY);
   }));
   return canvas;
 }
