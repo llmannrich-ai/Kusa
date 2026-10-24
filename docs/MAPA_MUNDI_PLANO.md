@@ -121,16 +121,17 @@ O continente principal cresce e passa a concentrar os cenários; o mapa deixa de
 |---|---|
 | Escala | Verdemar com **10× a área** de hoje (~1100×1430 no desenho, ~3 telas de largura × 1,5 de altura no zoom de hoje) |
 | Navegação | **arrastar em qualquer direção + pinça para zoom**, do continente inteiro na tela até o tamanho de hoje; abre centrado no herói; botão 📍 volta para ele |
-| Cenários | os **4 entram no continente**, cada um numa área: floresta, ruínas, deserto e costa alagada |
-| Disposição | "volta no continente": floresta no sudoeste (começo), ruínas na serra do norte, deserto no leste, costa alagada no oeste; a trilha cruza o centro numa encruzilhada. Cada área tem espaço para 2 ou 3 pontos futuros |
-| Em volta | mar nas bordas, com as terras em névoa (Gelo de Hrimfal, Ilha de Cinza, Cidadela Caída) como cenários futuros; barco só quando houver cenário fora do continente |
-| Nomes | o continente inteiro é **Verdemar**; áreas: **Floresta do Kosaradius** (🐸 Pântano do Kosaradius), **Serra das Tumbas** (🏚️ Cripta), **Solária** (🏜️ Mar de Areia), **Costa Afundada** (🌿 Pântano das Ruínas) |
+| Campanha | Verdemar é a campanha inteira: uma trilha única do sul ao norte com **14 cenários**. Os 4 de hoje ficam **no começo**, na ponta sul (🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas); os 10 seguintes são cenários futuros, numerados e apagados sob a névoa da campanha, até a **Cidadela Caída** (a capital do império) no norte |
+| Áreas | Floresta do Kosaradius (oeste), Ruínas do Império (centro), Solária (deserto, leste), Serra do Norte (montanhas) e a Baía Afundada (onde fica o Pântano das Ruínas). A trilha passa por todas, nas duas direções |
+| Em volta | mar, com Gelo de Hrimfal e Ilha de Cinza em névoa (a Cidadela Caída entrou no continente) |
+| Nomes | o continente inteiro é **Verdemar**; longe (continente inteiro na tela) só os ícones aparecem, sem os nomes |
+| Maquete | https://claude.ai/artifact/67b1st8XsBSp4MNVURtoxk |
 | Execução | maquete navegável para aprovar no celular antes de mexer no jogo; depois, branch nova a partir do `main` com o #137 |
 
 Impacto técnico previsto: `worldMap.ts` troca a rolagem vertical por câmera própria (translate + scale, ponteiros para
 arrasto e pinça, sem a rolagem do navegador); pontos e herói ficam em camada HTML com tamanho fixo na tela (não
 encolhem com o zoom); `TRAILS`, `WORLD_POINTS` e a arte mudam de coordenadas. A história da seção 3 muda: Solária e o
-Arquipélago Afundado deixam de ser continentes e viram áreas de Verdemar.
+Arquipélago Afundado deixam de ser continentes: Solária vira o deserto de Verdemar e o Pântano das Ruínas fica na Baía Afundada. A seção 3 precisa ser reescrita quando a fase for para o jogo.
 
 ## 6. Riscos
 
