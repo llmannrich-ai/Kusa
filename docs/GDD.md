@@ -306,18 +306,26 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 |---|---|---|
 | ⚔️ Fúria | +15% de dano | 3 |
 | ❤️ Vida | +18% de vida máxima | 3 |
-| 🛡️ Pedra | +4 de armadura | 3 |
-| 👟 Vento | +8% de velocidade | 3 |
+| 🪨 Pedra | +4 de armadura | 3 |
+| 👟 Vento | +12% de velocidade | 3 |
 | 💧 Arcana | +20% de mana máxima e +1% de mana por segundo | 3 |
 | 🩸 Sangue | cura 5% do dano causado | 3 |
 | ⏳ Tempo | recarga das magias 12% menor | 3 |
-| 💗 Troll | +1,5% de vida por segundo | 3 |
+| 💗 Troll | +2% de vida por segundo | 3 |
 | ⚡ Relâmpago | o Relâmpago (Feiticeiro) vira opção no slot 1 | 1 |
 | 🛡️ Fé | o Escudo da Fé (Cavaleiro) vira opção no slot 1 | 1 |
 | ☄️ Meteoro | o Meteoro (Feiticeiro) vira opção no slot 2 | 1 |
 | ☀️ Aurora | a Luz Curativa (Paladino) vira opção no slot 2 | 1 |
+| 🐎 Investida | a Investida (Cavaleiro) vira opção no slot 1 | 1 |
+| 🚩 Estandarte | o Estandarte de Guerra (Cavaleiro) vira opção no slot 2 | 1 |
+| 🤸 Rolamento | o Rolamento (Paladino) vira opção no slot 1 | 1 |
+| 🎯 Caçador | a Marca do Caçador (Paladino) vira opção no slot 1 | 1 |
+| 💨 Névoa | o Passo Nebuloso (Feiticeiro) vira opção no slot 1 | 1 |
+| 🌿 Bosque | a Bênção da Floresta (Druida) vira opção no slot 1 | 1 |
+| 🐺 Lobo | o Lobo Espiritual (Druida) vira opção no slot 1 | 1 |
+| 🦠 Peste | a Nuvem Venenosa (Druida) vira opção no slot 2 | 1 |
 
-- **Runas de magia:** a magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
+- **Runas de magia:** 3 de cada classe (mobilidade, cura, invocação e apoio valem mais emprestadas), cerca de 1 em cada 3 runas sorteadas. A magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
   que a magia já tem, se for da própria classe; magia de outra classe não ganha XP de uso). Magia de outra classe custa no máximo **40% da mana máxima** do herói
   (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
 

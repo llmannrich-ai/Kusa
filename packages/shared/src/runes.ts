@@ -15,7 +15,8 @@ export const RUNE_SLOTS = 3;
 
 export type RuneKind =
   | "fury" | "life" | "stone" | "wind" | "arcane" | "blood" | "time" | "troll"
-  | "lightning" | "faith" | "meteor" | "dawn";
+  | "lightning" | "faith" | "meteor" | "dawn"
+  | "charge" | "banner" | "roll" | "mark" | "mist" | "grove" | "wolf" | "plague";
 
 export interface RuneDef {
   /** Id de item: "rune-fury". */
@@ -39,19 +40,28 @@ export interface RuneDef {
 const rune = (kind: RuneKind, def: Omit<RuneDef, "id" | "kind">): RuneDef => ({ id: `rune-${kind}`, kind, ...def });
 
 // Balanceamento: cada runa de bônus vale perto de 1,5 melhoria de nível; as de magia, uma magia do Grimório no nível 1.
+// Runas de magia: 3 de cada classe, de preferência as que mais valem emprestadas (mobilidade, cura, invocação, apoio).
 const LIST: RuneDef[] = [
   rune("fury", { name: "Runa da Fúria", icon: "⚔️", color: 0xe74c3c, description: "+15% de dano", bonus: { damage: 0.15 }, weight: 3, sellPrice: 120 }),
   rune("life", { name: "Runa da Vida", icon: "❤️", color: 0xff6b81, description: "+18% de vida máxima", bonus: { hp: 0.18 }, weight: 3, sellPrice: 120 }),
-  rune("stone", { name: "Runa da Pedra", icon: "🛡️", color: 0xf5f6fa, description: "+4 de armadura", bonus: { armor: 4 }, weight: 3, sellPrice: 120 }),
-  rune("wind", { name: "Runa do Vento", icon: "👟", color: 0x7bed9f, description: "+8% de velocidade de movimento", bonus: { speed: 0.08 }, weight: 3, sellPrice: 120 }),
+  rune("stone", { name: "Runa da Pedra", icon: "🪨", color: 0xf5f6fa, description: "+4 de armadura", bonus: { armor: 4 }, weight: 3, sellPrice: 120 }),
+  rune("wind", { name: "Runa do Vento", icon: "👟", color: 0x7bed9f, description: "+12% de velocidade de movimento", bonus: { speed: 0.12 }, weight: 3, sellPrice: 120 }),
   rune("arcane", { name: "Runa Arcana", icon: "💧", color: 0x4aa3df, description: "+20% de mana máxima e +1% de mana por segundo", bonus: { mana: 0.2, manaRegen: 0.01 }, weight: 3, sellPrice: 120 }),
   rune("blood", { name: "Runa do Sangue", icon: "🩸", color: 0xb33939, description: "Cura 5% do dano que causa", bonus: { lifesteal: 0.05 }, weight: 3, sellPrice: 120 }),
   rune("time", { name: "Runa do Tempo", icon: "⏳", color: 0xf1c40f, description: "Recarga das magias 12% menor", bonus: { castHaste: 0.12 }, weight: 3, sellPrice: 120 }),
-  rune("troll", { name: "Runa do Troll", icon: "💗", color: 0x2ecc71, description: "+1,5% de vida por segundo", bonus: { hpRegen: 0.015 }, weight: 3, sellPrice: 120 }),
+  rune("troll", { name: "Runa do Troll", icon: "💗", color: 0x2ecc71, description: "+2% de vida por segundo", bonus: { hpRegen: 0.02 }, weight: 3, sellPrice: 120 }),
   rune("lightning", { name: "Runa do Relâmpago", icon: "⚡", color: 0x9ec5ff, description: "Libera o Relâmpago no slot 1", spell: "lightning_bolt", weight: 1, sellPrice: 220 }),
   rune("faith", { name: "Runa da Fé", icon: "🛡️", color: 0x7fc8ff, description: "Libera o Escudo da Fé no slot 1", spell: "holy_shield", weight: 1, sellPrice: 220 }),
   rune("meteor", { name: "Runa do Meteoro", icon: "☄️", color: 0xff7f50, description: "Libera o Meteoro no slot 2", spell: "meteor", weight: 1, sellPrice: 220 }),
   rune("dawn", { name: "Runa da Aurora", icon: "☀️", color: 0xfff6c8, description: "Libera a Luz Curativa no slot 2", spell: "healing_light", weight: 1, sellPrice: 220 }),
+  rune("charge", { name: "Runa da Investida", icon: "🐎", color: 0xe67e22, description: "Libera a Investida no slot 1", spell: "charge", weight: 1, sellPrice: 220 }),
+  rune("banner", { name: "Runa do Estandarte", icon: "🚩", color: 0xf1c40f, description: "Libera o Estandarte de Guerra no slot 2", spell: "war_banner", weight: 1, sellPrice: 220 }),
+  rune("roll", { name: "Runa do Rolamento", icon: "🤸", color: 0x9be15d, description: "Libera o Rolamento no slot 1", spell: "evasive_roll", weight: 1, sellPrice: 220 }),
+  rune("mark", { name: "Runa do Caçador", icon: "🎯", color: 0xff5e57, description: "Libera a Marca do Caçador no slot 1", spell: "hunter_mark", weight: 1, sellPrice: 220 }),
+  rune("mist", { name: "Runa da Névoa", icon: "💨", color: 0xc7b8ff, description: "Libera o Passo Nebuloso no slot 1", spell: "misty_step", weight: 1, sellPrice: 220 }),
+  rune("grove", { name: "Runa do Bosque", icon: "🌿", color: 0x2ecc71, description: "Libera a Bênção da Floresta no slot 1", spell: "forest_blessing", weight: 1, sellPrice: 220 }),
+  rune("wolf", { name: "Runa do Lobo", icon: "🐺", color: 0xa9d4ff, description: "Libera o Lobo Espiritual no slot 1", spell: "spirit_wolf", weight: 1, sellPrice: 220 }),
+  rune("plague", { name: "Runa da Peste", icon: "🦠", color: 0x9acd32, description: "Libera a Nuvem Venenosa no slot 2", spell: "poison_cloud", weight: 1, sellPrice: 220 }),
 ];
 
 export const RUNES: Record<string, RuneDef> = Object.fromEntries(LIST.map((r) => [r.id, r]));
