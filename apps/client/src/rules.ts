@@ -180,6 +180,7 @@ export function renderRules(root: HTMLElement) {
         "O item no chão é de quem passar por cima primeiro. Se for melhor que o seu, você veste na hora e o antigo vai para a bag.",
         `A bag tem ${BAG_SIZE} espaços e entra com você na hunt. Cheia, você não pega mais nada do chão.`,
         "A runa do boss não cai no chão: vai direto para a bag de cada herói que ainda não levou a daquele boss. Com a bag cheia, o item mais barato cai no chão para ela entrar. Depois, dá para largar e passar a runa a um colega.",
+        "Com bots na equipe caem menos itens: o bot não pega nada do chão, então cada item só cai com a chance de humanos ÷ equipe (1 humano e 3 bots: 25%).",
         `Saindo vivo, a bag vai sozinha para o cofre (${VAULT_SIZE} espaços), que fica seguro na conta.`,
       ]),
       table(["Material", "Compra (comum)", "Venda (comum · raro · mágico)"], TIERS.map((t) => [

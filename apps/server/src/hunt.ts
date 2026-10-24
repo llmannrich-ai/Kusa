@@ -2112,7 +2112,7 @@ export class Hunt {
     // O boss sempre larga o que tem; os outros, com a chance do mapa (`MapDef.dropScale`).
     const boss = brain.def.rank === "boss";
     for (let i = 0; i < drops; i++) {
-      if (boss || this.keepDrop()) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
+      if ((boss || this.keepDrop()) && this.keepForHumans()) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
     }
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) if (boss || this.keepDrop()) this.dropItem(rollPotion(this.random), at.x, at.y);
@@ -2606,8 +2606,8 @@ export class Hunt {
     this.teamLoot(value, "chests", x, y, "Baú: ");
     const stats = this.seats.get(openerId)?.stats;
     if (stats) stats.chestsOpened++;
-    // O item do baú sai sempre; as poções, com a chance do mapa.
-    this.dropItem(rollItem("miniboss", depth, this.random, 1), x, y);
+    // O item do baú sai sempre (menos a parte dos bots); as poções, com a chance do mapa.
+    if (this.keepForHumans()) this.dropItem(rollItem("miniboss", depth, this.random, 1), x, y);
     for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, x, y);
   }
 
@@ -2638,6 +2638,23 @@ export class Hunt {
   private scaleLoot(min: number, max: number): [number, number] {
     const k = this.map.lootScale ?? 1;
     return [Math.round(min * k), Math.round(max * k)];
+  }
+
+  /**
+   * Item de equipamento com bots na equipe: o bot não pega nada do chão, então sem corte o humano levaria os itens da
+   * equipe inteira. O item sai com a chance de humanos ÷ equipe (1 humano e 3 bots: 25%), o mesmo que cada um levaria
+   * numa equipe de humanos, como o gold e a XP. Sem bots, sai sempre (e não gasta sorteio).
+   */
+  private keepForHumans() {
+    const team = this.team();
+    const humans = team.filter((id) => !this.state.players.get(id)!.bot);
+    if (humans.length === team.length) return true;
+    if (this.random() < humans.length / team.length) return true;
+    for (const id of humans) {
+      const stats = this.seats.get(id)?.stats;
+      if (stats) stats.items.botCut++;
+    }
+    return false;
   }
 
   /** Um drop (item ou poção) sai com a chance do mapa (`MapDef.dropScale`, padrão: sempre). */

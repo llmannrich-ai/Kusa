@@ -347,6 +347,10 @@ Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espe
 - **Sem gold nem itens:** o bot não abre baú, não pega item nem poção do chão e não recebe runa. Ele conta na divisão da XP e do
   gold como qualquer herói da equipe (com 1 humano e 1 bot, cada um leva metade), mas não guarda gold: a parte dele se perde.
   O que o bot mata rende XP e gold para a equipe como qualquer morte.
+- **Menos itens com bots:** como o bot não pega item do chão, sem corte quem joga com bots levaria sozinho os itens da equipe
+  inteira. Cada item de equipamento (dos monstros, do boss e do baú) só cai com a chance de humanos ÷ equipe na hora do drop
+  (1 humano e 3 bots: 25%; 2 humanos e 2 bots: 50%), o mesmo que cada um levaria numa equipe de humanos. Poções e runas não
+  mudam. A telemetria conta o corte em `items.botCut`.
 - Quando o último humano sai da dungeon (morto, fugindo ou pelo portal do boss), os bots saem junto e a hunt acaba.
 
 ### Jogar sozinho

@@ -56,9 +56,10 @@ export interface RunStats {
   bossRunes: string[];
   /**
    * Itens equipados que vieram da conta, bag que entrou na hunt, itens que pegou no chão, que largou pelo menu
-   * da bag, que perdeu ao morrer (equipamento e bag) e quantas vezes deixou item no chão por estar com a bag cheia.
+   * da bag, que perdeu ao morrer (equipamento e bag), quantas vezes deixou item no chão por estar com a bag cheia e
+   * quantos itens de equipamento deixaram de cair pela parte dos bots da equipe (`botCut`).
    */
-  items: { loadout: string[]; bag: string[]; picked: string[]; dropped: string[]; lost: string[]; bagFull: number };
+  items: { loadout: string[]; bag: string[]; picked: string[]; dropped: string[]; lost: string[]; bagFull: number; botCut: number };
   /** Menor vida na hunt, em fração do máximo (sustos). */
   minHpPct: number;
   /** true se fechou o jogo ou caiu durante a hunt (conta como morte). */
@@ -84,7 +85,7 @@ export function newRunStats(): RunStats {
   return {
     levelAt: {}, depthAt: {}, specs: [], spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
-    loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0 },
+    loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0 },
     minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0,
   };
 }
