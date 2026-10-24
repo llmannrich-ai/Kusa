@@ -13,7 +13,7 @@ import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTA
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
-import { KNIGHT_COSMETICS, KNIGHT_LOOK, PROTO_FRAMES, PROTO_SIZE, PROTO_TILE, mergeLook, protoFrame, type ProtoDir } from "./art/proto/tibiaHero.ts";
+import { KNIGHT_COSMETICS, KNIGHT_LOOK, PROTO_FRAMES, PROTO_FEET, PROTO_SIZE, PROTO_TILE, mergeLook, protoFrame, type ProtoDir } from "./art/proto/tibiaHero.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
@@ -96,11 +96,11 @@ const WALK = [1, 0, 2, 0];
 }
 
 // --- Protótipo da Fase 0 de docs/ARTE_TIBIA.md: cavaleiro no padrão inspirado no Tibia, ao lado do atual.
-// Mesma escala de jogo nos dois: o atual tem 96 px de textura para 1,38 tile; o protótipo, 64 px por tile.
+// Mesma escala de jogo nos dois: o atual tem 96 px de textura para 1,38 tile; o protótipo, `PROTO_TILE` px por tile.
 const PHONE_TILE = 412 / 9;
 const PROTO_DIRS_ALL: ProtoDir[] = ["down", "side", "up"];
 const protoSceneRow = (() => {
-  const zoomTile = 96;
+  const zoomTile = PROTO_TILE;
   const oldZoom = (zoomTile * HERO_SCALE) / HERO_SIZE;
   const newZoom = zoomTile / PROTO_TILE;
   const oldSheet = heroSheet("knight");
@@ -293,7 +293,7 @@ for (let y = 0; y < H; y++) {
 }
 show(sceneRow, sceneCanvas, "corredor", 2);
 
-// Cena do protótipo em 64 px por tile: o chão e os monstros (32 px por tile) entram ampliados 2×.
+// Cena do protótipo em `PROTO_TILE` px por tile: o chão e os monstros (32 px por tile) entram ampliados.
 {
   const T = PROTO_TILE, SW = 8, SH = 3;
   const { canvas, ctx } = makeCanvas(SW * T, SH * T);
@@ -307,9 +307,9 @@ show(sceneRow, sceneCanvas, "corredor", 2);
   for (const [x, dir] of [[1, 0], [3, 2]] as const) {
     ctx.drawImage(old, dir * HERO_FRAMES * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, x * T - (side - T) / 2, 2 * T - side, side, side);
   }
-  // Protótipo: 96 px com os pés na linha 91, centrado no tile.
-  for (const [x, dir] of [[5, "down"], [7, "side"]] as const) ctx.drawImage(protoFrame(dir, 0), x * T - 16, 2 * T - 92);
-  show(protoSceneRow, canvas, "mesmo chão, mesma escala", 1.5);
+  // Protótipo: pés na base do tile, centrado nele.
+  for (const [x, dir] of [[5, "down"], [7, "side"]] as const) ctx.drawImage(protoFrame(dir, 0), x * T - (PROTO_SIZE - T) / 2, 2 * T - PROTO_FEET);
+  show(protoSceneRow, canvas, "mesmo chão, mesma escala", 1);
 }
 
 const combat = section("Combate (arte própria)");

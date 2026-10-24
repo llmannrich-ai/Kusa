@@ -82,7 +82,7 @@ tochas com poça de luz na Cripta, equipamento visível (é decisão de jogo do 
 
 | # | Regra | Valor |
 |---|---|---|
-| G1 | Densidade | **64 px de arte por tile** (o dobro do Tibia, decidido no protótipo para caber detalhe fino) em toda arte nova. A arte de 32 px por tile que fica entra ampliada 2× até ser refeita |
+| G1 | Densidade | **128 px de arte por tile** (4× o Tibia, decidido no protótipo para caber detalhe fino; é o limite em que 1 pixel de arte ainda vira ≈1 pixel de tela no celular) em toda arte nova. A arte de 32 px por tile que fica entra ampliada 4× até ser refeita |
 | G2 | Refinamento | Sem Scale2x nem luz automática na arte nova: tons e textura pintados na grade. O `refine.ts` fica só para a arte antiga até ser trocada |
 | G3 | Luz | Cima à esquerda, em todos os sprites e na decoração |
 | G4 | Contorno | Externo `#1a1210` (1 px, igual em todas as figuras); interno no tom 0 do material vizinho |
@@ -151,7 +151,7 @@ Bônus: as 4 zonas são exatamente o que um **cosmético de cor** troca (`buy_co
 ---
 
 ## 4. Checklist de aceitação de um sprite
-- [ ] 64 px de arte por tile, sem refinamento automático (Scale2x).
+- [ ] 128 px de arte por tile, sem refinamento automático (Scale2x).
 - [ ] Contorno `#1a1210`, luz de cima à esquerda, 4 tons por material.
 - [ ] Silhueta reconhecível em preto, no tamanho real do celular.
 - [ ] Herói: cabeça ≈27% do corpo, ombros mais largos que a cabeça, 4 zonas de cor visíveis.
@@ -181,23 +181,30 @@ de cor de exemplo.
 
 - **1ª versão (32 px por tile, grades de letras):** proporção certa, mas pouco detalhe. Recusada: "precisa de
   mais detalhe fino, pixel menor".
-- **2ª versão (64 px por tile, atual):** quadro 96×96, corpo de 64 px. Cada peça é uma forma com volume (cabeça
-  esfera, membros cilindro, tronco) e luz de cima à esquerda em 4 faixas com pontilhado na fronteira; a peça da
-  frente risca linha escura na de trás; contorno quase preto na sombra e suave na luz. Detalhe à mão: mechas e
-  franja do cabelo, sobrancelha, olho com brilho, nariz, boca, cicatriz, gola em V com debrum, canais costurados
-  do gibão, cinto com fivela, barra dourada, punho, dobra da calça no joelho, couro e sola da bota, espada com
-  gume, sulco, guarda e pomo.
+- **2ª versão (64 px por tile):** formas com volume (esfera, cilindro, membro) e detalhe à mão. Recusada:
+  "ainda mais detalhes, dobre mais uma vez".
+- **3ª versão (128 px por tile, atual):** quadro 192×192, corpo de 128 px. As formas são desenhadas em unidades
+  de projeto (o quadro de 96 da 2ª versão) e amostradas na resolução final; texturas e detalhes são pixel a pixel
+  nela. Luz de cima à esquerda em 4 faixas com pontilhado na fronteira, linha escura onde uma peça passa na frente
+  de outra, contorno quase preto na sombra e suave na luz. Detalhe novo: olho com pálpebra, íris, pupila e brilho;
+  sobrancelha afinando; nariz com narina; lábios; barba por fazer; cicatriz; orelha com a curva de dentro; brilho
+  em arco e redemoinho no cabelo; gibão com canais de 8 px e pontos de costura; manga acolchoada; punho bordado;
+  dedos; cinto com costura, furos e fivela com pino; barra com losangos; sarja e dobra da calça; bota com poros,
+  dobra do cano, cadarço e sola costurada; espada com gume, sulco, riscos, guarda gravada e cabo trançado.
 
 ![Atual × novo na mesma escala](arte/prototipo-tibia-comparacao.png)
+![Detalhe ampliado 3×](arte/prototipo-tibia-detalhe.png)
 ![Quadros do protótipo](arte/prototipo-tibia-quadros.png)
 ![No chão com os monstros](arte/prototipo-tibia-cena.png)
 
-Leitura da 2ª versão:
-- O pixel é metade do atual: o detalhe fino aparece no celular (≈1,9 px de tela por pixel de arte num aparelho
-  de densidade 2,6).
-- Os monstros e o chão (32 px por tile) ficam visivelmente mais "grossos" ao lado: seguir com 64 px obriga a
-  refazer monstros e mapas na mesma densidade (custo dobra nas Fases 3 a 5).
-- Falta: aprovar o visual e decidir a Fase 1 (manequim novo em `hero/rig.ts` em 64 px).
+Leitura da 3ª versão:
+- É o limite útil: num celular com o tile de ≈120 px de tela, 128 px por tile já põe ≈1 pixel de arte por pixel
+  de tela. Dobrar de novo não aparece no aparelho, só na galeria ampliada.
+- Deixa de ser pixel art "de Tibia" e vira ilustração em pixel fino: o estilo se aproxima de jogos 2D de alta
+  resolução. Os monstros e o chão (32 px por tile) ficam muito mais grossos ao lado.
+- Custo: cada monstro, item vestido e enfeite de mapa no mesmo nível de detalhe custa várias vezes o atual. Arte
+  por código nesse nível tende a ficar cara; vale avaliar desenhar em editor (Aseprite) e carregar PNG.
+- Falta: aprovar o visual e decidir a Fase 1.
 
 ### Riscos
 - **Retrabalho do sistema de itens:** mudar o manequim obriga a reencaixar cada item. Mitigação: manter a API de
