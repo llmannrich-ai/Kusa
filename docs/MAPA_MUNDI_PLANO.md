@@ -38,12 +38,13 @@ este arquivo marca a fase como feita.
 | Ordem | 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas |
 | Contas atuais | desbloqueio pelo histórico: quem já matou um boss com a classe já tem o ponto seguinte aberto |
 | Salas abertas | nos dois lugares: contador no ponto (👥 2) e botão fixo "Salas abertas (N)" com a lista completa |
+| Nome do mundo | **Kosaradius**, escrito no fundo do mapa em marca d'água laranja clara, em arco convexo (ver 3) |
 | Amigos no mapa | depois, quando existir o sistema de amigos |
 | Geografias futuras (na névoa) | gelo / polo, vulcão, cidade em ruínas / castelo |
 
 ## 3. Mundo (proposta para aprovar)
 
-**Talássa**, um planeta quase todo mar. Há mil anos o Império de Kusa dominava um continente só; a **Grande Maré**
+**Kosaradius**, um planeta quase todo mar (nome decidido pelo Leonardo). Há mil anos o Império de Kusa dominava um continente só; a **Grande Maré**
 subiu numa noite e afundou o império. Sobraram os picos (os continentes de hoje), ilhas e ruínas meio submersas.
 Os heróis exploram o que restou, e a névoa no mapa é o mundo que ninguém mapeou ainda. Isso explica as ruínas na água
 (Pântano das Ruínas), as tumbas sob as montanhas (Cripta) e por que cada terra virou um bioma diferente.
@@ -59,6 +60,10 @@ Os heróis exploram o que restou, e a névoa no mapa é o mundo que ninguém map
 | Cidadela Caída (ilha central) | capital do império, castelo | — | névoa (candidata a mapa final) |
 
 Mar ocupando cerca de 70% do desenho; trilhas tracejadas em terra, rota de barco pontilhada no mar.
+
+**Nome do mundo no mapa:** "Kosaradius" em marca d'água no fundo, laranja claro e bem transparente (`#e07a2c` a ~25%),
+em letras médio-grandes (~42 px a 412 px de largura) num arco convexo, no mar entre Solária e Verdemar, que aparece na
+tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos pontos e dos nomes, e não recebe toque.
 
 ## 4. Como funciona na tela
 
