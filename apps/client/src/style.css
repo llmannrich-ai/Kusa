@@ -423,6 +423,13 @@ button { min-height: 44px; touch-action: manipulation; }
   pointer-events: none;
   z-index: 5;
 }
+/* Joystick fixo (Configurações): sempre à vista no canto de baixo à esquerda, apagado enquanto ninguém toca. */
+.joystick.fixed {
+  left: calc(var(--col-x) + max(20px, env(safe-area-inset-left)));
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
+  margin: 0;
+}
+.joystick.fixed.idle { opacity: 0.45; }
 .joystick-knob {
   position: absolute;
   top: 50%;
@@ -464,6 +471,7 @@ button { min-height: 44px; touch-action: manipulation; }
 @media (orientation: landscape) and (pointer: coarse) {
   body.deitado { --col-w: 100vw; --col-x: 0px; --pad-b: max(10px, env(safe-area-inset-bottom)); --pad-r: max(12px, env(safe-area-inset-right)); }
   body.deitado #rotate { display: none; }
+  body.deitado .joystick.fixed { left: max(16px, env(safe-area-inset-left)); bottom: var(--pad-b); }
 
   body.deitado #hud { top: max(6px, env(safe-area-inset-top)); justify-content: flex-start; align-items: flex-start; }
   body.deitado #hud-left { grid-auto-flow: column; }
