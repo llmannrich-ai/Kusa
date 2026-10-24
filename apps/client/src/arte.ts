@@ -99,13 +99,8 @@ const WALK = [1, 0, 2, 0];
 // Mesma escala de jogo nos dois: o atual tem 96 px de textura para 1,38 tile; o protótipo, `PROTO_TILE` px por tile.
 const PHONE_TILE = 412 / 9;
 const PROTO_DIRS_ALL: ProtoDir[] = ["down", "side", "up"];
-/** Mostra o protótipo; reduzido, com suavização (como o jogo teria de fazer com uma arte maior que a tela). */
-const showProto = (row: HTMLElement, canvas: HTMLCanvasElement, caption: string, zoom: number) => {
-  show(row, canvas, caption, zoom);
-  if (zoom < 1) canvas.style.imageRendering = "auto";
-};
 const protoSceneRow = (() => {
-  const zoomTile = 256;
+  const zoomTile = PROTO_TILE;
   const oldZoom = (zoomTile * HERO_SCALE) / HERO_SIZE;
   const newZoom = zoomTile / PROTO_TILE;
   const oldSheet = heroSheet("knight");
@@ -117,15 +112,12 @@ const protoSceneRow = (() => {
   const compare = section("Protótipo padrão Tibia (Fase 0): atual × novo, na mesma escala do jogo");
   for (const dir of ["down", "side", "up"] as const) {
     show(compare, oldFrame(dir, 0), `atual · ${dirNames[dir]}`, oldZoom);
-    showProto(compare, protoFrame(dir, 0), `novo · ${dirNames[dir]}`, newZoom);
+    show(compare, protoFrame(dir, 0), `novo · ${dirNames[dir]}`, newZoom);
   }
-
-  const detail = section("Protótipo: detalhe 1:1 (um pixel de arte por pixel da página)");
-  for (const dir of ["down", "side", "up"] as const) showProto(detail, protoFrame(dir, 0), dirNames[dir], 1);
 
   const frames = section("Protótipo: quadros de caminhada (passo, passagem, outro passo, passagem)");
   for (const dir of ["down", "side", "up"] as const) {
-    for (let f = 0; f < PROTO_FRAMES; f++) showProto(frames, protoFrame(dir, f), `${dirNames[dir]} ${f}`, newZoom);
+    for (let f = 0; f < PROTO_FRAMES; f++) show(frames, protoFrame(dir, f), `${dirNames[dir]} ${f}`, newZoom);
   }
 
   const walk = section("Protótipo: andando (ampliado e no tamanho do celular em retrato)");
@@ -139,7 +131,7 @@ const protoSceneRow = (() => {
       show(walk, old.canvas, `atual · ${name}`, zoomOld);
       walkers.push({ ctx: old.ctx, dir, flip, old: true });
       const neo = makeCanvas(PROTO_SIZE, PROTO_SIZE);
-      showProto(walk, neo.canvas, `novo · ${name}`, zoomNew);
+      show(walk, neo.canvas, `novo · ${name}`, zoomNew);
       walkers.push({ ctx: neo.ctx, dir, flip, old: false });
     }
   }
@@ -161,8 +153,8 @@ const protoSceneRow = (() => {
   setInterval(tick, 150);
 
   const cosmetics = section("Protótipo: zonas de cor (cabeça, primária, secundária, detalhe), como um cosmético trocaria");
-  showProto(cosmetics, protoFrame("down", 0, KNIGHT_LOOK), "cavaleiro", newZoom);
-  for (const [name, look] of Object.entries(KNIGHT_COSMETICS)) showProto(cosmetics, protoFrame("down", 0, mergeLook(look)), name, newZoom);
+  show(cosmetics, protoFrame("down", 0, KNIGHT_LOOK), "cavaleiro", newZoom);
+  for (const [name, look] of Object.entries(KNIGHT_COSMETICS)) show(cosmetics, protoFrame("down", 0, mergeLook(look)), name, newZoom);
 
   return section("Protótipo: no chão com os monstros (atual à esquerda, novo à direita)");
 })();
@@ -317,7 +309,7 @@ show(sceneRow, sceneCanvas, "corredor", 2);
   }
   // Protótipo: pés na base do tile, centrado nele.
   for (const [x, dir] of [[5, "down"], [7, "side"]] as const) ctx.drawImage(protoFrame(dir, 0), x * T - (PROTO_SIZE - T) / 2, 2 * T - PROTO_FEET);
-  showProto(protoSceneRow, canvas, "mesmo chão, mesma escala", 1 / 3);
+  show(protoSceneRow, canvas, "mesmo chão, mesma escala", 1);
 }
 
 const combat = section("Combate (arte própria)");
