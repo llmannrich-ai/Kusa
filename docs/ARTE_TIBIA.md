@@ -192,10 +192,6 @@ de cor de exemplo.
   e longe do padrão Tibia. Fica no histórico do git (commit "Protótipo da arte em 384 px por tile") como referência
   para retratos de menu, se um dia fizerem falta.
 
-![Atual × novo na mesma escala](arte/prototipo-tibia-comparacao.png)
-![Detalhe ampliado 3×](arte/prototipo-tibia-detalhe.png)
-![Quadros do protótipo](arte/prototipo-tibia-quadros.png)
-![No chão com os monstros](arte/prototipo-tibia-cena.png)
 
 **Decisão:** o padrão é o da 3ª versão, 128 px por tile. Consequências para as próximas fases:
 - **Fase 1** (manequim e classes) e **Fase 2** (itens vestidos) seguem em 128 px, com o desenho por formas da 3ª
@@ -203,6 +199,32 @@ de cor de exemplo.
 - **Fases 3 a 5** (monstros e mapas) também passam a 128 px por tile; até lá, a arte de 32 px entra ampliada e
   fica mais grossa ao lado dos heróis.
 - Ajustes pendentes do protótipo: o perfil de lado (rosto pequeno perto do cabelo).
+
+#### Corpo base e as 4 classes
+
+O protótipo agora tem um **corpo base** (só de tanga de linho na cintura, careca, descalço, sem arma) e cada
+classe é um **kit** vestido sobre ele (`KITS` em `tibiaHero.ts`). Cada parte do corpo é desenhada e logo coberta
+pelo que o kit veste ali (perna → calça → bota; braço → manga → mão), então o mesmo esqueleto e a mesma caminhada
+servem às 4 classes e ao corpo nu. Na Fase 2 os itens entram como mais uma camada desse mesmo caminho.
+
+| | Corpo base | Cavaleiro | Paladino | Feiticeiro | Druida |
+|---|---|---|---|---|---|
+| Cabelo e rosto | careca | castanho curto, barba por fazer, cicatriz | loiro médio, faixa de couro na testa | branco comprido com entradas, barba longa e bigode, rugas | castanho solto repartido, folhas no cabelo, pintura verde |
+| Roupa de cima | peito nu | gibão acolchoado, gola em V | túnica de linho, gola com cordão | manto de veludo até os pés, gola alta, abertura dourada | túnica de folhas até o joelho, barra recortada, broche de folha |
+| Mangas | braço nu | acolchoadas, punho bordado | curtas + braçadeira de couro amarrada | de sino, barra dourada larga | braço nu com cipó e folhas |
+| Cintura | tanga | cinto com fivela | cinto com fivela e bolsinha | faixa com nó e franja | corda trançada com nó |
+| Barra | — | dourada com losangos | dois filetes | dourada com runas | pontas de folha com nervura |
+| Pernas e pés | descalço | calça + bota com cadarço | calça + bota de montaria com fivela | sapatilha de ponta virada | bermuda + faixas de linho e pé descalço |
+| Arma | — | espada de treino | arco simples (corda, empunhadura, pontas de chifre) | cajado com gema roxa e garras douradas | galho torto com folhas |
+| Costas | — | — | aljava com flechas e tira cruzada | cabelo até o meio das costas | cabelo até os ombros |
+
+Os chapéus antigos do feiticeiro (pontudo) e do druida (capuz) saíram do corpo: viram itens de capacete, como
+no catálogo. A classe é reconhecida pela silhueta (manto comprido, arco e aljava, túnica de folhas) e pelas cores.
+
+![Corpo base e classes: frente, lado e costas](arte/prototipo-tibia-classes.png)
+![Atual × novo na mesma escala](arte/prototipo-tibia-comparacao.png)
+![Caminhada: 4 quadros de frente e de lado](arte/prototipo-tibia-quadros.png)
+![No chão com os monstros](arte/prototipo-tibia-cena.png)
 
 ### Riscos
 - **Retrabalho do sistema de itens:** mudar o manequim obriga a reencaixar cada item. Mitigação: manter a API de

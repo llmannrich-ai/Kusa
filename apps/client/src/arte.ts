@@ -13,7 +13,7 @@ import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTA
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
-import { KNIGHT_COSMETICS, KNIGHT_LOOK, PROTO_FRAMES, PROTO_FEET, PROTO_SIZE, PROTO_TILE, mergeLook, protoFrame, type ProtoDir } from "./art/proto/tibiaHero.ts";
+import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_SIZE, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir } from "./art/proto/tibiaHero.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
@@ -95,56 +95,54 @@ const WALK = [1, 0, 2, 0];
   }, 125);
 }
 
-// --- Protótipo da Fase 0 de docs/ARTE_TIBIA.md: cavaleiro no padrão inspirado no Tibia, ao lado do atual.
+// --- Protótipo da Fase 0 de docs/ARTE_TIBIA.md: corpo base e as 4 classes, ao lado da arte atual.
 // Mesma escala de jogo nos dois: o atual tem 96 px de textura para 1,38 tile; o protótipo, `PROTO_TILE` px por tile.
 const PHONE_TILE = 412 / 9;
 const PROTO_DIRS_ALL: ProtoDir[] = ["down", "side", "up"];
+const PROTO_NAMES: Record<ProtoClass, string> = { base: "Corpo base", knight: "Cavaleiro", paladin: "Paladino", sorcerer: "Feiticeiro", druid: "Druida" };
 const protoSceneRow = (() => {
   const zoomTile = PROTO_TILE;
   const oldZoom = (zoomTile * HERO_SCALE) / HERO_SIZE;
   const newZoom = zoomTile / PROTO_TILE;
-  const oldSheet = heroSheet("knight");
-  const oldFrame = (dir: "down" | "side" | "up", f: number) => {
+  const oldFrame = (cls: ClassId, dir: "down" | "side" | "up", f: number) => {
     const { canvas, ctx } = makeCanvas(HERO_SIZE, HERO_SIZE);
-    ctx.drawImage(oldSheet, (HERO_DIRS.indexOf(dir) * HERO_FRAMES + f) * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, 0, 0, HERO_SIZE, HERO_SIZE);
+    ctx.drawImage(heroSheet(cls), (HERO_DIRS.indexOf(dir) * HERO_FRAMES + f) * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, 0, 0, HERO_SIZE, HERO_SIZE);
     return canvas;
   };
-  const compare = section("Protótipo padrão Tibia (Fase 0): atual × novo, na mesma escala do jogo");
-  for (const dir of ["down", "side", "up"] as const) {
-    show(compare, oldFrame(dir, 0), `atual · ${dirNames[dir]}`, oldZoom);
-    show(compare, protoFrame(dir, 0), `novo · ${dirNames[dir]}`, newZoom);
+  const classes = section("Protótipo padrão Tibia (Fase 0): corpo base (só de tanga) e as 4 classes vestidas sobre ele");
+  for (const cls of PROTO_CLASSES) show(classes, protoFrame("down", 0, cls), PROTO_NAMES[cls], newZoom);
+  for (const dir of ["side", "up"] as const) {
+    const row = section(`Protótipo: ${dirNames[dir]}`);
+    for (const cls of PROTO_CLASSES) show(row, protoFrame(dir, 0, cls), `${PROTO_NAMES[cls]} · ${dirNames[dir]}`, newZoom);
   }
 
-  const frames = section("Protótipo: quadros de caminhada (passo, passagem, outro passo, passagem)");
-  for (const dir of ["down", "side", "up"] as const) {
-    for (let f = 0; f < PROTO_FRAMES; f++) show(frames, protoFrame(dir, f), `${dirNames[dir]} ${f}`, newZoom);
+  const compare = section("Protótipo: atual × novo, na mesma escala do jogo");
+  for (const cls of CLASS_IDS) {
+    show(compare, oldFrame(cls, "down", 0), `atual · ${PROTO_NAMES[cls]}`, oldZoom);
+    show(compare, protoFrame("down", 0, cls), `novo · ${PROTO_NAMES[cls]}`, newZoom);
   }
 
   const walk = section("Protótipo: andando (ampliado e no tamanho do celular em retrato)");
-  const walkers: { ctx: CanvasRenderingContext2D; dir: ProtoDir; flip: boolean; old: boolean }[] = [];
-  const realOld = (PHONE_TILE * HERO_SCALE) / HERO_SIZE;
+  const walkers: { ctx: CanvasRenderingContext2D; cls: ProtoClass; dir: ProtoDir; flip: boolean }[] = [];
   const realNew = PHONE_TILE / PROTO_TILE;
-  for (const [zoomOld, zoomNew, label] of [[oldZoom, newZoom, ""], [realOld, realNew, ", tamanho real"]] as const) {
-    for (const [dir, flip] of [["down", false], ["side", false], ["side", true], ["up", false]] as const) {
-      const name = `${flip ? "direita" : dirNames[dir]}${label}`;
-      const old = makeCanvas(HERO_SIZE, HERO_SIZE);
-      show(walk, old.canvas, `atual · ${name}`, zoomOld);
-      walkers.push({ ctx: old.ctx, dir, flip, old: true });
-      const neo = makeCanvas(PROTO_SIZE, PROTO_SIZE);
-      show(walk, neo.canvas, `novo · ${name}`, zoomNew);
-      walkers.push({ ctx: neo.ctx, dir, flip, old: false });
+  for (const [zoom, label] of [[newZoom, ""], [realNew, ", tamanho real"]] as const) {
+    for (const cls of PROTO_CLASSES) {
+      for (const [dir, flip] of [["down", false], ["side", false], ["side", true], ["up", false]] as const) {
+        const neo = makeCanvas(PROTO_SIZE, PROTO_SIZE);
+        show(walk, neo.canvas, `${PROTO_NAMES[cls]} · ${flip ? "direita" : dirNames[dir]}${label}`, zoom);
+        walkers.push({ ctx: neo.ctx, cls, dir, flip });
+      }
     }
   }
-  const protoSheets = new Map(PROTO_DIRS_ALL.flatMap((dir) => [...Array(PROTO_FRAMES).keys()].map((f) => [`${dir}${f}`, protoFrame(dir, f)] as const)));
+  const sheets = new Map(PROTO_CLASSES.flatMap((cls) => PROTO_DIRS_ALL.flatMap((dir) =>
+    [...Array(PROTO_FRAMES).keys()].map((f) => [`${cls}${dir}${f}`, protoFrame(dir, f, cls)] as const))));
   let step = 0;
   const tick = () => {
     for (const w of walkers) {
-      const size = w.old ? HERO_SIZE : PROTO_SIZE;
-      w.ctx.clearRect(0, 0, size, size);
+      w.ctx.clearRect(0, 0, PROTO_SIZE, PROTO_SIZE);
       w.ctx.save();
-      if (w.flip) w.ctx.setTransform(-1, 0, 0, 1, size, 0);
-      if (w.old) w.ctx.drawImage(oldFrame(w.dir, WALK[step % WALK.length]), 0, 0);
-      else w.ctx.drawImage(protoSheets.get(`${w.dir}${step % PROTO_FRAMES}`)!, 0, 0);
+      if (w.flip) w.ctx.setTransform(-1, 0, 0, 1, PROTO_SIZE, 0);
+      w.ctx.drawImage(sheets.get(`${w.cls}${w.dir}${step % PROTO_FRAMES}`)!, 0, 0);
       w.ctx.restore();
     }
     step++;
@@ -153,8 +151,8 @@ const protoSceneRow = (() => {
   setInterval(tick, 150);
 
   const cosmetics = section("Protótipo: zonas de cor (cabeça, primária, secundária, detalhe), como um cosmético trocaria");
-  show(cosmetics, protoFrame("down", 0, KNIGHT_LOOK), "cavaleiro", newZoom);
-  for (const [name, look] of Object.entries(KNIGHT_COSMETICS)) show(cosmetics, protoFrame("down", 0, mergeLook(look)), name, newZoom);
+  show(cosmetics, protoFrame("down", 0, "knight"), "cavaleiro", newZoom);
+  for (const [name, look] of Object.entries(KNIGHT_COSMETICS)) show(cosmetics, protoFrame("down", 0, "knight", look), name, newZoom);
 
   return section("Protótipo: no chão com os monstros (atual à esquerda, novo à direita)");
 })();
@@ -295,20 +293,19 @@ show(sceneRow, sceneCanvas, "corredor", 2);
 
 // Cena do protótipo em `PROTO_TILE` px por tile: o chão e os monstros (32 px por tile) entram ampliados.
 {
-  const T = PROTO_TILE, SW = 8, SH = 3;
+  const T = PROTO_TILE, SW = 9, SH = 3;
   const { canvas, ctx } = makeCanvas(SW * T, SH * T);
   canvas.className = "scene";
   for (let y = 0; y < SH; y++) {
     for (let x = 0; x < SW; x++) ctx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * T, y * T, T, T);
   }
   const side = T * HERO_SCALE;
-  const old = heroSheet("knight");
-  refinedMonsters.slice(0, 4).forEach((art, i) => ctx.drawImage(art, 0, 0, art.width, art.height, (i * 2 + 0.5) * T, 0, T, T));
-  for (const [x, dir] of [[1, 0], [3, 2]] as const) {
-    ctx.drawImage(old, dir * HERO_FRAMES * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, x * T - (side - T) / 2, 2 * T - side, side, side);
-  }
-  // Protótipo: pés na base do tile, centrado nele.
-  for (const [x, dir] of [[5, "down"], [7, "side"]] as const) ctx.drawImage(protoFrame(dir, 0), x * T - (PROTO_SIZE - T) / 2, 2 * T - PROTO_FEET);
+  refinedMonsters.slice(0, 4).forEach((art, i) => ctx.drawImage(art, 0, 0, art.width, art.height, (i * 2 + 1) * T, 0, T, T));
+  // Atual (esquerda) e novo (direita), as 4 classes, pés na base do tile.
+  CLASS_IDS.forEach((cls, i) => {
+    ctx.drawImage(heroSheet(cls), 0, 0, HERO_SIZE, HERO_SIZE, (i * 0.9 + 0.2) * T - (side - T) / 2, 2 * T - side, side, side);
+    ctx.drawImage(protoFrame(i % 2 ? "side" : "down", 0, cls), (i + 4.8) * T - (PROTO_SIZE - T) / 2, 2 * T - PROTO_FEET);
+  });
   show(protoSceneRow, canvas, "mesmo chão, mesma escala", 1);
 }
 
