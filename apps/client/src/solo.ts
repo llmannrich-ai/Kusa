@@ -59,6 +59,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   hunt.join(SESSION_ID, {
     name, classId, talents: run.talents ?? {}, spellXp: run.spell_xp ?? {}, activeSpells: profile?.active_spells ?? [],
   });
+  hunt.knownBossRunes(SESSION_ID, run.boss_runes ?? []);
 
   // Mesmo caminho do servidor: o cliente decodifica um estado refletido, com callbacks.
   const encoder = new Encoder(state);
@@ -230,6 +231,8 @@ export async function finishSolo(runId: string | null, classId: ClassId, result:
       stats: report.stats,
       // XP de uso das magias da hunt; o banco corta pelo tempo de hunt.
       spell_xp: spellXpGains(classId, result.spells),
+      // Bosses que deram a runa nesta hunt: o banco anota e só aceita uma runa nova por boss anotado.
+      boss_runes: report.stats.bossRunes,
     },
   };
   const { data: session } = await supabase.auth.getSession();

@@ -58,6 +58,17 @@ export async function takeLoadout(userId: string, classId: string): Promise<stri
   return (data ?? []) as string[];
 }
 
+/** Bosses cuja runa este personagem (conta e classe) já levou: na hunt, eles não dão outra. */
+export async function takenBossRunes(userId: string, classId: string): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("profile_boss_runes").select("boss_kind").eq("profile_id", userId).eq("class_id", classId);
+  if (error) {
+    console.error("Falha ao ler as runas de boss já levadas", error);
+    return [];
+  }
+  return (data ?? []).map((r) => r.boss_kind as string);
+}
+
 /** A hunt começou: a bag da conta entra na dungeon com o jogador (`take_bag`). */
 export async function takeBag(userId: string): Promise<string[]> {
   if (!supabase) return [];
@@ -81,6 +92,8 @@ export interface RunResult {
   bag: string[];
   /** XP de uso ganho por magia escolhida na hunt (id do nó → XP, 0 se não lançou); a morte tira um pouco no banco. */
   spellXp: Record<string, number>;
+  /** Bosses que deram a runa nesta hunt (cada boss dá a runa uma vez por personagem). */
+  bossRunes: string[];
 }
 
 /** Grava o resultado da hunt, credita o gold, devolve equipamento e bag e soma o XP das magias (`finish_run`, `record_spell_xp` e `store_bag`). */
@@ -107,6 +120,15 @@ export async function recordRun(matchId: string, result: RunResult) {
     p_spell_xp: result.spellXp,
   });
   if (xpError) console.error("Falha ao gravar o XP das magias", xpError);
+  // Os bosses que já deram a runa a este personagem não dão outra (vale mesmo se ele morreu depois).
+  if (result.bossRunes.length > 0) {
+    const { error: runeError } = await supabase.rpc("record_boss_runes", {
+      p_profile_id: result.userId,
+      p_class_id: result.classId,
+      p_bosses: result.bossRunes,
+    });
+    if (runeError) console.error("Falha ao anotar as runas de boss", runeError);
+  }
   // A bag de quem sai vivo vai para o cofre (o que não couber fica na bag).
   await storeBag(result.userId, result.bag);
 }

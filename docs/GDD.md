@@ -284,6 +284,10 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 ### Runas
 
 Pedras mágicas que **só caem dos bosses** (o Dragão jovem e a Hidra dropam 1 runa cada; o nome sobe sobre o drop).
+**Cada boss dá a runa uma vez por personagem** (conta e classe): na equipe, cada herói que ainda não levou a runa
+daquele boss ganha a sua, que só ele vê e pega do chão; quem já levou vê "Runa deste boss já levada". Vale também para
+os baús de runa atrás do Verme da Areia. O banco anota em `profile_boss_runes` (`record_boss_runes` no servidor de jogo,
+`finish_solo_run` na hunt solo, que só aceita uma runa nova por boss anotado na hunt).
 Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `market_items` e `profile_items` como os itens.
 
 - Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220). O mercado não vende runas.
