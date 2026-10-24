@@ -367,7 +367,7 @@ export function createDesertArt(scene: Phaser.Scene) {
   }
 }
 
-/** Pântano: tudo em arte própria (`marshDecor.ts`), gerado na primeira hunt no Pântano. */
+/** Pântano do Kosaradius: tudo em arte própria (`marshDecor.ts`), gerado na primeira hunt no Pântano do Kosaradius. */
 export const MARSH_TEXTURE = {
   grass: "marsh-grass",
   mud: "marsh-mud",

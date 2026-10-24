@@ -107,7 +107,7 @@ export const MAPS: Record<MapId, MapDef> = {
     rewardRunes: ["rune-fury", "rune-life", "rune-time", "rune-meteor"],
   },
   marsh: {
-    id: "marsh", name: "Pântano", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
+    id: "marsh", name: "Pântano do Kosaradius", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
     description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
     encounters: [
       { depth: [0, 0], budget: 70, table: [["orcScout", 3], ["orcGrunt", 2]] },
@@ -140,7 +140,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
 };
 
-/** Jogadores por hunt no mapa, bots incluídos (o Pântano é só para 1). */
+/** Jogadores por hunt no mapa, bots incluídos (o Pântano do Kosaradius é só para 1). */
 export function partySize(map: MapDef) {
   return map.maxParty ?? MAX_PARTY_SIZE;
 }

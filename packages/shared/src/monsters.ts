@@ -640,7 +640,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     ],
     lore: "Verme gigante das dunas, dono da caverna. Some na areia e irrompe debaixo da presa, engole quem fica colado e, ferido, faz o chão tremer.",
   }),
-  // --- Pântano: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
+  // --- Pântano do Kosaradius: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
   // profundidade dobra os do fim), em bandos maiores: muito XP para quem joga sozinho. -----------------------
   orcScout: monster({
     kind: "orcScout", name: "Orc batedor", rank: "common", type: "humanoid", role: "skirmisher", cr: 1, group: [2, 3],

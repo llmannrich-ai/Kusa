@@ -746,7 +746,7 @@ const MARSH_MEADOWS = 8;
 const MARSH_PLANKS = 9;
 
 /**
- * Pântano: floresta alagada, o maior mapa. Nasce todo andável, cercado de mata fechada, e recebe por cima lagoas
+ * Pântano do Kosaradius: floresta alagada, o maior mapa. Nasce todo andável, cercado de mata fechada, e recebe por cima lagoas
  * grandes e poças, ilhas de mata, troncos caídos e muitas árvores soltas (ciprestes, salgueiros, mangues e
  * árvores mortas, algumas de pé dentro da água), sempre deixando passagem. Passarelas de madeira cruzam algumas
  * lagoas (atalho; às vezes levam a uma ilha). Zonas em arco da entrada até a clareira do centro, cercada de
