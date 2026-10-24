@@ -13,7 +13,7 @@ import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTA
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
-import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_SIZE, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir } from "./art/proto/tibiaHero.ts";
+import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_GEAR_NAMES, PROTO_SIZE, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
 import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
 
 const ZOOM = 4;
@@ -149,6 +149,14 @@ const protoSceneRow = (() => {
   };
   tick();
   setInterval(tick, 150);
+
+  // Itens do piloto (docs/ARTE_ITENS.md): o mesmo desenho em classes diferentes, nas 3 direções.
+  const pilot = section("Protótipo: itens criativos do piloto (Capuz do Lobo, Elmo do Demônio, Lâmina do dragão)");
+  const sets: [ProtoClass, ProtoGear][] = [["druid", { helmet: "wolf" }], ["sorcerer", { helmet: "wolf" }], ["knight", { helmet: "demon", weapon: "greatsword" }], ["paladin", { helmet: "demon" }]];
+  for (const [cls, gear] of sets) {
+    const names = [gear.helmet && PROTO_GEAR_NAMES[gear.helmet], gear.weapon && PROTO_GEAR_NAMES[gear.weapon]].filter(Boolean).join(" + ");
+    for (const dir of PROTO_DIRS_ALL) show(pilot, protoFrame(dir, 0, cls, undefined, gear), `${PROTO_NAMES[cls]} · ${names} · ${dirNames[dir]}`, newZoom);
+  }
 
   const cosmetics = section("Protótipo: zonas de cor (cabeça, primária, secundária, detalhe), como um cosmético trocaria");
   show(cosmetics, protoFrame("down", 0, "knight"), "cavaleiro", newZoom);

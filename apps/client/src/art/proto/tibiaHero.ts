@@ -62,9 +62,18 @@ interface Kit {
   pants: "none" | "full" | "knee";
   feet: "bare" | "boots" | "tall" | "shoes" | "wraps";
   waist: "loincloth" | "belt" | "strap" | "sash" | "rope";
-  weapon: "none" | "sword" | "bow" | "staff" | "branch";
+  weapon: "none" | "sword" | "bow" | "staff" | "branch" | "greatsword";
   quiver?: boolean;
+  /** Capacete vestido por cima da cabeça (itens do piloto). */
+  helmet?: "wolf" | "demon";
 }
+
+/** Itens do piloto vestidos sobre o kit: trocam o capacete e a arma da classe. */
+export interface ProtoGear {
+  helmet?: "wolf" | "demon";
+  weapon?: "greatsword";
+}
+export const PROTO_GEAR_NAMES = { wolf: "Capuz do Lobo", demon: "Elmo do Demônio", greatsword: "Lâmina do dragão" } as const;
 
 const KITS: Record<ProtoClass, Kit> = {
   base: {
@@ -102,7 +111,7 @@ export const mergeLook = (extra: Partial<ProtoLook>): ProtoLook => ({ ...KNIGHT_
 
 // --- Materiais ----------------------------------------------------------------------
 
-const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem }
+const enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber }
 
 const OUTLINE: Rgb = rgb("#1a1210");
 
@@ -124,6 +133,12 @@ function ramps(look: ProtoLook): Rgb[][] {
     r("#7a5534", 1.05, 6), // madeira
     r("#5f9a3c", 1, 8), // folha
     r("#9a52d8", 1.3, 10, true), // gema do cajado
+    r("#6e665c", 1.1, 6), // pelo do lobo
+    r("#b4a894", 0.9, 5), // focinho e peito do lobo
+    r("#e0402a", 1.2, 12, true), // brasa (olhos do demônio, runas da lâmina)
+    r("#4a4652", 1.45, 8, true), // ferro negro
+    r("#5a3a30", 1.15, 8), // chifre
+    r("#d8962a", 1.1, 8, true), // olho âmbar do lobo
   ];
 }
 
@@ -1102,6 +1117,7 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
     case "bow": return () => bow(c, at, out);
     case "staff": return () => staff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
+    case "greatsword": return () => greatsword(c, at, [at[0] + out * 3, top - 30]);
     default: return undefined;
   }
 }
@@ -1175,6 +1191,7 @@ function side(c: Canvas, kit: Kit, frame: number) {
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
     : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
+    : kit.weapon === "greatsword" ? () => greatsword(c, ha, [ha[0] - 22, top - 22])
     : undefined;
   arm(c, kit, [CX - 1, top + 3], [CX - 2 - s * 1.5, top + 10], ha, false, grip);
   if (kit.weapon === "sword") sword(c, ha, [ha[0] - 16, ha[1] + 15]);
@@ -1345,6 +1362,7 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   c.px(mx(-1, 0), Yc + 10, Mat.Skin, 4); c.px(mx(1, 0), Yc + 11, Mat.Skin, 2);
   c.px(mx(-1, 1), Yc + 12, Mat.Skin, 1); c.px(mx(1, 1), Yc + 12, Mat.Skin, 1); c.px(mx(1, 0), Yc + 12, Mat.Skin, 2);
   if (kit.beard === "long") {
+    if (kit.helmet) helmetFront(c, kit, cy, top);
     beardFront(c, cy, top);
     return;
   }
@@ -1360,6 +1378,7 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   }
   // Cicatriz do cavaleiro na bochecha direita.
   if (kit.scar) for (let k = 0; k < 5; k++) { c.px(mx(1, 9 + k), Yc + 6 + k, Mat.Lip, 1); c.px(mx(1, 8 + k), Yc + 6 + k, Mat.Skin, 4); }
+  if (kit.helmet) helmetFront(c, kit, cy, top);
 }
 
 /** Barba longa branca: bigode caindo nos cantos, barba em ponta até o peito, mechas e brilho. */
@@ -1445,6 +1464,8 @@ function headBack(c: Canvas, kit: Kit, b: number, top: number) {
     limb(c, [CX + 1, cy - 1], [CX + 2.2, cy + 5], 0.8, 0.9, Mat.Detail, leather);
   }
   if (kit.wild) hairLeaves(c, [[CX - 6.4, cy - 4.6, -0.4], [CX + 5.4, cy - 1.4, 0.7], [CX - 2, top + 1.6, 1.6], [CX + 7.6, top + 2, 2.2]]);
+  if (kit.helmet === "wolf") wolfBack(c, cy, top);
+  if (kit.helmet === "demon") demonBack(c, cy);
 }
 
 function headSide(c: Canvas, kit: Kit, b: number, top: number) {
@@ -1525,6 +1546,8 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   else c.px(X0 - 8, Yc + 9, Mat.Lip, 4);
   if (old) for (const [dx, dy] of [[-8, 3], [-7, 4], [-8, 5]]) c.px(X0 + dx, Yc + dy, Mat.Skin, 2);
   if (kit.beard === "stubble") stubble(c, face, X0 - 14, X0 - 2, Yc + 11, Yc + 18, (X, Y) => X > X0 - 12 || Y > Yc + 15);
+  if (kit.helmet === "wolf") wolfSide(c, cx, cy, top);
+  if (kit.helmet === "demon") demonSide(c, cx, cy);
   if (kit.beard === "long") {
     // Barba de perfil: do queixo e da mandíbula, apontando para baixo e para a frente; bigode caído.
     const pts: Pt[] = [[cx - 8.6, cy + 5.6], [cx - 1, cy + 3.6], [cx + 0.4, cy + 8], [cx - 3, top + 7], [cx - 6.8, top + 12.6], [cx - 8.8, top + 6], [cx - 9.6, cy + 8.6]];
@@ -1534,6 +1557,229 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   }
 }
 
+// --- Itens do piloto -----------------------------------------------------------------
+
+/** Pelo: tufos curtos que descem, com pontas claras e fundo escuro. */
+const fur: Offset = (X, Y) => {
+  const n = noise(X, (Y + (X >> 1)) >> 1);
+  return n < 0.16 ? -1 : n > 0.9 ? 1 : (X + (Y >> 1)) % 5 === 0 ? -1 : 0;
+};
+
+/** Ferro batido: marcas de martelo e arranhões. */
+const hammered: Offset = (X, Y) => (noise(X >> 1, Y >> 1) < 0.08 ? -1 : noise(X, Y) < 0.03 ? 1 : 0);
+
+/** Barra de pelo desfiada: recorta embaixo de `y`, em tufos de 1 a 2 unidades. */
+const furHem = (y: number) => (x: number, yy: number) => yy + 0.5 > y + noise(Math.floor((x + 0.5) * 1.6), 3) * 2.2;
+
+/** Dente: triângulo de osso com luz. */
+function fang(c: Canvas, base: Pt, half: number, len: number, dir = 1) {
+  const pts: Pt[] = [[base[0] - half, base[1]], [base[0] + half, base[1]], [base[0] + half * 0.2, base[1] + len * dir]];
+  return poly(c, pts, Mat.White, base[0] - half, base[0] + half);
+}
+
+/** Capuz do Lobo, de frente: a cabeça do lobo por cima da testa, a pele cobrindo o cabelo e caindo nos ombros. */
+function wolfFront(c: Canvas, cy: number, top: number) {
+  // Pele sobre os ombros: duas abas com a barra desfiada.
+  for (const sx of [-1, 1]) {
+    const pts: Pt[] = [[CX + sx * 7.8, cy - 1], [CX + sx * 10.4, cy + 2], [CX + sx * 15, top + 3], [CX + sx * 14.6, top + 11], [CX + sx * 10.6, top + 9.5], [CX + sx * 7.8, cy + 8.6]];
+    poly(c, pts, Mat.Fur, CX + sx * 7.8, CX + sx * 15, fur, furHem(top + 7.4));
+  }
+  // Calota de pele: cobre o alto da cabeça e desce pelos lados do rosto.
+  c.fill(ebox(CX, cy - 1.4, 10.6, 10.8), (x, y) => inEllipse(CX, cy - 1.4, 10.6, 10.8)(x, y) && (y + 0.5 < cy - 2.2 || Math.abs(x + 0.5 - CX) > 7.4) && y < cy + 8.4,
+    Mat.Fur, sphere(CX, cy - 1.4, 10.6, 10.8), fur);
+  // Orelhas em pé, com o miolo rosado.
+  for (const sx of [-1, 1]) {
+    poly(c, [[CX + sx * 8.4, cy - 8.6], [CX + sx * 7.2, cy - 16.4], [CX + sx * 3.2, cy - 10.6]], Mat.Fur, CX + sx * 3, CX + sx * 8.4, fur);
+    poly(c, [[CX + sx * 7.4, cy - 9.6], [CX + sx * 6.9, cy - 14.4], [CX + sx * 4.6, cy - 10.6]], Mat.Lip, CX + sx * 4.6, CX + sx * 7.4, () => -1);
+  }
+  // Testa do lobo, focinho claro, nariz e olhos âmbar com a pupila em fenda.
+  ellipse(c, CX, cy - 8, 6.6, 4.8, Mat.Fur, fur);
+  thread(c, [CX, cy - 12.4], [CX, cy - 6], Mat.Fur, 1);
+  ellipse(c, CX, cy - 3.8, 3.6, 2.6, Mat.FurLight, fur);
+  const nose = ellipse(c, CX, cy - 5.2, 1.4, 1, Mat.Eye);
+  c.on(nose, F(CX - 0.6), F(cy - 5.6), Mat.White, 3);
+  thread(c, [CX, cy - 4.2], [CX, cy - 2.6], Mat.Eye, 1);
+  for (const sx of [-1, 1]) {
+    const eye = ellipse(c, CX + sx * 3.4, cy - 7.8, 1.3, 0.75, Mat.Amber);
+    c.on(eye, F(CX + sx * 3.4), F(cy - 7.8), Mat.Eye, 0); c.on(eye, F(CX + sx * 3.4), F(cy - 8.2), Mat.Eye, 0);
+    c.on(eye, F(CX + sx * 3.4 - 0.6), F(cy - 8.2), Mat.Amber, 5);
+    thread(c, [CX + sx * 1.8, cy - 9.2], [CX + sx * 5.2, cy - 8.8], Mat.Fur, 0);
+  }
+  // Maxilar de cima apoiado na testa: linha da boca e os dentes caindo, dois caninos grandes.
+  thread(c, [CX - 3.6, cy - 1.6], [CX + 3.6, cy - 1.6], Mat.Lip, 0);
+  for (const k of [-1.6, -0.6, 0.4, 1.4]) fang(c, [CX + k + 0.1, cy - 1.4], 0.4, 0.7);
+  for (const sx of [-1, 1]) fang(c, [CX + sx * 2.7, cy - 1.5], 0.6, 2);
+}
+
+function wolfBack(c: Canvas, cy: number, top: number) {
+  // Pele caindo pelas costas como capa, com a barra desfiada e listra escura no meio.
+  const cape: Pt[] = [[CX - 8.6, cy - 1], [CX - 13, top + 2], [CX - 12.4, top + 13], [CX + 12.4, top + 13], [CX + 13, top + 2], [CX + 8.6, cy - 1]];
+  const id = poly(c, cape, Mat.Fur, CX - 13, CX + 13, fur, furHem(top + 10.4));
+  for (let Y = F(cy); Y < F(top + 11); Y++) for (let d = -2; d <= 1; d++) c.on(id, F(CX) + d, Y, Mat.Fur, noise(d, Y) < 0.5 ? 1 : 2);
+  c.fill(ebox(CX, cy - 1.4, 10.6, 10.8), inEllipse(CX, cy - 1.4, 10.6, 10.8), Mat.Fur, sphere(CX, cy - 1.4, 10.6, 10.8), fur);
+  for (const sx of [-1, 1]) poly(c, [[CX + sx * 8.4, cy - 8.6], [CX + sx * 7.2, cy - 16.4], [CX + sx * 3.2, cy - 10.6]], Mat.Fur, CX + sx * 3, CX + sx * 8.4, (X, Y) => fur(X, Y) - 1);
+  thread(c, [CX, cy - 12], [CX, cy + 8], Mat.Fur, 1);
+}
+
+function wolfSide(c: Canvas, cx: number, cy: number, top: number) {
+  // Capa de pele pelas costas, calota com a janela do rosto, cabeça do lobo de perfil com o focinho para a frente.
+  poly(c, [[cx + 1, cy - 2], [cx + 10.6, cy + 1], [cx + 11.6, top + 13], [cx + 3, top + 13], [cx + 1, cy + 8]], Mat.Fur, cx, cx + 12, fur, furHem(top + 10.4));
+  c.fill(ebox(cx + 0.8, cy - 1.4, 10, 10.8), (x, y) => inEllipse(cx + 0.8, cy - 1.4, 10, 10.8)(x, y) && (x + 0.5 > cx - 1.6 || y + 0.5 < cy - 2.4) && y < cy + 8.4,
+    Mat.Fur, sphere(cx + 0.8, cy - 1.4, 10, 10.8), fur);
+  poly(c, [[cx - 1.6, cy - 10], [cx + 0.8, cy - 17], [cx + 3.6, cy - 10.4]], Mat.Fur, cx - 1.6, cx + 3.6, fur);
+  poly(c, [[cx - 0.6, cy - 10.6], [cx + 0.8, cy - 15], [cx + 2.4, cy - 10.6]], Mat.Lip, cx - 0.6, cx + 2.4, () => -1);
+  ellipse(c, cx - 1.6, cy - 7.6, 6, 4.4, Mat.Fur, fur);
+  // Focinho comprido: em cima pelo, embaixo o claro, nariz na ponta.
+  poly(c, [[cx - 4.6, cy - 10], [cx - 11.8, cy - 6], [cx - 12.2, cy - 4.4], [cx - 4.4, cy - 3.6]], Mat.Fur, cx - 12, cx - 4, fur);
+  poly(c, [[cx - 4.4, cy - 5.4], [cx - 12, cy - 5], [cx - 11.6, cy - 3.6], [cx - 4.4, cy - 3]], Mat.FurLight, cx - 12, cx - 4, fur);
+  const nose = ellipse(c, cx - 12, cy - 5.4, 1.1, 0.9, Mat.Eye);
+  c.on(nose, F(cx - 12.4), F(cy - 5.8), Mat.White, 3);
+  thread(c, [cx - 11.6, cy - 3.6], [cx - 4.6, cy - 2.9], Mat.Lip, 0);
+  for (const x of [-11, -9.8, -8.6, -7.2, -5.8]) fang(c, [cx + x, cy - 3.3], 0.4, x === -9.8 ? 1.9 : 0.7);
+  const eye = ellipse(c, cx - 5.4, cy - 7.8, 1.1, 0.7, Mat.Amber);
+  c.on(eye, F(cx - 5.6), F(cy - 7.8), Mat.Eye, 0);
+  c.on(eye, F(cx - 5.8), F(cy - 8.2), Mat.Amber, 5);
+  thread(c, [cx - 7, cy - 9], [cx - 3.8, cy - 9.2], Mat.Fur, 0);
+}
+
+/** Chifre curvo: cápsulas afinando, com anéis escuros e a ponta clara. */
+function horn(c: Canvas, pts: readonly Pt[], r0: number, dark = 0) {
+  chain(c, pts, r0, Mat.Horn, (X, Y) => dark + ((X + Y * 2) % 7 === 0 ? -1 : 0), 0.35);
+  const tip = pts[pts.length - 1];
+  c.px(F(tip[0]), F(tip[1]), Mat.Horn, 5);
+}
+
+/** Elmo do Demônio, de frente: viseira de cara de demônio com olhos em brasa, presas e chifres de carneiro. */
+function demonFront(c: Canvas, cy: number) {
+  for (const sx of [-1, 1]) horn(c, [[CX + sx * 8, cy - 3.2], [CX + sx * 12.4, cy - 5.4], [CX + sx * 15.2, cy - 9.8], [CX + sx * 14.6, cy - 14.8], [CX + sx * 12.4, cy - 17.6]], 2.4);
+  const shell = c.fill(ebox(CX, cy, 10.4, 11), (x, y) => inEllipse(CX, cy - 0.6, 9.8, 10.2)(x, y) || (y > cy + 2 && y < cy + 9.8 && Math.abs(x + 0.5 - CX) < 8.6 - (y - cy - 2) * 0.75),
+    Mat.Iron, sphere(CX, cy - 0.4, 10.2, 10.8), hammered);
+  // Crista de espinhos no alto.
+  for (const k of [-2.4, 0, 2.4]) poly(c, [[CX + k - 1, cy - 9.4], [CX + k + 1, cy - 9.4], [CX + k * 1.2, cy - 13.4 + Math.abs(k) * 0.5]], Mat.Iron, CX + k - 1, CX + k + 1);
+  // Sobrancelha em V saltada, nariz em quilha, rebites.
+  for (const sx of [-1, 1]) {
+    limb(c, [CX + sx * 7.4, cy - 2.6], [CX + sx * 0.8, cy + 0.2], 0.75, 0.6, Mat.Iron);
+    for (const p of [[7.6, 2.4], [6.8, 6.4], [4.6, -6.4]] as const) { c.on(shell, F(CX + sx * p[0]), F(cy + p[1]), Mat.Steel, 5); c.on(shell, F(CX + sx * p[0]) + 1, F(cy + p[1]) + 1, Mat.Iron, 0); }
+  }
+  limb(c, [CX, cy - 7], [CX, cy + 4], 0.6, 0.75, Mat.Iron);
+  // Olhos em fenda acesos, com o brilho vazando para o metal em volta.
+  for (const sx of [-1, 1]) {
+    const slit: Pt[] = [[CX + sx * 1.4, cy + 1.2], [CX + sx * 6.8, cy - 0.6], [CX + sx * 6.4, cy + 0.9], [CX + sx * 1.8, cy + 2.4]];
+    const glow = poly(c, slit, Mat.Ember, CX + sx * 1.4, CX + sx * 6.8, (X) => (Math.abs(X - F(CX)) < F(3.4) ? 2 : 1));
+    void glow;
+    for (let X = F(CX + sx * 1.4); sx < 0 ? X >= F(CX + sx * 6.8) : X <= F(CX + sx * 6.8); X += sx) if (noise(X, 1) < 0.6) c.on(shell, X, F(cy + 2.8), Mat.Ember, 1);
+  }
+  // Grade da boca e presas.
+  for (let k = -3; k <= 3; k++) {
+    thread(c, [CX + k * 1.15, cy + 5], [CX + k * 1.15, cy + 7.6], Mat.Eye, 0, [shell]);
+    thread(c, [CX + k * 1.15 + 0.5, cy + 5], [CX + k * 1.15 + 0.5, cy + 7.6], Mat.Iron, 4, [shell]);
+  }
+  for (const sx of [-1, 1]) {
+    const f: Pt[] = [[CX + sx * 1.8, cy + 4.6], [CX + sx * 3.4, cy + 4.6], [CX + sx * 2.4, cy + 10.8]];
+    poly(c, f, Mat.Horn, CX + sx * 1.8, CX + sx * 3.4);
+  }
+}
+
+function demonBack(c: Canvas, cy: number) {
+  for (const sx of [-1, 1]) horn(c, [[CX + sx * 8, cy - 3.2], [CX + sx * 12.4, cy - 5.4], [CX + sx * 15.2, cy - 9.8], [CX + sx * 14.6, cy - 14.8], [CX + sx * 12.4, cy - 17.6]], 2.4, -1);
+  const shell = c.fill(ebox(CX, cy, 10.4, 11), inEllipse(CX, cy - 0.6, 9.8, 10.2), Mat.Iron, sphere(CX, cy - 0.4, 10.2, 10.8), hammered);
+  // Espinhos descendo pela nuca e lâminas articuladas protegendo o pescoço.
+  for (const [y, h] of [[-9.4, 3.6], [-5.6, 2.8], [-1.8, 2.2]] as const) poly(c, [[CX - 1, cy + y + 1], [CX + 1, cy + y + 1], [CX, cy + y - h]], Mat.Iron, CX - 1, CX + 1);
+  for (const k of [0, 1, 2]) {
+    const y = cy + 6 + k * 1.6;
+    const lame = c.fill([CX - 9, y, CX + 9, y + 2], (x, yy) => yy + 0.5 >= y && yy + 0.5 < y + 1.8 && Math.abs(x + 0.5 - CX) < 8.4 - k * 0.8, Mat.Iron, (x) => lit((x + 0.5 - CX) / 9, -0.6, 0.6));
+    void lame;
+  }
+  void shell;
+}
+
+function demonSide(c: Canvas, cx: number, cy: number) {
+  // Chifre de lá (mais escuro) atrás, casco, viseira saindo para a frente, chifre de cá por cima.
+  horn(c, [[cx + 2.4, cy - 5.6], [cx + 6.2, cy - 9.4], [cx + 7.4, cy - 14.4], [cx + 5.6, cy - 18.2]], 2, -1);
+  const shell = c.fill(ebox(cx + 0.6, cy - 0.6, 9.6, 10.4), inEllipse(cx + 0.6, cy - 0.6, 9.4, 10.2), Mat.Iron, sphere(cx + 0.6, cy - 0.6, 9.6, 10.4), hammered);
+  const visor: Pt[] = [[cx - 8.6, cy - 2.4], [cx - 10.6, cy + 2.6], [cx - 9.6, cy + 7.6], [cx - 6.6, cy + 9.8], [cx - 1.6, cy + 9.6], [cx - 1.6, cy - 2.6]];
+  const v = poly(c, visor, Mat.Iron, cx - 10.6, cx - 1.6, hammered);
+  for (const k of [-2.4, 0, 2.4]) poly(c, [[cx + k * 0.8 + 0.6, cy - 9.8], [cx + k * 0.8 + 2.6, cy - 9.4], [cx + k * 1.2 + 2.4, cy - 13.2 + Math.abs(k) * 0.4]], Mat.Iron, cx, cx + 4);
+  limb(c, [cx - 9.2, cy - 2.6], [cx - 3.4, cy - 1.2], 0.75, 0.6, Mat.Iron);
+  poly(c, [[cx - 9.4, cy + 0.2], [cx - 5, cy - 0.4], [cx - 5.2, cy + 1.2], [cx - 9.2, cy + 1.6]], Mat.Ember, cx - 9.4, cx - 5, () => 2);
+  for (let k = 0; k < 4; k++) thread(c, [cx - 8.8 + k * 1.2, cy + 5], [cx - 8.6 + k * 1.2, cy + 7.6], Mat.Eye, 0, [v]);
+  poly(c, [[cx - 9.6, cy + 4.6], [cx - 8, cy + 4.6], [cx - 9, cy + 10.6]], Mat.Horn, cx - 9.6, cx - 8);
+  for (const p of [[3.6, 2], [5.6, -4], [-3.6, 6]] as const) c.on([shell, v], F(cx + p[0]), F(cy + p[1]), Mat.Steel, 5);
+  horn(c, [[cx + 0.4, cy - 4.4], [cx + 4.6, cy - 8.6], [cx + 5.6, cy - 14], [cx + 3.6, cy - 18.6]], 2.4);
+}
+
+function helmetFront(c: Canvas, kit: Kit, cy: number, top: number) {
+  if (kit.helmet === "wolf") wolfFront(c, cy, top);
+  if (kit.helmet === "demon") demonFront(c, cy);
+}
+
+/**
+ * Lâmina do dragão (espada grande): lâmina larga com dentes de dragão perto da guarda e runas em brasa no sulco,
+ * guarda em asas de dragão com uma gema no meio, cabo longo de duas mãos e pomo em garra.
+ */
+function greatsword(c: Canvas, at: Pt, tip: Pt) {
+  const dx = tip[0] - at[0], dy = tip[1] - at[1];
+  const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+  const gx = -uy, gy = ux;
+  const guard: Pt = [at[0] + ux * 3, at[1] + uy * 3];
+  const bl = Math.hypot(tip[0] - guard[0], tip[1] - guard[1]);
+  const width = (t: number) => (t > 0.88 ? 3.3 * (1 - t) / 0.12 + 0.1 : 3.3 - t * 0.9);
+  const local = (x: number, y: number) => { const s = seg(x + 0.5, y + 0.5, guard, tip); return { s, side: s.sx * gx + s.sy * gy }; };
+  // Dentes de dragão nas duas bordas, do primeiro terço da lâmina.
+  const teeth = (t: number) => { if (t > 0.3) return 0; const f = (t * bl / 2) % 1; return f < 0.6 ? f * 1.8 : 0; };
+  c.fill([Math.min(guard[0], tip[0]) - 5, Math.min(guard[1], tip[1]) - 5, Math.max(guard[0], tip[0]) + 5, Math.max(guard[1], tip[1]) + 5],
+    (x, y) => { const { s } = local(x, y); return s.d <= width(s.t) + teeth(s.t); }, Mat.Steel, (x, y) => {
+      const { s, side } = local(x, y);
+      const u = side / width(s.t);
+      if (Math.abs(u) > 1) return 0.5;
+      if (Math.abs(u) > 0.74) return 0.95;
+      return u < 0 ? 0.78 : 0.4;
+    }, (X, Y) => {
+      const { s, side } = local((X + 0.5) / K - 0.5, (Y + 0.5) / K - 0.5);
+      if (Math.abs(side) > width(s.t)) return -1;
+      if (Math.abs(side) < 0.55 && s.t > 0.04 && s.t < 0.76) return -3;
+      return noise(X, Y) < 0.04 ? -1 : 0;
+    });
+  // Runas em brasa dentro do sulco.
+  for (let t = 0.1; t < 0.72; t += 0.09) {
+    const p: Pt = [guard[0] + (tip[0] - guard[0]) * t, guard[1] + (tip[1] - guard[1]) * t];
+    const g = Math.floor(t * 31) % 3;
+    const marks = [[[0, -1], [0, 0], [0, 1], [1, 0]], [[0, -1], [-1, 0], [1, 0], [0, 1]], [[-1, -1], [0, 0], [1, 1], [0, 1]]][g];
+    for (const [mx2, my] of marks) c.px(F(p[0]) + mx2, F(p[1]) + my, Mat.Ember, my < 0 ? 5 : 4);
+  }
+  // Guarda em asas: osso (chifre) com membrana de ferro negro, abrindo para cima.
+  for (const sx of [-1, 1]) {
+    const w = (a: number, b: number): Pt => [guard[0] + gx * sx * a * 1.3 - ux * b * 1.3, guard[1] + gy * sx * a * 1.3 - uy * b * 1.3];
+    const membrane: Pt[] = [w(0.6, -0.8), w(7.8, 4.6), w(6.6, 2.2), w(5.6, 2.8), w(4.4, 1.2), w(3.2, 1.6), w(1.8, 0)];
+    poly(c, membrane, Mat.Iron, Math.min(...membrane.map((p) => p[0])), Math.max(...membrane.map((p) => p[0])), hammered);
+    chain(c, [w(0.6, 0), w(4.4, 2.4), w(7.8, 4.6)], 0.6, Mat.Horn, undefined, 0.3);
+    chain(c, [w(2.2, 0.4), w(5.6, 2.8)], 0.4, Mat.Horn);
+  }
+  ellipse(c, guard[0], guard[1], 2.2, 2.2, Mat.Iron);
+  spotEye(c, guard, 1.3);
+  // Cabo de duas mãos (couro vermelho trançado) e pomo em garra com outra gema.
+  const pommel: Pt = [at[0] - ux * 6.4, at[1] - uy * 6.4];
+  c.fill([Math.min(pommel[0], guard[0]) - 2, Math.min(pommel[1], guard[1]) - 2, Math.max(pommel[0], guard[0]) + 2, Math.max(pommel[1], guard[1]) + 2],
+    (x, y) => seg(x + 0.5, y + 0.5, pommel, guard).d <= 1.15, Mat.Primary, (x, y) => {
+      const s = seg(x + 0.5, y + 0.5, pommel, guard);
+      return lit((s.sx * gx + s.sy * gy) / 1.15, 0, 0.8);
+    }, (X, Y) => {
+      const x = (X + 0.5) / K - 0.5, y = (Y + 0.5) / K - 0.5;
+      const s = seg(x + 0.5, y + 0.5, pommel, guard);
+      const p = (s.t * 6 + (s.sx * gx + s.sy * gy) * 0.5) % 1;
+      return p < 0.2 ? -2 : p < 0.5 ? 1 : 0;
+    });
+  for (const sx of [-1, 1]) chain(c, [[pommel[0] + gx * sx * 0.8 + ux * 0.6, pommel[1] + gy * sx * 0.8 + uy * 0.6], [pommel[0] + gx * sx * 1.8 - ux * 0.8, pommel[1] + gy * sx * 1.8 - uy * 0.8], [pommel[0] + gx * sx * 0.9 - ux * 2.2, pommel[1] + gy * sx * 0.9 - uy * 2.2]], 0.5, Mat.Iron, undefined, 0.25);
+  spotEye(c, [pommel[0] - ux * 0.8, pommel[1] - uy * 0.8], 1.1);
+}
+
+/** Gema de brasa redonda, com pupila de réptil e brilho. */
+function spotEye(c: Canvas, at: Pt, r: number) {
+  const g = ellipse(c, at[0], at[1], r, r, Mat.Ember);
+  c.on(g, F(at[0]), F(at[1]), Mat.Eye, 0); c.on(g, F(at[0]), F(at[1]) + 1, Mat.Eye, 0);
+  c.on(g, F(at[0] - r * 0.5), F(at[1] - r * 0.5), Mat.Ember, 5);
+}
+
 /** Pixels de cada quadro, calculados uma vez (a galeria pede o mesmo quadro várias vezes). */
 const cache = new Map<string, Uint8ClampedArray>();
 
@@ -1541,10 +1787,10 @@ const cache = new Map<string, Uint8ClampedArray>();
  * Quadro 192×192 do protótipo, virado para a esquerda no lado. Caminhada: passo, passagem, outro passo,
  * passagem. `look` troca as cores das zonas (cosmético) sem mudar o desenho.
  */
-export function protoFrame(dir: ProtoDir, frame: number, cls: ProtoClass = "knight", look?: Partial<ProtoLook>): HTMLCanvasElement {
-  const kit = KITS[cls];
+export function protoFrame(dir: ProtoDir, frame: number, cls: ProtoClass = "knight", look?: Partial<ProtoLook>, gear: ProtoGear = {}): HTMLCanvasElement {
+  const kit: Kit = { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: false } : {}) };
   const colors = { ...kit.look, ...look };
-  const key = `${cls}${dir}${frame}${JSON.stringify(colors)}`;
+  const key = `${cls}${dir}${frame}${JSON.stringify(colors)}${JSON.stringify(gear)}`;
   let data = cache.get(key);
   if (!data) {
     const c = new Canvas();
