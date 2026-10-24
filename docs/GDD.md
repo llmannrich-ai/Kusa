@@ -15,10 +15,10 @@ teclado e mouse no desktop são um extra.
   direita, para o meio da tela ficar livre (no iPhone, as barras do Safari deixam só uns 330 px de altura). Os menus continuam na vertical. A telemetria compara as hunts em pé e
   deitado (`stats.landscapeMs`) para decidir se o modo fica.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
-- **Movimento:** joystick virtual flutuante, que aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura; deitado, 40%), com 8 direções.
+- **Movimento:** joystick virtual com 8 direções, fixo no canto de baixo à esquerda por padrão (ver abaixo). Desligando o fixo, vira flutuante: aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura; deitado, 40%).
   Na zona do joystick todo toque vira joystick, até em cima de um monstro; um toque rápido parado (menos de 250 ms) trava o alvo ali.
   Curso de 72 px; o pino que passa da borda arrasta a base junto. As retas são mais largas que as diagonais (60° cada reta, 30° cada diagonal), e perto da divisa entre duas direções fica na que já estava (sem tremer nem zigue-zague).
-  **Joystick fixo** (Configurações): fica sempre à vista no canto de baixo à esquerda, apagado enquanto ninguém toca; o toque perto dele já anda na direção do toque.
+  **Joystick fixo** (padrão; dá para desligar nas Configurações): fica sempre à vista no canto de baixo à esquerda, apagado enquanto ninguém toca; o toque perto dele já anda na direção do toque. Desligado, o joystick nasce onde o polegar toca.
   **Deslizar na parede:** a diagonal bloqueada (parede, quina ou monstro) vira passo no eixo livre, então o polegar um pouco torto num corredor não para o herói.
   Enquanto o polegar segura uma direção, o servidor anda nela sozinho, no ritmo da velocidade do herói, e o
   cliente desenha os passos emendados, com duração constante (sem "trava e corre" quando a rede oscila).
