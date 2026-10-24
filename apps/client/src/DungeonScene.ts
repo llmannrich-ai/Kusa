@@ -5,6 +5,7 @@ import {
   MONSTERS,
   MSG,
   MOVE_RESEND_MS,
+  PORTAL_HOLD_MS,
   POTIONS,
   RUNES,
   DOT_KINDS,
@@ -120,6 +121,7 @@ const COLORS = {
   hpMonster: 0xe74c3c,
   hpSummon: 0x5dade2,
   barrier: 0x9fd8ff,
+  portal: 0x4aa3ff,
   bossPortal: 0xb36bff,
 };
 
@@ -223,6 +225,10 @@ export class DungeonScene extends Phaser.Scene {
   private chests = new Map<string, Phaser.GameObjects.Image>();
   private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
+  /** Anel que enche enquanto o herói fica em cima de um portal (o servidor o leva depois de `PORTAL_HOLD_MS`). */
+  private portalRing!: Phaser.GameObjects.Graphics;
+  /** Desde quando (relógio da cena) o herói está no tile do portal; null fora dele. */
+  private portalSince: { x: number; y: number; at: number } | null = null;
   private move!: MoveInput;
   /** Ambiente do mapa: vaga-lumes e névoa no pântano, luz das tochas e poeira na cripta. */
   private ambience: MapAmbience | null = null;
@@ -344,6 +350,7 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.monsterStrike, (msg: MonsterStrikeMessage) => this.onMonsterStrike(msg));
 
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
+    this.portalRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
     // Sem alvo travado, o ataque vai no monstro mais próximo ao alcance (o anel vermelho mostra qual).
     // Tocar num monstro trava o alvo e tocar nele de novo destrava; no desktop, Tab troca para o próximo e Esc destrava.
@@ -433,6 +440,7 @@ export class DungeonScene extends Phaser.Scene {
     });
     this.summons.forEach((unit) => this.animateUnit(unit, time));
     this.drawTargetRing();
+    this.drawPortalRing(time);
     this.minimap?.update(time);
     this.ambience?.update(time);
     this.spellBar.update();
@@ -496,6 +504,29 @@ export class DungeonScene extends Phaser.Scene {
     if (!unit) return;
     const half = TILE_SIZE / 2;
     g.lineStyle(2, COLORS.target).strokeRect(unit.body.x - half, unit.body.y - half, TILE_SIZE, TILE_SIZE);
+  }
+
+  /** Em cima do portal de fuga (ou do boss, aberto), um anel enche no tempo que falta para sair. */
+  private drawPortalRing(time: number) {
+    const g = this.portalRing.clear();
+    const me = this.me();
+    const d = this.dungeon;
+    const onPortal = !!me && me.status === "playing" && (
+      (me.x === d.portal.x && me.y === d.portal.y)
+      || (this.room.state.bossDefeated && me.x === d.bossPortal.x && me.y === d.bossPortal.y));
+    if (!onPortal) {
+      this.portalSince = null;
+      return;
+    }
+    if (!this.portalSince || this.portalSince.x !== me.x || this.portalSince.y !== me.y) this.portalSince = { x: me.x, y: me.y, at: time };
+    const unit = this.avatars.get(this.room.sessionId);
+    if (!unit) return;
+    const done = Math.min(1, (time - this.portalSince.at) / PORTAL_HOLD_MS);
+    const color = me.x === d.portal.x && me.y === d.portal.y ? COLORS.portal : COLORS.bossPortal;
+    const r = TILE_SIZE * 0.7;
+    g.lineStyle(4, 0x000000, 0.45).strokeCircle(unit.body.x, unit.body.y, r);
+    g.lineStyle(4, color, 1).beginPath()
+      .arc(unit.body.x, unit.body.y, r, -Math.PI / 2, -Math.PI / 2 + done * Math.PI * 2).strokePath();
   }
 
   // --- Combate -------------------------------------------------------------
