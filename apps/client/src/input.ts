@@ -5,8 +5,13 @@ export interface MoveVector { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }
 /** Raio do joystick (px): até onde o pino vai. */
 const RADIUS = 72;
 const DEADZONE = 0.25;
-/** Graus além da metade do setor (22,5°) que o dedo pode ir antes de trocar de direção: sem tremer na diagonal. */
-const HYSTERESIS = 10;
+/**
+ * Meia largura (graus) de cada direção reta: 60° para cada reta e 30° para cada diagonal. Com setores iguais
+ * (45°), o polegar um pouco torto já virava diagonal e o herói andava em zigue-zague.
+ */
+const STRAIGHT_HALF = 30;
+/** Graus além da borda do setor que o dedo pode ir antes de trocar de direção: sem tremer na divisa. */
+const HYSTERESIS = 6;
 /** Toque mais curto que isto, sem sair da zona morta, é um toque (travar alvo), não um passo. */
 const TAP_MS = 250;
 
@@ -14,6 +19,8 @@ const TAP_MS = 250;
 const JOYSTICK_TOP = 0.45;
 /** Deitado, a tela é baixa: o joystick começa mais acima, abaixo do HUD. */
 const JOYSTICK_TOP_LANDSCAPE = 0.4;
+/** Joystick fixo: o toque até esta distância (px) do centro dele vira joystick; fora disso, é toque no mapa. */
+const FIXED_REACH = RADIUS * 2;
 
 const DIRS: MoveVector[] = [
   { dx: 1, dy: 0 }, { dx: 1, dy: 1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 1 },
@@ -24,7 +31,7 @@ const DIRS: MoveVector[] = [
  * Zona do joystick: metade esquerda, abaixo de `JOYSTICK_TOP` (a direita é do outro polegar: ataque e magias).
  * `x` e `y` são frações da largura e da altura da tela do jogo.
  */
-export function inJoystickZone(x: number, y: number, landscape: boolean) {
+function inJoystickZone(x: number, y: number, landscape: boolean) {
   return x <= 0.5 && y >= (landscape ? JOYSTICK_TOP_LANDSCAPE : JOYSTICK_TOP);
 }
 
@@ -34,6 +41,9 @@ export function inJoystickZone(x: number, y: number, landscape: boolean) {
  *
  * Na zona do joystick, todo toque vira joystick, até em cima de um monstro (antes o toque travava o alvo e o
  * herói não andava). Um toque rápido que não sai da zona morta chama `onTap`, que trava o alvo ali.
+ *
+ * Com `fixed` (Configurações > Joystick fixo), o joystick fica sempre à vista no canto de baixo à esquerda e não
+ * segue o dedo: o toque perto dele (até `FIXED_REACH`) já anda na direção do toque.
  */
 export class MoveInput {
   private keys: Record<"up" | "down" | "left" | "right" | "w" | "a" | "s" | "d", Phaser.Input.Keyboard.Key> | null;
@@ -48,9 +58,11 @@ export class MoveInput {
   private sector: number | null = null;
   private stick: MoveVector = { dx: 0, dy: 0 };
   private onTap: (clientX: number, clientY: number) => void;
+  private fixed: boolean;
 
-  constructor(scene: Phaser.Scene, surface: HTMLElement, onTap: (clientX: number, clientY: number) => void) {
+  constructor(scene: Phaser.Scene, surface: HTMLElement, onTap: (clientX: number, clientY: number) => void, fixed = false) {
     this.onTap = onTap;
+    this.fixed = fixed;
     this.keys = (scene.input.keyboard?.addKeys("up,down,left,right,w,a,s,d") as MoveInput["keys"]) ?? null;
     this.surface = surface;
 
@@ -59,7 +71,9 @@ export class MoveInput {
     this.knob = document.createElement("div");
     this.knob.className = "joystick-knob";
     this.base.append(this.knob);
-    this.base.hidden = true;
+    this.base.hidden = !fixed;
+    this.base.classList.toggle("fixed", fixed);
+    this.base.classList.toggle("idle", fixed);
     document.body.append(this.base);
 
     surface.addEventListener("pointerdown", this.onDown);
@@ -80,6 +94,10 @@ export class MoveInput {
 
   /** O toque (coordenadas da página) cai na zona do joystick. */
   inZone(clientX: number, clientY: number) {
+    if (this.fixed) {
+      const home = this.home();
+      return Math.hypot(clientX - home.x, clientY - home.y) <= FIXED_REACH;
+    }
     const rect = this.surface.getBoundingClientRect();
     return inJoystickZone((clientX - rect.left) / rect.width, (clientY - rect.top) / rect.height, rect.width > rect.height);
   }
@@ -94,25 +112,41 @@ export class MoveInput {
 
   private onDown = (e: PointerEvent) => {
     if (this.pointerId !== null || !this.inZone(e.clientX, e.clientY)) return;
-    // O joystick nasce onde o polegar toca.
     this.pointerId = e.pointerId;
-    this.origin = { x: e.clientX, y: e.clientY };
     this.downAt = performance.now();
     this.moved = false;
     this.sector = null;
     this.stick = { dx: 0, dy: 0 };
+    if (this.fixed) {
+      // Fixo: o centro é o do joystick à vista, e o toque fora do centro já anda.
+      this.origin = this.home();
+      this.base.classList.remove("idle");
+      this.onMove(e);
+      return;
+    }
+    // Flutuante: o joystick nasce onde o polegar toca.
+    this.origin = { x: e.clientX, y: e.clientY };
     this.base.style.left = `${e.clientX}px`;
     this.base.style.top = `${e.clientY}px`;
     this.base.hidden = false;
     this.setKnob(0, 0);
   };
 
+  /** Centro do joystick fixo na tela (a posição vem do CSS, com a área segura do aparelho). */
+  private home() {
+    const r = this.base.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
   private onMove = (e: PointerEvent) => {
     if (e.pointerId !== this.pointerId) return;
     let x = e.clientX - this.origin.x;
     let y = e.clientY - this.origin.y;
     const dist = Math.hypot(x, y);
-    if (dist > RADIUS) {
+    if (dist > RADIUS && this.fixed) {
+      x = (x / dist) * RADIUS;
+      y = (y / dist) * RADIUS;
+    } else if (dist > RADIUS) {
       // A base acompanha o dedo que passa da borda: voltar para o outro lado troca de direção na hora.
       this.origin.x = e.clientX - (x / dist) * RADIUS;
       this.origin.y = e.clientY - (y / dist) * RADIUS;
@@ -125,13 +159,11 @@ export class MoveInput {
 
     if (dist / RADIUS < DEADZONE) { this.stick = { dx: 0, dy: 0 }; this.sector = null; return; }
     this.moved = true;
-    // 8 setores de 45°; perto da borda entre dois, fica na direção que já estava.
+    // Retas largas e diagonais estreitas; perto da borda entre duas, fica na direção que já estava.
     const angle = (Math.atan2(y, x) * 180) / Math.PI;
-    if (this.sector !== null) {
-      const diff = Math.abs(((angle - this.sector * 45 + 540) % 360) - 180);
-      if (diff <= 22.5 + HYSTERESIS) return;
-    }
-    this.sector = (Math.round(angle / 45) + 8) % 8;
+    if (this.sector !== null && angleTo(angle, this.sector) <= halfWidth(this.sector) + HYSTERESIS) return;
+    const straight = (Math.round(angle / 90) * 2 + 8) % 8;
+    this.sector = angleTo(angle, straight) <= STRAIGHT_HALF ? straight : (Math.round((angle - 45) / 90) * 2 + 9) % 8;
     this.stick = DIRS[this.sector];
   };
 
@@ -141,11 +173,25 @@ export class MoveInput {
     this.pointerId = null;
     this.sector = null;
     this.stick = { dx: 0, dy: 0 };
-    this.base.hidden = true;
+    if (this.fixed) {
+      this.setKnob(0, 0);
+      this.base.classList.add("idle");
+    } else {
+      this.base.hidden = true;
+    }
     if (tap) this.onTap(this.origin.x, this.origin.y);
   };
 
   private setKnob(x: number, y: number) {
     this.knob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
   }
+}
+
+/** Distância (graus) entre o ângulo do dedo e o centro do setor (setor 0 = leste, 2 = sul...). */
+function angleTo(angle: number, sector: number) {
+  return Math.abs(((angle - sector * 45 + 540) % 360) - 180);
+}
+
+function halfWidth(sector: number) {
+  return sector % 2 === 0 ? STRAIGHT_HALF : 45 - STRAIGHT_HALF;
 }

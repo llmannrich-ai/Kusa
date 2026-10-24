@@ -6,10 +6,12 @@
  *   - soltar (`{ dx: 0, dy: 0, hold: true }`) para na hora;
  *   - sem o cliente reenviar a direção, o herói para sozinho depois de `MOVE_HOLD_MS`;
  *   - a mensagem sem `hold` continua sendo um passo só;
- *   - o tempo com a tela deitada (`MSG.screen`) soma em `RunStats.landscapeMs` e para de somar em pé.
+ *   - o tempo com a tela deitada (`MSG.screen`) soma em `RunStats.landscapeMs` e para de somar em pé;
+ *   - diagonal bloqueada desliza no eixo livre: parede ao norte (andando para o nordeste vai para o leste), monstro
+ *     na diagonal e quina; com os dois eixos fechados, fica parado.
  * Uso: npx tsx apps/server/scripts/andar.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { MOVE_HOLD_MS, MOVE_RESEND_MS, SERVER_TICK_MS } from "@kusa/shared";
+import { MOVE_HOLD_MS, MOVE_RESEND_MS, SERVER_TICK_MS, isWalkable } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
 
 const failures: string[] = [];
@@ -101,6 +103,41 @@ test("tempo deitado soma na telemetria", (a) => {
   a.hunt.screen(HERO, { landscape: false });
   a.advance(2000);
   check(stats().landscapeMs === lying, `continuou contando em pé: ${stats().landscapeMs} ms`);
+});
+
+/** Um tile livre com parede ao norte e chão a leste (para deslizar na parede andando para o nordeste). */
+function underWall(a: ReturnType<typeof arena>) {
+  for (let y = 1; y < a.d.height - 1; y++) {
+    for (let x = 1; x < a.d.width - 1; x++) {
+      if (a.free(x, y) && a.free(x + 1, y) && !isWalkable(a.d, x, y - 1) && !isWalkable(a.d, x + 1, y - 1)) return { x, y };
+    }
+  }
+  throw new Error("nenhum tile com parede ao norte");
+}
+
+test("diagonal na parede desliza pelo eixo livre", (a) => {
+  const spot = underWall(a);
+  a.p.x = spot.x;
+  a.p.y = spot.y;
+  a.advance(1000);
+  a.hunt.move(HERO, { dx: 1, dy: -1 });
+  check(a.p.x === spot.x + 1 && a.p.y === spot.y, `esperado ${spot.x + 1},${spot.y}, foi para ${a.p.x},${a.p.y}`);
+});
+
+test("diagonal com monstro desliza; sem saída fica parado", (a) => {
+  a.advance(1000);
+  const x = a.p.x;
+  const y = a.p.y;
+  a.place("orc", 1, -1);
+  a.hunt.move(HERO, { dx: 1, dy: -1 });
+  check(a.p.x === x + 1 && a.p.y === y, `com o orc na diagonal, esperado ${x + 1},${y}, foi para ${a.p.x},${a.p.y}`);
+  a.advance(1000);
+  // Agora o orc está ao norte e outro fecha o leste e o nordeste: nenhum eixo livre.
+  a.place("orc", 1, 0);
+  a.place("orc", 1, -1);
+  const before = { x: a.p.x, y: a.p.y };
+  a.hunt.move(HERO, { dx: 1, dy: -1 });
+  check(a.p.x === before.x && a.p.y === before.y, `sem saída, andou para ${a.p.x},${a.p.y}`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falha(s)`);

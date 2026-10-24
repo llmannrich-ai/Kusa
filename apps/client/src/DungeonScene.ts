@@ -51,7 +51,7 @@ import { RuneChoice } from "./runechoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
-import { MoveInput, inJoystickZone } from "./input.ts";
+import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
 import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
@@ -364,8 +364,9 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keydown-B", () => this.bagBar.toggle());
     // Na zona do joystick, o toque no monstro só vale ao soltar rápido (ver MoveInput); fora dela, na hora.
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      const { width, height } = this.scale.gameSize;
-      if (inJoystickZone(pointer.x / width, pointer.y / height, width > height)) return;
+      const rect = this.game.canvas.getBoundingClientRect();
+      const scale = rect.width / this.game.canvas.width;
+      if (this.move.inZone(rect.left + pointer.x * scale, rect.top + pointer.y * scale)) return;
       this.tapMonster(pointer.worldX, pointer.worldY);
     });
 
@@ -374,7 +375,7 @@ export class DungeonScene extends Phaser.Scene {
       const scale = this.game.canvas.width / rect.width;
       const world = this.cameras.main.getWorldPoint((clientX - rect.left) * scale, (clientY - rect.top) * scale);
       this.tapMonster(world.x, world.y);
-    });
+    }, loadSettings().fixedStick);
     // O ⚔️ fica embaixo, mais perto do polegar; os slots de magia entram acima dele.
     const actions = document.getElementById("actions")!;
     this.attack = new AttackButton(this.room, actions);
