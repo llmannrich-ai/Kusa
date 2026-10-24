@@ -7,7 +7,7 @@ salas abertas). Documento de planejamento: quando uma fase for entregue, o `GDD.
 este arquivo marca a fase como feita.
 
 **Andamento:** planejamento. Decisões do Leonardo na seção 2; história, nomes das regiões e maquete visual
-(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Fase 1 feita (mapa estático, ficha, salas abertas; o herói já vai até o ponto em linha reta).
+(https://claude.ai/artifact/381HUgj2pRPmaFCkbSE7sC) aprovados. Fases 1 (mapa estático, ficha, salas abertas), 2 (herói andando pela trilha, névoa revisada) e 2b (carta de Verdemar com a campanha, câmera com arrasto e pinça) feitas.
 
 ---
 
@@ -92,7 +92,9 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
   herói. A arte fica em `apps/client/src/art/world/` (texto SVG fixo, como `MAP_ART`).
 - Catálogo dos pontos (posição, região, trilha até o próximo, trecho de mar) **no cliente**, fora de `maps.ts`, para
   não mudar o `RULES_VERSION`.
-- Herói anda com `SVGPathElement.getPointAtLength` pela trilha; no trecho de mar troca o sprite pelo barco.
+- Herói anda com `SVGPathElement.getPointAtLength` pela trilha (`TRAILS` em `worldMap.ts`, um trecho por par de
+  pontos vizinhos de `ROUTE`): a jornada é uma linha só e a posição do herói é a distância andada nela. Nos trechos de
+  mar troca o sprite pelo barco onde a rota sai das terras (`isPointInFill` nas costas `.wm-terra`).
 - O lobby (`lobby.ts`) perde os cartões de cenário (`renderMapPicker`); `createMapId()` passa a vir do ponto tocado.
 - Pergaminho com textura feita por filtro SVG (`feTurbulence`) pode pesar em celular fraco: renderizar a textura uma
   vez numa imagem (canvas → `ImageBitmap`) e medir a rolagem a 60 fps num Android de entrada.
@@ -111,6 +113,27 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 - Contas atuais: a migration preenche `profile_map_clears` a partir de `profile_boss_runes` (quem levou a runa do
   boss com a classe matou o boss com ela).
 
+## 5b. Continente Verdemar grande (decidido em 24/10)
+
+O continente principal cresce e passa a concentrar os cenários; o mapa deixa de rolar só na vertical.
+
+| Tema | Decisão |
+|---|---|
+| Escala | Verdemar com **10× a área** de hoje (~1100×1430 no desenho, ~3 telas de largura × 1,5 de altura no zoom de hoje) |
+| Navegação | **arrastar em qualquer direção + pinça para zoom**, do continente inteiro na tela até o tamanho de hoje; abre centrado no herói; botão 📍 volta para ele |
+| Campanha | Verdemar é a campanha inteira, do sul ao norte, com **18 cenários** em 13 etapas. Os 4 de hoje ficam **no começo**, na ponta sul (🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas); o resto fica apagado sob a névoa da campanha até a **Cidadela Caída** (a capital do império), no norte |
+| Bifurcações | 3, cada uma com dois caminhos que se reencontram: **Encruzilhada** (5) → floresta (Bosque Velho, Coração da Mata) ou deserto (Dunas Cantantes, Mesas de Solária) → **Portões do Império** (8) → Charco Cinzento ou Ermos Rubros → **Sopé da Serra** (10) → Passo do Lobo e Mosteiro Gelado, ou Garganta do Rio e Forjas Anãs → Cidadela Caída (13). Os dois lados de uma bifurcação têm o mesmo número de etapa |
+| Áreas | Floresta do Kosaradius (oeste), Colinas das Tumbas (sul, a Cripta), Solária (deserto, leste) com a Baía Afundada, Campos de Kusa e Lago Espelho (centro-sul), Ruínas do Império (centro), Charco Cinzento (oeste), Ermos Rubros (nordeste) e Serra do Norte (montanhas e neve). Vilas, torres, farol, rios com pontes e estradas do império dão escala ao mapa |
+| Em volta | mar, com Gelo de Hrimfal e Ilha de Cinza em névoa (a Cidadela Caída entrou no continente) |
+| Nomes | o continente inteiro é **Verdemar**; longe (continente inteiro na tela) só os ícones aparecem, sem os nomes |
+| Maquete | https://claude.ai/artifact/67b1st8XsBSp4MNVURtoxk |
+| Execução | maquete aprovada; no jogo pela fase 2b (arte em `public/mapa/verdemar.svg`, gerada por `npm run mapa -w @kusa/client`) |
+
+Impacto técnico previsto: `worldMap.ts` troca a rolagem vertical por câmera própria (translate + scale, ponteiros para
+arrasto e pinça, sem a rolagem do navegador); pontos e herói ficam em camada HTML com tamanho fixo na tela (não
+encolhem com o zoom); `TRAILS`, `WORLD_POINTS` e a arte mudam de coordenadas. A história da seção 3 muda: Solária e o
+Arquipélago Afundado deixam de ser continentes: Solária vira o deserto de Verdemar e o Pântano das Ruínas fica na Baía Afundada. A seção 3 precisa ser reescrita quando a fase for para o jogo.
+
 ## 6. Riscos
 
 1. **Começo pesado por classe.** O primeiro ponto é o Kosaradius: 10 min, o maior mapa, só sozinho. Cada classe nova
@@ -121,7 +144,9 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 3. **Mapa vazio.** Só 4 pontos num planeta. A névoa com nomes e desenhos (gelo, vulcão, cidadela) precisa parecer
    promessa, não buraco. Validar na maquete.
 4. **Salas escondidas.** Sem o contador e o botão fixo, o multijogador some atrás do mapa. Os dois entram na fase 1.
-5. **Retrato e texto pequeno.** Nomes no mapa com fonte mínima de 13 px a 412 px de largura; pontos com área de toque
+5. **Arrasto e pinça no celular.** Câmera própria precisa competir com o gesto de voltar do sistema e com a
+   rolagem da ficha; testar em Android e iPhone. No zoom mínimo, nomes de área precisam continuar com 13 px ou mais.
+6. **Retrato e texto pequeno.** Nomes no mapa com fonte mínima de 13 px a 412 px de largura; pontos com área de toque
    de 44 px.
 
 ## 7. Fases
@@ -130,6 +155,7 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 |---|---|---|
 | 0 | maquete HTML (pergaminho, pontos, névoa, ficha) para aprovar | nada no jogo |
 | 1 | mapa estático com os 4 pontos, ficha, salas abertas; substitui os cartões; tudo aberto | cliente · **feito** |
-| 2 | herói andando, barco no mar, névoa com nomes | cliente |
+| 2 | herói andando, barco no mar, névoa com nomes | cliente · **feito** (o barco saiu na 2b: a campanha é toda em terra) |
+| 2b | carta de Verdemar (seção 5b): campanha de 18 cenários com 3 bifurcações, arte gerada no build, câmera com arrasto e pinça | cliente · **feito** |
 | 3 | desbloqueio por classe, estrela, crédito do boss, migration e preenchimento das contas atuais | shared, servidor, banco |
 | 4 | cenários novos nas regiões em névoa (gelo, vulcão, cidadela), cada um um projeto à parte | tudo |
