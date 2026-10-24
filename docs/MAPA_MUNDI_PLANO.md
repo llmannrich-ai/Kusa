@@ -113,6 +113,25 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 - Contas atuais: a migration preenche `profile_map_clears` a partir de `profile_boss_runes` (quem levou a runa do
   boss com a classe matou o boss com ela).
 
+## 5b. Continente Verdemar grande (decidido em 24/10)
+
+O continente principal cresce e passa a concentrar os cenários; o mapa deixa de rolar só na vertical.
+
+| Tema | Decisão |
+|---|---|
+| Escala | Verdemar com **10× a área** de hoje (~1100×1430 no desenho, ~3 telas de largura × 1,5 de altura no zoom de hoje) |
+| Navegação | **arrastar em qualquer direção + pinça para zoom**, do continente inteiro na tela até o tamanho de hoje; abre centrado no herói; botão 📍 volta para ele |
+| Cenários | os **4 entram no continente**, cada um numa área: floresta, ruínas, deserto e costa alagada |
+| Disposição | "volta no continente": floresta no sudoeste (começo), ruínas na serra do norte, deserto no leste, costa alagada no oeste; a trilha cruza o centro numa encruzilhada. Cada área tem espaço para 2 ou 3 pontos futuros |
+| Em volta | mar nas bordas, com as terras em névoa (Gelo de Hrimfal, Ilha de Cinza, Cidadela Caída) como cenários futuros; barco só quando houver cenário fora do continente |
+| Nomes | o continente inteiro é **Verdemar**; áreas: **Floresta do Kosaradius** (🐸 Pântano do Kosaradius), **Serra das Tumbas** (🏚️ Cripta), **Solária** (🏜️ Mar de Areia), **Costa Afundada** (🌿 Pântano das Ruínas) |
+| Execução | maquete navegável para aprovar no celular antes de mexer no jogo; depois, branch nova a partir do `main` com o #137 |
+
+Impacto técnico previsto: `worldMap.ts` troca a rolagem vertical por câmera própria (translate + scale, ponteiros para
+arrasto e pinça, sem a rolagem do navegador); pontos e herói ficam em camada HTML com tamanho fixo na tela (não
+encolhem com o zoom); `TRAILS`, `WORLD_POINTS` e a arte mudam de coordenadas. A história da seção 3 muda: Solária e o
+Arquipélago Afundado deixam de ser continentes e viram áreas de Verdemar.
+
 ## 6. Riscos
 
 1. **Começo pesado por classe.** O primeiro ponto é o Kosaradius: 10 min, o maior mapa, só sozinho. Cada classe nova
@@ -123,7 +142,9 @@ tela inicial. Fica por cima do mar e das terras, mas por baixo das trilhas, dos 
 3. **Mapa vazio.** Só 4 pontos num planeta. A névoa com nomes e desenhos (gelo, vulcão, cidadela) precisa parecer
    promessa, não buraco. Validar na maquete.
 4. **Salas escondidas.** Sem o contador e o botão fixo, o multijogador some atrás do mapa. Os dois entram na fase 1.
-5. **Retrato e texto pequeno.** Nomes no mapa com fonte mínima de 13 px a 412 px de largura; pontos com área de toque
+5. **Arrasto e pinça no celular.** Câmera própria precisa competir com o gesto de voltar do sistema e com a
+   rolagem da ficha; testar em Android e iPhone. No zoom mínimo, nomes de área precisam continuar com 13 px ou mais.
+6. **Retrato e texto pequeno.** Nomes no mapa com fonte mínima de 13 px a 412 px de largura; pontos com área de toque
    de 44 px.
 
 ## 7. Fases
