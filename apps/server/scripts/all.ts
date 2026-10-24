@@ -3,7 +3,7 @@
  * script, mostra o resumo e derruba os servidores. Não precisa de servidor rodando antes.
  *
  * - Servidor normal: smoke, combat, items, maps, potions, perks e bag (e solo, ativas, arte, invocacoes, bestiario, efeitos, grimorio,
- *   costelas, specials, spells, bots e runasmagia, que não usam o servidor: rodam a `Hunt` direto, com relógio falso e sorteios de seed fixa).
+ *   costelas, specials, spells, bots, travessia e runasmagia, que não usam o servidor: rodam a `Hunt` direto, com relógio falso e sorteios de seed fixa).
  * - Servidor com KUSA_START_LEVEL=8 (slots de magia abertos): magiaxp.
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_ALL_SPELLS=1 (Grimório inteiro): sinergias.
  * - Servidor com KUSA_START_LEVEL=8 e KUSA_RUNES (runas equipadas em todo mundo): runes.
@@ -23,7 +23,7 @@ const ATTEMPTS = 5;
 
 interface Suite { port: number; env: Record<string, string>; tests: string[] }
 const SUITES: Suite[] = [
-  { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo", "ativas", "arte", "invocacoes", "bestiario", "anfitriao", "bots", "andar", "efeitos", "grimorio", "costelas", "specials", "spells", "caverna", "runaboss", "divisao", "runasmagia"] },
+  { port: 2610, env: {}, tests: ["smoke", "combat", "alvo", "items", "maps", "potions", "perks", "bag", "solo", "ativas", "arte", "invocacoes", "bestiario", "anfitriao", "bots", "andar", "efeitos", "grimorio", "costelas", "specials", "spells", "caverna", "travessia", "runaboss", "divisao", "runasmagia"] },
   { port: 2611, env: { KUSA_START_LEVEL: "8" }, tests: ["magiaxp"] },
   { port: 2612, env: { KUSA_START_LEVEL: "8", KUSA_ALL_SPELLS: "1" }, tests: ["sinergias"] },
   { port: 2614, env: { KUSA_START_LEVEL: "8", KUSA_RUNES: "rune-life,rune-time,rune-meteor,rune-life" }, tests: ["runes"] },

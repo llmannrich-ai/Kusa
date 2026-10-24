@@ -41,6 +41,8 @@ for (const mapId of MAP_IDS) {
       ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
       // Baús de runa da caverna: alcançáveis pelo tile da frente.
       ...(d.cave?.chests ?? []).map((c) => ({ x: c.x, y: c.y + 1 })),
+      // Covis da Caverna da Travessia: cada boss e o portal dele.
+      ...(d.lairs ?? []).flatMap((l) => [centerOf(l.room), l.portal]),
     ];
     for (const g of goals) {
       if (!reach[g.y * d.width + g.x]) throw new Error(`${mapId}: seed ${seed}, ponto (${g.x}, ${g.y}) inalcançável`);

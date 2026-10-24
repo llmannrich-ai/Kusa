@@ -26,6 +26,7 @@ const LEVEL: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
   swamp: { common: 6, miniboss: 8, boss: 10 },
   desert: { common: 3, miniboss: 5, boss: 6 },
   marsh: { common: 5, miniboss: 8, boss: 12 },
+  cavern: { common: 8, miniboss: 9, boss: 11 },
 };
 /** Profundidade típica (sala do caminho) de cada rank. */
 const DEPTH: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
@@ -33,6 +34,7 @@ const DEPTH: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
   swamp: { common: 3, miniboss: 4, boss: 7 },
   desert: { common: 2, miniboss: 3, boss: 6 },
   marsh: { common: 3, miniboss: 4, boss: 9 },
+  cavern: { common: 4, miniboss: 4, boss: 5 },
 };
 
 interface Result { ttk: number; hpLost: number; died: boolean; timeout: boolean }

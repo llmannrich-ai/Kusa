@@ -1,10 +1,10 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern";
 
-/** Nível de dificuldade mostrado no menu (estrelas). */
-export type MapDifficulty = 1 | 2;
+/** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
+export type MapDifficulty = 1 | 2 | 3 | 4;
 
 /**
  * Encontro das salas do caminho numa faixa de profundidade, como o orçamento de XP do D&D: a sala recebe monstros
@@ -52,6 +52,21 @@ export interface MapDef {
   meadowMinibosses?: number;
   /** Jogadores por hunt no máximo (bots contam). Sem isto, `MAX_PARTY_SIZE`. */
   maxParty?: number;
+  /**
+   * Covis com boss fixo (Caverna da Travessia): um boss por covil, na ordem de `Dungeon.lairs`, cada um na
+   * profundidade dele (o ganho por profundidade) e com o bônus de loot do portal que abre ao lado quando ele morre.
+   * Com isto não há sorteio: `bosses` só lista os mesmos bosses (menu e banco).
+   */
+  lairs?: Lair[];
+}
+
+export interface Lair {
+  boss: MonsterKind;
+  depth: number;
+  /** Fração extra de loot de quem sai pelo portal deste covil (o padrão é `BOSS_LOOT_BONUS`). */
+  portalBonus: number;
+  /** Nome do lado da bifurcação, para o aviso e o mapa mundi. */
+  side: string;
 }
 
 /**
@@ -157,6 +172,30 @@ export const MAPS: Record<MapId, MapDef> = {
     mimicChance: 0,
     bosses: [["ogreKing", 1]],
   },
+  cavern: {
+    id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 4, durationSeconds: 10 * 60, meadowMonsters: 3,
+    description: "Túneis por baixo dos Campos de Kusa, onde a campanha se divide entre a floresta e o deserto: o mapa mais difícil do jogo. Depois do tronco, a caverna se bifurca: a oeste, o Basilisco; a leste, mais fundo, o Observador das Profundezas, o boss mais forte de Kosaradius. Cada boss morto abre o portal do covil dele.",
+    encounters: [
+      // Tronco (zonas 0 e 1): aquecimento, todo mundo começa no nível 1.
+      { depth: [0, 0], budget: 120, table: [["kobold", 4], ["stirge", 3], ["rat", 2]] },
+      { depth: [1, 1], budget: 230, table: [["goblin", 3], ["goblinArcher", 2], ["giantSpider", 2], ["kobold", 1]] },
+      // Túnel oeste (zonas 2 a 4), até o Basilisco.
+      { depth: [2, 2], budget: 420, table: [["skeleton", 3], ["skeletonArcher", 2], ["gnoll", 2], ["hobgoblin", 1], ["giantSpider", 1]] },
+      { depth: [3, 3], budget: 560, table: [["gnoll", 3], ["orc", 2], ["ghoul", 2], ["skeletonArcher", 2]] },
+      { depth: [4, 4], budget: 680, table: [["orc", 3], ["ghoul", 2], ["lizardfolk", 2], ["gnoll", 1], ["skeletonArcher", 1]] },
+      // Túnel leste (zonas 5 a 7), mais fundo e mais forte, até o Observador.
+      { depth: [5, 5], budget: 520, table: [["ghoul", 3], ["lizardfolk", 2], ["bogBody", 2], ["crocodile", 1], ["willOWisp", 1]] },
+      { depth: [6, 6], budget: 600, table: [["naga", 3], ["blackPudding", 2], ["ghoul", 2], ["willOWisp", 2]] },
+      { depth: [7, 99], budget: 680, table: [["naga", 3], ["shamblingMound", 2], ["blackPudding", 2], ["willOWisp", 2]] },
+    ],
+    minibosses: [["bugbear", 2], ["troll", 2], ["gelatinousCube", 1]],
+    mimicChance: 1 / 4,
+    bosses: [["beholder", 1], ["basilisk", 1]],
+    lairs: [
+      { boss: "basilisk", depth: 5, portalBonus: 0.5, side: "oeste" },
+      { boss: "beholder", depth: 8, portalBonus: 1, side: "leste" },
+    ],
+  },
 };
 
 /** Jogadores por hunt no mapa, bots incluídos (o Pântano do Kosaradius é só para 1). */
@@ -171,6 +210,8 @@ export function encounterAt(map: MapDef, depth: number): Encounter {
 
 /** Boss principal do mapa (o de maior peso), para o menu; nenhum no mapa ainda sem monstros. */
 export function mainBoss(map: MapDef): MonsterKind | undefined {
+  // Mapa de covis: o boss do último covil (o mais difícil).
+  if (map.lairs?.length) return map.lairs[map.lairs.length - 1].boss;
   return [...map.bosses].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
@@ -206,6 +247,9 @@ export function mapIdOf(value: unknown): MapId {
   return typeof value === "string" && value in MAPS ? (value as MapId) : DEFAULT_MAP;
 }
 
+/** Maior dificuldade da escala (a Caverna da Travessia). */
+export const MAX_DIFFICULTY = 4;
+
 export function difficultyStars(difficulty: MapDifficulty) {
-  return "★".repeat(difficulty) + "☆".repeat(2 - difficulty);
+  return "★".repeat(difficulty) + "☆".repeat(MAX_DIFFICULTY - difficulty);
 }

@@ -28,7 +28,8 @@ export const NODES: Record<string, CampaignNode> = {
   n2: { step: 2, x: 700, y: 1925, name: "Cripta", area: "Colinas das Tumbas", map: "crypt" },
   n3: { step: 3, x: 1030, y: 2000, name: "Mar de Areia", area: "Solária", map: "desert" },
   n4: { step: 4, x: 1105, y: 1680, name: "Pântano das Ruínas", area: "Baía Afundada", map: "swamp" },
-  n5: { step: 5, x: 905, y: 1560, name: "Encruzilhada", area: "Campos de Kusa", fork: "floresta ou deserto" },
+  // A Caverna da Travessia é a primeira bifurcação: o covil oeste (Basilisco) dá na floresta, o leste (Observador) no deserto.
+  n5: { step: 5, x: 905, y: 1560, name: "Caverna da Travessia", area: "Campos de Kusa", map: "cavern", fork: "floresta ou deserto" },
   n6a: { step: 6, x: 610, y: 1565, name: "Bosque Velho", area: "Floresta do Kosaradius" },
   n7a: { step: 7, x: 425, y: 1365, name: "Coração da Mata", area: "Floresta do Kosaradius" },
   n6b: { step: 6, x: 1155, y: 1440, name: "Dunas Cantantes", area: "Solária" },
@@ -45,9 +46,18 @@ export const NODES: Record<string, CampaignNode> = {
 };
 
 /** Os cenários abertos, em ordem: o herói anda por esta parte da trilha. */
-export const OPEN_CHAIN = ["n1", "n2", "n3", "n4"];
+export const OPEN_CHAIN = ["n1", "n2", "n3", "n4", "n5"];
 
-/** Trilhas: 3 bifurcações (Encruzilhada, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
+/**
+ * Lados da bifurcação da Caverna da Travessia: o primeiro trecho de cada um fica em tinta vermelha (liberado) quando a
+ * classe vence o boss daquele covil (`profile_boss_runes`).
+ */
+export const CAVERN_BRANCHES = [
+  { boss: "basilisk", from: "n5", to: "n6a" },
+  { boss: "beholder", from: "n5", to: "n6b" },
+] as const;
+
+/** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
 export const EDGES: [string, string][] = [
   ["n1", "n2"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"],
   ["n5", "n6a"], ["n6a", "n7a"], ["n7a", "n8"], ["n5", "n6b"], ["n6b", "n7b"], ["n7b", "n8"],
