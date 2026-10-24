@@ -82,7 +82,7 @@ tochas com poça de luz na Cripta, equipamento visível (é decisão de jogo do 
 
 | # | Regra | Valor |
 |---|---|---|
-| G1 | Densidade | 32 px de arte por tile em herói, monstro, piso e decoração. Nenhuma arte com pixel menor que isso na tela |
+| G1 | Densidade | **64 px de arte por tile** (o dobro do Tibia, decidido no protótipo para caber detalhe fino) em toda arte nova. A arte de 32 px por tile que fica entra ampliada 2× até ser refeita |
 | G2 | Refinamento | Sem Scale2x nem luz automática na arte nova: tons e textura pintados na grade. O `refine.ts` fica só para a arte antiga até ser trocada |
 | G3 | Luz | Cima à esquerda, em todos os sprites e na decoração |
 | G4 | Contorno | Externo `#1a1210` (1 px, igual em todas as figuras); interno no tom 0 do material vizinho |
@@ -151,7 +151,7 @@ Bônus: as 4 zonas são exatamente o que um **cosmético de cor** troca (`buy_co
 ---
 
 ## 4. Checklist de aceitação de um sprite
-- [ ] 32 px de arte por tile, sem refinamento automático.
+- [ ] 64 px de arte por tile, sem refinamento automático (Scale2x).
 - [ ] Contorno `#1a1210`, luz de cima à esquerda, 4 tons por material.
 - [ ] Silhueta reconhecível em preto, no tamanho real do celular.
 - [ ] Herói: cabeça ≈27% do corpo, ombros mais largos que a cabeça, 4 zonas de cor visíveis.
@@ -176,19 +176,28 @@ Bônus: as 4 zonas são exatamente o que um **cosmético de cor** troca (`buy_co
 ### Fase 0: protótipo (feito)
 
 Código em `apps/client/src/art/proto/tibiaHero.ts`, só na galeria (`arte.html`, seções "Protótipo"); o jogo
-continua com `heroes.ts`. Cavaleiro sem equipamento, frente, lado e costas, 4 quadros de caminhada, pintado em
-grades de letras por **zona** (cabeça, primária, secundária, detalhe), com 3 variações de cor de exemplo.
+continua com `heroes.ts`. Cavaleiro sem equipamento, frente, lado e costas, 4 quadros de caminhada, com 3 variações
+de cor de exemplo.
+
+- **1ª versão (32 px por tile, grades de letras):** proporção certa, mas pouco detalhe. Recusada: "precisa de
+  mais detalhe fino, pixel menor".
+- **2ª versão (64 px por tile, atual):** quadro 96×96, corpo de 64 px. Cada peça é uma forma com volume (cabeça
+  esfera, membros cilindro, tronco) e luz de cima à esquerda em 4 faixas com pontilhado na fronteira; a peça da
+  frente risca linha escura na de trás; contorno quase preto na sombra e suave na luz. Detalhe à mão: mechas e
+  franja do cabelo, sobrancelha, olho com brilho, nariz, boca, cicatriz, gola em V com debrum, canais costurados
+  do gibão, cinto com fivela, barra dourada, punho, dobra da calça no joelho, couro e sola da bota, espada com
+  gume, sulco, guarda e pomo.
 
 ![Atual × novo na mesma escala](arte/prototipo-tibia-comparacao.png)
 ![Quadros do protótipo](arte/prototipo-tibia-quadros.png)
 ![No chão com os monstros](arte/prototipo-tibia-cena.png)
 
-Leitura do protótipo:
-- Proporção adulta (cabeça 9 de 32 px) e mesma densidade dos monstros: na cena fica do mesmo "tamanho de mundo"
-  que o goblin e o orc, o que o herói atual não fica.
-- Fica menor e mais escuro que o atual no celular: a identificação passa a depender da silhueta e das zonas de cor.
-- Falta: decidir se a Fase 1 segue (manequim novo em `hero/rig.ts`) ou se o protótipo ainda precisa de ajuste
-  (cabeça 1 px maior, rosto mais marcado, lado com braço mais visível).
+Leitura da 2ª versão:
+- O pixel é metade do atual: o detalhe fino aparece no celular (≈1,9 px de tela por pixel de arte num aparelho
+  de densidade 2,6).
+- Os monstros e o chão (32 px por tile) ficam visivelmente mais "grossos" ao lado: seguir com 64 px obriga a
+  refazer monstros e mapas na mesma densidade (custo dobra nas Fases 3 a 5).
+- Falta: aprovar o visual e decidir a Fase 1 (manequim novo em `hero/rig.ts` em 64 px).
 
 ### Riscos
 - **Retrabalho do sistema de itens:** mudar o manequim obriga a reencaixar cada item. Mitigação: manter a API de
