@@ -293,6 +293,7 @@ export class Hub {
       const boosted = statsFor(id, 1, bonus);
       const damage = boosted.damage * (1 + gear.damage);
       const range = c.attackRange + (c.attackRange > 1 ? gear.range : 0);
+      const armor = gear.armor + runes.armor;
       const card = el("button", "class-card");
       card.classList.toggle("selected", id === this.classId);
       card.style.setProperty("--class-color", hex(c.color));
@@ -313,7 +314,7 @@ export class Hub {
       stat("Mana", String(boosted.maxMana), boosted.maxMana > base.maxMana);
       stat("Dano", String(Math.round(damage)), damage > base.damage);
       stat("Alcance", range === 1 ? "Corpo a corpo" : `${range} tiles`, range > c.attackRange);
-      if (gear.armor) stat("Armadura", `${gear.armor} (−${Math.round(damageReduction(gear.armor) * 100)}%)`, true);
+      if (armor) stat("Armadura", `${armor} (−${Math.round(damageReduction(armor) * 100)}%)`, true);
 
       const known = knownSpells(id, this.profile.talents).length;
       const total = Object.values(SPELLS).filter((s) => s.classId === id).length;

@@ -37,7 +37,7 @@ redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
 O **Batalhas** abre a tela de salas (ver "Salas e sala de espera").
 Código em `apps/client/src/menu.ts`.
 
-- **Classes:** as 4 classes com retrato, papel e atributos (já com o bônus das áureas). Tocar escolhe a classe da próxima hunt.
+- **Classes:** as 4 classes com retrato, papel e atributos (vida, mana, dano, alcance e armadura já com as áureas, as runas e os itens vestidos por aquela classe, na mesma conta da hunt). Tocar escolhe a classe da próxima hunt.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
