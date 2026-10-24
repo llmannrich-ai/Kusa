@@ -340,12 +340,12 @@ export const CLIPS = { idle: 4, walk: 6, attack: 4, cast: 4 } as const;
 export type Clip = keyof typeof CLIPS;
 export const CLIP_ORDER: Clip[] = ["idle", "walk", "attack", "cast"];
 export const FRAME_COUNT = CLIP_ORDER.reduce((n, c) => n + CLIPS[c], 0);
-/** Primeiro quadro de um clipe na folha. */
-export function clipStart(clip: Clip) {
+/** Primeiro quadro de um clipe na folha (`frames`: quadros de cada clipe, se não forem os de `CLIPS`). */
+export function clipStart(clip: Clip, frames: Record<Clip, number> = CLIPS) {
   let n = 0;
   for (const c of CLIP_ORDER) {
     if (c === clip) return n;
-    n += CLIPS[c];
+    n += frames[c];
   }
   return n;
 }
@@ -355,14 +355,15 @@ export type Grip = "oneHand" | "twoHand" | "club" | "spear" | "bow" | "staff" | 
 
 /**
  * Pose de um quadro de um clipe. `weight` (0..1) deixa o andar mais pesado (ogros: passo curto, corpo balançando
- * para os lados, braços quase parados); `castStyle` escolhe o quadro especial (rugido, ou erguer o cajado).
+ * para os lados, braços quase parados); `castStyle` escolhe o quadro especial (rugido, ou erguer o cajado). `n` é o
+ * número de quadros do ciclo parado ou do andar (as invocações usam ciclos mais longos que os monstros).
  */
-export function posed(clip: Clip, i: number, grip: Grip, weight = 0, castStyle: "roar" | "raise" = "roar"): Pose {
+export function posed(clip: Clip, i: number, grip: Grip, weight = 0, castStyle: "roar" | "raise" = "roar", n: number = CLIPS[clip]): Pose {
   const p: Pose = structuredClone(REST);
   const heavy = weight;
   armsFor(p, grip, 0);
   if (clip === "idle") {
-    const t = (i / CLIPS.idle) * Math.PI * 2;
+    const t = (i / n) * Math.PI * 2;
     p.breath = 0.5 + 0.5 * Math.sin(t);
     p.bob = Math.sin(t) * -0.35;
     p.nearArm.a += Math.sin(t) * 0.05;
@@ -371,7 +372,7 @@ export function posed(clip: Clip, i: number, grip: Grip, weight = 0, castStyle: 
     p.near = { a: 0.1, b: 0.12 + heavy * 0.1 };
     p.far = { a: -0.12, b: 0.08 + heavy * 0.1 };
   } else if (clip === "walk") {
-    const t = (i / CLIPS.walk) * Math.PI * 2;
+    const t = (i / n) * Math.PI * 2;
     const swing = 0.5 - heavy * 0.18;
     p.near = { a: Math.sin(t) * swing, b: Math.max(0, -Math.cos(t)) * (0.9 - heavy * 0.3) + 0.1 };
     p.far = { a: -Math.sin(t) * swing, b: Math.max(0, Math.cos(t)) * (0.9 - heavy * 0.3) + 0.1 };
