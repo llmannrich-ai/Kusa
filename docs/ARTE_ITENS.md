@@ -1,6 +1,6 @@
 # Arte dos itens — revisão e catálogo de conceitos
 
-Direção de arte dos 130 desenhos de item (13 famílias × 5 níveis, comum e mágico) no padrão novo
+Direção de arte dos 140 desenhos de item (14 famílias × 5 níveis, comum e mágico) no padrão novo
 (`docs/ARTE_TIBIA.md`: 128 px por tile, corpo base vestido pelo kit da classe). Nada aqui muda regra de jogo;
 os renomes propostos (seção 5) mudam só o nome mostrado e precisam de migration.
 
@@ -133,11 +133,11 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Perneiras de guerra (cavaleiro e paladino)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Calças de couro** — joelheiras costuradas | **Calças do Viajante** — bolsos e cantil |
-| 2 | **Perneiras de bronze** — grevas com joelho em cabeça de touro | **Perneiras do Gladiador** — tiras de couro, uma greva só (assimétrica) |
-| 3 | **Perneiras de malha** — malha com joelheira rebitada | **Perneiras de Malha Élfica** — malha fina com folhas na barra |
-| 4 | **Coxotes de mithral** — joelheiras com cara de leão | **Coxotes do Guardião** — escudinhos nas coxas |
-| 5 | **Perneiras de escamas de dragão** — garras nos joelhos | **Perneiras do Dragão** — espinhos nas canelas |
+| 1 | **Calças de couro** ✅ — joelheiras costuradas | **Calças do Viajante** ✅ — bolsos e cantil |
+| 2 | **Perneiras de bronze** ✅ — grevas com joelho em cabeça de touro | **Perneiras do Gladiador** ✅ — tiras de couro, uma greva só (assimétrica) |
+| 3 | **Perneiras de malha** ✅ — malha com joelheira rebitada | **Perneiras de Malha Élfica** ✅ — malha fina com folhas na barra |
+| 4 | **Coxotes de mithral** ✅ — joelheiras com cara de leão | **Coxotes do Guardião** ✅ — escudinhos nas coxas |
+| 5 | **Perneiras de escamas de dragão** ✅ — garras nos joelhos | **Perneiras do Dragão** ✅ — espinhos nas canelas |
 
 ### Chapéu arcano (feiticeiro e druida)
 | Nível | Comum | Mágico |
@@ -169,20 +169,20 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Botas (todos)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Botas de couro** — dobra no cano, cadarço | **Botas Élficas** — ponta curva com folhas, passos sem som *(Boots of Elvenkind)* |
-| 2 | **Botas de bronze** — sandália com grevas | **Botas do Andarilho** — couro gasto, polainas e molas no salto *(Boots of Striding and Springing)* |
-| 3 | **Grevas de ferro** — grevas até o joelho | **Botas da Rapidez** — raios nas laterais e esporas que batem *(Boots of Speed)* |
-| 4 | **Botas de mithral** — sabatons em lâminas | **Botas Aladas** — asas no tornozelo *(Winged Boots)* |
-| 5 | **Botas de escamas de dragão** — garras no lugar dos dedos | **Botas do Dragão Alado** — garras e asas |
+| 1 | **Botas de couro** ✅ — dobra no cano, cadarço | **Botas Élficas** ✅ — ponta curva com folhas, passos sem som *(Boots of Elvenkind)* |
+| 2 | **Botas de bronze** ✅ — sandália com grevas | **Botas do Andarilho** ✅ — couro gasto, polainas e molas no salto *(Boots of Striding and Springing)* |
+| 3 | **Grevas de ferro** ✅ — grevas até o joelho | **Botas da Rapidez** ✅ — raios nas laterais e esporas que batem *(Boots of Speed)* |
+| 4 | **Botas de mithral** ✅ — sabatons em lâminas | **Botas Aladas** ✅ — asas no tornozelo *(Winged Boots)* |
+| 5 | **Botas de escamas de dragão** ✅ — garras no lugar dos dedos | **Botas do Dragão Alado** ✅ — garras e asas |
 
 ### Escudo (todos)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Broquel de madeira** — tábuas e aro de couro | **Broquel do Escudeiro** — brasão de família pintado |
-| 2 | **Escudo de bronze** — redondo hoplita com touro | **Escudo Sentinela** — olho que vigia no centro *(Sentinel Shield)* |
-| 3 | **Escudo de ferro** — pipa com cruz rebitada | **Escudo Animado** — flutua sozinho ao lado do herói, com o rosto vivo de um mímico *(Animated Shield)* |
-| 4 | **Escudo de mithral** — torre élfica com árvore | **Escudo da Guarda Arcana** — círculo mágico girando na frente *(Spellguard Shield)* |
-| 5 | **Escudo do dragão** — escamas com cabeça de dragão | **Escudo do Dragão Ancião** — cabeça de dragão em relevo saindo do escudo |
+| 1 | **Broquel de madeira** ✅ — tábuas e aro de couro | **Broquel do Escudeiro** ✅ — brasão de família pintado |
+| 2 | **Escudo de bronze** ✅ — redondo hoplita com touro | **Escudo Sentinela** ✅ — olho que vigia no centro *(Sentinel Shield)* |
+| 3 | **Escudo de ferro** ✅ — pipa com cruz rebitada | **Escudo Animado** ✅ — flutua sozinho ao lado do herói, com o rosto vivo de um mímico *(Animated Shield)* |
+| 4 | **Escudo de mithral** ✅ — torre élfica com árvore | **Escudo da Guarda Arcana** ✅ — círculo mágico girando na frente *(Spellguard Shield)* |
+| 5 | **Escudo do dragão** ✅ — escamas com cabeça de dragão | **Escudo do Dragão Ancião** ✅ — cabeça de dragão em relevo saindo do escudo |
 
 ## 5. Renomes propostos
 
@@ -361,7 +361,54 @@ manto, lua no peito):
 
 ![Conjuntos arcanos mágicos](arte/lote6-sets-magic.png)
 
-## 12. Ordem de execução
+## 12. Lote 7 desenhado
+
+As 10 perneiras de guerra (no cavaleiro e no paladino), as 10 botas (no corpo base, para aparecerem inteiras) e os 10
+escudos. A perneira troca a calça do kit e a bota continua por cima; a bota troca o calçado de qualquer classe. O
+escudo vai na mão livre, ampliado como a cabeça dos cajados para ser lido de longe: de frente mostra a face, de
+costas o verso de madeira com as alças, de lado vai na frente do peito, quase de perfil.
+
+**Perneiras comuns**: couro com joelheira costurada, bronze com joelheira em cabeça de touro, malha com joelheira de
+ferro rebitada, coxotes de mithral com o leão no joelho, escamas de dragão com garras no joelho:
+
+![Perneiras de guerra](arte/lote7-greaves.png)
+
+**Perneiras mágicas**: Viajante (bolso e cantil), Gladiador (tiras de couro e uma greva só), Malha Élfica (prata
+fina com folhas na barra), Guardião (escudinho de borda dourada na coxa), Dragão (espinhos de chifre na canela):
+
+![Perneiras de guerra mágicas](arte/lote7-greaves-magic.png)
+
+**Botas comuns**: couro com dobra e cadarço, sandália com greva de bronze, grevas de ferro até o joelho, mithral em
+lâminas com borda dourada, escamas de dragão com garras no lugar dos dedos:
+
+![Botas](arte/lote7-boots.png)
+
+**Botas mágicas**: Élficas (feltro verde, folhas no cano, ponta curva), Andarilho (couro gasto, polaina e mola no
+salto), Rapidez (couro vermelho, raios dourados e espora), Aladas (asinhas de pena no tornozelo), Dragão Alado
+(escamas, garras e asas de membrana):
+
+![Botas mágicas](arte/lote7-boots-magic.png)
+
+**Escudos comuns**: broquel de tábuas com umbo de ferro, bronze hoplita com o touro, pipa de ferro com a cruz, torre
+élfica de mithral com a árvore de ouro, escudo do dragão com a cabeça pintada:
+
+![Escudos](arte/lote7-shields.png)
+
+**Escudos mágicos**: Escudeiro (brasão de família pintado), Sentinela (o olho que vigia), Animado (o mímico flutuando
+sozinho ao lado, sem a mão), Guarda Arcana (círculo mágico com runas na frente), Dragão Ancião (cabeça de dragão em
+relevo, de boca acesa):
+
+![Escudos mágicos](arte/lote7-shields-magic.png)
+
+**Guerreiro completo de cada nível** (elmo, armadura, perneiras, botas, escudo e espada), comum e mágico. No nível 5
+vai a espada de mithral (e no mágico 4 a Vingadora Sagrada): a Lâmina do dragão é de duas mãos e a Dançarina voa,
+nenhuma das duas deixa a mão livre para o escudo de um jeito que faça sentido.
+
+![Guerreiro completo](arte/lote7-sets.png)
+
+![Guerreiro mágico completo](arte/lote7-sets-magic.png)
+
+## 13. Ordem de execução
 
 ![Piloto: Capuz do Lobo no druida e no feiticeiro, Elmo do Demônio e Lâmina do dragão no cavaleiro, Elmo do Demônio no paladino](arte/itens-piloto.png)
 
@@ -372,7 +419,7 @@ manto, lua no peito):
    **Lote 4** ✅: arcos e bestas (seção 9).
    **Lote 5** ✅: varinhas e cajados (seção 10).
    **Lote 6** ✅: chapéus arcanos, mantos arcanos e calças arcanas (seção 11).
-   **Lote 7**: perneiras de guerra, botas e escudos.
+   **Lote 7** ✅: perneiras de guerra, botas e escudos (seção 12). As 14 famílias estão desenhadas.
 2. Armas (o que mais aparece), depois armaduras e mantos, capacetes, botas, calças e escudos.
 3. Ícones de 32×32 a partir de cada desenho pronto.
 4. Integração no jogo atrás da opção "Arte nova (beta)", com o teste `arte.ts` conferindo cada item.
