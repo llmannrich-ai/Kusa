@@ -871,6 +871,7 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
   usa o desenho do comum. Cada combinação de classe e equipamento é desenhada uma vez ao aparecer (0,1 a 0,3 s num
   computador; mais no celular) e fica guardada. O sprite vai 10% maior que 128 px por tile, com os pés no mesmo
   ponto do herói antigo.
+  Na Cripta, a opção também troca o cenário e os monstros (piloto dos mapas e monstros, `docs/ARTE_TIBIA.md`).
 
 - **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por família (espada, machado, arco, besta, varinha, cajado, elmo, chapéu, armadura, manto, calça, botas, escudo), na cor do material; as vestes arcanas usam tecido (linho, lã, seda rúnica, mithral, seda de dragão), e varinhas e cajados têm uma gema por nível. Raros e mágicos levam uma gema azul ou roxa no canto (`apps/client/src/art/items.ts`).
 - **Vestido no herói** (`apps/client/src/art/hero/`): **cada item tem o seu desenho, igual em qualquer classe**.
