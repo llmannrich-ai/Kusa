@@ -42,6 +42,8 @@ export interface SoloRunStart {
   talents: TalentRanks;
   /** XP de uso de cada magia da conta. */
   spell_xp: SpellXp;
+  /** Bosses cuja runa este personagem (conta e classe) já levou: eles não dão outra. */
+  boss_runes?: string[];
 }
 
 /** Resposta de `finish_solo_run`: o que de fato foi creditado depois dos limites. */

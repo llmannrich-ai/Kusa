@@ -55,7 +55,7 @@ type Down =
 type Up =
   | { k: "hello"; recruit: Recruit; rulesVersion: string; resume: boolean }
   | { k: "msg"; type: string; msg: unknown }
-  | { k: "loadout"; items: string[]; bag: string[] }
+  | { k: "loadout"; items: string[]; bag: string[]; bossRunes?: string[] }
   | { k: "bye" };
 
 /** Para onde o anfitrião manda as coisas de um jogador (o próprio, direto; os convidados, pelo canal). */
@@ -164,6 +164,7 @@ class HostRuntime {
     if (up.k === "loadout") {
       this.hunt.equip(sessionId, up.items ?? []);
       this.hunt.fillBag(sessionId, up.bag ?? []);
+      this.hunt.knownBossRunes(sessionId, Array.isArray(up.bossRunes) ? up.bossRunes : []);
     }
   }
 
@@ -456,7 +457,7 @@ class HostedSession {
     }
     const run = data as SoloRunStart;
     this.runId = run.run_id;
-    const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [] };
+    const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [], bossRunes: run.boss_runes ?? [] };
     if (this.runtime) this.runtime.receive(this.myId, up);
     else if (this.link) send(this.link, up);
   }

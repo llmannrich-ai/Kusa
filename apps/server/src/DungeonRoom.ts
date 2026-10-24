@@ -28,7 +28,7 @@ import {
 import { RULES_VERSION } from "./rulesVersion.ts";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
-import { recordRun, resolveAccount, storeBag, takeBag, takeLoadout, type Account } from "./supabase.ts";
+import { recordRun, resolveAccount, storeBag, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
 import { recordTelemetry } from "./telemetry.ts";
 
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
@@ -59,7 +59,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       runEnded: (sessionId, result, report) => {
         this.clients.getById(sessionId)?.send(MSG.runEnded, result);
         const userId = this.users.get(sessionId) ?? null;
-        if (userId) void recordRun(this.matchId, { userId, ...result, classId: report.classId, spellXp: spellXpGains(report.classId as ClassId, result.spells) });
+        if (userId) void recordRun(this.matchId, { userId, ...result, classId: report.classId, spellXp: spellXpGains(report.classId as ClassId, result.spells), bossRunes: report.stats.bossRunes });
         void recordTelemetry({ matchId: this.matchId, userId, ...report });
       },
       ended: () => void this.clock.setTimeout(() => this.disconnect(), 10_000),
@@ -146,6 +146,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       void takeBag(userId).then((items) => {
         if (!this.hunt.fillBag(sessionId, items)) void storeBag(userId, items);
       });
+      // Cada boss dá a runa uma vez por personagem: os que já deram não dão outra.
+      void takenBossRunes(userId, classId).then((bosses) => this.hunt.knownBossRunes(sessionId, bosses));
     });
   }
 

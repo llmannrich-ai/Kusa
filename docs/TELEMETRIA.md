@@ -53,6 +53,7 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.resisted` | Dano que o herói deixou de causar por resistência ou imunidade dos monstros (negativo = a vulnerabilidade rendeu a mais) |
 | `stats.healing` | Cura feita (druida), incluindo o roubo de vida da Sede de sangue e dos itens mágicos |
 | `stats.manaGiven` | Mana devolvida aos aliados por magias e criaturas (Fogo-Fátuo), sem as poções |
+| `stats.bossRunes` | Bosses que deram a runa a este personagem nesta hunt (cada boss dá a runa uma vez por personagem) |
 | `stats.absorbed` | Dano que os escudos (magias e Traços) absorveram no herói |
 | `stats.buffMs` | Tempo com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração |
 | `stats.intercepted` | Intervir (Guardião): dano que o cavaleiro puxou dos aliados para si |
