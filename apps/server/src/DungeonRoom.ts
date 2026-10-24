@@ -71,6 +71,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       monsterHp: MONSTER_HP,
       runes: TEST_RUNES,
     });
+    this.maxClients = this.hunt.partySize();
 
     this.onMessage(MSG.start, (client) => {
       if (this.hunt.start(client.sessionId)) this.startRun();
@@ -153,7 +154,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     const leader = this.state.players.get(this.state.leaderId);
     if (this.state.phase === "lobby" && leader) {
       void this.setMatchmaking({
-        maxClients: MAX_PARTY_SIZE - this.hunt.botCount(),
+        maxClients: this.hunt.partySize() - this.hunt.botCount(),
         metadata: { leader: leader.name, mapId: mapIdOf(this.state.mapId) },
       });
     }

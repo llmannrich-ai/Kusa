@@ -57,11 +57,13 @@ import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
+import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
-import { BESTIARY_ART, BLOOD_TINT, monsterTexture } from "./art/bestiary.ts";
+import { BESTIARY_ART, BLOOD_TINT, monsterAnimKey, monsterTexture, type MonsterAnim } from "./art/bestiary.ts";
+import type { Clip } from "./art/rig.ts";
 import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
 import { CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
 import {
@@ -185,6 +187,9 @@ interface Unit {
   breath?: number;
   /** Campeão: afixo já desenhado (nome e brilho dourados). */
   champion?: string;
+  /** Monstro animado (arte em folha): os clipes e até quando o golpe/especial em curso segura o quadro. */
+  anim?: MonsterAnim;
+  busyUntil?: number;
   dead: boolean;
   /** Efeitos que ficam na unidade enquanto duram: guarda, raízes, atordoamento. */
   statuses: Map<string, Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible>;
@@ -255,14 +260,14 @@ export class DungeonScene extends Phaser.Scene {
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
     const mapId = this.dungeon.mapId;
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -605,6 +610,8 @@ export class DungeonScene extends Phaser.Scene {
     const from = unit && !msg.rising ? { x: unit.body.x, y: unit.body.y } : this.tilePoint(msg.x, msg.y);
     if (!msg.rising || ability.shape !== "dive") this.floatText(msg.x, msg.y - 0.6, ability.name, ability.color, 1200);
     if (unit && !unit.dead && !msg.rising) {
+      // Animado: chamar a guarda e sumir são o quadro especial (rugido, cajado no alto); o resto, o golpe.
+      this.playClip(unit, ability.shape === "summon" || ability.shape === "vanish" ? "cast" : "attack");
       this.lunge(unit, msg.tx - msg.x, msg.ty - msg.y, 7);
       const base = unit.sprite.scaleX;
       this.tweens.add({ targets: unit.sprite, scaleX: base * 1.15, scaleY: base * 1.15, duration: 110, yoyo: true, ease: "Quad.Out" });
@@ -619,6 +626,14 @@ export class DungeonScene extends Phaser.Scene {
     const points: { x: number; y: number }[] = [];
     for (let i = 0; i + 1 < flat.length; i += 2) points.push(this.tilePoint(flat[i], flat[i + 1]));
     return points;
+  }
+
+  /** Monstro animado: toca um clipe que não se repete (golpe, especial) e segura o quadro até ele acabar. */
+  private playClip(unit: Unit, clip: Clip) {
+    if (!unit.anim || unit.dead || !unit.texture) return;
+    unit.sprite.anims.timeScale = 1;
+    unit.sprite.play(monsterAnimKey(unit.texture, clip));
+    unit.busyUntil = this.time.now + (unit.sprite.anims.currentAnim?.frames.length ?? 4) / unit.anim.fps[clip] * 1000;
   }
 
   /** Tranco curto do sprite na direção do golpe (ida e volta). */
@@ -667,6 +682,7 @@ export class DungeonScene extends Phaser.Scene {
     if (!monster.dead && this.time.now >= monster.walkUntil) {
       this.face(monster, Math.sign(msg.x - msg.fromX), Math.sign(msg.y - msg.fromY));
     }
+    this.playClip(monster, "attack");
     this.hits.attack(msg.fx, { x: monster.body.x, y: monster.body.y }, to, monster.lunge, impact);
   }
 
@@ -1063,8 +1079,9 @@ export class DungeonScene extends Phaser.Scene {
     const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
     const def = MONSTERS[kind];
     const art = BESTIARY_ART[kind];
-    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia); alguns mini-bosses um pouco maiores.
-    const scale = (def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
+    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia); alguns mini-bosses um pouco maiores. O animado já
+    // tem o tamanho no quadro (32 px = 1 tile).
+    const scale = (art.anim ? art.scale ?? 1 : def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
@@ -1075,6 +1092,11 @@ export class DungeonScene extends Phaser.Scene {
     unit.bleeds = art.blood !== "none";
     if (art.blood !== "none" && art.blood !== "red") unit.bloodTint = BLOOD_TINT[art.blood];
     unit.flies = art.flies;
+    if (art.anim && !(monster.hidden && art.disguise)) {
+      unit.anim = art.anim;
+      unit.busyUntil = 0;
+      sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * 4) });
+    }
     if (def.rank !== "common") {
       const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
       unit.overlay.add(label);
@@ -1102,7 +1124,7 @@ export class DungeonScene extends Phaser.Scene {
     // Variante (cabeças da Hidra): troca a textura quando muda.
     const art = BESTIARY_ART[monster.kind as MonsterKind] ?? BESTIARY_ART.rat;
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(monster.kind as MonsterKind, monster.variant);
-    if (texture !== unit.texture && this.textures.exists(texture)) {
+    if (!unit.anim && texture !== unit.texture && this.textures.exists(texture)) {
       unit.texture = texture;
       unit.sprite.setTexture(texture);
     }
@@ -1279,11 +1301,17 @@ export class DungeonScene extends Phaser.Scene {
     const walking = time < unit.walkUntil;
     // Monstros do pack têm um quadro só: um balanço de 1 px enquanto andam; quem voa flutua sempre.
     const bob = unit.flies ? Math.round(3 + Math.sin(time / 180) * 2)
-      : !unit.classId && walking && Math.floor(time / 125) % 2 ? 1 : 0;
+      : !unit.classId && !unit.anim && walking && Math.floor(time / 125) % 2 ? 1 : 0;
     unit.sprite.setPosition(unit.lunge.x, TILE_SIZE / 2 + unit.lunge.y - bob);
     if (unit.dead) return;
+    // Animado: anda (no ritmo do passo, 3 quadros por tile) ou fica parado respirando; golpe e especial seguram o quadro.
+    if (unit.anim && unit.texture && time >= (unit.busyUntil ?? 0)) {
+      const clip = walking ? "walk" : "idle";
+      unit.sprite.play(monsterAnimKey(unit.texture, clip), true);
+      unit.sprite.anims.timeScale = walking ? Phaser.Math.Clamp((3000 / unit.stepMs) / unit.anim.fps.walk, 0.5, 2) : 1;
+    }
     // Monstros respiram: o sprite (com os pés no chão) encolhe e estica de leve, cada um no seu ritmo.
-    if (unit.baseScale && !this.tweens.isTweening(unit.sprite)) {
+    if (unit.baseScale && !unit.anim && !this.tweens.isTweening(unit.sprite)) {
       const breath = 1 - 0.03 * (0.5 + 0.5 * Math.sin(time / 380 + (unit.breath ?? 0)));
       unit.sprite.setScale(unit.baseScale, unit.baseScale * breath);
     }

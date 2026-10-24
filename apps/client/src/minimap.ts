@@ -12,6 +12,7 @@ const REDRAW_MS = 150;
 const TILE_COLORS = {
   crypt: { floor: [107, 90, 72], bossFloor: [122, 59, 51], wall: [42, 33, 27], water: [42, 33, 27], ruin: [42, 33, 27] },
   swamp: { floor: [86, 118, 56], bossFloor: [128, 120, 98], wall: [20, 36, 20], water: [46, 86, 104], ruin: [160, 150, 128] },
+  marsh: { floor: [74, 96, 52], bossFloor: [96, 118, 64], wall: [22, 40, 24], water: [52, 78, 62], ruin: [92, 70, 44] },
   desert: { floor: [214, 178, 118], bossFloor: [226, 196, 140], wall: [150, 108, 60], water: [48, 140, 156], ruin: [150, 108, 60] },
 } satisfies Record<MapId, Record<string, number[]>>;
 /** Subterrâneo do deserto: rocha escura, chão de areia batida e o salão dos baús em arenito. */

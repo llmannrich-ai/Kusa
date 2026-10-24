@@ -1,5 +1,5 @@
 import { TILE_SIZE } from "@kusa/shared";
-import { blob, hash, line, makeCanvas, px, strip, type Ctx } from "./pixels.ts";
+import { Sheet, blob, hash, line, makeCanvas, px, strip, type Ctx } from "./pixels.ts";
 
 /**
  * Arte própria do Mar de Areia, pixel a pixel. Luz do sol vindo de cima à esquerda em tudo: sombras caem para
@@ -292,30 +292,6 @@ const PALMS: PalmShape[] = [
 export function palmTop(variant: number) {
   const s = PALMS[variant % PALMS.length];
   return { x: PALM_TRUNK.w / 2 + s.lean, y: PALM_TRUNK.h - 4 - s.height };
-}
-
-/** Desenho em camadas: cada pixel guarda uma cor; depois ganha contorno escuro onde encosta no vazio. */
-class Sheet {
-  readonly cells: (string | null)[];
-  constructor(readonly w: number, readonly h: number) {
-    this.cells = new Array(w * h).fill(null);
-  }
-  set(x: number, y: number, c: string) {
-    x = Math.round(x); y = Math.round(y);
-    if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.cells[y * this.w + x] = c;
-  }
-  get(x: number, y: number) {
-    return x >= 0 && y >= 0 && x < this.w && y < this.h ? this.cells[y * this.w + x] : null;
-  }
-  /** Pinta no canvas, com contorno `outline` nos pixels vazios vizinhos (4 lados) de um pixel cheio. */
-  paint(ctx: Ctx, outline: string, ox = 0, oy = 0) {
-    for (let y = 0; y < this.h; y++)
-      for (let x = 0; x < this.w; x++) {
-        const c = this.get(x, y);
-        if (c) { px(ctx, ox + x, oy + y, c); continue; }
-        if (this.get(x - 1, y) || this.get(x + 1, y) || this.get(x, y - 1) || this.get(x, y + 1)) px(ctx, ox + x, oy + y, outline);
-      }
-  }
 }
 
 const BARK = { o: "#3b2614", dark: "#6e4a28", mid: "#93683a", ring: "#5a3b1e", lit: "#c4975e" };

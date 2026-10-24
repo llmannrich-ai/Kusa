@@ -1,7 +1,7 @@
 /**
  * Teste dos mapas. Primeiro, sem servidor: para várias seeds, o gerador de cada mapa é determinístico
  * e todos os pontos importantes (salas, campinas, baús, boss) são alcançáveis a pé a partir do portal.
- * Depois, contra um servidor rodando: cada mapa cria a sala certa (monstros, tempo) e a fuga funciona,
+ * Depois, contra um servidor rodando: cada mapa cria a sala certa (monstros, tempo, vagas) e a fuga funciona,
  * e cliente de outra versão das regras (`RULES_VERSION`, o hash de `RULES_FILES`) é recusado; o gerador só depende
  * de arquivos dessa lista.
  * Uso: npx tsx apps/server/scripts/maps.ts [url]
@@ -11,6 +11,7 @@ import { Client } from "@colyseus/sdk";
 import {
   MAPS,
   mapMonsters,
+  partySize,
   MAP_IDS,
   MSG,
   ROOM_NAME,
@@ -98,6 +99,18 @@ async function playMap(mapId: MapId) {
   // Mapa ainda em construção (sem boss na tabela): não nasce ninguém.
   if (map.bosses.length === 0 && kinds.size > 0) throw new Error(`${mapId}: mapa sem monstros com ${kinds.size} tipos de monstro`);
   if (map.bosses.length > 0 && !map.bosses.some(([boss]) => kinds.has(boss))) throw new Error(`${mapId}: sem boss`);
+
+  // Mapa só para 1 jogador (Pântano): ninguém mais entra, nem bot.
+  if (partySize(map) === 1) {
+    const second = await client.joinById<any>(room.roomId, { name: "Intruso", classId: "knight", rulesVersion: RULES_VERSION }).then(
+      (r) => { void r.leave(); return true; },
+      () => false,
+    );
+    if (second) throw new Error(`${mapId}: mapa de 1 jogador aceitou um segundo`);
+    room.send(MSG.addBot, { classId: "knight" });
+    await wait(200);
+    if (room.state.players.size !== 1) throw new Error(`${mapId}: mapa de 1 jogador aceitou um bot`);
+  }
 
   room.send(MSG.start);
   await wait(300);

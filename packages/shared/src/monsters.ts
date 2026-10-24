@@ -12,7 +12,10 @@ export type MonsterKind =
   | "bullywug" | "lizardfolk" | "ghoul" | "blackPudding" | "crocodile" | "willOWisp" | "shamblingMound"
   | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon"
   // Mar de Areia (dificuldade 1)
-  | "sandScorpion" | "giantVulture" | "mummy" | "blackScorpion" | "mummyPriest" | "sandElemental" | "sandWorm";
+  | "sandScorpion" | "giantVulture" | "mummy" | "blackScorpion" | "mummyPriest" | "sandElemental" | "sandWorm"
+  // Pântano (dificuldade 1, só para 1 jogador): o clã de orcs e ogros do brejo
+  | "orcScout" | "orcGrunt" | "orcSpearman" | "orcArcher" | "orcShaman" | "orcBerserker" | "orcCaptain" | "ogreYoung"
+  | "ogreBruiser" | "ogreShaman" | "orcWarlord" | "ogreKing";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -636,6 +639,116 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "Verme gigante das dunas, dono da caverna. Some na areia e irrompe debaixo da presa, engole quem fica colado e, ferido, faz o chão tremer.",
+  }),
+  // --- Pântano do Kosaradius: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
+  // profundidade dobra os do fim), em bandos maiores: muito XP para quem joga sozinho. -----------------------
+  orcScout: monster({
+    kind: "orcScout", name: "Orc batedor", rank: "common", type: "humanoid", role: "skirmisher", cr: 1, group: [2, 3],
+    hp: 22, damage: 3, xp: 22, loot: [1, 2], speed: 3.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1100, attackFx: "slash",
+    traits: { hitAndRun: { cooldownMs: 4500 } },
+    lore: "Moleque do clã, de faca e tanga. Anda em bando, fura e pula para trás antes do troco (Fuga Ágil).",
+  }),
+  orcGrunt: monster({
+    kind: "orcGrunt", name: "Orc do Brejo", rank: "common", type: "humanoid", role: "brute", cr: 2,
+    hp: 50, damage: 5, xp: 38, loot: [2, 4], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    lore: "O guerreiro comum do clã: machadinha, escudo de tábua e nenhuma paciência.",
+  }),
+  orcSpearman: monster({
+    kind: "orcSpearman", name: "Orc lanceiro", rank: "common", type: "humanoid", role: "sentinel", cr: 2,
+    hp: 42, damage: 5, xp: 40, loot: [2, 4], speed: 3, aggroRange: 6, attackRange: 2, attackCooldownMs: 1500, attackFx: "slash",
+    lore: "Lança comprida de pau de mangue: fura a 2 tiles, antes de o herói chegar perto.",
+  }),
+  orcArcher: monster({
+    kind: "orcArcher", name: "Orc arqueiro", rank: "common", type: "humanoid", role: "artillery", cr: 2,
+    hp: 28, damage: 5, xp: 34, loot: [2, 3], speed: 3, aggroRange: 7, attackRange: 5, attackCooldownMs: 1700, attackFx: "arrow",
+    traits: { keepDistance: 3 },
+    lore: "Arco curto de osso. Fica atrás dos outros e recua quando alguém chega perto.",
+  }),
+  orcShaman: monster({
+    kind: "orcShaman", name: "Orc xamã", rank: "common", type: "humanoid", role: "controller", cr: 3,
+    hp: 42, damage: 5, xp: 55, loot: [3, 5], speed: 2.8, aggroRange: 7, attackRange: 4, attackCooldownMs: 1800, attackFx: "nature",
+    traits: { keepDistance: 2 },
+    abilities: [
+      {
+        id: "mudGrip", name: "Lama Agarrada", shape: "bolt", range: 5, minRange: 2, radius: 0, cooldownMs: 8000, power: 0.4,
+        effect: { kind: "root", ms: 1200 }, color: 0x7a8a2a, fx: "web",
+      },
+    ],
+    lore: "Pinta o rosto com lama e caveira de sapo. Prende os pés do herói no brejo para os outros chegarem.",
+  }),
+  orcBerserker: monster({
+    kind: "orcBerserker", name: "Orc berserker", rank: "common", type: "humanoid", role: "brute", cr: 3,
+    hp: 72, damage: 7, xp: 62, loot: [3, 6], speed: 3.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    traits: { frenzy: { belowHp: 0.5, haste: 0.4 } },
+    abilities: [
+      { id: "aggressive", name: "Agressivo", shape: "leap", range: 5, minRange: 3, radius: 0, cooldownMs: 7000, power: 0, color: 0xc0392b, fx: "leap" },
+    ],
+    lore: "Dois machados e o corpo pintado de vermelho. Salta sobre a presa e, ferido, bate cada vez mais rápido (Rompante).",
+  }),
+  orcCaptain: monster({
+    kind: "orcCaptain", name: "Orc capitão", rank: "common", type: "humanoid", role: "leader", cr: 3,
+    hp: 68, damage: 6, xp: 60, loot: [4, 7], speed: 2.9, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    traits: { leader: { radius: 3, damage: 0.15, haste: 0.15 } },
+    lore: "Elmo de ferro amassado e estandarte de caveira. Perto dele, os orcs batem mais forte e mais rápido (Comando).",
+  }),
+  ogreYoung: monster({
+    kind: "ogreYoung", name: "Ogro jovem", rank: "common", type: "giant", role: "brute", cr: 4,
+    hp: 120, damage: 9, xp: 95, loot: [5, 9], speed: 2.3, aggroRange: 5, attackRange: 1, attackCooldownMs: 1800, attackFx: "smash",
+    abilities: [
+      { id: "wallop", name: "Pancada", shape: "target", range: 1, radius: 0, cooldownMs: 7000, power: 1.8, push: 1, color: 0xa0522d, fx: "slam" },
+    ],
+    lore: "Ainda não tem barriga de rei, mas já tem o porrete. Lento, e cada pancada joga o herói para trás.",
+  }),
+  ogreBruiser: monster({
+    kind: "ogreBruiser", name: "Ogro do Brejo", rank: "miniboss", type: "giant", role: "brute", cr: 5,
+    hp: 230, damage: 15, xp: 220, loot: [12, 20], speed: 2.5, aggroRange: 5, attackRange: 1, attackCooldownMs: 1800, attackFx: "smash",
+    abilities: [
+      { id: "stomp", name: "Pisão Sísmico", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 1.8, slow: { factor: 0.5, durationMs: 2500 }, color: 0xb07a45, fx: "quake" },
+      { id: "boulder", name: "Arremesso de Pedra", shape: "target", range: 6, minRange: 3, radius: 1, cooldownMs: 7000, power: 1.5, push: 1, color: 0x8d6e63, fx: "boulder" },
+    ],
+    lore: "Guarda o tesouro do clã numa clareira de troncos. De perto pisa, de longe arremessa pedra.",
+  }),
+  ogreShaman: monster({
+    kind: "ogreShaman", name: "Ogro Xamã", rank: "miniboss", type: "giant", role: "controller", cr: 5,
+    hp: 200, damage: 12, xp: 220, loot: [12, 20], speed: 2.4, aggroRange: 6, attackRange: 3, attackCooldownMs: 1700, attackFx: "nature",
+    traits: { keepDistance: 2 },
+    abilities: [
+      { id: "clanCall", name: "Chamado do Clã", shape: "summon", range: 6, radius: 0, cooldownMs: 15000, power: 0, summon: { kind: "orcGrunt", count: 2 }, color: 0x9ccc65, fx: "summon" },
+      {
+        id: "bogCurse", name: "Maldição do Brejo", shape: "target", range: 5, radius: 1, cooldownMs: 8000, power: 1.3,
+        slow: { factor: 0.6, durationMs: 3000 }, dot: { kind: "poison", power: 0.25, durationMs: 3000 }, color: 0x7a9a2a, fx: "acidRain",
+      },
+    ],
+    lore: "Ogro velho de cajado com crânios. Chama orcs do clã para a briga e amaldiçoa o chão (lento e envenenado).",
+  }),
+  orcWarlord: monster({
+    kind: "orcWarlord", name: "Chefe de Guerra Orc", rank: "miniboss", type: "humanoid", role: "leader", cr: 5,
+    hp: 220, damage: 14, xp: 230, loot: [12, 20], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    traits: { leader: { radius: 3, damage: 0.2, haste: 0.15 } },
+    abilities: [
+      { id: "charge", name: "Investida", shape: "leap", range: 5, minRange: 2, radius: 1, cooldownMs: 8000, power: 1.2, color: 0xc0392b, fx: "leap" },
+      { id: "whirl", name: "Golpe Giratório", shape: "self", range: 1, radius: 1, cooldownMs: 7000, power: 1.6, color: 0xd35400, fx: "slam" },
+    ],
+    lore: "Montanha de músculo com armadura de placas e cutelo de duas mãos. Investe, gira a lâmina em volta e comanda os orcs perto.",
+  }),
+  ogreKing: monster({
+    kind: "ogreKing", name: "Grumak, o Rei-Ogro", rank: "boss", type: "giant", role: "brute", cr: 6,
+    hp: 430, damage: 10, xp: 340, loot: [30, 50], speed: 2.4, aggroRange: 7, attackRange: 2, attackCooldownMs: 1700, attackFx: "smash",
+    traits: { frenzy: { belowHp: 0.3, haste: 0.35 } },
+    abilities: [
+      {
+        id: "kingRoar", name: "Rugido do Rei", shape: "summon", range: 8, radius: 0, cooldownMs: 30000, power: 0, summon: { kind: "orcGrunt", count: 2 },
+        belowHp: 0.5, phase: true, once: true, color: 0xe6b422, fx: "summon",
+      },
+      {
+        id: "crush", name: "Esmagar", shape: "target", range: 2, radius: 0, cooldownMs: 11000, power: 2.2,
+        effect: { kind: "stun", ms: 1000 }, color: 0x8d5524, fx: "slam",
+      },
+      { id: "swampStomp", name: "Pisão do Pântano", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 1.6, slow: { factor: 0.5, durationMs: 2500 }, color: 0x6b8e23, fx: "quake" },
+      { id: "kingCharge", name: "Investida do Rei", shape: "leap", range: 6, minRange: 3, radius: 1, cooldownMs: 9000, power: 1.3, push: 1, color: 0xc0392b, fx: "leap" },
+      { id: "logThrow", name: "Tronco Arremessado", shape: "target", range: 6, minRange: 3, radius: 1, cooldownMs: 10000, power: 1.5, push: 1, color: 0x6d4c41, fx: "boulder" },
+    ],
+    lore: "Rei do clã do brejo, coroa de ferro torta e um tronco inteiro de porrete. Esmaga e atordoa, pisa o chão em volta, investe e arremessa troncos; com metade da vida, ruge e chama a guarda, e quase morto bate em frenesi.",
   }),
 };
 
