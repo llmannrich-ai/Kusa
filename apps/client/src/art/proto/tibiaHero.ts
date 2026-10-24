@@ -70,7 +70,8 @@ interface Kit {
 }
 
 type Tier = 1 | 2 | 3 | 4 | 5;
-export type ProtoWeapon = `${"sword" | "axe" | "bow" | "xbow"}-${Tier}` | `${"sword" | "axe" | "bow" | "xbow"}-${Tier}-magic`;
+type WeaponFamily = "sword" | "axe" | "bow" | "xbow" | "wand" | "staff";
+export type ProtoWeapon = `${WeaponFamily}-${Tier}` | `${WeaponFamily}-${Tier}-magic`;
 export type ProtoHelmet = `war-${Tier}` | `war-${Tier}-magic` | "wolf" | "demon";
 export type ProtoArmor = `armor-${Tier}` | `armor-${Tier}-magic`;
 export const PROTO_SWORDS: ProtoWeapon[] = ["sword-1", "sword-2", "sword-3", "sword-4", "sword-5"];
@@ -85,6 +86,10 @@ export const PROTO_BOWS: ProtoWeapon[] = ["bow-1", "bow-2", "bow-3", "bow-4", "b
 export const PROTO_MAGIC_BOWS: ProtoWeapon[] = ["bow-1-magic", "bow-2-magic", "bow-3-magic", "bow-4-magic", "bow-5-magic"];
 export const PROTO_XBOWS: ProtoWeapon[] = ["xbow-1", "xbow-2", "xbow-3", "xbow-4", "xbow-5"];
 export const PROTO_MAGIC_XBOWS: ProtoWeapon[] = ["xbow-1-magic", "xbow-2-magic", "xbow-3-magic", "xbow-4-magic", "xbow-5-magic"];
+export const PROTO_WANDS: ProtoWeapon[] = ["wand-1", "wand-2", "wand-3", "wand-4", "wand-5"];
+export const PROTO_MAGIC_WANDS: ProtoWeapon[] = ["wand-1-magic", "wand-2-magic", "wand-3-magic", "wand-4-magic", "wand-5-magic"];
+export const PROTO_STAFFS: ProtoWeapon[] = ["staff-1", "staff-2", "staff-3", "staff-4", "staff-5"];
+export const PROTO_MAGIC_STAFFS: ProtoWeapon[] = ["staff-1-magic", "staff-2-magic", "staff-3-magic", "staff-4-magic", "staff-5-magic"];
 
 /** Itens vestidos sobre o kit: trocam o capacete, a armadura e a arma da classe. */
 export interface ProtoGear {
@@ -209,12 +214,40 @@ class Canvas {
   }
 
   /** Pinta a forma `test` (no retângulo dado, em unidades) com o material, a luz e o desvio de tom. */
+  private xf: { ox: number; oy: number; k: number } | null = null;
+
+  /** Escala local: o que `draw` pintar cresce `k` vezes em volta de `o` (a textura continua fina). */
+  scaled<T>(o: Pt, k: number, draw: () => T): T {
+    const outer = this.xf;
+    this.xf = { ox: o[0], oy: o[1], k };
+    try { return draw(); } finally { this.xf = outer; }
+  }
+
+  /** Volta à escala normal dentro de um `scaled` (a haste do cajado não cresce com a cabeça). */
+  unscaled<T>(draw: () => T): T {
+    const outer = this.xf;
+    this.xf = null;
+    try { return draw(); } finally { this.xf = outer; }
+  }
+
+  get scale() { return this.xf?.k ?? 1; }
+
+  /** Pixel final levado pela escala local. */
+  private tx(X: number, Y: number): [number, number] {
+    const f = this.xf;
+    if (!f) return [X, Y];
+    return [(f.ox + (X / K - f.ox) * f.k) * K, (f.oy + (Y / K - f.oy) * f.k) * K];
+  }
+
   fill(box: Box, test: Test, mat: Mat, shade: Shade, offset?: Offset) {
     const id = this.group || ++this.seq;
-    const [x0, y0, x1, y1] = box;
+    const f = this.xf;
+    const fw = (u: number, o: number) => (f ? o + (u - o) * f.k : u);
+    const [x0, y0, x1, y1] = f ? [fw(box[0], f.ox) - 1, fw(box[1], f.oy) - 1, fw(box[2], f.ox) + 1, fw(box[3], f.oy) + 1] : box;
     for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(S - 1, Math.ceil((y1 + 1) * K)); Y++) {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(S - 1, Math.ceil((x1 + 1) * K)); X++) {
-        const x = (X + 0.5) / K - 0.5, y = (Y + 0.5) / K - 0.5;
+        let x = (X + 0.5) / K - 0.5, y = (Y + 0.5) / K - 0.5;
+        if (f) { x = f.ox + (x + 0.5 - f.ox) / f.k - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
         if (!test(x, y, X, Y)) continue;
         const i = Y * S + X;
         this.mat[i] = mat;
@@ -230,6 +263,7 @@ class Canvas {
 
   /** Um pixel final num tom fixo (detalhe desenhado à mão: olho, brilho, costura). */
   px(X: number, Y: number, mat: Mat, tone: number) {
+    [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
     if (X < 0 || Y < 0 || X >= S || Y >= S) return;
     const i = Y * S + X;
@@ -239,16 +273,19 @@ class Canvas {
   }
 
   /** Pixel fixo só onde já estão pintadas as peças `ids` (cinto e barra não saem do tronco). */
-  on(ids: number | readonly number[], X: number, Y: number, mat: Mat, tone: number) {
+  on(ids: number | readonly number[], X: number, Y: number, mat: Mat, tone: number): void {
+    [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
+    if (this.xf) return this.unscaled(() => this.on(ids, X, Y, mat, tone));
     if (X < 0 || Y < 0 || X >= S || Y >= S || this.mat[Y * S + X] < 0) return;
     const p = this.part[Y * S + X];
     if (typeof ids === "number" ? p !== ids : !ids.includes(p)) return;
-    this.px(X, Y, mat, tone);
+    this.unscaled(() => this.px(X, Y, mat, tone));
   }
 
   /** Muda o tom de quem já está pintado, sem mudar a peça (dobra, costura). */
   nudge(X: number, Y: number, delta: number) {
+    [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
     if (X < 0 || Y < 0 || X >= S || Y >= S) return;
     const i = Y * S + X;
@@ -257,6 +294,8 @@ class Canvas {
 
   /** Apaga um pixel (furo de lâmina, recorte). */
   clear(X: number, Y: number) {
+    [X, Y] = this.tx(X, Y);
+    X = Math.round(X); Y = Math.round(Y);
     if (X < 0 || Y < 0 || X >= S || Y >= S) return;
     this.mat[Y * S + X] = -1;
   }
@@ -391,7 +430,7 @@ function poly(c: Canvas, pts: readonly Pt[], mat: Mat, x0: number, x1: number, o
 
 /** Linha de 1 px (em pixels finais) entre dois pontos em unidades. */
 function thread(c: Canvas, a: Pt, b: Pt, mat: Mat, tone: number | ((k: number) => number), clip?: readonly number[]) {
-  const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) * K));
+  const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) * K * c.scale));
   for (let k = 0; k <= n; k++) {
     const X = Math.round((a[0] + (b[0] - a[0]) * (k / n)) * K), Y = Math.round((a[1] + (b[1] - a[1]) * (k / n)) * K);
     const t = typeof tone === "number" ? tone : tone(k);
@@ -1172,6 +1211,8 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
     case "staff": return () => staff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
     default:
+      if (kit.weapon.startsWith("wand-")) { const id = kit.weapon; return () => c.scaled(at, 1.5, () => wandArt(c, id, at, [at[0] + out * 4.2, at[1] - 7.4 - tierOf(id) * 0.4])); }
+      if (kit.weapon.startsWith("staff-")) { const id = kit.weapon; return () => staffArt(c, id, at, top - 19, FEET - 0.5); }
       if (kit.weapon.startsWith("bow-")) { const id = kit.weapon; return () => bowArt(c, id, at, out); }
       if (kit.weapon.startsWith("xbow-")) { const id = kit.weapon; return () => crossbowArt(c, id, at, [0, 1], false); }
       if (kit.weapon.startsWith("axe-")) {
@@ -1260,6 +1301,8 @@ function side(c: Canvas, kit: Kit, frame: number) {
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
     : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
+    : kit.weapon.startsWith("wand-") ? () => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4]))
+    : kit.weapon.startsWith("staff-") ? () => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5)
     : kit.weapon.startsWith("bow-") ? () => bowArt(c, kit.weapon, ha, -1)
     : kit.weapon.startsWith("xbow-") ? () => crossbowArt(c, kit.weapon, ha, [-0.97, 0.24], true)
     : kit.weapon.startsWith("axe-") ? () => (axeTwoHanded(kit.weapon)
@@ -2416,6 +2459,10 @@ export const PROTO_ITEM_NAMES: Record<string, string> = {
   "bow-1-magic": "Arco do Caçador Élfico", "bow-2-magic": "Arco do Vento Sul", "bow-3-magic": "Arco Solar", "bow-4-magic": "Arco do Juramento", "bow-5-magic": "Arco de Corda Celestial",
   "xbow-1": "Besta leve", "xbow-2": "Besta de bronze", "xbow-3": "Besta de ferro", "xbow-4": "Besta pesada de mithral", "xbow-5": "Balestra de osso de dragão",
   "xbow-1-magic": "Besta do Sentinela", "xbow-2-magic": "Besta do Caça-Vampiros", "xbow-3-magic": "Besta de Repetição Gnoma", "xbow-4-magic": "Besta Trovejante", "xbow-5-magic": "Balestra do Dragão Rubro",
+  "wand-1": "Varinha de salgueiro", "wand-2": "Varinha de bronze", "wand-3": "Varinha rúnica", "wand-4": "Varinha de mithral", "wand-5": "Varinha de dente de dragão",
+  "wand-1-magic": "Varinha de Mísseis Mágicos", "wand-2-magic": "Varinha da Bola de Fogo", "wand-3-magic": "Varinha do Mago de Guerra", "wand-4-magic": "Varinha dos Segredos", "wand-5-magic": "Varinha das Maravilhas",
+  "staff-1": "Cajado de carvalho", "staff-2": "Cajado de bronze", "staff-3": "Cajado rúnico", "staff-4": "Cajado de mithral", "staff-5": "Cajado de presa de dragão",
+  "staff-1-magic": "Cajado da Floresta", "staff-2-magic": "Cajado da Víbora", "staff-3-magic": "Cajado do Poder", "staff-4-magic": "Cajado do Arquimago", "staff-5-magic": "Cajado do Dragão Ancião",
   "armor-1-magic": "Gibão do Aventureiro", "armor-2-magic": "Couraça do Leão", "armor-3-magic": "Cota Élfica", "armor-4-magic": "Armadura de Placas Anã", "armor-5-magic": "Escamas do Dragão Vermelho",
 };
 
@@ -3285,6 +3332,246 @@ function crossbowArt(c: Canvas, id: string, at: Pt, s: Pt, side: boolean) {
       for (const sg of [-1, 1]) { fang(c, S0(len + 2.2, sg * 0.8), 0.35, 1.2, side ? 1 : -1); horn(c, [S0(len - 0.6, sg * 1.6), S0(len - 2.6, sg * 3), S0(len - 4.4, sg * 2.6)], 0.6); }
       c.on(head2, F(S0(len, -1)[0]), F(S0(len, -1)[1]), Mat.Amber, 5);
       flame(c, S0(len + 4.6), 4, 1.6, side ? -1 : 0);
+      return;
+    }
+  }
+}
+
+// --- Lote 5: varinhas e cajados (docs/ARTE_ITENS.md) -----------------------------------
+
+/** Varinha do id, do cabo (`at`, na mão) até a ponta `tip`. */
+function wandArt(c: Canvas, id: string, at: Pt, tip: Pt) {
+  const tier = tierOf(id), magic = isMagic(id);
+  const dx = tip[0] - at[0], dy = tip[1] - at[1];
+  const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, gx = -uy, gy = ux;
+  const P = (a: number, g = 0): Pt => [at[0] + ux * a + gx * g, at[1] + uy * a + gy * g];
+  const butt = P(-2.6);
+  const rod = (mat: Mat, r0 = 0.65, r1 = 0.45, offset?: Offset) => limb(c, butt, tip, r0, r1, mat, offset);
+  if (!magic) switch (tier) {
+    case 1: {
+      // Raminho de salgueiro: casca, um nó e duas folhas perto da ponta.
+      rod(Mat.Wood, 0.6, 0.35, grain);
+      leaf(c, P(len - 2, 1.2), Math.atan2(uy, ux) + 0.8, 1.6, 0.7);
+      leaf(c, P(len - 3.6, -1.1), Math.atan2(uy, ux) - 0.8, 1.4, 0.65);
+      ellipse(c, ...P(len * 0.4), 0.8, 0.7, Mat.Wood, () => -1);
+      return;
+    }
+    case 2: {
+      // Varinha de bronze: a ponta é uma mãozinha segurando uma esfera de âmbar.
+      rod(Mat.Bronze, 0.6, 0.5);
+      for (const g of [-1, 0, 1]) chain(c, [P(len - 1.6, g * 0.5), P(len - 0.4, g * 1.2), P(len + 0.6, g * 0.9)], 0.3, Mat.Bronze, undefined, 0.2);
+      gem(c, P(len + 0.9), 1.1, Mat.Amber);
+      limb(c, P(-0.4), P(0.4), 0.85, 0.85, Mat.Bronze);
+      return;
+    }
+    case 3: {
+      // Varinha rúnica de osso: runas acesas ao longo e ponta afiada.
+      const r = rod(Mat.White, 0.7, 0.3, (X, Y) => ((Y >> 1) % 6 === 0 ? -1 : 0));
+      for (let t = 0.2; t < 0.85; t += 0.16) { const p = P(len * t); c.on(r, F(p[0]), F(p[1]), Mat.Sapphire, 5); c.on(r, F(p[0]) + 1, F(p[1]) + 1, Mat.Sapphire, 3); }
+      ellipse(c, ...P(-2.6), 0.9, 0.9, Mat.White);
+      return;
+    }
+    case 4: {
+      // Varinha de mithral com cristal azul lapidado na ponta.
+      rod(Mat.Mithral, 0.55, 0.45);
+      plate(c, [P(len - 1, -0.9), P(len + 1.2, -1), P(len + 3.4, 0), P(len + 1.2, 1), P(len - 1, 0.9)], Mat.Sapphire);
+      thread(c, P(len - 0.8), P(len + 3), Mat.Sapphire, 5);
+      for (const g of [-1, 1]) chain(c, [P(len - 1.6, g * 0.4), P(len - 0.6, g * 1.4)], 0.25, Mat.Mithral);
+      return;
+    }
+    default: {
+      // Varinha de dente de dragão: presa curva com gema vermelha no encaixe.
+      limb(c, butt, P(len * 0.35), 0.75, 0.75, Mat.RedDragon, scales(4, 3));
+      chain(c, [P(len * 0.35), P(len * 0.6, 0.5), P(len * 0.85, 0.6), P(len + 0.6, 0)], 0.8, Mat.White, undefined, 0.15);
+      gem(c, P(len * 0.35), 0.9, Mat.Ember);
+      return;
+    }
+  }
+  switch (tier) {
+    case 1: {
+      // Varinha de Mísseis Mágicos: três dardos de luz girando em volta da ponta.
+      rod(Mat.Wood, 0.6, 0.45, grain);
+      gem(c, P(len), 0.8, Mat.Gem);
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2 + 0.4, q = P(len + Math.cos(a) * 2.6, Math.sin(a) * 2.6);
+        const d: Pt = [Math.cos(a + 1.6), Math.sin(a + 1.6)];
+        plate(c, [[q[0] - d[0] * 1.2 - d[1] * 0.4, q[1] - d[1] * 1.2 + d[0] * 0.4], [q[0] - d[0] * 1.2 + d[1] * 0.4, q[1] - d[1] * 1.2 - d[0] * 0.4], [q[0] + d[0] * 1.2, q[1] + d[1] * 1.2]], Mat.Gem);
+      }
+      return;
+    }
+    case 2: {
+      // Varinha da Bola de Fogo: salamandra enrolada na ponta segurando uma conta de fogo.
+      rod(Mat.Iron, 0.6, 0.5);
+      const body: Pt[] = [];
+      for (let k = 0; k <= 10; k++) { const t = k / 10; body.push(P(len - 4 + t * 4.4, Math.sin(t * Math.PI * 2.4) * 1.2)); }
+      chain(c, body, 0.55, Mat.Ember, (X, Y) => ((X + Y) % 4 === 0 ? -1 : 0), 0.3);
+      ellipse(c, ...P(len + 0.6, 0.3), 0.8, 0.7, Mat.Ember);
+      gem(c, P(len + 1.8), 1, Mat.Amber);
+      flame(c, P(len + 2.4), 2.6, 0.9, 0);
+      return;
+    }
+    case 3: {
+      // Varinha do Mago de Guerra: varinha de combate com guarda de metal e ponta de aço.
+      rod(Mat.Iron, 0.65, 0.5);
+      limb(c, P(0.6, -1.8), P(0.6, 1.8), 0.4, 0.4, Mat.Steel);
+      plate(c, [P(len - 0.6, -0.7), P(len - 0.6, 0.7), P(len + 2)], Mat.Steel);
+      gem(c, P(len - 1.4), 0.6, Mat.Gem);
+      return;
+    }
+    case 4: {
+      // Varinha dos Segredos: a ponta é uma chave e um olho que se abre perto de portas secretas.
+      rod(Mat.Wood, 0.55, 0.45, grain);
+      const bit = plate(c, [P(len - 2.2, 0.4), P(len - 2.2, 1.6), P(len - 1.2, 1.6), P(len - 1.2, 0.4)], Mat.Trim);
+      void bit;
+      const eye = c.fill(ebox(...P(len + 0.6), 1.8, 1.8), inEllipse(...P(len + 0.6), 1.6, 1.1), Mat.White, () => 0.7);
+      void eye;
+      ellipse(c, ...P(len + 0.6), 0.7, 0.7, Mat.Iris);
+      ellipse(c, ...P(len + 0.6), 0.3, 0.45, Mat.Eye);
+      thread(c, P(len - 1, -0.9), P(len + 2.2, -0.9), Mat.Trim, 4);
+      return;
+    }
+    default: {
+      // Varinha das Maravilhas: espiral de arco-íris e uma estrela na ponta.
+      const r = rod(Mat.White, 0.65, 0.5);
+      const cols = [Mat.Ember, Mat.Amber, Mat.Leaf, Mat.Sapphire, Mat.Gem];
+      for (let t = 0; t < 1; t += 0.02) { const p = lerp(butt, tip, t); c.on(r, F(p[0] + gx * Math.sin(t * 30) * 0.4), F(p[1] + gy * Math.sin(t * 30) * 0.4), cols[Math.floor(t * 15) % 5], 4); }
+      const st = P(len + 1.2);
+      const pts: Pt[] = [];
+      for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 - Math.PI / 2, rr = k % 2 ? 0.8 : 2; pts.push([st[0] + Math.cos(a) * rr, st[1] + Math.sin(a) * rr]); }
+      plate(c, pts, Mat.Trim);
+      return;
+    }
+  }
+}
+
+/** Corpo enrolado num cajado (víbora, dragão): segmentos de trás antes da haste, os da frente depois. */
+function coil(c: Canvas, x: number, y0: number, y1: number, turns: number, r: number, mat: Mat, offset: Offset | undefined, haft: () => void) {
+  const n = 40;
+  const pts = Array.from({ length: n + 1 }, (_, k) => {
+    const t = k / n, a = t * turns * Math.PI * 2;
+    return { p: [x + Math.sin(a) * 2.2, y0 + (y1 - y0) * t] as Pt, front: Math.cos(a) > 0, rad: r * (0.6 + 0.4 * Math.min(1, t * 4)) };
+  });
+  for (let k = 1; k <= n; k++) if (!pts[k].front) limb(c, pts[k - 1].p, pts[k].p, pts[k - 1].rad, pts[k].rad, mat, (X, Y) => (offset ? offset(X, Y) : 0) - 1);
+  haft();
+  for (let k = 1; k <= n; k++) if (pts[k].front) limb(c, pts[k - 1].p, pts[k].p, pts[k - 1].rad, pts[k].rad, mat, offset);
+  return pts[n].p;
+}
+
+/** Cajado do id, em pé do chão (`bottom`) até `top`, passando pela mão `at`. */
+function staffArt(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
+  c.scaled([at[0], top + 2], 1.45, () => staffHead(c, id, at, top, bottom));
+}
+
+/** Cajado com a cabeça desenhada na escala local (`staffArt`); a haste e o que fica nela não crescem. */
+function staffHead(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
+  const tier = tierOf(id), magic = isMagic(id);
+  const x = at[0];
+  const shaft = (mat: Mat, r = 1.1, offset: Offset | undefined = grain) => c.unscaled(() => limb(c, [x, top + 2], [x, bottom], r, r, mat, offset));
+  const ferrule = (mat: Mat) => c.unscaled(() => limb(c, [x, bottom - 1.6], [x, bottom], 1.35, 1.2, mat));
+  if (!magic) switch (tier) {
+    case 1: {
+      // Cajado de carvalho: torto, com raízes no topo segurando uma pedra.
+      const pts: Pt[] = Array.from({ length: 9 }, (_, k) => [x + Math.sin(k * 0.9) * 0.6, bottom + (top + 2 - bottom) * (k / 8)] as Pt);
+      c.unscaled(() => chain(c, pts, 1.25, Mat.Wood, grain, 1));
+      const st: Pt = [x, top - 1];
+      gem(c, st, 2.2, Mat.Stone);
+      for (const s of [-1, 1]) for (const k of [0, 1]) chain(c, [[x + s * 0.4, top + 2], [x + s * (1.6 + k), top - 0.4 + k], [x + s * (1.4 + k * 0.6), top - 2.6 + k * 0.4]], 0.5, Mat.Wood, undefined, 0.25);
+      return;
+    }
+    case 2: {
+      // Cajado de bronze: haste de madeira com anéis e a lua crescente no topo.
+      shaft(Mat.Wood); ferrule(Mat.Bronze);
+      c.unscaled(() => { for (const y of [top + 4, at[1] - 3.6]) limb(c, [x, y], [x, y + 0.8], 1.4, 1.4, Mat.Bronze); });
+      const cx = x, cy = top - 1.4;
+      c.fill(ebox(cx, cy, 3.6, 3.6), (xx, yy) => inEllipse(cx, cy, 3.4, 3.4)(xx, yy) && !inEllipse(cx + 1.6, cy - 0.8, 2.8, 2.8)(xx, yy), Mat.Bronze, sphere(cx, cy, 3.6, 3.6));
+      return;
+    }
+    case 3: {
+      // Cajado rúnico: madeira escura com um pequeno obelisco no topo e runas flutuando em volta.
+      shaft(Mat.Wood, 1.1, (X, Y) => grain(X, Y) - 1); ferrule(Mat.Iron);
+      const ob = plate(c, [[x - 1.6, top + 2], [x + 1.6, top + 2], [x + 1.1, top - 3], [x, top - 4.6], [x - 1.1, top - 3]], Mat.Stone, stone);
+      for (const y of [top - 2, top, top + 1.2]) c.on(ob, F(x), F(y), Mat.Sapphire, 5);
+      for (const [ddx, ddy] of [[-3.6, -2], [3.4, -0.4], [-2.8, 2.6], [3, 3.4]] as const) { c.px(F(x + ddx), F(top + ddy), Mat.Sapphire, 5); c.px(F(x + ddx) + 1, F(top + ddy), Mat.Sapphire, 3); c.px(F(x + ddx), F(top + ddy) + 1, Mat.Sapphire, 3); }
+      return;
+    }
+    case 4: {
+      // Cajado de mithral: aro élfico no topo com o cristal suspenso no meio.
+      shaft(Mat.Mithral, 0.95, undefined); ferrule(Mat.Mithral);
+      const cy = top - 1.6;
+      c.fill(ebox(x, cy, 3.8, 4.2), (xx, yy) => { const d = Math.hypot((xx + 0.5 - x) / 3.4, (yy + 0.5 - cy) / 3.9); return d < 1 && d > 0.78; }, Mat.Mithral, sphere(x, cy - 1, 4, 4.4));
+      plate(c, [[x, cy - 2.2], [x + 1.2, cy], [x, cy + 2.2], [x - 1.2, cy]], Mat.Sapphire);
+      for (const s of [-1, 1]) leaf(c, [x + s * 2.6, top + 2.4], s < 0 ? 2.4 : 0.7, 1.4, 0.7, Mat.Mithral);
+      return;
+    }
+    default: {
+      // Cajado de presa de dragão: crânio de dragão no topo com olhos acesos e chifres.
+      shaft(Mat.Wood, 1.15, (X, Y) => grain(X, Y) - 1); ferrule(Mat.Iron);
+      const sk = ellipse(c, x, top - 1, 2.8, 2.4, Mat.White);
+      plate(c, [[x - 1.8, top + 0.4], [x + 1.8, top + 0.4], [x + 1.2, top + 3], [x - 1.2, top + 3]], Mat.White);
+      for (const s of [-1, 1]) { c.on(sk, F(x + s * 1.1), F(top - 1), Mat.Ember, 5); horn(c, [[x + s * 1.8, top - 2.4], [x + s * 3.6, top - 4.6], [x + s * 3.4, top - 7]], 0.8); }
+      for (const k of [-0.9, 0, 0.9]) fang(c, [x + k, top + 2.8], 0.3, 1);
+      return;
+    }
+  }
+  switch (tier) {
+    case 1: {
+      // Cajado da Floresta (Staff of the Woodlands): galho vivo com folhas e um ninho com ovos no topo.
+      const pts: Pt[] = Array.from({ length: 9 }, (_, k) => [x + Math.sin(k * 1.1) * 0.7, bottom + (top + 2 - bottom) * (k / 8)] as Pt);
+      c.unscaled(() => {
+        chain(c, pts, 1.2, Mat.Wood, grain, 0.9);
+        for (let k = 1; k < 8; k++) leaf(c, [pts[k][0] + (k % 2 ? 1.8 : -1.8), pts[k][1]], k % 2 ? 0.4 : 2.7, 1.5, 0.7);
+      });
+      const nest = c.fill(ebox(x, top, 3.4, 1.8), (xx, yy) => inEllipse(x, top + 0.2, 3.2, 1.6)(xx, yy) && yy + 0.5 > top - 0.4, Mat.Wood, () => 0.5, (X, Y) => ((X + Y * 2) % 3 === 0 ? -1 : 1));
+      void nest;
+      for (const k of [-1.2, 0.2, 1.4]) gem(c, [x + k, top - 0.6], 0.8, Mat.Sapphire);
+      return;
+    }
+    case 2: {
+      // Cajado da Víbora (Staff of the Adder): uma serpente viva enrolada; a cabeça é a ponta, com veneno nas presas.
+      const head = coil(c, x, at[1] + 2, top + 1, 2.5, 0.9, Mat.Leaf, scales(4, 3), () => { shaft(Mat.Wood, 0.95); ferrule(Mat.Bronze); });
+      const h = ellipse(c, x, top - 0.6, 1.8, 1.5, Mat.Leaf, scales(4, 3));
+      for (const s of [-1, 1]) { c.on(h, F(x + s * 0.8), F(top - 1.1), Mat.Amber, 5); fang(c, [x + s * 0.6, top + 0.6], 0.25, 1); }
+      c.px(F(x + 0.6), F(top + 2), Mat.Leaf, 5); c.px(F(x + 0.6), F(top + 2.4), Mat.Leaf, 4);
+      void head;
+      return;
+    }
+    case 3: {
+      // Cajado do Poder (Staff of Power): esfera de energia no topo cercada por dois anéis em órbita.
+      shaft(Mat.Iron, 1.1, hammered); ferrule(Mat.Trim);
+      const cy = top - 1.4;
+      const orb = ellipse(c, x, cy, 2.4, 2.4, Mat.Gem);
+      for (const [ddx, ddy] of [[-1, -1], [-0.6, -1.2]] as const) c.on(orb, F(x + ddx), F(cy + ddy), Mat.White, 5);
+      for (const [rx, ry, tilt] of [[4.4, 1.2, 0.3], [4, 1.1, -0.5]] as const) {
+        for (let k = 0; k < 60; k++) {
+          const a = (k / 60) * Math.PI * 2, px0 = Math.cos(a) * rx, py0 = Math.sin(a) * ry;
+          const qx = x + px0 * Math.cos(tilt) - py0 * Math.sin(tilt), qy = cy + px0 * Math.sin(tilt) + py0 * Math.cos(tilt);
+          if (Math.sin(a) < 0 && Math.hypot(qx - x, qy - cy) < 2.4) continue;
+          c.px(F(qx), F(qy), Mat.Trim, Math.sin(a) > 0 ? 5 : 3);
+        }
+      }
+      c.unscaled(() => { for (const y of [top + 3, at[1] - 3.6]) limb(c, [x, y], [x, y + 0.8], 1.4, 1.4, Mat.Trim); });
+      return;
+    }
+    case 4: {
+      // Cajado do Arquimago (Staff of the Magi): estrela de 8 pontas no topo com pequenos astros em órbita.
+      shaft(Mat.White, 1, (X, Y) => ((Y >> 2) % 4 === 0 ? -1 : 0)); ferrule(Mat.Trim);
+      const cy = top - 2;
+      const pts: Pt[] = [];
+      for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2, rr = k % 2 ? 1.5 : 3.4; pts.push([x + Math.cos(a) * rr, cy + Math.sin(a) * rr]); }
+      plate(c, pts, Mat.Trim);
+      gem(c, [x, cy], 1, Mat.Sapphire);
+      for (const [a, rr, m] of [[0.6, 5, Mat.Ember], [2.6, 4.6, Mat.Leaf], [4.4, 5.2, Mat.White]] as const) gem(c, [x + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.6], 0.6, m);
+      return;
+    }
+    default: {
+      // Cajado do Dragão Ancião: um dragão vermelho enrolado na haste segura a gema na garra, lá em cima.
+      coil(c, x, at[1] + 4, top + 2.6, 2, 1.1, Mat.RedDragon, scales(5, 4), () => { shaft(Mat.Wood, 1.05, (X, Y) => grain(X, Y) - 1); ferrule(Mat.Iron); });
+      const h = ellipse(c, x - 1.4, top + 1.4, 1.9, 1.5, Mat.RedDragon, scales(4, 3));
+      c.on(h, F(x - 2), F(top + 1), Mat.Amber, 5);
+      horn(c, [[x - 0.4, top + 0.4], [x + 1, top - 1], [x + 0.8, top - 2.6]], 0.6);
+      chain(c, [[x + 1.2, top + 1.6], [x + 2, top - 0.6], [x + 1.4, top - 2]], 0.55, Mat.RedDragon);
+      gem(c, [x + 1.2, top - 3.2], 1.7, Mat.Ember);
+      for (const k of [-1, 1]) chain(c, [[x + 1.2 + k * 1.4, top - 1.6], [x + 1.2 + k * 1.6, top - 3.4]], 0.3, Mat.Horn);
       return;
     }
   }

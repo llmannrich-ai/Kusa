@@ -97,20 +97,20 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Varinha (feiticeiro e druida)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Varinha de salgueiro** — raminho com duas folhas | **Varinha de Mísseis Mágicos** — três dardos de luz girando na ponta *(Wand of Magic Missiles)* |
-| 2 | **Varinha de bronze** — mãozinha segurando uma esfera | **Varinha da Bola de Fogo** — salamandra enrolada na ponta, conta de fogo *(Wand of Fireballs)* |
-| 3 | **Varinha rúnica** — osso com runas que acendem | **Varinha do Mago de Guerra** — varinha de batalha com guarda de metal *(Wand of the War Mage)* |
-| 4 | **Varinha de mithral** — cristal azul facetado | **Varinha dos Segredos** — chave na ponta e um olho que abre perto de portas secretas e armadilhas *(Wand of Secrets)* |
-| 5 | **Varinha de dente de dragão** — presa curva com gema | **Varinha das Maravilhas** — espiral de arco-íris, cada disparo de uma cor *(Wand of Wonder)* |
+| 1 | **Varinha de salgueiro** ✅ — raminho com duas folhas | **Varinha de Mísseis Mágicos** ✅ — três dardos de luz girando na ponta *(Wand of Magic Missiles)* |
+| 2 | **Varinha de bronze** ✅ — mãozinha segurando uma esfera | **Varinha da Bola de Fogo** ✅ — salamandra enrolada na ponta, conta de fogo *(Wand of Fireballs)* |
+| 3 | **Varinha rúnica** ✅ — osso com runas que acendem | **Varinha do Mago de Guerra** ✅ — varinha de batalha com guarda de metal *(Wand of the War Mage)* |
+| 4 | **Varinha de mithral** ✅ — cristal azul facetado | **Varinha dos Segredos** ✅ — chave na ponta e um olho que abre perto de portas secretas e armadilhas *(Wand of Secrets)* |
+| 5 | **Varinha de dente de dragão** ✅ — presa curva com gema | **Varinha das Maravilhas** ✅ — espiral de arco-íris, cada disparo de uma cor *(Wand of Wonder)* |
 
 ### Cajado (feiticeiro e druida)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Cajado de carvalho** — torto, raízes segurando uma pedra | **Cajado da Floresta** — galho vivo com folhas e um ninho *(Staff of the Woodlands)* |
-| 2 | **Cajado de bronze** — lua crescente no topo | **Cajado da Víbora** — a ponta vira uma cabeça de serpente viva, veneno verde nas presas *(Staff of the Adder)* |
-| 3 | **Cajado rúnico** — obelisco no topo com runas flutuando | **Cajado do Poder** — esfera de energia cercada por anéis *(Staff of Power)* |
-| 4 | **Cajado de mithral** — aro élfico com cristal suspenso | **Cajado do Arquimago** — estrela de 8 pontas com órbitas *(Staff of the Magi)* |
-| 5 | **Cajado de presa de dragão** — crânio de dragão no topo, olhos acesos | **Cajado do Dragão Ancião** — dragão enrolado no cajado segurando a gema na garra *(dragões anciões)* |
+| 1 | **Cajado de carvalho** ✅ — torto, raízes segurando uma pedra | **Cajado da Floresta** ✅ — galho vivo com folhas e um ninho *(Staff of the Woodlands)* |
+| 2 | **Cajado de bronze** ✅ — lua crescente no topo | **Cajado da Víbora** ✅ — a ponta vira uma cabeça de serpente viva, veneno verde nas presas *(Staff of the Adder)* |
+| 3 | **Cajado rúnico** ✅ — obelisco no topo com runas flutuando | **Cajado do Poder** ✅ — esfera de energia cercada por anéis *(Staff of Power)* |
+| 4 | **Cajado de mithral** ✅ — aro élfico com cristal suspenso | **Cajado do Arquimago** ✅ — estrela de 8 pontas com órbitas *(Staff of the Magi)* |
+| 5 | **Cajado de presa de dragão** ✅ — crânio de dragão no topo, olhos acesos | **Cajado do Dragão Ancião** ✅ — dragão enrolado no cajado segurando a gema na garra *(dragões anciões)* |
 
 ### Elmo de guerra (cavaleiro e paladino)
 | Nível | Comum | Mágico |
@@ -287,7 +287,33 @@ Repetição Gnoma (caixa de virotes, engrenagens e alavanca), Trovejante (bobina
 
 ![Bestas mágicas](arte/lote4-crossbows-magic.png)
 
-## 10. Ordem de execução
+## 10. Lote 5 desenhado
+
+As 10 varinhas e os 10 cajados, no feiticeiro (níveis ímpares) e no druida (pares). A varinha vai erguida na mão,
+para fora; o cajado vai em pé, do chão até acima da cabeça, com a cabeça do cajado ampliada para ser lida de longe.
+
+**Varinhas comuns**: raminho de salgueiro com folhas, bronze com a mãozinha segurando uma esfera, osso com runas,
+mithral com cristal lapidado, presa de dragão com gema:
+
+![Varinhas](arte/lote5-wands.png)
+
+**Varinhas mágicas**: Mísseis Mágicos (três dardos girando), Bola de Fogo (salamandra e conta de fogo), Mago de
+Guerra (guarda de metal e ponta de aço), Segredos (chave e olho), Maravilhas (espiral de arco-íris e estrela):
+
+![Varinhas mágicas](arte/lote5-wands-magic.png)
+
+**Cajados comuns**: carvalho torto com raízes segurando a pedra, bronze com lua crescente, rúnico com obelisco e
+runas flutuando, mithral com aro e cristal suspenso, crânio de dragão com chifres e olhos acesos:
+
+![Cajados](arte/lote5-staffs.png)
+
+**Cajados mágicos**: Floresta (galho vivo com folhas e ninho), Víbora (serpente viva enrolada, a cabeça é a ponta),
+Poder (esfera de energia com dois anéis em órbita), Arquimago (estrela de 8 pontas com astros), Dragão Ancião
+(dragão vermelho enrolado segurando a gema):
+
+![Cajados mágicos](arte/lote5-staffs-magic.png)
+
+## 11. Ordem de execução
 
 ![Piloto: Capuz do Lobo no druida e no feiticeiro, Elmo do Demônio e Lâmina do dragão no cavaleiro, Elmo do Demônio no paladino](arte/itens-piloto.png)
 
@@ -296,7 +322,8 @@ Repetição Gnoma (caixa de virotes, engrenagens e alavanca), Trovejante (bobina
    **Lote 2** ✅: os mágicos dessas 3 famílias (seção 7).
    **Lote 3** ✅: machados (seção 8).
    **Lote 4** ✅: arcos e bestas (seção 9).
-   **Lote 5**: varinhas e cajados (feiticeiro e druida).
+   **Lote 5** ✅: varinhas e cajados (seção 10).
+   **Lote 6**: chapéus arcanos, mantos arcanos e calças arcanas.
 2. Armas (o que mais aparece), depois armaduras e mantos, capacetes, botas, calças e escudos.
 3. Ícones de 32×32 a partir de cada desenho pronto.
 4. Integração no jogo atrás da opção "Arte nova (beta)", com o teste `arte.ts` conferindo cada item.
