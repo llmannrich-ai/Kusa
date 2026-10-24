@@ -26,7 +26,10 @@ const COLORS = {
   bossRoom: "#e74c3c",
   chest: "#f1c40f",
   cave: "#e08a2c",
+  needleTail: "#e8e0d0",
 };
+/** Bússola em volta do jogador (px de tela): distância do centro, comprimento e largura da agulha. */
+const COMPASS = { radius: 13, length: 11, width: 5 };
 
 /**
  * Minimapa do canto superior esquerdo, como no Tibia: norte para cima, só o que a equipe já viu
@@ -179,6 +182,73 @@ export class Minimap {
       this.mark(p.x, p.y, color, 5 * px, px);
     });
     if (me) this.mark(me.x, me.y, COLORS.me, 6 * px, px);
+    if (me && me.status === "playing") this.drawCompass(me, area, px);
+  }
+
+  /**
+   * Para onde a bússola aponta: o boss; no deserto, da superfície, a boca da caverna que leva até ele; depois que
+   * o boss morre, o portal do boss. Nulo quando o jogador já chegou (dentro da sala do boss ou em cima do portal).
+   */
+  private compassTarget(me: { x: number; y: number }, area: Rect): { x: number; y: number; color: string } | null {
+    const d = this.dungeon;
+    if (this.room.state.bossDefeated) {
+      const p = d.bossPortal;
+      if (!inRect(area, p.x, p.y)) return d.cave ? { ...d.cave.entrance, color: COLORS.cave } : null;
+      return Math.abs(p.x - me.x) <= 1 && Math.abs(p.y - me.y) <= 1 ? null : { ...p, color: COLORS.bossPortal };
+    }
+    const b = d.boss;
+    if (!inRect(area, b.x, b.y)) return d.cave ? { ...d.cave.entrance, color: COLORS.cave } : null;
+    if (inRect(b, me.x, me.y)) return null;
+    return { x: b.x + b.w / 2 - 0.5, y: b.y + b.h / 2 - 0.5, color: COLORS.bossRoom };
+  }
+
+  /** Agulha de bússola girando em volta do jogador: a ponta na cor do destino, a cauda clara. */
+  private drawCompass(me: { x: number; y: number }, area: Rect, px: number) {
+    const target = this.compassTarget(me, area);
+    if (!target) return;
+    const dx = target.x - me.x;
+    const dy = target.y - me.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return;
+    const ux = dx / dist;
+    const uy = dy / dist;
+    // Perpendicular, para a largura da agulha.
+    const vx = -uy;
+    const vy = ux;
+    const cx = me.x + 0.5 + ux * COMPASS.radius * px;
+    const cy = me.y + 0.5 + uy * COMPASS.radius * px;
+    const half = (COMPASS.length / 2) * px;
+    const w = (COMPASS.width / 2) * px;
+    const tip = { x: cx + ux * half, y: cy + uy * half };
+    const tail = { x: cx - ux * half, y: cy - uy * half };
+    const left = { x: cx + vx * w, y: cy + vy * w };
+    const right = { x: cx - vx * w, y: cy - vy * w };
+
+    const ctx = this.ctx;
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 2 * px;
+    ctx.strokeStyle = COLORS.outline;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(tail.x, tail.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = target.color;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = COLORS.needleTail;
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.fill();
   }
 
   /** A parte do mapa onde o jogador está: no deserto, a superfície ou o subterrâneo; nos outros, a dungeon toda. */
