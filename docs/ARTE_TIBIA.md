@@ -233,3 +233,30 @@ no catálogo. A classe é reconhecida pela silhueta (manto comprido, arco e alja
   antes de seguir; se precisar, o herói continua em `HERO_SCALE` > 1.
 - **Custo de arte por código:** pintar textura à mão em grade de código é lento. Alternativa a avaliar: desenhar no
   Aseprite/Pixelorama no padrão deste documento e carregar como PNG, mantendo por código só o recolorir das zonas.
+
+### Piloto da Cripta (Fases 3 e 4, só com a Arte nova (beta))
+
+A Cripta inteira no padrão novo, para medir no celular o que custa estender o padrão aos mapas e aos monstros
+antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)**; desligada, nada muda.
+
+- **Cenário** (`art/proto/crypt.ts`): lajes com bisel e juntas com musgo, covil queimado do dragão, tampa lisa e
+  face de tijolos das paredes, os 15 enfeites do chão, os 7 da parede, a tocha (4 quadros) e os 9 móveis. São os
+  mesmos quadros da arte antiga (`cryptDecor.ts`, `walls.ts`), 4× maiores: o mapa troca as texturas e desenha em
+  1/4 de escala. A sombra das paredes, a luz das chamas e a poeira continuam as antigas. Tudo sai em ≈0,15 s.
+- **Monstros humanoides** (`MONSTER_KITS` em `tibiaHero.ts`): goblin, goblin arqueiro, kobold (com cauda),
+  hobgoblin, orc, gnoll, esqueleto, esqueleto arqueiro, zumbi, bugbear e ogro usam o corpo, a caminhada e o
+  equipamento dos heróis com a cabeça da espécie, a cor da pele, o tamanho e a grossura dos membros. No jogo os
+  monstros só aparecem de lado (o jogo espelha), então basta a vista de perfil.
+- **Bichos** (`art/proto/beasts.ts`): rato, stirge, aranha gigante, cubo gelatinoso (com ossos e uma espada
+  dentro), mímico (e o baú do disfarce) e o dragão jovem, este num quadro 2× maior, com mordida e sopro de fogo.
+- Cada monstro tem os clipes parado, andar, ataque e magia (4 quadros cada); a barra de vida fica logo acima da
+  cabeça de cada um.
+- **Custo:** todos os monstros da Cripta somam ≈1,3 s de desenho num computador (o dragão sozinho, ≈0,6 s). Para
+  não travar o menu nem a hunt, a folha de cada um é desenhada aos poucos, um quadro a cada 30 ms, os menores
+  primeiro; um monstro que aparece antes de ficar pronto termina na hora. Se no celular ainda pesar, o próximo
+  passo é desenhar no build e carregar como PNG.
+
+![Cenário da Cripta: chão, covil, enfeites, parede, tocha, móveis, tampas e faces](arte/cripta-cenario.png)
+![Monstros humanoides: parado e andando](arte/cripta-monstros-humanoides.png)
+![Bichos: parado, andando, ataque e magia; o baú do Mímico embaixo](arte/cripta-monstros-bichos.png)
+![No jogo: a Cripta antiga, a nova e uma sala com os monstros novos](arte/cripta-no-jogo.png)

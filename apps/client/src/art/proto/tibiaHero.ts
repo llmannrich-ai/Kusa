@@ -1751,7 +1751,7 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
 // --- Itens do piloto -----------------------------------------------------------------
 
 /** Pelo: tufos curtos que descem, com pontas claras e fundo escuro. */
-const fur: Offset = (X, Y) => {
+export const fur: Offset = (X, Y) => {
   const n = noise(X, (Y + (X >> 1)) >> 1);
   return n < 0.16 ? -1 : n > 0.9 ? 1 : (X + (Y >> 1)) % 5 === 0 ? -1 : 0;
 };
@@ -5005,6 +5005,22 @@ export function protoMonsterPortrait(kind: string): HTMLCanvasElement {
   image.data.set(protoMonsterFrame(kind, 1));
   ctx.putImageData(image, 0, 0);
   return canvas;
+}
+
+/** Os 16 quadros da folha do monstro, um por chamada (para desenhar aos poucos); quadros iguais saem uma vez só. */
+export function protoMonsterFrames(kind: string): (() => HTMLCanvasElement)[] {
+  const steps = [...CLIP_STEPS.idle, ...CLIP_STEPS.walk, ...CLIP_STEPS.attack, ...CLIP_STEPS.cast];
+  const memo = new Map<number, HTMLCanvasElement>();
+  return steps.map((step) => () => {
+    if (!memo.has(step)) {
+      const { canvas, ctx } = makeCanvas(S, S);
+      const image = ctx.createImageData(S, S);
+      image.data.set(protoMonsterFrame(kind, step));
+      ctx.putImageData(image, 0, 0);
+      memo.set(step, canvas);
+    }
+    return memo.get(step)!;
+  });
 }
 
 /** Folha do monstro: os clipes em ordem (parado, andar, ataque, magia), quadros de `PROTO_SIZE`. */

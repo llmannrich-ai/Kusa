@@ -8,7 +8,7 @@ import { HERO_DIRS, HERO_FRAMES, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
-import { protoCrypt } from "./newArt.ts";
+import { protoBeasts, protoCrypt } from "./newArt.ts";
 import { SUMMON_ART, SUMMON_FRAMES, SUMMON_OUTLINE, summonPortrait, summonSheet } from "./summonCreatures.ts";
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
@@ -166,6 +166,7 @@ export function createHeroArt(scene: Phaser.Scene) {
  * animação (uma vez por jogo).
  */
 export function createCreatureArt(scene: Phaser.Scene) {
+  if (protoBeasts && !scene.textures.exists("monster-mimic-disguise")) scene.textures.addCanvas("monster-mimic-disguise", protoBeasts.protoMimicDisguise());
   const packed = monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key));
   for (const key of packed) {
     const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
@@ -174,7 +175,8 @@ export function createCreatureArt(scene: Phaser.Scene) {
     scene.textures.remove(key);
     scene.textures.addCanvas(key, refined);
   }
-  for (const [key, anim] of Object.entries(MONSTER_ANIMS)) addAnimatedArt(scene, key, anim);
+  for (const [key, anim] of Object.entries(MONSTER_ANIMS)) if (!anim.hd) addAnimatedArt(scene, key, anim);
+  warmMonsterArt(scene);
   for (const kind of Object.keys(SUMMON_ANIMS) as SummonKind[]) addAnimatedArt(scene, SUMMON_TEXTURE[kind], SUMMON_ANIMS[kind]);
   for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
@@ -182,16 +184,52 @@ export function createCreatureArt(scene: Phaser.Scene) {
 }
 
 /** Folha animada: cada quadro é refinado à parte (o contorno não vaza para o vizinho) e vira um quadro da textura. */
+/** Folha da arte nova sendo montada: os quadros já desenhados e o próximo. */
+const hdBuilds = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; jobs: (() => HTMLCanvasElement)[]; next: number }>();
+
+/** Desenha o próximo quadro de um monstro da arte nova; com a folha completa, vira textura. Devolve se está pronta. */
+function hdStep(scene: Phaser.Scene, key: string, anim: MonsterAnim): boolean {
+  if (scene.textures.exists(key)) return true;
+  let b = hdBuilds.get(key);
+  if (!b) {
+    const jobs = anim.hd!();
+    b = { ...makeCanvas(anim.size * jobs.length, anim.size), jobs, next: 0 };
+    hdBuilds.set(key, b);
+  }
+  b.ctx.drawImage(b.jobs[b.next](), b.next * anim.size, 0);
+  if (++b.next < b.jobs.length) return false;
+  const texture = scene.textures.addCanvas(key, b.canvas)!;
+  for (let i = 0; i < b.jobs.length; i++) texture.add(i, 0, i * anim.size, 0, anim.size, anim.size);
+  addClips(scene, key, anim);
+  hdBuilds.delete(key);
+  return true;
+}
+
+/** Garante a folha do monstro antes do sprite (se ainda não ficou pronta aos poucos, termina agora). */
+export function ensureMonsterArt(scene: Phaser.Scene, key: string) {
+  const anim = MONSTER_ANIMS[key];
+  if (anim?.hd) while (!hdStep(scene, key, anim));
+}
+
+/**
+ * Arte nova: os monstros são desenhados aos poucos, um quadro a cada intervalo, para não travar o menu nem a hunt
+ * (todos os da Cripta somam mais de 1 s; o dragão sozinho, meio). Os maiores ficam por último.
+ */
+function warmMonsterArt(scene: Phaser.Scene) {
+  const keys = Object.entries(MONSTER_ANIMS).filter(([, a]) => a.hd).sort(([, a], [, b]) => a.size - b.size).map(([k]) => k);
+  const tick = () => {
+    const key = keys.find((k) => !scene.textures.exists(k));
+    if (!key) return;
+    hdStep(scene, key, MONSTER_ANIMS[key]);
+    window.setTimeout(tick, 30);
+  };
+  window.setTimeout(tick, 500);
+}
+
 function addAnimatedArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
   if (scene.textures.exists(key)) return;
   const sheet = anim.sheet();
   const n = sheet.width / anim.size;
-  if (anim.hd) {
-    const texture = scene.textures.addCanvas(key, sheet)!;
-    for (let i = 0; i < n; i++) texture.add(i, 0, i * anim.size, 0, anim.size, anim.size);
-    addClips(scene, key, anim);
-    return;
-  }
   const big = anim.size * 2;
   const { canvas, ctx } = makeCanvas(big * n, big);
   const frame = makeCanvas(anim.size, anim.size);
