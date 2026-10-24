@@ -858,6 +858,12 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
 Cada família tem arte própria em dois formatos, e o que o personagem veste aparece nele para todos da equipe.
 Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padrão visual inspirado no Tibia (heróis, monstros e mapas): `docs/ARTE_TIBIA.md`; conceitos de cada item no padrão novo: `docs/ARTE_ITENS.md`.
 
+- **Arte nova (beta)** (opção nas Configurações, desligada de padrão; trocar recarrega o jogo): heróis e todo o
+  equipamento no padrão novo (`apps/client/src/art/proto/tibiaHero.ts`), no jogo, nos retratos e no provador. O raro
+  usa o desenho do comum. Cada combinação de classe e equipamento é desenhada uma vez ao aparecer (0,1 a 0,3 s num
+  computador; mais no celular) e fica guardada. O sprite vai 10% maior que 128 px por tile, com os pés no mesmo
+  ponto do herói antigo.
+
 - **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por família (espada, machado, arco, besta, varinha, cajado, elmo, chapéu, armadura, manto, calça, botas, escudo), na cor do material; as vestes arcanas usam tecido (linho, lã, seda rúnica, mithral, seda de dragão), e varinhas e cajados têm uma gema por nível. Raros e mágicos levam uma gema azul ou roxa no canto (`apps/client/src/art/items.ts`).
 - **Vestido no herói** (`apps/client/src/art/hero/`): **cada item tem o seu desenho, igual em qualquer classe**.
   - Heróis em 48×48 (a mesma densidade de pixel dos monstros), ampliados 2× com Scale2x. Cada pixel guarda material,
