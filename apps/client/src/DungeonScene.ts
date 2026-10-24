@@ -2,6 +2,8 @@ import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
   ITEMS,
+  lairPortalAt,
+  lairsOf,
   MONSTERS,
   MSG,
   MOVE_RESEND_MS,
@@ -59,6 +61,7 @@ import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
+import { CAVERN_VOID, drawCavern } from "./cavernMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -233,6 +236,8 @@ export class DungeonScene extends Phaser.Scene {
   private portalRing!: Phaser.GameObjects.Graphics;
   /** Desde quando (relógio da cena) o herói está no tile do portal; null fora dele. */
   private portalSince: { x: number; y: number; at: number } | null = null;
+  /** Covis com o portal já aberto e desenhado (índices de `lairsOf`). */
+  private openPortals = new Set<number>();
   private move!: MoveInput;
   /** Ambiente do mapa: vaga-lumes e névoa no pântano, luz das tochas e poeira na cripta. */
   private ambience: MapAmbience | null = null;
@@ -271,15 +276,16 @@ export class DungeonScene extends Phaser.Scene {
     this.fx = new CombatFx(this);
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
+    this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -339,7 +345,15 @@ export class DungeonScene extends Phaser.Scene {
       this.items.delete(id);
     });
 
-    callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
+    // Cada covil com o boss morto abre o portal dele (nos mapas de um boss, só o bit 0).
+    callbacks.listen("lairsDown", (down: number) => {
+      lairsOf(this.dungeon).forEach((lair, i) => {
+        if (down & (1 << i) && !this.openPortals.has(i)) {
+          this.openPortals.add(i);
+          this.drawBossPortal(lair.portal);
+        }
+      });
+    });
 
     this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
@@ -517,7 +531,7 @@ export class DungeonScene extends Phaser.Scene {
     const d = this.dungeon;
     const onPortal = !!me && me.status === "playing" && (
       (me.x === d.portal.x && me.y === d.portal.y)
-      || (this.room.state.bossDefeated && me.x === d.bossPortal.x && me.y === d.bossPortal.y));
+      || this.openPortals.has(lairPortalAt(d, me.x, me.y)));
     if (!onPortal) {
       this.portalSince = null;
       return;
@@ -982,8 +996,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** O servidor abre o portal de conclusão quando o boss morre (no centro da sala dele, ou na sala dos baús da caverna). */
-  private drawBossPortal() {
-    const c = this.dungeon.bossPortal;
+  private drawBossPortal(c: { x: number; y: number }) {
     const x = this.toPx(c.x);
     const y = this.toPx(c.y);
     // A arte do pack é quase preta e some no chão escuro: um brilho roxo (a cor do portal no minimapa) pulsa por baixo.

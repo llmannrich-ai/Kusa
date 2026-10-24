@@ -414,17 +414,23 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Classes, Grimório, Batalhas,
   Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
-  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas (trilha vermelha). Daí ao norte, sob a
-  névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a **Cidadela Caída**.
-- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): Encruzilhada (floresta ou
-  deserto), Portões do Império (charco ou ermos) e Sopé da Serra (passo ou garganta). Tocar num cenário por vir só
-  avisa de onde ele abre.
+  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
+  vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
+  **Cidadela Caída**.
+- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
+  Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
+  Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
+- **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
+  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
+  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). O cliente lê
+  `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual: o bloqueio de
+  verdade vem com a fase 3 do plano.
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
   pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
-- **Ainda não:** os 4 cenários de hoje estão abertos e os outros 14 ainda não existem. O desbloqueio por boss (por
+- **Ainda não:** os 5 cenários de hoje estão abertos e os outros 13 ainda não existem. O desbloqueio por boss (por
   classe) e a estrela por ponto vêm na fase 3 do plano.
 
 ## Mapas
@@ -436,11 +442,15 @@ Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram n
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
 recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
+Escala de dificuldade de 1 a 4 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
+Ruínas e 4 para a Caverna da Travessia, o mapa mais difícil (a 3 fica livre para um mapa entre os dois).
+
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
+| 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -532,6 +542,46 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
   Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
+### Caverna da Travessia
+
+- **Onde:** nos Campos de Kusa, na etapa 5 da campanha de Verdemar (o ponto que era a Encruzilhada), logo depois do
+  Pântano das Ruínas: túneis por baixo dos campos, onde a trilha se divide entre a floresta e o deserto. **Dificuldade 4 (★★★★), o mapa mais difícil do jogo**, 10 min, até 4 jogadores.
+- **Toda subterrânea, com o celular na vertical** (`generateCavern` em `dungeon.ts`): a câmara de chegada (com o
+  portal de fuga) fica embaixo, no meio. Acima dela, o **tronco**: 2 zonas de aquecimento (todo mundo começa no
+  nível 1). Dali a caverna se bifurca em dois túneis separados por uma espinha de rocha, sem passagem entre eles: o
+  **oeste** sobe por 3 zonas até o covil do **Basilisco**; o **leste**, mais fundo e mais forte, por outras 3 até o
+  covil do **Observador das Profundezas**. Cada túnel tem uma câmara lateral com mini-boss e baú (ou Mímico) e um
+  nicho com 3 monstros extras. Poças de água escura bloqueiam o passo, não a visão; os covis têm pilares soltos.
+  `path` = tronco (profundidade 0–1), oeste (2–4), leste (5–7).
+- **Dois bosses, dois portais** (`MapDef.lairs`, `Dungeon.lairs`): um boss fixo por covil, sem sorteio. Matar um
+  abre o portal **daquele covil** (o outro continua fechado) e avisa "O portal do covil oeste/leste se abriu!". Sair
+  pelo portal oeste dá +50% do loot carregado (o bônus de sempre); pelo leste, +100%. A equipe pode vencer um, os
+  dois ou fugir pela chegada. Estado: `lairsDown` (bit por covil; `bossDefeated` continua valendo "algum boss morto").
+- **Crédito:** cada boss dá a runa dele uma vez por personagem, como os outros; é isso que libera o caminho daquele
+  lado no mapa mundi. `RunStats.bossKills` anota os bosses mortos com o herói na hunt (telemetria).
+- **Balanceamento** (medido, não estimado; refazer quando a telemetria da Caverna chegar):
+  - **XP:** tronco ~400, oeste ~2.900, leste ~4.100. Matando 75% do caminho, o herói chega no Basilisco no nível
+    10–11; no Observador, no 11–13 indo direto e no 14–17 fazendo o oeste antes (a rota pensada para ele).
+  - **Régua:** duelo só com ataque básico (`bestiary-sim.ts`) medindo quanto da vida do boss o herói tira antes de
+    cair, calibrada com a telemetria de produção: o Grumak (vencido com folga) dá ~50% no nível 10–12; o Dragão jovem
+    e o Verme (vencidos por ~1 em 3) dão 15–20% no 8–10; a Hidra e o Dragão negro (0 vitórias) dão 6–7% no 10–12.
+  - **Metas:** Basilisco ~15% no nível 10 (no patamar do Dragão e do Verme: difícil e vencível); Observador ~9%
+    indo direto (nível 11, perto do muro) e ~12% pela rota completa (nível 14, entre o Dragão e a Hidra).
+  - **Picos de dano:** nenhuma habilidade passa de ~25% do dano recebido no duelo (o Raio Desintegrador e a Mordida
+    Venenosa foram suavizados para isso); o atordoamento dura no máximo 1,5 s.
+- **Basilisco** (covil oeste, profundidade 5: 840 de base, ~1.340 no covil): mordida que envenena às vezes, **Olhar
+  Petrificante** (leque de 5 tiles que atordoa 1,5 s), **Mordida Venenosa** e, abaixo de metade da vida, **Cauda de
+  Pedra** (área em volta que empurra 2 tiles). Resiste a veneno e um pouco a físico.
+- **Observador das Profundezas** (covil leste, profundidade 8: 1.450 de base, ~2.840 no covil, o boss mais forte do
+  jogo): flutua e foge de quem cola (artilheiro), ataca a 3 tiles, **Raio Desintegrador** (linha de 7 tiles, 1,6×),
+  **Raio Paralisante** (atordoa 1,2 s), **Raio Repulsor** (empurra 3 tiles em volta) e, ferido, **Tempestade de
+  Olhares** (área que corrói). Resiste a sombra, vulnerável a luz.
+- **Loot:** teto da hunt solo 3.000 (o máximo teórico fica em ~2.700), cheio depois de 240 s.
+- **Visual** (só no cliente, `apps/client/src/cavernMap.ts`, com a arte da caverna do deserto em tons frios e os
+  bosses em `art/cavernBosses.ts`): rocha molhada azulada com paredão, chão de pedra com manchas, poças escuras,
+  estalagmites e cristais azuis que brilham, pele trocada e ossos no covil do Basilisco, brilho verde e roxo nos
+  covis, gotas pingando do teto e cantos da tela bem escuros.
+
 ### Pântano do Kosaradius
 
 - **Para jogar sozinho e mais fácil:** o mapa aceita 1 jogador só (`MapDef.maxParty`; bots contam), então não há
@@ -579,7 +629,7 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 - Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto (o Pântano do Kosaradius é só para 1).
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;

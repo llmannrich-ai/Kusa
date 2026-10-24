@@ -79,6 +79,8 @@ import {
   heroBonuses,
   isRune,
   mainBoss,
+  lairsOf,
+  lairPortalAt,
   RUNES,
   lootSellPrice,
   RUNE_DROPS,
@@ -461,10 +463,11 @@ export class Hunt {
     if (options.restore) {
       Object.assign(this, fromPlain(options.restore));
       // O portal do boss abre mudando o tile: a dungeon regenerada pela seed ainda não tem.
-      if (this.state.bossDefeated) {
-        const c = this.dungeon.bossPortal;
-        this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
-      }
+      // (Retrato de versão antiga, só com `bossDefeated`: o portal do primeiro covil.)
+      const down = this.state.lairsDown || (this.state.bossDefeated ? 1 : 0);
+      lairsOf(this.dungeon).forEach((lair, i) => {
+        if (down & (1 << i)) this.dungeon.tiles[lair.portal.y * this.dungeon.width + lair.portal.x] = Tile.Portal;
+      });
     }
     this.ai = new MonsterAi({
       state: this.state,
@@ -620,7 +623,7 @@ export class Hunt {
     this.brains.forEach((b) => { total += b.loot[1]; });
     this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
     this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
-    return Math.round(total * (1 + BOSS_LOOT_BONUS));
+    return Math.round(total * (1 + this.portalBonus()));
   }
 
   // --- Spawn ------------------------------------------------------------
@@ -682,8 +685,19 @@ export class Hunt {
       this.brains.get(boss.id)!.chestId = chest.id;
     });
 
-    const c = centerOf(d.boss);
-    this.addMonster(pickWeighted(this.map.bosses, rng.next()), c.x, c.y, d.path.length);
+    if (this.map.lairs) {
+      // Um boss fixo em cada covil, na profundidade do covil.
+      this.map.lairs.forEach((lair, i) => {
+        const room = d.lairs?.[i]?.room;
+        if (!room) return;
+        const at = centerOf(room);
+        const boss = this.addMonster(lair.boss, at.x, at.y, lair.depth);
+        this.brains.get(boss.id)!.lair = i;
+      });
+    } else {
+      const c = centerOf(d.boss);
+      this.addMonster(pickWeighted(this.map.bosses, rng.next()), c.x, c.y, d.path.length);
+    }
 
     // Baús de runa da caverna: trancados até o boss morrer; cada jogador leva a runa de um.
     (this.map.rewardRunes ?? []).forEach((rune, i) => {
@@ -918,10 +932,10 @@ export class Hunt {
       seat.portalSince ??= now;
       if (now - seat.portalSince < PORTAL_HOLD_MS) return;
       seat.portalSince = null;
-      const bossPortal = this.dungeon.bossPortal;
-      if (player.x === bossPortal.x && player.y === bossPortal.y) {
-        // Concluir a dungeon dá um bônus sobre o loot carregado.
-        const bonus = Math.round(player.loot * BOSS_LOOT_BONUS);
+      const lair = lairPortalAt(this.dungeon, player.x, player.y);
+      if (lair >= 0) {
+        // Concluir a dungeon dá um bônus sobre o loot carregado (na Caverna da Travessia, o do covil).
+        const bonus = Math.round(player.loot * this.portalBonus(lair));
         player.loot += bonus;
         seat.stats.loot.bossBonus = bonus;
         this.endRun(sessionId, "completed");
@@ -2150,10 +2164,18 @@ export class Hunt {
     }
 
     if (brain.def.rank === "boss") {
-      const c = this.dungeon.bossPortal;
+      const lair = brain.lair ?? 0;
+      const c = lairsOf(this.dungeon)[lair].portal;
       this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
+      this.state.lairsDown |= 1 << lair;
       this.state.bossDefeated = true;
-      this.notice(c.x, c.y, "O portal se abriu!", 0x3fa7d6);
+      const side = this.map.lairs?.[lair]?.side;
+      this.notice(c.x, c.y, side ? `O portal do covil ${side} se abriu!` : "O portal se abriu!", 0x3fa7d6);
+      // Crédito do boss para todo humano ainda na hunt (quem já saiu teve o relatório fechado ao sair).
+      this.state.players.forEach((p, id) => {
+        const seat = this.seats.get(id);
+        if (!p.bot && seat && p.status === "playing") seat.stats.bossKills.push(m.kind);
+      });
       this.state.chests.forEach((chest) => {
         if (!chest.rune) return;
         chest.locked = false;
@@ -2638,6 +2660,14 @@ export class Hunt {
     this.notice(x, y, label === "loot" ? `+${share} loot` : `${label}+${share} loot`, 0xf1c40f);
   }
 
+  /** Bônus de loot do portal de um covil (sem covil, o maior deles: o teto da hunt). */
+  private portalBonus(lair?: number) {
+    const lairs = this.map.lairs;
+    if (!lairs?.length) return BOSS_LOOT_BONUS;
+    if (lair !== undefined) return lairs[lair]?.portalBonus ?? BOSS_LOOT_BONUS;
+    return Math.max(...lairs.map((l) => l.portalBonus));
+  }
+
   /** Fração do gold que a hunt paga: o corte geral (`LOOT_SCALE`) vezes o do mapa (`MapDef.lootScale`, sem o boss). */
   private lootScale(boss = false) {
     return LOOT_SCALE * (boss ? 1 : this.map.lootScale ?? 1);
@@ -2687,8 +2717,7 @@ export class Hunt {
 
   /** O tile dado, ou um vizinho andável se ele for onde abre o portal do boss. */
   private besidePortal(x: number, y: number) {
-    const c = this.dungeon.bossPortal;
-    if (x !== c.x || y !== c.y) return { x, y };
+    if (lairPortalAt(this.dungeon, x, y) < 0) return { x, y };
     for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
       if (isWalkable(this.dungeon, x + dx, y + dy)) return { x: x + dx, y: y + dy };
     }
@@ -2960,7 +2989,7 @@ export class Hunt {
     const inside = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
     // A primeira sala do caminho às vezes encosta na inicial: o trecho em comum conta como sala inicial.
     if (inside(this.dungeon.spawn)) return;
-    const depth = [...this.dungeon.path, this.dungeon.boss].findIndex(inside);
+    const depth = [...this.dungeon.path, ...lairsOf(this.dungeon).map((l) => l.room)].findIndex(inside);
     if (depth >= 0 && !(depth in stats.depthAt)) stats.depthAt[depth] = this.seconds();
   }
 

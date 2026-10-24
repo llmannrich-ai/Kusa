@@ -52,6 +52,18 @@ export async function loadProfile(): Promise<Profile> {
   };
 }
 
+/**
+ * Bosses que este personagem (conta e classe) já venceu, pela runa de boss que cada um deu (`profile_boss_runes`):
+ * liberam os caminhos da bifurcação da Travessia no mapa mundi. Sem conta ou sem rede, nenhum.
+ */
+export async function loadBossKills(classId: ClassId): Promise<string[]> {
+  const { data: session } = await supabase.auth.getSession();
+  const uid = session.session?.user.id;
+  if (!uid) return [];
+  const { data } = await supabase.from("profile_boss_runes").select("boss_kind").eq("profile_id", uid).eq("class_id", classId);
+  return (data ?? []).map((r) => r.boss_kind as string);
+}
+
 /** Compra uma magia, uma áurea (próximo nível) ou um Traço; devolve o gold que sobrou. */
 export function buyTalent(talentId: string): Promise<number> {
   return call("buy_talent", { p_talent_id: talentId });
