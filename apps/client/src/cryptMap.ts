@@ -5,6 +5,7 @@ import { hash } from "./art/pixels.ts";
 import { CRYPT_DECOR, FLOOR_TEXTURE, createCryptArt, floorVariants, wallCapTexture, wallFaceTexture } from "./art/textures.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
+import { ART_ZOOM } from "./art/newArt.ts";
 
 /** Paredes desenhadas até esta distância (em tiles) do chão; além disso é só o fundo escuro. */
 const WALL_REACH = 1;
@@ -26,28 +27,34 @@ export function drawCrypt(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
   const roomOf = (x: number, y: number) => rooms.find((r) => inside(r, x, y));
   const inBoss = (x: number, y: number) => inside(d.boss, x, y);
 
+  // Na arte nova, chão e enfeites vêm em 128 px por tile: um tilemap à parte, desenhado em 1/`ART_ZOOM`. A sombra das
+  // paredes (um degradê) continua a mesma nos dois.
+  const hd = ART_ZOOM > 1;
   const map = scene.make.tilemap({ width: d.width, height: d.height, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+  const art = hd ? scene.make.tilemap({ width: d.width, height: d.height, tileWidth: TILE_SIZE * ART_ZOOM, tileHeight: TILE_SIZE * ART_ZOOM }) : map;
   let firstGid = 0;
-  const tileset = (key: string) => {
-    const count = floorVariants(scene, key);
-    const set = map.addTilesetImage(key, key, TILE_SIZE, TILE_SIZE, 0, 0, firstGid)!;
+  const tileset = (key: string, on = map) => {
+    const size = on.tileWidth;
+    const count = floorVariants(scene, key, size);
+    const set = on.addTilesetImage(key, key, size, size, 0, 0, firstGid)!;
     const gid = firstGid;
     firstGid += count;
     return { set, gid, count };
   };
-  const normal = tileset(FLOOR_TEXTURE.normal);
-  const bossFloor = tileset(FLOOR_TEXTURE.boss);
+  const normal = tileset(hd ? CRYPT_DECOR.floorHd : FLOOR_TEXTURE.normal, art);
+  const bossFloor = tileset(hd ? CRYPT_DECOR.bossHd : FLOOR_TEXTURE.boss, art);
   const shade = tileset(CRYPT_DECOR.shade);
-  const decor = tileset(CRYPT_DECOR.floor);
-  const sets = [normal, bossFloor, shade, decor].map((t) => t.set);
-  const groundLayer = map.createBlankLayer("chao", sets)!.setDepth(floorDepth);
+  const decor = tileset(CRYPT_DECOR.floor, art);
+  const artSets = [normal, bossFloor, decor].map((t) => t.set);
+  const sets = hd ? [shade.set] : [...artSets, shade.set];
+  const groundLayer = art.createBlankLayer("chao", hd ? artSets : sets)!.setDepth(floorDepth).setScale(1 / ART_ZOOM);
   const shadeLayer = map.createBlankLayer("sombra", sets)!.setDepth(floorDepth);
-  const decorLayer = map.createBlankLayer("enfeites", sets)!.setDepth(floorDepth);
+  const decorLayer = art.createBlankLayer("enfeites", hd ? artSets : sets)!.setDepth(floorDepth).setScale(1 / ART_ZOOM);
 
   const culler = new ChunkCuller();
   const lights: Phaser.GameObjects.Image[] = [];
   const image = (key: string, frame: number | string | undefined, px: number, py: number, depth: number, tx: number, ty: number) =>
-    culler.add(scene.add.image(px, py, key, frame).setOrigin(0).setDepth(depth), tx, ty);
+    culler.add(scene.add.image(px, py, key, frame).setOrigin(0).setDepth(depth).setScale(1 / ART_ZOOM), tx, ty);
   /** Poça de luz quente no chão, que tremula no `update`. */
   const light = (cx: number, cy: number, scale: number, tx: number, ty: number) => {
     const img = culler.add(scene.add.image(cx, cy, CRYPT_DECOR.light).setScale(scale).setDepth(floorDepth + 0.5)
@@ -136,7 +143,7 @@ export function drawCrypt(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
       const room = roomOf(x, y + 1);
       if (n < (room ? 0.34 : 0.14) && x - lastTorch >= 3) {
         lastTorch = x;
-        const torch = culler.add(scene.add.sprite(px, py, CRYPT_DECOR.torch).setOrigin(0).setDepth(depth + 0.1), x, y);
+        const torch = culler.add(scene.add.sprite(px, py, CRYPT_DECOR.torch).setOrigin(0).setDepth(depth + 0.1).setScale(1 / ART_ZOOM), x, y);
         torch.play({ key: CRYPT_DECOR.torch, startFrame: Math.floor(hash(x, y, 95) * 4) });
         light(px + 16, py + TILE_SIZE + 10, 1, x, y);
       } else if (hash(x, y, 96) < 0.2) {

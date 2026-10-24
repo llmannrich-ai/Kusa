@@ -5,6 +5,7 @@ import { basiliskCanvas, beholderCanvas } from "./cavernBosses.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
+import { protoBeasts, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -22,6 +23,10 @@ export interface MonsterAnim {
   frames?: Record<Clip, number>;
   /** Quadros do andar por tile andado (padrão 3: o ciclo de 6 quadros cobre 2 tiles). */
   stride?: number;
+  /** Arte nova (128 px por tile): a folha entra como está, sem o refinamento 2×, desenhada quadro a quadro. */
+  hd?: () => (() => HTMLCanvasElement)[];
+  /** Parte de cima do quadro que o corpo ocupa (a barra de vida fica logo acima da cabeça; padrão: o quadro todo). */
+  fill?: number;
 }
 
 const ANIM_FPS: Record<Clip, number> = { idle: 4, walk: 9, attack: 12, cast: 7 };
@@ -154,6 +159,37 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
     anim: { size: KING_SIZE, sheet: ogreKingSheet, portrait: ogreKingPortrait, outline: KING_OUTLINE, fps: { idle: 3.5, walk: 8, attack: 9, cast: 6 } },
   },
 };
+
+// Arte nova (beta): os monstros humanoides da Cripta vêm do protótipo, animados e já em 128 px por tile (o sprite vai
+// em metade da escala dos outros para ficar do tamanho certo).
+export const HD_FPS: Record<Clip, number> = { idle: 3, walk: 8, attack: 10, cast: 6 };
+if (protoHero) {
+  const proto = protoHero;
+  for (const kind of proto.PROTO_MONSTERS as MonsterKind[]) {
+    const art = BESTIARY_ART[kind];
+    art.facesLeft = true;
+    art.scale = 0.5;
+    art.anim = {
+      size: proto.PROTO_SIZE, sheet: () => proto.protoMonsterSheet(kind), portrait: () => proto.protoMonsterPortrait(kind), outline: "",
+      fps: HD_FPS, frames: { ...proto.MONSTER_CLIP_FRAMES }, stride: 2, hd: () => proto.protoMonsterFrames(kind),
+      fill: Math.min(1, 0.74 * proto.monsterSize(kind)),
+    };
+  }
+}
+// Os bichos (rato, stirge, aranha, cubo, mímico e o dragão) têm desenho próprio; o dragão vem num quadro 2× maior.
+if (protoBeasts) {
+  const proto = protoBeasts;
+  for (const kind of proto.PROTO_BEASTS as MonsterKind[]) {
+    const art = BESTIARY_ART[kind];
+    art.facesLeft = true;
+    art.scale = 0.5;
+    art.anim = {
+      size: proto.beastSize(kind), sheet: () => proto.protoBeastSheet(kind), portrait: () => proto.protoBeastPortrait(kind), outline: "",
+      fps: HD_FPS, frames: { ...proto.BEAST_CLIP_FRAMES }, stride: 2, hd: () => proto.protoBeastFrames(kind), fill: proto.beastFill(kind),
+    };
+  }
+  OWN_MONSTER_DRAW["monster-mimic-disguise"] = proto.protoMimicDisguise;
+}
 
 /** Monstros animados: textura → animação. */
 export const MONSTER_ANIMS: Record<string, MonsterAnim> = Object.fromEntries(
