@@ -90,7 +90,9 @@ git merge origin/main
 - Conflito em `package-lock.json`: aceite a versão do `main` e rode `npm install` para regerar; nunca
   edite lockfile à mão.
 - Conflito em que os dois lados mudaram a mesma lógica e escolher um perde comportamento → pergunte.
-- Migration nova sua com timestamp **anterior** à última do `main` → renomeie para um timestamp mais novo.
+- Migration nova sua, **ainda não aplicada no banco**, com timestamp anterior à última do `main` →
+  renomeie para um timestamp mais novo. Já aplicada → mantenha o nome: a ordem dos arquivos deve
+  seguir a ordem real em que o banco recebeu (`list_migrations`).
 
 ## 3. Revisar o que vai subir
 
