@@ -76,8 +76,8 @@ let room: any;
 let dungeon: ReturnType<typeof generateDungeon>;
 let died = false;
 const me = () => room.state.players.get(room.sessionId);
-// Poções também caem no chão: aqui só interessa equipamento.
-const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId]);
+// Poções também caem no chão, e o drop não olha a classe: só interessa o equipamento que o cavaleiro veste.
+const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId] && canUse(it.itemId, "knight"));
 
 for (let attempt = 1; ; attempt++) {
   try {
@@ -148,7 +148,8 @@ async function run() {
     await wait(100);
   }
   if (room.state.items.has(ground.id)) throw new Error("o item continua no chão depois de equipado");
-  if (me().bag.length !== 0) throw new Error(`a bag devia estar vazia: ${[...me().bag].join(", ")}`);
+  // Item de outra classe pego no caminho vai para a bag; o que o cavaleiro veste, não.
+  if (me().bag.some((id: string) => canUse(id, "knight"))) throw new Error(`a bag só devia ter itens de outra classe: ${[...me().bag].join(", ")}`);
   console.log(`equipado: ${me()[def.slot]}`);
 }
 
