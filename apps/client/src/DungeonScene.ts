@@ -69,7 +69,8 @@ import { outfitOf } from "./art/outfit.ts";
 import { BESTIARY_ART, BLOOD_TINT, monsterAnimKey, monsterTexture, type MonsterAnim } from "./art/bestiary.ts";
 import type { Clip } from "./art/rig.ts";
 import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
-import { CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
+import { CREATURE_SPRITE_SCALE } from "./art/refine.ts";
+import { heroSpriteScale } from "./art/heroes.ts";
 import {
   CHEST_TEXTURE,
   PORTAL_TEXTURE,
@@ -1057,7 +1058,7 @@ export class DungeonScene extends Phaser.Scene {
   private addAvatar(sessionId: string, player: PlayerView) {
     const classId = player.classId as ClassId;
     const heroKey = heroArt(this, classId, outfitOf(player));
-    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down")).setScale(HERO_SPRITE_SCALE);
+    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down")).setScale(heroSpriteScale());
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, top + 4, false);
     unit.classId = classId;

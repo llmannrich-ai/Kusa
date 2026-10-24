@@ -174,7 +174,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   cavern: {
     id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 4, durationSeconds: 10 * 60, meadowMonsters: 3,
-    description: "Túneis por baixo do mar, entre Solária e o Arquipélago: o mapa mais difícil do jogo. Depois do tronco, a caverna se bifurca: a oeste, o Basilisco; a leste, mais fundo, o Observador das Profundezas, o boss mais forte de Kosaradius. Cada boss morto abre o portal do covil dele.",
+    description: "Túneis por baixo dos Campos de Kusa, onde a campanha se divide entre a floresta e o deserto: o mapa mais difícil do jogo. Depois do tronco, a caverna se bifurca: a oeste, o Basilisco; a leste, mais fundo, o Observador das Profundezas, o boss mais forte de Kosaradius. Cada boss morto abre o portal do covil dele.",
     encounters: [
       // Tronco (zonas 0 e 1): aquecimento, todo mundo começa no nível 1.
       { depth: [0, 0], budget: 120, table: [["kobold", 4], ["stirge", 3], ["rat", 2]] },

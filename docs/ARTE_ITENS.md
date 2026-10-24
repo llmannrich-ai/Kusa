@@ -2,7 +2,7 @@
 
 Direção de arte dos 140 desenhos de item (14 famílias × 5 níveis, comum e mágico) no padrão novo
 (`docs/ARTE_TIBIA.md`: 128 px por tile, corpo base vestido pelo kit da classe). Nada aqui muda regra de jogo;
-os renomes propostos (seção 5) mudam só o nome mostrado e precisam de migration.
+os renomes (seção 5) mudam só o nome mostrado.
 
 ---
 
@@ -119,7 +119,7 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 | 2 | **Elmo de bronze** ✅ — coríntio com crista de crina vermelha | **Elmo do Vigia** ✅ — viseira em cara de corujurso, bico e olhos grandes, penas e pelo *(owlbear)* |
 | 3 | **Elmo de ferro** ✅ — nórdico com nasal e malha | **Elmo do Brilho** ✅ — elmo cravejado de gemas (diamante, rubi, opala de fogo) com chamas leves em volta *(Helm of Brilliance)* |
 | 4 | **Elmo de mithral** ✅ — elmo fechado com coroa de folhas e penacho | **Elmo do Cavaleiro Grifo** ✅ — viseira em bico de grifo, asas nas laterais *(griffon riders)* |
-| 5 | **Elmo do dragão** ✅ — cabeça de dragão de mandíbula aberta emoldurando o rosto | **Elmo do Demônio** ✅ *(hoje "Elmo do Senhor dos Dragões")* — viseira de cara de demônio, olhos em brasa, presas, chifres de carneiro *(Demon Armor, demônios do Abismo)* |
+| 5 | **Elmo do dragão** ✅ — cabeça de dragão de mandíbula aberta emoldurando o rosto | **Elmo do Demônio** ✅ *(antes "Elmo do Senhor dos Dragões")* — viseira de cara de demônio, olhos em brasa, presas, chifres de carneiro *(Demon Armor, demônios do Abismo)* |
 
 ### Armadura de guerra (cavaleiro e paladino)
 | Nível | Comum | Mágico |
@@ -142,7 +142,7 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 ### Chapéu arcano (feiticeiro e druida)
 | Nível | Comum | Mágico |
 |---|---|---|
-| 1 | **Capuz de lã** ✅ — capuz simples com cordão | **Capuz do Lobo** ✅ *(hoje "Capuz do Eremita")* — pele de lobo com a cabeça por cima da testa, caindo nos ombros *(Forma Selvagem do druida)* |
+| 1 | **Capuz de lã** ✅ — capuz simples com cordão | **Capuz do Lobo** ✅ *(antes "Capuz do Eremita")* — pele de lobo com a cabeça por cima da testa, caindo nos ombros *(Forma Selvagem do druida)* |
 | 2 | **Chapéu pontudo** ✅ — aba mole, remendos, ponta caída | **Chapéu do Ilusionista** ✅ — listras que trocam de cor, ponta torta com estrela *(Hat of Disguise)* |
 | 3 | **Capuz rúnico** ✅ — runas acesas na borda | **Capuz da Clarividência** ✅ — terceiro olho aberto na testa *(magia Clarividência)* |
 | 4 | **Chapéu do mago** ✅ — aba larga com lua e estrelas | **Chapéu do Arquimago** ✅ — altíssimo, anéis orbitando *(Hat of Wizardry)* |
@@ -184,12 +184,12 @@ Formato: **nome** — conceito *(referência de D&D, quando há)*. ✅ = já des
 | 4 | **Escudo de mithral** ✅ — torre élfica com árvore | **Escudo da Guarda Arcana** ✅ — círculo mágico girando na frente *(Spellguard Shield)* |
 | 5 | **Escudo do dragão** ✅ — escamas com cabeça de dragão | **Escudo do Dragão Ancião** ✅ — cabeça de dragão em relevo saindo do escudo |
 
-## 5. Renomes propostos
+## 5. Renomes aplicados
 
-Só o nome muda (o id, os atributos e o preço continuam). Precisa de migration no `market_items` e de mudar o
-`packages/shared/src/items.ts` junto.
+Só o nome mudou: o id, os atributos e o preço continuam. O nome dos itens existe só em
+`packages/shared/src/items.ts` (o banco guarda o item pelo id), então não houve migration.
 
-| Hoje | Proposta | Por quê |
+| Antes | Agora | Por quê |
 |---|---|---|
 | Elmo do Senhor dos Dragões | Elmo do Demônio | o nível 5 comum já é o Elmo do dragão; o demônio dá uma criatura nova ao topo (*Demon Armor*). O Elmo do Brilho fica, porque é item de D&D (*Helm of Brilliance*) |
 | Capuz do Eremita | Capuz do Lobo | a pele de lobo pede o nome; segue dando mana |

@@ -28,6 +28,8 @@ export interface ArenaOptions {
   openRoom?: boolean;
   /** Outros heróis da equipe (ids `h2`, `h3`...), postos ao lado do herói; `true` entra como bot. */
   allies?: { classId: ClassId; bot?: boolean }[];
+  /** Runas equipadas em todos os heróis (como `KUSA_RUNES`). */
+  runes?: string[];
 }
 
 /** Id do herói nas arenas. */
@@ -35,7 +37,7 @@ export const HERO = "h";
 
 /** Hunt com um herói e nenhum monstro (os do mapa saem). */
 export function arena(options: ArenaOptions = {}) {
-  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [] } = options;
+  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [], runes } = options;
   let clock = 0;
   const timers: { at: number; fn: () => void }[] = [];
   const damage: DamageMessage[] = [];
@@ -64,7 +66,7 @@ export function arena(options: ArenaOptions = {}) {
     ended: () => {},
   };
   const state = new DungeonState();
-  const hunt = new Hunt(state, host, { mapId, seed, startLevel, allSpells, monsterHp, random: createRng(seed).next });
+  const hunt = new Hunt(state, host, { mapId, seed, startLevel, allSpells, monsterHp, runes, random: createRng(seed).next });
   hunt.join(HERO, { name: "Teste", classId, talents: {}, spellXp: {} });
   allies.forEach((ally, i) => {
     const id = `h${i + 2}`;

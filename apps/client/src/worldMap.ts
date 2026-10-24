@@ -1,220 +1,376 @@
 import { MAPS, type MapId } from "@kusa/shared";
+import { CAVERN_BRANCHES, EDGES, EDGE_D, FOG, H, LABELS, NODES, OPEN_CHAIN, PLACES, W } from "./world/verdemar.ts";
 
-// Mapa mundi de Kosaradius (tela de Batalhas): o planeta em pergaminho, com um ponto por cenário ligado por trilhas.
-// Só escolhe o cenário: não entra em `RULES_FILES`, então mudar o desenho não muda a versão das regras.
+// Mapa mundi (tela de Batalhas): a carta de Verdemar, o continente da campanha. A arte é uma imagem pronta
+// (public/mapa/verdemar.svg, gerada por scripts/verdemar.ts); por cima vão as trilhas, os nomes, os pontos e o herói.
+// Câmera própria: arrastar em qualquer direção e pinça para aproximar (sem a rolagem do navegador).
 
-/** Tamanho do desenho; os pontos usam as mesmas coordenadas e a largura acompanha a coluna do jogo. */
-const W = 412;
-const H = 2000;
+/** Cenário de hoje → ponto da campanha. */
+const NODE_OF = Object.fromEntries(Object.entries(NODES).flatMap(([id, n]) => (n.map ? [[n.map, id]] : []))) as Record<MapId, string>;
 
-/** Onde fica cada cenário no mapa e a região da história (`docs/MAPA_MUNDI_PLANO.md`). Mapa novo precisa de um ponto. */
-export const WORLD_POINTS: Record<MapId, { x: number; y: number; region: string }> = {
-  marsh: { x: 150, y: 1765, region: "Verdemar" },
-  crypt: { x: 222, y: 1510, region: "Verdemar · serra do norte" },
-  desert: { x: 300, y: 1190, region: "Solária" },
-  swamp: { x: 95, y: 840, region: "Arquipélago Afundado" },
-  cavern: { x: 196, y: 1004, region: "Ilha da Travessia" },
+/** Onde fica cada cenário e a região (a ficha mostra a região). */
+export const WORLD_POINTS = Object.fromEntries(
+  Object.values(NODES).flatMap((n) => (n.map ? [[n.map, { x: n.x, y: n.y, region: n.area }]] : [])),
+) as Record<MapId, { x: number; y: number; region: string }>;
+
+const NS = "http://www.w3.org/2000/svg";
+/** Zoom máximo (o mínimo mostra o continente inteiro). */
+const MAX_SCALE = 1.8;
+/** O continente, para o zoom de "ver tudo". */
+const LAND_BOX = { x: 140, y: 110, w: 1320, h: 2120 };
+/** Duração da caminhada, a mesma passando por um trecho ou por vários. */
+const WALK_MS = 1000;
+/** Altura do herói (px) e quanto ele sobe para ficar de pé em cima do ícone do ponto. */
+const HERO_PX = 40;
+const ON_POINT_LIFT = 22;
+/** Quadros da folha do herói (`heroSheet`): 3 direções × 3 quadros; a caminhada toca `1, 0, 2, 0`. */
+const SHEET_DIRS = ["down", "side", "up"] as const;
+const STEP_FRAMES = [1, 0, 2, 0];
+/** Distância (no desenho) entre um passo e outro. */
+const STEP_LEN = 12;
+
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>, parent?: Element) => {
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+  parent?.append(node);
+  return node;
 };
 
-/**
- * Bifurcação na Ilha da Travessia: cada lado da caverna leva a um caminho, que fica liberado no mapa quando a
- * classe vence o boss daquele covil (o oeste vai ao Arquipélago, o leste à Cidadela Caída).
- */
-export const BRANCHES = [
-  { boss: "basilisk", label: "Basilisco", path: "M196 1004C150 960 110 920 95 840", at: { x: 128, y: 948 } },
-  { boss: "beholder", label: "Observador", path: "M196 1004C250 930 280 820 262 760", at: { x: 270, y: 900 } },
-] as const;
-
-/** Terras ainda sem cenário, debaixo da névoa: tocar só avisa. */
-const FOG = [
-  { name: "Gelo de Hrimfal", x: 206, y: 130, w: 300, h: 160 },
-  { name: "Ilha de Cinza", x: 328, y: 470, w: 130, h: 110 },
-  { name: "Cidadela Caída", x: 262, y: 698, w: 130, h: 110 },
-];
-
-const LAND = "#e7dcb2";
-const INK = "#4a3420";
-const HALO = `fill="none" stroke="#8a7458" stroke-width="11" opacity="0.25"`;
-
-/** Costa com o halo de tinta por fora (desenhado antes) e a terra por cima. */
-const coast = (d: string, fill = LAND) => `<path d="${d}" ${HALO}/><path d="${d}" fill="${fill}" stroke="${INK}" stroke-width="1.6"/>`;
-
-const label = (x: number, y: number, text: string, size: number, spacing = 3) =>
-  `<text x="${x}" y="${y}" text-anchor="middle" font-size="${size}" letter-spacing="${spacing}" font-variant="small-caps" fill="${INK}">${text}</text>`;
-
-const unmapped = (x: number, y: number) =>
-  `<text x="${x}" y="${y}" text-anchor="middle" font-size="13" font-style="italic" fill="#5a4128">terra não mapeada</text>`;
-
-/** O desenho (texto fixo, sem nada de fora: pode ir por innerHTML). Pontos e herói vão por cima, em HTML. */
-const ART = `<svg class="world-art" viewBox="0 0 ${W} ${H}" aria-hidden="true" font-family="Georgia, serif">
-  <defs>
-    <pattern id="wm-ondas" width="46" height="30" patternUnits="userSpaceOnUse">
-      <path d="M6 10q5-5 10 0q5 5 10 0" fill="none" stroke="#8f9c83" stroke-width="1" opacity="0.55"/>
-      <path d="M26 25q4-4 8 0q4 4 8 0" fill="none" stroke="#8f9c83" stroke-width="1" opacity="0.4"/>
-    </pattern>
-    <filter id="wm-nevoa" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"/></filter>
-    <radialGradient id="wm-vinheta" cx="0.5" cy="0.5" r="0.75">
-      <stop offset="0.6" stop-color="#5a3f24" stop-opacity="0"/><stop offset="1" stop-color="#5a3f24" stop-opacity="0.35"/>
-    </radialGradient>
-  </defs>
-  <rect width="${W}" height="${H}" fill="#d3d6bd"/>
-  <rect width="${W}" height="${H}" fill="url(#wm-ondas)"/>
-
-  ${coast("M0 0H412V200C380 230 350 190 320 220C290 250 250 205 215 235C180 260 150 210 115 240C80 265 45 215 0 245Z", "#f1ece0")}
-  <path d="M60 150l20 18-8 22M250 120l18 30 22 6M330 170l-14 20M150 90l24 12" fill="none" stroke="#8a9aa8" stroke-width="1.2"/>
-  <path d="M95 200l10-18 10 18ZM290 190l12-22 12 22ZM190 160l8-14 8 14Z" fill="#e2e6ea" stroke="${INK}" stroke-width="1"/>
-
-  <path d="M42 495q10-18 20 0M70 495q10-18 20 0M98 495q12-26 26-8" fill="none" stroke="#3d5a52" stroke-width="5" stroke-linecap="round"/>
-  <path d="M42 495q10-18 20 0M70 495q10-18 20 0M98 495q12-26 26-8" fill="none" stroke="#7fa293" stroke-width="2" stroke-linecap="round"/>
-  <path d="M122 485l12-6-4 10Z" fill="#3d5a52"/>
-  <text x="206" y="590" text-anchor="middle" font-size="15" font-style="italic" letter-spacing="3" fill="#4d5c4f">Oceano da Grande Maré</text>
-
-  ${coast("M270 470C270 420 330 400 365 430C395 455 390 510 350 525C310 540 270 515 270 470Z", "#e6d3ad")}
-  <path d="M302 488L328 436L354 488Z" fill="#8c6a52" stroke="${INK}" stroke-width="1.4"/>
-  <path d="M322 440H334L332 448H324Z" fill="#b8452a"/>
-  <path d="M328 432q-6-12 2-20q8-8 0-18" fill="none" stroke="#6e6258" stroke-width="2.4" stroke-linecap="round" opacity="0.7"/>
-
-  ${coast("M200 690C200 650 260 630 300 655C335 675 330 730 290 745C250 760 200 735 200 690Z")}
-  <path d="M244 712V682H252V676H258V682H266V676H272V682H280V712Z" fill="#b5a689" stroke="${INK}" stroke-width="1.2"/>
-  <path d="M234 712V688L240 680L246 688V712ZM278 712V690L284 682L290 690V712Z" fill="#a39477" stroke="${INK}" stroke-width="1.2"/>
-
-  <g filter="url(#wm-nevoa)" fill="#f6efdf" opacity="0.88">
-    <ellipse cx="206" cy="130" rx="230" ry="120"/><ellipse cx="328" cy="470" rx="92" ry="74"/><ellipse cx="262" cy="698" rx="90" ry="70"/>
-  </g>
-  ${label(206, 118, "Gelo de Hrimfal", 21, 4)}${unmapped(206, 140)}
-  ${label(328, 462, "Ilha de Cinza", 17)}${unmapped(328, 482)}
-  ${label(262, 694, "Cidadela Caída", 17)}${unmapped(262, 714)}
-
-  ${coast("M45 820C45 790 100 780 130 800C155 818 145 860 110 868C75 876 45 850 45 820Z")}
-  ${coast("M18 915C20 895 60 893 68 910C74 928 40 938 18 915Z")}
-  ${coast("M150 905C152 885 195 885 200 905C203 925 160 935 150 905Z")}
-  ${coast("M70 745C72 732 100 730 104 744C106 758 74 760 70 745Z")}
-  <g fill="#c9c1a6" stroke="${INK}" stroke-width="1"><path d="M168 846V828l3-3 3 4V846Z"/><path d="M180 850V836l3 2 3-3V850Z"/><path d="M176 900V888l3-2 3 3V900Z"/></g>
-  ${label(104, 716, "Arquipélago Afundado", 15)}
-
-  ${coast("M138 1110C140 1100 160 1098 163 1108C165 1120 142 1122 138 1110Z")}
-  ${coast("M166 1000C164 978 196 966 220 976C238 984 236 1016 216 1028C194 1040 168 1026 166 1000Z", "#d9d2bb")}
-  <path d="M178 1010L188 994L198 1010ZM204 1008L212 996L220 1008Z" fill="#8d8f93" stroke="${INK}" stroke-width="1"/>
-  <ellipse cx="196" cy="1014" rx="6" ry="3.4" fill="#141a22" stroke="${INK}" stroke-width="0.8"/>
-  ${coast("M75 1245C77 1228 115 1225 118 1243C120 1260 80 1265 75 1245Z")}
-
-  ${coast("M210 1060C260 1020 360 1030 395 1080C410 1140 400 1240 360 1300C320 1340 250 1330 220 1290C190 1250 230 1200 205 1160C185 1120 180 1090 210 1060Z", "#efd9a4")}
-  <path d="M232 1110q14-10 28 0M262 1138q14-10 28 0M340 1130q14-10 28 0M240 1250q14-10 28 0M330 1240q14-10 28 0M360 1180q12-8 24 0" fill="none" stroke="#a9834a" stroke-width="1.3" stroke-linecap="round"/>
-  <ellipse cx="362" cy="1214" rx="9" ry="3" fill="#7fa6aa"/>
-  <path d="M360 1212q-1-10 2-16M362 1196q-7-2-10 3M362 1196q7-3 10 2M362 1196q-2-6-6-7M362 1196q3-6 7-6" fill="none" stroke="#3f6a3a" stroke-width="1.6" stroke-linecap="round"/>
-  ${label(306, 1078, "Solária", 19, 5)}
-
-  <g transform="translate(52 1040)">
-    <circle r="30" fill="none" stroke="${INK}" stroke-width="1"/><circle r="24" fill="none" stroke="${INK}" stroke-width="0.6"/>
-    <path d="M0-38L6 0L0 38L-6 0Z" fill="${INK}"/><path d="M-38 0L0-6L38 0L0 6Z" fill="${INK}"/>
-    <path d="M0-38L6 0H0ZM0 38L-6 0H0ZM-38 0L0 6V0ZM38 0L0-6V0Z" fill="#c8962e"/>
-    <text y="-42" text-anchor="middle" font-size="14" fill="${INK}">N</text>
-  </g>
-  <g transform="translate(60 1160)">
-    <path d="M-16 0H16L11 8H-11Z" fill="#7a5a3a" stroke="${INK}" stroke-width="1"/><path d="M0 0V-24" stroke="${INK}" stroke-width="1.4"/>
-    <path d="M1-22Q13-14 1-4Z" fill="#f1ece0" stroke="${INK}" stroke-width="1"/><path d="M-1-20Q-10-13-1-6Z" fill="#f1ece0" stroke="${INK}" stroke-width="1"/>
-  </g>
-
-  ${coast("M30 1450C80 1400 180 1410 250 1430C320 1445 370 1500 380 1580C392 1660 360 1720 330 1780C300 1850 230 1900 160 1890C90 1880 40 1830 30 1760C20 1690 50 1640 40 1590C30 1540 0 1500 30 1450Z")}
-  <path d="M262 1520C280 1580 300 1640 336 1700C352 1726 364 1748 376 1760" fill="none" stroke="#7f9a95" stroke-width="2.2"/>
-  <g fill="#d2c39c" stroke="${INK}" stroke-width="1.3" stroke-linejoin="round">
-    <path d="M140 1484L160 1452L180 1484Z"/><path d="M176 1478L200 1440L224 1478Z"/><path d="M238 1482L262 1446L286 1482Z"/>
-    <path d="M276 1490L294 1462L312 1490Z"/><path d="M86 1480L102 1458L118 1480Z"/>
-  </g>
-  <g fill="#5d7450" stroke="#2f3d2a" stroke-width="0.8">
-    <path d="M62 1690l7-18 7 18Z"/><path d="M84 1700l6-16 6 16Z"/><path d="M240 1700l7-18 7 18Z"/><path d="M262 1716l6-16 6 16Z"/>
-    <path d="M70 1810l7-18 7 18Z"/><path d="M244 1820l7-18 7 18Z"/><path d="M266 1806l6-16 6 16Z"/><path d="M110 1660l6-16 6 16Z"/>
-    <path d="M300 1640l6-16 6 16Z"/><path d="M200 1850l6-16 6 16Z"/><path d="M96 1850l6-16 6 16Z"/><path d="M320 1740l6-16 6 16Z"/>
-  </g>
-  <path d="M120 1740q10-3 20 0M190 1790q10-3 20 0M60 1760q8-3 16 0" fill="none" stroke="#7f9a95" stroke-width="1.4"/>
-  ${label(300, 1612, "Verdemar", 19, 5)}
-
-  <path id="wm-arco" d="M14 1446Q206 1268 398 1446" fill="none"/>
-  <text font-size="42" letter-spacing="9" font-variant="small-caps" fill="#e07a2c" opacity="0.26"><textPath href="#wm-arco" xlink:href="#wm-arco" startOffset="50%" text-anchor="middle">Kosaradius</textPath></text>
-
-  <path d="M150 1765C140 1690 210 1610 222 1510" fill="none" stroke="#7a2e22" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
-  <path d="M222 1510C250 1430 330 1330 300 1190" fill="none" stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"/>
-  <path d="M300 1190C270 1120 230 1060 196 1004" fill="none" stroke="${INK}" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity="0.7"/>
-  ${BRANCHES.map((b, i) => `<path class="world-branch" data-branch="${i}" d="${b.path}" fill="none" stroke-linecap="round"/>
-  <text class="world-branch-label" data-branch="${i}" x="${b.at.x}" y="${b.at.y}" text-anchor="middle" font-size="12" font-style="italic">${b.label}</text>`).join("")}
-
-  <rect width="${W}" height="${H}" fill="url(#wm-vinheta)"/>
-</svg>`;
-
-const pct = (value: number, of: number) => `${(value / of) * 100}%`;
+export interface SelectOptions {
+  /** Sem caminhar (ao abrir a tela). Com `prefers-reduced-motion` é sempre assim. */
+  instant?: boolean;
+  /** Onde o ponto fica na tela ao chegar (fração da altura); a câmera vai junto com o herói. */
+  anchor?: number;
+}
 
 export interface WorldMapView {
-  /** Marca o cenário escolhido e leva o herói até ele (`instant`: sem caminhar, ao abrir a tela). */
-  select(id: MapId, instant?: boolean): void;
-  /** Rola o mapa até o ponto, que fica a `anchor` da altura da tela (com `smooth`, deslizando). */
-  scrollTo(id: MapId, anchor?: number, smooth?: boolean): void;
+  /** Marca o cenário escolhido e leva o herói até ele pela trilha. */
+  select(id: MapId, options?: SelectOptions): void;
+  /** Para onde o herói está andando agora (`null` parado). */
+  walkingTo(): MapId | null;
+  /** Termina a caminhada já: o herói aparece no ponto. */
+  skip(): void;
+  /** Leva a câmera até o ponto (zoom de perto), que fica a `anchor` da altura da tela (com `smooth`, deslizando). */
+  focus(id: MapId, anchor?: number, smooth?: boolean): void;
   /** Quantas salas abertas cada cenário tem (o selo 👥 do ponto). */
   setRoomCounts(counts: Partial<Record<MapId, number>>): void;
-  /** Troca o boneco do herói (a classe escolhida no menu). */
-  setHero(url: string): void;
-  /** Bosses que a classe escolhida já venceu: liberam os caminhos da bifurcação da Travessia. */
+  /** Troca o boneco do herói: a folha de `heroSheet` da classe escolhida no menu. */
+  setHero(sheetUrl: string): void;
+  /** Bosses que a classe escolhida já venceu: liberam os lados da bifurcação da Caverna da Travessia. */
   setBossKills(bosses: readonly string[]): void;
 }
 
 /**
- * Monta o mapa em `root` (dentro de um contêiner que rola na vertical). `icons` são os desenhos dos cenários,
- * `onPoint` recebe o toque num ponto e `onFog` o toque numa terra sem cenário.
+ * Monta o mapa em `view` (área que ocupa a tela; recebe os toques). `icons` são os desenhos dos cenários,
+ * `onPoint` recebe o toque num cenário aberto e `onInfo` os avisos (cenário da campanha por vir, terra em névoa).
  */
-export function createWorldMap(root: HTMLElement, icons: Record<MapId, string>, onPoint: (id: MapId) => void, onFog: (name: string) => void): WorldMapView {
-  root.innerHTML = ART;
-  const points = new Map<MapId, { button: HTMLButtonElement; count: HTMLElement }>();
-  for (const fog of FOG) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "world-fog";
-    button.setAttribute("aria-label", `${fog.name}: terra não mapeada`);
-    Object.assign(button.style, {
-      left: pct(fog.x - fog.w / 2, W), top: pct(fog.y - fog.h / 2, H), width: pct(fog.w, W), height: pct(fog.h, H),
-    });
-    button.onclick = () => onFog(fog.name);
-    root.append(button);
+export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, onPoint: (id: MapId) => void, onInfo: (message: string) => void): WorldMapView {
+  // Mundo: a arte (imagem) e, por cima, as trilhas e os nomes, tudo na mesma escala da câmera.
+  const world = document.createElement("div");
+  world.className = "world-plane";
+  Object.assign(world.style, { width: `${W}px`, height: `${H}px` });
+  const art = document.createElement("img");
+  art.className = "world-art";
+  art.alt = "";
+  art.src = `${import.meta.env.BASE_URL}mapa/verdemar.svg`;
+  art.width = W;
+  art.height = H;
+  art.decoding = "async";
+  const over = svgEl("svg", { class: "world-over", viewBox: `0 0 ${W} ${H}`, width: W, height: H, "aria-hidden": "true" });
+  world.append(art, over);
+  // Pontos e herói ficam fora da escala: o mesmo tamanho na tela em qualquer zoom.
+  const layer = document.createElement("div");
+  layer.className = "world-layer";
+  view.replaceChildren(world, layer);
+
+  // Trilhas: as da campanha por vir, pontilhadas; a aberta, em tinta vermelha (o herói anda nela).
+  const openEdge = (a: string, b: string) => OPEN_CHAIN.includes(a) && OPEN_CHAIN.includes(b);
+  for (const [a, b] of EDGES) {
+    if (openEdge(a, b)) continue;
+    svgEl("path", { d: EDGE_D[a + b], class: "world-trail-bed" }, over);
+    svgEl("path", { d: EDGE_D[a + b], class: "world-trail-next" }, over);
   }
-  for (const id of Object.keys(WORLD_POINTS) as MapId[]) {
-    const at = WORLD_POINTS[id];
+  // Lados da bifurcação da Travessia: a tinta vermelha por cima da trilha pontilhada aparece com o boss vencido.
+  const branches = CAVERN_BRANCHES.map((b) => ({
+    boss: b.boss,
+    beds: svgEl("path", { d: EDGE_D[b.from + b.to], class: "world-trail-bed open world-branch" }, over),
+    ink: svgEl("path", { d: EDGE_D[b.from + b.to], class: "world-trail-open world-branch" }, over),
+  }));
+  const openD = OPEN_CHAIN.slice(1).map((b, i) => EDGE_D[OPEN_CHAIN[i] + b].replace(/^M[^C]+/, (m) => (i ? "" : m))).join("");
+  svgEl("path", { d: openD, class: "world-trail-bed open" }, over);
+  const route = svgEl("path", { d: openD, class: "world-trail-open" }, over);
+
+  // Nomes: crescem quando o zoom afasta (para seguir legíveis) até caber na curva; os pequenos somem de longe.
+  const readable: { t: SVGTextElement; px: number; min: number; max: number }[] = [];
+  const small = svgEl("g", { class: "world-small" }, over);
+  LABELS.forEach((l, i) => {
+    const path = svgEl("path", { id: `wm-rot${i}`, d: l.d, fill: "none" }, over);
+    const t = svgEl("text", { class: "world-label", "font-size": l.size, "letter-spacing": l.sp }, l.size < 30 ? small : over);
+    const probe = svgEl("text", { class: "world-label", "font-size": l.size, "letter-spacing": l.sp }, over);
+    probe.textContent = l.text;
+    t.innerHTML = `<textPath href="#wm-rot${i}" startOffset="50%">${l.text}</textPath>`;
+    readable.push({ t, px: l.px, min: l.size, max: (path.getTotalLength() / Math.max(1, probe.getComputedTextLength())) * l.size * 0.94 });
+    probe.remove();
+  });
+  for (const p of PLACES) {
+    const t = svgEl("text", { x: p.x, y: p.y, class: `world-place${p.water ? " water" : ""}`, "font-size": p.big ? 20 : 15 }, p.big ? over : small);
+    t.textContent = p.text;
+    if (p.big) readable.push({ t, px: 12, min: 20, max: 60 });
+  }
+  for (const f of FOG) {
+    const t = svgEl("text", { x: f.x, y: f.y, class: "world-label", "font-size": 26, "letter-spacing": 3 }, over);
+    t.textContent = f.name;
+    readable.push({ t, px: 14, min: 26, max: 90 });
+    svgEl("text", { x: f.x, y: f.y + 24, class: "world-place", "font-size": 18 }, small).textContent = "terra não mapeada";
+  }
+
+  // Pontos: os cenários de hoje com o desenho deles; os da campanha por vir, numerados (com placa nas bifurcações).
+  type Pin = { el: HTMLElement; x: number; y: number };
+  const pins: Pin[] = [];
+  const points = new Map<MapId, { button: HTMLButtonElement; count: HTMLElement }>();
+  const before = (id: string) => EDGES.filter(([, b]) => b === id).map(([a]) => NODES[a].name);
+  for (const [id, n] of Object.entries(NODES)) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "world-point";
-    button.style.left = pct(at.x, W);
-    button.style.top = pct(at.y, H);
     const icon = document.createElement("span");
     icon.className = "world-icon";
-    icon.innerHTML = icons[id];
     const name = document.createElement("span");
     name.className = "world-name";
-    name.textContent = MAPS[id].name;
-    const count = document.createElement("span");
-    count.className = "world-count";
-    count.hidden = true;
-    icon.append(count);
+    if (n.map) {
+      const mapId = n.map;
+      // Cenário que é bifurcação (a Caverna da Travessia) leva a placa também.
+      button.className = `world-point${n.fork ? " fork" : ""}`;
+      icon.innerHTML = icons[mapId];
+      name.textContent = MAPS[mapId].name;
+      const count = document.createElement("span");
+      count.className = "world-count";
+      count.hidden = true;
+      icon.append(count);
+      button.onclick = () => onPoint(mapId);
+      points.set(mapId, { button, count });
+    } else {
+      button.className = `world-point next${n.fork ? " fork" : ""}${n.final ? " final" : ""}`;
+      icon.textContent = n.final ? "🏰" : String(n.step);
+      name.textContent = n.name;
+      button.setAttribute("aria-label", `${n.step}. ${n.name}${n.fork ? ", bifurcação" : ""}: ainda fechado`);
+      button.onclick = () => {
+        const prev = before(id);
+        onInfo(`${n.step} · ${n.name} (${n.area})${n.fork ? `: aqui o caminho se divide, ${n.fork}` : ""}. Abre depois de ${prev.join(" ou ")}.`);
+      };
+    }
     button.append(icon, name);
-    button.onclick = () => onPoint(id);
-    root.append(button);
-    points.set(id, { button, count });
+    layer.append(button);
+    pins.push({ el: button, x: n.x, y: n.y });
   }
-  const hero = document.createElement("img");
+  const hero = document.createElement("div");
   hero.className = "world-hero";
-  hero.alt = "";
-  root.append(hero);
+  const sprite = document.createElement("span");
+  sprite.className = "world-hero-sprite";
+  hero.append(sprite);
+  layer.append(hero);
+  const heroPin: Pin = { el: hero, x: NODES[OPEN_CHAIN[0]].x, y: NODES[OPEN_CHAIN[0]].y };
+  pins.push(heroPin);
+  // Atalhos da câmera: voltar ao herói e ver o continente inteiro.
+  const tools = document.createElement("div");
+  tools.className = "world-tools";
+  const tool = (label: string, text: string, act: () => void) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "world-chip icon-button";
+    b.setAttribute("aria-label", label);
+    b.textContent = text;
+    b.onclick = act;
+    tools.append(b);
+  };
+  tool("Voltar ao herói", "📍", () => lookAt(heroPin.x, heroPin.y, Math.max(cam.s, 0.8), 0.5));
+  tool("Ver o continente inteiro", "⤢", () => lookAt(LAND_BOX.x + LAND_BOX.w / 2, LAND_BOX.y + LAND_BOX.h / 2, minScale(), 0.5));
+  layer.append(tools);
+
+  // --- Câmera -------------------------------------------------------------------------------------------------
+  const cam = { x: 0, y: 0, s: 1 };
+  const minScale = () => Math.min(view.clientWidth / LAND_BOX.w, view.clientHeight / LAND_BOX.h);
+  const render = () => {
+    cam.s = Math.min(MAX_SCALE, Math.max(minScale(), cam.s));
+    const vw = view.clientWidth, vh = view.clientHeight, ww = W * cam.s, wh = H * cam.s;
+    cam.x = ww <= vw ? (vw - ww) / 2 : Math.min(0, Math.max(vw - ww, cam.x));
+    cam.y = wh <= vh ? (vh - wh) / 2 : Math.min(0, Math.max(vh - wh, cam.y));
+    world.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.s})`;
+    for (const r of readable) r.t.setAttribute("font-size", Math.min(r.max, Math.max(r.min, r.px / cam.s)).toFixed(1));
+    // Longe, só os ícones (os nomes se encostariam); um pouco mais perto, só os nomes dos cenários de hoje.
+    view.classList.toggle("far", cam.s < 0.5);
+    view.classList.toggle("mid", cam.s < 0.7);
+    for (const p of pins) p.el.style.transform = `translate(${(p.x * cam.s + cam.x).toFixed(1)}px, ${(p.y * cam.s + cam.y).toFixed(1)}px)`;
+  };
+  let camAnim = 0;
+  /** Leva a câmera até (x, y) do desenho, que fica a `ax`/`ay` da tela, no zoom `s`. */
+  const lookAt = (x: number, y: number, s: number, ay: number, ms = 450) => {
+    cancelAnimationFrame(camAnim);
+    const from = { ...cam };
+    const to = { s, x: view.clientWidth / 2 - x * s, y: view.clientHeight * ay - y * s };
+    if (reducedMotion() || ms === 0) { Object.assign(cam, to); render(); return; }
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - t0) / ms), e = 1 - (1 - t) ** 3;
+      cam.s = from.s + (to.s - from.s) * e; cam.x = from.x + (to.x - from.x) * e; cam.y = from.y + (to.y - from.y) * e;
+      render();
+      if (t < 1) camAnim = requestAnimationFrame(step);
+    };
+    camAnim = requestAnimationFrame(step);
+  };
+  const zoomAt = (sx: number, sy: number, factor: number) => {
+    const s = Math.min(MAX_SCALE, Math.max(minScale(), cam.s * factor));
+    cam.x = sx - ((sx - cam.x) * s) / cam.s;
+    cam.y = sy - ((sy - cam.y) * s) / cam.s;
+    cam.s = s;
+    render();
+  };
+
+  // Arrasto com um dedo, pinça com dois; um toque que mal se mexeu continua sendo toque (clique).
+  const pointers = new Map<number, { x: number; y: number }>();
+  let moved = 0;
+  let pinch: { d: number; s: number } | null = null;
+  view.addEventListener("pointerdown", (e) => {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) moved = 0;
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: cam.s }; }
+    cancelAnimationFrame(camAnim);
+    if (walk) walk.follow = false;
+  });
+  view.addEventListener("pointermove", (e) => {
+    const p = pointers.get(e.pointerId);
+    if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (pointers.size === 1) {
+      moved += Math.abs(dx) + Math.abs(dy);
+      if (moved > 8 && !view.hasPointerCapture(e.pointerId)) { view.setPointerCapture(e.pointerId); view.classList.add("dragging"); }
+      cam.x += dx; cam.y += dy; render();
+    } else if (pointers.size === 2 && pinch) {
+      moved = 99;
+      const [a, b] = [...pointers.values()];
+      const r = view.getBoundingClientRect();
+      cam.x += dx / 2; cam.y += dy / 2;
+      zoomAt((a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top, (pinch.s * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.d)) / cam.s);
+    }
+  });
+  const up = (e: PointerEvent) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (!pointers.size) view.classList.remove("dragging");
+  };
+  view.addEventListener("pointerup", up);
+  view.addEventListener("pointercancel", up);
+  // Depois de arrastar, o clique que o navegador solta no fim não conta.
+  view.addEventListener("click", (e) => { if (moved > 8) { e.stopPropagation(); e.preventDefault(); } }, true);
+  view.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const r = view.getBoundingClientRect();
+    zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015));
+  }, { passive: false });
+  // Toque numa terra em névoa (fora dos pontos).
+  view.addEventListener("click", (e) => {
+    if ((e.target as Element).closest(".world-point")) return;
+    const r = view.getBoundingClientRect();
+    const x = (e.clientX - r.left - cam.x) / cam.s, y = (e.clientY - r.top - cam.y) / cam.s;
+    const fog = FOG.find((f) => ((x - f.x) / f.rx) ** 2 + ((y - f.y) / f.ry) ** 2 < 1);
+    if (fog) onInfo(`${fog.name}: terra não mapeada. Ainda ninguém voltou de lá.`);
+  });
+  new ResizeObserver(() => render()).observe(view);
+
+  // --- Herói e caminhada ---------------------------------------------------------------------------------------
+  // A parte aberta da trilha é uma linha só: a posição do herói é a distância andada nela, e `stops` diz onde fica
+  // cada cenário aberto.
+  const total = route.getTotalLength();
+  const stops = new Map<string, number>([[OPEN_CHAIN[0], 0]]);
+  {
+    let acc = 0;
+    for (let i = 1; i < OPEN_CHAIN.length; i++) {
+      const piece = svgEl("path", { d: EDGE_D[OPEN_CHAIN[i - 1] + OPEN_CHAIN[i]] }, over);
+      acc += piece.getTotalLength();
+      piece.remove();
+      stops.set(OPEN_CHAIN[i], Math.min(acc, total));
+    }
+  }
+  let at = 0;
+  let facing: (typeof SHEET_DIRS)[number] = "down";
+  let flip = false;
+  /** Desenha o herói na distância `s`; `heading` é o sentido da caminhada (+1 para a frente, 0 parado). */
+  const place = (s: number, heading: number) => {
+    at = s;
+    const p = route.getPointAtLength(s);
+    if (heading !== 0) {
+      const clamp = (v: number) => Math.min(total, Math.max(0, v));
+      const a = route.getPointAtLength(clamp(s - heading * 2)), b = route.getPointAtLength(clamp(s + heading * 2));
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+        facing = Math.abs(dx) > Math.abs(dy) ? "side" : dy < 0 ? "up" : "down";
+        if (Math.abs(dx) > 0.2) flip = dx > 0;
+      }
+    } else facing = "down";
+    // Perto de um ponto o herói sobe no ícone; no meio do caminho pisa na trilha.
+    const near = Math.min(...[...stops.values()].map((stop) => Math.abs(stop - s)));
+    const lift = ON_POINT_LIFT * Math.max(0, 1 - near / 34);
+    heroPin.x = p.x;
+    heroPin.y = p.y;
+    sprite.style.marginTop = `${(-HERO_PX - lift).toFixed(1)}px`;
+    const frame = SHEET_DIRS.indexOf(facing) * 3 + (heading === 0 ? 0 : STEP_FRAMES[Math.floor(s / STEP_LEN) % 4]);
+    sprite.style.backgroundPosition = `${(frame / 8) * 100}% 0`;
+    sprite.style.scale = facing === "side" && flip ? "-1 1" : "";
+  };
+  let walk: { target: MapId; to: number; ay: number; follow: boolean; raf: number } | null = null;
+  const finish = () => {
+    if (!walk) return;
+    cancelAnimationFrame(walk.raf);
+    const { to, ay, follow } = walk;
+    walk = null;
+    place(to, 0);
+    if (follow) { const p = route.getPointAtLength(to); lookAt(p.x, p.y, cam.s, ay, 0); } else render();
+  };
 
   return {
-    select(id, instant = false) {
+    select(id, { instant = false, anchor } = {}) {
       for (const [pid, p] of points) {
         p.button.classList.toggle("selected", pid === id);
         p.button.setAttribute("aria-pressed", String(pid === id));
       }
-      hero.classList.toggle("instant", instant);
-      hero.style.left = pct(WORLD_POINTS[id].x, W);
-      hero.style.top = pct(WORLD_POINTS[id].y, H);
+      if (walk) { cancelAnimationFrame(walk.raf); walk = null; }
+      const to = stops.get(NODE_OF[id]) ?? 0;
+      const n = NODES[NODE_OF[id]];
+      if (instant || reducedMotion() || Math.abs(to - at) < 0.5) {
+        place(to, 0);
+        if (anchor !== undefined) lookAt(n.x, n.y, Math.max(cam.s, 0.8), anchor, instant ? 0 : 400);
+        else render();
+        return;
+      }
+      // A câmera vai junto: chega no zoom de perto, com o ponto a `anchor` da tela.
+      const from = at, t0 = performance.now(), s0 = cam.s, s1 = Math.max(cam.s, 0.8), ay = anchor ?? 0.45;
+      const p0 = route.getPointAtLength(from);
+      const ay0 = Math.min(0.85, Math.max(0.15, (p0.y * cam.s + cam.y) / view.clientHeight));
+      walk = { target: id, to, ay, follow: anchor !== undefined, raf: 0 };
+      const step = (now: number) => {
+        if (!walk) return;
+        const t = Math.min(1, (now - t0) / WALK_MS), e = easeInOut(t);
+        place(from + (to - from) * e, Math.sign(to - from));
+        if (walk.follow) {
+          cam.s = s0 + (s1 - s0) * e;
+          cam.x = view.clientWidth / 2 - heroPin.x * cam.s;
+          cam.y = view.clientHeight * (ay0 + (ay - ay0) * e) - heroPin.y * cam.s;
+        }
+        render();
+        if (t >= 1) finish();
+        else walk.raf = requestAnimationFrame(step);
+      };
+      walk.raf = requestAnimationFrame(step);
     },
-    scrollTo(id, anchor = 0.55, smooth = false) {
-      const scroller = root.parentElement!;
-      const y = (WORLD_POINTS[id].y / H) * root.clientHeight;
-      scroller.scrollTo({ top: Math.max(0, y - scroller.clientHeight * anchor), behavior: smooth ? "smooth" : "auto" });
+    walkingTo() {
+      return walk?.target ?? null;
+    },
+    skip: finish,
+    focus(id, anchor = 0.5, smooth = false) {
+      const n = NODES[NODE_OF[id]];
+      lookAt(n.x, n.y, 0.8, anchor, smooth ? 450 : 0);
     },
     setRoomCounts(counts) {
       for (const [id, p] of points) {
@@ -224,14 +380,15 @@ export function createWorldMap(root: HTMLElement, icons: Record<MapId, string>, 
         p.button.setAttribute("aria-label", `${MAPS[id].name}${n > 0 ? `, ${n} ${n === 1 ? "sala aberta" : "salas abertas"}` : ""}`);
       }
     },
-    setHero(url) {
-      hero.src = url;
+    setHero(sheetUrl) {
+      sprite.style.backgroundImage = `url("${sheetUrl}")`;
     },
     setBossKills(bosses) {
-      BRANCHES.forEach((b, i) => {
+      for (const b of branches) {
         const open = bosses.includes(b.boss);
-        for (const el of root.querySelectorAll(`[data-branch="${i}"]`)) el.classList.toggle("open", open);
-      });
+        b.beds.classList.toggle("on", open);
+        b.ink.classList.toggle("on", open);
+      }
     },
   };
 }

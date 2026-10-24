@@ -4,7 +4,7 @@ import { MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monst
 import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
 import { makeCanvas } from "./pixels.ts";
 import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
-import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroSheet, type HeroDir } from "./heroes.ts";
+import { HERO_DIRS, HERO_FRAMES, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { wallCap, wallFace } from "./walls.ts";
@@ -136,9 +136,11 @@ export const heroIdleFrame = (dir: HeroDir) => HERO_DIRS.indexOf(dir) * HERO_FRA
 export function heroArt(scene: Phaser.Scene, classId: ClassId, outfit: Outfit = NO_OUTFIT) {
   const key = heroTexture(classId, outfit);
   if (scene.textures.exists(key)) return key;
-  const texture = scene.textures.addCanvas(key, heroSheet(classId, outfit))!;
+  const sheet = heroSheet(classId, outfit);
+  const size = sheet.height;
+  const texture = scene.textures.addCanvas(key, sheet)!;
   for (let i = 0; i < HERO_DIRS.length * HERO_FRAMES; i++) {
-    texture.add(i, 0, i * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE);
+    texture.add(i, 0, i * size, 0, size, size);
   }
   HERO_DIRS.forEach((dir) => {
     const first = heroIdleFrame(dir);

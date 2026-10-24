@@ -306,18 +306,26 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 |---|---|---|
 | ⚔️ Fúria | +15% de dano | 3 |
 | ❤️ Vida | +18% de vida máxima | 3 |
-| 🛡️ Pedra | +4 de armadura | 3 |
-| 👟 Vento | +8% de velocidade | 3 |
+| 🪨 Pedra | +4 de armadura | 3 |
+| 👟 Vento | +12% de velocidade | 3 |
 | 💧 Arcana | +20% de mana máxima e +1% de mana por segundo | 3 |
 | 🩸 Sangue | cura 5% do dano causado | 3 |
 | ⏳ Tempo | recarga das magias 12% menor | 3 |
-| 💗 Troll | +1,5% de vida por segundo | 3 |
+| 💗 Troll | +2% de vida por segundo | 3 |
 | ⚡ Relâmpago | o Relâmpago (Feiticeiro) vira opção no slot 1 | 1 |
 | 🛡️ Fé | o Escudo da Fé (Cavaleiro) vira opção no slot 1 | 1 |
 | ☄️ Meteoro | o Meteoro (Feiticeiro) vira opção no slot 2 | 1 |
 | ☀️ Aurora | a Luz Curativa (Paladino) vira opção no slot 2 | 1 |
+| 🐎 Investida | a Investida (Cavaleiro) vira opção no slot 1 | 1 |
+| 🚩 Estandarte | o Estandarte de Guerra (Cavaleiro) vira opção no slot 2 | 1 |
+| 🤸 Rolamento | o Rolamento (Paladino) vira opção no slot 1 | 1 |
+| 🎯 Caçador | a Marca do Caçador (Paladino) vira opção no slot 1 | 1 |
+| 💨 Névoa | o Passo Nebuloso (Feiticeiro) vira opção no slot 1 | 1 |
+| 🌿 Bosque | a Bênção da Floresta (Druida) vira opção no slot 1 | 1 |
+| 🐺 Lobo | o Lobo Espiritual (Druida) vira opção no slot 1 | 1 |
+| 🦠 Peste | a Nuvem Venenosa (Druida) vira opção no slot 2 | 1 |
 
-- **Runas de magia:** a magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
+- **Runas de magia:** 3 de cada classe (mobilidade, cura, invocação e apoio valem mais emprestadas), cerca de 1 em cada 3 runas sorteadas. A magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
   que a magia já tem, se for da própria classe; magia de outra classe não ganha XP de uso). Magia de outra classe custa no máximo **40% da mana máxima** do herói
   (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
 
@@ -325,8 +333,10 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 
 Código em `apps/client/src/lobby.ts` e `main.ts`.
 
-1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele:
-   **Jogar sozinho**, **Criar sala** (com a escolha ☁️ Nuvem / 📱 Meu aparelho) e as salas abertas daquele cenário.
+1. **Batalhas** (botão central do menu) abre o mapa mundi (ver "Mapa mundi"). Tocar num cenário abre a **ficha** dele,
+   baixa (menos de metade da tela, sem textos) para o mapa seguir à vista: nome, região, etiquetas curtas
+   (dificuldade ★, ⏱ tempo, 👤/👥 jogadores, ☠ boss), **Jogar sozinho** e **Criar sala** lado a lado, a escolha
+   "Sala em ☁️ Nuvem / 📱 Meu aparelho" e, só quando houver, as salas abertas daquele cenário.
    O botão **Salas abertas · N**, no alto do mapa, lista as salas de todos os cenários (líder, cenário e vagas).
 2. Criar ou entrar numa sala leva à **sala de espera**: 4 vagas (`MAX_PARTY_SIZE`), cada uma com retrato, nome e classe
    de quem entrou (o líder primeiro, com 👑); as vagas livres ficam tracejadas, "aguardando jogador".
@@ -388,23 +398,39 @@ então funcionam com o servidor do jogo dormindo.
 
 ## Mapa mundi
 
-A tela de **Batalhas** é o mapa do mundo de **Kosaradius**, desenhado como um pergaminho de D&D: um planeta quase todo
-mar, com continentes, ilhas e terras em névoa. Código em `apps/client/src/worldMap.ts`; plano completo (história,
-fases, desbloqueio) em `docs/MAPA_MUNDI_PLANO.md`.
+A tela de **Batalhas** é a carta de **Verdemar**, o continente da campanha no mundo de **Kosaradius**, desenhada como
+um pergaminho de D&D. Código em `apps/client/src/worldMap.ts` (câmera, trilhas, nomes, pontos, herói) e
+`apps/client/src/world/verdemar.ts` (catálogo: cenários, trilhas, nomes); plano completo (história, fases, desbloqueio)
+em `docs/MAPA_MUNDI_PLANO.md`.
 
-- **Mobile:** o mapa rola só na vertical e abre já rolado no último cenário escolhido, com o herói da classe em pé em
-  cima dele. O nome do mundo aparece em marca d'água laranja, em arco, no mar.
-- **Pontos:** um por cenário, na ordem da trilha: 🐸 Pântano do Kosaradius (Verdemar) → 🏚️ Cripta (serra de Verdemar)
-  → 🏜️ Mar de Areia (Solária) → 🕳️ Caverna da Travessia (Ilha da Travessia) → bifurcação: a oeste 🌿 Pântano das
-  Ruínas (Arquipélago Afundado), a leste a Cidadela Caída (névoa).
-- **Bifurcação da Travessia:** cada lado tem o nome do boss do covil (Basilisco a oeste, Observador a leste). O
-  caminho fica pontilhado até a classe escolhida vencer aquele boss; depois, tracejado em vermelho (liberado). O
-  cliente lê `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual:
-  o bloqueio de verdade vem com a fase 3 do plano. Cada ponto mostra o selo 👥 N quando
-  tem salas abertas. Tocar num ponto leva o herói até ele (~1 s) e abre a ficha.
-- **Névoa:** Gelo de Hrimfal, Ilha de Cinza e Cidadela Caída são terras ainda sem cenário; tocar só avisa.
-- **Ainda não:** todos os cenários estão abertos. O desbloqueio por boss (por classe) e a estrela por ponto vêm na
-  fase 3 do plano.
+- **Arte:** biomas pintados (floresta, colinas, deserto, ermos, charco, ruínas, campos, serra nevada), costa recortada
+  com linhas de costa, rios com pontes, lagos, vilas, torres, farol, ruínas do império, navios e monstros no mar,
+  moldura, rosa dos ventos e cartela. A arte é uma imagem pronta (`apps/client/public/mapa/verdemar.svg`), gerada por
+  sorteio com semente por `npm run mapa -w @kusa/client` (`scripts/verdemarArt.ts`); mudou o catálogo, gere de novo.
+- **Mobile:** câmera própria, **arrastar em qualquer direção e pinça** para aproximar (do continente inteiro na tela a
+  1,8×). Abre perto, no último cenário escolhido, com o herói da classe em pé em cima dele. 📍 volta ao herói e ⤢
+  mostra o continente inteiro. Os pontos e o herói têm o mesmo tamanho na tela em qualquer zoom; de longe, os nomes
+  pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Classes, Grimório, Batalhas,
+  Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba.
+- **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
+  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
+  vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
+  **Cidadela Caída**.
+- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
+  Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
+  Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
+- **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
+  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
+  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). O cliente lê
+  `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual: o bloqueio de
+  verdade vem com a fase 3 do plano.
+- **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
+  pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
+  anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
+  (`prefers-reduced-motion`), o herói só troca de ponto.
+- **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
+- **Ainda não:** os 5 cenários de hoje estão abertos e os outros 13 ainda não existem. O desbloqueio por boss (por
+  classe) e a estrela por ponto vêm na fase 3 do plano.
 
 ## Mapas
 
@@ -517,8 +543,8 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 ### Caverna da Travessia
 
-- **Onde:** na Ilha da Travessia, entre Solária e o Arquipélago Afundado: túneis por baixo do mar. É o ponto onde a
-  trilha do mapa mundi se bifurca. **Dificuldade 4 (★★★★), o mapa mais difícil do jogo**, 10 min, até 4 jogadores.
+- **Onde:** nos Campos de Kusa, na etapa 5 da campanha de Verdemar (o ponto que era a Encruzilhada), logo depois do
+  Pântano das Ruínas: túneis por baixo dos campos, onde a trilha se divide entre a floresta e o deserto. **Dificuldade 4 (★★★★), o mapa mais difícil do jogo**, 10 min, até 4 jogadores.
 - **Toda subterrânea, com o celular na vertical** (`generateCavern` em `dungeon.ts`): a câmara de chegada (com o
   portal de fuga) fica embaixo, no meio. Acima dela, o **tronco**: 2 zonas de aquecimento (todo mundo começa no
   nível 1). Dali a caverna se bifurca em dois túneis separados por uma espinha de rocha, sem passagem entre eles: o
@@ -889,6 +915,12 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
 
 Cada família tem arte própria em dois formatos, e o que o personagem veste aparece nele para todos da equipe.
 Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padrão visual inspirado no Tibia (heróis, monstros e mapas): `docs/ARTE_TIBIA.md`; conceitos de cada item no padrão novo: `docs/ARTE_ITENS.md`.
+
+- **Arte nova (beta)** (opção nas Configurações, desligada de padrão; trocar recarrega o jogo): heróis e todo o
+  equipamento no padrão novo (`apps/client/src/art/proto/tibiaHero.ts`), no jogo, nos retratos e no provador. O raro
+  usa o desenho do comum. Cada combinação de classe e equipamento é desenhada uma vez ao aparecer (0,1 a 0,3 s num
+  computador; mais no celular) e fica guardada. O sprite vai 10% maior que 128 px por tile, com os pés no mesmo
+  ponto do herói antigo.
 
 - **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por família (espada, machado, arco, besta, varinha, cajado, elmo, chapéu, armadura, manto, calça, botas, escudo), na cor do material; as vestes arcanas usam tecido (linho, lã, seda rúnica, mithral, seda de dragão), e varinhas e cajados têm uma gema por nível. Raros e mágicos levam uma gema azul ou roxa no canto (`apps/client/src/art/items.ts`).
 - **Vestido no herói** (`apps/client/src/art/hero/`): **cada item tem o seu desenho, igual em qualquer classe**.
