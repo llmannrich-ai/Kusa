@@ -94,7 +94,7 @@ export function renderRules(root: HTMLElement) {
       "Magias de alvo: segure o botão, arraste para mirar e solte para lançar. Voltar o dedo para o botão cancela. Um toque rápido lança no alvo automático.",
       "Poções: botões ❤️ e 💧 ao lado das magias.",
       "Bag: toque na fileira embaixo do loot para ver, equipar ou largar itens sem pausar a hunt.",
-      "Minimapa: toque nele para ver o mapa inteiro.",
+      "Minimapa: toque nele para ver o mapa inteiro. A bússola em volta de você aponta para o boss (no deserto, para a caverna dele) e, depois que ele cai, para o portal do boss.",
     ])),
 
     section("🗺️ Mapas e tempo", false,

@@ -532,6 +532,9 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - A dungeon é semi-linear: monstros fracos na entrada, ficando mais fortes conforme a equipe se aprofunda.
 - Baús no meio da dungeon trazem itens ou upgrades aleatórios poderosos, possivelmente ao matar mini-bosses.
 - No centro fica o boss final do tipo de mapa.
+- **Bússola no minimapa:** uma agulha gira em volta do jogador e aponta para a sala do boss; no Mar de Areia, da
+  superfície, aponta para a boca da caverna que leva até ele (mesmo antes de a boca ser vista). Depois que o boss
+  morre, aponta para o portal do boss. Some quando o jogador já está na sala do boss (ou em cima do portal).
 - Objetivo: sair com o máximo de loot, que vira gold para os upgrades permanentes.
 
 ### Melhorias de nível
