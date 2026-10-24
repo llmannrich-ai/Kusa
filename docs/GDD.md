@@ -385,6 +385,7 @@ recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
+| 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 8 campinas e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
 
@@ -475,11 +476,49 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
   Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
+### Pântano do Kosaradius
+
+- **Para jogar sozinho e mais fácil:** o mapa aceita 1 jogador só (`MapDef.maxParty`; bots contam), então não há
+  "Criar sala" nele, só "Jogar sozinho". É o maior mapa (128×128) e o mais longo (10 min): mais monstros que os
+  outros, mais níveis e um boss no fim.
+- **O clã do brejo:** orcs e ogros em **9 zonas** do caminho em arco (cada uma mais forte), **8 campinas** com
+  monstros extras, mini-bosses nas **clareiras dos baús** e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**.
+  Os monstros são mais fracos que os da Cripta na base (o ganho de 12% por zona dobra os do fim), em bandos maiores:
+  o mapa inteiro tem cerca de 61 monstros e 7.200 de XP (a Cripta, 23 e 2.800), então quem limpa boa parte chega
+  no Rei perto do nível 12. Teto de loot da hunt solo: 2.500.
+- **Arte e animação próprias** (`art/rig.ts`, `art/marshMonsters.ts`, `art/ogreKing.ts`): cada monstro é montado de
+  peças com volume (membros em cápsula, tronco, barriga, cabeça) postas por ângulos de articulação, então todos
+  têm quadros de **parado** (respirando), **andando** (passo no ritmo do monstro; os ogros com passo pesado),
+  **golpe** (preparo, golpe, fim, volta) e **especial** (rugido ou cajado no alto), tocados pelo cliente
+  (`MonsterArt.anim`). Orcs em 32 px, ogros em 40 e 48 px, o Rei em quadros de 112 px (corpo de 2,5 tiles).
+- **Floresta alagada:** mata fechada na borda; por cima, lagoas grandes e poças, ilhas de mata fechada, troncos
+  caídos e muitas árvores soltas, algumas de pé dentro da água. **Passarelas de madeira** cruzam algumas lagoas em
+  linha reta (atalho; às vezes levam a uma ilha). A clareira do boss é um círculo aberto cercado por um anel de
+  ciprestes, com 4 entradas largas. As clareiras dos baús são cercadas de troncos caídos, com 2 passagens. Obstáculo
+  que fecharia a passagem até uma zona, campina, clareira ou ao centro é descartado. **Árvore solta** é um tile de
+  mata sem mata nos 4 lados; mata encostada em mata é **mata fechada**. As duas bloqueiam passo e visão; a água,
+  só o passo; os troncos caídos (pedra), passo e visão.
+- **Visual** (só no cliente, `apps/client/src/marshMap.ts`, com toda a arte própria em `art/marshDecor.ts`, sem
+  pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
+  torrões, água escura cor de chá (rasa e funda) com lodo e lentilha-d'água na margem; capim invadindo a lama com
+  quinas arredondadas. A **mata fechada** é uma copa contínua de tufos (textura de 3×3 tiles, sem emenda) cuja beira
+  recua com borda recortada; do lado sul ela sobe e mostra a sombra, os troncos e a barba-de-velho pendurada. As
+  **árvores soltas** são de 4 espécies: **cipreste-calvo** (pé alargado, copa em camadas achatadas, barba-de-velho;
+  na água, com os "joelhos" saindo em volta), **salgueiro-chorão** (cortina de ramos até perto do chão),
+  **mangue** (raízes em arco) e **árvore morta** (galhos pelados com barba-de-velho); tronco e copa separados, com
+  variação de tom e tamanho, sombra no chão, copa que balança e fica transparente com o jogador embaixo; no meio da
+  mata fechada, copas mais altas dão volume. Passarelas de tábuas com pregos e lodo; troncos caídos com musgo, anéis
+  na ponta e orelhas-de-pau; tocos e pedras com musgo. Enfeites: taboas, juncos e íris amarela na margem, tiririca
+  em manchas pelo campo, samambaias, cogumelos, plantas-jarro, raízes, folhas caídas, ossadas, poças e pegadas de
+  garça na lama, vitórias-régias, lírios e galhos boiando; na clareira do boss, um círculo de cogumelos brancos.
+  Ambiente: vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas de gás subindo da água. Como nos
+  outros mapas, só os sprites perto da câmera são desenhados.
+
 ## Partida (hunt)
 
-- Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto.
+- Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto (o Pântano do Kosaradius é só para 1).
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano, 6 min no Mar de Areia). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;
@@ -552,6 +591,9 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 - **Papéis:** bruto, escaramuçador (bate e recua, investe), artilheiro (fica a 3–5 tiles e atira; recua se colarem),
   controlador (prende, puxa, paralisa), líder (aura nos aliados), enxame (vem em grupo), emboscador (camuflado até
   atacar) e sentinela (lento, muita vida).
+- **Monstros chamados não rendem nada:** quem nasce de uma habilidade de outro monstro (Chamado do Clã, Rugido do
+  Rei, Praga de Escaravelhos) não dá XP, loot, item nem poção ao morrer. Sem isso, bastava ficar ao lado de quem chama
+  para subir de nível sem fim.
 - **Habilidades sem aviso:** cada monstro tem até 3 habilidades, em ordem de prioridade. Saem na hora, sempre que a
   recarga deixa e o alvo está ao alcance, e a recarga varia ±30% (a "Recarga 5–6" do D&D): não dá para decorar o
   ritmo. O nome sobe sobre o monstro, ele brilha na cor da habilidade e o efeito cobre a área. A primeira habilidade
@@ -619,6 +661,27 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
 | **Hidra do pântano** (boss) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
 | **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
+
+### Pântano do Kosaradius (★1)
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Orc batedor | escaramuçador (bando de 2–3) | faca e tanga · Fuga Ágil (fura e pula para trás) |
+| Orc do Brejo | bruto | machadinha e escudo de tábua |
+| Orc lanceiro | sentinela | lança de mangue: acerta a 2 tiles |
+| Orc arqueiro | artilheiro | arco de osso, alcance 5 · recua se alguém chega a 3 |
+| Orc xamã | controlador | máscara de caveira de sapo, cajado · Lama Agarrada (prende 1,2 s, de longe) |
+| Orc berserker | bruto | dois machados, pintura vermelha · Agressivo (salta) · Rompante (ferido, bate 40% mais rápido) |
+| Orc capitão | líder | elmo e estandarte · Comando (orcs perto batem 15% mais forte e mais rápido) |
+| Ogro jovem | bruto | porrete · Pancada (1,8× e empurra) |
+| **Ogro do Brejo** (mini-boss) | bruto | porrete de cravos · Pisão Sísmico (em volta, deixa lento) · Arremesso de Pedra |
+| **Ogro Xamã** (mini-boss) | controlador | Chamado do Clã (chama 2 Orcs do Brejo) · Maldição do Brejo (área: lento e envenena) |
+| **Chefe de Guerra Orc** (mini-boss) | líder | armadura de placas e cutelo · Investida · Golpe Giratório · Comando |
+| **Grumak, o Rei-Ogro** (boss) | bruto | coroa de ferro torta e um tronco de porrete (alcance 2) · Esmagar (2,2× e atordoa 1 s) · Pisão do Pântano · Investida do Rei · Tronco Arremessado · com metade da vida, Rugido do Rei (chama 2 Orcs do Brejo, uma vez) · abaixo de 30%, frenesi |
+
+No simulador de duelo (herói sozinho, só ataque básico), os orcs comuns ficam entre o Goblin e o Esqueleto da
+Cripta, o Ogro jovem perto do Orc guerreiro, os mini-bosses abaixo do Ogro da Cripta, e o Rei-Ogro (herói nível
+12) dura de 10 a 15 s contra o herói, contra 4 a 7 s do Dragão jovem (herói nível 6).
 
 ## Ataques e magias (protótipo)
 

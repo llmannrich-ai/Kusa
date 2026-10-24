@@ -11,6 +11,7 @@ import {
   difficultyStars,
   itemColor,
   mapIdOf,
+  partySize,
   xpForLevel,
   type JoinOptions,
   type RunEndedMessage,
@@ -137,7 +138,10 @@ function setEntering(on: boolean) {
   create.textContent = !on
     ? `Criar sala · ${MAPS[createMapId()].name} · ${server.icon} ${server.name}`
     : createServer() === "cloud" ? "Conectando… (o servidor pode levar 1 min para acordar)" : "Conectando…";
-  create.disabled = on;
+  // Mapa só para 1 jogador: não tem sala para amigos, só o "Jogar sozinho".
+  const soloOnly = partySize(MAPS[createMapId()]) === 1;
+  if (soloOnly && !on) create.textContent = "Criar sala · este cenário é só para jogar sozinho";
+  create.disabled = on || soloOnly;
   const solo = $<HTMLButtonElement>("solo");
   solo.textContent = `Jogar sozinho · ${MAPS[createMapId()].name}`;
   solo.disabled = on;

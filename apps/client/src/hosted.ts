@@ -1,8 +1,10 @@
 import { Encoder, Reflection, type Decoder } from "@colyseus/schema";
 import {
-  MAX_PARTY_SIZE,
+  MAPS,
   MSG,
   SERVER_TICK_MS,
+  mapIdOf,
+  partySize,
   type ClassId,
   type MapId,
   type RunEndedMessage,
@@ -131,7 +133,7 @@ class HostRuntime {
   attach(sessionId: string, sink: Sink, recruit: Recruit | null) {
     if (recruit) {
       if (this.state.phase !== "lobby") return sink.down({ k: "refuse", reason: "a hunt já começou" });
-      if (this.state.players.size >= MAX_PARTY_SIZE) return sink.down({ k: "refuse", reason: "a sala está cheia" });
+      if (this.state.players.size >= this.hunt.partySize()) return sink.down({ k: "refuse", reason: "a sala está cheia" });
       this.hunt.join(sessionId, recruit);
       this.roster.push(sessionId);
     } else if (!this.state.players.has(sessionId)) {
@@ -500,7 +502,7 @@ class HostedSession {
     const leader = runtime.state.players.get(runtime.state.leaderId);
     void this.listing.update({
       roomId: this.roomId, hostPeer: this.myId, leader: leader?.name ?? this.me.name, mapId: runtime.state.mapId as MapId,
-      clients: runtime.state.players.size, maxClients: MAX_PARTY_SIZE, locked: runtime.state.phase !== "lobby",
+      clients: runtime.state.players.size, maxClients: partySize(MAPS[mapIdOf(runtime.state.mapId)]), locked: runtime.state.phase !== "lobby",
     });
   }
 
