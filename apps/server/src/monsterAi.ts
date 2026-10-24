@@ -66,8 +66,6 @@ export interface Brain {
   nextAttackAt: number;
   /** sessionId do jogador perseguido (ou id da criatura invocada). */
   targetId: string | null;
-  /** Quem acertou o monstro: dividem a XP da morte. */
-  participants: Set<string>;
   /** Baú liberado quando este mini-boss morre. */
   chestId?: string;
   /** Preso por raízes até este momento (ms). */
@@ -159,7 +157,7 @@ export class MonsterAi {
     const heads = traits.heads?.start ?? 0;
     return {
       def, traits, elements: {}, speed: def.speed, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
-      nextMoveAt: 0, nextAttackAt: 0, targetId: null, participants: new Set(), rootedUntil: 0, stunnedUntil: 0, slowUntil: 0, slowPct: 0,
+      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, slowUntil: 0, slowPct: 0,
       markUntil: 0, markPct: 0, dot: null, tauntedBy: null, abilityReadyAt: {}, phased: new Set(), used: new Set(), enraged: false,
       invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
       regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,

@@ -517,17 +517,15 @@ export const RARITY_CHANCES: Record<MonsterRank, { rare: number; magic: number }
 
 /**
  * Sorteia o item de um drop. Salas mais fundas e monstros mais fortes dão material melhor e mais raro.
- * O baú usa o rank de mini-boss com um nível a mais. Com `classes` (as da equipe), só cai o que alguém
- * da equipe pode usar. `random` devolve [0, 1).
+ * O baú usa o rank de mini-boss com um nível a mais. Cai qualquer família, sem olhar a classe de quem está na
+ * hunt: item que ninguém da equipe usa é comum (vai para a bag e se vende). `random` devolve [0, 1).
  */
-export function rollItem(rank: MonsterRank, depth: number, random: () => number, extraTier = 0, classes: readonly ClassId[] = []): string {
+export function rollItem(rank: MonsterRank, depth: number, random: () => number, extraTier = 0): string {
   const raw = 1 + Math.floor(Math.max(0, depth) / 2) + RANK_TIER_BONUS[rank] + extraTier
     + (random() < LUCKY_TIER_CHANCE ? 1 : 0);
   const tier = Math.max(1, Math.min(MAX_TIER, raw)) as ItemTier;
   const slot = ITEM_SLOTS[Math.floor(random() * ITEM_SLOTS.length)];
-  const all = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot);
-  const usable = all.filter((f) => !f.classes || classes.length === 0 || f.classes.some((c) => classes.includes(c)));
-  const families = usable.length > 0 ? usable : all;
+  const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot);
   const family = families[Math.floor(random() * families.length)];
   const roll = random();
   const chance = RARITY_CHANCES[rank];

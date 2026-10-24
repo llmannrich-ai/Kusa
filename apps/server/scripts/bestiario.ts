@@ -154,7 +154,7 @@ function check(ok: boolean, what: string) {
   // Baú: o item sai sempre, mesmo no mapa que corta os drops.
   for (let i = 0; i < 20; i++) {
     const before = state.items.size;
-    any.chestReward("h", state.players.get("h"), 5, 5, 0);
+    any.chestReward("h", 5, 5, 0);
     const got = [...state.items.values()].slice(before).filter((it) => !it.itemId.startsWith("potion-")).length;
     check(got === 1, `baú devia dar sempre 1 item (deu ${got})`);
     state.items.clear();

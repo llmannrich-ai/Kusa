@@ -870,9 +870,6 @@ export const COMMON_DAMAGE_BONUS = 0.2;
 /** Vida extra dos monstros comuns (mini-bosses e bosses ficam de fora). */
 export const COMMON_HP_BONUS = 0.25;
 
-/** XP extra por participante além do primeiro, antes da divisão (incentiva jogar em equipe). */
-export const PARTY_XP_BONUS = 0.2;
-
 export interface MonsterStats {
   maxHp: number;
   damage: number;
@@ -895,8 +892,8 @@ export function monsterStats(kind: MonsterKind, depth: number): MonsterStats {
   };
 }
 
-/** XP que cada participante recebe pela morte de um monstro. */
-export function xpShare(totalXp: number, participants: number): number {
-  if (participants <= 0) return 0;
-  return Math.max(1, Math.round((totalXp * (1 + PARTY_XP_BONUS * (participants - 1))) / participants));
+/** Parte de cada herói da equipe na XP e no gold de uma morte ou baú: partes iguais (100 com 4 heróis dão 25 a cada um). */
+export function teamShare(total: number, team: number): number {
+  if (team <= 0) return 0;
+  return Math.max(1, Math.round(total / team));
 }

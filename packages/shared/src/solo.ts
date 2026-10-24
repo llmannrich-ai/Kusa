@@ -1,3 +1,4 @@
+import { MAX_PARTY_SIZE } from "./constants.ts";
 import type { MapId } from "./maps.ts";
 import type { SpellXp, TalentRanks } from "./talents.ts";
 
@@ -20,6 +21,11 @@ export const SOLO_LIMITS = {
   lateResultHours: 24,
   /** Itens novos (que não entraram com o jogador) no máximo por hunt: equipamento, runas e a bag cheia. */
   maxNewItems: 15,
+  /**
+   * Runas novas além das dos bosses anotados na hunt: a runa passa de mão em mão na equipe (até 3 colegas podem
+   * largar a sua para o mesmo herói). `finish_solo_run` aceita no máximo uma por boss anotado mais estas.
+   */
+  passedRunes: MAX_PARTY_SIZE - 1,
   /** Valor máximo (gold + preço de venda dos itens novos) que o solo rende em 24 horas. */
   dailyValue: 12_000,
   /**

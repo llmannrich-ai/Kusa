@@ -26,6 +26,8 @@ export interface ArenaOptions {
   monsterHp?: number;
   /** Põe o herói no centro de uma sala aberta, longe do portal (padrão). Com false, fica onde nasceu. */
   openRoom?: boolean;
+  /** Outros heróis da equipe (ids `h2`, `h3`...), postos ao lado do herói; `true` entra como bot. */
+  allies?: { classId: ClassId; bot?: boolean }[];
 }
 
 /** Id do herói nas arenas. */
@@ -33,7 +35,7 @@ export const HERO = "h";
 
 /** Hunt com um herói e nenhum monstro (os do mapa saem). */
 export function arena(options: ArenaOptions = {}) {
-  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true } = options;
+  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [] } = options;
   let clock = 0;
   const timers: { at: number; fn: () => void }[] = [];
   const damage: DamageMessage[] = [];
@@ -64,6 +66,11 @@ export function arena(options: ArenaOptions = {}) {
   const state = new DungeonState();
   const hunt = new Hunt(state, host, { mapId, seed, startLevel, allSpells, monsterHp, random: createRng(seed).next });
   hunt.join(HERO, { name: "Teste", classId, talents: {}, spellXp: {} });
+  allies.forEach((ally, i) => {
+    const id = `h${i + 2}`;
+    hunt.join(id, { name: `Aliado ${i + 2}`, classId: ally.classId, talents: {}, spellXp: {} });
+    if (ally.bot) state.players.get(id)!.bot = true;
+  });
   hunt.start(HERO);
   const any = hunt as any;
   state.monsters.clear();
@@ -75,6 +82,11 @@ export function arena(options: ArenaOptions = {}) {
     p.x = spot.x;
     p.y = spot.y;
   }
+  allies.forEach((_, i) => {
+    const ally = state.players.get(`h${i + 2}`)!;
+    ally.x = p.x + i + 1;
+    ally.y = p.y;
+  });
 
   /** Tile com espaço livre em volta (7×7 sem parede nem portal), longe do portal: o centro da maior sala, se der. */
   function openSpot() {
@@ -181,7 +193,7 @@ export function arena(options: ArenaOptions = {}) {
   }
 
   const brain = (m: Monster) => any.brains.get(m.id);
-  const seat = () => any.seats.get(HERO);
+  const seat = (id = HERO) => any.seats.get(id);
   const now = () => clock;
   return {
     hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices,
