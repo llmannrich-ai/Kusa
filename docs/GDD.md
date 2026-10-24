@@ -488,7 +488,10 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   zona, 10 a 15 por mapa) e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**. Os monstros são mais fracos que
   os da Cripta na base (o ganho de 12% por zona dobra os do fim): o mapa inteiro tem cerca de 100 monstros, 19
   mini-bosses e 14.700 de XP (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
-  nível 12. Teto de loot da hunt solo: 5.000. Monstro longe da tela não é desenhado nem animado no cliente.
+  nível 12. Monstro longe da tela não é desenhado nem animado no cliente.
+- **Loot por monstro menor:** com tantos monstros, o mapa paga 35% do valor de loot dos monstros e baús e 35% dos
+  drops de item e poção (`MapDef.lootScale` e `dropScale`; o boss fica de fora e larga tudo). O loot máximo de uma
+  hunt fica em ~1.650 (entre o Mar de Areia e o Pântano das Ruínas). Teto de loot da hunt solo: 1.900.
 - **Arte e animação próprias** (`art/rig.ts`, `art/marshMonsters.ts`, `art/ogreKing.ts`): cada monstro é montado de
   peças com volume (membros em cápsula, tronco, barriga, cabeça) postas por ângulos de articulação, então todos
   têm quadros de **parado** (respirando), **andando** (passo no ritmo do monstro; os ogros com passo pesado),
