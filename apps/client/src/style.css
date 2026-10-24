@@ -1231,7 +1231,7 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-error { z-index: 4; }
 
 /* Ficha do cenário e lista de salas: folhas que sobem de baixo, no alcance do polegar. */
-.sheet {
+.world-sheet {
   position: absolute;
   left: 0;
   right: 0;
@@ -1246,15 +1246,15 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -4px 0 rgba(74, 52, 32, 0.35), 0 -20px 40px rgba(32, 22, 12, 0.35);
 }
-.sheet h2 { margin: 0; color: #2b1d10; font-variant: small-caps; }
-.sheet .hint { margin: 8px 0 0; font-size: 13px; color: #5a4128; text-align: center; }
-.sheet-close { position: absolute; top: 6px; right: 6px; height: 44px; color: #2b1d10; background: none; border: 0; }
-.sheet-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
-.sheet-head .map-icon, .sheet-head .map-icon svg { width: 60px; height: 60px; }
-.sheet-head small { font-style: italic; color: #5a4128; }
-.sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 14px; }
-.sheet-chips li { padding: 4px 10px; background: #e6d6ae; border-radius: 12px; }
-.sheet-label { margin: 16px 0 8px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #5a4128; }
+.world-sheet h2 { margin: 0; color: #2b1d10; font-variant: small-caps; }
+.world-sheet .hint { margin: 8px 0 0; font-size: 13px; color: #5a4128; text-align: center; }
+.world-sheet .sheet-close { position: absolute; top: 6px; right: 6px; height: 44px; color: #2b1d10; background: none; border: 0; }
+.world-sheet .sheet-head { display: flex; align-items: center; gap: 12px; padding-right: 44px; }
+.world-sheet .sheet-head .map-icon, .world-sheet .sheet-head .map-icon svg { width: 60px; height: 60px; }
+.world-sheet .sheet-head small { font-style: italic; color: #5a4128; }
+.world-sheet .sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.world-sheet .sheet-chips li { padding: 4px 10px; background: #e6d6ae; border-radius: 12px; }
+.world-sheet .sheet-label { margin: 16px 0 8px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #5a4128; }
 /* Ficha do cenário: baixa (só o básico), para o mapa continuar à vista em cima. */
 #map-sheet { padding: 12px 14px max(14px, env(safe-area-inset-bottom)); }
 #map-sheet .sheet-head { gap: 10px; }
@@ -1274,10 +1274,10 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 #map-sheet { max-height: 50%; }
 #map-sheet .sheet-label { margin: 10px 0 6px; }
 #map-sheet .room { min-height: 44px; padding: 6px 12px; }
-.sheet button { color: #2b1d10; background: #ebdcb8; border: 2px solid var(--ink); border-radius: 8px; min-height: 44px; }
-.sheet button.primary { color: var(--parchment); background: #3b2a1a; border-color: #3b2a1a; font-weight: bold; min-height: 52px; }
-.sheet .sheet-close { border: 0; background: none; }
-.sheet .server-card { background: #ebdcb8; }
-.sheet .server-card.selected { background: #e2c98a; border-color: #c8962e; }
-.sheet .server-card small, .sheet .room small { color: #5a4128; }
-.sheet .room-join { color: #7a4a1c; font-weight: bold; }
+.world-sheet button { color: #2b1d10; background: #ebdcb8; border: 2px solid var(--ink); border-radius: 8px; min-height: 44px; }
+.world-sheet button.primary { color: var(--parchment); background: #3b2a1a; border-color: #3b2a1a; font-weight: bold; min-height: 52px; }
+.world-sheet .sheet-close { border: 0; background: none; }
+.world-sheet .server-card { background: #ebdcb8; }
+.world-sheet .server-card.selected { background: #e2c98a; border-color: #c8962e; }
+.world-sheet .server-card small, .world-sheet .room small { color: #5a4128; }
+.world-sheet .room-join { color: #7a4a1c; font-weight: bold; }
