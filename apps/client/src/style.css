@@ -1227,6 +1227,16 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-point.next .world-name { font-size: 13px; font-style: italic; color: #4f3820; background: rgba(243, 231, 201, 0.88); border-color: #9c8463; }
 .world-point.fork .world-icon::after { content: ""; position: absolute; right: -9px; top: -9px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--parchment); background: #7a2e22 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 17V9M10 9L5 4M10 9l5-5M5 4v3M5 4h3M15 4v3M15 4h-3' fill='none' stroke='%23f3e7c9' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center / 16px no-repeat; }
 .world-view.far .world-name, .world-view.mid .world-point.next .world-name { display: none; }
+/* Campanha: cadeado no cenário ainda fechado (desenho apagado) e estrela no de boss vencido. */
+.world-badge { position: absolute; right: -8px; bottom: -6px; display: none; place-items: center; width: 24px; height: 24px; font-size: 13px; line-height: 1; border-radius: 50%; border: 2px solid var(--parchment); }
+.world-point.locked .world-icon > svg { filter: grayscale(1) brightness(0.8); opacity: 0.65; }
+.world-point.locked .world-badge, .world-point.cleared .world-badge { display: grid; }
+.world-point.locked .world-badge { background: #3b2a1a; }
+.world-point.locked .world-badge::after { content: "🔒"; }
+.world-point.cleared:not(.locked) .world-badge { background: #c8962e; }
+.world-point.cleared:not(.locked) .world-badge::after { content: "★"; color: #fff6d8; font-size: 15px; }
+.world-point.locked .world-name { color: #6b5638; }
+.world-sheet .sheet-lock { margin: 8px 0 0; padding: 6px 10px; font-size: 13px; line-height: 1.35; color: #5a4128; background: #ead9b3; border-radius: 8px; }
 .world-tools { position: absolute; right: 12px; bottom: max(16px, env(safe-area-inset-bottom)); display: grid; gap: 8px; pointer-events: auto; }
 .world-tools .world-chip { width: 44px; height: 44px; padding: 0; font-size: 20px; }
 /* O herói fica de pé em cima do ponto e anda pela trilha em ~1 s (worldMap.ts posiciona quadro a quadro). */

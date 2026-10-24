@@ -1,4 +1,4 @@
-import { ITEMS, isRune, type ClassId, type SpellXp, type TalentRanks } from "@kusa/shared";
+import { ITEMS, MAP_IDS, isRune, type ClassId, type MapId, type SpellXp, type TalentRanks } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
 // Dados do menu: árvore de magias, itens (equipamento, cofre e bag) e gold. O navegador só lê as tabelas;
@@ -31,6 +31,25 @@ export interface Profile {
 
 /** Erro com mensagem pronta para mostrar ao jogador. */
 export class ProfileError extends Error {}
+
+/** Cenários vencidos (boss morto) por classe: abrem o seguinte da campanha (`mapUnlocked`). Sem conexão, nenhum. */
+export async function loadMapClears(): Promise<Partial<Record<ClassId, MapId[]>>> {
+  const { data, error } = await supabase.from("profile_map_clears").select("class_id, map_id");
+  if (error || !data) return {};
+  const out: Partial<Record<ClassId, MapId[]>> = {};
+  for (const row of data) {
+    if (!MAP_IDS.includes(row.map_id as MapId)) continue;
+    (out[row.class_id as ClassId] ??= []).push(row.map_id as MapId);
+  }
+  return out;
+}
+
+/** Hunt solo ou sala no aparelho: o boss morreu com este jogador na hunt (anota o cenário pela hunt aberta). */
+export async function recordSoloMapClear(runId: string | null) {
+  if (!runId) return;
+  const { error } = await supabase.rpc("record_solo_map_clear", { p_run_id: runId });
+  if (error) console.error("Falha ao anotar o cenário vencido", error);
+}
 
 export async function loadProfile(): Promise<Profile> {
   const { data: session } = await supabase.auth.getSession();

@@ -56,6 +56,11 @@ export interface WorldMapView {
   focus(id: MapId, anchor?: number, smooth?: boolean): void;
   /** Quantas salas abertas cada cenário tem (o selo 👥 do ponto). */
   setRoomCounts(counts: Partial<Record<MapId, number>>): void;
+  /**
+   * Campanha da classe escolhida: `unlocked` são os cenários abertos (os outros ganham cadeado) e `cleared` os de
+   * boss vencido (estrela). A trilha fica vermelha entre dois cenários abertos.
+   */
+  setProgress(unlocked: readonly MapId[], cleared: readonly MapId[]): void;
   /** Troca o boneco do herói: a folha de `heroSheet` da classe escolhida no menu. */
   setHero(sheetUrl: string): void;
 }
@@ -83,16 +88,16 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
   layer.className = "world-layer";
   view.replaceChildren(world, layer);
 
-  // Trilhas: as da campanha por vir, pontilhadas; a aberta, em tinta vermelha (o herói anda nela).
-  const openEdge = (a: string, b: string) => OPEN_CHAIN.includes(a) && OPEN_CHAIN.includes(b);
+  // Trilhas: pontilhadas até abrir; o trecho entre dois cenários abertos fica em tinta vermelha (`setProgress`).
+  const trails = new Map<string, { bed: SVGPathElement; line: SVGPathElement }>();
   for (const [a, b] of EDGES) {
-    if (openEdge(a, b)) continue;
-    svgEl("path", { d: EDGE_D[a + b], class: "world-trail-bed" }, over);
-    svgEl("path", { d: EDGE_D[a + b], class: "world-trail-next" }, over);
+    const bed = svgEl("path", { d: EDGE_D[a + b], class: "world-trail-bed" }, over);
+    const line = svgEl("path", { d: EDGE_D[a + b], class: "world-trail-next" }, over);
+    trails.set(a + b, { bed, line });
   }
+  // A trilha dos cenários de hoje, inteira e sem traço: o herói anda nela.
   const openD = OPEN_CHAIN.slice(1).map((b, i) => EDGE_D[OPEN_CHAIN[i] + b].replace(/^M[^C]+/, (m) => (i ? "" : m))).join("");
-  svgEl("path", { d: openD, class: "world-trail-bed open" }, over);
-  const route = svgEl("path", { d: openD, class: "world-trail-open" }, over);
+  const route = svgEl("path", { d: openD, fill: "none" }, over);
 
   // Nomes: crescem quando o zoom afasta (para seguir legíveis) até caber na curva; os pequenos somem de longe.
   const readable: { t: SVGTextElement; px: number; min: number; max: number }[] = [];
@@ -121,7 +126,7 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
   // Pontos: os cenários de hoje com o desenho deles; os da campanha por vir, numerados (com placa nas bifurcações).
   type Pin = { el: HTMLElement; x: number; y: number };
   const pins: Pin[] = [];
-  const points = new Map<MapId, { button: HTMLButtonElement; count: HTMLElement }>();
+  const points = new Map<MapId, { button: HTMLButtonElement; count: HTMLElement; name: HTMLElement }>();
   const before = (id: string) => EDGES.filter(([, b]) => b === id).map(([a]) => NODES[a].name);
   for (const [id, n] of Object.entries(NODES)) {
     const button = document.createElement("button");
@@ -139,8 +144,12 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
       count.className = "world-count";
       count.hidden = true;
       icon.append(count);
+      // Cadeado (cenário ainda fechado) e estrela (boss vencido com a classe), ligados por `setProgress`.
+      const badge = document.createElement("span");
+      badge.className = "world-badge";
+      icon.append(badge);
       button.onclick = () => onPoint(mapId);
-      points.set(mapId, { button, count });
+      points.set(mapId, { button, count, name });
     } else {
       button.className = `world-point next${n.fork ? " fork" : ""}${n.final ? " final" : ""}`;
       icon.textContent = n.final ? "🏰" : String(n.step);
@@ -155,6 +164,15 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
     layer.append(button);
     pins.push({ el: button, x: n.x, y: n.y });
   }
+  // Nome falado de cada ponto: cenário, estado na campanha e salas abertas.
+  const rooms = new Map<MapId, number>();
+  const labelPoints = () => {
+    for (const [id, p] of points) {
+      const n = rooms.get(id) ?? 0;
+      const state = p.button.classList.contains("locked") ? ", fechado" : p.button.classList.contains("cleared") ? ", boss vencido" : "";
+      p.button.setAttribute("aria-label", `${MAPS[id].name}${state}${n > 0 ? `, ${n} ${n === 1 ? "sala aberta" : "salas abertas"}` : ""}`);
+    }
+  };
   const hero = document.createElement("div");
   hero.className = "world-hero";
   const sprite = document.createElement("span");
@@ -368,8 +386,23 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
         const n = counts[id] ?? 0;
         p.count.hidden = n === 0;
         p.count.textContent = `👥 ${n}`;
-        p.button.setAttribute("aria-label", `${MAPS[id].name}${n > 0 ? `, ${n} ${n === 1 ? "sala aberta" : "salas abertas"}` : ""}`);
+        rooms.set(id, n);
       }
+      labelPoints();
+    },
+    setProgress(unlocked, cleared) {
+      for (const [id, p] of points) {
+        p.button.classList.toggle("locked", !unlocked.includes(id));
+        p.button.classList.toggle("cleared", cleared.includes(id));
+      }
+      const open = (node: string) => { const m = NODES[node].map; return !!m && unlocked.includes(m); };
+      for (const [a, b] of EDGES) {
+        const t = trails.get(a + b)!;
+        const on = open(a) && open(b);
+        t.line.setAttribute("class", on ? "world-trail-open" : "world-trail-next");
+        t.bed.classList.toggle("open", on);
+      }
+      labelPoints();
     },
     setHero(sheetUrl) {
       sprite.style.backgroundImage = `url("${sheetUrl}")`;

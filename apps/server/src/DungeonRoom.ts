@@ -31,7 +31,7 @@ import {
 import { RULES_VERSION } from "./rulesVersion.ts";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
-import { mapClears, recordMapClear, recordRun, resolveAccount, storeBag, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
+import { mapClears, recordMapClear, recordRun, resolveAccount, storeBag, supabase, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
 import { recordTelemetry } from "./telemetry.ts";
 
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
@@ -122,7 +122,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     }
     const account = await resolveAccount(options.accessToken);
     // Campanha: quem cria a sala precisa ter o cenário aberto com a classe (quem entra na sala de outro não).
-    if (this.users.size === 0) {
+    // Sem banco (modo convidado, testes) não há campanha para conferir.
+    if (supabase && this.users.size === 0) {
       const mapId = this.hunt.mapId;
       const clears = account ? await mapClears(account.userId, options.classId) : [];
       if (!mapUnlocked(clears, mapId)) {

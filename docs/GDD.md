@@ -423,8 +423,18 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
-- **Ainda não:** os 4 cenários de hoje estão abertos e os outros 14 ainda não existem. O desbloqueio por boss (por
-  classe) e a estrela por ponto vêm na fase 3 do plano.
+- **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
+  vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+  das Ruínas). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
+  Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
+  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha diz quem derrotar e onde, e os botões de
+  jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
+  (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
+  entre dois cenários abertos. Contas de antes herdaram os cenários pelas runas de boss já levadas.
+- **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
+  (`start_solo_run`, `p_guest` para quem entra na sala de outro); o servidor recusa criar sala na nuvem. O crédito é
+  gravado por `record_map_clear` (servidor) e `record_solo_map_clear` (hunt solo e sala no aparelho, cada um o seu).
+- **Ainda não:** os outros 14 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
