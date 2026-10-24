@@ -27,6 +27,7 @@ import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type A
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
 import { heroSheet } from "./art/heroes.ts";
 import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
+import { renderCatalog } from "./catalog.ts";
 import { renderHistory } from "./history.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
@@ -376,11 +377,12 @@ $("settings-back").onclick = () => {
   show("menu", true);
 };
 
-// Subpáginas das configurações: Telemetria, Histórico e Regras, para qualquer jogador logado.
+// Subpáginas das configurações: Telemetria, Histórico, Regras e Catálogo, para qualquer jogador logado.
 const SETTINGS_PAGES: Record<string, (root: HTMLElement) => void> = {
   telemetry: (root) => renderTelemetry(root),
   history: (root) => renderHistory(root),
   rules: (root) => renderRules(root),
+  catalog: (root) => renderCatalog(root),
 };
 document.querySelectorAll<HTMLButtonElement>("#settings-pages [data-page]").forEach((button) => {
   const page = button.dataset.page!;

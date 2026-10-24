@@ -505,9 +505,10 @@ export function pickupAction(itemId: string, equipped: string, bagCount: number,
 export const COMMON_DROP_CHANCE = 0.15;
 /** Quantos itens cada rank dropa com certeza (comuns usam a chance acima). */
 export const GUARANTEED_DROPS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
-const RANK_TIER_BONUS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
+/** Níveis de material a mais do drop, por rank. */
+export const RANK_TIER_BONUS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
 /** Chance de o drop vir um nível acima do esperado. */
-const LUCKY_TIER_CHANCE = 0.2;
+export const LUCKY_TIER_CHANCE = 0.2;
 /** Chance de o drop ser raro ou mágico, por rank (o resto é comum). O baú usa a do mini-boss. */
 export const RARITY_CHANCES: Record<MonsterRank, { rare: number; magic: number }> = {
   common: { rare: 0.18, magic: 0.04 },

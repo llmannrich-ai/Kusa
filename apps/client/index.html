@@ -74,6 +74,7 @@
         <button data-page="telemetry" class="setting-link"><span>📊 Telemetria<small>Números de todas as hunts: sobrevivência, mortes, magias e as suas.</small></span><b aria-hidden="true">›</b></button>
         <button data-page="history" class="setting-link"><span>🗂️ Histórico<small>Cada partida: quem jogou, personagem, desfecho, loot e penalidades.</small></span><b aria-hidden="true">›</b></button>
         <button data-page="rules" class="setting-link"><span>📜 Regras<small>Como o jogo funciona: hunt, níveis, itens e poções.</small></span><b aria-hidden="true">›</b></button>
+        <button data-page="catalog" class="setting-link"><span>📚 Catálogo<small>Todos os itens, runas e poções, e cada inimigo com a chance de cair item.</small></span><b aria-hidden="true">›</b></button>
       </nav>
       <div class="actions">
         <button id="settings-back" class="primary">Voltar</button>
@@ -106,6 +107,15 @@
       </header>
       <!-- Preenchido por rules.ts. -->
       <div id="rules-body"></div>
+    </section>
+
+    <section id="catalog" class="panel page" hidden>
+      <header class="page-top">
+        <button class="page-back icon-button" aria-label="Voltar às configurações">‹</button>
+        <h2>Catálogo</h2>
+      </header>
+      <!-- Preenchido por catalog.ts. -->
+      <div id="catalog-body"></div>
     </section>
 
     <!-- Batalhas: o mapa mundi (worldMap.ts). Tocar num ponto abre a ficha do cenário, com jogar sozinho, criar sala
