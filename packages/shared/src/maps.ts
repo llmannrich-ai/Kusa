@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
 export type MapDifficulty = 1 | 2 | 3 | 4;
@@ -195,6 +195,22 @@ export const MAPS: Record<MapId, MapDef> = {
       { boss: "basilisk", depth: 5, portalBonus: 0.5, side: "oeste" },
       { boss: "beholder", depth: 8, portalBonus: 1, side: "leste" },
     ],
+  },
+  dunes: {
+    id: "dunes", name: "Dunas Cantantes", icon: "🌬️", difficulty: 3, durationSeconds: 8 * 60,
+    description: "Solária profunda: cordilheiras de dunas que cantam com o vento, vales compridos e selas entre eles. A areia fofa no pé das dunas prende o passo. Ruínas soterradas, oásis e, no norte, a bacia das pedras cantantes. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
+  },
+  mesas: {
+    id: "mesas", name: "Mesas de Solária", icon: "🪨", difficulty: 3, durationSeconds: 8 * 60,
+    description: "Platôs de arenito em camadas cortados por cânions estreitos. Casas escavadas na rocha, poços no fundo dos vales e pilares de pedra; no norte, o anfiteatro dos platôs. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
   },
 };
 

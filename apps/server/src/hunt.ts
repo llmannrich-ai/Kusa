@@ -70,6 +70,8 @@ import {
   lineTiles,
   coneTiles,
   isWalkable,
+  isSand,
+  SAND_SPEED,
   activeSpells,
   knownSpells,
   levelForXp,
@@ -904,7 +906,8 @@ export class Hunt {
     const nx = player.x + dx;
     const ny = player.y + dy;
 
-    const stepMs = 1000 / this.moveSpeed(player, seat, now);
+    // Areia fofa (Dunas Cantantes, Mesas de Solária): o passo que entra nela demora mais.
+    const stepMs = 1000 / (this.moveSpeed(player, seat, now) * (isSand(this.dungeon, nx, ny) ? SAND_SPEED : 1));
     // Andando sem parar, o próximo passo conta da hora em que este podia sair, não de quando o tick chegou:
     // o atraso do tick não se acumula e a velocidade real fica igual à da ficha.
     const from = now - seat.nextMoveAt <= MOVE_SLACK_MS ? seat.nextMoveAt : now;
@@ -1988,8 +1991,10 @@ export class Hunt {
       return;
     }
     const diagonal = step.x !== s.x && step.y !== s.y;
-    brain.nextMoveAt = now + (1000 / brain.def.speed) * (diagonal ? Math.SQRT2 : 1);
-    s.stepMs = Math.round(1000 / brain.def.speed);
+    // Quem voa passa por cima da areia fofa.
+    const speed = brain.def.speed * (!brain.def.flies && isSand(this.dungeon, step.x, step.y) ? SAND_SPEED : 1);
+    brain.nextMoveAt = now + (1000 / speed) * (diagonal ? Math.SQRT2 : 1);
+    s.stepMs = Math.round(1000 / speed);
     s.x = step.x;
     s.y = step.y;
   }
