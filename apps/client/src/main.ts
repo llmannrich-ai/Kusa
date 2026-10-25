@@ -51,7 +51,11 @@ const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
 
 // --- Menu ---------------------------------------------------------------
 
-const hub = new Hub(() => void openRooms());
+// Batalhas com o mapa já aberto: abre a ficha do cenário onde o herói está, em vez de recarregar o mapa.
+const hub = new Hub(() => {
+  if (!$("rooms").hidden) return pickPoint(createMapId());
+  void openRooms();
+});
 let account: Account | null = null;
 
 /** O nome vale só no servidor em modo convidado; com Supabase, o servidor usa o do perfil (pelo token). */
