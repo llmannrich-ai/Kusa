@@ -282,6 +282,21 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .rule-table th, .rule-table td { padding: 6px 4px; text-align: left; vertical-align: top; border-bottom: 1px solid #3a2f27; }
 .rule-table th { color: var(--muted); font-weight: normal; font-size: 12px; }
 
+/* Catálogo (catalog.ts): busca no alto e fichas de item, runa e monstro. */
+.cat-search { width: 100%; box-sizing: border-box; margin-bottom: 10px; min-height: 44px; font-size: 16px; }
+.rule .rule { margin: 8px 12px; }
+.cat-note { margin: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.cat-group { margin: 0 12px 10px; }
+.cat-group h4 { margin: 12px 0 4px; font-size: 13px; color: var(--accent); }
+.cat-entry { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-bottom: 1px solid #3a2f27; }
+.cat-group .cat-entry { padding: 8px 0; }
+.cat-entry img { width: 32px; height: 32px; flex: none; image-rendering: pixelated; }
+.cat-entry > div { min-width: 0; }
+.cat-entry b { display: block; font-size: 14px; }
+.cat-entry small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.cat-entry p { margin: 4px 0 0; font-size: 13px; line-height: 1.4; }
+.cat-empty { text-align: center; }
+
 input, button { -webkit-user-select: text; user-select: text; }
 button { min-height: 44px; touch-action: manipulation; }
 
