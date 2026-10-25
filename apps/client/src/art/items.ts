@@ -1,5 +1,6 @@
 import { ITEMS, RUNES, isPotion, isRune, type ItemRarity, type ItemSlot, type ItemTier, type PotionId, type RuneKind } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
+import { protoHero, protoItemOf } from "./newArt.ts";
 
 /**
  * Arte própria dos itens: um ícone 16×16 por família (espada, arco, cajado, manto...) e nível, pintado com
@@ -634,6 +635,8 @@ export function itemIcon(itemId: string) {
   }
   const item = ITEMS[itemId];
   if (!item) return canvas;
+  const proto = protoHero && protoItemOf(itemId);
+  if (proto) return protoHero!.protoItemIcon(proto, item.rarity);
   const gem = item.slot === "weapon" && (item.family === "weapon-wand" || item.family === "weapon-staff") ? { a: GEMS[item.tier] } : {};
   paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem }, 0, 0);
   const mark = RARITY_GEM[item.rarity];

@@ -2,6 +2,8 @@ import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
   ITEMS,
+  lairPortalAt,
+  lairsOf,
   MONSTERS,
   MSG,
   MOVE_RESEND_MS,
@@ -58,7 +60,9 @@ import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
+import { DUNES_VOID, MESAS_VOID, drawDunes } from "./dunesMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
+import { CAVERN_VOID, drawCavern } from "./cavernMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -77,6 +81,7 @@ import {
   heroIdleFrame,
   heroWalkAnim,
   itemTexture,
+  ensureMonsterArt,
 } from "./art/textures.ts";
 
 /**
@@ -232,6 +237,8 @@ export class DungeonScene extends Phaser.Scene {
   private portalRing!: Phaser.GameObjects.Graphics;
   /** Desde quando (relógio da cena) o herói está no tile do portal; null fora dele. */
   private portalSince: { x: number; y: number; at: number } | null = null;
+  /** Covis com o portal já aberto e desenhado (índices de `lairsOf`). */
+  private openPortals = new Set<number>();
   private move!: MoveInput;
   /** Ambiente do mapa: vaga-lumes e névoa no pântano, luz das tochas e poeira na cripta. */
   private ambience: MapAmbience | null = null;
@@ -270,15 +277,16 @@ export class DungeonScene extends Phaser.Scene {
     this.fx = new CombatFx(this);
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
+    this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -338,7 +346,15 @@ export class DungeonScene extends Phaser.Scene {
       this.items.delete(id);
     });
 
-    callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
+    // Cada covil com o boss morto abre o portal dele (nos mapas de um boss, só o bit 0).
+    callbacks.listen("lairsDown", (down: number) => {
+      lairsOf(this.dungeon).forEach((lair, i) => {
+        if (down & (1 << i) && !this.openPortals.has(i)) {
+          this.openPortals.add(i);
+          this.drawBossPortal(lair.portal);
+        }
+      });
+    });
 
     this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
@@ -516,7 +532,7 @@ export class DungeonScene extends Phaser.Scene {
     const d = this.dungeon;
     const onPortal = !!me && me.status === "playing" && (
       (me.x === d.portal.x && me.y === d.portal.y)
-      || (this.room.state.bossDefeated && me.x === d.bossPortal.x && me.y === d.bossPortal.y));
+      || this.openPortals.has(lairPortalAt(d, me.x, me.y)));
     if (!onPortal) {
       this.portalSince = null;
       return;
@@ -981,8 +997,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** O servidor abre o portal de conclusão quando o boss morre (no centro da sala dele, ou na sala dos baús da caverna). */
-  private drawBossPortal() {
-    const c = this.dungeon.bossPortal;
+  private drawBossPortal(c: { x: number; y: number }) {
     const x = this.toPx(c.x);
     const y = this.toPx(c.y);
     // A arte do pack é quase preta e some no chão escuro: um brilho roxo (a cor do portal no minimapa) pulsa por baixo.
@@ -1031,7 +1046,9 @@ export class DungeonScene extends Phaser.Scene {
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
     const glow = this.add.ellipse(0, 5, 20, 8, color, 0.45);
-    const icon = this.add.image(0, 0, itemTexture(this, item.itemId));
+    const key = itemTexture(this, item.itemId);
+    // O ícone fica com 16 px no chão (o da arte nova é maior e vai reduzido).
+    const icon = this.add.image(0, 0, key).setScale(16 / this.textures.get(key).getSourceImage().width);
     const container = this.add.container(this.toPx(item.x) + offset[0], this.toPx(item.y) + offset[1] + 4, [glow, icon])
       .setDepth(item.y * TILE_SIZE + 2);
     this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
@@ -1137,8 +1154,9 @@ export class DungeonScene extends Phaser.Scene {
     // tem o tamanho no quadro (32 px = 1 tile).
     const scale = (art.anim ? art.scale ?? 1 : def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
+    ensureMonsterArt(this, monsterTexture(kind, monster.variant));
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
-    const top = TILE_SIZE / 2 - sprite.displayHeight;
+    const top = TILE_SIZE / 2 - sprite.displayHeight * (art.anim?.fill ?? 1);
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
     unit.texture = texture;
     unit.baseScale = scale;

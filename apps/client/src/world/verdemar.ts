@@ -28,11 +28,12 @@ export const NODES: Record<string, CampaignNode> = {
   n2: { step: 2, x: 700, y: 1925, name: "Cripta", area: "Colinas das Tumbas", map: "crypt" },
   n3: { step: 3, x: 1030, y: 2000, name: "Mar de Areia", area: "Solária", map: "desert" },
   n4: { step: 4, x: 1105, y: 1680, name: "Pântano das Ruínas", area: "Baía Afundada", map: "swamp" },
-  n5: { step: 5, x: 905, y: 1560, name: "Encruzilhada", area: "Campos de Kusa", fork: "floresta ou deserto" },
+  // A Caverna da Travessia é a primeira bifurcação: o covil oeste (Basilisco) dá na floresta, o leste (Observador) no deserto.
+  n5: { step: 5, x: 905, y: 1560, name: "Caverna da Travessia", area: "Campos de Kusa", map: "cavern", fork: "floresta ou deserto" },
   n6a: { step: 6, x: 610, y: 1565, name: "Bosque Velho", area: "Floresta do Kosaradius" },
   n7a: { step: 7, x: 425, y: 1365, name: "Coração da Mata", area: "Floresta do Kosaradius" },
-  n6b: { step: 6, x: 1155, y: 1440, name: "Dunas Cantantes", area: "Solária" },
-  n7b: { step: 7, x: 1170, y: 1225, name: "Mesas de Solária", area: "Solária" },
+  n6b: { step: 6, x: 1155, y: 1440, name: "Dunas Cantantes", area: "Solária", map: "dunes" },
+  n7b: { step: 7, x: 1170, y: 1225, name: "Mesas de Solária", area: "Solária", map: "mesas" },
   n8: { step: 8, x: 800, y: 1135, name: "Portões do Império", area: "Ruínas do Império", fork: "charco ou ermos" },
   n9a: { step: 9, x: 440, y: 960, name: "Charco Cinzento", area: "Charco Cinzento" },
   n9b: { step: 9, x: 1120, y: 905, name: "Ermos Rubros", area: "Ermos Rubros" },
@@ -44,10 +45,19 @@ export const NODES: Record<string, CampaignNode> = {
   n13: { step: 13, x: 780, y: 300, name: "Cidadela Caída", area: "Capital do Império de Kusa", final: true },
 };
 
-/** Os cenários abertos, em ordem: o herói anda por esta parte da trilha. */
-export const OPEN_CHAIN = ["n1", "n2", "n3", "n4"];
+/** Os cenários de hoje, em ordem: o herói anda por esta parte da trilha (depois da Travessia, pelo lado do deserto). */
+export const OPEN_CHAIN = ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b"];
 
-/** Trilhas: 3 bifurcações (Encruzilhada, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
+/**
+ * Lados da bifurcação da Caverna da Travessia: o primeiro trecho de cada um fica em tinta vermelha (liberado) quando a
+ * classe vence o boss daquele covil (`profile_boss_runes`).
+ */
+export const CAVERN_BRANCHES = [
+  { boss: "basilisk", from: "n5", to: "n6a" },
+  { boss: "beholder", from: "n5", to: "n6b" },
+] as const;
+
+/** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
 export const EDGES: [string, string][] = [
   ["n1", "n2"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"],
   ["n5", "n6a"], ["n6a", "n7a"], ["n7a", "n8"], ["n5", "n6b"], ["n6b", "n7b"], ["n7b", "n8"],

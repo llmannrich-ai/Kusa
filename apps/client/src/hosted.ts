@@ -16,7 +16,8 @@ import type { DungeonState } from "../../server/src/state.ts";
 import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
 import { Listing, Signaling, answerCalls, dial, randomId, type Link } from "./p2p.ts";
-import { flushPendingSolo, reportSolo } from "./solo.ts";
+import { recordSoloMapClear } from "./profile.ts";
+import { flushPendingSolo, noticeClosed, reportSolo, watchCommitted } from "./solo.ts";
 
 // Sala hospedada por um jogador: o aparelho dele roda a `Hunt` (a mesma do servidor) e os outros recebem o
 // estado por conexão direta. Se o anfitrião sai, o próximo da lista assume a partir do último retrato.
@@ -49,7 +50,9 @@ type Down =
   | { k: "roster"; roster: string[]; host: string }
   | { k: "snap"; snap: Snapshot }
   | { k: "ping" }
-  | { k: "refuse"; reason: string };
+  | { k: "refuse"; reason: string }
+  /** O boss morreu com este jogador na hunt: cada um anota o próprio cenário vencido (campanha). */
+  | { k: "cleared" };
 
 /** Jogador → anfitrião. */
 type Up =
@@ -116,6 +119,7 @@ class HostRuntime {
       broadcast: (type, msg) => this.outbox.push({ to: null, type, msg }),
       runEnded: (sessionId, result, report) => this.sinks.get(sessionId)?.down({ k: "result", result, report }),
       ended: () => {},
+      mapCleared: (ids) => { for (const id of ids) this.sinks.get(id)?.down({ k: "cleared" }); },
     }, snapshot
       ? { mapId: this.state.mapId as MapId, seed: this.state.seed, restore: snapshot.hunt }
       : { mapId, seed: Math.floor(Math.random() * 2 ** 31) });
@@ -339,6 +343,8 @@ class HostedSession {
   /** Hunt deste jogador no banco (null: não abriu ou falhou; o resultado não é salvo). */
   private runId: string | null = null;
   private mapId: MapId;
+  /** Criou a sala (não entrou na de outro jogador). */
+  creator = false;
 
   constructor(readonly roomId: string, private me: Me, mapId: MapId, private mods: Parameters<typeof makeRuntime>[0]) {
     this.mapId = mapId;
@@ -443,6 +449,7 @@ class HostedSession {
       case "begin": return void this.beginRun(client);
       case "result":
         return reportSolo(this.runId, this.me.classId, down.result, down.report, (msg) => client.emit(MSG.runEnded, msg));
+      case "cleared": return void recordSoloMapClear(this.runId);
     }
   }
 
@@ -450,13 +457,16 @@ class HostedSession {
   private async beginRun(client: RoomClient) {
     // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
     await flushPendingSolo();
-    const { data, error } = await supabase.rpc("start_solo_run", { p_class_id: this.me.classId, p_map_id: this.mapId });
+    // Campanha: o cenário precisa estar aberto para quem criou a sala; quem entrou na sala de outro joga livre.
+    const { data, error } = await supabase.rpc(this.creator ? "start_solo_run" : "start_guest_run", { p_class_id: this.me.classId, p_map_id: this.mapId });
     if (error) {
       console.error("Falha ao abrir a hunt no banco", error);
       return;
     }
     const run = data as SoloRunStart;
     this.runId = run.run_id;
+    noticeClosed(run.closed);
+    watchCommitted(() => (this.left ? null : this.client as unknown as DungeonRoom | null), run.run_id);
     const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [], bossRunes: run.boss_runes ?? [] };
     if (this.runtime) this.runtime.receive(this.myId, up);
     else if (this.link) send(this.link, up);
@@ -564,6 +574,7 @@ export async function myRecruit(name: string, classId: ClassId): Promise<Me> {
 /** Cria uma sala hospedada neste aparelho. */
 export async function createHostedRoom(me: Me, mapId: MapId): Promise<HostedRoom> {
   const session = new HostedSession(randomId(), me, mapId, await loadSimulation());
+  session.creator = true;
   return (await session.host(null)) as unknown as HostedRoom;
 }
 

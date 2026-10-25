@@ -202,6 +202,84 @@ export const MAP_ART: Record<MapId, string> = {
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#7cc243" stroke-width="1.5"/>
   </svg>`,
+  // Caverna da Travessia: a rocha que se abre em dois túneis, com os olhos dos dois bosses no escuro (o verde do
+  // Basilisco à esquerda, o roxo do Observador à direita) e gotas pingando sobre a poça da chegada.
+  cavern: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <radialGradient id="cv-fundo" cx="0.5" cy="0.4" r="0.8"><stop offset="0" stop-color="#2a3a4c"/><stop offset="1" stop-color="#070b12"/></radialGradient>
+      <radialGradient id="cv-verde"><stop offset="0" stop-color="#9bff5a" stop-opacity="0.6"/><stop offset="1" stop-color="#9bff5a" stop-opacity="0"/></radialGradient>
+      <radialGradient id="cv-roxo"><stop offset="0" stop-color="#c46bff" stop-opacity="0.65"/><stop offset="1" stop-color="#c46bff" stop-opacity="0"/></radialGradient>
+      <clipPath id="cv-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#cv-roda)">
+      <rect width="48" height="48" fill="url(#cv-fundo)"/>
+      <path d="M0 0H48V48H0Z M8 44Q6 30 12 18Q15 12 20 16Q22 22 24 30Q26 22 28 16Q33 12 36 18Q42 30 40 44Z" fill="#3b4656" fill-rule="evenodd"/>
+      <path d="M10 44Q9 32 13.5 21Q16 16 19 18.5Q21 26 22.5 34L24 38L25.5 34Q27 26 29 18.5Q32 16 34.5 21Q39 32 38 44Z" fill="#05070b"/>
+      <path d="M24 30Q22.5 22 20 16M24 30Q25.5 22 28 16" stroke="#56657a" stroke-width="1.6" fill="none"/>
+      <path d="M2 10L6 16L8 9ZM13 3L15 9L17 3ZM31 3L33 9L35 3ZM40 9L42 16L46 10Z" fill="#56657a"/>
+      <circle cx="15.5" cy="25" r="5" fill="url(#cv-verde)"/><circle cx="32.5" cy="25" r="5.5" fill="url(#cv-roxo)"/>
+      <path d="M13.4 25Q14.4 23.8 15.4 25Q14.4 25.8 13.4 25ZM16 24.6Q17 23.4 18 24.6Q17 25.4 16 24.6Z" fill="#b6ff6a"/>
+      <circle cx="32.5" cy="25" r="2.4" fill="#f4ecd8"/><circle cx="32.2" cy="25" r="1.2" fill="#2f9a43"/><rect x="32" y="23.9" width="0.5" height="2.2" fill="#0b0b0b"/>
+      <ellipse cx="24" cy="42.5" rx="9" ry="2.2" fill="#24506a" opacity="0.85"/>
+      <path d="M19 42.4Q24 41.2 29 42.4" stroke="#8fd3f0" stroke-width="0.7" fill="none" opacity="0.7"/>
+      <path d="M24 34.5V36.5M21 37.5V38.6M27.4 37V38.2" stroke="#8fd3f0" stroke-width="0.8" stroke-linecap="round"/>
+      <path d="M9 40L10.5 34L12 40ZM36 40L37.5 33L39 40Z" fill="#7fe3ff" opacity="0.8"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#6fa8d6" stroke-width="1.5"/>
+  </svg>`,
+  // Dunas Cantantes: cordilheiras de duna com a crista clara e a encosta na sombra, a pedra cantante furada pelo vento
+  // com os glifos acesos e as ondas do canto, e fitas de areia soprando.
+  dunes: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="du-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cb6d8"/><stop offset="1" stop-color="#f2dcae"/></linearGradient>
+      <clipPath id="du-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#du-roda)">
+      <rect width="48" height="48" fill="url(#du-ceu)"/>
+      <circle cx="12" cy="11" r="5" fill="#fff6d8"/>
+      <path d="M0 27Q9 17 17 24Q26 15 36 23Q42 19 48 22V48H0Z" fill="#e2b47a"/>
+      <path d="M17 24Q26 15 36 23Q31 28 26 34Q24 27 17 24Z M0 27Q9 17 17 24Q11 30 8 36Q5 29 0 27Z" fill="#b6814a"/>
+      <path d="M0 27Q9 17 17 24M17 24Q26 15 36 23" stroke="#fff0c8" stroke-width="1" fill="none"/>
+      <path d="M0 38Q14 31 30 37T48 34V48H0Z" fill="#d9a865"/>
+      <path d="M4 42Q10 40 16 42M22 44Q28 42 34 44M8 46Q14 44 20 46" stroke="#b6814a" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+      <path d="M31 40L32.5 21Q35 18.5 37.5 21L39 40Z" fill="#9a8a76"/>
+      <path d="M35.2 22L37.5 21L39 40H36.5Z" fill="#6e604f"/>
+      <ellipse cx="34.6" cy="27" rx="1" ry="1.3" fill="#2a2018"/><ellipse cx="35.4" cy="33" rx="0.9" ry="1.2" fill="#2a2018"/>
+      <path d="M33.6 24.5a1.2 1.2 0 1 1 1.5 1.3M33.4 30a1 1 0 1 0 1.6 0.4M33.8 36.5h2" stroke="#5ad2e6" stroke-width="0.7" fill="none" stroke-linecap="round"/>
+      <path d="M41 24Q44 28 41 32M43 22Q47.5 28 43 34" stroke="#a0f0ff" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.8"/>
+      <path d="M6 20Q12 21 15 19M20 15Q26 16 30 14" stroke="#fff3d6" stroke-width="0.7" fill="none" stroke-linecap="round" opacity="0.8"/>
+      <ellipse cx="35" cy="40.5" rx="6" ry="1.4" fill="#e6c995"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#e2b47a" stroke-width="1.5"/>
+  </svg>`,
+  // Mesas de Solária: platôs de arenito em camadas ao entardecer, um cânion estreito entre eles, o pilar de pedra
+  // com a pedra-chapéu e a casa escavada na rocha com a porta escura.
+  mesas: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="me-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a3a62"/><stop offset="0.6" stop-color="#e0805a"/><stop offset="1" stop-color="#f6c07a"/></linearGradient>
+      <clipPath id="me-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#me-roda)">
+      <rect width="48" height="48" fill="url(#me-ceu)"/>
+      <circle cx="36" cy="14" r="4.5" fill="#ffd9a0"/>
+      <path d="M0 18H17V48H0Z" fill="#b0603c"/>
+      <path d="M0 18H17V20.5H0Z" fill="#e2a070"/>
+      <path d="M0 25H17V27.5H0ZM0 32H17V33.5H0Z" fill="#d9a070"/>
+      <path d="M0 29H17V30.5H0ZM0 37H17V39H0Z" fill="#7e3e2a"/>
+      <path d="M13 18H17V48H13Z" fill="#7e3e2a" opacity="0.55"/>
+      <path d="M6 33.5h4v5.5h-4Z" fill="#2a120c"/><path d="M6 33.5q2-2 4 0" fill="#2a120c"/>
+      <path d="M27 22H48V48H27Z" fill="#a8583a"/>
+      <path d="M27 22H48V24.5H27Z" fill="#e2a070"/>
+      <path d="M27 29H48V31H27ZM27 38H48V40H27Z" fill="#7e3e2a"/>
+      <path d="M27 33H48V35H27Z" fill="#d9a070"/>
+      <path d="M17 48V30L20 28L24 30L27 28V48Z" fill="#5e2a1e" opacity="0.6"/>
+      <path d="M19.5 40V31Q21.5 29 23.5 31V40Z" fill="#b0603c"/>
+      <ellipse cx="21.5" cy="30" rx="3.6" ry="1.4" fill="#c98858"/>
+      <path d="M0 42Q12 40 24 43T48 42V48H0Z" fill="#cf9564"/>
+      <path d="M8 45Q14 44 20 45.5M28 46Q34 45 40 46" stroke="#a8643c" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#e0805a" stroke-width="1.5"/>
+  </svg>`,
 };
 
 // --- Sala de espera -------------------------------------------------------
