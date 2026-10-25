@@ -179,6 +179,8 @@ export function createCreatureArt(scene: Phaser.Scene) {
   warmMonsterArt(scene);
   for (const kind of Object.keys(SUMMON_ANIMS) as SummonKind[]) addAnimatedArt(scene, SUMMON_TEXTURE[kind], SUMMON_ANIMS[kind]);
   for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
+    // A arte nova é desenhada aos poucos (`warmMonsterArt`): o retrato não pode ocupar a chave da folha animada.
+    if (MONSTER_ANIMS[key]?.hd) continue;
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
   }
 }

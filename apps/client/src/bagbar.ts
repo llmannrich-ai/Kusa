@@ -29,6 +29,9 @@ export class BagBar {
   /** null até o primeiro desenho: a bag vazia também precisa aparecer. */
   private hudKey: string | null = null;
   private menuKey = "";
+  /** Equipamento vestido no último desenho (null até o primeiro): vestir do chão não muda a fileira da bag. */
+  private gearKey: string | null = null;
+  private gearFlash = 0;
 
   constructor(private room: DungeonRoom, private hud: HTMLElement, private menu: HTMLElement) {
     hud.hidden = false;
@@ -62,6 +65,10 @@ export class BagBar {
       this.hudKey = hudKey;
       this.renderHud(bag);
     }
+    // Vestiu um item (pegou do chão ou trocou): a bag do HUD pisca, para lembrar que o vestido fica no menu.
+    const gearKey = ITEM_SLOTS.map((s) => p[s]).join(",");
+    if (this.gearKey !== null && gearKey !== this.gearKey && p.status === "playing") this.flash();
+    this.gearKey = gearKey;
     if (p.status !== "playing") {
       this.close();
       return;
@@ -77,7 +84,16 @@ export class BagBar {
     this.renderMenu(p, bag);
   }
 
+  private flash() {
+    this.hud.classList.remove("vestiu");
+    void this.hud.offsetWidth; // reinicia a animação se vestir de novo antes de ela acabar
+    this.hud.classList.add("vestiu");
+    clearTimeout(this.gearFlash);
+    this.gearFlash = window.setTimeout(() => this.hud.classList.remove("vestiu"), 1200);
+  }
+
   destroy() {
+    clearTimeout(this.gearFlash);
     this.hud.removeEventListener("click", this.toggle);
     this.menu.removeEventListener("click", this.onMenuClick);
     this.hud.replaceChildren();

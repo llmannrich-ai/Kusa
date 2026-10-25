@@ -28,9 +28,12 @@ import {
   TIER_NAMES,
   VAULT_SIZE,
   difficultyStars,
+  dropOdds,
+  type MapDef,
   mapMonsters,
   CHAMPION_CHANCE,
   type ItemTier,
+  type MonsterKind,
 } from "@kusa/shared";
 
 // Configurações > Regras: como o jogo funciona, para o jogador. Os números vêm de `@kusa/shared`,
@@ -60,6 +63,14 @@ function list(items: string[]) {
   const ul = el("ul");
   for (const item of items) ul.append(el("li", "", item));
   return ul;
+}
+
+/** Itens de equipamento que um monstro do rank de `kind` larga no mapa: "15%", "48%", "2 itens". */
+function itemOdds(map: MapDef, kind: MonsterKind | undefined) {
+  if (!kind) return "—";
+  const odds = dropOdds(map, kind);
+  if (odds.itemChance >= 1) return odds.items === 1 ? "1 item" : `${odds.items} itens`;
+  return odds.items === 1 ? pct(odds.itemChance) : `${odds.items} × ${pct(odds.itemChance)}`;
 }
 
 function table(head: string[], rows: string[][]) {
@@ -176,13 +187,19 @@ export function renderRules(root: HTMLElement) {
         "Armaduras de guerra são do Cavaleiro e do Paladino; vestes arcanas (chapéu, manto e calças), do Feiticeiro e do Druida.",
         `Materiais, do pior ao melhor: ${TIERS.map((t) => TIER_NAMES[t]).join(", ")}.`,
         `Raridades: ${ITEM_RARITIES.map((r) => RARITY_NAMES[r]).join(", ")}. O raro (+1) é 30% mais forte; o mágico tem nome próprio, é 60% mais forte e ganha uma propriedade (roubo de vida, chamas, espinhos, velocidade...).`,
-        `Monstros comuns têm ${pct(COMMON_DROP_CHANCE)} de chance de dropar item; mini-bosses, bosses e baús sempre dropam. Salas fundas dão material melhor.`,
-        "O item no chão é de quem passar por cima primeiro. Se for melhor que o seu, você veste na hora e o antigo vai para a bag.",
+        `Monstros comuns têm até ${pct(COMMON_DROP_CHANCE)} de chance de dropar item, mini-bosses e bosses largam itens garantidos e todo baú dá um item; cada mapa corta parte dessas chances (tabela abaixo). Salas fundas dão material melhor.`,
+        "O item no chão é de quem passar por cima primeiro. Se o slot estiver vazio ou o item for melhor que o seu, você veste na hora (aparece \"Vestiu\" e a bag pisca) e o antigo vai para a bag. O que está vestido só aparece ao tocar na bag.",
         `A bag tem ${BAG_SIZE} espaços e entra com você na hunt. Cheia, você não pega mais nada do chão.`,
         "A runa do boss não cai no chão: vai direto para a bag de cada herói que ainda não levou a daquele boss. Com a bag cheia, o item mais barato cai no chão para ela entrar. Depois, dá para largar e passar a runa a um colega.",
         "Com bots na equipe caem menos itens: o bot não pega nada do chão, então cada item só cai com a chance de humanos ÷ equipe (1 humano e 3 bots: 25%).",
         `Saindo vivo, a bag vai sozinha para o cofre (${VAULT_SIZE} espaços), que fica seguro na conta.`,
       ]),
+      "Chance de item de equipamento ao matar cada tipo de monstro, já com o corte do mapa (equipe só de humanos):",
+      table(["Mapa", "Comum", "Mini-boss", "Boss", "Baú"], MAP_IDS.filter((id) => MAPS[id].bosses.length > 0).map((id) => {
+        const m = MAPS[id];
+        return [`${m.icon} ${m.name}`, itemOdds(m, m.encounters[0]?.table[0]?.[0]), itemOdds(m, m.minibosses[0]?.[0]),
+          itemOdds(m, m.bosses[0][0]), "1 item"];
+      })),
       table(["Material", "Compra (comum)", "Venda (comum · raro · mágico)"], TIERS.map((t) => [
         TIER_NAMES[t], ITEM_BUY_PRICES[t] == null ? "só na hunt" : `${ITEM_BUY_PRICES[t]} gold`,
         ITEM_RARITIES.map((r) => ITEM_SELL_PRICES[t] * RARITY_SELL[r]).join(" · ") + " gold",

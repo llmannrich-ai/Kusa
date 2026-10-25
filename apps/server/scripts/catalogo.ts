@@ -5,6 +5,7 @@
  *   - o gold de cada monstro de cada mapa é a faixa que o Catálogo mostra;
  *   - matando o mesmo monstro muitas vezes, os itens e as poções que caem ficam perto da média esperada
  *     (comum, mini-boss e boss de cada mapa, e o Mímico com o baú dele);
+ *   - a telemetria (`items.drops`) conta cada item de equipamento que caiu, pela fonte;
  *   - a ilusão da Bruxa Verde não larga nada.
  * Uso: npx tsx scripts/catalogo.ts (de dentro de apps/server, pelos decorators do schema)
  */
@@ -17,6 +18,8 @@ const KILLS = 800;
 function farm(a: Arena, kind: MonsterKind, n: number) {
   let items = 0;
   let potions = 0;
+  const drops = a.seat().stats.items.drops as Record<string, number>;
+  const before = { ...drops };
   for (let i = 0; i < n; i++) {
     a.state.items.clear();
     const m = a.spawn(kind, 2);
@@ -29,6 +32,9 @@ function farm(a: Arena, kind: MonsterKind, n: number) {
     }
   }
   a.state.items.clear();
+  const counted = Object.keys(drops).reduce((sum, k) => sum + drops[k] - before[k], 0);
+  check(counted === items, `${MONSTERS[kind].name}: caíram ${items} itens, a telemetria contou ${counted}`);
+  if (kind === "mimic") check(drops.chest - before.chest === n, `o Mímico devia contar ${n} itens de baú: ${drops.chest - before.chest}`);
   return { items, potions };
 }
 
