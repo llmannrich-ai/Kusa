@@ -416,15 +416,13 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
-  **Cidadela Caída**. Depois da Travessia, o lado do deserto já está aberto: 🌬️ Dunas Cantantes → 🪨 Mesas de Solária
-  (por enquanto só o terreno, sem monstros), e a trilha vermelha segue até elas.
+  **Cidadela Caída**. Depois da Travessia, o lado do deserto já existe: 🌬️ Dunas Cantantes → 🪨 Mesas de Solária.
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
   Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
 - **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
-  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho do lado da floresta fica
-  pontilhado até a classe escolhida vencer o Basilisco; depois, em tinta vermelha (liberado). O lado do deserto já está
-  na trilha aberta (Dunas Cantantes e Mesas de Solária são jogáveis, só o terreno). O cliente lê
+  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
+  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). O cliente lê
   `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual: o bloqueio de
   verdade vem com a fase 3 do plano.
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
@@ -432,9 +430,19 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
-- **Ainda não:** os 7 cenários de hoje estão abertos (Dunas Cantantes e Mesas de Solária ainda sem monstros) e os
-  outros 11 ainda não existem. O desbloqueio por boss (por
-  classe) e a estrela por ponto vêm na fase 3 do plano.
+- **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
+  vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Basilisco ou Observador → Dunas Cantantes, boss das Dunas →
+  Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
+  Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (os lados da bifurcação seguem os bosses vencidos, `bossKills`). Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
+  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha diz quem derrotar e onde, e os botões de
+  jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
+  (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
+  entre dois cenários abertos. Contas de antes herdaram os cenários pelas runas de boss já levadas.
+- **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
+  (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
+  gravado por `record_map_clear` (servidor) e `record_solo_map_clear` (hunt solo e sala no aparelho, cada um o seu).
+- **Ainda não:** os outros 11 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 

@@ -124,7 +124,7 @@
       <div id="world-view" class="world-view" aria-label="Carta de Verdemar: arraste para explorar, pinça para aproximar"></div>
       <header class="world-top">
         <button id="rooms-back" class="world-chip icon-button" aria-label="Voltar ao menu">‹</button>
-        <div class="world-title"><strong>Verdemar</strong><small>campanha · 5 de 18 cenários</small></div>
+        <div class="world-title"><strong>Verdemar</strong><small id="world-progress">campanha · 5 de 18 cenários</small></div>
         <button id="open-room-list" class="world-rooms">Salas abertas · 0</button>
       </header>
       <p id="world-toast" class="world-toast" role="status" hidden></p>
@@ -136,6 +136,7 @@
           <div><h2 id="sheet-name"></h2><small id="sheet-region"></small></div>
         </div>
         <ul id="sheet-chips" class="sheet-chips"></ul>
+        <p id="sheet-lock" class="sheet-lock" hidden></p>
         <div class="sheet-play">
           <button id="solo" class="primary">Jogar sozinho</button>
           <button id="create">Criar sala</button>

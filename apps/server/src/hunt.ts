@@ -347,6 +347,11 @@ export interface HuntHost {
   runEnded(sessionId: string, result: RunEndedMessage, report: HuntReport): void;
   /** Todos saíram: a hunt acabou. */
   ended(): void;
+  /**
+   * O boss principal morreu: estes jogadores (humanos que estavam na hunt, vivos ou mortos, sem ter saído) venceram o
+   * cenário e abrem o seguinte da campanha. Quem morreu antes já teve o resultado gravado, por isso o aviso é à parte.
+   */
+  mapCleared?(sessionIds: string[]): void;
 }
 
 /** Números da hunt de um jogador para a telemetria (o host completa com a partida e a conta). */
@@ -604,6 +609,11 @@ export class Hunt {
     if (!this.state.players.get(msg?.id)?.bot) return false;
     this.leave(msg.id);
     return true;
+  }
+
+  /** Cenário desta hunt. */
+  get mapId(): MapId {
+    return this.map.id;
   }
 
   /** Jogadores na hunt no máximo, bots incluídos (depende do mapa). */
@@ -2169,6 +2179,7 @@ export class Hunt {
     }
 
     if (brain.def.rank === "boss") {
+      this.creditBossClear();
       const lair = brain.lair ?? 0;
       const c = lairsOf(this.dungeon)[lair].portal;
       this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
@@ -2187,6 +2198,18 @@ export class Hunt {
         this.notice(chest.x, chest.y, "Escolha uma runa!", RUNES[chest.rune]?.color ?? 0xf39c12);
       });
     }
+  }
+
+  /** Campanha: todo humano que está na hunt quando o boss cai (vivo ou morto, sem ter saído) vence o cenário. */
+  private creditBossClear() {
+    const ids: string[] = [];
+    this.state.players.forEach((p, id) => {
+      const seat = this.seats.get(id);
+      if (p.bot || !seat || seat.stats.abandoned || (p.status !== "playing" && p.status !== "died")) return;
+      seat.stats.bossClear = true;
+      ids.push(id);
+    });
+    if (ids.length > 0) this.host.mapCleared?.(ids);
   }
 
   private gainXp(sessionId: string, amount: number) {

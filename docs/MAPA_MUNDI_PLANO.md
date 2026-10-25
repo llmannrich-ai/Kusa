@@ -158,5 +158,5 @@ Arquipélago Afundado deixam de ser continentes: Solária vira o deserto de Verd
 | 1 | mapa estático com os 4 pontos, ficha, salas abertas; substitui os cartões; tudo aberto | cliente · **feito** |
 | 2 | herói andando, barco no mar, névoa com nomes | cliente · **feito** (o barco saiu na 2b: a campanha é toda em terra) |
 | 2b | carta de Verdemar (seção 5b): campanha de 18 cenários com 3 bifurcações, arte gerada no build, câmera com arrasto e pinça | cliente · **feito** |
-| 3 | desbloqueio por classe, estrela, crédito do boss, migration e preenchimento das contas atuais | shared, servidor, banco |
+| 3 | desbloqueio por classe, estrela, crédito do boss, migration e preenchimento das contas atuais | shared, servidor, banco · **feito** (só o Kosaradius começa aberto, decisão do Leonardo) |
 | 4 | cenários novos nas regiões em névoa (gelo, vulcão, cidadela), cada um um projeto à parte | tudo |

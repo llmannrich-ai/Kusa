@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { RunOutcome, SpellXp, TalentRanks } from "@kusa/shared";
+import type { MapId, RunOutcome, SpellXp, TalentRanks } from "@kusa/shared";
 
 const url = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -56,6 +56,24 @@ export async function takeLoadout(userId: string, classId: string): Promise<stri
     return [];
   }
   return (data ?? []) as string[];
+}
+
+/** Cenários cujo boss este personagem (conta e classe) já venceu: abrem o seguinte da campanha (`mapUnlocked`). */
+export async function mapClears(userId: string, classId: string): Promise<MapId[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("profile_map_clears").select("map_id").eq("profile_id", userId).eq("class_id", classId);
+  if (error) {
+    console.error("Falha ao ler os cenários vencidos", error);
+    return [];
+  }
+  return (data ?? []).map((r) => r.map_id as MapId);
+}
+
+/** O personagem venceu o boss do cenário (`record_map_clear`): abre o seguinte da campanha. */
+export async function recordMapClear(userId: string, classId: string, mapId: MapId) {
+  if (!supabase) return;
+  const { error } = await supabase.rpc("record_map_clear", { p_profile_id: userId, p_class_id: classId, p_map_id: mapId });
+  if (error) console.error("Falha ao anotar o cenário vencido", error);
 }
 
 /** Bosses cuja runa este personagem (conta e classe) já levou: na hunt, eles não dão outra. */

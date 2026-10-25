@@ -45,19 +45,16 @@ export const NODES: Record<string, CampaignNode> = {
   n13: { step: 13, x: 780, y: 300, name: "Cidadela Caída", area: "Capital do Império de Kusa", final: true },
 };
 
-/**
- * Os cenários abertos, em ordem: o herói anda por esta parte da trilha. Depois da Travessia ela segue pelo lado do
- * deserto (Dunas Cantantes e Mesas de Solária, já jogáveis só com o terreno).
- */
+/** Os cenários de hoje, em ordem: o herói anda por esta parte da trilha (depois da Travessia, pelo lado do deserto). */
 export const OPEN_CHAIN = ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b"];
 
 /**
- * Lados da bifurcação da Caverna da Travessia ainda fora da trilha aberta: o primeiro trecho fica em tinta vermelha
- * (liberado) quando a classe vence o boss daquele covil (`profile_boss_runes`). O lado do deserto (Observador) já está
- * na trilha aberta.
+ * Lados da bifurcação da Caverna da Travessia: o primeiro trecho de cada um fica em tinta vermelha (liberado) quando a
+ * classe vence o boss daquele covil (`profile_boss_runes`).
  */
 export const CAVERN_BRANCHES = [
   { boss: "basilisk", from: "n5", to: "n6a" },
+  { boss: "beholder", from: "n5", to: "n6b" },
 ] as const;
 
 /** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
