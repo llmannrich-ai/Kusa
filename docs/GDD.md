@@ -37,7 +37,7 @@ redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
 O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi").
 Código em `apps/client/src/menu.ts`.
 
-- **Classes:** as 4 classes com retrato, papel e atributos (vida, mana, dano, alcance e armadura já com as áureas, as runas e os itens vestidos por aquela classe, na mesma conta da hunt). Tocar escolhe a classe da próxima hunt.
+- **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas).
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
@@ -413,7 +413,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Mobile:** câmera própria, **arrastar em qualquer direção e pinça** para aproximar (do continente inteiro na tela a
   1,8×). Abre perto, no último cenário escolhido, com o herói da classe em pé em cima dele. 📍 volta ao herói e ⤢
   mostra o continente inteiro. Os pontos e o herói têm o mesmo tamanho na tela em qualquer zoom; de longe, os nomes
-  pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Classes, Grimório, Batalhas,
+  pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Heróis, Grimório, Batalhas,
   Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba. Tocar de novo
   em Batalhas, já no mapa, leva a câmera ao herói e abre a ficha do cenário onde ele está.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
@@ -440,7 +440,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
   `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
-  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha diz quem derrotar e onde, e os botões de
+  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
+  inteira fica no title), e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
   entre dois cenários abertos. Contas de antes herdaram os cenários e os bosses vencidos pelas runas de boss já levadas.

@@ -160,7 +160,7 @@ export function renderRules(root: HTMLElement) {
         const spells = STARTER_SPELLS.map((s) => SPELLS[s]).filter((s) => s.classId === id).map((s) => `${s.icon} ${s.name}`);
         return [c.name, String(c.baseHp), String(c.baseMana), c.attackRange === 1 ? "corpo a corpo" : `${c.attackRange} tiles`, spells.join(" · ")];
       })),
-      "Vida e mana do nível 1, sem áureas. A classe é escolhida na aba Classes, antes de jogar.",
+      "Vida e mana do nível 1, sem áureas. A classe é escolhida na aba Heróis, antes de jogar.",
     ),
 
     section("✨ Grimório", false,
