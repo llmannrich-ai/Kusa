@@ -326,6 +326,13 @@ const HP_REGEN = 0.02;
 const MANA_REGEN = 0.02;
 /** Monstros não nascem tão perto do portal de entrada. */
 const SAFE_RADIUS = 6;
+/**
+ * Zona da entrada: a esta distância do portal (o raio seguro mais o alcance de aggro dos comuns), nascem no máximo
+ * `MAX_START_MONSTERS` monstros, para a hunt não começar com uma sala cheia em cima do herói (a Cripta põe a
+ * primeira sala do caminho colada na inicial).
+ */
+export const START_ZONE_RADIUS = 12;
+export const MAX_START_MONSTERS = 3;
 /** Item no chão que ninguém pegou some depois deste tempo. */
 const ITEM_LIFETIME_MS = 120_000;
 /** Intervalo mínimo entre dois avisos de bag cheia para o mesmo jogador. */
@@ -436,6 +443,8 @@ export class Hunt {
   /** Mímicos (id → profundidade da sala): morto, o Mímico dá o loot do baú que fingia ser. */
   private mimicDepth = new Map<string, number>();
   private nextMonsterId = 1;
+  /** Vagas da zona da entrada guardadas para mini-boss/Mímico de sala lateral (só durante o spawn inicial). */
+  private startZoneReserved = 0;
   private nextItemId = 1;
   private nextSummonId = 1;
   private summonBrains = new Map<string, SummonBrain>();
@@ -651,6 +660,11 @@ export class Hunt {
     const rng = createRng(this.state.seed ^ 0x9e3779b9);
     const roll = () => rng.int(0, 1_000_000);
 
+    // Mini-boss ou Mímico de sala lateral perto da entrada nasce depois dos comuns, mas conta no teto da zona da entrada.
+    const portal = d.portal;
+    const inZone = (x: number, y: number) => tileDistance(x, y, portal.x, portal.y) <= START_ZONE_RADIUS;
+    this.startZoneReserved = d.side.filter((r) => inZone(r.x + 1, r.y + 1) || inZone(centerOf(r).x, centerOf(r).y)).length;
+
     // Mapa só com o boss (o deserto, por enquanto): sem encontros nas zonas nem nas campinas.
     const encounters = this.map.encounters.length > 0;
     d.path.forEach((room, depth) => {
@@ -781,11 +795,21 @@ export class Hunt {
       const x = room.x + (roll() % room.w);
       const y = room.y + (roll() % room.h);
       if (!isWalkable(this.dungeon, x, y) || this.specialTile(x, y)) continue;
-      if (tileDistance(x, y, portal.x, portal.y) <= SAFE_RADIUS) continue;
+      const near = tileDistance(x, y, portal.x, portal.y);
+      if (near <= SAFE_RADIUS) continue;
+      if (near <= START_ZONE_RADIUS && this.startZoneMonsters() + this.startZoneReserved >= MAX_START_MONSTERS) continue;
       if (this.monsterAt(x, y)) continue;
       return { x, y };
     }
     return null;
+  }
+
+  /** Monstros já postos na zona da entrada (`START_ZONE_RADIUS`). */
+  private startZoneMonsters() {
+    const portal = this.dungeon.portal;
+    let n = 0;
+    this.state.monsters.forEach((m) => { if (tileDistance(m.x, m.y, portal.x, portal.y) <= START_ZONE_RADIUS) n++; });
+    return n;
   }
 
   /** Profundidade de uma sala lateral ou campina = índice da sala do caminho mais próxima. */
