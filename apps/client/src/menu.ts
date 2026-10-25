@@ -24,6 +24,7 @@ import {
   DEATH_SPELL_XP_LOSS,
   nodeLevel,
   ACTIVE_SPELLS_PER_SLOT,
+  activeSpells,
   activeSlotSpells,
   toggleActiveSpell,
   SYNERGY_PER_LEVEL,
@@ -61,7 +62,7 @@ import {
   type RuneDef,
   type TalentDef,
 } from "@kusa/shared";
-import { heroPoses, type HeroDir } from "./art/heroes.ts";
+import { HERO_DIRS, HERO_FRAMES, heroPoses, heroSheet, type HeroDir } from "./art/heroes.ts";
 import { branchIcon } from "./branchIcons.ts";
 import { itemIcon, slotGhost } from "./art/items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
@@ -78,17 +79,21 @@ import {
   type Profile,
 } from "./profile.ts";
 
-// Menu do jogador depois do login: classes, Grimório (árvore de magias), itens (equipamento, cofre e bag) e mercado.
+// Menu do jogador depois do login: heróis, Grimório (árvore de magias), itens (equipamento, cofre e bag) e mercado.
 // Abas embaixo (zona do polegar), "Jogar" logo acima delas; tudo funciona só com toque.
 
-type Tab = "classes" | "spells" | "items" | "market";
+type Tab = "heroes" | "spells" | "items" | "market";
 
-const ROLES: Record<ClassId, string> = {
-  knight: "Corpo a corpo. Aguenta a pancada e segura os monstros.",
-  paladin: "Ataca de longe com flechas fortes.",
-  sorcerer: "Dano em área enorme, mas frágil.",
-  druid: "Cura a equipe e prende os monstros.",
+const ROLES: Record<ClassId, { text: string; tags: string[] }> = {
+  knight: { text: "Corpo a corpo. Aguenta a pancada e segura os monstros.", tags: ["Linha de frente", "Tanque"] },
+  paladin: { text: "Ataca de longe com flechas fortes.", tags: ["À distância", "Precisão"] },
+  sorcerer: { text: "Dano em área enorme, mas frágil.", tags: ["Dano em área", "Frágil"] },
+  druid: { text: "Cura a equipe e prende os monstros.", tags: ["Suporte", "Controle"] },
 };
+
+/** Um atributo na página Heróis: o valor do nível 1 sem bônus, o valor com bônus e o texto mostrado. */
+interface HeroStat { label: string; icon: string; base: number; value: number; text: string }
+type HeroStats = Record<"hp" | "mana" | "damage" | "armor" | "range" | "speed", HeroStat>;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -212,9 +217,59 @@ function heroUrl(classId: ClassId, outfit: Outfit, view: HeroDir | "all") {
   return iconCache.get(key)!;
 }
 
+const sheetCache = new Map<string, HTMLCanvasElement>();
+
+/**
+ * O herói vestido no palco da página Heróis: anda no lugar e gira (frente, lado, costas, outro lado). Tocar faz ele
+ * pular e virar de frente. Com "reduzir movimento" no aparelho, fica parado de frente. Para sozinho ao sair da tela.
+ */
+function heroWalker(classId: ClassId, outfit: Outfit) {
+  const key = `${classId}:${outfitKey(outfit)}`;
+  if (!sheetCache.has(key)) sheetCache.set(key, heroSheet(classId, outfit));
+  const sheet = sheetCache.get(key)!;
+  const size = sheet.height;
+  const canvas = el("canvas", "hero-walker");
+  canvas.width = size;
+  canvas.height = size;
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", `${CLASSES[classId].name} com o equipamento`);
+  const ctx = canvas.getContext("2d")!;
+  const draw = (dir: HeroDir, frame: number, flip = false) => {
+    ctx.clearRect(0, 0, size, size);
+    ctx.save();
+    if (flip) { ctx.translate(size, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(sheet, (HERO_DIRS.indexOf(dir) * HERO_FRAMES + frame) * size, 0, size, size, 0, 0, size, size);
+    ctx.restore();
+  };
+  draw("down", 0);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return canvas;
+
+  // Passos: a sequência de quadros de cada direção; parado de frente um pouco antes de girar.
+  const walk = [1, 0, 2, 0, 1, 0, 2, 0];
+  const turns: [HeroDir, boolean][] = [["down", false], ["side", false], ["up", false], ["side", true]];
+  let step = 0;
+  const tick = () => {
+    if (!canvas.isConnected && step > 0) return;
+    const turn = Math.floor(step / (walk.length + 4)) % turns.length;
+    const i = step % (walk.length + 4);
+    const [dir, flip] = turns[turn];
+    draw(dir, i < walk.length ? walk[i] : 0, flip);
+    step++;
+    window.setTimeout(tick, 170);
+  };
+  window.setTimeout(tick, 170);
+  canvas.onclick = () => {
+    step = 0;
+    canvas.classList.remove("hop");
+    void canvas.offsetWidth;
+    canvas.classList.add("hop");
+  };
+  return canvas;
+}
+
 export class Hub {
   private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [] };
-  private tab: Tab = "classes";
+  private tab: Tab = "heroes";
   private marketMode: "buy" | "sell" = "buy";
   /** Slot mostrado na compra do mercado. */
   private marketSlot: ItemSlot = "weapon";
@@ -265,80 +320,221 @@ export class Hub {
     });
     const body = $("hub-body");
     body.replaceChildren(
-      this.tab === "classes" ? this.renderClasses()
+      this.tab === "heroes" ? this.renderHeroes()
         : this.tab === "spells" ? this.renderTree()
           : this.tab === "items" ? this.renderInventory()
             : this.renderMarket(),
     );
   }
 
-  // --- Classes --------------------------------------------------------------
+  // --- Heróis ---------------------------------------------------------------
 
-  private renderClasses() {
-    const page = el("div", "hub-page");
-    page.append(el("h2", "", "Classes"), el("p", "muted hub-hint", "Toque numa classe para entrar com ela na próxima hunt."));
-    const list = el("div", "class-list");
-    for (const id of CLASS_IDS) {
-      const c = CLASSES[id];
-      // Como a hunt soma (`applyBonuses` e `baseDamage` em hunt.ts): áureas, runas e itens vestidos por esta classe.
-      const worn = this.wornItems(id).map((i) => i.itemId);
-      const aura = auraBonuses(id, this.profile.talents);
-      const runes = heroBonuses({}, worn);
-      const gear = gearStats(worn);
-      const bonus = {
-        hp: aura.hp + runes.hp + gear.hp, mana: aura.mana + runes.mana + gear.mana,
-        damage: aura.damage + runes.damage, speed: aura.speed + runes.speed + gear.speed,
-      };
-      const base = statsFor(id, 1);
-      const boosted = statsFor(id, 1, bonus);
-      const damage = boosted.damage * (1 + gear.damage);
-      const range = c.attackRange + (c.attackRange > 1 ? gear.range : 0);
-      const armor = gear.armor + runes.armor;
-      const card = el("button", "class-card");
-      card.classList.toggle("selected", id === this.classId);
-      card.style.setProperty("--class-color", hex(c.color));
-      card.setAttribute("aria-pressed", String(id === this.classId));
+  /**
+   * O salão do herói escolhido: os medalhões para trocar, o herói vestido andando num palco, os atributos em barras
+   * (a parte base e o bônus, na escala dos 4 heróis) e os atalhos para o Grimório e o equipamento dele.
+   */
+  private renderHeroes() {
+    const id = this.classId;
+    const c = CLASSES[id];
+    const page = el("div", "hub-page heroes");
+    page.style.setProperty("--class-color", hex(c.color));
+    page.append(el("h2", "", "Heróis"), el("p", "muted hub-hint", "Toque num herói para entrar com ele na próxima hunt."));
+    page.append(this.heroPicks(id, (pick) => {
+      if (pick === this.classId) return;
+      this.classId = pick;
+      this.treeClass = pick;
+      this.treeBranch = 0;
+      storageSet("kusa:class", pick);
+      this.render();
+    }));
 
-      const head = el("div", "class-head");
-      const title = el("div");
-      title.append(el("strong", "", c.name), el("small", "muted", ROLES[id]));
-      head.append(portrait(id, this.loadout(id)), title);
-      if (id === this.classId) head.append(el("span", "badge", "Escolhida"));
-
-      const stats = el("dl", "class-stats");
-      const stat = (label: string, value: string, up: boolean) => {
-        const dd = el("dd", up ? "up" : "", value);
-        stats.append(el("dt", "", label), dd);
-      };
-      stat("Vida", String(boosted.maxHp), boosted.maxHp > base.maxHp);
-      stat("Mana", String(boosted.maxMana), boosted.maxMana > base.maxMana);
-      stat("Dano", String(Math.round(damage)), damage > base.damage);
-      stat("Alcance", range === 1 ? "Corpo a corpo" : `${range} tiles`, range > c.attackRange);
-      if (armor) stat("Armadura", `${armor} (−${Math.round(damageReduction(armor) * 100)}%)`, true);
-
-      const known = knownSpells(id, this.profile.talents).length;
-      const total = Object.values(SPELLS).filter((s) => s.classId === id).length;
-      const foot = el("div", "class-foot");
-      foot.append(el("span", "muted", `Magias ${known}/${total}`));
-      const tree = el("span", "link", "Grimório ›");
-      tree.onclick = (e) => {
-        e.stopPropagation();
-        this.treeClass = id;
-        this.setTab("spells");
-      };
-      foot.append(tree);
-
-      card.append(head, stats, foot);
-      card.onclick = () => {
-        this.classId = id;
-        this.treeClass = id;
-        storageSet("kusa:class", id);
-        this.render();
-      };
-      list.append(card);
+    // Palco: o herói vestido anda e gira; as especializações escolhidas ficam em estandartes embaixo.
+    const stage = el("section", "hero-stage");
+    const scene = el("div", "hero-scene");
+    for (let i = 0; i < 9; i++) {
+      const ember = el("i", "hero-ember");
+      ember.style.setProperty("--x", `${8 + ((i * 37) % 84)}%`);
+      ember.style.setProperty("--d", `${(i * 0.73) % 4.5}s`);
+      ember.style.setProperty("--t", `${4 + (i % 3)}s`);
+      scene.append(ember);
     }
-    page.append(list);
+    scene.append(el("span", "hero-plinth"), heroWalker(id, this.loadout(id)));
+    const specs = talentTree(id).filter((t) => t.kind === "trait" && talentRank(t, this.profile.talents) > 0);
+    if (specs.length) {
+      const banners = el("div", "hero-specs");
+      for (const t of specs) banners.append(el("span", "hero-spec", `${t.icon} ${TRAITS[t.traitId!].spec}`));
+      scene.append(banners);
+    }
+    const caption = el("div", "hero-caption");
+    const tags = el("div", "hero-tags");
+    for (const tag of ROLES[id].tags) tags.append(el("span", "", tag));
+    caption.append(el("p", "", ROLES[id].text), tags);
+    stage.append(el("div", "equip-title", c.name), scene, caption);
+    page.append(stage);
+
+    // Atributos: barra na escala do maior valor entre os 4 heróis; o trecho claro é o bônus.
+    const all = Object.fromEntries(CLASS_IDS.map((k) => [k, this.heroStats(k)])) as Record<ClassId, HeroStats>;
+    const stats = all[id];
+    const attrs = el("div", "hero-attrs");
+    for (const key of Object.keys(stats) as (keyof HeroStats)[]) {
+      const { label, icon, base, value, text } = stats[key];
+      const top = Math.max(1, ...CLASS_IDS.map((k) => all[k][key].value));
+      const row = el("div", "attr");
+      const bar = el("div", "attr-bar");
+      const b = el("i", "attr-base");
+      b.style.width = `${(Math.min(base, value) / top) * 100}%`;
+      const up = el("i", "attr-bonus");
+      up.style.width = `${(Math.max(0, value - base) / top) * 100}%`;
+      bar.append(b, up);
+      const shown = el("span", "attr-value", text);
+      const gain = value - base;
+      if (gain > 0 && key !== "range" && key !== "armor") shown.append(el("small", "", ` +${key === "speed" ? gain.toFixed(1).replace(".", ",") : Math.round(gain)}`));
+      row.append(el("span", "attr-icon", icon), el("span", "attr-label", label), bar, shown);
+      attrs.append(row);
+    }
+    page.append(el("h3", "", "Atributos"), attrs,
+      el("p", "muted hub-hint attr-note", "Como ele entra na hunt (nível 1), já com áureas, runas e equipamento. O trecho claro é o bônus."));
+
+    page.append(el("h3", "", "Arsenal"), this.heroGrimoire(id), this.heroGear(id));
     return page;
+  }
+
+  /** Atributos do herói como a hunt soma (`applyBonuses` e `baseDamage` em hunt.ts): áureas, runas e itens vestidos por ele. */
+  private heroStats(id: ClassId): HeroStats {
+    const c = CLASSES[id];
+    const worn = this.wornItems(id).map((i) => i.itemId);
+    const aura = auraBonuses(id, this.profile.talents);
+    const runes = heroBonuses({}, worn);
+    const gear = gearStats(worn);
+    const bonus = {
+      hp: aura.hp + runes.hp + gear.hp, mana: aura.mana + runes.mana + gear.mana,
+      damage: aura.damage + runes.damage, speed: aura.speed + runes.speed + gear.speed,
+    };
+    const base = statsFor(id, 1);
+    const boosted = statsFor(id, 1, bonus);
+    const damage = boosted.damage * (1 + gear.damage);
+    const range = c.attackRange + (c.attackRange > 1 ? gear.range : 0);
+    const armor = gear.armor + runes.armor;
+    const speed = (n: number) => n.toFixed(1).replace(".", ",");
+    return {
+      hp: { label: "Vida", icon: "❤️", base: base.maxHp, value: boosted.maxHp, text: String(boosted.maxHp) },
+      mana: { label: "Mana", icon: "💧", base: base.maxMana, value: boosted.maxMana, text: String(boosted.maxMana) },
+      damage: { label: "Dano", icon: "⚔️", base: base.damage, value: damage, text: String(Math.round(damage)) },
+      armor: { label: "Armadura", icon: "🛡️", base: 0, value: armor, text: armor ? `${armor} · −${Math.round(damageReduction(armor) * 100)}%` : "0" },
+      range: { label: "Alcance", icon: "🏹", base: c.attackRange, value: range, text: range === 1 ? "Corpo a corpo" : `${range} tiles` },
+      speed: { label: "Velocidade", icon: "👟", base: base.speed, value: boosted.speed, text: `${speed(boosted.speed)}/s` },
+    };
+  }
+
+  /** Atalho do Grimório: os 3 ramos (com a especialização escolhida) e as magias que vão para a hunt. */
+  private heroGrimoire(id: ClassId) {
+    const ranks = this.profile.talents;
+    const tree = talentTree(id);
+    const card = el("div", "hero-link");
+    const open = (branch?: number) => {
+      this.treeClass = id;
+      if (branch !== undefined) this.treeBranch = branch;
+      this.setTab("spells");
+    };
+    const known = knownSpells(id, ranks).length;
+    const total = Object.values(SPELLS).filter((s) => s.classId === id).length;
+    card.append(this.linkHead("📖", "Grimório", `${known}/${total} magias`, () => open()));
+
+    const branches = el("div", "hero-branches");
+    TREE_BRANCHES[id].forEach((name, col) => {
+      const spells = tree.filter((t) => t.col === col && t.kind === "spell" && t.row > 0);
+      const owned = spells.filter((t) => talentRank(t, ranks) > 0).length;
+      const trait = tree.find((t) => t.col === col && t.kind === "trait" && talentRank(t, ranks) > 0);
+      const b = el("button", "hero-branch");
+      b.classList.toggle("started", owned > 0);
+      const emblem = el("span", "grim-tab-emblem");
+      emblem.append(branchIcon(id, col));
+      b.append(emblem, el("strong", "", name), el("small", trait ? "spec" : "muted", trait ? `✦ ${TRAITS[trait.traitId!].spec}` : `${owned}/${spells.length}`));
+      b.setAttribute("aria-label", `${name}: ${owned} de ${spells.length} magias${trait ? `, ${TRAITS[trait.traitId!].spec}` : ""}`);
+      b.onclick = () => open(col);
+      branches.append(b);
+    });
+    card.append(branches);
+
+    const { talents, spellXp, activeSpells: chosen } = this.profile;
+    const going = el("div", "hero-spells");
+    going.append(el("small", "muted", "Vão para a hunt"));
+    const list = el("div", "hero-spell-list");
+    for (const spellId of activeSpells(id, talents, spellXp, chosen)) {
+      const s = SPELLS[spellId];
+      const chip = el("span", "hero-spell");
+      chip.style.setProperty("--spell-color", hex(s.color));
+      chip.append(el("b", "", String(s.slot + 1)), el("span", "", s.icon), el("span", "hero-spell-name", s.name));
+      list.append(chip);
+    }
+    going.append(list);
+    card.append(going);
+    return card;
+  }
+
+  /** Atalho do equipamento: os 6 slots e as 3 runas do herói, com a armadura e o dano dos itens. */
+  private heroGear(id: ClassId) {
+    const card = el("div", "hero-link");
+    const worn = this.wornItems(id);
+    const runes = worn.filter((i) => RUNES[i.itemId]);
+    const open = () => this.setTab("items");
+    card.append(this.linkHead("🎒", "Equipamento", `Runas ${runes.length}/${RUNE_SLOTS}`, open));
+    const strip = el("button", "hero-gear");
+    strip.setAttribute("aria-label", `Equipamento do ${CLASSES[id].name}: ${worn.length - runes.length} de ${ITEM_SLOTS.length} slots, ${runes.length} runas`);
+    for (const slot of ITEM_SLOTS) {
+      const owned = worn.find((i) => ITEMS[i.itemId]?.slot === slot);
+      const cell = el("span", "hero-gear-slot");
+      if (owned) {
+        cell.append(itemImg(owned.itemId));
+        cell.style.borderColor = hex(itemColor(owned.itemId));
+      } else {
+        cell.append(ghostImg(slot));
+        cell.classList.add("vacant");
+      }
+      strip.append(cell);
+    }
+    for (let i = 0; i < RUNE_SLOTS; i++) {
+      const owned = runes[i];
+      const cell = el("span", "hero-gear-slot rune");
+      if (owned) {
+        cell.append(itemImg(owned.itemId));
+        cell.style.borderColor = hex(lootColor(owned.itemId));
+      } else {
+        cell.append(el("span", "slot-empty", "ᚱ"));
+        cell.classList.add("vacant");
+      }
+      strip.append(cell);
+    }
+    strip.onclick = open;
+    const gear = gearStats(worn.map((i) => i.itemId));
+    const facts = [`🛡️ Armadura ${gear.armor}`, `⚔️ Dano +${Math.round(gear.damage * 100)}%`];
+    if (gear.spellPower) facts.push(`✨ Magias +${Math.round(gear.spellPower * 100)}%`);
+    card.append(strip, el("small", "muted hero-gear-facts", facts.join(" · ")));
+    return card;
+  }
+
+  /** Cabeçalho tocável de um atalho do Arsenal: ícone, nome, resumo e a seta. */
+  private linkHead(icon: string, title: string, summary: string, onclick: () => void) {
+    const head = el("button", "hero-link-head");
+    head.append(el("span", "", icon), el("strong", "", title), el("small", "muted", summary), el("b", "", "›"));
+    head.onclick = onclick;
+    return head;
+  }
+
+  /** Um medalhão por herói, com o retrato vestido e a cor da classe (Heróis e Grimório). */
+  private heroPicks(selected: ClassId, onPick: (id: ClassId) => void) {
+    const heroes = el("div", "grim-heroes");
+    for (const id of CLASS_IDS) {
+      const pick = el("button", "grim-hero");
+      pick.style.setProperty("--class-color", hex(CLASSES[id].color));
+      pick.setAttribute("aria-pressed", String(id === selected));
+      const frame = el("span", "grim-hero-frame");
+      frame.append(portrait(id, this.loadout(id)));
+      pick.append(frame, el("span", "grim-hero-name", CLASSES[id].name));
+      pick.onclick = () => onPick(id);
+      heroes.append(pick);
+    }
+    return heroes;
   }
 
   // --- Grimório ---------------------------------------------------------------
@@ -352,18 +548,7 @@ export class Hub {
     page.append(el("h2", "", "Grimório"));
 
     // Um botão por personagem, com o retrato vestido e a cor da classe.
-    const heroes = el("div", "grim-heroes");
-    for (const id of CLASS_IDS) {
-      const pick = el("button", "grim-hero");
-      pick.style.setProperty("--class-color", hex(CLASSES[id].color));
-      pick.setAttribute("aria-pressed", String(id === this.treeClass));
-      const frame = el("span", "grim-hero-frame");
-      frame.append(portrait(id, this.loadout(id)));
-      pick.append(frame, el("span", "grim-hero-name", CLASSES[id].name));
-      pick.onclick = () => { this.treeClass = id; this.render(); };
-      heroes.append(pick);
-    }
-    page.append(heroes);
+    page.append(this.heroPicks(this.treeClass, (id) => { this.treeClass = id; this.render(); }));
 
     const tree = talentTree(this.treeClass);
     const ranks = this.profile.talents;
