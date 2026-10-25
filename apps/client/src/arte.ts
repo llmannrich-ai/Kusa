@@ -9,12 +9,13 @@ import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures, type MonsterAnim } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_AXES, PROTO_BOWS, PROTO_ITEM_NAMES, PROTO_MAGIC_BOWS, PROTO_MAGIC_STAFFS, PROTO_MAGIC_WANDS, PROTO_ARC_HATS, PROTO_MAGIC_ARC_HATS, PROTO_ROBES, PROTO_MAGIC_ROBES, PROTO_PANTS, PROTO_MAGIC_PANTS, PROTO_GREAVES, PROTO_MAGIC_GREAVES, PROTO_BOOTS, PROTO_MAGIC_BOOTS, PROTO_SHIELDS, PROTO_MAGIC_SHIELDS, PROTO_MAGIC_XBOWS, PROTO_STAFFS, PROTO_WANDS, PROTO_XBOWS, PROTO_MAGIC_ARMORS, PROTO_MAGIC_AXES, PROTO_MAGIC_HELMETS, PROTO_MAGIC_SWORDS, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
-import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
+import { fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/ambient.ts";
+import { WALL_HEIGHTS, WALL_LINK, columnSheet, mosaicCanvas, pavingStrip, ruinFloorStrip, ruinTallStrip, ruinWallCanvas, ruinWaterStrip } from "./art/ruinsDecor.ts";
 
 const ZOOM = 4;
 const gallery = document.getElementById("gallery")!;
@@ -362,8 +363,8 @@ show(combat, biteStrip(), "mordida");
 show(combat, smashStrip(), "pancada");
 show(combat, leafCanvas(), "folha");
 
-// Detalhes do pântano: cada faixa sobre capim, para ver o contraste como no jogo.
-const swamp = section("Pântano: detalhes (arte própria)");
+// Ruínas do Pântano das Ruínas: cada faixa sobre o capim da baía, para ver o contraste como no jogo.
+const swamp = section("Pântano das Ruínas: ruínas (arte própria)");
 const onGround = (source: HTMLCanvasElement, ground: string) => {
   const { canvas, ctx } = makeCanvas(source.width, source.height);
   ctx.fillStyle = ground;
@@ -371,13 +372,28 @@ const onGround = (source: HTMLCanvasElement, ground: string) => {
   ctx.drawImage(source, 0, 0);
   return canvas;
 };
-show(swamp, onGround(decorFloorStrip(), "#3f6a2a"), "chão", 3);
-show(swamp, onGround(decorWaterStrip(), "#2f5a5a"), "água", 3);
-show(swamp, onGround(decorTallStrip(), "#3f6a2a"), "altos", 3);
-show(swamp, onGround(shadeStrip(), "#3f6a2a"), "sombras", 3);
-show(swamp, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
-show(swamp, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
-show(swamp, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
+show(swamp, pavingStrip(), "lajes", 3);
+show(swamp, onGround(ruinFloorStrip(), "#626656"), "chão", 3);
+show(swamp, onGround(ruinTallStrip(), "#4a6a30"), "altos", 3);
+show(swamp, onGround(ruinWaterStrip(), "#24423e"), "água", 3);
+show(swamp, onGround(columnSheet(), "#4a6a30"), "colunas", 3);
+// Muros: um trecho deitado (ponta oeste, meio, ponta leste), um canto e um em pé, em cada variação.
+{
+  const pieces = [WALL_LINK.e, WALL_LINK.e | WALL_LINK.w, WALL_LINK.w, WALL_LINK.e | WALL_LINK.s, WALL_LINK.n | WALL_LINK.s];
+  const { canvas, ctx } = makeCanvas(TILE_SIZE * pieces.length * 3 + 16, (TILE_SIZE + 24) * 1);
+  ctx.fillStyle = "#4a6a30";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let v = 0; v < 3; v++) pieces.forEach((links, i) => ctx.drawImage(ruinWallCanvas(links, WALL_HEIGHTS[2 + (i % 3)], v), (v * pieces.length + i) * TILE_SIZE + v * 8, 0));
+  show(swamp, canvas, "muros", 3);
+}
+show(swamp, onGround(mosaicCanvas(), "#626656"), "mosaico da Hidra", 2);
+
+// Ambiente que os mapas dividem (cripta, pântanos).
+const ambient = section("Ambiente: sombras, ondinha, vaga-lume e névoa");
+show(ambient, onGround(shadeStrip(), "#3f6a2a"), "sombras", 3);
+show(ambient, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
+show(ambient, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
+show(ambient, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
 
 // Detalhes da cripta: chão sobre ladrilho escuro; paredes sobre a face de tijolos (linhas 16 a 31).
 const crypt = section("Cripta: detalhes (arte própria)");
@@ -401,7 +417,6 @@ const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
   ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
   ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
-  ...Object.values(SWAMP_TEXTURE),
 ];
 for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);

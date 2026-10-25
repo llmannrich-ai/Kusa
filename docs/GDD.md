@@ -425,9 +425,9 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
 - **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
   Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
-  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). O cliente lê
-  `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual: o bloqueio de
-  verdade vem com a fase 3 do plano.
+  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). **Só o boss de um lado abre
+  aquele lado:** o Observador abre as Dunas Cantantes (o Basilisco não); o Basilisco abrirá o Bosque Velho quando ele
+  existir. O cliente lê `profile_boss_clears` (bosses vencidos por personagem).
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
   pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
@@ -435,16 +435,18 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
-  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Basilisco ou Observador → Dunas Cantantes, boss das Dunas →
-  Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
-  Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (os lados da bifurcação seguem os bosses vencidos, `bossKills`). Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
+  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
+  Cantante → Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco
+  (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
+  bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
+  `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
   e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha diz quem derrotar e onde, e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
-  entre dois cenários abertos. Contas de antes herdaram os cenários pelas runas de boss já levadas.
+  entre dois cenários abertos. Contas de antes herdaram os cenários e os bosses vencidos pelas runas de boss já levadas.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
-  gravado por `record_map_clear` (servidor) e `record_solo_map_clear` (hunt solo e sala no aparelho, cada um o seu).
+  gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
 - **Ainda não:** os outros 11 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
@@ -483,20 +485,43 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 ### Pântano das Ruínas
 
-- **Campo aberto, sem caminho único:** o mapa nasce todo andável (só a borda é mata fechada) e recebe por cima
-  bosques de vários tamanhos, árvores soltas, lagoas e restos de muro. Todo obstáculo que fecharia a passagem
-  até uma zona, baú ou boss é descartado, então a equipe pode ir para qualquer região e contornar tudo.
+- **Campo aberto, sem caminho único:** o mapa nasce todo andável (só a borda é mata fechada, com a espessura
+  ondulando devagar) e recebe por cima bosques de vários tamanhos, árvores soltas, lagoas alongadas (às vezes com
+  uma poça colada) e os restos do império. Todo obstáculo que fecharia a passagem até uma zona, baú ou boss é
+  descartado, então a equipe pode ir para qualquer região e contornar tudo.
 - **Dificuldade em arco:** 7 zonas de monstros vão da entrada até as ruínas do centro, cada uma mais forte;
   5 campinas espalhadas têm alguns monstros extras.
 - Lagoas e poças: **a água bloqueia o passo, mas não a visão**. Flechas, magias e o ataque de alcance 2 da Hidra passam por cima.
-- Ruínas: salas laterais cercadas por muros caídos com 2 portões (Troll + baú), colunas soltas pelo campo e a arena do boss no centro,
-  um quadrado de muros com 4 portões e 4 colunas.
-- **Visual** (só no cliente, `apps/client/src/swampMap.ts` e arte própria em `art/swampDecor.ts`; não muda a jogabilidade
-  nem o gerador): capim invadindo a lama e a pedra, espuma na margem das lagoas, sombra das árvores e muros no chão,
-  manchas de luz no capim, árvores com variação de tom, taboas na margem, samambaias, arbustos e cogumelos no pé das
-  árvores, flores, pedrinhas, tocos e troncos no campo, entulho, musgo e ossos nas ruínas, vitórias-régias na água,
-  e o ambiente: vaga-lumes, ondinhas nas lagoas, névoa baixa e cantos da tela escurecidos. Só os sprites perto da
-  câmera são desenhados (blocos de 8×8 tiles), para o celular aguentar.
+- Ruínas: salas laterais cercadas por muros caídos com 2 portões (Troll + baú), a arena do boss no centro (um
+  quadrado de muros com 4 portões e 4 colunas) e, pelo campo, 13 restos de construção: trechos de muro, cantos em L,
+  colunatas (colunas a cada 2 tiles, umas já caídas) e alicerces de casa com a porta aberta, além de colunas soltas.
+  Muro e coluna bloqueiam passo e visão.
+- **Visual** (só no cliente, toda a arte própria, sem pack; não muda a jogabilidade): o mesmo desenhista de floresta
+  alagada do Pântano do Kosaradius (`apps/client/src/wetlandMap.ts`, com o tema em `swampMap.ts`), a natureza na
+  paleta da Baía Afundada (`swampTone` em `art/ruinsDecor.ts`: verde-oliva mais aberto e claro que o do Kosaradius,
+  água verde-azulada) e as ruínas em arte própria (`art/ruinsDecor.ts`):
+  - **Natureza:** capim com folhinhas e touceiras, lama só na beira d'água, água rasa e funda, mata fechada em copa
+    contínua com a beira recortada e os troncos aparecendo do lado sul, árvores soltas de 4 espécies (salgueiro,
+    cipreste, mangue e árvore morta, sem o anel de ciprestes do Kosaradius) com sombra e copa que balança e fica
+    transparente com o jogador embaixo; as bordas entre terrenos têm lados e cantos de dentro e de fora e pegam as
+    mesmas manchas de tom do chão.
+  - **Piso de lajes:** lajes irregulares de calcário (opus incertum, fecham a cada 2×2 tiles) com bisel, desgaste e
+    juntas tomadas de musgo, nas salas laterais, na arena (com uma beirada irregular em volta) e em volta dos restos
+    de muro pelo campo; o capim invade a beira.
+  - **Muros com volume:** pedra ligada a outra é trecho de muro montado pelos vizinhos (deitado, em pé, canto, ponta),
+    com face de blocos, tampo coberto de musgo, espessura (luz a oeste, sombra a leste), ponta solta desmoronando em
+    degraus, blocos faltando no alto, a marca escura da água no pé e, conforme a variação, rachadura, musgo
+    escorrendo ou hera. A altura varia aos poucos nos trechos deitados e é a mesma em todo o trecho em pé.
+  - **Colunas:** pedra sozinha é coluna com plinto e caneluras: inteira com capitel na arena da Hidra; no resto,
+    quebrada alta (com hera), quebrada média ou toco com o tambor caído ao lado.
+  - **Arena:** no meio, o **mosaico da Hidra** em tesselas (borda escura, faixa de ondas verde-serpente e as três
+    cabeças saindo de um disco), gasto pelo tempo, com musgo entrando pela borda.
+  - **Enfeites das ruínas:** entulho no pé dos muros, rachaduras, lajes afundadas com água, lajes faltando com capim,
+    glifo da Hidra entalhado, cacos de urna, caveira, tambores de coluna caídos, cabeças de estátua, urnas e pedestais;
+    na água perto das ruínas, lajes afundadas, tocos de coluna e pedras de passagem. No capim, os enfeites do brejo
+    (taboas, juncos, íris, samambaias, cogumelos, tiririca).
+  - **Ambiente:** vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas na água, um pouco de sol no
+    meio da tela e cantos úmidos. Só os sprites perto da câmera são desenhados (blocos de 8×8 tiles).
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
@@ -670,8 +695,8 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
   que fecharia a passagem até uma zona, campina, clareira ou ao centro é descartado. **Árvore solta** é um tile de
   mata sem mata nos 4 lados; mata encostada em mata é **mata fechada**. As duas bloqueiam passo e visão; a água,
   só o passo; os troncos caídos (pedra), passo e visão.
-- **Visual** (só no cliente, `apps/client/src/marshMap.ts`, com toda a arte própria em `art/marshDecor.ts`, sem
-  pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
+- **Visual** (só no cliente, `apps/client/src/wetlandMap.ts` com o tema em `marshMap.ts`, e toda a arte própria em
+  `art/marshDecor.ts`, sem pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
   torrões, água escura cor de chá (rasa e funda) com lodo e lentilha-d'água na margem; capim invadindo a lama com
   quinas arredondadas. A **mata fechada** é uma copa contínua de tufos (textura de 3×3 tiles, sem emenda) cuja beira
   recua com borda recortada; do lado sul ela sobe e mostra a sombra, os troncos e a barba-de-velho pendurada. As
