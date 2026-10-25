@@ -174,4 +174,6 @@ export class DungeonState extends Schema {
   @type({ map: Field }) fields = new MapSchema<Field>();
   /** Boss morto: o portal de conclusão fica aberto no centro da sala do boss. */
   @type("boolean") bossDefeated = false;
+  /** Covis com o boss morto e o portal aberto (bit i = `Dungeon.lairs[i]`; nos mapas de um boss, só o bit 0). */
+  @type("uint8") lairsDown = 0;
 }

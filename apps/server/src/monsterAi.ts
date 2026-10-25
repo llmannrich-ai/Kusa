@@ -68,6 +68,8 @@ export interface Brain {
   targetId: string | null;
   /** Baú liberado quando este mini-boss morre. */
   chestId?: string;
+  /** Covil deste boss (índice em `Dungeon.lairs`): morto, abre o portal de lá. */
+  lair?: number;
   /** Preso por raízes até este momento (ms). */
   rootedUntil: number;
   /** Atordoado até este momento (ms). */

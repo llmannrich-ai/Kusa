@@ -2,14 +2,15 @@
 -- `profile_map_clears` anota os cenários vencidos. Ganha o cenário todo humano que estava na hunt quando o boss
 -- principal morreu, vivo ou morto (sem ter saído). O servidor de jogo anota por `record_map_clear` (só service role);
 -- a hunt solo e a sala no aparelho do jogador, por `record_solo_map_clear` (cada um anota o seu, pela hunt aberta).
--- A ordem repete `WORLD_ORDER` do packages/shared (`src/world.ts`): mude os dois juntos.
+-- A ordem repete `WORLD_ORDER` do packages/shared (`src/world.ts`): mude os dois juntos. Na Caverna da Travessia
+-- (dois covis) qualquer um dos bosses vence o cenário.
 -- O bloqueio vale para quem cria: `start_solo_run` recusa cenário fechado, menos para quem entra na sala de outro
 -- jogador no aparelho dele (`p_guest`). Contas atuais: quem já levou a runa do boss com a classe venceu o cenário.
 
 create table public.profile_map_clears (
   profile_id uuid not null references public.profiles (id) on delete cascade,
   class_id text not null check (class_id in ('knight', 'paladin', 'sorcerer', 'druid')),
-  map_id text not null check (map_id in ('crypt', 'swamp', 'desert', 'marsh')),
+  map_id text not null check (map_id in ('crypt', 'swamp', 'desert', 'marsh', 'cavern')),
   first_at timestamptz not null default now(),
   primary key (profile_id, class_id, map_id)
 );
@@ -30,6 +31,7 @@ as $$
     when 'crypt' then 'marsh'
     when 'desert' then 'crypt'
     when 'swamp' then 'desert'
+    when 'cavern' then 'swamp'
     else null
   end;
 $$;
@@ -41,7 +43,7 @@ stable
 security definer
 set search_path = ''
 as $$
-  select p_map_id in ('crypt', 'swamp', 'desert', 'marsh') and (
+  select p_map_id in ('crypt', 'swamp', 'desert', 'marsh', 'cavern') and (
     public.map_unlocked_by(p_map_id) is null
     or exists (
       select 1 from public.profile_map_clears c
@@ -62,7 +64,7 @@ set search_path = ''
 as $$
   insert into public.profile_map_clears (profile_id, class_id, map_id)
   select p_profile_id, p_class_id, p_map_id
-  where p_class_id in ('knight', 'paladin', 'sorcerer', 'druid') and p_map_id in ('crypt', 'swamp', 'desert', 'marsh')
+  where p_class_id in ('knight', 'paladin', 'sorcerer', 'druid') and p_map_id in ('crypt', 'swamp', 'desert', 'marsh', 'cavern')
   on conflict do nothing;
 $$;
 
@@ -123,8 +125,13 @@ grant execute on function public.start_solo_run(text, text, boolean) to authenti
 -- Contas atuais: quem levou a runa do boss com a classe venceu aquele cenário.
 insert into public.profile_map_clears (profile_id, class_id, map_id, first_at)
 select profile_id, class_id,
-  case boss_kind when 'ogreKing' then 'marsh' when 'dragon' then 'crypt' when 'sandWorm' then 'desert' else 'swamp' end,
+  case boss_kind
+    when 'ogreKing' then 'marsh' when 'dragon' then 'crypt' when 'sandWorm' then 'desert'
+    when 'hydra' then 'swamp' when 'blackDragon' then 'swamp'
+    when 'basilisk' then 'cavern' when 'beholder' then 'cavern'
+  end,
   min(created_at)
 from public.profile_boss_runes
+where boss_kind in ('ogreKing', 'dragon', 'sandWorm', 'hydra', 'blackDragon', 'basilisk', 'beholder')
 group by 1, 2, 3
 on conflict do nothing;

@@ -71,6 +71,11 @@ contra um servidor já aberto, passando a URL:
 - `npm run test:caos [seeds]` (não entra no `npm test`): roda os testes da arena (efeitos, grimorio, costelas, specials,
   spells e bestiario) com mapas e seeds sorteados. Roda todo dia no CI (`.github/workflows/caos.yml`) e, se falhar, abre
   uma issue com o rótulo `caos` e o comando que reproduz a falha (`KUSA_MAP=... KUSA_SEED=... npx tsx scripts/<teste>.ts`).
+- `npx tsx scripts/catalogo.ts` (de dentro de `apps/server`; sem servidor): as chances de drop e o gold que o Catálogo
+  (Configurações > Catálogo, `dropOdds`) mostra batem com a hunt: mata cada rank de cada mapa muitas vezes na arena e confere.
+- `npx tsx scripts/travessia.ts` (de dentro de `apps/server`; sem servidor): a Caverna da Travessia gera a chegada
+  embaixo e um covil de cada lado, põe o Basilisco e o Observador nos covis certos e cada boss morto abre só o portal
+  do covil dele, com o bônus daquele lado (também depois da troca de anfitrião).
 - `npx tsx scripts/andar.ts` (de dentro de `apps/server`; sem servidor): numa arena, a direção segurada anda no ritmo da
   ficha sem acumular o atraso do tick, para ao soltar e para sozinha se o cliente parar de reenviar.
 - `npx tsx scripts/efeitos.ts` (de dentro de `apps/server`; sem servidor): a `Hunt` roda direto, com relógio falso,

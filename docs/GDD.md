@@ -44,6 +44,7 @@ Código em `apps/client/src/menu.ts`.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
   - **Telemetria** (`apps/client/src/telemetry.ts`): os números de todas as hunts, para qualquer jogador logado, com filtro de mapa e período: visão geral, hunts por dia, como as hunts terminam, sobrevivência por classe, o que mais mata, fontes de dano, magias e melhorias escolhidas, curva de nível e as suas hunts. Só agregados, sem nomes (função `telemetry_dashboard`).
   - **Regras** (`apps/client/src/rules.ts`): como o jogo funciona, em seções que abrem e fecham. Os números (tempos, preços, melhorias, poções) vêm de `packages/shared`, então a página acompanha o balanceamento.
+  - **Catálogo** (`apps/client/src/catalog.ts`): todo equipamento, runa e poção com o que faz e o preço, e cada inimigo de cada mapa com vida, dano, XP, elementos, habilidades e o que larga (gold, chance de item e de raridade, poções, runa). Tem busca. Tudo vem de `packages/shared` (`dropOdds` em `drops.ts` para as chances), então conteúdo novo aparece sozinho; o teste `catalogo` confere as chances contra a hunt.
 - Ainda por fazer: modo, cosméticos e amigos.
 
 ### Grimório (árvore de magias)
@@ -413,11 +414,17 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Classes, Grimório, Batalhas,
   Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
-  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas (trilha vermelha). Daí ao norte, sob a
-  névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a **Cidadela Caída**.
-- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): Encruzilhada (floresta ou
-  deserto), Portões do Império (charco ou ermos) e Sopé da Serra (passo ou garganta). Tocar num cenário por vir só
-  avisa de onde ele abre.
+  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
+  vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
+  **Cidadela Caída**.
+- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
+  Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
+  Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
+- **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
+  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
+  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). O cliente lê
+  `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual: o bloqueio de
+  verdade vem com a fase 3 do plano.
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
   pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
@@ -425,8 +432,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
-  das Ruínas). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
-  Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
+  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
+  Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (os lados da bifurcação seguem os bosses vencidos, `bossKills`). Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
   e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha diz quem derrotar e onde, e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
@@ -434,7 +441,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`, `p_guest` para quem entra na sala de outro); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` (servidor) e `record_solo_map_clear` (hunt solo e sala no aparelho, cada um o seu).
-- **Ainda não:** os outros 14 cenários da campanha não existem (medalhões numerados).
+- **Ainda não:** os outros 13 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
@@ -445,11 +452,15 @@ Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram n
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
 recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
+Escala de dificuldade de 1 a 4 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
+Ruínas e 4 para a Caverna da Travessia, o mapa mais difícil (a 3 fica livre para um mapa entre os dois).
+
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
+| 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -541,6 +552,46 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
   Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
+### Caverna da Travessia
+
+- **Onde:** nos Campos de Kusa, na etapa 5 da campanha de Verdemar (o ponto que era a Encruzilhada), logo depois do
+  Pântano das Ruínas: túneis por baixo dos campos, onde a trilha se divide entre a floresta e o deserto. **Dificuldade 4 (★★★★), o mapa mais difícil do jogo**, 10 min, até 4 jogadores.
+- **Toda subterrânea, com o celular na vertical** (`generateCavern` em `dungeon.ts`): a câmara de chegada (com o
+  portal de fuga) fica embaixo, no meio. Acima dela, o **tronco**: 2 zonas de aquecimento (todo mundo começa no
+  nível 1). Dali a caverna se bifurca em dois túneis separados por uma espinha de rocha, sem passagem entre eles: o
+  **oeste** sobe por 3 zonas até o covil do **Basilisco**; o **leste**, mais fundo e mais forte, por outras 3 até o
+  covil do **Observador das Profundezas**. Cada túnel tem uma câmara lateral com mini-boss e baú (ou Mímico) e um
+  nicho com 3 monstros extras. Poças de água escura bloqueiam o passo, não a visão; os covis têm pilares soltos.
+  `path` = tronco (profundidade 0–1), oeste (2–4), leste (5–7).
+- **Dois bosses, dois portais** (`MapDef.lairs`, `Dungeon.lairs`): um boss fixo por covil, sem sorteio. Matar um
+  abre o portal **daquele covil** (o outro continua fechado) e avisa "O portal do covil oeste/leste se abriu!". Sair
+  pelo portal oeste dá +50% do loot carregado (o bônus de sempre); pelo leste, +100%. A equipe pode vencer um, os
+  dois ou fugir pela chegada. Estado: `lairsDown` (bit por covil; `bossDefeated` continua valendo "algum boss morto").
+- **Crédito:** cada boss dá a runa dele uma vez por personagem, como os outros; é isso que libera o caminho daquele
+  lado no mapa mundi. `RunStats.bossKills` anota os bosses mortos com o herói na hunt (telemetria).
+- **Balanceamento** (medido, não estimado; refazer quando a telemetria da Caverna chegar):
+  - **XP:** tronco ~400, oeste ~2.900, leste ~4.100. Matando 75% do caminho, o herói chega no Basilisco no nível
+    10–11; no Observador, no 11–13 indo direto e no 14–17 fazendo o oeste antes (a rota pensada para ele).
+  - **Régua:** duelo só com ataque básico (`bestiary-sim.ts`) medindo quanto da vida do boss o herói tira antes de
+    cair, calibrada com a telemetria de produção: o Grumak (vencido com folga) dá ~50% no nível 10–12; o Dragão jovem
+    e o Verme (vencidos por ~1 em 3) dão 15–20% no 8–10; a Hidra e o Dragão negro (0 vitórias) dão 6–7% no 10–12.
+  - **Metas:** Basilisco ~15% no nível 10 (no patamar do Dragão e do Verme: difícil e vencível); Observador ~9%
+    indo direto (nível 11, perto do muro) e ~12% pela rota completa (nível 14, entre o Dragão e a Hidra).
+  - **Picos de dano:** nenhuma habilidade passa de ~25% do dano recebido no duelo (o Raio Desintegrador e a Mordida
+    Venenosa foram suavizados para isso); o atordoamento dura no máximo 1,5 s.
+- **Basilisco** (covil oeste, profundidade 5: 840 de base, ~1.340 no covil): mordida que envenena às vezes, **Olhar
+  Petrificante** (leque de 5 tiles que atordoa 1,5 s), **Mordida Venenosa** e, abaixo de metade da vida, **Cauda de
+  Pedra** (área em volta que empurra 2 tiles). Resiste a veneno e um pouco a físico.
+- **Observador das Profundezas** (covil leste, profundidade 8: 1.450 de base, ~2.840 no covil, o boss mais forte do
+  jogo): flutua e foge de quem cola (artilheiro), ataca a 3 tiles, **Raio Desintegrador** (linha de 7 tiles, 1,6×),
+  **Raio Paralisante** (atordoa 1,2 s), **Raio Repulsor** (empurra 3 tiles em volta) e, ferido, **Tempestade de
+  Olhares** (área que corrói). Resiste a sombra, vulnerável a luz.
+- **Loot:** teto da hunt solo 3.000 (o máximo teórico fica em ~2.700), cheio depois de 240 s.
+- **Visual** (só no cliente, `apps/client/src/cavernMap.ts`, com a arte da caverna do deserto em tons frios e os
+  bosses em `art/cavernBosses.ts`): rocha molhada azulada com paredão, chão de pedra com manchas, poças escuras,
+  estalagmites e cristais azuis que brilham, pele trocada e ossos no covil do Basilisco, brilho verde e roxo nos
+  covis, gotas pingando do teto e cantos da tela bem escuros.
+
 ### Pântano do Kosaradius
 
 - **Para jogar sozinho e mais fácil:** o mapa aceita 1 jogador só (`MapDef.maxParty`; bots contam), então não há
@@ -588,7 +639,7 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 - Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto (o Pântano do Kosaradius é só para 1).
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;
@@ -882,6 +933,8 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
   computador; mais no celular) e fica guardada. O sprite vai 10% maior que 128 px por tile, com os pés no mesmo
   ponto do herói antigo.
   Na Cripta, a opção também troca o cenário e os monstros (piloto dos mapas e monstros, `docs/ARTE_TIBIA.md`).
+  Os ícones dos itens (mochila, cofre, mercado, equipamento e chão) passam a ser o mesmo desenho do item vestido
+  (`docs/ARTE_ITENS.md`, seção 13).
 
 - **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por família (espada, machado, arco, besta, varinha, cajado, elmo, chapéu, armadura, manto, calça, botas, escudo), na cor do material; as vestes arcanas usam tecido (linho, lã, seda rúnica, mithral, seda de dragão), e varinhas e cajados têm uma gema por nível. Raros e mágicos levam uma gema azul ou roxa no canto (`apps/client/src/art/items.ts`).
 - **Vestido no herói** (`apps/client/src/art/hero/`): **cada item tem o seu desenho, igual em qualquer classe**.

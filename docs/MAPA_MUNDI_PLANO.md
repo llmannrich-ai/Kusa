@@ -36,7 +36,8 @@ este arquivo marca a fase como feita.
 | Convidado | o bloqueio vale só para **criar sala e jogar sozinho**; entrar na sala de outro jogador é livre |
 | Estrela | uma por ponto, "Venceu o boss", com a mesma regra do desbloqueio |
 | Pontos | 1 por cenário |
-| Ordem | 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas |
+| Ordem | 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (etapa 5 da campanha de Verdemar, a bifurcação floresta ou deserto) |
+| Bifurcação | na Caverna da Travessia: cada covil tem um boss; o Basilisco (oeste) libera a floresta (Bosque Velho) e o Observador (leste) libera o deserto (Dunas Cantantes) |
 | Contas atuais | desbloqueio pelo histórico: quem já matou um boss com a classe já tem o ponto seguinte aberto |
 | Salas abertas | nos dois lugares: contador no ponto (👥 2) e botão fixo "Salas abertas (N)" com a lista completa |
 | Nome do mundo | **Kosaradius**, escrito no fundo do mapa em marca d'água laranja clara, em arco convexo (ver 3) |
@@ -122,7 +123,7 @@ O continente principal cresce e passa a concentrar os cenários; o mapa deixa de
 | Escala | Verdemar com **10× a área** de hoje (~1100×1430 no desenho, ~3 telas de largura × 1,5 de altura no zoom de hoje) |
 | Navegação | **arrastar em qualquer direção + pinça para zoom**, do continente inteiro na tela até o tamanho de hoje; abre centrado no herói; botão 📍 volta para ele |
 | Campanha | Verdemar é a campanha inteira, do sul ao norte, com **18 cenários** em 13 etapas. Os 4 de hoje ficam **no começo**, na ponta sul (🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas); o resto fica apagado sob a névoa da campanha até a **Cidadela Caída** (a capital do império), no norte |
-| Bifurcações | 3, cada uma com dois caminhos que se reencontram: **Encruzilhada** (5) → floresta (Bosque Velho, Coração da Mata) ou deserto (Dunas Cantantes, Mesas de Solária) → **Portões do Império** (8) → Charco Cinzento ou Ermos Rubros → **Sopé da Serra** (10) → Passo do Lobo e Mosteiro Gelado, ou Garganta do Rio e Forjas Anãs → Cidadela Caída (13). Os dois lados de uma bifurcação têm o mesmo número de etapa |
+| Bifurcações | 3, cada uma com dois caminhos que se reencontram: **Caverna da Travessia** (5, era a Encruzilhada; Basilisco libera a floresta, Observador o deserto) → floresta (Bosque Velho, Coração da Mata) ou deserto (Dunas Cantantes, Mesas de Solária) → **Portões do Império** (8) → Charco Cinzento ou Ermos Rubros → **Sopé da Serra** (10) → Passo do Lobo e Mosteiro Gelado, ou Garganta do Rio e Forjas Anãs → Cidadela Caída (13). Os dois lados de uma bifurcação têm o mesmo número de etapa |
 | Áreas | Floresta do Kosaradius (oeste), Colinas das Tumbas (sul, a Cripta), Solária (deserto, leste) com a Baía Afundada, Campos de Kusa e Lago Espelho (centro-sul), Ruínas do Império (centro), Charco Cinzento (oeste), Ermos Rubros (nordeste) e Serra do Norte (montanhas e neve). Vilas, torres, farol, rios com pontes e estradas do império dão escala ao mapa |
 | Em volta | mar, com Gelo de Hrimfal e Ilha de Cinza em névoa (a Cidadela Caída entrou no continente) |
 | Nomes | o continente inteiro é **Verdemar**; longe (continente inteiro na tela) só os ícones aparecem, sem os nomes |

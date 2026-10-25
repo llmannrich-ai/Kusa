@@ -20,3 +20,4 @@ export * from "./perks.ts";
 export * from "./runes.ts";
 export * from "./solo.ts";
 export * from "./world.ts";
+export * from "./drops.ts";

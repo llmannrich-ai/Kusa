@@ -32,6 +32,7 @@ import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type A
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
 import { heroSheet } from "./art/heroes.ts";
 import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
+import { renderCatalog } from "./catalog.ts";
 import { renderHistory } from "./history.ts";
 import { loadMapClears } from "./profile.ts";
 import { Hub } from "./menu.ts";
@@ -40,6 +41,7 @@ import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt, flushPendingSolo } from "./solo.ts";
+import { loadBossKills } from "./profile.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
@@ -238,12 +240,14 @@ function openSheet() {
   $("sheet-name").textContent = map.name;
   $("sheet-region").textContent = WORLD_POINTS[map.id].region;
   const boss = mainBoss(map);
-  // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista.
+  // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista. Mapa de covis (Travessia): os
+  // dois bosses, um de cada lado da bifurcação.
+  const bosses = map.lairs ? [`☠ ${map.lairs.map((l) => MONSTERS[l.boss].name.split(" ")[0]).join(" · ")}`] : boss ? [`☠ ${MONSTERS[boss].name}`] : [];
   const chips = [
     difficultyStars(map.difficulty),
     `⏱ ${map.durationSeconds / 60} min`,
     partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
-    ...(boss ? [`☠ ${MONSTERS[boss].name}`] : []),
+    ...bosses,
     ...(clearsNow().includes(map.id) ? ["★ boss vencido"] : []),
   ];
   $("sheet-chips").replaceChildren(...chips.map((text) => {
@@ -285,6 +289,9 @@ async function openRooms() {
   world ??= createWorldMap($("world-view"), MAP_ART, pickPoint, toast);
   world.setHero(heroSheet(hub.classId).toDataURL());
   applyProgress();
+  world.setBossKills([]);
+  const classId = hub.classId;
+  void loadBossKills(classId).then((kills) => { if (hub.classId === classId) world?.setBossKills(kills); }).catch(() => {});
   world.select(createMapId(), { instant: true });
   // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
   world.focus(createMapId());
@@ -418,11 +425,12 @@ $("settings-back").onclick = () => {
   show("menu", true);
 };
 
-// Subpáginas das configurações: Telemetria, Histórico e Regras, para qualquer jogador logado.
+// Subpáginas das configurações: Telemetria, Histórico, Regras e Catálogo, para qualquer jogador logado.
 const SETTINGS_PAGES: Record<string, (root: HTMLElement) => void> = {
   telemetry: (root) => renderTelemetry(root),
   history: (root) => renderHistory(root),
   rules: (root) => renderRules(root),
+  catalog: (root) => renderCatalog(root),
 };
 document.querySelectorAll<HTMLButtonElement>("#settings-pages [data-page]").forEach((button) => {
   const page = button.dataset.page!;

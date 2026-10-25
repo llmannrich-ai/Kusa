@@ -10,14 +10,15 @@ import { WORLD_ORDER, lastUnlocked, mapUnlocked, unlockedBy, type MapId } from "
 import { HERO, arena, check } from "./arena.ts";
 
 // --- Ordem da campanha -----------------------------------------------------------------------
-check(WORLD_ORDER.join() === "marsh,crypt,desert,swamp", `ordem da campanha: ${WORLD_ORDER}`);
+check(WORLD_ORDER.join() === "marsh,crypt,desert,swamp,cavern", `ordem da campanha: ${WORLD_ORDER}`);
 const open = (clears: MapId[]) => WORLD_ORDER.filter((id) => mapUnlocked(clears, id)).join();
 check(open([]) === "marsh", `conta nova: só o Kosaradius aberto (veio ${open([])})`);
 check(open(["marsh"]) === "marsh,crypt", `Grumak vencido abre a Cripta (veio ${open(["marsh"])})`);
 check(open(["marsh", "crypt"]) === "marsh,crypt,desert", "Dragão jovem abre o Mar de Areia");
-check(open(["marsh", "crypt", "desert"]) === WORLD_ORDER.join(), "Verme da Areia abre o Pântano das Ruínas");
+check(open(["marsh", "crypt", "desert"]) === "marsh,crypt,desert,swamp", "Verme da Areia abre o Pântano das Ruínas");
+check(open(["marsh", "crypt", "desert", "swamp"]) === WORLD_ORDER.join(), "Hidra ou Dragão negro abre a Caverna da Travessia");
 check(open(["crypt"]) === "marsh,desert", "a Cripta vencida (como convidado) abre o Mar de Areia, mesmo sem a Cripta aberta para criar");
-check(unlockedBy("marsh") === undefined && unlockedBy("swamp") === "desert", "quem abre cada cenário");
+check(unlockedBy("marsh") === undefined && unlockedBy("swamp") === "desert" && unlockedBy("cavern") === "swamp", "quem abre cada cenário");
 check(lastUnlocked([]) === "marsh" && lastUnlocked(["marsh", "crypt"]) === "desert", "o herói espera no último cenário aberto");
 console.log("ordem da campanha OK");
 

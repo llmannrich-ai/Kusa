@@ -9,9 +9,9 @@ import type { SpellXp, TalentRanks } from "./talents.ts";
  */
 export const SOLO_LIMITS = {
   /** Loot máximo de uma hunt por mapa: pouco acima do máximo teórico (todos os monstros e baús no topo, com o bônus do boss). */
-  maxLoot: { crypt: 1200, swamp: 3000, desert: 1700, marsh: 1900 } satisfies Record<MapId, number>,
+  maxLoot: { crypt: 1200, swamp: 3000, desert: 1700, marsh: 1900, cavern: 3000 } satisfies Record<MapId, number>,
   /** O teto do loot cresce proporcional ao tempo de hunt e só chega ao máximo depois disto (segundos). */
-  fullLootSeconds: { crypt: 90, swamp: 180, desert: 180, marsh: 240 } satisfies Record<MapId, number>,
+  fullLootSeconds: { crypt: 90, swamp: 180, desert: 180, marsh: 240, cavern: 240 } satisfies Record<MapId, number>,
   /** Folga além da duração do mapa para o resultado chegar ao banco; depois disso vale como soterrado. */
   graceSeconds: 60,
   /**

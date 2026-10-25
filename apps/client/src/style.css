@@ -52,6 +52,14 @@ html, body {
   pointer-events: none;
   background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 236, 190, 0.08) 0%, transparent 50%, rgba(92, 48, 12, 0.38) 100%);
 }
+/* Caverna da Travessia: toda subterrânea, escura e fria nos cantos. */
+#game.cavern::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 30%, rgba(2, 6, 12, 0.8) 100%);
+}
 /* Caverna do deserto: escura, só o meio da tela iluminado (pelos cristais e pelo buraco da saída). */
 #game.desert.cave::after {
   background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 30%, rgba(10, 5, 2, 0.78) 100%);
@@ -273,6 +281,21 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .rule-table { width: calc(100% - 24px); border-collapse: collapse; font-size: 13px; }
 .rule-table th, .rule-table td { padding: 6px 4px; text-align: left; vertical-align: top; border-bottom: 1px solid #3a2f27; }
 .rule-table th { color: var(--muted); font-weight: normal; font-size: 12px; }
+
+/* Catálogo (catalog.ts): busca no alto e fichas de item, runa e monstro. */
+.cat-search { width: 100%; box-sizing: border-box; margin-bottom: 10px; min-height: 44px; font-size: 16px; }
+.rule .rule { margin: 8px 12px; }
+.cat-note { margin: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.cat-group { margin: 0 12px 10px; }
+.cat-group h4 { margin: 12px 0 4px; font-size: 13px; color: var(--accent); }
+.cat-entry { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-bottom: 1px solid #3a2f27; }
+.cat-group .cat-entry { padding: 8px 0; }
+.cat-entry img { width: 32px; height: 32px; flex: none; image-rendering: pixelated; }
+.cat-entry > div { min-width: 0; }
+.cat-entry b { display: block; font-size: 14px; }
+.cat-entry small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.cat-entry p { margin: 4px 0 0; font-size: 13px; line-height: 1.4; }
+.cat-empty { text-align: center; }
 
 input, button { -webkit-user-select: text; user-select: text; }
 button { min-height: 44px; touch-action: manipulation; }
@@ -1192,6 +1215,9 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-trail-bed.open { stroke-width: 8; opacity: 0.6; }
 .world-trail-next { fill: none; stroke: #3f2c1a; stroke-width: 2.6; stroke-dasharray: 1 8; stroke-linecap: round; opacity: 0.8; }
 .world-trail-open { fill: none; stroke: #8a2f20; stroke-width: 4; stroke-dasharray: 10 7; stroke-linecap: round; }
+/* Lados da bifurcação da Travessia: só aparecem em vermelho com o boss do covil vencido pela classe. */
+.world-branch { display: none; }
+.world-branch.on { display: inline; }
 .world-label, .world-place { fill: #3f2c1a; text-anchor: middle; paint-order: stroke; stroke: #efe5c9; stroke-linejoin: round; }
 .world-label { font-variant: small-caps; stroke-width: 5; }
 .world-place { font-style: italic; stroke-width: 3.5; }

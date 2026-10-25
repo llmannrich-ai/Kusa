@@ -1,5 +1,5 @@
 import { MAPS, type MapId } from "@kusa/shared";
-import { EDGES, EDGE_D, FOG, H, LABELS, NODES, OPEN_CHAIN, PLACES, W } from "./world/verdemar.ts";
+import { CAVERN_BRANCHES, EDGES, EDGE_D, FOG, H, LABELS, NODES, OPEN_CHAIN, PLACES, W } from "./world/verdemar.ts";
 
 // Mapa mundi (tela de Batalhas): a carta de Verdemar, o continente da campanha. A arte é uma imagem pronta
 // (public/mapa/verdemar.svg, gerada por scripts/verdemar.ts); por cima vão as trilhas, os nomes, os pontos e o herói.
@@ -63,6 +63,8 @@ export interface WorldMapView {
   setProgress(unlocked: readonly MapId[], cleared: readonly MapId[]): void;
   /** Troca o boneco do herói: a folha de `heroSheet` da classe escolhida no menu. */
   setHero(sheetUrl: string): void;
+  /** Bosses que a classe escolhida já venceu: liberam os lados da bifurcação da Caverna da Travessia. */
+  setBossKills(bosses: readonly string[]): void;
 }
 
 /**
@@ -95,6 +97,12 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
     const line = svgEl("path", { d: EDGE_D[a + b], class: "world-trail-next" }, over);
     trails.set(a + b, { bed, line });
   }
+  // Lados da bifurcação da Travessia: a tinta vermelha por cima da trilha pontilhada aparece com o boss vencido.
+  const branches = CAVERN_BRANCHES.map((b) => ({
+    boss: b.boss,
+    beds: svgEl("path", { d: EDGE_D[b.from + b.to], class: "world-trail-bed open world-branch" }, over),
+    ink: svgEl("path", { d: EDGE_D[b.from + b.to], class: "world-trail-open world-branch" }, over),
+  }));
   // A trilha dos cenários de hoje, inteira e sem traço: o herói anda nela.
   const openD = OPEN_CHAIN.slice(1).map((b, i) => EDGE_D[OPEN_CHAIN[i] + b].replace(/^M[^C]+/, (m) => (i ? "" : m))).join("");
   const route = svgEl("path", { d: openD, fill: "none" }, over);
@@ -137,7 +145,8 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
     name.className = "world-name";
     if (n.map) {
       const mapId = n.map;
-      button.className = "world-point";
+      // Cenário que é bifurcação (a Caverna da Travessia) leva a placa também.
+      button.className = `world-point${n.fork ? " fork" : ""}`;
       icon.innerHTML = icons[mapId];
       name.textContent = MAPS[mapId].name;
       const count = document.createElement("span");
@@ -406,6 +415,13 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
     },
     setHero(sheetUrl) {
       sprite.style.backgroundImage = `url("${sheetUrl}")`;
+    },
+    setBossKills(bosses) {
+      for (const b of branches) {
+        const open = bosses.includes(b.boss);
+        b.beds.classList.toggle("on", open);
+        b.ink.classList.toggle("on", open);
+      }
     },
   };
 }
