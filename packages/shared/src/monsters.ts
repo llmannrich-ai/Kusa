@@ -773,11 +773,15 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     abilities: [
       { id: "charge", name: "Investida", shape: "leap", range: 5, minRange: 3, radius: 1, cooldownMs: 8000, power: 1.3, push: 1, color: 0xc0392b, fx: "leap" },
       {
+        id: "gladius", name: "Golpe de Gládio", shape: "target", range: 1, radius: 0, cooldownMs: 7000, power: 1.6,
+        dot: { kind: "bleed", power: 0.3, durationMs: 3000 }, color: 0xd0d4dc, fx: "rend",
+      },
+      {
         id: "formation", name: "Formação!", shape: "summon", range: 7, radius: 0, cooldownMs: 20000, power: 0,
         summon: { kind: "boneLegionary", count: 2 }, color: 0xc89b4a, fx: "summon",
       },
     ],
-    lore: "Comandou a coorte que a duna engoliu. Grita e os legionários levantam da areia; perto dele, batem mais forte e mais rápido (Comando).",
+    lore: "Comandou a coorte que a duna engoliu. Investe de longe, abre um corte fundo com o gládio, grita e os legionários levantam da areia; perto dele, batem mais forte e mais rápido (Comando).",
   }),
   royalMummy: monster({
     kind: "royalMummy", name: "Múmia Real", rank: "miniboss", type: "undead", role: "controller", cr: 7,

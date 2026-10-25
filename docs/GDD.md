@@ -874,7 +874,7 @@ cada um tem o seu boss. Quase todos são mortos-vivos (não pegam veneno nem san
 | Múmia Enfaixada | controlador | Faixas Mortuárias: **puxa** o herói de 2–5 tiles para colado e prende 1 s · o toque apodrece · queima fácil |
 | Carpideira | controlador | véu escuro, a 4 tiles · Lamento (leque de 4 que deixa lento) · queima fácil |
 | Soterrado | emboscador | escondido na areia (camuflado, nota a 3 tiles) · Ataque Surpresa 1,8× · Fortitude Morta-viva |
-| **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Formação! (chama 2 Legionários) |
+| **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Golpe de Gládio (1,6× e sangra) · Formação! (chama 2 Legionários) |
 | **Múmia Real** (mini-boss) | controlador | máscara de ouro · Faixas Reais (puxa e prende) · Maldição do Faraó (área que corrói) · ferida, Enxame da Tumba (3 Escaravelhos) |
 | **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cegante (linha que cega) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
 | **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · Submergir (some na duna e irrompe debaixo do alvo) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
