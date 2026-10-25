@@ -6,10 +6,12 @@ import {
   SERVER_TICK_MS,
   VERSION_MISMATCH_CODE,
   MAPS,
+  MONSTERS,
   mapIdOf,
   mapUnlocked,
   spellXpGains,
   unlockedBy,
+  UNLOCK_BOSS,
   type ClassId,
   type AddBotMessage,
   type AttackingMessage,
@@ -67,11 +69,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       },
       ended: () => void this.clock.setTimeout(() => this.disconnect(), 10_000),
       // Campanha: quem estava na hunt quando o boss caiu abre o cenário seguinte (por conta e classe).
-      mapCleared: (sessionIds) => {
+      mapCleared: (sessionIds, boss) => {
         for (const sessionId of sessionIds) {
           const userId = this.users.get(sessionId);
           const classId = this.state.players.get(sessionId)?.classId;
-          if (userId && classId) void recordMapClear(userId, classId, this.hunt.mapId);
+          if (userId && classId) void recordMapClear(userId, classId, this.hunt.mapId, boss);
         }
       },
     }, {
@@ -128,7 +130,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       const clears = account ? await mapClears(account.userId, options.classId) : [];
       if (!mapUnlocked(clears, mapId)) {
         const before = unlockedBy(mapId);
-        throw new ServerError(4403, `${MAPS[mapId].name} ainda está fechado: vença o boss de ${before ? MAPS[before].name : "um cenário anterior"} com esta classe.`);
+        const boss = UNLOCK_BOSS[mapId];
+        const what = boss && before ? `${MONSTERS[boss].name} em ${MAPS[before].name}` : `o boss de ${before ? MAPS[before].name : "um cenário anterior"}`;
+        throw new ServerError(4403, `${MAPS[mapId].name} ainda está fechado: vença ${what} com esta classe.`);
       }
     }
     // Sempre um objeto (verdadeiro): sem conta, entra como convidado.

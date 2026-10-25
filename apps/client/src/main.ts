@@ -8,6 +8,7 @@ import {
   lootName,
   mapUnlocked,
   unlockedBy,
+  UNLOCK_BOSS,
   MAPS,
   MAX_LEVEL,
   MSG,
@@ -203,7 +204,7 @@ function stopWatching() {
 let world: WorldMapView | null = null;
 let toastTimer = 0;
 /** Cenários de boss vencido por classe (campanha); recarregados a cada vez que o mapa abre. */
-let mapClears: Partial<Record<(typeof hub)["classId"], MapId[]>> = {};
+let mapClears: Partial<Record<(typeof hub)["classId"], string[]>> = {};
 const clearsNow = () => mapClears[hub.classId] ?? [];
 /** O cenário está aberto para a classe escolhida (para criar sala ou jogar sozinho)? */
 const isOpen = (id: MapId) => mapUnlocked(clearsNow(), id);
@@ -212,7 +213,7 @@ const isOpen = (id: MapId) => mapUnlocked(clearsNow(), id);
 function applyProgress() {
   const cleared = clearsNow();
   const unlocked = WORLD_ORDER.filter((id) => mapUnlocked(cleared, id));
-  world?.setProgress(unlocked, cleared);
+  world?.setProgress(unlocked, WORLD_ORDER.filter((id) => cleared.includes(id)));
   $("world-progress").textContent = `campanha · ${unlocked.length} de 18 cenários`;
   if (!isOpen(createMapId())) chooseMap(lastUnlocked(cleared));
 }
@@ -260,7 +261,8 @@ function openSheet() {
     return li;
   }));
   const before = unlockedBy(map.id);
-  const beforeBoss = before && mainBoss(MAPS[before]);
+  // Lado de bifurcação: só um boss do cenário anterior abre este.
+  const beforeBoss = before && (UNLOCK_BOSS[map.id] ?? mainBoss(MAPS[before]));
   $("sheet-lock").textContent = before
     ? `🔒 Derrote ${beforeBoss ? MONSTERS[beforeBoss].name : "o boss"} em ${MAPS[before].name} com o ${CLASSES[hub.classId].name} para abrir. Você ainda pode entrar nas salas de outros jogadores.`
     : "";

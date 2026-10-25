@@ -359,7 +359,7 @@ export interface HuntHost {
    * O boss principal morreu: estes jogadores (humanos que estavam na hunt, vivos ou mortos, sem ter saído) venceram o
    * cenário e abrem o seguinte da campanha. Quem morreu antes já teve o resultado gravado, por isso o aviso é à parte.
    */
-  mapCleared?(sessionIds: string[]): void;
+  mapCleared?(sessionIds: string[], boss: MonsterKind): void;
 }
 
 /** Números da hunt de um jogador para a telemetria (o host completa com a partida e a conta). */
@@ -2209,7 +2209,7 @@ export class Hunt {
     }
 
     if (brain.def.rank === "boss") {
-      this.creditBossClear();
+      this.creditBossClear(m.kind as MonsterKind);
       const lair = brain.lair ?? 0;
       const c = lairsOf(this.dungeon)[lair].portal;
       this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
@@ -2230,8 +2230,11 @@ export class Hunt {
     }
   }
 
-  /** Campanha: todo humano que está na hunt quando o boss cai (vivo ou morto, sem ter saído) vence o cenário. */
-  private creditBossClear() {
+  /**
+   * Campanha: todo humano que está na hunt quando o boss cai (vivo ou morto, sem ter saído) vence o cenário e aquele
+   * boss (os lados de uma bifurcação abrem com um boss só, `UNLOCK_BOSS`).
+   */
+  private creditBossClear(boss: MonsterKind) {
     const ids: string[] = [];
     this.state.players.forEach((p, id) => {
       const seat = this.seats.get(id);
@@ -2239,7 +2242,7 @@ export class Hunt {
       seat.stats.bossClear = true;
       ids.push(id);
     });
-    if (ids.length > 0) this.host.mapCleared?.(ids);
+    if (ids.length > 0) this.host.mapCleared?.(ids, boss);
   }
 
   private gainXp(sessionId: string, amount: number) {
