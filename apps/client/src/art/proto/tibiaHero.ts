@@ -5155,8 +5155,12 @@ function pantsTop(c: Canvas, cloth: number) {
   c.on(buckle, F(CX - 2), F(61.6), Mat.Bronze, 5);
 }
 
-/** Ícone do item no padrão novo (`PROTO_ICON` px): enquadrado e ampliado até caber, com a gema da raridade no canto. */
-export function protoItemIcon(id: string, rarity: "common" | "rare" | "magic"): HTMLCanvasElement {
+/** Desenho do item no ícone, sem a gema (o raro e o comum usam o mesmo), feito uma vez. */
+const iconArt = new Map<string, HTMLCanvasElement>();
+
+function iconDrawing(id: string): HTMLCanvasElement {
+  const cached = iconArt.get(id);
+  if (cached) return cached;
   // 1ª passada: onde o item cai no quadro do herói.
   const probe = new Canvas();
   iconPose(probe, id);
@@ -5173,11 +5177,35 @@ export function protoItemIcon(id: string, rarity: "common" | "rare" | "magic"): 
     const mx = (x0 + x1 + 1) / 2 / K, my = (y0 + y1 + 1) / 2 / K;
     c.placed(k, [ICON_U / 2 - mx * k, ICON_U / 2 - my * k], () => iconPose(c, id));
   }
-  if (rarity !== "common") gem(c, [ICON_U - 3, 2.6], 1.5, rarity === "magic" ? Mat.Gem : Mat.Sapphire);
-  const { canvas, ctx } = makeCanvas(PROTO_ICON, PROTO_ICON);
-  const image = ctx.createImageData(PROTO_ICON, PROTO_ICON);
+  const canvas = toCanvas(c);
+  iconArt.set(id, canvas);
+  return canvas;
+}
+
+/** Gema da raridade no canto (azul no raro, roxa no mágico), desenhada uma vez por raridade. */
+const rarityGems = new Map<string, HTMLCanvasElement>();
+function rarityGem(rarity: "rare" | "magic") {
+  if (!rarityGems.has(rarity)) {
+    const c = new Canvas(PROTO_ICON, PROTO_ICON);
+    gem(c, [ICON_U - 3, 2.6], 1.5, rarity === "magic" ? Mat.Gem : Mat.Sapphire);
+    rarityGems.set(rarity, toCanvas(c));
+  }
+  return rarityGems.get(rarity)!;
+}
+
+function toCanvas(c: Canvas) {
+  const { canvas, ctx } = makeCanvas(c.w, c.h);
+  const image = ctx.createImageData(c.w, c.h);
   image.data.set(c.render(KNIGHT_LOOK));
   ctx.putImageData(image, 0, 0);
+  return canvas;
+}
+
+/** Ícone do item no padrão novo (`PROTO_ICON` px): enquadrado e ampliado até caber, com a gema da raridade no canto. */
+export function protoItemIcon(id: string, rarity: "common" | "rare" | "magic"): HTMLCanvasElement {
+  const { canvas, ctx } = makeCanvas(PROTO_ICON, PROTO_ICON);
+  ctx.drawImage(iconDrawing(id), 0, 0);
+  if (rarity !== "common") ctx.drawImage(rarityGem(rarity), 0, 0);
   return canvas;
 }
 
