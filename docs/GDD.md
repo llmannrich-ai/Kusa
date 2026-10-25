@@ -44,6 +44,7 @@ Código em `apps/client/src/menu.ts`.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
   - **Telemetria** (`apps/client/src/telemetry.ts`): os números de todas as hunts, para qualquer jogador logado, com filtro de mapa e período: visão geral, hunts por dia, como as hunts terminam, sobrevivência por classe, o que mais mata, fontes de dano, magias e melhorias escolhidas, curva de nível e as suas hunts. Só agregados, sem nomes (função `telemetry_dashboard`).
   - **Regras** (`apps/client/src/rules.ts`): como o jogo funciona, em seções que abrem e fecham. Os números (tempos, preços, melhorias, poções) vêm de `packages/shared`, então a página acompanha o balanceamento.
+  - **Catálogo** (`apps/client/src/catalog.ts`): todo equipamento, runa e poção com o que faz e o preço, e cada inimigo de cada mapa com vida, dano, XP, elementos, habilidades e o que larga (gold, chance de item e de raridade, poções, runa). Tem busca. Tudo vem de `packages/shared` (`dropOdds` em `drops.ts` para as chances), então conteúdo novo aparece sozinho; o teste `catalogo` confere as chances contra a hunt.
 - Ainda por fazer: modo, cosméticos e amigos.
 
 ### Grimório (árvore de magias)

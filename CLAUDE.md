@@ -15,4 +15,5 @@ Leia `README.md` (stack, como rodar) e `docs/GDD.md` (game design) antes de muda
   - comece de `origin/main` atualizado, numa branch nova por tarefa (`feat/…`, `fix/…`, `ajuste/…`);
   - antes de abrir o PR e de novo antes de mesclar, `git fetch` e mescle `origin/main`; se o `main` já tiver algo parecido com a sua tarefa, construa em cima dele em vez de substituir;
   - mescle pelo PR (merge commit) e apague a branch depois.
+- Catálogo (Configurações > Catálogo, `apps/client/src/catalog.ts`): lê itens, runas, poções, monstros e mapas de `packages/shared`, então conteúdo novo aparece sozinho. As chances de drop vêm de `dropOdds` (`packages/shared/src/drops.ts`), que repete a conta de `Hunt.killMonster`/`chestReward`: mudou a regra de drop na hunt, mude `dropOdds` junto (o teste `catalogo` confere).
 - Telemetria (`apps/server/src/telemetry.ts`, `docs/TELEMETRIA.md`): mecânica nova que mexe em dano, cura, loot ou progressão deve alimentar os contadores de `RunStats` (`apps/server/src/runStats.ts`).
