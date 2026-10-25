@@ -1,5 +1,5 @@
 import { COMMON_DROP_CHANCE, GUARANTEED_DROPS, RARITY_CHANCES } from "./items.ts";
-import { LOOT_SCALE, type MapDef } from "./maps.ts";
+import { ITEM_DROP_SCALE, LOOT_SCALE, type MapDef } from "./maps.ts";
 import { MONSTERS, monsterStats, type MonsterKind } from "./monsters.ts";
 import { COMMON_POTION_CHANCE, GUARANTEED_POTIONS } from "./potions.ts";
 import { RUNE_DROPS } from "./runes.ts";
@@ -21,7 +21,7 @@ export interface DropOdds {
   potionChance: number;
   /** Runas que cada herói recebe direto na bag (uma vez por boss e personagem). */
   runes: number;
-  /** Guarda o loot de um baú (o Mímico): mais gold, um item garantido e uma chance de cada poção. */
+  /** Guarda o loot de um baú (o Mímico): mais gold, a chance de um item (`chestItemChance`) e a de cada poção. */
   chest: boolean;
   /** Não rende nada: ilusão ou monstro que só aparece chamado por outro. */
   nothing: boolean;
@@ -52,7 +52,7 @@ export function dropOdds(map: MapDef, kind: MonsterKind): DropOdds {
   return {
     gold: nothing ? [0, 0] : [Math.round(min * scale), Math.round(max * scale)],
     items: nothing ? 0 : guaranteed || 1,
-    itemChance: (guaranteed ? 1 : COMMON_DROP_CHANCE) * (boss ? 1 : keep(map, LOOT_SCALE)),
+    itemChance: (guaranteed ? 1 : COMMON_DROP_CHANCE) * (boss ? ITEM_DROP_SCALE : keep(map, LOOT_SCALE * ITEM_DROP_SCALE)),
     rarity: RARITY_CHANCES[def.rank],
     potions: nothing ? 0 : potions || 1,
     potionChance: (potions ? 1 : COMMON_POTION_CHANCE) * (boss ? 1 : keep(map)),
@@ -60,6 +60,11 @@ export function dropOdds(map: MapDef, kind: MonsterKind): DropOdds {
     chest: !nothing && kind === "mimic",
     nothing,
   };
+}
+
+/** Chance de o item do baú (aberto ou o Mímico) sair, como `Hunt.chestReward`. */
+export function chestItemChance() {
+  return ITEM_DROP_SCALE;
 }
 
 /** Chance de cada poção do baú (uma de vida e uma de mana) sair no mapa. */
