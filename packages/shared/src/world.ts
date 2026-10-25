@@ -1,16 +1,23 @@
 import type { MapId } from "./maps.ts";
 
 // Campanha (mapa mundi de Verdemar): a ordem em que os cenários abrem. Vencer o boss de um cenário abre o seguinte,
-// por personagem (conta e classe). O banco repete esta ordem em `public.map_unlocked` (mude os dois juntos).
-// Fora de `RULES_FILES`: não muda a versão das regras.
+// por personagem (conta e classe). Na Caverna da Travessia a trilha se divide: o boss dela abre os dois lados, o
+// deserto (Dunas Cantantes) e a floresta (Bosque Velho). O banco repete isto em `public.map_unlocked_by` (mude os dois
+// juntos). Fora de `RULES_FILES`: não muda a versão das regras.
 
-/** Os cenários na ordem da campanha. O primeiro já vem aberto. */
-export const WORLD_ORDER: readonly MapId[] = ["marsh", "crypt", "desert", "swamp", "cavern", "dunes", "mesas"];
+/** Os cenários na ordem da campanha (cada lado da bifurcação na sua ordem). O primeiro já vem aberto. */
+export const WORLD_ORDER: readonly MapId[] = ["marsh", "crypt", "desert", "swamp", "cavern", "dunes", "mesas", "oldwood", "heartwood"];
+
+/** Cenário cujo boss abre cada um (o primeiro não tem). */
+const UNLOCKED_BY: Partial<Record<MapId, MapId>> = {
+  crypt: "marsh", desert: "crypt", swamp: "desert", cavern: "swamp",
+  dunes: "cavern", mesas: "dunes",
+  oldwood: "cavern", heartwood: "oldwood",
+};
 
 /** Cenário cujo boss abre este (`undefined` para o primeiro). */
 export function unlockedBy(mapId: MapId): MapId | undefined {
-  const i = WORLD_ORDER.indexOf(mapId);
-  return i > 0 ? WORLD_ORDER[i - 1] : undefined;
+  return UNLOCKED_BY[mapId];
 }
 
 /** O cenário está aberto para quem já venceu o boss de `clears`? */

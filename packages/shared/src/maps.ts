@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "oldwood" | "heartwood";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
 export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6;
@@ -232,6 +232,22 @@ export const MAPS: Record<MapId, MapDef> = {
     minibosses: [["royalMummy", 2], ["boneCenturion", 1], ["sandScribe", 1]],
     mimicChance: 0,
     bosses: [["eternalPharaoh", 1]],
+  },
+  oldwood: {
+    id: "oldwood", name: "Bosque Velho", icon: "🌳", difficulty: 5, durationSeconds: 8 * 60,
+    description: "A floresta antiga do Kosaradius: mata fechada, clareiras ligadas por trilhas e um riacho com pontes de madeira. Troncos caídos, árvores anciãs e, no norte, o círculo de menires. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
+  },
+  heartwood: {
+    id: "heartwood", name: "Coração da Mata", icon: "🍄", difficulty: 6, durationSeconds: 8 * 60,
+    description: "O fundo da floresta, onde a luz quase não chega: trilhas estreitas, árvores anciãs, lagoas escuras e santuários élficos tomados pelo musgo. No norte, a árvore do coração. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
   },
 };
 

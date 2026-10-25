@@ -68,6 +68,22 @@ html, body {
   pointer-events: none;
   background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 210, 160, 0.08) 0%, transparent 50%, rgba(96, 30, 16, 0.42) 100%);
 }
+/* Bosque Velho: sol filtrado pela copa, cantos em verde-escuro de mata. */
+#game.oldwood::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 240, 190, 0.07) 0%, transparent 50%, rgba(16, 34, 10, 0.42) 100%);
+}
+/* Coração da Mata: quase sem luz, cantos fechados em verde-azulado. */
+#game.heartwood::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 78% 66% at 50% 40%, rgba(150, 255, 230, 0.05) 0%, transparent 46%, rgba(4, 16, 14, 0.58) 100%);
+}
 /* Caverna da Travessia: toda subterrânea, escura e fria nos cantos. */
 #game.cavern::after {
   content: "";
@@ -1234,9 +1250,6 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-trail-bed.open { stroke-width: 8; opacity: 0.6; }
 .world-trail-next { fill: none; stroke: #3f2c1a; stroke-width: 2.6; stroke-dasharray: 1 8; stroke-linecap: round; opacity: 0.8; }
 .world-trail-open { fill: none; stroke: #8a2f20; stroke-width: 4; stroke-dasharray: 10 7; stroke-linecap: round; }
-/* Lados da bifurcação da Travessia: só aparecem em vermelho com o boss do covil vencido pela classe. */
-.world-branch { display: none; }
-.world-branch.on { display: inline; }
 .world-label, .world-place { fill: #3f2c1a; text-anchor: middle; paint-order: stroke; stroke: #efe5c9; stroke-linejoin: round; }
 .world-label { font-variant: small-caps; stroke-width: 5; }
 .world-place { font-style: italic; stroke-width: 3.5; }

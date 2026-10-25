@@ -61,6 +61,7 @@ import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
 import { DUNES_VOID, MESAS_VOID, drawDunes } from "./dunesMap.ts";
+import { HEARTWOOD_VOID, OLDWOOD_VOID, drawForest } from "./forestMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
 import { CAVERN_VOID, drawCavern } from "./cavernMap.ts";
 import { loadSettings } from "./settings.ts";
@@ -279,14 +280,14 @@ export class DungeonScene extends Phaser.Scene {
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
     this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, oldwood: drawForest, heartwood: drawForest }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "oldwood", "heartwood"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);

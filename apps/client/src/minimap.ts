@@ -17,6 +17,8 @@ const TILE_COLORS = {
   cavern: { floor: [92, 104, 118], bossFloor: [118, 92, 120], wall: [20, 26, 34], water: [40, 84, 100], ruin: [20, 26, 34] },
   dunes: { floor: [212, 172, 112], bossFloor: [232, 220, 190], wall: [160, 112, 62], water: [52, 150, 156], ruin: [120, 90, 62], sand: [234, 206, 152] },
   mesas: { floor: [204, 146, 98], bossFloor: [214, 160, 112], wall: [130, 60, 38], water: [64, 150, 138], ruin: [96, 52, 34], sand: [228, 182, 132] },
+  oldwood: { floor: [112, 150, 66], bossFloor: [140, 172, 84], wall: [34, 62, 28], water: [70, 140, 150], ruin: [110, 82, 52] },
+  heartwood: { floor: [66, 108, 74], bossFloor: [84, 132, 112], wall: [16, 38, 30], water: [30, 64, 76], ruin: [92, 104, 100] },
 } satisfies Record<MapId, Record<string, number[]>>;
 /** Subterrâneo do deserto: rocha escura, chão de areia batida e o salão dos baús em arenito. */
 const CAVE_COLORS = { floor: [104, 82, 60], bossFloor: [128, 74, 52], wall: [34, 24, 18], hall: [150, 126, 92] };
