@@ -199,7 +199,7 @@ Regras em `packages/shared/src/spellxp.ts`, repetidas no banco (`spell_level`, `
   (é o pré-requisito da árvore); o 5 pede uma centena de hunts usando a mesma magia.
 - **Morte:** morrer (ou ficar soterrado) tira **5% do XP acumulado** de cada magia escolhida na hunt, depois de somar o
   que ela ganhou. A perda pode descer níveis, mas **nunca abaixo do nível 1** (nem tira XP de quem ainda é aprendiz).
-  As magias que ficaram fora dos slots não perdem nada. Hunt solo abandonada (aba fechada) conta como morte, mas sem
+  As magias que ficaram fora dos slots não perdem nada. Hunt solo abandonada (aba fechada) depois da sala inicial conta como morte, mas sem
   perda de XP: o banco não sabe quais magias estavam nos slots.
 - **Quando vale:** o nível novo vale da próxima hunt em diante; durante a hunt os números ficam fixos. No fim da hunt,
   a tela de resultado mostra cada magia escolhida com o XP ganho, a perda da morte e se subiu ou caiu de nível.
@@ -378,7 +378,9 @@ limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
 - resultado que chega depois da duração do mapa mais 1 minuto vale como soterrado;
 - o que entrou com o jogador volta sem custo; itens novos, no máximo 15 por hunt (o que passar disso fica para
   trás, e a tela de resultado avisa). Não há teto por dia;
-- hunt solo deixada aberta (aba fechada) conta como morte na próxima.
+- hunt solo deixada aberta (aba fechada) conta como morte na próxima, mas só depois que o herói saiu da sala inicial
+  e jogou 60 s (`SOLO_LIMITS.committedSeconds`); antes disso, fecha sem perda (equipamento e bag voltam). Ao começar a
+  próxima, um aviso diz o que aconteceu com a anterior e o que se perdeu.
 
 ### Sala no aparelho do jogador
 
