@@ -162,7 +162,7 @@ export const mergeLook = (extra: Partial<ProtoLook>): ProtoLook => ({ ...KNIGHT_
 
 // --- Materiais ----------------------------------------------------------------------
 
-export enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon, Stone, Wool, Felt, Night, Indigo, Silk, Arcane, Violet, Bone, Moss, Clay, Blood, Slate, Soot }
+export enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon, Stone, Wool, Felt, Night, Indigo, Silk, Arcane, Violet, Bone, Moss, Clay, Blood, Slate, Soot, GreenDragon, DragonBelly, Membrane, Venom }
 
 const OUTLINE: Rgb = rgb("#1a1210");
 
@@ -213,6 +213,10 @@ function ramps(look: ProtoLook): Rgb[][] {
     r("#6e1610", 1.1, 8), // sangue
     r("#4c4237", 0.9, 6), // laje do chão
     r("#2c2622", 0.8, 3), // fuligem
+    r("#4f8a34", 1.15, 10), // escama de dragão verde
+    r("#c9bc7a", 0.95, 7), // placas da barriga do dragão
+    r("#4e5c2c", 1.05, 8), // membrana da asa
+    r("#9ad23a", 1.2, 12, true), // gás venenoso
   ];
 }
 
