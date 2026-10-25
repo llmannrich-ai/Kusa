@@ -8,7 +8,7 @@
  *   - a ilusão da Bruxa Verde não larga nada.
  * Uso: npx tsx scripts/catalogo.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { ITEMS, MAPS, MAP_IDS, MONSTERS, chestPotionChance, dropOdds, isPotion, mapMonsters, type MapId, type MonsterKind } from "@kusa/shared";
+import { ITEMS, MAPS, MAP_IDS, MONSTERS, chestItemChance, chestPotionChance, dropOdds, isPotion, mapMonsters, type MapId, type MonsterKind } from "@kusa/shared";
 import { HERO, arena, check, type Arena } from "./arena.ts";
 
 const KILLS = 800;
@@ -64,8 +64,10 @@ for (const mapId of MAP_IDS as MapId[]) {
   for (const kind of sample) {
     const odds = dropOdds(map, kind);
     const got = farm(a, kind, KILLS);
-    const chestItems = odds.chest ? KILLS : 0;
-    near(got.items - chestItems, KILLS * odds.items, odds.itemChance, `${map.name}, itens de ${MONSTERS[kind].name}`);
+    // O Mímico larga também o item do baú: soma os dois sorteios na mesma conta.
+    const draws = KILLS * odds.items + (odds.chest ? KILLS : 0);
+    const chance = odds.chest ? (KILLS * odds.items * odds.itemChance + KILLS * chestItemChance()) / draws : odds.itemChance;
+    near(got.items, draws, chance, `${map.name}, itens de ${MONSTERS[kind].name}`);
     const chestPotions = odds.chest ? 2 * KILLS * chestPotionChance(map) : 0;
     near(got.potions - chestPotions, KILLS * odds.potions, odds.potionChance, `${map.name}, poções de ${MONSTERS[kind].name}`);
   }
