@@ -46,7 +46,7 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const bayer = (x: number, y: number) => (BAYER[mod(y, 4) * 4 + mod(x, 4)] + 0.5) / 16;
 
 /** Ruído suave em grade de `cell` px que fecha a cada `period` px (o ladrilho não marca emenda). */
-function wrapNoise(x: number, y: number, cell: number, period: number, seed: number) {
+export function wrapNoise(x: number, y: number, cell: number, period: number, seed: number) {
   const n = period / cell;
   const gx = Math.floor(x / cell);
   const gy = Math.floor(y / cell);
@@ -60,7 +60,7 @@ function wrapNoise(x: number, y: number, cell: number, period: number, seed: num
  * Células (ruído de Worley) que fecham a cada `period` px: para o pixel, o centro mais perto (deslocamento com sinal),
  * a distância até ele e até o segundo mais perto. `cell` é o lado da grade de centros (um centro por casa).
  */
-function worley(x: number, y: number, cell: number, period: number, seed: number) {
+export function worley(x: number, y: number, cell: number, period: number, seed: number) {
   const n = period / cell;
   const gx = Math.floor(x / cell);
   const gy = Math.floor(y / cell);
@@ -288,12 +288,22 @@ function canopyPixel(x: number, y: number) {
   return tones[Math.max(0, Math.min(5, Math.floor((t + 1.15) * 1.9)))];
 }
 
+let canopyCache: string[] | null = null;
+/** `canopyPixel` calculado uma vez para a textura inteira (a beira da copa pede o mesmo pixel centenas de vezes). */
+function canopyAt(x: number, y: number) {
+  if (!canopyCache) {
+    canopyCache = new Array(CP * CP);
+    for (let j = 0; j < CP; j++) for (let i = 0; i < CP; i++) canopyCache[j * CP + i] = canopyPixel(i, j);
+  }
+  return canopyCache[mod(y, CP) * CP + mod(x, CP)];
+}
+
 /** Copa inteira (tiles de dentro da mata): 9 pedaços da textura de 96×96, na ordem de `canopyVariant`. */
 export function canopyStrip() {
   return strip(Array.from({ length: CANOPY_VARIANTS }, (_, v) => (ctx: Ctx) => {
     const ox = (v % CANOPY_PERIOD) * T;
     const oy = Math.floor(v / CANOPY_PERIOD) * T;
-    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) px(ctx, x, y, canopyPixel(ox + x, oy + y));
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) px(ctx, x, y, canopyAt(ox + x, oy + y));
   }));
 }
 
@@ -319,7 +329,7 @@ export function canopyRim(ctx: Ctx, mask: number, variant: number) {
     (i: number) => ragged(i, 3, 3, seed + 7),
   ];
   const R = 7;
-  const covered = (x: number, y: number) => {
+  const coveredAt = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= T || y >= T) {
       // Fora do tile: coberto se o vizinho daquele lado é mata (para o contorno não aparecer na emenda).
       if (y < 0) return !open[0];
@@ -346,6 +356,15 @@ export function canopyRim(ctx: Ctx, mask: number, variant: number) {
     if (corner[2] && !open[2] && !open[1] && bite(T - 1, T - 1 + 8)) return false;
     if (corner[3] && !open[2] && !open[3] && bite(0, T - 1 + 8)) return false;
     return true;
+  };
+  // Cada pixel é consultado várias vezes (contorno, luz da beira): calcula uma vez só.
+  const M = 3;
+  const memo = new Int8Array((T + 2 * M) ** 2).fill(-1);
+  const covered = (x: number, y: number) => {
+    if (x < -M || y < -M || x >= T + M || y >= T + M) return coveredAt(x, y);
+    const i = (y + M) * (T + 2 * M) + x + M;
+    if (memo[i] < 0) memo[i] = coveredAt(x, y) ? 1 : 0;
+    return memo[i] === 1;
   };
 
   // Embaixo da copa, do lado sul: sombra no chão, troncos e raízes.
@@ -388,7 +407,7 @@ export function canopyRim(ctx: Ctx, mask: number, variant: number) {
       const s = !covered(x, y + 1);
       const e = !covered(x + 1, y);
       const w = !covered(x - 1, y);
-      let c = canopyPixel(ox + x, oy + y);
+      let c = canopyAt(ox + x, oy + y);
       if (s || e) c = CANOPY.o;
       else if (n || w) c = CANOPY.glow;
       else if (!covered(x, y - 2) || !covered(x - 2, y)) c = CANOPY.light;
