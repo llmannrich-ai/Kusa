@@ -5,7 +5,7 @@ import { basiliskCanvas, beholderCanvas } from "./cavernBosses.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { protoBeasts, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -161,14 +161,15 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
 };
 
 // Arte nova (beta): os monstros humanoides da Cripta vêm do protótipo, animados e já em 128 px por tile (o sprite vai
-// em metade da escala dos outros para ficar do tamanho certo).
-export const HD_FPS: Record<Clip, number> = { idle: 3, walk: 8, attack: 10, cast: 6 };
+// em metade da escala dos outros, que têm 64 px por tile, com a mesma ampliação dos heróis).
+export const HD_FPS: Record<Clip, number> = { idle: 4, walk: 8, attack: 10, cast: 6 };
+const HD_SCALE = 0.5 * NEW_ART_ZOOM;
 if (protoHero) {
   const proto = protoHero;
   for (const kind of proto.PROTO_MONSTERS as MonsterKind[]) {
     const art = BESTIARY_ART[kind];
     art.facesLeft = true;
-    art.scale = 0.5;
+    art.scale = HD_SCALE;
     art.anim = {
       size: proto.PROTO_SIZE, sheet: () => proto.protoMonsterSheet(kind), portrait: () => proto.protoMonsterPortrait(kind), outline: "",
       fps: HD_FPS, frames: { ...proto.MONSTER_CLIP_FRAMES }, stride: 2, hd: () => proto.protoMonsterFrames(kind),
@@ -182,7 +183,7 @@ if (protoBeasts) {
   for (const kind of proto.PROTO_BEASTS as MonsterKind[]) {
     const art = BESTIARY_ART[kind];
     art.facesLeft = true;
-    art.scale = 0.5;
+    art.scale = HD_SCALE;
     art.anim = {
       size: proto.beastSize(kind), sheet: () => proto.protoBeastSheet(kind), portrait: () => proto.protoBeastPortrait(kind), outline: "",
       fps: HD_FPS, frames: { ...proto.BEAST_CLIP_FRAMES }, stride: 2, hd: () => proto.protoBeastFrames(kind), fill: proto.beastFill(kind),

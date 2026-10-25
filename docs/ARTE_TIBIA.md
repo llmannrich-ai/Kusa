@@ -250,7 +250,12 @@ antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)*
 - **Bichos** (`art/proto/beasts.ts`): rato, stirge, aranha gigante, cubo gelatinoso (com ossos e uma espada
   dentro), mímico (e o baú do disfarce) e o dragão jovem, este num quadro 2× maior, com mordida e sopro de fogo.
 - Cada monstro tem os clipes parado, andar, ataque e magia (4 quadros cada); a barra de vida fica logo acima da
-  cabeça de cada um.
+  cabeça de cada um. Os humanoides têm pose própria em cada quadro (`monsterPose`): parado respira (o peito sobe e
+  desce e a arma balança), o golpe tem preparo com a arma lá atrás, o golpe com o tronco inclinado para a frente,
+  o fim do movimento e a volta; o arqueiro puxa a corda e solta, o zumbi cai por cima com os dois braços e a magia
+  ergue os braços. Monstros e heróis vão na mesma escala (`NEW_ART_ZOOM`).
+- Cuidado: a folha animada é desenhada aos poucos, então nada pode registrar outra textura com a mesma chave antes
+  (o retrato parado ocupava a chave e o monstro ficava sem animação e no dobro do tamanho).
 - **Custo:** todos os monstros da Cripta somam ≈1,3 s de desenho num computador (o dragão sozinho, ≈0,6 s). Para
   não travar o menu nem a hunt, a folha de cada um é desenhada aos poucos, um quadro a cada 30 ms, os menores
   primeiro; um monstro que aparece antes de ficar pronto termina na hora. Se no celular ainda pesar, o próximo
