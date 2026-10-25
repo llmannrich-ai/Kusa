@@ -6,7 +6,7 @@ import { heroFrame } from "./hero/hero.ts";
 import { HERO_DIRS, HERO_FRAMES, type HeroDir } from "./hero/rig.ts";
 import { S as CELL } from "./hero/raster.ts";
 import type { ProtoGear } from "./proto/tibiaHero.ts";
-import { NEW_ART, protoHero as proto, protoItemOf } from "./newArt.ts";
+import { NEW_ART, NEW_ART_ZOOM, protoHero as proto, protoItemOf } from "./newArt.ts";
 
 /**
  * Folhas de sprites dos heróis. A arte é pintada em 48×48 por `hero/` (corpo da classe + um desenho por
@@ -24,11 +24,6 @@ export { NEW_ART };
 /** 128 px por tile e o quadro de 192 px com os pés na linha 184 (`tibiaHero.ts`). */
 const PROTO_TILE = 128, PROTO_SIZE = 192, PROTO_FEET = 184;
 
-/**
- * A arte nova vai 10% maior que o padrão de 128 px por tile: o desenho é mais fino que o antigo e, do mesmo tamanho,
- * parecia menor no celular.
- */
-const NEW_ART_ZOOM = 1.1;
 
 /** Escala do sprite do herói no jogo. */
 export const heroSpriteScale = () => (NEW_ART ? (TILE_SIZE / PROTO_TILE) * NEW_ART_ZOOM : HERO_SPRITE_SCALE);
