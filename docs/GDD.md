@@ -443,7 +443,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
   `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
-  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha diz quem derrotar e onde, e os botões de
+  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
+  inteira fica no title), e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
   entre dois cenários abertos. Contas de antes herdaram os cenários e os bosses vencidos pelas runas de boss já levadas.
