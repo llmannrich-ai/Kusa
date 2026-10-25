@@ -40,7 +40,7 @@ import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } 
 import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
-import { createSoloHunt, flushPendingSolo } from "./solo.ts";
+import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
 import { loadBossKills } from "./profile.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
@@ -551,12 +551,16 @@ function switchRoom(next: HostedRoom, hostName: string) {
 }
 
 /** Aviso rápido no topo da tela. */
-function showToast(text: string) {
+function showToast(text: string, ms = 3000) {
   const toast = $("game-toast");
   toast.textContent = text;
   toast.hidden = false;
-  window.setTimeout(() => { toast.hidden = true; }, 3000);
+  window.clearTimeout(gameToastTimer);
+  gameToastTimer = window.setTimeout(() => { toast.hidden = true; }, ms);
 }
+let gameToastTimer = 0;
+// Hunt solo que ficou aberta (o app fechou no meio) e foi fechada ao começar a próxima: diz o que se perdeu.
+onClosedSoloRun((text) => showToast(text, 8000));
 
 /** Cria o Phaser (uma vez) com a cena que carrega a arte; a dungeon entra depois, em `startGame`. */
 function createGame() {
