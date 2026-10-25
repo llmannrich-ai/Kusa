@@ -205,12 +205,15 @@ const SWAMP_ARENA = 16;
 /** Quantos bosques e lagoas o gerador tenta pôr no campo aberto. */
 const SWAMP_GROVES = 70;
 const SWAMP_LAKES = 30;
+/** Restos de construção (muros, cantos, colunatas, alicerces) pelo campo. */
+const SWAMP_RUINS = 13;
 
 /**
  * Pântano das Ruínas: campo aberto. O mapa nasce todo andável, cercado de mata na borda, e recebe
- * por cima bosques, lagoas (bloqueiam o passo, não a visão) e ruínas, sempre deixando espaço para
- * contornar: a equipe vai para onde quiser. A dificuldade segue um arco de zonas da entrada até
- * as ruínas do centro, onde está o boss; salas laterais em ruínas guardam mini-boss e baú.
+ * por cima bosques, lagoas alongadas (bloqueiam o passo, não a visão) e os restos do império (trechos e
+ * cantos de muro, colunatas, alicerces de casa), sempre deixando espaço para contornar: a equipe vai
+ * para onde quiser. A dificuldade segue um arco de zonas da entrada até as ruínas do centro, onde está
+ * o boss; salas laterais em ruínas guardam mini-boss e baú.
  */
 function generateSwamp(seed: number): Dungeon {
   // Rede de segurança: se algum ponto importante ficou isolado, tenta a seed seguinte (continua determinístico).
@@ -236,13 +239,13 @@ function buildSwamp(seed: number): Dungeon {
   const get = (x: number, y: number) => (inside(x, y) ? tiles[y * size + x] : Tile.Wall);
   const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * size + x] = t; };
 
-  /** Círculo de borda irregular; `only` limita a troca a um tipo de tile. */
-  const blob = (cx: number, cy: number, r: number, t: number, only?: number) => {
-    const reach = Math.ceil(r + 1);
+  /** Mancha de borda irregular (`stretch` > 1 estica na horizontal); `only` limita a troca a um tipo de tile. */
+  const blob = (cx: number, cy: number, r: number, t: number, only?: number, stretch = 1) => {
+    const reach = Math.ceil(r * Math.max(stretch, 1 / stretch) + 1);
     for (let y = cy - reach; y <= cy + reach; y++)
       for (let x = cx - reach; x <= cx + reach; x++) {
         const edge = r - 0.6 + rng.next() * 1.2;
-        if (Math.hypot(x - cx, y - cy) > edge) continue;
+        if (Math.hypot((x - cx) / stretch, (y - cy) * stretch) > edge) continue;
         if (only === undefined || get(x, y) === only) set(x, y, t);
       }
   };
@@ -266,11 +269,13 @@ function buildSwamp(seed: number): Dungeon {
     }
   };
 
-  // Mata fechada só na borda do mapa, com espessura que varia aos poucos.
+  // Mata fechada só na borda do mapa, com a espessura ondulando devagar (sem dente de tile em tile).
   for (let side = 0; side < 4; side++) {
     let depth = rng.int(2, 4);
+    let goal = depth;
     for (let i = 0; i < size; i++) {
-      depth = Math.max(2, Math.min(6, depth + rng.int(-1, 1)));
+      if (i % 5 === 0) goal = rng.int(2, 6);
+      if (rng.next() < 0.5) depth += Math.sign(goal - depth);
       for (let d = 0; d < depth; d++) {
         const [x, y] = side === 0 ? [i, d] : side === 1 ? [size - 1 - d, i] : side === 2 ? [i, size - 1 - d] : [d, i];
         tiles[y * size + x] = Tile.Wall;
@@ -379,21 +384,58 @@ function buildSwamp(seed: number): Dungeon {
     });
   }
 
-  // Lagoas e brejos.
+  // Lagoas e brejos: alongados, às vezes com uma poça colada (a margem fica recortada).
   for (let i = 0; i < SWAMP_LAKES; i++) {
     const x = rng.int(8, size - 9);
     const y = rng.int(8, size - 9);
     const r = 2 + rng.next() * 3.5;
-    obstacle(() => blob(x, y, r, Tile.Water, Tile.Floor));
+    const stretch = 0.75 + rng.next() * 0.6;
+    obstacle(() => {
+      blob(x, y, r, Tile.Water, Tile.Floor, stretch);
+      if (r > 3 && rng.next() < 0.6) {
+        const a = rng.next() * Math.PI * 2;
+        blob(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), 1.3 + rng.next() * 1.5, Tile.Water, Tile.Floor);
+      }
+    });
   }
 
-  // Restos de muro pelo campo: trechos curtos, retos.
-  for (let i = 0; i < 9; i++) {
-    const x = rng.int(8, size - 9);
-    const y = rng.int(8, size - 9);
-    const len = rng.int(3, 6);
-    const horizontal = rng.next() < 0.5;
-    obstacle(() => { for (let k = 0; k < len; k++) set(horizontal ? x + k : x, horizontal ? y : y + k, Tile.Ruin); });
+  // Restos do império pelo campo: trecho de muro, canto de muro, colunata e alicerce de casa (com a porta aberta).
+  for (let i = 0; i < SWAMP_RUINS; i++) {
+    const x = rng.int(9, size - 15);
+    const y = rng.int(9, size - 15);
+    const kind = rng.next();
+    const [dx, dy] = rng.next() < 0.5 ? [1, 0] : [0, 1];
+    obstacle(() => {
+      if (kind < 0.35) {
+        const len = rng.int(3, 6);
+        for (let k = 0; k < len; k++) set(x + dx * k, y + dy * k, Tile.Ruin);
+      } else if (kind < 0.6) {
+        const a = rng.int(3, 5);
+        const b = rng.int(2, 4);
+        const sx = rng.next() < 0.5 ? 1 : -1;
+        for (let k = 0; k < a; k++) set(x + k, y, Tile.Ruin);
+        for (let k = 1; k <= b; k++) set(x + (sx > 0 ? 0 : a - 1), y + k, Tile.Ruin);
+      } else if (kind < 0.8) {
+        // Colunas soltas em fila, a cada 2 tiles (umas já caíram).
+        const n = rng.int(3, 5);
+        for (let k = 0; k < n; k++) if (k === 0 || rng.next() < 0.8) set(x + dx * k * 2, y + dy * k * 2, Tile.Ruin);
+      } else {
+        const w = rng.int(4, 6);
+        const h = rng.int(4, 5);
+        const door = rng.int(0, 3);
+        for (let yy = 0; yy < h; yy++)
+          for (let xx = 0; xx < w; xx++) {
+            const border = xx === 0 || yy === 0 || xx === w - 1 || yy === h - 1;
+            if (!border || rng.next() < 0.35) continue;
+            // Porta de 2 tiles no meio de um lado: o miolo nunca fecha.
+            const mx = Math.floor((w - 1) / 2);
+            const my = Math.floor((h - 1) / 2);
+            const isDoor = (door === 0 && yy === 0 && (xx === mx || xx === mx + 1)) || (door === 1 && xx === w - 1 && (yy === my || yy === my + 1))
+              || (door === 2 && yy === h - 1 && (xx === mx || xx === mx + 1)) || (door === 3 && xx === 0 && (yy === my || yy === my + 1));
+            if (!isDoor) set(x + xx, y + yy, Tile.Ruin);
+          }
+      }
+    });
   }
 
   // Árvores e colunas soltas: só com chão em volta, para nunca fechar passagem.
