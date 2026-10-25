@@ -13,6 +13,8 @@ import {
   elementMultiplier,
   hasLineOfSight,
   isWalkable,
+  isSand,
+  SAND_SPEED,
   tileAt,
   tileDistance,
   type DamageElement,
@@ -648,7 +650,8 @@ export class MonsterAi {
 
   private stepTo(m: Monster, brain: Brain, step: { x: number; y: number }, now: number) {
     const diagonal = step.x !== m.x && step.y !== m.y;
-    const slow = m.slowed ? 1 - brain.slowPct : 1;
+    // Lentidão de magia e areia fofa (Dunas Cantantes, Mesas de Solária) se somam.
+    const slow = (m.slowed ? 1 - brain.slowPct : 1) * (isSand(this.w.dungeon, step.x, step.y) ? SAND_SPEED : 1);
     const stepMs = 1000 / (brain.speed * MONSTER_SPEED_SCALE * slow);
     brain.nextMoveAt = now + stepMs * (diagonal ? Math.SQRT2 : 1);
     m.stepMs = Math.round(stepMs);

@@ -1,10 +1,10 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
-export type MapDifficulty = 1 | 2 | 3 | 4;
+export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6;
 
 /**
  * Encontro das salas do caminho numa faixa de profundidade, como o orçamento de XP do D&D: a sala recebe monstros
@@ -202,6 +202,37 @@ export const MAPS: Record<MapId, MapDef> = {
       { boss: "beholder", depth: 8, portalBonus: 1, side: "leste" },
     ],
   },
+  dunes: {
+    id: "dunes", name: "Dunas Cantantes", icon: "🌬️", difficulty: 5, durationSeconds: 8 * 60, meadowMonsters: 3,
+    description: "Solária profunda: cordilheiras de dunas que cantam com o vento, vales compridos e selas entre eles, e a areia fofa que prende o passo. A legião soterrada do Império marcha de novo: chacais e legionários de osso, arqueiros nas cristas, múmias que puxam com as faixas e mortos escondidos na areia. Na bacia das pedras cantantes, o Colosso Cantante.",
+    encounters: [
+      // Todo mundo começa no nível 1: as duas primeiras zonas são de bichos e chacais.
+      { depth: [0, 0], budget: 130, table: [["scarabSwarm", 4], ["boneJackal", 2], ["boneLegionary", 1]] },
+      { depth: [1, 1], budget: 225, table: [["boneJackal", 4], ["scarabSwarm", 2], ["boneLegionary", 1]] },
+      { depth: [2, 2], budget: 345, table: [["boneLegionary", 3], ["boneJackal", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+      { depth: [3, 3], budget: 450, table: [["boneLegionary", 3], ["boneArcher", 2], ["wrappedMummy", 2], ["buriedDead", 2], ["mourner", 1]] },
+      { depth: [4, 4], budget: 540, table: [["wrappedMummy", 3], ["boneLegionary", 2], ["mourner", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+      { depth: [5, 99], budget: 615, table: [["wrappedMummy", 3], ["mourner", 2], ["boneLegionary", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+    ],
+    minibosses: [["boneCenturion", 2], ["royalMummy", 1], ["sandScribe", 1]],
+    mimicChance: 0,
+    bosses: [["singingColossus", 1]],
+  },
+  mesas: {
+    id: "mesas", name: "Mesas de Solária", icon: "🪨", difficulty: 6, durationSeconds: 8 * 60, meadowMonsters: 3, meadowMinibosses: 0.25,
+    description: "Platôs de arenito em camadas cortados por cânions estreitos, casas escavadas na rocha e a corte enterrada do último faraó. A mesma legião e as mesmas múmias, mais fundas e em bandos maiores, e mini-bosses soltos nos cânions: o mapa mais difícil do jogo. No anfiteatro dos platôs, o Faraó Eterno.",
+    encounters: [
+      { depth: [0, 0], budget: 170, table: [["scarabSwarm", 3], ["boneJackal", 3], ["boneLegionary", 1]] },
+      { depth: [1, 1], budget: 300, table: [["boneJackal", 3], ["boneLegionary", 2], ["scarabSwarm", 1], ["boneArcher", 1]] },
+      { depth: [2, 2], budget: 440, table: [["boneLegionary", 3], ["boneArcher", 2], ["wrappedMummy", 1], ["buriedDead", 2]] },
+      { depth: [3, 3], budget: 570, table: [["boneLegionary", 3], ["wrappedMummy", 2], ["boneArcher", 2], ["mourner", 2], ["buriedDead", 1]] },
+      { depth: [4, 4], budget: 680, table: [["wrappedMummy", 3], ["boneLegionary", 3], ["mourner", 2], ["boneArcher", 2]] },
+      { depth: [5, 99], budget: 760, table: [["wrappedMummy", 4], ["mourner", 2], ["boneLegionary", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+    ],
+    minibosses: [["royalMummy", 2], ["boneCenturion", 1], ["sandScribe", 1]],
+    mimicChance: 0,
+    bosses: [["eternalPharaoh", 1]],
+  },
 };
 
 /** Jogadores por hunt no mapa, bots incluídos (o Pântano do Kosaradius é só para 1). */
@@ -253,8 +284,8 @@ export function mapIdOf(value: unknown): MapId {
   return typeof value === "string" && value in MAPS ? (value as MapId) : DEFAULT_MAP;
 }
 
-/** Maior dificuldade da escala (a Caverna da Travessia). */
-export const MAX_DIFFICULTY = 4;
+/** Maior dificuldade da escala (as Mesas de Solária). */
+export const MAX_DIFFICULTY = 6;
 
 export function difficultyStars(difficulty: MapDifficulty) {
   return "★".repeat(difficulty) + "☆".repeat(MAX_DIFFICULTY - difficulty);
