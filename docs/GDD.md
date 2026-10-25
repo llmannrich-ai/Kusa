@@ -453,9 +453,9 @@ Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram n
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
 recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
-Escala de dificuldade de 1 a 4 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
-Ruínas, 3 para Dunas Cantantes e Mesas de Solária (provisório: revisar quando os monstros entrarem) e 4 para a Caverna
-da Travessia, o mapa mais difícil.
+Escala de dificuldade de 1 a 6 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
+Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes e 6 para Mesas de Solária, o mapa mais difícil (a 3 fica
+livre).
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
@@ -463,8 +463,8 @@ da Travessia, o mapa mais difícil.
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
-| 🌬️ Dunas Cantantes | 3 ★★★ (provisório) | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | só o terreno, ainda sem monstros |
-| 🪨 Mesas de Solária | 3 ★★★ (provisório) | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | só o terreno, ainda sem monstros |
+| 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
+| 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -558,10 +558,10 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 ### Dunas Cantantes e Mesas de Solária (terreno)
 
-O lado do deserto da bifurcação da Travessia (etapas 6 e 7 da campanha). Os dois mapas usam o mesmo gerador
-(`generateDunes` em `dungeon.ts`), cada um com a sua variante; por enquanto só o terreno: as zonas, campinas e salas
-de mini-boss estão marcadas, mas ninguém nasce (`MapDef.encounters`, `minibosses` e `bosses` vazios). Os monstros, os
-bosses e o balanceamento vêm com o bestiário dos dois mapas.
+O lado do deserto da bifurcação da Travessia (etapas 6 e 7 da campanha): as Dunas abrem com um boss da Caverna da
+Travessia e as Mesas com o Colosso Cantante. Os dois mapas usam o mesmo gerador (`generateDunes` em `dungeon.ts`), cada
+um com a sua variante, e a mesma Necrópole de Solária (ver "Bestiário"): dificuldade 5 nas Dunas e 6 nas Mesas, o
+mapa mais difícil do jogo. 8 min, até 4 jogadores.
 
 - **Em pé, como o celular:** 96×128. A entrada fica na planície do sul e a **arena do boss** na bacia do norte, onde os
   vales se encontram (círculo aberto com um aro de duna ou de rocha aberto para o sul).
@@ -598,7 +598,7 @@ bosses e o balanceamento vêm com o bestiário dos dois mapas.
   babosas e marcos de pedra; enfeites rasteiros (crânio de boi, conchas, rastro de cobra, pegadas, capim seco, cacos,
   barro rachado). Ambiente: grãos levados pelo vento norte, fitas de areia soprando das cristas, brilho do sol na água.
   Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
-- **Loot:** teto da hunt solo 100 (sem monstros, nada a ganhar), cheio em 180 s; sobe junto com o bestiário.
+- **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
 
 ### Caverna da Travessia
 
@@ -858,6 +858,34 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 No simulador de duelo (herói sozinho, só ataque básico), os orcs comuns ficam entre o Goblin e o Esqueleto da
 Cripta, o Ogro jovem perto do Orc guerreiro, os mini-bosses abaixo do Ogro da Cripta, e o Rei-Ogro (herói nível
 12) dura de 10 a 15 s contra o herói, contra 4 a 7 s do Dragão jovem (herói nível 6).
+
+### Necrópole de Solária: Dunas Cantantes (★5) e Mesas de Solária (★6)
+
+A legião do Império de Kusa que a areia enterrou viva e as múmias da corte do último faraó. Os dois mapas usam os
+mesmos comuns e mini-bosses (as Mesas com orçamentos maiores, bandos maiores e 25% das campinas com um mini-boss solto);
+cada um tem o seu boss. Quase todos são mortos-vivos (não pegam veneno nem sangramento); as múmias queimam fácil.
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Chacal de Ossos | escaramuçador (matilha de 2–3) | Táticas de Bando · Fuga Ágil (morde e recua) |
+| Escaravelhos Carniceiros | enxame (3–4) | metade das mordidas sangra |
+| Legionário Ossudo | sentinela | elmo, escudo de bronze e gládio · resiste a físico, vulnerável a luz · Escudo em Riste (empurra) |
+| Sagitário das Dunas | artilheiro | lenço do deserto e arco, alcance 6 · recua se alguém chega a 3 · Chuva de Flechas (área) |
+| Múmia Enfaixada | controlador | Faixas Mortuárias: **puxa** o herói de 2–5 tiles para colado e prende 1 s · o toque apodrece · queima fácil |
+| Carpideira | controlador | véu escuro, a 4 tiles · Lamento (leque de 4 que deixa lento) · queima fácil |
+| Soterrado | emboscador | escondido na areia (camuflado, nota a 3 tiles) · Ataque Surpresa 1,8× · Fortitude Morta-viva |
+| **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Formação! (chama 2 Legionários) |
+| **Múmia Real** (mini-boss) | controlador | máscara de ouro · Faixas Reais (puxa e prende) · Maldição do Faraó (área que corrói) · ferida, Enxame da Tumba (3 Escaravelhos) |
+| **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cegante (linha que cega) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
+| **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · Submergir (some na duna e irrompe debaixo do alvo) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
+| **Faraó Eterno** (boss das Mesas) | artilheiro (morto-vivo, flutua) | ataca a 3 tiles e foge de quem cola · Raio do Sol Morto (linha de 8 que queima) · Mortalha (puxa e prende) · Maldição Eterna (área que corrói) · Legião Eterna (2 Legionários) · abaixo de 30%, Sarcófago (uma vez: cura 20% e empurra 3 em volta) |
+
+**Balanceamento** (medido com o simulador de duelo, herói sozinho só com ataque básico; refazer quando a telemetria
+chegar): matando 75% do caminho, o herói chega no boss das Dunas no nível 14 e no das Mesas no 15–16 (XP antes do boss
+~7.200 e ~8.300; a Caverna, ~7.000). Na régua de quanto da vida do boss o herói tira antes de cair: o Colosso dá 3–9%
+no nível 14 e o Faraó 4–7% no 16, contra 8–16% do Observador no 14. Os mini-bosses ficam entre o Troll e o Bugbear da
+Caverna (30–60% no nível 11). Começo no nível 1: Escaravelhos e Chacais vencíveis sozinho, mais lentos que os Kobolds
+e Goblins da Caverna. Loot máximo de uma hunt ~2.900 nas Dunas e ~3.400 nas Mesas (teto da hunt solo 3.300 e 3.800).
 
 ## Ataques e magias (protótipo)
 

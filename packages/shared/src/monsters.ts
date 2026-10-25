@@ -17,7 +17,10 @@ export type MonsterKind =
   | "orcScout" | "orcGrunt" | "orcSpearman" | "orcArcher" | "orcShaman" | "orcBerserker" | "orcCaptain" | "ogreYoung"
   | "ogreBruiser" | "ogreShaman" | "orcWarlord" | "ogreKing"
   // Caverna da Travessia (dificuldade 2): os dois bosses dos covis
-  | "basilisk" | "beholder";
+  | "basilisk" | "beholder"
+  // Necrópole de Solária (Dunas Cantantes e Mesas de Solária, dificuldades 5 e 6): a legião soterrada e as múmias
+  | "boneJackal" | "scarabSwarm" | "boneLegionary" | "boneArcher" | "wrappedMummy" | "mourner" | "buriedDead"
+  | "boneCenturion" | "royalMummy" | "sandScribe" | "singingColossus" | "eternalPharaoh";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -692,6 +695,190 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "Verme gigante das dunas, dono da caverna. Some na areia e irrompe debaixo da presa, engole quem fica colado e, ferido, faz o chão tremer.",
+  }),
+  // --- Necrópole de Solária: Dunas Cantantes (5 estrelas) e Mesas de Solária (6). A legião do Império de Kusa que a areia
+  // enterrou viva e as múmias da corte que a guardam. Os dois mapas usam os mesmos comuns e mini-bosses (as Mesas, mais
+  // fundas e em bandos maiores); cada um tem o seu boss. Mais fortes que os da Caverna da Travessia na base.
+  boneJackal: monster({
+    kind: "boneJackal", name: "Chacal de Ossos", rank: "common", type: "undead", role: "skirmisher", cr: 4, group: [2, 3],
+    hp: 60, damage: 8, xp: 38, loot: [4, 8], speed: 4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1100, attackFx: "bite",
+    traits: { packTactics: 0.35, hitAndRun: { cooldownMs: 3500 } },
+    lore: "Os cães de caça da legião, só osso e fome. Correm em matilha, mordem e recuam antes do troco; juntos, mordem fundo.",
+  }),
+  scarabSwarm: monster({
+    kind: "scarabSwarm", name: "Escaravelhos Carniceiros", rank: "common", type: "beast", role: "swarm", cr: 3, group: [3, 4],
+    hp: 34, damage: 5, xp: 22, loot: [2, 4], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1000, attackFx: "bite",
+    traits: { onHit: { chance: 0.5, dot: { kind: "bleed", power: 0.35, durationMs: 3000 } } },
+    lore: "Saem das frestas das tumbas aos montes. Cada mordida abre um corte; parados, viram ossos limpos em minutos.",
+  }),
+  boneLegionary: monster({
+    kind: "boneLegionary", name: "Legionário Ossudo", rank: "common", type: "undead", role: "sentinel", cr: 5,
+    hp: 150, damage: 11, xp: 80, loot: [8, 13], speed: 2.6, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "slash",
+    // O escudo de bronze aguenta corte e flecha; maça e luz quebram osso.
+    elements: { physical: 0.8, radiant: 1.25 },
+    abilities: [
+      { id: "shieldBash", name: "Escudo em Riste", shape: "target", range: 1, radius: 0, cooldownMs: 7000, power: 0.9, push: 1, color: 0xc89b4a, fx: "slam" },
+    ],
+    lore: "Soldado do Império de Kusa enterrado de pé com a coorte inteira. Ainda marcha em formação, de escudo erguido (resiste a físico).",
+  }),
+  boneArcher: monster({
+    kind: "boneArcher", name: "Sagitário das Dunas", rank: "common", type: "undead", role: "artillery", cr: 5,
+    hp: 80, damage: 11, xp: 70, loot: [7, 12], speed: 2.6, aggroRange: 8, attackRange: 6, attackCooldownMs: 1800, attackFx: "arrow",
+    traits: { keepDistance: 3 },
+    abilities: [
+      {
+        id: "arrowRain", name: "Chuva de Flechas", shape: "target", range: 7, radius: 1, cooldownMs: 9000, power: 1.1, color: 0xd9c08a, fx: "acidRain",
+      },
+    ],
+    lore: "Arqueiro da legião, do alto das cristas. Atira de longe, recua quando alguém chega perto e, de vez em quando, cobre uma área de flechas.",
+  }),
+  wrappedMummy: monster({
+    kind: "wrappedMummy", name: "Múmia Enfaixada", rank: "common", type: "undead", role: "controller", cr: 6,
+    hp: 190, damage: 13, xp: 98, loot: [10, 16], speed: 1.8, aggroRange: 7, attackRange: 1, attackCooldownMs: 1700, attackFx: "smash",
+    elements: { fire: 1.5 },
+    traits: { onHit: { dot: { kind: "poison", power: 0.25, durationMs: 4000 } } },
+    abilities: [
+      {
+        id: "graveWraps", name: "Faixas Mortuárias", shape: "pull", range: 5, minRange: 2, radius: 0, cooldownMs: 9000, power: 0.5,
+        effect: { kind: "root", ms: 1000 }, color: 0xd8c8a0, fx: "tongue",
+      },
+    ],
+    lore: "Lenta demais para alcançar alguém, então não alcança: lança as faixas, puxa a presa até o colo e prende. O toque apodrece. Queima fácil.",
+  }),
+  mourner: monster({
+    kind: "mourner", name: "Carpideira", rank: "common", type: "undead", role: "controller", cr: 5,
+    hp: 95, damage: 9, xp: 76, loot: [7, 12], speed: 2.4, aggroRange: 7, attackRange: 4, attackCooldownMs: 1700, attackFx: "energy",
+    elements: { fire: 1.5, dark: 0.75 },
+    traits: { keepDistance: 2 },
+    abilities: [
+      {
+        id: "lament", name: "Lamento", shape: "cone", range: 4, radius: 0, length: 4, cooldownMs: 8000, power: 0.8,
+        slow: { factor: 0.55, durationMs: 2500 }, color: 0xb9c7e0, fx: "breath",
+      },
+    ],
+    lore: "Chorava nos enterros da corte e nunca parou. É dela parte do canto das dunas: o Lamento pesa nas pernas de quem ouve.",
+  }),
+  buriedDead: monster({
+    kind: "buriedDead", name: "Soterrado", rank: "common", type: "undead", role: "lurker", cr: 5,
+    hp: 130, damage: 12, xp: 84, loot: [8, 13], speed: 2.8, aggroRange: 3, attackRange: 1, attackCooldownMs: 1500, attackFx: "slash",
+    traits: { camouflage: true, ambush: 1.8, fortitude: { except: ["radiant", "fire"] } },
+    lore: "Fica debaixo da areia, só esperando passos. Ninguém o vê antes do primeiro golpe, e o golpe que devia derrubá-lo não derruba (a não ser luz ou fogo).",
+  }),
+  // Mini-bosses das ruínas (destrancam o baú da sala).
+  boneCenturion: monster({
+    kind: "boneCenturion", name: "Centurião Ossudo", rank: "miniboss", type: "undead", role: "leader", cr: 7,
+    hp: 540, damage: 20, xp: 310, loot: [30, 45], speed: 2.6, aggroRange: 7, attackRange: 1, attackCooldownMs: 1500, attackFx: "slash",
+    elements: { physical: 0.8, radiant: 1.25 },
+    traits: { leader: { radius: 4, damage: 0.25, haste: 0.2 } },
+    abilities: [
+      { id: "charge", name: "Investida", shape: "leap", range: 5, minRange: 3, radius: 1, cooldownMs: 8000, power: 1.3, push: 1, color: 0xc0392b, fx: "leap" },
+      {
+        id: "formation", name: "Formação!", shape: "summon", range: 7, radius: 0, cooldownMs: 20000, power: 0,
+        summon: { kind: "boneLegionary", count: 2 }, color: 0xc89b4a, fx: "summon",
+      },
+    ],
+    lore: "Comandou a coorte que a duna engoliu. Grita e os legionários levantam da areia; perto dele, batem mais forte e mais rápido (Comando).",
+  }),
+  royalMummy: monster({
+    kind: "royalMummy", name: "Múmia Real", rank: "miniboss", type: "undead", role: "controller", cr: 7,
+    hp: 500, damage: 18, xp: 295, loot: [30, 45], speed: 1.9, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    elements: { fire: 1.5 },
+    traits: { onHit: { dot: { kind: "poison", power: 0.3, durationMs: 4000 } } },
+    abilities: [
+      {
+        id: "royalWraps", name: "Faixas Reais", shape: "pull", range: 6, minRange: 2, radius: 0, cooldownMs: 9000, power: 0.6,
+        effect: { kind: "root", ms: 1200 }, color: 0xe8c860, fx: "tongue",
+      },
+      {
+        id: "pharaohCurse", name: "Maldição do Faraó", shape: "target", range: 6, radius: 2, cooldownMs: 10000, power: 1.2,
+        effect: { kind: "corrode", ms: 6000 }, color: 0x7fd36b, fx: "acidRain",
+      },
+      {
+        id: "tombSwarm", name: "Enxame da Tumba", shape: "summon", range: 7, radius: 0, cooldownMs: 18000, power: 0,
+        summon: { kind: "scarabSwarm", count: 3 }, belowHp: 0.5, phase: true, color: 0x3a5a2a, fx: "summon",
+      },
+    ],
+    lore: "Uma princesa da corte, enfaixada em linho dourado. Puxa quem foge, amaldiçoa quem fica (a carne corrói) e, ferida, solta o enxame que dormia no sarcófago.",
+  }),
+  sandScribe: monster({
+    kind: "sandScribe", name: "Escriba das Areias", rank: "miniboss", type: "undead", role: "artillery", cr: 7,
+    hp: 420, damage: 17, xp: 295, loot: [30, 45], speed: 2.4, aggroRange: 8, attackRange: 4, attackCooldownMs: 1500, attackFx: "energy",
+    elements: { fire: 1.25, dark: 0.75 },
+    traits: { keepDistance: 3 },
+    abilities: [
+      {
+        id: "blindingWord", name: "Palavra Cegante", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 9000, power: 1,
+        effect: { kind: "blind", ms: 1500 }, color: 0xf0d29c, fx: "breath",
+      },
+      {
+        id: "glyphBlast", name: "Hieróglifo Explosivo", shape: "target", range: 6, radius: 1, cooldownMs: 8000, power: 1.6,
+        dot: { kind: "burn", power: 0.25, durationMs: 3000 }, color: 0xffb347, fx: "boulder",
+      },
+      {
+        id: "raiseDead", name: "Erguer os Mortos", shape: "summon", range: 7, radius: 0, cooldownMs: 16000, power: 0,
+        summon: { kind: "boneJackal", count: 2 }, color: 0xd8cfb2, fx: "summon",
+      },
+    ],
+    lore: "Esqueleto de escriba com o rolo ainda na mão. Cada palavra que lê cega, cada glifo que escreve explode, e os chacais da legião voltam a correr.",
+  }),
+  // Bosses: o Colosso Cantante (Dunas) e o Faraó Eterno (Mesas). Mais fortes que o Observador, o das Mesas o mais forte.
+  singingColossus: monster({
+    kind: "singingColossus", name: "Colosso Cantante", rank: "boss", type: "elemental", role: "brute", cr: 10,
+    hp: 1800, damage: 23, xp: 2000, loot: [180, 260], speed: 1.9, aggroRange: 9, attackRange: 2, attackCooldownMs: 1600, attackFx: "smash",
+    // Areia e osso: corte passa por ela, o veneno não pega e o gelo a endurece.
+    elements: { physical: 0.8, ice: 1.3, nature: 0.5 },
+    abilities: [
+      {
+        id: "lowNote", name: "Nota Grave", shape: "self", range: 3, radius: 3, cooldownMs: 9000, power: 1.3, push: 2,
+        slow: { factor: 0.6, durationMs: 3000 }, color: 0xe0b46c, fx: "quake",
+      },
+      {
+        id: "shatteringAria", name: "Ária Estilhaçante", shape: "line", range: 8, radius: 0, length: 8, cooldownMs: 8000, power: 1.6,
+        effect: { kind: "corrode", ms: 6000 }, color: 0x7fe0f0, fx: "lightning",
+      },
+      {
+        id: "submerge", name: "Submergir", shape: "dive", range: 8, radius: 2, cooldownMs: 14000, power: 1.5, vanishMs: 1800,
+        color: 0xd9a35b, fx: "dive",
+      },
+      {
+        id: "buriedChoir", name: "Coro Soterrado", shape: "summon", range: 8, radius: 0, cooldownMs: 20000, power: 0,
+        summon: { kind: "mourner", count: 2 }, belowHp: 0.6, phase: true, color: 0xb9c7e0, fx: "summon",
+      },
+      {
+        id: "singingStorm", name: "Tempestade Cantante", shape: "target", range: 7, radius: 3, cooldownMs: 12000, power: 1.1,
+        effect: { kind: "blind", ms: 1500 }, belowHp: 0.4, color: 0xf0d29c, fx: "acidRain",
+      },
+    ],
+    lore: "O canto das dunas tem dono. Um gigante de areia em volta dos ossos da legião, furado pelo vento: cada nota empurra, a ária estilhaça, ele some na duna e volta debaixo de quem fugiu e, ferido, chama o coro e a tempestade.",
+  }),
+  eternalPharaoh: monster({
+    kind: "eternalPharaoh", name: "Faraó Eterno", rank: "boss", type: "undead", role: "artillery", cr: 11,
+    hp: 2300, damage: 24, xp: 2600, loot: [220, 320], speed: 2, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
+    elements: { fire: 1.25, dark: 0.5, radiant: 1.25 },
+    traits: { keepDistance: 2 },
+    abilities: [
+      {
+        id: "solarRay", name: "Raio do Sol Morto", shape: "line", range: 8, radius: 0, length: 8, cooldownMs: 8000, power: 1.7,
+        dot: { kind: "burn", power: 0.3, durationMs: 4000 }, color: 0xffd04a, fx: "lightning",
+      },
+      {
+        id: "shroud", name: "Mortalha", shape: "pull", range: 6, minRange: 2, radius: 0, cooldownMs: 11000, power: 0.6,
+        effect: { kind: "root", ms: 1200 }, color: 0xe8c860, fx: "tongue",
+      },
+      {
+        id: "eternalCurse", name: "Maldição Eterna", shape: "target", range: 7, radius: 2, cooldownMs: 10000, power: 1.3,
+        effect: { kind: "corrode", ms: 6000 }, color: 0x7fd36b, fx: "acidRain",
+      },
+      {
+        id: "eternalLegion", name: "Legião Eterna", shape: "summon", range: 8, radius: 0, cooldownMs: 18000, power: 0,
+        summon: { kind: "boneLegionary", count: 2 }, color: 0xc89b4a, fx: "summon",
+      },
+      {
+        id: "sarcophagus", name: "Sarcófago", shape: "self", range: 2, radius: 2, cooldownMs: 30000, power: 1.2, push: 3,
+        selfHeal: 0.2, belowHp: 0.3, phase: true, once: true, color: 0xe8c860, fx: "slam",
+      },
+    ],
+    lore: "O último faraó do Império de Kusa, que se mandou enterrar com a corte e a legião para governar depois da morte. Queima com o sol morto, puxa com a mortalha, corrói com a maldição, chama a legião e, quase vencido, fecha-se no sarcófago e volta mais forte.",
   }),
   // --- Pântano do Kosaradius: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
   // profundidade dobra os do fim), em bandos maiores: muito XP para quem joga sozinho. -----------------------

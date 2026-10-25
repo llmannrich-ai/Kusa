@@ -8,13 +8,10 @@ import type { SpellXp, TalentRanks } from "./talents.ts";
  * (supabase/migrations/*_hunt_solo.sql); o teste `apps/server/scripts/solo.ts` confere o loot máximo.
  */
 export const SOLO_LIMITS = {
-  /**
-   * Loot máximo de uma hunt por mapa: pouco acima do máximo teórico (todos os monstros e baús no topo, com o bônus do boss).
-   * Dunas Cantantes e Mesas de Solária ainda não têm monstros (só o terreno): o teto sobe junto com o bestiário.
-   */
-  maxLoot: { crypt: 1200, swamp: 3000, desert: 1700, marsh: 1900, cavern: 3000, dunes: 100, mesas: 100 } satisfies Record<MapId, number>,
+  /** Loot máximo de uma hunt por mapa: pouco acima do máximo teórico (todos os monstros e baús no topo, com o bônus do boss). */
+  maxLoot: { crypt: 1200, swamp: 3000, desert: 1700, marsh: 1900, cavern: 3000, dunes: 3300, mesas: 3800 } satisfies Record<MapId, number>,
   /** O teto do loot cresce proporcional ao tempo de hunt e só chega ao máximo depois disto (segundos). */
-  fullLootSeconds: { crypt: 90, swamp: 180, desert: 180, marsh: 240, cavern: 240, dunes: 180, mesas: 180 } satisfies Record<MapId, number>,
+  fullLootSeconds: { crypt: 90, swamp: 180, desert: 180, marsh: 240, cavern: 240, dunes: 240, mesas: 240 } satisfies Record<MapId, number>,
   /** Folga além da duração do mapa para o resultado chegar ao banco; depois disso vale como soterrado. */
   graceSeconds: 60,
   /**

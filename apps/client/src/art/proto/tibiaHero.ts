@@ -591,6 +591,14 @@ export const grain: Offset = (X, Y) => (noise(X, Y >> 2) < 0.18 ? -1 : noise(X +
 const darker = (o: Offset | undefined, far: boolean): Offset | undefined =>
   far ? (X, Y) => -1 + (o ? o(X, Y) : 0) : o;
 
+/** Faixas de linho da múmia: listras em diagonal com a fresta escura e uma mancha de resina aqui e ali. */
+const bandage: Offset = (X, Y) => {
+  const k = (((X + Y * 2) % 9) + 9) % 9;
+  return k === 0 ? (noise(X >> 2, Y) < 0.3 ? -2 : -1) : k === 1 ? 1 : noise(X >> 1, Y >> 1) < 0.05 ? -1 : 0;
+};
+/** Textura da pele da espécie (a múmia é toda enfaixada). */
+const skinTex = (kit: Kit): Offset | undefined => (kit.species === "mummy" ? bandage : undefined);
+
 // --- Pernas e pés -----------------------------------------------------------------------
 
 /** Sola de 2 px embaixo de cada coluna das peças, com costura clara logo acima. */
@@ -709,8 +717,8 @@ function leg(c: Canvas, kit: Kit, hip: Pt, knee: Pt, ankle: Pt, toe: Pt, far: bo
   const bare = kit.feet === "bare";
   const skinT = c.together(() => {
     const th = kit.thin ?? 1;
-    const id = limb(c, hip, knee, 4 * th, 3.4 * th, Mat.Skin, darker(undefined, far));
-    limb(c, knee, ankle, 3.4 * th, 2.7 * th, Mat.Skin, darker(undefined, far));
+    const id = limb(c, hip, knee, 4 * th, 3.4 * th, Mat.Skin, darker(skinTex(kit), far));
+    limb(c, knee, ankle, 3.4 * th, 2.7 * th, Mat.Skin, darker(skinTex(kit), far));
     if (th < 1) ellipse(c, knee[0], knee[1], 1.8, 1.8, Mat.Skin, darker(undefined, far));
     if (bare) bareFoot(c, ankle, toe, far, front);
     return id;
@@ -769,8 +777,8 @@ function arm(c: Canvas, kit: Kit, shoulder: Pt, elbow: Pt, at: Pt, far: boolean,
   // Braço nu: ombro (deltoide), bíceps e antebraço.
   const up = c.together(() => {
     const th = kit.thin ?? 1;
-    const id = limb(c, shoulder, elbow, 3.5 * th, 3 * th, Mat.Skin, darker(undefined, far));
-    limb(c, elbow, at, 3 * th, 2.6 * th, Mat.Skin, darker(undefined, far));
+    const id = limb(c, shoulder, elbow, 3.5 * th, 3 * th, Mat.Skin, darker(skinTex(kit), far));
+    limb(c, elbow, at, 3 * th, 2.6 * th, Mat.Skin, darker(skinTex(kit), far));
     if (th < 1) ellipse(c, elbow[0], elbow[1], 1.6, 1.6, Mat.Skin, darker(undefined, far));
     return id;
   });
@@ -1174,6 +1182,8 @@ function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
   switch (kit.top) {
     case "none": {
       const id = kit.species === "skeleton" ? ribcageSide(c, top) : bareTorso(c, top, CX, 9, true);
+      // Múmia: o tronco também é enfaixado.
+      if (kit.species === "mummy") for (let Y = F(top); Y <= F(top + 18); Y++) for (let X = F(CX - 10); X <= F(CX + 10); X++) if (c.is(X, Y, [id])) c.nudge(X, Y, bandage(X, Y));
       loincloth(c, top, CX, 8, true, false);
       return [id];
     }
@@ -4826,7 +4836,7 @@ function shieldFace(c: Canvas, id: string, at: Pt, view: ProtoDir, side: number)
 
 // --- Monstros humanoides (piloto da Cripta, docs/ARTE_TIBIA.md) ----------------------------
 
-export type Species = "goblin" | "kobold" | "hobgoblin" | "orc" | "gnoll" | "skeleton" | "zombie" | "bugbear" | "ogre";
+export type Species = "goblin" | "kobold" | "hobgoblin" | "orc" | "gnoll" | "skeleton" | "zombie" | "bugbear" | "ogre" | "mummy";
 
 /** Olho de perfil (olhando para a esquerda): pálpebra escura, íris da cor `mat` e um brilho. */
 function eyeSide(c: Canvas, x: number, y: number, mat: Mat, big = false) {
@@ -4913,6 +4923,15 @@ function monsterHead(c: Canvas, kit: Kit, b: number, top: number) {
       thread(c, [cx - 1, cy - 6], [cx + 4, cy + 4], Mat.Lip, 1, [face]);
       for (let k = 0; k < 5; k++) thread(c, [cx - 0.2 + k * 1, cy - 4.6 + k * 2], [cx + 1.4 + k * 1, cy - 5 + k * 2], Mat.Eye, 1, [face]);
       for (let k = 0; k < 5; k++) chain(c, [[cx - 2 + k * 2.4, cy - 8], [cx + k * 2.6, cy - 6 + k], [cx + 1 + k * 2.2, cy - 2 + k * 1.6]], 0.6, Mat.Hair, strands, 0.3);
+      return;
+    }
+    case "mummy": {
+      // Cabeça toda enfaixada: as voltas do linho em diagonal, a fresta dos olhos com a luz verde e uma ponta solta.
+      const head = ellipse(c, cx, cy - 0.4, 7.8, 8.4, Mat.Skin, bandage);
+      ellipse(c, cx - 3.6, cy + 4.4, 4.4, 3, Mat.Skin, bandage);
+      for (let X = F(cx - 8); X <= F(cx - 1); X++) { c.on(head, X, F(cy - 1.4), Mat.Eye, 0); c.on(head, X, F(cy - 0.6), Mat.Eye, 0); }
+      c.px(F(cx - 5), F(cy - 1), Mat.Leaf, 5); c.px(F(cx - 4.4), F(cy - 1), Mat.Leaf, 4);
+      chain(c, [[cx + 6, cy - 2], [cx + 10, cy + 3], [cx + 9, cy + 9]], 1.1, Mat.Skin, bandage, 0.7);
       return;
     }
     case "bugbear": {
@@ -5016,6 +5035,45 @@ const MONSTER_KITS: Record<string, Kit> = {
   ogre: {
     look: { skin: "#c08a5a", head: "#3a2818", primary: "#6a5a3a", secondary: "#5a4a34", detail: "#4a3624", trim: "#8a6a3a" },
     species: "ogre", size: 1.45, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "branch",
+  },
+  // Necrópole de Solária: a legião de ossos do Império de Kusa e as múmias da corte.
+  boneLegionary: {
+    look: { skin: "#ddd2b2", head: "#3a3028", primary: "#7a2018", secondary: "#4a4038", detail: "#5a3a1c", trim: "#c8903a" },
+    species: "skeleton", size: 0.97, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "belt",
+    weapon: "sword-2", helmet: "war-2", shield: "shield-3",
+  },
+  boneArcher: {
+    look: { skin: "#ddd2b2", head: "#3a3028", primary: "#cdb88a", secondary: "#4a4038", detail: "#5a3a1c", trim: "#a08a5c" },
+    species: "skeleton", size: 0.95, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "strap",
+    weapon: "bow-2", quiver: true,
+  },
+  buriedDead: {
+    look: { skin: "#c8aa7a", head: "#3a3028", primary: "#5a5040", secondary: "#4a4038", detail: "#5a3a1c", trim: "#7a6a4a" },
+    species: "skeleton", size: 0.95, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth",
+    weapon: "axe-1",
+  },
+  boneCenturion: {
+    look: { skin: "#e2d8bc", head: "#3a3028", primary: "#9a2018", secondary: "#4a4038", detail: "#5a3a1c", trim: "#d8a040" },
+    species: "skeleton", size: 1.2, thin: 0.55, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "belt",
+    weapon: "sword-4", helmet: "war-4", armor: "armor-3", shield: "shield-4",
+  },
+  sandScribe: {
+    look: { skin: "#ddd2b2", head: "#3a3028", primary: "#2e4a8a", secondary: "#24365a", detail: "#e0b23a", trim: "#e0b23a" },
+    species: "skeleton", size: 1.05, thin: 0.5, hair: "none", beard: "none", top: "robe", sleeves: "bell", pants: "none", feet: "shoes", waist: "sash",
+    weapon: "staff-3",
+  },
+  wrappedMummy: {
+    look: { skin: "#cdbe96", head: "#3a2e22", primary: "#5a5040", secondary: "#4a4038", detail: "#7a6a4a", trim: "#9c8d68" },
+    species: "mummy", size: 1, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "none",
+  },
+  mourner: {
+    look: { skin: "#cdbe96", head: "#3a2e22", primary: "#363a4e", secondary: "#24263a", detail: "#5a6078", trim: "#8a90a8" },
+    species: "mummy", size: 0.95, hair: "none", beard: "none", top: "robe", sleeves: "bell", pants: "none", feet: "bare", waist: "sash", weapon: "none",
+  },
+  royalMummy: {
+    look: { skin: "#d8c8a0", head: "#3a2e22", primary: "#26468a", secondary: "#24365a", detail: "#e0b23a", trim: "#e8b830" },
+    species: "mummy", size: 1.15, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "sash",
+    weapon: "wand-4", helmet: "arc-4",
   },
 };
 
