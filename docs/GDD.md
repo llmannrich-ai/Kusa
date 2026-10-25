@@ -439,7 +439,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
   entre dois cenários abertos. Contas de antes herdaram os cenários pelas runas de boss já levadas.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
-  (`start_solo_run`, `p_guest` para quem entra na sala de outro); o servidor recusa criar sala na nuvem. O crédito é
+  (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` (servidor) e `record_solo_map_clear` (hunt solo e sala no aparelho, cada um o seu).
 - **Ainda não:** os outros 13 cenários da campanha não existem (medalhões numerados).
 

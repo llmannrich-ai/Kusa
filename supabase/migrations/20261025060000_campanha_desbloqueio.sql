@@ -4,8 +4,8 @@
 -- a hunt solo e a sala no aparelho do jogador, por `record_solo_map_clear` (cada um anota o seu, pela hunt aberta).
 -- A ordem repete `WORLD_ORDER` do packages/shared (`src/world.ts`): mude os dois juntos. Na Caverna da Travessia
 -- (dois covis) qualquer um dos bosses vence o cenário.
--- O bloqueio vale para quem cria: `start_solo_run` recusa cenário fechado, menos para quem entra na sala de outro
--- jogador no aparelho dele (`p_guest`). Contas atuais: quem já levou a runa do boss com a classe venceu o cenário.
+-- O bloqueio vale para quem cria: `start_solo_run` recusa cenário fechado; quem entra na sala de outro jogador no
+-- aparelho dele abre a hunt por `start_guest_run`. Contas atuais: quem já levou a runa do boss com a classe venceu o cenário.
 
 create table public.profile_map_clears (
   profile_id uuid not null references public.profiles (id) on delete cascade,
@@ -98,29 +98,39 @@ $$;
 revoke execute on function public.record_solo_map_clear(uuid) from public, anon;
 grant execute on function public.record_solo_map_clear(uuid) to authenticated;
 
--- `start_solo_run` ganha `p_guest` (entrou na sala de outro jogador no aparelho dele): quem cria ou joga sozinho
--- precisa ter o cenário aberto. Parte da definição em produção e troca só a assinatura e o teste do mapa.
+-- `start_solo_run` passa a recusar cenário fechado para quem cria ou joga sozinho. Quem entra na sala de outro jogador
+-- no aparelho dele abre a hunt por `start_guest_run`, que marca a transação como convidado e chama a mesma função.
+-- Troca só o teste do mapa da definição em produção (mesma assinatura: nada é apagado).
 do $$
 declare
   v_def text := pg_get_functiondef('public.start_solo_run(text, text)'::regprocedure);
-  v_sig_old constant text := 'public.start_solo_run(p_class_id text, p_map_id text)';
-  v_sig_new constant text := 'public.start_solo_run(p_class_id text, p_map_id text, p_guest boolean DEFAULT false)';
   v_check_old constant text := $q$then raise exception 'mapa inválido'; end if;$q$;
   v_check_new constant text := $q$then raise exception 'mapa inválido'; end if;
-  if not coalesce(p_guest, false) and not public.map_unlocked(v_uid, p_class_id, p_map_id) then
+  if coalesce(current_setting('kusa.convidado', true), '') <> 'sim' and not public.map_unlocked(v_uid, p_class_id, p_map_id) then
     raise exception 'cenário fechado: vença o boss do cenário anterior com esta classe';
   end if;$q$;
 begin
-  if position(v_sig_old in v_def) = 0 then raise exception 'start_solo_run: assinatura não encontrada'; end if;
+  if position('cenário fechado' in v_def) > 0 then return; end if;
   if position(v_check_old in v_def) = 0 then raise exception 'start_solo_run: teste do mapa não encontrado'; end if;
-  v_def := replace(replace(v_def, v_sig_old, v_sig_new), v_check_old, v_check_new);
-  drop function public.start_solo_run(text, text);
-  execute v_def;
+  execute replace(v_def, v_check_old, v_check_new);
 end;
 $$;
 
-revoke execute on function public.start_solo_run(text, text, boolean) from public, anon;
-grant execute on function public.start_solo_run(text, text, boolean) to authenticated, service_role;
+-- Convidado na sala de outro jogador no aparelho dele: o cenário não precisa estar aberto para ele.
+create or replace function public.start_guest_run(p_class_id text, p_map_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform set_config('kusa.convidado', 'sim', true);
+  return public.start_solo_run(p_class_id, p_map_id);
+end;
+$$;
+
+revoke execute on function public.start_guest_run(text, text) from public, anon;
+grant execute on function public.start_guest_run(text, text) to authenticated;
 
 -- Contas atuais: quem levou a runa do boss com a classe venceu aquele cenário.
 insert into public.profile_map_clears (profile_id, class_id, map_id, first_at)

@@ -458,7 +458,7 @@ class HostedSession {
     // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
     await flushPendingSolo();
     // Campanha: o cenário precisa estar aberto para quem criou a sala; quem entrou na sala de outro joga livre.
-    const { data, error } = await supabase.rpc("start_solo_run", { p_class_id: this.me.classId, p_map_id: this.mapId, p_guest: !this.creator });
+    const { data, error } = await supabase.rpc(this.creator ? "start_solo_run" : "start_guest_run", { p_class_id: this.me.classId, p_map_id: this.mapId });
     if (error) {
       console.error("Falha ao abrir a hunt no banco", error);
       return;
