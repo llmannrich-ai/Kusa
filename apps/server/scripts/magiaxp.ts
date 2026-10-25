@@ -18,7 +18,7 @@ import {
 } from "@kusa/shared";
 import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
-import { HERO, arena, check } from "./arena.ts";
+import { arena, check } from "./arena.ts";
 import { until, wait } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
@@ -62,11 +62,7 @@ function inArena() {
   a.ready();
   a.cast(0, m);
   a.advance(500);
-  let result: RunEndedMessage | undefined;
-  a.any.host.runEnded = (_id: string, r: RunEndedMessage) => { result = r; };
-  a.any.endRun(HERO, "escaped");
-  check(!!result, "a hunt não mandou o resumo");
-  const r = result!;
+  const r = a.end("escaped");
   console.log("arena:", JSON.stringify(r.spells));
   const orb = r.spells.find((s) => s.id === "shadow_orb");
   const storm = r.spells.find((s) => s.id === "void_storm");
