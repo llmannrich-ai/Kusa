@@ -867,29 +867,175 @@ body.busy #hub-body { opacity: 0.7; }
 .link { color: var(--accent); }
 .badge { margin-left: auto; padding: 2px 8px; font-size: 11px; color: #000; background: var(--accent); align-self: start; }
 
-/* Classes */
-.class-list { display: grid; gap: 10px; }
-.class-card {
-  display: grid;
-  gap: 10px;
-  width: 100%;
-  padding: 12px;
-  text-align: left;
-  background: var(--panel);
-  border: 2px solid #3a2f27;
-  border-left: 6px solid var(--class-color);
-}
-.class-card.selected { border-color: var(--accent); border-left-color: var(--class-color); background: #2a211b; }
-.class-head { display: flex; align-items: center; gap: 12px; }
-.class-head strong { display: block; font-size: 18px; color: var(--accent); }
-.class-head small { display: block; font-size: 12px; }
+/* Heróis: medalhões (os mesmos do Grimório), o palco com o herói andando, atributos em barras e o Arsenal. */
 .hero-img { width: 56px; height: 56px; flex: none; image-rendering: pixelated; background: #0008; border: 1px solid #3a2f27; }
-.class-stats { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 2px 8px; margin: 0; font-size: 13px; }
-.class-stats dt { color: var(--muted); }
-.class-stats dd { margin: 0; font-variant-numeric: tabular-nums; }
-.class-stats dd.up { color: #7bed9f; }
-.class-foot { display: flex; justify-content: space-between; font-size: 13px; }
-.class-foot .link { padding: 4px 0; }
+.hero-stage {
+  display: grid;
+  background: #120d0a;
+  border: 2px solid #5a4632;
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 6px 18px #000a;
+}
+.hero-stage .equip-title { font-size: 13px; padding: 6px 8px; }
+.hero-scene {
+  position: relative;
+  height: 230px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 52%, color-mix(in srgb, var(--class-color) 38%, transparent), transparent 70%),
+    radial-gradient(ellipse at 50% 100%, #000 0%, transparent 55%),
+    repeating-linear-gradient(0deg, #0c0907 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(90deg, #0c0907 0 1px, transparent 1px 34px),
+    linear-gradient(#1d1611, #0f0b08);
+  box-shadow: inset 0 0 40px #000;
+}
+/* Arco atrás do herói, como os medalhões. */
+.hero-scene::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  width: 150px;
+  height: 196px;
+  transform: translateX(-50%);
+  border-radius: 75px 75px 0 0;
+  border: 2px solid color-mix(in srgb, var(--class-color) 45%, #3a2f27);
+  border-bottom: none;
+  background: linear-gradient(color-mix(in srgb, var(--class-color) 16%, #120d0a), #0d0a08 90%);
+  box-shadow: inset 0 0 24px #000, 0 0 22px color-mix(in srgb, var(--class-color) 30%, transparent);
+}
+.hero-plinth {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  width: 170px;
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, #4a3c30, #1d1611 70%);
+  border: 2px solid #5a4632;
+  box-shadow: 0 6px 0 #0c0907, 0 8px 18px #000;
+}
+.hero-walker {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  width: 168px;
+  height: 168px;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 2px #000a) drop-shadow(0 0 10px color-mix(in srgb, var(--class-color) 45%, transparent));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hero-walker.hop { animation: hero-hop 0.45s ease-out; }
+@keyframes hero-hop {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  40% { transform: translateX(-50%) translateY(-26px) scale(1.04); }
+  70% { transform: translateX(-50%) translateY(0) scale(1.06, 0.94); }
+}
+/* Faíscas na cor da classe subindo do chão. */
+.hero-ember {
+  position: absolute;
+  left: var(--x);
+  bottom: -6px;
+  width: 4px;
+  height: 4px;
+  background: color-mix(in srgb, var(--class-color) 70%, #fff);
+  box-shadow: 0 0 6px var(--class-color);
+  opacity: 0;
+  animation: hero-ember var(--t) linear var(--d) infinite;
+}
+@keyframes hero-ember {
+  0% { transform: translate(0, 0); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translate(14px, -230px); opacity: 0; }
+}
+.hero-specs { position: absolute; left: 8px; right: 8px; bottom: 4px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.hero-spec {
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--accent);
+  background: #120d0aee;
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--class-color) 60%, transparent);
+}
+.hero-caption {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 10px 12px 12px;
+  text-align: center;
+  background: linear-gradient(#1d150f, #120d0a);
+  border-top: 1px solid #000;
+}
+.hero-caption p { margin: 0; font-size: 14px; font-style: italic; }
+.hero-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.hero-tags span {
+  padding: 2px 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: color-mix(in srgb, var(--class-color) 22%, #120d0a);
+  border: 1px solid color-mix(in srgb, var(--class-color) 60%, #3a2f27);
+  border-radius: 10px;
+}
+/* Atributos: ícone, nome, barra (base na cor da classe, bônus em verde) e o valor. */
+.hero-attrs { display: grid; gap: 8px; padding: 12px; background: var(--panel); border: 1px solid #3a2f27; }
+.attr { display: grid; grid-template-columns: 20px 76px minmax(0, 1fr) 96px; align-items: center; gap: 8px; font-size: 13px; }
+.attr-icon { font-size: 14px; text-align: center; }
+.attr-label { color: var(--muted); }
+.attr-bar { display: flex; height: 10px; overflow: hidden; background: #0d0a08; border: 1px solid #3a2f27; box-shadow: inset 0 1px 2px #000; }
+.attr-bar i { display: block; height: 100%; transition: width 0.4s ease-out; }
+.attr-base { background: linear-gradient(color-mix(in srgb, var(--class-color) 80%, #fff), var(--class-color)); }
+.attr-bonus { background: repeating-linear-gradient(135deg, #7bed9f 0 4px, #4fbf74 4px 8px); }
+.attr-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.attr-value small { font-size: 11px; color: #7bed9f; }
+.hub-hint.attr-note { margin: 6px 0 0; font-size: 12px; }
+/* Arsenal: atalhos para o Grimório e o equipamento do herói. */
+.hero-link { display: grid; gap: 10px; margin-bottom: 10px; padding: 10px 12px 12px; background: var(--panel); border: 1px solid #3a2f27; border-left: 4px solid var(--class-color); }
+.hero-link-head { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0; text-align: left; background: none; border: none; }
+.hero-link-head strong { color: var(--accent); font-size: 16px; }
+.hero-link-head small { margin-left: auto; font-size: 12px; }
+.hero-link-head b { font-size: 22px; color: var(--accent); line-height: 1; }
+.hero-branches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.hero-branch { display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 4px 2px; color: var(--muted); background: none; border: none; }
+.hero-branch .grim-tab-emblem { width: 44px; height: 44px; }
+.hero-branch .grim-tab-emblem svg { width: 24px; height: 24px; }
+.hero-branch.started .grim-tab-emblem { color: var(--class-color); border-color: color-mix(in srgb, var(--class-color) 55%, #3a2f27); }
+.hero-branch strong { max-width: 100%; overflow: hidden; font-size: 12px; font-weight: normal; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.hero-branch small { font-size: 11px; font-variant-numeric: tabular-nums; }
+.hero-branch small.spec { color: var(--accent); }
+.hero-spells { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid #3a2f27; }
+.hero-spells > small { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.hero-spell-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.hero-spell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 2px;
+  font-size: 12px;
+  background: #0d0a08;
+  border: 1px solid color-mix(in srgb, var(--spell-color) 60%, #3a2f27);
+  border-radius: 14px;
+}
+.hero-spell b { display: grid; place-items: center; width: 18px; height: 18px; font-size: 10px; color: #000; background: var(--accent); border-radius: 50%; }
+.hero-gear { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; width: 100%; min-width: 0; padding: 0; background: none; border: none; }
+.hero-gear-slot {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  background: radial-gradient(circle at 50% 40%, #1d1611, #070504 80%);
+  border: 2px solid #5a4632;
+  box-shadow: inset 1px 1px 0 #000, 0 0 0 1px #000;
+}
+.hero-gear-slot.vacant { border-color: #3a2f27; opacity: 0.7; }
+.hero-gear-slot.rune { border-radius: 50%; }
+.hero-gear-slot.rune.vacant { border-style: dashed; }
+.hero-gear-slot .item-img { width: 80%; height: 80%; }
+.hero-gear-slot .slot-empty { font-size: 14px; color: #6b5640; }
+.hero-gear-facts { font-size: 12px; }
 
 /* Grimório: um ramo por tela (abas), raiz no alto, tronco no meio e costelas em até 5 colunas (ver GRIM_ROW e GRIM_ORB em menu.ts). */
 .chips { display: flex; gap: 6px; margin: 8px 0 12px; overflow-x: auto; }
@@ -1281,13 +1427,14 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-point.cleared:not(.locked) .world-badge { background: #c8962e; }
 .world-point.cleared:not(.locked) .world-badge::after { content: "★"; color: #fff6d8; font-size: 15px; }
 .world-point.locked .world-name { color: #6b5638; }
-.world-sheet .sheet-lock { margin: 8px 0 0; padding: 6px 10px; font-size: 13px; line-height: 1.35; color: #5a4128; background: #ead9b3; border-radius: 8px; }
+#map-sheet .sheet-chips li.sheet-lock { color: var(--parchment); background: #5a4128; }
 .world-tools { position: absolute; right: 12px; bottom: max(16px, env(safe-area-inset-bottom)); display: grid; gap: 8px; pointer-events: auto; }
 .world-tools .world-chip { width: 44px; height: 44px; padding: 0; font-size: 20px; }
 /* O herói fica de pé em cima do ponto e anda pela trilha em ~1 s (worldMap.ts posiciona quadro a quadro). */
 .world-hero { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; filter: drop-shadow(0 2px 0 rgba(43, 29, 16, 0.4)); }
 .world-hero-sprite { position: absolute; left: -20px; width: 40px; height: 40px; margin-top: -62px; background-size: 900% 100%; background-repeat: no-repeat; image-rendering: pixelated; }
 @media (prefers-reduced-motion: reduce) {
+  .hero-ember { display: none; }
   .world-point.selected .world-icon { animation: none; box-shadow: 0 2px 0 var(--ink), 0 0 0 5px rgba(232, 181, 69, 0.45); }
 }
 .world-top {

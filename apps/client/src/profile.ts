@@ -32,23 +32,32 @@ export interface Profile {
 /** Erro com mensagem pronta para mostrar ao jogador. */
 export class ProfileError extends Error {}
 
-/** Cenários vencidos (boss morto) por classe: abrem o seguinte da campanha (`mapUnlocked`). Sem conexão, nenhum. */
-export async function loadMapClears(): Promise<Partial<Record<ClassId, MapId[]>>> {
-  const { data, error } = await supabase.from("profile_map_clears").select("class_id, map_id");
-  if (error || !data) return {};
-  const out: Partial<Record<ClassId, MapId[]>> = {};
-  for (const row of data) {
+/**
+ * Cenários vencidos (boss morto) e bosses vencidos, por classe: abrem o seguinte da campanha (`mapUnlocked`; os bosses
+ * contam nos lados das bifurcações). Sem conexão, nenhum.
+ */
+export async function loadMapClears(): Promise<Partial<Record<ClassId, string[]>>> {
+  const [maps, bosses] = await Promise.all([
+    supabase.from("profile_map_clears").select("class_id, map_id"),
+    supabase.from("profile_boss_clears").select("class_id, boss_kind"),
+  ]);
+  const out: Partial<Record<ClassId, string[]>> = {};
+  for (const row of maps.data ?? []) {
     if (!MAP_IDS.includes(row.map_id as MapId)) continue;
-    (out[row.class_id as ClassId] ??= []).push(row.map_id as MapId);
+    (out[row.class_id as ClassId] ??= []).push(row.map_id as string);
   }
+  for (const row of bosses.data ?? []) (out[row.class_id as ClassId] ??= []).push(row.boss_kind as string);
   return out;
 }
 
-/** Hunt solo ou sala no aparelho: o boss morreu com este jogador na hunt (anota o cenário pela hunt aberta). */
-export async function recordSoloMapClear(runId: string | null) {
+/** Hunt solo ou sala no aparelho: o boss morreu com este jogador na hunt (anota o cenário e o boss pela hunt aberta). */
+export async function recordSoloMapClear(runId: string | null, boss: string) {
   if (!runId) return;
-  const { error } = await supabase.rpc("record_solo_map_clear", { p_run_id: runId });
-  if (error) console.error("Falha ao anotar o cenário vencido", error);
+  const [map, kill] = await Promise.all([
+    supabase.rpc("record_solo_map_clear", { p_run_id: runId }),
+    supabase.rpc("record_solo_boss_clear", { p_run_id: runId, p_boss: boss }),
+  ]);
+  if (map.error || kill.error) console.error("Falha ao anotar o cenário vencido", map.error ?? kill.error);
 }
 
 export async function loadProfile(): Promise<Profile> {
@@ -72,14 +81,14 @@ export async function loadProfile(): Promise<Profile> {
 }
 
 /**
- * Bosses que este personagem (conta e classe) já venceu, pela runa de boss que cada um deu (`profile_boss_runes`):
- * liberam os caminhos da bifurcação da Travessia no mapa mundi. Sem conta ou sem rede, nenhum.
+ * Bosses que este personagem (conta e classe) já venceu (`profile_boss_clears`): liberam os caminhos da bifurcação da
+ * Travessia no mapa mundi. Sem conta ou sem rede, nenhum.
  */
 export async function loadBossKills(classId: ClassId): Promise<string[]> {
   const { data: session } = await supabase.auth.getSession();
   const uid = session.session?.user.id;
   if (!uid) return [];
-  const { data } = await supabase.from("profile_boss_runes").select("boss_kind").eq("profile_id", uid).eq("class_id", classId);
+  const { data } = await supabase.from("profile_boss_clears").select("boss_kind").eq("profile_id", uid).eq("class_id", classId);
   return (data ?? []).map((r) => r.boss_kind as string);
 }
 
