@@ -159,7 +159,6 @@ function setEntering(on: boolean) {
   const soloOnly = partySize(MAPS[createMapId()]) === 1;
   show("sheet-create", !soloOnly);
   show("create", !soloOnly);
-  show("sheet-wait", on && !soloOnly && createServer() === "cloud");
   create.disabled = on || soloOnly;
   const solo = $<HTMLButtonElement>("solo");
   solo.textContent = on && !soloOnly ? "Conectando…" : "Jogar sozinho";
@@ -248,25 +247,27 @@ function openSheet() {
   // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista. Mapa de covis (Travessia): os
   // dois bosses, um de cada lado da bifurcação.
   const bosses = map.lairs ? [`☠ ${map.lairs.map((l) => MONSTERS[l.boss].name.split(" ")[0]).join(" · ")}`] : boss ? [`☠ ${MONSTERS[boss].name}`] : [];
+  // Cenário fechado: só o cadeado e o boss a vencer (a frase inteira vai no title, sem texto na ficha).
+  const before = isOpen(map.id) ? null : unlockedBy(map.id);
+  // Lado de bifurcação: só um boss do cenário anterior abre este.
+  const beforeBoss = before && (UNLOCK_BOSS[map.id] ?? mainBoss(MAPS[before]));
+  const lock = before
+    ? `Derrote ${beforeBoss ? MONSTERS[beforeBoss].name : "o boss"} em ${MAPS[before].name} com o ${CLASSES[hub.classId].name} para abrir. Você ainda pode entrar nas salas de outros jogadores.`
+    : "";
   const chips = [
+    ...(before ? [`🔒 ${beforeBoss ? MONSTERS[beforeBoss].name.split(" ")[0] : MAPS[before].name}`] : []),
     difficultyStars(map.difficulty),
     `⏱ ${map.durationSeconds / 60} min`,
     partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
     ...bosses,
     ...(clearsNow().includes(map.id) ? ["★ boss vencido"] : []),
   ];
-  $("sheet-chips").replaceChildren(...chips.map((text) => {
+  $("sheet-chips").replaceChildren(...chips.map((text, i) => {
     const li = document.createElement("li");
     li.textContent = text;
+    if (lock && i === 0) { li.title = lock; li.setAttribute("aria-label", lock); li.className = "sheet-lock"; }
     return li;
   }));
-  const before = unlockedBy(map.id);
-  // Lado de bifurcação: só um boss do cenário anterior abre este.
-  const beforeBoss = before && (UNLOCK_BOSS[map.id] ?? mainBoss(MAPS[before]));
-  $("sheet-lock").textContent = before
-    ? `🔒 Derrote ${beforeBoss ? MONSTERS[beforeBoss].name : "o boss"} em ${MAPS[before].name} com o ${CLASSES[hub.classId].name} para abrir. Você ainda pode entrar nas salas de outros jogadores.`
-    : "";
-  show("sheet-lock", !isOpen(map.id));
   show("rooms-sheet", false);
   show("map-sheet", true);
   $("map-sheet").scrollTop = 0;
