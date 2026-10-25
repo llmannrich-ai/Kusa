@@ -27,7 +27,11 @@ import {
   logStrip, marshFloorStrip, marshFringeStrip, marshShadeStrip, marshShoreStrip, marshTallStrip, marshWaterStrip, mudStrip, plankStrip,
   treeCrownSheet, treeShadowCanvas, treeTrunkSheet, waterStrip as marshWaterTiles,
 } from "./marshDecor.ts";
-import { RIPPLE_FRAMES, decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./swampDecor.ts";
+import { RIPPLE_FRAMES, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./ambient.ts";
+import {
+  COLUMN_SPRITE, COLUMN_VARIANTS, columnSheet, mosaicCanvas, pavingStrip as ruinPavingStrip, ruinFloorStrip, ruinTallStrip, ruinWallCanvas,
+  ruinWaterStrip, toSwampTone,
+} from "./ruinsDecor.ts";
 
 /**
  * Ponte entre a arte e o Phaser: carrega os PNGs do pack Dungeon Crawl (CC0, ver
@@ -63,32 +67,6 @@ export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked
 export const PORTAL_TEXTURE = { escape: "portal-escape", boss: "portal-boss" };
 /** Faixas de variações de chão (32×32 cada). */
 export const FLOOR_TEXTURE = { normal: "floor", boss: "floor-boss" };
-/** Pântano das Ruínas: faixas de chão e água (tilemap) e de árvores, muros e colunas (sprites 32×32). */
-export const SWAMP_TEXTURE = {
-  grass: "floor-grass",
-  mud: "floor-mud",
-  ruins: "floor-ruins",
-  forest: "floor-forest",
-  water: "water-swamp",
-  tree: "tree-swamp",
-  ruinWall: "ruin-wall",
-  column: "ruin-column",
-  /** Franja de capim (N, L, S, O) e espuma da margem (N, L, S, O, cantos NE, NO, SE, SO). */
-  fringe: "grass-fringe",
-  shore: "water-shore",
-};
-/** Detalhes do pântano em arte própria (`swampDecor.ts`), gerados na primeira hunt no pântano. */
-export const SWAMP_DECOR = {
-  floor: "swamp-decor-floor",
-  water: "swamp-decor-water",
-  tall: "swamp-decor-tall",
-  shade: "swamp-shade",
-  ripple: "swamp-ripple",
-  firefly: "swamp-firefly",
-  mist: "swamp-mist",
-};
-const SWAMP_SHEETS = [SWAMP_TEXTURE.tree, SWAMP_TEXTURE.ruinWall, SWAMP_TEXTURE.column];
-
 /** Efeitos de combate: projéteis e impactos do pack, e os de corpo a corpo desenhados em `effects.ts`. */
 export const FX_TEXTURE = {
   arrow: "fx-arrow",
@@ -110,7 +88,6 @@ export function preloadArt(scene: Phaser.Scene) {
     ...Object.values(CHEST_TEXTURE),
     ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
-    ...Object.values(SWAMP_TEXTURE).filter((key) => !SWAMP_SHEETS.includes(key)),
     FX_TEXTURE.arrow,
     FX_TEXTURE.fireball,
     FX_TEXTURE.energyBolt,
@@ -119,7 +96,7 @@ export function preloadArt(scene: Phaser.Scene) {
   ]) {
     scene.load.image(key, `${key}.png`);
   }
-  for (const key of [FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE), ...SWAMP_SHEETS]) {
+  for (const key of [FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE)]) {
     scene.load.spritesheet(key, `${key}.png`, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
   }
   scene.load.setPath();
@@ -334,27 +311,6 @@ function addStrips(scene: Phaser.Scene, strips: [string, () => HTMLCanvasElement
   }
 }
 
-/** Gera as texturas dos detalhes do pântano (uma vez por jogo), com quadros 32×32 nas faixas. */
-export function createSwampArt(scene: Phaser.Scene) {
-  addStrips(scene, [
-    [SWAMP_DECOR.floor, decorFloorStrip],
-    [SWAMP_DECOR.water, decorWaterStrip],
-    [SWAMP_DECOR.tall, decorTallStrip],
-    [SWAMP_DECOR.shade, () => shadeStrip()],
-    [SWAMP_DECOR.ripple, rippleStrip],
-  ]);
-  if (!scene.textures.exists(SWAMP_DECOR.firefly)) scene.textures.addCanvas(SWAMP_DECOR.firefly, fireflyCanvas());
-  if (!scene.textures.exists(SWAMP_DECOR.mist)) scene.textures.addCanvas(SWAMP_DECOR.mist, mistCanvas());
-  if (!scene.anims.exists(SWAMP_DECOR.ripple)) {
-    scene.anims.create({
-      key: SWAMP_DECOR.ripple,
-      frames: Array.from({ length: RIPPLE_FRAMES }, (_, frame) => ({ key: SWAMP_DECOR.ripple, frame })),
-      frameRate: 6,
-      hideOnComplete: true,
-    });
-  }
-}
-
 /** Mar de Areia: tudo em arte própria (`desertDecor.ts`), gerado na primeira hunt no deserto. */
 export const DESERT_TEXTURE = {
   sand: "desert-sand",
@@ -463,43 +419,88 @@ export const MARSH_TEXTURE = {
   leaf: "marsh-leaf",
   dragonfly: "marsh-dragonfly",
 };
+/** Texturas que os dois pântanos (floresta alagada) usam, cada um com as suas chaves (`wetlandMap.ts`). */
+export type WetlandTexture = typeof MARSH_TEXTURE;
 
-/** Gera as texturas do Pântano (uma vez por jogo): faixas 32×32, as árvores, as bolhas e as marolas. */
-export function createMarshArt(scene: Phaser.Scene) {
-  addStrips(scene, [
-    [MARSH_TEXTURE.grass, grassStrip],
-    [MARSH_TEXTURE.mud, mudStrip],
-    [MARSH_TEXTURE.water, marshWaterTiles],
-    [MARSH_TEXTURE.planks, plankStrip],
-    [MARSH_TEXTURE.canopy, canopyStrip],
-    [MARSH_TEXTURE.shore, marshShoreStrip],
-    [MARSH_TEXTURE.fringe, marshFringeStrip],
-    [MARSH_TEXTURE.shade, marshShadeStrip],
-    [MARSH_TEXTURE.floor, marshFloorStrip],
-    [MARSH_TEXTURE.waterDecor, marshWaterStrip],
-    [MARSH_TEXTURE.tall, marshTallStrip],
-    [MARSH_TEXTURE.logs, logStrip],
-    [MARSH_TEXTURE.ripple, rippleStrip],
-  ]);
-  for (const [key, draw, size] of [[MARSH_TEXTURE.trunk, treeTrunkSheet, TREE_TRUNK], [MARSH_TEXTURE.crown, treeCrownSheet, TREE_CROWN]] as const) {
+/**
+ * Pântano das Ruínas: a natureza do Pântano do Kosaradius na paleta da baía (`swampTone`) e as ruínas em arte própria
+ * (`ruinsDecor.ts`), geradas na primeira hunt no Pântano das Ruínas.
+ */
+export const SWAMP_TEXTURE = {
+  ...(Object.fromEntries(Object.entries(MARSH_TEXTURE).map(([k, v]) => [k, v.replace("marsh-", "swamp-")])) as WetlandTexture),
+  paving: "swamp-paving",
+  ruinFloor: "swamp-ruin-floor",
+  ruinTall: "swamp-ruin-tall",
+  ruinWater: "swamp-ruin-water",
+  columns: "swamp-columns",
+  mosaic: "swamp-mosaic",
+};
+
+/**
+ * Gera as texturas de um pântano (uma vez por jogo): faixas 32×32, as árvores, as bolhas e as marolas. `tone`
+ * repinta tudo na paleta do mapa (o Pântano das Ruínas usa os desenhos do Kosaradius em outra paleta).
+ */
+function createWetlandArt(scene: Phaser.Scene, tex: WetlandTexture, tone: (c: HTMLCanvasElement, water: boolean) => HTMLCanvasElement = (c) => c) {
+  const wet = [tex.water, tex.shore, tex.waterDecor, tex.planks, tex.ripple];
+  const toned = (key: string, draw: () => HTMLCanvasElement) => () => tone(draw(), wet.includes(key));
+  addStrips(scene, ([
+    [tex.grass, grassStrip],
+    [tex.mud, mudStrip],
+    [tex.water, marshWaterTiles],
+    [tex.planks, plankStrip],
+    [tex.canopy, canopyStrip],
+    [tex.shore, marshShoreStrip],
+    [tex.fringe, marshFringeStrip],
+    [tex.shade, marshShadeStrip],
+    [tex.floor, marshFloorStrip],
+    [tex.waterDecor, marshWaterStrip],
+    [tex.tall, marshTallStrip],
+    [tex.logs, logStrip],
+    [tex.ripple, rippleStrip],
+  ] as [string, () => HTMLCanvasElement][]).map(([key, draw]) => [key, toned(key, draw)]));
+  for (const [key, draw, size] of [[tex.trunk, treeTrunkSheet, TREE_TRUNK], [tex.crown, treeCrownSheet, TREE_CROWN]] as const) {
     if (scene.textures.exists(key)) continue;
-    const texture = scene.textures.addCanvas(key, draw())!;
+    const texture = scene.textures.addCanvas(key, tone(draw(), false))!;
     for (let i = 0; i < TREE_VARIANTS; i++) texture.add(i, 0, i * size.w, 0, size.w, size.h);
   }
-  if (!scene.textures.exists(MARSH_TEXTURE.bubble)) {
-    const texture = scene.textures.addCanvas(MARSH_TEXTURE.bubble, bubbleStrip())!;
+  if (!scene.textures.exists(tex.bubble)) {
+    const texture = scene.textures.addCanvas(tex.bubble, bubbleStrip())!;
     for (let i = 0; i < BUBBLE_FRAMES; i++) texture.add(i, 0, i * 16, 0, 16, 16);
   }
   for (const [key, draw] of [
-    [MARSH_TEXTURE.treeShadow, treeShadowCanvas], [MARSH_TEXTURE.firefly, fireflyCanvas], [MARSH_TEXTURE.mist, mistCanvas],
-    [MARSH_TEXTURE.leaf, marshLeafCanvas], [MARSH_TEXTURE.dragonfly, dragonflyCanvas],
+    [tex.treeShadow, treeShadowCanvas], [tex.firefly, fireflyCanvas], [tex.mist, mistCanvas],
+    [tex.leaf, () => tone(marshLeafCanvas(), false)], [tex.dragonfly, dragonflyCanvas],
   ] as const) {
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, draw());
   }
-  for (const [key, frames, frameRate] of [[MARSH_TEXTURE.ripple, RIPPLE_FRAMES, 6], [MARSH_TEXTURE.bubble, BUBBLE_FRAMES, 7]] as const) {
+  for (const [key, frames, frameRate] of [[tex.ripple, RIPPLE_FRAMES, 6], [tex.bubble, BUBBLE_FRAMES, 7]] as const) {
     if (scene.anims.exists(key)) continue;
     scene.anims.create({ key, frames: Array.from({ length: frames }, (_, frame) => ({ key, frame })), frameRate, hideOnComplete: true });
   }
+}
+
+export function createMarshArt(scene: Phaser.Scene) {
+  createWetlandArt(scene, MARSH_TEXTURE);
+}
+
+export function createSwampArt(scene: Phaser.Scene) {
+  createWetlandArt(scene, SWAMP_TEXTURE, (c, water) => toSwampTone(c, water));
+  addStrips(scene, [
+    [SWAMP_TEXTURE.paving, ruinPavingStrip],
+    [SWAMP_TEXTURE.ruinFloor, ruinFloorStrip],
+    [SWAMP_TEXTURE.ruinTall, ruinTallStrip],
+    [SWAMP_TEXTURE.ruinWater, ruinWaterStrip],
+  ]);
+  if (!scene.textures.exists(SWAMP_TEXTURE.columns)) {
+    const texture = scene.textures.addCanvas(SWAMP_TEXTURE.columns, columnSheet())!;
+    for (let i = 0; i < COLUMN_VARIANTS; i++) texture.add(i, 0, i * COLUMN_SPRITE.w, 0, COLUMN_SPRITE.w, COLUMN_SPRITE.h);
+  }
+  if (!scene.textures.exists(SWAMP_TEXTURE.mosaic)) scene.textures.addCanvas(SWAMP_TEXTURE.mosaic, mosaicCanvas());
+}
+
+/** Trecho de muro das ruínas do pântano (`ruinWallCanvas`), criado na primeira vez que é pedido. */
+export function swampWallTexture(scene: Phaser.Scene, links: number, height: number, variant: number) {
+  return lazyCanvas(scene, `swamp-wall-${links}-${height}-${variant}`, () => ruinWallCanvas(links, height, variant));
 }
 
 /** Textura de tampa de parede, criada na primeira vez que é pedida. */
