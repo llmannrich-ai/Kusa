@@ -415,16 +415,15 @@ export class CombatFx {
    * Núcleo Infernal: um vulcão rompe o chão sob o feiticeiro. O chão racha em fendas de lava até a borda da área,
    * uma coluna de fogo sobe da cratera e solta cinza, bombas de lava caem nos tiles atingidos e os monstros pegos
    * pegam fogo. O chão fica em brasa e esfria aos poucos (~3 s), então a área do golpe segue legível depois dele.
-   * `tiles`: os tiles atingidos (a mesma regra do servidor); `hits`: onde estão os monstros pegos;
-   * `shake`: treme a câmera (só para quem conjurou).
+   * `tiles`: os tiles atingidos (a mesma regra do servidor); `hits`: onde estão os monstros pegos.
+   * A câmera não treme (princípio do jogo, ver "Plataforma" no GDD): o impacto vem do desenho.
    */
-  volcano(at: Point, tiles: (Point & { ring: number })[], hits: Point[], shake: boolean) {
+  volcano(at: Point, tiles: (Point & { ring: number })[], hits: Point[]) {
     if (tiles.length === 0) return;
     const key = (x: number, y: number) => `${Math.floor(x / TILE_SIZE)},${Math.floor(y / TILE_SIZE)}`;
     const inArea = new Set(tiles.map((t) => key(t.x, t.y)));
     const reach = (Math.max(...tiles.map((t) => t.ring)) + 0.5) * TILE_SIZE;
     const crater = { x: at.x, y: at.y + 8 };
-    if (shake) this.scene.cameras.main.shake(260, 0.006);
 
     // Fendas: saem da borda da cratera em zigue-zague (quebram e voltam para o rumo), umas com galho, e param
     // na parede (fora da área). `width`: a grossura na raiz; afinam até a ponta.

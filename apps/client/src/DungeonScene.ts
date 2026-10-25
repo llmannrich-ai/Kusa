@@ -617,7 +617,7 @@ export class DungeonScene extends Phaser.Scene {
       const unit = this.monsters.get(id);
       hits.push(unit ? { x: unit.body.x, y: unit.body.y } : this.tilePoint(m.x, m.y));
     });
-    this.fx.volcano(this.tilePoint(msg.x, msg.y), tiles, hits, msg.from === this.room.sessionId);
+    this.fx.volcano(this.tilePoint(msg.x, msg.y), tiles, hits);
   }
 
   /** Magia em cone: acende o leque (a mesma conta do servidor), do herói para fora. */
