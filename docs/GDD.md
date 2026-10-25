@@ -419,7 +419,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
-  **Cidadela Caída**.
+  **Cidadela Caída**. Depois da Travessia, o lado do deserto já existe: 🌬️ Dunas Cantantes → 🪨 Mesas de Solária.
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
   Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
@@ -435,7 +435,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
-  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
+  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Basilisco ou Observador → Dunas Cantantes, boss das Dunas →
+  Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
   Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (os lados da bifurcação seguem os bosses vencidos, `bossKills`). Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
   e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha diz quem derrotar e onde, e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
@@ -444,7 +445,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` (servidor) e `record_solo_map_clear` (hunt solo e sala no aparelho, cada um o seu).
-- **Ainda não:** os outros 13 cenários da campanha não existem (medalhões numerados).
+- **Ainda não:** os outros 11 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
@@ -455,8 +456,9 @@ Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram n
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
 recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
-Escala de dificuldade de 1 a 4 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
-Ruínas e 4 para a Caverna da Travessia, o mapa mais difícil (a 3 fica livre para um mapa entre os dois).
+Escala de dificuldade de 1 a 6 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
+Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes e 6 para Mesas de Solária, o mapa mais difícil (a 3 fica
+livre).
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
@@ -464,6 +466,8 @@ Ruínas e 4 para a Caverna da Travessia, o mapa mais difícil (a 3 fica livre pa
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
+| 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
+| 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -555,6 +559,50 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
   Como nos outros mapas, só os sprites perto da câmera são desenhados.
 
+### Dunas Cantantes e Mesas de Solária (terreno)
+
+O lado do deserto da bifurcação da Travessia (etapas 6 e 7 da campanha): as Dunas abrem com um boss da Caverna da
+Travessia e as Mesas com o Colosso Cantante. Os dois mapas usam o mesmo gerador (`generateDunes` em `dungeon.ts`), cada
+um com a sua variante, e a mesma Necrópole de Solária (ver "Bestiário"): dificuldade 5 nas Dunas e 6 nas Mesas, o
+mapa mais difícil do jogo. 8 min, até 4 jogadores.
+
+- **Em pé, como o celular:** 96×128. A entrada fica na planície do sul e a **arena do boss** na bacia do norte, onde os
+  vales se encontram (círculo aberto com um aro de duna ou de rocha aberto para o sul).
+- **Vales entre cordilheiras:** 3 cordilheiras compridas, no sentido do vento (norte-sul), serpenteando, separam 4
+  vales. Cada cordilheira tem 2 (às vezes 3) **selas** de areia firme (nas Mesas, **cânions** estreitos de 3 tiles) que
+  ligam um vale ao outro. As 7 zonas sobem do sul ao norte trocando de vale a cada zona, então a rota sempre cruza
+  alguma sela e a equipe escolhe por qual. Obstáculo que fecharia a passagem até uma zona, campina, sala ou a arena é
+  descartado; sala lateral que fecharia um vale sai.
+- **Areia fofa** (`Tile.Sand`): andável e não tapa a visão, mas quem pisa nela (herói, monstro, invocação que não voa)
+  anda a 65% da velocidade (`SAND_SPEED`; o passo que entra nela demora mais). Cobre o pé das cordilheiras (faixa de
+  largura ondulante) e manchas compridas no fundo dos vales; selas, entrada, arena, ruínas e oásis ficam firmes. Nas
+  Dunas é farta (~2.100 tiles por mapa); nas Mesas, pouca (~750, só onde a areia escorreu). Teste: `areia.ts`.
+- **Dunas Cantantes:** cordilheiras de duna (mais grossas a oeste, onde o vento empilha), barcanas (dunas pequenas em
+  meia-lua) nos vales, oásis com coqueiros na margem (no máximo um por vale), coqueiros soltos, **ruínas soterradas**
+  (muro de arenito com falhas e 2 portões) e, na arena, o círculo de 7 **pedras cantantes** (menires de ruína).
+- **Mesas de Solária:** platôs de arenito de beira reta em degraus, morros-testemunho soltos nos vales, poços (oásis
+  pequenos), pilares de rocha, **casas escavadas na rocha** (muro inteiro, 2 portas cavadas na encosta) e, na arena, 4
+  pilares de pedra.
+- **Regra de desenho:** mata sem mata nos 4 lados é coqueiro (nas Dunas sempre; nas Mesas, perto da água) ou pilar de
+  rocha; mata encostada em mata é duna ou platô; ruína sem ruína nos 4 lados é pedra cantante. Os dois bloqueiam passo e
+  visão; a água, só o passo.
+- **Visual** (só no cliente, `apps/client/src/dunesMap.ts` e `art/duneArt.ts`): **sempre na arte nova** (128 px por
+  tile, `docs/ARTE_TIBIA.md`), com ou sem a opção Arte nova (beta); os heróis e monstros seguem a opção de cada um.
+  Um atlas só com os quadros que o mapa usa (cerca de 180 a 240), cada um pintado pixel a pixel na primeira vez: areia
+  firme com ondulações do vento, areia fofa em montinhos com covas de pisada (e a beira entrando na firme), sal rachado
+  ou laje na arena; **dunas pelo relevo** (altura nos 4 cantos de cada tile, encosta oeste iluminada, sotavento leste
+  íngreme e na sombra com areia escorrendo, fio de luz na crista, ondulações seguindo a curva de nível); **platôs** com
+  tampo de rocha rachado, borda clara a norte e oeste, e o **paredão** em camadas de sedimento na face sul, com fendas
+  e entulho no pé; muros de arenito com areia empilhada no lado do vento ou de taipa; água do oásis funda no meio, rasa
+  e clara na margem, com espuma e areia molhada em volta; sombra do relevo no chão a leste e ao sul. De pé: coqueiros
+  em 4 formas (tronco curvo de anéis, copa de folhas penadas com cocos e folha seca; a copa balança e fica
+  transparente sobre o jogador), pedras cantantes furadas pelo vento com glifos que acendem e soltam uma onda no auge
+  do canto, pilares de arenito com pedra-chapéu, arbustos secos, pedras, costelas, ânforas, colunas quebradas, juncos,
+  babosas e marcos de pedra; enfeites rasteiros (crânio de boi, conchas, rastro de cobra, pegadas, capim seco, cacos,
+  barro rachado). Ambiente: grãos levados pelo vento norte, fitas de areia soprando das cristas, brilho do sol na água.
+  Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
+- **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
+
 ### Caverna da Travessia
 
 - **Onde:** nos Campos de Kusa, na etapa 5 da campanha de Verdemar (o ponto que era a Encruzilhada), logo depois do
@@ -644,7 +692,7 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
 - **Entrada tranquila:** a até 12 tiles do portal de fuga nascem no máximo 3 monstros (mini-boss e Mímico de sala
   lateral contam), para a hunt não começar com uma sala cheia em cima da equipe.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes e nas Mesas de Solária, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;
@@ -818,6 +866,34 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 No simulador de duelo (herói sozinho, só ataque básico), os orcs comuns ficam entre o Goblin e o Esqueleto da
 Cripta, o Ogro jovem perto do Orc guerreiro, os mini-bosses abaixo do Ogro da Cripta, e o Rei-Ogro (herói nível
 12) dura de 10 a 15 s contra o herói, contra 4 a 7 s do Dragão jovem (herói nível 6).
+
+### Necrópole de Solária: Dunas Cantantes (★5) e Mesas de Solária (★6)
+
+A legião do Império de Kusa que a areia enterrou viva e as múmias da corte do último faraó. Os dois mapas usam os
+mesmos comuns e mini-bosses (as Mesas com orçamentos maiores, bandos maiores e 25% das campinas com um mini-boss solto);
+cada um tem o seu boss. Quase todos são mortos-vivos (não pegam veneno nem sangramento); as múmias queimam fácil.
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Chacal de Ossos | escaramuçador (matilha de 2–3) | Táticas de Bando · Fuga Ágil (morde e recua) |
+| Escaravelhos Carniceiros | enxame (3–4) | metade das mordidas sangra |
+| Legionário Ossudo | sentinela | elmo, escudo de bronze e gládio · resiste a físico, vulnerável a luz · Escudo em Riste (empurra) |
+| Sagitário das Dunas | artilheiro | lenço do deserto e arco, alcance 6 · recua se alguém chega a 3 · Chuva de Flechas (área) |
+| Múmia Enfaixada | controlador | Faixas Mortuárias: **puxa** o herói de 2–5 tiles para colado e prende 1 s · o toque apodrece · queima fácil |
+| Carpideira | controlador | véu escuro, a 4 tiles · Lamento (leque de 4 que deixa lento) · queima fácil |
+| Soterrado | emboscador | escondido na areia (camuflado, nota a 3 tiles) · Ataque Surpresa 1,8× · Fortitude Morta-viva |
+| **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Golpe de Gládio (1,6× e sangra) · Formação! (chama 2 Legionários) |
+| **Múmia Real** (mini-boss) | controlador | máscara de ouro · Faixas Reais (puxa e prende) · Maldição do Faraó (área que corrói) · ferida, Enxame da Tumba (3 Escaravelhos) |
+| **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cegante (linha que cega) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
+| **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · Submergir (some na duna e irrompe debaixo do alvo) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
+| **Faraó Eterno** (boss das Mesas) | artilheiro (morto-vivo, flutua) | ataca a 3 tiles e foge de quem cola · Raio do Sol Morto (linha de 8 que queima) · Mortalha (puxa e prende) · Maldição Eterna (área que corrói) · Legião Eterna (2 Legionários) · abaixo de 30%, Sarcófago (uma vez: cura 20% e empurra 3 em volta) |
+
+**Balanceamento** (medido com o simulador de duelo, herói sozinho só com ataque básico; refazer quando a telemetria
+chegar): matando 75% do caminho, o herói chega no boss das Dunas no nível 14 e no das Mesas no 15–16 (XP antes do boss
+~7.200 e ~8.300; a Caverna, ~7.000). Na régua de quanto da vida do boss o herói tira antes de cair: o Colosso dá 3–9%
+no nível 14 e o Faraó 4–7% no 16, contra 8–16% do Observador no 14. Os mini-bosses ficam entre o Troll e o Bugbear da
+Caverna (30–60% no nível 11). Começo no nível 1: Escaravelhos e Chacais vencíveis sozinho, mais lentos que os Kobolds
+e Goblins da Caverna. Loot máximo de uma hunt ~2.900 nas Dunas e ~3.400 nas Mesas (teto da hunt solo 3.300 e 3.800).
 
 ## Ataques e magias (protótipo)
 

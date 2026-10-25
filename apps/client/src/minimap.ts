@@ -15,6 +15,8 @@ const TILE_COLORS = {
   marsh: { floor: [74, 96, 52], bossFloor: [96, 118, 64], wall: [22, 40, 24], water: [52, 78, 62], ruin: [92, 70, 44] },
   desert: { floor: [214, 178, 118], bossFloor: [226, 196, 140], wall: [150, 108, 60], water: [48, 140, 156], ruin: [150, 108, 60] },
   cavern: { floor: [92, 104, 118], bossFloor: [118, 92, 120], wall: [20, 26, 34], water: [40, 84, 100], ruin: [20, 26, 34] },
+  dunes: { floor: [212, 172, 112], bossFloor: [232, 220, 190], wall: [160, 112, 62], water: [52, 150, 156], ruin: [120, 90, 62], sand: [234, 206, 152] },
+  mesas: { floor: [204, 146, 98], bossFloor: [214, 160, 112], wall: [130, 60, 38], water: [64, 150, 138], ruin: [96, 52, 34], sand: [228, 182, 132] },
 } satisfies Record<MapId, Record<string, number[]>>;
 /** Subterrâneo do deserto: rocha escura, chão de areia batida e o salão dos baús em arenito. */
 const CAVE_COLORS = { floor: [104, 82, 60], bossFloor: [128, 74, 52], wall: [34, 24, 18], hall: [150, 126, 92] };
@@ -124,7 +126,7 @@ export class Minimap {
     const [r, g, bl] = d.cave && isUnderground(d, x)
       ? (tile === Tile.Wall ? CAVE_COLORS.wall : d.cave && inRect(d.cave.reward, x, y) ? CAVE_COLORS.hall : inBoss ? CAVE_COLORS.bossFloor : CAVE_COLORS.floor)
       : tile === Tile.Wall ? colors.wall : tile === Tile.Water ? colors.water : tile === Tile.Ruin ? colors.ruin
-      : inBoss ? colors.bossFloor : colors.floor;
+      : inBoss ? colors.bossFloor : tile === Tile.Sand ? ("sand" in colors ? colors.sand : colors.floor) : colors.floor;
     const i = (y * d.width + x) * 4;
     this.fogPixels.data.set([r, g, bl, 255], i);
   }
