@@ -29,6 +29,7 @@ import {
   SLOT_NAMES,
   TIER_NAMES,
   buyPrice,
+  chestItemChance,
   chestPotionChance,
   classesText,
   describeStats,
@@ -176,7 +177,7 @@ function dropLines(map: MapDef, kind: MonsterKind) {
   ];
   if (odds.runes) lines.push(`Runa: ${odds.runes} por herói, direto na bag (uma vez por personagem).`);
   if (map.rewardRunes && MONSTERS[kind].rank === "boss") lines.push("Runa: atrás dele, um baú de runa por herói, à escolha.");
-  if (odds.chest) lines.push(`Guarda o baú: mais gold, 1 item garantido (material acima do mini-boss) e ${pct(chestPotionChance(map))} de cada poção.`);
+  if (odds.chest) lines.push(`Guarda o baú: mais gold, ${pct(chestItemChance())} de 1 item (material acima do mini-boss) e ${pct(chestPotionChance(map))} de cada poção.`);
   return lines;
 }
 
