@@ -425,9 +425,9 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
 - **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
   Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
-  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). O cliente lê
-  `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual: o bloqueio de
-  verdade vem com a fase 3 do plano.
+  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). **Só o boss de um lado abre
+  aquele lado:** o Observador abre as Dunas Cantantes (o Basilisco não); o Basilisco abrirá o Bosque Velho quando ele
+  existir. O cliente lê `profile_boss_clears` (bosses vencidos por personagem).
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
   pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
@@ -435,17 +435,19 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
-  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Basilisco ou Observador → Dunas Cantantes, boss das Dunas →
-  Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco (`map_unlocked_by`).
-  Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (os lados da bifurcação seguem os bosses vencidos, `bossKills`). Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
+  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
+  Cantante → Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco
+  (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
+  bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
+  `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
   e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
   inteira fica no title), e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
-  entre dois cenários abertos. Contas de antes herdaram os cenários pelas runas de boss já levadas.
+  entre dois cenários abertos. Contas de antes herdaram os cenários e os bosses vencidos pelas runas de boss já levadas.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
-  gravado por `record_map_clear` (servidor) e `record_solo_map_clear` (hunt solo e sala no aparelho, cada um o seu).
+  gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
 - **Ainda não:** os outros 11 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
