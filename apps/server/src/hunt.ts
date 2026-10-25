@@ -2127,7 +2127,10 @@ export class Hunt {
     // O boss sempre larga o que tem; os outros, com a chance do mapa (`MapDef.dropScale`) e o corte geral nos itens.
     const boss = brain.def.rank === "boss";
     for (let i = 0; i < drops; i++) {
-      if ((boss || this.keepDrop(LOOT_SCALE)) && this.keepForHumans()) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
+      if ((boss || this.keepDrop(LOOT_SCALE)) && this.keepForHumans()) {
+        this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
+        this.countDrop(brain.def.rank);
+      }
     }
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
     for (let i = 0; i < potions; i++) if (boss || this.keepDrop()) this.dropItem(rollPotion(this.random), at.x, at.y);
@@ -2633,7 +2636,10 @@ export class Hunt {
     const stats = this.seats.get(openerId)?.stats;
     if (stats) stats.chestsOpened++;
     // O item do baú sai sempre (menos a parte dos bots); as poções, com a chance do mapa.
-    if (this.keepForHumans()) this.dropItem(rollItem("miniboss", depth, this.random, 1), dropAt.x, dropAt.y);
+    if (this.keepForHumans()) {
+      this.dropItem(rollItem("miniboss", depth, this.random, 1), dropAt.x, dropAt.y);
+      this.countDrop("chest");
+    }
     for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);
   }
 
@@ -2694,6 +2700,17 @@ export class Hunt {
       if (stats) stats.items.botCut++;
     }
     return false;
+  }
+
+  /** Item de equipamento que caiu no chão, por fonte, na telemetria de cada humano da equipe (pego ou não). */
+  private countDrop(source: keyof RunStats["items"]["drops"]) {
+    for (const id of this.team()) {
+      const stats = this.seats.get(id)?.stats;
+      if (!stats || this.state.players.get(id)!.bot) continue;
+      // Hunt herdada de um anfitrião de versão anterior chega sem o contador.
+      stats.items.drops ??= { common: 0, miniboss: 0, boss: 0, chest: 0 };
+      stats.items.drops[source]++;
+    }
   }
 
   /** Um drop (item ou poção) sai com a chance do mapa (`MapDef.dropScale`, padrão: sempre) vezes `extra`. */
@@ -2838,7 +2855,11 @@ export class Hunt {
         }
         seat?.stats.items.picked.push(def.id);
         this.removeGroundItem(ground.id);
-        this.notice(p.x, p.y - 1, action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}` : def.name, itemColor(def.id));
+        // Vestido direto (slot vazio ou melhor que o vestido) não aparece na fileira da bag: o aviso diz que vestiu.
+        const text = action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}`
+          : action === "swap" ? `Vestiu ${def.name} · antigo 🎒${p.bag.length}/${BAG_SIZE}`
+          : `Vestiu ${def.name}`;
+        this.notice(p.x, p.y - 1, text, itemColor(def.id));
       }
     });
   }
