@@ -76,6 +76,12 @@ export interface Lair {
  */
 export const LOOT_SCALE = 0.8;
 
+/**
+ * Corte dos itens de equipamento, em todos os mapas, por cima dos outros: cada sorteio de item (monstro comum,
+ * mini-boss, boss, baú e Mímico) só sai com esta chance. Poções, runas e gold não mudam.
+ */
+export const ITEM_DROP_SCALE = 0.6;
+
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
 export const MAX_ROOM_MONSTERS = 8;
 /** Artilheiros e líderes por sala no máximo. */

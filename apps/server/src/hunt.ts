@@ -9,6 +9,7 @@ import {
   COMMON_DROP_CHANCE,
   COMMON_POTION_CHANCE,
   DEPTH_SCALING,
+  ITEM_DROP_SCALE,
   LOOT_SCALE,
   GUARANTEED_DROPS,
   GUARANTEED_POTIONS,
@@ -2158,10 +2159,12 @@ export class Hunt {
     // (e pegar o loot faria a equipe sair da dungeon).
     const at = brain.def.rank === "boss" ? this.besidePortal(m.x, m.y) : { x: m.x, y: m.y };
     const drops = GUARANTEED_DROPS[brain.def.rank] || (this.random() < COMMON_DROP_CHANCE ? 1 : 0);
-    // O boss sempre larga o que tem; os outros, com a chance do mapa (`MapDef.dropScale`) e o corte geral nos itens.
+    // Cada item sai com o corte dos itens (`ITEM_DROP_SCALE`); fora o boss, também com a chance do mapa
+    // (`MapDef.dropScale`) e o corte geral (`LOOT_SCALE`).
     const boss = brain.def.rank === "boss";
     for (let i = 0; i < drops; i++) {
-      if ((boss || this.keepDrop(LOOT_SCALE)) && this.keepForHumans()) {
+      const keep = boss ? this.random() < ITEM_DROP_SCALE : this.keepDrop(LOOT_SCALE * ITEM_DROP_SCALE);
+      if (keep && this.keepForHumans()) {
         this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
         this.countDrop(brain.def.rank);
       }
@@ -2682,8 +2685,8 @@ export class Hunt {
     this.teamLoot(value, "chests", x, y, "Baú: ");
     const stats = this.seats.get(openerId)?.stats;
     if (stats) stats.chestsOpened++;
-    // O item do baú sai sempre (menos a parte dos bots); as poções, com a chance do mapa.
-    if (this.keepForHumans()) {
+    // O item do baú sai com o corte dos itens (`ITEM_DROP_SCALE`, menos a parte dos bots); as poções, com a chance do mapa.
+    if (this.random() < ITEM_DROP_SCALE && this.keepForHumans()) {
       this.dropItem(rollItem("miniboss", depth, this.random, 1), dropAt.x, dropAt.y);
       this.countDrop("chest");
     }

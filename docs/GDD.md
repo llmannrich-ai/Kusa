@@ -414,7 +414,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   1,8×). Abre perto, no último cenário escolhido, com o herói da classe em pé em cima dele. 📍 volta ao herói e ⤢
   mostra o continente inteiro. Os pontos e o herói têm o mesmo tamanho na tela em qualquer zoom; de longe, os nomes
   pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Classes, Grimório, Batalhas,
-  Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba.
+  Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba. Tocar de novo
+  em Batalhas, já no mapa, leva a câmera ao herói e abre a ficha do cenário onde ele está.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
@@ -707,6 +708,9 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   dos monstros (boss incluído) e dos baús, e a chance de item dos comuns e mini-bosses cai para 80% da base (comum:
   15% → 12%). Vale por cima do corte próprio do mapa (`lootScale`, `dropScale`). Poções, os itens do boss e o item
   do baú não mudam.
+- **Corte dos itens** (`ITEM_DROP_SCALE`, 60%, no mesmo arquivo): cada sorteio de item de equipamento só sai com 60%
+  de chance, por cima dos outros cortes: comum 12% → 7,2%, mini-boss 60% (vezes o `dropScale` do mapa e o corte
+  geral), cada um dos 2 itens do boss 60% e o item do baú (e do Mímico) 60%. Poções, runas e gold não mudam.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 - **Princípio: difícil e injusto como a vida.** Nenhum golpe de monstro tem aviso antes (área marcada no chão, brilho de carga, contagem); o jogador se defende pela posição e pela escolha de quem matar primeiro, não reagindo a um sinal.
 - Monstros, habilidades e regras dos inimigos: ver "Bestiário".
