@@ -408,7 +408,20 @@ nenhuma das duas deixa a mão livre para o escudo de um jeito que faça sentido.
 
 ![Guerreiro mágico completo](arte/lote7-sets-magic.png)
 
-## 13. Ordem de execução
+## 13. Ícones no padrão novo
+
+Com a **Arte nova (beta)** ligada, o ícone de cada item (mochila, cofre, mercado, equipamento, ficha e chão) é o
+**mesmo desenho do item vestido**, sozinho, sem o corpo: arma em diagonal, elmo e armadura de frente, calça com as
+duas pernas e o cós, botas de lado, escudo de frente (`protoItemIcon` em `tibiaHero.ts`). O desenho é enquadrado e
+ampliado até caber num quadrado de 64 px (o cajado vai com a haste encurtada, para a cabeça aparecer), com a gema
+da raridade no canto (azul no raro, roxa no mágico). O raro usa o desenho do comum. Cada ícone é feito na primeira
+vez que aparece (os 140 juntos levam ≈0,7 s num computador). No chão da hunt o ícone vai reduzido a 16 px, o
+tamanho de sempre. Poções e runas continuam com o ícone antigo.
+
+![Os 140 ícones: comuns à esquerda, mágicos à direita, uma família por linha](arte/icones-arte-nova.png)
+![Equipamento e cofre: ícones antigos à esquerda, novos à direita](arte/icones-no-menu.png)
+
+## 14. Ordem de execução
 
 ![Piloto: Capuz do Lobo no druida e no feiticeiro, Elmo do Demônio e Lâmina do dragão no cavaleiro, Elmo do Demônio no paladino](arte/itens-piloto.png)
 
@@ -420,6 +433,7 @@ nenhuma das duas deixa a mão livre para o escudo de um jeito que faça sentido.
    **Lote 5** ✅: varinhas e cajados (seção 10).
    **Lote 6** ✅: chapéus arcanos, mantos arcanos e calças arcanas (seção 11).
    **Lote 7** ✅: perneiras de guerra, botas e escudos (seção 12). As 14 famílias estão desenhadas.
+   **Ícones** ✅: o desenho vestido vira o ícone (seção 13).
 2. Armas (o que mais aparece), depois armaduras e mantos, capacetes, botas, calças e escudos.
-3. Ícones de 32×32 a partir de cada desenho pronto.
-4. Integração no jogo atrás da opção "Arte nova (beta)", com o teste `arte.ts` conferindo cada item.
+3. Ícones a partir de cada desenho pronto ✅ (seção 13, em 64 px).
+4. Integração no jogo atrás da opção "Arte nova (beta)" ✅ (heróis, itens, ícones e a Cripta).
