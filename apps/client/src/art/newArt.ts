@@ -25,3 +25,8 @@ export function protoItemOf(itemId: string): string | undefined {
 
 /** Quantas vezes a arte nova do cenário é maior que a antiga (128 px por tile contra 32): o mapa desenha em 1/`ART_ZOOM`. */
 export const ART_ZOOM = NEW_ART ? 4 : 1;
+/**
+ * Heróis e monstros da arte nova vão 10% maiores que o padrão de 128 px por tile: o desenho é mais fino que o antigo
+ * e, do mesmo tamanho, parecia menor no celular.
+ */
+export const NEW_ART_ZOOM = 1.1;

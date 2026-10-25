@@ -911,27 +911,31 @@ function staff(c: Canvas, at: Pt, top: number, bottom: number) {
 }
 
 /** Galho do druida: madeira torta com nós, um broto bifurcado em cima e folhas. */
-function branch(c: Canvas, at: Pt, top: number, bottom: number) {
+function branch(c: Canvas, at: Pt, top: number, bottom: number, turn = 0) {
   const x = at[0];
   const pts: Pt[] = [];
+  // Giro em volta da mão (golpe dos monstros): os pontos e as folhas giram juntos.
+  const ca = Math.cos(turn), sa = Math.sin(turn);
+  const r = (p: Pt): Pt => (turn ? [at[0] + (p[0] - at[0]) * ca - (p[1] - at[1]) * sa, at[1] + (p[0] - at[0]) * sa + (p[1] - at[1]) * ca] : p);
   for (let k = 0; k <= 8; k++) {
     const t = k / 8;
-    pts.push([x + Math.sin(t * 7.3) * 0.7 + (t - 0.5) * 0.8, bottom + (top - bottom) * t]);
+    pts.push(r([x + Math.sin(t * 7.3) * 0.7 + (t - 0.5) * 0.8, bottom + (top - bottom) * t]));
   }
   chain(c, pts, 1.25, Mat.Wood, grain, 1);
   // Nós na madeira.
   for (const t of [0.3, 0.62]) { const p = pts[Math.round(t * 8)]; ellipse(c, p[0] + 0.6, p[1], 1, 0.7, Mat.Wood, () => -1); }
   // Forquilha com folhas.
   const tip = pts[pts.length - 1];
-  const fork: Pt[] = [[tip[0], tip[1]], [tip[0] - 1.6, tip[1] - 2.6], [tip[0] - 2.4, tip[1] - 4.6]];
-  const fork2: Pt[] = [[tip[0], tip[1]], [tip[0] + 1.4, tip[1] - 2.2], [tip[0] + 2.8, tip[1] - 3.4]];
+  const o = (dx: number, dy: number): Pt => (turn ? [tip[0] + dx * ca - dy * sa, tip[1] + dx * sa + dy * ca] : [tip[0] + dx, tip[1] + dy]);
+  const fork: Pt[] = [[tip[0], tip[1]], o(-1.6, -2.6), o(-2.4, -4.6)];
+  const fork2: Pt[] = [[tip[0], tip[1]], o(1.4, -2.2), o(2.8, -3.4)];
   chain(c, fork, 0.75, Mat.Wood, undefined, 0.4);
   chain(c, fork2, 0.7, Mat.Wood, undefined, 0.35);
-  leaf(c, [tip[0] - 3.4, tip[1] - 5.4], -2.2, 2.6, 1.3);
-  leaf(c, [tip[0] - 0.2, tip[1] - 4.6], -1.5, 2.2, 1.1);
-  leaf(c, [tip[0] + 3.8, tip[1] - 3.8], -0.5, 2.4, 1.2);
-  leaf(c, [tip[0] + 1.8, tip[1] - 1], 0.4, 2, 1);
-  leaf(c, [tip[0] - 2.2, tip[1] - 1], 2.7, 1.8, 0.9);
+  leaf(c, o(-3.4, -5.4), -2.2 + turn, 2.6, 1.3);
+  leaf(c, o(-0.2, -4.6), -1.5 + turn, 2.2, 1.1);
+  leaf(c, o(3.8, -3.8), -0.5 + turn, 2.4, 1.2);
+  leaf(c, o(1.8, -1), 0.4 + turn, 2, 1);
+  leaf(c, o(-2.2, -1), 2.7 + turn, 1.8, 0.9);
 }
 
 /** Folha: elipse girada com nervura central escura e luz de cima. */
@@ -1378,25 +1382,56 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean) {
   else headFront(c, kit, b, top);
 }
 
-function side(c: Canvas, kit: Kit, frame: number) {
-  const s = SWING[frame], b = BOB[frame];
+function side(c: Canvas, kit: Kit, frame: number, mp?: MonsterPose) {
+  const s = mp ? mp.s : SWING[frame], b = mp ? mp.b : BOB[frame];
   const hip: Pt = [CX + 1, 66 + b];
   const top = 47 + b;
+  // Monstro: o tronco inclina para a frente (golpe) ou para trás (preparo); as pernas ficam onde estão.
+  const up = <T>(draw: () => T): T => (mp?.lean ? c.placed(1, [-mp.lean, 0], draw) : draw());
+  const at = (o: Pt | undefined, fallback: Pt): Pt => (o ? [CX + o[0], top + o[1]] : fallback);
   if (kit.tail) chain(c, [[CX + 6, top + 15], [CX + 13, top + 21 + s], [CX + 19, top + 22 - s], [CX + 23, top + 19]], 2.4, Mat.Skin, scales(4, 3), 0.4);
-  // Passo: perna da frente à esquerda, a outra atrás com o calcanhar no ar. Passagem: juntas.
+  // Passo: perna da frente à esquerda, a outra atrás com o calcanhar no ar. Passagem: juntas (os monstros param
+  // com as pernas um pouco abertas, entre um e outro).
   const pose = (fwd: number): [Pt, Pt, Pt] => {
-    if (fwd > 0) return [[hip[0] - 4, 77 + b], [hip[0] - 7, FEET - 3], [hip[0] - 12, FEET - 2]];
-    if (fwd < 0) return [[hip[0] + 3, 77 + b], [hip[0] + 7, FEET - 5], [hip[0] + 2.5, FEET - 3]];
-    return [[hip[0] - 1, 77 + b], [hip[0], FEET - 3], [hip[0] - 5, FEET - 2]];
+    const pass: [Pt, Pt, Pt] = [[hip[0] - 1, 77 + b], [hip[0], FEET - 3], [hip[0] - 5, FEET - 2]];
+    if (fwd === 0) return pass;
+    const step: [Pt, Pt, Pt] = fwd > 0 ? [[hip[0] - 4, 77 + b], [hip[0] - 7, FEET - 3], [hip[0] - 12, FEET - 2]]
+      : [[hip[0] + 3, 77 + b], [hip[0] + 7, FEET - 5], [hip[0] + 2.5, FEET - 3]];
+    const t = Math.abs(fwd);
+    return t >= 1 ? step : [lerp(pass[0], step[0], t), lerp(pass[1], step[1], t), lerp(pass[2], step[2], t)];
   };
   const [fk, fa, ft] = pose(-s);
   leg(c, kit, hip, fk, fa, ft, true, false);
   // Braço de lá, atrás do tronco, balançando ao contrário da perna.
-  arm(c, kit, [CX + 2, top + 3], [CX + 3 + s * 2, top + 10], [CX + 3 + s * 4, top + 18], true);
-  if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX + 3, top + 2]], true);
+  up(() => {
+    arm(c, kit, [CX + 2, top + 3], at(mp?.backElbow, [CX + 3 + s * 2, top + 10]), at(mp?.back, [CX + 3 + s * 4, top + 18]), true);
+    if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX + 3, top + 2]], true);
+  });
   const [nk, na, nt] = pose(s);
   leg(c, kit, hip, nk, na, nt, false, false);
+  up(() => sideUpper(c, kit, s, b, top, mp));
+}
 
+/**
+ * Pose de um quadro de monstro: passo (`s`) e altura (`b`) como no andar dos heróis, inclinação do tronco, mãos
+ * (em unidades a partir do ombro: `[CX, top]`) e a direção para onde a arma aponta, em graus (0 = para a direita,
+ * 90 = para baixo), ou só quanto ela gira a partir da pose de sempre (`tilt`).
+ */
+export interface MonsterPose { s: number; b: number; lean?: number; hand?: Pt; elbow?: Pt; back?: Pt; backElbow?: Pt; point?: number; tilt?: number }
+
+/** Direção (graus) para onde a arma aponta na pose de sempre, para girar até a da pose. */
+function weaponAngle(kit: Kit, ha: Pt, top: number): number {
+  const deg = (v: Pt) => (Math.atan2(v[1], v[0]) * 180) / Math.PI;
+  const w = kit.weapon;
+  if (w === "branch") return deg([0, top + 2 - FEET]);
+  if (w.startsWith("axe-")) return axeTwoHanded(w) ? deg([-10, top - 18 - FEET + 1]) : deg([-6.6, -AXE_LEN[tierOf(w)] - 3]);
+  if (w.startsWith("sword-")) return tierOf(w) === 5 ? deg([-22, top - 22 - ha[1]]) : deg([-0.74, 0.68]);
+  return 0;
+}
+
+/** Tronco, cabeça e o braço da arma de perfil (o que inclina junto no golpe dos monstros). */
+function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: MonsterPose) {
+  const at = (o: Pt | undefined, fallback: Pt): Pt => (o ? [CX + o[0], top + o[1]] : fallback);
   // Cabelo comprido e aljava nas costas (atrás do tronco).
   hairBehindSide(c, kit, b, top);
   if (kit.quiver) quiver(c, [CX + 9.5, top - 4], [CX + 6, top + 14], 6.5);
@@ -1406,24 +1441,27 @@ function side(c: Canvas, kit: Kit, frame: number) {
 
   // O escudo vai no braço de lá, na frente do tronco (visto quase de perfil).
   if (kit.shield) shieldArt(c, kit.shield, [CX - 10.4, top + 13], "side", -1);
-  // Braço de cá na frente do tronco, com a arma.
-  const ha: Pt = [CX - 4 - s * 3, top + 18];
+  // Braço de cá na frente do tronco, com a arma (girada em volta da mão quando a pose aponta para outro lado).
+  const ha: Pt = at(mp?.hand, [CX - 4 - s * 3, top + 18]);
+  const a = (mp?.point === undefined ? mp?.tilt ?? 0 : mp.point - weaponAngle(kit, ha, top)) * Math.PI / 180;
+  const ca = Math.cos(a), sa = Math.sin(a);
+  const turn = (p: Pt): Pt => (a ? [ha[0] + (p[0] - ha[0]) * ca - (p[1] - ha[1]) * sa, ha[1] + (p[0] - ha[0]) * sa + (p[1] - ha[1]) * ca] : p);
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
-    : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
+    : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1, a)
     : kit.weapon.startsWith("wand-") ? () => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4]))
     : kit.weapon.startsWith("staff-") ? () => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5)
     : kit.weapon.startsWith("bow-") ? () => bowArt(c, kit.weapon, ha, -1)
     : kit.weapon.startsWith("xbow-") ? () => crossbowArt(c, kit.weapon, ha, [-0.97, 0.24], true)
     : kit.weapon.startsWith("axe-") ? () => (axeTwoHanded(kit.weapon)
-      ? axeArt(c, kit.weapon, [ha[0] + 3, FEET - 1], [ha[0] - 7, top - 18], -1)
-      : axeArt(c, kit.weapon, [ha[0] + 1.6, ha[1] + 3], [ha[0] - 5, ha[1] - AXE_LEN[tierOf(kit.weapon)]], -1))
+      ? axeArt(c, kit.weapon, turn([ha[0] + 3, FEET - 1]), turn([ha[0] - 7, top - 18]), -1)
+      : axeArt(c, kit.weapon, turn([ha[0] + 1.6, ha[1] + 3]), turn([ha[0] - 5, ha[1] - AXE_LEN[tierOf(kit.weapon)]]), -1))
     : kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic" ? () => {
       const t = tierOf(kit.weapon);
-      swordById(c, kit.weapon, ha, t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]);
+      swordById(c, kit.weapon, ha, turn(t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]));
     }
     : undefined;
-  arm(c, kit, [CX - 1, top + 3], [CX - 2 - s * 1.5, top + 10], ha, false, grip);
+  arm(c, kit, [CX - 1, top + 3], at(mp?.elbow, [CX - 2 - s * 1.5, top + 10]), ha, false, grip);
   if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX - 0.6, top + 2]]);
   if (kit.weapon === "sword") sword(c, ha, [ha[0] - 16, ha[1] + 15]);
   if (kit.weapon === "sword-4-magic") dancingSword(c, [ha[0] - 7, ha[1] - 9], [ha[0] - 19, ha[1] + 4]);
@@ -5081,54 +5119,96 @@ export const PROTO_MONSTERS = Object.keys(MONSTER_KITS);
 /** Tamanho do monstro em relação ao herói (1 = da altura do herói). */
 export const monsterSize = (kind: string) => MONSTER_KITS[kind].size ?? 1;
 
-/** Quadros de cada clipe do monstro humanoide: parado (os dois passos de passagem), andar e o resto. */
+/** Quadros de cada clipe do monstro humanoide: parado (respirando), andar, golpe e magia. */
 export const MONSTER_CLIP_FRAMES = { idle: 4, walk: 4, attack: 4, cast: 4 } as const;
-const CLIP_STEPS = { idle: [1, 1, 3, 3], walk: [0, 1, 2, 3], attack: [0, 0, 2, 2], cast: [1, 3, 1, 3] } as const;
+type MonsterClip = keyof typeof MONSTER_CLIP_FRAMES;
+const MONSTER_CLIPS: readonly MonsterClip[] = ["idle", "walk", "attack", "cast"];
+
+/**
+ * Pose de cada quadro. Parado: pernas um pouco abertas e o peito subindo e descendo, com a arma balançando junto.
+ * Andar: o passo dos heróis. Golpe: preparo com a arma lá atrás, o golpe com o corpo todo para a frente, o fim do
+ * movimento e a volta. Arqueiro puxa a corda e solta; zumbi avança com os dois braços. Magia: os braços sobem.
+ */
+function monsterPose(kit: Kit, clip: MonsterClip, k: number): MonsterPose {
+  const w = kit.weapon;
+  switch (clip) {
+    case "idle": {
+      const b = [0, 0.8, 1.6, 0.8][k], t = [0, 1, 2, 1][k];
+      return { s: 0.35, b, lean: t * 0.3, back: [3.4 - t * 0.3, 18 - t * 0.6], hand: [-5 + t * 0.4, 18 - t * 0.8], tilt: -t * 5 };
+    }
+    case "walk":
+      return { s: SWING[k], b: BOB[k] * 1.4 };
+    case "attack": {
+      if (w === "bow") {
+        // Arco: ergue, puxa a corda até o rosto, solta (a mão de trás pula para trás) e volta.
+        return ([
+          { s: 0.4, b: 0, lean: 0, hand: [-9, 12], elbow: [-5, 8], back: [-2, 12], backElbow: [2, 10] },
+          { s: 0.6, b: 0.5, lean: -0.6, hand: [-13, 7], elbow: [-7, 5], back: [3, 6], backElbow: [6, 6] },
+          { s: 0.6, b: 0.5, lean: -0.3, hand: [-13, 7], elbow: [-7, 5], back: [7, 4], backElbow: [6, 7] },
+          { s: 0.4, b: 0, lean: 0, hand: [-8, 14], elbow: [-4, 10] },
+        ] as MonsterPose[])[k];
+      }
+      if (w === "none") {
+        // Zumbi: ergue os braços e cai por cima, as duas mãos à frente.
+        return ([
+          { s: 0.3, b: -0.5, lean: -1, hand: [-9, 2], elbow: [-5, 4], back: [-6, 1], backElbow: [-2, 4] },
+          { s: 1, b: 1, lean: 3, hand: [-16, 9], elbow: [-9, 7], back: [-13, 8], backElbow: [-6, 7] },
+          { s: 1, b: 1.2, lean: 2.4, hand: [-14, 15], elbow: [-8, 10], back: [-11, 14], backElbow: [-5, 10] },
+          { s: 0.5, b: 0.4, lean: 0.6, hand: [-8, 16], elbow: [-4, 10], back: [-2, 16] },
+        ] as MonsterPose[])[k];
+      }
+      // Arma de golpe: preparo (arma para cima e para trás), golpe (deitada à frente), fim (para baixo) e volta.
+      return ([
+        { s: 0.3, b: -0.6, lean: -1.4, hand: [4, -4], elbow: [5, 3], back: [-5, 13], backElbow: [-1, 10], point: -70 },
+        { s: 1, b: 0.8, lean: 2.6, hand: [-14, 8], elbow: [-8, 7], back: [8, 13], backElbow: [5, 10], point: 185 },
+        { s: 1, b: 1, lean: 2, hand: [-11, 17], elbow: [-6, 11], back: [7, 15], backElbow: [4, 11], point: 115 },
+        { s: 0.6, b: 0.4, lean: 0.6, hand: [-6, 17], elbow: [-3, 10] },
+      ] as MonsterPose[])[k];
+    }
+    case "cast": {
+      // Braços para o alto (a arma aponta para cima), o corpo sobe e desce no ritmo.
+      const lift = [0, 1, 1, 0][k], b = [0, -0.6, -1, -0.4][k];
+      return {
+        s: 0.35, b, lean: -0.5 * lift,
+        hand: lerp([-6, 16], [-7, -5], lift), elbow: lerp([-3, 10], [-6, 4], lift),
+        back: lerp([3, 17], [1, -6], lift), backElbow: lerp([4, 10], [4, 3], lift),
+        point: lift && w !== "bow" && w !== "none" ? -100 : undefined,
+      };
+    }
+  }
+}
 
 /** Um quadro do monstro (192 px, olhando para a esquerda, pés na mesma linha dos heróis). */
-export function protoMonsterFrame(kind: string, step: number): Uint8ClampedArray {
+export function protoMonsterFrame(kind: string, clip: MonsterClip = "idle", k = 0): Uint8ClampedArray {
   const kit = MONSTER_KITS[kind];
   const c = new Canvas();
-  c.scaled([CX, FEET], kit.size ?? 1, () => side(c, kit, step));
+  c.scaled([CX, FEET], kit.size ?? 1, () => side(c, kit, 0, monsterPose(kit, clip, k)));
   return c.render(kit.look);
 }
 
-/** Primeiro quadro do monstro (parado), para quem não anima e para a galeria. */
-export function protoMonsterPortrait(kind: string): HTMLCanvasElement {
+const toFrameCanvas = (data: Uint8ClampedArray) => {
   const { canvas, ctx } = makeCanvas(S, S);
   const image = ctx.createImageData(S, S);
-  image.data.set(protoMonsterFrame(kind, 1));
+  image.data.set(data);
   ctx.putImageData(image, 0, 0);
   return canvas;
+};
+
+/** Primeiro quadro do monstro (parado), para quem não anima e para a galeria. */
+export function protoMonsterPortrait(kind: string): HTMLCanvasElement {
+  return toFrameCanvas(protoMonsterFrame(kind));
 }
 
-/** Os 16 quadros da folha do monstro, um por chamada (para desenhar aos poucos); quadros iguais saem uma vez só. */
+/** Os 16 quadros da folha do monstro (parado, andar, golpe e magia), um por chamada, para desenhar aos poucos. */
 export function protoMonsterFrames(kind: string): (() => HTMLCanvasElement)[] {
-  const steps = [...CLIP_STEPS.idle, ...CLIP_STEPS.walk, ...CLIP_STEPS.attack, ...CLIP_STEPS.cast];
-  const memo = new Map<number, HTMLCanvasElement>();
-  return steps.map((step) => () => {
-    if (!memo.has(step)) {
-      const { canvas, ctx } = makeCanvas(S, S);
-      const image = ctx.createImageData(S, S);
-      image.data.set(protoMonsterFrame(kind, step));
-      ctx.putImageData(image, 0, 0);
-      memo.set(step, canvas);
-    }
-    return memo.get(step)!;
-  });
+  return MONSTER_CLIPS.flatMap((clip) => Array.from({ length: MONSTER_CLIP_FRAMES[clip] }, (_, k) => () => toFrameCanvas(protoMonsterFrame(kind, clip, k))));
 }
 
-/** Folha do monstro: os clipes em ordem (parado, andar, ataque, magia), quadros de `PROTO_SIZE`. */
+/** Folha do monstro: os clipes em ordem (parado, andar, golpe, magia), quadros de `PROTO_SIZE`. */
 export function protoMonsterSheet(kind: string): HTMLCanvasElement {
-  const steps = [...CLIP_STEPS.idle, ...CLIP_STEPS.walk, ...CLIP_STEPS.attack, ...CLIP_STEPS.cast];
-  const { canvas, ctx } = makeCanvas(S * steps.length, S);
-  const memo = new Map<number, Uint8ClampedArray>();
-  steps.forEach((step, i) => {
-    if (!memo.has(step)) memo.set(step, protoMonsterFrame(kind, step));
-    const image = ctx.createImageData(S, S);
-    image.data.set(memo.get(step)!);
-    ctx.putImageData(image, i * S, 0);
-  });
+  const frames = protoMonsterFrames(kind);
+  const { canvas, ctx } = makeCanvas(S * frames.length, S);
+  frames.forEach((draw, i) => ctx.drawImage(draw(), i * S, 0));
   return canvas;
 }
 

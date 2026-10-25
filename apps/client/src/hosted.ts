@@ -17,7 +17,7 @@ import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
 import { Listing, Signaling, answerCalls, dial, randomId, type Link } from "./p2p.ts";
 import { recordSoloMapClear } from "./profile.ts";
-import { flushPendingSolo, reportSolo } from "./solo.ts";
+import { flushPendingSolo, noticeClosed, reportSolo, watchCommitted } from "./solo.ts";
 
 // Sala hospedada por um jogador: o aparelho dele roda a `Hunt` (a mesma do servidor) e os outros recebem o
 // estado por conexão direta. Se o anfitrião sai, o próximo da lista assume a partir do último retrato.
@@ -465,6 +465,8 @@ class HostedSession {
     }
     const run = data as SoloRunStart;
     this.runId = run.run_id;
+    noticeClosed(run.closed);
+    watchCommitted(() => (this.left ? null : this.client as unknown as DungeonRoom | null), run.run_id);
     const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [], bossRunes: run.boss_runes ?? [] };
     if (this.runtime) this.runtime.receive(this.myId, up);
     else if (this.link) send(this.link, up);

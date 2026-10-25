@@ -361,6 +361,9 @@ button { min-height: 44px; touch-action: manipulation; }
 .bag-hud-cell { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; overflow: hidden; background: #0008; border: 1px solid #3a2f27; }
 .bag-hud-cell img { width: 100%; height: 100%; image-rendering: pixelated; }
 #bag.cheia .bag-hud-cell { border-color: #ff6b6b; }
+/* Vestiu um item do chão: a bag pisca (o vestido só aparece no menu). */
+#bag.vestiu { animation: bag-vestiu 0.4s ease-in-out 3; }
+@keyframes bag-vestiu { 50% { filter: brightness(1.8); box-shadow: 0 0 0 2px var(--accent); } }
 
 /* Menu da bag na hunt: na parte de cima, para o polegar esquerdo continuar andando embaixo. */
 #bag-menu {
