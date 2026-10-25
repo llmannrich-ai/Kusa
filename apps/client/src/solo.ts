@@ -19,6 +19,7 @@ import {
 import type { HuntReport } from "../../server/src/hunt.ts";
 import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
+import { recordSoloMapClear } from "./profile.ts";
 
 const SESSION_ID = "solo";
 
@@ -62,6 +63,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     // Entrega direta: o banco pode responder depois de o tick parar, no fim da hunt.
     runEnded: (_sessionId, result, report) => reportSolo(run.run_id, classId, result, report, (msg) => emit(MSG.runEnded, msg)),
     ended: () => window.setTimeout(stop, 10_000),
+    mapCleared: (ids) => { if (ids.includes(SESSION_ID)) void recordSoloMapClear(run.run_id); },
   }, { mapId, seed: run.seed });
   hunt.join(SESSION_ID, {
     name, classId, talents: run.talents ?? {}, spellXp: run.spell_xp ?? {}, activeSpells: profile?.active_spells ?? [],
