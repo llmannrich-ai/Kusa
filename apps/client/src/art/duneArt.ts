@@ -70,10 +70,10 @@ export function smoothNoise(x: number, y: number, cell: number, seed: number, pe
   return top + (bottom - top) * sy;
 }
 
-const tables = new Map<string, Float32Array>();
+const tables = new Map<number, Float32Array>();
 /** `smoothNoise` de um tile inteiro, calculado uma vez e guardado (o ruído suave é o que mais pesa). */
 function noiseTable(cell: number, seed: number) {
-  const key = `${cell}:${seed}`;
+  const key = cell * 1_000_003 + seed;
   let t = tables.get(key);
   if (!t) {
     t = new Float32Array(HD * HD);
@@ -86,7 +86,9 @@ function noiseTable(cell: number, seed: number) {
 export const sn = (x: number, y: number, cell: number, seed: number) => noiseTable(cell, seed)[((Math.floor(y) & (HD - 1)) * HD) + (Math.floor(x) & (HD - 1))];
 
 const rampCache = new Map<DuneVariant, Rgb[][]>();
-function ramps(variant: DuneVariant): Rgb[][] {
+/** Rampas de 6 tons por material: as das duas variantes daqui ou uma tabela pronta (os Portões do Império). */
+function ramps(variant: DuneVariant | Rgb[][]): Rgb[][] {
+  if (typeof variant !== "string") return variant;
   let r = rampCache.get(variant);
   if (!r) {
     const bases = BASES[variant];
@@ -113,7 +115,7 @@ export class Paper {
   private seq = 0;
   private group = 0;
 
-  constructor(readonly variant: DuneVariant, readonly w = HD, readonly h = HD) {
+  constructor(readonly variant: DuneVariant | Rgb[][], readonly w = HD, readonly h = HD) {
     const n = w * h;
     this.mat = new Int8Array(n).fill(-1);
     this.shade = new Float32Array(n);
@@ -130,7 +132,7 @@ export class Paper {
   }
 
   /** Pinta a forma `test` dentro da caixa [x0, y0, x1, y1] (pixels). */
-  fill(box: readonly [number, number, number, number], test: (x: number, y: number) => boolean, mat: M, shade: Shade, offset?: Offset) {
+  fill(box: readonly [number, number, number, number], test: (x: number, y: number) => boolean, mat: number, shade: Shade, offset?: Offset) {
     const id = this.group || ++this.seq;
     for (let y = Math.max(0, Math.floor(box[1])); y <= Math.min(this.h - 1, Math.ceil(box[3])); y++)
       for (let x = Math.max(0, Math.floor(box[0])); x <= Math.min(this.w - 1, Math.ceil(box[2])); x++) {
@@ -146,7 +148,7 @@ export class Paper {
   }
 
   /** Um pixel num tom fixo. */
-  px(x: number, y: number, mat: M, tone: number) {
+  px(x: number, y: number, mat: number, tone: number) {
     x = Math.round(x); y = Math.round(y);
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
     const i = y * this.w + x;
@@ -156,7 +158,7 @@ export class Paper {
   }
 
   /** Pixel fixo só por cima do que já está pintado (risco, rachadura, brilho). */
-  on(x: number, y: number, mat: M | null, tone: number) {
+  on(x: number, y: number, mat: number | null, tone: number) {
     x = Math.round(x); y = Math.round(y);
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
     const i = y * this.w + x;
@@ -182,7 +184,6 @@ export class Paper {
     const tones = ramps(this.variant);
     const out = new Uint8ClampedArray(this.w * this.h * 4);
     const { w, h, mat, shade, off, fixed, part } = this;
-    const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? -1 : y * w + x);
     const put = (o: number, r: number, g: number, b: number, a: number) => { out[o] = r; out[o + 1] = g; out[o + 2] = b; out[o + 3] = a; };
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
@@ -190,10 +191,13 @@ export class Paper {
         const m = mat[i];
         if (m < 0) {
           if (!outline) continue;
-          const n = [at(x + 1, y), at(x, y + 1), at(x - 1, y), at(x, y - 1)].find((j) => j >= 0 && mat[j] >= 0);
-          if (n === undefined) continue;
+          // Primeiro vizinho pintado (direita, baixo, esquerda, cima), sem alocar nada: é o laço mais quente da arte.
+          const r = x + 1 < w && mat[i + 1] >= 0 ? i + 1 : -1;
+          const d = y + 1 < h && mat[i + w] >= 0 ? i + w : -1;
+          const n = r >= 0 ? r : d >= 0 ? d : x > 0 && mat[i - 1] >= 0 ? i - 1 : y > 0 && mat[i - w] >= 0 ? i - w : -1;
+          if (n < 0) continue;
           // Do lado da luz o contorno puxa a cor do vizinho; na sombra é quase preto.
-          const litSide = (at(x + 1, y) === n || at(x, y + 1) === n) && shade[n] > 0.62;
+          const litSide = (n === r || n === d) && shade[n] > 0.62;
           const t0 = tones[mat[n]][0];
           if (litSide) put(i * 4, (t0[0] + OUTLINE[0]) / 2, (t0[1] + OUTLINE[1]) / 2, (t0[2] + OUTLINE[2]) / 2, 255);
           else put(i * 4, OUTLINE[0], OUTLINE[1], OUTLINE[2], 255);
@@ -206,8 +210,9 @@ export class Paper {
           tone = Math.max(1, Math.min(4, Math.floor(v) + 1)) + off[i];
           // A peça da frente risca a de trás.
           if (outline) {
-            for (const j of [at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)])
-              if (j >= 0 && mat[j] >= 0 && part[j] > part[i] && fixed[j] < 0) { tone = 0; break; }
+            const pi = part[i];
+            const front = (j: number) => mat[j] >= 0 && part[j] > pi && fixed[j] < 0;
+            if ((x + 1 < w && front(i + 1)) || (x > 0 && front(i - 1)) || (y + 1 < h && front(i + w)) || (y > 0 && front(i - w))) tone = 0;
           }
         }
         const c = tones[m][tone < 0 ? 0 : tone > 5 ? 5 : tone];
@@ -227,11 +232,11 @@ export const inEllipse = (cx: number, cy: number, rx: number, ry: number) => (x:
   ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
 export const ebox = (cx: number, cy: number, rx: number, ry: number) => [cx - rx, cy - ry, cx + rx, cy + ry] as const;
 
-export function ellipse(p: Paper, cx: number, cy: number, rx: number, ry: number, mat: M, offset?: Offset) {
+export function ellipse(p: Paper, cx: number, cy: number, rx: number, ry: number, mat: number, offset?: Offset) {
   return p.fill(ebox(cx, cy, rx, ry), inEllipse(cx, cy, rx, ry), mat, sphere(cx, cy, rx, ry), offset);
 }
 
-type Pt = readonly [number, number];
+export type Pt = readonly [number, number];
 
 function seg(px: number, py: number, a: Pt, b: Pt) {
   const dx = b[0] - a[0], dy = b[1] - a[1];
@@ -241,7 +246,7 @@ function seg(px: number, py: number, a: Pt, b: Pt) {
 }
 
 /** Cápsula afinando de `ra` para `rb`, com volume de cilindro. */
-export function limb(p: Paper, a: Pt, b: Pt, ra: number, rb: number, mat: M, offset?: Offset) {
+export function limb(p: Paper, a: Pt, b: Pt, ra: number, rb: number, mat: number, offset?: Offset) {
   const r = Math.max(ra, rb);
   return p.fill([Math.min(a[0], b[0]) - r, Math.min(a[1], b[1]) - r, Math.max(a[0], b[0]) + r, Math.max(a[1], b[1]) + r], (x, y) => {
     const s = seg(x, y, a, b);
@@ -264,13 +269,13 @@ const inPoly = (pts: readonly Pt[]) => (x: number, y: number) => {
 };
 
 /** Polígono com luz própria. */
-export function poly(p: Paper, pts: readonly Pt[], mat: M, shade: Shade, offset?: Offset) {
+export function poly(p: Paper, pts: readonly Pt[], mat: number, shade: Shade, offset?: Offset) {
   const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
   return p.fill([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], inPoly(pts), mat, shade, offset);
 }
 
 /** Linha de 1 px num tom fixo, só por cima do que já está pintado (`over`) ou em qualquer lugar. */
-export function line(p: Paper, a: Pt, b: Pt, mat: M | null, tone: number, over = true) {
+export function line(p: Paper, a: Pt, b: Pt, mat: number | null, tone: number, over = true) {
   const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]))));
   for (let k = 0; k <= n; k++) {
     const x = a[0] + ((b[0] - a[0]) * k) / n, y = a[1] + ((b[1] - a[1]) * k) / n;

@@ -5,7 +5,7 @@ import type { MapId } from "./maps.ts";
 // Fora de `RULES_FILES`: não muda a versão das regras.
 
 /** Os cenários na ordem da campanha. O primeiro já vem aberto. */
-export const WORLD_ORDER: readonly MapId[] = ["marsh", "crypt", "desert", "swamp", "cavern", "dunes", "mesas"];
+export const WORLD_ORDER: readonly MapId[] = ["marsh", "crypt", "desert", "swamp", "cavern", "dunes", "mesas", "gates"];
 
 /** Cenário cujo boss abre este (`undefined` para o primeiro). */
 export function unlockedBy(mapId: MapId): MapId | undefined {

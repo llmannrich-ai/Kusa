@@ -68,6 +68,18 @@ html, body {
   pointer-events: none;
   background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 210, 160, 0.08) 0%, transparent 50%, rgba(96, 30, 16, 0.42) 100%);
 }
+/* Portões do Império: sol de fim de manhã, cantos puxando para o verde da mata. */
+#game.gates::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 240, 200, 0.07) 0%, transparent 50%, rgba(30, 40, 14, 0.4) 100%);
+}
+/* Ruína subterrânea dos Portões: escura, só o meio da tela (as tochas) iluminado. */
+#game.gates.cave::after {
+  background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 28%, rgba(6, 4, 3, 0.82) 100%);
+}
 /* Caverna da Travessia: toda subterrânea, escura e fria nos cantos. */
 #game.cavern::after {
   content: "";
