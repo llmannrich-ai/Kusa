@@ -58,22 +58,31 @@ export async function takeLoadout(userId: string, classId: string): Promise<stri
   return (data ?? []) as string[];
 }
 
-/** Cenários cujo boss este personagem (conta e classe) já venceu: abrem o seguinte da campanha (`mapUnlocked`). */
-export async function mapClears(userId: string, classId: string): Promise<MapId[]> {
+/**
+ * Cenários e bosses que este personagem (conta e classe) já venceu: abrem o seguinte da campanha (`mapUnlocked`; os
+ * bosses contam nos lados das bifurcações).
+ */
+export async function mapClears(userId: string, classId: string): Promise<string[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase.from("profile_map_clears").select("map_id").eq("profile_id", userId).eq("class_id", classId);
-  if (error) {
-    console.error("Falha ao ler os cenários vencidos", error);
+  const [maps, bosses] = await Promise.all([
+    supabase.from("profile_map_clears").select("map_id").eq("profile_id", userId).eq("class_id", classId),
+    supabase.from("profile_boss_clears").select("boss_kind").eq("profile_id", userId).eq("class_id", classId),
+  ]);
+  if (maps.error || bosses.error) {
+    console.error("Falha ao ler os cenários vencidos", maps.error ?? bosses.error);
     return [];
   }
-  return (data ?? []).map((r) => r.map_id as MapId);
+  return [...(maps.data ?? []).map((r) => r.map_id as string), ...(bosses.data ?? []).map((r) => r.boss_kind as string)];
 }
 
-/** O personagem venceu o boss do cenário (`record_map_clear`): abre o seguinte da campanha. */
-export async function recordMapClear(userId: string, classId: string, mapId: MapId) {
+/** O personagem venceu o boss do cenário (`record_map_clear` e `record_boss_clear`): abre o seguinte da campanha. */
+export async function recordMapClear(userId: string, classId: string, mapId: MapId, boss: string) {
   if (!supabase) return;
-  const { error } = await supabase.rpc("record_map_clear", { p_profile_id: userId, p_class_id: classId, p_map_id: mapId });
-  if (error) console.error("Falha ao anotar o cenário vencido", error);
+  const [map, kill] = await Promise.all([
+    supabase.rpc("record_map_clear", { p_profile_id: userId, p_class_id: classId, p_map_id: mapId }),
+    supabase.rpc("record_boss_clear", { p_profile_id: userId, p_class_id: classId, p_map_id: mapId, p_boss: boss }),
+  ]);
+  if (map.error || kill.error) console.error("Falha ao anotar o cenário vencido", map.error ?? kill.error);
 }
 
 /** Bosses cuja runa este personagem (conta e classe) já levou: na hunt, eles não dão outra. */
