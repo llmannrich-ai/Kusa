@@ -573,7 +573,10 @@ export class DungeonScene extends Phaser.Scene {
     this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms, spell.radius);
     if (spell.shape === "line") this.showLine(spell, msg);
     else if (spell.shape === "cone") this.showCone(spell, msg);
-    else if (spell.radius > 0 && !spell.field) this.showArea(spell, msg);
+    else if (spell.radius > 0 && !spell.field) {
+      const tiles = this.showArea(spell, msg);
+      if (msg.spellId === "infernal_core") this.volcano(spell, msg, tiles);
+    }
     if (spell.heal) {
       // Em volta de quem conjura, ou no aliado mirado (Cura Distante).
       const at = spell.aim === "self" ? { x: msg.x, y: msg.y } : { x: msg.tx, y: msg.ty };
@@ -601,6 +604,22 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
     this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
+    return tiles;
+  }
+
+  /**
+   * Núcleo Infernal: o vulcão cobre os tiles da área e põe fogo nos monstros que estão nela (o dano chega junto,
+   * pelo `MSG.damage`). Os monstros ainda estão onde o servidor os acertou: o estado só muda depois.
+   */
+  private volcano(spell: SpellDef, msg: SpellMessage, tiles: { x: number; y: number; ring: number }[]) {
+    const hits: { x: number; y: number }[] = [];
+    this.room.state.monsters.forEach((m, id) => {
+      if (m.hidden || m.hp <= 0 || tileDistance(msg.x, msg.y, m.x, m.y) > spell.radius) return;
+      if (!hasLineOfSight(this.dungeon, msg.x, msg.y, m.x, m.y)) return;
+      const unit = this.monsters.get(id);
+      hits.push(unit ? { x: unit.body.x, y: unit.body.y } : this.tilePoint(m.x, m.y));
+    });
+    this.fx.volcano(this.tilePoint(msg.x, msg.y), tiles, hits);
   }
 
   /** Magia em cone: acende o leque (a mesma conta do servidor), do herói para fora. */

@@ -4,8 +4,24 @@ import { FX } from "./art/combat.ts";
 
 /** Efeitos ficam acima dos personagens e abaixo das barras de vida e números. */
 const FX_DEPTH = 90_000;
+/** Marcas no chão (rachaduras, cratera, queimado): acima do piso e do sangue, abaixo de todo mundo. */
+const GROUND_DEPTH = 1.5;
 
 interface Point { x: number; y: number }
+
+/** Tempos do Núcleo Infernal (ms): o chão esquenta, fica em brasa, esfria e some. */
+const VOLCANO = { heatMs: 180, hotMs: 900, coolMs: 2400, endMs: 3000 };
+
+/** Mistura duas cores 0xRRGGBB (`t` = 0 é `a`, 1 é `b`). */
+function mix(a: number, b: number, t: number) {
+  const ch = (s: number) => Math.round(((a >> s) & 255) + (((b >> s) & 255) - ((a >> s) & 255)) * t) << s;
+  return ch(16) | ch(8) | ch(0);
+}
+
+/** Cor da lava pelo calor (1 = branca-amarela, 0.5 = laranja, 0 = crosta escura). */
+function lava(heat: number) {
+  return heat > 0.5 ? mix(0xff6b1a, 0xffe08a, (heat - 0.5) * 2) : mix(0x3a0e06, 0xff6b1a, heat * 2);
+}
 
 /**
  * Efeitos de combate desenhados pelo cliente a partir dos eventos do servidor (`MSG.attack` e
@@ -196,10 +212,8 @@ export class CombatFx {
       case "fireball":
         this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xff7f27, glow: 0xe74c3c, impact: 0xf1c40f, scale: 1.3 });
         return this.later(ms, () => { this.ring(to, radius, 0xff7f27, 450, 7); this.sparks(to, 0xf1c40f, 12); });
-      case "infernal_core":
-        this.ring(from, radius, 0xe74c3c, 650, 9);
-        this.later(100, () => this.ring(from, radius * 0.7, 0xff7f27, 500, 6));
-        return this.debris(from, radius, 0x5a2a1a);
+      // O vulcão precisa dos tiles atingidos e dos monstros pegos: a cena chama `volcano` direto.
+      case "infernal_core": return;
       case "cone_of_cold": return this.sparks(from, 0xd6f1ff, 10);
       case "ice_prison":
         this.snow(to, radius);
@@ -395,6 +409,261 @@ export class CombatFx {
         this.sparks(b, color, 6);
       });
     }
+  }
+
+  /**
+   * Núcleo Infernal: um vulcão rompe o chão sob o feiticeiro. O chão racha em fendas de lava até a borda da área,
+   * uma coluna de fogo sobe da cratera e solta cinza, bombas de lava caem nos tiles atingidos e os monstros pegos
+   * pegam fogo. O chão fica em brasa e esfria aos poucos (~3 s), então a área do golpe segue legível depois dele.
+   * `tiles`: os tiles atingidos (a mesma regra do servidor); `hits`: onde estão os monstros pegos.
+   * A câmera não treme (princípio do jogo, ver "Plataforma" no GDD): o impacto vem do desenho.
+   */
+  volcano(at: Point, tiles: (Point & { ring: number })[], hits: Point[]) {
+    if (tiles.length === 0) return;
+    const key = (x: number, y: number) => `${Math.floor(x / TILE_SIZE)},${Math.floor(y / TILE_SIZE)}`;
+    const inArea = new Set(tiles.map((t) => key(t.x, t.y)));
+    const reach = (Math.max(...tiles.map((t) => t.ring)) + 0.5) * TILE_SIZE;
+    const crater = { x: at.x, y: at.y + 8 };
+
+    // Fendas: saem da borda da cratera em zigue-zague (quebram e voltam para o rumo), umas com galho, e param
+    // na parede (fora da área). `width`: a grossura na raiz; afinam até a ponta.
+    const cracks: { pts: Point[]; delay: number; width: number }[] = [];
+    const grow = (start: Point, angle: number, length: number, delay: number, width: number, branch: boolean) => {
+      const pts = [start];
+      const steps = Math.ceil(length / 11);
+      let { x, y } = start;
+      for (let s = 1; s <= steps; s++) {
+        const a = angle + Phaser.Math.FloatBetween(-0.6, 0.6);
+        x += Math.cos(a) * 11;
+        y += Math.sin(a) * 11;
+        if (!inArea.has(key(x, y))) break;
+        pts.push({ x, y });
+        if (branch && s === Math.floor(steps * Phaser.Math.FloatBetween(0.3, 0.6))) {
+          grow({ x, y }, angle + (Math.random() < 0.5 ? -0.8 : 0.8), length * 0.35, delay + 120, width * 0.6, false);
+        }
+      }
+      if (pts.length > 1) cracks.push({ pts, delay, width });
+    };
+    const spokes = 7;
+    for (let i = 0; i < spokes; i++) {
+      const a = (i / spokes) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.35, 0.35);
+      const length = reach * Phaser.Math.FloatBetween(0.6, 1);
+      grow({ x: crater.x + Math.cos(a) * 28, y: crater.y + Math.sin(a) * 16 }, a, length, 0, Phaser.Math.FloatBetween(3, 4.5), Math.random() < 0.7);
+    }
+    // Pedras de basalto na borda da cratera e bolhas na lava.
+    const rim = Array.from({ length: 20 }, (_, i) => {
+      const a = (i / 20) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.1, 0.1);
+      const out = Phaser.Math.FloatBetween(0, 3);
+      return { x: crater.x + Math.cos(a) * (28 + out), y: crater.y + Math.sin(a) * (16 + out * 0.6), r: Phaser.Math.FloatBetween(3, 6) };
+    });
+    const bubbles = Array.from({ length: 8 }, () => ({
+      x: Phaser.Math.FloatBetween(-18, 18), y: Phaser.Math.FloatBetween(-7, 7), phase: Math.random() * Math.PI * 2,
+    }));
+    // Respingos das bombas de lava e chão chamuscado sob os monstros atingidos (aparecem com o tempo).
+    const splats: (Point & { r: number; born: number })[] = [];
+    const scars = hits.map((p) => ({ x: p.x, y: p.y + 10 }));
+
+    const heat = (ms: number) =>
+      ms < VOLCANO.heatMs ? ms / VOLCANO.heatMs
+        : ms < VOLCANO.hotMs ? 1
+          : Math.max(0, 1 - (ms - VOLCANO.hotMs) / (VOLCANO.coolMs - VOLCANO.hotMs));
+    const fade = (ms: number) => (ms < VOLCANO.coolMs ? 1 : Math.max(0, 1 - (ms - VOLCANO.coolMs) / (VOLCANO.endMs - VOLCANO.coolMs)));
+
+    const ground = this.scene.add.graphics().setDepth(GROUND_DEPTH);
+    const glow = this.scene.add.graphics().setDepth(GROUND_DEPTH + 0.1).setBlendMode(Phaser.BlendModes.ADD);
+    const half = TILE_SIZE / 2;
+    /** Fenda afinando da raiz (`width`) até a ponta. */
+    const polyline = (pts: Point[], count: number, width: number, color: number, alpha: number) => {
+      for (let k = 1; k < count; k++) {
+        const w = Math.max(1, width * (1 - (k / pts.length) * 0.75));
+        ground.lineStyle(w, color, alpha).lineBetween(pts[k - 1].x, pts[k - 1].y, pts[k].x, pts[k].y);
+        ground.fillStyle(color, alpha).fillCircle(pts[k].x, pts[k].y, w / 2);
+      }
+    };
+    const draw = (ms: number) => {
+      const h = heat(ms);
+      ground.clear().setAlpha(fade(ms));
+      glow.clear().setAlpha(fade(ms));
+      // Chão chamuscado, tile a tile, em onda do centro para fora (como a área da magia).
+      for (const t of tiles) {
+        if (ms < t.ring * 45) continue;
+        ground.fillStyle(0x140a06, 0.42).fillRect(t.x - half + 1, t.y - half + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+        ground.fillStyle(lava(h * 0.7), 0.5 * h).fillRect(t.x - 5, t.y + 3, 2, 2).fillRect(t.x + 6, t.y - 6, 2, 2);
+      }
+      for (const s of scars) ground.fillStyle(0x0a0503, 0.55).fillEllipse(s.x, s.y, 26, 10);
+      // Fendas: borda carbonizada, lava e um fio quase branco enquanto está quente.
+      for (const c of cracks) {
+        const grown = Phaser.Math.Clamp((ms - c.delay) / 260, 0, 1);
+        const count = 1 + Math.floor((c.pts.length - 1) * grown);
+        if (count < 2) continue;
+        polyline(c.pts, count, c.width + 3, 0x1a0805, 0.85);
+        polyline(c.pts, count, c.width, lava(h * 0.85), 0.95);
+        if (h > 0.15) polyline(c.pts, count, c.width * 0.4, lava(h), 1);
+        for (let k = 1; k < count; k += 2) glow.fillStyle(0xff6b1a, 0.12 * h).fillCircle(c.pts[k].x, c.pts[k].y, c.width * 2);
+      }
+      for (const s of splats) {
+        const sh = Math.min(h, 1 - Math.min(1, (ms - s.born) / 2200));
+        ground.fillStyle(0x1a0805, 0.8).fillCircle(s.x, s.y, s.r + 1.5);
+        ground.fillStyle(lava(sh), 1).fillCircle(s.x, s.y, s.r).fillCircle(s.x + s.r * 0.8, s.y + 1, s.r * 0.6);
+      }
+      // Cratera: lava borbulhando cercada de basalto.
+      ground.fillStyle(0x1a0805, 0.9).fillEllipse(crater.x, crater.y, 66, 38);
+      ground.fillStyle(lava(h * 0.75), 1).fillEllipse(crater.x, crater.y, 52, 28);
+      ground.fillStyle(lava(h * 0.95), 1).fillEllipse(crater.x, crater.y + 1, 36, 18);
+      ground.fillStyle(lava(h), 1).fillEllipse(crater.x, crater.y + 1, 18, 8);
+      for (const b of bubbles) {
+        const r = 1.2 + Math.max(0, Math.sin(ms / 140 + b.phase)) * 2.5;
+        ground.fillStyle(lava(Math.min(1, h + 0.2)), h).fillCircle(crater.x + b.x, crater.y + b.y, r);
+      }
+      for (const r of rim) {
+        ground.fillStyle(0x2b2522, 1).fillCircle(r.x, r.y, r.r);
+        ground.fillStyle(0x4a3f3a, 1).fillCircle(r.x - 1, r.y - 1, r.r * 0.5);
+        ground.fillStyle(0xff6b1a, 0.6 * h).fillRect(r.x - 1, r.y + r.r - 1, 2, 1);
+      }
+      glow.fillStyle(0xff6b1a, 0.3 * h).fillEllipse(crater.x, crater.y, 96, 56);
+      glow.fillStyle(0xffe08a, 0.25 * h).fillEllipse(crater.x, crater.y, 40, 20);
+    };
+    this.scene.tweens.addCounter({
+      from: 0, to: VOLCANO.endMs, duration: VOLCANO.endMs,
+      onUpdate: (tween) => draw(tween.getValue() ?? 0),
+      onComplete: () => { ground.destroy(); glow.destroy(); },
+    });
+
+    // Onda de choque até a borda da área e pedras saltando.
+    this.ring(at, reach, 0xe74c3c, 650, 9);
+    this.later(90, () => this.ring(at, reach * 0.7, 0xff7f27, 500, 6));
+    this.later(160, () => this.ring(at, reach * 0.4, 0xffe08a, 400, 3));
+    this.debris(at, reach, 0x2b2522);
+    this.later(60, () => this.eruption(crater));
+
+    // Bombas de lava: saem da cratera em arco e caem em tiles atingidos, deixando respingo no chão.
+    const landing = tiles.filter((t) => t.ring >= 1);
+    const born = this.scene.time.now;
+    for (let i = 0; i < 12 && landing.length > 0; i++) {
+      const t = landing[Phaser.Math.Between(0, landing.length - 1)];
+      const to = { x: t.x + Phaser.Math.Between(-8, 8), y: t.y + Phaser.Math.Between(-8, 8) };
+      this.later(Phaser.Math.Between(120, 800), () => this.lavaBomb({ x: crater.x, y: crater.y - 30 }, to, () => {
+        splats.push({ ...to, r: Phaser.Math.FloatBetween(2.5, 4), born: this.scene.time.now - born });
+      }));
+    }
+
+    // Monstros atingidos pegam fogo: labaredas sobem neles em duas ondas.
+    for (const p of hits) {
+      this.later(60, () => this.sparks(p, 0xffd166, 8));
+      for (let wave = 0; wave < 2; wave++) this.later(60 + wave * 280, () => this.engulf(p));
+    }
+
+    // Brasas sobem do chão enquanto ele está quente; fumaça sai das fendas quando esfria.
+    for (let i = 0; i < 28; i++) {
+      const t = tiles[Phaser.Math.Between(0, tiles.length - 1)];
+      this.later(Phaser.Math.Between(150, 2000), () => this.ember({ x: t.x + Phaser.Math.Between(-12, 12), y: t.y + Phaser.Math.Between(-12, 12) }));
+    }
+    for (let i = 0; i < 10 && cracks.length > 0; i++) {
+      const c = cracks[Phaser.Math.Between(0, cracks.length - 1)];
+      const p = c.pts[Phaser.Math.Between(0, c.pts.length - 1)];
+      this.later(Phaser.Math.Between(1300, 2500), () => this.smoke(p, Phaser.Math.FloatBetween(4, 7), 900));
+    }
+  }
+
+  /** Coluna de fogo da cratera (atrás de quem conjura), que se abre em nuvem de cinza no alto. */
+  private eruption(at: Point) {
+    const column = this.scene.add.graphics().setPosition(at.x, at.y).setDepth(at.y + TILE_SIZE / 2 - 8)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    // Jato largo na boca, afinando no meio e abrindo num chafariz de lava no alto.
+    const jet = (base: number, waist: number, top: number, height: number, color: number, alpha: number) => {
+      column.fillStyle(color, alpha).fillPoints([
+        new Phaser.Math.Vector2(-base / 2, 0), new Phaser.Math.Vector2(base / 2, 0),
+        new Phaser.Math.Vector2(waist / 2, -height * 0.55), new Phaser.Math.Vector2(top / 2, -height),
+        new Phaser.Math.Vector2(-top / 2, -height), new Phaser.Math.Vector2(-waist / 2, -height * 0.55),
+      ], true);
+      for (const [dx, dy, r] of [[-0.45, 0.05, 0.38], [0.45, 0.05, 0.38], [-0.2, -0.12, 0.42], [0.2, -0.12, 0.42], [0, -0.2, 0.4]]) {
+        column.fillCircle(dx * top, -height + dy * top, r * top);
+      }
+    };
+    jet(30, 20, 44, 112, 0xc0392b, 0.5);
+    jet(20, 13, 30, 104, 0xff6b1a, 0.75);
+    jet(10, 6, 14, 96, 0xffe08a, 0.95);
+    column.setScale(1, 0);
+    this.scene.tweens.add({
+      targets: column, scaleY: 1, duration: 170, ease: "Back.Out",
+      onComplete: () => this.scene.tweens.add({
+        targets: column, scaleX: 0.25, alpha: 0, delay: 250, duration: 500, ease: "Quad.In",
+        onComplete: () => column.destroy(),
+      }),
+    });
+    // Nuvem de cinza no topo, iluminada de baixo nas bordas.
+    this.later(180, () => {
+      for (let i = 0; i < 10; i++) {
+        const c = this.scene.add.circle(
+          at.x + Phaser.Math.Between(-22, 22), at.y - 112 + Phaser.Math.Between(-10, 10), Phaser.Math.Between(11, 18),
+          [0x6b5a52, 0x4a3f3a, 0x9a3a18][i % 3], 0.85,
+        ).setDepth(FX_DEPTH - 1).setScale(0.5);
+        this.scene.tweens.add({
+          targets: c, scale: Phaser.Math.FloatBetween(1.4, 2), alpha: 0,
+          x: c.x + Phaser.Math.Between(-24, 24), y: c.y - Phaser.Math.Between(20, 40),
+          duration: Phaser.Math.Between(1300, 1700), ease: "Sine.Out", onComplete: () => c.destroy(),
+        });
+      }
+    });
+  }
+
+  /** Bomba de lava em arco alto com rastro de brasa; no chão, espirra e chama `landed`. */
+  private lavaBomb(from: Point, to: Point, landed: () => void) {
+    const ms = Phaser.Math.Between(420, 600);
+    const arc = Phaser.Math.Between(50, 90);
+    const ball = this.scene.add.circle(from.x, from.y, 3.5, 0xffb347).setDepth(FX_DEPTH).setStrokeStyle(1, 0x7a1a0a, 1);
+    const shadow = this.scene.add.ellipse(from.x, from.y + 30, 7, 3, 0x000000, 0.35).setDepth(GROUND_DEPTH + 0.2);
+    this.scene.tweens.add({ targets: shadow, x: to.x, y: to.y + 2, duration: ms, onComplete: () => shadow.destroy() });
+    let lastTrail = 0;
+    this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: ms,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        ball.setPosition(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t - Math.sin(t * Math.PI) * arc);
+        if (this.scene.time.now - lastTrail < 40) return;
+        lastTrail = this.scene.time.now;
+        this.puff(ball.x, ball.y, 0xff6b1a, 2);
+      },
+      onComplete: () => {
+        ball.destroy();
+        landed();
+        this.ring(to, 10, 0xff6b1a, 300, 2);
+        this.sparks(to, 0xffd166, 5);
+        this.smoke(to, 3, 500);
+      },
+    });
+  }
+
+  /** Labaredas subindo num monstro atingido. */
+  private engulf(at: Point) {
+    const colors = [0xe74c3c, 0xff6b1a, 0xffd166];
+    for (let i = 0; i < 3; i++) {
+      const flame = this.scene.add.ellipse(at.x + (i - 1) * 7, at.y + 6, 9, 14, colors[i], 0.9)
+        .setDepth(FX_DEPTH).setBlendMode(Phaser.BlendModes.ADD).setScale(0.6, 0.6);
+      this.scene.tweens.add({
+        targets: flame, y: at.y - 18, scaleX: 0.3, scaleY: 1.6, alpha: 0,
+        delay: i * 70, duration: 520, ease: "Quad.Out", onComplete: () => flame.destroy(),
+      });
+    }
+  }
+
+  /** Uma brasa subindo e apagando. */
+  private ember(at: Point) {
+    const s = this.scene.add.image(at.x, at.y, FX.spark).setDepth(FX_DEPTH - 1)
+      .setTint([0xffd166, 0xff6b1a, 0xe74c3c][Phaser.Math.Between(0, 2)]).setBlendMode(Phaser.BlendModes.ADD);
+    this.scene.tweens.add({
+      targets: s, x: at.x + Phaser.Math.Between(-8, 8), y: at.y - Phaser.Math.Between(20, 36), alpha: { from: 1, to: 0 },
+      duration: Phaser.Math.Between(700, 1000), ease: "Sine.Out", onComplete: () => s.destroy(),
+    });
+  }
+
+  /** Fumaça escura subindo devagar. */
+  private smoke(at: Point, size: number, duration: number) {
+    const c = this.scene.add.circle(at.x, at.y, size, 0x3b3330, 0.55).setDepth(FX_DEPTH - 1);
+    this.scene.tweens.add({
+      targets: c, y: at.y - 18, x: at.x + Phaser.Math.Between(-6, 6), scale: 2, alpha: 0,
+      duration, ease: "Sine.Out", onComplete: () => c.destroy(),
+    });
   }
 
   /** Raio reto e tremido de `from` a `to` (Feixe de Energia). */
