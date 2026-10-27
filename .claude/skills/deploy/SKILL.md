@@ -17,8 +17,9 @@ Várias sessões trabalham em paralelo. Para uma não mesclar em cima da outra, 
 
 - a sessão **entra na fila assim que a skill é chamada** (a ordem é a de chegada);
 - o preparo (passos 1 a 4, 6 e 7: revisar, testar, commitar, abrir o PR, CI do PR) roda **sem esperar**;
-- só a **seção crítica** (passo 8: mesclar o `main` de novo, aplicar migration, CI final, merge do PR)
-  espera a vez. Uma sessão por vez;
+- só a **seção crítica** (passo 8: mesclar o `main` de novo, CI final, aplicar migration, merge do PR)
+  espera a vez. Uma sessão por vez, e por poucos minutos: o que pode falhar ou demorar (check local,
+  correção, re-run de CI) acontece fora da vez;
 - ao mesclar, a sessão sai da fila e avisa a próxima.
 
 ## Regras que nunca se quebram
@@ -153,9 +154,14 @@ Depois `subscribe_pr_activity` no PR (CI e revisão acordam a sessão).
 2. Vermelho → `mcp__github__get_job_logs`, reproduza localmente, corrija, `npm run check`, push.
    Vermelho também no `main` → não é deste PR: saia da fila com `desistiu`, avise e pare.
 3. Comentários de revisão: resolva os pequenos e pontuais; os grandes, leve ao usuário.
-4. A cada despertar: `fila_vez` (batida).
+4. Enquanto espera a vez, mantenha o PR em dia: o `main` mudou (outra sessão mesclou) → mescle,
+   `npm run check`, push e espere o CI de novo **fora da vez**. Na vez, sobra pouco ou nada para mesclar.
+5. A cada despertar: `fila_vez` (batida).
 
 ## 8. Seção crítica: só na sua vez
+
+A vez para todo mundo: segure-a só pelo necessário (mesclar o `main`, esperar o CI, aplicar a migration e
+mesclar). O preparo (check local, CI do PR verde) já ficou pronto no passo 7, fora da vez.
 
 1. **Pegue a vez**: `select ops.fila_vez(<id>);`.
    - `minha_vez: false` → não avance. Diga ao usuário quem está na frente e espere:
@@ -165,8 +171,21 @@ Depois `subscribe_pr_activity` no PR (CI e revisão acordam a sessão).
      ou, se nenhum existir, peça ao usuário para chamar `/deploy` de novo em alguns minutos. Nunca
      espere com `sleep` longo.
    - `minha_vez: true` → siga, sem pausas longas, renovando com `fila_vez` a cada passo.
-2. **Mescle o `main` de novo** (passo 2). Entrou algo → `npm run check` e push.
-3. **Supabase** (só se a mudança toca o banco):
+2. **Mescle o `main` de novo** (passo 2).
+   - Nada novo → siga para o 8.3.
+   - Entrou algo e **mesclou sem conflito** → push e espere só o `verificar` do PR (sem rodar o
+     `npm run check` local de novo: o CI roda o mesmo).
+   - **Conflito** → saia da fila com `desistiu`, resolva fora da vez (merge, `npm run check`, push, CI
+     verde) e entre de novo com `fila_entrar` (vai para o fim).
+3. **CI verde no commit final** (o do 8.2, se houve push).
+   - Vermelho num teste que **não é deste PR** (falha que não toca o diff, como um teste que joga hunt
+     de verdade no mapa sorteado e não achou monstro) → saia da fila com `desistiu` **na hora**, para a
+     próxima sessão publicar. Fora da vez: um re-run do job (`rerun_failed_jobs`) e um comentário no PR
+     dizendo o teste e por que não é deste PR; com o CI verde, entre de novo com `fila_entrar`.
+   - Vermelho por causa do PR → saia com `desistiu`, corrija fora da vez e volte.
+   - Nunca espere um re-run ou uma correção segurando a vez.
+4. **Supabase** (só se a mudança toca o banco), **só agora, com o CI verde**: a migration entra logo
+   antes do merge, para uma sessão que sai da fila não deixar o banco à frente do `main`.
    1. `list_migrations` e compare com `ls supabase/migrations`. Aplique **só** as que estão na pasta e
       faltam no banco, em ordem de timestamp, com `apply_migration` (`name` = nome do arquivo sem
       timestamp e sem `.sql`; `query` = conteúdo do arquivo, sem alterar).
@@ -176,7 +195,6 @@ Depois `subscribe_pr_activity` no PR (CI e revisão acordam a sessão).
       `packages/shared/src/account.ts` segue as mesmas regras.
    4. Migration que quebra o código no ar hoje (renomear/apagar coluna usada) → saia com `desistiu` e
       proponha duas etapas (adicionar → publicar código → remover depois).
-4. **CI verde no commit final** (se houve push no 8.2, espere o `verificar` de novo).
 5. **Merge**: `mcp__github__merge_pull_request`, `merge_method: "merge"` (nada de squash ou rebase).
    Se o usuário não pediu explicitamente para publicar nesta conversa, confirme antes: o merge põe o
    jogo no ar para todos.
