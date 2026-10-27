@@ -52,7 +52,7 @@ type Down =
   | { k: "ping" }
   | { k: "refuse"; reason: string }
   /** O boss morreu com este jogador na hunt: cada um anota o próprio cenário vencido (campanha). */
-  | { k: "cleared" };
+  | { k: "cleared"; boss?: string };
 
 /** Jogador → anfitrião. */
 type Up =
@@ -119,7 +119,7 @@ class HostRuntime {
       broadcast: (type, msg) => this.outbox.push({ to: null, type, msg }),
       runEnded: (sessionId, result, report) => this.sinks.get(sessionId)?.down({ k: "result", result, report }),
       ended: () => {},
-      mapCleared: (ids) => { for (const id of ids) this.sinks.get(id)?.down({ k: "cleared" }); },
+      mapCleared: (ids, boss) => { for (const id of ids) this.sinks.get(id)?.down({ k: "cleared", boss }); },
     }, snapshot
       ? { mapId: this.state.mapId as MapId, seed: this.state.seed, restore: snapshot.hunt }
       : { mapId, seed: Math.floor(Math.random() * 2 ** 31) });
@@ -449,7 +449,7 @@ class HostedSession {
       case "begin": return void this.beginRun(client);
       case "result":
         return reportSolo(this.runId, this.me.classId, down.result, down.report, (msg) => client.emit(MSG.runEnded, msg));
-      case "cleared": return void recordSoloMapClear(this.runId);
+      case "cleared": return void recordSoloMapClear(this.runId, typeof down.boss === "string" ? down.boss : "");
     }
   }
 
