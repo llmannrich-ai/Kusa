@@ -12,7 +12,8 @@ const DEFAULTS: Settings = {
   landscape: false,
   // Joystick fixo de padrão desde o retorno dos testadores; o flutuante fica como opção.
   fixedStick: true,
-  newArt: false,
+  // Arte nova ligada de padrão: quem nunca mexeu na opção já entra com ela; quem desligou continua com a antiga.
+  newArt: true,
 };
 
 /** Uma opção como aparece na tela de configurações; novas opções entram aqui e em `Settings`. */

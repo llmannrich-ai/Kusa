@@ -1160,7 +1160,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
 Cada família tem arte própria em dois formatos, e o que o personagem veste aparece nele para todos da equipe.
 Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padrão visual inspirado no Tibia (heróis, monstros e mapas): `docs/ARTE_TIBIA.md`; conceitos de cada item no padrão novo: `docs/ARTE_ITENS.md`.
 
-- **Arte nova (beta)** (opção nas Configurações, desligada de padrão; trocar recarrega o jogo): heróis e todo o
+- **Arte nova (beta)** (opção nas Configurações, ligada de padrão, quem desligar volta à antiga; trocar recarrega o jogo): heróis e todo o
   equipamento no padrão novo (`apps/client/src/art/proto/tibiaHero.ts`), no jogo, nos retratos e no provador. O raro
   usa o desenho do comum. Cada combinação de classe e equipamento é desenhada uma vez ao aparecer (0,1 a 0,3 s num
   computador; mais no celular) e fica guardada. O sprite vai 10% maior que 128 px por tile, com os pés no mesmo
