@@ -91,10 +91,13 @@ export function arena(options: ArenaOptions = {}) {
     ally.y = p.y;
   });
 
-  /** Tile com espaço livre em volta (7×7 sem parede nem portal), longe do portal: o centro da maior sala, se der. */
+  /**
+   * Tile com espaço livre em volta (7×7 sem parede nem portal), longe do portal: o centro da maior sala, se der.
+   * Sem sala que sirva (na caverna as paredes irregulares comem o retângulo das salas), qualquer tile do mapa.
+   */
   function openSpot() {
     const rooms = [...d.path, ...d.side, d.boss].sort((a, b) => b.w * b.h - a.w * a.h);
-    for (const room of rooms) {
+    for (const room of [...rooms, { x: 0, y: 0, w: d.width, h: d.height }]) {
       const cx = room.x + Math.floor(room.w / 2);
       const cy = room.y + Math.floor(room.h / 2);
       const tiles: { x: number; y: number }[] = [];
