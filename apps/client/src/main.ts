@@ -42,7 +42,6 @@ import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
-import { loadBossKills } from "./profile.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
@@ -296,9 +295,6 @@ async function openRooms() {
   world ??= createWorldMap($("world-view"), MAP_ART, pickPoint, toast);
   world.setHero(heroSheet(hub.classId).toDataURL());
   applyProgress();
-  world.setBossKills([]);
-  const classId = hub.classId;
-  void loadBossKills(classId).then((kills) => { if (hub.classId === classId) world?.setBossKills(kills); }).catch(() => {});
   world.select(createMapId(), { instant: true });
   // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
   world.focus(createMapId());

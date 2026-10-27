@@ -438,16 +438,18 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
-  **Cidadela Caída**. Depois da Travessia, o lado do deserto já existe: 🌬️ Dunas Cantantes → 🪨 Mesas de Solária → 🏛️
-  Portões do Império (etapa 8, por enquanto só o terreno).
+  **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
+  Solária → 🏛️ Portões do Império, a etapa 8, por enquanto só o terreno) e a floresta (🌳 Bosque Velho → 🍄 Coração da
+  Mata, por enquanto só o terreno). O herói anda pelos dois ramos: para ir de um lado ao outro, volta pela trilha até a
+  Travessia (`OPEN_CHAINS` em `verdemar.ts`).
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
   Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
 - **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
-  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
-  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). **Só o boss de um lado abre
-  aquele lado:** o Observador abre as Dunas Cantantes (o Basilisco não); o Basilisco abrirá o Bosque Velho quando ele
-  existir. O cliente lê `profile_boss_clears` (bosses vencidos por personagem).
+  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. **Só o boss de um lado abre aquele lado:** o
+  Basilisco abre o Bosque Velho e o Observador as Dunas Cantantes (um não abre o lado do outro). O cliente lê
+  `profile_boss_clears` (bosses vencidos por personagem); a trilha fica vermelha entre dois cenários abertos, como no
+  resto da campanha.
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
   pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
@@ -456,7 +458,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
-  Cantante → Mesas de Solária, Faraó Eterno → Portões do Império). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco
+  Cantante → Mesas de Solária, Faraó Eterno → Portões do Império; Basilisco → Bosque Velho, boss do Bosque Velho →
+  Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
   `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
@@ -468,7 +471,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
-- **Ainda não:** os outros 10 cenários da campanha não existem (medalhões numerados).
+- **Ainda não:** os outros 8 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
@@ -490,6 +493,8 @@ livre). Os Portões do Império, ainda sem monstros, ficam com 6 provisório.
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
+| 🌳 Bosque Velho | 5 ★★★★★☆ (provisório) | 8 min | 96×128, em pé: mata fechada com clareiras ligadas por trilhas, 7 zonas, 5 campinas, um riacho com pontes e o círculo de menires | só o terreno (os monstros ainda vêm) |
+| 🍄 Coração da Mata | 6 ★★★★★★ (provisório) | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | só o terreno (os monstros ainda vêm) |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
@@ -650,6 +655,50 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
   Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
 - **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
 
+### Bosque Velho e Coração da Mata (terreno)
+
+O lado da floresta da bifurcação da Travessia (etapas 6 e 7 da campanha): o Bosque Velho abre com o Basilisco (o
+boss do covil oeste da Caverna da Travessia) e o Coração da Mata com o boss do Bosque Velho. Os dois mapas usam o mesmo gerador (`generateForest` em
+`dungeon.ts`), cada um com a sua variante. **Por enquanto só o terreno, sem monstros** (dificuldade 5 e 6 provisória,
+como o lado do deserto), 8 min, até 4 jogadores.
+
+- **Em pé, como o celular:** 96×128. O mapa nasce todo de mata fechada e recebe **clareiras ligadas por trilhas**: a
+  entrada na clareira do sul, a **arena do boss** na do norte (círculo aberto, a mata em volta) e, entre elas, as 7
+  zonas subindo do sul ao norte, trocando de lado (3 colunas), 5 campinas e ~9 clareirinhas de passagem. Cada zona se
+  liga à seguinte por uma trilha que serpenteia e, às vezes, a uma mais longe (atalho); cada campina e clareirinha, às
+  1 ou 2 mais perto: há sempre mais de um caminho. Mata fina (faixa de 1 tile) vira chão, então a mata fica em maciços.
+  A mata bloqueia passo e visão: só se vê a clareira e a trilha onde se está.
+- **Trilha batida** (`Dungeon.trails`): o meio de cada trilha, chão comum; o cliente desenha a terra.
+- **Bosque Velho:** trilhas mais largas, um **riacho** que corta o mapa de oeste a leste no terço do meio (2 a 3 tiles,
+  bloqueia o passo e não a visão) com uma **ponte de madeira** de 3 tiles onde cada trilha o cruza (`Dungeon.planks`),
+  duas lagoas pequenas, **troncos caídos** nas clareiras e as salas laterais cercadas de troncos; na arena, um círculo de
+  6 **menires**.
+- **Coração da Mata:** mais fechado: trilhas estreitas, quase o dobro de **árvores anciãs**, 4 a 6 **lagoas escuras** na
+  beira das clareiras, pedaços de muro élfico e as salas laterais como **santuários élficos** (muro de pedra inteiro, 2
+  portões); no alto da arena, a **árvore do coração** (bloco de 3×3) e 4 menires.
+- **Salas laterais** (mini-boss e baú): ao lado de uma zona (7 a 9 tiles), 2 portões, cada um com a sua trilha (um até a
+  zona, outro até a clareira mais perto). Sala que fecharia a passagem sai.
+- **Regra de desenho:** mata sem mata nos 4 lados é **árvore solta**; bloco de 2×2 sem mata encostada é **árvore
+  anciã**; a mata dentro da arena do Coração da Mata é a **árvore do coração**; o resto é **mata fechada**. Ruína sem
+  ruína nos 4 lados é pedra musgosa (na arena, menir); ruína encostada em ruína é tronco caído (Bosque Velho) ou muro
+  élfico (Coração da Mata).
+- **Visual** (só no cliente, `apps/client/src/forestMap.ts`, o plano em `forestPlan.ts` e a arte em `art/forestArt.ts`,
+  com o pintor do padrão novo em `art/paint.ts`, o mesmo das Dunas): sempre na arte nova (128 px por tile, um atlas só
+  com os quadros que o mapa usa, ~300). A **mata fechada** é uma copa de tufos (esferas de folhas com luz de cima à
+  esquerda, os da frente riscando os de trás) desenhada **pela distância até o chão aberto**: cada tufo entra se cabe
+  antes da beira, e como a distância é a mesma vista de qualquer tile, a copa emenda sozinha em qualquer combinação de
+  vizinhos; do lado sul a copa recua e mostra o sub-bosque escuro e os troncos; o miolo da mata tem 4 variações. Capim
+  só com textura miúda (sem mancha que se repita) e manchas de luz pelo tint; terra da trilha, barro na margem, folhas
+  secas e a sombra da mata no chão (sol do noroeste) com a beira pela mesma distância, arredondada nas quinas; riacho
+  claro com seixos e correnteza ou lagoa escura com nenúfar; ponte de tábuas com corrimão; troncos caídos com musgo e o
+  corte com os anéis; muro élfico com runa que brilha. De pé: árvores soltas de 4 espécies por variante (carvalho,
+  faia, bétula e pinheiro; no Coração, ancião retorcido, salgueiro, cogumelo gigante e árvore morta), anciãs com
+  sapopemas e oco, a árvore do coração com o coração de seiva pulsando, pedras e menires (a espiral acende), e
+  enfeites (samambaia, arbusto, capim alto, cogumelos, toco, dedaleira, amoreira, pedras); no chão, folhas, gravetos,
+  trevos, flores, pinhas, raízes, pegadas e o círculo de cogumelos na arena do Bosque Velho. As copas balançam e ficam
+  transparentes sobre o jogador. Ambiente: ciscos de luz (no Coração, vaga-lumes frios), folhas caindo da beira da
+  mata, fachos de sol nas clareiras. Pintar tudo leva ~1,5 s num computador (mais no celular), na entrada da hunt.
+- **Loot:** teto da hunt solo provisório de 100 nos dois (sem monstros), cheio em 180 s; sobe junto com o bestiário.
 
 ### Portões do Império (terreno)
 
@@ -702,6 +751,7 @@ o desenho lê.
   raios dourados e vermelhos e a águia no medalhão de lápis-lazúli) e a luz do dia descendo pela escada de volta; fundo
   e cantos da tela escuros. A fachada e o mosaico, as pinturas maiores, saem nos primeiros quadros da hunt (ficam longe
   da entrada). Ambiente: ciscos dourados na luz, chamas e tochas tremendo, brilho do sol nos tanques.
+
 ### Caverna da Travessia
 
 - **Onde:** nos Campos de Kusa, na etapa 5 da campanha de Verdemar (o ponto que era a Encruzilhada), logo depois do

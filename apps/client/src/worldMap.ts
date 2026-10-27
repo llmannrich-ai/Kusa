@@ -1,5 +1,5 @@
 import { MAPS, type MapId } from "@kusa/shared";
-import { CAVERN_BRANCHES, EDGES, EDGE_D, FOG, H, LABELS, NODES, OPEN_CHAIN, PLACES, W } from "./world/verdemar.ts";
+import { EDGES, EDGE_D, FOG, FORK, H, LABELS, NODES, OPEN_CHAINS, PLACES, W } from "./world/verdemar.ts";
 
 // Mapa mundi (tela de Batalhas): a carta de Verdemar, o continente da campanha. A arte é uma imagem pronta
 // (public/mapa/verdemar.svg, gerada por scripts/verdemar.ts); por cima vão as trilhas, os nomes, os pontos e o herói.
@@ -63,8 +63,6 @@ export interface WorldMapView {
   setProgress(unlocked: readonly MapId[], cleared: readonly MapId[]): void;
   /** Troca o boneco do herói: a folha de `heroSheet` da classe escolhida no menu. */
   setHero(sheetUrl: string): void;
-  /** Bosses que a classe escolhida já venceu: liberam os lados da bifurcação da Caverna da Travessia. */
-  setBossKills(bosses: readonly string[]): void;
 }
 
 /**
@@ -97,15 +95,11 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
     const line = svgEl("path", { d: EDGE_D[a + b], class: "world-trail-next" }, over);
     trails.set(a + b, { bed, line });
   }
-  // Lados da bifurcação da Travessia: a tinta vermelha por cima da trilha pontilhada aparece com o boss vencido.
-  const branches = CAVERN_BRANCHES.map((b) => ({
-    boss: b.boss,
-    beds: svgEl("path", { d: EDGE_D[b.from + b.to], class: "world-trail-bed open world-branch" }, over),
-    ink: svgEl("path", { d: EDGE_D[b.from + b.to], class: "world-trail-open world-branch" }, over),
-  }));
-  // A trilha dos cenários de hoje, inteira e sem traço: o herói anda nela.
-  const openD = OPEN_CHAIN.slice(1).map((b, i) => EDGE_D[OPEN_CHAIN[i] + b].replace(/^M[^C]+/, (m) => (i ? "" : m))).join("");
-  const route = svgEl("path", { d: openD, fill: "none" }, over);
+  // As trilhas dos cenários de hoje, cada ramo inteiro e sem traço: o herói anda nelas.
+  const routes = OPEN_CHAINS.map((chain) => {
+    const d = chain.slice(1).map((b, i) => EDGE_D[chain[i] + b].replace(/^M[^C]+/, (m) => (i ? "" : m))).join("");
+    return { chain: chain as readonly string[], path: svgEl("path", { d, fill: "none" }, over), stops: new Map<string, number>(), total: 0 };
+  });
 
   // Nomes: crescem quando o zoom afasta (para seguir legíveis) até caber na curva; os pequenos somem de longe.
   const readable: { t: SVGTextElement; px: number; min: number; max: number }[] = [];
@@ -188,7 +182,7 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
   sprite.className = "world-hero-sprite";
   hero.append(sprite);
   layer.append(hero);
-  const heroPin: Pin = { el: hero, x: NODES[OPEN_CHAIN[0]].x, y: NODES[OPEN_CHAIN[0]].y };
+  const heroPin: Pin = { el: hero, x: NODES[OPEN_CHAINS[0][0]].x, y: NODES[OPEN_CHAINS[0][0]].y };
   pins.push(heroPin);
   // Atalhos da câmera: voltar ao herói e ver o continente inteiro.
   const tools = document.createElement("div");
@@ -298,29 +292,32 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
   new ResizeObserver(() => render()).observe(view);
 
   // --- Herói e caminhada ---------------------------------------------------------------------------------------
-  // A parte aberta da trilha é uma linha só: a posição do herói é a distância andada nela, e `stops` diz onde fica
-  // cada cenário aberto.
-  const total = route.getTotalLength();
-  const stops = new Map<string, number>([[OPEN_CHAIN[0], 0]]);
-  {
+  // Cada ramo da parte aberta da trilha é uma linha só: a posição do herói é o ramo e a distância andada nele, e
+  // `stops` diz onde fica cada cenário do ramo. Os ramos são iguais até a bifurcação (`FORK`).
+  for (const r of routes) {
+    r.total = r.path.getTotalLength();
+    r.stops.set(r.chain[0], 0);
     let acc = 0;
-    for (let i = 1; i < OPEN_CHAIN.length; i++) {
-      const piece = svgEl("path", { d: EDGE_D[OPEN_CHAIN[i - 1] + OPEN_CHAIN[i]] }, over);
+    for (let i = 1; i < r.chain.length; i++) {
+      const piece = svgEl("path", { d: EDGE_D[r.chain[i - 1] + r.chain[i]] }, over);
       acc += piece.getTotalLength();
       piece.remove();
-      stops.set(OPEN_CHAIN[i], Math.min(acc, total));
+      r.stops.set(r.chain[i], Math.min(acc, r.total));
     }
   }
+  /** Ramo de cada ponto: o do lado da bifurcação, ou nenhum (`-1`) nos pontos de antes dela, que estão nos dois. */
+  const branchOf = (node: string) => (routes.filter((r) => r.chain.includes(node)).length > 1 ? -1 : routes.findIndex((r) => r.chain.includes(node)));
+  let route = routes[0];
   let at = 0;
   let facing: (typeof SHEET_DIRS)[number] = "down";
   let flip = false;
   /** Desenha o herói na distância `s`; `heading` é o sentido da caminhada (+1 para a frente, 0 parado). */
   const place = (s: number, heading: number) => {
     at = s;
-    const p = route.getPointAtLength(s);
+    const p = route.path.getPointAtLength(s);
     if (heading !== 0) {
-      const clamp = (v: number) => Math.min(total, Math.max(0, v));
-      const a = route.getPointAtLength(clamp(s - heading * 2)), b = route.getPointAtLength(clamp(s + heading * 2));
+      const clamp = (v: number) => Math.min(route.total, Math.max(0, v));
+      const a = route.path.getPointAtLength(clamp(s - heading * 2)), b = route.path.getPointAtLength(clamp(s + heading * 2));
       const dx = b.x - a.x, dy = b.y - a.y;
       if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
         facing = Math.abs(dx) > Math.abs(dy) ? "side" : dy < 0 ? "up" : "down";
@@ -328,7 +325,7 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
       }
     } else facing = "down";
     // Perto de um ponto o herói sobe no ícone; no meio do caminho pisa na trilha.
-    const near = Math.min(...[...stops.values()].map((stop) => Math.abs(stop - s)));
+    const near = Math.min(...[...route.stops.values()].map((stop) => Math.abs(stop - s)));
     const lift = ON_POINT_LIFT * Math.max(0, 1 - near / 34);
     heroPin.x = p.x;
     heroPin.y = p.y;
@@ -337,14 +334,15 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
     sprite.style.backgroundPosition = `${(frame / 8) * 100}% 0`;
     sprite.style.scale = facing === "side" && flip ? "-1 1" : "";
   };
-  let walk: { target: MapId; to: number; ay: number; follow: boolean; raf: number } | null = null;
+  let walk: { target: MapId; to: number; next: (typeof routes)[number]; ay: number; follow: boolean; raf: number } | null = null;
   const finish = () => {
     if (!walk) return;
     cancelAnimationFrame(walk.raf);
-    const { to, ay, follow } = walk;
+    const { to, next, ay, follow } = walk;
     walk = null;
+    route = next;
     place(to, 0);
-    if (follow) { const p = route.getPointAtLength(to); lookAt(p.x, p.y, cam.s, ay, 0); } else render();
+    if (follow) { const p = route.path.getPointAtLength(to); lookAt(p.x, p.y, cam.s, ay, 0); } else render();
   };
 
   return {
@@ -354,23 +352,38 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
         p.button.setAttribute("aria-pressed", String(pid === id));
       }
       if (walk) { cancelAnimationFrame(walk.raf); walk = null; }
-      const to = stops.get(NODE_OF[id]) ?? 0;
+      // Ponto do outro lado da bifurcação: o herói volta pela trilha até ela e segue pelo outro ramo.
+      const side = branchOf(NODE_OF[id]);
+      const next = side < 0 ? route : routes[side];
+      const to = next.stops.get(NODE_OF[id]) ?? 0;
+      const fork = route.stops.get(FORK) ?? 0;
+      const back = next === route ? 0 : Math.abs(at - fork);
       const n = NODES[NODE_OF[id]];
-      if (instant || reducedMotion() || Math.abs(to - at) < 0.5) {
+      if (instant || reducedMotion() || (next === route && Math.abs(to - at) < 0.5)) {
+        route = next;
         place(to, 0);
         if (anchor !== undefined) lookAt(n.x, n.y, Math.max(cam.s, 0.8), anchor, instant ? 0 : 400);
         else render();
         return;
       }
       // A câmera vai junto: chega no zoom de perto, com o ponto a `anchor` da tela.
-      const from = at, t0 = performance.now(), s0 = cam.s, s1 = Math.max(cam.s, 0.8), ay = anchor ?? 0.45;
-      const p0 = route.getPointAtLength(from);
+      const from = at, start = route, t0 = performance.now(), s0 = cam.s, s1 = Math.max(cam.s, 0.8), ay = anchor ?? 0.45;
+      const p0 = route.path.getPointAtLength(from);
       const ay0 = Math.min(0.85, Math.max(0.15, (p0.y * cam.s + cam.y) / view.clientHeight));
-      walk = { target: id, to, ay, follow: anchor !== undefined, raf: 0 };
+      // A caminhada inteira: primeiro a volta até a bifurcação (se trocar de ramo), depois o ramo novo até o ponto.
+      const ahead = next === start ? to - from : to - fork;
+      const length = back + Math.abs(ahead);
+      walk = { target: id, to, next, ay, follow: anchor !== undefined, raf: 0 };
       const step = (now: number) => {
         if (!walk) return;
-        const t = Math.min(1, (now - t0) / WALK_MS), e = easeInOut(t);
-        place(from + (to - from) * e, Math.sign(to - from));
+        const t = Math.min(1, (now - t0) / WALK_MS), e = easeInOut(t) * length;
+        if (e < back) {
+          route = start;
+          place(from + Math.sign(fork - from) * e, Math.sign(fork - from));
+        } else {
+          route = next;
+          place((next === start ? from : fork) + Math.sign(ahead) * (e - back), Math.sign(ahead));
+        }
         if (walk.follow) {
           cam.s = s0 + (s1 - s0) * e;
           cam.x = view.clientWidth / 2 - heroPin.x * cam.s;
@@ -415,13 +428,6 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
     },
     setHero(sheetUrl) {
       sprite.style.backgroundImage = `url("${sheetUrl}")`;
-    },
-    setBossKills(bosses) {
-      for (const b of branches) {
-        const open = bosses.includes(b.boss);
-        b.beds.classList.toggle("on", open);
-        b.ink.classList.toggle("on", open);
-      }
     },
   };
 }

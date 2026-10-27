@@ -308,6 +308,49 @@ export const MAP_ART: Record<MapId, string> = {
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#e0805a" stroke-width="1.5"/>
   </svg>`,
+  // Bosque Velho: a mata fechada em copas redondas, um carvalho velho na frente com o tronco grosso e as raízes, a
+  // trilha de terra entrando na clareira e o sol passando pela copa.
+  oldwood: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="ow-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8d07a"/><stop offset="1" stop-color="#5e8a36"/></linearGradient>
+      <clipPath id="ow-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#ow-roda)">
+      <rect width="48" height="48" fill="url(#ow-ceu)"/>
+      <circle cx="6" cy="14" r="7" fill="#2e5a26"/><circle cx="15" cy="10" r="7" fill="#3e6e2a"/><circle cx="40" cy="12" r="8" fill="#2e5a26"/>
+      <circle cx="47" cy="20" r="7" fill="#3e6e2a"/><circle cx="2" cy="24" r="6" fill="#3e6e2a"/>
+      <path d="M0 36Q24 32 48 36V48H0Z" fill="#6c9a3c"/>
+      <path d="M18 48Q22 40 30 37Q34 36 36 34" stroke="#9a7650" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M22.5 38V26h4V38Q28 40 31 40.5H18Q21 40 22.5 38Z" fill="#6a4e36"/>
+      <path d="M25 26h1.5V38Q27 39.5 29 40H26Z" fill="#4a3424"/>
+      <circle cx="17" cy="20" r="7" fill="#3e6e2a"/><circle cx="31" cy="19" r="7.5" fill="#3e6e2a"/>
+      <circle cx="24" cy="14" r="8.5" fill="#5c8e30"/><circle cx="21" cy="11.5" r="3" fill="#8ab84a"/>
+      <circle cx="29" cy="22" r="4" fill="#2e5a26"/>
+      <path d="M8 2L16 30M34 0L40 26" stroke="#fff6c8" stroke-width="2.5" opacity="0.25"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#7aa84a" stroke-width="1.5"/>
+  </svg>`,
+  // Coração da Mata: escuro, a árvore do coração com o oco que brilha, cogumelos frios e vaga-lumes.
+  heartwood: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <radialGradient id="hw-luz" cx="0.5" cy="0.55" r="0.6"><stop offset="0" stop-color="#2f5e48"/><stop offset="1" stop-color="#0c1a14"/></radialGradient>
+      <clipPath id="hw-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#hw-roda)">
+      <rect width="48" height="48" fill="url(#hw-luz)"/>
+      <path d="M0 38Q24 34 48 38V48H0Z" fill="#24463a"/>
+      <path d="M19 40Q21 30 20 22H28Q27 30 29 40Q33 42 38 42H10Q15 42 19 40Z" fill="#4a3c32"/>
+      <path d="M25 22H28Q27 30 29 40Q31 41 33 41.5H27Z" fill="#33281f"/>
+      <ellipse cx="23.5" cy="31" rx="2.2" ry="3.2" fill="#62f0d2"/>
+      <ellipse cx="23.5" cy="31" rx="4" ry="5.5" fill="#62f0d2" opacity="0.25"/>
+      <circle cx="14" cy="16" r="8" fill="#22463a"/><circle cx="34" cy="15" r="8.5" fill="#22463a"/>
+      <circle cx="24" cy="11" r="9" fill="#2f5e48"/><circle cx="20" cy="8.5" r="3" fill="#3a5e6a"/>
+      <path d="M9 41v-3M12 41v-2.5" stroke="#d6e0f2" stroke-width="1.2"/>
+      <ellipse cx="9" cy="37.6" rx="2.2" ry="1.2" fill="#7a4aa6"/><ellipse cx="12" cy="38.4" rx="1.8" ry="1" fill="#62f0d2"/>
+      <circle cx="38" cy="28" r="0.9" fill="#9affea"/><circle cx="8" cy="26" r="0.8" fill="#9affea"/><circle cx="33" cy="34" r="0.7" fill="#9affea"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#3a8a74" stroke-width="1.5"/>
+  </svg>`,
 };
 
 // --- Sala de espera -------------------------------------------------------
