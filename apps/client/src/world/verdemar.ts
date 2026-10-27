@@ -30,11 +30,11 @@ export const NODES: Record<string, CampaignNode> = {
   n4: { step: 4, x: 1105, y: 1680, name: "Pântano das Ruínas", area: "Baía Afundada", map: "swamp" },
   // A Caverna da Travessia é a primeira bifurcação: o covil oeste (Basilisco) dá na floresta, o leste (Observador) no deserto.
   n5: { step: 5, x: 905, y: 1560, name: "Caverna da Travessia", area: "Campos de Kusa", map: "cavern", fork: "floresta ou deserto" },
-  n6a: { step: 6, x: 610, y: 1565, name: "Bosque Velho", area: "Floresta do Kosaradius" },
-  n7a: { step: 7, x: 425, y: 1365, name: "Coração da Mata", area: "Floresta do Kosaradius" },
+  n6a: { step: 6, x: 610, y: 1565, name: "Bosque Velho", area: "Floresta do Kosaradius", map: "oldwood" },
+  n7a: { step: 7, x: 425, y: 1365, name: "Coração da Mata", area: "Floresta do Kosaradius", map: "heartwood" },
   n6b: { step: 6, x: 1155, y: 1440, name: "Dunas Cantantes", area: "Solária", map: "dunes" },
   n7b: { step: 7, x: 1170, y: 1225, name: "Mesas de Solária", area: "Solária", map: "mesas" },
-  n8: { step: 8, x: 800, y: 1135, name: "Portões do Império", area: "Ruínas do Império", fork: "charco ou ermos" },
+  n8: { step: 8, x: 800, y: 1135, name: "Portões do Império", area: "Ruínas do Império", map: "gates", fork: "charco ou ermos" },
   n9a: { step: 9, x: 440, y: 960, name: "Charco Cinzento", area: "Charco Cinzento" },
   n9b: { step: 9, x: 1120, y: 905, name: "Ermos Rubros", area: "Ermos Rubros" },
   n10: { step: 10, x: 785, y: 800, name: "Sopé da Serra", area: "Serra do Norte", fork: "passo ou garganta" },
@@ -45,17 +45,16 @@ export const NODES: Record<string, CampaignNode> = {
   n13: { step: 13, x: 780, y: 300, name: "Cidadela Caída", area: "Capital do Império de Kusa", final: true },
 };
 
-/** Os cenários de hoje, em ordem: o herói anda por esta parte da trilha (depois da Travessia, pelo lado do deserto). */
-export const OPEN_CHAIN = ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b"];
-
 /**
- * Lados da bifurcação da Caverna da Travessia: o primeiro trecho de cada um fica em tinta vermelha (liberado) quando a
- * classe vence o boss daquele covil (`profile_boss_runes`).
+ * Os cenários de hoje: o herói anda por estas trilhas. Elas são iguais até a Caverna da Travessia (`FORK`) e lá se
+ * dividem: o lado do deserto (Dunas Cantantes, Mesas de Solária, até os Portões do Império) e o da floresta (Bosque
+ * Velho, Coração da Mata).
  */
-export const CAVERN_BRANCHES = [
-  { boss: "basilisk", from: "n5", to: "n6a" },
-  { boss: "beholder", from: "n5", to: "n6b" },
+export const OPEN_CHAINS = [
+  ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8"],
+  ["n1", "n2", "n3", "n4", "n5", "n6a", "n7a"],
 ] as const;
+export const FORK = "n5";
 
 /** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
 export const EDGES: [string, string][] = [

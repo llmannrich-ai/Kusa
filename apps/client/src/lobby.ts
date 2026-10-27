@@ -252,6 +252,34 @@ export const MAP_ART: Record<MapId, string> = {
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#e2b47a" stroke-width="1.5"/>
   </svg>`,
+  // Portões do Império: o arco do portão quebrado entre as torres, com a inscrição dourada no ático, a via de basalto
+  // passando por baixo, um cipreste e, lá dentro, o brilho violeta da escadaria do templo.
+  gates: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="ga-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6aa0c8"/><stop offset="1" stop-color="#f0dcae"/></linearGradient>
+      <radialGradient id="ga-luz" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#c9a2ff"/><stop offset="1" stop-color="#9a6ae0" stop-opacity="0"/></radialGradient>
+      <clipPath id="ga-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#ga-roda)">
+      <rect width="48" height="48" fill="url(#ga-ceu)"/>
+      <path d="M0 36Q12 33 24 35T48 34V48H0Z" fill="#7d9442"/>
+      <path d="M8 46L21 33H27L40 46Z" fill="#5f6670"/>
+      <path d="M12 45h24M15 42h18M18 39h12" stroke="#454b54" stroke-width="0.6"/>
+      <circle cx="24" cy="31" r="6" fill="url(#ga-luz)"/>
+      <path d="M5 36V14H15V36Z" fill="#c4a876"/>
+      <path d="M33 36V14H43V36Z" fill="#b39566"/>
+      <path d="M5 14V11.5H7V14M9 14V11.5H11V14M13 14V11.5H15V14M33 14V11.5H35V14M37 14V11.5H39V14M41 14V11.5H43V14" fill="#c4a876"/>
+      <path d="M15 36V24Q24 13 33 24V36H30V25Q24 18 18 25V36Z" fill="#d2c09a"/>
+      <path d="M15 16H30L31.5 19H15Z" fill="#e2dccb"/>
+      <path d="M31.5 19L30 16L33 14.5L32 18Z" fill="#d2c09a"/>
+      <path d="M17 17.5h2M20 17.5h1.5M22.5 17.5h2M25.5 17.5h1.5M28 17.5h1.5" stroke="#d8a838" stroke-width="0.9"/>
+      <path d="M5 22h10M33 22h10M5 29h10M33 29h10" stroke="#a85a3a" stroke-width="0.8"/>
+      <path d="M8 26v4M12 26v4M36 26v4M40 26v4" stroke="#3a2c20" stroke-width="0.9"/>
+      <path d="M44.5 36Q42 26 44.5 15Q47 26 44.5 36Z" fill="#3a5e3a"/>
+      <path d="M5 36Q6 28 9 24M7 36Q9 30 12 28" stroke="#3f6e2c" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#c4a876" stroke-width="1.5"/>
+  </svg>`,
   // Mesas de Solária: platôs de arenito em camadas ao entardecer, um cânion estreito entre eles, o pilar de pedra
   // com a pedra-chapéu e a casa escavada na rocha com a porta escura.
   mesas: `<svg viewBox="0 0 48 48" aria-hidden="true">
@@ -279,6 +307,49 @@ export const MAP_ART: Record<MapId, string> = {
       <path d="M8 45Q14 44 20 45.5M28 46Q34 45 40 46" stroke="#a8643c" stroke-width="0.8" fill="none" stroke-linecap="round"/>
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#e0805a" stroke-width="1.5"/>
+  </svg>`,
+  // Bosque Velho: a mata fechada em copas redondas, um carvalho velho na frente com o tronco grosso e as raízes, a
+  // trilha de terra entrando na clareira e o sol passando pela copa.
+  oldwood: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="ow-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8d07a"/><stop offset="1" stop-color="#5e8a36"/></linearGradient>
+      <clipPath id="ow-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#ow-roda)">
+      <rect width="48" height="48" fill="url(#ow-ceu)"/>
+      <circle cx="6" cy="14" r="7" fill="#2e5a26"/><circle cx="15" cy="10" r="7" fill="#3e6e2a"/><circle cx="40" cy="12" r="8" fill="#2e5a26"/>
+      <circle cx="47" cy="20" r="7" fill="#3e6e2a"/><circle cx="2" cy="24" r="6" fill="#3e6e2a"/>
+      <path d="M0 36Q24 32 48 36V48H0Z" fill="#6c9a3c"/>
+      <path d="M18 48Q22 40 30 37Q34 36 36 34" stroke="#9a7650" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M22.5 38V26h4V38Q28 40 31 40.5H18Q21 40 22.5 38Z" fill="#6a4e36"/>
+      <path d="M25 26h1.5V38Q27 39.5 29 40H26Z" fill="#4a3424"/>
+      <circle cx="17" cy="20" r="7" fill="#3e6e2a"/><circle cx="31" cy="19" r="7.5" fill="#3e6e2a"/>
+      <circle cx="24" cy="14" r="8.5" fill="#5c8e30"/><circle cx="21" cy="11.5" r="3" fill="#8ab84a"/>
+      <circle cx="29" cy="22" r="4" fill="#2e5a26"/>
+      <path d="M8 2L16 30M34 0L40 26" stroke="#fff6c8" stroke-width="2.5" opacity="0.25"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#7aa84a" stroke-width="1.5"/>
+  </svg>`,
+  // Coração da Mata: escuro, a árvore do coração com o oco que brilha, cogumelos frios e vaga-lumes.
+  heartwood: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <radialGradient id="hw-luz" cx="0.5" cy="0.55" r="0.6"><stop offset="0" stop-color="#2f5e48"/><stop offset="1" stop-color="#0c1a14"/></radialGradient>
+      <clipPath id="hw-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#hw-roda)">
+      <rect width="48" height="48" fill="url(#hw-luz)"/>
+      <path d="M0 38Q24 34 48 38V48H0Z" fill="#24463a"/>
+      <path d="M19 40Q21 30 20 22H28Q27 30 29 40Q33 42 38 42H10Q15 42 19 40Z" fill="#4a3c32"/>
+      <path d="M25 22H28Q27 30 29 40Q31 41 33 41.5H27Z" fill="#33281f"/>
+      <ellipse cx="23.5" cy="31" rx="2.2" ry="3.2" fill="#62f0d2"/>
+      <ellipse cx="23.5" cy="31" rx="4" ry="5.5" fill="#62f0d2" opacity="0.25"/>
+      <circle cx="14" cy="16" r="8" fill="#22463a"/><circle cx="34" cy="15" r="8.5" fill="#22463a"/>
+      <circle cx="24" cy="11" r="9" fill="#2f5e48"/><circle cx="20" cy="8.5" r="3" fill="#3a5e6a"/>
+      <path d="M9 41v-3M12 41v-2.5" stroke="#d6e0f2" stroke-width="1.2"/>
+      <ellipse cx="9" cy="37.6" rx="2.2" ry="1.2" fill="#7a4aa6"/><ellipse cx="12" cy="38.4" rx="1.8" ry="1" fill="#62f0d2"/>
+      <circle cx="38" cy="28" r="0.9" fill="#9affea"/><circle cx="8" cy="26" r="0.8" fill="#9affea"/><circle cx="33" cy="34" r="0.7" fill="#9affea"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#3a8a74" stroke-width="1.5"/>
   </svg>`,
 };
 

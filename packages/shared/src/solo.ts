@@ -9,9 +9,9 @@ import type { SpellXp, TalentRanks } from "./talents.ts";
  */
 export const SOLO_LIMITS = {
   /** Loot máximo de uma hunt por mapa: pouco acima do máximo teórico (todos os monstros e baús no topo, com o bônus do boss). */
-  maxLoot: { crypt: 1200, swamp: 3000, desert: 1700, marsh: 1900, cavern: 3000, dunes: 3300, mesas: 3800 } satisfies Record<MapId, number>,
+  maxLoot: { crypt: 1200, swamp: 3000, desert: 1700, marsh: 1900, cavern: 3000, dunes: 3300, mesas: 3800, gates: 100, oldwood: 100, heartwood: 100 } satisfies Record<MapId, number>,
   /** O teto do loot cresce proporcional ao tempo de hunt e só chega ao máximo depois disto (segundos). */
-  fullLootSeconds: { crypt: 90, swamp: 180, desert: 180, marsh: 240, cavern: 240, dunes: 240, mesas: 240 } satisfies Record<MapId, number>,
+  fullLootSeconds: { crypt: 90, swamp: 180, desert: 180, marsh: 240, cavern: 240, dunes: 240, mesas: 240, gates: 180, oldwood: 180, heartwood: 180 } satisfies Record<MapId, number>,
   /**
    * Hunt abandonada (o app fechou ou recarregou no meio) só vale como morte depois que o herói saiu da sala inicial
    * e jogou estes segundos: o cliente avisa o banco (`solo_run_committed`). Antes disso, `start_solo_run` fecha a

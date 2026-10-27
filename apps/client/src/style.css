@@ -68,6 +68,34 @@ html, body {
   pointer-events: none;
   background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 210, 160, 0.08) 0%, transparent 50%, rgba(96, 30, 16, 0.42) 100%);
 }
+/* Portões do Império: sol de fim de manhã, cantos puxando para o verde da mata. */
+#game.gates::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 240, 200, 0.07) 0%, transparent 50%, rgba(30, 40, 14, 0.4) 100%);
+}
+/* Ruína subterrânea dos Portões: escura, só o meio da tela (as tochas) iluminado. */
+#game.gates.cave::after {
+  background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 28%, rgba(6, 4, 3, 0.82) 100%);
+}
+/* Bosque Velho: sol filtrado pela copa, cantos em verde-escuro de mata. */
+#game.oldwood::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 240, 190, 0.07) 0%, transparent 50%, rgba(16, 34, 10, 0.42) 100%);
+}
+/* Coração da Mata: quase sem luz, cantos fechados em verde-azulado. */
+#game.heartwood::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 78% 66% at 50% 40%, rgba(150, 255, 230, 0.05) 0%, transparent 46%, rgba(4, 16, 14, 0.58) 100%);
+}
 /* Caverna da Travessia: toda subterrânea, escura e fria nos cantos. */
 #game.cavern::after {
   content: "";
@@ -356,11 +384,11 @@ button { min-height: 44px; touch-action: manipulation; }
 }
 #stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
 #meta { text-align: right; color: var(--accent); font-size: 13px; }
-/* Bag no HUD: uma fileira com os 8 espaços; tocar abre o menu da bag. */
-#bag { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; cursor: pointer; pointer-events: auto; }
-.bag-hud-cell { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; overflow: hidden; background: #0008; border: 1px solid #3a2f27; }
-.bag-hud-cell img { width: 100%; height: 100%; image-rendering: pixelated; }
-#bag.cheia .bag-hud-cell { border-color: #ff6b6b; }
+/* Botão da bag no HUD: ícone e lotação; tocar abre o menu da bag. */
+#bag { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 8px; font-size: 13px; font-variant-numeric: tabular-nums; background: #0008; border: 1px solid #3a2f27; cursor: pointer; pointer-events: auto; }
+#bag[hidden] { display: none; }
+.bag-button-icon { font-size: 18px; }
+#bag.cheia { color: #ff6b6b; border-color: #ff6b6b; }
 /* Vestiu um item do chão: a bag pisca (o vestido só aparece no menu). */
 #bag.vestiu { animation: bag-vestiu 0.4s ease-in-out 3; }
 @keyframes bag-vestiu { 50% { filter: brightness(1.8); box-shadow: 0 0 0 2px var(--accent); } }
@@ -386,7 +414,7 @@ button { min-height: 44px; touch-action: manipulation; }
 .bag-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 60px)); justify-content: center; gap: 8px; }
 .bag-cell { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; min-height: 0; padding: 0; background: #000; border: 2px solid #3a2f27; }
 .bag-cell .item-img { width: 70%; height: 70%; image-rendering: pixelated; }
-.bag-cell.vazio, .bag-hud-cell.vazio { border-style: dashed; }
+.bag-cell.vazio { border-style: dashed; }
 .bag-cell small { font-size: 9px; }
 .bag-cell.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
 .bag-details { display: grid; gap: 2px; margin-top: 10px; font-size: 13px; }
@@ -1380,9 +1408,6 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-trail-bed.open { stroke-width: 8; opacity: 0.6; }
 .world-trail-next { fill: none; stroke: #3f2c1a; stroke-width: 2.6; stroke-dasharray: 1 8; stroke-linecap: round; opacity: 0.8; }
 .world-trail-open { fill: none; stroke: #8a2f20; stroke-width: 4; stroke-dasharray: 10 7; stroke-linecap: round; }
-/* Lados da bifurcação da Travessia: só aparecem em vermelho com o boss do covil vencido pela classe. */
-.world-branch { display: none; }
-.world-branch.on { display: inline; }
 .world-label, .world-place { fill: #3f2c1a; text-anchor: middle; paint-order: stroke; stroke: #efe5c9; stroke-linejoin: round; }
 .world-label { font-variant: small-caps; stroke-width: 5; }
 .world-place { font-style: italic; stroke-width: 3.5; }

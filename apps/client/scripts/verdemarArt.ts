@@ -453,6 +453,8 @@ export function drawVerdemar() {
   el("path", { d: flat.crack, fill: "#ddd5bf", stroke: INK, "stroke-width": 0.9 }, art);
   el("path", { d: flat.dead, fill: "none", stroke: "#4a3a2a", "stroke-width": 1.2, "stroke-linecap": "round" }, art);
   el("path", { d: flat.shadows, fill: "#3f2c1a", opacity: 0.13 }, art);
+  // Marca d'água com o nome do mundo: laranja, em negrito, por baixo dos desenhos (só a terra e os campos ficam sob ela).
+  el("text", { x: 790, y: 1260, transform: "rotate(-90 790 1260)", "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 190, "font-weight": 700, textLength: 1640, lengthAdjust: "spacing", fill: "#d9601a", opacity: 0.24 }, el("g", { "clip-path": "url(#terra)" }, art)).textContent = "KOSARADIUS";
   // Estradas do império (pedra), por baixo dos desenhos.
   el("path", { d: "M640 1210L700 1150L800 1135M800 1135L880 1080L905 960M800 1135L760 1010L700 950", fill: "none", stroke: "#8d7d62", "stroke-width": 3, "stroke-dasharray": "7 4", opacity: 0.75 }, art);
   glyphs.sort((a, b) => a[0] - b[0]);
@@ -498,7 +500,7 @@ export function drawVerdemar() {
   const fog = el("g", { filter: "url(#nevoa)", fill: "#f6efdf", opacity: 0.86 }, svg);
   for (const f of FOG) el("ellipse", { cx: f.x, cy: f.y, rx: f.rx, ry: f.ry }, fog);
 
-  // Nomes fixos na arte: rios, mares e o nome do mundo (os de região e de lugar ficam em worldMap.ts).
+  // Nomes fixos na arte: rios e mares (os de região e de lugar ficam em worldMap.ts).
   const labels = el("g", { fill: INK, "text-anchor": "middle" }, svg);
   const halo = { stroke: "#efe5c9", "stroke-width": 3, "paint-order": "stroke", "stroke-linejoin": "round" };
   RIVERS.forEach((r, i) => {
@@ -510,8 +512,6 @@ export function drawVerdemar() {
   const seaLabel = (x, y, text, rot) => (el("text", { x, y, transform: `rotate(${rot} ${x} ${y})`, "font-size": 30, "font-style": "italic", "letter-spacing": 10, fill: "#3d5560", opacity: 0.8 }, labels).textContent = text);
   seaLabel(70, 1560, "Oceano da Grande Maré", -90);
   seaLabel(1530, 1840, "Mar das Brumas", 90);
-  el("path", { id: "arco", d: "M330 2330Q800 2210 1270 2330", fill: "none" }, defs);
-  el("text", { "font-size": 72, "font-variant": "small-caps", "letter-spacing": 24, fill: "#d9772e", opacity: 0.32 }, labels).innerHTML = `<textPath href="#arco" startOffset="50%">Kosaradius</textPath>`;
 
   // Rosa dos ventos, cartela com escala e moldura.
   const deco = el("g", {}, svg);

@@ -2,13 +2,13 @@ import { DEFAULT_MAP, type MapId } from "./maps.ts";
 import { createRng } from "./rng.ts";
 
 export const Tile = {
-  /** Parede da cripta, mata do pântano, duna e coqueiro do deserto: bloqueia passo e visão. */
+  /** Parede da cripta, mata do pântano e dos bosques, duna e coqueiro do deserto: bloqueia passo e visão. */
   Wall: 0,
   Floor: 1,
   Portal: 2,
   /** Lagoa do pântano ou do oásis: bloqueia o passo, mas não a visão (flechas e magias passam por cima). */
   Water: 3,
-  /** Muro ou coluna em ruínas, ou rocha do deserto: bloqueia passo e visão. */
+  /** Muro ou coluna em ruínas, rocha do deserto, tronco caído ou pedra dos bosques: bloqueia passo e visão. */
   Ruin: 4,
   /** Boca da caverna do deserto (e a saída dela no subterrâneo): andável; pisar leva à outra ponta. */
   Cave: 5,
@@ -39,8 +39,10 @@ export interface Dungeon {
   side: Rect[];
   /** Pontos de monstros extras fora das zonas do caminho (só nos mapas abertos). */
   meadows: Rect[];
-  /** Passarelas de madeira por cima da água (Pântano): chão comum, o cliente desenha as tábuas. */
+  /** Passarelas de madeira por cima da água (Pântano) e pontes do riacho (Bosque Velho): chão comum, o cliente desenha as tábuas. */
   planks?: Rect[];
+  /** Trilhas batidas dos bosques (`y * width + x` de cada tile): chão comum, o cliente desenha a terra. */
+  trails?: number[];
   portal: { x: number; y: number };
   /** Caverna do deserto: a boca na superfície leva ao subterrâneo (e a saída de lá traz de volta). */
   cave?: CaveLink;
@@ -49,6 +51,33 @@ export interface Dungeon {
    * primeiro também é `boss` e `bossPortal`, para quem só conhece um.
    */
   lairs?: LairRoom[];
+  /** Portões do Império: a planta da cidade e da ruína subterrânea (só para o desenho; o chão é chão comum). */
+  empire?: EmpireLayout;
+}
+
+export interface EmpireLayout {
+  /** Ruas calçadas (via dos túmulos, avenidas e ruas dos bairros). */
+  roads: Rect[];
+  /** Praças de laje: o fórum e o pátio do templo. */
+  plazas: Rect[];
+  /** Primeira linha da muralha (2 tiles de espessura). */
+  wallY: number;
+  /** Vão do portão na muralha. */
+  gate: { x: number; y: number; w: number };
+  /** As duas torres do portão. */
+  towers: Rect[];
+  /** Fachada do templo afundado (ruína), com a escadaria (`CaveLink.entrance`) no meio da linha de baixo. */
+  temple: Rect;
+  /** Estátuas (ruína de 1 tile): os guardiões da escadaria e o imperador da fonte do fórum. */
+  statues: { x: number; y: number }[];
+  /** Mausoléus da via dos túmulos (2×2 de ruína). */
+  tombs: Rect[];
+  /** Colunas postas (colunatas); outra ruína de 1 tile é bloco caído. */
+  columns: { x: number; y: number }[];
+  /** Salas do subterrâneo além do santuário e do tesouro: o vestíbulo e a galeria das colunas. */
+  halls: Rect[];
+  /** Ossários dos lados das catacumbas. */
+  chambers: Rect[];
 }
 
 export interface LairRoom {
@@ -113,6 +142,8 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "marsh") return generateMarsh(seed);
   if (mapId === "cavern") return generateCavern(seed);
   if (mapId === "dunes" || mapId === "mesas") return generateDunes(seed, mapId);
+  if (mapId === "gates") return generateGates(seed);
+  if (mapId === "oldwood" || mapId === "heartwood") return generateForest(seed, mapId);
   return generateCrypt(seed);
 }
 
@@ -1624,6 +1655,844 @@ function buildDunes(seed: number, mapId: "dunes" | "mesas"): Dungeon {
   return { mapId, width: W, height: H, tiles, spawn, boss, bossPortal: centerOf(boss), path, side, meadows, portal };
 }
 
+const GATES_W = 84;
+const GATES_H = 124;
+/** Largura do subterrâneo (rocha em volta incluída), colado à direita da superfície. */
+const GATES_UNDER_W = 44;
+/** Linha (de cima) da muralha da cidade, 2 tiles de espessura: o portão fica nela. */
+const GATES_WALL_FROM_BOTTOM = 34;
+const GATES_MEADOWS = 5;
+
+/**
+ * Portões do Império (Ruínas do Império): a cidade que a Grande Maré não afundou, em pé (o celular na vertical). A
+ * equipe chega pelo sul, pela via dos túmulos (mausoléus e ciprestes dos dois lados da estrada), e entra pelo
+ * portão quebrado da muralha (ou por uma das brechas). Dentro, a cidade em ruínas tomada pelo mato: a avenida
+ * calçada sobe do portão ao fórum (praça com a fonte e colunata em volta), ruas transversais cortam os bairros de
+ * casas caídas, e no norte fica o recinto do templo afundado. A fachada do templo guarda a escadaria (`Tile.Cave`)
+ * que desce para a ruína subterrânea, ao lado da superfície na mesma grade: vestíbulo com a escada de volta, galeria
+ * das colunas, o santuário do boss e, atrás dele, o tesouro, onde abre o portal do boss.
+ *
+ * O desenho lê `Dungeon.empire` (ruas, praças, muralha, portão, fachada, estátuas, túmulos e salas do subterrâneo);
+ * a regra é a de sempre: mata de 1 tile é árvore, ruína de 1 tile é coluna (ou estátua, nos lugares marcados).
+ */
+function generateGates(seed: number): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildGates(seed + attempt);
+    if (attempt >= 20 || gatesConnected(d)) return d;
+  }
+}
+
+/** Superfície ligada a pé do portal até as zonas, as casas e a escadaria; subterrâneo, da escada até o santuário e o tesouro. */
+function gatesConnected(d: Dungeon) {
+  const cave = d.cave!;
+  const under = (p: { x: number }) => isUnderground(d, p.x);
+  const zones = [...d.path.map(centerOf), ...d.meadows.map(centerOf), ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }])];
+  const surface = [d.portal, cave.entrance, ...zones.filter((p) => !under(p))];
+  const below = [cave.exit, centerOf(d.boss), d.bossPortal, ...cave.chests.map((c) => ({ x: c.x, y: c.y + 1 })), ...zones.filter(under)];
+  return connected(d.tiles, d.width, surface) && connected(d.tiles, d.width, below);
+}
+
+function buildGates(seed: number): Dungeon {
+  const rng = createRng(seed);
+  const W = GATES_W;
+  const H = GATES_H;
+  const tiles = new Uint8Array(W * H).fill(Tile.Floor);
+  const inside = (x: number, y: number) => x > 0 && y > 0 && x < W - 1 && y < H - 1;
+  const get = (x: number, y: number) => (inside(x, y) ? tiles[y * W + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * W + x] = t; };
+  const rect = (r: Rect, t: number) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) set(x, y, t); };
+  /** Árvores e colunas postas de propósito: a limpeza final não as confunde com sobra. */
+  const props = new Set<number>();
+  const roads: Rect[] = [];
+  const plazas: Rect[] = [];
+  const statues: { x: number; y: number }[] = [];
+  const tombs: Rect[] = [];
+  const road = (r: Rect) => { rect(r, Tile.Floor); roads.push(r); };
+
+  // Borda: mata fechada, com a espessura ondulando devagar.
+  for (let side = 0; side < 4; side++) {
+    const length = side % 2 === 0 ? W : H;
+    let depth = rng.int(3, 5);
+    let goal = depth;
+    for (let i = 0; i < length; i++) {
+      if (i % 6 === 0) goal = rng.int(3, 6);
+      if (rng.next() < 0.5) depth += Math.sign(goal - depth);
+      for (let d = 0; d < depth; d++) {
+        const [x, y] = side === 0 ? [i, d] : side === 1 ? [W - 1 - d, i] : side === 2 ? [i, H - 1 - d] : [d, i];
+        tiles[y * W + x] = Tile.Wall;
+      }
+    }
+  }
+
+  // Muralha: 2 tiles de pedra de lado a lado, o portão (5 de vão) entre duas torres e duas brechas desmoronadas.
+  const wallY = H - GATES_WALL_FROM_BOTTOM;
+  const gx = Math.round(W / 2) + rng.int(-6, 6);
+  for (let x = 1; x < W - 1; x++) for (let y = wallY; y < wallY + 2; y++) set(x, y, Tile.Ruin);
+  const gate = { x: gx - 2, y: wallY, w: 5 };
+  rect({ x: gate.x, y: wallY, w: gate.w, h: 2 }, Tile.Floor);
+  const towers: Rect[] = [{ x: gx - 5, y: wallY - 1, w: 3, h: 4 }, { x: gx + 3, y: wallY - 1, w: 3, h: 4 }];
+  for (const t of towers) rect(t, Tile.Ruin);
+  const breaches: Rect[] = [];
+  for (const dir of [-1, 1]) {
+    const bx = dir < 0 ? rng.int(10, gx - 14) : rng.int(gx + 12, W - 14);
+    const bw = rng.int(3, 4);
+    const b: Rect = { x: bx, y: wallY, w: bw, h: 2 };
+    rect(b, Tile.Floor);
+    breaches.push(b);
+  }
+
+  // Entrada ao sul, fora da muralha, e a via dos túmulos até o portão (com uma curva).
+  const spawn: Rect = { x: clamp(gx + rng.int(-16, 16) - 5, 8, W - 18), y: H - 17, w: 10, h: 9 };
+  rect(spawn, Tile.Floor);
+  const s = centerOf(spawn);
+  const bendY = wallY + rng.int(8, 12);
+  road({ x: s.x - 1, y: bendY, w: 3, h: spawn.y - bendY + 1 });
+  road({ x: Math.min(s.x, gx) - 1, y: bendY, w: Math.abs(s.x - gx) + 3, h: 3 });
+  road({ x: gx - 1, y: wallY - 2, w: 3, h: bendY - wallY + 3 });
+
+  // Dentro da muralha: a avenida do portão ao fórum, o fórum, a avenida do norte até o recinto do templo e as ruas
+  // transversais (a de baixo, perto da muralha, e a do fórum, de lado a lado).
+  const fy = rng.int(54, 60);
+  const forum: Rect = { x: clamp(gx - 7 + rng.int(-2, 2), 8, W - 23), y: fy - 5, w: 15, h: 11 };
+  const fc = centerOf(forum);
+  road({ x: gx - 1, y: forum.y + forum.h - 1, w: 3, h: wallY - (forum.y + forum.h) + 1 });
+  if (fc.x !== gx) road({ x: Math.min(fc.x, gx) - 1, y: forum.y + forum.h - 2, w: Math.abs(fc.x - gx) + 3, h: 3 });
+  rect(forum, Tile.Floor);
+  plazas.push(forum);
+  road({ x: 4, y: fc.y - 1, w: W - 8, h: 3 });
+  const lowY = wallY - rng.int(11, 14);
+  road({ x: 6, y: lowY, w: W - 12, h: 3 });
+
+  const tx = clamp(fc.x + rng.int(-9, 9), 16, W - 17);
+  const court: Rect = { x: tx - 10, y: 8, w: 21, h: 14 };
+  const ey = court.y + 4;
+  const entrance = { x: tx, y: ey };
+  road({ x: tx - 1, y: court.y + court.h - 1, w: 3, h: forum.y - (court.y + court.h) + 2 });
+  if (tx !== fc.x) road({ x: Math.min(tx, fc.x) - 1, y: forum.y - 3, w: Math.abs(tx - fc.x) + 3, h: 3 });
+  road({ x: fc.x - 1, y: forum.y - 3, w: 3, h: 4 });
+  // Ruas dos bairros: uma de cada lado, da rua de baixo até a do fórum.
+  for (const dir of [-1, 1]) {
+    const x = dir < 0 ? rng.int(12, Math.max(13, forum.x - 8)) : rng.int(Math.min(W - 15, forum.x + forum.w + 6), W - 14);
+    road({ x, y: fc.y, w: 2, h: lowY - fc.y + 1 });
+  }
+  rect(court, Tile.Floor);
+  plazas.push(court);
+
+  // Recinto do templo: atrás da fachada é tudo mata (o templo afundou na encosta), muro baixo dos lados do pátio.
+  for (let y = 1; y < court.y; y++) for (let x = court.x - 2; x <= court.x + court.w + 1; x++) set(x, y, Tile.Wall);
+  const temple: Rect = { x: tx - 4, y: ey - 3, w: 9, h: 4 };
+  rect(temple, Tile.Ruin);
+  for (let y = court.y; y < temple.y; y++) for (let x = temple.x; x < temple.x + temple.w; x++) set(x, y, Tile.Wall);
+  for (const dir of [-1, 1]) {
+    const x = dir < 0 ? court.x - 1 : court.x + court.w;
+    for (let y = court.y; y < court.y + court.h - 3; y++) if (rng.next() < 0.8) set(x, y, Tile.Ruin);
+    // Colunata do pátio: uma coluna a cada 2 tiles, por dentro do muro.
+    for (let y = court.y + 1; y < court.y + court.h - 2; y += 2) {
+      const cx = dir < 0 ? court.x + 1 : court.x + court.w - 2;
+      if (rng.next() < 0.8) { set(cx, y, Tile.Ruin); props.add(y * W + cx); }
+    }
+    statues.push({ x: tx + dir * 3, y: ey + 2 });
+  }
+  for (const st of statues) set(st.x, st.y, Tile.Ruin);
+
+  // Fonte no meio do fórum: tanque com a estátua do imperador no meio.
+  const fountain: Rect = { x: fc.x - 2, y: fc.y - 1, w: 5, h: 3 };
+  rect(fountain, Tile.Water);
+  set(fc.x, fc.y, Tile.Ruin);
+  statues.push({ x: fc.x, y: fc.y });
+  // Colunata em volta do fórum, falhada (deixa passar).
+  for (let x = forum.x + 1; x < forum.x + forum.w - 1; x += 2)
+    for (const y of [forum.y, forum.y + forum.h - 1])
+      if (Math.abs(x - fc.x) > 2 && rng.next() < 0.7) { set(x, y, Tile.Ruin); props.add(y * W + x); }
+  for (let y = forum.y + 2; y < forum.y + forum.h - 2; y += 2)
+    for (const x of [forum.x, forum.x + forum.w - 1])
+      if (Math.abs(y - fc.y) > 1 && rng.next() < 0.7) { set(x, y, Tile.Ruin); props.add(y * W + x); }
+  // A colunata não fecha as ruas que chegam ao fórum.
+  for (const r of roads)
+    for (let y = r.y; y < r.y + r.h; y++)
+      for (let x = r.x; x < r.x + r.w; x++)
+        if (inRect(forum, x, y) && props.has(y * W + x)) { set(x, y, Tile.Floor); props.delete(y * W + x); }
+
+  // Zonas do caminho (encontros), da entrada ao templo: a via, a praça do portão, o bairro baixo, o fórum, a
+  // avenida do norte e o pátio do templo.
+  const zone = (p: { x: number; y: number }, half = 4): Rect => ({ x: p.x - half, y: p.y - half, w: half * 2 + 1, h: half * 2 + 1 });
+  const lowSide = rng.next() < 0.5 ? -1 : 1;
+  const path: Rect[] = [
+    zone({ x: Math.round((s.x + gx) / 2), y: bendY + 1 }),
+    zone({ x: gx, y: wallY - 5 }),
+    zone({ x: clamp(gx + lowSide * rng.int(14, 20), 12, W - 13), y: lowY + 1 }),
+    zone({ x: fc.x, y: fc.y + 3 }, 5),
+    zone({ x: tx, y: Math.round((court.y + court.h + forum.y) / 2) }),
+    zone({ x: tx, y: court.y + court.h - 4 }, 5),
+  ];
+
+  // Casas em ruínas (salas laterais: mini-boss e baú): muro de pedra com falhas e 2 portas, nos bairros entre as ruas.
+  const side: Rect[] = [];
+  const blocked = (r: Rect, gap: number) =>
+    [...roads, ...plazas, grow(spawn, 2), ...towers, grow(temple, 2), ...breaches].some((o) => gapBetween(r, o) < gap)
+    || side.some((o) => gapBetween(r, o) < 3);
+  for (let tries = 0; tries < 120 && side.length < 4; tries++) {
+    const w = rng.int(7, 9);
+    const h = rng.int(6, 8);
+    const r: Rect = { x: rng.int(7, W - w - 8), y: rng.int(court.y + court.h + 2, wallY - h - 2), w, h };
+    if (blocked(r, 1)) continue;
+    let ok = true;
+    for (let y = r.y - 1; y <= r.y + r.h && ok; y++) for (let x = r.x - 1; x <= r.x + r.w && ok; x++) if (get(x, y) !== Tile.Floor) ok = false;
+    if (!ok) continue;
+    for (let y = r.y; y < r.y + r.h; y++)
+      for (let x = r.x; x < r.x + r.w; x++) {
+        const border = x === r.x || y === r.y || x === r.x + r.w - 1 || y === r.y + r.h - 1;
+        if (border && rng.next() >= 0.2) set(x, y, Tile.Ruin);
+      }
+    const cx = r.x + Math.floor(r.w / 2);
+    const cy = r.y + Math.floor(r.h / 2);
+    for (const door of shuffled(rng, [0, 1, 2, 3]).slice(0, 2))
+      for (let k = -1; k <= 0; k++) {
+        if (door === 0) set(cx + k, r.y, Tile.Floor);
+        if (door === 1) set(r.x + r.w - 1, cy + k, Tile.Floor);
+        if (door === 2) set(cx + k, r.y + r.h - 1, Tile.Floor);
+        if (door === 3) set(r.x, cy + k, Tile.Floor);
+      }
+    set(r.x + 1, r.y + 1, Tile.Floor);
+    side.push(r);
+  }
+
+  // Campinas: pontos de monstros extras pelos bairros, longe da entrada, das zonas e das casas.
+  const meadows: Rect[] = [];
+  for (let tries = 0; tries < 80 && meadows.length < GATES_MEADOWS; tries++) {
+    const p = { x: rng.int(10, W - 11), y: rng.int(court.y + court.h + 2, wallY - 4) };
+    const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+    if (!path.every((z) => far(centerOf(z), 12)) || !meadows.every((m) => far(centerOf(m), 13))) continue;
+    if (side.some((r) => gapBetween(r, { ...p, w: 1, h: 1 }) < 3) || get(p.x, p.y) !== Tile.Floor) continue;
+    meadows.push({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 });
+  }
+
+  const keep = [
+    grow(spawn, 2), ...roads, ...plazas, ...breaches, ...side.map((r) => grow(r, 1)),
+    { x: gate.x - 1, y: wallY - 3, w: gate.w + 2, h: 7 },
+    { x: temple.x - 1, y: temple.y + temple.h, w: temple.w + 2, h: 3 },
+    ...[...path, ...meadows].map((r) => { const c = centerOf(r); return { x: c.x - 2, y: c.y - 2, w: 5, h: 5 }; }),
+  ];
+  const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const goals = [
+    s, entrance, ...path.map(centerOf), ...meadows.map(centerOf), ...side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
+  // A escadaria entra na conta como chão (ela é `Tile.Cave` no fim).
+  set(entrance.x, entrance.y, Tile.Floor);
+
+  /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
+  const obstacle = (place: () => void) => {
+    const before = tiles.slice();
+    const propsBefore = new Set(props);
+    place();
+    let undo = false;
+    for (let i = 0; i < tiles.length && !undo; i++) if (tiles[i] !== before[i] && kept(i % W, Math.floor(i / W))) undo = true;
+    if (undo || !connected(tiles, W, goals)) {
+      tiles.set(before);
+      props.clear();
+      propsBefore.forEach((i) => props.add(i));
+      return false;
+    }
+    return true;
+  };
+  const orth = (x: number, y: number, t: number) => get(x - 1, y) === t || get(x + 1, y) === t || get(x, y - 1) === t || get(x, y + 1) === t;
+  /** Árvore (cipreste ou pinheiro) só no chão e sem mata nos 4 lados (senão vira pedaço de mata). */
+  const tree = (x: number, y: number) => {
+    if (!inside(x, y) || get(x, y) !== Tile.Floor || orth(x, y, Tile.Wall) || orth(x, y, Tile.Ruin)) return;
+    set(x, y, Tile.Wall);
+    props.add(y * W + x);
+  };
+
+  // Via dos túmulos: mausoléus (2×2) e ciprestes dos dois lados da estrada, fora da muralha.
+  for (let y = wallY + 4; y < spawn.y - 1; y += rng.int(3, 5))
+    for (const dir of [-1, 1]) {
+      const r = roads[0];
+      const x = dir < 0 ? r.x - 3 - rng.int(0, 1) : r.x + r.w + 1 + rng.int(0, 1);
+      if (rng.next() < 0.55) {
+        const t: Rect = { x, y, w: 2, h: 2 };
+        if (obstacle(() => rect(t, Tile.Ruin))) tombs.push(t);
+      } else obstacle(() => tree(x + (dir < 0 ? 1 : 0), y));
+    }
+  for (let x = 4; x < W - 4; x += rng.int(3, 5)) {
+    const y = bendY + (rng.next() < 0.5 ? -2 : 4);
+    if (rng.next() < 0.6) obstacle(() => tree(x, y));
+  }
+
+  // Restos da cidade nos bairros: trechos de muro, cantos e alicerces de casa (como as casas, sem portas certas).
+  for (let i = 0; i < 26; i++) {
+    const x = rng.int(6, W - 7);
+    const y = rng.int(court.y + court.h + 1, wallY - 3);
+    const kind = rng.int(0, 3);
+    obstacle(() => {
+      if (kind === 0) { const n = rng.int(3, 6); for (let k = 0; k < n; k++) if (rng.next() < 0.85) set(x + k, y, Tile.Ruin); }
+      else if (kind === 1) { const n = rng.int(3, 5); for (let k = 0; k < n; k++) if (rng.next() < 0.85) set(x, y + k, Tile.Ruin); }
+      else if (kind === 2) { for (let k = 0; k < 4; k++) { set(x + k, y, Tile.Ruin); set(x, y + k, Tile.Ruin); } }
+      else {
+        const w = rng.int(4, 6), h = rng.int(4, 5);
+        for (let yy = y; yy < y + h; yy++)
+          for (let xx = x; xx < x + w; xx++) {
+            const border = xx === x || yy === y || xx === x + w - 1 || yy === y + h - 1;
+            if (border && rng.next() < 0.55) set(xx, yy, Tile.Ruin);
+          }
+      }
+    });
+  }
+
+  // Colunatas da avenida do portão: uma coluna a cada 2 tiles nos dois lados (falhando aqui e ali).
+  for (let y = forum.y + forum.h + 2; y < wallY - 3; y += 2)
+    for (const x of [gx - 3, gx + 3])
+      if (rng.next() < 0.7) obstacle(() => { if (get(x, y) === Tile.Floor && !orth(x, y, Tile.Ruin)) { set(x, y, Tile.Ruin); props.add(y * W + x); } });
+
+  // Cisternas e espelhos d'água nos bairros: tanques retangulares.
+  for (let i = 0; i < 6; i++) {
+    const w = rng.int(3, 5), h = rng.int(2, 3);
+    const x = rng.int(7, W - w - 7), y = rng.int(court.y + court.h + 2, wallY - h - 3);
+    obstacle(() => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Water); });
+  }
+
+  // O mato tomando a cidade: moitas de mata (manchas) e bosques de ciprestes e pinheiros.
+  for (let i = 0; i < 22; i++) {
+    const x = rng.int(6, W - 7), y = rng.int(court.y + court.h, H - 6);
+    const rx = 1.2 + rng.next() * 2.4, ry = 1 + rng.next() * 1.8;
+    obstacle(() => {
+      for (let yy = Math.floor(y - ry - 1); yy <= y + ry + 1; yy++)
+        for (let xx = Math.floor(x - rx - 1); xx <= x + rx + 1; xx++)
+          if (((xx - x) / rx) ** 2 + ((yy - y) / ry) ** 2 <= 1 - rng.next() * 0.2 && get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Wall);
+    });
+  }
+  for (let i = 0; i < 30; i++) {
+    const x = rng.int(6, W - 7), y = rng.int(court.y + court.h, H - 6);
+    const count = rng.int(2, 5);
+    obstacle(() => { for (let k = 0; k < count * 2; k++) tree(x + rng.int(-3, 3), y + rng.int(-3, 3)); });
+  }
+  for (let y = 4; y < H - 4; y++)
+    for (let x = 4; x < W - 4; x++) {
+      if (kept(x, y) || !openAround(get, x, y, 2)) continue;
+      if (rng.next() < 0.01) tree(x, y);
+    }
+
+  // Mata solta que não foi posta de propósito volta a ser chão.
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (tiles[i] === Tile.Wall && !props.has(i) && !orth(x, y, Tile.Wall)) tiles[i] = Tile.Floor;
+    }
+
+  // Bolsões sem acesso viram mata.
+  const reach = reachableFrom(tiles, W, s);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+
+  const portal = s;
+  set(portal.x, portal.y, Tile.Portal);
+  set(entrance.x, entrance.y, Tile.Cave);
+  const columns = [...props].filter((i) => tiles[i] === Tile.Ruin).sort((a, b) => a - b).map((i) => ({ x: i % W, y: Math.floor(i / W) }));
+
+  // A grade cresce para a direita: a ruína subterrânea fica ao lado, toda de pedra, e é escavada por cima.
+  const width = W + GATES_UNDER_W;
+  const grid = new Uint8Array(width * H).fill(Tile.Wall);
+  for (let y = 0; y < H; y++) grid.set(tiles.subarray(y * W, (y + 1) * W), y * width);
+  const under = carveCatacomb(createRng(seed ^ 0x1a9e_c0de), grid, width, H, { x: W, y: 0, w: GATES_UNDER_W, h: H });
+
+  return {
+    mapId: "gates", width, height: H, tiles: grid, spawn, boss: under.sanctum, bossPortal: under.portal,
+    path: [...path, ...under.zones], side, meadows, portal,
+    cave: { entrance, exit: under.exit, under: under.area, reward: under.treasury, chests: under.chests },
+    empire: {
+      roads, plazas, wallY, gate, towers, temple, statues, tombs, columns,
+      halls: [under.vestibule, under.gallery], chambers: under.chambers,
+    },
+  };
+}
+
+/**
+ * Ruína subterrânea dos Portões, de baixo para cima (o celular fica na vertical), construída em pedra (salas
+ * retas, não caverna): o vestíbulo com a escada de volta para a superfície, o corredor das catacumbas (ossários dos
+ * lados), a galeria das colunas (duas fileiras de pilares, alguns caídos), outro corredor e o santuário do boss
+ * (salão largo com pilares na volta). Atrás do santuário, o tesouro: os 4 lugares dos baús no fundo e o portal.
+ */
+function carveCatacomb(rng: ReturnType<typeof createRng>, tiles: Uint8Array, width: number, height: number, area: Rect) {
+  const inArea = (x: number, y: number) => x > area.x + 1 && y > area.y + 1 && x < area.x + area.w - 2 && y < area.y + area.h - 2;
+  const set = (x: number, y: number, t: number) => { if (inArea(x, y)) tiles[y * width + x] = t; };
+  const get = (x: number, y: number) => (inArea(x, y) ? tiles[y * width + x] : Tile.Wall);
+  const room = (r: Rect) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) set(x, y, Tile.Floor); };
+  /** Corredor de 3 tiles subindo de `from` até `toY`, com um degrau para o lado no meio (o x de chegada). */
+  const corridor = (fromX: number, fromY: number, toX: number, toY: number) => {
+    const mid = Math.round((fromY + toY) / 2);
+    room({ x: fromX - 1, y: mid, w: 3, h: fromY - mid + 1 });
+    room({ x: Math.min(fromX, toX) - 1, y: mid - 1, w: Math.abs(fromX - toX) + 3, h: 3 });
+    room({ x: toX - 1, y: toY, w: 3, h: mid - toY + 1 });
+  };
+  const cx = area.x + Math.floor(area.w / 2);
+  const span = 66;
+  const top = area.y + Math.floor((height - span) / 2);
+
+  const treasury: Rect = { x: cx - 6, y: top, w: 13, h: 5 };
+  room(treasury);
+  const chests = [2, 5, 7, 10].map((dx) => ({ x: treasury.x + dx, y: treasury.y + 1 }));
+  const portal = { x: cx, y: treasury.y + 3 };
+
+  const sanctum: Rect = { x: cx - 9 + rng.int(-1, 1), y: treasury.y + treasury.h + 3, w: 19, h: 15 };
+  room(sanctum);
+  const sc = centerOf(sanctum);
+  room({ x: cx - 1, y: treasury.y + treasury.h, w: 3, h: 3 });
+  // Pilares na volta do santuário, a 2 tiles das paredes (o boss nasce no meio, livre).
+  for (let x = sanctum.x + 2; x < sanctum.x + sanctum.w - 2; x += 4) for (const y of [sanctum.y + 2, sanctum.y + sanctum.h - 3]) set(x, y, Tile.Wall);
+  for (let y = sanctum.y + 6; y < sanctum.y + sanctum.h - 4; y += 4) for (const x of [sanctum.x + 2, sanctum.x + sanctum.w - 3]) set(x, y, Tile.Wall);
+
+  const gallery: Rect = { x: cx - 7 + rng.int(-2, 2), y: sanctum.y + sanctum.h + 6, w: 15, h: 13 };
+  room(gallery);
+  const gc = centerOf(gallery);
+  corridor(gc.x, gallery.y - 1, sc.x, sanctum.y + sanctum.h);
+  // Duas fileiras de pilares; alguns caíram e deixaram entulho do lado.
+  for (let y = gallery.y + 2; y < gallery.y + gallery.h - 1; y += 2)
+    for (const x of [gc.x - 4, gc.x + 4]) {
+      if (rng.next() < 0.18) {
+        set(x + (x < gc.x ? -1 : 1), y, Tile.Ruin);
+        continue;
+      }
+      set(x, y, Tile.Wall);
+    }
+
+  const vestibule: Rect = { x: cx - 5 + rng.int(-2, 2), y: gallery.y + gallery.h + 7, w: 11, h: 7 };
+  room(vestibule);
+  const vc = centerOf(vestibule);
+  corridor(vc.x, vestibule.y - 1, gc.x, gallery.y + gallery.h);
+  const exit = { x: vc.x, y: vestibule.y + vestibule.h - 1 };
+  set(exit.x, exit.y, Tile.Cave);
+
+  // Ossários: salinhas dos lados do corredor das catacumbas e da galeria, com uma porta de 1 tile.
+  const chambers: Rect[] = [];
+  const hooks = [
+    { x: gallery.x, y: gallery.y + 3 + rng.int(0, 4), dir: -1 },
+    { x: gallery.x + gallery.w - 1, y: gallery.y + 3 + rng.int(0, 4), dir: 1 },
+    { x: vc.x, y: vestibule.y - 4, dir: rng.next() < 0.5 ? -1 : 1 },
+  ];
+  for (const h of hooks) {
+    const w = rng.int(5, 6), hh = rng.int(4, 5);
+    const r: Rect = { x: h.dir < 0 ? h.x - 2 - w : h.x + 3, y: h.y - Math.floor(hh / 2), w, h: hh };
+    if (r.x < area.x + 3 || r.x + r.w > area.x + area.w - 3) continue;
+    room(r);
+    room({ x: h.dir < 0 ? r.x + r.w : h.x + 1, y: h.y, w: h.dir < 0 ? h.x - (r.x + r.w) : r.x - h.x - 1, h: 1 });
+    // Sarcófago encostado no fundo.
+    set(h.dir < 0 ? r.x : r.x + r.w - 1, r.y + Math.floor(r.h / 2), Tile.Ruin);
+    chambers.push(r);
+  }
+
+  // Entulho de teto caído pelos corredores (fica encostado na parede).
+  for (let i = 0; i < 6; i++) {
+    const x = rng.int(area.x + 3, area.x + area.w - 4), y = rng.int(top, vestibule.y + vestibule.h);
+    if (get(x, y) !== Tile.Floor || [sanctum, treasury, vestibule].some((r) => gapBetween(r, { x, y, w: 1, h: 1 }) === 0)) continue;
+    if (get(x - 1, y) === Tile.Wall || get(x + 1, y) === Tile.Wall) set(x, y, Tile.Ruin);
+  }
+
+  const zones = [
+    { x: vestibule.x + 1, y: vestibule.y, w: vestibule.w - 2, h: vestibule.h - 2 },
+    { x: gc.x - 3, y: gallery.y + 2, w: 7, h: gallery.h - 4 },
+  ];
+  const underArea: Rect = { x: area.x, y: treasury.y - 6, w: area.w, h: vestibule.y + vestibule.h + 6 - (treasury.y - 6) };
+  return { area: underArea, sanctum, portal, treasury, chests, exit, vestibule, gallery, chambers, zones };
+}
+
+const FOREST_W = 96;
+const FOREST_H = 128;
+/** Zonas de monstros do caminho, do sul (entrada) ao norte (arena). */
+const FOREST_STEPS = 7;
+const FOREST_MEADOWS = 5;
+/** Clareirinhas só de passagem (sem monstros), para a mata não virar um labirinto de corredores. */
+const FOREST_GLADES = 9;
+
+/**
+ * Bosque Velho e Coração da Mata: o mesmo terreno, em pé (o celular na vertical). O mapa nasce todo de mata fechada
+ * e recebe clareiras ligadas por trilhas que serpenteiam: a entrada na clareira do sul, a arena do boss na do norte e,
+ * entre elas, as zonas subindo de um lado para o outro, campinas e clareirinhas de passagem. Cada zona se liga à
+ * seguinte e, às vezes, a uma mais longe, então há mais de um caminho. A mata bloqueia passo e visão: só se vê a
+ * clareira e a trilha onde se está. No Bosque Velho um riacho corta o mapa de oeste a leste e as trilhas o cruzam por
+ * pontes de madeira; no Coração da Mata, mais fechado (trilhas mais estreitas, mais árvores anciãs), lagoas escuras.
+ */
+function generateForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildForest(seed + attempt, mapId);
+    if (attempt >= 20 || connected(d.tiles, d.width, dunesGoals(d))) return d;
+  }
+}
+
+function buildForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
+  const rng = createRng(seed);
+  const heart = mapId === "heartwood";
+  const W = FOREST_W;
+  const H = FOREST_H;
+  const tiles = new Uint8Array(W * H).fill(Tile.Wall);
+  /** Até 3 tiles da borda é sempre mata: a clareira e a trilha não encostam no fim do mapa. */
+  const inside = (x: number, y: number) => x >= 3 && y >= 3 && x < W - 3 && y < H - 3;
+  const get = (x: number, y: number) => (x >= 0 && y >= 0 && x < W && y < H ? tiles[y * W + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * W + x] = t; };
+  /** Mata de 1 tile ou bloco de 2×2 posto de propósito (árvore solta, árvore anciã): a limpeza final não o tira. */
+  const props = new Set<number>();
+  /** Chão que não recebe obstáculo (entrada, arena, miolo das zonas, salas, pontes). */
+  const firm = new Uint8Array(W * H);
+  /** Trilha batida: o cliente desenha a terra. */
+  const trail = new Uint8Array(W * H);
+  const wave = () => ({ a: rng.next() * Math.PI * 2, f: 0.15 + rng.next() * 0.2 });
+
+  /** Clareiras abertas até aqui: dentro delas a trilha se apaga (não há terra batida no meio da clareira). */
+  const opens: { x: number; y: number; rx: number; ry: number }[] = [];
+  const inOpen = (x: number, y: number) => opens.some((o) => Math.hypot((x - o.x) / o.rx, (y - o.y) / o.ry) < 0.6);
+  /** Clareira: um círculo de beira irregular (3 ondas no ângulo). */
+  const glade = (cx: number, cy: number, rx: number, ry: number) => {
+    opens.push({ x: cx, y: cy, rx, ry });
+    const w1 = wave(), w2 = wave(), w3 = wave();
+    for (let y = Math.floor(cy - ry - 3); y <= cy + ry + 3; y++)
+      for (let x = Math.floor(cx - rx - 3); x <= cx + rx + 3; x++) {
+        const a = Math.atan2(y - cy, x - cx);
+        const edge = 1 + Math.sin(a * 3 + w1.a) * 0.12 + Math.sin(a * 5 + w2.a) * 0.08 + Math.sin(a * 7 + w3.a) * 0.05;
+        if (Math.hypot((x - cx) / rx, (y - cy) / ry) <= edge) set(x, y, Tile.Floor);
+      }
+  };
+  /** Trilha de `a` até `b`, serpenteando, com `half` tiles de meia largura; o meio vira terra batida. */
+  const path = (a: { x: number; y: number }, b: { x: number; y: number }, half: number) => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 1) return;
+    const nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len;
+    const amp = Math.min(6, len * 0.12) * (0.5 + rng.next());
+    const w1 = wave(), w2 = wave();
+    const steps = Math.ceil(len * 2);
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps;
+      // A curva some nas pontas: a trilha sai e chega no meio da clareira.
+      const bend = Math.sin(t * Math.PI) * (Math.sin(t * Math.PI * 2 * w1.f * 5 + w1.a) * amp + Math.sin(t * Math.PI * 7 + w2.a) * 0.8);
+      const px = a.x + (b.x - a.x) * t + nx * bend, py = a.y + (b.y - a.y) * t + ny * bend;
+      const r = half + Math.sin(t * 9 + w2.a) * 0.35;
+      for (let y = Math.floor(py - r - 1); y <= py + r + 1; y++)
+        for (let x = Math.floor(px - r - 1); x <= px + r + 1; x++) {
+          const d = Math.hypot(x - px, y - py);
+          if (d > r || !inside(x, y)) continue;
+          if (get(x, y) === Tile.Wall) set(x, y, Tile.Floor);
+          if (d <= 0.95 && get(x, y) === Tile.Floor && !inOpen(x, y)) trail[y * W + x] = 1;
+        }
+    }
+  };
+  const half = heart ? 1.25 : 1.6;
+
+  // Riacho do Bosque Velho: corta o mapa de oeste a leste no terço do meio, em curvas. As zonas desviam dele.
+  const r1 = wave(), r2 = wave();
+  const riverY0 = Math.round(H * 0.5) + rng.int(-8, 8);
+  // Curvas suaves (no máximo ~0,5 tile de subida por tile): a água emenda e a ponte fica curta.
+  const riverY = (x: number) => riverY0 + Math.sin(x * r1.f * 0.4 + r1.a) * 5 + Math.sin(x * r2.f * 0.9 + r2.a) * 1.5;
+  const nearRiver = (x: number, y: number, gap: number) => !heart && Math.abs(y - riverY(x)) < gap;
+
+  // Entrada na clareira do sul.
+  const spawn: Rect = { x: rng.int(18, W - 28), y: H - 19, w: 10, h: 10 };
+  const s = centerOf(spawn);
+  glade(s.x, s.y, 8, 7);
+
+  // Arena do boss na clareira do norte. No Coração da Mata, a árvore do coração fica no alto dela.
+  const ac = { x: Math.round(W / 2) + rng.int(-8, 8), y: 22 };
+  const boss: Rect = { x: ac.x - 8, y: ac.y - 7, w: 17, h: 15 };
+  glade(ac.x, ac.y, 10.5, 9.5);
+  for (let y = ac.y - 9; y <= ac.y + 9; y++) for (let x = ac.x - 11; x <= ac.x + 11; x++) if (Math.hypot((x - ac.x) / 1.1, y - ac.y) <= 8.6) { set(x, y, Tile.Floor); firm[y * W + x] = 1; }
+  const arenaBottom = boss.y + boss.h;
+
+  // Zonas: a primeira perto da entrada; as outras sobem do sul ao norte, trocando de lado (3 colunas).
+  const zones: Rect[] = [];
+  const anchors: { x: number; y: number }[] = [];
+  const zone = (x: number, y: number) => {
+    const h = rng.int(5, 6);
+    const cx = clamp(x, h + 8, W - h - 9);
+    let cy = clamp(y, h + 8, H - h - 9);
+    // Longe do riacho (a zona é chão firme dos dois lados da água, nunca em cima dela).
+    for (let k = 0; k < 12 && nearRiver(cx, cy, h + 4); k++) cy += cy < riverY(cx) ? -1 : 1;
+    anchors.push({ x: cx, y: cy });
+    zones.push({ x: cx - h, y: cy - h, w: h * 2 + 1, h: h * 2 + 1 });
+    glade(cx, cy, h + 2 + rng.next() * 2, h + 1.5 + rng.next() * 2);
+  };
+  const columns = [W * 0.22, W * 0.5, W * 0.78];
+  zone(s.x + (s.x < W / 2 ? 1 : -1) * rng.int(18, 24), H - 26 + rng.int(-2, 2));
+  let column = anchors[0].x < W / 3 ? 0 : anchors[0].x > (W * 2) / 3 ? 2 : 1;
+  const top = arenaBottom + 10;
+  const low = H - 44;
+  for (let i = 1; i < FOREST_STEPS; i++) {
+    const next = [0, 1, 2].filter((c) => c !== column);
+    column = rng.pick(next);
+    const y = Math.round(low + ((top - low) * (i - 1)) / (FOREST_STEPS - 2)) + rng.int(-2, 2);
+    zone(columns[column] + rng.int(-5, 5), y);
+  }
+
+  // Campinas: pontos de monstros extras, longe da entrada, das zonas, da arena e umas das outras.
+  const meadows: Rect[] = [];
+  const far = (p: { x: number; y: number }, q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+  for (let tries = 0; tries < 120 && meadows.length < FOREST_MEADOWS; tries++) {
+    const p = { x: rng.int(12, W - 13), y: rng.int(arenaBottom + 6, H - 24) };
+    if (!far(p, s, 22) || !anchors.every((a) => far(p, a, 15)) || !meadows.every((m) => far(p, centerOf(m), 15)) || !far(p, ac, 18) || nearRiver(p.x, p.y, 8)) continue;
+    meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
+    glade(p.x, p.y, 5 + rng.next() * 1.5, 4.5 + rng.next() * 1.5);
+  }
+  // Clareirinhas de passagem.
+  const glades: { x: number; y: number }[] = [];
+  const nodes = () => [s, ...anchors, ...meadows.map(centerOf), ...glades];
+  for (let tries = 0; tries < 120 && glades.length < FOREST_GLADES; tries++) {
+    const p = { x: rng.int(10, W - 11), y: rng.int(arenaBottom + 4, H - 14) };
+    if (!nodes().every((q) => far(p, q, 12)) || !far(p, ac, 14) || nearRiver(p.x, p.y, 5)) continue;
+    glades.push(p);
+    glade(p.x, p.y, 2.6 + rng.next() * 1.8, 2.4 + rng.next() * 1.6);
+  }
+
+  // Trilhas: a entrada na primeira zona, cada zona na seguinte e as duas últimas na arena; cada campina e clareirinha
+  // nas duas pontas mais perto; e, às vezes, uma zona numa mais longe (atalho). Assim sempre há mais de uma rota.
+  const arenaGate = (x: number) => ({ x: clamp(x, ac.x - 7, ac.x + 7), y: ac.y + 7 });
+  path(s, anchors[0], half + 0.3);
+  for (let i = 1; i < anchors.length; i++) path(anchors[i - 1], anchors[i], half);
+  path(anchors[anchors.length - 1], arenaGate(anchors[anchors.length - 1].x), half);
+  path(anchors[anchors.length - 2], arenaGate(anchors[anchors.length - 2].x), half);
+  for (const p of [...meadows.map(centerOf), ...glades]) {
+    const others = nodes().filter((q) => q !== p && !(q.x === p.x && q.y === p.y)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    for (const q of others.slice(0, rng.next() < 0.5 ? 2 : 1)) path(p, q, half - 0.2);
+  }
+  for (let i = 0; i < anchors.length - 2; i++) if (rng.next() < 0.45) path(anchors[i], anchors[i + 2], half - 0.2);
+
+  // Riacho (Bosque Velho): 2 tiles de largura, às vezes 3; onde uma trilha cruza, uma ponte de madeira.
+  const planks: Rect[] = [];
+  if (!heart) {
+    const before = tiles.slice();
+    const w1 = wave();
+    for (let k = 0; k < W * 4; k++) {
+      const px = k / 4, py = riverY(px);
+      const r = 1.05 + (Math.sin(px * w1.f + w1.a) > 0.6 ? 0.45 : 0);
+      for (let y = Math.floor(py - r - 1); y <= py + r + 1; y++)
+        for (let x = Math.floor(px - r - 1); x <= px + r + 1; x++) if (Math.hypot(x + 0.5 - px, y + 0.5 - py) <= r) set(x, y, Tile.Water);
+    }
+    // Pontes: colunas em que a água cobriu chão de trilha, agrupadas; cada grupo vira uma ponte de 3 tiles de largura.
+    const crossing = (x: number) => {
+      for (let y = 0; y < H; y++) if (get(x, y) === Tile.Water && before[y * W + x] !== Tile.Wall && trail[y * W + x]) return true;
+      return false;
+    };
+    for (let x = 4; x < W - 4; x++) {
+      if (!crossing(x)) continue;
+      let x1 = x;
+      while (x1 + 1 < W - 4 && crossing(x1 + 1)) x1++;
+      const mid = Math.round((x + x1) / 2);
+      const xs = [mid - 1, mid, mid + 1];
+      let y0 = H, y1 = 0;
+      for (const bx of xs) for (let y = 0; y < H; y++) if (get(bx, y) === Tile.Water) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      if (y1 >= y0) {
+        const bridge = { x: mid - 1, y: y0, w: 3, h: y1 - y0 + 1 };
+        planks.push(bridge);
+        for (let y = bridge.y - 1; y < bridge.y + bridge.h + 1; y++)
+          for (const bx of xs) {
+            set(bx, y, Tile.Floor);
+            if (inside(bx, y)) firm[y * W + bx] = 1;
+          }
+      }
+      x = x1 + 2;
+    }
+    // A margem abre um pouco a mata: o riacho corre numa fresta de céu, com chão dos dois lados aqui e ali.
+    for (let x = 4; x < W - 4; x++) {
+      const cy = riverY(x);
+      for (const side of [-1, 1]) {
+        if (Math.sin(x * 0.37 + side * 2 + w1.a) < 0.2) continue;
+        const y = Math.round(cy + side * 2.2);
+        if (get(x, y) === Tile.Wall) set(x, y, Tile.Floor);
+      }
+    }
+  }
+
+  // Miolo das zonas, das campinas e da entrada livre (o riacho e as árvores não entram).
+  for (let y = spawn.y - 2; y < spawn.y + spawn.h + 2; y++)
+    for (let x = spawn.x - 2; x < spawn.x + spawn.w + 2; x++) if (inside(x, y) && get(x, y) !== Tile.Water) { set(x, y, Tile.Floor); firm[y * W + x] = 1; }
+  for (const p of [...anchors, ...meadows.map(centerOf)])
+    for (let y = p.y - 2; y <= p.y + 2; y++) for (let x = p.x - 2; x <= p.x + 2; x++) { set(x, y, Tile.Floor); if (inside(x, y)) firm[y * W + x] = 1; }
+
+  // Salas laterais (mini-boss e baú): no Bosque Velho, uma clareira cercada de troncos caídos; no Coração da Mata, um
+  // santuário élfico de muro de pedra. 2 portões, cada um com uma trilha: um até a zona, outro até a ponta mais perto.
+  const side: Rect[] = [];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (rng.next() < 0.3) continue;
+    const anchor = anchors[i];
+    const w = rng.int(7, 9);
+    const h = rng.int(7, 9);
+    const room = shuffled(rng, SWAMP_SIDE_DIRS)
+      .map(([dx, dy]): Rect => ({
+        x: clamp(anchor.x + dx * 13 - w / 2, 6, W - w - 7),
+        y: clamp(anchor.y + dy * 13 - h / 2, arenaBottom + 3, H - h - 7),
+        w, h,
+      }))
+      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP && gapBetween(r, boss) >= 5
+        && side.every((o) => gapBetween(r, o) >= 4)
+        && !nearRiver(r.x + r.w / 2, r.y + r.h / 2, r.h / 2 + 3)
+        && nodes().every((p) => gapBetween(r, { x: p.x, y: p.y, w: 1, h: 1 }) >= 4));
+    if (!room) continue;
+    const before = tiles.slice();
+    const firmBefore = firm.slice();
+    const trailBefore = trail.slice();
+    for (let y = room.y; y < room.y + room.h; y++)
+      for (let x = room.x; x < room.x + room.w; x++) {
+        const border = x === room.x || y === room.y || x === room.x + room.w - 1 || y === room.y + room.h - 1;
+        set(x, y, border ? Tile.Ruin : Tile.Floor);
+        firm[y * W + x] = 1;
+      }
+    // Troncos caídos têm falhas (um tronco não fecha o canto); o santuário tem o muro inteiro.
+    if (!heart)
+      for (const [x, y] of [[room.x, room.y], [room.x + room.w - 1, room.y], [room.x, room.y + room.h - 1], [room.x + room.w - 1, room.y + room.h - 1]])
+        if (rng.next() < 0.7) set(x, y, Tile.Wall);
+    const cx = room.x + Math.floor(room.w / 2);
+    const cy = room.y + Math.floor(room.h / 2);
+    const gateAt = (gate: number) => gate === 0 ? { x: cx, y: room.y, ox: 0, oy: -1 } : gate === 1 ? { x: room.x + room.w - 1, y: cy, ox: 1, oy: 0 }
+      : gate === 2 ? { x: cx, y: room.y + room.h - 1, ox: 0, oy: 1 } : { x: room.x, y: cy, ox: -1, oy: 0 };
+    // O primeiro portão fica do lado da zona.
+    const toward = Math.abs(anchor.x - cx) > Math.abs(anchor.y - cy) ? (anchor.x > cx ? 1 : 3) : anchor.y > cy ? 2 : 0;
+    const gates = [toward, rng.pick([0, 1, 2, 3].filter((g) => g !== toward))];
+    gates.forEach((gate, k) => {
+      const g = gateAt(gate);
+      for (let j = -1; j <= 1; j++) set(g.x + (g.ox ? 0 : j), g.y + (g.oy ? 0 : j), Tile.Floor);
+      const out = { x: g.x + g.ox * 2, y: g.y + g.oy * 2 };
+      const to = k === 0 ? anchor : nodes().filter((p) => p !== anchor).sort((a, b) => Math.hypot(a.x - out.x, a.y - out.y) - Math.hypot(b.x - out.x, b.y - out.y))[0];
+      path(out, to, half - 0.2);
+    });
+    // A trilha não pode atravessar o muro: o que ela abriu no muro volta a ser muro (fora dos portões).
+    for (let y = room.y; y < room.y + room.h; y++)
+      for (let x = room.x; x < room.x + room.w; x++) {
+        const border = x === room.x || y === room.y || x === room.x + room.w - 1 || y === room.y + room.h - 1;
+        const gate = gates.some((g) => { const p = gateAt(g); return Math.abs(p.x - x) + Math.abs(p.y - y) <= 1 && (p.ox ? x === p.x : y === p.y); });
+        if (border && !gate && get(x, y) === Tile.Floor) set(x, y, Tile.Ruin);
+        if (!border) trail[y * W + x] = 0;
+      }
+    const rooms = [...side, room].flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]);
+    if (!connected(tiles, W, [s, ...anchors, ...meadows.map(centerOf), ...rooms])) {
+      tiles.set(before);
+      firm.set(firmBefore);
+      trail.set(trailBefore);
+      continue;
+    }
+    side.push(room);
+  }
+
+  // Mata fina (faixa de 1 tile ou ponta solta que sobrou entre duas clareiras) vira chão: a mata fechada fica em
+  // maciços, e quem dá a beira recortada são as árvores soltas postas depois.
+  for (let pass = 0; pass < 2; pass++) {
+    const thin: number[] = [];
+    for (let y = 4; y < H - 4; y++)
+      for (let x = 4; x < W - 4; x++) {
+        if (get(x, y) !== Tile.Wall) continue;
+        const open = [get(x - 1, y), get(x + 1, y), get(x, y - 1), get(x, y + 1)].filter((t) => t === Tile.Floor).length;
+        if (open >= 3) thin.push(y * W + x);
+      }
+    for (const i of thin) tiles[i] = Tile.Floor;
+  }
+
+  const keep = [
+    grow(spawn, 2), grow(boss, 1), ...side.map((r) => grow(r, 1)),
+    ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
+  ];
+  const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const goals = dunesGoals({ portal: s, boss, path: zones, side, meadows });
+
+  /** Põe um obstáculo; desfaz se ele invadir uma área livre, cair na trilha ou separar algum ponto importante. */
+  const obstacle = (place: () => void) => {
+    const before = tiles.slice();
+    const propsBefore = new Set(props);
+    place();
+    let undo = false;
+    for (let i = 0; i < tiles.length && !undo; i++) {
+      if (tiles[i] !== before[i] && (kept(i % W, Math.floor(i / W)) || firm[i] || trail[i])) undo = true;
+    }
+    if (undo || !connected(tiles, W, goals)) {
+      tiles.set(before);
+      props.clear();
+      propsBefore.forEach((i) => props.add(i));
+    }
+  };
+  const isWall = (x: number, y: number) => get(x, y) === Tile.Wall;
+  const openRing = (x0: number, y0: number, w: number, h: number) => {
+    for (let y = y0 - 1; y <= y0 + h; y++)
+      for (let x = x0 - 1; x <= x0 + w; x++) {
+        const ring = x < x0 || y < y0 || x >= x0 + w || y >= y0 + h;
+        if (get(x, y) !== Tile.Floor || (!ring && (firm[y * W + x] || trail[y * W + x]))) return false;
+      }
+    return true;
+  };
+  /** Árvore solta (1 tile) ou anciã (bloco de 2×2), só em chão com chão em volta. */
+  const tree = (x: number, y: number, size: 1 | 2) => {
+    if (!openRing(x, y, size, size) || kept(x, y)) return;
+    obstacle(() => {
+      for (let yy = y; yy < y + size; yy++) for (let xx = x; xx < x + size; xx++) { set(xx, yy, Tile.Wall); props.add(yy * W + xx); }
+    });
+  };
+
+  // Árvores anciãs: troncos de 2×2 nas clareiras grandes e na beira da mata (mais no Coração da Mata).
+  for (let i = 0; i < (heart ? 40 : 22); i++) tree(rng.int(6, W - 8), rng.int(arenaBottom + 2, H - 8), 2);
+  // Árvores soltas: na beira das clareiras (a mata se desfaz aos poucos) e algumas no meio.
+  for (let y = 4; y < H - 4; y++)
+    for (let x = 4; x < W - 4; x++) {
+      if (get(x, y) !== Tile.Floor || kept(x, y) || trail[y * W + x] || firm[y * W + x]) continue;
+      let wood = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (isWall(x + dx, y + dy)) wood++;
+      const chance = wood >= 4 ? (heart ? 0.11 : 0.08) : heart ? 0.02 : 0.015;
+      if (rng.next() < chance) tree(x, y, 1);
+    }
+  // Troncos caídos (Bosque Velho) ou pedaços de muro élfico (Coração da Mata), deitados nas clareiras.
+  for (let i = 0; i < (heart ? 16 : 20); i++) {
+    const x = rng.int(6, W - 10), y = rng.int(arenaBottom + 2, H - 8);
+    const len = rng.int(3, heart ? 4 : 5);
+    const flat = rng.next() < 0.6;
+    if (!openRing(x, y, flat ? len : 1, flat ? 1 : len)) continue;
+    obstacle(() => { for (let k = 0; k < len; k++) set(x + (flat ? k : 0), y + (flat ? 0 : k), Tile.Ruin); });
+  }
+  // Pedras musgosas soltas.
+  for (let i = 0; i < 14; i++) {
+    const x = rng.int(6, W - 7), y = rng.int(arenaBottom + 2, H - 8);
+    if (openRing(x, y, 1, 1) && !kept(x, y)) obstacle(() => set(x, y, Tile.Ruin));
+  }
+  // Lagoas: escuras no Coração da Mata (4 a 6), duas pequenas no Bosque Velho, na beira de uma clareira (entram na
+  // mata). Não cobrem trilha nem área livre: a água contorna.
+  const ponds = heart ? rng.int(4, 6) : 2;
+  for (let i = 0, made = 0; i < 40 && made < ponds; i++) {
+    const p = rng.pick([...glades, ...meadows.map(centerOf), ...anchors]);
+    const a = rng.next() * Math.PI * 2;
+    const o = { x: Math.round(p.x + Math.cos(a) * 5), y: Math.round(p.y + Math.sin(a) * 4), r: 1.8 + rng.next() * (heart ? 1.6 : 1) };
+    if (nearRiver(o.x, o.y, 6)) continue;
+    let wet = 0;
+    obstacle(() => {
+      for (let y = Math.floor(o.y - o.r - 1); y <= o.y + o.r + 1; y++)
+        for (let x = Math.floor(o.x - o.r * 1.3 - 1); x <= o.x + o.r * 1.3 + 1; x++) {
+          if (!inside(x, y) || Math.hypot((x - o.x) / 1.3, y - o.y) > o.r || get(x, y) === Tile.Ruin) continue;
+          const i = y * W + x;
+          if (kept(x, y) || firm[i] || trail[i] || props.has(i)) continue;
+          set(x, y, Tile.Water);
+          wet++;
+        }
+    });
+    if (wet >= 6 && get(o.x, o.y) === Tile.Water) made++;
+  }
+
+  // Arena: no Bosque Velho, um círculo de 6 menires de pedra; no Coração da Mata, a árvore do coração (bloco de 3×3)
+  // no alto da clareira, com 4 menires em volta do meio.
+  const stones = heart ? 4 : 6;
+  const turn = rng.next() * Math.PI * 2;
+  for (let k = 0; k < stones; k++) {
+    const a = turn + (k * Math.PI * 2) / stones;
+    set(Math.round(ac.x + Math.cos(a) * 6), Math.round(ac.y + 1 + Math.sin(a) * 4.5), Tile.Ruin);
+  }
+  if (heart) for (let y = ac.y - 6; y <= ac.y - 4; y++) for (let x = ac.x - 1; x <= ac.x + 1; x++) set(x, y, Tile.Wall);
+
+  // Água de 1 tile (sobra de lagoa ou do riacho cortado) volta a ser chão.
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (tiles[i] !== Tile.Water) continue;
+      const wet = [tiles[i - 1], tiles[i + 1], tiles[i - W], tiles[i + W]].filter((t) => t === Tile.Water).length;
+      if (wet === 0) tiles[i] = Tile.Floor;
+    }
+
+  // Bolsões sem acesso viram mata.
+  const reach = reachableFrom(tiles, W, s);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+  const trails: number[] = [];
+  for (let i = 0; i < tiles.length; i++) if (trail[i] && tiles[i] === Tile.Floor) trails.push(i);
+
+  const portal = s;
+  set(portal.x, portal.y, Tile.Portal);
+  return { mapId, width: W, height: H, tiles, spawn, boss, bossPortal: centerOf(boss), path: zones, side, meadows, portal, planks, trails };
+}
+
 /** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */
 const SWAMP_SIDE_DIRS: readonly (readonly [number, number])[] = [
   [1, 0], [-1, 0], [0, 1], [0, -1], [0.75, 0.75], [-0.75, 0.75], [0.75, -0.75], [-0.75, -0.75],
@@ -1754,6 +2623,10 @@ function shuffled<T>(rng: ReturnType<typeof createRng>, items: readonly T[]): T[
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
+}
+
+function inRect(r: Rect, x: number, y: number) {
+  return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
 }
 
 function clamp(v: number, min: number, max: number) {
