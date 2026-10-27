@@ -1,11 +1,17 @@
 import { Encoder, Reflection } from "@colyseus/schema";
 import {
   ITEMS,
+  MAPS,
   MSG,
   SERVER_TICK_MS,
+  SOLO_LIMITS,
+  generateDungeon,
+  lootName,
+  mapIdOf,
   type ClassId,
   type MapId,
   type RunEndedMessage,
+  type SoloRunClosed,
   type SoloRunResult,
   type SoloRunStart,
   spellXpGains,
@@ -13,6 +19,7 @@ import {
 import type { HuntReport } from "../../server/src/hunt.ts";
 import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
+import { recordSoloMapClear } from "./profile.ts";
 
 const SESSION_ID = "solo";
 
@@ -33,6 +40,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   ]);
   if (error) throw new Error("não foi possível começar a hunt solo");
   const run = data as SoloRunStart;
+  noticeClosed(run.closed);
 
   // A simulação só é baixada por quem joga solo.
   const [{ Hunt }, { DungeonState }] = await Promise.all([
@@ -55,6 +63,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     // Entrega direta: o banco pode responder depois de o tick parar, no fim da hunt.
     runEnded: (_sessionId, result, report) => reportSolo(run.run_id, classId, result, report, (msg) => emit(MSG.runEnded, msg)),
     ended: () => window.setTimeout(stop, 10_000),
+    mapCleared: (ids, boss) => { if (ids.includes(SESSION_ID)) void recordSoloMapClear(run.run_id, boss); },
   }, { mapId, seed: run.seed });
   hunt.join(SESSION_ID, {
     name, classId, talents: run.talents ?? {}, spellXp: run.spell_xp ?? {}, activeSpells: profile?.active_spells ?? [],
@@ -81,7 +90,9 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     encoder.discardChanges();
   }, SERVER_TICK_MS);
 
+  let stopped = false;
   function stop() {
+    stopped = true;
     window.clearInterval(interval);
   }
 
@@ -131,7 +142,55 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
       leaveListeners.forEach((cb) => cb(1000));
     },
   };
+  watchCommitted(() => (stopped ? null : room as unknown as DungeonRoom), run.run_id);
   return room as unknown as DungeonRoom;
+}
+
+/** Quem mostra o aviso das hunts fechadas sem resultado (o menu registra; sem ele, só o console). */
+let closedNotice: (text: string) => void = (text) => console.warn(text);
+export function onClosedSoloRun(show: (text: string) => void) {
+  closedNotice = show;
+}
+
+/** Avisa o jogador das hunts que estavam abertas (o app fechou no meio) e o banco acabou de fechar. */
+export function noticeClosed(closed: SoloRunClosed[] | undefined) {
+  for (const c of closed ?? []) {
+    const map = MAPS[mapIdOf(c.map_id)].name;
+    if (!c.died) {
+      closedNotice(`A hunt anterior (${map}) foi fechada sem perda: o equipamento e a bag voltaram.`);
+      continue;
+    }
+    const lost = [...(c.lost ? [c.lost] : []), ...c.lost_bag].map(lootName);
+    closedNotice(`A hunt anterior (${map}) ficou aberta e contou como morte${lost.length ? `: perdeu ${lost.join(", ")}` : ""}.`);
+  }
+}
+
+/**
+ * Avisa o banco quando a hunt passa a valer: o herói saiu da sala inicial e jogou `SOLO_LIMITS.committedSeconds`.
+ * Daí em diante, fechar o app no meio conta como morte; antes, a hunt aberta fecha sem perda (`start_solo_run`).
+ * `room` devolve a sala atual (a hospedada troca de sala quando o anfitrião muda) ou null quando acabou.
+ */
+export function watchCommitted(room: () => DungeonRoom | null, runId: string | null) {
+  if (!runId) return;
+  let spawn: { x: number; y: number; w: number; h: number } | null = null;
+  let runningSince = 0;
+  let sending = false;
+  const timer = window.setInterval(() => {
+    const r = room();
+    const me = r?.state.players.get(r.sessionId);
+    if (!r || (r.state.phase !== "lobby" && me && me.status !== "playing")) return void window.clearInterval(timer);
+    if (r.state.phase !== "running" || !me || sending) return;
+    runningSince ||= performance.now();
+    if (performance.now() - runningSince < SOLO_LIMITS.committedSeconds * 1000) return;
+    spawn ??= generateDungeon(r.state.seed, mapIdOf(r.state.mapId)).spawn;
+    if (me.x >= spawn.x && me.x < spawn.x + spawn.w && me.y >= spawn.y && me.y < spawn.y + spawn.h) return;
+    sending = true;
+    void supabase.rpc("solo_run_committed", { p_run_id: runId }).then(({ error }) => {
+      sending = false;
+      // Sem rede, tenta de novo no próximo segundo.
+      if (!error) window.clearInterval(timer);
+    });
+  }, 1000);
 }
 
 /** Resultado de hunt que ainda não chegou ao banco: fica no aparelho até `finish_solo_run` responder. */

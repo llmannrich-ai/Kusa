@@ -54,6 +54,8 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.healing` | Cura feita (druida), incluindo o roubo de vida da Sede de sangue e dos itens mágicos |
 | `stats.manaGiven` | Mana devolvida aos aliados por magias e criaturas (Fogo-Fátuo), sem as poções |
 | `stats.bossRunes` | Bosses que deram a runa a este personagem nesta hunt (cada boss dá a runa uma vez por personagem) |
+| `stats.bossKills` | Bosses mortos com este herói na hunt, na ordem (na Caverna da Travessia, Basilisco e/ou Observador: qual lado da bifurcação a equipe venceu) |
+| `stats.bossClear` | Estava na hunt (vivo) quando o boss principal morreu: venceu o cenário e abriu o seguinte da campanha. Quem morreu antes do boss também ganha o cenário, mas a linha dele já foi gravada sem a marca |
 | `stats.absorbed` | Dano que os escudos (magias e Traços) absorveram no herói |
 | `stats.buffMs` | Tempo com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração |
 | `stats.intercepted` | Intervir (Guardião): dano que o cavaleiro puxou dos aliados para si |
@@ -63,7 +65,7 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.ccMs` | Tempo de controle aplicado nos monstros (ms somados por monstro): `root`, `stun` e `slow` |
 | `stats.potions` | Poções guardadas e bebidas por tipo e mana devolvida (a vida das poções entra em `healing`) |
 | `stats.kills`, `firstKillAt`, `xp` | Abates por monstro, tempo até o primeiro abate, XP total |
-| `stats.loot`, `chestsOpened`, `items` | De onde veio o loot (monstros, baús, bônus do boss); itens equipados e bag que entraram (`loadout`, `bag`), pegos, largados pelo menu da bag (`dropped`), perdidos na morte (equipamento sorteado + bag) `bagFull` (avisos de bag cheia: item deixado no chão) e `botCut` (itens de equipamento que não caíram pela parte dos bots da equipe) |
+| `stats.loot`, `chestsOpened`, `items` | De onde veio o loot (monstros, baús, bônus do boss); itens equipados e bag que entraram (`loadout`, `bag`), pegos, largados pelo menu da bag (`dropped`), perdidos na morte (equipamento sorteado + bag) `bagFull` (avisos de bag cheia: item deixado no chão) `botCut` (itens de equipamento que não caíram pela parte dos bots da equipe) e `drops` (itens de equipamento que caíram no chão por fonte: `common`, `miniboss`, `boss`, `chest`, pegos ou não; `picked` ÷ `drops` = quanto do que caiu foi pego) |
 
 ## Views prontas
 

@@ -1,4 +1,4 @@
-import { ITEMS, isRune, type ClassId, type SpellXp, type TalentRanks } from "@kusa/shared";
+import { ITEMS, MAP_IDS, isRune, type ClassId, type MapId, type SpellXp, type TalentRanks } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
 // Dados do menu: árvore de magias, itens (equipamento, cofre e bag) e gold. O navegador só lê as tabelas;
@@ -32,6 +32,34 @@ export interface Profile {
 /** Erro com mensagem pronta para mostrar ao jogador. */
 export class ProfileError extends Error {}
 
+/**
+ * Cenários vencidos (boss morto) e bosses vencidos, por classe: abrem o seguinte da campanha (`mapUnlocked`; os bosses
+ * contam nos lados das bifurcações). Sem conexão, nenhum.
+ */
+export async function loadMapClears(): Promise<Partial<Record<ClassId, string[]>>> {
+  const [maps, bosses] = await Promise.all([
+    supabase.from("profile_map_clears").select("class_id, map_id"),
+    supabase.from("profile_boss_clears").select("class_id, boss_kind"),
+  ]);
+  const out: Partial<Record<ClassId, string[]>> = {};
+  for (const row of maps.data ?? []) {
+    if (!MAP_IDS.includes(row.map_id as MapId)) continue;
+    (out[row.class_id as ClassId] ??= []).push(row.map_id as string);
+  }
+  for (const row of bosses.data ?? []) (out[row.class_id as ClassId] ??= []).push(row.boss_kind as string);
+  return out;
+}
+
+/** Hunt solo ou sala no aparelho: o boss morreu com este jogador na hunt (anota o cenário e o boss pela hunt aberta). */
+export async function recordSoloMapClear(runId: string | null, boss: string) {
+  if (!runId) return;
+  const [map, kill] = await Promise.all([
+    supabase.rpc("record_solo_map_clear", { p_run_id: runId }),
+    supabase.rpc("record_solo_boss_clear", { p_run_id: runId, p_boss: boss }),
+  ]);
+  if (map.error || kill.error) console.error("Falha ao anotar o cenário vencido", map.error ?? kill.error);
+}
+
 export async function loadProfile(): Promise<Profile> {
   const { data: session } = await supabase.auth.getSession();
   const uid = session.session?.user.id;
@@ -50,6 +78,18 @@ export async function loadProfile(): Promise<Profile> {
     // Id fora do catálogo (banco e cliente em versões diferentes durante uma atualização): não aparece.
     items: items.data.filter((i) => ITEMS[i.item_id] || isRune(i.item_id)).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, classId: i.class_id, source: i.source, location: i.location })),
   };
+}
+
+/**
+ * Bosses que este personagem (conta e classe) já venceu (`profile_boss_clears`): liberam os caminhos da bifurcação da
+ * Travessia no mapa mundi. Sem conta ou sem rede, nenhum.
+ */
+export async function loadBossKills(classId: ClassId): Promise<string[]> {
+  const { data: session } = await supabase.auth.getSession();
+  const uid = session.session?.user.id;
+  if (!uid) return [];
+  const { data } = await supabase.from("profile_boss_clears").select("boss_kind").eq("profile_id", uid).eq("class_id", classId);
+  return (data ?? []).map((r) => r.boss_kind as string);
 }
 
 /** Compra uma magia, uma áurea (próximo nível) ou um Traço; devolve o gold que sobrou. */

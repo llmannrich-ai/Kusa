@@ -12,7 +12,7 @@ type Tileset = { set: Phaser.Tilemaps.Tileset; gid: number };
 type AddTileset = (key: string, count: number) => Tileset;
 
 /** Bits das bordas da rocha: beira (N, L, O) no tile de rocha e sombra no chão ao sul e a leste dela. */
-const RIM = [1, 2, 0, 8]; // N, L, (S é o paredão, outro ladrilho), O
+export const RIM = [1, 2, 0, 8]; // N, L, (S é o paredão, outro ladrilho), O
 const SHADE_N = 16;
 const SHADE_W = 32;
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
@@ -165,13 +165,19 @@ export function drawCaveMouth(scene: Phaser.Scene, d: Dungeon, culler: ChunkCull
 }
 
 /** Pilar solto do covil: rocha sem rocha nos 4 lados (o gerador os põe soltos). */
-function pillar(d: Dungeon, x: number, y: number) {
+export function pillar(d: Dungeon, x: number, y: number) {
   if (tileAt(d, x, y) !== Tile.Wall) return false;
   return [[0, -1], [1, 0], [0, 1], [-1, 0]].every(([dx, dy]) => tileAt(d, x + dx, y + dy) !== Tile.Wall);
 }
 
-function forEachUnder(d: Dungeon, fn: (x: number, y: number) => void) {
-  const u = d.cave?.under;
+/** Área subterrânea do mapa: a caverna do deserto ou a Caverna da Travessia inteira. */
+export function undergroundArea(d: Dungeon): Rect | null {
+  if (d.cave) return d.cave.under;
+  return d.lairs ? { x: 0, y: 0, w: d.width, h: d.height } : null;
+}
+
+export function forEachUnder(d: Dungeon, fn: (x: number, y: number) => void) {
+  const u = undergroundArea(d);
   if (!u) return;
   for (let y = 0; y < d.height; y++) for (let x = u.x; x < u.x + u.w; x++) fn(x, y);
 }

@@ -3,12 +3,14 @@
  *   - sozinho, o herói leva a XP inteira do monstro;
  *   - com 4 na equipe (um deles bot), cada um leva 1/4 da XP, mesmo quem não bateu; o gold também se divide em 4
  *     partes iguais (a do bot se perde);
- *   - o gold do baú se divide do mesmo jeito;
+ *   - o gold do baú se divide do mesmo jeito; o item do baú cai aos pés de quem abriu (no tile do baú ficava
+ *     escondido embaixo do desenho dele) e o herói já pega;
  *   - quem morreu fica de fora e a XP se divide pelos que estão jogando;
  *   - com bots, os itens de equipamento caem com a chance de humanos ÷ equipe (o bot não pega item do chão).
  * Uso: npx tsx scripts/divisao.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { ITEMS } from "@kusa/shared";
+import { Chest } from "../src/state.ts";
 import { HERO, arena, check, type Arena } from "./arena.ts";
 
 /** Mata um orc pelo herói e devolve a XP que o monstro valia e quanto de XP e de gold cada um ganhou. */
@@ -30,6 +32,29 @@ const solo = arena({ mapId: "crypt" });
 const one = killOrc(solo, [HERO]);
 check(one.gains[0] === one.xp, `sozinho, o herói devia levar ${one.xp} XP, levou ${one.gains[0]}`);
 console.log(`sozinho: ${one.gains[0]} de ${one.xp} XP OK`);
+
+// --- Baú aberto sozinho: o item cai aos pés do herói e vai para ele ----------------------------
+// O item do baú sai com 60% (`ITEM_DROP_SCALE`): abre baús até um largar item.
+let got: string[] = [];
+for (let i = 0; i < 20 && got.length === 0; i++) {
+  const box = new Chest();
+  box.id = `cteste${i}`;
+  box.x = solo.p.x + 1;
+  box.y = solo.p.y;
+  box.locked = false;
+  solo.state.chests.set(box.id, box);
+  solo.state.items.clear();
+  const picked = solo.seat().stats.items.picked.length;
+  solo.any.openChests();
+  check(box.opened, "o baú colado no herói devia abrir");
+  check([...solo.state.items.values()].every((it) => it.x === solo.p.x && it.y === solo.p.y), "o item do baú devia cair aos pés de quem abriu");
+  solo.any.pickUpItems();
+  got = solo.seat().stats.items.picked.slice(picked).filter((id: string) => ITEMS[id]);
+  check(got.length <= 1, `o baú devia dar no máximo 1 item: ${got}`);
+  solo.state.chests.delete(box.id);
+}
+check(got.length === 1, "em 20 baús, nenhum largou item");
+console.log(`item do baú: ${got[0]} OK`);
 
 // --- Equipe de 4, com um bot: partes iguais, mesmo quem não bateu --------------------------
 const team = arena({ mapId: "crypt", allies: [{ classId: "sorcerer" }, { classId: "druid" }, { classId: "paladin", bot: true }] });
@@ -57,7 +82,7 @@ check(three.gains.slice(0, 3).every((g) => g === third) && three.gains[3] === 0,
 console.log(`1 morto: ${three.gains.join(" / ")} de ${three.xp} XP OK`);
 
 // --- Itens com bots: humanos ÷ equipe ---------------------------------------------------------
-/** Itens de equipamento que 40 Dragões largam (2 garantidos cada) e o corte anotado na telemetria. */
+/** Itens de equipamento que 40 Dragões largam (2 sorteios cada, de 60%: `ITEM_DROP_SCALE`) e o corte anotado na telemetria. */
 function dragonItems(a: Arena) {
   let items = 0;
   for (let i = 0; i < 40; i++) {
@@ -71,11 +96,13 @@ function dragonItems(a: Arena) {
   return { items, cut: a.seat().stats.items.botCut as number };
 }
 const humans = dragonItems(arena({ mapId: "crypt", allies: [{ classId: "sorcerer" }, { classId: "druid" }, { classId: "paladin" }] }));
-check(humans.items === 80 && humans.cut === 0, `sem bots, os 40 Dragões deviam largar 80 itens: ${humans.items} (corte ${humans.cut})`);
+// 80 sorteios de 60%: ~48 itens (5 desvios de folga, a seed é fixa).
+check(humans.items >= 26 && humans.items <= 70 && humans.cut === 0, `sem bots, os 40 Dragões deviam largar ~48 itens: ${humans.items} (corte ${humans.cut})`);
 const bots = dragonItems(arena({ mapId: "crypt", allies: [{ classId: "sorcerer", bot: true }, { classId: "druid", bot: true }, { classId: "paladin", bot: true }] }));
-check(bots.items >= 8 && bots.items <= 34, `com 3 bots, devia cair ~25% de 80 itens: ${bots.items}`);
-check(bots.items + bots.cut === 80, `o corte anotado devia fechar a conta: ${bots.items} + ${bots.cut}`);
-console.log(`itens com 3 bots: ${bots.items} de 80 (sem bots: ${humans.items}) OK`);
+check(bots.items >= 3 && bots.items <= 24, `com 3 bots, devia cair ~25% de ~48 itens: ${bots.items}`);
+// O corte dos bots só conta os itens que passaram do sorteio de 60%.
+check(bots.items + bots.cut >= 26 && bots.items + bots.cut <= 70, `o corte anotado devia fechar ~48: ${bots.items} + ${bots.cut}`);
+console.log(`itens com 3 bots: ${bots.items} de ${bots.items + bots.cut} (sem bots: ${humans.items}) OK`);
 
 console.log("DIVISAO DA EQUIPE OK");
 process.exit(0);
