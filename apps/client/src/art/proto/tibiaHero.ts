@@ -1171,7 +1171,7 @@ function torsoFront(c: Canvas, kit: Kit, top: number, back: boolean, sway: numbe
   if (kit.armor) return armorTorso(c, kit.armor, top, back ? "up" : "down", sway);
   switch (kit.top) {
     case "none": {
-      const id = bareTorso(c, top, CX, 12, false);
+      const id = kit.species === "skeleton" ? ribcageFront(c, top, back) : bareTorso(c, top, CX, 12, false);
       loincloth(c, top, CX, 9.6, false, back);
       return [id];
     }
@@ -1343,8 +1343,8 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
   }
 }
 
-function front(c: Canvas, kit: Kit, frame: number, back: boolean) {
-  const s = SWING[frame], b = BOB[frame];
+function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: { s: number; b: number }) {
+  const s = mp ? mp.s : SWING[frame], b = mp ? mp.b : BOB[frame];
   const hipY = 66 + b;
   const top = 47 + b;
   // Pernas: no passo, a de trás tira o calcanhar do chão (pé 2 unidades acima).
@@ -1532,6 +1532,7 @@ function collar(c: Canvas, kit: Kit, cy: number, view: ProtoDir) {
 }
 
 function headFront(c: Canvas, kit: Kit, b: number, top: number) {
+  if (kit.species) { monsterHeadFront(c, kit, b, false); return; }
   const cy = 37 + b;
   collar(c, kit, cy, "down");
   ellipse(c, CX, cy + 9, 3.5, 2.5, Mat.Skin); // pescoço
@@ -1679,6 +1680,7 @@ function beardFront(c: Canvas, cy: number, top: number) {
 }
 
 function headBack(c: Canvas, kit: Kit, b: number, top: number) {
+  if (kit.species) { monsterHeadFront(c, kit, b, true); return; }
   const cy = 37 + b;
   collar(c, kit, cy - 0.5, "up");
   ellipse(c, CX, cy + 9, 3.5, 2.5, Mat.Skin);
@@ -5020,6 +5022,119 @@ function monsterHead(c: Canvas, kit: Kit, b: number, top: number) {
   }
 }
 
+/** Olho de frente: pálpebra escura em cima, íris da cor `mat` com a pupila no meio e um brilho. */
+function eyeFront(c: Canvas, x: number, y: number, mat: Mat, big = false) {
+  const X = F(x), Y = F(y);
+  for (let dx = -2; dx <= 2; dx++) c.px(X + dx, Y - 1, Mat.Eye, 0);
+  c.px(X - 2, Y, Mat.Eye, 1); c.px(X - 1, Y, mat, 5); c.px(X, Y, Mat.Eye, 0); c.px(X + 1, Y, mat, 3); c.px(X + 2, Y, Mat.Eye, 1);
+  if (big) { c.px(X - 1, Y + 1, mat, 3); c.px(X, Y + 1, mat, 2); c.px(X + 1, Y + 1, mat, 2); }
+}
+
+/** Orelha pontuda de frente, saindo para o lado `sx` e um pouco para cima, com o miolo escuro (só de frente). */
+function pointedEarFront(c: Canvas, cy: number, sx: number, len: number, inner: boolean) {
+  const x0 = CX + sx * 5.6, tip = CX + sx * (5.6 + len);
+  poly(c, [[x0, cy - 2.6], [tip, cy - 4 - len * 0.25], [x0 + sx * len * 0.35, cy + 1.2], [x0, cy + 2.6]], Mat.Skin, Math.min(x0, tip), Math.max(x0, tip));
+  if (inner) {
+    const a = CX + sx * 7, b = CX + sx * (4.6 + len * 0.85);
+    poly(c, [[a, cy - 1.6], [b, cy - 3.2 - len * 0.2], [a + sx * len * 0.3, cy + 0.6]], Mat.Lip, Math.min(a, b), Math.max(a, b), () => -1);
+  }
+}
+
+/**
+ * Cabeça da espécie de frente (`back` = de costas), para os monstros andando para baixo e para cima. Protótipo das
+ * 3 vistas dos monstros (`docs/ARTE_TIBIA.md`): goblin, esqueleto e orc; as outras espécies ainda só de lado.
+ */
+function monsterHeadFront(c: Canvas, kit: Kit, b: number, back: boolean) {
+  const cy = 37 + b;
+  ellipse(c, CX, cy + 9, 3, 2.5, Mat.Skin); // pescoço
+  switch (kit.species) {
+    case "goblin": {
+      // Orelhões abertos para os lados, cabeça miúda, nariz comprido caindo, olhos amarelos e o sorriso de dentes finos.
+      for (const sx of [-1, 1]) pointedEarFront(c, cy - 1, sx, 13, !back);
+      const head = ellipse(c, CX, cy - 1, 7.6, 7.2, Mat.Skin);
+      const jaw = ellipse(c, CX, cy + 3.8, 6, 3.6, Mat.Skin);
+      if (back) {
+        // Nuca: vinco do crânio e os fios de cabelo saindo do alto.
+        thread(c, [CX, cy - 6], [CX, cy + 4], Mat.Skin, 2, [head, jaw]);
+        for (const k of [-1, 0, 1]) chain(c, [[CX + k * 2, cy - 7.4], [CX + k * 3.4, cy - 4], [CX + k * 4.4, cy + 1]], 0.7, Mat.Hair, strands, 0.3);
+        return;
+      }
+      for (const sx of [-1, 1]) {
+        eyeFront(c, CX + sx * 3.4, cy - 1.6, Mat.Amber, true);
+        thread(c, [CX + sx * 1.2, cy - 3.4], [CX + sx * 6, cy - 4.8], Mat.Eye, 0);
+      }
+      limb(c, [CX, cy - 1], [CX + 0.4, cy + 3.4], 1.8, 1.1, Mat.Skin);
+      c.px(F(CX) - 1, F(cy + 3.6), Mat.Eye, 1); c.px(F(CX) + 1, F(cy + 3.6), Mat.Eye, 1);
+      // Boca de orelha a orelha, subindo nos cantos, com os dentinhos.
+      const smile: Pt[] = [[CX - 5.4, cy + 4], [CX - 3, cy + 5.6], [CX + 3, cy + 5.6], [CX + 5.4, cy + 4]];
+      for (let i = 1; i < smile.length; i++) thread(c, smile[i - 1], smile[i], Mat.Eye, 0, [head, jaw]);
+      for (const x of [-3, -1.6, -0.2, 1.2, 2.6]) c.px(F(CX + x), F(cy + 5.6) - 1, Mat.White, 4);
+      for (const k of [-1, 0, 1]) chain(c, [[CX + k * 2, cy - 7.4], [CX + k * 3, cy - 10.4], [CX + k * 5, cy - 10.6]], 0.7, Mat.Hair, strands, 0.3);
+      return;
+    }
+    case "skeleton": {
+      // Crânio de frente: órbitas fundas com a brasa no fundo, buraco do nariz, maçãs saltadas e a fileira de dentes.
+      const skull = ellipse(c, CX, cy - 1, 8, 8, Mat.Skin);
+      if (back) {
+        // De costas: a sutura do crânio, a base da nuca e as vértebras do pescoço.
+        thread(c, [CX - 5, cy - 4], [CX + 5, cy - 4.6], Mat.Skin, 1, [skull]);
+        thread(c, [CX + 0.4, cy - 8], [CX, cy - 4.4], Mat.Skin, 1, [skull]);
+        thread(c, [CX - 4, cy + 4.6], [CX + 4, cy + 4.6], Mat.Skin, 1, [skull]);
+        for (const y of [cy + 7.4, cy + 9.4]) ellipse(c, CX, y, 1.6, 0.9, Mat.Skin);
+        return;
+      }
+      const jaw = ellipse(c, CX, cy + 5.4, 5, 2.8, Mat.Skin);
+      for (const sx of [-1, 1]) {
+        c.fill(ebox(CX + sx * 3.4, cy, 2.6, 2.6), inEllipse(CX + sx * 3.4, cy, 2.4, 2.6), Mat.Eye, () => 0.1);
+        c.px(F(CX + sx * 3.4) - (sx < 0 ? 0 : 1), F(cy), Mat.Ember, 5);
+        thread(c, [CX + sx * 6, cy + 2], [CX + sx * 7.2, cy + 3.6], Mat.Skin, 1, [skull]);
+      }
+      for (const [dx, dy] of [[0, 0], [-1, 1], [0, 1], [1, 1], [-1, 2], [0, 2]]) c.on(skull, F(CX) + dx, F(cy + 3) + dy, Mat.Eye, 0);
+      thread(c, [CX - 4, cy + 5.2], [CX + 4, cy + 5.2], Mat.Eye, 0, [skull, jaw]);
+      for (const x of [-3.2, -1.6, 0, 1.6, 3.2]) { c.on([skull, jaw], F(CX + x), F(cy + 4.4), Mat.Eye, 0); c.on([skull, jaw], F(CX + x), F(cy + 6), Mat.Eye, 0); }
+      return;
+    }
+    default: {
+      // Orc (e o que ainda não tem cabeça de frente): orelha pontuda curta, testa pesada, nariz chato, presas subindo
+      // do queixo e a crista de cabelo preto do alto da cabeça até a nuca.
+      for (const sx of [-1, 1]) pointedEarFront(c, cy, sx, 6, !back);
+      const face = ellipse(c, CX, cy, 8.2, 8.8, Mat.Skin, (X, Y) => (noise(X >> 1, Y >> 1) < 0.06 ? -1 : 0));
+      if (back) {
+        thread(c, [CX - 5, cy + 5.6], [CX + 5, cy + 5.6], Mat.Skin, 2, [face]);
+        chain(c, [[CX, cy - 9.4], [CX, cy - 4], [CX, cy + 3]], 1.8, Mat.Hair, strands, 1.2);
+        return;
+      }
+      ellipse(c, CX, cy + 6, 5.2, 2.8, Mat.Skin);
+      // Testa saltada: sobrancelha grossa e escura fazendo o V de raiva.
+      for (const sx of [-1, 1]) {
+        limb(c, [CX + sx * 1, cy - 2.6], [CX + sx * 6.6, cy - 3.6], 1.2, 1, Mat.Skin);
+        thread(c, [CX + sx * 1, cy - 2], [CX + sx * 6, cy - 3.4], Mat.Eye, 0, [face]);
+        eyeFront(c, CX + sx * 3.6, cy - 0.6, Mat.Ember);
+      }
+      poly(c, [[CX - 1.4, cy - 1], [CX + 1.4, cy - 1], [CX + 2.8, cy + 2.8], [CX - 2.8, cy + 2.8]], Mat.Skin, CX - 2.8, CX + 2.8);
+      c.px(F(CX - 1.4), F(cy + 2.6), Mat.Eye, 0); c.px(F(CX + 1.4) - 1, F(cy + 2.6), Mat.Eye, 0);
+      thread(c, [CX - 4.6, cy + 5], [CX + 4.6, cy + 5], Mat.Eye, 0, [face]);
+      for (const sx of [-1, 1]) fang(c, [CX + sx * 3.2, cy + 5.4], 0.7, 2.4, -1);
+      chain(c, [[CX, cy - 9.6], [CX, cy - 7]], 1.8, Mat.Hair, strands, 1.4);
+      return;
+    }
+  }
+}
+
+/** Costelas, espinha, esterno e bacia de frente ou de costas (esqueleto). */
+function ribcageFront(c: Canvas, top: number, back: boolean) {
+  const spine = chain(c, [[CX, top], [CX, top + 8], [CX, top + 17]], back ? 1.4 : 1, Mat.Skin);
+  for (let k = 0; k < 5; k++) {
+    const y = top + 2.4 + k * 2.6, w = 8.4 - k * 0.5;
+    for (const sx of [-1, 1]) chain(c, [[CX + sx * 0.8, y], [CX + sx * w * 0.7, y - 0.4], [CX + sx * w, y + 1.6], [CX + sx * (w - 1.4), y + 3]], 0.75, Mat.Skin, undefined, 0.6);
+  }
+  if (!back) limb(c, [CX, top + 1.6], [CX, top + 10], 1, 0.8, Mat.Skin);
+  // Clavículas e a bacia.
+  for (const sx of [-1, 1]) limb(c, [CX + sx * 1, top + 0.6], [CX + sx * 9.6, top + 1.6], 0.8, 0.7, Mat.Skin);
+  ellipse(c, CX, top + 17.4, 6.6, 2.8, Mat.Skin);
+  return spine[0];
+}
+
 /** Costelas, espinha e bacia de perfil (esqueleto). */
 function ribcageSide(c: Canvas, top: number) {
   const spine = chain(c, [[CX + 4, top], [CX + 5, top + 8], [CX + 4, top + 16]], 1.3, Mat.Skin);
@@ -5201,6 +5316,20 @@ const toFrameCanvas = (data: Uint8ClampedArray) => {
 /** Primeiro quadro do monstro (parado), para quem não anima e para a galeria. */
 export function protoMonsterPortrait(kind: string): HTMLCanvasElement {
   return toFrameCanvas(protoMonsterFrame(kind));
+}
+
+/**
+ * Protótipo das 3 vistas dos monstros humanoides (só galeria, o jogo ainda usa só o perfil): parado (respirando) e
+ * andar de frente (`down`), de costas (`up`) e de lado, 4 quadros cada. Golpe e magia continuam só de lado.
+ */
+export const PROTO_MONSTER_DIRS = ["goblin", "skeleton", "orc"];
+export function protoMonsterDirFrame(kind: string, dir: ProtoDir, clip: "idle" | "walk", k: number): HTMLCanvasElement {
+  if (dir === "side") return toFrameCanvas(protoMonsterFrame(kind, clip, k));
+  const kit = MONSTER_KITS[kind];
+  const c = new Canvas();
+  const pose = clip === "idle" ? { s: 0, b: [0, 0.8, 1.6, 0.8][k] } : undefined;
+  c.scaled([CX, FEET], kit.size ?? 1, () => front(c, kit, k, dir === "up", pose));
+  return toFrameCanvas(c.render(kit.look));
 }
 
 /** Os 16 quadros da folha do monstro (parado, andar, golpe e magia), um por chamada, para desenhar aos poucos. */
