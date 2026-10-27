@@ -459,6 +459,7 @@ export class DungeonScene extends Phaser.Scene {
       else unit.overlay.setPosition(unit.body.x, unit.body.y);
     });
     this.summons.forEach((unit) => this.animateUnit(unit, time));
+    this.hits.update(view);
     this.drawTargetRing();
     this.drawPortalRing(time);
     this.minimap?.update(time);

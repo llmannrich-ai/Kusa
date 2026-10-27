@@ -1,6 +1,8 @@
 import * as Phaser from "phaser";
 import type { AttackFx } from "@kusa/shared";
+import { TILE_SIZE } from "@kusa/shared";
 import { BLOOD_TEXTURE, FX_ANIM, FX_TEXTURE } from "./art/textures.ts";
+import { ChunkCuller } from "./mapShared.ts";
 
 export interface Point { x: number; y: number }
 
@@ -25,15 +27,22 @@ const MELEE_IMPACT: Partial<Record<AttackFx, string>> = {
 const PROJECTILE_SPEED = 0.45;
 const FLIGHT_MS = { min: 90, max: 320 };
 const LUNGE_PX = 6;
-/** Manchas de sangue no chão ao mesmo tempo (as mais antigas somem primeiro). */
-const MAX_DECALS = 40;
+/**
+ * Teto de manchas e cadáveres no chão: ficam até a hunt acabar, e só passando disto (bem acima de uma
+ * hunt normal) os mais antigos saem, para o celular não acumular sem limite.
+ */
+const MAX_DECALS = 4000;
+const MAX_CORPSES = 1500;
 
 /**
  * Efeitos de combate no estilo do Tibia: avanço de quem bate, projéteis, impactos, piscar de dano,
  * sangue no chão e cadáver. Só visual: o servidor já decidiu o dano antes de tudo isso.
+ * Sangue e cadáveres ficam no mapa até a hunt acabar (a cena é destruída junto); fora da tela não são desenhados.
  */
 export class CombatFx {
   private decals: Phaser.GameObjects.Image[] = [];
+  private corpses: Phaser.GameObjects.Sprite[] = [];
+  private culler = new ChunkCuller();
 
   /** `fxDepth` fica acima dos personagens e abaixo de barras e números; `decalDepth` logo acima do chão. */
   constructor(private scene: Phaser.Scene, private fxDepth: number, private decalDepth: number) {}
@@ -78,6 +87,11 @@ export class CombatFx {
     });
   }
 
+  /** Mostra só as manchas e cadáveres perto da câmera; chamar a cada quadro. */
+  update(view: Phaser.Geom.Rectangle) {
+    this.culler.update(view);
+  }
+
   /** Pisca o sprite de branco por um instante, como no Tibia quando alguém apanha. */
   flash(sprite: Phaser.GameObjects.Sprite) {
     sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
@@ -87,11 +101,11 @@ export class CombatFx {
   /** Respingo de sangue no chão perto de `at`. */
   bleed(at: Point, tint?: number) {
     const jitter = () => Phaser.Math.Between(-6, 6);
-    this.decal(BLOOD_TEXTURE.splat, { x: at.x + jitter(), y: at.y + jitter() + 6 }, 0.85, 6000, tint);
+    this.decal(BLOOD_TEXTURE.splat, { x: at.x + jitter(), y: at.y + jitter() + 6 }, 0.85, tint);
   }
 
   /**
-   * Morte: o sprite cai de lado e some; no lugar fica uma poça de sangue (ou poeira, se não sangra).
+   * Morte: o sprite cai de lado e fica no chão, escurecido, sobre uma poça de sangue (ou poeira, se não sangra).
    * `sprite` é copiado, porque a unidade original é destruída em seguida.
    */
   death(sprite: Phaser.GameObjects.Sprite, at: Point, bleeds: boolean, tint?: number) {
@@ -109,10 +123,10 @@ export class CombatFx {
       ease: "Quad.In",
       onComplete: () => {
         corpse.setTint(0x6a5a50);
-        this.scene.tweens.add({ targets: corpse, alpha: 0, delay: 1800, duration: 900, onComplete: () => corpse.destroy() });
+        this.persist(this.corpses, corpse, MAX_CORPSES);
       },
     });
-    if (bleeds) this.decal(BLOOD_TEXTURE.puddle, { x: at.x, y: at.y + 8 }, 1, 15000, tint);
+    if (bleeds) this.decal(BLOOD_TEXTURE.puddle, { x: at.x, y: at.y + 8 }, 1, tint);
     else this.impact(FX_ANIM.smash, true, at, false);
   }
 
@@ -141,25 +155,21 @@ export class CombatFx {
     this.scene.tweens.add({ targets: image, scale: 1, alpha: 0, duration: 260, ease: "Quad.Out", onComplete: () => image.destroy() });
   }
 
-  /** Mancha no chão (variação aleatória da faixa, na cor `tint` se o sangue não for vermelho) que desbota e some. */
-  private decal(key: string, at: Point, alpha: number, lifeMs: number, tint?: number) {
+  /** Mancha no chão (variação aleatória da faixa, na cor `tint` se o sangue não for vermelho) que fica até a hunt acabar. */
+  private decal(key: string, at: Point, alpha: number, tint?: number) {
     const frames = this.scene.textures.get(key).frameTotal - 1;
     const image = this.scene.add.image(at.x, at.y, key, Phaser.Math.Between(0, frames - 1))
       .setDepth(this.decalDepth)
       .setAlpha(alpha)
       .setFlipX(Math.random() < 0.5);
     if (tint !== undefined) image.setTint(tint);
-    this.decals.push(image);
-    if (this.decals.length > MAX_DECALS) this.decals.shift()?.destroy();
-    this.scene.tweens.add({
-      targets: image,
-      alpha: 0,
-      delay: lifeMs * 0.7,
-      duration: lifeMs * 0.3,
-      onComplete: () => {
-        this.decals = this.decals.filter((d) => d !== image);
-        image.destroy();
-      },
-    });
+    this.persist(this.decals, image, MAX_DECALS);
+  }
+
+  /** Deixa `obj` no chão, ligado ao bloco da câmera; passando de `max`, o mais antigo sai. */
+  private persist<T extends Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>(list: T[], obj: T, max: number) {
+    this.culler.add(obj, obj.x / TILE_SIZE, obj.y / TILE_SIZE);
+    list.push(obj);
+    if (list.length > max) list.shift()?.destroy();
   }
 }
