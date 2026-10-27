@@ -141,6 +141,7 @@ async function enter(connect: () => Promise<DungeonRoom>) {
     bindRoom(room);
   } catch (err) {
     if ((err as { code?: number }).code === VERSION_MISMATCH_CODE) return onVersionMismatch((err as Error).message);
+    if (isStaleModule(err)) return onStaleModule();
     showError(`Não foi possível entrar: ${(err as Error).message}`);
   } finally {
     setEntering(false);
@@ -182,6 +183,32 @@ function onVersionMismatch(message: string) {
   }
   showError("Versão nova do jogo: atualizando…");
   location.replace(`${location.pathname}?v=${server}`);
+}
+
+/**
+ * A simulação (hunt solo e sala no aparelho) é baixada por `import()` na hora de entrar. Depois de um deploy, a
+ * página aberta antes dele pede arquivos com nomes que não existem mais no Pages: cada navegador avisa com uma frase.
+ */
+function isStaleModule(err: unknown): boolean {
+  return /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i
+    .test((err as Error)?.message ?? "");
+}
+
+/**
+ * Recarrega a página (com `?m=`, que fura o cache do index.html). Se já recarregou por isso há menos de 1 minuto,
+ * não é versão velha: é a conexão.
+ */
+function onStaleModule() {
+  const key = "kusa:recarregou-modulo";
+  let last = 0;
+  try { last = Number(sessionStorage.getItem(key)) || 0; } catch { /* sem sessionStorage: recarrega mesmo assim */ }
+  if (Date.now() - last < 60_000) {
+    showError("Não foi possível baixar o jogo. Confira a internet e recarregue a página.");
+    return;
+  }
+  try { sessionStorage.setItem(key, String(Date.now())); } catch { /* idem */ }
+  showError("Versão nova do jogo: atualizando…");
+  location.replace(`${location.pathname}?m=${Date.now().toString(36)}`);
 }
 
 // --- Lista de salas -------------------------------------------------------

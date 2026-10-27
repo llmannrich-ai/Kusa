@@ -32,6 +32,12 @@ const SESSION_ID = "solo";
 export async function createSoloHunt(name: string, classId: ClassId, mapId: MapId): Promise<DungeonRoom> {
   // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
   if (await flushPendingSolo()) throw new Error("sem conexão para salvar a hunt anterior; tente de novo com internet");
+  // A simulação só é baixada por quem joga solo. Vem antes de abrir a hunt no banco: se o download falhar
+  // (página de antes de um deploy), não sobra hunt aberta para fechar como morte.
+  const [{ Hunt }, { DungeonState }] = await Promise.all([
+    import("../../server/src/hunt.ts"),
+    import("../../server/src/state.ts"),
+  ]);
   const { data: session } = await supabase.auth.getSession();
   const [{ data, error }, { data: profile }] = await Promise.all([
     supabase.rpc("start_solo_run", { p_class_id: classId, p_map_id: mapId }),
@@ -41,12 +47,6 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   if (error) throw new Error("não foi possível começar a hunt solo");
   const run = data as SoloRunStart;
   noticeClosed(run.closed);
-
-  // A simulação só é baixada por quem joga solo.
-  const [{ Hunt }, { DungeonState }] = await Promise.all([
-    import("../../server/src/hunt.ts"),
-    import("../../server/src/state.ts"),
-  ]);
 
   const listeners = new Map<string, Set<(msg: any) => void>>();
   const leaveListeners = new Set<(code: number) => void>();
