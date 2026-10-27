@@ -27,6 +27,9 @@ teclado e mouse no desktop são um extra.
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles no lado curto (pelo menos 13 no longo): em pé, 9 de largura, com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares; deitado, o tile tem o mesmo tamanho que teria em pé no mesmo celular (no iPhone, com as barras do Safari, sobram uns 7 tiles de altura; nunca menos de 6,5), com o jogador no centro. Deitado se vê menos na vertical e mais para os lados. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
+- **Princípio: a câmera nunca treme.** Nenhum efeito (magia, golpe, habilidade de boss, explosão) sacode a tela: no
+  celular o tremor cansa, atrapalha a mira e esconde o que está acontecendo. O peso de um golpe vem do desenho no chão e
+  nos alvos (clarão, rachaduras, fogo, fumaça, número de dano).
 - **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias no alvo automático), Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
@@ -264,7 +267,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 - O equipamento e a bag **saem da conta quando a hunt começa** e entram no personagem.
 - Na hunt, todo item que o jogador pisa vai para a bag (ou direto para o equipamento, se for melhor; o trocado vai para a bag).
-  **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra a fileira da bag (vermelha quando cheia; ver "Bag na hunt").
+  **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra o botão da bag com a lotação (vermelho quando cheia; ver "Bag na hunt").
 - Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
   **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
 - Quem morre perde **1 equipamento do corpo, sorteado**, **a bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para a conta.
@@ -274,8 +277,8 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 #### Bag na hunt (menu)
 
-- **No HUD aparece só a bag:** uma fileira com os espaços da bag embaixo do loot. O equipamento vestido aparece **somente no menu** da bag (e no próprio personagem). Código em `apps/client/src/bagbar.ts`.
-- Tocar na fileira (ou B no desktop) abre o menu na parte de cima da tela, para o polegar esquerdo continuar andando. A hunt não pausa.
+- **No HUD aparece só um botão de bag** (🎒 com a lotação, ex.: 3/8), embaixo do loot. Os itens da bag e o equipamento vestido aparecem **somente no menu** da bag (e no próprio personagem). Código em `apps/client/src/bagbar.ts`.
+- Tocar no botão (ou B no desktop) abre o menu na parte de cima da tela, para o polegar esquerdo continuar andando. A hunt não pausa.
 - No menu, tocar num item mostra o que ele faz (e o vestido no mesmo slot, para comparar):
   - item da bag: **Equipar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
   - item vestido: **Guardar na bag**, se couber.
@@ -295,7 +298,7 @@ aparelho do jogador, que aceita uma runa nova por boss anotado na hunt mais até
 `SOLO_LIMITS.passedRunes`).
 Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `market_items` e `profile_items` como os itens.
 
-- Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220). O mercado não vende runas.
+- Ficam no **cofre e na bag como os itens** (ocupam espaço igual) e o mercado compra (120; as de magia, 220; as Mestras, 400). O mercado não vende runas.
 - Na aba Itens, **3 slots de runa logo abaixo do equipamento**, separados por classe como o equipamento. Tocar numa runa do
   cofre equipa num slot livre da classe escolhida; não dá para equipar duas iguais na mesma classe. Tirar a runa devolve ao cofre (precisa de espaço). Funções no banco: `equip_item` (limite de 3 por classe e sem repetir), `finish_run` e `drop_random_item` (nunca sorteia runa).
 - As runas equipadas **entram com o herói e valem a hunt inteira**, também na hunt solo; na dungeon não se trocam (o menu da bag só mostra quais estão equipadas).
@@ -326,7 +329,22 @@ Tabela em `packages/shared/src/runes.ts`; no banco, os ids "rune-…" ficam em `
 | 🐺 Lobo | o Lobo Espiritual (Druida) vira opção no slot 1 | 1 |
 | 🦠 Peste | a Nuvem Venenosa (Druida) vira opção no slot 2 | 1 |
 
-- **Runas de magia:** 3 de cada classe (mobilidade, cura, invocação e apoio valem mais emprestadas), cerca de 1 em cada 3 runas sorteadas. A magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
+- **Runas Mestras** (pedra dourada): mudam o jeito de jogar e **sempre cobram um preço**. Só **uma** vale entre as 3 runas
+  equipadas da classe (`equip_item` recusa a segunda; o servidor também confere com `activeRunes`). O mercado compra por 400.
+  Saem dos bosses como as outras, cerca de 1 em cada 5 runas sorteadas. Números em `MASTER_RUNES` (`runes.ts`), efeitos na `Hunt`.
+
+| Mestra | Efeito | Preço |
+|---|---|---|
+| 🔥 Fênix | na primeira morte da hunt, renasce com 40% da vida (1,5 s sem levar dano; a semente do druida vem antes) | -10% de vida máxima |
+| 💎 Vidro | +35% de dano | -25% de vida máxima |
+| 🗿 Colosso | +40% de vida máxima e +3 de armadura | -12% de velocidade |
+| 🔁 Eco | a cada 4 magias, a seguinte não gasta mana nem recarga | magias custam 15% mais mana |
+| ⚰️ Ceifador | cada monstro que o herói mata devolve 3% da vida e da mana | -15% de dano em mini-boss e boss |
+| 👑 Regicida | +30% de dano em mini-boss e boss | -10% de dano nos outros monstros |
+| 🕯️ Pacto | sem mana, a magia sai gastando vida no lugar (nunca a última) | -30% de regeneração de mana |
+| 💢 Vingança | abaixo de 30% da vida, fere (150% do ataque) e empurra quem está colado e ganha escudo de 20% da vida por 6 s; recarga de 45 s | -10% de dano |
+
+- **Runas de magia:** 3 de cada classe (mobilidade, cura, invocação e apoio valem mais emprestadas), cerca de 1 em cada 4 runas sorteadas. A magia aparece como opção extra na escolha do slot, para qualquer classe, no nível base (ou no nível
   que a magia já tem, se for da própria classe; magia de outra classe não ganha XP de uso). Magia de outra classe custa no máximo **40% da mana máxima** do herói
   (`spellManaCost`), senão o Cavaleiro nunca teria mana para o Meteoro.
 
@@ -401,7 +419,8 @@ então funcionam com o servidor do jogo dormindo.
 
 ## Mapa mundi
 
-A tela de **Batalhas** é a carta de **Verdemar**, o continente da campanha no mundo de **Kosaradius**, desenhada como
+A tela de **Batalhas** é o mapa do mundo de **Kosaradius** (o título no alto), com a carta de **Verdemar**, o continente da
+campanha (o subtítulo mostra quantos cenários a classe já abriu), desenhada como
 um pergaminho de D&D. Código em `apps/client/src/worldMap.ts` (câmera, trilhas, nomes, pontos, herói) e
 `apps/client/src/world/verdemar.ts` (catálogo: cenários, trilhas, nomes); plano completo (história, fases, desbloqueio)
 em `docs/MAPA_MUNDI_PLANO.md`.
