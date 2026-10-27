@@ -213,7 +213,7 @@ function applyProgress() {
   const cleared = clearsNow();
   const unlocked = WORLD_ORDER.filter((id) => mapUnlocked(cleared, id));
   world?.setProgress(unlocked, WORLD_ORDER.filter((id) => cleared.includes(id)));
-  $("world-progress").textContent = `campanha · ${unlocked.length} de 18 cenários`;
+  $("world-progress").textContent = `Verdemar · ${unlocked.length} de 18 cenários`;
   if (!isOpen(createMapId())) chooseMap(lastUnlocked(cleared));
 }
 

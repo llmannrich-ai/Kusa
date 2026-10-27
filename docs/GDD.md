@@ -401,7 +401,8 @@ então funcionam com o servidor do jogo dormindo.
 
 ## Mapa mundi
 
-A tela de **Batalhas** é a carta de **Verdemar**, o continente da campanha no mundo de **Kosaradius**, desenhada como
+A tela de **Batalhas** é o mapa do mundo de **Kosaradius** (o título no alto), com a carta de **Verdemar**, o continente da
+campanha (o subtítulo mostra quantos cenários a classe já abriu), desenhada como
 um pergaminho de D&D. Código em `apps/client/src/worldMap.ts` (câmera, trilhas, nomes, pontos, herói) e
 `apps/client/src/world/verdemar.ts` (catálogo: cenários, trilhas, nomes); plano completo (história, fases, desbloqueio)
 em `docs/MAPA_MUNDI_PLANO.md`.
