@@ -168,7 +168,7 @@ export class BagBar {
     if (sel && rune) {
       const name = el("strong", "", rune.name);
       name.style.color = rarityColor(id);
-      box.append(name, el("small", "muted", `${rune.icon} Runa · ${runeEffect(rune)}`));
+      box.append(name, el("small", "muted", `${rune.icon} ${rune.master ? "Runa Mestra" : "Runa"} · ${runeEffect(rune)}`));
       if ("bag" in sel) {
         box.append(el("small", "muted", "Runas se equipam no menu Itens, fora da hunt."));
         const actions = el("div", "bag-actions");
