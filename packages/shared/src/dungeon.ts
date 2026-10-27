@@ -12,7 +12,12 @@ export const Tile = {
   Ruin: 4,
   /** Boca da caverna do deserto (e a saída dela no subterrâneo): andável; pisar leva à outra ponta. */
   Cave: 5,
+  /** Areia fofa (Dunas Cantantes, Mesas de Solária): andável, mas quem pisa nela anda mais devagar (`SAND_SPEED`). */
+  Sand: 6,
 } as const;
+
+/** Fração da velocidade de quem anda na areia fofa (heróis, monstros e invocações). */
+export const SAND_SPEED = 0.65;
 
 export interface Rect { x: number; y: number; w: number; h: number }
 
@@ -107,6 +112,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "desert") return generateDesert(seed);
   if (mapId === "marsh") return generateMarsh(seed);
   if (mapId === "cavern") return generateCavern(seed);
+  if (mapId === "dunes" || mapId === "mesas") return generateDunes(seed, mapId);
   return generateCrypt(seed);
 }
 
@@ -199,12 +205,15 @@ const SWAMP_ARENA = 16;
 /** Quantos bosques e lagoas o gerador tenta pôr no campo aberto. */
 const SWAMP_GROVES = 70;
 const SWAMP_LAKES = 30;
+/** Restos de construção (muros, cantos, colunatas, alicerces) pelo campo. */
+const SWAMP_RUINS = 13;
 
 /**
  * Pântano das Ruínas: campo aberto. O mapa nasce todo andável, cercado de mata na borda, e recebe
- * por cima bosques, lagoas (bloqueiam o passo, não a visão) e ruínas, sempre deixando espaço para
- * contornar: a equipe vai para onde quiser. A dificuldade segue um arco de zonas da entrada até
- * as ruínas do centro, onde está o boss; salas laterais em ruínas guardam mini-boss e baú.
+ * por cima bosques, lagoas alongadas (bloqueiam o passo, não a visão) e os restos do império (trechos e
+ * cantos de muro, colunatas, alicerces de casa), sempre deixando espaço para contornar: a equipe vai
+ * para onde quiser. A dificuldade segue um arco de zonas da entrada até as ruínas do centro, onde está
+ * o boss; salas laterais em ruínas guardam mini-boss e baú.
  */
 function generateSwamp(seed: number): Dungeon {
   // Rede de segurança: se algum ponto importante ficou isolado, tenta a seed seguinte (continua determinístico).
@@ -230,13 +239,13 @@ function buildSwamp(seed: number): Dungeon {
   const get = (x: number, y: number) => (inside(x, y) ? tiles[y * size + x] : Tile.Wall);
   const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * size + x] = t; };
 
-  /** Círculo de borda irregular; `only` limita a troca a um tipo de tile. */
-  const blob = (cx: number, cy: number, r: number, t: number, only?: number) => {
-    const reach = Math.ceil(r + 1);
+  /** Mancha de borda irregular (`stretch` > 1 estica na horizontal); `only` limita a troca a um tipo de tile. */
+  const blob = (cx: number, cy: number, r: number, t: number, only?: number, stretch = 1) => {
+    const reach = Math.ceil(r * Math.max(stretch, 1 / stretch) + 1);
     for (let y = cy - reach; y <= cy + reach; y++)
       for (let x = cx - reach; x <= cx + reach; x++) {
         const edge = r - 0.6 + rng.next() * 1.2;
-        if (Math.hypot(x - cx, y - cy) > edge) continue;
+        if (Math.hypot((x - cx) / stretch, (y - cy) * stretch) > edge) continue;
         if (only === undefined || get(x, y) === only) set(x, y, t);
       }
   };
@@ -260,11 +269,13 @@ function buildSwamp(seed: number): Dungeon {
     }
   };
 
-  // Mata fechada só na borda do mapa, com espessura que varia aos poucos.
+  // Mata fechada só na borda do mapa, com a espessura ondulando devagar (sem dente de tile em tile).
   for (let side = 0; side < 4; side++) {
     let depth = rng.int(2, 4);
+    let goal = depth;
     for (let i = 0; i < size; i++) {
-      depth = Math.max(2, Math.min(6, depth + rng.int(-1, 1)));
+      if (i % 5 === 0) goal = rng.int(2, 6);
+      if (rng.next() < 0.5) depth += Math.sign(goal - depth);
       for (let d = 0; d < depth; d++) {
         const [x, y] = side === 0 ? [i, d] : side === 1 ? [size - 1 - d, i] : side === 2 ? [i, size - 1 - d] : [d, i];
         tiles[y * size + x] = Tile.Wall;
@@ -373,21 +384,58 @@ function buildSwamp(seed: number): Dungeon {
     });
   }
 
-  // Lagoas e brejos.
+  // Lagoas e brejos: alongados, às vezes com uma poça colada (a margem fica recortada).
   for (let i = 0; i < SWAMP_LAKES; i++) {
     const x = rng.int(8, size - 9);
     const y = rng.int(8, size - 9);
     const r = 2 + rng.next() * 3.5;
-    obstacle(() => blob(x, y, r, Tile.Water, Tile.Floor));
+    const stretch = 0.75 + rng.next() * 0.6;
+    obstacle(() => {
+      blob(x, y, r, Tile.Water, Tile.Floor, stretch);
+      if (r > 3 && rng.next() < 0.6) {
+        const a = rng.next() * Math.PI * 2;
+        blob(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), 1.3 + rng.next() * 1.5, Tile.Water, Tile.Floor);
+      }
+    });
   }
 
-  // Restos de muro pelo campo: trechos curtos, retos.
-  for (let i = 0; i < 9; i++) {
-    const x = rng.int(8, size - 9);
-    const y = rng.int(8, size - 9);
-    const len = rng.int(3, 6);
-    const horizontal = rng.next() < 0.5;
-    obstacle(() => { for (let k = 0; k < len; k++) set(horizontal ? x + k : x, horizontal ? y : y + k, Tile.Ruin); });
+  // Restos do império pelo campo: trecho de muro, canto de muro, colunata e alicerce de casa (com a porta aberta).
+  for (let i = 0; i < SWAMP_RUINS; i++) {
+    const x = rng.int(9, size - 15);
+    const y = rng.int(9, size - 15);
+    const kind = rng.next();
+    const [dx, dy] = rng.next() < 0.5 ? [1, 0] : [0, 1];
+    obstacle(() => {
+      if (kind < 0.35) {
+        const len = rng.int(3, 6);
+        for (let k = 0; k < len; k++) set(x + dx * k, y + dy * k, Tile.Ruin);
+      } else if (kind < 0.6) {
+        const a = rng.int(3, 5);
+        const b = rng.int(2, 4);
+        const sx = rng.next() < 0.5 ? 1 : -1;
+        for (let k = 0; k < a; k++) set(x + k, y, Tile.Ruin);
+        for (let k = 1; k <= b; k++) set(x + (sx > 0 ? 0 : a - 1), y + k, Tile.Ruin);
+      } else if (kind < 0.8) {
+        // Colunas soltas em fila, a cada 2 tiles (umas já caíram).
+        const n = rng.int(3, 5);
+        for (let k = 0; k < n; k++) if (k === 0 || rng.next() < 0.8) set(x + dx * k * 2, y + dy * k * 2, Tile.Ruin);
+      } else {
+        const w = rng.int(4, 6);
+        const h = rng.int(4, 5);
+        const door = rng.int(0, 3);
+        for (let yy = 0; yy < h; yy++)
+          for (let xx = 0; xx < w; xx++) {
+            const border = xx === 0 || yy === 0 || xx === w - 1 || yy === h - 1;
+            if (!border || rng.next() < 0.35) continue;
+            // Porta de 2 tiles no meio de um lado: o miolo nunca fecha.
+            const mx = Math.floor((w - 1) / 2);
+            const my = Math.floor((h - 1) / 2);
+            const isDoor = (door === 0 && yy === 0 && (xx === mx || xx === mx + 1)) || (door === 1 && xx === w - 1 && (yy === my || yy === my + 1))
+              || (door === 2 && yy === h - 1 && (xx === mx || xx === mx + 1)) || (door === 3 && xx === 0 && (yy === my || yy === my + 1));
+            if (!isDoor) set(x + xx, y + yy, Tile.Ruin);
+          }
+      }
+    });
   }
 
   // Árvores e colunas soltas: só com chão em volta, para nunca fechar passagem.
@@ -1178,6 +1226,404 @@ function buildMarsh(seed: number): Dungeon {
   return { mapId: "marsh", width: size, height: size, tiles, spawn, boss, bossPortal: centerOf(boss), path, side, meadows, portal, planks };
 }
 
+const DUNES_W = 96;
+const DUNES_H = 128;
+/** Vales entre as cordilheiras (3 cordilheiras, 4 vales). */
+const DUNES_VALLEYS = 4;
+/** Zonas de monstros do caminho, do sul (entrada) ao norte (arena). */
+const DUNES_STEPS = 7;
+const DUNES_MEADOWS = 5;
+
+/**
+ * Dunas Cantantes e Mesas de Solária: o mesmo terreno, em pé (o celular na vertical). Cordilheiras compridas no
+ * sentido do vento (norte-sul) separam 4 vales; selas baixas (nas Mesas, cânions estreitos) ligam um vale ao outro.
+ * A entrada fica na planície do sul e a arena do boss na bacia do norte, onde os vales se encontram. As zonas sobem
+ * do sul ao norte trocando de vale, então a equipe escolhe por qual sela cruzar. Areia fofa (`Tile.Sand`) cobre o pé
+ * das cordilheiras e manchas no fundo dos vales: anda-se devagar nela, e as selas ficam de areia firme.
+ */
+function generateDunes(seed: number, mapId: "dunes" | "mesas"): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildDunes(seed + attempt, mapId);
+    if (attempt >= 20 || connected(d.tiles, d.width, dunesGoals(d))) return d;
+  }
+}
+
+function dunesGoals(d: Pick<Dungeon, "portal" | "boss" | "path" | "side" | "meadows">) {
+  return [
+    d.portal, centerOf(d.boss), ...d.path.map(centerOf), ...d.meadows.map(centerOf),
+    ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
+}
+
+function buildDunes(seed: number, mapId: "dunes" | "mesas"): Dungeon {
+  const rng = createRng(seed);
+  const mesas = mapId === "mesas";
+  const W = DUNES_W;
+  const H = DUNES_H;
+  const tiles = new Uint8Array(W * H).fill(Tile.Floor);
+  const inside = (x: number, y: number) => x > 0 && y > 0 && x < W - 1 && y < H - 1;
+  const get = (x: number, y: number) => (inside(x, y) ? tiles[y * W + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * W + x] = t; };
+  /** Mata de 1 tile posta de propósito (coqueiro, pilar de rocha): a limpeza final não a confunde com sobra. */
+  const props = new Set<number>();
+  /** Areia firme de propósito (selas, entrada, arena): a areia fofa não entra. */
+  const firm = new Uint8Array(W * H);
+  const wave = () => ({ a: rng.next() * Math.PI * 2, f: 0.15 + rng.next() * 0.2 });
+
+  // Borda: dunas altas (nas Mesas, paredão em degraus: a espessura pula de uma vez).
+  for (let side = 0; side < 4; side++) {
+    const length = side % 2 === 0 ? W : H;
+    let depth = rng.int(3, 5);
+    let goal = depth;
+    for (let i = 0; i < length; i++) {
+      if (i % (mesas ? 5 : 6) === 0) goal = rng.int(3, 7);
+      if (mesas) depth = goal;
+      else if (rng.next() < 0.5) depth += Math.sign(goal - depth);
+      for (let d = 0; d < depth; d++) {
+        const [x, y] = side === 0 ? [i, d] : side === 1 ? [W - 1 - d, i] : side === 2 ? [i, H - 1 - d] : [d, i];
+        tiles[y * W + x] = Tile.Wall;
+      }
+    }
+  }
+
+  // Entrada na planície do sul.
+  const spawn: Rect = { x: rng.int(18, W - 28), y: H - 19, w: 10, h: 10 };
+  const s = centerOf(spawn);
+
+  // Arena do boss na bacia do norte: aberta, com um aro de duna (de rocha, nas Mesas) aberto para o sul.
+  const ac = { x: Math.round(W / 2) + rng.int(-8, 8), y: 22 };
+  const boss: Rect = { x: ac.x - 8, y: ac.y - 7, w: 17, h: 15 };
+  for (let y = ac.y - 13; y <= ac.y + 13; y++)
+    for (let x = ac.x - 14; x <= ac.x + 14; x++) {
+      const r = Math.hypot((x - ac.x) / 1.1, y - ac.y);
+      const a = Math.atan2(y - ac.y, x - ac.x);
+      if (r <= 8.6) set(x, y, Tile.Floor);
+      // O aro cobre o norte e os lados; o sul (onde chegam os vales) fica aberto.
+      else if (r <= 10.8 + rng.next() * 0.6 && Math.sin(a) < 0.35) set(x, y, Tile.Wall);
+    }
+  for (let y = boss.y; y < boss.y + boss.h; y++) for (let x = boss.x; x < boss.x + boss.w; x++) if (Math.hypot((x - ac.x) / 1.1, y - ac.y) <= 8.6) firm[y * W + x] = 1;
+
+  // Cordilheiras: eixo serpenteando no sentido do vento, largura ondulando; a ponta afina (nas Mesas, corta reto).
+  const arenaBottom = boss.y + boss.h;
+  const ridges: { x: (y: number) => number; top: number; bottom: number }[] = [];
+  for (let i = 1; i < DUNES_VALLEYS; i++) {
+    const base = 5 + (i * (W - 10)) / DUNES_VALLEYS + rng.int(-2, 2);
+    const w1 = wave();
+    const w2 = wave();
+    const w3 = wave();
+    const amp = 2 + rng.next() * 2;
+    const top = arenaBottom + rng.int(0, 4);
+    const bottom = H - 33 + rng.int(-2, 2);
+    const axis = (y: number) => base + Math.sin(y * w1.f * 0.45 + w1.a) * amp + Math.sin(y * w2.f * 1.3 + w2.a) * 1.1;
+    ridges.push({ x: axis, top, bottom });
+    // Nas Mesas, a largura muda em degraus de 4 a 8 linhas: os platôs têm beira reta e reentrâncias.
+    let step = 0;
+    let stepHalf = 4;
+    for (let y = top; y <= bottom; y++) {
+      let half: number;
+      if (mesas) {
+        if (y >= step) { step = y + rng.int(4, 8); stepHalf = 4 + rng.int(0, 3); }
+        half = stepHalf;
+      } else {
+        const swell = 0.5 + 0.5 * Math.sin(y * w3.f + w3.a);
+        const tip = Math.min(1, (y - top) / 6, (bottom - y) / 6);
+        half = (2.6 + swell * 2.6) * Math.max(0.3, tip);
+      }
+      const cx = axis(y);
+      // Encosta assimétrica: o vento empilha mais areia do lado oeste (a sombra fica no leste).
+      const lean = mesas ? 0 : 1.2;
+      for (let x = Math.floor(cx - half - lean - 1); x <= Math.ceil(cx + half + 1); x++) {
+        const u = x - cx;
+        if (u >= -half - lean && u <= half) set(x, y, Tile.Wall);
+      }
+    }
+  }
+  /** Eixo do vale `v` (0 a 3) na linha `y`: o meio entre as cordilheiras (ou a borda) dos dois lados. */
+  const valleyX = (v: number, y: number) => {
+    const left = v === 0 ? 6 : ridges[v - 1].x(y);
+    const right = v === DUNES_VALLEYS - 1 ? W - 7 : ridges[v].x(y);
+    return Math.round((left + right) / 2);
+  };
+
+  // Selas: 2 por cordilheira (às vezes 3), espaçadas; areia firme, de 4 a 5 linhas (nas Mesas, cânions de 3).
+  for (const ridge of ridges) {
+    const count = rng.next() < 0.3 ? 3 : 2;
+    const ys: number[] = [];
+    for (let tries = 0; tries < 40 && ys.length < count; tries++) {
+      const y = rng.int(ridge.top + 6, ridge.bottom - 6);
+      if (ys.every((o) => Math.abs(o - y) >= 18)) ys.push(y);
+    }
+    for (const y0 of ys) {
+      const rows = mesas ? 3 : rng.int(4, 5);
+      for (let y = y0; y < y0 + rows; y++) {
+        const cx = Math.round(ridge.x(y));
+        for (let x = cx - 9; x <= cx + 9; x++) {
+          if (get(x, y) === Tile.Wall && Math.abs(x - cx) <= 8) set(x, y, Tile.Floor);
+          if (inside(x, y)) firm[y * W + x] = 1;
+        }
+      }
+    }
+  }
+
+  // Zonas do caminho: a primeira na planície do sul; as outras sobem do sul ao norte, trocando de vale.
+  const path: Rect[] = [];
+  const anchors: { x: number; y: number }[] = [];
+  const zone = (x: number, y: number) => {
+    const half = rng.int(5, 6);
+    const cx = clamp(x, half + 7, W - half - 8);
+    const cy = clamp(y, half + 7, H - half - 8);
+    anchors.push({ x: cx, y: cy });
+    path.push({ x: cx - half, y: cy - half, w: half * 2 + 1, h: half * 2 + 1 });
+  };
+  const plainY = H - 24;
+  zone(s.x + (s.x < W / 2 ? 1 : -1) * rng.int(16, 24), plainY + rng.int(-2, 2));
+  let valley = rng.int(0, DUNES_VALLEYS - 1);
+  const top = arenaBottom + 9;
+  const low = ridges.reduce((m, r) => Math.min(m, r.bottom), H) - 7;
+  for (let i = 1; i < DUNES_STEPS; i++) {
+    // Troca de vale a cada zona (às vezes pula dois), para a rota sempre cruzar alguma sela.
+    const ok = (v: number) => v >= 0 && v < DUNES_VALLEYS;
+    const next = [valley - 1, valley + 1].filter(ok);
+    const jump = [valley - 2, valley + 2].filter(ok);
+    valley = rng.next() < 0.8 || jump.length === 0 ? rng.pick(next) : rng.pick(jump);
+    const y = Math.round(low + ((top - low) * (i - 1)) / (DUNES_STEPS - 2)) + rng.int(-2, 2);
+    zone(valleyX(valley, y) + rng.int(-2, 2), y);
+  }
+
+  // Entrada e o miolo das zonas livres de duna (a cordilheira pode ter serpenteado por cima).
+  for (let y = spawn.y - 3; y < spawn.y + spawn.h + 3; y++)
+    for (let x = spawn.x - 3; x < spawn.x + spawn.w + 3; x++) {
+      if (y < H - 6 && inside(x, y) && x > 4 && x < W - 5) set(x, y, Tile.Floor);
+      if (inside(x, y)) firm[y * W + x] = 1;
+    }
+
+  // Campinas: pontos de monstros extras nos vales, longe da entrada, das zonas, da arena e umas das outras.
+  const meadows: Rect[] = [];
+  for (let tries = 0; tries < 80 && meadows.length < DUNES_MEADOWS; tries++) {
+    const y = rng.int(arenaBottom + 4, H - 26);
+    const p = { x: valleyX(rng.int(0, DUNES_VALLEYS - 1), y) + rng.int(-2, 2), y };
+    const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+    if (!far(s, 22) || !anchors.every((a) => far(a, 13)) || !meadows.every((m) => far(centerOf(m), 14)) || !far(ac, 16)) continue;
+    meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
+  }
+
+  for (const p of [...anchors, ...meadows.map(centerOf)])
+    for (let y = p.y - 1; y <= p.y + 1; y++) for (let x = p.x - 1; x <= p.x + 1; x++) set(x, y, Tile.Floor);
+
+  // Ruínas soterradas (nas Mesas, casas escavadas na rocha): sala lateral ao lado de uma zona, entrando pela
+  // encosta da cordilheira, com muro e 2 portões. O mini-boss e o baú ficam nela, como no Mar de Areia.
+  const side: Rect[] = [];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (rng.next() < 0.35) continue;
+    const anchor = anchors[i];
+    const w = rng.int(7, 9);
+    const h = rng.int(7, 9);
+    const room = shuffled(rng, SWAMP_SIDE_DIRS)
+      .map(([dx, dy]): Rect => ({
+        x: clamp(anchor.x + dx * 10 - w / 2, 6, W - w - 7),
+        y: clamp(anchor.y + dy * 10 - h / 2, arenaBottom + 2, H - h - 7),
+        w, h,
+      }))
+      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP && gapBetween(r, boss) >= 4
+        && side.every((o) => gapBetween(r, o) >= 4)
+        && [...anchors, ...meadows.map(centerOf)].every((p) => gapBetween(r, { x: p.x, y: p.y, w: 1, h: 1 }) >= 3));
+    if (!room) continue;
+    const before = tiles.slice();
+    const firmBefore = firm.slice();
+    for (let y = room.y - 1; y <= room.y + room.h; y++)
+      for (let x = room.x - 1; x <= room.x + room.w; x++) {
+        const outer = x < room.x || y < room.y || x >= room.x + room.w || y >= room.y + room.h;
+        if (outer) continue;
+        const border = x === room.x || y === room.y || x === room.x + room.w - 1 || y === room.y + room.h - 1;
+        // Escavada na rocha, a casa tem o muro inteiro; soterrada na areia, o muro tem falhas.
+        set(x, y, border && (mesas || rng.next() >= 0.25) ? Tile.Ruin : Tile.Floor);
+        firm[y * W + x] = 1;
+      }
+    const cx = room.x + Math.floor(room.w / 2);
+    const cy = room.y + Math.floor(room.h / 2);
+    for (const gate of shuffled(rng, [0, 1, 2, 3]).slice(0, 2))
+      for (let k = -1; k <= 1; k++) {
+        const [gx, gy, ox, oy] = gate === 0 ? [cx + k, room.y, 0, -1] : gate === 1 ? [room.x + room.w - 1, cy + k, 1, 0]
+          : gate === 2 ? [cx + k, room.y + room.h - 1, 0, 1] : [room.x, cy + k, -1, 0];
+        set(gx, gy, Tile.Floor);
+        // A porta abre para fora: cava a encosta na frente dela.
+        for (let d = 1; d <= 3; d++) if (get(gx + ox * d, gy + oy * d) === Tile.Wall) set(gx + ox * d, gy + oy * d, Tile.Floor);
+      }
+    // A sala não pode fechar o vale (nem ficar presa na rocha): sem passagem, ela sai.
+    const rooms = [...side, room].flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]);
+    if (!connected(tiles, W, [s, ...anchors, ...meadows.map(centerOf), ...rooms])) {
+      tiles.set(before);
+      firm.set(firmBefore);
+      continue;
+    }
+    side.push(room);
+  }
+
+  const keep = [
+    grow(spawn, 3), grow(boss, 1), ...side.map((r) => grow(r, 2)),
+    ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
+  ];
+  const kept = (x: number, y: number) => keep.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const goals = dunesGoals({ portal: s, boss, path, side, meadows });
+
+  /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
+  const obstacle = (place: () => void) => {
+    const before = tiles.slice();
+    const propsBefore = new Set(props);
+    place();
+    let undo = false;
+    for (let i = 0; i < tiles.length && !undo; i++) {
+      if (tiles[i] !== before[i] && (kept(i % W, Math.floor(i / W)) || firm[i])) undo = true;
+    }
+    if (undo || !connected(tiles, W, goals)) {
+      tiles.set(before);
+      props.clear();
+      propsBefore.forEach((i) => props.add(i));
+    }
+  };
+  const orthoWall = (x: number, y: number) =>
+    get(x - 1, y) === Tile.Wall || get(x + 1, y) === Tile.Wall || get(x, y - 1) === Tile.Wall || get(x, y + 1) === Tile.Wall;
+  /** Mata de 1 tile (coqueiro ou pilar) só em areia e sem mata nos 4 lados. */
+  const prop = (x: number, y: number) => {
+    if (!inside(x, y) || get(x, y) !== Tile.Floor || orthoWall(x, y) || firm[y * W + x]) return;
+    set(x, y, Tile.Wall);
+    props.add(y * W + x);
+  };
+
+  if (mesas) {
+    // Morros-testemunho: platôs pequenos e soltos nos vales, de beira reta e quina lascada.
+    for (let i = 0; i < 14; i++) {
+      const x = rng.int(8, W - 9);
+      const y = rng.int(arenaBottom + 2, H - 24);
+      const bw = rng.int(2, 5);
+      const bh = rng.int(2, 4);
+      obstacle(() => {
+        for (let yy = y; yy < y + bh; yy++)
+          for (let xx = x; xx < x + bw; xx++) {
+            const corner = (xx === x || xx === x + bw - 1) && (yy === y || yy === y + bh - 1);
+            if (!(corner && rng.next() < 0.5) && get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Wall);
+          }
+      });
+    }
+  } else {
+    // Barcanas: dunas pequenas em meia-lua nos vales, com as pontas viradas para o sul (para onde o vento sopra).
+    for (let i = 0; i < 22; i++) {
+      const x = rng.int(8, W - 9);
+      const y = rng.int(arenaBottom + 2, H - 24);
+      const r = 2.2 + rng.next() * 1.8;
+      obstacle(() => {
+        for (let yy = Math.floor(y - r - 1); yy <= y + r + 1; yy++)
+          for (let xx = Math.floor(x - r - 1); xx <= x + r + 1; xx++) {
+            const outer = Math.hypot(xx - x, yy - y) <= r;
+            const bite = Math.hypot(xx - x, yy - (y + r * 0.75)) <= r * 0.85;
+            if (outer && !bite && get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Wall);
+          }
+      });
+    }
+  }
+
+  // Oásis: no máximo um por vale (nas Mesas, poços no fundo do cânion, menores), com coqueiros na margem.
+  const oases: { v: number; x: number; y: number; r: number }[] = [];
+  for (let v = 0; v < DUNES_VALLEYS; v++) {
+    if (rng.next() >= (mesas ? 0.45 : 0.7)) continue;
+    // Algumas tentativas por vale: o oásis que invade uma zona ou fecha a passagem é desfeito.
+    for (let tries = 0; tries < 8 && !oases.some((o) => o.v === v); tries++) {
+    const y = rng.int(arenaBottom + 6, H - 30);
+    const o = { v, x: valleyX(v, y) + rng.int(-2, 2), y, r: mesas ? 1.6 + rng.next() * 1.2 : 2.2 + rng.next() * 2 };
+    obstacle(() => {
+      const reach = Math.ceil(o.r + 4);
+      for (let yy = o.y - reach; yy <= o.y + reach; yy++)
+        for (let xx = o.x - reach; xx <= o.x + reach; xx++) {
+          const edge = o.r - 0.25 + rng.next() * 0.5;
+          if (Math.hypot((xx - o.x) * 1.2, yy - o.y) <= edge && get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Water);
+        }
+      for (let yy = o.y - reach; yy <= o.y + reach; yy++)
+        for (let xx = o.x - reach; xx <= o.x + reach; xx++) {
+          const wet = [get(xx - 1, yy), get(xx + 1, yy), get(xx, yy - 1), get(xx, yy + 1)].filter((t) => t === Tile.Water).length;
+          if (get(xx, yy) === Tile.Water && wet <= 1) set(xx, yy, Tile.Floor);
+        }
+      for (let k = 0; k < (mesas ? 8 : 16); k++) {
+        const a = rng.next() * Math.PI * 2;
+        const d = o.r + 1.8 + rng.next() * 1.4;
+        prop(Math.round(o.x + Math.cos(a) * d), Math.round(o.y + Math.sin(a) * d));
+      }
+    });
+    if (get(o.x, o.y) === Tile.Water) oases.push(o);
+    }
+  }
+  for (const o of oases)
+    for (let yy = o.y - 6; yy <= o.y + 6; yy++) for (let xx = o.x - 6; xx <= o.x + 6; xx++) if (inside(xx, yy)) firm[yy * W + xx] = 1;
+
+  // Nas Mesas, pilares de rocha soltos pelos vales; nas Dunas, um coqueiro perdido aqui e ali.
+  for (let y = 4; y < H - 4; y++)
+    for (let x = 4; x < W - 4; x++) {
+      if (kept(x, y) || !openAround(get, x, y, 2)) continue;
+      if (rng.next() < (mesas ? 0.01 : 0.003)) prop(x, y);
+    }
+
+  // Pedras cantantes: um círculo de menires (ruína) em volta do meio da arena. Nas Mesas, 4 pilares de rocha.
+  const stones = mesas ? 4 : 7;
+  const turn = rng.next() * Math.PI * 2;
+  for (let k = 0; k < stones; k++) {
+    const a = turn + (k * Math.PI * 2) / stones;
+    const x = Math.round(ac.x + Math.cos(a) * 5.5);
+    const y = Math.round(ac.y + Math.sin(a) * 5);
+    set(x, y, mesas ? Tile.Wall : Tile.Ruin);
+    if (mesas) props.add(y * W + x);
+  }
+
+  // Mata solta que não foi posta de propósito (sobra de duna cortada) volta a ser areia.
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (tiles[i] === Tile.Wall && !props.has(i) && !orthoWall(x, y)) tiles[i] = Tile.Floor;
+    }
+
+  // Areia fofa: no pé das cordilheiras e das dunas (faixa de largura ondulante; nas Mesas, só onde a areia
+  // escorreu) e em manchas compridas no fundo dos vales. Selas, entrada, arena, ruínas e oásis ficam firmes.
+  const bigWall = (x: number, y: number) => get(x, y) === Tile.Wall && orthoWall(x, y) && x > 1 && y > 1 && x < W - 2 && y < H - 2;
+  const f1 = wave();
+  const f2 = wave();
+  const sand = new Uint8Array(W * H);
+  for (let y = 2; y < H - 2; y++)
+    for (let x = 2; x < W - 2; x++) {
+      if (get(x, y) !== Tile.Floor || firm[y * W + x]) continue;
+      const reach = (mesas ? 0.4 : 1.6) + Math.sin(y * f1.f + f1.a) * 0.9 + Math.sin((x + y) * f2.f * 0.7 + f2.a) * 0.6;
+      if (reach < 0.8) continue;
+      const r = Math.round(reach);
+      let near = false;
+      for (let dy = -r; dy <= r && !near; dy++) for (let dx = -r; dx <= r && !near; dx++) if (bigWall(x + dx, y + dy)) near = true;
+      if (near) sand[y * W + x] = 1;
+    }
+  for (let i = 0; i < (mesas ? 7 : 12); i++) {
+    const v = rng.int(0, DUNES_VALLEYS - 1);
+    const y = rng.int(arenaBottom + 4, H - 26);
+    const cx = valleyX(v, y) + rng.int(-3, 3);
+    const rx = 1.8 + rng.next() * 2.2;
+    const ry = 4 + rng.next() * 5;
+    for (let yy = Math.floor(y - ry); yy <= y + ry; yy++)
+      for (let xx = Math.floor(cx - rx); xx <= cx + rx; xx++) {
+        if (!inside(xx, yy) || get(xx, yy) !== Tile.Floor || firm[yy * W + xx]) continue;
+        if (((xx - cx) / rx) ** 2 + ((yy - y) / ry) ** 2 <= 1 - rng.next() * 0.2) sand[yy * W + xx] = 1;
+      }
+  }
+  // Grão solto (areia fofa de 1 tile sem vizinha fofa) volta a ser firme: as manchas ficam inteiras.
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (sand[i] && !sand[i - 1] && !sand[i + 1] && !sand[i - W] && !sand[i + W]) sand[i] = 0;
+    }
+  for (let i = 0; i < tiles.length; i++) if (sand[i]) tiles[i] = Tile.Sand;
+
+  // Bolsões sem acesso viram duna.
+  const reach = reachableFrom(tiles, W, s);
+  for (let i = 0; i < tiles.length; i++) if ((tiles[i] === Tile.Floor || tiles[i] === Tile.Sand) && !reach[i]) tiles[i] = Tile.Wall;
+
+  const portal = s;
+  set(portal.x, portal.y, Tile.Portal);
+  return { mapId, width: W, height: H, tiles, spawn, boss, bossPortal: centerOf(boss), path, side, meadows, portal };
+}
+
 /** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */
 const SWAMP_SIDE_DIRS: readonly (readonly [number, number])[] = [
   [1, 0], [-1, 0], [0, 1], [0, -1], [0.75, 0.75], [-0.75, 0.75], [0.75, -0.75], [-0.75, -0.75],
@@ -1199,7 +1645,7 @@ function connected(tiles: Uint8Array, size: number, goals: readonly { x: number;
 
 /** Tiles andáveis alcançáveis a partir de um ponto (busca em largura, 4 direções). */
 function reachableFrom(tiles: Uint8Array, size: number, from: { x: number; y: number }) {
-  const walk = (i: number) => tiles[i] === Tile.Floor || tiles[i] === Tile.Portal || tiles[i] === Tile.Cave;
+  const walk = (i: number) => tiles[i] === Tile.Floor || tiles[i] === Tile.Portal || tiles[i] === Tile.Cave || tiles[i] === Tile.Sand;
   const seen = new Uint8Array(tiles.length);
   const start = from.y * size + from.x;
   if (!walk(start)) return seen;
@@ -1227,7 +1673,12 @@ export function tileAt(d: Dungeon, x: number, y: number): number {
 
 export function isWalkable(d: Dungeon, x: number, y: number): boolean {
   const t = tileAt(d, x, y);
-  return t === Tile.Floor || t === Tile.Portal || t === Tile.Cave;
+  return t === Tile.Floor || t === Tile.Portal || t === Tile.Cave || t === Tile.Sand;
+}
+
+/** Areia fofa: quem pisa anda a `SAND_SPEED` da velocidade. */
+export function isSand(d: Dungeon, x: number, y: number): boolean {
+  return tileAt(d, x, y) === Tile.Sand;
 }
 
 /** Paredes, mata e ruínas tapam a visão; chão e água, não. */

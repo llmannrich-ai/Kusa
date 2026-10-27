@@ -8,9 +8,10 @@
  */
 import {
   MSG, SERVER_TICK_MS, Tile, createRng, generateDungeon, hasLineOfSight, isWalkable, tileAt, tileDistance,
-  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type SpellId, type SpellMessage,
+  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type RunEndedMessage, type SpellId, type SpellMessage,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
+import { nextStep } from "../src/pathfinding.ts";
 import { DungeonState, type Monster, type Player } from "../src/state.ts";
 
 export interface ArenaOptions {
@@ -181,6 +182,32 @@ export function arena(options: ArenaOptions = {}) {
     any.seats.get(HERO).spellReadyAt = [0, 0];
   }
 
+  /** Mata o monstro pelo caminho normal da morte (XP, loot e drops sorteados com a seed da arena), como se o herói o matasse. */
+  function kill(m: Monster) {
+    any.killMonster(m, any.brains.get(m.id), HERO);
+  }
+
+  /** Anda até o tile (desviando de monstros e do portal) e para em cima dele; falha se não chegar em `ms`. */
+  function walkTo(to: { x: number; y: number }, ms = 10_000) {
+    const blocked = (x: number, y: number) =>
+      (x === d.portal.x && y === d.portal.y) || [...state.monsters.values()].some((m) => m.x === x && m.y === y);
+    until(() => {
+      if (p.x === to.x && p.y === to.y) return true;
+      const step = nextStep(any.dungeon, p, to, 0, blocked);
+      if (step) hunt.move(HERO, { dx: step.x - p.x, dy: step.y - p.y });
+      return false;
+    }, ms, `o herói não chegou a ${to.x},${to.y}`);
+  }
+
+  /** Encerra a hunt do herói (fuga, morte...) e devolve o resumo que ele receberia. */
+  function end(outcome: "escaped" | "died" = "escaped") {
+    let result: any;
+    any.host.runEnded = (_id: string, r: unknown) => { result = r; };
+    any.endRun(HERO, outcome);
+    if (!result) throw new Error("a hunt não mandou o resumo");
+    return result as RunEndedMessage;
+  }
+
   /** Golpes do herói (dano em monstro) desde a posição `from` da lista de dano. */
   function hitsFrom(from: number) {
     return damage.slice(from).filter((x) => x.attacker === HERO && !x.toPlayer).length;
@@ -199,7 +226,7 @@ export function arena(options: ArenaOptions = {}) {
   const now = () => clock;
   return {
     hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices,
-    advance, until, place, spawn, choose, cast, ready, hitsFrom, where, brain, seat, now, free,
+    advance, until, place, spawn, choose, cast, ready, kill, walkTo, end, hitsFrom, where, brain, seat, now, free,
   };
 }
 

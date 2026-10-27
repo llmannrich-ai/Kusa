@@ -35,7 +35,7 @@
       <p id="login-error" class="error" role="alert" hidden></p>
     </form>
 
-    <!-- Menu da conta (menu.ts): classes, árvore de magias, itens e mercado. Abas embaixo, para o polegar. -->
+    <!-- Menu da conta (menu.ts): heróis, árvore de magias, itens e mercado. Abas embaixo, para o polegar. -->
     <section id="menu" class="hub" hidden>
       <header class="hub-top">
         <div class="hub-account">
@@ -46,7 +46,7 @@
       </header>
       <div id="hub-body"></div>
       <nav class="hub-tabs" role="tablist">
-        <button data-tab="classes" role="tab"><span aria-hidden="true">🛡️</span>Classes</button>
+        <button data-tab="heroes" role="tab"><span aria-hidden="true">🛡️</span>Heróis</button>
         <button data-tab="spells" role="tab"><span aria-hidden="true">📖</span>Grimório</button>
         <!-- Batalhas: botão redondo no centro da barra, abre a tela de salas. -->
         <button id="play" class="hub-battle" aria-label="Batalhas">
@@ -124,7 +124,7 @@
       <div id="world-view" class="world-view" aria-label="Carta de Verdemar: arraste para explorar, pinça para aproximar"></div>
       <header class="world-top">
         <button id="rooms-back" class="world-chip icon-button" aria-label="Voltar ao menu">‹</button>
-        <div class="world-title"><strong>Verdemar</strong><small>campanha · 5 de 18 cenários</small></div>
+        <div class="world-title"><strong>Verdemar</strong><small id="world-progress">campanha · 5 de 18 cenários</small></div>
         <button id="open-room-list" class="world-rooms">Salas abertas · 0</button>
       </header>
       <p id="world-toast" class="world-toast" role="status" hidden></p>
@@ -145,7 +145,6 @@
           <!-- Preenchido por lobby.ts (renderServerPicker). -->
           <div id="server-list" class="server-list" role="radiogroup" aria-label="Onde a sala roda"></div>
         </div>
-        <p id="sheet-wait" class="hint" hidden>O servidor da nuvem pode levar 1 minuto para acordar.</p>
         <div id="sheet-rooms-box" hidden>
           <h3 class="sheet-label">Salas abertas aqui</h3>
           <ul id="sheet-rooms" class="room-list"></ul>

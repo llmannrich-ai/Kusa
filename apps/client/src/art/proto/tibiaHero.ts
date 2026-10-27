@@ -162,7 +162,7 @@ export const mergeLook = (extra: Partial<ProtoLook>): ProtoLook => ({ ...KNIGHT_
 
 // --- Materiais ----------------------------------------------------------------------
 
-export enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon, Stone, Wool, Felt, Night, Indigo, Silk, Arcane, Violet, Bone, Moss, Clay, Blood, Slate, Soot }
+export enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon, Stone, Wool, Felt, Night, Indigo, Silk, Arcane, Violet, Bone, Moss, Clay, Blood, Slate, Soot, GreenDragon, DragonBelly, Membrane, Venom }
 
 const OUTLINE: Rgb = rgb("#1a1210");
 
@@ -213,6 +213,10 @@ function ramps(look: ProtoLook): Rgb[][] {
     r("#6e1610", 1.1, 8), // sangue
     r("#4c4237", 0.9, 6), // laje do chão
     r("#2c2622", 0.8, 3), // fuligem
+    r("#4f8a34", 1.15, 10), // escama de dragão verde
+    r("#c9bc7a", 0.95, 7), // placas da barriga do dragão
+    r("#4e5c2c", 1.05, 8), // membrana da asa
+    r("#9ad23a", 1.2, 12, true), // gás venenoso
   ];
 }
 
@@ -229,6 +233,9 @@ export type Shade = (x: number, y: number) => number;
 /** Desvio de tom por pixel final (texturas). */
 export type Offset = (X: number, Y: number) => number;
 export type Box = readonly [number, number, number, number];
+
+/** Escala local: em volta de um ponto (`ox`, `oy`) ou afim (`p × k + t`), com a de fora em `parent`. */
+interface Xf { k: number; ox?: number; oy?: number; tx: number; ty: number; parent: Xf | null }
 
 export class Canvas {
   readonly n: number;
@@ -264,40 +271,59 @@ export class Canvas {
   }
 
   /** Pinta a forma `test` (no retângulo dado, em unidades) com o material, a luz e o desvio de tom. */
-  private xf: { ox: number; oy: number; k: number } | null = null;
+  private xf: Xf | null = null;
 
   /** Escala local: o que `draw` pintar cresce `k` vezes em volta de `o` (a textura continua fina). */
   scaled<T>(o: Pt, k: number, draw: () => T): T {
     const outer = this.xf;
-    this.xf = { ox: o[0], oy: o[1], k };
+    this.xf = outer
+      ? { k: outer.k * k, tx: outer.tx + o[0] * (1 - k) * outer.k, ty: outer.ty + o[1] * (1 - k) * outer.k, parent: outer }
+      : { k, ox: o[0], oy: o[1], tx: o[0] * (1 - k), ty: o[1] * (1 - k), parent: null };
     try { return draw(); } finally { this.xf = outer; }
   }
 
-  /** Volta à escala normal dentro de um `scaled` (a haste do cajado não cresce com a cabeça). */
+  /** Enquadra: o que `draw` pintar vai para `p × k + t` (em unidades), por cima da escala que já houver (ícones). */
+  placed<T>(k: number, t: Pt, draw: () => T): T {
+    const outer = this.xf;
+    this.xf = outer
+      ? { k: outer.k * k, tx: outer.tx + t[0] * outer.k, ty: outer.ty + t[1] * outer.k, parent: outer }
+      : { k, tx: t[0], ty: t[1], parent: null };
+    try { return draw(); } finally { this.xf = outer; }
+  }
+
+  /** Volta à escala de fora dentro de um `scaled` (a haste do cajado não cresce com a cabeça). */
   unscaled<T>(draw: () => T): T {
     const outer = this.xf;
-    this.xf = null;
+    this.xf = outer?.parent ?? null;
     try { return draw(); } finally { this.xf = outer; }
   }
 
   get scale() { return this.xf?.k ?? 1; }
 
+  /** Unidade levada pela escala local (a forma simples, em volta de um ponto, segue a conta de sempre). */
+  private fwd(u: number, axis: 0 | 1) {
+    const f = this.xf!;
+    const o = axis ? f.oy : f.ox;
+    return o !== undefined ? o + (u - o) * f.k : u * f.k + (axis ? f.ty : f.tx);
+  }
+
   /** Pixel final levado pela escala local. */
   private tx(X: number, Y: number): [number, number] {
-    const f = this.xf;
-    if (!f) return [X, Y];
-    return [(f.ox + (X / K - f.ox) * f.k) * K, (f.oy + (Y / K - f.oy) * f.k) * K];
+    if (!this.xf) return [X, Y];
+    return [this.fwd(X / K, 0) * K, this.fwd(Y / K, 1) * K];
   }
 
   fill(box: Box, test: Test, mat: Mat, shade: Shade, offset?: Offset) {
     const id = this.group || ++this.seq;
     const f = this.xf;
-    const fw = (u: number, o: number) => (f ? o + (u - o) * f.k : u);
-    const [x0, y0, x1, y1] = f ? [fw(box[0], f.ox) - 1, fw(box[1], f.oy) - 1, fw(box[2], f.ox) + 1, fw(box[3], f.oy) + 1] : box;
+    const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
     for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil((y1 + 1) * K)); Y++) {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil((x1 + 1) * K)); X++) {
         let x = (X + 0.5) / K - 0.5, y = (Y + 0.5) / K - 0.5;
-        if (f) { x = f.ox + (x + 0.5 - f.ox) / f.k - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
+        if (f) {
+          if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x + 0.5 - f.ox) / f.k - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
+          else { x = (x + 0.5 - f.tx) / f.k - 0.5; y = (y + 0.5 - f.ty) / f.k - 0.5; }
+        }
         if (!test(x, y, X, Y)) continue;
         const i = Y * this.w + X;
         this.mat[i] = mat;
@@ -314,7 +340,10 @@ export class Canvas {
   /** Um pixel final num tom fixo (detalhe desenhado à mão: olho, brilho, costura). */
   px(X: number, Y: number, mat: Mat, tone: number) {
     [X, Y] = this.tx(X, Y);
-    X = Math.round(X); Y = Math.round(Y);
+    this.rawPx(Math.round(X), Math.round(Y), mat, tone);
+  }
+
+  private rawPx(X: number, Y: number, mat: Mat, tone: number) {
     if (X < 0 || Y < 0 || X >= this.w || Y >= this.h) return;
     const i = Y * this.w + X;
     if (this.mat[i] < 0) this.order[i] = this.part[i] = ++this.seq;
@@ -326,11 +355,23 @@ export class Canvas {
   on(ids: number | readonly number[], X: number, Y: number, mat: Mat, tone: number): void {
     [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
-    if (this.xf) return this.unscaled(() => this.on(ids, X, Y, mat, tone));
     if (X < 0 || Y < 0 || X >= this.w || Y >= this.h || this.mat[Y * this.w + X] < 0) return;
     const p = this.part[Y * this.w + X];
     if (typeof ids === "number" ? p !== ids : !ids.includes(p)) return;
-    this.unscaled(() => this.px(X, Y, mat, tone));
+    this.rawPx(X, Y, mat, tone);
+  }
+
+  /** Material já pintado no ponto (em unidades, levado pela escala local); −1 se vazio. */
+  matAt(x: number, y: number): number {
+    let [X, Y] = this.tx(F(x), F(y));
+    X = Math.round(X); Y = Math.round(Y);
+    return X < 0 || Y < 0 || X >= this.w || Y >= this.h ? -1 : this.mat[Y * this.w + X];
+  }
+
+  /** `is` com o pixel levado pela escala local (varreduras de coluna: sola, fita do chapéu, sombra da aba). */
+  isAt(X: number, Y: number, ids: readonly number[]) {
+    [X, Y] = this.tx(X, Y);
+    return this.is(Math.round(X), Math.round(Y), ids);
   }
 
   /** Muda o tom de quem já está pintado, sem mudar a peça (dobra, costura). */
@@ -554,13 +595,21 @@ export const grain: Offset = (X, Y) => (noise(X, Y >> 2) < 0.18 ? -1 : noise(X +
 const darker = (o: Offset | undefined, far: boolean): Offset | undefined =>
   far ? (X, Y) => -1 + (o ? o(X, Y) : 0) : o;
 
+/** Faixas de linho da múmia: listras em diagonal com a fresta escura e uma mancha de resina aqui e ali. */
+const bandage: Offset = (X, Y) => {
+  const k = (((X + Y * 2) % 9) + 9) % 9;
+  return k === 0 ? (noise(X >> 2, Y) < 0.3 ? -2 : -1) : k === 1 ? 1 : noise(X >> 1, Y >> 1) < 0.05 ? -1 : 0;
+};
+/** Textura da pele da espécie (a múmia é toda enfaixada). */
+const skinTex = (kit: Kit): Offset | undefined => (kit.species === "mummy" ? bandage : undefined);
+
 // --- Pernas e pés -----------------------------------------------------------------------
 
 /** Sola de 2 px embaixo de cada coluna das peças, com costura clara logo acima. */
 function sole(c: Canvas, ids: readonly number[], x0: number, x1: number, mat: Mat, far: boolean, stitch = true) {
   for (let X = F(x0); X <= F(x1); X++) {
     for (let Y = c.h - 1; Y > 0; Y--) {
-      if (!c.is(X, Y, ids)) continue;
+      if (!c.isAt(X, Y, ids)) continue;
       c.px(X, Y, mat, 0); c.px(X, Y - 1, mat, 1);
       if (stitch && X % 3 === 0) c.px(X, Y - 2, mat, far ? 2 : 4);
       break;
@@ -672,8 +721,8 @@ function leg(c: Canvas, kit: Kit, hip: Pt, knee: Pt, ankle: Pt, toe: Pt, far: bo
   const bare = kit.feet === "bare";
   const skinT = c.together(() => {
     const th = kit.thin ?? 1;
-    const id = limb(c, hip, knee, 4 * th, 3.4 * th, Mat.Skin, darker(undefined, far));
-    limb(c, knee, ankle, 3.4 * th, 2.7 * th, Mat.Skin, darker(undefined, far));
+    const id = limb(c, hip, knee, 4 * th, 3.4 * th, Mat.Skin, darker(skinTex(kit), far));
+    limb(c, knee, ankle, 3.4 * th, 2.7 * th, Mat.Skin, darker(skinTex(kit), far));
     if (th < 1) ellipse(c, knee[0], knee[1], 1.8, 1.8, Mat.Skin, darker(undefined, far));
     if (bare) bareFoot(c, ankle, toe, far, front);
     return id;
@@ -732,8 +781,8 @@ function arm(c: Canvas, kit: Kit, shoulder: Pt, elbow: Pt, at: Pt, far: boolean,
   // Braço nu: ombro (deltoide), bíceps e antebraço.
   const up = c.together(() => {
     const th = kit.thin ?? 1;
-    const id = limb(c, shoulder, elbow, 3.5 * th, 3 * th, Mat.Skin, darker(undefined, far));
-    limb(c, elbow, at, 3 * th, 2.6 * th, Mat.Skin, darker(undefined, far));
+    const id = limb(c, shoulder, elbow, 3.5 * th, 3 * th, Mat.Skin, darker(skinTex(kit), far));
+    limb(c, elbow, at, 3 * th, 2.6 * th, Mat.Skin, darker(skinTex(kit), far));
     if (th < 1) ellipse(c, elbow[0], elbow[1], 1.6, 1.6, Mat.Skin, darker(undefined, far));
     return id;
   });
@@ -866,27 +915,31 @@ function staff(c: Canvas, at: Pt, top: number, bottom: number) {
 }
 
 /** Galho do druida: madeira torta com nós, um broto bifurcado em cima e folhas. */
-function branch(c: Canvas, at: Pt, top: number, bottom: number) {
+function branch(c: Canvas, at: Pt, top: number, bottom: number, turn = 0) {
   const x = at[0];
   const pts: Pt[] = [];
+  // Giro em volta da mão (golpe dos monstros): os pontos e as folhas giram juntos.
+  const ca = Math.cos(turn), sa = Math.sin(turn);
+  const r = (p: Pt): Pt => (turn ? [at[0] + (p[0] - at[0]) * ca - (p[1] - at[1]) * sa, at[1] + (p[0] - at[0]) * sa + (p[1] - at[1]) * ca] : p);
   for (let k = 0; k <= 8; k++) {
     const t = k / 8;
-    pts.push([x + Math.sin(t * 7.3) * 0.7 + (t - 0.5) * 0.8, bottom + (top - bottom) * t]);
+    pts.push(r([x + Math.sin(t * 7.3) * 0.7 + (t - 0.5) * 0.8, bottom + (top - bottom) * t]));
   }
   chain(c, pts, 1.25, Mat.Wood, grain, 1);
   // Nós na madeira.
   for (const t of [0.3, 0.62]) { const p = pts[Math.round(t * 8)]; ellipse(c, p[0] + 0.6, p[1], 1, 0.7, Mat.Wood, () => -1); }
   // Forquilha com folhas.
   const tip = pts[pts.length - 1];
-  const fork: Pt[] = [[tip[0], tip[1]], [tip[0] - 1.6, tip[1] - 2.6], [tip[0] - 2.4, tip[1] - 4.6]];
-  const fork2: Pt[] = [[tip[0], tip[1]], [tip[0] + 1.4, tip[1] - 2.2], [tip[0] + 2.8, tip[1] - 3.4]];
+  const o = (dx: number, dy: number): Pt => (turn ? [tip[0] + dx * ca - dy * sa, tip[1] + dx * sa + dy * ca] : [tip[0] + dx, tip[1] + dy]);
+  const fork: Pt[] = [[tip[0], tip[1]], o(-1.6, -2.6), o(-2.4, -4.6)];
+  const fork2: Pt[] = [[tip[0], tip[1]], o(1.4, -2.2), o(2.8, -3.4)];
   chain(c, fork, 0.75, Mat.Wood, undefined, 0.4);
   chain(c, fork2, 0.7, Mat.Wood, undefined, 0.35);
-  leaf(c, [tip[0] - 3.4, tip[1] - 5.4], -2.2, 2.6, 1.3);
-  leaf(c, [tip[0] - 0.2, tip[1] - 4.6], -1.5, 2.2, 1.1);
-  leaf(c, [tip[0] + 3.8, tip[1] - 3.8], -0.5, 2.4, 1.2);
-  leaf(c, [tip[0] + 1.8, tip[1] - 1], 0.4, 2, 1);
-  leaf(c, [tip[0] - 2.2, tip[1] - 1], 2.7, 1.8, 0.9);
+  leaf(c, o(-3.4, -5.4), -2.2 + turn, 2.6, 1.3);
+  leaf(c, o(-0.2, -4.6), -1.5 + turn, 2.2, 1.1);
+  leaf(c, o(3.8, -3.8), -0.5 + turn, 2.4, 1.2);
+  leaf(c, o(1.8, -1), 0.4 + turn, 2, 1);
+  leaf(c, o(-2.2, -1), 2.7 + turn, 1.8, 0.9);
 }
 
 /** Folha: elipse girada com nervura central escura e luz de cima. */
@@ -1137,6 +1190,8 @@ function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
   switch (kit.top) {
     case "none": {
       const id = kit.species === "skeleton" ? ribcageSide(c, top) : bareTorso(c, top, CX, 9, true);
+      // Múmia: o tronco também é enfaixado.
+      if (kit.species === "mummy") for (let Y = F(top); Y <= F(top + 18); Y++) for (let X = F(CX - 10); X <= F(CX + 10); X++) if (c.is(X, Y, [id])) c.nudge(X, Y, bandage(X, Y));
       loincloth(c, top, CX, 8, true, false);
       return [id];
     }
@@ -1331,25 +1386,56 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean) {
   else headFront(c, kit, b, top);
 }
 
-function side(c: Canvas, kit: Kit, frame: number) {
-  const s = SWING[frame], b = BOB[frame];
+function side(c: Canvas, kit: Kit, frame: number, mp?: MonsterPose) {
+  const s = mp ? mp.s : SWING[frame], b = mp ? mp.b : BOB[frame];
   const hip: Pt = [CX + 1, 66 + b];
   const top = 47 + b;
+  // Monstro: o tronco inclina para a frente (golpe) ou para trás (preparo); as pernas ficam onde estão.
+  const up = <T>(draw: () => T): T => (mp?.lean ? c.placed(1, [-mp.lean, 0], draw) : draw());
+  const at = (o: Pt | undefined, fallback: Pt): Pt => (o ? [CX + o[0], top + o[1]] : fallback);
   if (kit.tail) chain(c, [[CX + 6, top + 15], [CX + 13, top + 21 + s], [CX + 19, top + 22 - s], [CX + 23, top + 19]], 2.4, Mat.Skin, scales(4, 3), 0.4);
-  // Passo: perna da frente à esquerda, a outra atrás com o calcanhar no ar. Passagem: juntas.
+  // Passo: perna da frente à esquerda, a outra atrás com o calcanhar no ar. Passagem: juntas (os monstros param
+  // com as pernas um pouco abertas, entre um e outro).
   const pose = (fwd: number): [Pt, Pt, Pt] => {
-    if (fwd > 0) return [[hip[0] - 4, 77 + b], [hip[0] - 7, FEET - 3], [hip[0] - 12, FEET - 2]];
-    if (fwd < 0) return [[hip[0] + 3, 77 + b], [hip[0] + 7, FEET - 5], [hip[0] + 2.5, FEET - 3]];
-    return [[hip[0] - 1, 77 + b], [hip[0], FEET - 3], [hip[0] - 5, FEET - 2]];
+    const pass: [Pt, Pt, Pt] = [[hip[0] - 1, 77 + b], [hip[0], FEET - 3], [hip[0] - 5, FEET - 2]];
+    if (fwd === 0) return pass;
+    const step: [Pt, Pt, Pt] = fwd > 0 ? [[hip[0] - 4, 77 + b], [hip[0] - 7, FEET - 3], [hip[0] - 12, FEET - 2]]
+      : [[hip[0] + 3, 77 + b], [hip[0] + 7, FEET - 5], [hip[0] + 2.5, FEET - 3]];
+    const t = Math.abs(fwd);
+    return t >= 1 ? step : [lerp(pass[0], step[0], t), lerp(pass[1], step[1], t), lerp(pass[2], step[2], t)];
   };
   const [fk, fa, ft] = pose(-s);
   leg(c, kit, hip, fk, fa, ft, true, false);
   // Braço de lá, atrás do tronco, balançando ao contrário da perna.
-  arm(c, kit, [CX + 2, top + 3], [CX + 3 + s * 2, top + 10], [CX + 3 + s * 4, top + 18], true);
-  if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX + 3, top + 2]], true);
+  up(() => {
+    arm(c, kit, [CX + 2, top + 3], at(mp?.backElbow, [CX + 3 + s * 2, top + 10]), at(mp?.back, [CX + 3 + s * 4, top + 18]), true);
+    if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX + 3, top + 2]], true);
+  });
   const [nk, na, nt] = pose(s);
   leg(c, kit, hip, nk, na, nt, false, false);
+  up(() => sideUpper(c, kit, s, b, top, mp));
+}
 
+/**
+ * Pose de um quadro de monstro: passo (`s`) e altura (`b`) como no andar dos heróis, inclinação do tronco, mãos
+ * (em unidades a partir do ombro: `[CX, top]`) e a direção para onde a arma aponta, em graus (0 = para a direita,
+ * 90 = para baixo), ou só quanto ela gira a partir da pose de sempre (`tilt`).
+ */
+export interface MonsterPose { s: number; b: number; lean?: number; hand?: Pt; elbow?: Pt; back?: Pt; backElbow?: Pt; point?: number; tilt?: number }
+
+/** Direção (graus) para onde a arma aponta na pose de sempre, para girar até a da pose. */
+function weaponAngle(kit: Kit, ha: Pt, top: number): number {
+  const deg = (v: Pt) => (Math.atan2(v[1], v[0]) * 180) / Math.PI;
+  const w = kit.weapon;
+  if (w === "branch") return deg([0, top + 2 - FEET]);
+  if (w.startsWith("axe-")) return axeTwoHanded(w) ? deg([-10, top - 18 - FEET + 1]) : deg([-6.6, -AXE_LEN[tierOf(w)] - 3]);
+  if (w.startsWith("sword-")) return tierOf(w) === 5 ? deg([-22, top - 22 - ha[1]]) : deg([-0.74, 0.68]);
+  return 0;
+}
+
+/** Tronco, cabeça e o braço da arma de perfil (o que inclina junto no golpe dos monstros). */
+function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: MonsterPose) {
+  const at = (o: Pt | undefined, fallback: Pt): Pt => (o ? [CX + o[0], top + o[1]] : fallback);
   // Cabelo comprido e aljava nas costas (atrás do tronco).
   hairBehindSide(c, kit, b, top);
   if (kit.quiver) quiver(c, [CX + 9.5, top - 4], [CX + 6, top + 14], 6.5);
@@ -1359,24 +1445,27 @@ function side(c: Canvas, kit: Kit, frame: number) {
 
   // O escudo vai no braço de lá, na frente do tronco (visto quase de perfil).
   if (kit.shield) shieldArt(c, kit.shield, [CX - 10.4, top + 13], "side", -1);
-  // Braço de cá na frente do tronco, com a arma.
-  const ha: Pt = [CX - 4 - s * 3, top + 18];
+  // Braço de cá na frente do tronco, com a arma (girada em volta da mão quando a pose aponta para outro lado).
+  const ha: Pt = at(mp?.hand, [CX - 4 - s * 3, top + 18]);
+  const a = (mp?.point === undefined ? mp?.tilt ?? 0 : mp.point - weaponAngle(kit, ha, top)) * Math.PI / 180;
+  const ca = Math.cos(a), sa = Math.sin(a);
+  const turn = (p: Pt): Pt => (a ? [ha[0] + (p[0] - ha[0]) * ca - (p[1] - ha[1]) * sa, ha[1] + (p[0] - ha[0]) * sa + (p[1] - ha[1]) * ca] : p);
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
-    : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1)
+    : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1, a)
     : kit.weapon.startsWith("wand-") ? () => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4]))
     : kit.weapon.startsWith("staff-") ? () => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5)
     : kit.weapon.startsWith("bow-") ? () => bowArt(c, kit.weapon, ha, -1)
     : kit.weapon.startsWith("xbow-") ? () => crossbowArt(c, kit.weapon, ha, [-0.97, 0.24], true)
     : kit.weapon.startsWith("axe-") ? () => (axeTwoHanded(kit.weapon)
-      ? axeArt(c, kit.weapon, [ha[0] + 3, FEET - 1], [ha[0] - 7, top - 18], -1)
-      : axeArt(c, kit.weapon, [ha[0] + 1.6, ha[1] + 3], [ha[0] - 5, ha[1] - AXE_LEN[tierOf(kit.weapon)]], -1))
+      ? axeArt(c, kit.weapon, turn([ha[0] + 3, FEET - 1]), turn([ha[0] - 7, top - 18]), -1)
+      : axeArt(c, kit.weapon, turn([ha[0] + 1.6, ha[1] + 3]), turn([ha[0] - 5, ha[1] - AXE_LEN[tierOf(kit.weapon)]]), -1))
     : kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic" ? () => {
       const t = tierOf(kit.weapon);
-      swordById(c, kit.weapon, ha, t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]);
+      swordById(c, kit.weapon, ha, turn(t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]));
     }
     : undefined;
-  arm(c, kit, [CX - 1, top + 3], [CX - 2 - s * 1.5, top + 10], ha, false, grip);
+  arm(c, kit, [CX - 1, top + 3], at(mp?.elbow, [CX - 2 - s * 1.5, top + 10]), ha, false, grip);
   if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX - 0.6, top + 2]]);
   if (kit.weapon === "sword") sword(c, ha, [ha[0] - 16, ha[1] + 15]);
   if (kit.weapon === "sword-4-magic") dancingSword(c, [ha[0] - 7, ha[1] - 9], [ha[0] - 19, ha[1] + 4]);
@@ -3695,7 +3784,7 @@ export function star(c: Canvas, ids: readonly number[] | null, X: number, Y: num
 function shadowBelow(c: Canvas, ids: readonly number[], x0: number, x1: number, rows: number) {
   for (let X = F(x0); X <= F(x1); X++) {
     for (let Y = c.h - 1; Y > 0; Y--) {
-      if (!c.is(X, Y, ids)) continue;
+      if (!c.isAt(X, Y, ids)) continue;
       for (let k = 1; k <= rows; k++) c.nudge(X, Y + k, -1);
       break;
     }
@@ -3706,7 +3795,7 @@ function shadowBelow(c: Canvas, ids: readonly number[], x0: number, x1: number, 
 function bandOver(c: Canvas, ids: readonly number[], x0: number, x1: number, from: number, rows: number, mat: Mat, tone: (k: number, X: number) => number) {
   for (let X = F(x0); X <= F(x1); X++) {
     for (let Y = c.h - 1; Y > 0; Y--) {
-      if (!c.is(X, Y, ids)) continue;
+      if (!c.isAt(X, Y, ids)) continue;
       for (let k = 0; k < rows; k++) c.on(ids, X, Y - from - k, mat, tone(k, X));
       break;
     }
@@ -4789,7 +4878,7 @@ function shieldFace(c: Canvas, id: string, at: Pt, view: ProtoDir, side: number)
 
 // --- Monstros humanoides (piloto da Cripta, docs/ARTE_TIBIA.md) ----------------------------
 
-export type Species = "goblin" | "kobold" | "hobgoblin" | "orc" | "gnoll" | "skeleton" | "zombie" | "bugbear" | "ogre";
+export type Species = "goblin" | "kobold" | "hobgoblin" | "orc" | "gnoll" | "skeleton" | "zombie" | "bugbear" | "ogre" | "mummy";
 
 /** Olho de perfil (olhando para a esquerda): pálpebra escura, íris da cor `mat` e um brilho. */
 function eyeSide(c: Canvas, x: number, y: number, mat: Mat, big = false) {
@@ -4876,6 +4965,15 @@ function monsterHead(c: Canvas, kit: Kit, b: number, top: number) {
       thread(c, [cx - 1, cy - 6], [cx + 4, cy + 4], Mat.Lip, 1, [face]);
       for (let k = 0; k < 5; k++) thread(c, [cx - 0.2 + k * 1, cy - 4.6 + k * 2], [cx + 1.4 + k * 1, cy - 5 + k * 2], Mat.Eye, 1, [face]);
       for (let k = 0; k < 5; k++) chain(c, [[cx - 2 + k * 2.4, cy - 8], [cx + k * 2.6, cy - 6 + k], [cx + 1 + k * 2.2, cy - 2 + k * 1.6]], 0.6, Mat.Hair, strands, 0.3);
+      return;
+    }
+    case "mummy": {
+      // Cabeça toda enfaixada: as voltas do linho em diagonal, a fresta dos olhos com a luz verde e uma ponta solta.
+      const head = ellipse(c, cx, cy - 0.4, 7.8, 8.4, Mat.Skin, bandage);
+      ellipse(c, cx - 3.6, cy + 4.4, 4.4, 3, Mat.Skin, bandage);
+      for (let X = F(cx - 8); X <= F(cx - 1); X++) { c.on(head, X, F(cy - 1.4), Mat.Eye, 0); c.on(head, X, F(cy - 0.6), Mat.Eye, 0); }
+      c.px(F(cx - 5), F(cy - 1), Mat.Leaf, 5); c.px(F(cx - 4.4), F(cy - 1), Mat.Leaf, 4);
+      chain(c, [[cx + 6, cy - 2], [cx + 10, cy + 3], [cx + 9, cy + 9]], 1.1, Mat.Skin, bandage, 0.7);
       return;
     }
     case "bugbear": {
@@ -4980,60 +5078,276 @@ const MONSTER_KITS: Record<string, Kit> = {
     look: { skin: "#c08a5a", head: "#3a2818", primary: "#6a5a3a", secondary: "#5a4a34", detail: "#4a3624", trim: "#8a6a3a" },
     species: "ogre", size: 1.45, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "branch",
   },
+  // Necrópole de Solária: a legião de ossos do Império de Kusa e as múmias da corte.
+  boneLegionary: {
+    look: { skin: "#ddd2b2", head: "#3a3028", primary: "#7a2018", secondary: "#4a4038", detail: "#5a3a1c", trim: "#c8903a" },
+    species: "skeleton", size: 0.97, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "belt",
+    weapon: "sword-2", helmet: "war-2", shield: "shield-3",
+  },
+  boneArcher: {
+    look: { skin: "#ddd2b2", head: "#3a3028", primary: "#cdb88a", secondary: "#4a4038", detail: "#5a3a1c", trim: "#a08a5c" },
+    species: "skeleton", size: 0.95, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "strap",
+    weapon: "bow-2", quiver: true,
+  },
+  buriedDead: {
+    look: { skin: "#c8aa7a", head: "#3a3028", primary: "#5a5040", secondary: "#4a4038", detail: "#5a3a1c", trim: "#7a6a4a" },
+    species: "skeleton", size: 0.95, thin: 0.5, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth",
+    weapon: "axe-1",
+  },
+  boneCenturion: {
+    look: { skin: "#e2d8bc", head: "#3a3028", primary: "#9a2018", secondary: "#4a4038", detail: "#5a3a1c", trim: "#d8a040" },
+    species: "skeleton", size: 1.2, thin: 0.55, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "belt",
+    weapon: "sword-4", helmet: "war-4", armor: "armor-3", shield: "shield-4",
+  },
+  sandScribe: {
+    look: { skin: "#ddd2b2", head: "#3a3028", primary: "#2e4a8a", secondary: "#24365a", detail: "#e0b23a", trim: "#e0b23a" },
+    species: "skeleton", size: 1.05, thin: 0.5, hair: "none", beard: "none", top: "robe", sleeves: "bell", pants: "none", feet: "shoes", waist: "sash",
+    weapon: "staff-3",
+  },
+  wrappedMummy: {
+    look: { skin: "#cdbe96", head: "#3a2e22", primary: "#5a5040", secondary: "#4a4038", detail: "#7a6a4a", trim: "#9c8d68" },
+    species: "mummy", size: 1, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "none",
+  },
+  mourner: {
+    look: { skin: "#cdbe96", head: "#3a2e22", primary: "#363a4e", secondary: "#24263a", detail: "#5a6078", trim: "#8a90a8" },
+    species: "mummy", size: 0.95, hair: "none", beard: "none", top: "robe", sleeves: "bell", pants: "none", feet: "bare", waist: "sash", weapon: "none",
+  },
+  royalMummy: {
+    look: { skin: "#d8c8a0", head: "#3a2e22", primary: "#26468a", secondary: "#24365a", detail: "#e0b23a", trim: "#e8b830" },
+    species: "mummy", size: 1.15, hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "sash",
+    weapon: "wand-4", helmet: "arc-4",
+  },
 };
 
 export const PROTO_MONSTERS = Object.keys(MONSTER_KITS);
 /** Tamanho do monstro em relação ao herói (1 = da altura do herói). */
 export const monsterSize = (kind: string) => MONSTER_KITS[kind].size ?? 1;
 
-/** Quadros de cada clipe do monstro humanoide: parado (os dois passos de passagem), andar e o resto. */
+/** Quadros de cada clipe do monstro humanoide: parado (respirando), andar, golpe e magia. */
 export const MONSTER_CLIP_FRAMES = { idle: 4, walk: 4, attack: 4, cast: 4 } as const;
-const CLIP_STEPS = { idle: [1, 1, 3, 3], walk: [0, 1, 2, 3], attack: [0, 0, 2, 2], cast: [1, 3, 1, 3] } as const;
+type MonsterClip = keyof typeof MONSTER_CLIP_FRAMES;
+const MONSTER_CLIPS: readonly MonsterClip[] = ["idle", "walk", "attack", "cast"];
+
+/**
+ * Pose de cada quadro. Parado: pernas um pouco abertas e o peito subindo e descendo, com a arma balançando junto.
+ * Andar: o passo dos heróis. Golpe: preparo com a arma lá atrás, o golpe com o corpo todo para a frente, o fim do
+ * movimento e a volta. Arqueiro puxa a corda e solta; zumbi avança com os dois braços. Magia: os braços sobem.
+ */
+function monsterPose(kit: Kit, clip: MonsterClip, k: number): MonsterPose {
+  const w = kit.weapon;
+  switch (clip) {
+    case "idle": {
+      const b = [0, 0.8, 1.6, 0.8][k], t = [0, 1, 2, 1][k];
+      return { s: 0.35, b, lean: t * 0.3, back: [3.4 - t * 0.3, 18 - t * 0.6], hand: [-5 + t * 0.4, 18 - t * 0.8], tilt: -t * 5 };
+    }
+    case "walk":
+      return { s: SWING[k], b: BOB[k] * 1.4 };
+    case "attack": {
+      if (w === "bow") {
+        // Arco: ergue, puxa a corda até o rosto, solta (a mão de trás pula para trás) e volta.
+        return ([
+          { s: 0.4, b: 0, lean: 0, hand: [-9, 12], elbow: [-5, 8], back: [-2, 12], backElbow: [2, 10] },
+          { s: 0.6, b: 0.5, lean: -0.6, hand: [-13, 7], elbow: [-7, 5], back: [3, 6], backElbow: [6, 6] },
+          { s: 0.6, b: 0.5, lean: -0.3, hand: [-13, 7], elbow: [-7, 5], back: [7, 4], backElbow: [6, 7] },
+          { s: 0.4, b: 0, lean: 0, hand: [-8, 14], elbow: [-4, 10] },
+        ] as MonsterPose[])[k];
+      }
+      if (w === "none") {
+        // Zumbi: ergue os braços e cai por cima, as duas mãos à frente.
+        return ([
+          { s: 0.3, b: -0.5, lean: -1, hand: [-9, 2], elbow: [-5, 4], back: [-6, 1], backElbow: [-2, 4] },
+          { s: 1, b: 1, lean: 3, hand: [-16, 9], elbow: [-9, 7], back: [-13, 8], backElbow: [-6, 7] },
+          { s: 1, b: 1.2, lean: 2.4, hand: [-14, 15], elbow: [-8, 10], back: [-11, 14], backElbow: [-5, 10] },
+          { s: 0.5, b: 0.4, lean: 0.6, hand: [-8, 16], elbow: [-4, 10], back: [-2, 16] },
+        ] as MonsterPose[])[k];
+      }
+      // Arma de golpe: preparo (arma para cima e para trás), golpe (deitada à frente), fim (para baixo) e volta.
+      return ([
+        { s: 0.3, b: -0.6, lean: -1.4, hand: [4, -4], elbow: [5, 3], back: [-5, 13], backElbow: [-1, 10], point: -70 },
+        { s: 1, b: 0.8, lean: 2.6, hand: [-14, 8], elbow: [-8, 7], back: [8, 13], backElbow: [5, 10], point: 185 },
+        { s: 1, b: 1, lean: 2, hand: [-11, 17], elbow: [-6, 11], back: [7, 15], backElbow: [4, 11], point: 115 },
+        { s: 0.6, b: 0.4, lean: 0.6, hand: [-6, 17], elbow: [-3, 10] },
+      ] as MonsterPose[])[k];
+    }
+    case "cast": {
+      // Braços para o alto (a arma aponta para cima), o corpo sobe e desce no ritmo.
+      const lift = [0, 1, 1, 0][k], b = [0, -0.6, -1, -0.4][k];
+      return {
+        s: 0.35, b, lean: -0.5 * lift,
+        hand: lerp([-6, 16], [-7, -5], lift), elbow: lerp([-3, 10], [-6, 4], lift),
+        back: lerp([3, 17], [1, -6], lift), backElbow: lerp([4, 10], [4, 3], lift),
+        point: lift && w !== "bow" && w !== "none" ? -100 : undefined,
+      };
+    }
+  }
+}
 
 /** Um quadro do monstro (192 px, olhando para a esquerda, pés na mesma linha dos heróis). */
-export function protoMonsterFrame(kind: string, step: number): Uint8ClampedArray {
+export function protoMonsterFrame(kind: string, clip: MonsterClip = "idle", k = 0): Uint8ClampedArray {
   const kit = MONSTER_KITS[kind];
   const c = new Canvas();
-  c.scaled([CX, FEET], kit.size ?? 1, () => side(c, kit, step));
+  c.scaled([CX, FEET], kit.size ?? 1, () => side(c, kit, 0, monsterPose(kit, clip, k)));
   return c.render(kit.look);
 }
 
-/** Primeiro quadro do monstro (parado), para quem não anima e para a galeria. */
-export function protoMonsterPortrait(kind: string): HTMLCanvasElement {
+const toFrameCanvas = (data: Uint8ClampedArray) => {
   const { canvas, ctx } = makeCanvas(S, S);
   const image = ctx.createImageData(S, S);
-  image.data.set(protoMonsterFrame(kind, 1));
+  image.data.set(data);
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+};
+
+/** Primeiro quadro do monstro (parado), para quem não anima e para a galeria. */
+export function protoMonsterPortrait(kind: string): HTMLCanvasElement {
+  return toFrameCanvas(protoMonsterFrame(kind));
+}
+
+/** Os 16 quadros da folha do monstro (parado, andar, golpe e magia), um por chamada, para desenhar aos poucos. */
+export function protoMonsterFrames(kind: string): (() => HTMLCanvasElement)[] {
+  return MONSTER_CLIPS.flatMap((clip) => Array.from({ length: MONSTER_CLIP_FRAMES[clip] }, (_, k) => () => toFrameCanvas(protoMonsterFrame(kind, clip, k))));
+}
+
+/** Folha do monstro: os clipes em ordem (parado, andar, golpe, magia), quadros de `PROTO_SIZE`. */
+export function protoMonsterSheet(kind: string): HTMLCanvasElement {
+  const frames = protoMonsterFrames(kind);
+  const { canvas, ctx } = makeCanvas(S * frames.length, S);
+  frames.forEach((draw, i) => ctx.drawImage(draw(), i * S, 0));
+  return canvas;
+}
+
+// --- Ícones dos itens (mochila, cofre, mercado, equipamento e chão) ------------------------
+
+/** Lado do ícone em pixels e em unidades de projeto. */
+export const PROTO_ICON = 64;
+const ICON_U = PROTO_ICON / K;
+
+/**
+ * O item sozinho, sem o corpo, na pose em que é vestido (o mesmo desenho do herói): arma em diagonal, elmo e
+ * armadura de frente, calça com as duas pernas, botas de lado, escudo de frente.
+ */
+function iconPose(c: Canvas, id: string) {
+  const fam = id.replace(/-\d(-magic)?$/, "");
+  const kit: Kit = { ...KITS.knight, top: "none", waist: "belt" };
+  switch (fam) {
+    case "sword": {
+      const t = tierOf(id), hilt: Pt = [CX - 9, 66], len = t === 5 ? 30 : SWORD_LEN[t] + 4;
+      const tip: Pt = [hilt[0] + len * 0.7, hilt[1] - len * 0.7];
+      if (id === "sword-4-magic") dancingSword(c, hilt, tip);
+      else swordById(c, id, hilt, tip);
+      return;
+    }
+    case "axe": axeArt(c, id, [CX - 6, 72], [CX + 4, 50], 1); return;
+    case "bow": bowArt(c, id, [CX, 55], 1); return;
+    case "xbow": crossbowArt(c, id, [CX, 55], [-0.97, 0.24], true); return;
+    case "wand": wandArt(c, id, [CX - 4, 62], [CX + 5, 52]); return;
+    // Haste mais curta que a vestida: a cabeça do cajado é o que se reconhece no quadradinho.
+    case "staff": staffArt(c, id, [CX, 52], 34, 60); return;
+    case "war": case "arc":
+      if (id === "arc-1-magic") wolfFront(c, 37, 47);
+      else helmetArt(c, id, "down", CX, 37, 47);
+      return;
+    case "armor": case "robe": {
+      kit.armor = id as ProtoArmor;
+      collar(c, kit, 37, "down");
+      const ids = armorTorso(c, id, 47, "down", 0);
+      dressFront(c, kit, ids, 47, false);
+      for (const s of [-1, 1]) armorArm(c, id, [CX + s * 12.5, 50], [CX + s * 14, 57], [CX + s * 13.5, 65], false);
+      armorShoulders(c, id, 47, "down", [[CX - 12.8, 49], [CX + 12.8, 49]]);
+      return;
+    }
+    case "pants": case "greave":
+      for (const s of [-1, 1]) {
+        const x = CX + s * 3.8;
+        (fam === "pants" ? pantsArt : warLegs)(c, id, [x, 66], [x + s * 0.8, 77], [x + s * 1.2, 88], false, true);
+      }
+      pantsTop(c, c.matAt(CX - 3.8, 70));
+      return;
+    case "boots":
+      bootsArt(c, id, [CX + 4, 76], [CX + 4, 87], [CX - 1, 88.4], true, false);
+      bootsArt(c, id, [CX - 2, 77], [CX - 2, 88.4], [CX - 7, 89.6], false, false);
+      return;
+    case "shield": shieldArt(c, id, [CX, 60], "down", 1); return;
+  }
+}
+
+/** Quadril e cinto do ícone da calça: o tecido da calça ligando as pernas e um cinto de couro com fivela. */
+function pantsTop(c: Canvas, cloth: number) {
+  const mat: Mat = cloth >= 0 ? cloth : Mat.Leather;
+  // Quadril numa peça só, com a costura do meio e o gancho entre as pernas.
+  const hip = poly(c, [[CX - 8.6, 63.4], [CX + 8.6, 63.4], [CX + 8.4, 70.6], [CX + 1.6, 73], [CX - 1.6, 73], [CX - 8.4, 70.6]], mat, CX - 8.6, CX + 8.6, twill);
+  thread(c, [CX, 65.6], [CX, 72.6], mat, 1, [hip]);
+  thread(c, [CX + 0.5, 65.6], [CX + 0.5, 72], mat, 4, [hip]);
+  for (const s of [-1, 1]) thread(c, [CX + s * 7.8, 66], [CX + s * 5, 69.4], mat, 1, [hip]);
+  // Cinto largo de couro com borda clara, pesponto, furos e a ponta sobrando.
+  const belt = poly(c, [[CX - 9, 62], [CX + 9, 62], [CX + 9, 65.4], [CX - 9, 65.4]], Mat.Leather, CX - 9, CX + 9, leather);
+  thread(c, [CX - 9, 62.2], [CX + 9, 62.2], Mat.Leather, 5, [belt]);
+  thread(c, [CX - 9, 65.1], [CX + 9, 65.1], Mat.Leather, 0, [belt]);
+  for (const y of [62.9, 64.5]) thread(c, [CX - 8.6, y], [CX + 8.6, y], Mat.Leather, (k) => (k % 3 === 0 ? 4 : -1), [belt]);
+  for (const x of [3.8, 5.4, 7]) rivet(c, [belt], CX + x, 63.7, Mat.Soot);
+  limb(c, [CX + 2.2, 64.6], [CX + 3.4, 69], 0.9, 0.8, Mat.Leather, leather);
+  // Passadores no tecido da calça.
+  for (const x of [-6.6, 6.2]) plate(c, [[CX + x - 0.7, 61.6], [CX + x + 0.7, 61.6], [CX + x + 0.7, 65.8], [CX + x - 0.7, 65.8]], mat, twill);
+  // Fivela de bronze com o pino de aço.
+  const buckle = c.fill([CX - 2.6, 61, CX + 2.6, 66.4], (x, y) => {
+    const dx = Math.abs(x + 0.5 - CX), dy = Math.abs(y + 0.5 - 63.7);
+    return dx <= 2.4 && dy <= 2.5 && (dx >= 1.3 || dy >= 1.4);
+  }, Mat.Bronze, sphere(CX - 0.6, 62.8, 2.8, 2.8));
+  limb(c, [CX - 1.3, 63.7], [CX + 1.4, 63.7], 0.35, 0.35, Mat.Steel);
+  c.on(buckle, F(CX - 2), F(61.6), Mat.Bronze, 5);
+}
+
+/** Desenho do item no ícone, sem a gema (o raro e o comum usam o mesmo), feito uma vez. */
+const iconArt = new Map<string, HTMLCanvasElement>();
+
+function iconDrawing(id: string): HTMLCanvasElement {
+  const cached = iconArt.get(id);
+  if (cached) return cached;
+  // 1ª passada: onde o item cai no quadro do herói.
+  const probe = new Canvas();
+  iconPose(probe, id);
+  let x0 = S, y0 = S, x1 = -1, y1 = -1;
+  for (let i = 0; i < probe.n; i++) {
+    if (probe.mat[i] < 0) continue;
+    const X = i % S, Y = (i / S) | 0;
+    if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+  }
+  const c = new Canvas(PROTO_ICON, PROTO_ICON);
+  if (x1 >= 0) {
+    const w = (x1 + 1 - x0) / K, h = (y1 + 1 - y0) / K;
+    const k = Math.min((ICON_U - 3) / w, (ICON_U - 3) / h, 1.6);
+    const mx = (x0 + x1 + 1) / 2 / K, my = (y0 + y1 + 1) / 2 / K;
+    c.placed(k, [ICON_U / 2 - mx * k, ICON_U / 2 - my * k], () => iconPose(c, id));
+  }
+  const canvas = toCanvas(c);
+  iconArt.set(id, canvas);
+  return canvas;
+}
+
+/** Gema da raridade no canto (azul no raro, roxa no mágico), desenhada uma vez por raridade. */
+const rarityGems = new Map<string, HTMLCanvasElement>();
+function rarityGem(rarity: "rare" | "magic") {
+  if (!rarityGems.has(rarity)) {
+    const c = new Canvas(PROTO_ICON, PROTO_ICON);
+    gem(c, [ICON_U - 3, 2.6], 1.5, rarity === "magic" ? Mat.Gem : Mat.Sapphire);
+    rarityGems.set(rarity, toCanvas(c));
+  }
+  return rarityGems.get(rarity)!;
+}
+
+function toCanvas(c: Canvas) {
+  const { canvas, ctx } = makeCanvas(c.w, c.h);
+  const image = ctx.createImageData(c.w, c.h);
+  image.data.set(c.render(KNIGHT_LOOK));
   ctx.putImageData(image, 0, 0);
   return canvas;
 }
 
-/** Os 16 quadros da folha do monstro, um por chamada (para desenhar aos poucos); quadros iguais saem uma vez só. */
-export function protoMonsterFrames(kind: string): (() => HTMLCanvasElement)[] {
-  const steps = [...CLIP_STEPS.idle, ...CLIP_STEPS.walk, ...CLIP_STEPS.attack, ...CLIP_STEPS.cast];
-  const memo = new Map<number, HTMLCanvasElement>();
-  return steps.map((step) => () => {
-    if (!memo.has(step)) {
-      const { canvas, ctx } = makeCanvas(S, S);
-      const image = ctx.createImageData(S, S);
-      image.data.set(protoMonsterFrame(kind, step));
-      ctx.putImageData(image, 0, 0);
-      memo.set(step, canvas);
-    }
-    return memo.get(step)!;
-  });
-}
-
-/** Folha do monstro: os clipes em ordem (parado, andar, ataque, magia), quadros de `PROTO_SIZE`. */
-export function protoMonsterSheet(kind: string): HTMLCanvasElement {
-  const steps = [...CLIP_STEPS.idle, ...CLIP_STEPS.walk, ...CLIP_STEPS.attack, ...CLIP_STEPS.cast];
-  const { canvas, ctx } = makeCanvas(S * steps.length, S);
-  const memo = new Map<number, Uint8ClampedArray>();
-  steps.forEach((step, i) => {
-    if (!memo.has(step)) memo.set(step, protoMonsterFrame(kind, step));
-    const image = ctx.createImageData(S, S);
-    image.data.set(memo.get(step)!);
-    ctx.putImageData(image, i * S, 0);
-  });
+/** Ícone do item no padrão novo (`PROTO_ICON` px): enquadrado e ampliado até caber, com a gema da raridade no canto. */
+export function protoItemIcon(id: string, rarity: "common" | "rare" | "magic"): HTMLCanvasElement {
+  const { canvas, ctx } = makeCanvas(PROTO_ICON, PROTO_ICON);
+  ctx.drawImage(iconDrawing(id), 0, 0);
+  if (rarity !== "common") ctx.drawImage(rarityGem(rarity), 0, 0);
   return canvas;
 }
 

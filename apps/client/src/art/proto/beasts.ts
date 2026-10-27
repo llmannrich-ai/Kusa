@@ -1,4 +1,5 @@
 import { makeCanvas } from "../pixels.ts";
+import { dragon } from "./dragon.ts";
 import {
   Canvas, F, KNIGHT_LOOK, Mat, chain, ebox, ellipse, fang, flame, fur, horn, inEllipse, inPoly, lerp, limb, lit, noise, pbox, plate,
   poly, rivet, scales, sphere, thread, grain, leather, type Offset, type Pt,
@@ -130,52 +131,6 @@ function chest(c: Canvas, open: number) {
   void lid;
 }
 
-// --- Dragão jovem (chefe) -----------------------------------------------------------------------
-
-function dragon(c: Canvas, k: number, mode: "idle" | "walk" | "bite" | "breath") {
-  const S = 384, g = ground(S), step = mode === "walk" ? [1, 0, -1, 0][k] : 0, breathe = [0, 0.6, 0, -0.6][k];
-  const sc: Offset = scales(6, 5), belly: Offset = (X, Y) => (Y % 6 < 1 ? -1 : 0);
-  const wingFlap = mode === "breath" ? -4 : [0, -1.4, 0, 1.4][k];
-  // Rabo para trás, asa de lá, pernas de lá.
-  chain(c, [[118, g - 30], [136, g - 22 + step], [152, g - 26], [164, g - 38 - step], [170, g - 50]], 6, Mat.RedDragon, sc, 0.8);
-  for (const p of [[152, g - 26], [164, g - 38]] as const) plate(c, [[p[0] - 2, p[1] - 4], [p[0] + 2, p[1] - 5], [p[0] + 1, p[1] - 11]], Mat.Horn);
-  const wing = (dx: number, dark: number) => {
-    const root: Pt = [96 + dx, g - 62], tips: Pt[] = [[70 + dx, g - 118 + wingFlap * 3], [104 + dx, g - 128 + wingFlap * 4], [138 + dx, g - 104 + wingFlap * 3], [150 + dx, g - 74]];
-    const pts: Pt[] = [root, tips[0]];
-    for (let i = 1; i < tips.length; i++) { const m = lerp(tips[i - 1], tips[i], 0.5); pts.push([m[0], m[1] + 10], tips[i]); }
-    pts.push([118 + dx, g - 54]);
-    plate(c, pts, Mat.Dragon, (X, Y) => dark + ((X + Y) % 7 === 0 ? -1 : 0));
-    for (const tp of tips) chain(c, [root, lerp(root, tp, 0.5), tp], 1.6, Mat.Horn, undefined, 0.7);
-  };
-  wing(14, -2);
-  for (const [x, ph] of [[82, -1], [126, 1]] as const) chain(c, [[x, g - 34], [x - 4 + step * ph * 3, g - 16], [x - 8 + step * ph * 4, g - 2]], 6, Mat.RedDragon, (X, Y) => sc(X, Y) - 1, 4.6);
-  // Corpo, barriga clara em faixas, pernas de cá com garras.
-  const body = c.fill(ebox(104, g - 40 + breathe, 34, 20), inEllipse(104, g - 40 + breathe, 33, 19), Mat.RedDragon, sphere(100, g - 50, 34, 22), sc);
-  c.fill(ebox(98, g - 30 + breathe, 26, 9), (x, y) => inEllipse(98, g - 28 + breathe, 25, 9)(x, y) && y > g - 34 + breathe, Mat.Amber, sphere(98, g - 30, 26, 10), belly);
-  for (const [x, ph] of [[88, 1], [128, -1]] as const) {
-    chain(c, [[x, g - 30], [x - 4 + step * ph * 3, g - 14], [x - 8 + step * ph * 4, g - 1]], 7, Mat.RedDragon, sc, 5);
-    for (const d of [-3, 0, 3]) plate(c, [[x - 10 + step * ph * 4 + d, g - 1], [x - 8 + step * ph * 4 + d, g - 1], [x - 12 + step * ph * 4 + d, g + 1.4]], Mat.Horn);
-  }
-  // Pescoço curvo para a frente, espinhos nas costas, cabeça com chifres, olho em brasa e a boca.
-  const jaw = mode === "bite" ? [0, 4, 8, 4][k] : mode === "breath" ? 7 : 0;
-  const head: Pt = [44 - (mode === "bite" ? [0, 4, 8, 4][k] : 0), g - 88 + breathe];
-  chain(c, [[84, g - 50], [70, g - 66], [58, g - 80], head], 10, Mat.RedDragon, sc, 8);
-  for (const t of [0.2, 0.4, 0.6, 0.8]) { const p = lerp([84, g - 56], [52, g - 92], t); plate(c, [[p[0] + 2, p[1] - 6], [p[0] + 7, p[1] - 4], [p[0] + 6, p[1] - 13]], Mat.Horn); }
-  for (let x = 90; x < 130; x += 7) plate(c, [[x, g - 58 + breathe], [x + 5, g - 58 + breathe], [x + 3, g - 66 + breathe]], Mat.Horn);
-  horn(c, [[head[0] + 8, head[1] - 6], [head[0] + 18, head[1] - 14], [head[0] + 28, head[1] - 14]], 3.4);
-  const skull = c.fill(ebox(head[0], head[1], 16, 10), (x, y) => inEllipse(head[0] + 4, head[1] - 1, 11, 8)(x, y) || inPoly([[head[0] - 2, head[1] - 7], [head[0] - 22, head[1] - 2], [head[0] - 22, head[1] + 3], [head[0] - 2, head[1] + 4]])(x, y), Mat.RedDragon, sphere(head[0], head[1] - 4, 18, 10), sc);
-  const lower = plate(c, [[head[0] - 2, head[1] + 3], [head[0] - 20, head[1] + 4 + jaw], [head[0] - 19, head[1] + 7 + jaw], [head[0], head[1] + 8]], Mat.RedDragon, sc);
-  for (let x = -18; x < -2; x += 3) { fang(c, [head[0] + x, head[1] + 3.4], 0.6, 2.2); if (jaw > 0) fang(c, [head[0] + x + 1, head[1] + 4.4 + jaw * (1 + x / 22)], 0.6, 2, -1); }
-  if (jaw > 0) plate(c, [[head[0] - 3, head[1] + 3.6], [head[0] - 19, head[1] + 4], [head[0] - 18, head[1] + 3.4 + jaw], [head[0] - 3, head[1] + 7.4]], Mat.Eye);
-  c.on(skull, F(head[0] - 20), F(head[1] - 1), Mat.Eye, 0);
-  const eye = ellipse(c, head[0] + 2, head[1] - 4, 2.4, 1.8, Mat.Ember);
-  c.on(eye, F(head[0] + 2), F(head[1] - 4), Mat.Eye, 0); c.on(eye, F(head[0] + 1), F(head[1] - 5), Mat.Ember, 5);
-  thread(c, [head[0] - 4, head[1] - 7], [head[0] + 8, head[1] - 8], Mat.RedDragon, 0, [skull]);
-  if (mode === "breath") for (let i = 0; i < 3; i++) flame(c, [head[0] - 24 - i * 9, head[1] + 10 + i], 9 + i * 2, 4 + i, -0.4);
-  // Asa de cá por cima do corpo.
-  wing(0, 0);
-  void body; void lower; void leather;
-}
 
 // --- Folhas ------------------------------------------------------------------------------------
 
@@ -186,10 +141,10 @@ const BEASTS: Record<string, Beast> = {
   gelatinousCube: { size: 192, fill: 0.62, scale: 1.3, idle: cube, attack: (c, k) => cube(c, k, k > 0) },
   mimic: { size: 192, fill: 0.5, scale: 1.4, idle: (c, k) => chest(c, [2, 3, 2, 1][k]), attack: (c, k) => chest(c, [3, 7, 9, 5][k]) },
   dragon: {
-    size: 384, fill: 0.62, idle: (c, k) => dragon(c, k, "idle"), walk: (c, k) => dragon(c, k, "walk"),
-    attack: (c, k) => dragon(c, k, "bite"), cast: (c, k) => dragon(c, k, "breath"),
-    // Parado e soprando repetem os quadros pares e ímpares (o dragão é o quadro mais caro de desenhar).
-    same: (clip, k) => (clip === "idle" || clip === "cast" ? `${clip}${k % 2}` : `${clip}${k}`),
+    size: 384, fill: 0.7, idle: (c, k) => dragon(c, k, "idle", ground(384)), walk: (c, k) => dragon(c, k, "walk", ground(384)),
+    attack: (c, k) => dragon(c, k, "bite", ground(384)), cast: (c, k) => dragon(c, k, "breath", ground(384)),
+    // O parado sobe e desce: o 4º quadro repete o 2º (o dragão é o quadro mais caro de desenhar).
+    same: (clip, k) => `${clip}${clip === "idle" && k === 3 ? 1 : k}`,
   },
 };
 

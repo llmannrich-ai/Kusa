@@ -5,8 +5,13 @@ import {
   MSG,
   SERVER_TICK_MS,
   VERSION_MISMATCH_CODE,
+  MAPS,
+  MONSTERS,
   mapIdOf,
+  mapUnlocked,
   spellXpGains,
+  unlockedBy,
+  UNLOCK_BOSS,
   type ClassId,
   type AddBotMessage,
   type AttackingMessage,
@@ -28,7 +33,7 @@ import {
 import { RULES_VERSION } from "./rulesVersion.ts";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
-import { recordRun, resolveAccount, storeBag, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
+import { mapClears, recordMapClear, recordRun, resolveAccount, storeBag, supabase, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
 import { recordTelemetry } from "./telemetry.ts";
 
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
@@ -63,6 +68,14 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         void recordTelemetry({ matchId: this.matchId, userId, ...report });
       },
       ended: () => void this.clock.setTimeout(() => this.disconnect(), 10_000),
+      // Campanha: quem estava na hunt quando o boss caiu abre o cenário seguinte (por conta e classe).
+      mapCleared: (sessionIds, boss) => {
+        for (const sessionId of sessionIds) {
+          const userId = this.users.get(sessionId);
+          const classId = this.state.players.get(sessionId)?.classId;
+          if (userId && classId) void recordMapClear(userId, classId, this.hunt.mapId, boss);
+        }
+      },
     }, {
       mapId: mapIdOf(options?.mapId),
       seed: Math.floor(Math.random() * 2 ** 31),
@@ -109,8 +122,21 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       // o dele (o último foi 26). O cliente atual lê o hash depois de "regras ".
       throw new ServerError(VERSION_MISMATCH_CODE, `O jogo foi atualizado: recarregue a página. (servidor v999, regras ${RULES_VERSION})`);
     }
+    const account = await resolveAccount(options.accessToken);
+    // Campanha: quem cria a sala precisa ter o cenário aberto com a classe (quem entra na sala de outro não).
+    // Sem banco (modo convidado, testes) não há campanha para conferir.
+    if (supabase && this.users.size === 0) {
+      const mapId = this.hunt.mapId;
+      const clears = account ? await mapClears(account.userId, options.classId) : [];
+      if (!mapUnlocked(clears, mapId)) {
+        const before = unlockedBy(mapId);
+        const boss = UNLOCK_BOSS[mapId];
+        const what = boss && before ? `${MONSTERS[boss].name} em ${MAPS[before].name}` : `o boss de ${before ? MAPS[before].name : "um cenário anterior"}`;
+        throw new ServerError(4403, `${MAPS[mapId].name} ainda está fechado: vença ${what} com esta classe.`);
+      }
+    }
     // Sempre um objeto (verdadeiro): sem conta, entra como convidado.
-    return { account: await resolveAccount(options.accessToken) };
+    return { account };
   }
 
   onJoin(client: Client, options: JoinOptions, auth: { account: Account | null }) {

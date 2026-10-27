@@ -2,10 +2,14 @@ import type { MonsterKind } from "@kusa/shared";
 import { BLACK_SHELL, mummyCanvas, sandElementalCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
 import { sandWormCanvas } from "./sandWorm.ts";
 import { basiliskCanvas, beholderCanvas } from "./cavernBosses.ts";
+import {
+  boneArcherCanvas, boneCenturionCanvas, boneJackalCanvas, boneLegionaryCanvas, buriedDeadCanvas, eternalPharaohCanvas, mournerCanvas,
+  royalMummyCanvas, sandScribeCanvas, scarabSwarmCanvas, singingColossusCanvas, wrappedMummyCanvas,
+} from "./necropolisMonsters.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { protoBeasts, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -59,6 +63,18 @@ export const OWN_MONSTER_DRAW: Record<string, () => HTMLCanvasElement> = {
   "monster-sand-elemental": sandElementalCanvas,
   "monster-basilisk": basiliskCanvas,
   "monster-beholder": beholderCanvas,
+  "monster-bone-jackal": boneJackalCanvas,
+  "monster-scarab-swarm": scarabSwarmCanvas,
+  "monster-bone-legionary": boneLegionaryCanvas,
+  "monster-bone-archer": boneArcherCanvas,
+  "monster-wrapped-mummy": wrappedMummyCanvas,
+  "monster-mourner": mournerCanvas,
+  "monster-buried-dead": buriedDeadCanvas,
+  "monster-bone-centurion": boneCenturionCanvas,
+  "monster-royal-mummy": royalMummyCanvas,
+  "monster-sand-scribe": sandScribeCanvas,
+  "monster-singing-colossus": singingColossusCanvas,
+  "monster-eternal-pharaoh": eternalPharaohCanvas,
 };
 
 export interface MonsterArt {
@@ -142,6 +158,19 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   // Caverna da Travessia (arte própria, `cavernBosses.ts`).
   basilisk: { texture: "monster-basilisk", facesLeft: true, blood: "green" },
   beholder: { texture: "monster-beholder", facesLeft: true, blood: "purple", flies: true },
+  // Necrópole de Solária (arte própria, `necropolisMonsters.ts`; com a Arte nova, os humanoides vêm do protótipo).
+  boneJackal: { texture: "monster-bone-jackal", facesLeft: true, blood: "none" },
+  scarabSwarm: { texture: "monster-scarab-swarm", facesLeft: true, blood: "green" },
+  boneLegionary: { texture: "monster-bone-legionary", facesLeft: true, blood: "none" },
+  boneArcher: { texture: "monster-bone-archer", facesLeft: true, blood: "none" },
+  wrappedMummy: { texture: "monster-wrapped-mummy", facesLeft: true, blood: "none" },
+  mourner: { texture: "monster-mourner", facesLeft: true, blood: "none" },
+  buriedDead: { texture: "monster-buried-dead", facesLeft: true, blood: "none" },
+  boneCenturion: { texture: "monster-bone-centurion", facesLeft: true, blood: "none", scale: 1.35 },
+  royalMummy: { texture: "monster-royal-mummy", facesLeft: true, blood: "none", scale: 1.25 },
+  sandScribe: { texture: "monster-sand-scribe", facesLeft: true, blood: "none", scale: 1.2 },
+  singingColossus: { texture: "monster-singing-colossus", facesLeft: true, blood: "none" },
+  eternalPharaoh: { texture: "monster-eternal-pharaoh", facesLeft: true, blood: "none", flies: true },
   // Pântano (arte própria animada, `marshMonsters.ts` e `ogreKing.ts`).
   orcScout: { texture: "monster-orc-scout", facesLeft: true, blood: "red", anim: marshAnim("orcScout") },
   orcGrunt: { texture: "monster-orc-grunt", facesLeft: true, blood: "red", anim: marshAnim("orcGrunt") },
@@ -161,14 +190,15 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
 };
 
 // Arte nova (beta): os monstros humanoides da Cripta vêm do protótipo, animados e já em 128 px por tile (o sprite vai
-// em metade da escala dos outros para ficar do tamanho certo).
-export const HD_FPS: Record<Clip, number> = { idle: 3, walk: 8, attack: 10, cast: 6 };
+// em metade da escala dos outros, que têm 64 px por tile, com a mesma ampliação dos heróis).
+export const HD_FPS: Record<Clip, number> = { idle: 4, walk: 8, attack: 10, cast: 6 };
+const HD_SCALE = 0.5 * NEW_ART_ZOOM;
 if (protoHero) {
   const proto = protoHero;
   for (const kind of proto.PROTO_MONSTERS as MonsterKind[]) {
     const art = BESTIARY_ART[kind];
     art.facesLeft = true;
-    art.scale = 0.5;
+    art.scale = HD_SCALE;
     art.anim = {
       size: proto.PROTO_SIZE, sheet: () => proto.protoMonsterSheet(kind), portrait: () => proto.protoMonsterPortrait(kind), outline: "",
       fps: HD_FPS, frames: { ...proto.MONSTER_CLIP_FRAMES }, stride: 2, hd: () => proto.protoMonsterFrames(kind),
@@ -182,7 +212,7 @@ if (protoBeasts) {
   for (const kind of proto.PROTO_BEASTS as MonsterKind[]) {
     const art = BESTIARY_ART[kind];
     art.facesLeft = true;
-    art.scale = 0.5;
+    art.scale = HD_SCALE;
     art.anim = {
       size: proto.beastSize(kind), sheet: () => proto.protoBeastSheet(kind), portrait: () => proto.protoBeastPortrait(kind), outline: "",
       fps: HD_FPS, frames: { ...proto.BEAST_CLIP_FRAMES }, stride: 2, hd: () => proto.protoBeastFrames(kind), fill: proto.beastFill(kind),

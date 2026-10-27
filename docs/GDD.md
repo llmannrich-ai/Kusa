@@ -37,7 +37,7 @@ redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
 O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi").
 Código em `apps/client/src/menu.ts`.
 
-- **Classes:** as 4 classes com retrato, papel e atributos (vida, mana, dano, alcance e armadura já com as áureas, as runas e os itens vestidos por aquela classe, na mesma conta da hunt). Tocar escolhe a classe da próxima hunt.
+- **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas).
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
@@ -199,7 +199,7 @@ Regras em `packages/shared/src/spellxp.ts`, repetidas no banco (`spell_level`, `
   (é o pré-requisito da árvore); o 5 pede uma centena de hunts usando a mesma magia.
 - **Morte:** morrer (ou ficar soterrado) tira **5% do XP acumulado** de cada magia escolhida na hunt, depois de somar o
   que ela ganhou. A perda pode descer níveis, mas **nunca abaixo do nível 1** (nem tira XP de quem ainda é aprendiz).
-  As magias que ficaram fora dos slots não perdem nada. Hunt solo abandonada (aba fechada) conta como morte, mas sem
+  As magias que ficaram fora dos slots não perdem nada. Hunt solo abandonada (aba fechada) depois da sala inicial conta como morte, mas sem
   perda de XP: o banco não sabe quais magias estavam nos slots.
 - **Quando vale:** o nível novo vale da próxima hunt em diante; durante a hunt os números ficam fixos. No fim da hunt,
   a tela de resultado mostra cada magia escolhida com o XP ganho, a perda da morte e se subiu ou caiu de nível.
@@ -378,7 +378,9 @@ limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
 - resultado que chega depois da duração do mapa mais 1 minuto vale como soterrado;
 - o que entrou com o jogador volta sem custo; itens novos, no máximo 15 por hunt (o que passar disso fica para
   trás, e a tela de resultado avisa). Não há teto por dia;
-- hunt solo deixada aberta (aba fechada) conta como morte na próxima.
+- hunt solo deixada aberta (aba fechada) conta como morte na próxima, mas só depois que o herói saiu da sala inicial
+  e jogou 60 s (`SOLO_LIMITS.committedSeconds`); antes disso, fecha sem perda (equipamento e bag voltam). Ao começar a
+  próxima, um aviso diz o que aconteceu com a anterior e o que se perdeu.
 
 ### Sala no aparelho do jogador
 
@@ -411,27 +413,42 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Mobile:** câmera própria, **arrastar em qualquer direção e pinça** para aproximar (do continente inteiro na tela a
   1,8×). Abre perto, no último cenário escolhido, com o herói da classe em pé em cima dele. 📍 volta ao herói e ⤢
   mostra o continente inteiro. Os pontos e o herói têm o mesmo tamanho na tela em qualquer zoom; de longe, os nomes
-  pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Classes, Grimório, Batalhas,
-  Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba.
+  pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Heróis, Grimório, Batalhas,
+  Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba. Tocar de novo
+  em Batalhas, já no mapa, leva a câmera ao herói e abre a ficha do cenário onde ele está.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
-  **Cidadela Caída**.
+  **Cidadela Caída**. Depois da Travessia, o lado do deserto já existe: 🌬️ Dunas Cantantes → 🪨 Mesas de Solária.
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
   Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
 - **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
   Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. O primeiro trecho de cada lado fica pontilhado até
-  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). O cliente lê
-  `profile_boss_runes` (o boss que deu a runa à classe foi vencido por ela). Por enquanto é só visual: o bloqueio de
-  verdade vem com a fase 3 do plano.
+  a classe escolhida vencer o boss daquele covil; depois, em tinta vermelha (liberado). **Só o boss de um lado abre
+  aquele lado:** o Observador abre as Dunas Cantantes (o Basilisco não); o Basilisco abrirá o Bosque Velho quando ele
+  existir. O cliente lê `profile_boss_clears` (bosses vencidos por personagem).
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
   pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
-- **Ainda não:** os 5 cenários de hoje estão abertos e os outros 13 ainda não existem. O desbloqueio por boss (por
-  classe) e a estrela por ponto vêm na fase 3 do plano.
+- **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
+  vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
+  Cantante → Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco
+  (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
+  bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
+  `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
+  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
+  inteira fica no title), e os botões de
+  jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
+  (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
+  entre dois cenários abertos. Contas de antes herdaram os cenários e os bosses vencidos pelas runas de boss já levadas.
+- **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
+  (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
+  gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
+- **Ainda não:** os outros 11 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
@@ -442,8 +459,9 @@ Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram n
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
 recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
-Escala de dificuldade de 1 a 4 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
-Ruínas e 4 para a Caverna da Travessia, o mapa mais difícil (a 3 fica livre para um mapa entre os dois).
+Escala de dificuldade de 1 a 6 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
+Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes e 6 para Mesas de Solária, o mapa mais difícil (a 3 fica
+livre).
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
@@ -451,6 +469,8 @@ Ruínas e 4 para a Caverna da Travessia, o mapa mais difícil (a 3 fica livre pa
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
+| 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
+| 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -466,20 +486,43 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 ### Pântano das Ruínas
 
-- **Campo aberto, sem caminho único:** o mapa nasce todo andável (só a borda é mata fechada) e recebe por cima
-  bosques de vários tamanhos, árvores soltas, lagoas e restos de muro. Todo obstáculo que fecharia a passagem
-  até uma zona, baú ou boss é descartado, então a equipe pode ir para qualquer região e contornar tudo.
+- **Campo aberto, sem caminho único:** o mapa nasce todo andável (só a borda é mata fechada, com a espessura
+  ondulando devagar) e recebe por cima bosques de vários tamanhos, árvores soltas, lagoas alongadas (às vezes com
+  uma poça colada) e os restos do império. Todo obstáculo que fecharia a passagem até uma zona, baú ou boss é
+  descartado, então a equipe pode ir para qualquer região e contornar tudo.
 - **Dificuldade em arco:** 7 zonas de monstros vão da entrada até as ruínas do centro, cada uma mais forte;
   5 campinas espalhadas têm alguns monstros extras.
 - Lagoas e poças: **a água bloqueia o passo, mas não a visão**. Flechas, magias e o ataque de alcance 2 da Hidra passam por cima.
-- Ruínas: salas laterais cercadas por muros caídos com 2 portões (Troll + baú), colunas soltas pelo campo e a arena do boss no centro,
-  um quadrado de muros com 4 portões e 4 colunas.
-- **Visual** (só no cliente, `apps/client/src/swampMap.ts` e arte própria em `art/swampDecor.ts`; não muda a jogabilidade
-  nem o gerador): capim invadindo a lama e a pedra, espuma na margem das lagoas, sombra das árvores e muros no chão,
-  manchas de luz no capim, árvores com variação de tom, taboas na margem, samambaias, arbustos e cogumelos no pé das
-  árvores, flores, pedrinhas, tocos e troncos no campo, entulho, musgo e ossos nas ruínas, vitórias-régias na água,
-  e o ambiente: vaga-lumes, ondinhas nas lagoas, névoa baixa e cantos da tela escurecidos. Só os sprites perto da
-  câmera são desenhados (blocos de 8×8 tiles), para o celular aguentar.
+- Ruínas: salas laterais cercadas por muros caídos com 2 portões (Troll + baú), a arena do boss no centro (um
+  quadrado de muros com 4 portões e 4 colunas) e, pelo campo, 13 restos de construção: trechos de muro, cantos em L,
+  colunatas (colunas a cada 2 tiles, umas já caídas) e alicerces de casa com a porta aberta, além de colunas soltas.
+  Muro e coluna bloqueiam passo e visão.
+- **Visual** (só no cliente, toda a arte própria, sem pack; não muda a jogabilidade): o mesmo desenhista de floresta
+  alagada do Pântano do Kosaradius (`apps/client/src/wetlandMap.ts`, com o tema em `swampMap.ts`), a natureza na
+  paleta da Baía Afundada (`swampTone` em `art/ruinsDecor.ts`: verde-oliva mais aberto e claro que o do Kosaradius,
+  água verde-azulada) e as ruínas em arte própria (`art/ruinsDecor.ts`):
+  - **Natureza:** capim com folhinhas e touceiras, lama só na beira d'água, água rasa e funda, mata fechada em copa
+    contínua com a beira recortada e os troncos aparecendo do lado sul, árvores soltas de 4 espécies (salgueiro,
+    cipreste, mangue e árvore morta, sem o anel de ciprestes do Kosaradius) com sombra e copa que balança e fica
+    transparente com o jogador embaixo; as bordas entre terrenos têm lados e cantos de dentro e de fora e pegam as
+    mesmas manchas de tom do chão.
+  - **Piso de lajes:** lajes irregulares de calcário (opus incertum, fecham a cada 2×2 tiles) com bisel, desgaste e
+    juntas tomadas de musgo, nas salas laterais, na arena (com uma beirada irregular em volta) e em volta dos restos
+    de muro pelo campo; o capim invade a beira.
+  - **Muros com volume:** pedra ligada a outra é trecho de muro montado pelos vizinhos (deitado, em pé, canto, ponta),
+    com face de blocos, tampo coberto de musgo, espessura (luz a oeste, sombra a leste), ponta solta desmoronando em
+    degraus, blocos faltando no alto, a marca escura da água no pé e, conforme a variação, rachadura, musgo
+    escorrendo ou hera. A altura varia aos poucos nos trechos deitados e é a mesma em todo o trecho em pé.
+  - **Colunas:** pedra sozinha é coluna com plinto e caneluras: inteira com capitel na arena da Hidra; no resto,
+    quebrada alta (com hera), quebrada média ou toco com o tambor caído ao lado.
+  - **Arena:** no meio, o **mosaico da Hidra** em tesselas (borda escura, faixa de ondas verde-serpente e as três
+    cabeças saindo de um disco), gasto pelo tempo, com musgo entrando pela borda.
+  - **Enfeites das ruínas:** entulho no pé dos muros, rachaduras, lajes afundadas com água, lajes faltando com capim,
+    glifo da Hidra entalhado, cacos de urna, caveira, tambores de coluna caídos, cabeças de estátua, urnas e pedestais;
+    na água perto das ruínas, lajes afundadas, tocos de coluna e pedras de passagem. No capim, os enfeites do brejo
+    (taboas, juncos, íris, samambaias, cogumelos, tiririca).
+  - **Ambiente:** vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas na água, um pouco de sol no
+    meio da tela e cantos úmidos. Só os sprites perto da câmera são desenhados (blocos de 8×8 tiles).
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
@@ -541,6 +584,50 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   estalagmites, cristais âmbar que brilham, o facho de luz e a corda da saída, e o salão em lajes de arenito com
   glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
   Como nos outros mapas, só os sprites perto da câmera são desenhados.
+
+### Dunas Cantantes e Mesas de Solária (terreno)
+
+O lado do deserto da bifurcação da Travessia (etapas 6 e 7 da campanha): as Dunas abrem com um boss da Caverna da
+Travessia e as Mesas com o Colosso Cantante. Os dois mapas usam o mesmo gerador (`generateDunes` em `dungeon.ts`), cada
+um com a sua variante, e a mesma Necrópole de Solária (ver "Bestiário"): dificuldade 5 nas Dunas e 6 nas Mesas, o
+mapa mais difícil do jogo. 8 min, até 4 jogadores.
+
+- **Em pé, como o celular:** 96×128. A entrada fica na planície do sul e a **arena do boss** na bacia do norte, onde os
+  vales se encontram (círculo aberto com um aro de duna ou de rocha aberto para o sul).
+- **Vales entre cordilheiras:** 3 cordilheiras compridas, no sentido do vento (norte-sul), serpenteando, separam 4
+  vales. Cada cordilheira tem 2 (às vezes 3) **selas** de areia firme (nas Mesas, **cânions** estreitos de 3 tiles) que
+  ligam um vale ao outro. As 7 zonas sobem do sul ao norte trocando de vale a cada zona, então a rota sempre cruza
+  alguma sela e a equipe escolhe por qual. Obstáculo que fecharia a passagem até uma zona, campina, sala ou a arena é
+  descartado; sala lateral que fecharia um vale sai.
+- **Areia fofa** (`Tile.Sand`): andável e não tapa a visão, mas quem pisa nela (herói, monstro, invocação que não voa)
+  anda a 65% da velocidade (`SAND_SPEED`; o passo que entra nela demora mais). Cobre o pé das cordilheiras (faixa de
+  largura ondulante) e manchas compridas no fundo dos vales; selas, entrada, arena, ruínas e oásis ficam firmes. Nas
+  Dunas é farta (~2.100 tiles por mapa); nas Mesas, pouca (~750, só onde a areia escorreu). Teste: `areia.ts`.
+- **Dunas Cantantes:** cordilheiras de duna (mais grossas a oeste, onde o vento empilha), barcanas (dunas pequenas em
+  meia-lua) nos vales, oásis com coqueiros na margem (no máximo um por vale), coqueiros soltos, **ruínas soterradas**
+  (muro de arenito com falhas e 2 portões) e, na arena, o círculo de 7 **pedras cantantes** (menires de ruína).
+- **Mesas de Solária:** platôs de arenito de beira reta em degraus, morros-testemunho soltos nos vales, poços (oásis
+  pequenos), pilares de rocha, **casas escavadas na rocha** (muro inteiro, 2 portas cavadas na encosta) e, na arena, 4
+  pilares de pedra.
+- **Regra de desenho:** mata sem mata nos 4 lados é coqueiro (nas Dunas sempre; nas Mesas, perto da água) ou pilar de
+  rocha; mata encostada em mata é duna ou platô; ruína sem ruína nos 4 lados é pedra cantante. Os dois bloqueiam passo e
+  visão; a água, só o passo.
+- **Visual** (só no cliente, `apps/client/src/dunesMap.ts` e `art/duneArt.ts`): **sempre na arte nova** (128 px por
+  tile, `docs/ARTE_TIBIA.md`), com ou sem a opção Arte nova (beta); os heróis e monstros seguem a opção de cada um.
+  Um atlas só com os quadros que o mapa usa (cerca de 180 a 240), cada um pintado pixel a pixel na primeira vez: areia
+  firme com ondulações do vento, areia fofa em montinhos com covas de pisada (e a beira entrando na firme), sal rachado
+  ou laje na arena; **dunas pelo relevo** (altura nos 4 cantos de cada tile, encosta oeste iluminada, sotavento leste
+  íngreme e na sombra com areia escorrendo, fio de luz na crista, ondulações seguindo a curva de nível); **platôs** com
+  tampo de rocha rachado, borda clara a norte e oeste, e o **paredão** em camadas de sedimento na face sul, com fendas
+  e entulho no pé; muros de arenito com areia empilhada no lado do vento ou de taipa; água do oásis funda no meio, rasa
+  e clara na margem, com espuma e areia molhada em volta; sombra do relevo no chão a leste e ao sul. De pé: coqueiros
+  em 4 formas (tronco curvo de anéis, copa de folhas penadas com cocos e folha seca; a copa balança e fica
+  transparente sobre o jogador), pedras cantantes furadas pelo vento com glifos que acendem e soltam uma onda no auge
+  do canto, pilares de arenito com pedra-chapéu, arbustos secos, pedras, costelas, ânforas, colunas quebradas, juncos,
+  babosas e marcos de pedra; enfeites rasteiros (crânio de boi, conchas, rastro de cobra, pegadas, capim seco, cacos,
+  barro rachado). Ambiente: grãos levados pelo vento norte, fitas de areia soprando das cristas, brilho do sol na água.
+  Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
+- **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
 
 ### Caverna da Travessia
 
@@ -609,8 +696,8 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   que fecharia a passagem até uma zona, campina, clareira ou ao centro é descartado. **Árvore solta** é um tile de
   mata sem mata nos 4 lados; mata encostada em mata é **mata fechada**. As duas bloqueiam passo e visão; a água,
   só o passo; os troncos caídos (pedra), passo e visão.
-- **Visual** (só no cliente, `apps/client/src/marshMap.ts`, com toda a arte própria em `art/marshDecor.ts`, sem
-  pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
+- **Visual** (só no cliente, `apps/client/src/wetlandMap.ts` com o tema em `marshMap.ts`, e toda a arte própria em
+  `art/marshDecor.ts`, sem pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
   torrões, água escura cor de chá (rasa e funda) com lodo e lentilha-d'água na margem; capim invadindo a lama com
   quinas arredondadas. A **mata fechada** é uma copa contínua de tufos (textura de 3×3 tiles, sem emenda) cuja beira
   recua com borda recortada; do lado sul ela sobe e mostra a sombra, os troncos e a barba-de-velho pendurada. As
@@ -629,7 +716,9 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 - Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto (o Pântano do Kosaradius é só para 1).
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- **Entrada tranquila:** a até 12 tiles do portal de fuga nascem no máximo 3 monstros (mini-boss e Mímico de sala
+  lateral contam), para a hunt não começar com uma sala cheia em cima da equipe.
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes e nas Mesas de Solária, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;
@@ -693,6 +782,9 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   dos monstros (boss incluído) e dos baús, e a chance de item dos comuns e mini-bosses cai para 80% da base (comum:
   15% → 12%). Vale por cima do corte próprio do mapa (`lootScale`, `dropScale`). Poções, os itens do boss e o item
   do baú não mudam.
+- **Corte dos itens** (`ITEM_DROP_SCALE`, 60%, no mesmo arquivo): cada sorteio de item de equipamento só sai com 60%
+  de chance, por cima dos outros cortes: comum 12% → 7,2%, mini-boss 60% (vezes o `dropScale` do mapa e o corte
+  geral), cada um dos 2 itens do boss 60% e o item do baú (e do Mímico) 60%. Poções, runas e gold não mudam.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
 - **Princípio: difícil e injusto como a vida.** Nenhum golpe de monstro tem aviso antes (área marcada no chão, brilho de carga, contagem); o jogador se defende pela posição e pela escolha de quem matar primeiro, não reagindo a um sinal.
 - Monstros, habilidades e regras dos inimigos: ver "Bestiário".
@@ -800,6 +892,34 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 No simulador de duelo (herói sozinho, só ataque básico), os orcs comuns ficam entre o Goblin e o Esqueleto da
 Cripta, o Ogro jovem perto do Orc guerreiro, os mini-bosses abaixo do Ogro da Cripta, e o Rei-Ogro (herói nível
 12) dura de 10 a 15 s contra o herói, contra 4 a 7 s do Dragão jovem (herói nível 6).
+
+### Necrópole de Solária: Dunas Cantantes (★5) e Mesas de Solária (★6)
+
+A legião do Império de Kusa que a areia enterrou viva e as múmias da corte do último faraó. Os dois mapas usam os
+mesmos comuns e mini-bosses (as Mesas com orçamentos maiores, bandos maiores e 25% das campinas com um mini-boss solto);
+cada um tem o seu boss. Quase todos são mortos-vivos (não pegam veneno nem sangramento); as múmias queimam fácil.
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Chacal de Ossos | escaramuçador (matilha de 2–3) | Táticas de Bando · Fuga Ágil (morde e recua) |
+| Escaravelhos Carniceiros | enxame (3–4) | metade das mordidas sangra |
+| Legionário Ossudo | sentinela | elmo, escudo de bronze e gládio · resiste a físico, vulnerável a luz · Escudo em Riste (empurra) |
+| Sagitário das Dunas | artilheiro | lenço do deserto e arco, alcance 6 · recua se alguém chega a 3 · Chuva de Flechas (área) |
+| Múmia Enfaixada | controlador | Faixas Mortuárias: **puxa** o herói de 2–5 tiles para colado e prende 1 s · o toque apodrece · queima fácil |
+| Carpideira | controlador | véu escuro, a 4 tiles · Lamento (leque de 4 que deixa lento) · queima fácil |
+| Soterrado | emboscador | escondido na areia (camuflado, nota a 3 tiles) · Ataque Surpresa 1,8× · Fortitude Morta-viva |
+| **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Golpe de Gládio (1,6× e sangra) · Formação! (chama 2 Legionários) |
+| **Múmia Real** (mini-boss) | controlador | máscara de ouro · Faixas Reais (puxa e prende) · Maldição do Faraó (área que corrói) · ferida, Enxame da Tumba (3 Escaravelhos) |
+| **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cegante (linha que cega) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
+| **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · Submergir (some na duna e irrompe debaixo do alvo) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
+| **Faraó Eterno** (boss das Mesas) | artilheiro (morto-vivo, flutua) | ataca a 3 tiles e foge de quem cola · Raio do Sol Morto (linha de 8 que queima) · Mortalha (puxa e prende) · Maldição Eterna (área que corrói) · Legião Eterna (2 Legionários) · abaixo de 30%, Sarcófago (uma vez: cura 20% e empurra 3 em volta) |
+
+**Balanceamento** (medido com o simulador de duelo, herói sozinho só com ataque básico; refazer quando a telemetria
+chegar): matando 75% do caminho, o herói chega no boss das Dunas no nível 14 e no das Mesas no 15–16 (XP antes do boss
+~7.200 e ~8.300; a Caverna, ~7.000). Na régua de quanto da vida do boss o herói tira antes de cair: o Colosso dá 3–9%
+no nível 14 e o Faraó 4–7% no 16, contra 8–16% do Observador no 14. Os mini-bosses ficam entre o Troll e o Bugbear da
+Caverna (30–60% no nível 11). Começo no nível 1: Escaravelhos e Chacais vencíveis sozinho, mais lentos que os Kobolds
+e Goblins da Caverna. Loot máximo de uma hunt ~2.900 nas Dunas e ~3.400 nas Mesas (teto da hunt solo 3.300 e 3.800).
 
 ## Ataques e magias (protótipo)
 
@@ -923,6 +1043,8 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
   computador; mais no celular) e fica guardada. O sprite vai 10% maior que 128 px por tile, com os pés no mesmo
   ponto do herói antigo.
   Na Cripta, a opção também troca o cenário e os monstros (piloto dos mapas e monstros, `docs/ARTE_TIBIA.md`).
+  Os ícones dos itens (mochila, cofre, mercado, equipamento e chão) passam a ser o mesmo desenho do item vestido
+  (`docs/ARTE_ITENS.md`, seção 13).
 
 - **Ícone 16×16** (chão, HUD, inventário, slots e mercado): um desenho por família (espada, machado, arco, besta, varinha, cajado, elmo, chapéu, armadura, manto, calça, botas, escudo), na cor do material; as vestes arcanas usam tecido (linho, lã, seda rúnica, mithral, seda de dragão), e varinhas e cajados têm uma gema por nível. Raros e mágicos levam uma gema azul ou roxa no canto (`apps/client/src/art/items.ts`).
 - **Vestido no herói** (`apps/client/src/art/hero/`): **cada item tem o seu desenho, igual em qualquer classe**.

@@ -1,4 +1,4 @@
-import { ITEMS, TILE_SIZE, type ClassId } from "@kusa/shared";
+import { TILE_SIZE, type ClassId } from "@kusa/shared";
 import { makeCanvas } from "./pixels.ts";
 import { ART_SCALE, HERO_SCALE, HERO_SPRITE_SCALE, scale2x } from "./refine.ts";
 import { NO_OUTFIT, type Outfit } from "./outfit.ts";
@@ -6,7 +6,7 @@ import { heroFrame } from "./hero/hero.ts";
 import { HERO_DIRS, HERO_FRAMES, type HeroDir } from "./hero/rig.ts";
 import { S as CELL } from "./hero/raster.ts";
 import type { ProtoGear } from "./proto/tibiaHero.ts";
-import { NEW_ART, protoHero as proto } from "./newArt.ts";
+import { NEW_ART, NEW_ART_ZOOM, protoHero as proto, protoItemOf } from "./newArt.ts";
 
 /**
  * Folhas de sprites dos heróis. A arte é pintada em 48×48 por `hero/` (corpo da classe + um desenho por
@@ -24,30 +24,16 @@ export { NEW_ART };
 /** 128 px por tile e o quadro de 192 px com os pés na linha 184 (`tibiaHero.ts`). */
 const PROTO_TILE = 128, PROTO_SIZE = 192, PROTO_FEET = 184;
 
-/**
- * A arte nova vai 10% maior que o padrão de 128 px por tile: o desenho é mais fino que o antigo e, do mesmo tamanho,
- * parecia menor no celular.
- */
-const NEW_ART_ZOOM = 1.1;
 
 /** Escala do sprite do herói no jogo. */
 export const heroSpriteScale = () => (NEW_ART ? (TILE_SIZE / PROTO_TILE) * NEW_ART_ZOOM : HERO_SPRITE_SCALE);
-
-/** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */
-const PROTO_FAMILY: Record<string, string> = {
-  "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",
-  "helmet-war": "war", "helmet-arcane": "arc", "armor-war": "armor", "armor-arcane": "robe", "legs-war": "greave", "legs-arcane": "pants",
-  "boots-boots": "boots", "shield-shield": "shield",
-};
 
 /** O equipamento do jogo no desenho novo. O raro usa o desenho do comum (o "+1" fica só no nome). */
 export function protoGear(outfit: Outfit): ProtoGear {
   const gear: Record<string, string> = {};
   for (const [slot, id] of Object.entries(outfit)) {
-    const def = id ? ITEMS[id] : undefined;
-    const family = def && PROTO_FAMILY[def.family];
-    if (!def || !family) continue;
-    gear[slot] = `${family}-${def.tier}${def.rarity === "magic" ? "-magic" : ""}`;
+    const proto = id ? protoItemOf(id) : undefined;
+    if (proto) gear[slot] = proto;
   }
   return gear as ProtoGear;
 }
