@@ -27,6 +27,9 @@ teclado e mouse no desktop são um extra.
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles no lado curto (pelo menos 13 no longo): em pé, 9 de largura, com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares; deitado, o tile tem o mesmo tamanho que teria em pé no mesmo celular (no iPhone, com as barras do Safari, sobram uns 7 tiles de altura; nunca menos de 6,5), com o jogador no centro. Deitado se vê menos na vertical e mais para os lados. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
+- **Princípio: a câmera nunca treme.** Nenhum efeito (magia, golpe, habilidade de boss, explosão) sacode a tela: no
+  celular o tremor cansa, atrapalha a mira e esconde o que está acontecendo. O peso de um golpe vem do desenho no chão e
+  nos alvos (clarão, rachaduras, fogo, fumaça, número de dano).
 - **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias no alvo automático), Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
