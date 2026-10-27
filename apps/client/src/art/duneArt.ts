@@ -1,16 +1,16 @@
 import type { Rgb } from "./hero/color.ts";
 import {
   BAYER, FLAT, HD, Paper as Painter, TileAtlas, ebox, ellipse, inEllipse, limb, line, lit, noise, palette, poly, smoothNoise, sn, sphere, toCanvas,
-  type Offset, type Shade,
+  type Offset, type Pt, type Shade,
 } from "./paint.ts";
 
 /**
  * Arte de Dunas Cantantes e Mesas de Solária, no padrão novo (pintor em `paint.ts`, `docs/ARTE_TIBIA.md`): a paleta
- * das duas variantes e o desenho de cada quadro. Só estes dois mapas usam este arquivo, e sempre (com ou sem a opção
- * Arte nova): não há arte antiga deles.
+ * das duas variantes e o desenho de cada quadro. Estes dois mapas usam este arquivo sempre (com ou sem a opção Arte
+ * nova): não há arte antiga deles. Os Portões do Império (`empireArt.ts`) usam o papel daqui com a paleta deles.
  */
 
-export { FLAT, HD, TileAtlas, ebox, ellipse, inEllipse, limb, line, lit, noise, poly, smoothNoise, sn, sphere, toCanvas, type Offset, type Shade };
+export { FLAT, HD, TileAtlas, ebox, ellipse, inEllipse, limb, line, lit, noise, poly, smoothNoise, sn, sphere, toCanvas, type Offset, type Pt, type Shade };
 
 export type DuneVariant = "dunes" | "mesas";
 
@@ -38,7 +38,9 @@ const BASES: Record<DuneVariant, Record<M, [string, number, number?, boolean?]>>
 };
 
 const rampCache = new Map<DuneVariant, Rgb[][]>();
-function ramps(variant: DuneVariant): Rgb[][] {
+/** Rampas de 6 tons por material: as das duas variantes daqui ou uma tabela pronta (os Portões do Império). */
+function ramps(variant: DuneVariant | Rgb[][]): Rgb[][] {
+  if (typeof variant !== "string") return variant;
   let r = rampCache.get(variant);
   if (!r) {
     const bases = BASES[variant];
@@ -48,12 +50,10 @@ function ramps(variant: DuneVariant): Rgb[][] {
   return r;
 }
 
-/** Papel na paleta da variante. */
-class Paper extends Painter {
-  constructor(variant: DuneVariant, w = HD, h = HD) { super(ramps(variant), w, h); }
+/** Papel na paleta da variante, ou numa tabela de rampas pronta (os Portões do Império). */
+export class Paper extends Painter {
+  constructor(variant: DuneVariant | Rgb[][], w = HD, h = HD) { super(ramps(variant), w, h); }
 }
-
-type Pt = readonly [number, number];
 
 // --- Chão ---------------------------------------------------------------------------------
 

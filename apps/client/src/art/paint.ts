@@ -53,10 +53,10 @@ export function smoothNoise(x: number, y: number, cell: number, seed: number, pe
   return top + (bottom - top) * sy;
 }
 
-const tables = new Map<string, Float32Array>();
+const tables = new Map<number, Float32Array>();
 /** `smoothNoise` de um tile inteiro, calculado uma vez e guardado (o ruído suave é o que mais pesa). */
 function noiseTable(cell: number, seed: number) {
-  const key = `${cell}:${seed}`;
+  const key = cell * 1_000_003 + seed;
   let t = tables.get(key);
   if (!t) {
     t = new Float32Array(HD * HD);
@@ -153,7 +153,6 @@ export class Paper {
     const tones = this.tones;
     const out = new Uint8ClampedArray(this.w * this.h * 4);
     const { w, h, mat, shade, off, fixed, part } = this;
-    const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? -1 : y * w + x);
     const put = (o: number, r: number, g: number, b: number, a: number) => { out[o] = r; out[o + 1] = g; out[o + 2] = b; out[o + 3] = a; };
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
@@ -161,10 +160,13 @@ export class Paper {
         const m = mat[i];
         if (m < 0) {
           if (!outline) continue;
-          const n = [at(x + 1, y), at(x, y + 1), at(x - 1, y), at(x, y - 1)].find((j) => j >= 0 && mat[j] >= 0);
-          if (n === undefined) continue;
+          // Primeiro vizinho pintado (direita, baixo, esquerda, cima), sem alocar nada: é o laço mais quente da arte.
+          const r = x + 1 < w && mat[i + 1] >= 0 ? i + 1 : -1;
+          const d = y + 1 < h && mat[i + w] >= 0 ? i + w : -1;
+          const n = r >= 0 ? r : d >= 0 ? d : x > 0 && mat[i - 1] >= 0 ? i - 1 : y > 0 && mat[i - w] >= 0 ? i - w : -1;
+          if (n < 0) continue;
           // Do lado da luz o contorno puxa a cor do vizinho; na sombra é quase preto.
-          const litSide = (at(x + 1, y) === n || at(x, y + 1) === n) && shade[n] > 0.62;
+          const litSide = (n === r || n === d) && shade[n] > 0.62;
           const t0 = tones[mat[n]][0];
           if (litSide) put(i * 4, (t0[0] + OUTLINE[0]) / 2, (t0[1] + OUTLINE[1]) / 2, (t0[2] + OUTLINE[2]) / 2, 255);
           else put(i * 4, OUTLINE[0], OUTLINE[1], OUTLINE[2], 255);
@@ -177,8 +179,9 @@ export class Paper {
           tone = Math.max(1, Math.min(4, Math.floor(v) + 1)) + off[i];
           // A peça da frente risca a de trás.
           if (outline) {
-            for (const j of [at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)])
-              if (j >= 0 && mat[j] >= 0 && part[j] > part[i] && fixed[j] < 0) { tone = 0; break; }
+            const pi = part[i];
+            const front = (j: number) => mat[j] >= 0 && part[j] > pi && fixed[j] < 0;
+            if ((x + 1 < w && front(i + 1)) || (x > 0 && front(i - 1)) || (y + 1 < h && front(i + w)) || (y > 0 && front(i - w))) tone = 0;
           }
         }
         const c = tones[m][tone < 0 ? 0 : tone > 5 ? 5 : tone];
@@ -202,7 +205,7 @@ export function ellipse(p: Paper, cx: number, cy: number, rx: number, ry: number
   return p.fill(ebox(cx, cy, rx, ry), inEllipse(cx, cy, rx, ry), mat, sphere(cx, cy, rx, ry), offset);
 }
 
-type Pt = readonly [number, number];
+export type Pt = readonly [number, number];
 
 function seg(px: number, py: number, a: Pt, b: Pt) {
   const dx = b[0] - a[0], dy = b[1] - a[1];

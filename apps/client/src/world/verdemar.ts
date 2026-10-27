@@ -34,7 +34,7 @@ export const NODES: Record<string, CampaignNode> = {
   n7a: { step: 7, x: 425, y: 1365, name: "Coração da Mata", area: "Floresta do Kosaradius", map: "heartwood" },
   n6b: { step: 6, x: 1155, y: 1440, name: "Dunas Cantantes", area: "Solária", map: "dunes" },
   n7b: { step: 7, x: 1170, y: 1225, name: "Mesas de Solária", area: "Solária", map: "mesas" },
-  n8: { step: 8, x: 800, y: 1135, name: "Portões do Império", area: "Ruínas do Império", fork: "charco ou ermos" },
+  n8: { step: 8, x: 800, y: 1135, name: "Portões do Império", area: "Ruínas do Império", map: "gates", fork: "charco ou ermos" },
   n9a: { step: 9, x: 440, y: 960, name: "Charco Cinzento", area: "Charco Cinzento" },
   n9b: { step: 9, x: 1120, y: 905, name: "Ermos Rubros", area: "Ermos Rubros" },
   n10: { step: 10, x: 785, y: 800, name: "Sopé da Serra", area: "Serra do Norte", fork: "passo ou garganta" },
@@ -47,10 +47,11 @@ export const NODES: Record<string, CampaignNode> = {
 
 /**
  * Os cenários de hoje: o herói anda por estas trilhas. Elas são iguais até a Caverna da Travessia (`FORK`) e lá se
- * dividem: o lado do deserto (Dunas Cantantes, Mesas de Solária) e o da floresta (Bosque Velho, Coração da Mata).
+ * dividem: o lado do deserto (Dunas Cantantes, Mesas de Solária, até os Portões do Império) e o da floresta (Bosque
+ * Velho, Coração da Mata).
  */
 export const OPEN_CHAINS = [
-  ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b"],
+  ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8"],
   ["n1", "n2", "n3", "n4", "n5", "n6a", "n7a"],
 ] as const;
 export const FORK = "n5";
