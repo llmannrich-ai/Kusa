@@ -438,7 +438,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
-  **Cidadela Caída**. Depois da Travessia, o lado do deserto já existe: 🌬️ Dunas Cantantes → 🪨 Mesas de Solária.
+  **Cidadela Caída**. Depois da Travessia, o lado do deserto já existe: 🌬️ Dunas Cantantes → 🪨 Mesas de Solária → 🏛️
+  Portões do Império (etapa 8, por enquanto só o terreno).
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
   Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
@@ -455,7 +456,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
-  Cantante → Mesas de Solária). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco
+  Cantante → Mesas de Solária, Faraó Eterno → Portões do Império). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
   `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
@@ -467,7 +468,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
-- **Ainda não:** os outros 11 cenários da campanha não existem (medalhões numerados).
+- **Ainda não:** os outros 10 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
@@ -480,7 +481,7 @@ recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede
 
 Escala de dificuldade de 1 a 6 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
 Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes e 6 para Mesas de Solária, o mapa mais difícil (a 3 fica
-livre).
+livre). Os Portões do Império, ainda sem monstros, ficam com 6 provisório.
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
@@ -490,6 +491,7 @@ livre).
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
+| 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -648,6 +650,58 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
   Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
 - **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
 
+
+### Portões do Império (terreno)
+
+A etapa 8 da campanha, na área Ruínas do Império (abre com o Faraó Eterno, das Mesas de Solária), e a bifurcação para o
+Charco Cinzento ou os Ermos Rubros. Por enquanto só o terreno e a arte: sem monstros nem boss (`encounters`, `bosses`
+vazios), ★★★★★★ provisório, 8 min, até 4 jogadores. Gerador `generateGates` em `dungeon.ts`; a planta vai em
+`Dungeon.empire` (ruas, praças, muralha, portão, torres, fachada, estátuas, mausoléus, colunas, salas de baixo), que só
+o desenho lê.
+
+- **Em pé, como o celular:** superfície de 84×124 e, colada à direita na mesma grade, a ruína subterrânea (44 de
+  largura), como o subterrâneo do Mar de Areia.
+- **Fora da muralha (sul):** a entrada e a **via dos túmulos**: a estrada calçada sobe da entrada até o portão, com
+  **mausoléus** (2×2: túmulo-templo, altar funerário com urna, túmulo de telhado caído) e ciprestes dos dois lados.
+- **Muralha:** 2 tiles de pedra de lado a lado, o **portão** (5 de vão) entre duas **torres** (3×4) e 2 **brechas**
+  desmoronadas (3 a 4 tiles), então a equipe escolhe por onde entrar.
+- **Cidade em ruínas:** a avenida calçada sobe do portão ao **fórum** (praça de travertino com a fonte e a estátua do
+  imperador, colunata falhada em volta), ruas transversais cortam os bairros (a de baixo, perto da muralha, e a do
+  fórum, de lado a lado), uma rua de cada lado liga as duas, colunatas na avenida, **casas em ruínas** (salas laterais:
+  muro com falhas e 2 portas), restos de muro, cantos e alicerces, cisternas, moitas e bosques de ciprestes e
+  pinheiros-mansos. 6 zonas do caminho (a via, a praça do portão, o bairro baixo, o fórum, a avenida do norte e o pátio
+  do templo) e 5 campinas.
+- **Recinto do templo (norte):** pátio de mármore com colunata dos lados e muro baixo, os 2 **guardiões de bronze** e a
+  **fachada do templo afundado** (9×4 de ruína) com a **escadaria** no meio da linha de baixo (`Tile.Cave`): pisar
+  nela desce para a ruína subterrânea (a câmera corta, como na caverna do deserto).
+- **Ruína subterrânea:** construída em pedra (salas retas, não caverna), de baixo para cima: o **vestíbulo** com a
+  escada de volta, o corredor das catacumbas (com um ossário), a **galeria das colunas** (duas fileiras de pilares,
+  alguns caídos, e um ossário de cada lado), outro corredor e o **santuário do boss** (19×15, pilares na volta e o
+  mosaico no chão); atrás dele, o **tesouro**, onde abre o portal do boss (e os 4 lugares de baú, para quando houver
+  runas). 2 zonas embaixo (vestíbulo e galeria), depois das 6 de cima.
+- **Regra de desenho:** mata de 1 tile é árvore (cipreste ou pinheiro-manso), mata encostada em mata é moita; ruína de 1
+  tile é coluna (as postas), estátua (nos lugares marcados) ou bloco caído; ruína encostada em ruína é muro. Embaixo,
+  mata de 1 tile é pilar e ruína é sarcófago (nos ossários) ou entulho.
+- **Visual** (só no cliente, `apps/client/src/gatesMap.ts`, `art/empireArt.ts` e `art/empireMonuments.ts`): **sempre na
+  arte nova** (128 px por tile, `docs/ARTE_TIBIA.md`), com o papel das Dunas e paleta própria. Chão: capim mediterrâneo
+  em tufos, papoulas e margaridas; via de basalto em pedras poligonais com capim nas juntas; praça de travertino em
+  lajes desencontradas; pátio de mármore com losangos de pórfiro; tanques de fonte com borda de mármore; capim
+  entrando no calçamento e sombra das moitas e monumentos. De pé: **muros com volume** (tampo de pedras na argamassa
+  com musgo, face de tufo com fiadas de tijolo, buracos de andaime, restos de afresco vermelho, hera, a ponta solta
+  desmoronando; a altura muda por trecho), a muralha com ameias e seteiras, as **torres** com o estandarte rasgado da
+  águia, o **arco do portão** (tímpanos, aduelas, a abóbada em sombra, as Vitórias aladas, o ático com IMPERIVM · KVSA
+  e a passagem com ameias por cima, quebrado do lado leste; fica transparente com o herói embaixo), colunas jônicas,
+  coríntias, quebradas e tocos, blocos caídos, mausoléus, os guardiões e o imperador, ciprestes e pinheiros-mansos (a
+  copa fica transparente sobre o herói). **A entrada da ruína:** o pórtico do templo afundado com seis colunas
+  coríntias (a quinta quebrada, tambores caídos no degrau), a parede da cela em sombra com a sombra de cada coluna, a
+  grande porta de moldura de mármore com uma folha de bronze caída e o sol de ouro na verga, a escadaria descendo para o
+  escuro entre parapeitos com cabeças de leão, dois braseiros de bronze acesos, o friso com IMPERIVM · KVSA, o frontão
+  com a águia entre ramos de louro (o canto leste desabou), hera e uma figueira brotando; luz violeta respirando na porta
+  e névoa saindo da escadaria. Embaixo: lajes escuras, muros de cantaria com nichos de ossário, placas e tochas acesas,
+  pilares com o começo da abóbada, sarcófagos, entulho, urnas e caveiras, o **mosaico do santuário** (grega, sol de
+  raios dourados e vermelhos e a águia no medalhão de lápis-lazúli) e a luz do dia descendo pela escada de volta; fundo
+  e cantos da tela escuros. A fachada e o mosaico, as pinturas maiores, saem nos primeiros quadros da hunt (ficam longe
+  da entrada). Ambiente: ciscos dourados na luz, chamas e tochas tremendo, brilho do sol nos tanques.
 ### Caverna da Travessia
 
 - **Onde:** nos Campos de Kusa, na etapa 5 da campanha de Verdemar (o ponto que era a Encruzilhada), logo depois do
@@ -737,7 +791,7 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
 - **Entrada tranquila:** a até 12 tiles do portal de fuga nascem no máximo 3 monstros (mini-boss e Mímico de sala
   lateral contam), para a hunt não começar com uma sala cheia em cima da equipe.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes e nas Mesas de Solária, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes, nas Mesas de Solária e nos Portões do Império, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;

@@ -18,7 +18,10 @@ export class ChunkCuller {
   private chunks = new Map<number, Phaser.GameObjects.GameObject[]>();
   private shown = new Set<number>();
 
-  /** Registra um sprite no bloco do tile (x, y); ele fica escondido até a câmera chegar perto. */
+  /**
+   * Registra um sprite no bloco do tile (x, y); ele começa escondido até a câmera chegar perto (ou já aparece, se for
+   * registrado depois, com o bloco na tela).
+   */
   add<T extends Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible>(obj: T, x: number, y: number): T {
     const key = chunkKey(Math.floor(x / CHUNK), Math.floor(y / CHUNK));
     if (!this.chunks.has(key)) this.chunks.set(key, []);

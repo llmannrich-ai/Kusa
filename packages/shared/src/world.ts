@@ -6,7 +6,7 @@ import type { MonsterKind } from "./monsters.ts";
 // Fora de `RULES_FILES`: não muda a versão das regras.
 
 /** Os cenários na ordem da campanha. O primeiro já vem aberto. */
-export const WORLD_ORDER: readonly MapId[] = ["marsh", "crypt", "desert", "swamp", "cavern", "dunes", "mesas"];
+export const WORLD_ORDER: readonly MapId[] = ["marsh", "crypt", "desert", "swamp", "cavern", "dunes", "mesas", "gates"];
 
 /**
  * Lados de uma bifurcação: o cenário abre só com **este** boss vencido, não com qualquer boss do cenário anterior. Na

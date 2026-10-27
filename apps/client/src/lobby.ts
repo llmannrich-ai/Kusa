@@ -252,6 +252,34 @@ export const MAP_ART: Record<MapId, string> = {
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#e2b47a" stroke-width="1.5"/>
   </svg>`,
+  // Portões do Império: o arco do portão quebrado entre as torres, com a inscrição dourada no ático, a via de basalto
+  // passando por baixo, um cipreste e, lá dentro, o brilho violeta da escadaria do templo.
+  gates: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="ga-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6aa0c8"/><stop offset="1" stop-color="#f0dcae"/></linearGradient>
+      <radialGradient id="ga-luz" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#c9a2ff"/><stop offset="1" stop-color="#9a6ae0" stop-opacity="0"/></radialGradient>
+      <clipPath id="ga-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#ga-roda)">
+      <rect width="48" height="48" fill="url(#ga-ceu)"/>
+      <path d="M0 36Q12 33 24 35T48 34V48H0Z" fill="#7d9442"/>
+      <path d="M8 46L21 33H27L40 46Z" fill="#5f6670"/>
+      <path d="M12 45h24M15 42h18M18 39h12" stroke="#454b54" stroke-width="0.6"/>
+      <circle cx="24" cy="31" r="6" fill="url(#ga-luz)"/>
+      <path d="M5 36V14H15V36Z" fill="#c4a876"/>
+      <path d="M33 36V14H43V36Z" fill="#b39566"/>
+      <path d="M5 14V11.5H7V14M9 14V11.5H11V14M13 14V11.5H15V14M33 14V11.5H35V14M37 14V11.5H39V14M41 14V11.5H43V14" fill="#c4a876"/>
+      <path d="M15 36V24Q24 13 33 24V36H30V25Q24 18 18 25V36Z" fill="#d2c09a"/>
+      <path d="M15 16H30L31.5 19H15Z" fill="#e2dccb"/>
+      <path d="M31.5 19L30 16L33 14.5L32 18Z" fill="#d2c09a"/>
+      <path d="M17 17.5h2M20 17.5h1.5M22.5 17.5h2M25.5 17.5h1.5M28 17.5h1.5" stroke="#d8a838" stroke-width="0.9"/>
+      <path d="M5 22h10M33 22h10M5 29h10M33 29h10" stroke="#a85a3a" stroke-width="0.8"/>
+      <path d="M8 26v4M12 26v4M36 26v4M40 26v4" stroke="#3a2c20" stroke-width="0.9"/>
+      <path d="M44.5 36Q42 26 44.5 15Q47 26 44.5 36Z" fill="#3a5e3a"/>
+      <path d="M5 36Q6 28 9 24M7 36Q9 30 12 28" stroke="#3f6e2c" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#c4a876" stroke-width="1.5"/>
+  </svg>`,
   // Mesas de Solária: platôs de arenito em camadas ao entardecer, um cânion estreito entre eles, o pilar de pedra
   // com a pedra-chapéu e a casa escavada na rocha com a porta escura.
   mesas: `<svg viewBox="0 0 48 48" aria-hidden="true">

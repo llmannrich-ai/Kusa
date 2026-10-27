@@ -11,7 +11,7 @@ import { WORLD_ORDER, lastUnlocked, mapUnlocked, unlockedBy, type MapId } from "
 import { HERO, arena, check } from "./arena.ts";
 
 // --- Ordem da campanha -----------------------------------------------------------------------
-check(WORLD_ORDER.join() === "marsh,crypt,desert,swamp,cavern,dunes,mesas", `ordem da campanha: ${WORLD_ORDER}`);
+check(WORLD_ORDER.join() === "marsh,crypt,desert,swamp,cavern,dunes,mesas,gates", `ordem da campanha: ${WORLD_ORDER}`);
 const open = (clears: MapId[]) => WORLD_ORDER.filter((id) => mapUnlocked(clears, id)).join();
 check(open([]) === "marsh", `conta nova: só o Kosaradius aberto (veio ${open([])})`);
 check(open(["marsh"]) === "marsh,crypt", `Grumak vencido abre a Cripta (veio ${open(["marsh"])})`);
@@ -22,7 +22,8 @@ const travessia = ["marsh", "crypt", "desert", "swamp", "cavern"];
 check(open([...travessia, "basilisk"]) === travessia.join(), "o Basilisco (lado da floresta) não abre as Dunas Cantantes");
 check(open([...travessia, "beholder"]) === [...travessia, "dunes"].join(), "o Observador (lado do deserto) abre as Dunas Cantantes");
 check(open(["beholder"]) === "marsh,dunes", "o Observador vencido como convidado abre as Dunas, mesmo sem a Travessia vencida");
-check(open([...travessia, "beholder", "dunes"]) === WORLD_ORDER.join(), "o boss das Dunas abre as Mesas de Solária");
+check(open([...travessia, "beholder", "dunes"]) === [...travessia, "dunes", "mesas"].join(), "o boss das Dunas abre as Mesas de Solária");
+check(open([...travessia, "beholder", "dunes", "mesas"]) === WORLD_ORDER.join(), "o boss das Mesas abre os Portões do Império");
 check(open(["crypt"]) === "marsh,desert", "a Cripta vencida (como convidado) abre o Mar de Areia, mesmo sem a Cripta aberta para criar");
 check(unlockedBy("marsh") === undefined && unlockedBy("swamp") === "desert" && unlockedBy("cavern") === "swamp", "quem abre cada cenário");
 check(lastUnlocked([]) === "marsh" && lastUnlocked(["marsh", "crypt"]) === "desert", "o herói espera no último cenário aberto");

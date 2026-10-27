@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
 export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6;
@@ -232,6 +232,14 @@ export const MAPS: Record<MapId, MapDef> = {
     minibosses: [["royalMummy", 2], ["boneCenturion", 1], ["sandScribe", 1]],
     mimicChance: 0,
     bosses: [["eternalPharaoh", 1]],
+  },
+  gates: {
+    id: "gates", name: "Portões do Império", icon: "🏛️", difficulty: 6, durationSeconds: 8 * 60,
+    description: "Ruínas do Império: a via dos túmulos leva ao portão quebrado da muralha, e lá dentro a cidade que a Maré poupou é tomada pelo mato, com avenidas calçadas, o fórum da fonte, colunatas e casas caídas. No recinto do norte, a fachada do templo afundado guarda a escadaria que desce para a ruína subterrânea, onde fica o santuário do boss. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
   },
 };
 
