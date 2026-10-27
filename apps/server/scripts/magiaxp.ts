@@ -2,8 +2,11 @@
  * Teste de fumaça do nível das magias pelo uso, contra um servidor com KUSA_START_LEVEL=8 (slots abertos):
  *   - regras: limiares de XP, teto por hunt, XP por lançamento (segundos de recarga) e a perda na morte, que desce
  *     níveis mas nunca abaixo do nível 1;
- *   - na hunt, um Feiticeiro convidado lança a Tempestade do Vazio longe dos monstros (não conta XP) e a Esfera
- *     Sombria num monstro (conta), foge pelo portal e confere o resumo das magias no fim da hunt.
+ *   - na arena (`arena.ts`, sem servidor e sem sorteio de mapa): o Feiticeiro lança a Tempestade do Vazio sem monstro
+ *     por perto (não conta XP) e a Esfera Sombria num monstro posto a 3 tiles (conta), e o resumo do fim da hunt traz
+ *     as duas magias;
+ *   - pela rede: um Feiticeiro convidado escolhe as magias, lança a Tempestade, foge pelo portal e recebe o resumo das
+ *     magias (sem procurar monstro no mapa sorteado, que falhava por azar).
  * Uso: npm test (sobe o servidor certo sozinho), ou à mão:
  *      KUSA_START_LEVEL=8 PORT=2601 npx tsx apps/server/src/index.ts
  *      npx tsx apps/server/scripts/magiaxp.ts http://localhost:2601
@@ -15,19 +18,20 @@ import {
 } from "@kusa/shared";
 import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
-import { approach, inSight, nearestMonster, until, wait } from "./hunt.ts";
+import { arena, check } from "./arena.ts";
+import { until, wait } from "./hunt.ts";
 
 const url = process.argv[2] ?? "http://localhost:2567";
 const client = new Client(url);
 
 rules();
+inArena();
 await hunt();
 console.log("MAGIAXP OK");
 process.exit(0);
 
 function rules() {
   const [l1, l2, , , l5] = SPELL_LEVEL_XP;
-  const check = (ok: boolean, what: string) => { if (!ok) throw new Error(what); };
   check(spellLevelFromXp(0) === 0 && spellLevelFromXp(l1 - 1) === 0 && spellLevelFromXp(l1) === 1, "nível 1 no limiar errado");
   check(spellLevelFromXp(l5) === 5 && spellLevelFromXp(l5 * 10) === 5, "nível máximo errado");
   const p = spellLevelProgress(l1 + 10);
@@ -43,6 +47,31 @@ function rules() {
   check(spellXpAfterRun(30, 10, true) === 40, "aprendiz não perde XP");
 }
 
+function inArena() {
+  const a = arena({ classId: "sorcerer", startLevel: 8, allSpells: false });
+  check(a.p.spellRanks.get("shadow_orb") === 1, `Esfera Sombria no nível ${a.p.spellRanks.get("shadow_orb")}`);
+  a.choose("shadow_orb", "void_storm");
+  // Sem monstro na arena: a Tempestade sai, mas não rende XP.
+  a.ready();
+  a.cast(1);
+  a.advance(1000);
+  check(a.spells.some((x) => x.spellId === "void_storm"), "a Tempestade do Vazio não saiu");
+  // A Esfera num monstro a 3 tiles (dentro de SPELL_XP_COMBAT_TILES) conta.
+  check(SPELL_XP_COMBAT_TILES >= 3, "o monstro a 3 tiles devia estar perto o bastante para contar XP");
+  const m = a.place("zombie", 3, 0);
+  a.ready();
+  a.cast(0, m);
+  a.advance(500);
+  const r = a.end("escaped");
+  console.log("arena:", JSON.stringify(r.spells));
+  const orb = r.spells.find((s) => s.id === "shadow_orb");
+  const storm = r.spells.find((s) => s.id === "void_storm");
+  check(!!orb && !!storm, "o resumo devia trazer as duas magias escolhidas");
+  check(orb!.gained === castXp(SPELLS.shadow_orb), `a Esfera no monstro devia render ${castXp(SPELLS.shadow_orb)} XP (${orb!.gained})`);
+  check(storm!.gained === 0, `a Tempestade sem monstro por perto rendeu ${storm!.gained} XP`);
+  check(orb!.lost === 0 && orb!.levelBefore === 1 && orb!.xp === SPELL_LEVEL_XP[0] + orb!.gained, `Esfera: ${JSON.stringify(orb)}`);
+}
+
 async function hunt() {
   const room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "sorcerer", rulesVersion: RULES_VERSION });
   room.onMessage("*", () => {});
@@ -52,21 +81,12 @@ async function hunt() {
   await wait(300);
   const me = () => room.state.players.get(room.sessionId);
   if (me().level < 8) throw new Error(`o servidor precisa de KUSA_START_LEVEL=8 (nível ${me().level})`);
-  // As magias iniciais já vêm no nível 1.
   if (me().spellRanks.get("shadow_orb") !== 1) throw new Error(`Esfera Sombria no nível ${me().spellRanks.get("shadow_orb")}`);
   room.send(MSG.chooseSpell, { slot: 0, spellId: "shadow_orb" });
   room.send(MSG.chooseSpell, { slot: 1, spellId: "void_storm" });
   await wait(200);
-
-  // Longe dos monstros: a magia sai, mas não rende XP.
-  const quiet = nearestMonster(room, me()) > SPELL_XP_COMBAT_TILES + 1;
-  if (quiet) room.send(MSG.cast, { slot: 1 });
+  room.send(MSG.cast, { slot: 1 });
   await wait(200);
-
-  await approach(room, me, 4, () => inSight(room, me(), 4).length > 0);
-  if (inSight(room, me(), 4).length === 0) throw new Error("não achou monstro para a Esfera");
-  room.send(MSG.cast, { slot: 0 });
-  await wait(300);
 
   // Volta para o portal e foge.
   const dungeon = generateDungeon(room.state.seed, room.state.mapId);
@@ -89,7 +109,5 @@ async function hunt() {
   const orb = r.spells.find((s) => s.id === "shadow_orb");
   const storm = r.spells.find((s) => s.id === "void_storm");
   if (!orb || !storm) throw new Error("o resumo devia trazer as duas magias escolhidas");
-  if (orb.gained < castXp(SPELLS.shadow_orb)) throw new Error(`a Esfera no monstro devia render XP (${orb.gained})`);
-  if (quiet && storm.gained !== 0) throw new Error(`a Tempestade longe dos monstros rendeu ${storm.gained} XP`);
-  if (orb.lost !== 0 || orb.levelBefore !== 1 || orb.xp !== SPELL_LEVEL_XP[0] + orb.gained) throw new Error(`Esfera: ${JSON.stringify(orb)}`);
+  if (orb.levelBefore !== 1 || orb.lost !== 0) throw new Error(`Esfera: ${JSON.stringify(orb)}`);
 }

@@ -5,7 +5,7 @@
 --     loot 100, cheio em 180 s). Quando o bestiário chegar, os tetos e `map_bosses` mudam junto.
 --   - Campanha: a ordem de `WORLD_ORDER` (packages/shared/src/world.ts) ganha 'gates', que abre com o boss das Mesas.
 --     Mude os dois juntos.
--- As funções partem da versão em produção.
+-- As funções partem da versão em produção (`map_unlocked` mantém o lado de bifurcação por boss, `map_unlocked_by_boss`).
 
 alter table public.solo_runs drop constraint solo_runs_map_id_check;
 alter table public.solo_runs add constraint solo_runs_map_id_check
@@ -43,10 +43,16 @@ set search_path = ''
 as $$
   select p_map_id in ('crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates') and (
     public.map_unlocked_by(p_map_id) is null
-    or exists (
-      select 1 from public.profile_map_clears c
-      where c.profile_id = p_profile_id and c.class_id = p_class_id and c.map_id = public.map_unlocked_by(p_map_id)
-    )
+    or case
+      when public.map_unlocked_by_boss(p_map_id) is not null then exists (
+        select 1 from public.profile_boss_clears b
+        where b.profile_id = p_profile_id and b.class_id = p_class_id and b.boss_kind = public.map_unlocked_by_boss(p_map_id)
+      )
+      else exists (
+        select 1 from public.profile_map_clears c
+        where c.profile_id = p_profile_id and c.class_id = p_class_id and c.map_id = public.map_unlocked_by(p_map_id)
+      )
+    end
   );
 $$;
 
