@@ -273,3 +273,18 @@ antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)*
 ![Bichos: parado, andando, ataque e magia; o baú do Mímico embaixo](arte/cripta-monstros-bichos.png)
 ![Dragão verde: parado e soprando gás venenoso](arte/cripta-dragao.png)
 ![No jogo: a Cripta antiga, a nova e uma sala com os monstros novos](arte/cripta-no-jogo.png)
+
+### Goblin a partir de arte de referência
+
+O goblin da arte nova deixou de ser desenhado por código: vem da arte de referência em `docs/arte/goblin-referencia.png`
+(12 figuras: parado e andando em 6 ângulos). O script `apps/client/scripts/goblinSprites.py` recorta cada figura,
+reduz para a escala da arte nova (128 px por tile, o goblin com ~110 px de altura), alinha os pés na linha dos outros
+monstros e grava a folha `apps/client/src/art/proto/goblin.png` (12 quadros de 192 px). `art/proto/goblinArt.ts` monta
+os clipes do jogo, de perfil e olhando para a esquerda: parado (o perfil respirando), andar (as três passadas), golpe
+(um bote montado com a passada, porque a referência não tem golpe) e magia (o fôlego). Frente e costas ficam prontas
+para as 3 vistas. O goblin arqueiro continua desenhado por código.
+
+Para refazer depois de trocar a referência:
+`python3 apps/client/scripts/goblinSprites.py docs/arte/goblin-referencia.png apps/client/src/art/proto/goblin.png`.
+
+![Goblin: a arte de referência](arte/goblin-referencia.png)

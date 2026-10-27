@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoGoblin, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -205,6 +205,13 @@ if (protoHero) {
       fill: Math.min(1, 0.74 * proto.monsterSize(kind)),
     };
   }
+}
+// O goblin vem da arte de referência (folha em PNG), não do desenho por código: troca a animação do kit.
+if (protoGoblin && protoHero) {
+  const goblin = protoGoblin;
+  BESTIARY_ART.goblin.anim = {
+    ...BESTIARY_ART.goblin.anim!, sheet: () => goblin.sheet(), portrait: () => goblin.portrait(), hd: () => goblin.frames(), fill: goblin.fill,
+  };
 }
 // Os bichos (rato, stirge, aranha, cubo, mímico e o dragão) têm desenho próprio; o dragão vem num quadro 2× maior.
 if (protoBeasts) {
