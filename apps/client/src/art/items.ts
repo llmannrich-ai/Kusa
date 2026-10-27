@@ -1,5 +1,6 @@
 import { ITEMS, RUNES, isPotion, isRune, type ItemRarity, type ItemSlot, type ItemTier, type PotionId, type RuneKind } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
+import { protoHero, protoItemOf } from "./newArt.ts";
 
 /**
  * Arte própria dos itens: um ícone 16×16 por família (espada, arco, cajado, manto...) e nível, pintado com
@@ -598,6 +599,14 @@ const RUNE_GLYPHS: Record<RuneKind, Grid> = {
   faith: ["gggggg", "g.gg.g", "gggggg", "g.gg.g", "g.gg.g", ".g..g.", "..gg..", "......"],
   meteor: ["g.....", ".g....", "..g...", "...gg.", "..gggg", "..gggg", "...gg.", "......"],
   dawn: ["..gg..", "g....g", "..gg..", ".gggg.", ".gggg.", "..gg..", "g....g", "..gg.."],
+  charge: ["g..g..", ".g..g.", "..g..g", ".g..g.", "g..g..", "......", "gggggg", "......"],
+  banner: ["gggg..", "ggggg.", "gggg..", "g.....", "g.....", "g.....", "g.....", "g....."],
+  roll: [".ggg..", "g...g.", "g....g", "g....g", "g...g.", "g..g..", ".gggg.", "...g.."],
+  mark: ["..gg..", ".g..g.", "g.gg.g", "gggggg", "g.gg.g", ".g..g.", "..gg..", "......"],
+  mist: ["......", "gg..gg", "..gg..", "......", "gg..gg", "..gg..", "......", "gg..gg"],
+  grove: ["...gg.", "..gggg", ".gggg.", "gggg..", "ggg...", ".g....", "g.....", "......"],
+  wolf: ["g.gg.g", "g.gg.g", "......", ".gggg.", "gggggg", "gggggg", ".gggg.", "......"],
+  plague: [".gg...", "g..g..", ".gg.gg", "...g.g", "gg..g.", "g.g...", ".g..gg", "....gg"],
 };
 
 /** Ícone 16×16 de um item do equipamento, de uma poção ou de uma runa. */
@@ -615,6 +624,8 @@ export function itemIcon(itemId: string) {
   }
   const item = ITEMS[itemId];
   if (!item) return canvas;
+  const proto = protoHero && protoItemOf(itemId);
+  if (proto) return protoHero!.protoItemIcon(proto, item.rarity);
   const gem = item.slot === "weapon" && (item.family === "weapon-wand" || item.family === "weapon-staff") ? { a: GEMS[item.tier] } : {};
   paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem }, 0, 0);
   const mark = RARITY_GEM[item.rarity];

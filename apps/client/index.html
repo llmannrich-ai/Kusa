@@ -35,7 +35,7 @@
       <p id="login-error" class="error" role="alert" hidden></p>
     </form>
 
-    <!-- Menu da conta (menu.ts): classes, árvore de magias, itens e mercado. Abas embaixo, para o polegar. -->
+    <!-- Menu da conta (menu.ts): heróis, árvore de magias, itens e mercado. Abas embaixo, para o polegar. -->
     <section id="menu" class="hub" hidden>
       <header class="hub-top">
         <div class="hub-account">
@@ -46,7 +46,7 @@
       </header>
       <div id="hub-body"></div>
       <nav class="hub-tabs" role="tablist">
-        <button data-tab="classes" role="tab"><span aria-hidden="true">🛡️</span>Classes</button>
+        <button data-tab="heroes" role="tab"><span aria-hidden="true">🛡️</span>Heróis</button>
         <button data-tab="spells" role="tab"><span aria-hidden="true">📖</span>Grimório</button>
         <!-- Batalhas: botão redondo no centro da barra, abre a tela de salas. -->
         <button id="play" class="hub-battle" aria-label="Batalhas">
@@ -74,6 +74,7 @@
         <button data-page="telemetry" class="setting-link"><span>📊 Telemetria<small>Números de todas as hunts: sobrevivência, mortes, magias e as suas.</small></span><b aria-hidden="true">›</b></button>
         <button data-page="history" class="setting-link"><span>🗂️ Histórico<small>Cada partida: quem jogou, personagem, desfecho, loot e penalidades.</small></span><b aria-hidden="true">›</b></button>
         <button data-page="rules" class="setting-link"><span>📜 Regras<small>Como o jogo funciona: hunt, níveis, itens e poções.</small></span><b aria-hidden="true">›</b></button>
+        <button data-page="catalog" class="setting-link"><span>📚 Catálogo<small>Todos os itens, runas e poções, e cada inimigo com a chance de cair item.</small></span><b aria-hidden="true">›</b></button>
       </nav>
       <div class="actions">
         <button id="settings-back" class="primary">Voltar</button>
@@ -108,26 +109,56 @@
       <div id="rules-body"></div>
     </section>
 
-    <!-- Jogar: entrar numa sala aberta ou criar uma, escolhendo o cenário aqui mesmo. -->
-    <section id="rooms" class="panel" hidden>
-      <h2>Entrar numa sala</h2>
-      <p class="muted hint">Salas de outros jogadores aguardando equipe. Toque numa para entrar.</p>
-      <ul id="room-list"></ul>
-      <p id="rooms-empty" class="muted">Nenhuma sala aguardando agora. A lista se atualiza sozinha: quando um amigo criar a dele, ela aparece aqui. Ou crie a sua abaixo.</p>
+    <section id="catalog" class="panel page" hidden>
+      <header class="page-top">
+        <button class="page-back icon-button" aria-label="Voltar às configurações">‹</button>
+        <h2>Catálogo</h2>
+      </header>
+      <!-- Preenchido por catalog.ts. -->
+      <div id="catalog-body"></div>
+    </section>
 
-      <h3 class="rooms-section">Criar sala</h3>
-      <p class="muted hint">Escolha o cenário. Quem entrar na sua sala joga nele.</p>
-      <div id="map-list" class="map-list" role="radiogroup" aria-label="Cenário"></div>
-      <p class="muted hint">Onde a hunt roda:</p>
-      <!-- Preenchido por lobby.ts (renderServerPicker). -->
-      <div id="server-list" class="server-list" role="radiogroup" aria-label="Servidor"></div>
-      <div class="actions">
-        <button id="create" class="primary">Criar sala</button>
-        <button id="solo">Jogar sozinho</button>
-        <button id="rooms-back">Voltar</button>
-      </div>
-      <p class="muted hint">Na nuvem, criar a sala pode levar até 1 minuto se o servidor estiver acordando. No seu aparelho, a sala abre na hora e os amigos se conectam direto a você. Sozinho, a hunt roda no seu aparelho e começa na hora.</p>
-      <p id="rooms-error" class="error" hidden></p>
+    <!-- Batalhas: o mapa mundi (worldMap.ts). Tocar num ponto abre a ficha do cenário, com jogar sozinho, criar sala
+         e as salas abertas dele; "Salas abertas" lista as de todos os cenários. -->
+    <section id="rooms" class="world" hidden>
+      <div id="world-view" class="world-view" aria-label="Carta de Verdemar: arraste para explorar, pinça para aproximar"></div>
+      <header class="world-top">
+        <button id="rooms-back" class="world-chip icon-button" aria-label="Voltar ao menu">‹</button>
+        <div class="world-title"><strong>Verdemar</strong><small id="world-progress">campanha · 5 de 18 cenários</small></div>
+        <button id="open-room-list" class="world-rooms">Salas abertas · 0</button>
+      </header>
+      <p id="world-toast" class="world-toast" role="status" hidden></p>
+
+      <section id="map-sheet" class="world-sheet" aria-labelledby="sheet-name" hidden>
+        <button id="map-sheet-close" class="sheet-close icon-button" aria-label="Fechar">✕</button>
+        <div class="sheet-head">
+          <span id="sheet-icon" class="map-icon"></span>
+          <div><h2 id="sheet-name"></h2><small id="sheet-region"></small></div>
+        </div>
+        <ul id="sheet-chips" class="sheet-chips"></ul>
+        <div class="sheet-play">
+          <button id="solo" class="primary">Jogar sozinho</button>
+          <button id="create">Criar sala</button>
+        </div>
+        <div id="sheet-create" class="sheet-server">
+          <span class="sheet-server-label">Sala em</span>
+          <!-- Preenchido por lobby.ts (renderServerPicker). -->
+          <div id="server-list" class="server-list" role="radiogroup" aria-label="Onde a sala roda"></div>
+        </div>
+        <div id="sheet-rooms-box" hidden>
+          <h3 class="sheet-label">Salas abertas aqui</h3>
+          <ul id="sheet-rooms" class="room-list"></ul>
+        </div>
+      </section>
+
+      <section id="rooms-sheet" class="world-sheet" aria-labelledby="rooms-sheet-title" hidden>
+        <button id="rooms-sheet-close" class="sheet-close icon-button" aria-label="Fechar">✕</button>
+        <h2 id="rooms-sheet-title">Salas abertas</h2>
+        <p class="hint">Salas de outros jogadores aguardando equipe, em todos os cenários. Toque numa para entrar.</p>
+        <ul id="room-list" class="room-list"></ul>
+        <p id="rooms-empty" class="hint">Nenhuma sala aguardando agora. A lista se atualiza sozinha: quando um amigo criar a dele, ela aparece aqui. Ou toque num cenário do mapa e crie a sua.</p>
+      </section>
+      <p id="rooms-error" class="error world-error" role="alert" hidden></p>
     </section>
 
     <!-- Sala de espera (lobby.ts): uma vaga por jogador; o líder começa sozinho ou espera a equipe. -->

@@ -1,7 +1,7 @@
 /**
  * Teste de fumaça das runas contra um servidor com KUSA_START_LEVEL=8 e
  * KUSA_RUNES=rune-life,rune-time,rune-meteor,rune-life (a segunda Runa da Vida não vale: não repete):
- *   - regras: o sorteio só dá runas do catálogo, as de magia são raras, e o bônus soma com as melhorias;
+ *   - regras: o sorteio só dá runas do catálogo, as de magia saem em cerca de 1 de cada 3, e o bônus soma com as melhorias;
  *   - o Cavaleiro entra com as 3 runas, com a vida da Runa da Vida;
  *   - a Runa do Meteoro põe o Meteoro (do Feiticeiro) na escolha do slot 2; ele sai com a mana do cavaleiro
  *     (custo limitado a 40% da mana máxima) e com a recarga da Runa do Tempo.
@@ -30,13 +30,13 @@ function rules() {
   const rolls = Array.from({ length: 2000 }, () => rollRune(random));
   if (!rolls.every(isRune)) throw new Error("o sorteio deu algo fora do catálogo");
   const spellShare = rolls.filter((id) => RUNES[id].spell).length / rolls.length;
-  if (spellShare < 0.07 || spellShare > 0.22) throw new Error(`runas de magia em ${Math.round(spellShare * 100)}% dos drops`);
+  if (spellShare < 0.25 || spellShare > 0.42) throw new Error(`runas de magia em ${Math.round(spellShare * 100)}% dos drops`);
   if (isRune("__proto__") || isRune("weapon-1")) throw new Error("isRune aceitou algo que não é runa");
 
   const bonus = heroBonuses({ might: 2 }, ["rune-fury", "rune-fury", "rune-stone", "rune-wind", "rune-life"]);
   // Repetida não conta; só as 3 primeiras diferentes valem (a da Vida fica de fora).
   if (Math.abs(bonus.damage - (0.2 + 0.15)) > 1e-9) throw new Error(`dano ${bonus.damage}`);
-  if (bonus.armor !== 4 || Math.abs(bonus.speed - 0.08) > 1e-9 || bonus.hp !== 0) throw new Error(`bônus ${JSON.stringify(bonus)}`);
+  if (bonus.armor !== 4 || Math.abs(bonus.speed - 0.12) > 1e-9 || bonus.hp !== 0) throw new Error(`bônus ${JSON.stringify(bonus)}`);
   const choices = spellChoices("knight", 1, ["war_cry"], ["meteor"]).map((s) => s.id);
   if (!choices.includes("meteor") || !choices.includes("war_cry")) throw new Error(`escolhas ${choices}`);
   if (spellChoices("knight", 0, [], ["meteor"]).some((s) => s.id === "meteor")) throw new Error("o Meteoro é do slot 2");

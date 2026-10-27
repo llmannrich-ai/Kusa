@@ -2,9 +2,12 @@ import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
   ITEMS,
+  lairPortalAt,
+  lairsOf,
   MONSTERS,
   MSG,
   MOVE_RESEND_MS,
+  PORTAL_HOLD_MS,
   POTIONS,
   RUNES,
   DOT_KINDS,
@@ -57,7 +60,9 @@ import { drawCrypt } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
+import { DUNES_VOID, MESAS_VOID, drawDunes } from "./dunesMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
+import { CAVERN_VOID, drawCavern } from "./cavernMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -65,15 +70,18 @@ import { outfitOf } from "./art/outfit.ts";
 import { BESTIARY_ART, BLOOD_TINT, monsterAnimKey, monsterTexture, type MonsterAnim } from "./art/bestiary.ts";
 import type { Clip } from "./art/rig.ts";
 import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
-import { CREATURE_SPRITE_SCALE, HERO_SPRITE_SCALE } from "./art/refine.ts";
+import { CREATURE_SPRITE_SCALE } from "./art/refine.ts";
+import { heroSpriteScale } from "./art/heroes.ts";
 import {
   CHEST_TEXTURE,
   PORTAL_TEXTURE,
+  SUMMON_ANIMS,
   SUMMON_TEXTURE,
   heroArt,
   heroIdleFrame,
   heroWalkAnim,
   itemTexture,
+  ensureMonsterArt,
 } from "./art/textures.ts";
 
 /**
@@ -120,6 +128,7 @@ const COLORS = {
   hpMonster: 0xe74c3c,
   hpSummon: 0x5dade2,
   barrier: 0x9fd8ff,
+  portal: 0x4aa3ff,
   bossPortal: 0xb36bff,
 };
 
@@ -131,13 +140,14 @@ const DOT_COLORS: Record<DotKind, number> = { poison: 0x9acd32, burn: 0xff9f43, 
 
 /** Criaturas invocadas que voam (balançam no ar em vez de andar). */
 const FLYERS = new Set<SummonKind>(["hornet", "moth", "wisp", "eagle"]);
-/** Formas animais do Druida: o sprite da fera no lugar do herói (a pantera é o lobo do pack em tons de noite). */
+/**
+ * Formas animais do Druida: a fera animada das invocações no lugar do herói (a pantera é o lobo espiritual em tons de
+ * noite). As folhas olham para a esquerda.
+ */
 const FORMS = {
   panther: { texture: SUMMON_TEXTURE.wolf, tint: 0x4b4b6b, scale: 1.1 },
-  bear: { texture: SUMMON_TEXTURE.bear, tint: 0xffffff, scale: 1.35 },
+  bear: { texture: SUMMON_TEXTURE.bear, tint: 0xffffff, scale: 1.1 },
 } as const;
-/** Sprites do pack que olham para a esquerda. */
-const SUMMON_FACES_LEFT = new Set<SummonKind>(["wolf", "bear"]);
 
 const TEXT_STYLE = {
   fontFamily: "Georgia, serif",
@@ -223,6 +233,12 @@ export class DungeonScene extends Phaser.Scene {
   private chests = new Map<string, Phaser.GameObjects.Image>();
   private items = new Map<string, Phaser.GameObjects.Container>();
   private targetRing!: Phaser.GameObjects.Graphics;
+  /** Anel que enche enquanto o herói fica em cima de um portal (o servidor o leva depois de `PORTAL_HOLD_MS`). */
+  private portalRing!: Phaser.GameObjects.Graphics;
+  /** Desde quando (relógio da cena) o herói está no tile do portal; null fora dele. */
+  private portalSince: { x: number; y: number; at: number } | null = null;
+  /** Covis com o portal já aberto e desenhado (índices de `lairsOf`). */
+  private openPortals = new Set<number>();
   private move!: MoveInput;
   /** Ambiente do mapa: vaga-lumes e névoa no pântano, luz das tochas e poeira na cripta. */
   private ambience: MapAmbience | null = null;
@@ -261,15 +277,16 @@ export class DungeonScene extends Phaser.Scene {
     this.fx = new CombatFx(this);
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
+    this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -329,7 +346,15 @@ export class DungeonScene extends Phaser.Scene {
       this.items.delete(id);
     });
 
-    callbacks.listen("bossDefeated", (open: boolean) => { if (open) this.drawBossPortal(); });
+    // Cada covil com o boss morto abre o portal dele (nos mapas de um boss, só o bit 0).
+    callbacks.listen("lairsDown", (down: number) => {
+      lairsOf(this.dungeon).forEach((lair, i) => {
+        if (down & (1 << i) && !this.openPortals.has(i)) {
+          this.openPortals.add(i);
+          this.drawBossPortal(lair.portal);
+        }
+      });
+    });
 
     this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
@@ -344,6 +369,7 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.monsterStrike, (msg: MonsterStrikeMessage) => this.onMonsterStrike(msg));
 
     this.targetRing = this.add.graphics().setDepth(DEPTH.ui - 1);
+    this.portalRing = this.add.graphics().setDepth(DEPTH.ui - 1);
 
     // Sem alvo travado, o ataque vai no monstro mais próximo ao alcance (o anel vermelho mostra qual).
     // Tocar num monstro trava o alvo e tocar nele de novo destrava; no desktop, Tab troca para o próximo e Esc destrava.
@@ -433,6 +459,7 @@ export class DungeonScene extends Phaser.Scene {
     });
     this.summons.forEach((unit) => this.animateUnit(unit, time));
     this.drawTargetRing();
+    this.drawPortalRing(time);
     this.minimap?.update(time);
     this.ambience?.update(time);
     this.spellBar.update();
@@ -496,6 +523,29 @@ export class DungeonScene extends Phaser.Scene {
     if (!unit) return;
     const half = TILE_SIZE / 2;
     g.lineStyle(2, COLORS.target).strokeRect(unit.body.x - half, unit.body.y - half, TILE_SIZE, TILE_SIZE);
+  }
+
+  /** Em cima do portal de fuga (ou do boss, aberto), um anel enche no tempo que falta para sair. */
+  private drawPortalRing(time: number) {
+    const g = this.portalRing.clear();
+    const me = this.me();
+    const d = this.dungeon;
+    const onPortal = !!me && me.status === "playing" && (
+      (me.x === d.portal.x && me.y === d.portal.y)
+      || this.openPortals.has(lairPortalAt(d, me.x, me.y)));
+    if (!onPortal) {
+      this.portalSince = null;
+      return;
+    }
+    if (!this.portalSince || this.portalSince.x !== me.x || this.portalSince.y !== me.y) this.portalSince = { x: me.x, y: me.y, at: time };
+    const unit = this.avatars.get(this.room.sessionId);
+    if (!unit) return;
+    const done = Math.min(1, (time - this.portalSince.at) / PORTAL_HOLD_MS);
+    const color = me.x === d.portal.x && me.y === d.portal.y ? COLORS.portal : COLORS.bossPortal;
+    const r = TILE_SIZE * 0.7;
+    g.lineStyle(4, 0x000000, 0.45).strokeCircle(unit.body.x, unit.body.y, r);
+    g.lineStyle(4, color, 1).beginPath()
+      .arc(unit.body.x, unit.body.y, r, -Math.PI / 2, -Math.PI / 2 + done * Math.PI * 2).strokePath();
   }
 
   // --- Combate -------------------------------------------------------------
@@ -819,11 +869,12 @@ export class DungeonScene extends Phaser.Scene {
     return g;
   }
 
-  /** Forma de Pantera ou de Urso: o sprite da fera com os pés na base do tile (olha para a esquerda, como no pack). */
+  /** Forma de Pantera ou de Urso: a fera animada com os pés na base do tile (olha para a esquerda). */
   private formSprite(kind: keyof typeof FORMS, facingRight: boolean) {
     const form = FORMS[kind];
     const sprite = this.add.sprite(0, TILE_SIZE / 2, form.texture).setOrigin(0.5, 1).setScale(CREATURE_SPRITE_SCALE * form.scale)
       .setTint(form.tint).setFlipX(facingRight);
+    sprite.play(monsterAnimKey(form.texture, "idle"));
     this.tweens.add({ targets: sprite, scale: { from: CREATURE_SPRITE_SCALE * 0.6, to: CREATURE_SPRITE_SCALE * form.scale }, duration: 220, ease: "Back.Out" });
     return sprite;
   }
@@ -946,8 +997,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** O servidor abre o portal de conclusão quando o boss morre (no centro da sala dele, ou na sala dos baús da caverna). */
-  private drawBossPortal() {
-    const c = this.dungeon.bossPortal;
+  private drawBossPortal(c: { x: number; y: number }) {
     const x = this.toPx(c.x);
     const y = this.toPx(c.y);
     // A arte do pack é quase preta e some no chão escuro: um brilho roxo (a cor do portal no minimapa) pulsa por baixo.
@@ -996,7 +1046,9 @@ export class DungeonScene extends Phaser.Scene {
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
     const glow = this.add.ellipse(0, 5, 20, 8, color, 0.45);
-    const icon = this.add.image(0, 0, itemTexture(this, item.itemId));
+    const key = itemTexture(this, item.itemId);
+    // O ícone fica com 16 px no chão (o da arte nova é maior e vai reduzido).
+    const icon = this.add.image(0, 0, key).setScale(16 / this.textures.get(key).getSourceImage().width);
     const container = this.add.container(this.toPx(item.x) + offset[0], this.toPx(item.y) + offset[1] + 4, [glow, icon])
       .setDepth(item.y * TILE_SIZE + 2);
     this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
@@ -1010,7 +1062,7 @@ export class DungeonScene extends Phaser.Scene {
   private addAvatar(sessionId: string, player: PlayerView) {
     const classId = player.classId as ClassId;
     const heroKey = heroArt(this, classId, outfitOf(player));
-    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down")).setScale(HERO_SPRITE_SCALE);
+    const sprite = this.add.sprite(0, 0, heroKey, heroIdleFrame("down")).setScale(heroSpriteScale());
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, top + 4, false);
     unit.classId = classId;
@@ -1102,8 +1154,9 @@ export class DungeonScene extends Phaser.Scene {
     // tem o tamanho no quadro (32 px = 1 tile).
     const scale = (art.anim ? art.scale ?? 1 : def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
+    ensureMonsterArt(this, monsterTexture(kind, monster.variant));
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
-    const top = TILE_SIZE / 2 - sprite.displayHeight;
+    const top = TILE_SIZE / 2 - sprite.displayHeight * (art.anim?.fill ?? 1);
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
     unit.texture = texture;
     unit.baseScale = scale;
@@ -1172,14 +1225,22 @@ export class DungeonScene extends Phaser.Scene {
     unit.overlay.setVisible(!hidden);
   }
 
-  /** Criatura invocada: sprite do pack (ou o Guardião), barra azul (sem nome, para não poluir a tela) e um brilho ao aparecer. */
+  /**
+   * Criatura invocada: arte animada (parada, andando, golpe), barra azul (sem nome, para não poluir a tela) e um brilho
+   * ao aparecer.
+   */
   private addSummon(id: string, summon: SummonView) {
     const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
-    const sprite = this.add.sprite(0, 0, SUMMON_TEXTURE[kind]).setScale(CREATURE_SPRITE_SCALE);
+    const texture = SUMMON_TEXTURE[kind];
+    const sprite = this.add.sprite(0, 0, texture).setScale(CREATURE_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
-    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, SUMMON_FACES_LEFT.has(kind));
+    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, true);
     unit.bleeds = false;
     unit.flies = FLYERS.has(kind);
+    unit.texture = texture;
+    unit.anim = SUMMON_ANIMS[kind];
+    unit.busyUntil = 0;
+    sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * SUMMON_ANIMS[kind].frames!.idle) });
     // Brilho de aliado sob os pés, para não confundir com os monstros.
     const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 22, 7, 0x9cff7a, 0.35);
     unit.body.addAt(glow, 0);
@@ -1327,12 +1388,20 @@ export class DungeonScene extends Phaser.Scene {
     if (unit.anim && unit.texture && time >= (unit.busyUntil ?? 0)) {
       const clip = walking ? "walk" : "idle";
       unit.sprite.play(monsterAnimKey(unit.texture, clip), true);
-      unit.sprite.anims.timeScale = walking ? Phaser.Math.Clamp((3000 / unit.stepMs) / unit.anim.fps.walk, 0.5, 2) : 1;
+      unit.sprite.anims.timeScale = walking ? Phaser.Math.Clamp(((unit.anim.stride ?? 3) * 1000 / unit.stepMs) / unit.anim.fps.walk, 0.5, 2) : 1;
     }
     // Monstros respiram: o sprite (com os pés no chão) encolhe e estica de leve, cada um no seu ritmo.
     if (unit.baseScale && !unit.anim && !this.tweens.isTweening(unit.sprite)) {
       const breath = 1 - 0.03 * (0.5 + 0.5 * Math.sin(time / 380 + (unit.breath ?? 0)));
       unit.sprite.setScale(unit.baseScale, unit.baseScale * breath);
+    }
+    // Forma animal: a fera anda no ritmo do passo do herói e respira parada.
+    for (const kind of Object.keys(FORMS) as (keyof typeof FORMS)[]) {
+      const beast = unit.statuses.get(`form:${kind}`) as Phaser.GameObjects.Sprite | undefined;
+      if (!beast?.visible) continue;
+      const anim = SUMMON_ANIMS[kind === "panther" ? "wolf" : "bear"];
+      beast.play(monsterAnimKey(FORMS[kind].texture, walking ? "walk" : "idle"), true);
+      beast.anims.timeScale = walking ? Phaser.Math.Clamp(((anim.stride ?? 3) * 1000 / unit.stepMs) / anim.fps.walk, 0.5, 2) : 1;
     }
     if (unit.heroKey) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);

@@ -1,19 +1,28 @@
 import * as Phaser from "phaser";
 import { Callbacks, CloseCode } from "@colyseus/sdk";
 import {
+  CLASSES,
+  WORLD_ORDER,
+  lastUnlocked,
   lootColor,
   lootName,
+  mapUnlocked,
+  unlockedBy,
+  UNLOCK_BOSS,
   MAPS,
   MAX_LEVEL,
   MSG,
   SPELLS,
   VERSION_MISMATCH_CODE,
+  MONSTERS,
   difficultyStars,
   itemColor,
+  mainBoss,
   mapIdOf,
   partySize,
   xpForLevel,
   type JoinOptions,
+  type MapId,
   type RunEndedMessage,
 } from "@kusa/shared";
 import { RULES_VERSION } from "virtual:rules-version";
@@ -22,15 +31,20 @@ import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
-import { SERVER_CHOICES, createMapId, createServer, mapLine, renderMapPicker, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
+import { heroSheet } from "./art/heroes.ts";
+import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
+import { renderCatalog } from "./catalog.ts";
 import { renderHistory } from "./history.ts";
+import { loadMapClears } from "./profile.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
-import { createSoloHunt, flushPendingSolo } from "./solo.ts";
+import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
+import { loadBossKills } from "./profile.ts";
 import { renderTelemetry } from "./telemetry.ts";
+import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -38,7 +52,11 @@ const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
 
 // --- Menu ---------------------------------------------------------------
 
-const hub = new Hub(() => void openRooms());
+// Batalhas com o mapa já aberto: abre a ficha do cenário onde o herói está, em vez de recarregar o mapa.
+const hub = new Hub(() => {
+  if (!$("rooms").hidden) return pickPoint(createMapId());
+  void openRooms();
+});
 let account: Account | null = null;
 
 /** O nome vale só no servidor em modo convidado; com Supabase, o servidor usa o do perfil (pelo token). */
@@ -135,18 +153,21 @@ function setEntering(on: boolean) {
   entering = on;
   const create = $<HTMLButtonElement>("create");
   const server = SERVER_CHOICES[createServer()];
-  create.textContent = !on
-    ? `Criar sala · ${MAPS[createMapId()].name} · ${server.icon} ${server.name}`
-    : createServer() === "cloud" ? "Conectando… (o servidor pode levar 1 min para acordar)" : "Conectando…";
+  create.textContent = on ? "Conectando…" : "Criar sala";
+  create.setAttribute("aria-label", on ? "Conectando" : `Criar sala, ${server.name}`);
   // Mapa só para 1 jogador: não tem sala para amigos, só o "Jogar sozinho".
   const soloOnly = partySize(MAPS[createMapId()]) === 1;
-  if (soloOnly && !on) create.textContent = "Criar sala · este cenário é só para jogar sozinho";
+  show("sheet-create", !soloOnly);
+  show("create", !soloOnly);
   create.disabled = on || soloOnly;
   const solo = $<HTMLButtonElement>("solo");
-  solo.textContent = `Jogar sozinho · ${MAPS[createMapId()].name}`;
-  solo.disabled = on;
+  solo.textContent = on && !soloOnly ? "Conectando…" : "Jogar sozinho";
+  // Campanha: cenário fechado não cria sala nem joga sozinho (entrar na sala de outro jogador, sim).
+  const locked = !isOpen(createMapId());
+  solo.disabled = on || locked;
+  if (locked) create.disabled = true;
   $<HTMLButtonElement>("rooms-back").disabled = on;
-  document.querySelectorAll<HTMLButtonElement>("#room-list button").forEach((b) => { b.disabled = on; });
+  document.querySelectorAll<HTMLButtonElement>(".room-list button").forEach((b) => { b.disabled = on; });
 }
 
 /**
@@ -179,16 +200,122 @@ function stopWatching() {
   unwatchHosted = null;
 }
 
+let world: WorldMapView | null = null;
+let toastTimer = 0;
+/** Cenários de boss vencido por classe (campanha); recarregados a cada vez que o mapa abre. */
+let mapClears: Partial<Record<(typeof hub)["classId"], string[]>> = {};
+const clearsNow = () => mapClears[hub.classId] ?? [];
+/** O cenário está aberto para a classe escolhida (para criar sala ou jogar sozinho)? */
+const isOpen = (id: MapId) => mapUnlocked(clearsNow(), id);
+
+/** Cadeados, estrelas e trilha da classe escolhida; o cenário escolhido fechado volta para o último aberto. */
+function applyProgress() {
+  const cleared = clearsNow();
+  const unlocked = WORLD_ORDER.filter((id) => mapUnlocked(cleared, id));
+  world?.setProgress(unlocked, WORLD_ORDER.filter((id) => cleared.includes(id)));
+  $("world-progress").textContent = `campanha · ${unlocked.length} de 18 cenários`;
+  if (!isOpen(createMapId())) chooseMap(lastUnlocked(cleared));
+}
+
+/** Aviso curto sobre o mapa (toque numa terra em névoa). */
+function toast(message: string) {
+  $("world-toast").textContent = message;
+  show("world-toast", true);
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => show("world-toast", false), 3500);
+}
+
+/** Tocar num ponto do mapa: o herói anda até ele pela trilha e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
+function pickPoint(id: MapId) {
+  if (entering) return;
+  if (world?.walkingTo() === id) return world.skip();
+  chooseMap(id);
+  // Fechado: a ficha diz como abrir (as salas abertas dele continuam ali); o herói não vai até lá.
+  if (!isOpen(id)) return openSheet();
+  // A ficha cobre a parte de baixo: o mapa rola com o herói e o ponto para à vista acima dela.
+  world?.select(id, { anchor: 0.4 });
+  openSheet();
+}
+
+/** Ficha do cenário escolhido: dados do mapa, jogar sozinho, criar sala e as salas abertas dele. */
+function openSheet() {
+  const map = MAPS[createMapId()];
+  $("sheet-icon").innerHTML = MAP_ART[map.id];
+  $("sheet-name").textContent = map.name;
+  $("sheet-region").textContent = WORLD_POINTS[map.id].region;
+  const boss = mainBoss(map);
+  // Só o básico, em etiquetas curtas: a ficha fica baixa e o mapa continua à vista. Mapa de covis (Travessia): os
+  // dois bosses, um de cada lado da bifurcação.
+  const bosses = map.lairs ? [`☠ ${map.lairs.map((l) => MONSTERS[l.boss].name.split(" ")[0]).join(" · ")}`] : boss ? [`☠ ${MONSTERS[boss].name}`] : [];
+  // Cenário fechado: só o cadeado e o boss a vencer (a frase inteira vai no title, sem texto na ficha).
+  const before = isOpen(map.id) ? null : unlockedBy(map.id);
+  // Lado de bifurcação: só um boss do cenário anterior abre este.
+  const beforeBoss = before && (UNLOCK_BOSS[map.id] ?? mainBoss(MAPS[before]));
+  const lock = before
+    ? `Derrote ${beforeBoss ? MONSTERS[beforeBoss].name : "o boss"} em ${MAPS[before].name} com o ${CLASSES[hub.classId].name} para abrir. Você ainda pode entrar nas salas de outros jogadores.`
+    : "";
+  const chips = [
+    ...(before ? [`🔒 ${beforeBoss ? MONSTERS[beforeBoss].name.split(" ")[0] : MAPS[before].name}`] : []),
+    difficultyStars(map.difficulty),
+    `⏱ ${map.durationSeconds / 60} min`,
+    partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
+    ...bosses,
+    ...(clearsNow().includes(map.id) ? ["★ boss vencido"] : []),
+  ];
+  $("sheet-chips").replaceChildren(...chips.map((text, i) => {
+    const li = document.createElement("li");
+    li.textContent = text;
+    if (lock && i === 0) { li.title = lock; li.setAttribute("aria-label", lock); li.className = "sheet-lock"; }
+    return li;
+  }));
+  show("rooms-sheet", false);
+  show("map-sheet", true);
+  $("map-sheet").scrollTop = 0;
+  setEntering(entering);
+  renderHunts();
+}
+
+/**
+ * Batalhas abre o mapa com a barra de abas do menu embaixo (`body.on-map`): o menu continua aberto, mas só a barra
+ * aparece, e tocar numa aba fecha o mapa e abre a aba.
+ */
+function setMapOpen(open: boolean) {
+  document.body.classList.toggle("on-map", open);
+  show("rooms", open);
+  if (!open) return;
+  show("menu", true);
+  const tabs = document.querySelector<HTMLElement>(".hub-tabs");
+  if (tabs) document.body.style.setProperty("--tabs-h", `${tabs.offsetHeight}px`);
+}
+
 async function openRooms() {
-  show("menu", false);
-  show("rooms", true);
+  setMapOpen(true);
   show("rooms-error", false);
+  show("map-sheet", false);
+  show("rooms-sheet", false);
+  world ??= createWorldMap($("world-view"), MAP_ART, pickPoint, toast);
+  world.setHero(heroSheet(hub.classId).toDataURL());
+  applyProgress();
+  world.setBossKills([]);
+  const classId = hub.classId;
+  void loadBossKills(classId).then((kills) => { if (hub.classId === classId) world?.setBossKills(kills); }).catch(() => {});
+  world.select(createMapId(), { instant: true });
+  // O ponto um pouco abaixo do meio: em cima ficam o título e o botão das salas.
+  world.focus(createMapId());
   setEntering(false);
-  renderMapPicker(() => setEntering(entering));
   renderServerPicker(() => setEntering(entering));
   cloudHunts = [];
   hostedHunts = [];
   renderHunts();
+  // A campanha da conta: chega depois de abrir o mapa (o herói vai para o último cenário aberto, se mudou).
+  void loadMapClears().then((clears) => {
+    if ($("rooms").hidden) return;
+    const before = createMapId();
+    mapClears = clears;
+    applyProgress();
+    if (createMapId() !== before) { world?.select(createMapId(), { instant: true }); world?.focus(createMapId()); }
+    setEntering(entering);
+  });
   // As salas hospedadas aparecem mesmo com o servidor de jogo dormindo.
   unwatchHosted = watchHostedRooms((rooms) => { hostedHunts = rooms; renderHunts(); });
   try {
@@ -201,52 +328,69 @@ async function openRooms() {
   }
 }
 
+interface OpenRoom {
+  leader: string;
+  mapId: MapId;
+  clients: number;
+  maxClients: number;
+  server: (typeof SERVER_CHOICES)[keyof typeof SERVER_CHOICES];
+  join: () => Promise<DungeonRoom>;
+}
+
+/** Salas abertas nas duas listas (todas e as do cenário da ficha) e o selo de cada ponto do mapa. */
 function renderHunts() {
-  const list = $("room-list");
-  list.innerHTML = "";
-  const rooms = [
+  const rooms: OpenRoom[] = [
     ...cloudHunts.map((h) => ({
-      leader: h.metadata?.leader ?? "?", mapId: h.metadata?.mapId, clients: h.clients, maxClients: h.maxClients,
+      leader: h.metadata?.leader ?? "?", mapId: mapIdOf(h.metadata?.mapId), clients: h.clients, maxClients: h.maxClients,
       server: SERVER_CHOICES.cloud, join: async () => joinHunt(h.roomId, await joinOptions()),
     })),
     ...hostedHunts.map((h) => ({
-      leader: h.leader, mapId: h.mapId, clients: h.clients, maxClients: h.maxClients, server: SERVER_CHOICES.device,
+      leader: h.leader, mapId: mapIdOf(h.mapId), clients: h.clients, maxClients: h.maxClients, server: SERVER_CHOICES.device,
       join: async () => {
         stopWatching();
         return joinHostedRoom(h.roomId, h.hostPeer, mapIdOf(h.mapId), await myRecruit(account?.username ?? "Aventureiro", hub.classId));
       },
     })),
   ];
-  for (const room of rooms) {
-    const li = document.createElement("li");
-    const button = document.createElement("button");
-    button.className = "room";
-    button.disabled = entering;
-    const map = MAPS[mapIdOf(room.mapId)];
-    const title = document.createElement("span");
-    title.textContent = `Hunt de ${room.leader}`;
-    const badge = document.createElement("span");
-    badge.className = "room-badge";
-    badge.textContent = room.server.icon;
-    badge.title = room.server.name;
-    title.append(badge);
-    const where = document.createElement("small");
-    where.className = "muted";
-    where.textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)}`;
-    title.append(where);
-    // Sem um "Entrar" visível, o card parecia só informação e ninguém tocava nele.
-    const join = document.createElement("span");
-    join.className = "room-join";
-    const count = document.createElement("small");
-    count.className = "muted";
-    count.textContent = `${room.clients}/${room.maxClients} jogadores`;
-    join.append("Entrar ›", count);
-    button.append(title, join);
-    button.onclick = () => enter(room.join);
-    li.append(button);
-    list.append(li);
-  }
+  $("room-list").replaceChildren(...rooms.map(roomItem));
   show("rooms-empty", rooms.length === 0);
+  const here = rooms.filter((r) => r.mapId === createMapId());
+  $("sheet-rooms").replaceChildren(...here.map(roomItem));
+  show("sheet-rooms-box", here.length > 0);
+  $("open-room-list").textContent = `Salas abertas · ${rooms.length}`;
+  const counts: Partial<Record<MapId, number>> = {};
+  for (const r of rooms) counts[r.mapId] = (counts[r.mapId] ?? 0) + 1;
+  world?.setRoomCounts(counts);
+}
+
+function roomItem(room: OpenRoom) {
+  const li = document.createElement("li");
+  const button = document.createElement("button");
+  button.className = "room";
+  button.disabled = entering;
+  const map = MAPS[room.mapId];
+  const title = document.createElement("span");
+  title.textContent = `Hunt de ${room.leader}`;
+  const badge = document.createElement("span");
+  badge.className = "room-badge";
+  badge.textContent = room.server.icon;
+  badge.title = room.server.name;
+  title.append(badge);
+  const where = document.createElement("small");
+  where.className = "muted";
+  where.textContent = `${map.icon} ${map.name} ${difficultyStars(map.difficulty)}`;
+  title.append(where);
+  // Sem um "Entrar" visível, o card parecia só informação e ninguém tocava nele.
+  const join = document.createElement("span");
+  join.className = "room-join";
+  const count = document.createElement("small");
+  count.className = "muted";
+  count.textContent = `${room.clients}/${room.maxClients} jogadores`;
+  join.append("Entrar ›", count);
+  button.append(title, join);
+  button.onclick = () => enter(room.join);
+  li.append(button);
+  return li;
 }
 
 // --- Configurações --------------------------------------------------------
@@ -270,6 +414,8 @@ function renderSettings() {
     toggle.onchange = () => {
       saveSetting(def.key, toggle.checked);
       paintRotate();
+      // A arte dos heróis é gerada uma vez e guardada (texturas e retratos): trocar o desenho pede recarregar.
+      if (def.key === "newArt") location.reload();
     };
     row.append(text, toggle);
     list.append(row);
@@ -286,11 +432,12 @@ $("settings-back").onclick = () => {
   show("menu", true);
 };
 
-// Subpáginas das configurações: Telemetria, Histórico e Regras, para qualquer jogador logado.
+// Subpáginas das configurações: Telemetria, Histórico, Regras e Catálogo, para qualquer jogador logado.
 const SETTINGS_PAGES: Record<string, (root: HTMLElement) => void> = {
   telemetry: (root) => renderTelemetry(root),
   history: (root) => renderHistory(root),
   rules: (root) => renderRules(root),
+  catalog: (root) => renderCatalog(root),
 };
 document.querySelectorAll<HTMLButtonElement>("#settings-pages [data-page]").forEach((button) => {
   const page = button.dataset.page!;
@@ -308,8 +455,21 @@ document.querySelectorAll<HTMLButtonElement>("#settings-pages [data-page]").forE
 
 $("rooms-back").onclick = () => {
   stopWatching();
-  show("rooms", false);
-  show("menu", true);
+  setMapOpen(false);
+};
+// Uma aba do menu tocada com o mapa aberto: sai do mapa (o Hub troca a aba).
+document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => b.addEventListener("click", () => {
+  if (!document.body.classList.contains("on-map")) return;
+  stopWatching();
+  setMapOpen(false);
+}));
+$("map-sheet-close").onclick = () => show("map-sheet", false);
+// Tocar na ficha pula a caminhada do herói.
+$("map-sheet").addEventListener("pointerdown", () => world?.skip());
+$("rooms-sheet-close").onclick = () => show("rooms-sheet", false);
+$("open-room-list").onclick = () => {
+  show("map-sheet", false);
+  show("rooms-sheet", true);
 };
 $("create").onclick = () => enter(async () => {
   if (createServer() === "cloud") return createHunt(await joinOptions());
@@ -330,7 +490,8 @@ $("back").onclick = () => location.reload();
 let game: Phaser.Game | null = null;
 
 function bindRoom(room: DungeonRoom) {
-  show("rooms", false);
+  setMapOpen(false);
+  show("menu", false);
   show("lobby", true);
   // A arte começa a carregar já na sala de espera, enquanto a equipe se junta.
   createGame();
@@ -397,12 +558,16 @@ function switchRoom(next: HostedRoom, hostName: string) {
 }
 
 /** Aviso rápido no topo da tela. */
-function showToast(text: string) {
+function showToast(text: string, ms = 3000) {
   const toast = $("game-toast");
   toast.textContent = text;
   toast.hidden = false;
-  window.setTimeout(() => { toast.hidden = true; }, 3000);
+  window.clearTimeout(gameToastTimer);
+  gameToastTimer = window.setTimeout(() => { toast.hidden = true; }, ms);
 }
+let gameToastTimer = 0;
+// Hunt solo que ficou aberta (o app fechou no meio) e foi fechada ao começar a próxima: diz o que se perdeu.
+onClosedSoloRun((text) => showToast(text, 8000));
 
 /** Cria o Phaser (uma vez) com a cena que carrega a arte; a dungeon entra depois, em `startGame`. */
 function createGame() {

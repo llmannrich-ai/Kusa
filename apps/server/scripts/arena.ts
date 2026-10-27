@@ -8,9 +8,10 @@
  */
 import {
   MSG, SERVER_TICK_MS, Tile, createRng, generateDungeon, hasLineOfSight, isWalkable, tileAt, tileDistance,
-  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type SpellId, type SpellMessage,
+  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type RunEndedMessage, type SpellId, type SpellMessage,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
+import { nextStep } from "../src/pathfinding.ts";
 import { DungeonState, type Monster, type Player } from "../src/state.ts";
 
 export interface ArenaOptions {
@@ -26,6 +27,10 @@ export interface ArenaOptions {
   monsterHp?: number;
   /** Põe o herói no centro de uma sala aberta, longe do portal (padrão). Com false, fica onde nasceu. */
   openRoom?: boolean;
+  /** Outros heróis da equipe (ids `h2`, `h3`...), postos ao lado do herói; `true` entra como bot. */
+  allies?: { classId: ClassId; bot?: boolean }[];
+  /** Runas equipadas em todos os heróis (como `KUSA_RUNES`). */
+  runes?: string[];
 }
 
 /** Id do herói nas arenas. */
@@ -33,7 +38,7 @@ export const HERO = "h";
 
 /** Hunt com um herói e nenhum monstro (os do mapa saem). */
 export function arena(options: ArenaOptions = {}) {
-  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true } = options;
+  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [], runes } = options;
   let clock = 0;
   const timers: { at: number; fn: () => void }[] = [];
   const damage: DamageMessage[] = [];
@@ -62,8 +67,13 @@ export function arena(options: ArenaOptions = {}) {
     ended: () => {},
   };
   const state = new DungeonState();
-  const hunt = new Hunt(state, host, { mapId, seed, startLevel, allSpells, monsterHp, random: createRng(seed).next });
+  const hunt = new Hunt(state, host, { mapId, seed, startLevel, allSpells, monsterHp, runes, random: createRng(seed).next });
   hunt.join(HERO, { name: "Teste", classId, talents: {}, spellXp: {} });
+  allies.forEach((ally, i) => {
+    const id = `h${i + 2}`;
+    hunt.join(id, { name: `Aliado ${i + 2}`, classId: ally.classId, talents: {}, spellXp: {} });
+    if (ally.bot) state.players.get(id)!.bot = true;
+  });
   hunt.start(HERO);
   const any = hunt as any;
   state.monsters.clear();
@@ -75,6 +85,11 @@ export function arena(options: ArenaOptions = {}) {
     p.x = spot.x;
     p.y = spot.y;
   }
+  allies.forEach((_, i) => {
+    const ally = state.players.get(`h${i + 2}`)!;
+    ally.x = p.x + i + 1;
+    ally.y = p.y;
+  });
 
   /** Tile com espaço livre em volta (7×7 sem parede nem portal), longe do portal: o centro da maior sala, se der. */
   function openSpot() {
@@ -167,6 +182,32 @@ export function arena(options: ArenaOptions = {}) {
     any.seats.get(HERO).spellReadyAt = [0, 0];
   }
 
+  /** Mata o monstro pelo caminho normal da morte (XP, loot e drops sorteados com a seed da arena), como se o herói o matasse. */
+  function kill(m: Monster) {
+    any.killMonster(m, any.brains.get(m.id), HERO);
+  }
+
+  /** Anda até o tile (desviando de monstros e do portal) e para em cima dele; falha se não chegar em `ms`. */
+  function walkTo(to: { x: number; y: number }, ms = 10_000) {
+    const blocked = (x: number, y: number) =>
+      (x === d.portal.x && y === d.portal.y) || [...state.monsters.values()].some((m) => m.x === x && m.y === y);
+    until(() => {
+      if (p.x === to.x && p.y === to.y) return true;
+      const step = nextStep(any.dungeon, p, to, 0, blocked);
+      if (step) hunt.move(HERO, { dx: step.x - p.x, dy: step.y - p.y });
+      return false;
+    }, ms, `o herói não chegou a ${to.x},${to.y}`);
+  }
+
+  /** Encerra a hunt do herói (fuga, morte...) e devolve o resumo que ele receberia. */
+  function end(outcome: "escaped" | "died" = "escaped") {
+    let result: any;
+    any.host.runEnded = (_id: string, r: unknown) => { result = r; };
+    any.endRun(HERO, outcome);
+    if (!result) throw new Error("a hunt não mandou o resumo");
+    return result as RunEndedMessage;
+  }
+
   /** Golpes do herói (dano em monstro) desde a posição `from` da lista de dano. */
   function hitsFrom(from: number) {
     return damage.slice(from).filter((x) => x.attacker === HERO && !x.toPlayer).length;
@@ -181,11 +222,11 @@ export function arena(options: ArenaOptions = {}) {
   }
 
   const brain = (m: Monster) => any.brains.get(m.id);
-  const seat = () => any.seats.get(HERO);
+  const seat = (id = HERO) => any.seats.get(id);
   const now = () => clock;
   return {
     hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices,
-    advance, until, place, spawn, choose, cast, ready, hitsFrom, where, brain, seat, now, free,
+    advance, until, place, spawn, choose, cast, ready, kill, walkTo, end, hitsFrom, where, brain, seat, now, free,
   };
 }
 

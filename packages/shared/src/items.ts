@@ -217,7 +217,7 @@ export const ITEM_FAMILIES: Record<string, ItemFamily> = Object.fromEntries(([
       ["Elmo do Vigia", { speed: 0.03 }],
       ["Elmo do Brilho", { spellPower: 0.08 }],
       ["Elmo do Cavaleiro Grifo", { hp: 0.08 }],
-      ["Elmo do Senhor dos Dragões", { hp: 0.1, thorns: 0.1 }],
+      ["Elmo do Demônio", { hp: 0.1, thorns: 0.1 }],
     ],
   },
   {
@@ -250,7 +250,7 @@ export const ITEM_FAMILIES: Record<string, ItemFamily> = Object.fromEntries(([
     names: ["Capuz de lã", "Chapéu pontudo", "Capuz rúnico", "Chapéu do mago", "Coroa de chifres de dragão"],
     base: (t) => ({ armor: at([1, 1, 2, 2, 3])(t), spellPower: at([0.03, 0.05, 0.08, 0.11, 0.15])(t) }),
     magic: [
-      ["Capuz do Eremita", { mana: 0.05 }],
+      ["Capuz do Lobo", { mana: 0.05 }],
       ["Chapéu do Ilusionista", { speed: 0.04 }],
       ["Capuz da Clarividência", { spellPower: 0.05 }],
       ["Chapéu do Arquimago", { mana: 0.1 }],
@@ -505,9 +505,10 @@ export function pickupAction(itemId: string, equipped: string, bagCount: number,
 export const COMMON_DROP_CHANCE = 0.15;
 /** Quantos itens cada rank dropa com certeza (comuns usam a chance acima). */
 export const GUARANTEED_DROPS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
-const RANK_TIER_BONUS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
+/** Níveis de material a mais do drop, por rank. */
+export const RANK_TIER_BONUS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
 /** Chance de o drop vir um nível acima do esperado. */
-const LUCKY_TIER_CHANCE = 0.2;
+export const LUCKY_TIER_CHANCE = 0.2;
 /** Chance de o drop ser raro ou mágico, por rank (o resto é comum). O baú usa a do mini-boss. */
 export const RARITY_CHANCES: Record<MonsterRank, { rare: number; magic: number }> = {
   common: { rare: 0.18, magic: 0.04 },
@@ -517,17 +518,15 @@ export const RARITY_CHANCES: Record<MonsterRank, { rare: number; magic: number }
 
 /**
  * Sorteia o item de um drop. Salas mais fundas e monstros mais fortes dão material melhor e mais raro.
- * O baú usa o rank de mini-boss com um nível a mais. Com `classes` (as da equipe), só cai o que alguém
- * da equipe pode usar. `random` devolve [0, 1).
+ * O baú usa o rank de mini-boss com um nível a mais. Cai qualquer família, sem olhar a classe de quem está na
+ * hunt: item que ninguém da equipe usa é comum (vai para a bag e se vende). `random` devolve [0, 1).
  */
-export function rollItem(rank: MonsterRank, depth: number, random: () => number, extraTier = 0, classes: readonly ClassId[] = []): string {
+export function rollItem(rank: MonsterRank, depth: number, random: () => number, extraTier = 0): string {
   const raw = 1 + Math.floor(Math.max(0, depth) / 2) + RANK_TIER_BONUS[rank] + extraTier
     + (random() < LUCKY_TIER_CHANCE ? 1 : 0);
   const tier = Math.max(1, Math.min(MAX_TIER, raw)) as ItemTier;
   const slot = ITEM_SLOTS[Math.floor(random() * ITEM_SLOTS.length)];
-  const all = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot);
-  const usable = all.filter((f) => !f.classes || classes.length === 0 || f.classes.some((c) => classes.includes(c)));
-  const families = usable.length > 0 ? usable : all;
+  const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot);
   const family = families[Math.floor(random() * families.length)];
   const roll = random();
   const chance = RARITY_CHANCES[rank];

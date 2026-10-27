@@ -18,11 +18,6 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `monster-orc.png` | `monster/orc_warrior_new.png` | — |
 | `monster-ogre.png` | `monster/ogre_new.png` | — |
 | `monster-dragon.png` | `monster/dragons/dragon.png` | — |
-| `summon-wolf.png` | `monster/animals/wolf.png` | — |
-| `summon-bear.png` | `monster/animals/black_bear.png` | — |
-| `summon-hornet.png` | `monster/animals/hornet.png` | — |
-| `summon-moth.png` | `monster/animals/sun_moth.png` | — |
-| `summon-wisp.png` | `monster/nonliving/will_o_the_wisp.png` | — |
 | `chest-locked.png` | `dungeon/chest_2_closed.png` | — |
 | `chest-unlocked.png` | `dungeon/chest.png` | — |
 | `chest-open.png` | `dungeon/chest_2_open.png` | — |
@@ -47,6 +42,9 @@ própria do Kusa, gerada no código (`apps/client/src/art`).
 
 ### Pântano das Ruínas
 
+Os monstros abaixo. O cenário (chão, água, mata, árvores e ruínas) é arte própria do Kusa, gerada no código
+(`apps/client/src/art/ruinsDecor.ts` e `marshDecor.ts`).
+
 Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0), pasta `releases/Nov-2015/`.
 
 | Arquivo | Original | Alteração |
@@ -57,16 +55,6 @@ Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0
 | `monster-naga.png` | `mon/naga_warrior.png` | — |
 | `monster-troll.png` | `mon/deep_troll.png` | — |
 | `monster-hydra.png` | `mon/dragons/hydra5.png` | — |
-| `floor-grass.png` | `dngn/floor/grass/grass0..2`, `grass_flowers_yellow1`, `grass_flowers_blue1`, `grass_flowers_red1` | juntos numa faixa, brilho ×1,1 |
-| `floor-mud.png` | `dngn/floor/swamp0..3.png` | juntos numa faixa, brilho ×1,1 |
-| `floor-ruins.png` | `dngn/floor/limestone0..3.png` | juntos numa faixa, brilho ×0,72 |
-| `floor-forest.png` | `dngn/floor/moss0..3.png` | juntos numa faixa, brilho ×0,8 |
-| `water-swamp.png` | `dngn/water/shallow_water`, `shallow_water_disturbance`, `deep_water` | juntos numa faixa, tom esverdeado |
-| `tree-swamp.png` | `dngn/trees/mangrove1..3.png` | juntos numa faixa |
-| `ruin-wall.png` | `dngn/wall/brick_brown-vines1..4.png` | juntos numa faixa |
-| `ruin-column.png` | `dngn/statues/crumbled_column_1..6.png` | juntos numa faixa |
-| `grass-fringe.png` | `dngn/floor/grass/grass_n`, `_e`, `_s`, `_w` | só o capim (terra recortada), brilho ×1,1; franja sobre lama e pedra |
-| `water-shore.png` | `dngn/water/shallow_water_wave_N/E/S/W` e `_corner_NE/NW/SE/SW` | tom esverdeado e mais escuro, 60% de opacidade; espuma da margem das lagoas |
 
 ### Bestiário 2.0
 

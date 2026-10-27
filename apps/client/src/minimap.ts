@@ -1,4 +1,4 @@
-import { CLASSES, Tile, hasLineOfSight, isUnderground, type ClassId, type Dungeon, type MapId, type Rect } from "@kusa/shared";
+import { CLASSES, Tile, hasLineOfSight, isUnderground, lairsOf, type ClassId, type Dungeon, type MapId, type Rect } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
 
 /** Quanto cada jogador revela ao redor (tiles): o mesmo que cabe na tela, 9 de largura e 13+ de altura. */
@@ -11,9 +11,12 @@ const REDRAW_MS = 150;
 /** Cores dos tiles por mapa (RGB). */
 const TILE_COLORS = {
   crypt: { floor: [107, 90, 72], bossFloor: [122, 59, 51], wall: [42, 33, 27], water: [42, 33, 27], ruin: [42, 33, 27] },
-  swamp: { floor: [86, 118, 56], bossFloor: [128, 120, 98], wall: [20, 36, 20], water: [46, 86, 104], ruin: [160, 150, 128] },
+  swamp: { floor: [88, 118, 54], bossFloor: [110, 110, 92], wall: [24, 46, 26], water: [42, 94, 92], ruin: [156, 152, 126] },
   marsh: { floor: [74, 96, 52], bossFloor: [96, 118, 64], wall: [22, 40, 24], water: [52, 78, 62], ruin: [92, 70, 44] },
   desert: { floor: [214, 178, 118], bossFloor: [226, 196, 140], wall: [150, 108, 60], water: [48, 140, 156], ruin: [150, 108, 60] },
+  cavern: { floor: [92, 104, 118], bossFloor: [118, 92, 120], wall: [20, 26, 34], water: [40, 84, 100], ruin: [20, 26, 34] },
+  dunes: { floor: [212, 172, 112], bossFloor: [232, 220, 190], wall: [160, 112, 62], water: [52, 150, 156], ruin: [120, 90, 62], sand: [234, 206, 152] },
+  mesas: { floor: [204, 146, 98], bossFloor: [214, 160, 112], wall: [130, 60, 38], water: [64, 150, 138], ruin: [96, 52, 34], sand: [228, 182, 132] },
 } satisfies Record<MapId, Record<string, number[]>>;
 /** Subterrâneo do deserto: rocha escura, chão de areia batida e o salão dos baús em arenito. */
 const CAVE_COLORS = { floor: [104, 82, 60], bossFloor: [128, 74, 52], wall: [34, 24, 18], hall: [150, 126, 92] };
@@ -26,7 +29,10 @@ const COLORS = {
   bossRoom: "#e74c3c",
   chest: "#f1c40f",
   cave: "#e08a2c",
+  needleTail: "#e8e0d0",
 };
+/** Bússola em volta do jogador (px de tela): distância do centro, comprimento e largura da agulha. */
+const COMPASS = { radius: 13, length: 11, width: 5 };
 
 /**
  * Minimapa do canto superior esquerdo, como no Tibia: norte para cima, só o que a equipe já viu
@@ -114,14 +120,13 @@ export class Minimap {
 
   private paintTile(x: number, y: number) {
     const d = this.dungeon;
-    const b = d.boss;
     const tile = d.tiles[y * d.width + x];
     const colors = TILE_COLORS[d.mapId];
-    const inBoss = inRect(b, x, y);
-    const [r, g, bl] = isUnderground(d, x)
+    const inBoss = lairsOf(d).some((l) => inRect(l.room, x, y));
+    const [r, g, bl] = d.cave && isUnderground(d, x)
       ? (tile === Tile.Wall ? CAVE_COLORS.wall : d.cave && inRect(d.cave.reward, x, y) ? CAVE_COLORS.hall : inBoss ? CAVE_COLORS.bossFloor : CAVE_COLORS.floor)
       : tile === Tile.Wall ? colors.wall : tile === Tile.Water ? colors.water : tile === Tile.Ruin ? colors.ruin
-      : inBoss ? colors.bossFloor : colors.floor;
+      : inBoss ? colors.bossFloor : tile === Tile.Sand ? ("sand" in colors ? colors.sand : colors.floor) : colors.floor;
     const i = (y * d.width + x) * 4;
     this.fogPixels.data.set([r, g, bl, 255], i);
   }
@@ -156,8 +161,8 @@ export class Minimap {
 
     // A sala do boss é o objetivo: sempre marcada, mesmo antes de ser vista (no deserto, só quando já se está na
     // caverna: achar a caverna faz parte da hunt).
-    const b = d.boss;
-    if (inRect(area, b.x, b.y)) {
+    for (const { room: b } of lairsOf(d)) {
+      if (!inRect(area, b.x, b.y)) continue;
       ctx.strokeStyle = COLORS.bossRoom;
       ctx.lineWidth = 1.5 * px;
       ctx.setLineDash([4 * px, 3 * px]);
@@ -166,7 +171,8 @@ export class Minimap {
     }
 
     this.mark(d.portal.x, d.portal.y, COLORS.portal, 5 * px, px);
-    if (this.room.state.bossDefeated) this.mark(d.bossPortal.x, d.bossPortal.y, COLORS.bossPortal, 6 * px, px);
+    const down = this.room.state.lairsDown;
+    lairsOf(d).forEach((l, i) => { if (down & (1 << i)) this.mark(l.portal.x, l.portal.y, COLORS.bossPortal, 6 * px, px); });
     for (const c of d.cave ? [d.cave.entrance, d.cave.exit] : []) {
       if (this.explored[c.y * d.width + c.x]) this.mark(c.x, c.y, COLORS.cave, 5 * px, px);
     }
@@ -179,6 +185,89 @@ export class Minimap {
       this.mark(p.x, p.y, color, 5 * px, px);
     });
     if (me) this.mark(me.x, me.y, COLORS.me, 6 * px, px);
+    if (me && me.status === "playing") this.drawCompass(me, area, px);
+  }
+
+  /**
+   * Para onde a bússola aponta: o boss; no deserto, da superfície, a boca da caverna que leva até ele; depois que
+   * o boss morre, o portal do boss. Nulo quando o jogador já chegou (dentro da sala do boss ou em cima do portal).
+   */
+  private compassTarget(me: { x: number; y: number }, area: Rect): { x: number; y: number; color: string } | null {
+    const d = this.dungeon;
+    if (d.lairs) return this.lairTarget(me);
+    if (this.room.state.bossDefeated) {
+      const p = d.bossPortal;
+      if (!inRect(area, p.x, p.y)) return d.cave ? { ...d.cave.entrance, color: COLORS.cave } : null;
+      return Math.abs(p.x - me.x) <= 1 && Math.abs(p.y - me.y) <= 1 ? null : { ...p, color: COLORS.bossPortal };
+    }
+    const b = d.boss;
+    if (!inRect(area, b.x, b.y)) return d.cave ? { ...d.cave.entrance, color: COLORS.cave } : null;
+    if (inRect(b, me.x, me.y)) return null;
+    return { x: b.x + b.w / 2 - 0.5, y: b.y + b.h / 2 - 0.5, color: COLORS.bossRoom };
+  }
+
+  /**
+   * Caverna da Travessia: o portal aberto mais perto; sem nenhum, o covil mais perto com o boss vivo. Nulo dentro
+   * do covil ou ao lado do portal.
+   */
+  private lairTarget(me: { x: number; y: number }): { x: number; y: number; color: string } | null {
+    const down = this.room.state.lairsDown;
+    const lairs = lairsOf(this.dungeon);
+    const dist = (p: { x: number; y: number }) => Math.hypot(p.x - me.x, p.y - me.y);
+    const open = lairs.filter((_, i) => down & (1 << i)).map((l) => l.portal).sort((a, b) => dist(a) - dist(b))[0];
+    if (open) return Math.abs(open.x - me.x) <= 1 && Math.abs(open.y - me.y) <= 1 ? null : { ...open, color: COLORS.bossPortal };
+    const room = lairs.map((l) => l.room).sort((a, b) => dist(centerOfRect(a)) - dist(centerOfRect(b)))[0];
+    if (!room || inRect(room, me.x, me.y)) return null;
+    return { x: room.x + room.w / 2 - 0.5, y: room.y + room.h / 2 - 0.5, color: COLORS.bossRoom };
+  }
+
+  /** Agulha de bússola girando em volta do jogador: a ponta na cor do destino, a cauda clara. */
+  private drawCompass(me: { x: number; y: number }, area: Rect, px: number) {
+    const target = this.compassTarget(me, area);
+    if (!target) return;
+    const dx = target.x - me.x;
+    const dy = target.y - me.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return;
+    const ux = dx / dist;
+    const uy = dy / dist;
+    // Perpendicular, para a largura da agulha.
+    const vx = -uy;
+    const vy = ux;
+    const cx = me.x + 0.5 + ux * COMPASS.radius * px;
+    const cy = me.y + 0.5 + uy * COMPASS.radius * px;
+    const half = (COMPASS.length / 2) * px;
+    const w = (COMPASS.width / 2) * px;
+    const tip = { x: cx + ux * half, y: cy + uy * half };
+    const tail = { x: cx - ux * half, y: cy - uy * half };
+    const left = { x: cx + vx * w, y: cy + vy * w };
+    const right = { x: cx - vx * w, y: cy - vy * w };
+
+    const ctx = this.ctx;
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 2 * px;
+    ctx.strokeStyle = COLORS.outline;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(tail.x, tail.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = target.color;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = COLORS.needleTail;
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.fill();
   }
 
   /** A parte do mapa onde o jogador está: no deserto, a superfície ou o subterrâneo; nos outros, a dungeon toda. */
@@ -204,4 +293,8 @@ export class Minimap {
 
 function inRect(r: Rect, x: number, y: number) {
   return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+}
+
+function centerOfRect(r: Rect) {
+  return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }

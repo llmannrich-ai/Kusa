@@ -9,11 +9,13 @@ import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SWAMP_TEXTURE } from "./art/textures.ts";
-import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures } from "./art/bestiary.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
+import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures, type MonsterAnim } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
-import { decorFloorStrip, decorTallStrip, decorWaterStrip, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/swampDecor.ts";
+import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_AXES, PROTO_BOWS, PROTO_ITEM_NAMES, PROTO_MAGIC_BOWS, PROTO_MAGIC_STAFFS, PROTO_MAGIC_WANDS, PROTO_ARC_HATS, PROTO_MAGIC_ARC_HATS, PROTO_ROBES, PROTO_MAGIC_ROBES, PROTO_PANTS, PROTO_MAGIC_PANTS, PROTO_GREAVES, PROTO_MAGIC_GREAVES, PROTO_BOOTS, PROTO_MAGIC_BOOTS, PROTO_SHIELDS, PROTO_MAGIC_SHIELDS, PROTO_MAGIC_XBOWS, PROTO_STAFFS, PROTO_WANDS, PROTO_XBOWS, PROTO_MAGIC_ARMORS, PROTO_MAGIC_AXES, PROTO_MAGIC_HELMETS, PROTO_MAGIC_SWORDS, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
+import { fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/ambient.ts";
+import { WALL_HEIGHTS, WALL_LINK, columnSheet, mosaicCanvas, pavingStrip, ruinFloorStrip, ruinTallStrip, ruinWallCanvas, ruinWaterStrip } from "./art/ruinsDecor.ts";
 
 const ZOOM = 4;
 const gallery = document.getElementById("gallery")!;
@@ -93,6 +95,115 @@ const WALK = [1, 0, 2, 0];
     step++;
   }, 125);
 }
+
+// --- Protótipo da Fase 0 de docs/ARTE_TIBIA.md: corpo base e as 4 classes, ao lado da arte atual.
+// Mesma escala de jogo nos dois: o atual tem 96 px de textura para 1,38 tile; o protótipo, `PROTO_TILE` px por tile.
+const PHONE_TILE = 412 / 9;
+const PROTO_DIRS_ALL: ProtoDir[] = ["down", "side", "up"];
+const PROTO_NAMES: Record<ProtoClass, string> = { base: "Corpo base", knight: "Cavaleiro", paladin: "Paladino", sorcerer: "Feiticeiro", druid: "Druida" };
+const protoSceneRow = (() => {
+  const zoomTile = PROTO_TILE;
+  const oldZoom = (zoomTile * HERO_SCALE) / HERO_SIZE;
+  const newZoom = zoomTile / PROTO_TILE;
+  const oldFrame = (cls: ClassId, dir: "down" | "side" | "up", f: number) => {
+    const { canvas, ctx } = makeCanvas(HERO_SIZE, HERO_SIZE);
+    ctx.drawImage(heroSheet(cls), (HERO_DIRS.indexOf(dir) * HERO_FRAMES + f) * HERO_SIZE, 0, HERO_SIZE, HERO_SIZE, 0, 0, HERO_SIZE, HERO_SIZE);
+    return canvas;
+  };
+  const classes = section("Protótipo padrão Tibia (Fase 0): corpo base (só de tanga) e as 4 classes vestidas sobre ele");
+  for (const cls of PROTO_CLASSES) show(classes, protoFrame("down", 0, cls), PROTO_NAMES[cls], newZoom);
+  for (const dir of ["side", "up"] as const) {
+    const row = section(`Protótipo: ${dirNames[dir]}`);
+    for (const cls of PROTO_CLASSES) show(row, protoFrame(dir, 0, cls), `${PROTO_NAMES[cls]} · ${dirNames[dir]}`, newZoom);
+  }
+
+  const compare = section("Protótipo: atual × novo, na mesma escala do jogo");
+  for (const cls of CLASS_IDS) {
+    show(compare, oldFrame(cls, "down", 0), `atual · ${PROTO_NAMES[cls]}`, oldZoom);
+    show(compare, protoFrame("down", 0, cls), `novo · ${PROTO_NAMES[cls]}`, newZoom);
+  }
+
+  const walk = section("Protótipo: andando (ampliado e no tamanho do celular em retrato)");
+  const walkers: { ctx: CanvasRenderingContext2D; cls: ProtoClass; dir: ProtoDir; flip: boolean }[] = [];
+  const realNew = PHONE_TILE / PROTO_TILE;
+  for (const [zoom, label] of [[newZoom, ""], [realNew, ", tamanho real"]] as const) {
+    for (const cls of PROTO_CLASSES) {
+      for (const [dir, flip] of [["down", false], ["side", false], ["side", true], ["up", false]] as const) {
+        const neo = makeCanvas(PROTO_SIZE, PROTO_SIZE);
+        show(walk, neo.canvas, `${PROTO_NAMES[cls]} · ${flip ? "direita" : dirNames[dir]}${label}`, zoom);
+        walkers.push({ ctx: neo.ctx, cls, dir, flip });
+      }
+    }
+  }
+  const sheets = new Map(PROTO_CLASSES.flatMap((cls) => PROTO_DIRS_ALL.flatMap((dir) =>
+    [...Array(PROTO_FRAMES).keys()].map((f) => [`${cls}${dir}${f}`, protoFrame(dir, f, cls)] as const))));
+  let step = 0;
+  const tick = () => {
+    for (const w of walkers) {
+      w.ctx.clearRect(0, 0, PROTO_SIZE, PROTO_SIZE);
+      w.ctx.save();
+      if (w.flip) w.ctx.setTransform(-1, 0, 0, 1, PROTO_SIZE, 0);
+      w.ctx.drawImage(sheets.get(`${w.cls}${w.dir}${step % PROTO_FRAMES}`)!, 0, 0);
+      w.ctx.restore();
+    }
+    step++;
+  };
+  tick();
+  setInterval(tick, 150);
+
+  // Itens no padrão novo (docs/ARTE_ITENS.md): o mesmo desenho em classes diferentes, nas 3 direções.
+  const gearRow = (title: string, sets: [ProtoClass, ProtoGear][]) => {
+    const row = section(title);
+    for (const [cls, gear] of sets) {
+      const names = [gear.helmet, gear.armor, gear.legs, gear.boots, gear.weapon, gear.shield].flatMap((id) => (id ? [PROTO_ITEM_NAMES[id]] : [])).join(" + ");
+      for (const dir of PROTO_DIRS_ALL) show(row, protoFrame(dir, 0, cls, undefined, gear), `${PROTO_NAMES[cls]} · ${names} · ${dirNames[dir]}`, newZoom);
+    }
+  };
+  gearRow("Itens · lote 1: espadas", PROTO_SWORDS.map((weapon) => ["knight", { weapon }]));
+  gearRow("Itens · lote 1: elmos de guerra", PROTO_WAR_HELMETS.flatMap((helmet, i) => [[i % 2 ? "paladin" : "knight", { helmet }]] as [ProtoClass, ProtoGear][]));
+  gearRow("Itens · lote 1: armaduras de guerra", PROTO_WAR_ARMORS.flatMap((armor, i) => [[i % 2 ? "paladin" : "knight", { armor }]] as [ProtoClass, ProtoGear][]));
+  gearRow("Itens · lote 1: conjunto de cada nível (elmo, armadura e espada)", [1, 2, 3, 4, 5].map((t) => ["knight", { helmet: PROTO_WAR_HELMETS[t - 1], armor: PROTO_WAR_ARMORS[t - 1], weapon: PROTO_SWORDS[t - 1] }]));
+  gearRow("Itens · lote 2: espadas mágicas", PROTO_MAGIC_SWORDS.map((weapon) => ["knight", { weapon }]));
+  gearRow("Itens · lote 2: elmos mágicos", PROTO_MAGIC_HELMETS.map((helmet, i) => [i % 2 ? "paladin" : "knight", { helmet }]));
+  gearRow("Itens · lote 2: armaduras mágicas", PROTO_MAGIC_ARMORS.map((armor, i) => [i % 2 ? "paladin" : "knight", { armor }]));
+  gearRow("Itens · lote 2: conjunto mágico de cada nível", [0, 1, 2, 3, 4].map((i) => [i % 2 ? "paladin" : "knight", { helmet: PROTO_MAGIC_HELMETS[i], armor: PROTO_MAGIC_ARMORS[i], weapon: PROTO_MAGIC_SWORDS[i] }]));
+  gearRow("Itens · lote 3: machados", PROTO_AXES.map((weapon) => ["knight", { weapon }]));
+  gearRow("Itens · lote 3: machados mágicos", PROTO_MAGIC_AXES.map((weapon) => ["knight", { weapon }]));
+  gearRow("Itens · lote 4: arcos", PROTO_BOWS.map((weapon) => ["paladin", { weapon }]));
+  gearRow("Itens · lote 4: arcos mágicos", PROTO_MAGIC_BOWS.map((weapon) => ["paladin", { weapon }]));
+  gearRow("Itens · lote 4: bestas", PROTO_XBOWS.map((weapon) => ["paladin", { weapon }]));
+  gearRow("Itens · lote 4: bestas mágicas", PROTO_MAGIC_XBOWS.map((weapon) => ["paladin", { weapon }]));
+  const caster = (i: number): ProtoClass => (i % 2 ? "druid" : "sorcerer");
+  gearRow("Itens · lote 5: varinhas", PROTO_WANDS.map((weapon, i) => [caster(i), { weapon }]));
+  gearRow("Itens · lote 5: varinhas mágicas", PROTO_MAGIC_WANDS.map((weapon, i) => [caster(i), { weapon }]));
+  gearRow("Itens · lote 5: cajados", PROTO_STAFFS.map((weapon, i) => [caster(i), { weapon }]));
+  gearRow("Itens · lote 5: cajados mágicos", PROTO_MAGIC_STAFFS.map((weapon, i) => [caster(i), { weapon }]));
+  gearRow("Itens · lote 6: chapéus arcanos", PROTO_ARC_HATS.map((helmet, i) => [caster(i), { helmet }]));
+  gearRow("Itens · lote 6: chapéus arcanos mágicos", PROTO_MAGIC_ARC_HATS.map((helmet, i) => [caster(i), { helmet }]));
+  gearRow("Itens · lote 6: mantos arcanos", PROTO_ROBES.map((armor, i) => [caster(i), { armor }]));
+  gearRow("Itens · lote 6: mantos arcanos mágicos", PROTO_MAGIC_ROBES.map((armor, i) => [caster(i), { armor }]));
+  gearRow("Itens · lote 6: calças arcanas (no corpo base)", PROTO_PANTS.map((legs) => ["base", { legs }]));
+  gearRow("Itens · lote 6: calças arcanas mágicas (no corpo base)", PROTO_MAGIC_PANTS.map((legs) => ["base", { legs }]));
+  gearRow("Itens · lote 6: conjunto de cada nível (chapéu, manto e cajado)", [0, 1, 2, 3, 4].map((i) => [caster(i), { helmet: PROTO_ARC_HATS[i], armor: PROTO_ROBES[i], weapon: PROTO_STAFFS[i] }]));
+  gearRow("Itens · lote 6: conjunto mágico de cada nível", [0, 1, 2, 3, 4].map((i) => [caster(i), { helmet: PROTO_MAGIC_ARC_HATS[i], armor: PROTO_MAGIC_ROBES[i], weapon: PROTO_MAGIC_STAFFS[i] }]));
+  const fighter = (i: number): ProtoClass => (i % 2 ? "paladin" : "knight");
+  gearRow("Itens · lote 7: perneiras de guerra", PROTO_GREAVES.map((legs, i) => [fighter(i), { legs }]));
+  gearRow("Itens · lote 7: perneiras de guerra mágicas", PROTO_MAGIC_GREAVES.map((legs, i) => [fighter(i), { legs }]));
+  gearRow("Itens · lote 7: botas (no corpo base)", PROTO_BOOTS.map((boots) => ["base", { boots }]));
+  gearRow("Itens · lote 7: botas mágicas (no corpo base)", PROTO_MAGIC_BOOTS.map((boots) => ["base", { boots }]));
+  gearRow("Itens · lote 7: escudos", PROTO_SHIELDS.map((shield, i) => [fighter(i), { shield }]));
+  gearRow("Itens · lote 7: escudos mágicos", PROTO_MAGIC_SHIELDS.map((shield, i) => [fighter(i), { shield }]));
+  // No conjunto o nível 5 leva a espada de mithral: a Lâmina do dragão e a Dançarina não deixam a mão livre para o escudo.
+  gearRow("Itens · lote 7: guerreiro completo de cada nível", [0, 1, 2, 3, 4].map((i) => [fighter(i), { helmet: PROTO_WAR_HELMETS[i], armor: PROTO_WAR_ARMORS[i], legs: PROTO_GREAVES[i], boots: PROTO_BOOTS[i], shield: PROTO_SHIELDS[i], weapon: PROTO_SWORDS[i === 4 ? 3 : i] }]));
+  gearRow("Itens · lote 7: guerreiro mágico completo de cada nível", [0, 1, 2, 3, 4].map((i) => [fighter(i), { helmet: PROTO_MAGIC_HELMETS[i], armor: PROTO_MAGIC_ARMORS[i], legs: PROTO_MAGIC_GREAVES[i], boots: PROTO_MAGIC_BOOTS[i], shield: PROTO_MAGIC_SHIELDS[i], weapon: PROTO_MAGIC_SWORDS[i === 3 ? 2 : i] }]));
+  gearRow("Itens · piloto: Capuz do Lobo e Elmo do Demônio", [["druid", { helmet: "wolf" }], ["sorcerer", { helmet: "wolf" }], ["knight", { helmet: "demon", weapon: "sword-5" }], ["paladin", { helmet: "demon" }]]);
+
+  const cosmetics = section("Protótipo: zonas de cor (cabeça, primária, secundária, detalhe), como um cosmético trocaria");
+  show(cosmetics, protoFrame("down", 0, "knight"), "cavaleiro", newZoom);
+  for (const [name, look] of Object.entries(KNIGHT_COSMETICS)) show(cosmetics, protoFrame("down", 0, "knight", look), name, newZoom);
+
+  return section("Protótipo: no chão com os monstros (atual à esquerda, novo à direita)");
+})();
 
 for (const id of CLASS_IDS) {
   const row = section(CLASSES[id].name);
@@ -228,14 +339,32 @@ for (let y = 0; y < H; y++) {
 }
 show(sceneRow, sceneCanvas, "corredor", 2);
 
+// Cena do protótipo em `PROTO_TILE` px por tile: o chão e os monstros (32 px por tile) entram ampliados.
+{
+  const T = PROTO_TILE, SW = 9, SH = 3;
+  const { canvas, ctx } = makeCanvas(SW * T, SH * T);
+  canvas.className = "scene";
+  for (let y = 0; y < SH; y++) {
+    for (let x = 0; x < SW; x++) ctx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * T, y * T, T, T);
+  }
+  const side = T * HERO_SCALE;
+  refinedMonsters.slice(0, 4).forEach((art, i) => ctx.drawImage(art, 0, 0, art.width, art.height, (i * 2 + 1) * T, 0, T, T));
+  // Atual (esquerda) e novo (direita), as 4 classes, pés na base do tile.
+  CLASS_IDS.forEach((cls, i) => {
+    ctx.drawImage(heroSheet(cls), 0, 0, HERO_SIZE, HERO_SIZE, (i * 0.9 + 0.2) * T - (side - T) / 2, 2 * T - side, side, side);
+    ctx.drawImage(protoFrame(i % 2 ? "side" : "down", 0, cls), (i + 4.8) * T - (PROTO_SIZE - T) / 2, 2 * T - PROTO_FEET);
+  });
+  show(protoSceneRow, canvas, "mesmo chão, mesma escala", 1);
+}
+
 const combat = section("Combate (arte própria)");
 show(combat, slashStrip(), "corte");
 show(combat, biteStrip(), "mordida");
 show(combat, smashStrip(), "pancada");
 show(combat, leafCanvas(), "folha");
 
-// Detalhes do pântano: cada faixa sobre capim, para ver o contraste como no jogo.
-const swamp = section("Pântano: detalhes (arte própria)");
+// Ruínas do Pântano das Ruínas: cada faixa sobre o capim da baía, para ver o contraste como no jogo.
+const swamp = section("Pântano das Ruínas: ruínas (arte própria)");
 const onGround = (source: HTMLCanvasElement, ground: string) => {
   const { canvas, ctx } = makeCanvas(source.width, source.height);
   ctx.fillStyle = ground;
@@ -243,13 +372,28 @@ const onGround = (source: HTMLCanvasElement, ground: string) => {
   ctx.drawImage(source, 0, 0);
   return canvas;
 };
-show(swamp, onGround(decorFloorStrip(), "#3f6a2a"), "chão", 3);
-show(swamp, onGround(decorWaterStrip(), "#2f5a5a"), "água", 3);
-show(swamp, onGround(decorTallStrip(), "#3f6a2a"), "altos", 3);
-show(swamp, onGround(shadeStrip(), "#3f6a2a"), "sombras", 3);
-show(swamp, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
-show(swamp, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
-show(swamp, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
+show(swamp, pavingStrip(), "lajes", 3);
+show(swamp, onGround(ruinFloorStrip(), "#626656"), "chão", 3);
+show(swamp, onGround(ruinTallStrip(), "#4a6a30"), "altos", 3);
+show(swamp, onGround(ruinWaterStrip(), "#24423e"), "água", 3);
+show(swamp, onGround(columnSheet(), "#4a6a30"), "colunas", 3);
+// Muros: um trecho deitado (ponta oeste, meio, ponta leste), um canto e um em pé, em cada variação.
+{
+  const pieces = [WALL_LINK.e, WALL_LINK.e | WALL_LINK.w, WALL_LINK.w, WALL_LINK.e | WALL_LINK.s, WALL_LINK.n | WALL_LINK.s];
+  const { canvas, ctx } = makeCanvas(TILE_SIZE * pieces.length * 3 + 16, (TILE_SIZE + 24) * 1);
+  ctx.fillStyle = "#4a6a30";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let v = 0; v < 3; v++) pieces.forEach((links, i) => ctx.drawImage(ruinWallCanvas(links, WALL_HEIGHTS[2 + (i % 3)], v), (v * pieces.length + i) * TILE_SIZE + v * 8, 0));
+  show(swamp, canvas, "muros", 3);
+}
+show(swamp, onGround(mosaicCanvas(), "#626656"), "mosaico da Hidra", 2);
+
+// Ambiente que os mapas dividem (cripta, pântanos).
+const ambient = section("Ambiente: sombras, ondinha, vaga-lume e névoa");
+show(ambient, onGround(shadeStrip(), "#3f6a2a"), "sombras", 3);
+show(ambient, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
+show(ambient, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
+show(ambient, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
 
 // Detalhes da cripta: chão sobre ladrilho escuro; paredes sobre a face de tijolos (linhas 16 a 31).
 const crypt = section("Cripta: detalhes (arte própria)");
@@ -273,15 +417,20 @@ const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
   ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
   ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
-  ...Object.values(SWAMP_TEXTURE),
 ];
 for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);
 }
 
-// Monstros animados (Pântano): a folha inteira refinada, quadro a quadro (parado, andando, golpe, especial).
+// Monstros animados (Pântano) e invocações do Druida: a folha inteira refinada, quadro a quadro (parado, andando, golpe,
+// especial).
 const animated = section("Monstros animados (folhas: parado, andando, golpe, especial)");
-for (const [key, anim] of Object.entries(MONSTER_ANIMS)) {
+const summoned = section("Invocações do Druida (folhas: parado, andando, golpe, especial)");
+const animatedSheets: [HTMLElement, string, MonsterAnim][] = [
+  ...Object.entries(MONSTER_ANIMS).map(([key, anim]) => [animated, key, anim] as [HTMLElement, string, MonsterAnim]),
+  ...Object.entries(SUMMON_ANIMS).map(([kind, anim]) => [summoned, SUMMON_TEXTURE[kind as keyof typeof SUMMON_TEXTURE], anim] as [HTMLElement, string, MonsterAnim]),
+];
+for (const [row, key, anim] of animatedSheets) {
   const sheet = anim.sheet();
   const n = sheet.width / anim.size;
   const { canvas, ctx } = makeCanvas(anim.size * 2 * n, anim.size * 2);
@@ -290,7 +439,7 @@ for (const [key, anim] of Object.entries(MONSTER_ANIMS)) {
     frame.ctx.drawImage(sheet, i * anim.size, 0, anim.size, anim.size, 0, 0, anim.size, anim.size);
     ctx.drawImage(refineArt(frame.canvas, { outline: anim.outline }), i * anim.size * 2, 0);
   }
-  show(animated, canvas, key, 1);
+  show(row, canvas, key, 1);
 }
 
 const refined = section("Monstros refinados (como no jogo)");

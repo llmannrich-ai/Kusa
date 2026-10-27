@@ -13,6 +13,8 @@ import {
   elementMultiplier,
   hasLineOfSight,
   isWalkable,
+  isSand,
+  SAND_SPEED,
   tileAt,
   tileDistance,
   type DamageElement,
@@ -66,10 +68,10 @@ export interface Brain {
   nextAttackAt: number;
   /** sessionId do jogador perseguido (ou id da criatura invocada). */
   targetId: string | null;
-  /** Quem acertou o monstro: dividem a XP da morte. */
-  participants: Set<string>;
   /** Baú liberado quando este mini-boss morre. */
   chestId?: string;
+  /** Covil deste boss (índice em `Dungeon.lairs`): morto, abre o portal de lá. */
+  lair?: number;
   /** Preso por raízes até este momento (ms). */
   rootedUntil: number;
   /** Atordoado até este momento (ms). */
@@ -159,7 +161,7 @@ export class MonsterAi {
     const heads = traits.heads?.start ?? 0;
     return {
       def, traits, elements: {}, speed: def.speed, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
-      nextMoveAt: 0, nextAttackAt: 0, targetId: null, participants: new Set(), rootedUntil: 0, stunnedUntil: 0, slowUntil: 0, slowPct: 0,
+      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, slowUntil: 0, slowPct: 0,
       markUntil: 0, markPct: 0, dot: null, tauntedBy: null, abilityReadyAt: {}, phased: new Set(), used: new Set(), enraged: false,
       invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
       regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,
@@ -648,7 +650,8 @@ export class MonsterAi {
 
   private stepTo(m: Monster, brain: Brain, step: { x: number; y: number }, now: number) {
     const diagonal = step.x !== m.x && step.y !== m.y;
-    const slow = m.slowed ? 1 - brain.slowPct : 1;
+    // Lentidão de magia e areia fofa (Dunas Cantantes, Mesas de Solária) se somam.
+    const slow = (m.slowed ? 1 - brain.slowPct : 1) * (isSand(this.w.dungeon, step.x, step.y) ? SAND_SPEED : 1);
     const stepMs = 1000 / (brain.speed * MONSTER_SPEED_SCALE * slow);
     brain.nextMoveAt = now + stepMs * (diagonal ? Math.SQRT2 : 1);
     m.stepMs = Math.round(stepMs);

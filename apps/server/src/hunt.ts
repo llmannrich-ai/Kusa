@@ -9,6 +9,8 @@ import {
   COMMON_DROP_CHANCE,
   COMMON_POTION_CHANCE,
   DEPTH_SCALING,
+  ITEM_DROP_SCALE,
+  LOOT_SCALE,
   GUARANTEED_DROPS,
   GUARANTEED_POTIONS,
   ITEMS,
@@ -20,6 +22,7 @@ import {
   partySize,
   MAX_SUMMONS_PER_PLAYER,
   MOVE_HOLD_MS,
+  PORTAL_HOLD_MS,
   MSG,
   PERKS,
   POTIONS,
@@ -68,6 +71,8 @@ import {
   lineTiles,
   coneTiles,
   isWalkable,
+  isSand,
+  SAND_SPEED,
   activeSpells,
   knownSpells,
   levelForXp,
@@ -76,7 +81,11 @@ import {
   monsterStats,
   heroBonuses,
   isRune,
+  mainBoss,
+  lairsOf,
+  lairPortalAt,
   RUNES,
+  lootSellPrice,
   RUNE_DROPS,
   activeRunes,
   rollRune,
@@ -108,7 +117,7 @@ import {
   tileAt,
   tileDistance,
   xpForLevel,
-  xpShare,
+  teamShare,
   type AttackMessage,
   type AddBotMessage,
   type AttackingMessage,
@@ -176,6 +185,8 @@ interface Seat {
   heading: { dx: -1 | 0 | 1; dy: -1 | 0 | 1; until: number } | null;
   /** Momento (ms) em que o ataque básico volta a poder sair. */
   nextAttackAt: number;
+  /** Desde quando (ms) está em cima de um portal; null fora dele. Sai da dungeon depois de `PORTAL_HOLD_MS`. */
+  portalSince?: number | null;
   /** Segurando o botão de ataque: o golpe se repete no ritmo da recarga. */
   attacking: boolean;
   /** Um toque rápido no ataque ainda vale até este momento (sai assim que a recarga deixar). */
@@ -262,6 +273,8 @@ interface Seat {
   effectImmuneUntil: Partial<Record<HeroEffectKind, number>>;
   /** Números da hunt para a telemetria. */
   stats: RunStats;
+  /** Bosses cuja runa este personagem já levou (no banco e nesta hunt): cada boss dá a runa uma vez por personagem. */
+  bossRunes: Set<string>;
   /** A tela do jogador está deitada (`MSG.screen`): o tempo assim soma em `stats.landscapeMs`. */
   landscape: boolean;
 }
@@ -315,6 +328,13 @@ const HP_REGEN = 0.02;
 const MANA_REGEN = 0.02;
 /** Monstros não nascem tão perto do portal de entrada. */
 const SAFE_RADIUS = 6;
+/**
+ * Zona da entrada: a esta distância do portal (o raio seguro mais o alcance de aggro dos comuns), nascem no máximo
+ * `MAX_START_MONSTERS` monstros, para a hunt não começar com uma sala cheia em cima do herói (a Cripta põe a
+ * primeira sala do caminho colada na inicial).
+ */
+export const START_ZONE_RADIUS = 12;
+export const MAX_START_MONSTERS = 3;
 /** Item no chão que ninguém pegou some depois deste tempo. */
 const ITEM_LIFETIME_MS = 120_000;
 /** Intervalo mínimo entre dois avisos de bag cheia para o mesmo jogador. */
@@ -335,6 +355,11 @@ export interface HuntHost {
   runEnded(sessionId: string, result: RunEndedMessage, report: HuntReport): void;
   /** Todos saíram: a hunt acabou. */
   ended(): void;
+  /**
+   * O boss principal morreu: estes jogadores (humanos que estavam na hunt, vivos ou mortos, sem ter saído) venceram o
+   * cenário e abrem o seguinte da campanha. Quem morreu antes já teve o resultado gravado, por isso o aviso é à parte.
+   */
+  mapCleared?(sessionIds: string[], boss: MonsterKind): void;
 }
 
 /** Números da hunt de um jogador para a telemetria (o host completa com a partida e a conta). */
@@ -420,6 +445,8 @@ export class Hunt {
   /** Mímicos (id → profundidade da sala): morto, o Mímico dá o loot do baú que fingia ser. */
   private mimicDepth = new Map<string, number>();
   private nextMonsterId = 1;
+  /** Vagas da zona da entrada guardadas para mini-boss/Mímico de sala lateral (só durante o spawn inicial). */
+  private startZoneReserved = 0;
   private nextItemId = 1;
   private nextSummonId = 1;
   private summonBrains = new Map<string, SummonBrain>();
@@ -453,10 +480,11 @@ export class Hunt {
     if (options.restore) {
       Object.assign(this, fromPlain(options.restore));
       // O portal do boss abre mudando o tile: a dungeon regenerada pela seed ainda não tem.
-      if (this.state.bossDefeated) {
-        const c = this.dungeon.bossPortal;
-        this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
-      }
+      // (Retrato de versão antiga, só com `bossDefeated`: o portal do primeiro covil.)
+      const down = this.state.lairsDown || (this.state.bossDefeated ? 1 : 0);
+      lairsOf(this.dungeon).forEach((lair, i) => {
+        if (down & (1 << i)) this.dungeon.tiles[lair.portal.y * this.dungeon.width + lair.portal.x] = Tile.Portal;
+      });
     }
     this.ai = new MonsterAi({
       state: this.state,
@@ -537,12 +565,12 @@ export class Hunt {
 
     this.state.players.set(sessionId, player);
     this.seats.set(sessionId, {
-      nextMoveAt: 0, heading: null, nextAttackAt: 0, attacking: false, attackUntil: 0, targetLocked: false,
+      nextMoveAt: 0, heading: null, nextAttackAt: 0, portalSince: null, attacking: false, attackUntil: 0, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
-      aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(),
+      aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false,
     });
     const joined = this.seats.get(sessionId)!;
@@ -593,6 +621,11 @@ export class Hunt {
     return true;
   }
 
+  /** Cenário desta hunt. */
+  get mapId(): MapId {
+    return this.map.id;
+  }
+
   /** Jogadores na hunt no máximo, bots incluídos (depende do mapa). */
   partySize() {
     return partySize(this.map);
@@ -610,9 +643,9 @@ export class Hunt {
   maxLoot() {
     let total = 0;
     this.brains.forEach((b) => { total += b.loot[1]; });
-    this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth)); });
-    this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth)); });
-    return Math.round(total * (1 + BOSS_LOOT_BONUS));
+    this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
+    this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
+    return Math.round(total * (1 + this.portalBonus()));
   }
 
   // --- Spawn ------------------------------------------------------------
@@ -628,6 +661,11 @@ export class Hunt {
     // RNG próprio derivado da seed, separado do gerador do mapa.
     const rng = createRng(this.state.seed ^ 0x9e3779b9);
     const roll = () => rng.int(0, 1_000_000);
+
+    // Mini-boss ou Mímico de sala lateral perto da entrada nasce depois dos comuns, mas conta no teto da zona da entrada.
+    const portal = d.portal;
+    const inZone = (x: number, y: number) => tileDistance(x, y, portal.x, portal.y) <= START_ZONE_RADIUS;
+    this.startZoneReserved = d.side.filter((r) => inZone(r.x + 1, r.y + 1) || inZone(centerOf(r).x, centerOf(r).y)).length;
 
     // Mapa só com o boss (o deserto, por enquanto): sem encontros nas zonas nem nas campinas.
     const encounters = this.map.encounters.length > 0;
@@ -674,8 +712,19 @@ export class Hunt {
       this.brains.get(boss.id)!.chestId = chest.id;
     });
 
-    const c = centerOf(d.boss);
-    this.addMonster(pickWeighted(this.map.bosses, rng.next()), c.x, c.y, d.path.length);
+    if (this.map.lairs) {
+      // Um boss fixo em cada covil, na profundidade do covil.
+      this.map.lairs.forEach((lair, i) => {
+        const room = d.lairs?.[i]?.room;
+        if (!room) return;
+        const at = centerOf(room);
+        const boss = this.addMonster(lair.boss, at.x, at.y, lair.depth);
+        this.brains.get(boss.id)!.lair = i;
+      });
+    } else {
+      const c = centerOf(d.boss);
+      this.addMonster(pickWeighted(this.map.bosses, rng.next()), c.x, c.y, d.path.length);
+    }
 
     // Baús de runa da caverna: trancados até o boss morrer; cada jogador leva a runa de um.
     (this.map.rewardRunes ?? []).forEach((rune, i) => {
@@ -727,6 +776,8 @@ export class Hunt {
   private addMonster(kind: MonsterKind, x: number, y: number, depth: number) {
     const def = MONSTERS[kind];
     const stats = monsterStats(kind, depth);
+    // Corte geral do loot (`LOOT_SCALE`) e o do mapa que paga menos por monstro (muitos monstros), que deixa o boss de fora.
+    stats.loot = this.scaleLoot(stats.loot[0], stats.loot[1], def.rank === "boss");
     const m = new Monster();
     m.id = `m${this.nextMonsterId++}`;
     m.kind = kind;
@@ -746,11 +797,21 @@ export class Hunt {
       const x = room.x + (roll() % room.w);
       const y = room.y + (roll() % room.h);
       if (!isWalkable(this.dungeon, x, y) || this.specialTile(x, y)) continue;
-      if (tileDistance(x, y, portal.x, portal.y) <= SAFE_RADIUS) continue;
+      const near = tileDistance(x, y, portal.x, portal.y);
+      if (near <= SAFE_RADIUS) continue;
+      if (near <= START_ZONE_RADIUS && this.startZoneMonsters() + this.startZoneReserved >= MAX_START_MONSTERS) continue;
       if (this.monsterAt(x, y)) continue;
       return { x, y };
     }
     return null;
+  }
+
+  /** Monstros já postos na zona da entrada (`START_ZONE_RADIUS`). */
+  private startZoneMonsters() {
+    const portal = this.dungeon.portal;
+    let n = 0;
+    this.state.monsters.forEach((m) => { if (tileDistance(m.x, m.y, portal.x, portal.y) <= START_ZONE_RADIUS) n++; });
+    return n;
   }
 
   /** Profundidade de uma sala lateral ou campina = índice da sala do caminho mais próxima. */
@@ -880,7 +941,8 @@ export class Hunt {
     const nx = player.x + dx;
     const ny = player.y + dy;
 
-    const stepMs = 1000 / this.moveSpeed(player, seat, now);
+    // Areia fofa (Dunas Cantantes, Mesas de Solária): o passo que entra nela demora mais.
+    const stepMs = 1000 / (this.moveSpeed(player, seat, now) * (isSand(this.dungeon, nx, ny) ? SAND_SPEED : 1));
     // Andando sem parar, o próximo passo conta da hora em que este podia sair, não de quando o tick chegou:
     // o atraso do tick não se acumula e a velocidade real fica igual à da ficha.
     const from = now - seat.nextMoveAt <= MOVE_SLACK_MS ? seat.nextMoveAt : now;
@@ -891,18 +953,34 @@ export class Hunt {
     if (this.state.phase === "running") this.trackDepth(sessionId, player);
 
     if (tileAt(this.dungeon, nx, ny) === Tile.Cave) this.throughCave(sessionId, player);
-    if (this.state.phase === "running" && tileAt(this.dungeon, nx, ny) === Tile.Portal) {
-      const bossPortal = this.dungeon.bossPortal;
-      if (nx === bossPortal.x && ny === bossPortal.y) {
-        // Concluir a dungeon dá um bônus sobre o loot carregado.
-        const bonus = Math.round(player.loot * BOSS_LOOT_BONUS);
+  }
+
+  /**
+   * Portal (fuga ou boss): só leva para fora quem fica `PORTAL_HOLD_MS` em cima dele. Conta pela posição, não pelo
+   * passo: chegar empurrado ou puxado também vale, e sair do tile zera a contagem.
+   */
+  private usePortals(now: number) {
+    this.state.players.forEach((player, sessionId) => {
+      const seat = this.seats.get(sessionId);
+      if (!seat || player.status !== "playing" || player.bot) return;
+      if (tileAt(this.dungeon, player.x, player.y) !== Tile.Portal) {
+        seat.portalSince = null;
+        return;
+      }
+      seat.portalSince ??= now;
+      if (now - seat.portalSince < PORTAL_HOLD_MS) return;
+      seat.portalSince = null;
+      const lair = lairPortalAt(this.dungeon, player.x, player.y);
+      if (lair >= 0) {
+        // Concluir a dungeon dá um bônus sobre o loot carregado (na Caverna da Travessia, o do covil).
+        const bonus = Math.round(player.loot * this.portalBonus(lair));
         player.loot += bonus;
         seat.stats.loot.bossBonus = bonus;
         this.endRun(sessionId, "completed");
       } else {
         this.endRun(sessionId, "escaped");
       }
-    }
+    });
   }
 
   target(sessionId: string, msg: TargetMessage) {
@@ -949,6 +1027,8 @@ export class Hunt {
     this.regen(dt);
     this.tallyScreen(dt);
     this.expireEffects(now);
+    this.usePortals(now);
+    if (this.state.phase !== "running") return;
     this.bots.think(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
@@ -1946,8 +2026,10 @@ export class Hunt {
       return;
     }
     const diagonal = step.x !== s.x && step.y !== s.y;
-    brain.nextMoveAt = now + (1000 / brain.def.speed) * (diagonal ? Math.SQRT2 : 1);
-    s.stepMs = Math.round(1000 / brain.def.speed);
+    // Quem voa passa por cima da areia fofa.
+    const speed = brain.def.speed * (!brain.def.flies && isSand(this.dungeon, step.x, step.y) ? SAND_SPEED : 1);
+    brain.nextMoveAt = now + (1000 / speed) * (diagonal ? Math.SQRT2 : 1);
+    s.stepMs = Math.round(1000 / speed);
     s.x = step.x;
     s.y = step.y;
   }
@@ -2015,7 +2097,6 @@ export class Hunt {
     const element = damageElement(source, this.state.players.get(creditId)?.classId as ClassId | undefined, hit.dot);
     const amount = this.ai.adjustDamage(m, brain, marked, element);
     if (seat) seat.stats.resisted += marked - amount;
-    brain.participants.add(creditId);
     if (!brain.targetId) brain.targetId = hit.attacker;
     if (amount <= 0) return 0;
     const dealt = Math.min(amount, m.hp);
@@ -2067,25 +2148,15 @@ export class Hunt {
       return;
     }
 
-    // XP: a equipe que participou divide (com bônus por participante). Os bots não contam na divisão: ganham a mesma
-    // parte de um humano, para subirem de nível junto, sem tirar XP de ninguém.
-    const sharers = [...brain.participants].filter((id) => this.state.players.get(id)?.status === "playing");
-    const humans = sharers.filter((id) => !this.state.players.get(id)!.bot).length;
-    const share = xpShare(brain.xp, humans || sharers.length);
-    for (const id of sharers) this.gainXp(id, share);
-
-    // Loot: vai para quem deu o último golpe (o que um bot mata não dá loot a ninguém).
-    const killer = this.state.players.get(killerId);
-    if (killer?.status === "playing" && !killer.bot) {
-      const value = rollRange(this.random, brain.loot);
-      killer.loot += value;
-      const stats = this.seats.get(killerId)?.stats;
-      if (stats) {
-        stats.loot.monsters += value;
-        bump(stats.kills, m.kind);
-        stats.firstKillAt ??= this.seconds();
-      }
-      this.notice(m.x, m.y - 1, `+${value} loot`, 0xf1c40f);
+    // XP e loot: a equipe inteira divide em partes iguais, tenha batido no monstro ou não (`teamLoot`).
+    const team = this.team();
+    const share = teamShare(brain.xp, team.length);
+    for (const id of team) this.gainXp(id, share);
+    this.teamLoot(rollRange(this.random, brain.loot), "monsters", m.x, m.y - 1, "loot");
+    const killerStats = this.seats.get(killerId)?.stats;
+    if (killerStats) {
+      bump(killerStats.kills, m.kind);
+      killerStats.firstKillAt ??= this.seconds();
     }
 
     // Itens caem no chão onde o monstro morreu: quem passar por cima primeiro leva.
@@ -2093,20 +2164,40 @@ export class Hunt {
     // (e pegar o loot faria a equipe sair da dungeon).
     const at = brain.def.rank === "boss" ? this.besidePortal(m.x, m.y) : { x: m.x, y: m.y };
     const drops = GUARANTEED_DROPS[brain.def.rank] || (this.random() < COMMON_DROP_CHANCE ? 1 : 0);
-    for (let i = 0; i < drops; i++) this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0, this.partyClasses()), at.x, at.y);
+    // Cada item sai com o corte dos itens (`ITEM_DROP_SCALE`); fora o boss, também com a chance do mapa
+    // (`MapDef.dropScale`) e o corte geral (`LOOT_SCALE`).
+    const boss = brain.def.rank === "boss";
+    for (let i = 0; i < drops; i++) {
+      const keep = boss ? this.random() < ITEM_DROP_SCALE : this.keepDrop(LOOT_SCALE * ITEM_DROP_SCALE);
+      if (keep && this.keepForHumans()) {
+        this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
+        this.countDrop(brain.def.rank);
+      }
+    }
     const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
-    for (let i = 0; i < potions; i++) this.dropItem(rollPotion(this.random), at.x, at.y);
-    // Runas só caem dos bosses (o da caverna, não: a runa sai dos baús, à escolha).
-    for (let i = 0; i < (this.map.rewardRunes ? 0 : RUNE_DROPS[brain.def.rank]); i++) {
-      const rune = RUNES[this.dropItem(rollRune(this.random), at.x, at.y).itemId];
-      this.notice(at.x, at.y - 2, `${rune.name}!`, rune.color);
+    for (let i = 0; i < potions; i++) if (boss || this.keepDrop()) this.dropItem(rollPotion(this.random), at.x, at.y);
+    // Runas só caem dos bosses, uma vez por personagem, e não vão para o chão: cada herói da equipe que ainda não
+    // levou a runa deste boss recebe a sua direto na bag, esteja onde estiver (o da caverna, não: a runa sai dos
+    // baús, à escolha). Com a bag cheia, o item de menor valor cai no chão para a runa entrar (`runeToBag`).
+    if (!this.map.rewardRunes && RUNE_DROPS[brain.def.rank] > 0) {
+      this.state.players.forEach((p, id) => {
+        const seat = this.seats.get(id);
+        if (p.status !== "playing" || p.bot || !seat) return;
+        if (seat.bossRunes.has(m.kind)) {
+          this.noticeTo(id, p.x, p.y - 2, "Runa deste boss já levada", 0x95a5a6);
+          return;
+        }
+        seat.bossRunes.add(m.kind);
+        seat.stats.bossRunes.push(m.kind);
+        for (let i = 0; i < RUNE_DROPS[brain.def.rank]; i++) this.runeToBag(id, p, seat, rollRune(this.random));
+      });
     }
 
-    // Mímico: guarda o loot do baú que fingia ser (vai para quem deu o último golpe).
+    // Mímico: guarda o loot do baú que fingia ser (a equipe divide o gold, como no baú).
     const mimicDepth = this.mimicDepth.get(m.id);
     if (mimicDepth !== undefined) {
       this.mimicDepth.delete(m.id);
-      if (killer?.status === "playing" && !killer.bot) this.chestReward(killerId, killer, m.x, m.y, mimicDepth);
+      this.chestReward(killerId, m.x, m.y, mimicDepth);
     }
 
     if (brain.chestId) {
@@ -2118,16 +2209,40 @@ export class Hunt {
     }
 
     if (brain.def.rank === "boss") {
-      const c = this.dungeon.bossPortal;
+      this.creditBossClear(m.kind as MonsterKind);
+      const lair = brain.lair ?? 0;
+      const c = lairsOf(this.dungeon)[lair].portal;
       this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
+      this.state.lairsDown |= 1 << lair;
       this.state.bossDefeated = true;
-      this.notice(c.x, c.y, "O portal se abriu!", 0x3fa7d6);
+      const side = this.map.lairs?.[lair]?.side;
+      this.notice(c.x, c.y, side ? `O portal do covil ${side} se abriu!` : "O portal se abriu!", 0x3fa7d6);
+      // Crédito do boss para todo humano ainda na hunt (quem já saiu teve o relatório fechado ao sair).
+      this.state.players.forEach((p, id) => {
+        const seat = this.seats.get(id);
+        if (!p.bot && seat && p.status === "playing") seat.stats.bossKills.push(m.kind);
+      });
       this.state.chests.forEach((chest) => {
         if (!chest.rune) return;
         chest.locked = false;
         this.notice(chest.x, chest.y, "Escolha uma runa!", RUNES[chest.rune]?.color ?? 0xf39c12);
       });
     }
+  }
+
+  /**
+   * Campanha: todo humano que está na hunt quando o boss cai (vivo ou morto, sem ter saído) vence o cenário e aquele
+   * boss (os lados de uma bifurcação abrem com um boss só, `UNLOCK_BOSS`).
+   */
+  private creditBossClear(boss: MonsterKind) {
+    const ids: string[] = [];
+    this.state.players.forEach((p, id) => {
+      const seat = this.seats.get(id);
+      if (p.bot || !seat || seat.stats.abandoned || (p.status !== "playing" && p.status !== "died")) return;
+      seat.stats.bossClear = true;
+      ids.push(id);
+    });
+    if (ids.length > 0) this.host.mapCleared?.(ids, boss);
   }
 
   private gainXp(sessionId: string, amount: number) {
@@ -2196,9 +2311,19 @@ export class Hunt {
     const chest = typeof msg?.chest === "string" ? this.state.chests.get(msg.chest) : undefined;
     if (!p || !seat || p.status !== "playing" || this.state.phase !== "running" || !chest?.rune || chest.locked) return;
     if (p.chosenRune || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
+    // Cada boss dá a runa uma vez por personagem (aqui, a dos baús atrás dele).
+    const boss = this.rewardBoss();
+    if (boss && seat.bossRunes.has(boss)) {
+      this.noticeTo(sessionId, chest.x, chest.y, "Runa deste boss já levada", 0x95a5a6);
+      return;
+    }
     if (p.bag.length >= BAG_SIZE) {
       this.bagFull(p, seat);
       return;
+    }
+    if (boss) {
+      seat.bossRunes.add(boss);
+      seat.stats.bossRunes.push(boss);
     }
     p.chosenRune = chest.rune;
     p.bag.push(chest.rune);
@@ -2271,6 +2396,21 @@ export class Hunt {
     p.mana = Math.min(stats.maxMana, p.mana + Math.max(0, stats.maxMana - p.maxMana));
     p.maxHp = maxHp;
     p.maxMana = stats.maxMana;
+  }
+
+  /**
+   * Bosses cuja runa este personagem (conta e classe) já levou em outras hunts, vindos do banco quando a hunt
+   * começa: eles não dão outra.
+   */
+  knownBossRunes(sessionId: string, bosses: readonly string[]) {
+    const seat = this.seats.get(sessionId);
+    if (!seat) return;
+    for (const kind of bosses) if (typeof kind === "string") seat.bossRunes.add(kind);
+  }
+
+  /** Boss que guarda os baús de runa do mapa (o principal; os baús só destrancam com ele morto). */
+  private rewardBoss(): string | undefined {
+    return this.map.rewardRunes ? mainBoss(this.map) : undefined;
   }
 
   /** As runas equipadas no menu entram com o herói e valem desde já (vida, dano, magias extras na escolha do slot). */
@@ -2538,23 +2678,103 @@ export class Hunt {
       this.state.players.forEach((p, sessionId) => {
         if (chest.opened || p.status !== "playing" || p.bot || tileDistance(p.x, p.y, chest.x, chest.y) > 1) return;
         chest.opened = true;
-        this.chestReward(sessionId, p, chest.x, chest.y, this.chestDepth.get(chest.id) ?? 0);
+        // O item cai aos pés de quem abriu: no tile do baú ficaria escondido embaixo do desenho dele.
+        this.chestReward(sessionId, chest.x, chest.y, this.chestDepth.get(chest.id) ?? 0, { x: p.x, y: p.y });
       });
     });
   }
 
-  /** O que um baú dá (aberto ou o Mímico morto): loot para quem abriu, um item melhor que o do mini-boss e poções. */
-  private chestReward(sessionId: string, p: Player, x: number, y: number, depth: number) {
-    const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + DEPTH_SCALING * depth));
-    p.loot += value;
-    const stats = this.seats.get(sessionId)?.stats;
-    if (stats) {
-      stats.loot.chests += value;
-      stats.chestsOpened++;
+  /**
+   * O que um baú dá (aberto ou o Mímico morto): um item melhor que o do mini-boss e poções, que caem em `dropAt`
+   * (padrão: o próprio tile). O gold se divide pela equipe; `openerId` conta o baú na telemetria.
+   */
+  private chestReward(openerId: string, x: number, y: number, depth: number, dropAt = { x, y }) {
+    const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + DEPTH_SCALING * depth) * this.lootScale());
+    this.teamLoot(value, "chests", x, y, "Baú: ");
+    const stats = this.seats.get(openerId)?.stats;
+    if (stats) stats.chestsOpened++;
+    // O item do baú sai com o corte dos itens (`ITEM_DROP_SCALE`, menos a parte dos bots); as poções, com a chance do mapa.
+    if (this.random() < ITEM_DROP_SCALE && this.keepForHumans()) {
+      this.dropItem(rollItem("miniboss", depth, this.random, 1), dropAt.x, dropAt.y);
+      this.countDrop("chest");
     }
-    this.notice(x, y, `Baú: +${value} loot`, 0xf1c40f);
-    this.dropItem(rollItem("miniboss", depth, this.random, 1, this.partyClasses()), x, y);
-    for (const potion of POTION_IDS) this.dropItem(potion, x, y);
+    for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);
+  }
+
+  /** Quem está jogando na dungeon agora (bots incluídos): divide a XP e o loot. */
+  private team() {
+    return [...this.state.players.keys()].filter((id) => this.state.players.get(id)!.status === "playing");
+  }
+
+  /**
+   * Gold de uma morte ou baú: a equipe divide em partes iguais, como a XP (100 com 4 heróis dão 25 a cada um).
+   * O bot conta na divisão, mas não guarda gold: a parte dele se perde.
+   */
+  private teamLoot(value: number, kind: "monsters" | "chests", x: number, y: number, label: string) {
+    const team = this.team();
+    if (value <= 0 || team.length === 0) return;
+    const share = teamShare(value, team.length);
+    for (const id of team) {
+      const p = this.state.players.get(id)!;
+      if (p.bot) continue;
+      p.loot += share;
+      const stats = this.seats.get(id)?.stats;
+      if (stats) stats.loot[kind] += share;
+    }
+    this.notice(x, y, label === "loot" ? `+${share} loot` : `${label}+${share} loot`, 0xf1c40f);
+  }
+
+  /** Bônus de loot do portal de um covil (sem covil, o maior deles: o teto da hunt). */
+  private portalBonus(lair?: number) {
+    const lairs = this.map.lairs;
+    if (!lairs?.length) return BOSS_LOOT_BONUS;
+    if (lair !== undefined) return lairs[lair]?.portalBonus ?? BOSS_LOOT_BONUS;
+    return Math.max(...lairs.map((l) => l.portalBonus));
+  }
+
+  /** Fração do gold que a hunt paga: o corte geral (`LOOT_SCALE`) vezes o do mapa (`MapDef.lootScale`, sem o boss). */
+  private lootScale(boss = false) {
+    return LOOT_SCALE * (boss ? 1 : this.map.lootScale ?? 1);
+  }
+
+  /** Faixa de loot de um monstro com `lootScale`. */
+  private scaleLoot(min: number, max: number, boss: boolean): [number, number] {
+    const k = this.lootScale(boss);
+    return [Math.round(min * k), Math.round(max * k)];
+  }
+
+  /**
+   * Item de equipamento com bots na equipe: o bot não pega nada do chão, então sem corte o humano levaria os itens da
+   * equipe inteira. O item sai com a chance de humanos ÷ equipe (1 humano e 3 bots: 25%), o mesmo que cada um levaria
+   * numa equipe de humanos, como o gold e a XP. Sem bots, sai sempre (e não gasta sorteio).
+   */
+  private keepForHumans() {
+    const team = this.team();
+    const humans = team.filter((id) => !this.state.players.get(id)!.bot);
+    if (humans.length === team.length) return true;
+    if (this.random() < humans.length / team.length) return true;
+    for (const id of humans) {
+      const stats = this.seats.get(id)?.stats;
+      if (stats) stats.items.botCut++;
+    }
+    return false;
+  }
+
+  /** Item de equipamento que caiu no chão, por fonte, na telemetria de cada humano da equipe (pego ou não). */
+  private countDrop(source: keyof RunStats["items"]["drops"]) {
+    for (const id of this.team()) {
+      const stats = this.seats.get(id)?.stats;
+      if (!stats || this.state.players.get(id)!.bot) continue;
+      // Hunt herdada de um anfitrião de versão anterior chega sem o contador.
+      stats.items.drops ??= { common: 0, miniboss: 0, boss: 0, chest: 0 };
+      stats.items.drops[source]++;
+    }
+  }
+
+  /** Um drop (item ou poção) sai com a chance do mapa (`MapDef.dropScale`, padrão: sempre) vezes `extra`. */
+  private keepDrop(extra = 1) {
+    const k = (this.map.dropScale ?? 1) * extra;
+    return k >= 1 || this.random() < k;
   }
 
   /** Tira um monstro do mapa sem morte nem recompensa (ilusões que somem). */
@@ -2572,17 +2792,11 @@ export class Hunt {
 
   /** O tile dado, ou um vizinho andável se ele for onde abre o portal do boss. */
   private besidePortal(x: number, y: number) {
-    const c = this.dungeon.bossPortal;
-    if (x !== c.x || y !== c.y) return { x, y };
+    if (lairPortalAt(this.dungeon, x, y) < 0) return { x, y };
     for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
       if (isWalkable(this.dungeon, x + dx, y + dy)) return { x: x + dx, y: y + dy };
     }
     return { x, y };
-  }
-
-  /** Classes da equipe (sem os bots): os drops saem só do que alguém dela pode usar. */
-  private partyClasses() {
-    return [...new Set([...this.state.players.values()].filter((p) => !p.bot).map((p) => p.classId as ClassId))];
   }
 
   private dropItem(itemId: string, x: number, y: number) {
@@ -2672,7 +2886,8 @@ export class Hunt {
         }
         const seat = this.seats.get(sessionId);
         if (isRune(ground.itemId)) {
-          // Runa vai sempre para a bag (só se equipa no menu, fora da dungeon).
+          // Runa largada por alguém da equipe: passa de mão em mão, vai sempre para a bag (só se equipa no menu,
+          // fora da dungeon).
           if (p.bag.length >= BAG_SIZE) {
             this.bagFull(p, seat);
             continue;
@@ -2698,9 +2913,32 @@ export class Hunt {
         }
         seat?.stats.items.picked.push(def.id);
         this.removeGroundItem(ground.id);
-        this.notice(p.x, p.y - 1, action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}` : def.name, itemColor(def.id));
+        // Vestido direto (slot vazio ou melhor que o vestido) não aparece na fileira da bag: o aviso diz que vestiu.
+        const text = action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}`
+          : action === "swap" ? `Vestiu ${def.name} · antigo 🎒${p.bag.length}/${BAG_SIZE}`
+          : `Vestiu ${def.name}`;
+        this.notice(p.x, p.y - 1, text, itemColor(def.id));
       }
     });
+  }
+
+  /**
+   * Runa de boss direto na bag. Com a bag cheia, o item de menor valor de venda cai no chão aos pés do herói
+   * (qualquer um pega; ele mesmo só depois de sair de cima) e a runa ocupa o lugar dele.
+   */
+  private runeToBag(sessionId: string, p: Player, seat: Seat, runeId: string) {
+    if (p.bag.length >= BAG_SIZE) {
+      let cheapest = 0;
+      p.bag.forEach((id, i) => { if (lootSellPrice(id) < lootSellPrice(p.bag[cheapest])) cheapest = i; });
+      const [out] = p.bag.splice(cheapest, 1);
+      const ground = this.dropItem(out, p.x, p.y);
+      this.pickupBlocked.set(ground.id, sessionId);
+      seat.stats.items.dropped.push(out);
+    }
+    p.bag.push(runeId);
+    seat.stats.items.picked.push(runeId);
+    const rune = RUNES[runeId];
+    this.noticeTo(sessionId, p.x, p.y - 2, `${rune.name} 🎒${p.bag.length}/${BAG_SIZE}`, rune.color);
   }
 
   /** Aviso de bag cheia, no máximo um a cada `BAG_FULL_NOTICE_MS`. */
@@ -2721,6 +2959,11 @@ export class Hunt {
 
   private notice(x: number, y: number, text: string, color: number, ms?: number) {
     this.host.broadcast(MSG.notice, { x, y, text, color, ms } satisfies NoticeMessage);
+  }
+
+  /** Aviso que só um jogador vê. */
+  private noticeTo(sessionId: string, x: number, y: number, text: string, color: number, ms?: number) {
+    this.host.send(sessionId, MSG.notice, { x, y, text, color, ms } satisfies NoticeMessage);
   }
 
   private endRun(sessionId: string, outcome: RunOutcome) {
@@ -2825,7 +3068,7 @@ export class Hunt {
     const inside = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
     // A primeira sala do caminho às vezes encosta na inicial: o trecho em comum conta como sala inicial.
     if (inside(this.dungeon.spawn)) return;
-    const depth = [...this.dungeon.path, this.dungeon.boss].findIndex(inside);
+    const depth = [...this.dungeon.path, ...lairsOf(this.dungeon).map((l) => l.room)].findIndex(inside);
     if (depth >= 0 && !(depth in stats.depthAt)) stats.depthAt[depth] = this.seconds();
   }
 

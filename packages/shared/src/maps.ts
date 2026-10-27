@@ -1,10 +1,10 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas";
 
-/** Nível de dificuldade mostrado no menu (estrelas). */
-export type MapDifficulty = 1 | 2;
+/** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
+export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6;
 
 /**
  * Encontro das salas do caminho numa faixa de profundidade, como o orçamento de XP do D&D: a sala recebe monstros
@@ -39,13 +39,48 @@ export interface MapDef {
    * runas, à escolha. Com eles, o boss não dropa runa.
    */
   rewardRunes?: string[];
+  /**
+   * Fração do loot (valor dos monstros e dos baús) e a chance dos drops (itens e poções de comuns e mini-bosses, e as
+   * poções dos baús) que o mapa paga (padrão 1). O boss fica de fora e o item do baú sai sempre. Mapa com muitos
+   * monstros paga menos por cada um.
+   */
+  lootScale?: number;
+  dropScale?: number;
   /** Monstros comuns por campina (padrão 2). */
   meadowMonsters?: number;
   /** Fração das campinas que ganham também um mini-boss solto, sem baú (padrão 0). */
   meadowMinibosses?: number;
   /** Jogadores por hunt no máximo (bots contam). Sem isto, `MAX_PARTY_SIZE`. */
   maxParty?: number;
+  /**
+   * Covis com boss fixo (Caverna da Travessia): um boss por covil, na ordem de `Dungeon.lairs`, cada um na
+   * profundidade dele (o ganho por profundidade) e com o bônus de loot do portal que abre ao lado quando ele morre.
+   * Com isto não há sorteio: `bosses` só lista os mesmos bosses (menu e banco).
+   */
+  lairs?: Lair[];
 }
+
+export interface Lair {
+  boss: MonsterKind;
+  depth: number;
+  /** Fração extra de loot de quem sai pelo portal deste covil (o padrão é `BOSS_LOOT_BONUS`). */
+  portalBonus: number;
+  /** Nome do lado da bifurcação, para o aviso e o mapa mundi. */
+  side: string;
+}
+
+/**
+ * Corte geral do loot, em todos os mapas, por cima de `MapDef.lootScale` e `dropScale`: o gold dos monstros (boss
+ * incluído) e dos baús e a chance de item dos comuns e mini-bosses. Fica aqui (arquivo de regras) para o cliente de
+ * versão antiga, que roda a hunt solo, recarregar. Poções, os itens do boss e o item do baú não mudam.
+ */
+export const LOOT_SCALE = 0.8;
+
+/**
+ * Corte dos itens de equipamento, em todos os mapas, por cima dos outros: cada sorteio de item (monstro comum,
+ * mini-boss, boss, baú e Mímico) só sai com esta chance. Poções, runas e gold não mudam.
+ */
+export const ITEM_DROP_SCALE = 0.6;
 
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
 export const MAX_ROOM_MONSTERS = 8;
@@ -112,7 +147,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   marsh: {
     id: "marsh", name: "Pântano do Kosaradius", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
-    meadowMonsters: 3, meadowMinibosses: 0.4,
+    meadowMonsters: 3, meadowMinibosses: 0.4, lootScale: 0.35, dropScale: 0.6,
     description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando, e ogros e chefes de guerra em cada clareira: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
     encounters: [
       { depth: [0, 0], budget: 70, table: [["orcScout", 3], ["orcGrunt", 2]] },
@@ -143,6 +178,61 @@ export const MAPS: Record<MapId, MapDef> = {
     mimicChance: 0,
     bosses: [["ogreKing", 1]],
   },
+  cavern: {
+    id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 4, durationSeconds: 10 * 60, meadowMonsters: 3,
+    description: "Túneis por baixo dos Campos de Kusa, onde a campanha se divide entre a floresta e o deserto: o mapa mais difícil do jogo. Depois do tronco, a caverna se bifurca: a oeste, o Basilisco; a leste, mais fundo, o Observador das Profundezas, o boss mais forte de Kosaradius. Cada boss morto abre o portal do covil dele.",
+    encounters: [
+      // Tronco (zonas 0 e 1): aquecimento, todo mundo começa no nível 1.
+      { depth: [0, 0], budget: 120, table: [["kobold", 4], ["stirge", 3], ["rat", 2]] },
+      { depth: [1, 1], budget: 230, table: [["goblin", 3], ["goblinArcher", 2], ["giantSpider", 2], ["kobold", 1]] },
+      // Túnel oeste (zonas 2 a 4), até o Basilisco.
+      { depth: [2, 2], budget: 420, table: [["skeleton", 3], ["skeletonArcher", 2], ["gnoll", 2], ["hobgoblin", 1], ["giantSpider", 1]] },
+      { depth: [3, 3], budget: 560, table: [["gnoll", 3], ["orc", 2], ["ghoul", 2], ["skeletonArcher", 2]] },
+      { depth: [4, 4], budget: 680, table: [["orc", 3], ["ghoul", 2], ["lizardfolk", 2], ["gnoll", 1], ["skeletonArcher", 1]] },
+      // Túnel leste (zonas 5 a 7), mais fundo e mais forte, até o Observador.
+      { depth: [5, 5], budget: 520, table: [["ghoul", 3], ["lizardfolk", 2], ["bogBody", 2], ["crocodile", 1], ["willOWisp", 1]] },
+      { depth: [6, 6], budget: 600, table: [["naga", 3], ["blackPudding", 2], ["ghoul", 2], ["willOWisp", 2]] },
+      { depth: [7, 99], budget: 680, table: [["naga", 3], ["shamblingMound", 2], ["blackPudding", 2], ["willOWisp", 2]] },
+    ],
+    minibosses: [["bugbear", 2], ["troll", 2], ["gelatinousCube", 1]],
+    mimicChance: 1 / 4,
+    bosses: [["beholder", 1], ["basilisk", 1]],
+    lairs: [
+      { boss: "basilisk", depth: 5, portalBonus: 0.5, side: "oeste" },
+      { boss: "beholder", depth: 8, portalBonus: 1, side: "leste" },
+    ],
+  },
+  dunes: {
+    id: "dunes", name: "Dunas Cantantes", icon: "🌬️", difficulty: 5, durationSeconds: 8 * 60, meadowMonsters: 3,
+    description: "Solária profunda: cordilheiras de dunas que cantam com o vento, vales compridos e selas entre eles, e a areia fofa que prende o passo. A legião soterrada do Império marcha de novo: chacais e legionários de osso, arqueiros nas cristas, múmias que puxam com as faixas e mortos escondidos na areia. Na bacia das pedras cantantes, o Colosso Cantante.",
+    encounters: [
+      // Todo mundo começa no nível 1: as duas primeiras zonas são de bichos e chacais.
+      { depth: [0, 0], budget: 130, table: [["scarabSwarm", 4], ["boneJackal", 2], ["boneLegionary", 1]] },
+      { depth: [1, 1], budget: 225, table: [["boneJackal", 4], ["scarabSwarm", 2], ["boneLegionary", 1]] },
+      { depth: [2, 2], budget: 345, table: [["boneLegionary", 3], ["boneJackal", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+      { depth: [3, 3], budget: 450, table: [["boneLegionary", 3], ["boneArcher", 2], ["wrappedMummy", 2], ["buriedDead", 2], ["mourner", 1]] },
+      { depth: [4, 4], budget: 540, table: [["wrappedMummy", 3], ["boneLegionary", 2], ["mourner", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+      { depth: [5, 99], budget: 615, table: [["wrappedMummy", 3], ["mourner", 2], ["boneLegionary", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+    ],
+    minibosses: [["boneCenturion", 2], ["royalMummy", 1], ["sandScribe", 1]],
+    mimicChance: 0,
+    bosses: [["singingColossus", 1]],
+  },
+  mesas: {
+    id: "mesas", name: "Mesas de Solária", icon: "🪨", difficulty: 6, durationSeconds: 8 * 60, meadowMonsters: 3, meadowMinibosses: 0.25,
+    description: "Platôs de arenito em camadas cortados por cânions estreitos, casas escavadas na rocha e a corte enterrada do último faraó. A mesma legião e as mesmas múmias, mais fundas e em bandos maiores, e mini-bosses soltos nos cânions: o mapa mais difícil do jogo. No anfiteatro dos platôs, o Faraó Eterno.",
+    encounters: [
+      { depth: [0, 0], budget: 170, table: [["scarabSwarm", 3], ["boneJackal", 3], ["boneLegionary", 1]] },
+      { depth: [1, 1], budget: 300, table: [["boneJackal", 3], ["boneLegionary", 2], ["scarabSwarm", 1], ["boneArcher", 1]] },
+      { depth: [2, 2], budget: 440, table: [["boneLegionary", 3], ["boneArcher", 2], ["wrappedMummy", 1], ["buriedDead", 2]] },
+      { depth: [3, 3], budget: 570, table: [["boneLegionary", 3], ["wrappedMummy", 2], ["boneArcher", 2], ["mourner", 2], ["buriedDead", 1]] },
+      { depth: [4, 4], budget: 680, table: [["wrappedMummy", 3], ["boneLegionary", 3], ["mourner", 2], ["boneArcher", 2]] },
+      { depth: [5, 99], budget: 760, table: [["wrappedMummy", 4], ["mourner", 2], ["boneLegionary", 2], ["boneArcher", 2], ["buriedDead", 1]] },
+    ],
+    minibosses: [["royalMummy", 2], ["boneCenturion", 1], ["sandScribe", 1]],
+    mimicChance: 0,
+    bosses: [["eternalPharaoh", 1]],
+  },
 };
 
 /** Jogadores por hunt no mapa, bots incluídos (o Pântano do Kosaradius é só para 1). */
@@ -157,6 +247,8 @@ export function encounterAt(map: MapDef, depth: number): Encounter {
 
 /** Boss principal do mapa (o de maior peso), para o menu; nenhum no mapa ainda sem monstros. */
 export function mainBoss(map: MapDef): MonsterKind | undefined {
+  // Mapa de covis: o boss do último covil (o mais difícil).
+  if (map.lairs?.length) return map.lairs[map.lairs.length - 1].boss;
   return [...map.bosses].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
@@ -192,6 +284,9 @@ export function mapIdOf(value: unknown): MapId {
   return typeof value === "string" && value in MAPS ? (value as MapId) : DEFAULT_MAP;
 }
 
+/** Maior dificuldade da escala (as Mesas de Solária). */
+export const MAX_DIFFICULTY = 6;
+
 export function difficultyStars(difficulty: MapDifficulty) {
-  return "★".repeat(difficulty) + "☆".repeat(2 - difficulty);
+  return "★".repeat(difficulty) + "☆".repeat(MAX_DIFFICULTY - difficulty);
 }

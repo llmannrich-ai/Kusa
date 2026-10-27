@@ -1,17 +1,15 @@
 /**
- * Teste de fumaça dos itens contra um servidor rodando (npm run dev:server):
- * um cavaleiro mata monstros comuns até algum dropar um item, anda por cima dele
- * e confere que o item foi equipado automaticamente (o slot estava vazio) e que a bag continuou vazia.
- * Antes, confere sem servidor as regras da bag (`pickupAction`, com restrição de classe) e o catálogo de itens.
- * Uso: npx tsx apps/server/scripts/items.ts [url]
+ * Teste dos itens, sem servidor: confere as regras da bag (`pickupAction`, com restrição de classe) e o catálogo de
+ * itens; depois, na arena (`arena.ts`: relógio falso, sorteios de seed fixa), um cavaleiro mata comuns até algum dropar
+ * um item que ele veste, anda por cima dele e confere que o item foi equipado sozinho (o slot estava vazio) e que a bag
+ * só guardou o que ele não veste. Antes isso rodava numa hunt de verdade, e o cavaleiro de nível 1 morria por azar.
+ * Uso: npx tsx apps/server/scripts/items.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { Client } from "@colyseus/sdk";
 import {
-  BAG_SIZE, ITEMS, MONSTERS, MSG, ROOM_NAME, canUse, describeStats, gearStats, generateDungeon, itemId, pickupAction,
-  rollItem, tileDistance, type ClassId, type ItemRarity, type ItemTier, type MonsterKind,
+  BAG_SIZE, ITEMS, SERVER_TICK_MS, canUse, describeStats, gearStats, itemId, pickupAction, rollItem,
+  type ClassId, type ItemRarity, type ItemTier,
 } from "@kusa/shared";
-import { RULES_VERSION } from "../src/rulesVersion.ts";
-import { nextStep } from "../src/pathfinding.ts";
+import { arena, check } from "./arena.ts";
 
 // Regras da bag: slot vazio equipa, melhor troca (o antigo vai para a bag), pior vai para a bag,
 // e com a bag cheia nada sai do chão (só um slot vazio ainda recebe). Item de outra classe nunca veste.
@@ -57,114 +55,32 @@ for (const slot of ["legs", "boots"] as const) {
 }
 const gear = gearStats([itemId("boots", "boots", 3), itemId("armor", "war", 3), itemId("weapon", "staff", 3)]);
 if (!(gear.armor > 0 && gear.speed > 0 && gear.spellPower > 0)) throw new Error("gearStats não somou");
-// Drop da equipe: um cavaleiro sozinho só recebe o que ele usa.
+// O drop não olha a classe: em 500 sorteios cai item que o cavaleiro não usa.
 let seed = 1;
 const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-for (let i = 0; i < 500; i++) {
-  const id = rollItem("boss", 6, random, 0, ["knight"]);
-  if (!ITEMS[id] || !canUse(id, "knight")) throw new Error(`drop inválido para cavaleiro: ${id}`);
-}
+const drops = Array.from({ length: 500 }, () => rollItem("boss", 6, random));
+if (drops.some((id) => !ITEMS[id])) throw new Error(`drop inválido: ${drops.find((id) => !ITEMS[id])}`);
+if (drops.every((id) => canUse(id, "knight"))) throw new Error("o drop filtrou pela classe: só caiu o que o cavaleiro usa");
 console.log("catálogo de itens: ok");
 
-const url = process.argv[2] ?? "http://localhost:2567";
-const client = new Client(url);
-
-/** O bot de nível 1 avança sem descansar e morre em cerca de metade das hunts: aí recomeça numa sala nova. */
-class Died extends Error {}
-const ATTEMPTS = 8;
-
-let room: any;
-let dungeon: ReturnType<typeof generateDungeon>;
-let died = false;
-const me = () => room.state.players.get(room.sessionId);
-// Poções também caem no chão: aqui só interessa equipamento.
-const groundGear = () => ([...room.state.items.values()] as any[]).filter((it) => ITEMS[it.itemId]);
-
-for (let attempt = 1; ; attempt++) {
-  try {
-    await run();
-    break;
-  } catch (e) {
-    if (!(e instanceof Died) || attempt === ATTEMPTS) throw e;
-    console.log(`tentativa ${attempt}: o cavaleiro morreu caçando; recomeçando`);
-    await room.leave();
-  }
+// Na arena (sorteios de seed fixa): o cavaleiro mata zumbis até cair um equipamento que ele veste, passa por cima e o
+// item vai para o slot vazio; a bag fica só com o que ele não veste (o drop não olha a classe).
+const a = arena({ classId: "knight", startLevel: 1 });
+const groundGear = () => [...a.state.items.values()].filter((it) => ITEMS[it.itemId] && canUse(it.itemId, "knight"));
+let kills = 0;
+while (groundGear().length === 0) {
+  check(kills < 500, `nenhum equipamento caiu em ${kills} mortes (${a.where()})`);
+  a.kill(a.place("zombie", 2, 0));
+  kills++;
+  a.advance(SERVER_TICK_MS);
 }
+const [ground] = groundGear();
+const def = ITEMS[ground.itemId];
+console.log(`${kills} mortes; caiu ${def.name} (${def.slot}) em ${ground.x},${ground.y}`);
+check(a.p[def.slot] === "", `o slot ${def.slot} devia estar vazio`);
+a.walkTo(ground);
+a.until(() => a.p[def.slot] === def.id, 2000, `não vestiu ${def.id} ao passar por cima`);
+check(!a.state.items.has(ground.id), "o item continua no chão depois de equipado");
+check(!a.p.bag.some((id) => canUse(id, "knight")), `a bag só devia ter itens de outra classe: ${[...a.p.bag].join(", ")}`);
+console.log(`equipado: ${a.p[def.slot]}`);
 console.log("ITEMS OK");
-process.exit(0);
-
-/** Uma tentativa completa: caça até cair um equipamento, anda até ele e confere que foi equipado. */
-async function run() {
-  room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
-  died = false;
-  room.onMessage(MSG.damage, () => {});
-  room.onMessage(MSG.notice, () => {});
-  room.onMessage(MSG.attack, () => {});
-  room.onMessage(MSG.runEnded, (msg: any) => {
-    if (msg.outcome === "died") died = true;
-    else throw new Error(`a hunt terminou antes da hora: ${JSON.stringify(msg)}`);
-  });
-
-  await wait(300);
-  room.send(MSG.start);
-  await wait(300);
-  // Segura o ataque básico durante a fase de matar.
-  room.send(MSG.attacking, { on: true });
-
-  dungeon = generateDungeon(room.state.seed);
-  let kills = 0;
-  let targetId: string | null = null;
-  const deadline = Date.now() + 180_000;
-
-  // Fase 1: matar comuns até aparecer um item no chão.
-  while (groundGear().length === 0) {
-    if (Date.now() > deadline) throw new Error(`timeout: nenhum item caiu em ${kills} mortes`);
-    const p = me();
-    if (targetId && !room.state.monsters.has(targetId)) { kills++; targetId = null; }
-    if (!targetId) {
-      let bestDist = Infinity;
-      room.state.monsters.forEach((m: any, id: string) => {
-        if (MONSTERS[m.kind as MonsterKind].rank !== "common") return;
-        const dist = tileDistance(p.x, p.y, m.x, m.y);
-        if (dist < bestDist) { bestDist = dist; targetId = id; }
-      });
-      if (!targetId) throw new Error("acabaram os monstros comuns");
-      room.send(MSG.target, { id: targetId });
-    }
-    const m = room.state.monsters.get(targetId);
-    if (m) walkToward(m, 1);
-    await wait(100);
-  }
-
-  const [ground] = groundGear();
-  const def = ITEMS[ground.itemId];
-  console.log(`${kills + 1} mortes; caiu ${def.name} (${def.slot}) em ${ground.x},${ground.y}`);
-
-  // Fase 2: andar até o item e conferir que foi equipado.
-  room.send(MSG.target, { id: null });
-  room.send(MSG.attacking, { on: false });
-  while (me()[def.slot] !== def.id) {
-    if (Date.now() > deadline) throw new Error("timeout: não conseguiu pegar o item");
-    walkToward(ground, 0);
-    await wait(100);
-  }
-  if (room.state.items.has(ground.id)) throw new Error("o item continua no chão depois de equipado");
-  if (me().bag.length !== 0) throw new Error(`a bag devia estar vazia: ${[...me().bag].join(", ")}`);
-  console.log(`equipado: ${me()[def.slot]}`);
-}
-
-function walkToward(to: { x: number; y: number }, range: number) {
-  const p = me();
-  if (tileDistance(p.x, p.y, to.x, to.y) <= range) return;
-  const blocked = new Set<number>();
-  room.state.monsters.forEach((o: any) => blocked.add(o.y * dungeon.width + o.x));
-  // O herói nasce colado no portal de fuga: pisar nele no caminho encerra a hunt.
-  blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
-  const step = nextStep(dungeon, p, to, range, (x, y) => blocked.has(y * dungeon.width + x));
-  if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
-}
-
-async function wait(ms: number) {
-  await new Promise((r) => setTimeout(r, ms));
-  if (died) throw new Died();
-}
