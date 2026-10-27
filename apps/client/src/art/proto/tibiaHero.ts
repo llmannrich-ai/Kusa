@@ -85,7 +85,12 @@ interface Kit {
   claws?: boolean;
   /** Roupa em farrapos: barra rasgada e manchas de sangue e sujeira. */
   ragged?: boolean;
+  /** Largura do tórax e do abdome em relação ao corpo dos heróis (padrão 1; o goblin é mirrado). */
+  chest?: number;
 }
+
+/** Aperta a forma na horizontal em volta do meio do corpo (tórax e abdome mais estreitos, `Kit.chest`). */
+const squeeze = (pts: Pt[], w = 1): Pt[] => (w === 1 ? pts : pts.map(([x, y]) => [CX + (x - CX) * w, y]));
 
 type Tier = 1 | 2 | 3 | 4 | 5;
 type WeaponFamily = "sword" | "axe" | "bow" | "xbow" | "wand" | "staff";
@@ -768,9 +773,11 @@ function leg(c: Canvas, kit: Kit, hip: Pt, knee: Pt, ankle: Pt, toe: Pt, far: bo
     c.on([skinT, skinS], kx + 1, ky + 2, Mat.Skin, 2); c.on([skinT, skinS], kx, ky + 3, Mat.Skin, 2);
   }
   if (!kit.legs && kit.pants !== "none") {
+    // Calça folgada no corpo dos heróis; nos mirrados (`chest` < 1) ela acompanha o tronco mais estreito.
+    const pw = 0.4 + 0.6 * (kit.chest ?? 1);
     const thigh = c.together(() => {
-      const id = limb(c, hip, knee, 4.4, 3.8, Mat.Secondary, darker(twill, far));
-      if (kit.pants === "full") limb(c, knee, ankle, 3.8, 3.3, Mat.Secondary, darker(twill, far));
+      const id = limb(c, hip, knee, 4.4 * pw, 3.8 * pw, Mat.Secondary, darker(twill, far));
+      if (kit.pants === "full") limb(c, knee, ankle, 3.8 * pw, 3.3 * pw, Mat.Secondary, darker(twill, far));
       return id;
     });
     if (kit.pants === "full") {
@@ -779,8 +786,8 @@ function leg(c: Canvas, kit: Kit, hip: Pt, knee: Pt, ankle: Pt, toe: Pt, far: bo
     } else {
       // Bermuda: termina logo abaixo do joelho com a barra dobrada.
       const end: Pt = [knee[0] + (ankle[0] - knee[0]) * 0.18, knee[1] + (ankle[1] - knee[1]) * 0.18];
-      const cuff = limb(c, knee, end, 4.1, 4, Mat.Secondary, darker(twill, far));
-      for (let X = F(end[0] - 4.5); X <= F(end[0] + 4.5); X++) { c.on(cuff, X, F(end[1] + 3.2), Mat.Secondary, far ? 2 : 4); c.on(cuff, X, F(end[1] + 3.8), Mat.Secondary, 0); }
+      const cuff = limb(c, knee, end, 4.1 * pw, 4 * pw, Mat.Secondary, darker(twill, far));
+      for (let X = F(end[0] - 4.5 * pw); X <= F(end[0] + 4.5 * pw); X++) { c.on(cuff, X, F(end[1] + 3.2), Mat.Secondary, far ? 2 : 4); c.on(cuff, X, F(end[1] + 3.8), Mat.Secondary, 0); }
     }
     c.on(thigh, kx - 3, ky - 3, Mat.Secondary, far ? 3 : 4);
   }
@@ -1213,7 +1220,8 @@ function torsoFront(c: Canvas, kit: Kit, top: number, back: boolean, sway: numbe
     }
     case "gambeson": return [poly(c, TORSO_FRONT(top, top + 21, 1), Mat.Primary, CX - 13, CX + 13, quilt(CX))];
     case "tunic": {
-      const id = poly(c, TORSO_FRONT(top, top + 21, 1.5), Mat.Primary, CX - 13, CX + 13, linen, kit.ragged ? raggedCut(top + 21) : undefined);
+      const w = kit.chest ?? 1;
+      const id = poly(c, squeeze(TORSO_FRONT(top, top + 21, 1.5), w), Mat.Primary, CX - 13 * w, CX + 13 * w, linen, kit.ragged ? raggedCut(top + 21) : undefined);
       if (kit.ragged) stains(c, [id], CX - 13, CX + 13, top, top + 21);
       return [id];
     }
@@ -1237,7 +1245,8 @@ function torsoSide(c: Canvas, kit: Kit, top: number, sway: number): number[] {
     }
     case "gambeson": return [poly(c, TORSO_SIDE(top, top + 21, 1), Mat.Primary, CX - 10, CX + 10, quilt(CX))];
     case "tunic": {
-      const id = poly(c, TORSO_SIDE(top, top + 21, 1.5), Mat.Primary, CX - 10, CX + 10, linen, kit.ragged ? raggedCut(top + 21) : undefined);
+      const w = kit.chest ?? 1;
+      const id = poly(c, squeeze(TORSO_SIDE(top, top + 21, 1.5), w), Mat.Primary, CX - 10 * w, CX + 10 * w, linen, kit.ragged ? raggedCut(top + 21) : undefined);
       if (kit.ragged) stains(c, [id], CX - 10, CX + 10, top, top + 21);
       return [id];
     }
@@ -1416,9 +1425,10 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: { s: numb
   // Braços. De frente a arma fica na mão da esquerda da tela; de costas, na da direita.
   const armY = (side: number) => s * side * (back ? -1 : 1);
   for (const side of [-1, 1]) {
-    const sh: Pt = [CX + side * 12.5, top + 3];
-    const el: Pt = [CX + side * 14, top + 10 + armY(side) * 0.5];
-    const ha: Pt = [CX + side * 13.5, top + 18 + armY(side)];
+    const w = kit.chest ?? 1;
+    const sh: Pt = [CX + side * 12.5 * w, top + 3];
+    const el: Pt = [CX + side * (14 * w + (1 - w) * 2), top + 10 + armY(side) * 0.5];
+    const ha: Pt = [CX + side * (13.5 * w + (1 - w) * 2.6), top + 18 + armY(side)];
     const holds = (side < 0) === !back;
     arm(c, kit, sh, el, ha, false, holds ? weaponFront(c, kit, ha, side, top) : undefined);
     if (!holds && kit.shield) shieldArt(c, kit.shield, ha, back ? "up" : "down", side);
@@ -5264,12 +5274,12 @@ function ribcageSide(c: Canvas, top: number) {
 const MONSTER_KITS: Record<string, Kit> = {
   goblin: {
     look: { skin: "#6b7a3c", skinContrast: 1.2, head: "#16120e", primary: "#4a3a28", secondary: "#3a3026", detail: "#2e2218", trim: "#5a4630" },
-    species: "goblin", size: 0.8, thin: 0.72, hunch: 2.6, grim: 1.7, claws: true, ragged: true,
+    species: "goblin", size: 0.8, thin: 0.72, chest: 0.72, hunch: 2.6, grim: 1.7, claws: true, ragged: true,
     hair: "none", beard: "none", top: "tunic", sleeves: "none", pants: "knee", feet: "bare", waist: "strap", weapon: "sword-1",
   },
   goblinArcher: {
     look: { skin: "#6b7a3c", skinContrast: 1.2, head: "#16120e", primary: "#3e4630", secondary: "#3a3026", detail: "#2e2218", trim: "#5a4630" },
-    species: "goblin", size: 0.8, thin: 0.72, hunch: 2.6, grim: 1.7, claws: true, ragged: true,
+    species: "goblin", size: 0.8, thin: 0.72, chest: 0.72, hunch: 2.6, grim: 1.7, claws: true, ragged: true,
     hair: "none", beard: "none", top: "tunic", sleeves: "none", pants: "knee", feet: "bare", waist: "strap", weapon: "bow", quiver: true,
   },
   kobold: {
