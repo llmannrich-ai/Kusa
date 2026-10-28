@@ -99,6 +99,13 @@ Exemplo: `select * from telemetry_classes where build = '<commit>' order by sobr
    - Gold médio por hunt × preços do mercado e da árvore → quantas hunts para cada compra.
 4. Mudou um número? O próximo deploy gera um build novo; compare as mesmas views entre os dois builds.
 
+## Agente de balanceamento
+
+A skill `/balanceamento` (`.claude/skills/balanceamento/SKILL.md`) faz o roteiro acima sozinha: roda a conta teórica
+(`npx tsx scripts/balanco.ts` de dentro de `apps/server`: DPS de toda magia e criatura no nível 20, com e sem
+equipamento, e o que sai da curva), cruza com as consultas prontas desta tabela, separa jogador bom de classe forte,
+acha a causa na fórmula e entrega as propostas com números, risco e como medir no build novo.
+
 ## Local
 
 Sem `SUPABASE_SERVICE_ROLE_KEY`, nada é gravado. Para ver o que seria gravado: `KUSA_TELEMETRY_LOG=1 npm run dev`.
