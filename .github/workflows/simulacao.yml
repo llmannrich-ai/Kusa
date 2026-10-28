@@ -1,0 +1,46 @@
+# Hunts simuladas: todo dia o piloto automático (`apps/server/scripts/piloto.ts`) joga hunts inteiras em todas as
+# classes, mapas e perfis (`apps/server/scripts/simular.ts`) e grava em `telemetry_sim_runs`, para o agente de
+# balanceamento comparar o build atual com os jogadores reais. Não roda em PR e não bloqueia merge.
+# Precisa do secret SUPABASE_SERVICE_ROLE_KEY no repositório; sem ele, só simula e mostra o resumo.
+name: Simulação
+
+on:
+  schedule:
+    - cron: "41 7 * * *" # 04:41 em Brasília
+  workflow_dispatch:
+    inputs:
+      hunts:
+        description: Hunts por mapa, classe e perfil
+        default: "10"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simulacao
+  cancel-in-progress: false
+
+jobs:
+  simular:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Simular e gravar
+        working-directory: apps/server
+        env:
+          SUPABASE_URL: https://niaylxoatuxkqwwnlsic.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KUSA_BUILD: ${{ github.sha }}
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::warning::Sem o secret SUPABASE_SERVICE_ROLE_KEY: a simulação roda, mas nada é gravado."
+            npx tsx scripts/simular.ts --hunts "${{ inputs.hunts || '10' }}"
+          else
+            npx tsx scripts/simular.ts --hunts "${{ inputs.hunts || '10' }}" --gravar
+          fi

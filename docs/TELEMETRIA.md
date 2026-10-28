@@ -99,12 +99,49 @@ Exemplo: `select * from telemetry_classes where build = '<commit>' order by sobr
    - Gold médio por hunt × preços do mercado e da árvore → quantas hunts para cada compra.
 4. Mudou um número? O próximo deploy gera um build novo; compare as mesmas views entre os dois builds.
 
+## Hunts simuladas
+
+Para ter volume sem depender de quantos amigos jogaram, um **piloto automático** (`apps/server/scripts/piloto.ts`) joga
+hunts inteiras com a mesma `Hunt` do jogo, sem servidor e no relógio falso: explora o caminho até o boss, puxa os
+monstros, recua quando cercado, bebe poção, foge pelo portal quando está perdendo e escolhe magias e melhorias por
+sorteio (cobre as combinações). `apps/server/scripts/simular.ts` roda todas as classes × mapas × perfis:
+
+| Perfil | O que leva |
+|---|---|
+| `novato` | Nada: sem equipamento, magias iniciais |
+| `medio` | O melhor equipamento comum até o nível 3 |
+| `veterano` | O melhor equipamento do jogo e o Grimório inteiro no nível máximo |
+
+```bash
+cd apps/server && npx tsx scripts/simular.ts --hunts 5 --mapas crypt,desert   # só o resumo
+cd apps/server && npx tsx scripts/simular.ts --hunts 10 --gravar             # grava (precisa do service role)
+```
+
+O job `.github/workflows/simulacao.yml` roda todo dia (04:41 em Brasília) e sob demanda (Actions > Simulação > Run
+workflow), com o secret `SUPABASE_SERVICE_ROLE_KEY` do repositório; o `build` é o commit do `main`.
+
+As linhas vão para **`telemetry_sim_runs`** (mesmo formato de `telemetry_runs`, mais `sim`: `perfil`, `piloto`, `seed`),
+não para `telemetry_runs`: o ranking, o histórico, o painel e as views acima continuam só com os jogadores reais. A view
+**`telemetry_all`** junta as duas com a coluna `simulated` para comparar:
+
+```sql
+select simulated, class_id, count(*) hunts, round(100*avg((outcome='completed')::int)) vit_pct, round(avg(level),1) nivel
+from telemetry_all where map_id = 'crypt' and created_at > now() - interval '7 days'
+group by 1,2 order by 2,1;
+```
+
+Cuidados ao ler: o piloto não é um jogador. Ele dá a **comparação** entre classes, magias e builds no mesmo jogo
+(o mesmo piloto em todas), não a dificuldade que uma pessoa sente. Compare por `sim->>'perfil'` e por `sim->>'piloto'`
+(mudou o piloto, sobe `PILOTO_VERSAO` e as linhas não se misturam). O teste `simulacao` (no `npm test`) confere que o
+piloto ainda termina as hunts e vence com o perfil veterano.
+
 ## Agente de balanceamento
 
 A skill `/balanceamento` (`.claude/skills/balanceamento/SKILL.md`) faz o roteiro acima sozinha: roda a conta teórica
 (`npx tsx scripts/balanco.ts` de dentro de `apps/server`: DPS de toda magia e criatura no nível 20, com e sem
 equipamento, e o que sai da curva), cruza com as consultas prontas desta tabela, separa jogador bom de classe forte,
-acha a causa na fórmula e entrega as propostas com números, risco e como medir no build novo.
+usa as hunts simuladas para ter volume no build atual, acha a causa na fórmula e entrega as propostas com números,
+risco e como medir no build novo.
 
 ## Local
 

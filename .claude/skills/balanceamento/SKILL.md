@@ -1,6 +1,6 @@
 ---
 name: balanceamento
-description: Agente de balanceamento do Kusa - cruza a conta teórica (apps/server/scripts/balanco.ts, DPS de toda magia e criatura no nível 20, com e sem equipamento) com a telemetria do Supabase (classes, fontes de dano, combinações de magias, melhorias, mortes por monstro, jogador x classe) para achar o que está forte ou fraco demais, descobrir a causa na fórmula e propor o ajuste com números e risco. Use quando pedirem /balanceamento, "analise o balanceamento", "o que está desbalanceado", quando um jogador reclamar que algo está forte/fraco ("o urso deu 200 de dano"), ou depois de um deploy de ajuste para medir o antes e o depois.
+description: Agente de balanceamento do Kusa - cruza a conta teórica (apps/server/scripts/balanco.ts, DPS de toda magia e criatura no nível 20, com e sem equipamento), as hunts simuladas pelo piloto automático (telemetry_sim_runs) e a telemetria dos jogadores no Supabase (classes, fontes de dano, combinações de magias, melhorias, mortes por monstro, jogador x classe) para achar o que está forte ou fraco demais, descobrir a causa na fórmula e propor o ajuste com números e risco. Use quando pedirem /balanceamento, "analise o balanceamento", "o que está desbalanceado", quando um jogador reclamar que algo está forte/fraco ("o urso deu 200 de dano"), ou depois de um deploy de ajuste para medir o antes e o depois.
 ---
 
 # Agente de balanceamento
@@ -119,13 +119,33 @@ group by 1,2 having count(*) >= 3 order by 2,4 desc;
 ```
 Se um único jogador responde pela maior parte das hunts fortes de uma classe, o sinal é dele, não da classe.
 
+## 2b. Hunts simuladas: volume no build atual
+
+O piloto automático joga todo dia todas as classes × mapas × perfis (`docs/TELEMETRIA.md`, "Hunts simuladas") e grava em
+`telemetry_sim_runs`; `telemetry_all` junta com as reais (coluna `simulated`). Use para:
+- ter amostra quando os jogadores são poucos (o mesmo piloto em todas as classes: compare classe com classe);
+- medir um ajuste sem esperar os jogadores: rode na hora, antes e depois da mudança, com a mesma seed
+  (`cd apps/server && npx tsx scripts/simular.ts --hunts 10 --mapas <mapa> --seed 1`; sem `--gravar`, só o resumo);
+- checar uma queixa ("a classe X não vence o mapa Y") com dezenas de hunts.
+
+```sql
+select map_id, class_id, sim->>'perfil' perfil, count(*) hunts,
+  round(100*avg((outcome='completed')::int)) vit_pct, round(avg(level),1) nivel, round(avg(loot)) loot,
+  mode() within group (order by killed_by) mais_mata
+from telemetry_sim_runs where build = (select build from telemetry_sim_runs order by created_at desc limit 1)
+group by 1,2,3 order by 1,2,3;
+```
+
+O piloto não é gente: não use a taxa de vitória dele como "dificuldade real", só como comparação. Achado que só
+aparece no simulado é **Indício** até a telemetria real ou a teoria confirmar.
+
 ## 3. Cruzar e classificar
 
 Para cada candidato (da teoria, da telemetria ou da queixa):
 
 | Classificação | Quando |
 |---|---|
-| **Confirmado** | Teoria e telemetria concordam e há amostra (cerca de 20 hunts no grupo, mais de um jogador) |
+| **Confirmado** | Teoria e telemetria real concordam (ou teoria e simulado, com o real apontando para o mesmo lado) e há amostra (cerca de 20 hunts no grupo, mais de um jogador) |
 | **Indício** | Só um lado mostra, ou a amostra é pequena / de um jogador só |
 | **Monitorar** | Sinal fraco; voltar a olhar no próximo build |
 | **Desmentido** | A queixa não aparece nos números (diga qual número desmente) |
