@@ -1141,7 +1141,9 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   | Botas | Todas | armadura e velocidade |
   | Escudo | Todas | armadura |
 
-- **Só varinhas, cajados e alguns itens mágicos aumentam as magias** (e as criaturas invocadas e os campos no chão).
+- **Só varinhas, cajados e alguns itens mágicos aumentam as magias** (e os campos no chão). As criaturas invocadas
+  levam só **metade** desse bônus (`SUMMON_SPELL_POWER_SHARE`): elas batem o tempo todo, e com o bônus inteiro uma
+  varinha boa dobrava o dano contínuo do Druida.
   Espadas, machados, arcos e bestas aumentam só o ataque básico.
 - **Propriedades mágicas:** roubo de vida no básico, chamas ou veneno no básico (dano por segundo por 3 s), espinhos
   (devolve parte do golpe corpo a corpo recebido), + alcance (arcos e bestas), ataque mais rápido, + vida, + mana,
