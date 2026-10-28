@@ -15,11 +15,11 @@ problema na nota.
 
 ## 2. Referências obrigatórias
 
-1. **Estilo:** anexe sempre `goblin-referencia.png` (pasta `Kusa/Arte/_referencias/`) como referência de estilo. É o
+1. **Estilo:** anexe sempre `goblin-referencia.png` (pasta `PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte/_referencias/`) como referência de estilo. É o
    padrão aprovado: pixel art detalhada, contorno escuro grosso, luz de cima à esquerda, sombras fundas, clima sombrio.
 2. **Personagem:** na folha B de um monstro (e na C da Hidra), anexe também a folha A do mesmo monstro, para manter
    o mesmo desenho, as mesmas cores e a mesma escala.
-3. **Molde:** os PNGs em `Kusa/Arte/_moldes/` mostram a composição de cada tipo de folha. Use-os para **conferir** o
+3. **Molde:** os PNGs em `PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte/_moldes/` mostram a composição de cada tipo de folha. Use-os para **conferir** o
    resultado, não como imagem de entrada: o gerador copiaria as linhas e os textos do molde.
 
 ## 3. Regras técnicas (todas as imagens)
@@ -51,11 +51,15 @@ Por isso separação, ordem das figuras, direção e base importam mais que o ta
 
 ## 5. Fluxo de cada execução (a cada 2 horas)
 
-1. Leia a fila do mapa atual (`Kusa/Arte/<mapa>/fila.json`, cópia de `docs/arte/agente/<mapa>.json`) e o arquivo de
-   status (`Kusa/Arte/<mapa>/status.csv`).
+1. Leia a fila do mapa atual e o arquivo de status (`PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte/<mapa>/status.csv`). A fila fica em `PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte/<mapa>/`,
+   dividida em partes (`fila-1.json`, `fila-2.json`, …): leia **todas**; cada parte traz os mesmos `blocos` e uma faixa
+   de itens, e a `ordem` vale entre as partes. (No repositório do jogo, a mesma fila é um arquivo só:
+   `docs/arte/agente/<mapa>.json`.)
 2. Escolha **1 item**: o de menor `ordem` com status `pendente`, ou `refazer`, cujo `depende_de` (se houver) já esteja
    `gerado` ou `aprovado`. Se não houver item possível, não gere nada e registre isso.
-3. Gere a imagem com o `prompt` do item **sem alterá-lo**, anexando as `referencias` do item.
+3. Monte o prompt: troque cada marcador `{{NOME}}` do `prompt` do item (`{{ESTILO}}`, `{{CENARIO}}`, `{{PROIBIDO}}`,
+   `{{FOLHA_A}}`, `{{FOLHA_B}}`, `{{TEXTURA}}`, `{{TRANSICAO}}`) pelo texto do bloco de mesmo nome em `blocos`, no
+   início da fila. Gere a imagem com esse prompt **sem alterar mais nada**, anexando as `referencias` do item.
 4. Confira com o checklist (seção 7). Se falhar, gere de novo, até **3 tentativas** no total. Guarde só a melhor.
 5. Grave no SharePoint (seção 6) e atualize o status:
    - `gerado` se passou no checklist;
@@ -67,12 +71,14 @@ corrigindo o problema apontado (ex.: "The side profile must face LEFT."). Não r
 
 ## 6. Nomes e pastas no SharePoint
 
+Tudo fica dentro da área confidencial, no site PGG: nunca grave fora de `PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte`. Na raiz de `CONFIDENCIAL LEONARDO`, junto do `RPG_CONTROLE.md`, o `RPG_ORIENTACAO.md` aponta para este arquivo.
+
 ```
-Kusa/Arte/
+PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte/
   _referencias/goblin-referencia.png
   _moldes/molde-*.png
   <mapa>/                        ex.: pantano-das-ruinas
-    fila.json                    cópia da fila
+    fila-1.json … fila-N.json    a fila, em partes
     status.csv                   controle (seção 9)
     inimigos/<kind>/<kind>-A_v01.png
     inimigos/<kind>/<kind>-B_v01.png
@@ -105,7 +111,7 @@ Kusa/Arte/
 Uma linha no fim do `status.csv` e uma mensagem curta:
 
 ```
-[2026-10-28 14:00] frog-A · gerado · 2 tentativas · Kusa/Arte/pantano-das-ruinas/inimigos/frog/frog-A_v01.png
+[2026-10-28 14:00] frog-A · gerado · 2 tentativas · PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte/pantano-das-ruinas/inimigos/frog/frog-A_v01.png
 Observação: na 1ª tentativa o perfil olhava para a direita.
 Próximo: frog-B.
 ```
