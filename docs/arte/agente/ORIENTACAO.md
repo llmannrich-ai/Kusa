@@ -48,6 +48,8 @@ problema na nota.
 | Formato | PNG |
 | Fundo | **transparente** (canal alfa) em monstros, objetos e decalques; **opaco** só em texturas e transições |
 | Bordas | pixels duros: nada de brilho ou sombra semitransparente (brilho = anéis de pixels sólidos) |
+| Pixel | pixel art de cor chapada, como o goblin de referência: grupos de pixels da mesma cor, sem ruído fino nem textura de pintura |
+| Repetição (texturas e transições) | o desenho continua de verdade de um lado para o outro. **Proibido espelhar as bordas** para emendar: espelhar cria uma cruz espelhada que aparece no mapa inteiro |
 | Separação | em folhas com várias figuras, cada figura cercada de espaço vazio; nenhuma encosta na outra |
 | Direção | todo perfil e todo 3/4 olhando para a **esquerda** (exceto a coluna 6 da folha A) |
 | Base | em cada linha, todos os pés na mesma linha horizontal (os que voam pairam à mesma altura) |
@@ -65,7 +67,7 @@ Por isso separação, ordem das figuras, direção e base importam mais que o ta
 | **Monstro, folha A** (turnaround) | 2 linhas × 6 colunas. Linha 1 parado, linha 2 andando. Colunas: frente, 3/4 frente (esq.), perfil (esq.), 3/4 costas (esq.), costas, 3/4 costas (dir.). Proporção 3:1 | `molde-A-turnaround.png` |
 | **Monstro, folha B** (ação) | 4 colunas, uma animação por linha, quadros em sequência da esquerda para a direita, tudo de perfil para a esquerda: andar, ataque, especial, morte (+ linhas extras quando o item pedir) | `molde-B-acao.png` |
 | **Textura** | 1024×1024 opaca, vista de cima, emenda nos 4 lados, representa 4×4 tiles | `molde-chao.png` |
-| **Transição** | 1536×512 opaca, terreno A em cima e B embaixo, emenda na esquerda e na direita | `molde-transicao.png` |
+| **Transição** | 1536×512 opaca, terreno A em cima e B embaixo, emenda na esquerda e na direita. **Anexe as texturas aprovadas dos dois terrenos** (`RPG_tex-*.png`) e use as mesmas cores delas: a transição encosta nessas texturas no mapa | `molde-transicao.png` |
 | **Objetos / decalques / kit** | figuras separadas em grade (o prompt diz quantas linhas e colunas), fundo transparente | `molde-props.png` |
 
 ## 6. Fluxo de cada execução (a cada 2 horas)
@@ -78,17 +80,20 @@ Por isso separação, ordem das figuras, direção e base importam mais que o ta
    `{{FOLHA_A}}`, `{{FOLHA_B}}`, `{{TEXTURA}}`, `{{TRANSICAO}}`) pelo texto do bloco de mesmo nome em `blocos`.
    Gere a imagem com esse prompt **sem alterar mais nada**, anexando as referências (seção 3).
 4. Confira com o checklist (seção 7). Se falhar, gere de novo, até **3 tentativas** no total. Guarde só a melhor.
-5. Grave na raiz da pasta e atualize o status:
+5. Grave na raiz da pasta, com o nome do padrão (abaixo), e **atualize a linha do item no `RPG_status.csv` no mesmo
+   ciclo**, preenchendo `status`, `versao`, `arquivo`, `tentativas`, `data` e `nota`:
    - `gerado` se passou no checklist;
    - `revisar` se nenhuma tentativa passou, com o motivo na nota.
-   Marque `gerado` só depois de confirmar que a imagem foi salva.
+   Marque `gerado` só depois de confirmar que a imagem foi salva. **Sem a linha atualizada o item não está concluído:**
+   no ciclo seguinte, se achar imagem gravada com a linha ainda `pendente`, atualize a linha antes de gerar o próximo.
 6. Escreva o resumo da execução (seção 8).
 
 Se o status de um item estiver `refazer`, leia a nota do revisor e acrescente ao fim do prompt **uma** frase curta
 corrigindo o problema apontado (ex.: "The side profile must face LEFT."). Não reescreva o resto.
 
 **Nomes dos arquivos gerados** (todos na raiz):
-- imagem: `RPG_<id>_v<NN>.png`, com o `id` do item (ex.: `RPG_frog-A_v01.png`, `RPG_tex-capim_v01.png`);
+- imagem: `RPG_<id>_v<NN>.png`, com o `id` do item exatamente como na fila (ex.: `RPG_frog-A_v01.png`,
+  `RPG_tex-capim_v01.png`). Nada de número da ordem nem outro formato (errado: `07-borda-margem-v1.png`);
 - ao lado, `RPG_<id>_v<NN>.txt` com o prompt usado (com a frase de correção, se houve), o gerador e a data;
 - cada nova geração aprovada para substituir sobe a versão (`_v02`). Nunca apague nem sobrescreva versões antigas.
 
@@ -103,7 +108,9 @@ corrigindo o problema apontado (ex.: "The side profile must face LEFT."). Não r
 - [ ] Nada cortado na borda da imagem (orelhas, armas, cauda, asas).
 - [ ] Sem texto, grade, moldura, chão ou sombra projetada.
 - [ ] Animações (folha B): os 4 quadros de cada linha formam uma sequência, não 4 poses soltas.
-- [ ] Textura: emenda nos 4 lados (confira juntando 2×2 cópias) e iluminação uniforme.
+- [ ] Textura: emenda nos 4 lados (confira juntando 2×2 cópias), **sem cruz espelhada** no centro, e iluminação uniforme.
+- [ ] Transição: as cores de cada lado iguais às das texturas aprovadas dos dois terrenos.
+- [ ] `RPG_status.csv` atualizado e `.txt` do prompt gravado ao lado da imagem.
 
 ## 8. Resumo de cada execução
 

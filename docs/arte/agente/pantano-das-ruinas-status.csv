@@ -1,13 +1,13 @@
 ordem,id,status,versao,arquivo,tentativas,data,nota
-1,tex-capim,pendente,,,,,
-2,tex-musgo,pendente,,,,,
-3,tex-lama,pendente,,,,,
-4,tex-agua,pendente,,,,,
-5,tex-copa,pendente,,,,,
-6,tex-lajes,pendente,,,,,
-7,borda-margem,pendente,,,,,
-8,borda-capim-lama,pendente,,,,,
-9,borda-copa,pendente,,,,,
+1,tex-capim,aprovado,v01,RPG_tex-capim_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
+2,tex-musgo,aprovado,v01,RPG_tex-musgo_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
+3,tex-lama,aprovado,v01,RPG_tex-lama_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
+4,tex-agua,refazer,v01,RPG_tex-agua_v01.png,,2026-10-28,"Mostly clean dark water: only a few tiny duckweed specks, no lily pads, no roots, no reeds. Do not mirror the edges to make it tile."
+5,tex-copa,aprovado,v01,RPG_tex-copa_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
+6,tex-lajes,refazer,v01,RPG_tex-lajes_v01.png,,2026-10-28,Do not mirror the edges to make it tile: no mirrored cross or doubled stones at the center or the edges; the slab pattern must continue naturally across all four edges.
+7,borda-margem,aprovado,v01,RPG_borda-margem_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
+8,borda-capim-lama,aprovado,v01,RPG_borda-capim-lama_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
+9,borda-copa,aprovado,v01,RPG_borda-copa_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
 10,frog-A,pendente,,,,,
 11,frog-B,pendente,,,,,
 12,bullywug-A,pendente,,,,,
