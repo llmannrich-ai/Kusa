@@ -67,6 +67,13 @@ export const SUMMONS: Record<SummonKind, SummonDef> = {
   },
 };
 
+/**
+ * Parte do "dano nas magias" do equipamento que vale para as criaturas. Uma magia de ataque usa o bônus uma vez por
+ * recarga; a criatura, em todo golpe enquanto dura: com o bônus inteiro, uma varinha boa dobrava o dano contínuo
+ * (o Urso Ancestral passava de 300 por golpe no nível 20).
+ */
+export const SUMMON_SPELL_POWER_SHARE = 0.5;
+
 /** Máximo de criaturas vivas de um mesmo jogador. */
 export const MAX_SUMMONS_PER_PLAYER = 6;
 

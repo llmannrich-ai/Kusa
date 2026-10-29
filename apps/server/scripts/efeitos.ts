@@ -13,6 +13,7 @@
  *   - especializações do Feiticeiro: Feixe de Energia e Fúria dos Céus ferem, a Bola de Fogo queima, o Núcleo
  *     Infernal fere, o Cone de Frio deixa lento, a Prisão de Gelo prende, o Passo Nebuloso teleporta, a Muralha
  *     Mágica sobe, a Morte Súbita fere, os esqueletos erguidos aparecem, a Rajada Mística empurra e os Tentáculos prendem;
+ *   - o Urso Ancestral (como toda criatura) leva só parte do dano nas magias do equipamento;
  *   - especializações do Druida: a Águia Gigante aparece e atordoa, o Grito da Fera chama o lobo da Maestria, as formas de
  *     Pantera (o salto) e de Urso (mais vida e a patada) funcionam, a Cura Distante vira escudo com o Florescer, a semente
  *     do Renascer salva o druida da morte, a Pele de Casca protege, a Chuva Revigorante cai, a Picada da Mamba e a Nuvem
@@ -25,7 +26,7 @@
  * Cada caso roda numa arena nova; no fim, a lista do que falhou (com a seed e a posição para reproduzir).
  * Uso: npx tsx apps/server/scripts/efeitos.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { Tile, hasLineOfSight, tileAt, tileDistance, type ClassId, type MonsterKind } from "@kusa/shared";
+import { SUMMON_SPELL_POWER_SHARE, Tile, hasLineOfSight, tileAt, tileDistance, type ClassId, type MonsterKind } from "@kusa/shared";
 import { HERO, arena, check, type ArenaOptions } from "./arena.ts";
 
 /** Alvo padrão: humanoide parrudo, sem fuga nem salto, pega veneno e sangramento. */
@@ -270,6 +271,22 @@ test("Águia Gigante atordoa e Grito da Fera chama o lobo", "druid", (a) => {
   a.ready();
   a.cast(0);
   a.until(() => mine(a, "wolf").length === 1, 2000, "o Grito da Fera não chamou o lobo");
+});
+test("Urso Ancestral leva só metade do dano nas magias do equipamento", "druid", (a) => {
+  a.choose("spirit_wolf", "ancient_bear");
+  const seat = (a.hunt as any).seats.get(HERO);
+  const bearDamage = (spellPower: number) => {
+    seat.gear.spellPower = spellPower;
+    a.ready();
+    a.cast(1);
+    a.until(() => mine(a, "bear").length === 1, 2000, "o urso não apareceu");
+    return (a.hunt as any).summonBrains.get(mine(a, "bear")[0].id).damage as number;
+  };
+  const bare = bearDamage(0);
+  // Varinha de dente de dragão mágica + elmo: +150% nas magias; o urso deve ganhar +75%, não +150%.
+  const geared = bearDamage(1.5);
+  console.log(`    golpe do urso: ${bare.toFixed(1)} sem equipamento, ${geared.toFixed(1)} com +150% nas magias`);
+  check(Math.abs(geared / bare - (1 + 1.5 * SUMMON_SPELL_POWER_SHARE)) < 0.01, `o urso devia ganhar ${1.5 * SUMMON_SPELL_POWER_SHARE * 100}% (${bare} → ${geared})`);
 });
 test("Pantera salta e Urso soma vida e dá patada", "druid", (a) => {
   a.choose("panther_form", "bear_form");

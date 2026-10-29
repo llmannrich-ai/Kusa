@@ -115,6 +115,7 @@ import {
   type SpellXp,
   statsFor,
   summonStats,
+  SUMMON_SPELL_POWER_SHARE,
   talentTree,
   tileAt,
   tileDistance,
@@ -1954,7 +1955,7 @@ export class Hunt {
       if (s.owner === sessionId && this.summonBrains.get(s.id)?.spellId === spell.id) this.removeSummon(s.id);
     });
     const now = this.host.now();
-    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "spell"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0)));
+    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "summon"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0)));
     // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
     const boost = 1 + (this.seats.get(sessionId)?.traits.reduce((sum, t) => sum + (t.summonBoost ?? 0), 0) ?? 0);
     stats.maxHp = Math.round(stats.maxHp * boost);
@@ -3480,9 +3481,11 @@ export class Hunt {
    * Dano base do jogador (classe, nível, áureas e equipamento), antes da variação. O ataque básico usa o
    * dano da arma; magias, invocações e campos usam o dano mágico (varinhas, cajados e alguns itens mágicos).
    */
-  private baseDamage(sessionId: string, p: Player, kind: "basic" | "spell") {
+  /** Dano base do herói com o equipamento: `summon` (criaturas) leva só parte do dano nas magias (`SUMMON_SPELL_POWER_SHARE`). */
+  private baseDamage(sessionId: string, p: Player, kind: "basic" | "spell" | "summon") {
     const seat = this.seats.get(sessionId);
-    const gear = kind === "basic" ? seat?.gear.damage ?? 0 : seat?.gear.spellPower ?? 0;
+    const spellPower = seat?.gear.spellPower ?? 0;
+    const gear = kind === "basic" ? seat?.gear.damage ?? 0 : kind === "summon" ? spellPower * SUMMON_SPELL_POWER_SHARE : spellPower;
     return statsFor(p.classId as ClassId, p.level, seat?.bonus).damage * (1 + gear) * this.damageBonus(seat, p);
   }
 

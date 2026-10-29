@@ -3,7 +3,7 @@ import { loadSettings } from "../settings.ts";
 
 /**
  * Arte nova (beta, `Settings.newArt`, `docs/ARTE_TIBIA.md`): lida uma vez; trocar a opção recarrega o jogo. Os
- * desenhos novos só são baixados por quem ligou a opção.
+ * desenhos novos só são baixados por quem está com a opção ligada (o padrão).
  */
 export const NEW_ART = loadSettings().newArt;
 export const protoHero = NEW_ART ? await import("./proto/tibiaHero.ts") : null;

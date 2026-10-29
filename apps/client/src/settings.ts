@@ -12,7 +12,8 @@ const DEFAULTS: Settings = {
   landscape: false,
   // Joystick fixo de padrão desde o retorno dos testadores; o flutuante fica como opção.
   fixedStick: true,
-  newArt: false,
+  // Arte nova ligada de padrão para todos (a escolha antiga é zerada uma vez em `loadSettings`).
+  newArt: true,
 };
 
 /** Uma opção como aparece na tela de configurações; novas opções entram aqui e em `Settings`. */
@@ -42,10 +43,19 @@ export const SETTING_DEFS: SettingDef[] = [
 ];
 
 const STORAGE_KEY = "kusa:settings";
+/** Marca de que a escolha antiga da Arte nova já foi zerada (ver `loadSettings`). */
+const NEW_ART_RESET_KEY = "kusa:newArtReset";
 
 export function loadSettings(): Settings {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as Partial<Settings>;
+    // Arte nova vira o padrão de todos: a escolha gravada antes disso (de quem desligou no teste) é esquecida uma vez;
+    // daqui em diante quem desligar continua com a antiga.
+    if (!localStorage.getItem(NEW_ART_RESET_KEY)) {
+      delete saved.newArt;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      localStorage.setItem(NEW_ART_RESET_KEY, "1");
+    }
     return { ...DEFAULTS, ...saved };
   } catch {
     return { ...DEFAULTS };
