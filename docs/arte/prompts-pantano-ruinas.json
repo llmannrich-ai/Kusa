@@ -1,0 +1,170 @@
+{
+  "titulo": "Prompts de imagem: Pântano das Ruínas (arte nova)",
+  "fonte": "docs/GDD.md, seção 'Pântano das Ruínas' > Visual: as 20 últimas artes da lista (das cabeças de estátua até os cantos úmidos)",
+  "padrao": "docs/ARTE_TIBIA.md (arte nova: 128 px por tile, regras G1 a G8, P1 a P5)",
+  "como_usar": "Junte estilo_base + prompt de cada item. Gere com fundo transparente (ou chroma verde puro #00ff00 para recortar), reduza para o tamanho_px com vizinho mais próximo e confira no checklist da seção 4 do ARTE_TIBIA.md.",
+  "estilo_base": "hand-painted pixel art game asset, Tibia-style fixed oblique top-down perspective (ground seen from above, anything with height drawn standing up showing its south face), crisp hard pixels, no anti-aliasing, no gradients, 4 flat tones per material (light, base, shadow, deep), light source from the top-left with shadow falling bottom-right, 1-pixel warm near-black outline #1a1812 around the shape with lighter inner lines, earthy muted colors (saturation under 55%), only magic glow or eyes may be saturated, no cast shadow on the ground, isolated on a transparent background, sunken imperial bay swamp mood: open olive-green marsh (#4a6a30 grass, #46682a moss) with teal-green water (#24423e deep, #35574f shallow) and weathered gray limestone ruins (#45463a, #626251, #7f7d68)",
+  "negative_prompt": "blurry, soft edges, anti-aliasing, gradient shading, photorealistic, 3D render, isometric diamond tiles, drop shadow, ground shadow, glow halo on everything, oversaturated neon colors, text, watermark, signature, frame, border, UI, multiple perspectives, cropped object",
+  "prompts": [
+    {
+      "id": 1,
+      "nome": "Cabeças de estátua",
+      "categoria": "enfeite das ruínas",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 variations of a broken marble statue head of an ancient sunken empire lying half buried in olive swamp grass, weathered gray limestone, cracked nose, blank eyes, laurel crown on one, moss patches on the top-left lit side, dark water-stain line at the base, each centered on its own tile"
+    },
+    {
+      "id": 2,
+      "nome": "Urnas",
+      "categoria": "enfeite das ruínas",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 ancient terracotta urns standing among ruins (clay tones #5e3422, #8a5236, #b07050): one intact amphora with two handles, one chipped at the rim, one tipped over with a crack, faded serpent band painted around the belly, moss creeping up from the base, each centered on its own tile"
+    },
+    {
+      "id": 3,
+      "nome": "Pedestais",
+      "categoria": "enfeite das ruínas",
+      "tamanho_px": "128x160 (1 tile, sobe 32 px)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 empty stone statue pedestals of a ruined imperial plaza: square limestone plinth with carved molding, broken feet of a missing statue on one, worn hydra glyph carved on the front face of another, ivy hanging from the top edge, top face visible from above and south face standing up"
+    },
+    {
+      "id": 4,
+      "nome": "Lajes afundadas na água",
+      "categoria": "água perto das ruínas",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 tiles of shallow teal-green swamp water seen from above with sunken irregular limestone paving slabs just below the surface, slab edges slightly blurred by water tint, moss on the joints, a few slabs tilted and breaking the surface with a thin light rim, tiles must tile seamlessly with plain water around"
+    },
+    {
+      "id": 5,
+      "nome": "Tocos de coluna na água",
+      "categoria": "água perto das ruínas",
+      "tamanho_px": "128x160 (1 tile, sobe 32 px)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 short broken fluted column stumps rising out of shallow teal swamp water: jagged broken top seen from above, fluting on the south face, dark wet band and small ripple ring where the stone meets the water, algae streaks, one stump leaning"
+    },
+    {
+      "id": 6,
+      "nome": "Pedras de passagem",
+      "categoria": "água perto das ruínas",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 4,
+      "prompt": "sprite sheet of 4 variations of flat stepping stones crossing shallow swamp water, seen from above: 2 to 3 rounded weathered limestone blocks per tile, dry light top-left edge, wet darker lower-right edge, tiny moss tufts, faint water ripples around each stone"
+    },
+    {
+      "id": 7,
+      "nome": "Taboas",
+      "categoria": "enfeite do brejo",
+      "tamanho_px": "128x160 (1 tile, sobe 32 px)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 clumps of cattails (bulrush) growing at the edge of a swamp: tall slender olive leaves, brown velvet seed heads, a few bent stems, base rooted in mud, standing upright in oblique view"
+    },
+    {
+      "id": 8,
+      "nome": "Juncos",
+      "categoria": "enfeite do brejo",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 4,
+      "prompt": "sprite sheet of 4 clumps of thin swamp rushes: dense bundle of very thin dark-green and yellow-green stalks, some tips dry and pale, short and tall versions, rooted in damp grass, upright in oblique view"
+    },
+    {
+      "id": 9,
+      "nome": "Íris do brejo",
+      "categoria": "enfeite do brejo",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 clumps of wild marsh irises: sword-shaped olive leaves fanning out, 1 to 3 small muted violet and pale yellow flowers as the only color accent, rooted in wet grass, upright in oblique view"
+    },
+    {
+      "id": 10,
+      "nome": "Samambaias",
+      "categoria": "enfeite do brejo",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 3,
+      "prompt": "sprite sheet of 3 swamp ferns: arching fronds with small leaflets drawn with short pixel strokes, one young curled fiddlehead, one fern partly brown and drying, low and spreading, top-left fronds lighter"
+    },
+    {
+      "id": 11,
+      "nome": "Cogumelos",
+      "categoria": "enfeite do brejo",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 4,
+      "prompt": "sprite sheet of 4 small clusters of swamp mushrooms on damp ground and on a rotten twig: pale cream caps, brown speckled caps, one cluster of thin tall grey stalks, one ring of tiny caps, earthy tones, small and grouped, no glow"
+    },
+    {
+      "id": 12,
+      "nome": "Tiririca",
+      "categoria": "enfeite do brejo",
+      "tamanho_px": "128x128 (1 tile)",
+      "variacoes": 4,
+      "prompt": "sprite sheet of 4 tufts of nutsedge (sedge grass): short triangular-stemmed grass blades with small brown spiky seed clusters on top, low and spiky silhouette, olive and yellow-green tones, meant to scatter across swamp grass"
+    },
+    {
+      "id": 13,
+      "nome": "Vaga-lumes",
+      "categoria": "ambiente",
+      "tamanho_px": "16x16 por quadro, 4 quadros",
+      "variacoes": 1,
+      "prompt": "tiny animated firefly sprite strip, 4 frames in a row: a 2-pixel warm yellow-green light point with a faint 1-pixel soft halo pulsing from dim to bright and back, dark body barely visible, on transparent background"
+    },
+    {
+      "id": 14,
+      "nome": "Névoa baixa",
+      "categoria": "ambiente",
+      "tamanho_px": "512x256, emenda nas bordas",
+      "variacoes": 2,
+      "prompt": "seamless tileable low ground mist overlay for a top-down swamp: horizontal wisps of pale grey-green fog drawn as flat pixel bands with dithered edges, 3 opacity levels, mostly transparent, no gradients, loops horizontally"
+    },
+    {
+      "id": 15,
+      "nome": "Folhas caindo",
+      "categoria": "ambiente",
+      "tamanho_px": "16x16 por quadro, 4 quadros",
+      "variacoes": 3,
+      "prompt": "sprite strip of a small falling leaf tumbling in 4 frames (flat, edge-on, flipped, edge-on), 3 color variations: olive green, yellow-brown willow leaf, dry brown leaf, outline #1a1812, transparent background"
+    },
+    {
+      "id": 16,
+      "nome": "Libélulas",
+      "categoria": "ambiente",
+      "tamanho_px": "24x24 por quadro, 2 quadros",
+      "variacoes": 2,
+      "prompt": "tiny dragonfly sprite seen from above, 2-frame wing flap (wings up, wings blurred out), slender teal-blue body as accent color, translucent pale wings drawn with 1 light pixel line, 2 color variations (teal, rust red), transparent background"
+    },
+    {
+      "id": 17,
+      "nome": "Marolas na água",
+      "categoria": "ambiente",
+      "tamanho_px": "128x128 por quadro, 4 quadros",
+      "variacoes": 1,
+      "prompt": "animated water ripple overlay, 4 frames: a small ring ripple on teal swamp water expanding and fading, drawn as thin 1-pixel light teal arcs (#8fb8aa) broken into segments, top-left arc brighter, mostly transparent so it sits on top of the water tile"
+    },
+    {
+      "id": 18,
+      "nome": "Bolhas na água",
+      "categoria": "ambiente",
+      "tamanho_px": "32x32 por quadro, 4 quadros",
+      "variacoes": 1,
+      "prompt": "animated swamp gas bubble sprite strip, 4 frames: a small murky bubble rising to the surface of teal water, growing, popping with a tiny ring and vanishing, pale teal highlight pixel on the top-left of the bubble, transparent background"
+    },
+    {
+      "id": 19,
+      "nome": "Sol no meio da tela",
+      "categoria": "ambiente (sobreposição de tela)",
+      "tamanho_px": "412x915 (retrato, celular)",
+      "variacoes": 1,
+      "prompt": "screen overlay for a mobile portrait game: very soft warm sunlight patch in the center of the screen drawn as 3 large concentric flat dithered bands of pale warm yellow at low opacity, a few faint diagonal light shafts from the top-left, everything else fully transparent, no lens flare"
+    },
+    {
+      "id": 20,
+      "nome": "Cantos úmidos",
+      "categoria": "ambiente (sobreposição de tela)",
+      "tamanho_px": "412x915 (retrato, celular)",
+      "variacoes": 1,
+      "prompt": "screen corner vignette overlay for a mobile portrait swamp game: dark damp green-teal shade (#1d2f12 to #24423e) creeping in from the 4 corners with dithered pixel edges, hints of hanging moss and water droplets in the corners only, center fully transparent, no gradients"
+    }
+  ]
+}
