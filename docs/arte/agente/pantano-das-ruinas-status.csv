@@ -8,7 +8,7 @@ ordem,id,status,versao,arquivo,tentativas,data,nota
 7,borda-margem,aprovado,v01,RPG_borda-margem_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
 8,borda-capim-lama,aprovado,v01,RPG_borda-capim-lama_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
 9,borda-copa,aprovado,v01,RPG_borda-copa_v01.png,,2026-10-28,aprovado com ajuste de emenda e cor no processamento do jogo
-10,frog-A,pendente,,,,,
+10,frog-A,aprovado,v01,RPG_frog-A_v01.png,4,2026-10-29,aprovada a 2a tentativa (antes 10-frog-A-v2); o fundo veio com xadrez desenhado em vez de transparencia e foi limpo no processamento
 11,frog-B,pendente,,,,,
 12,bullywug-A,pendente,,,,,
 13,bullywug-B,pendente,,,,,
