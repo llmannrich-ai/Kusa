@@ -288,3 +288,10 @@ Para refazer depois de trocar a referência:
 `python3 apps/client/scripts/goblinSprites.py docs/arte/goblin-referencia.png apps/client/src/art/proto/goblin.png`.
 
 ![Goblin: a arte de referência](arte/goblin-referencia.png)
+
+### Chão do Pântano das Ruínas com a arte do agente
+
+Com a Arte nova (beta), o chão do Pântano das Ruínas (capim, musgo, lama, água e a copa da mata fechada, com as
+bordas entre eles) vem das imagens do agente de arte, processadas por `apps/client/scripts/pantanoTexturas.py` e
+desenhadas por `apps/client/src/wetlandHd.ts` em 128 px por tile, por baixo das lajes, árvores soltas, enfeites e ruínas,
+que continuam as de antes. Detalhes e pendências em `docs/arte/pantano-das-ruinas/README.md`.

@@ -9,6 +9,7 @@ import {
 import { SWAMP_TEXTURE, createSwampArt, swampWallTexture } from "./art/textures.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { Ground, drawWetland, field, type WetlandTheme } from "./wetlandMap.ts";
+import { protoSwamp } from "./art/newArt.ts";
 
 /** Fundo além da mata: verde-azulado quase preto, a copa fechada da floresta da baía. */
 export const SWAMP_VOID = 0x081410;
@@ -58,6 +59,7 @@ function swampTheme(d: Dungeon): WetlandTheme {
   return {
     tex: SWAMP_TEXTURE,
     edges: "swamp-edges",
+    hd: protoSwamp ?? undefined,
     shade: [0.84, 1, 0.8],
     mist: 0xe4f2e8,
     cypressRing: false,

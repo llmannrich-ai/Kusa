@@ -6,8 +6,9 @@ O gerador deixa as texturas repetíveis espelhando ~64 px de cada borda, o que c
 
 1. textura: corta o miolo (sem a faixa espelhada) e refaz a emenda com um corte irregular entre os dois lados (sem
    degradê, que deixaria fantasma); bordas (transições): só a emenda da esquerda com a direita;
-2. bordas: as cores de cima e de baixo são igualadas às das texturas dos dois terrenos (média e desvio por canal);
-3. reduz para a escala do jogo (a referência tem 256 px por tile; o jogo, 128) e passa para uma paleta limitada de
+2. água: se veio verde (some no meio do capim), a lâmina vira azul-petróleo e as folhas ficam;
+3. bordas: as cores de cima e de baixo são igualadas às das texturas dos dois terrenos (média e desvio por canal);
+4. reduz para a escala do jogo (a referência tem 256 px por tile; o jogo, 128) e passa para uma paleta limitada de
    cores chapadas, sem pontilhado, para o pixel ficar duro como o do goblin de referência.
 
 Saída: textura com 3x3 tiles (384x384) e borda com 6x2 tiles (768x256), em docs/arte/pantano-das-ruinas/jogo/.
@@ -50,6 +51,18 @@ def seam_axis(a, band, axis, seed):
     return out
 
 
+def blue_water(a):
+    """Água verde demais (o gerador pintou a lâmina d'água de verde-musgo, e ela some no meio do capim): a lâmina
+    escura e sem cor vira azul-petróleo; as folhas e a lentilha-d'água (verde forte) ficam."""
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    if b.mean() >= g.mean():
+        return a
+    v = a.max(-1) / 255
+    leaf = (g > b * 1.25) & (g > r * 1.05) & (v > 0.30)
+    teal = np.stack([0.30, 0.62, 0.70]) * np.clip(v * 1.5 + 0.04, 0, 1)[..., None] * 255
+    return np.where(leaf[..., None], a, teal)
+
+
 def match_zone(a, zone, ref):
     """Leva `a` para as cores de `ref` (média e desvio de cada canal), medindo a origem só em `zone`."""
     zm, zsd = zone.reshape(-1, 3).mean(0), zone.reshape(-1, 3).std(0) + 1e-6
@@ -76,6 +89,8 @@ def main(src, dst):
         a = load(src, id_)
         if a is None:
             continue
+        if id_ == "tex-agua":
+            a = blue_water(a)
         tex[id_] = a
         core = a[MIRROR:-MIRROR, MIRROR:-MIRROR]  # 896: 3 tiles + a faixa da emenda
         core = seam_axis(seam_axis(core, BAND, 1, 10 + k), BAND, 0, 20 + k)

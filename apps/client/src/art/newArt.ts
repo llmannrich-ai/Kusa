@@ -11,6 +11,8 @@ export const protoCrypt = NEW_ART ? await import("./proto/crypt.ts") : null;
 export const protoBeasts = NEW_ART ? await import("./proto/beasts.ts") : null;
 /** O goblin desenhado a partir da arte de referência (`docs/arte/goblin-referencia.png`), não por código. */
 export const protoGoblin = NEW_ART ? await (await import("./proto/goblinArt.ts")).loadGoblin() : null;
+/** Chão do Pântano das Ruínas feito com as imagens do agente de arte (`docs/arte/pantano-das-ruinas/`). */
+export const protoSwamp = NEW_ART ? await (await import("./proto/swampHd.ts")).loadSwampHd() : null;
 /** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */
 const PROTO_FAMILY: Record<string, string> = {
   "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",

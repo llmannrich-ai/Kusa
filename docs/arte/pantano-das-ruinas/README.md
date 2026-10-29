@@ -13,7 +13,15 @@ emenda refeita (o gerador espelha ~64 px de cada borda), cores das bordas iguala
 Pendentes: `tex-agua` e `tex-lajes` voltaram para o agente (`refazer`: a água tinha plantas demais e as lajes, a cruz
 espelhada). Quando chegarem, rode o script de novo: ele também recalcula a cor da `borda-margem` pela água nova.
 
-As bordas vêm numa direção só (terreno de cima → terreno de baixo). O motor do mapa precisa girar e espelhar as de chão
-plano para os 4 lados; a da copa só vale no lado sul (é onde aparecem os troncos).
+No jogo (Arte nova, beta): `apps/client/src/art/proto/pantano/` (cópia de `jogo/` mais a `tex-agua` provisória: a
+versão recusada, com a lâmina d'água passada para azul-petróleo pelo script, senão ela some no meio do capim), lida
+por `swampHd.ts` e desenhada por `apps/client/src/wetlandHd.ts`, por baixo das lajes, enfeites, árvores e ruínas
+antigas:
+
+- cada tile pega o pedaço da textura da sua posição (`x % 3`, `y % 3`), então a textura corre sem emenda;
+- as bordas vêm numa direção só (terreno de cima → de baixo): são usadas onde o mapa tem essa situação (margem com a
+  terra em cima, capim sobre lama, copa com o capim embaixo, onde aparecem os troncos). Nos outros lados e nas quinas,
+  o terreno mais alto (copa > musgo > capim > lama > água > lajes) invade o tile vizinho com um contorno irregular;
+- musgo no pé da mata e em manchas pelo campo; as lajes continuam as antigas e recebem a beira do capim.
 
 `cena-teste.png`: as peças juntas, como num trecho do mapa (a água ainda é a versão recusada).

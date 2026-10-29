@@ -6,6 +6,8 @@ import {
   TREE_CROWN, TREE_CROWN_ANCHOR, TREE_FOOT, TREE_TRUNK, canopyRim, canopyVariant, treeTop, type TreeSpecies,
 } from "./art/marshDecor.ts";
 import type { WetlandTexture } from "./art/textures.ts";
+import type { SwampHd } from "./art/proto/swampHd.ts";
+import { HdGround, drawWetlandHd } from "./wetlandHd.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
 
 /** Tipo de chão de cada tile de terra, para escolher ladrilho, transição e enfeites. */
@@ -67,6 +69,11 @@ export interface WetlandTheme {
   extras?: string[];
   /** Repinta na paleta do mapa um pedaço do canvas (a beira da copa é desenhada aqui, não numa textura pronta). */
   tone?: (canvas: HTMLCanvasElement, x: number, y: number, w: number, h: number) => void;
+  /**
+   * Chão na arte nova (beta, 128 px por tile, `wetlandHd.ts`): capim, musgo, lama, água e copa com as bordas do agente
+   * de arte, por baixo das lajes, passarelas, enfeites, árvores e ruínas de antes.
+   */
+  hd?: SwampHd;
   /** Liga o desenho da pedra ao mapa já montado (camadas, culler), na hora de desenhar. */
   painter(ctx: WetlandContext): WetlandPainter;
 }
@@ -171,7 +178,9 @@ export function drawWetland(scene: Phaser.Scene, d: Dungeon, floorDepth: number,
   for (let y = 0; y < d.height; y++) {
     for (let x = 0; x < d.width; x++) {
       let mask = 0;
-      if (isForest(x, y)) {
+      if (theme.hd) {
+        // Arte nova: as beiras são da camada nova; aqui fica só a sombra.
+      } else if (isForest(x, y)) {
         // Beira da copa: os lados e quinas que não são mata fechada.
         let rim = 0;
         DIRS.forEach(([dx, dy], i) => { if (!isForest(x + dx, y + dy)) rim |= RIM.side[i]; });
@@ -206,7 +215,8 @@ export function drawWetland(scene: Phaser.Scene, d: Dungeon, floorDepth: number,
   for (const key of theme.extras ?? []) extraSet(key);
 
   const sets = [grass, mud, water, plankSet, canopy, decorFloor, decorWater, edges, ...(stone ? [stone] : []), ...[...extra.values()]].map((t) => t.set);
-  const groundLayer = map.createBlankLayer("chao", sets)!.setDepth(floorDepth);
+  // Na arte nova, o chão antigo (só lajes e passarelas) fica por baixo do novo e aparece pelos buracos dele.
+  const groundLayer = map.createBlankLayer("chao", sets)!.setDepth(theme.hd ? floorDepth - 0.02 : floorDepth);
   const edgeLayer = map.createBlankLayer("bordas", sets)!.setDepth(floorDepth);
   const decorLayer = map.createBlankLayer("enfeites", sets)!.setDepth(floorDepth);
 
@@ -272,6 +282,7 @@ export function drawWetland(scene: Phaser.Scene, d: Dungeon, floorDepth: number,
       groundLayer.putTileAt(stone.gid + theme.paving!.frame(x, y), x, y).tint = patchTint(x, y, 0.84, theme.shade);
       return;
     }
+    if (theme.hd) return;
     const set = g === Ground.Mud ? mud : grass;
     const count = g === Ground.Mud ? MUD_VARIANTS : GRASS_VARIANTS;
     const v = hash(x, y, 7);
@@ -281,6 +292,7 @@ export function drawWetland(scene: Phaser.Scene, d: Dungeon, floorDepth: number,
   };
   const putWater = (x: number, y: number) => {
     const deep = DIRS.every(([dx, dy]) => isWet(x + dx, y + dy));
+    if (theme.hd) return deep;
     groundLayer.putTileAt(water.gid + (deep ? 2 : hash(x, y, 3) < 0.4 ? 1 : 0), x, y);
     return deep;
   };
@@ -303,6 +315,7 @@ export function drawWetland(scene: Phaser.Scene, d: Dungeon, floorDepth: number,
       }
 
       if (isForest(x, y)) {
+        if (theme.hd) continue;
         if (edgeMasks[i] & CANOPY_EDGE) {
           // Beira da mata: o chão de baixo (água se a mata dá na água) e a copa por cima, na camada das bordas.
           if (waterAround(x, y) > 0) putWater(x, y);
@@ -390,6 +403,21 @@ export function drawWetland(scene: Phaser.Scene, d: Dungeon, floorDepth: number,
         else decor(MARSH_FLOOR.bones);
       }
     }
+  }
+
+  if (theme.hd) {
+    // Musgo no pé da mata e em manchas pelo campo; as lajes e as passarelas ficam no desenho antigo.
+    const terrain = (x: number, y: number) => {
+      if (x < 0 || y < 0 || x >= d.width || y >= d.height) return -1;
+      if (isForest(x, y)) return HdGround.Canopy;
+      if (isWater(x, y) || isPlank(x, y) || treeInWater(x, y)) return HdGround.Water;
+      const g = ground[y * d.width + x];
+      if (g === Ground.Stone && stone) return HdGround.Stone;
+      if (g === Ground.Mud) return HdGround.Mud;
+      return near(x, y, 1, isForest) || field(x, y, 6, 77) > 0.64 ? HdGround.Moss : HdGround.Grass;
+    };
+    const hole = (x: number, y: number) => isPlank(x, y) || terrain(x, y) === HdGround.Stone;
+    drawWetlandHd(scene, d, floorDepth, theme.hd, { at: terrain, hole });
   }
 
   return createAmbience(scene, d, uiDepth, culler, crowns, canopyCrowns, theme);
