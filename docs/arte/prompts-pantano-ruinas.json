@@ -1,268 +1,354 @@
 {
-  "titulo": "KUSA · Pântano das Ruínas · 20 prompts de imagem para o ChatGPT",
-  "modelo": {
-    "gerador": "Gerador de imagens nativo do ChatGPT (GPT Image), dentro desta conversa. Não usar outro gerador nem plugin.",
-    "configuracoes": {
-      "tamanho": "o do campo 'tamanho_imagem' de cada item (1536x1024 paisagem ou 1024x1536 retrato)",
-      "fundo": "transparente; se não der, verde puro #00ff00 liso",
-      "qualidade": "a mais alta disponível",
-      "quantidade": "1 imagem por item, 1 item por vez",
-      "prompt": "usar o 'prompt_completo' sem resumir, traduzir nem reescrever"
-    },
-    "imagem_de_referencia": {
-      "arquivo": "referencia-estilo-kusa.png (anexada junto com este arquivo)",
-      "o_que_e": "Folha de arte aprovada do jogo (cenário da Cripta, no mesmo padrão da arte nova): lajes de piso, enfeites, estandartes, tocha, barris, urnas, caixão e tijolos de parede.",
-      "copiar": "o traço: tamanho do pixel, contorno escuro de 1 pixel, 4 tons chapados por material, luz de cima à esquerda, textura de pedra com pintinhas, proporção dos objetos em relação ao tile",
-      "nao_copiar": "os objetos, o fundo marrom e a paleta fria e escura da Cripta; o Pântano das Ruínas usa a paleta verde-oliva, verde-azulada e calcário cinza de 'regras_de_estilo'",
-      "comparacao": "a urna e os barris da referência mostram o nível de detalhe e o tamanho certos para um objeto de 1 tile"
-    },
-    "consistencia": [
-      "Antes da imagem 1, estude a referência anexada.",
-      "Depois que a imagem 1 for aprovada, ela passa a ser a referência principal junto com a anexada: mesma grade de pixel, mesmo contorno, mesma luz, mesma paleta e mesma escala de objeto.",
-      "Se uma imagem fugir do estilo (borrada, com degradê, em 3D ou com outra perspectiva), refaça antes de mostrar."
-    ]
-  },
+  "titulo": "KUSA · Pântano das Ruínas · fila de arte, itens 41 a 60 (para o ChatGPT)",
   "instrucoes_para_o_chatgpt": [
-    "Leia o bloco 'modelo' e olhe a imagem anexada 'referencia-estilo-kusa.png' antes de começar.",
-    "Você vai gerar 20 imagens de arte para o jogo KUSA, uma por item da lista 'prompts', na ordem dos ids.",
-    "Para cada item, gere UMA imagem usando o campo 'prompt_completo' exatamente como está (ele já traz estilo, layout e o que evitar), no tamanho do campo 'tamanho_imagem' e com fundo transparente.",
-    "Gere todas as 20 nesta mesma conversa. Depois que a imagem 1 for aprovada, use-a como referência visual de estilo para todas as seguintes: mesma grade de pixel, mesmo contorno, mesma luz e a mesma paleta.",
-    "Depois de cada imagem, escreva só o id e o nome do item e espere 'ok' para seguir ou um pedido de ajuste. Se o pedido for 'refaça', gere de novo o mesmo item mantendo o estilo.",
-    "Não escreva texto, número nem legenda dentro das imagens.",
-    "Se não conseguir fundo transparente, use fundo verde puro #00ff00 liso, sem sombra, para recorte depois."
+    "Você é o produtor de arte do KUSA, um RPG de ação para celular com visual inspirado no Tibia (arte original). Vai gerar as 20 imagens da lista 'itens', uma por vez, na ordem do campo 'ordem'.",
+    "Antes de começar, olhe as imagens anexadas: 'goblin-referencia.png' é o MODELO DE ESTILO aprovado; os 'molde-*.png' são os MODELOS DE LAYOUT de cada tipo de folha (onde vai cada figura e a linha vermelha onde ficam os pés).",
+    "Para cada item, gere UMA imagem com o 'prompt_completo' exatamente como está, sem resumir, traduzir nem reescrever, no 'tamanho_imagem' do item, usando como referência as imagens da lista 'anexar' do item.",
+    "Do molde copie só a organização (linhas, colunas, separação e base dos pés). Nunca desenhe na imagem as caixas, as linhas, a linha vermelha nem o texto do molde.",
+    "Se um item 'depende_de' outro (folhas B e C de um monstro), use a folha A aprovada desse monstro como modelo do personagem. A folha A do dragão negro (43) é gerada aqui; a da Hidra (hydra-A, item 40) vem anexada pelo usuário. Se ela não estiver anexada, pule os itens 41 e 42, avise e siga para o 43.",
+    "Confira cada imagem no 'checklist' antes de mostrar. Se falhar, gere de novo (até 3 tentativas) e mostre só a melhor.",
+    "Depois de cada imagem, escreva só: ordem, id, o nome do arquivo ('salvar_como') e qualquer problema que ficou. Espere 'ok' para seguir ou um pedido de ajuste. Num ajuste, acrescente ao fim do prompt UMA frase curta corrigindo o problema (ex.: 'The side profile must face LEFT.') e não mude o resto.",
+    "Não mude o estilo, a paleta, a câmera nem a composição da folha para 'melhorar' a arte. Não junte dois itens numa imagem. Não use arte de jogos existentes (Tibia, Diablo e outros) nem peça 'no estilo de' um artista vivo."
   ],
-  "sobre_o_jogo": "KUSA é um RPG de masmorra cooperativo para celular (jogado na vertical), visto de cima, com pixel art inspirada no Tibia, mas toda original. O Pântano das Ruínas é um brejo aberto verde-oliva numa baía afundada, com água verde-azulada e ruínas de calcário cinza de um império caído: muros caídos, colunas quebradas, lajes, urnas e estátuas, tomados por musgo e hera.",
-  "regras_de_estilo": {
-    "grade": "pixel art em grade rígida, como se fosse feita em 128×128 pixels por tile do mapa e ampliada sem suavização: cada pixel é um quadrado nítido",
-    "perspectiva": "vista de cima oblíqua fixa: chão visto de cima, objetos com altura desenhados em pé mostrando a face da frente (sul); nunca isométrico",
-    "luz": "de cima à esquerda; sombra embaixo à direita de cada forma",
-    "tons": "4 tons chapados por material (luz, base, sombra, sombra funda), sem degradê; textura com padrão de pixel",
-    "contorno": "1 pixel de arte em quase-preto quente #1a1812 em volta de cada forma; linhas internas mais claras",
-    "cor": "terrosa e pouco saturada (menos de 55%); cor viva só em acento pequeno (pétala, corpo de inseto, ponto de luz)",
-    "sombra": "nenhuma sombra projetada no chão",
-    "paleta": {
-      "capim": "#4a6a30",
-      "musgo": [
-        "#2f4a1c",
-        "#46682a",
-        "#5f8636"
-      ],
-      "hera": [
-        "#1f3d17",
-        "#2f5a22",
-        "#467a2e"
-      ],
-      "calcario": [
-        "#45463a",
-        "#626251",
-        "#7f7d68",
-        "#9d9a80"
-      ],
-      "rejunte": "#30322a",
-      "agua_funda": "#24423e",
-      "agua_rasa": "#35574f",
-      "brilho_agua": "#8fb8aa",
-      "lama": "#45392a",
-      "barro": [
-        "#5e3422",
-        "#8a5236",
-        "#b07050"
-      ],
-      "osso": [
-        "#9a927a",
-        "#c8c0a4"
-      ],
-      "contorno": "#1a1812"
+  "modelo": {
+    "gerador": "o gerador de imagens do próprio ChatGPT (GPT Image), nesta conversa, na qualidade mais alta",
+    "modelo_de_estilo": {
+      "arquivo": "goblin-referencia.png",
+      "o_que_e": "folha aprovada do goblin (2 linhas × 6 vistas, parado e andando). É o padrão de todo o mapa.",
+      "copiar": "pixel art detalhada de cor chapada, contorno quase-preto grosso (#1a1210), luz de cima à esquerda, sombras fundas à direita embaixo, paleta terrosa e apagada (oliva, musgo, ferrugem, osso, turfa, couro escuro) com cor viva só em olhos, sangue, veneno e magia, sujeira e detalhe de superfície, clima sombrio",
+      "nao_copiar": "o goblin em si: cada item tem o seu assunto"
+    },
+    "modelos_de_layout": {
+      "molde-A-turnaround.png": "monstro, folha A: 2 linhas × 6 vistas (frente, 3/4 frente esq., perfil esq., 3/4 costas esq., costas, 3/4 costas dir.); linha 1 parado, linha 2 andando",
+      "molde-B-acao.png": "monstro, folha B/C: 4 colunas, uma animação por linha, tudo de perfil olhando para a ESQUERDA",
+      "molde-props.png": "objetos e decalques: figuras separadas em grade, pés na linha de base",
+      "molde-textura.png": "peça única vista de cima, 1024×1024 (usado no mosaico da Hidra)"
     }
   },
-  "criterio_de_aprovacao": [
-    "Pixels nítidos e quadrados, sem borrão nem degradê.",
-    "Luz vindo de cima à esquerda em tudo.",
-    "Contorno escuro de 1 pixel em volta de cada objeto.",
-    "Cores dentro da paleta, apagadas e terrosas.",
-    "Sem sombra no chão, sem texto, fundo transparente (ou verde #00ff00).",
-    "Parece do mesmo jogo que a imagem 1 aprovada."
+  "regras_tecnicas": {
+    "formato": "PNG",
+    "fundo": "transparente de verdade (canal alfa). Proibido desenhar o xadrez cinza e branco. Sem canal alfa: fundo magenta chapado #FF00FF",
+    "bordas": "pixels duros; brilho desenhado como anéis de pixels sólidos, nunca semitransparente",
+    "separacao": "cada figura cercada de espaço vazio; nenhuma encosta na outra",
+    "direcao": "todo perfil e todo 3/4 olhando para a ESQUERDA (exceto a coluna 6 da folha A)",
+    "base": "em cada linha, todos os pés na mesma linha horizontal",
+    "escala": "um humano adulto = 1 tile de altura; o prompt diz o tamanho de cada coisa em relação a isso",
+    "proibido": "texto, números, rótulos, grade, moldura, marca d'água, assinatura, chão ou cenário de fundo (exceto onde o prompt pede), sombra projetada no chão"
+  },
+  "checklist": [
+    "Fundo transparente de verdade ou magenta chapado #FF00FF; nada de xadrez desenhado.",
+    "Número certo de figuras, na ordem pedida, cada uma separada das outras.",
+    "Perfil e 3/4 olhando para a esquerda.",
+    "Pés na mesma linha em cada linha da folha.",
+    "Mesmo personagem em todas as figuras (cores, roupa, armas, proporção); nas folhas B e C, igual à folha A.",
+    "Estilo igual ao do goblin de referência: contorno escuro, luz de cima à esquerda, sombras fundas, clima sombrio.",
+    "Nada cortado na borda da imagem (cabeças, chifres, cauda, asas, copas).",
+    "Nenhuma caixa, linha ou texto do molde desenhado na imagem.",
+    "Animações: os quadros de cada linha formam uma sequência, não poses soltas."
   ],
-  "prompts": [
+  "itens": [
     {
-      "id": 1,
-      "nome": "Cabeças de estátua",
-      "categoria": "enfeite das ruínas",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 variations of a broken marble statue head of an ancient sunken empire lying half buried in olive swamp grass, weathered gray limestone, cracked nose, blank eyes, laurel crown on one, moss patches on the top-left lit side, dark water-stain line at the base, each centered on its own tile. Layout: 3 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 2,
-      "nome": "Urnas",
-      "categoria": "enfeite das ruínas",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 ancient terracotta urns standing among ruins (clay tones #5e3422, #8a5236, #b07050): one intact amphora with two handles, one chipped at the rim, one tipped over with a crack, faded serpent band painted around the belly, moss creeping up from the base, each centered on its own tile. Layout: 3 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 3,
-      "nome": "Pedestais",
-      "categoria": "enfeite das ruínas",
-      "tamanho_no_jogo": "128x160 (1 tile, sobe 32 px)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 empty stone statue pedestals of a ruined imperial plaza: square limestone plinth with carved molding, broken feet of a missing statue on one, worn hydra glyph carved on the front face of another, ivy hanging from the top edge, top face visible from above and south face standing up. Layout: 3 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 4,
-      "nome": "Lajes afundadas na água",
-      "categoria": "água perto das ruínas",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 tiles of shallow teal-green swamp water seen from above with sunken irregular limestone paving slabs just below the surface, slab edges slightly blurred by water tint, moss on the joints, a few slabs tilted and breaking the surface with a thin light rim, tiles must tile seamlessly with plain water around. Layout: 3 separate square ground tiles side by side in one row with a transparent gap between them, each tile completely filled edge to edge and seamless so it tiles with plain water of the same color. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 5,
-      "nome": "Tocos de coluna na água",
-      "categoria": "água perto das ruínas",
-      "tamanho_no_jogo": "128x160 (1 tile, sobe 32 px)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 short broken fluted column stumps rising out of shallow teal swamp water: jagged broken top seen from above, fluting on the south face, dark wet band and small ripple ring where the stone meets the water, algae streaks, one stump leaning. Layout: 3 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 6,
-      "nome": "Pedras de passagem",
-      "categoria": "água perto das ruínas",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 4,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 4 variations of flat stepping stones crossing shallow swamp water, seen from above: 2 to 3 rounded weathered limestone blocks per tile, dry light top-left edge, wet darker lower-right edge, tiny moss tufts, faint water ripples around each stone. Layout: 4 separate square ground tiles side by side in one row with a transparent gap between them, each tile completely filled edge to edge and seamless so it tiles with plain water of the same color. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 7,
-      "nome": "Taboas",
-      "categoria": "enfeite do brejo",
-      "tamanho_no_jogo": "128x160 (1 tile, sobe 32 px)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 clumps of cattails (bulrush) growing at the edge of a swamp: tall slender olive leaves, brown velvet seed heads, a few bent stems, base rooted in mud, standing upright in oblique view. Layout: 3 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 8,
-      "nome": "Juncos",
-      "categoria": "enfeite do brejo",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 4,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 4 clumps of thin swamp rushes: dense bundle of very thin dark-green and yellow-green stalks, some tips dry and pale, short and tall versions, rooted in damp grass, upright in oblique view. Layout: 4 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 9,
-      "nome": "Íris do brejo",
-      "categoria": "enfeite do brejo",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 clumps of wild marsh irises: sword-shaped olive leaves fanning out, 1 to 3 small muted violet and pale yellow flowers as the only color accent, rooted in wet grass, upright in oblique view. Layout: 3 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 10,
-      "nome": "Samambaias",
-      "categoria": "enfeite do brejo",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 3 swamp ferns: arching fronds with small leaflets drawn with short pixel strokes, one young curled fiddlehead, one fern partly brown and drying, low and spreading, top-left fronds lighter. Layout: 3 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 11,
-      "nome": "Cogumelos",
-      "categoria": "enfeite do brejo",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 4,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 4 small clusters of swamp mushrooms on damp ground and on a rotten twig: pale cream caps, brown speckled caps, one cluster of thin tall grey stalks, one ring of tiny caps, earthy tones, small and grouped, no glow. Layout: 4 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 12,
-      "nome": "Tiririca",
-      "categoria": "enfeite do brejo",
-      "tamanho_no_jogo": "128x128 (1 tile)",
-      "variacoes": 4,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite sheet of 4 tufts of nutsedge (sedge grass): short triangular-stemmed grass blades with small brown spiky seed clusters on top, low and spiky silhouette, olive and yellow-green tones, meant to scatter across swamp grass. Layout: 4 variations side by side in one row, evenly spaced, same scale, each object centered in an equal square cell with its base on the same baseline, fully transparent background, nothing touching the image edges. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 13,
-      "nome": "Vaga-lumes",
-      "categoria": "ambiente",
-      "tamanho_no_jogo": "16x16 por quadro, 4 quadros",
-      "variacoes": 1,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: tiny animated firefly sprite strip, 4 frames in a row: a 2-pixel warm yellow-green light point with a faint 1-pixel soft halo pulsing from dim to bright and back, dark body barely visible, on transparent background. Layout: animation frames side by side in one row, in playback order left to right, same position and scale in every frame, the subject drawn large so pixels stay readable, fully transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 14,
-      "nome": "Névoa baixa",
-      "categoria": "ambiente",
-      "tamanho_no_jogo": "512x256, emenda nas bordas",
-      "variacoes": 2,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: seamless tileable low ground mist overlay for a top-down swamp: horizontal wisps of pale grey-green fog drawn as flat pixel bands with dithered edges, 3 opacity levels, mostly transparent, no gradients, loops horizontally. Layout: 2 variations stacked in 2 rows, each a horizontal band of mist that tiles seamlessly left-right, mostly transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 15,
-      "nome": "Folhas caindo",
-      "categoria": "ambiente",
-      "tamanho_no_jogo": "16x16 por quadro, 4 quadros",
-      "variacoes": 3,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: sprite strip of a small falling leaf tumbling in 4 frames (flat, edge-on, flipped, edge-on), 3 color variations: olive green, yellow-brown willow leaf, dry brown leaf, outline #1a1812, transparent background. Layout: animation frames side by side in one row, in playback order left to right, same position and scale in every frame, the subject drawn large so pixels stay readable, 3 color variations stacked in separate rows, fully transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 16,
-      "nome": "Libélulas",
-      "categoria": "ambiente",
-      "tamanho_no_jogo": "24x24 por quadro, 2 quadros",
-      "variacoes": 2,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: tiny dragonfly sprite seen from above, 2-frame wing flap (wings up, wings blurred out), slender teal-blue body as accent color, translucent pale wings drawn with 1 light pixel line, 2 color variations (teal, rust red), transparent background. Layout: animation frames side by side in one row, in playback order left to right, same position and scale in every frame, the subject drawn large so pixels stay readable, 2 color variations stacked in separate rows, fully transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 17,
-      "nome": "Marolas na água",
-      "categoria": "ambiente",
-      "tamanho_no_jogo": "128x128 por quadro, 4 quadros",
-      "variacoes": 1,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: animated water ripple overlay, 4 frames: a small ring ripple on teal swamp water expanding and fading, drawn as thin 1-pixel light teal arcs (#8fb8aa) broken into segments, top-left arc brighter, mostly transparent so it sits on top of the water tile. Layout: animation frames side by side in one row, in playback order left to right, same position and scale in every frame, the subject drawn large so pixels stay readable, fully transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 18,
-      "nome": "Bolhas na água",
-      "categoria": "ambiente",
-      "tamanho_no_jogo": "32x32 por quadro, 4 quadros",
-      "variacoes": 1,
-      "tamanho_imagem": "1536x1024 (paisagem)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: animated swamp gas bubble sprite strip, 4 frames: a small murky bubble rising to the surface of teal water, growing, popping with a tiny ring and vanishing, pale teal highlight pixel on the top-left of the bubble, transparent background. Layout: animation frames side by side in one row, in playback order left to right, same position and scale in every frame, the subject drawn large so pixels stay readable, fully transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
-    },
-    {
-      "id": 19,
-      "nome": "Sol no meio da tela",
-      "categoria": "ambiente (sobreposição de tela)",
-      "tamanho_no_jogo": "412x915 (retrato, celular)",
-      "variacoes": 1,
+      "ordem": 41,
+      "id": "hydra-B",
+      "nome": "Hidra do pântano",
+      "tipo": "monstro",
+      "papel": "boss",
+      "folha": "B",
+      "depende_de": "hydra-A",
       "tamanho_imagem": "1024x1536 (retrato)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: screen overlay for a mobile portrait game: very soft warm sunlight patch in the center of the screen drawn as 3 large concentric flat dithered bands of pale warm yellow at low opacity, a few faint diagonal light shafts from the top-left, everything else fully transparent, no lens flare. Layout: full-screen overlay for a phone held upright, mostly transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
+      "molde": "molde-B-acao.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-B-acao.png (layout)",
+        "RPG_hydra-A_v01.png (folha A aprovada do mesmo monstro: mesmo desenho, cores e escala)"
+      ],
+      "salvar_como": "RPG_hydra-B_v01.png",
+      "nota": "Boss: quadro grande. A Hidra ganha e perde cabeças na luta (1 a 5): ver o item seguinte, a folha C.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: Swamp hydra (BOSS), huge, about 2x2 tiles: a heavy squat reptilian body on four thick legs, THREE long serpentine necks with snapping dragon-like heads full of teeth, mottled swamp-green scales with a dirty yellow underbelly, algae and mud on the back, old scars. Each head has its own expression.\n\nSHEET: animation sprite sheet on a fully transparent background (PNG with alpha), 4 columns, one animation per row. EVERY figure is in side profile FACING LEFT. Each figure is completely separated from the others by empty transparent space. The frames of each row are consecutive frames of one animation, read left to right. Use the attached turnaround sheet of this same character as the model: identical design, colors and scale. 5 rows. Feet aligned on each row's baseline. Size: the character is 2.5 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (heavy)\nRow 2 - ATTACK, 4 frames: the three heads rear back, strike forward one after another, recover\nRow 3 - SPECIAL, 4 frames: ACID RAIN: the heads point up, spit gobs of acid-green venom into the air, recover\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\nRow 5 - DIVE, 4 frames: sinks into murky water (draw a small pool), only the heads above water, only ripples, empty ripples\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
     },
     {
-      "id": 20,
-      "nome": "Cantos úmidos",
-      "categoria": "ambiente (sobreposição de tela)",
-      "tamanho_no_jogo": "412x915 (retrato, celular)",
-      "variacoes": 1,
+      "ordem": 42,
+      "id": "hydra-C",
+      "nome": "Hidra do pântano",
+      "tipo": "monstro",
+      "papel": "boss",
+      "folha": "C",
+      "depende_de": "hydra-A",
+      "tamanho_imagem": "1024x1024 (quadrada)",
+      "molde": "molde-B-acao.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-B-acao.png (layout)",
+        "RPG_hydra-A_v01.png (folha A aprovada do mesmo monstro: mesmo desenho, cores e escala)"
+      ],
+      "salvar_como": "RPG_hydra-C_v01.png",
+      "nota": "Variações de cabeças: a Hidra começa com 3, perde cabeças nos golpes e ganha 2 por toco que não for cauterizado (máx. 5).",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: Swamp hydra (BOSS), huge, about 2x2 tiles: a heavy squat reptilian body on four thick legs, a varying number of long serpentine necks with snapping dragon-like heads full of teeth, mottled swamp-green scales with a dirty yellow underbelly, algae and mud on the back, old scars. Each head has its own expression.\n\nSHEET: animation sprite sheet on a fully transparent background (PNG with alpha), 4 columns, one animation per row. EVERY figure is in side profile FACING LEFT. Each figure is completely separated from the others by empty transparent space. The frames of each row are consecutive frames of one animation, read left to right. Use the attached turnaround sheet of this same character as the model: identical design, colors and scale. 4 rows. Feet aligned on each row's baseline. Size: the character is 2.5 times the height of one human adult (1 tile).\nRow 1 - STANDING IDLE with ONE head (the other necks are cauterized stumps): 4 breathing frames\nRow 2 - STANDING IDLE with TWO heads (one stump): 4 breathing frames\nRow 3 - STANDING IDLE with FOUR heads: 4 breathing frames\nRow 4 - STANDING IDLE with FIVE heads: 4 breathing frames\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 43,
+      "id": "blackDragon-A",
+      "nome": "Dragão negro jovem",
+      "tipo": "monstro",
+      "papel": "boss",
+      "folha": "A",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-A-turnaround.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-A-turnaround.png (layout)"
+      ],
+      "salvar_como": "RPG_blackDragon-A_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: Young black dragon (BOSS), about 2x2 tiles: glossy black scales with a dark purple sheen, a skull-like horned head with horns curving forward, acid dripping from the jaws and burning holes in the ground, ragged bat wings, swamp rot and algae on the body, cold green eyes.\n\nSHEET: character turnaround sprite sheet on a fully transparent background (PNG with alpha), 2 rows x 6 columns = 12 figures of the SAME character, each figure completely separated from the others by empty transparent space (no overlap, nothing touching). Row 1: standing idle. Row 2: walking, mid-stride. Columns from left to right: (1) front view; (2) 3/4 front view turned to the LEFT; (3) side profile facing LEFT; (4) 3/4 back view turned to the LEFT; (5) back view; (6) 3/4 back view turned to the right. Same scale, outfit, colors and proportions in all figures. Wide landscape sheet. All feet on the same horizontal baseline in each row. Size: the character is 2.5 times the height of one human adult (1 tile).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 44,
+      "id": "blackDragon-B",
+      "nome": "Dragão negro jovem",
+      "tipo": "monstro",
+      "papel": "boss",
+      "folha": "B",
+      "depende_de": "blackDragon-A",
       "tamanho_imagem": "1024x1536 (retrato)",
-      "prompt_completo": "Game asset for KUSA, a mobile top-down co-op dungeon RPG with Tibia-inspired pixel art (original art, do not copy any Tibia sprite). Map: the Sunken Ruins Swamp, an open olive-green marsh in a sunken bay where a fallen empire left limestone ruins. STYLE: hand-painted pixel art drawn on a strict pixel grid, as if made at 128x128 pixels per map tile and enlarged with nearest-neighbor, so every art pixel is a crisp hard-edged square; no anti-aliasing, no gradients, no blur. PERSPECTIVE: fixed oblique top-down view, the ground seen from directly above, anything with height drawn standing up showing its south (front) face and rising upward; never isometric diamonds. LIGHT: single light from the top-left, shadow on the bottom-right of each shape. SHADING: exactly 4 flat tones per material (highlight, base, shadow, deep shadow), texture made with pixel patterns (stone speckles, short leaf strokes). OUTLINE: 1 art-pixel warm near-black outline (#1a1812) around every shape, inner lines lighter than the outline. COLOR: earthy muted colors, saturation under 55%; only small accents (flower petals, insect body, light points) may be brighter. PALETTE: grass #4a6a30, moss #2f4a1c / #46682a / #5f8636, ivy #1f3d17 / #2f5a22 / #467a2e, limestone #45463a / #626251 / #7f7d68 / #9d9a80, mortar #30322a, deep water #24423e, shallow water #35574f, water highlight #8fb8aa, mud #45392a, clay #5e3422 / #8a5236 / #b07050, bone #9a927a / #c8c0a4. NO cast shadow on the ground, no drop shadow. SUBJECT: screen corner vignette overlay for a mobile portrait swamp game: dark damp green-teal shade (#1d2f12 to #24423e) creeping in from the 4 corners with dithered pixel edges, hints of hanging moss and water droplets in the corners only, center fully transparent, no gradients. Layout: full-screen overlay for a phone held upright, mostly transparent background. Avoid: blur, soft edges, anti-aliasing, gradient shading, painterly brush strokes, photorealism, 3D render, isometric tiles, ground shadows, glow on everything, neon or oversaturated colors, text, letters, numbers, labels, watermark, frame, border, UI elements, mixed perspectives, cropped objects."
+      "molde": "molde-B-acao.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-B-acao.png (layout)",
+        "RPG_blackDragon-A_v01.png (folha A aprovada do mesmo monstro: mesmo desenho, cores e escala)"
+      ],
+      "salvar_como": "RPG_blackDragon-B_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: Young black dragon (BOSS), about 2x2 tiles: glossy black scales with a dark purple sheen, a skull-like horned head with horns curving forward, acid dripping from the jaws and burning holes in the ground, ragged bat wings, swamp rot and algae on the body, cold green eyes.\n\nSHEET: animation sprite sheet on a fully transparent background (PNG with alpha), 4 columns, one animation per row. EVERY figure is in side profile FACING LEFT. Each figure is completely separated from the others by empty transparent space. The frames of each row are consecutive frames of one animation, read left to right. Use the attached turnaround sheet of this same character as the model: identical design, colors and scale. 6 rows. Feet aligned on each row's baseline. Size: the character is 2.5 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (heavy, wings half open)\nRow 2 - ATTACK, 4 frames: rear back, bite forward, jaws snap, recover\nRow 3 - SPECIAL, 4 frames: ACID BREATH: inhales, jaws open, a straight jet of green acid shoots to the LEFT, jet ends\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\nRow 5 - DARKNESS, 3 frames: spreads the wings, an inky black cloud pours out, the cloud hides the body (column 4 empty)\nRow 6 - DIVE, 4 frames: dives into murky water (draw a small pool), only the horns above water, ripples, empty ripples\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 45,
+      "id": "arv-cipreste",
+      "nome": "Ciprestes-calvos",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_arv-cipreste_v01.png",
+      "nota": "O jogo separa a copa do tronco para deixar a copa transparente quando o herói passa atrás: copa e tronco precisam ser legíveis.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: three different bald cypress trees with buttressed flaring trunks, cypress knees around the base, feathery dark-green foliage and long grey Spanish moss hanging from the branches. Each tree is 2 to 3 tiles tall (a human is 1 tile) with the crown about 2 tiles wide.\n\nSHEET: 3 separate objects on a fully transparent background, arranged in 1 rows x 3 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 46,
+      "id": "arv-salgueiro",
+      "nome": "Salgueiros-chorões",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_arv-salgueiro_v01.png",
+      "nota": "O jogo separa a copa do tronco para deixar a copa transparente quando o herói passa atrás: copa e tronco precisam ser legíveis.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: three different weeping willows with thick twisted trunks and long curtains of drooping leaves, a little Spanish moss. Each tree is 2 to 3 tiles tall (a human is 1 tile) with the crown about 2 tiles wide.\n\nSHEET: 3 separate objects on a fully transparent background, arranged in 1 rows x 3 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 47,
+      "id": "arv-mangue",
+      "nome": "Mangues",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_arv-mangue_v01.png",
+      "nota": "O jogo separa a copa do tronco para deixar a copa transparente quando o herói passa atrás: copa e tronco precisam ser legíveis.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: three different swamp mangroves standing on arched stilt roots, dense rounded dark crowns. Each tree is 2 to 3 tiles tall (a human is 1 tile) with the crown about 2 tiles wide.\n\nSHEET: 3 separate objects on a fully transparent background, arranged in 1 rows x 3 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 48,
+      "id": "arv-morta",
+      "nome": "Árvores mortas",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_arv-morta_v01.png",
+      "nota": "O jogo separa a copa do tronco para deixar a copa transparente quando o herói passa atrás: copa e tronco precisam ser legíveis.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: three different dead swamp trees, grey bleached bark, broken branches like claws, hanging moss, one with a crow. Each tree is 2 to 3 tiles tall (a human is 1 tile) with the crown about 2 tiles wide.\n\nSHEET: 3 separate objects on a fully transparent background, arranged in 1 rows x 3 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 49,
+      "id": "plantas-altas-1",
+      "nome": "Plantas altas (1)",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_plantas-altas-1_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 tall swamp plants, each about 1/2 to 1 tile tall: (1) cattails clump, (2) cattails with seed heads bursting, (3) big fern, (4) tall reeds, (5) blue swamp iris, (6) carnivorous pitcher plants, (7) giant spotted toadstool, (8) rotten tree stump with fungus.\n\nSHEET: 8 separate objects on a fully transparent background, arranged in 2 rows x 4 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 50,
+      "id": "plantas-altas-2",
+      "nome": "Plantas altas (2)",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_plantas-altas-2_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 swamp plants and snags, each about 1/2 to 1 tile tall: (1) thorny dark bush, (2) dead snag branch sticking out of the ground, (3) sedge clump, (4) sedge clump variant, (5) bulrushes, (6) bog myrtle shrub, (7) cluster of glowing pale mushrooms, (8) broken reeds with a bird nest.\n\nSHEET: 8 separate objects on a fully transparent background, arranged in 2 rows x 4 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 51,
+      "id": "chao-brejo-1",
+      "nome": "Enfeites de chão do brejo (1)",
+      "tipo": "decalques",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_chao-brejo-1_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 flat ground details: (1) fallen leaves pile, (2) scattered fallen leaves, (3) small brown mushrooms, (4) small red-capped mushrooms, (5) twigs, (6) small muddy puddle, (7) bird tracks in mud, (8) exposed tree roots.\n\nSHEET: 8 separate flat ground decals on a fully transparent background, 2 rows x 4 columns, each completely separated. They lie flat on the ground, seen from above, with crisp edges (no soft fade). Each fits inside one tile.\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 52,
+      "id": "chao-brejo-2",
+      "nome": "Enfeites de chão do brejo (2)",
+      "tipo": "decalques",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_chao-brejo-2_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 flat ground details: (1) old bones and a ribcage half sunk in moss, (2) mossy flat stone, (3) fairy ring of tiny mushrooms, (4) moss patch, (5) moss patch variant, (6) moss patch with tiny flowers, (7) dried blood stain with a torn rag, (8) rusted sword half buried.\n\nSHEET: 8 separate flat ground decals on a fully transparent background, 2 rows x 4 columns, each completely separated. They lie flat on the ground, seen from above, with crisp edges (no soft fade). Each fits inside one tile.\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 53,
+      "id": "agua-enfeites",
+      "nome": "Enfeites da água",
+      "tipo": "decalques",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_agua-enfeites_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 details floating in or rising from murky water, drawn on transparent background (no water around them): (1) cluster of lily pads, (2) single lily pad, (3) white water lily flower on a pad, (4) duckweed patch, (5) duckweed patch variant, (6) cypress knees sticking out of the water, (7) floating rotten log, (8) ripple ring (drawn as pixel lines).\n\nSHEET: 8 separate flat ground decals on a fully transparent background, 2 rows x 4 columns, each completely separated. They lie flat on the ground, seen from above, with crisp edges (no soft fade). Each fits inside one tile.\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 54,
+      "id": "ruinas-chao-1",
+      "nome": "Enfeites de chão das ruínas (1)",
+      "tipo": "decalques",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_ruinas-chao-1_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 flat details for ruined limestone floors: (1) small rubble pile, (2) rubble variant, (3) long crack, (4) branching crack, (5) puddle on a slab, (6) hole where a slab is missing showing dark water, (7) weeds growing from a joint, (8) carved ancient glyph worn by water.\n\nSHEET: 8 separate flat ground decals on a fully transparent background, 2 rows x 4 columns, each completely separated. They lie flat on the ground, seen from above, with crisp edges (no soft fade). Each fits inside one tile.\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 55,
+      "id": "ruinas-chao-2",
+      "nome": "Enfeites de chão das ruínas (2)",
+      "tipo": "decalques",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_ruinas-chao-2_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 flat details for ruined limestone floors: (1) pottery shards, (2) moss creeping over a slab, (3) moss variant, (4) human skull and scattered bones, (5) fallen broken spearhead and shield, (6) offering bowl with old coins, (7) snake skin shed, (8) dried acid burn mark (green-black).\n\nSHEET: 8 separate flat ground decals on a fully transparent background, 2 rows x 4 columns, each completely separated. They lie flat on the ground, seen from above, with crisp edges (no soft fade). Each fits inside one tile.\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 56,
+      "id": "ruinas-altas",
+      "nome": "Ruínas em pé e na água",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_ruinas-altas_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 8 ruined stone objects of a drowned empire, grey-green limestone with moss, ivy and a dark water stain line at the base: (1) fallen column drum lying on its side, (2) giant broken statue head half sunk, (3) cracked stone urn, (4) empty pedestal, (5) slab tilted out of the water (draw only the stone), (6) column stub in water, (7) mossy boulder in water, (8) headless statue of a robed figure.\n\nSHEET: 8 separate objects on a fully transparent background, arranged in 2 rows x 4 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 57,
+      "id": "colunas",
+      "nome": "Colunas",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_colunas_v01.png",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: 4 ancient limestone columns, each standing on one tile: (1) intact fluted column with carved capital, about 2.5 tiles tall; (2) column broken at mid height with a jagged top; (3) short broken stump with rubble at the base; (4) intact column wrapped in ivy with a hairline crack. Moss, water stain line at the base.\n\nSHEET: 4 separate objects on a fully transparent background, arranged in 1 rows x 4 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 58,
+      "id": "muros-kit",
+      "nome": "Kit de muros das ruínas",
+      "tipo": "kit",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_muros-kit_v01.png",
+      "nota": "O motor monta os muros juntando estas peças pelos vizinhos: alturas e pedra precisam ser idênticas entre as peças.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: a modular kit of ruined limestone wall pieces, all the same height (the visible front face is half a tile tall) and the same stone, so they can be combined on a grid: (1) straight wall segment running left-right, 1 tile wide, showing the top and the front face of fitted blocks; (2) the same wall running up-down (seen end-on: narrow front, long top); (3) outer corner; (4) T-junction; (5) cross junction; (6) wall end crumbling into rubble; (7) isolated block; (8) low broken wall with a gap. Moss on top, ivy, dark water stain line at the base.\n\nSHEET: 8 separate objects on a fully transparent background, arranged in 2 rows x 4 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 59,
+      "id": "mosaico-hidra",
+      "nome": "Mosaico da Hidra (arena)",
+      "tipo": "objeto-unico",
+      "tamanho_imagem": "1024x1024 (quadrada)",
+      "molde": "molde-textura.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-textura.png (layout)"
+      ],
+      "salvar_como": "RPG_mosaico-hidra_v01.png",
+      "nota": "Chão da arena do boss.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything. Setting: the Ruined Swamp - a flooded open forest of bald cypresses and willows over murky green water, with the moss-covered limestone ruins of a drowned empire. Colors of the place: olive green, moss, teal-green water, mud brown, grey-green stone.\n\nSUBJECT: a large circular floor mosaic seen straight from above, about 5 tiles in diameter, depicting a many-headed hydra coiled in the center, framed by a ring of wave patterns and ancient glyphs. Faded colored stone tesserae (teal, ochre, bone, dark red), many missing tiles, cracks, moss growing in the gaps, water stains. Transparent outside the circle.\n\nSHEET: one object, 1024x1024, transparent background outside the circle, flat on the ground, crisp edges.\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
+    },
+    {
+      "ordem": 60,
+      "id": "comum-baus-portais",
+      "nome": "Baús e portais (todos os mapas)",
+      "tipo": "objetos",
+      "tamanho_imagem": "1536x1024 (paisagem)",
+      "molde": "molde-props.png",
+      "anexar": [
+        "goblin-referencia.png (estilo)",
+        "molde-props.png (layout)"
+      ],
+      "salvar_como": "RPG_comum-baus-portais_v01.png",
+      "nota": "Compartilhado por todos os mapas: substitui o último uso do pack de terceiros.",
+      "prompt_completo": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything.\n\nSUBJECT: 6 objects: (1) closed wooden treasure chest with iron bands, (2) the same chest locked with a heavy padlock and chains, (3) the same chest open with gold glinting inside, (4) open chest empty, (5) boss portal: a swirling dark-red rift framed by cracked runestones, 2 tiles tall, (6) escape portal: a swirling cold-blue rift framed by runestones.\n\nSHEET: 6 separate objects on a fully transparent background, arranged in 2 rows x 3 columns, each object completely separated by empty space. Top-down 3/4 RPG view (we see the front and the top), each object standing on its own baseline. No cast shadow on the ground (the engine adds it).\n\nDo NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).\n\nOUTPUT: PNG with a real alpha channel. Never paint the grey-and-white checkerboard that editors use to show transparency. If a transparent background is impossible, use one flat solid magenta #FF00FF background instead. The attached layout template (molde) is only a diagram of where the figures go: do NOT draw its boxes, lines, red baseline or text."
     }
   ]
 }
