@@ -1,6 +1,29 @@
 {
   "titulo": "KUSA · Pântano das Ruínas · 20 prompts de imagem para o ChatGPT",
+  "modelo": {
+    "gerador": "Gerador de imagens nativo do ChatGPT (GPT Image), dentro desta conversa. Não usar outro gerador nem plugin.",
+    "configuracoes": {
+      "tamanho": "o do campo 'tamanho_imagem' de cada item (1536x1024 paisagem ou 1024x1536 retrato)",
+      "fundo": "transparente; se não der, verde puro #00ff00 liso",
+      "qualidade": "a mais alta disponível",
+      "quantidade": "1 imagem por item, 1 item por vez",
+      "prompt": "usar o 'prompt_completo' sem resumir, traduzir nem reescrever"
+    },
+    "imagem_de_referencia": {
+      "arquivo": "referencia-estilo-kusa.png (anexada junto com este arquivo)",
+      "o_que_e": "Folha de arte aprovada do jogo (cenário da Cripta, no mesmo padrão da arte nova): lajes de piso, enfeites, estandartes, tocha, barris, urnas, caixão e tijolos de parede.",
+      "copiar": "o traço: tamanho do pixel, contorno escuro de 1 pixel, 4 tons chapados por material, luz de cima à esquerda, textura de pedra com pintinhas, proporção dos objetos em relação ao tile",
+      "nao_copiar": "os objetos, o fundo marrom e a paleta fria e escura da Cripta; o Pântano das Ruínas usa a paleta verde-oliva, verde-azulada e calcário cinza de 'regras_de_estilo'",
+      "comparacao": "a urna e os barris da referência mostram o nível de detalhe e o tamanho certos para um objeto de 1 tile"
+    },
+    "consistencia": [
+      "Antes da imagem 1, estude a referência anexada.",
+      "Depois que a imagem 1 for aprovada, ela passa a ser a referência principal junto com a anexada: mesma grade de pixel, mesmo contorno, mesma luz, mesma paleta e mesma escala de objeto.",
+      "Se uma imagem fugir do estilo (borrada, com degradê, em 3D ou com outra perspectiva), refaça antes de mostrar."
+    ]
+  },
   "instrucoes_para_o_chatgpt": [
+    "Leia o bloco 'modelo' e olhe a imagem anexada 'referencia-estilo-kusa.png' antes de começar.",
     "Você vai gerar 20 imagens de arte para o jogo KUSA, uma por item da lista 'prompts', na ordem dos ids.",
     "Para cada item, gere UMA imagem usando o campo 'prompt_completo' exatamente como está (ele já traz estilo, layout e o que evitar), no tamanho do campo 'tamanho_imagem' e com fundo transparente.",
     "Gere todas as 20 nesta mesma conversa. Depois que a imagem 1 for aprovada, use-a como referência visual de estilo para todas as seguintes: mesma grade de pixel, mesmo contorno, mesma luz e a mesma paleta.",
