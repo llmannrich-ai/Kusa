@@ -1,6 +1,6 @@
 import type * as Phaser from "phaser";
 import { CLASS_IDS, TILE_SIZE, type ClassId, type SummonKind } from "@kusa/shared";
-import { MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
+import { EXTRA_CLIPS, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
 import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
 import { makeCanvas } from "./pixels.ts";
 import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
@@ -166,19 +166,26 @@ export function createCreatureArt(scene: Phaser.Scene) {
 /** Folha da arte nova sendo montada: os quadros já desenhados e o próximo. */
 const hdBuilds = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; jobs: (() => HTMLCanvasElement)[]; next: number }>();
 
+/** Quadros por linha da folha da arte nova (no máximo 4096 px de largura). */
+const hdColumns = (size: number, frames: number) => Math.max(1, Math.min(frames, Math.floor(4096 / size)));
+
 /** Desenha o próximo quadro de um monstro da arte nova; com a folha completa, vira textura. Devolve se está pronta. */
 function hdStep(scene: Phaser.Scene, key: string, anim: MonsterAnim): boolean {
   if (scene.textures.exists(key)) return true;
   let b = hdBuilds.get(key);
   if (!b) {
     const jobs = anim.hd!();
-    b = { ...makeCanvas(anim.size * jobs.length, anim.size), jobs, next: 0 };
+    const cols = hdColumns(anim.size, jobs.length);
+    b = { ...makeCanvas(anim.size * cols, anim.size * Math.ceil(jobs.length / cols)), jobs, next: 0 };
     hdBuilds.set(key, b);
   }
-  b.ctx.drawImage(b.jobs[b.next](), b.next * anim.size, 0);
+  // Em grade: textura mais larga que 4096 px fica preta no celular.
+  const cols = hdColumns(anim.size, b.jobs.length);
+  const cell = (i: number) => [(i % cols) * anim.size, Math.floor(i / cols) * anim.size] as const;
+  b.ctx.drawImage(b.jobs[b.next](), ...cell(b.next));
   if (++b.next < b.jobs.length) return false;
   const texture = scene.textures.addCanvas(key, b.canvas)!;
-  for (let i = 0; i < b.jobs.length; i++) texture.add(i, 0, i * anim.size, 0, anim.size, anim.size);
+  for (let i = 0; i < b.jobs.length; i++) texture.add(i, 0, ...cell(i), anim.size, anim.size);
   addClips(scene, key, anim);
   hdBuilds.delete(key);
   return true;
@@ -233,6 +240,20 @@ function addClips(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
       frameRate: anim.fps[clip],
       repeat: clip === "idle" || clip === "walk" ? -1 : 0,
     });
+  }
+  // Clipes a mais (arte nova): depois dos de sempre, na ordem de `EXTRA_CLIPS`; a morte no ritmo do golpe e não repete.
+  let start = CLIP_ORDER.reduce((n, c) => n + frames[c], 0);
+  for (const clip of EXTRA_CLIPS) {
+    const n = anim.extra?.[clip];
+    if (!n) continue;
+    const base = clip === "death" ? "attack" : clip.startsWith("walk") ? "walk" : "idle";
+    scene.anims.create({
+      key: monsterAnimKey(key, clip),
+      frames: Array.from({ length: n }, (_, k) => ({ key, frame: start + k })),
+      frameRate: clip === "death" ? anim.fps.attack * 0.7 : anim.fps[base],
+      repeat: clip === "death" ? 0 : -1,
+    });
+    start += n;
   }
 }
 

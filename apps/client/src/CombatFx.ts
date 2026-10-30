@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { AttackFx } from "@kusa/shared";
 import { TILE_SIZE } from "@kusa/shared";
+import { monsterAnimKey } from "./art/bestiary.ts";
 import { BLOOD_TEXTURE, FX_ANIM, FX_TEXTURE } from "./art/textures.ts";
 import { ChunkCuller } from "./mapShared.ts";
 
@@ -115,17 +116,18 @@ export class CombatFx {
       .setFlipX(sprite.flipX)
       .setDepth(this.decalDepth + 1)
       .setTint(0xff6a6a);
-    this.scene.tweens.add({
-      targets: corpse,
-      angle: corpse.flipX ? -90 : 90,
-      y: corpse.y - 4,
-      duration: 220,
-      ease: "Quad.In",
-      onComplete: () => {
-        corpse.setTint(0x6a5a50);
-        this.persist(this.corpses, corpse, MAX_CORPSES);
-      },
-    });
+    const fall = () => {
+      corpse.setTint(0x6a5a50);
+      this.persist(this.corpses, corpse, MAX_CORPSES);
+    };
+    // Arte nova com a morte desenhada: o cadáver toca a animação (de perfil) em vez de tombar.
+    const dying = monsterAnimKey(sprite.texture.key, "death");
+    if (this.scene.anims.exists(dying)) {
+      this.scene.time.delayedCall(120, () => corpse.clearTint());
+      corpse.play(dying).once(Phaser.Animations.Events.ANIMATION_COMPLETE, fall);
+    } else {
+      this.scene.tweens.add({ targets: corpse, angle: corpse.flipX ? -90 : 90, y: corpse.y - 4, duration: 220, ease: "Quad.In", onComplete: fall });
+    }
     if (bleeds) this.decal(BLOOD_TEXTURE.puddle, { x: at.x, y: at.y + 8 }, 1, tint);
     else this.impact(FX_ANIM.smash, true, at, false);
   }
