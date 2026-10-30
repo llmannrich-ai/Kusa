@@ -702,7 +702,7 @@ export class DungeonScene extends Phaser.Scene {
     if (!msg.rising || ability.shape !== "dive") this.floatText(msg.x, msg.y - 0.6, ability.name, ability.color, 1200);
     if (unit && !unit.dead && !msg.rising) {
       // Animado: chamar a guarda e sumir são o quadro especial (rugido, cajado no alto); o resto, o golpe.
-      this.playClip(unit, ability.shape === "summon" || ability.shape === "vanish" ? "cast" : "attack");
+      this.playClip(unit, unit.anim?.strike ?? (ability.shape === "summon" || ability.shape === "vanish" ? "cast" : "attack"));
       this.lunge(unit, msg.tx - msg.x, msg.ty - msg.y, 7);
       const base = unit.sprite.scaleX;
       this.tweens.add({ targets: unit.sprite, scaleX: base * 1.15, scaleY: base * 1.15, duration: 110, yoyo: true, ease: "Quad.Out" });
@@ -1409,7 +1409,9 @@ export class DungeonScene extends Phaser.Scene {
     // Animado: anda (no ritmo do passo, 3 quadros por tile) ou fica parado respirando; golpe e especial seguram o quadro.
     if (unit.anim && unit.texture && time >= (unit.busyUntil ?? 0)) {
       const clip = walking ? "walk" : "idle";
-      unit.sprite.play(monsterAnimKey(unit.texture, clip), true);
+      // Quem tem a vista de frente e de costas usa ao andar na vertical (e fica parado nela).
+      const view = unit.dir === "up" ? `${clip}Up` as const : unit.dir === "down" ? `${clip}Down` as const : null;
+      unit.sprite.play(monsterAnimKey(unit.texture, view && unit.anim.extra?.[view] ? view : clip), true);
       unit.sprite.anims.timeScale = walking ? Phaser.Math.Clamp(((unit.anim.stride ?? 3) * 1000 / unit.stepMs) / unit.anim.fps.walk, 0.5, 2) : 1;
     }
     // Monstros respiram: o sprite (com os pés no chão) encolhe e estica de leve, cada um no seu ritmo.

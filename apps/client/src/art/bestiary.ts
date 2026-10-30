@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoGoblin, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -31,7 +31,18 @@ export interface MonsterAnim {
   hd?: () => (() => HTMLCanvasElement)[];
   /** Parte de cima do quadro que o corpo ocupa (a barra de vida fica logo acima da cabeça; padrão: o quadro todo). */
   fill?: number;
+  /**
+   * Clipes a mais (arte nova), na folha depois dos de `CLIP_ORDER`, na ordem de `EXTRA_CLIPS`: a morte (o cadáver
+   * toca em vez de tombar) e o parado e o andar de frente (`Down`) e de costas (`Up`), quando o monstro anda na vertical.
+   */
+  extra?: Partial<Record<ExtraClip, number>>;
+  /** Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial). */
+  strike?: Clip;
 }
+
+/** Clipes a mais dos monstros da arte nova (`MonsterAnim.extra`), na ordem da folha. */
+export const EXTRA_CLIPS = ["death", "idleDown", "walkDown", "idleUp", "walkUp"] as const;
+export type ExtraClip = (typeof EXTRA_CLIPS)[number];
 
 const ANIM_FPS: Record<Clip, number> = { idle: 4, walk: 9, attack: 12, cast: 7 };
 
@@ -213,6 +224,18 @@ if (protoGoblin && protoHero) {
     ...BESTIARY_ART.goblin.anim!, sheet: () => goblin.sheet(), portrait: () => goblin.portrait(), hd: () => goblin.frames(), fill: goblin.fill,
   };
 }
+// O sapo vem das folhas geradas por IA (PNG), com mais movimentos: a língua na habilidade, a morte e frente e costas.
+if (protoFrog) {
+  const frog = protoFrog;
+  BESTIARY_ART.frog = {
+    ...BESTIARY_ART.frog, facesLeft: true, scale: HD_SCALE,
+    anim: {
+      size: frog.size, sheet: () => frog.sheet(), portrait: () => frog.portrait(), outline: "",
+      fps: { idle: 4, walk: 8, attack: 10, cast: 8 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+      hd: () => frog.frames(), fill: frog.fill, extra: { ...frog.extra }, strike: "cast",
+    },
+  };
+}
 // Os bichos (rato, stirge, aranha, cubo, mímico e o dragão) têm desenho próprio; o dragão vem num quadro 2× maior.
 if (protoBeasts) {
   const proto = protoBeasts;
@@ -233,7 +256,7 @@ export const MONSTER_ANIMS: Record<string, MonsterAnim> = Object.fromEntries(
   Object.values(BESTIARY_ART).filter((a) => a.anim).map((a) => [a.texture, a.anim!]),
 );
 /** Chave da animação de um clipe de um monstro animado. */
-export const monsterAnimKey = (texture: string, clip: Clip) => `${texture}:${clip}`;
+export const monsterAnimKey = (texture: string, clip: Clip | ExtraClip) => `${texture}:${clip}`;
 
 // Os animados entram com o primeiro quadro (a galeria usa; no jogo a folha inteira vira textura antes).
 for (const [key, anim] of Object.entries(MONSTER_ANIMS)) OWN_MONSTER_DRAW[key] = anim.portrait;

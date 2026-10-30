@@ -295,3 +295,20 @@ Com a Arte nova (beta), o chão do Pântano das Ruínas (capim, musgo, lama, ág
 bordas entre eles) vem das imagens do agente de arte, processadas por `apps/client/scripts/pantanoTexturas.py` e
 desenhadas por `apps/client/src/wetlandHd.ts` em 128 px por tile, por baixo das lajes, árvores soltas, enfeites e ruínas,
 que continuam as de antes. Detalhes e pendências em `docs/arte/pantano-das-ruinas/README.md`.
+
+### Sapo gigante a partir das folhas geradas por IA
+
+O sapo do Pântano das Ruínas vem de duas folhas geradas por IA e aprovadas (`docs/arte/pantano-das-ruinas/frog-A.png`,
+parado e andando em 6 ângulos, e `frog-B.png`, de perfil: andar, bote, língua e morte). O script
+`apps/client/scripts/frogSprites.py` tira o xadrez desenhado no fundo, separa cada figura pela mancha conectada (a
+língua passa por cima do quadro vizinho), põe as duas folhas na mesma escala e grava `art/proto/frog.png` (27 figuras
+de 352 px; o quadro é largo para a língua esticada caber). `art/proto/frogArt.ts` monta os clipes.
+
+É o primeiro monstro com mais movimentos que os 4 de sempre (`MonsterAnim.extra` e `strike` em `bestiary.ts`):
+
+- a habilidade (Língua) toca a língua esticando, não o golpe;
+- ao morrer, o cadáver toca a morte desenhada em vez de tombar;
+- andando para cima ou para baixo, mostra as costas ou a frente (parado também fica na última vista).
+
+Para refazer: `python3 apps/client/scripts/frogSprites.py docs/arte/pantano-das-ruinas/frog-A.png
+docs/arte/pantano-das-ruinas/frog-B.png apps/client/src/art/proto/frog.png`.
