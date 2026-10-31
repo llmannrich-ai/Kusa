@@ -5,6 +5,7 @@
  * - a pintura não usa `Math.random` (o mesmo desenho em todo aparelho) e dá o mesmo resultado duas vezes;
  * - o chão emenda: a última coluna do tile encosta na primeira (e a última linha na primeira) sem degrau visível;
  * - nenhuma peça passa de `PIECE_MS` (o celular é ≈5× mais lento que o CI);
+ * - o atlas de cada mapa cabe no limite de textura do celular (4096 px), em várias seeds;
  * - nenhuma peça mudou sem querer: a impressão digital de cada uma fica em `cenarios.json`. Mexer no pintor de um mapa
  *   (para fazer outro, por exemplo) não pode mudar o desenho dos mapas prontos.
  * Mapa novo no padrão entra em `SCENERY` com as suas peças; peça nova entra sozinha no `cenarios.json`.
@@ -12,14 +13,16 @@
  *      npx tsx apps/server/scripts/cenarios.ts --atualizar (mudou o desenho de propósito: grava as impressões novas)
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { HD } from "../../client/src/art/paint.ts";
+import { MAP_IDS, generateDungeon, type MapId } from "@kusa/shared";
+import { HD, TileAtlas } from "../../client/src/art/paint.ts";
+import { planForest } from "../../client/src/forestPlan.ts";
 import { PROP_PIECES } from "../../client/src/art/propsArt.ts";
 import {
   FLAT_DECOR as DUNE_FLAT, TALL_DECOR as DUNE_TALL, draw as dune, flatDecor as duneFlat, palmCrown, palmTrunk, pillar,
   tallDecor as duneTall, type DuneVariant,
 } from "../../client/src/art/duneArt.ts";
 import {
-  FLAT_DECOR as FOREST_FLAT, OPEN, SPECIES, TALL_DECOR as FOREST_TALL, bridgeTile, canopyTile, dirtTile, draw as forest,
+  FLAT_DECOR as FOREST_FLAT, OPEN, SPECIES, TALL_DECOR as FOREST_TALL, boardTile, bogTile, bridgeTile, canopyTile, dirtTile, draw as forest,
   flatDecor as forestFlat, giant, heartTree, litterEdge, logTile, mudEdge, shadowEdge, stone, tallDecor as forestTall, tree,
   wallTile, waterTile, type ForestVariant,
 } from "../../client/src/art/forestArt.ts";
@@ -75,6 +78,13 @@ const SCENERY: Record<string, Piece[]> = {
   "Mesas de Solária": dunes("mesas"),
   "Bosque Velho": woods("oldwood"),
   "Coração da Mata": woods("heartwood"),
+  "Pântano do Kosaradius": [
+    ...woods("marsh"),
+    ...range(3).map((v) => ({ name: `água do miolo ${v}`, draw: () => waterTile("marsh", 0, v + 3).render(false) })),
+    ...[0, OPEN.w, OPEN.e | OPEN.w].map((e) => ({ name: `passarela leste-oeste ${e}`, draw: () => boardTile("marsh", true, e, 0).render(true) })),
+    ...[0, OPEN.n].map((e) => ({ name: `passarela norte-sul ${e}`, draw: () => boardTile("marsh", false, e, 1).render(true) })),
+    ...[[0, 1], [OPEN.n, 0], [OPEN.n | OPEN.w | OPEN.nw, 0]].map(([m, v]) => ({ name: `lamaçal ${m}-${v}`, draw: () => bogTile("marsh", m, v).render(false) })),
+  ],
   "Portões do Império": [
     ...range(4).map((v) => ({ name: `capim ${v}`, draw: () => grassTile(v).render(false), seam: true })),
     ...EMPIRE_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => empireFlat(k, 0).render(false) })),
@@ -118,6 +128,18 @@ function seamOk(px: Uint8ClampedArray, column: boolean) {
   return gap(px, HD - 1, 0, column) <= inside * 2.5 + 12;
 }
 
+// Atlas dos mapas desenhados pelo plano da mata: cabe em 4096 px de altura (o limite de textura dos celulares).
+const PLANNED: MapId[] = ["oldwood", "heartwood", "marsh"];
+for (const mapId of PLANNED.filter((m) => MAP_IDS.includes(m))) {
+  let worst = 0;
+  for (let seed = 1; seed <= 6; seed++) {
+    const { atlas } = planForest(generateDungeon(seed * 7919, mapId));
+    worst = Math.max(worst, Math.ceil(atlas.count / TileAtlas.COLUMNS) * (HD + TileAtlas.PAD * 2));
+  }
+  if (worst > 4096) fail(`${mapId}: atlas de ${worst} px de altura (máximo 4096)`);
+  console.log(`${mapId}: atlas de até ${worst} px de altura`);
+}
+
 const random = Math.random;
 let total = 0;
 for (const [map, pieces] of Object.entries(SCENERY)) {
@@ -126,11 +148,14 @@ for (const [map, pieces] of Object.entries(SCENERY)) {
     const label = `${map} · ${piece.name}`;
     Math.random = () => { throw new Error("Math.random na pintura"); };
     try {
-      const t = performance.now();
+      // O tempo é o menor de duas pinturas: a primeira paga a compilação do pintor e a máquina pode estar ocupada.
+      let t = performance.now();
       const first = piece.draw();
-      const spent = performance.now() - t;
-      ms += spent;
+      const once = performance.now() - t;
+      t = performance.now();
       const again = piece.draw();
+      const spent = Math.min(once, performance.now() - t);
+      ms += spent;
       const budget = PIECE_MS * Math.max(1, first.length / 4 / TREE_AREA);
       if (spent > budget) fail(`${label}: ${Math.round(spent)} ms (máximo ${Math.round(budget)})`);
       if (!first.some((v, i) => i % 4 === 3 && v > 0)) fail(`${label}: saiu vazia`);
