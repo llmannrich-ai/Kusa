@@ -1,6 +1,6 @@
 import type * as Phaser from "phaser";
-import { CLASS_IDS, TILE_SIZE, type ClassId, type SummonKind } from "@kusa/shared";
-import { EXTRA_CLIPS, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
+import { CLASS_IDS, MAPS, TILE_SIZE, mapMonsters, type ClassId, type MapId, type SummonKind } from "@kusa/shared";
+import { BESTIARY_ART, EXTRA_CLIPS, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
 import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
 import { makeCanvas } from "./pixels.ts";
 import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
@@ -127,11 +127,11 @@ export function createCreatureArt(scene: Phaser.Scene) {
     scene.textures.remove(key);
     scene.textures.addCanvas(key, refined);
   }
+  // A arte nova dos monstros não é feita aqui: só a do mapa da hunt, quando ela começa (`warmMapMonsters`).
   for (const [key, anim] of Object.entries(MONSTER_ANIMS)) if (!anim.hd) addAnimatedArt(scene, key, anim);
-  warmMonsterArt(scene);
   for (const kind of Object.keys(SUMMON_ANIMS) as SummonKind[]) addAnimatedArt(scene, SUMMON_TEXTURE[kind], SUMMON_ANIMS[kind]);
   for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
-    // A arte nova é desenhada aos poucos (`warmMonsterArt`): o retrato não pode ocupar a chave da folha animada.
+    // A arte nova é desenhada na hunt (`warmMapMonsters`): o retrato não pode ocupar a chave da folha animada.
     if (MONSTER_ANIMS[key]?.hd) continue;
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
   }
@@ -181,18 +181,23 @@ export function ensureMonsterArt(scene: Phaser.Scene, key: string) {
 }
 
 /**
- * Arte nova: os monstros são desenhados aos poucos, um quadro a cada intervalo, para não travar o menu nem a hunt
- * (todos os da Cripta somam mais de 1 s; o dragão sozinho, meio). Os maiores ficam por último.
+ * Arte nova: os monstros do mapa da hunt são desenhados aos poucos, uma figura a cada intervalo, para não travar a
+ * hunt (os maiores ficam por último; o que aparecer antes de ficar pronto termina na hora, `ensureMonsterArt`). Só os
+ * do mapa: a folha de cada monstro fica na memória do celular, e a de todos os mapas juntos passava do que o celular
+ * aguenta (o jogo fechava sozinho). Folha pronta fica para as próximas hunts.
  */
-function warmMonsterArt(scene: Phaser.Scene) {
-  const keys = Object.entries(MONSTER_ANIMS).filter(([, a]) => a.hd).sort(([, a], [, b]) => a.size - b.size).map(([k]) => k);
+export function warmMapMonsters(scene: Phaser.Scene, mapId: MapId) {
+  const keys = [...new Set(mapMonsters(MAPS[mapId]).flatMap((kind) => {
+    const art = BESTIARY_ART[kind];
+    return [art.texture, ...Object.values(art.variants ?? {})];
+  }))].filter((k) => MONSTER_ANIMS[k]?.hd).sort((a, b) => MONSTER_ANIMS[a].size - MONSTER_ANIMS[b].size);
   const tick = () => {
     const key = keys.find((k) => !scene.textures.exists(k));
     if (!key) return;
     hdStep(scene, key, MONSTER_ANIMS[key]);
     window.setTimeout(tick, 30);
   };
-  window.setTimeout(tick, 500);
+  window.setTimeout(tick, 200);
 }
 
 function addAnimatedArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
