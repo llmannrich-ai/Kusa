@@ -6,12 +6,13 @@ frente, 3/4 de frente, perfil, 3/4 de costas, costas, 3/4 de costas para o outro
 Mesmo processo do Rei Bullywug (`bullywugKingSprites.py`): o magenta vira transparência, cada figura é a mancha
 conectada (a lança e o arco passam do quadro), e todas vão para a mesma escala (a altura do perfil parado é `HEIGHT`
 do monstro), com os pés na linha dos outros monstros e o meio dos pés no centro do quadro. Se o perfil da folha
-olhar para a direita, passe `--flip` (o jogo quer tudo olhando para a esquerda).
+olhar para a direita, passe `--flip` (o jogo quer tudo olhando para a esquerda); se só algumas figuras vierem viradas
+(o gerador às vezes vira o perfil andando), passe os índices delas (0–11, na ordem da folha) em `--flip=8,7`.
 
 Sai `apps/client/src/art/proto/kosaradius/<kind>.png`, as 12 figuras em quadros de `CELL` px, na ordem da folha.
 `art/proto/kosaradiusArt.ts` monta os clipes.
 
-Uso: python3 apps/client/scripts/kosaradiusSprites.py orcSpearman [--flip]
+Uso: python3 apps/client/scripts/kosaradiusSprites.py orcSpearman [--flip | --flip=8,...]
 """
 import sys
 from pathlib import Path
@@ -70,14 +71,15 @@ def place(rgba, fig, scale, flip, cell):
     return out
 
 
-def main(kind, flip=False):
+def main(kind, flip=False, flip_figs=()):
     height, cell = SIZES[kind]
     rgba = clean(SRC / f"{kind}-A.png")
     rows = figures(rgba)
     assert [len(r) for r in rows] == [6, 6], f"{kind}-A: esperava 2 linhas de 6, achei {[len(r) for r in rows]}"
     side = rows[0][2][0]
     scale = height / (side[3] - side[1])
-    cells = [place(rgba, f, scale, flip, cell) for line in rows for f in line]
+    figs = [f for line in rows for f in line]
+    cells = [place(rgba, f, scale, flip != (i in flip_figs), cell) for i, f in enumerate(figs)]
     DST.mkdir(parents=True, exist_ok=True)
     sheet = Image.new("RGBA", (cell * len(cells), cell), (0, 0, 0, 0))
     for i, c in enumerate(cells):
@@ -89,4 +91,6 @@ def main(kind, flip=False):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], "--flip" in sys.argv[2:])
+    args = sys.argv[2:]
+    some = [a.split("=", 1)[1] for a in args if a.startswith("--flip=")]
+    main(sys.argv[1], "--flip" in args, tuple(int(i) for i in some[0].split(",")) if some else ())

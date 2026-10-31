@@ -14,6 +14,7 @@ monstro com folha usa a arte nova; sem folha, continua com a arte por código (`
 | Orc do Brejo (`orcGrunt`) | ✅ | — |
 | Orc lanceiro (`orcSpearman`) | ✅ | — |
 | Orc arqueiro (`orcArcher`) | ✅ | — |
+| Orc berserker (`orcBerserker`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | — |
 | Grumak, o Rei-Ogro (`ogreKing`) | ✅ | — |
 
 Sem a folha B, o golpe e o especial saem do perfil (com o bote que o jogo já dá no golpe) e a morte é o tombo de sempre.
