@@ -691,6 +691,8 @@ como o lado do deserto), 8 min, até 4 jogadores.
   trevos, flores, pinhas, raízes, pegadas e o círculo de cogumelos na arena do Bosque Velho. As copas balançam e ficam
   transparentes sobre o jogador. Ambiente: ciscos de luz (no Coração, vaga-lumes frios), folhas caindo da beira da
   mata, fachos de sol nas clareiras. Pintar tudo leva ~1,5 s num computador (mais no celular), na entrada da hunt.
+  Sem faixa de sombra nem folhas em fila na beira da mata, sem tinta por tile (capim e trilha em tom liso, contínuos
+  em blocos de 4×4 tiles) e poucos enfeites rasteiros: o chão não mostra a grade dos tiles.
 - **Loot:** teto da hunt solo provisório de 100 nos dois (sem monstros), cheio em 180 s; sobe junto com o bestiário.
 
 ### Portões do Império (terreno)

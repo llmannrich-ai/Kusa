@@ -112,7 +112,9 @@ Correção depois de ver no celular (o primeiro resultado ficou ruim): nos pânt
 beira da mata (as duas seguiam a linha do tile, mas a copa termina antes dela: ficavam uma faixa reta escura e uma fileira
 de folhas), a tinta de luz por tile (deixava a grade em quadrados no capim aberto; as manchas de luz e de musgo agora estão
 pintadas no capim, contínuas em blocos de 4×4 tiles) e os lamaçais (blocos com cara de tile). Enfeites rasteiros bem mais
-raros. Lição: conferir sempre no tamanho real do celular, não só ampliado.
+raros. Lição: conferir sempre no tamanho real do celular, não só ampliado. A mesma correção depois valeu para o Bosque Velho e o Coração da
+Mata: sem sombra e folhas na beira da mata, sem tinta por tile, capim e trilha em tom liso (a variação pequena só
+aparecia como retângulos de pontilhado) e menos enfeites rasteiros.
 
 ![Pântano do Kosaradius: clareira dos baús, troncos caídos, cipreste e mangue](arte/kosaradius.png)
 
