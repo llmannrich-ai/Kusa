@@ -301,6 +301,20 @@ Para refazer depois de trocar a referência:
 
 ![Goblin: a arte de referência](arte/goblin-referencia.png)
 
+### Bugbear chefe a partir de arte de referência
+
+No mesmo molde do goblin: a referência `docs/arte/bugbear-referencia.webp` (12 figuras em fundo branco, parado e
+andando em 6 ângulos, o perfil olhando para a direita) passa por `apps/client/scripts/bugbearSprites.py`, que tira o
+fundo branco (o que encosta na borda e os buracos grandes; o branco de dentes e brilhos fica), põe o perfil parado com
+160 px de altura (o kit do bugbear tem 1,22 da altura do herói) e grava `apps/client/src/art/proto/bugbear.png`
+(12 quadros de 192 px). `art/proto/bugbearArt.ts` espelha para a esquerda e monta os clipes: parado (o perfil
+respirando), andar (a única passada de perfil alternando com o parado), golpe (gira para trás no ¾ de costas e avança
+com a passada) e magia, que é o Golpe Brutal (o mesmo bote, mais fundo).
+
+Para refazer: `python3 apps/client/scripts/bugbearSprites.py docs/arte/bugbear-referencia.webp apps/client/src/art/proto/bugbear.png`.
+
+![Bugbear chefe: a arte de referência](arte/bugbear-referencia.webp)
+
 ### Chão do Pântano das Ruínas com a arte do agente (substituído)
 
 O chão do Pântano das Ruínas chegou a vir das imagens do agente de arte (`pantanoTexturas.py`, `wetlandHd.ts`). Com a
