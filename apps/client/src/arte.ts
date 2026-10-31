@@ -9,7 +9,8 @@ import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
+import { FX_ANIM, FX_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
+import { CRYPT_TILE, cryptFloorTiles } from "./art/cryptArt.ts";
 import { PROP_PIECES } from "./art/propsArt.ts";
 import { toCanvas } from "./art/paint.ts";
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures, type MonsterAnim } from "./art/bestiary.ts";
@@ -308,8 +309,9 @@ const loadImage = (key: string) => new Promise<HTMLImageElement>((resolve) => {
   img.onload = () => resolve(img);
   img.src = `assets/dcss/${key}.png`;
 });
-const [floor, ...monsters] = await Promise.all([
-  loadImage(FLOOR_TEXTURE.normal),
+// O chão é o da Cripta (128 px por tile), reduzido ao tile da mini-cena.
+const floor = cryptFloorTiles();
+const monsters = await Promise.all([
   // Arte própria de monstro não tem PNG: entra o desenho direto.
   ...monsterTextures().map((key): Promise<HTMLCanvasElement | HTMLImageElement> =>
     key in OWN_MONSTER_DRAW ? Promise.resolve(OWN_MONSTER_DRAW[key]()) : loadImage(key)),
@@ -324,7 +326,7 @@ const drawHero = (sheet: HTMLCanvasElement, frame: number, x: number, y: number)
 const refinedMonsters = monsters.map((img) => refineArt(img));
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {
-    if (!isWall(x, y)) sceneCtx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    if (!isWall(x, y)) sceneCtx.drawImage(floor, ((x * 7 + y * 3) % 8) * CRYPT_TILE, 0, CRYPT_TILE, CRYPT_TILE, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
   }
 }
 // Ordem de desenho por linha, como no jogo: paredes e personagens da mesma linha, de cima para baixo.

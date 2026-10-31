@@ -1,8 +1,8 @@
-import { makeCanvas } from "../pixels.ts";
+import { makeCanvas } from "./pixels.ts";
 import {
   Canvas, F, K, KNIGHT_LOOK, Mat, chain, ebox, ellipse, fang, flame, gem, inEllipse, leaf, limb, lit, noise, plate, poly, rivet,
   sphere, stone, thread, grain, linen, type Offset, type Pt,
-} from "./tibiaHero.ts";
+} from "./proto/tibiaHero.ts";
 
 /**
  * Cripta no padrão novo (`docs/ARTE_TIBIA.md`): o mesmo pincel dos heróis (luz de cima à esquerda em faixas,
@@ -475,3 +475,39 @@ export function cryptGallery() {
 }
 
 void leaf;
+
+/**
+ * Sombra das paredes no chão (128 px por tile): faixas de transparência em degraus ao pé da parede do norte, da do oeste
+ * ou das duas (quadros 0, 1 e 2), com a beira levemente ondulada.
+ */
+export function cryptShade() {
+  const levels = [0.34, 0.26, 0.2, 0.14, 0.09, 0.05].map((a) => a * 1.5);
+  const { canvas, ctx } = makeCanvas(CRYPT_TILE * 3, CRYPT_TILE);
+  for (let f = 0; f < 3; f++)
+    for (let y = 0; y < CRYPT_TILE; y++)
+      for (let x = 0; x < CRYPT_TILE; x++) {
+        const wob = (t: number) => Math.round(Math.sin(t / 9) * 1.5);
+        const dn = f !== 1 ? y + wob(x) : 99, dw = f !== 0 ? x + wob(y) : 99;
+        const band = Math.floor(Math.min(dn, dw) / 8);
+        if (band < 0 || band >= levels.length) continue;
+        ctx.fillStyle = `rgba(12, 8, 4, ${levels[band].toFixed(3)})`;
+        ctx.fillRect(f * CRYPT_TILE + x, y, 1, 1);
+      }
+  return canvas;
+}
+
+/** Poça de luz quente das chamas (4×3 tiles, desenhada em ¼): elipse em 5 degraus de transparência, sem degradê. */
+export function cryptLight() {
+  const w = 512, h = 384;
+  const levels = [0.36, 0.26, 0.18, 0.11, 0.05];
+  const { canvas, ctx } = makeCanvas(w, h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const d = Math.hypot((x + 0.5 - w / 2) / (w / 2), (y + 0.5 - h / 2) / (h / 2));
+      const band = Math.floor(d * levels.length);
+      if (band >= levels.length) continue;
+      ctx.fillStyle = `rgba(255, 164, 72, ${levels[band]})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  return canvas;
+}

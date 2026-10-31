@@ -234,7 +234,10 @@ no catálogo. A classe é reconhecida pela silhueta (manto comprido, arco e alja
 - **Custo de arte por código:** pintar textura à mão em grade de código é lento. Alternativa a avaliar: desenhar no
   Aseprite/Pixelorama no padrão deste documento e carregar como PNG, mantendo por código só o recolorir das zonas.
 
-### Piloto da Cripta (Fases 3 e 4, só com a Arte nova (beta))
+### Piloto da Cripta (Fases 3 e 4)
+
+O cenário da Cripta saiu da opção beta (`docs/CENARIOS_PLANO.md`, fase 4): é sempre em 128 px por tile e o código foi de
+`art/proto/crypt.ts` para `art/cryptArt.ts`. Os monstros abaixo continuam na opção **Arte nova (beta)**.
 
 A Cripta inteira no padrão novo, para medir no celular o que custa estender o padrão aos mapas e aos monstros
 antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)**; desligada, nada muda.

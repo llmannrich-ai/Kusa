@@ -67,7 +67,7 @@ Copiar a forma dos mapas que já estão prontos (Bosque Velho é a referência m
 | **1b. Pântano das Ruínas** | Variante `swamp` do desenho da mata, com as ruínas, e apagar o chão por IA (feita) | M | 1a |
 | **2. Caverna da Travessia** | Pintor de caverna (`art/caveArt.ts`) e `cavernMap.ts` reescrito (feita) | M | 0 |
 | **3. Mar de Areia** | Variante `desert` em `duneArt.ts` e trechos de caverna da fase 2 (feita) | M | 2 |
-| **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` | P | — |
+| **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` (feita) | P | — |
 | **5. Limpeza** | Apagar a arte de cenário de 32 px que sobrou, documentação | P | 1b, 3, 4 |
 
 Cada fase é **um PR** (a 1a pode ser dois: chão e bordas primeiro, árvores e enfeites depois).
@@ -152,14 +152,18 @@ Pendente para depois: marolas, bolhas e libélulas do ambiente antigo não volta
 
 ![Mar de Areia: o oásis e o monte com a boca da caverna](arte/mar-de-areia.png)
 
-### Fase 4 — Cripta fora do beta
+### Fase 4 — Cripta fora do beta (feita)
 
-- `cryptMap.ts` sempre na arte de `art/proto/crypt.ts`, sem olhar `ART_ZOOM`; `protoCrypt` sai de `newArt.ts` e vira
-  importação normal (passa a ser `art/cryptArt.ts`, fora de `proto/`).
-- `crypt.ts` hoje usa o pincel dos heróis (`tibiaHero.ts`). Funciona e pode ficar assim; o custo é que a Cripta passa
-  a carregar `tibiaHero.ts` sempre. Se isso pesar, as funções usadas vão para `paint.ts`.
-- Saem as texturas de cenário de 32 px da Cripta (`cryptDecor.ts`, `walls.ts`, `floor.png`, `floor-boss.png`). Antes de
-  apagar, conferir quem mais usa: `refine.ts`, `heroes.ts` e monstros antigos importam parte disso.
+- A Cripta é sempre em 128 px por tile, com ou sem a opção Arte nova: `art/proto/crypt.ts` virou `art/cryptArt.ts` e
+  carrega sempre (`cryptArt` em `art/newArt.ts`, que perdeu o `ART_ZOOM`). Continua usando o pincel dos heróis
+  (`proto/tibiaHero.ts`).
+- A sombra das paredes e a poça de luz das chamas, que eram texturas de 32 px (a luz em blocos de 4 px), agora são de
+  128 px, em degraus de transparência (`cryptShade`, `cryptLight`).
+- Saíram o chão do pack (`floor.png`, `floor-boss.png`, `FLOOR_TEXTURE`) e as faixas antigas da Cripta em
+  `art/textures.ts`. `cryptDecor.ts` e `walls.ts` ficam pelos índices dos quadros (`CRYPT_FLOOR`, `RIM`...), pela
+  poeira e pela galeria (fase 5).
+- O teste `cenarios` não cobre a Cripta: a arte dela devolve canvas (precisa de navegador). A prévia `/mapa.html`
+  mostra o mapa.
 
 ### Fase 5 — Limpeza
 

@@ -7,13 +7,11 @@ import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
 import { HERO_DIRS, HERO_FRAMES, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
-import { wallCap, wallFace } from "./walls.ts";
-import { protoBeasts, protoCrypt } from "./newArt.ts";
+import { cryptArt, protoBeasts } from "./newArt.ts";
 import { SUMMON_ART, SUMMON_FRAMES, SUMMON_OUTLINE, summonPortrait, summonSheet } from "./summonCreatures.ts";
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
-import { TORCH_FRAMES, cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./cryptDecor.ts";
-import { shadeStrip } from "./ambient.ts";
+import { TORCH_FRAMES, dustCanvas } from "./cryptDecor.ts";
 
 /**
  * Ponte entre a arte e o Phaser: carrega os PNGs do pack Dungeon Crawl (CC0, ver
@@ -48,8 +46,6 @@ export const SUMMON_ANIMS: Record<SummonKind, MonsterAnim> = Object.fromEntries(
 /** Baú, portais e sangue: desenhados por código em 128 px (`art/propsArt.ts`, gerados em `art/props.ts`). */
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
 export const PORTAL_TEXTURE = { escape: "portal-escape", boss: "portal-boss" };
-/** Faixas de variações de chão (32×32 cada). */
-export const FLOOR_TEXTURE = { normal: "floor", boss: "floor-boss" };
 /** Efeitos de combate: projéteis e impactos do pack, e os de corpo a corpo desenhados em `effects.ts`. */
 export const FX_TEXTURE = {
   arrow: "fx-arrow",
@@ -68,7 +64,6 @@ export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)),
-    ...Object.values(FLOOR_TEXTURE),
     FX_TEXTURE.arrow,
     FX_TEXTURE.fireball,
     FX_TEXTURE.energyBolt,
@@ -266,32 +261,22 @@ export const CRYPT_DECOR = {
   shade: "crypt-shade",
   light: "crypt-light",
   dust: "crypt-dust",
-  /** Chão da arte nova (o antigo é `FLOOR_TEXTURE`, do pack). */
   floorHd: "crypt-floor-hd",
   bossHd: "crypt-boss-hd",
 };
 
-/** Gera as texturas e a animação da tocha da cripta (uma vez por jogo). */
+/** Gera as texturas e a animação da tocha da cripta (uma vez por jogo), tudo em 128 px por tile (`cryptArt.ts`). */
 export function createCryptArt(scene: Phaser.Scene) {
-  if (protoCrypt) {
-    const hd = protoCrypt.CRYPT_TILE;
-    addStrips(scene, [
-      [CRYPT_DECOR.floorHd, protoCrypt.cryptFloorTiles],
-      [CRYPT_DECOR.bossHd, protoCrypt.cryptBossTiles],
-      [CRYPT_DECOR.floor, protoCrypt.cryptFloorDecor],
-      [CRYPT_DECOR.wall, protoCrypt.cryptWallDecor],
-      [CRYPT_DECOR.tall, protoCrypt.cryptTall],
-      [CRYPT_DECOR.torch, protoCrypt.cryptTorch],
-    ], hd);
-  }
   addStrips(scene, [
-    [CRYPT_DECOR.floor, cryptFloorStrip],
-    [CRYPT_DECOR.wall, cryptWallStrip],
-    [CRYPT_DECOR.tall, cryptTallStrip],
-    [CRYPT_DECOR.torch, torchStrip],
-    [CRYPT_DECOR.shade, () => shadeStrip("12,8,4", 1.5)],
-  ]);
-  if (!scene.textures.exists(CRYPT_DECOR.light)) scene.textures.addCanvas(CRYPT_DECOR.light, lightCanvas());
+    [CRYPT_DECOR.floorHd, cryptArt.cryptFloorTiles],
+    [CRYPT_DECOR.bossHd, cryptArt.cryptBossTiles],
+    [CRYPT_DECOR.floor, cryptArt.cryptFloorDecor],
+    [CRYPT_DECOR.wall, cryptArt.cryptWallDecor],
+    [CRYPT_DECOR.tall, cryptArt.cryptTall],
+    [CRYPT_DECOR.torch, cryptArt.cryptTorch],
+    [CRYPT_DECOR.shade, cryptArt.cryptShade],
+  ], cryptArt.CRYPT_TILE);
+  if (!scene.textures.exists(CRYPT_DECOR.light)) scene.textures.addCanvas(CRYPT_DECOR.light, cryptArt.cryptLight());
   if (!scene.textures.exists(CRYPT_DECOR.dust)) scene.textures.addCanvas(CRYPT_DECOR.dust, dustCanvas());
   if (!scene.anims.exists(CRYPT_DECOR.torch)) {
     scene.anims.create({
@@ -315,13 +300,11 @@ function addStrips(scene: Phaser.Scene, strips: [string, () => HTMLCanvasElement
 
 /** Textura de tampa de parede, criada na primeira vez que é pedida. */
 export function wallCapTexture(scene: Phaser.Scene, variant: number, rim: number) {
-  if (protoCrypt) return lazyCanvas(scene, `wall-cap-hd-${variant}-${rim}`, () => protoCrypt!.cryptWallCap(variant, rim));
-  return lazyCanvas(scene, `wall-cap-${variant}-${rim}`, () => wallCap(variant, rim));
+  return lazyCanvas(scene, `wall-cap-hd-${variant}-${rim}`, () => cryptArt.cryptWallCap(variant, rim));
 }
 
 export function wallFaceTexture(scene: Phaser.Scene, variant: number) {
-  if (protoCrypt) return lazyCanvas(scene, `wall-face-hd-${variant}`, () => protoCrypt!.cryptWallFace(variant));
-  return lazyCanvas(scene, `wall-face-${variant}`, () => wallFace(variant));
+  return lazyCanvas(scene, `wall-face-hd-${variant}`, () => cryptArt.cryptWallFace(variant));
 }
 
 /** Ícone 16×16 de um item (chão e HUD). */
