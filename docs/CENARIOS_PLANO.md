@@ -66,7 +66,7 @@ Copiar a forma dos mapas que já estão prontos (Bosque Velho é a referência m
 | **1a. Pântano do Kosaradius** | Variante `marsh` do desenho da mata (feita) | G | 0 (só o teste) |
 | **1b. Pântano das Ruínas** | Variante `swamp` do desenho da mata, com as ruínas, e apagar o chão por IA (feita) | M | 1a |
 | **2. Caverna da Travessia** | Pintor de caverna (`art/caveArt.ts`) e `cavernMap.ts` reescrito (feita) | M | 0 |
-| **3. Mar de Areia** | Variante `desert` em `duneArt.ts` e trechos de caverna da fase 2 | M | 2 |
+| **3. Mar de Areia** | Variante `desert` em `duneArt.ts` e trechos de caverna da fase 2 (feita) | M | 2 |
 | **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` | P | — |
 | **5. Limpeza** | Apagar a arte de cenário de 32 px que sobrou, documentação | P | 1b, 3, 4 |
 
@@ -138,13 +138,19 @@ Pendente para depois: marolas, bolhas e libélulas do ambiente antigo não volta
 
 ![Caverna da Travessia: rocha, paredão, chão de pedra e cristal](arte/caverna-da-travessia.png)
 
-### Fase 3 — Mar de Areia
+### Fase 3 — Mar de Areia (feita)
 
-- `DuneVariant` ganha `"desert"`: areia (6 variações × 3 intensidades), areia molhada, água (oásis) com margem,
-  borda seca, lábio de duna, palmeiras (4), enfeites de água (vitória-régia, lótus, folhas), enfeites de pé (papiro,
-  capim, arbusto, arenito, muda), ruínas e pavimento.
-- Os trechos subterrâneos usam `caveArt.ts` da fase 2. `desertMap.ts` e `caveMap.ts` reescritos.
-- Cuidado: a paleta não pode ficar igual à das Dunas. São mapas de passos diferentes do mapa-múndi (3 e 6).
+- A superfície virou a **variante `desert` do desenho das Dunas** (`dunesMap.ts`): paleta dourada mais quente, sem
+  arena, toco de coluna no lugar da pedra cantante e, nos oásis largos, mais variações de água (o miolo muda com a
+  variação e some na beira do tile). `desertMap.ts` ficou só com a chamada.
+- O subterrâneo é o `drawCaveHd` da fase 2 com a paleta `desert` e a área da caverna; o plano da caverna ganhou o
+  salão dos baús, o covil do verme e a luz da saída. Peças novas em `art/caveArt.ts`: a **boca da caverna** (monte de
+  pedras com a abertura escura, na paleta do deserto) e a **corda da saída**.
+- Saíram o `caveMap.ts`, o `DESERT_TEXTURE` e o `createDesertArt` (`art/textures.ts`). `desertDecor.ts` e
+  `caveDecor.ts` só servem à galeria e ao `marshDecor.ts` (fase 5).
+- Pendente: a poeira baixa que passava pela tela não voltou (os grãos de areia, sim).
+
+![Mar de Areia: o oásis e o monte com a boca da caverna](arte/mar-de-areia.png)
 
 ### Fase 4 — Cripta fora do beta
 

@@ -12,14 +12,17 @@ import {
 
 export { FLAT, HD, TileAtlas, ebox, ellipse, inEllipse, limb, line, lit, noise, poly, smoothNoise, sn, sphere, toCanvas, type Offset, type Pt, type Shade };
 
-export type DuneVariant = "dunes" | "mesas";
+export type DuneVariant = "dunes" | "mesas" | "desert";
 /** Variante das Dunas ou uma paleta pronta na ordem de `M` (as cavernas pintam o chão, o paredão e a água daqui). */
 export type DunePalette = DuneVariant | Rgb[][];
 
 /** Materiais (cada um é uma rampa de 6 tons por variante). */
 export enum M { Sand, Soft, Dune, Rock, Cap, Band, Dark, Water, Deep, Foam, Wet, Trunk, Leaf, Dry, Stone, Glow, Bone, Shrub, Ruin, Clay, Line }
 
-/** Cores base dos materiais nas duas variantes: Dunas em ocre claro, Mesas em arenito vermelho. */
+/**
+ * Cores base dos materiais: Dunas em ocre claro, Mesas em arenito vermelho, Mar de Areia (`desert`) em areia dourada
+ * mais quente, com o oásis turquesa e o verde mais vivo dos coqueiros.
+ */
 const BASES: Record<DuneVariant, Record<M, [string, number, number?, boolean?]>> = {
   dunes: {
     [M.Sand]: ["#d6ad74", 0.62, 5], [M.Soft]: ["#e6c995", 0.5, 5], [M.Dune]: ["#d4ad78", 0.85, 4],
@@ -36,6 +39,14 @@ const BASES: Record<DuneVariant, Record<M, [string, number, number?, boolean?]>>
     [M.Trunk]: ["#86603e", 1, 6], [M.Leaf]: ["#6a9640", 1, 9], [M.Dry]: ["#b08e50", 0.9, 6],
     [M.Stone]: ["#a86a46", 1.1, 6], [M.Glow]: ["#ffb347", 1.2, 10, true], [M.Bone]: ["#e2d6ba", 0.8, 5],
     [M.Shrub]: ["#7e8a4c", 0.95, 7], [M.Ruin]: ["#c08a5c", 1, 6], [M.Clay]: ["#a8643c", 1, 7], [M.Line]: ["#341c14", 0.4, 0],
+  },
+  desert: {
+    [M.Sand]: ["#dba866", 0.62, 5], [M.Soft]: ["#e8c184", 0.5, 5], [M.Dune]: ["#d9a462", 0.85, 5],
+    [M.Rock]: ["#b0804e", 0.95, 6], [M.Cap]: ["#c8945c", 0.85, 5], [M.Band]: ["#dcaa6a", 0.8, 5], [M.Dark]: ["#8c5c38", 0.9, 6],
+    [M.Water]: ["#36aaa2", 0.9, 8], [M.Deep]: ["#1c7488", 0.9, 8], [M.Foam]: ["#eef4ea", 0.35, 4], [M.Wet]: ["#a87c4c", 0.6, 5],
+    [M.Trunk]: ["#8c6440", 1, 6], [M.Leaf]: ["#5c9c34", 1, 9], [M.Dry]: ["#c09c50", 0.9, 6],
+    [M.Stone]: ["#a08a72", 1.1, 5], [M.Glow]: ["#ffd070", 1.2, 10, true], [M.Bone]: ["#e6dcc0", 0.8, 5],
+    [M.Shrub]: ["#8a9644", 0.95, 7], [M.Ruin]: ["#d2a062", 1, 6], [M.Clay]: ["#b86c3a", 1, 7], [M.Line]: ["#3a2214", 0.4, 0],
   },
 };
 
@@ -357,6 +368,7 @@ export function ruinTile(variant: DuneVariant, joins: number, south: boolean, v:
  */
 export function waterTile(variant: DunePalette, land: number, v: number): Paper {
   const p = new Paper(variant);
+  const wide = variant === "desert";
   const dist = (x: number, y: number) => {
     let d = 1e9;
     if (land & OPEN.n) d = Math.min(d, y);
@@ -385,10 +397,14 @@ export function waterTile(variant: DunePalette, land: number, v: number): Paper 
       const i = y * HD + x;
       if (d < 3) { p.mat[i] = M.Foam; p.shade[i] = 0.75; p.off[i] = noise(x, y, 131) < 0.3 ? -1 : 0; continue; }
       const deep = d > 34;
+      // Mar de Areia (oásis largos): o ruído do miolo é o da variação e some na beira do tile, onde todos são iguais;
+      // assim a água funda não vira um xadrez de tiles iguais. Nas Dunas e nas Mesas fica como era.
+      const rim = wide ? Math.min(1, Math.min(x, y, HD - 1 - x, HD - 1 - y) / 16) : 1;
+      const deepNoise = wide ? 0.5 + (sn(x, y, 32, 132 + v * 7) - 0.5) * rim : sn(x, y, 32, 132);
       p.mat[i] = deep ? M.Deep : M.Water;
-      p.shade[i] = deep ? 0.5 + (sn(x, y, 32, 132) - 0.5) * 0.1 : 0.72 - Math.min(1, d / 34) * 0.25;
+      p.shade[i] = deep ? 0.5 + (deepNoise - 0.5) * 0.1 : 0.72 - Math.min(1, d / 34) * 0.25;
       // Marolas: riscos claros curtos, na diagonal do vento.
-      const wave = ((x + y * 2 + Math.floor(sn(x, y, 32, 133) * 20)) % 23 + 23) % 23;
+      const wave = ((x + y * 2 + Math.floor((wide ? 0.5 + (sn(x, y, 32, 133 + v * 7) - 0.5) * rim : sn(x, y, 32, 133)) * 20)) % 23 + 23) % 23;
       p.off[i] = wave === 0 && noise(x >> 2, y, 134) < 0.5 ? 1 : 0;
       p.fixed[i] = -1;
     }

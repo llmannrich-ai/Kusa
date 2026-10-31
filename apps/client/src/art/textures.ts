@@ -13,15 +13,6 @@ import { SUMMON_ART, SUMMON_FRAMES, SUMMON_OUTLINE, summonPortrait, summonSheet 
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
 import { TORCH_FRAMES, cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./cryptDecor.ts";
-import {
-  GLINT_FRAMES, PALM_CROWN, PALM_TRUNK, PALM_VARIANTS, desertFloorStrip, desertTallStrip, desertWaterStrip, dryFringeStrip, duneLipStrip,
-  duneShadeStrip, duneStrip, dustCloudCanvas, glintStrip, palmCrownSheet, palmShadowCanvas, palmTrunkSheet, sandGrainCanvas, sandStrip,
-  pavingStrip, ruinStrip, shoreStrip, waterStrip, wetStrip,
-} from "./desertDecor.ts";
-import {
-  caveDecorStrip, caveFloorStrip, caveGlowCanvas, caveMouthCanvas, caveShadeStrip, caveShaftCanvas, caveTallStrip, hallFloorStrip,
-  rockFaceStrip, rockRimStrip, rockTopStrip,
-} from "./caveDecor.ts";
 import { shadeStrip } from "./ambient.ts";
 
 /**
@@ -319,90 +310,6 @@ function addStrips(scene: Phaser.Scene, strips: [string, () => HTMLCanvasElement
     const canvas = draw();
     const texture = scene.textures.addCanvas(key, canvas)!;
     for (let i = 0; i < canvas.width / size; i++) texture.add(i, 0, i * size, 0, size, canvas.height);
-  }
-}
-
-/** Mar de Areia: tudo em arte própria (`desertDecor.ts`), gerado na primeira hunt no deserto. */
-export const DESERT_TEXTURE = {
-  sand: "desert-sand",
-  wet: "desert-wet",
-  water: "desert-water",
-  dune: "desert-dune",
-  shore: "desert-shore",
-  fringe: "desert-fringe",
-  lip: "desert-dune-lip",
-  shade: "desert-shade",
-  floor: "desert-decor-floor",
-  waterDecor: "desert-decor-water",
-  tall: "desert-decor-tall",
-  trunk: "desert-palm-trunk",
-  crown: "desert-palm-crown",
-  palmShadow: "desert-palm-shadow",
-  glint: "desert-glint",
-  grain: "desert-grain",
-  dust: "desert-dust",
-  ruins: "desert-ruins",
-  paving: "desert-paving",
-  // Caverna (`caveDecor.ts`)
-  caveFloor: "cave-floor",
-  hall: "cave-hall",
-  rockTop: "cave-rock-top",
-  rockFace: "cave-rock-face",
-  rockRim: "cave-rock-rim",
-  caveShade: "cave-shade",
-  caveDecor: "cave-decor-floor",
-  caveTall: "cave-decor-tall",
-  caveGlow: "cave-glow",
-  caveShaft: "cave-shaft",
-  caveMouth: "cave-mouth",
-};
-
-/** Gera as texturas do deserto (uma vez por jogo): faixas 32×32, folhas dos coqueiros e o brilho na água. */
-export function createDesertArt(scene: Phaser.Scene) {
-  addStrips(scene, [
-    [DESERT_TEXTURE.sand, sandStrip],
-    [DESERT_TEXTURE.wet, wetStrip],
-    [DESERT_TEXTURE.water, waterStrip],
-    [DESERT_TEXTURE.dune, duneStrip],
-    [DESERT_TEXTURE.shore, shoreStrip],
-    [DESERT_TEXTURE.fringe, dryFringeStrip],
-    [DESERT_TEXTURE.lip, duneLipStrip],
-    [DESERT_TEXTURE.shade, duneShadeStrip],
-    [DESERT_TEXTURE.floor, desertFloorStrip],
-    [DESERT_TEXTURE.waterDecor, desertWaterStrip],
-    [DESERT_TEXTURE.tall, desertTallStrip],
-    [DESERT_TEXTURE.glint, glintStrip],
-    [DESERT_TEXTURE.caveFloor, caveFloorStrip],
-    [DESERT_TEXTURE.hall, hallFloorStrip],
-    [DESERT_TEXTURE.rockTop, rockTopStrip],
-    [DESERT_TEXTURE.rockFace, rockFaceStrip],
-    [DESERT_TEXTURE.rockRim, rockRimStrip],
-    [DESERT_TEXTURE.caveShade, caveShadeStrip],
-    [DESERT_TEXTURE.caveDecor, caveDecorStrip],
-    [DESERT_TEXTURE.caveTall, caveTallStrip],
-    [DESERT_TEXTURE.ruins, ruinStrip],
-    [DESERT_TEXTURE.paving, pavingStrip],
-  ]);
-  for (const [key, draw] of [
-    [DESERT_TEXTURE.caveGlow, caveGlowCanvas], [DESERT_TEXTURE.caveShaft, caveShaftCanvas], [DESERT_TEXTURE.caveMouth, caveMouthCanvas],
-  ] as const) {
-    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, draw());
-  }
-  for (const [key, draw, size] of [[DESERT_TEXTURE.trunk, palmTrunkSheet, PALM_TRUNK], [DESERT_TEXTURE.crown, palmCrownSheet, PALM_CROWN]] as const) {
-    if (scene.textures.exists(key)) continue;
-    const texture = scene.textures.addCanvas(key, draw())!;
-    for (let i = 0; i < PALM_VARIANTS; i++) texture.add(i, 0, i * size.w, 0, size.w, size.h);
-  }
-  if (!scene.textures.exists(DESERT_TEXTURE.palmShadow)) scene.textures.addCanvas(DESERT_TEXTURE.palmShadow, palmShadowCanvas());
-  if (!scene.textures.exists(DESERT_TEXTURE.grain)) scene.textures.addCanvas(DESERT_TEXTURE.grain, sandGrainCanvas());
-  if (!scene.textures.exists(DESERT_TEXTURE.dust)) scene.textures.addCanvas(DESERT_TEXTURE.dust, dustCloudCanvas());
-  if (!scene.anims.exists(DESERT_TEXTURE.glint)) {
-    scene.anims.create({
-      key: DESERT_TEXTURE.glint,
-      frames: Array.from({ length: GLINT_FRAMES }, (_, frame) => ({ key: DESERT_TEXTURE.glint, frame })),
-      frameRate: 8,
-      hideOnComplete: true,
-    });
   }
 }
 

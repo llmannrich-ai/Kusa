@@ -42,7 +42,9 @@ export function planCave(d: Dungeon, variant: CaveVariant, area: Rect = { x: 0, 
     const n = hash(x, y, seed);
     return n < 0.5 ? 0 : 1 + Math.floor((n - 0.5) * 2 * (count - 1));
   };
-  const lairs = d.lairs ? lairsOf(d) : [];
+  // Covis: os da Travessia ou, no subterrâneo do deserto, o do verme (a sala do boss, se estiver na área).
+  const lairs = d.lairs ? lairsOf(d) : inArea(d.boss.x, d.boss.y) ? [{ room: d.boss, portal: d.bossPortal }] : [];
+  const cave = d.cave;
   const lairOf = (x: number, y: number) => lairs.findIndex((l) => inRect(l.room, x, y));
   const portals = new Set(lairs.map((l) => l.portal.y * W + l.portal.x));
   const glow = GLOW[variant];
@@ -79,13 +81,14 @@ export function planCave(d: Dungeon, variant: CaveVariant, area: Rect = { x: 0, 
       }
       const lair = lairOf(x, y);
       const v = blockPiece(x, y);
-      const hall = lair >= 0;
+      // Chão gasto: os covis e o salão dos baús do deserto.
+      const hall = lair >= 0 || (!!cave && inRect(cave.reward, x, y));
       put("chao", x, y, `floor${hall ? "h" : ""}${v}`, () => floorTile(variant, v, hall));
       const shade = ring(x, y, rock) & (OPEN.n | OPEN.w | OPEN.nw);
       if (shade) put("sombra", x, y, `shade${shade}`, () => shadeEdge(shade, 44, [0, 0, 0]));
 
       if (pillar(d, x, y)) { tall("stalagmite", x, y, 1.1); continue; }
-      if (t === Tile.Portal || portals.has(i)) continue;
+      if (t === Tile.Portal || t === Tile.Cave || portals.has(i) || (cave && inRect(cave.reward, x, y))) continue;
       const decor = (kind: FlatDecor) => { const dv = Math.floor(hash(x, y, 199) * 3); put("enfeites", x, y, `flat-${kind}-${dv}`, () => flatDecor(variant, kind, dv)); };
       const n = hash(x, y, 196);
       const m = hash(x, y, 197);
@@ -108,6 +111,15 @@ export function planCave(d: Dungeon, variant: CaveVariant, area: Rect = { x: 0, 
       } else if (n < 0.05) decor(m < 0.5 ? "pebbles" : "bones");
     }
 
+  if (cave && inArea(cave.exit.x, cave.exit.y)) {
+    // Salão dos baús do deserto: cristais nos dois cantos do fundo, que iluminam a escolha.
+    for (const x of [cave.reward.x, cave.reward.x + cave.reward.w - 1]) {
+      tall("crystals", x, cave.reward.y);
+      lights.push({ x: x * TILE_SIZE + 16, y: cave.reward.y * TILE_SIZE + 24, scale: 1.6, alpha: 0.6, tint: glow.crystal });
+    }
+    // Saída: a luz do dia que desce do buraco no teto (a corda é desenhada pelo mapa).
+    lights.push({ x: cave.exit.x * TILE_SIZE + 16, y: (cave.exit.y + 1) * TILE_SIZE - 12, scale: 2, alpha: 0.75, tint: glow.entry });
+  }
   // Covis: um brilho fraco na cor do dono, para o boss não sumir no escuro.
   lairs.forEach((l, k) => {
     lights.push({ x: (l.room.x + l.room.w / 2) * TILE_SIZE, y: (l.room.y + l.room.h / 2) * TILE_SIZE, scale: 3.4, alpha: 0.32, tint: glow.lairs[k] ?? glow.crystal });
