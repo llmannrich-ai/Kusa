@@ -312,3 +312,21 @@ de 352 px; o quadro é largo para a língua esticada caber). `art/proto/frogArt.
 
 Para refazer: `python3 apps/client/scripts/frogSprites.py docs/arte/pantano-das-ruinas/frog-A.png
 docs/arte/pantano-das-ruinas/frog-B.png apps/client/src/art/proto/frog.png`.
+
+### Rei Bullywug a partir das folhas do Runway
+
+O boss do Pântano das Ruínas vem de duas folhas geradas no Runway e aprovadas, com fundo magenta chapado
+(`docs/arte/pantano-das-ruinas/bullywug-A.png`, turnaround 2×6, e `bullywug-B.png`, ação 4×4: andar, golpe de lança,
+bote saindo da lama e morte). As duas olham para a direita. O script `apps/client/scripts/bullywugKingSprites.py` tira o
+magenta e a borda rosada do antialias, separa cada figura pela mancha conectada (os respingos de lama vão para a figura
+mais perto), espelha tudo para a esquerda, põe as duas folhas na mesma escala (~1,6 vez a altura de um herói) e grava
+`art/proto/bullywugKing.png` (28 figuras de 448 px). `art/proto/bullywugKingArt.ts` monta os clipes:
+
+- o andar usa os três perfis andando da folha A (o andar da B larga a lança);
+- `strike` por habilidade: o Bote da Lama toca o bote saindo da lama ao reaparecer; a Estocada e o Chamado, o golpe;
+- a morte desenhada, e frente e costas andando (de frente o passo não é espelhado: a lança trocaria de mão).
+
+Na arte antiga, o Rei é o bullywug do pack em tamanho de boss.
+
+Para refazer: `python3 apps/client/scripts/bullywugKingSprites.py docs/arte/pantano-das-ruinas/bullywug-A.png
+docs/arte/pantano-das-ruinas/bullywug-B.png apps/client/src/art/proto/bullywugKing.png`.

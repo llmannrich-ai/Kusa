@@ -10,7 +10,7 @@ export type MonsterKind =
   // Pântano das Ruínas (dificuldade 2)
   | "frog" | "moccasin" | "bogBody" | "naga" | "troll" | "hydra"
   | "bullywug" | "lizardfolk" | "ghoul" | "blackPudding" | "crocodile" | "willOWisp" | "shamblingMound"
-  | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon"
+  | "greenHag" | "hagIllusion" | "spiritNaga" | "blackDragon" | "bullywugKing"
   // Mar de Areia (dificuldade 1)
   | "sandScorpion" | "giantVulture" | "mummy" | "blackScorpion" | "mummyPriest" | "sandElemental" | "sandWorm"
   // Pântano (dificuldade 1, só para 1 jogador): o clã de orcs e ogros do brejo
@@ -551,6 +551,23 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "Cada cabeça morde alguém. Corte uma e nascem duas, a não ser que o fogo cauterize o toco.",
+  }),
+  bullywugKing: monster({
+    kind: "bullywugKing", name: "Rei Bullywug", rank: "boss", type: "humanoid", role: "skirmisher", cr: 7,
+    hp: 1100, damage: 14, xp: 1100, loot: [120, 180], speed: 2.6, aggroRange: 8, attackRange: 2, attackCooldownMs: 1400, attackFx: "slash",
+    traits: { frenzy: { belowHp: 0.3, haste: 0.35 } },
+    abilities: [
+      {
+        id: "mudAmbush", name: "Bote da Lama", shape: "dive", range: 8, minRange: 2, radius: 1, cooldownMs: 12000, power: 1.6, vanishMs: 1500,
+        color: 0x6d4c41, fx: "dive",
+      },
+      { id: "spearThrust", name: "Estocada", shape: "line", range: 3, radius: 0, length: 3, cooldownMs: 7000, power: 1.8, push: 1, color: 0xb0bec5, fx: "tongue" },
+      {
+        id: "swampCall", name: "Chamado do Brejo", shape: "summon", range: 8, radius: 0, cooldownMs: 30000, power: 0, summon: { kind: "bullywug", count: 2 },
+        belowHp: 0.5, phase: true, once: true, color: 0x9ccc65, fx: "summon",
+      },
+    ],
+    lore: "Rei do brejo, com lança de farpas e escudo de junco. Some na lama e sai dela em bote em cima da presa; de perto, estoca em linha e empurra. Com metade da vida, chama a guarda de bullywugs, e quase morto ataca em frenesi.",
   }),
 
   // --- Mar de Areia ------------------------------------------------------------------------------------------
