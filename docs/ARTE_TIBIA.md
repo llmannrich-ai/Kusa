@@ -352,3 +352,21 @@ ChatGPT (`docs/arte/pantano-do-kosaradius/<kind>-A.png`, fundo magenta). `apps/c
 parado respirando e andar do perfil, frente e costas ao andar na vertical, golpe e especial montados do perfil (até
 chegar a folha de ação). Lista do que já entrou em `docs/arte/pantano-do-kosaradius/README.md`.
 
+
+### Ogros do brejo desenhados por código (Pântano das Ruínas)
+
+Teste de "padrão bom por código": o Ogro jovem, o Ogro do Brejo e o Ogro Xamã refeitos por código
+(`apps/client/src/art/proto/ogres.ts`) imitando as folhas da IA do Kosaradius. É uma exceção à regra de "inimigo é IA",
+para comparar os dois caminhos com o mesmo monstro:
+
+- **No Pântano das Ruínas** os três aparecem (ogro jovem nas zonas 2 a 4, os outros dois como mini-boss) com a arte por
+  código; **no Pântano do Kosaradius** continuam as folhas da IA. A troca é só no cliente: `MAP_ART` e `artOf` em
+  `art/bestiary.ts` (o servidor não sabe de arte; o monstro é o mesmo nos dois mapas).
+- Um esqueleto só (quadril, joelho, pé; ombro, cotovelo, mão; cabeça e arma) em pose por clipe, com o mesmo pincel dos
+  heróis (`tibiaHero.ts`). Cada ogro troca pele (músculo ou verrugas), barriga, cabeça (tranças, careca, cabelo e barba
+  grisalhos), roupa e arma (clava de galho, maça cravejada, cajado de caveiras com brilho verde). O quadro tem o tamanho
+  da folha da IA e os pés na mesma linha, então os dois ficam do mesmo tamanho no jogo.
+- Clipes: parado, andar, golpe e especial (a Pancada urra e empurra; o Pisão ergue a perna; o xamã acende as caveiras).
+  Ainda sem a morte desenhada nem a frente e as costas: tomba como os monstros sem folha B e anda sempre de perfil.
+- Os orcs que o Ogro Xamã chama continuam com a arte do Kosaradius.
+- Na galeria (`arte.html`, "Monstros animados"), as folhas por código aparecem com a chave `monster-ogre-*-code`.

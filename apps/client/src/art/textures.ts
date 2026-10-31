@@ -1,6 +1,6 @@
 import type * as Phaser from "phaser";
 import { CLASS_IDS, MAPS, TILE_SIZE, mapMonsters, type ClassId, type MapId, type SummonKind } from "@kusa/shared";
-import { BESTIARY_ART, EXTRA_CLIPS, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
+import { BESTIARY_ART, EXTRA_CLIPS, artOf, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
 import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
 import { makeCanvas } from "./pixels.ts";
 import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
@@ -188,7 +188,7 @@ export function ensureMonsterArt(scene: Phaser.Scene, key: string) {
  */
 export function warmMapMonsters(scene: Phaser.Scene, mapId: MapId) {
   const keys = [...new Set(mapMonsters(MAPS[mapId]).flatMap((kind) => {
-    const art = BESTIARY_ART[kind];
+    const art = artOf(kind, mapId);
     return [art.texture, ...Object.values(art.variants ?? {})];
   }))].filter((k) => MONSTER_ANIMS[k]?.hd).sort((a, b) => MONSTER_ANIMS[a].size - MONSTER_ANIMS[b].size);
   const tick = () => {

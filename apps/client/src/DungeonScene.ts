@@ -70,7 +70,7 @@ import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
 import { outfitOf } from "./art/outfit.ts";
-import { BESTIARY_ART, BLOOD_TINT, monsterAnimKey, monsterTexture, type MonsterAnim } from "./art/bestiary.ts";
+import { BESTIARY_ART, BLOOD_TINT, artOf, monsterAnimKey, monsterTexture, type MonsterAnim } from "./art/bestiary.ts";
 import type { Clip } from "./art/rig.ts";
 import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
 import { CREATURE_SPRITE_SCALE } from "./art/refine.ts";
@@ -1226,12 +1226,12 @@ export class DungeonScene extends Phaser.Scene {
   private addMonster(id: string, monster: MonsterView) {
     const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
     const def = MONSTERS[kind];
-    const art = BESTIARY_ART[kind];
+    const art = artOf(kind, this.dungeon.mapId);
     // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia); alguns mini-bosses um pouco maiores. O animado já
     // tem o tamanho no quadro (32 px = 1 tile).
     const scale = (art.anim ? art.scale ?? 1 : def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
-    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
-    ensureMonsterArt(this, monsterTexture(kind, monster.variant));
+    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant, this.dungeon.mapId);
+    ensureMonsterArt(this, monsterTexture(kind, monster.variant, this.dungeon.mapId));
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
     const top = TILE_SIZE / 2 - sprite.displayHeight * (art.anim?.fill ?? 1);
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
@@ -1271,8 +1271,8 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.monsters.get(id);
     if (!unit) return;
     // Variante (cabeças da Hidra): troca a textura quando muda.
-    const art = BESTIARY_ART[monster.kind as MonsterKind] ?? BESTIARY_ART.rat;
-    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(monster.kind as MonsterKind, monster.variant);
+    const art = monster.kind in BESTIARY_ART ? artOf(monster.kind as MonsterKind, this.dungeon.mapId) : BESTIARY_ART.rat;
+    const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(monster.kind as MonsterKind, monster.variant, this.dungeon.mapId);
     if (!unit.anim && texture !== unit.texture && this.textures.exists(texture)) {
       unit.texture = texture;
       unit.sprite.setTexture(texture);
@@ -1295,7 +1295,7 @@ export class DungeonScene extends Phaser.Scene {
   private syncHidden(unit: Unit, kind: MonsterKind, hidden: boolean) {
     if (unit.hidden === hidden) return;
     unit.hidden = hidden;
-    const art = BESTIARY_ART[kind] ?? BESTIARY_ART.rat;
+    const art = kind in BESTIARY_ART ? artOf(kind, this.dungeon.mapId) : BESTIARY_ART.rat;
     const alpha = hidden ? (art.disguise ? 1 : 0.18) : art.alpha ?? 1;
     this.tweens.killTweensOf(unit.body);
     this.tweens.add({ targets: unit.body, alpha, duration: 220 });

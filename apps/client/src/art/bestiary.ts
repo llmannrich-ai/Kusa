@@ -1,4 +1,4 @@
-import type { MonsterKind } from "@kusa/shared";
+import type { MapId, MonsterKind } from "@kusa/shared";
 import { BLACK_SHELL, mummyCanvas, sandElementalCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
 import { sandWormCanvas } from "./sandWorm.ts";
 import { basiliskCanvas, beholderCanvas } from "./cavernBosses.ts";
@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero, protoOgres } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -281,9 +281,40 @@ if (protoBeasts) {
   OWN_MONSTER_DRAW["monster-mimic-disguise"] = proto.protoMimicDisguise;
 }
 
+/**
+ * Arte de um monstro só num mapa, por cima do `BESTIARY_ART`: o mesmo monstro (mesmas regras no servidor) com outro
+ * desenho onde ele aparece. Os ogros do brejo no Pântano das Ruínas são desenhados por código (`proto/ogres.ts`);
+ * no Pântano do Kosaradius continuam as folhas geradas por IA.
+ */
+export const MAP_ART: Partial<Record<MapId, Partial<Record<MonsterKind, MonsterArt>>>> = {};
+if (protoOgres) {
+  const ogres = protoOgres;
+  const swamp: Partial<Record<MonsterKind, MonsterArt>> = (MAP_ART.swamp = {});
+  for (const kind of ogres.CODE_OGRES) {
+    swamp[kind] = {
+      ...BESTIARY_ART[kind], texture: `${BESTIARY_ART[kind].texture}-code`, facesLeft: true, scale: HD_SCALE,
+      anim: {
+        size: ogres.codeOgreSize(kind), sheet: () => ogres.codeOgreSheet(kind), portrait: () => ogres.codeOgrePortrait(kind), outline: "",
+        fps: { idle: 4, walk: 6, attack: 9, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+        hd: () => ogres.codeOgreFrames(kind), fill: ogres.codeOgreFill(kind),
+        // A Pancada, o Pisão Sísmico e as magias do xamã tocam o especial (urrar, erguer a perna, acender as caveiras).
+        strike: kind === "ogreBruiser" ? { stomp: "cast" } : kind === "ogreShaman" ? "cast" : { wallop: "cast" },
+      },
+    };
+  }
+}
+
+/** A arte do monstro no mapa da hunt (sem mapa ou sem troca no mapa, a de sempre). */
+export function artOf(kind: MonsterKind, mapId?: MapId): MonsterArt {
+  return (mapId && MAP_ART[mapId]?.[kind]) || BESTIARY_ART[kind];
+}
+
+/** Todas as artes registradas: as de sempre e as trocadas por mapa. */
+const allArts = () => [...Object.values(BESTIARY_ART), ...Object.values(MAP_ART).flatMap((m) => Object.values(m ?? {}))];
+
 /** Monstros animados: textura → animação. */
 export const MONSTER_ANIMS: Record<string, MonsterAnim> = Object.fromEntries(
-  Object.values(BESTIARY_ART).filter((a) => a.anim).map((a) => [a.texture, a.anim!]),
+  allArts().filter((a) => a.anim).map((a) => [a.texture, a.anim!]),
 );
 /** Chave da animação de um clipe de um monstro animado. */
 export const monsterAnimKey = (texture: string, clip: Clip | ExtraClip) => `${texture}:${clip}`;
@@ -295,7 +326,7 @@ export const OWN_MONSTER_ART: string[] = Object.keys(OWN_MONSTER_DRAW);
 /** Todas as texturas de monstro (as variantes incluídas), para carregar e refinar. */
 export function monsterTextures() {
   const keys = new Set<string>();
-  for (const art of Object.values(BESTIARY_ART)) {
+  for (const art of allArts()) {
     keys.add(art.texture);
     if (art.disguise) keys.add(art.disguise);
     for (const v of Object.values(art.variants ?? {})) keys.add(v);
@@ -304,7 +335,7 @@ export function monsterTextures() {
 }
 
 /** Textura do monstro na variante atual (sem variante, a padrão). */
-export function monsterTexture(kind: MonsterKind, variant = 0) {
-  const art = BESTIARY_ART[kind];
+export function monsterTexture(kind: MonsterKind, variant = 0, mapId?: MapId) {
+  const art = artOf(kind, mapId);
   return art.variants?.[variant] ?? art.texture;
 }

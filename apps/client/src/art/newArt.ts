@@ -18,6 +18,8 @@ export const protoFrog = NEW_ART ? await (await import("./proto/frogArt.ts")).lo
 export const protoBullywugKing = NEW_ART ? await (await import("./proto/bullywugKingArt.ts")).loadBullywugKing() : null;
 /** O clã do Pântano do Kosaradius (orcs e ogros) a partir das folhas geradas por IA (`docs/arte/pantano-do-kosaradius/`). */
 export const protoClan = NEW_ART ? await (await import("./proto/kosaradiusArt.ts")).loadClan() : null;
+/** Os ogros do brejo desenhados por código, para o Pântano das Ruínas (no Kosaradius ficam as folhas da IA). */
+export const protoOgres = NEW_ART ? await import("./proto/ogres.ts") : null;
 /** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */
 const PROTO_FAMILY: Record<string, string> = {
   "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",

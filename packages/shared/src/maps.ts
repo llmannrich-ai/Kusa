@@ -109,23 +109,24 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   swamp: {
     id: "swamp", name: "Pântano das Ruínas", icon: "🌿", difficulty: 2, durationSeconds: 8 * 60,
-    description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor. O Rei Bullywug espera nas ruínas do centro.",
+    description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor; ogros do brejo rondam as ruínas. O Rei Bullywug espera nas ruínas do centro.",
     encounters: [
       { depth: [0, 0], budget: 160, table: [["frog", 4], ["bullywug", 2], ["stirge", 1]] },
       { depth: [1, 1], budget: 230, table: [["frog", 3], ["moccasin", 3], ["bullywug", 2]] },
-      { depth: [2, 2], budget: 350, table: [["moccasin", 3], ["bogBody", 3], ["lizardfolk", 2], ["ghoul", 2]] },
+      { depth: [2, 2], budget: 350, table: [["moccasin", 3], ["bogBody", 3], ["lizardfolk", 2], ["ghoul", 2], ["ogreYoung", 2]] },
       {
         depth: [3, 3], budget: 430,
-        table: [["bogBody", 3], ["lizardfolk", 2], ["ghoul", 2], ["crocodile", 2], ["moccasin", 1], ["willOWisp", 1]],
+        table: [["bogBody", 3], ["lizardfolk", 2], ["ghoul", 2], ["crocodile", 2], ["ogreYoung", 2], ["moccasin", 1], ["willOWisp", 1]],
       },
-      { depth: [4, 4], budget: 520, table: [["bogBody", 2], ["naga", 3], ["blackPudding", 2], ["crocodile", 2], ["willOWisp", 2]] },
+      { depth: [4, 4], budget: 520, table: [["bogBody", 2], ["naga", 3], ["blackPudding", 2], ["crocodile", 2], ["willOWisp", 2], ["ogreYoung", 1]] },
       {
         depth: [5, 5], budget: 640,
         table: [["naga", 3], ["bogBody", 2], ["blackPudding", 2], ["shamblingMound", 1], ["willOWisp", 2], ["lizardfolk", 1]],
       },
       { depth: [6, 99], budget: 680, table: [["naga", 4], ["shamblingMound", 2], ["blackPudding", 2], ["crocodile", 1], ["bogBody", 1]] },
     ],
-    minibosses: [["troll", 2], ["greenHag", 1], ["spiritNaga", 1]],
+    // Os ogros do brejo descem do Kosaradius (aqui, desenhados por código: `MAP_ART` no cliente).
+    minibosses: [["troll", 2], ["greenHag", 1], ["spiritNaga", 1], ["ogreBruiser", 1], ["ogreShaman", 1]],
     mimicChance: 0,
     bosses: [["bullywugKing", 1]],
   },
