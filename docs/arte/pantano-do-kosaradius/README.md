@@ -14,6 +14,7 @@ monstro com folha usa a arte nova; sem folha, continua com a arte por código (`
 | Orc do Brejo (`orcGrunt`) | ✅ | — |
 | Orc lanceiro (`orcSpearman`) | ✅ | — |
 | Orc arqueiro (`orcArcher`) | ✅ | — |
+| Orc xamã (`orcShaman`) | ✅ | — |
 | Orc berserker (`orcBerserker`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | — |
 | Orc capitão (`orcCaptain`) | ✅ | — |
 | Ogro jovem (`ogreYoung`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | — |
