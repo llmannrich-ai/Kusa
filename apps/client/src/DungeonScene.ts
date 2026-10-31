@@ -120,6 +120,8 @@ const DAMAGE_TEXT_MS = 1080;
  * de baixo (y em pixels), como no Tibia; barras, nomes e números ficam sempre por cima.
  */
 const DEPTH = { floor: 0, ui: 100_000 };
+/** Feixe de loot: acima da decoração e dos personagens, abaixo dos efeitos de magia e da interface. */
+const FX_DEPTH_BELOW_UI = 80_000;
 
 
 const COLORS = {
@@ -1058,25 +1060,72 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /**
-   * Item ou poção no chão: brilho na cor da raridade embaixo do ícone, acima do chão e abaixo dos personagens.
+   * Item ou poção no chão. Precisa ler em qualquer mapa (chão claro do deserto, caverna escura, mato alto):
+   * - sombra escura embaixo e anel com contorno na cor da raridade, para contrastar com chão claro e escuro;
+   * - ícone de 22 px balançando de leve;
+   * - feixe de luz que sobe do item e fica por cima da decoração, para achar o item atrás de
+   *   árvore ou parede. Quanto mais raro, mais alto e forte o feixe.
+   * Fica acima de toda a decoração de chão da própria linha e abaixo dos personagens.
    * Vários itens no mesmo tile se espalham um pouco para dar para ver todos.
    */
   private addGroundItem(id: string, item: GroundItemView) {
     const color = isPotion(item.itemId) ? POTIONS[item.itemId].color
       : isRune(item.itemId) ? RUNES[item.itemId].color : ITEMS[item.itemId] && itemColor(item.itemId);
     if (color === undefined) return;
+    const rarity = ITEMS[item.itemId]?.rarity;
+    // 0 = comum ou poção, 1 = raro ou runa, 2 = mágico.
+    const tier = rarity === "magic" ? 2 : rarity === "rare" || isRune(item.itemId) ? 1 : 0;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
-    const offset = [[0, 0], [-6, -4], [6, -4], [-6, 5], [6, 5]][stacked % 5];
-    const glow = this.add.ellipse(0, 5, 20, 8, color, 0.45);
+    const offset = [[0, 0], [-7, -5], [7, -5], [-7, 6], [7, 6]][stacked % 5];
+    const shadow = this.add.ellipse(0, 7, 26, 10, 0x000000, 0.45);
+    const glow = this.add.ellipse(0, 7, 30, 12, color, 0.5).setBlendMode(Phaser.BlendModes.ADD);
+    // Contorno escuro por fora do anel da cor: o comum (quase branco) não some na areia.
+    const outline = this.add.ellipse(0, 7, 25, 10).setStrokeStyle(3, 0x000000, 0.55);
+    const ring = this.add.ellipse(0, 7, 24, 9).setStrokeStyle(1.5, color, 1);
     const key = itemTexture(this, item.itemId);
-    // O ícone fica com 16 px no chão (o da arte nova é maior e vai reduzido).
-    const icon = this.add.image(0, 0, key).setScale(16 / this.textures.get(key).getSourceImage().width);
-    const container = this.add.container(this.toPx(item.x) + offset[0], this.toPx(item.y) + offset[1] + 4, [glow, icon])
-      .setDepth(item.y * TILE_SIZE + 2);
-    this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
-    // Cai do monstro com um pulinho.
-    this.tweens.add({ targets: icon, y: { from: -10, to: 0 }, duration: 260, ease: "Bounce.Out" });
+    // O ícone fica com 22 px no chão (o da arte nova é maior e vai reduzido).
+    const icon = this.add.image(0, 0, key).setScale(22 / this.textures.get(key).getSourceImage().width);
+    const x = this.toPx(item.x) + offset[0];
+    const y = this.toPx(item.y) + offset[1] + 2;
+    const container = this.add.container(x, y, [shadow, glow, outline, ring, icon])
+      .setDepth((item.y + 1) * TILE_SIZE - 0.1);
+    const beamHeight = [34, 50, 68][tier];
+    const beam = this.add.image(x, y + 7, this.lootBeamTexture()).setOrigin(0.5, 1)
+      .setDisplaySize(10 + tier * 2, beamHeight).setTint(color)
+      .setAlpha(0.5 + tier * 0.15).setDepth(FX_DEPTH_BELOW_UI);
+    container.once(Phaser.GameObjects.Events.DESTROY, () => beam.destroy());
+    this.tweens.add({ targets: glow, alpha: { from: 0.55, to: 0.2 }, duration: 700, yoyo: true, repeat: -1 });
+    this.tweens.add({ targets: beam, scaleX: beam.scaleX * 0.7, alpha: beam.alpha * 0.6, duration: 900, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    // Cai do monstro com um pulinho e depois flutua de leve.
+    this.tweens.add({
+      targets: icon, y: { from: -12, to: 0 }, duration: 260, ease: "Bounce.Out",
+      onComplete: () => {
+        if (icon.active) this.tweens.add({ targets: icon, y: -3, duration: 900, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+      },
+    });
     this.items.set(id, container);
+  }
+
+  /** Textura do feixe de loot: faixa vertical suave que some no topo (gerada uma vez, branca, tingida por item). */
+  private lootBeamTexture() {
+    const key = "loot-beam";
+    if (this.textures.exists(key)) return key;
+    const w = 16;
+    const h = 64;
+    const canvas = this.textures.createCanvas(key, w, h)!;
+    const ctx = canvas.getContext();
+    for (let py = 0; py < h; py++) {
+      const v = py / (h - 1); // 0 no topo, 1 na base
+      const grad = ctx.createLinearGradient(0, 0, w, 0);
+      const a = v * v;
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.5, `rgba(255,255,255,${a})`);
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, py, w, 1);
+    }
+    canvas.refresh();
+    return key;
   }
 
   // --- Jogadores e monstros -------------------------------------------------
