@@ -6,3 +6,12 @@
 
 Depois de aprovada, a planta entra em `packages/shared/src/dungeon.ts` (o gerador da Fortaleza passa a ler o
 desenho) e esta pasta fica só com a imagem.
+
+## Folhas de sprites do ChatGPT
+
+| Folha | Original | No jogo | Estado |
+|---|---|---|---|
+| Acampamento orc | `acampamento.png` | `apps/client/src/art/proto/fortaleza/acampamento.png` + `.json` | ✅ tendas (a do chefe no pátio do esporão), totens, estandartes (também no terraço), fogueiras, paliçada de leste a oeste, armas, caldeirão, lenha, ossos, barris. A jaula ainda não tem lugar |
+
+Para refazer depois de trocar o original: `python3 apps/client/scripts/fortalezaSprites.py acampamento` (tira o magenta e o
+halo rosado, separa os objetos pela célula da grade e põe cada um na largura do jogo, em `FOLHAS`).

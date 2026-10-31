@@ -11,11 +11,12 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  BANNER, CAMP, CAMP_DECOR, DROP, HANG, KEEP_RISE, ROOM_WALL, STAKE, TENT, THRONE, TOTEM, bannerSprite, bridgeTile, campDecor,
-  cliffTile, dirtTile, sideCliffTile, firePitTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
-  stakeSprite, tentSprite, terraceTile, throneSprite, totemSprite,
+  DROP, HANG, KEEP_RISE, ROOM_WALL, STAKE, THRONE, bridgeTile,
+  cliffTile, dirtTile, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
+  stakeSprite, terraceTile, throneSprite,
 } from "./art/fortressArt.ts";
 import { canopyTile, waterTile } from "./art/forestArt.ts";
+import { ACAMPAMENTO, type AcampamentoFrame } from "./art/proto/fortalezaArt.ts";
 import { GLOW, MIST, SpriteSheet, createGlowArt, single } from "./gatesMap.ts";
 import { ChunkCuller, focusTile, patchTint, type MapAmbience } from "./mapShared.ts";
 
@@ -244,7 +245,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       const s = mask(x, y, high) & (OPEN.n | OPEN.w | OPEN.nw);
       if (s && !high(x, y)) shade[i] = atlas.frame(`shade${s}`, () => shadeEdge(s, 40));
 
-      if (fires.has(i)) { decor[i] = atlas.frame("firepit", () => firePitTile().render(false)); continue; }
+      if (fires.has(i)) continue;
       if (reserved(x, y) || t !== Tile.Floor || bridge(x, y)) continue;
       const byRuin = near(x, y, 1, ruin);
       const n = hash(x, y, 4);
@@ -346,11 +347,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const blocks = new SpriteSheet("fortress-blocks", BLOCK.w, BLOCK.h);
   const cypress = new SpriteSheet("fortress-cypress", CYPRESS.w, CYPRESS.h);
   const pines = new SpriteSheet("fortress-pines", PINE.w, PINE.h);
-  const tents = new SpriteSheet("fortress-tents", TENT.w, TENT.h);
   const stakes = new SpriteSheet("fortress-stakes", STAKE.w, STAKE.h);
-  const totemSheet = new SpriteSheet("fortress-totems", TOTEM.w, TOTEM.h);
-  const banners = new SpriteSheet("fortress-banners", BANNER.w, BANNER.h);
-  const camps = new SpriteSheet("fortress-camp", CAMP.w, CAMP.h);
   type Placed = { sheet: SpriteSheet; frame: number; x: number; y: number; px: number; py: number; depth: number; flip?: boolean; crown?: boolean };
   const placed: Placed[] = [];
   const put = (sheet: SpriteSheet, frame: number, x: number, y: number, flip = false, px = x * TILE_SIZE + TILE_SIZE / 2, py = (y + 1) * TILE_SIZE) =>
@@ -362,6 +359,17 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   };
   const pineTops = Array.from({ length: 3 }, (_, v) => pineTrunk(v));
   const campSpots: { x: number; y: number }[] = [];
+  // Os objetos do acampamento vêm da folha do ChatGPT (`ACAMPAMENTO`): cada um na largura do jogo, pelo pé.
+  const CAMP_KEY = "fortress-acampamento";
+  if (!scene.textures.exists(CAMP_KEY)) {
+    const tex = scene.textures.addImage(CAMP_KEY, ACAMPAMENTO.image)!;
+    for (const [name, r] of Object.entries(ACAMPAMENTO.frames)) tex.add(name, 0, r.x, r.y, r.w, r.h);
+  }
+  type CampPlaced = { frame: AcampamentoFrame; x: number; y: number; px: number; py: number; flip: boolean };
+  const campPlaced: CampPlaced[] = [];
+  const putCamp = (frame: AcampamentoFrame, x: number, y: number, flip = false, px = x * TILE_SIZE + TILE_SIZE / 2, py = (y + 1) * TILE_SIZE) =>
+    campPlaced.push({ frame, x, y, px, py, flip });
+  const CAMP_ITEMS: AcampamentoFrame[] = ["armas", "caldeirao", "lenha", "ossos", "barris"];
 
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
@@ -382,22 +390,23 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       if (!ruin(x, y)) {
         if (at(x, y) !== Tile.Floor || reserved(x, y) || decor[y * W + x] >= 0 || road(x, y) || bridge(x, y) || rope(x, y)) continue;
         if (camp(x, y) && hash(x, y, 52) < 0.07) {
-          const kind = CAMP_DECOR[Math.floor(hash(x, y, 53) * CAMP_DECOR.length)];
-          const v = Math.floor(hash(x, y, 54) * 2);
-          put(camps, camps.frame(`${kind}${v}`, () => campDecor(kind, v)), x, y, flip);
+          putCamp(CAMP_ITEMS[Math.floor(hash(x, y, 53) * CAMP_ITEMS.length)], x, y, flip);
           campSpots.push({ x, y });
         }
         continue;
       }
       if (totems.has(y * W + x)) {
-        const v = Math.floor(hash(x, y, 55) * 2);
-        put(totemSheet, totemSheet.frame(`t${v}`, () => totemSprite(v)), x, y, flip);
+        putCamp("totem", x, y, flip);
         continue;
       }
       if (palisade(x, y)) {
         const across = f.palisades.find((r) => inR(r, x, y))!.h === 1;
-        const v = Math.floor(hash(x, y, 56) * 3);
-        put(stakes, stakes.frame(`${across}${v}`, () => stakeSprite(across, v)), x, y, flip);
+        // A folha traz a paliçada de frente (a cerca de leste a oeste); a de norte a sul continua por código.
+        if (across) putCamp("palicada", x, y, flip);
+        else {
+          const v = Math.floor(hash(x, y, 56) * 3);
+          put(stakes, stakes.frame(`${across}${v}`, () => stakeSprite(across, v)), x, y, flip);
+        }
         continue;
       }
       if (special(x, y)) continue;
@@ -435,19 +444,20 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
 
   // Tendas (2×2), pela linha de baixo.
   for (const t of f.tents) {
-    const v = Math.floor(hash(t.x, t.y, 62) * 4);
-    put(tents, tents.frame(`t${v}`, () => tentSprite(v)), t.x, t.y + 1, hash(t.x, t.y, 63) < 0.5, (t.x + 1) * TILE_SIZE, (t.y + 2) * TILE_SIZE);
+    // A tenda do chefe é a da guarda, no pátio do esporão (acima da muralha interna).
+    putCamp(t.y < f.walls[1].y ? "tendaChefe" : "tenda", t.x, t.y + 1, hash(t.x, t.y, 63) < 0.5, (t.x + 1) * TILE_SIZE, (t.y + 2) * TILE_SIZE);
   }
   // Estandartes de guerra ao lado das fogueiras.
   for (const fire of f.fires) {
     const x = fire.x + (hash(fire.x, fire.y, 64) < 0.5 ? -2 : 2), y = fire.y - 1;
     if (at(x, y) !== Tile.Floor || road(x, y) || campSpots.some((c) => c.x === x && c.y === y)) continue;
-    const v = Math.floor(hash(x, y, 65) * 2);
-    put(banners, banners.frame(`b${v}`, () => bannerSprite(v)), x, y);
+    putCamp("estandarte", x, y);
   }
 
-  for (const sheet of [walls, cols, blocks, cypress, pines, tents, stakes, totemSheet, banners, camps]) sheet.build(scene);
+  for (const sheet of [walls, cols, blocks, cypress, pines, stakes]) sheet.build(scene);
   const crowns: Phaser.GameObjects.Image[] = [];
+  for (const c of campPlaced)
+    culler.add(scene.add.image(c.px, c.py, CAMP_KEY, c.frame).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth((c.y + 1) * TILE_SIZE - 0.25).setFlipX(c.flip), c.x, c.y);
   for (const s of placed) {
     const img = culler.add(scene.add.image(s.px, s.py, s.sheet.key, s.frame).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(s.depth).setFlipX(!!s.flip), s.x, s.y);
     if (s.crown) crowns.push(img);
@@ -483,9 +493,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const keepObjs: Upper["objs"] = [];
   // No terraço: a fogueira dos orcs, o estandarte e os panos de guerra na fachada.
   const top = (x: number, y: number) => ({ px: (K.x + x + 0.5) * TILE_SIZE, py: (K.y - KEEP_RISE + y + 1) * TILE_SIZE });
-  const bannerKey = single(scene, "fortress-roof-banner", BANNER.w, BANNER.h, () => bannerSprite(1));
   const flag = top(KW - holeAt.x - 2, 2);
-  keepObjs.push(scene.add.image(flag.px, flag.py, bannerKey).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(keepDepth + 0.02));
+  keepObjs.push(scene.add.image(flag.px, flag.py, CAMP_KEY, "estandarte").setOrigin(0.5, 1).setScale(1.2 / ZOOM).setDepth(keepDepth + 0.02));
   for (const k of [0, 1]) {
     const x = Math.floor(KW * (k ? 0.75 : 0.25));
     keepObjs.push(scene.add.image((K.x + x + 0.5) * TILE_SIZE, (K.y + K.h - KEEP_RISE) * TILE_SIZE + 5, hangKey(k)).setOrigin(0.5, 0).setScale(0.75 / ZOOM)
@@ -557,7 +566,15 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     glows.push(gl);
     return [fl, gl];
   };
-  for (const c of f.fires) fire((c.x + 0.5) * TILE_SIZE, (c.y + 0.75) * TILE_SIZE, (c.y + 1) * TILE_SIZE - 0.3, 1.2, c.x, c.y, 1.5);
+  // Fogueiras do acampamento: a da folha (com as chamas desenhadas) e a luz tremendo em volta.
+  for (const c of f.fires) {
+    const px = (c.x + 0.5) * TILE_SIZE, py = (c.y + 1) * TILE_SIZE;
+    culler.add(scene.add.image(px, py, CAMP_KEY, "fogueira").setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(py - 0.3), c.x, c.y);
+    const gl = scene.add.image(px, py - 10, GLOW).setScale(1.5).setAlpha(0.5).setTint(0xff9a40).setDepth(uiDepth - 6).setBlendMode(Phaser.BlendModes.ADD);
+    gl.setData("phase", hash(c.x, c.y, 68) * 10).setData("alpha", 0.55);
+    culler.add(gl, c.x, c.y);
+    glows.push(gl);
+  }
   // A fogueira do terraço some junto com o andar de cima.
   const roofFire = top(holeAt.x < KW / 2 ? KW - 5 : 4, K.h - 5);
   for (const o of fire(roofFire.px, roofFire.py - 6, keepDepth + 0.03, 1.6, K.x, K.y, 1.8, false)) keepObjs.push(o);

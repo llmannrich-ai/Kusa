@@ -7,7 +7,7 @@ import { build } from "esbuild";
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const out = process.argv[2] ?? "medicao.html";
 const bundle = await build({
-  entryPoints: [here("../src/medicao.ts")], bundle: true, write: false, format: "iife", platform: "browser", minify: true,
+  entryPoints: [here("../src/medicao.ts")], bundle: true, write: false, format: "esm", platform: "browser", minify: true, target: "es2022",
   loader: { ".png": "dataurl" }, define: { "import.meta.env": "{}" },
 });
 const js = bundle.outputFiles[0].text.replace(/<\/script/g, "<\\/script");
@@ -34,7 +34,7 @@ const html = `<!DOCTYPE html>
   <pre id="resultado"></pre>
   <button id="comecar">Começar</button>
 </div>
-<script>${js}</script>
+<script type="module">${js}</script>
 </body>
 </html>`;
 writeFileSync(out, html);

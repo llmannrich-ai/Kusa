@@ -1,4 +1,4 @@
-import { E, FLAT, HD, OPEN, ellipse, hash01, limb, line, lit, noise, paper, poly, sn, type Pt } from "./empireArt.ts";
+import { E, FLAT, HD, OPEN, ellipse, hash01, limb, lit, noise, paper, sn } from "./empireArt.ts";
 import { box, hline, ivy, masonry, rubbleTop, vline } from "./empireMonuments.ts";
 import type { Paper } from "./duneArt.ts";
 
@@ -12,8 +12,8 @@ import type { Paper } from "./duneArt.ts";
  *   dos Portões, escurecidos.
  * - **Pontes**: o tabuleiro de pedra com parapeitos e a ponte de cordas dos orcs (tábuas com frestas: o vale aparece
  *   por elas).
- * - **Acampamento**: terra batida, a fogueira, tendas de couro, paliçadas de estacas, totens de caveira, estandartes de
- *   guerra, o trono e os enfeites (armas, caldeirão, lenha, ossos).
+ * - **Acampamento**: a terra batida, a paliçada de norte a sul, os panos de guerra pendurados e o trono. Tendas, totens,
+ *   estandartes, a fogueira, a paliçada de frente e os enfeites vêm da folha do ChatGPT (`proto/fortalezaArt.ts`).
  */
 
 const mod = (v: number, n: number) => ((v % n) + n) % n;
@@ -272,26 +272,6 @@ export function ropeBridgeTile(side: -1 | 1, v: number): Paper {
   return p;
 }
 
-/** Fogueira no chão: a roda de pedras, a cinza e as achas carbonizadas (a chama vai por cima, animada). */
-export function firePitTile(): Paper {
-  const p = paper();
-  const cx = 64, cy = 70;
-  ellipse(p, cx, cy, 30, 20, E.Void);
-  for (let y = 0; y < HD; y++)
-    for (let x = 0; x < HD; x++) {
-      const d = ((x - cx) / 28) ** 2 + ((y - cy) / 18) ** 2;
-      if (d < 1) p.on(x, y, noise(x, y, 770) < 0.5 ? E.Mortar : E.Void, d < 0.3 ? 4 : noise(x, y, 771) < 0.3 ? 1 : 2);
-    }
-  for (let k = 0; k < 11; k++) {
-    const a = (k / 11) * Math.PI * 2 + noise(k, 0, 772) * 0.3;
-    ellipse(p, cx + Math.cos(a) * 34, cy + Math.sin(a) * 23, 7 + noise(k, 1, 773) * 3, 5 + noise(k, 2, 774) * 2, k % 3 ? E.Slab : E.Wall);
-  }
-  limb(p, [cx - 18, cy - 4], [cx + 14, cy + 8], 4, 3.5, E.Bark);
-  limb(p, [cx + 16, cy - 8], [cx - 10, cy + 10], 4, 3.5, E.Bark);
-  for (let k = 0; k < 14; k++) p.on(cx - 14 + noise(k, 3, 775) * 28, cy - 6 + noise(k, 4, 776) * 14, E.Fire, 3);
-  return p;
-}
-
 // --- Torre de menagem (o andar de cima) ----------------------------------------------------
 
 /**
@@ -525,72 +505,6 @@ export function roofRow(y: number, h: number): RoofRow {
 
 // --- Acampamento (de pé) --------------------------------------------------------------------
 
-export const TENT = { w: 2 * HD, h: 2 * HD + 170 } as const;
-
-/**
- * Tenda de couro dos orcs (2×2 tiles): um cone de peles costuradas em gomos (a luz do noroeste), remendos de outras
- * cores, a entrada escura virada para o sul, a mão vermelha pintada, as varas cruzadas saindo do topo e caveiras
- * penduradas; pedras segurando a barra.
- */
-export function tentSprite(v: number): Uint8ClampedArray {
-  const p = paper(TENT.w, TENT.h);
-  const cx = TENT.w / 2;
-  const foot = TENT.h - 10;
-  const rx = 116, ry = 52;
-  const baseY = foot - ry;
-  const apex = baseY - 300;
-  const hw = (y: number) => rx * Math.max(0, (y - apex) / (baseY - apex));
-  const inside = (x: number, y: number) => y >= apex && ((y <= baseY && Math.abs(x - cx) <= hw(y)) || (y > baseY && ((x - cx) / rx) ** 2 + ((y - baseY) / ry) ** 2 <= 1));
-  const hide = [E.Dirt, E.Bark, E.Dry, E.Terracotta][v % 4];
-  // Varas saindo do topo (atrás do couro).
-  for (const dx of [-26, 4, 30]) limb(p, [cx + dx * 0.25, apex + 30], [cx + dx, apex - 46], 4, 3, E.Bark);
-  p.together(() => p.fill([cx - rx, apex, cx + rx, foot], inside, hide, (x, y) => {
-    const u = Math.max(-1, Math.min(1, (x - cx) / Math.max(8, y <= baseY ? hw(y) : rx)));
-    const gore = mod(Math.atan2(x - cx, Math.max(1, y - apex + 40)) * 9, 1);
-    return lit(u * 0.95, -0.35, Math.sqrt(Math.max(0, 1 - u * u)) + 0.15) - (gore < 0.06 ? 0.18 : 0) + (sn(x & 127, y & 127, 16, 820 + v) - 0.5) * 0.1;
-  }, (x, y) => (noise(x, y, 821 + v) < 0.04 ? -1 : 0)));
-  // Remendos de outra pele.
-  for (let k = 0; k < 4; k++) {
-    const py = apex + 90 + noise(k, v, 822) * 180, px = cx + (noise(v, k, 823) - 0.5) * hw(py) * 1.4;
-    const r = 18 + noise(k, k, 824) * 12;
-    const mat = [E.Bark, E.Dry, E.Terracotta, E.Dirt][(v + k + 1) % 4];
-    for (let y = py - r; y <= py + r; y++)
-      for (let x = px - r * 1.2; x <= px + r * 1.2; x++) {
-        if (!inside(x, y) || Math.abs(x - px) / (r * 1.2) + Math.abs(y - py) / r > 1) continue;
-        const i = Math.round(y) * TENT.w + Math.round(x);
-        if (p.mat[i] >= 0) p.mat[i] = mat;
-      }
-    for (let a = 0; a < Math.PI * 2; a += 0.12) p.on(px + Math.cos(a) * r * 1.1, py + Math.sin(a) * r * 0.92, E.Line, 2);
-  }
-  // Entrada: o vão triangular escuro virado para o sul, com a aba de couro dobrada.
-  const ex = cx + (v % 3 - 1) * 14;
-  p.fill([ex - 40, baseY - 140, ex + 40, foot], (x, y) => inside(x, y) && y > baseY - 140 && Math.abs(x - ex) < (y - (baseY - 140)) * 0.26, E.Void, () => 0.08);
-  poly(p, [[ex + 2, baseY - 136], [ex + 46, baseY + 20], [ex + 18, baseY + 30]], hide, () => 0.38);
-  // A mão vermelha pintada (ou a caveira branca, em algumas).
-  const sx = cx - 48 + (v % 2) * 92, sy = baseY - 120;
-  if (v % 2 === 0) {
-    ellipse(p, sx, sy, 13, 15, E.Cloth);
-    for (let f = -2; f <= 2; f++) limb(p, [sx + f * 6, sy - 8], [sx + f * 8, sy - 30 + Math.abs(f) * 4], 3.2, 2.6, E.Cloth);
-  } else {
-    ellipse(p, sx, sy, 15, 13, E.Bone);
-    ellipse(p, sx - 5, sy, 4, 4, E.Void);
-    ellipse(p, sx + 5, sy, 4, 4, E.Void);
-    box(p, [sx - 6, sy + 10, sx + 6, sy + 16], E.Bone, 0.6);
-  }
-  // Caveiras penduradas na beira e pedras na barra.
-  for (const k of [0, 1]) {
-    const x = cx + (k ? 70 : -78), y = baseY + 6;
-    line(p, [x, y - 40], [x, y - 12], E.Dry, 2);
-    ellipse(p, x, y - 4, 8, 8, E.Bone);
-    p.on(x - 3, y - 4, E.Void, 1); p.on(x + 3, y - 4, E.Void, 1);
-  }
-  for (let k = 0; k < 9; k++) {
-    const a = Math.PI * (0.08 + 0.84 * (k / 8));
-    ellipse(p, cx + Math.cos(a) * rx * 0.96, baseY + Math.sin(a) * ry * 0.96 + 2, 7, 5, E.Slab);
-  }
-  return p.render(true);
-}
-
 export const STAKE = { w: HD, h: HD + 170 } as const;
 
 /**
@@ -618,75 +532,6 @@ export function stakeSprite(across: boolean, v: number): Uint8ClampedArray {
   };
   if (across) for (let k = 0; k < 4; k++) stake(18 + k * 31 + (noise(k, v, 832) - 0.5) * 4, foot - 40 - noise(k, v, 833) * 6, 14, 128 + noise(v, k, 834) * 30, k + v);
   else for (let k = 0; k < 4; k++) stake(64 + (noise(k, v, 835) - 0.5) * 10, foot - 100 + k * 30, 15, 120 + noise(v, k, 836) * 30, k + v);
-  return p.render(true);
-}
-
-export const TOTEM = { w: HD, h: HD + 260 } as const;
-
-/** Totem de caveira: o poste de tronco, caveiras empilhadas (de orc, de bicho), chifres no alto, tiras de pano vermelho e penas; pedras no pé. */
-export function totemSprite(v: number): Uint8ClampedArray {
-  const p = paper(TOTEM.w, TOTEM.h);
-  const cx = 64, foot = TOTEM.h - 30;
-  limb(p, [cx, foot], [cx, 50], 9, 7, E.Bark);
-  // Tiras de pano.
-  for (let k = 0; k < 3; k++) {
-    const x = cx - 18 + k * 18, y = 92 + k * 6;
-    p.fill([x - 5, y, x + 5, y + 70 + k * 10], (xx, yy) => noise(xx >> 1, yy >> 3, 840 + k) > 0.12 && Math.abs(xx - x - Math.sin(yy / 9 + k) * 3) < 4, E.Cloth,
-      (xx, yy) => 0.55 + Math.sin(yy / 9 + k) * 0.12);
-  }
-  // Caveiras empilhadas.
-  for (let k = 0; k < 3; k++) {
-    const y = 110 + k * 46, big = k === 0 ? 1.15 : 1;
-    ellipse(p, cx, y, 17 * big, 15 * big, E.Bone);
-    ellipse(p, cx - 6, y, 4.5, 4.5, E.Void);
-    ellipse(p, cx + 6, y, 4.5, 4.5, E.Void);
-    box(p, [cx - 7, y + 10, cx + 7, y + 16], E.Bone, 0.55);
-    for (let t = -6; t <= 6; t += 3) p.on(cx + t, y + 13, E.Line, 1);
-    // Presas de orc na de cima.
-    if (k === 0) { limb(p, [cx - 6, y + 14], [cx - 9, y + 4], 2.4, 1, E.Bone); limb(p, [cx + 6, y + 14], [cx + 9, y + 4], 2.4, 1, E.Bone); }
-  }
-  // Chifres.
-  const hornL: Pt[] = [[cx - 8, 90], [cx - 30, 74], [cx - 40, 48], [cx - 34, 28]];
-  const hornR: Pt[] = [[cx + 8, 90], [cx + 30, 74], [cx + 40, 48], [cx + 34, 28]];
-  for (const horn of [hornL, hornR]) for (let k = 0; k < horn.length - 1; k++) limb(p, horn[k], horn[k + 1], 7 - k * 2, 5 - k * 1.6, E.Bone);
-  // Penas.
-  for (const [dx, a] of [[-12, -0.5], [12, 0.5]] as const) limb(p, [cx + dx, 60], [cx + dx + a * 30, 22], 4, 1, v % 2 ? E.Iron : E.Cloth);
-  // Pedras no pé.
-  for (let k = 0; k < 5; k++) ellipse(p, cx - 26 + k * 13, foot + 4 + (k % 2) * 4, 9, 7, E.Slab);
-  return p.render(true);
-}
-
-export const BANNER = { w: HD, h: HD + 300 } as const;
-
-/**
- * Estandarte de guerra dos orcs fincado no chão: a haste com a ponta de lança, a travessa e o pano preto rasgado com a
- * mão vermelha (ou a caveira branca) e franjas de osso.
- */
-export function bannerSprite(v: number): Uint8ClampedArray {
-  const p = paper(BANNER.w, BANNER.h);
-  const cx = 30, foot = BANNER.h - 20;
-  limb(p, [cx, foot], [cx, 24], 5, 4, E.Bark);
-  poly(p, [[cx - 7, 30], [cx, 4], [cx + 7, 30]], E.Iron, (x) => (x < cx ? 0.75 : 0.4));
-  limb(p, [cx - 6, 50], [cx + 86, 50], 3.5, 3.5, E.Bark);
-  const x0 = cx + 2, x1 = cx + 84, y0 = 54, y1 = 230;
-  p.fill([x0, y0, x1, y1], (x, y) => {
-    const tear = y > y1 - 36 - noise(Math.floor((x - x0) / 8), v, 850) * 50;
-    return !tear && noise((x - x0) >> 2, (y - y0) >> 3, 851 + v) > 0.05;
-  }, E.Iron, (x, y) => 0.5 + Math.sin((x - x0) / 10) * 0.12 - ((y - y0) / 180) * 0.12);
-  const sx = (x0 + x1) / 2, sy = 120;
-  if (v % 2 === 0) {
-    ellipse(p, sx, sy, 15, 17, E.Cloth);
-    for (let f = -2; f <= 2; f++) limb(p, [sx + f * 7, sy - 9], [sx + f * 9, sy - 34 + Math.abs(f) * 5], 3.6, 3, E.Cloth);
-  } else {
-    ellipse(p, sx, sy, 18, 16, E.Bone);
-    ellipse(p, sx - 6, sy, 5, 5, E.Void);
-    ellipse(p, sx + 6, sy, 5, 5, E.Void);
-    box(p, [sx - 7, sy + 12, sx + 7, sy + 19], E.Bone, 0.6);
-    limb(p, [sx - 28, sy + 30], [sx + 28, sy + 56], 3, 3, E.Bone);
-    limb(p, [sx + 28, sy + 30], [sx - 28, sy + 56], 3, 3, E.Bone);
-  }
-  for (let x = x0 + 6; x < x1; x += 16) { line(p, [x, y0], [x, y0 + 8], E.Bone, 3); ellipse(p, x, y0 + 10, 3, 3, E.Bone); }
-  for (let k = 0; k < 4; k++) ellipse(p, cx - 10 + k * 8, foot + 4, 7, 5, E.Slab);
   return p.render(true);
 }
 
@@ -733,50 +578,5 @@ export function throneSprite(): Uint8ClampedArray {
   p.fill([cx - 30, 30, cx + 30, foot - 120], (x, y) => noise((x - cx) >> 2, y >> 3, 862) > 0.06, E.Cloth, (x) => 0.55 + Math.sin((x - cx) / 8) * 0.12);
   ellipse(p, cx, 80, 12, 14, E.Bone);
   p.on(cx - 4, 80, E.Void, 1); p.on(cx + 4, 80, E.Void, 1);
-  return p.render(true);
-}
-
-export const CAMP = { w: HD, h: HD + 110 } as const;
-export const CAMP_DECOR = ["rack", "pot", "logs", "bones"] as const;
-export type CampDecor = (typeof CAMP_DECOR)[number];
-
-/** Enfeites de acampamento (não bloqueiam): o cavalete de armas, o caldeirão no tripé, a pilha de lenha e o monte de ossos. */
-export function campDecor(kind: CampDecor, v: number): Uint8ClampedArray {
-  const p = paper(CAMP.w, CAMP.h);
-  const foot = CAMP.h - 24;
-  if (kind === "rack") {
-    for (const x of [24, 104]) limb(p, [x, foot], [x, foot - 96], 4, 3.5, E.Bark);
-    limb(p, [18, foot - 86], [110, foot - 86], 3.5, 3.5, E.Bark);
-    // Machados e lanças encostados.
-    for (let k = 0; k < 3; k++) {
-      const x = 38 + k * 26;
-      limb(p, [x - 6, foot + 2], [x + 6, foot - 110], 2.6, 2.2, E.Bark);
-      if ((k + v) % 2) poly(p, [[x + 2, foot - 104], [x + 22, foot - 112], [x + 20, foot - 84], [x + 4, foot - 92]], E.Iron, () => 0.62);
-      else poly(p, [[x + 3, foot - 128], [x + 10, foot - 108], [x + 3, foot - 104], [x - 2, foot - 110]], E.Iron, (xx) => (xx < x + 4 ? 0.75 : 0.4));
-    }
-  } else if (kind === "pot") {
-    for (const [a, b] of [[[20, foot], [64, foot - 92]], [[108, foot], [64, foot - 92]], [[64, foot + 6], [64, foot - 92]]] as const) limb(p, a, b, 3, 2.4, E.Bark);
-    p.fill([30, foot - 66, 98, foot - 6], (x, y) => Math.hypot((x - 64) / 34, (y - (foot - 36)) / 30) < 1, E.Iron, (x, y) => lit((x - 64) / 34, (y - (foot - 36)) / 30, 0.6));
-    ellipse(p, 64, foot - 60, 30, 9, E.Moss);
-    for (let k = 0; k < 6; k++) p.on(48 + k * 6, foot - 61 + (k % 2), E.Bone, 4);
-    line(p, [64, foot - 92], [64, foot - 62], E.Iron, 1);
-  } else if (kind === "logs") {
-    for (let k = 0; k < 5; k++) {
-      const y = foot - 8 - (k < 3 ? 0 : 16), x0 = 18 + (k % 3) * 8 + (k >= 3 ? 14 : 0);
-      limb(p, [x0, y - k * 2], [x0 + 80, y - 6 - k * 2], 9, 9, E.Bark);
-      ellipse(p, x0 + 80, y - 6 - k * 2, 7, 8, E.Dry);
-    }
-    limb(p, [70, foot - 6], [90, foot - 50], 2, 2, E.Iron);
-  } else {
-    for (let k = 0; k < 9; k++) {
-      const a = noise(k, v, 870) * Math.PI, x = 30 + noise(v, k, 871) * 68, y = foot - 8 - noise(k, k, 872) * 30;
-      limb(p, [x - Math.cos(a) * 18, y - Math.sin(a) * 6], [x + Math.cos(a) * 18, y + Math.sin(a) * 6], 3, 3, E.Bone);
-    }
-    ellipse(p, 64, foot - 46, 18, 16, E.Bone);
-    ellipse(p, 57, foot - 46, 5, 5, E.Void);
-    ellipse(p, 71, foot - 46, 5, 5, E.Void);
-    limb(p, [50, foot - 54], [32, foot - 76], 4, 1.5, E.Bone);
-    limb(p, [78, foot - 54], [96, foot - 76], 4, 1.5, E.Bone);
-  }
   return p.render(true);
 }
