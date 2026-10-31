@@ -28,7 +28,7 @@ import {
   tallDecor as duneTall, type DuneVariant,
 } from "../../client/src/art/duneArt.ts";
 import {
-  FLAT_DECOR as FOREST_FLAT, OPEN, SPECIES, TALL_DECOR as FOREST_TALL, boardTile, bogTile, bridgeTile, canopyTile, dirtTile, draw as forest,
+  FLAT_DECOR as FOREST_FLAT, OPEN, SPECIES, TALL_DECOR as FOREST_TALL, boardTile, bridgeTile, canopyTile, dirtTile, draw as forest,
   flatDecor as forestFlat, giant, heartTree, litterEdge, logTile, mudEdge, shadowEdge, stone, tallDecor as forestTall, tree,
   wallTile, waterTile, type ForestVariant,
 } from "../../client/src/art/forestArt.ts";
@@ -88,9 +88,9 @@ const SCENERY: Record<string, Piece[]> = {
   "Pântano do Kosaradius": [
     ...woods("marsh"),
     ...range(3).map((v) => ({ name: `água do miolo ${v}`, draw: () => waterTile("marsh", 0, v + 3).render(false) })),
+    ...[0, 5, 10, 15].map((q) => ({ name: `capim do pântano ${q}`, draw: forest.wetGrass("marsh", q) })),
     ...[0, OPEN.w, OPEN.e | OPEN.w].map((e) => ({ name: `passarela leste-oeste ${e}`, draw: () => boardTile("marsh", true, e, 0).render(true) })),
     ...[0, OPEN.n].map((e) => ({ name: `passarela norte-sul ${e}`, draw: () => boardTile("marsh", false, e, 1).render(true) })),
-    ...[[0, 1], [OPEN.n, 0], [OPEN.n | OPEN.w | OPEN.nw, 0]].map(([m, v]) => ({ name: `lamaçal ${m}-${v}`, draw: () => bogTile("marsh", m, v).render(false) })),
   ],
   "Pântano das Ruínas": [
     ...woods("swamp"),

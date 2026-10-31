@@ -2,8 +2,8 @@ import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "
 import { hash } from "./art/pixels.ts";
 import { TileAtlas } from "./art/paint.ts";
 import {
-  GIANT, HEART, OPEN, SPECIES, TALL, TALL_DECOR, TREE, boardTile, bogTile, bridgeTile, canopyTile, dirtTile, draw, flatDecor, giant,
-  heartTree, litterEdge, logTile, mudEdge, shadowEdge, stone, tallDecor, tree, wallTile, waterTile,
+  GIANT, HEART, OPEN, SPECIES, TALL, TALL_DECOR, TREE, boardTile, bridgeTile, canopyTile, dirtTile, draw, flatDecor, giant,
+  heartTree, litterEdge, logTile, mudEdge, shadowEdge, stone, tallDecor, tree, wallTile, waterTile, wetPiece,
   type FlatDecor, type ForestVariant, type TallDecor,
 } from "./art/forestArt.ts";
 import {
@@ -13,7 +13,7 @@ import {
 
 // O plano do Bosque Velho, do Coração da Mata e dos dois pântanos, sem o Phaser: que quadro vai em cada tile de cada
 // camada e que objeto fica de pé onde. `forestMap.ts` desenha no jogo; o plano também serve para prévias fora do
-// navegador. O pântano é a mesma mata, alagada: passarelas em vez de pontes, lamaçais no capim, árvores dentro d'água.
+// navegador. O pântano é a mesma mata, alagada: passarelas em vez de pontes, árvores dentro d'água.
 // O Pântano das Ruínas tem, no lugar dos troncos, o que resta do império afundado (`art/swampArt.ts`): lajes, muros,
 // colunas, entulho e o mosaico da arena.
 
@@ -24,7 +24,6 @@ const RING = [[0, -1, OPEN.n], [1, 0, OPEN.e], [0, 1, OPEN.s], [-1, 0, OPEN.w], 
 const GRASS_VARIANTS = 6;
 const ARENA_VARIANTS = 3;
 const WATER_VARIANTS = 2;
-const MARSH_WATER_VARIANTS = 6;
 const TREE_VARIANTS = 3;
 const GIANT_VARIANTS = 2;
 const CANOPY_VARIANTS = 4;
@@ -134,24 +133,6 @@ export function planForest(d: Dungeon) {
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++)
         if (kind[y * W + x] === 2 && DIRS.filter(([dx, dy]) => at(x + dx, y + dy) === Tile.Water).length >= 2) wetTree[y * W + x] = 1;
-  /**
-   * Lamaçais do pântano: manchas de lama no capim aberto, por um ruído suave sobre a grade de tiles (fora das clareiras,
-   * da arena e das passarelas).
-   */
-  const bogSet = new Uint8Array(W * H);
-  if (variant === "marsh") {
-    const cellNoise = (x: number, y: number) => {
-      const C = 7, gx = Math.floor(x / C), gy = Math.floor(y / C), fx = x / C - gx, fy = y / C - gy;
-      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-      const v = (i: number, j: number) => hash(i, j, 71);
-      const top = v(gx, gy) + (v(gx + 1, gy) - v(gx, gy)) * sx, bottom = v(gx, gy + 1) + (v(gx + 1, gy + 1) - v(gx, gy + 1)) * sx;
-      return top + (bottom - top) * sy;
-    };
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++)
-        if (at(x, y) === Tile.Floor && cellNoise(x, y) > 0.7 && !inRooms(x, y) && !inArena(x, y) && !onBridge(x, y)) bogSet[y * W + x] = 1;
-  }
-  const bog = (x: number, y: number) => inMap(x, y) && bogSet[y * W + x] === 1;
 
   // Lajes (Pântano das Ruínas): as salas inteiras, uma beirada irregular em volta delas e o chão em volta dos restos de
   // muro pelo campo. Laje solta no capim (sem duas vizinhas de laje) não fica.
@@ -233,12 +214,21 @@ export function planForest(d: Dungeon) {
         // As variações só no miolo da lagoa (sem terra em volta): na margem, o contorno já muda de tile para tile, e o
         // atlas não passa do limite de textura do celular.
         const land = edges(x, y, (a, b) => !water(a, b));
-        const v = land ? pick(x, y, 2, 5) : pick(x, y, MARSH_WATER_VARIANTS, 5);
-        put("chao", x, y, `water${land}-${v}`, () => waterTile(variant, land, v).render(false));
+        if (!land) {
+          const q = wetPiece(x, y);
+          put("chao", x, y, `pool${q}`, () => waterTile(variant, 0, q, q).render(false));
+        } else {
+          const v = pick(x, y, 2, 5);
+          put("chao", x, y, `water${land}-${v}`, () => waterTile(variant, land, v).render(false));
+        }
       } else if (t === Tile.Water && !onBridge(x, y)) {
         const land = edges(x, y, (a, b) => !water(a, b));
         const v = pick(x, y, WATER_VARIANTS, 5);
         put("chao", x, y, `water${land}-${v}`, () => waterTile(variant, land, v).render(false));
+      } else if (marsh) {
+        // Pântanos: o capim contínuo em blocos de 4×4 tiles (também na clareira do boss), sem tinta por tile.
+        const q = wetPiece(x, y);
+        put("chao", x, y, `wgrass${q}`, draw.wetGrass(variant, q));
       } else if (inArena(x, y)) {
         const v = pick(x, y, ARENA_VARIANTS, 2);
         put("chao", x, y, `arena${v}`, draw.arena(variant, v));
@@ -287,17 +277,14 @@ export function planForest(d: Dungeon) {
         const out = edges(x, y, (a, b) => !trail(a, b));
         put("trilha", x, y, `dirt${out}`, () => dirtTile(variant, out).render(false));
       }
-      if (bog(x, y)) {
-        const out = edges(x, y, (a, b) => !bog(a, b));
-        const v = out ? 0 : pick(x, y, 3, 8);
-        put("trilha", x, y, `bog${out}-${v}`, () => bogTile(variant, out, v).render(false));
-      }
       const wet = edges(x, y, (a, b) => at(a, b) === Tile.Water && !onBridge(a, b));
       if (wet) put("barro", x, y, `mud${wet}`, () => mudEdge(variant, wet).render(false));
+      // Folhas secas e sombra na beira da mata (não nos pântanos: as duas seguem a linha do tile, e a copa termina antes
+      // dela; ficavam uma faixa reta e uma fileira de folhas no capim).
       const woods = edges(x, y, forest);
-      if (woods && !inArena(x, y) && !paved(x, y)) put("folhas", x, y, `litter${woods}`, () => litterEdge(variant, woods).render(true));
+      if (woods && !marsh && !inArena(x, y) && !paved(x, y)) put("folhas", x, y, `litter${woods}`, () => litterEdge(variant, woods).render(true));
       const shade = woods & (OPEN.n | OPEN.w | OPEN.nw);
-      if (shade) put("sombra", x, y, `shade${shade}`, () => shadowEdge(variant, shade));
+      if (shade && !marsh) put("sombra", x, y, `shade${shade}`, () => shadowEdge(variant, shade));
 
       // Enfeites rasteiros: poucos, em grupos perto da mata, dos troncos e das salas.
       if (kind[i] || reserved(x, y) || t === Tile.Portal) continue;
@@ -317,8 +304,9 @@ export function planForest(d: Dungeon) {
       }
       const n = hash(x, y, 91);
       const byWoods = near(x, y, 1, forest);
-      const chance = inRooms(x, y) ? (marsh ? 0.4 : 0.14) : trail(x, y) ? 0.03 : byWoods ? 0.14 : marsh ? 0.13 : 0.09;
-      if (n >= chance || bog(x, y)) continue;
+      // Nos pântanos, poucos enfeites rasteiros (muitos viravam um confete pelo chão), mais nas clareiras dos baús.
+      const chance = inRooms(x, y) ? (marsh ? 0.22 : 0.14) : trail(x, y) ? 0.03 : byWoods ? (marsh ? 0.06 : 0.14) : marsh ? 0.035 : 0.09;
+      if (n >= chance) continue;
       const k = flatKind(hash(x, y, 92), { heart, marsh, trail: trail(x, y), woods: byWoods, wet: wet !== 0, arena: inArena(x, y), room: inRooms(x, y) });
       const v = Math.floor(hash(x, y, 93) * 3);
       put("enfeites", x, y, `flat-${k}-${v}`, () => flatDecor(variant, k, v).render(true));
@@ -398,7 +386,7 @@ export function planForest(d: Dungeon) {
         continue;
       }
       const t = at(x, y);
-      if (t !== Tile.Floor || kind[i] || reserved(x, y) || layers.enfeites[i] >= 0 || trail(x, y) || onBridge(x, y) || bog(x, y)) continue;
+      if (t !== Tile.Floor || kind[i] || reserved(x, y) || layers.enfeites[i] >= 0 || trail(x, y) || onBridge(x, y)) continue;
       if (paved(x, y)) {
         // De pé nas lajes: tambor de coluna, cabeça de estátua, urnas, ânfora ou acanto na fresta; nunca no mosaico nem
         // perto dos baús.

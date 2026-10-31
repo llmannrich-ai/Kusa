@@ -527,7 +527,7 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 - **Visual** (só no cliente, `apps/client/src/swampMap.ts`; não muda a jogabilidade): **sempre na arte nova** (128 px
   por tile, por código, `docs/CENARIOS_PLANO.md`). A natureza é a mata alagada do Pântano do Kosaradius (variante
   `swamp` de `forestPlan.ts` e `art/forestArt.ts`) na paleta da Baía Afundada: verde-oliva mais aberto e claro, água
-  verde-azulada parada com lentilha-d'água e nenúfares, íris amarela, sem lamaçais nem passarelas. As árvores soltas são
+  verde-azulada parada com lentilha-d'água e nenúfares, íris amarela, sem passarelas. As árvores soltas são
   as mesmas 4 espécies (cipreste, mangue, salgueiro e morta), algumas dentro d'água. As ruínas são o que resta do
   império afundado: as peças dos Portões do Império (`art/swampArt.ts`, que pinta `empireArt.ts` e `empireMonuments.ts`
   noutra paleta: calcário cinza-esverdeado, musgo e hera, o tijolo e o reboco lavados até o tom da pedra):
@@ -824,7 +824,9 @@ o desenho lê.
   em andares e barba-de-velho pendurada), **mangue** (ninho de raízes-escora em arco), **salgueiro-chorão** e **árvore
   morta**; a árvore com água em 2 lados ou mais nasce dentro d'água, e em volta da clareira do boss são quase todas
   ciprestes (o anel). Tronco e copa separados; a copa balança e fica transparente com o jogador embaixo.
-  **Lamaçais** em manchas pelo capim aberto, com poças paradas. **Passarelas** de tábuas desiguais (algumas velhas, com
+  O capim tem manchas grandes de luz e de musgo que correm sem emenda (blocos de 4×4 tiles, sem tinta por tile: a
+  grade não aparece); a beira da mata não tem faixa de sombra nem folhas em fila, e os enfeites rasteiros são poucos.
+  **Passarelas** de tábuas desiguais (algumas velhas, com
   musgo) e postes nas pontas, com a água por baixo. Os troncos caídos das clareiras dos baús são os troncos do Bosque
   (casca, musgo, anéis na ponta); a pedra solta é um toco. Enfeites de pé: taboas, juncos e íris roxa na margem;
   samambaias, plantas-jarro e cogumelos na beira da mata. Rasteiros: folhas caídas, gravetos, raízes, trevos, flores,

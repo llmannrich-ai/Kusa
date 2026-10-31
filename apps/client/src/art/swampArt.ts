@@ -1,4 +1,4 @@
-import { E, empireRampsWith, flatDecor, fringeEdge, inPalette, travertineTile, type FlatDecor } from "./empireArt.ts";
+import { E, basaltTile, empireRampsWith, flatDecor, fringeEdge, inPalette, type FlatDecor } from "./empireArt.ts";
 import {
   BLOCK, COLUMN, MOSAIC_TILES, SMALL, WALL_SPRITE, columnSprite, mosaicImage, rubbleSprite, smallDecor, wallSprite,
   type ColumnKind, type SmallDecor,
@@ -14,7 +14,7 @@ import {
 /** Paleta das ruínas: as cores do império com a pedra lavada pela baía e a vegetação do pântano. */
 const RAMPS = empireRampsWith({
   [E.Grass]: ["#7d8c42", 0.6, 3], [E.Dry]: ["#8e8a52", 0.6, 4], [E.Dirt]: ["#755f40", 0.7, 6], [E.Clover]: ["#6e8342", 0.7, 4],
-  [E.Basalt]: ["#5e6458", 0.8, 5], [E.Travertine]: ["#9c9b82", 0.62, 5], [E.Marble]: ["#b8b7a0", 0.55, 4], [E.Vein]: ["#8a8c7a", 0.7, 4],
+  [E.Basalt]: ["#878873", 0.8, 5], [E.Travertine]: ["#9c9b82", 0.62, 5], [E.Marble]: ["#b8b7a0", 0.55, 4], [E.Vein]: ["#8a8c7a", 0.7, 4],
   [E.Mortar]: ["#3e4234", 0.6, 4], [E.Tuff]: ["#8c8a68", 0.8, 6], [E.Moss]: ["#5f8636", 0.85, 8], [E.Ivy]: ["#2f5a22", 0.95, 9],
   [E.Leaf]: ["#436130", 0.95, 9], [E.Bush]: ["#55783a", 0.95, 9], [E.Water]: ["#629484", 0.85, 8], [E.Deep]: ["#3e6b61", 0.85, 8],
   [E.Slab]: ["#5e6252", 0.8, 5], [E.Wall]: ["#6c6c5a", 0.85, 5], [E.Bone]: ["#d1ccb9", 0.75, 5], [E.Line]: ["#171f0f", 0.4, 0],
@@ -23,13 +23,17 @@ const RAMPS = empireRampsWith({
   [E.Terracotta]: ["#9a6a48", 0.8, 6], [E.Cloth]: ["#6e4a3a", 0.8, 6],
 });
 
-const swamp = <T>(draw: () => T) => inPalette(RAMPS, draw);
+export const inSwamp = <T>(draw: () => T) => inPalette(RAMPS, draw);
+const swamp = inSwamp;
 
 export { BLOCK, COLUMN, MOSAIC_TILES, SMALL, WALL_SPRITE, type ColumnKind, type FlatDecor, type SmallDecor };
 export { WALL_HEIGHTS, WALL_LINK } from "./empireMonuments.ts";
 
-/** Laje do piso (calçamento que fecha a cada 2×2 tiles: `q` é o quarto do tile). */
-export const pavingTile = (q: number) => swamp(() => travertineTile(q).render(false));
+/**
+ * Piso de pedras irregulares (o calçamento de basalto da via dos Portões, aqui em calcário; fecha a cada 2×2 tiles: `q`
+ * é o quarto do tile). O travertino tinha lajes faltando em grade regular, que apareciam a cada 2 tiles.
+ */
+export const pavingTile = (q: number) => swamp(() => basaltTile(q).render(false));
 /** Capim invadindo a beira das lajes pelos vizinhos que são capim (bits de `OPEN`). */
 export const pavingFringe = (grass: number) => swamp(() => fringeEdge(grass).render(false));
 /** Trecho de muro arruinado (`wallSprite` do império, sem as ameias da muralha). */
