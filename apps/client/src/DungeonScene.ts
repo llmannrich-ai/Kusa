@@ -85,6 +85,7 @@ import {
   heroWalkAnim,
   itemTexture,
   ensureMonsterArt,
+  warmMapMonsters,
 } from "./art/textures.ts";
 
 /**
@@ -284,6 +285,7 @@ export class DungeonScene extends Phaser.Scene {
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
     this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
+    warmMapMonsters(this, mapId);
     const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, oldwood: drawForest, heartwood: drawForest }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
