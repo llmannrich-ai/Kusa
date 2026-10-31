@@ -52,8 +52,27 @@ export function empireRamps(): Rgb[][] {
   return tones;
 }
 
-/** Papel na paleta do império. */
-export const paper = (w = HD, h = HD) => new Paper(empireRamps(), w, h);
+/** Paleta trocada durante `inPalette` (o Pântano das Ruínas pinta as ruínas do império na paleta dele). */
+let override: Rgb[][] | null = null;
+
+/** Papel na paleta do império (ou na de `inPalette`). */
+export const paper = (w = HD, h = HD) => new Paper(override ?? empireRamps(), w, h);
+
+/**
+ * Pinta `draw` com outra paleta (rampas na ordem de `E`): as mesmas peças do império em outro mapa. Não use com peça
+ * guardada em cache (o capim e a moita dos Portões), que voltaria com a paleta de quando foi guardada.
+ */
+export function inPalette<T>(ramps: Rgb[][], draw: () => T): T {
+  const outer = override;
+  override = ramps;
+  try { return draw(); } finally { override = outer; }
+}
+
+/** Rampas na ordem de `E` a partir das cores base do império com algumas trocadas. */
+export function empireRampsWith(changes: Partial<Record<E, [string, number, number?, boolean?]>>): Rgb[][] {
+  return Object.values(E).filter((v): v is E => typeof v === "number")
+    .map((m) => { const [hex, contrast, shift = 6, shine = false] = changes[m] ?? BASES[m]; return ramp(hex, { contrast, shift, shine }).map(rgb); });
+}
 
 const mod = (v: number, n: number) => ((v % n) + n) % n;
 const BAYER = [0, 0.5, 0.75, 0.25];

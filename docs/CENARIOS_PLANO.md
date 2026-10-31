@@ -64,7 +64,7 @@ Copiar a forma dos mapas que já estão prontos (Bosque Velho é a referência m
 |---|---|---|---|
 | **0. Base** | Teste `cenarios` e objetos comuns (baú, portais, sangue) em 128 px (feita) | P | — |
 | **1a. Pântano do Kosaradius** | Variante `marsh` do desenho da mata (feita) | G | 0 (só o teste) |
-| **1b. Pântano das Ruínas** | Variante `swamp` do desenho da mata, com as ruínas, e apagar o chão por IA | M | 1a |
+| **1b. Pântano das Ruínas** | Variante `swamp` do desenho da mata, com as ruínas, e apagar o chão por IA (feita) | M | 1a |
 | **2. Caverna da Travessia** | Pintor de caverna (`art/caveArt.ts`) e `cavernMap.ts` reescrito | M | 0 |
 | **3. Mar de Areia** | Variante `desert` em `duneArt.ts` e trechos de caverna da fase 2 | M | 2 |
 | **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` | P | — |
@@ -110,16 +110,21 @@ Pendente para depois: marolas, bolhas e libélulas do ambiente antigo não volta
 
 ![Pântano do Kosaradius: clareira dos baús, troncos caídos, cipreste e mangue](arte/kosaradius.png)
 
-### Fase 1b — Pântano das Ruínas
+### Fase 1b — Pântano das Ruínas (feita)
 
-- Variante `swamp` do mesmo pintor: paleta própria (verde mais frio e azulado; hoje vem do `toSwampTone`), mais as
-  peças de ruína de `ruinsDecor.ts`: lajes (período 2×2), paredes de ruína (5 alturas, 3 variações, ligações N/L/S/O),
-  colunas, piso de ruína, enfeites de ruína (tambor de coluna, cabeça de estátua, urna, pedestal), ruína na água e o
-  mosaico.
-- `swampMap.ts` reescrito; `wetlandMap.ts` some (os dois pântanos já não passam por ele).
-- **Sai o chão feito por IA:** `art/proto/swampHd.ts`, `art/proto/pantano/`, `wetlandHd.ts`, `protoSwamp` em
-  `art/newArt.ts` e `apps/client/scripts/pantanoTexturas.py`. Em `docs/arte/pantano-das-ruinas/` saem só as
-  texturas (`jogo/`, `cena-teste.png`); **ficam as folhas do sapo e do Rei Bullywug**, que são da frente dos inimigos.
+- A natureza é a **variante `swamp`** do desenho da mata (a do Kosaradius, na paleta da baía), sem lamaçais nem
+  passarelas.
+- As ruínas **não foram pintadas de novo**: são as peças dos Portões do Império (lajes, muros, colunas, entulho,
+  cabeças, urnas, ânforas e o mosaico) pintadas noutra paleta. `empireArt.ts` ganhou `inPalette` (pinta com outras
+  rampas) e `empireRampsWith` (a paleta do império com cores trocadas); `art/swampArt.ts` tem a paleta das ruínas
+  (calcário esverdeado, musgo, tijolo e reboco lavados) e as peças prontas. O plano (`forestPlan.ts`) monta as folhas
+  das ruínas com os quadros que o mapa usa (`extraSheets`).
+- Saíram o chão feito por IA (`art/proto/swampHd.ts`, `art/proto/pantano/`, `wetlandHd.ts`, `protoSwamp`,
+  `pantanoTexturas.py` e as texturas em `docs/arte/pantano-das-ruinas/`), o desenho antigo dos dois pântanos
+  (`wetlandMap.ts`) e as texturas dele em `art/textures.ts`. Ficaram as folhas do sapo e do Rei Bullywug.
+- `marshDecor.ts` e `ruinsDecor.ts` ainda existem: a galeria (`arte.ts`) e o `worley` dos Portões usam (fase 5).
+
+![Pântano das Ruínas: sala dos baús com as lajes, os muros e o capim invadindo](arte/pantano-das-ruinas.png)
 
 ### Fase 2 — Caverna da Travessia
 

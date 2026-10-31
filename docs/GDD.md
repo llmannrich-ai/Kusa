@@ -523,32 +523,24 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   quadrado de muros com 4 portões e 4 colunas) e, pelo campo, 13 restos de construção: trechos de muro, cantos em L,
   colunatas (colunas a cada 2 tiles, umas já caídas) e alicerces de casa com a porta aberta, além de colunas soltas.
   Muro e coluna bloqueiam passo e visão.
-- **Visual** (só no cliente, toda a arte própria, sem pack; não muda a jogabilidade): o mesmo desenhista de floresta
-  alagada do Pântano do Kosaradius (`apps/client/src/wetlandMap.ts`, com o tema em `swampMap.ts`), a natureza na
-  paleta da Baía Afundada (`swampTone` em `art/ruinsDecor.ts`: verde-oliva mais aberto e claro que o do Kosaradius,
-  água verde-azulada) e as ruínas em arte própria (`art/ruinsDecor.ts`):
-  - **Natureza:** capim com folhinhas e touceiras, lama só na beira d'água, água rasa e funda, mata fechada em copa
-    contínua com a beira recortada e os troncos aparecendo do lado sul, árvores soltas de 4 espécies (salgueiro,
-    cipreste, mangue e árvore morta, sem o anel de ciprestes do Kosaradius) com sombra e copa que balança e fica
-    transparente com o jogador embaixo; as bordas entre terrenos têm lados e cantos de dentro e de fora e pegam as
-    mesmas manchas de tom do chão.
-  - **Piso de lajes:** lajes irregulares de calcário (opus incertum, fecham a cada 2×2 tiles) com bisel, desgaste e
-    juntas tomadas de musgo, nas salas laterais, na arena (com uma beirada irregular em volta) e em volta dos restos
-    de muro pelo campo; o capim invade a beira.
-  - **Muros com volume:** pedra ligada a outra é trecho de muro montado pelos vizinhos (deitado, em pé, canto, ponta),
-    com face de blocos, tampo coberto de musgo, espessura (luz a oeste, sombra a leste), ponta solta desmoronando em
-    degraus, blocos faltando no alto, a marca escura da água no pé e, conforme a variação, rachadura, musgo
-    escorrendo ou hera. A altura varia aos poucos nos trechos deitados e é a mesma em todo o trecho em pé.
-  - **Colunas:** pedra sozinha é coluna com plinto e caneluras: inteira com capitel na arena da Hidra; no resto,
-    quebrada alta (com hera), quebrada média ou toco com o tambor caído ao lado.
-  - **Arena:** no meio, o **mosaico da Hidra** em tesselas (borda escura, faixa de ondas verde-serpente e as três
-    cabeças saindo de um disco), gasto pelo tempo, com musgo entrando pela borda.
-  - **Enfeites das ruínas:** entulho no pé dos muros, rachaduras, lajes afundadas com água, lajes faltando com capim,
-    glifo da Hidra entalhado, cacos de urna, caveira, tambores de coluna caídos, cabeças de estátua, urnas e pedestais;
-    na água perto das ruínas, lajes afundadas, tocos de coluna e pedras de passagem. No capim, os enfeites do brejo
-    (taboas, juncos, íris, samambaias, cogumelos, tiririca).
-  - **Ambiente:** vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas na água, um pouco de sol no
-    meio da tela e cantos úmidos. Só os sprites perto da câmera são desenhados (blocos de 8×8 tiles).
+- **Visual** (só no cliente, `apps/client/src/swampMap.ts`; não muda a jogabilidade): **sempre na arte nova** (128 px
+  por tile, por código, `docs/CENARIOS_PLANO.md`). A natureza é a mata alagada do Pântano do Kosaradius (variante
+  `swamp` de `forestPlan.ts` e `art/forestArt.ts`) na paleta da Baía Afundada: verde-oliva mais aberto e claro, água
+  verde-azulada parada com lentilha-d'água e nenúfares, íris amarela, sem lamaçais nem passarelas. As árvores soltas são
+  as mesmas 4 espécies (cipreste, mangue, salgueiro e morta), algumas dentro d'água. As ruínas são o que resta do
+  império afundado: as peças dos Portões do Império (`art/swampArt.ts`, que pinta `empireArt.ts` e `empireMonuments.ts`
+  noutra paleta: calcário cinza-esverdeado, musgo e hera, o tijolo e o reboco lavados até o tom da pedra):
+  - **Lajes** (calçamento que fecha a cada 2×2 tiles) nas salas laterais, na arena (com uma beirada irregular em volta)
+    e em volta dos restos de muro pelo campo, com o capim invadindo a beira; rachaduras, cacos, tesselas, inscrições,
+    poças, ervas, ossos e caveira por cima, mais no pé dos muros.
+  - **Muros:** pedra ligada a outra é trecho de muro montado pelos vizinhos, com tampo de musgo, face de blocos, hera e
+    a ponta solta desmoronando; a altura muda por trecho, com degraus.
+  - **Colunas:** pedra sozinha é coluna inteira (jônica ou coríntia) na arena, quebrada nas salas e, pelo campo,
+    quebrada, toco ou um monte de blocos. Na água perto das ruínas, blocos meio afundados e tocos de coluna.
+  - **De pé nas lajes:** cabeças de estátua, urnas, ânforas e acanto.
+  - **Arena:** no meio, o mosaico do sol do império em tesselas (11×9 tiles), gasto, com tesselas faltando.
+  - **Ambiente:** vaga-lumes, névoa baixa e folhas caindo da beira da mata. Só os sprites perto da câmera são
+    desenhados.
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 

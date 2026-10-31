@@ -289,12 +289,12 @@ Para refazer depois de trocar a referência:
 
 ![Goblin: a arte de referência](arte/goblin-referencia.png)
 
-### Chão do Pântano das Ruínas com a arte do agente
+### Chão do Pântano das Ruínas com a arte do agente (substituído)
 
-Com a Arte nova (beta), o chão do Pântano das Ruínas (capim, musgo, lama, água e a copa da mata fechada, com as
-bordas entre eles) vem das imagens do agente de arte, processadas por `apps/client/scripts/pantanoTexturas.py` e
-desenhadas por `apps/client/src/wetlandHd.ts` em 128 px por tile, por baixo das lajes, árvores soltas, enfeites e ruínas,
-que continuam as de antes. Detalhes e pendências em `docs/arte/pantano-das-ruinas/README.md`.
+O chão do Pântano das Ruínas chegou a vir das imagens do agente de arte (`pantanoTexturas.py`, `wetlandHd.ts`). Com a
+regra de que **cenário é sempre código** (`docs/CENARIOS_PLANO.md`), o mapa inteiro passou a ser pintado em 128 px por
+código (fase 1b) e essas texturas saíram do jogo e do repositório (ficam no histórico do git). A arte por IA ficou só
+para os inimigos.
 
 ### Sapo gigante a partir das folhas geradas por IA
 
