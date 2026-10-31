@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoBugbear, protoBullywugKing, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBugbear, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -258,6 +258,20 @@ if (protoBullywugKing) {
     },
   };
   OWN_MONSTER_DRAW["monster-bullywug-king"] = () => king.portrait();
+}
+// O clã do Pântano do Kosaradius que já tem folha gerada por IA (PNG) troca a arte por código: parado, andar, frente e
+// costas da folha de giro; golpe e especial saem do perfil até chegar a folha de ação.
+if (protoClan) {
+  for (const [kind, clan] of Object.entries(protoClan) as [MonsterKind, NonNullable<(typeof protoClan)[MonsterKind]>][]) {
+    BESTIARY_ART[kind] = {
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE,
+      anim: {
+        size: clan.size, sheet: () => clan.sheet(), portrait: () => clan.portrait(), outline: "",
+        fps: { idle: 4, walk: 6, attack: 10, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra },
+      },
+    };
+  }
 }
 // Os bichos (rato, stirge, aranha, cubo, mímico e o dragão) têm desenho próprio; o dragão vem num quadro 2× maior.
 if (protoBeasts) {
