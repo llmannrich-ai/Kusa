@@ -28,7 +28,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 2,
@@ -49,9 +49,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "rat-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "rat-A"
-   ]
+   "depende_de": "rat-A"
   },
   {
    "ordem": 3,
@@ -71,7 +69,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 4,
@@ -92,9 +90,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "kobold-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "kobold-A"
-   ]
+   "depende_de": "kobold-A"
   },
   {
    "ordem": 5,
@@ -114,7 +110,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 6,
@@ -135,9 +131,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "stirge-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "stirge-A"
-   ]
+   "depende_de": "stirge-A"
   },
   {
    "ordem": 7,
@@ -157,7 +151,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 8,
@@ -178,9 +172,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "goblin-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "goblin-A"
-   ]
+   "depende_de": "goblin-A"
   },
   {
    "ordem": 9,
@@ -200,7 +192,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 10,
@@ -221,9 +213,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "goblinArcher-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "goblinArcher-A"
-   ]
+   "depende_de": "goblinArcher-A"
   },
   {
    "ordem": 11,
@@ -243,7 +233,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 12,
@@ -264,9 +254,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "zombie-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "zombie-A"
-   ]
+   "depende_de": "zombie-A"
   },
   {
    "ordem": 13,
@@ -286,7 +274,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 14,
@@ -307,9 +295,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "hobgoblin-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "hobgoblin-A"
-   ]
+   "depende_de": "hobgoblin-A"
   },
   {
    "ordem": 15,
@@ -329,7 +315,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 16,
@@ -350,9 +336,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "skeleton-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "skeleton-A"
-   ]
+   "depende_de": "skeleton-A"
   },
   {
    "ordem": 17,
@@ -372,7 +356,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 18,
@@ -393,9 +377,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "skeletonArcher-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "skeletonArcher-A"
-   ]
+   "depende_de": "skeletonArcher-A"
   },
   {
    "ordem": 19,
@@ -415,7 +397,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 20,
@@ -436,9 +418,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "giantSpider-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "giantSpider-A"
-   ]
+   "depende_de": "giantSpider-A"
   },
   {
    "ordem": 21,
@@ -458,7 +438,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 22,
@@ -479,9 +459,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "orc-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "orc-A"
-   ]
+   "depende_de": "orc-A"
   },
   {
    "ordem": 23,
@@ -501,7 +479,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 24,
@@ -522,9 +500,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "gnoll-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "gnoll-A"
-   ]
+   "depende_de": "gnoll-A"
   },
   {
    "ordem": 25,
@@ -544,7 +520,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 26,
@@ -565,9 +541,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "ogre-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "ogre-A"
-   ]
+   "depende_de": "ogre-A"
   },
   {
    "ordem": 27,
@@ -587,7 +561,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 28,
@@ -608,9 +582,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "bugbear-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "bugbear-A"
-   ]
+   "depende_de": "bugbear-A"
   },
   {
    "ordem": 29,
@@ -630,7 +602,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 30,
@@ -651,9 +623,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "gelatinousCube-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "gelatinousCube-A"
-   ]
+   "depende_de": "gelatinousCube-A"
   },
   {
    "ordem": 31,
@@ -674,9 +644,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "comum-baus-portais (o baú do jogo)"
    ],
-   "depende_de": [
-    "comum-baus-portais"
-   ]
+   "depende_de": "comum-baus-portais"
   },
   {
    "ordem": 32,
@@ -698,9 +666,7 @@
     "comum-baus-portais (o baú do jogo)",
     "mimic-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "mimic-A"
-   ]
+   "depende_de": "mimic-A"
   },
   {
    "ordem": 33,
@@ -720,7 +686,7 @@
    "referencias": [
     "_referencias/goblin-referencia.png (estilo)"
    ],
-   "depende_de": []
+   "depende_de": null
   },
   {
    "ordem": 34,
@@ -741,9 +707,7 @@
     "_referencias/goblin-referencia.png (estilo)",
     "dragon-A (o mesmo personagem)"
    ],
-   "depende_de": [
-    "dragon-A"
-   ]
+   "depende_de": "dragon-A"
   }
  ]
 }
