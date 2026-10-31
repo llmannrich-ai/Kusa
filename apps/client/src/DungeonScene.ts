@@ -702,7 +702,9 @@ export class DungeonScene extends Phaser.Scene {
     if (!msg.rising || ability.shape !== "dive") this.floatText(msg.x, msg.y - 0.6, ability.name, ability.color, 1200);
     if (unit && !unit.dead && !msg.rising) {
       // Animado: chamar a guarda e sumir são o quadro especial (rugido, cajado no alto); o resto, o golpe.
-      this.playClip(unit, unit.anim?.strike ?? (ability.shape === "summon" || ability.shape === "vanish" ? "cast" : "attack"));
+      const strike = unit.anim?.strike;
+      const clip = typeof strike === "string" ? strike : strike?.[ability.id];
+      this.playClip(unit, clip ?? (ability.shape === "summon" || ability.shape === "vanish" ? "cast" : "attack"));
       this.lunge(unit, msg.tx - msg.x, msg.ty - msg.y, 7);
       const base = unit.sprite.scaleX;
       this.tweens.add({ targets: unit.sprite, scaleX: base * 1.15, scaleY: base * 1.15, duration: 110, yoyo: true, ease: "Quad.Out" });

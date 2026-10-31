@@ -25,3 +25,15 @@ antigas:
 - musgo no pé da mata e em manchas pelo campo; as lajes continuam as antigas e recebem a beira do capim.
 
 `cena-teste.png`: as peças juntas, como num trecho do mapa (a água ainda é a versão recusada).
+
+## Rei Bullywug (Runway)
+
+Folhas geradas no Runway com o goblin de referência, fundo magenta chapado, aprovadas e usadas no boss do mapa (Rei
+Bullywug; o bullywug comum continua com a arte antiga):
+
+- `bullywug-A.png`: turnaround 2×6 (2ª tentativa; a 1ª saiu "fofa"). Linha 2: as colunas 2–4 são três perfis andando
+  e a frente andando repete a parada.
+- `bullywug-B.png`: ação 4×4 (andar, golpe de lança, bote saindo da lama, morte). Pedida de perfil para a esquerda, veio
+  para a direita; no andar ele larga a lança (o jogo anda com os perfis da A).
+
+Processadas por `apps/client/scripts/bullywugKingSprites.py` (ver `docs/ARTE_TIBIA.md`, "Rei Bullywug").

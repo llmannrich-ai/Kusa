@@ -287,7 +287,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 ### Runas
 
-Pedras mágicas que **só saem dos bosses** (o Dragão jovem e a Hidra dão 1 runa cada) e seguem uma regra própria de loot:
+Pedras mágicas que **só saem dos bosses** (o Dragão jovem e o Rei Bullywug dão 1 runa cada) e seguem uma regra própria de loot:
 **não caem no chão, vão direto para a bag.** **Cada boss dá a runa uma vez por personagem** (conta e classe): quando ele
 morre, cada herói da equipe que está jogando e ainda não levou a runa daquele boss recebe a sua na bag, esteja onde
 estiver; quem já levou vê "Runa deste boss já levada" (bots não recebem). Com a bag cheia, o item de menor valor de venda
@@ -457,7 +457,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
-  das Ruínas, Hidra ou Dragão negro → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
+  das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
   Cantante → Mesas de Solária, Faraó Eterno → Portões do Império; Basilisco → Bosque Velho, boss do Bosque Velho →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
@@ -489,7 +489,7 @@ livre). Os Portões do Império, ainda sem monstros, ficam com 6 provisório.
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
-| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Hidra do pântano (3 em 4 hunts) ou Dragão negro jovem |
+| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Rei Bullywug |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
@@ -992,8 +992,9 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Troll do brejo** (mini-boss) | bruto | Regeneração de 2%/s, parada por 5 s com fogo ou natureza · Dilacerar (1,8× e sangramento) |
 | **Bruxa Verde** (mini-boss) | controlador | Ilusão (some 3 s e deixa 2 cópias iguais a ela, que somem com um golpe ou quando ela morre) · Nuvem Venenosa |
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
-| **Hidra do pântano** (boss) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
-| **Dragão negro jovem** (boss, 1 em 4 hunts) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
+| **Rei Bullywug** (boss) | escaramuçador | arte das folhas do Runway (`docs/arte/pantano-das-ruinas/bullywug-*.png`) · Bote da Lama (some na lama 1,5 s, invulnerável, e sai em bote colado no alvo, 1,6× em área) · Estocada (linha de 3, 1,8×, empurra) · lança de alcance 2 · abaixo de 50%: Chamado do Brejo (2 bullywugs, uma vez) · abaixo de 30%: frenesi |
+| **Hidra do pântano** (boss, fora do mapa desde o Rei Bullywug) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
+| **Dragão negro jovem** (boss, fora do mapa desde o Rei Bullywug) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
 
 ### Pântano do Kosaradius (★1)
 
