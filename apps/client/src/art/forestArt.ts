@@ -184,24 +184,29 @@ function grassTile(variant: ForestVariant, v: number, lush = false): Paper {
 
 /** O capim dos pântanos é uma textura contínua de `WET_BLOCK`×`WET_BLOCK` tiles: cada tile pinta o pedaço `q` dela. */
 export const WET_BLOCK = 4;
+/** Variações do miúdo da arena dentro do bloco. */
+const ARENA_PIECES = 3;
 /** Pedaço do bloco de capim que o tile (x, y) usa. */
 export const wetPiece = (x: number, y: number) => (x & (WET_BLOCK - 1)) + WET_BLOCK * (y & (WET_BLOCK - 1));
 
 /**
- * Capim dos pântanos: o miúdo do capim da mata e, por cima, as manchas grandes de luz e de musgo, que correm sem emenda
- * pelo bloco de 4×4 tiles (`q` é o pedaço). Nos pântanos o mapa não tinge tile a tile (a tinta por tile deixava a grade
- * aparecendo em quadrados no campo aberto): a variação grande vem daqui.
+ * Capim das matas e dos pântanos: o miúdo do capim e, por cima, as manchas grandes de luz e de musgo, que correm sem
+ * emenda pelo bloco de 4×4 tiles (`q` é o pedaço). O mapa não tinge tile a tile (a tinta por tile deixava a grade
+ * aparecendo em quadrados no campo aberto): a variação grande vem daqui. `arena`: o capim da arena (flores ou esporos).
  */
-function wetGrassTile(variant: ForestVariant, q: number): Paper {
-  const p = grassTile(variant, q % 6);
+function wetGrassTile(variant: ForestVariant, q: number, arena = false): Paper {
+  const p = arena ? arenaTile(variant, q % ARENA_PIECES) : grassTile(variant, q % 6);
+  const wet = isWetland(variant);
   const ox = (q % WET_BLOCK) * HD, oy = Math.floor(q / WET_BLOCK) * HD, P = HD * WET_BLOCK;
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
       const i = y * HD + x;
       const light = smoothNoise(x + ox, y + oy, 128, 401, P);
       const moss = smoothNoise(x + ox, y + oy, 64, 402, P);
-      if (p.fixed[i] < 0) p.shade[i] += (light - 0.5) * 0.22;
-      if (moss > 0.66 && p.mat[i] === F.Grass && p.fixed[i] < 0) p.mat[i] = F.Moss;
+      // Nos pântanos, luz e manchas de musgo (o musgo tem quase o tom do capim). Nas matas o capim fica liso: o musgo
+      // é bem mais escuro e a luz fraca só aparecia como retângulos de pontilhado na troca de tom.
+      if (wet && p.fixed[i] < 0) p.shade[i] += (light - 0.5) * 0.22;
+      if (wet && moss > 0.66 && p.mat[i] === F.Grass && p.fixed[i] < 0) p.mat[i] = F.Moss;
     }
   return p;
 }
@@ -233,7 +238,8 @@ export function dirtTile(variant: ForestVariant, out: number): Paper {
   const p = new Paper(variant);
   const edge = (x: number, y: number) => 26 + (sn(x, y, 32, 30) - 0.5) * 22 + (sn(x, y, 16, 31) - 0.5) * 8;
   const dist = field(out, 62);
-  p.fill([0, 0, HD - 1, HD - 1], (x, y) => at(dist, x, y) > edge(x, y), F.Dirt, (x, y) => FLAT + (sn(x, y, 16, 32) - 0.5) * 0.18,
+  // Tom liso: a variação pequena só aparecia como um quadriculado de pontilhado repetido a cada tile.
+  p.fill([0, 0, HD - 1, HD - 1], (x, y) => at(dist, x, y) > edge(x, y), F.Dirt, () => FLAT,
     (x, y) => (noise(x, y, 33) < 0.04 ? -1 : noise(x, y, 34) > 0.975 ? 1 : 0));
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
@@ -1164,6 +1170,7 @@ export function tallDecor(variant: ForestVariant, kind: TallDecor, v: number): U
 export const draw = {
   grass: (variant: ForestVariant, v: number) => () => grassTile(variant, v).render(false),
   wetGrass: (variant: ForestVariant, q: number) => () => wetGrassTile(variant, q).render(false),
+  blockArena: (variant: ForestVariant, q: number) => () => wetGrassTile(variant, q, true).render(false),
   arena: (variant: ForestVariant, v: number) => () => arenaTile(variant, v).render(false),
 };
 

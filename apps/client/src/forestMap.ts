@@ -4,7 +4,7 @@ import { hash, makeCanvas } from "./art/pixels.ts";
 import { HD, TileAtlas, toCanvas } from "./art/paint.ts";
 import { isWetland, type ForestVariant } from "./art/forestArt.ts";
 import { LAYERS, planForest, standingSheets, type Standing } from "./forestPlan.ts";
-import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
+import { ChunkCuller, type MapAmbience } from "./mapShared.ts";
 
 /** Fundo além das bordas: o escuro do sub-bosque de cada variante. */
 export const OLDWOOD_VOID = 0x1c2814;
@@ -34,19 +34,14 @@ export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   (window as unknown as { forestFrames?: number }).forestFrames = atlas.count;
   const map = scene.make.tilemap({ width: W, height: H, tileWidth: HD, tileHeight: HD });
   const set = map.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
-  const tone: [number, number, number] = variant === "heartwood" ? [0.7, 0.85, 0.85] : variant === "marsh" ? [0.78, 0.9, 0.72] : variant === "swamp" ? [0.84, 1, 0.8] : [0.82, 0.9, 0.7];
   for (const name of LAYERS) {
     const l = map.createBlankLayer(name, set)!.setDepth(floorDepth).setScale(1 / ZOOM);
     const data = layers[name];
-    // Nos pântanos a variação grande já vem pintada no capim (a tinta por tile deixava a grade aparecendo).
-    const tint = !isWetland(variant) && (name === "chao" || name === "trilha" || name === "relevo");
+    // Sem tinta por tile: a variação grande já vem pintada no capim (a tinta deixava a grade aparecendo em quadrados).
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++) {
         const f = data[y * W + x];
-        if (f < 0) continue;
-        const tile = l.putTileAt(f, x, y);
-        // Manchas grandes de luz e sombra (a luz que passa pela copa).
-        if (tint) tile.tint = patchTint(x, y, variant === "heartwood" ? 0.66 : 0.72, tone, 5, 73);
+        if (f >= 0) l.putTileAt(f, x, y);
       }
   }
 
