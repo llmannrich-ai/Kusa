@@ -99,7 +99,10 @@ medição passou a fazer 2 rodadas (a 2ª compara os mapas com as peças compart
 da pintura adiada. Na prévia: Fortaleza 2,3 s + 0,5 s depois contra 2,2 s dos Portões na 2ª rodada (1,04×), 44 MB
 contra 48 MB (os Portões também pintam a fachada depois). **Meta da fase 0 cumprida.**
 
-**Falta:** repetir no iPhone com a página nova e, se possível, num Android de entrada.
+**iPhone com a página nova (31/10):** 2ª rodada: Fortaleza 657 ms (+207 ms depois) contra 615 ms dos Portões (1,07×),
+44 MB contra 48 MB, 60 qps (piores 5%: 60). 1ª rodada (a Fortaleza abre primeiro, sem nada pronto): 1,5 s + 0,3 s.
+**Fase 0 concluída.** Falta, quando houver um à mão, um Android de entrada (a página está pronta:
+`npm run medicao -w @kusa/client -- arquivo.html`).
 
 ### Fase 1 — Planta autoral
 
