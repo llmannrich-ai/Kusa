@@ -819,21 +819,22 @@ o desenho lê.
   que fecharia a passagem até uma zona, campina, clareira ou ao centro é descartado. **Árvore solta** é um tile de
   mata sem mata nos 4 lados; mata encostada em mata é **mata fechada**. As duas bloqueiam passo e visão; a água,
   só o passo; os troncos caídos (pedra), passo e visão.
-- **Visual** (só no cliente, `apps/client/src/wetlandMap.ts` com o tema em `marshMap.ts`, e toda a arte própria em
-  `art/marshDecor.ts`, sem pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
-  torrões, água escura cor de chá (rasa e funda) com lodo e lentilha-d'água na margem; capim invadindo a lama com
-  quinas arredondadas. A **mata fechada** é uma copa contínua de tufos (textura de 3×3 tiles, sem emenda) cuja beira
-  recua com borda recortada; do lado sul ela sobe e mostra a sombra, os troncos e a barba-de-velho pendurada. As
-  **árvores soltas** são de 4 espécies: **cipreste-calvo** (pé alargado, copa em camadas achatadas, barba-de-velho;
-  na água, com os "joelhos" saindo em volta), **salgueiro-chorão** (cortina de ramos até perto do chão),
-  **mangue** (raízes em arco) e **árvore morta** (galhos pelados com barba-de-velho); tronco e copa separados, com
-  variação de tom e tamanho, sombra no chão, copa que balança e fica transparente com o jogador embaixo; no meio da
-  mata fechada, copas mais altas dão volume. Passarelas de tábuas com pregos e lodo; troncos caídos com musgo, anéis
-  na ponta e orelhas-de-pau; tocos e pedras com musgo. Enfeites: taboas, juncos e íris amarela na margem, tiririca
-  em manchas pelo campo, samambaias, cogumelos, plantas-jarro, raízes, folhas caídas, ossadas, poças e pegadas de
-  garça na lama, vitórias-régias, lírios e galhos boiando; na clareira do boss, um círculo de cogumelos brancos.
-  Ambiente: vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas de gás subindo da água. Como nos
-  outros mapas, só os sprites perto da câmera são desenhados.
+- **Visual** (só no cliente, `apps/client/src/marshMap.ts`; não muda a jogabilidade): **sempre na arte nova** (128 px
+  por tile, por código, `docs/CENARIOS_PLANO.md`), como a variante `marsh` do desenho da mata (o plano em
+  `forestPlan.ts` e a arte em `art/forestArt.ts`, os mesmos do Bosque Velho, com paleta e peças próprias). Tons de brejo:
+  capim oliva, lama marrom, água turva esverdeada e parada com manchas de lentilha-d'água e nenúfares (alguns com flor),
+  barro na margem. A **mata fechada** é a copa de tufos do Bosque, com o sub-bosque e os troncos aparecendo do lado sul.
+  As **árvores soltas** são de 4 espécies: **cipreste-do-brejo** (pé em aba, os "joelhos" saindo do chão, copa estreita
+  em andares e barba-de-velho pendurada), **mangue** (ninho de raízes-escora em arco), **salgueiro-chorão** e **árvore
+  morta**; a árvore com água em 2 lados ou mais nasce dentro d'água, e em volta da clareira do boss são quase todas
+  ciprestes (o anel). Tronco e copa separados; a copa balança e fica transparente com o jogador embaixo.
+  **Lamaçais** em manchas pelo capim aberto, com poças paradas. **Passarelas** de tábuas desiguais (algumas velhas, com
+  musgo) e postes nas pontas, com a água por baixo. Os troncos caídos das clareiras dos baús são os troncos do Bosque
+  (casca, musgo, anéis na ponta); a pedra solta é um toco. Enfeites de pé: taboas, juncos e íris roxa na margem;
+  samambaias, plantas-jarro e cogumelos na beira da mata. Rasteiros: folhas caídas, gravetos, raízes, trevos, flores,
+  musgo e, nas clareiras, ossadas; na clareira do boss, um círculo de cogumelos brancos. Ambiente: vaga-lumes amarelos
+  que piscam, névoa baixa passando devagar e folhas caindo da beira da mata. Só os sprites perto da câmera são
+  desenhados.
 
 ## Partida (hunt)
 

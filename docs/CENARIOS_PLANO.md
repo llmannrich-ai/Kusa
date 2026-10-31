@@ -62,9 +62,9 @@ Copiar a forma dos mapas que já estão prontos (Bosque Velho é a referência m
 
 | Fase | Entrega | Tamanho | Depende de |
 |---|---|---|---|
-| **0. Base** | Teste `cenarios` e objetos comuns (baú, portais, sangue) em 128 px | P | — |
-| **1a. Pântano do Kosaradius** | Pintor de pântano (`art/wetlandArt.ts`, variante `marsh`) e `marshMap.ts` reescrito | G | 0 (só o teste) |
-| **1b. Pântano das Ruínas** | Variante `swamp` com as ruínas e apagar o chão por IA | M | 1a |
+| **0. Base** | Teste `cenarios` e objetos comuns (baú, portais, sangue) em 128 px (feita) | P | — |
+| **1a. Pântano do Kosaradius** | Variante `marsh` do desenho da mata (feita) | G | 0 (só o teste) |
+| **1b. Pântano das Ruínas** | Variante `swamp` do desenho da mata, com as ruínas, e apagar o chão por IA | M | 1a |
 | **2. Caverna da Travessia** | Pintor de caverna (`art/caveArt.ts`) e `cavernMap.ts` reescrito | M | 0 |
 | **3. Mar de Areia** | Variante `desert` em `duneArt.ts` e trechos de caverna da fase 2 | M | 2 |
 | **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` | P | — |
@@ -92,22 +92,23 @@ comuns e os 5 mapas já padronizados (≈1 s no total). Os PNGs `chest-*`, `port
    `DungeonScene.ts`/`CombatFx.ts` desenhando em ¼. Saem os PNGs `chest-*`, `portal-*`, `blood-*` de `preloadArt`.
    Projéteis e impactos (`fx-*`) são efeito de combate, não cenário: ficam fora deste plano.
 
-### Fase 1a — Pântano do Kosaradius
+### Fase 1a — Pântano do Kosaradius (feita)
 
-É o 1º mapa do mapa-múndi e o padrão do lobby: é a primeira impressão do jogo. É também o maior mapa (128×128).
+Entregue de um jeito diferente do previsto: em vez de um pintor novo copiado do Bosque Velho, o Kosaradius virou a
+**variante `marsh` do desenho da mata** (`art/forestArt.ts`, `forestPlan.ts`, `forestMap.ts`). O gerador do pântano
+usa as mesmas regras de tile da mata (mata fechada, árvore solta, água, passarela, tronco), então o plano serve quase
+inteiro; o que é só do pântano entrou como peça nova (passarela, lamaçal, cipreste, mangue, taboa, junco, íris,
+planta-jarro, ossada, água parada com lentilha-d'água, névoa). Para mexer no pintor sem estragar o Bosque e o Coração
+da Mata, o teste `cenarios` guarda a impressão digital de cada peça (`apps/server/scripts/cenarios.json`) e confere
+que o atlas de cada mapa cabe em 4096 px. `marshMap.ts` ficou só com a chamada; o `wetlandMap.ts` e o `marshDecor.ts`
+continuam, porque o Pântano das Ruínas ainda usa (fase 1b).
 
-- **`art/wetlandArt.ts`** com `WetlandVariant = "marsh" | "swamp"`, peça por peça do `marshDecor.ts` de hoje:
-  - chão: capim (6 variações), lama (4), musgo, água rasa e funda;
-  - bordas: margem (terra → água), capim → lama, copa → capim (com os troncos aparecendo), sombra da mata;
-  - copa da mata fechada, emendada em período de 3×3 tiles, como hoje;
-  - tábuas da passarela (horizontal e vertical), troncos caídos (pontas, meio, toco);
-  - árvores soltas (tronco + copa separados, para o herói passar por trás), com as variações de hoje;
-  - enfeites de chão, de água (vitória-régia, junco) e de pé (`MARSH_TALL`).
-- **`marshMap.ts` reescrito** no padrão (tilemaps de 128 px em ¼), sem passar por `wetlandMap.ts`. O ambiente
-  (marolas, bolhas, vagalumes, névoa, folhas, libélula) é refeito em 128 px no mesmo PR, porque fica por cima do
-  chão e destoaria.
-- Partes do Bosque Velho que servem (casca de árvore, folhagem, lama): **copiar e adaptar** para o arquivo do pântano,
-  sem importar de `forestArt.ts`, para mexer num mapa sem mudar o outro.
+Ferramenta nova: **`/mapa.html`** (só no `npm run dev:client`, fora do build) desenha qualquer mapa sem login nem
+servidor, com a câmera do celular, os baús, o portal e o sangue. Ex.: `/mapa.html?mapa=marsh&seed=7&em=boss`.
+
+Pendente para depois: marolas, bolhas e libélulas do ambiente antigo não voltaram (vaga-lumes, névoa e folhas, sim).
+
+![Pântano do Kosaradius: clareira dos baús, troncos caídos, cipreste e mangue](arte/kosaradius.png)
 
 ### Fase 1b — Pântano das Ruínas
 

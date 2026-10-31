@@ -2,13 +2,14 @@ import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "
 import { hash } from "./art/pixels.ts";
 import { TileAtlas } from "./art/paint.ts";
 import {
-  GIANT, HEART, OPEN, SPECIES, TALL, TALL_DECOR, TREE, bridgeTile, canopyTile, dirtTile, draw, flatDecor, giant,
+  GIANT, HEART, OPEN, SPECIES, TALL, TALL_DECOR, TREE, boardTile, bogTile, bridgeTile, canopyTile, dirtTile, draw, flatDecor, giant,
   heartTree, litterEdge, logTile, mudEdge, shadowEdge, stone, tallDecor, tree, wallTile, waterTile,
   type FlatDecor, type ForestVariant, type TallDecor,
 } from "./art/forestArt.ts";
 
-// O plano do Bosque Velho e do Coração da Mata, sem o Phaser: que quadro vai em cada tile de cada camada e que objeto
-// fica de pé onde. `forestMap.ts` desenha no jogo; o plano também serve para prévias fora do navegador.
+// O plano do Bosque Velho, do Coração da Mata e do Pântano do Kosaradius, sem o Phaser: que quadro vai em cada tile de
+// cada camada e que objeto fica de pé onde. `forestMap.ts` desenha no jogo; o plano também serve para prévias fora do
+// navegador. O pântano é a mesma mata, alagada: passarelas em vez de pontes, lamaçais no capim, árvores dentro d'água.
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
 const RING = [[0, -1, OPEN.n], [1, 0, OPEN.e], [0, 1, OPEN.s], [-1, 0, OPEN.w], [1, -1, OPEN.ne], [-1, -1, OPEN.nw], [1, 1, OPEN.se], [-1, 1, OPEN.sw]] as const;
@@ -17,6 +18,7 @@ const RING = [[0, -1, OPEN.n], [1, 0, OPEN.e], [0, 1, OPEN.s], [-1, 0, OPEN.w], 
 const GRASS_VARIANTS = 6;
 const ARENA_VARIANTS = 3;
 const WATER_VARIANTS = 2;
+const MARSH_WATER_VARIANTS = 6;
 const TREE_VARIANTS = 3;
 const GIANT_VARIANTS = 2;
 const CANOPY_VARIANTS = 4;
@@ -43,8 +45,9 @@ export interface Standing {
  * cada tile em cada camada e os objetos de pé.
  */
 export function planForest(d: Dungeon) {
-  const variant: ForestVariant = d.mapId === "heartwood" ? "heartwood" : "oldwood";
+  const variant: ForestVariant = d.mapId === "heartwood" ? "heartwood" : d.mapId === "marsh" ? "marsh" : "oldwood";
   const heart = variant === "heartwood";
+  const marsh = variant === "marsh";
   const W = d.width;
   const H = d.height;
   const at = (x: number, y: number) => tileAt(d, x, y);
@@ -53,17 +56,31 @@ export function planForest(d: Dungeon) {
   const ruin = (x: number, y: number) => inMap(x, y) && at(x, y) === Tile.Ruin;
   const lone = (x: number, y: number, test: (x: number, y: number) => boolean) => test(x, y) && DIRS.every(([dx, dy]) => !test(x + dx, y + dy));
   const arenaCenter = { x: d.boss.x + Math.floor(d.boss.w / 2), y: d.boss.y + Math.floor(d.boss.h / 2) };
-  const inArena = (x: number, y: number) => Math.hypot((x - arenaCenter.x) / 1.1, y - arenaCenter.y) <= 8.6;
+  // No pântano a arena é a clareira do boss (o retângulo do gerador, com o anel de ciprestes em volta).
+  const inArena = marsh
+    ? (x: number, y: number) => inRect(d.boss, x, y)
+    : (x: number, y: number) => Math.hypot((x - arenaCenter.x) / 1.1, y - arenaCenter.y) <= 8.6;
   const inRooms = (x: number, y: number) => d.side.some((r) => inRect(r, x, y));
 
-  // Pontes (tábuas por cima do riacho) e trilhas.
+  // Pontes (tábuas por cima do riacho) e trilhas. No pântano, as passarelas: uma fila de tiles de leste a oeste ou de
+  // norte a sul, com as pontas (onde ficam os postes).
   const bridge = new Map<number, -1 | 0 | 1>();
-  for (const p of d.planks ?? [])
-    for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) bridge.set(y * W + x, x === p.x ? -1 : x === p.x + p.w - 1 ? 1 : 0);
+  const boards = new Map<number, { across: boolean; ends: number }>();
+  for (const p of d.planks ?? []) {
+    const across = p.w > 1;
+    for (let y = p.y; y < p.y + p.h; y++)
+      for (let x = p.x; x < p.x + p.w; x++) {
+        bridge.set(y * W + x, x === p.x ? -1 : x === p.x + p.w - 1 ? 1 : 0);
+        const ends = across ? (x === p.x ? OPEN.w : 0) | (x === p.x + p.w - 1 ? OPEN.e : 0) : (y === p.y ? OPEN.n : 0) | (y === p.y + p.h - 1 ? OPEN.s : 0);
+        boards.set(y * W + x, { across, ends });
+      }
+  }
   const onBridge = (x: number, y: number) => inMap(x, y) && bridge.has(y * W + x);
   const trailSet = new Set(d.trails ?? []);
   const trail = (x: number, y: number) => inMap(x, y) && trailSet.has(y * W + x) && !onBridge(x, y);
-  const water = (x: number, y: number) => at(x, y) === Tile.Water || onBridge(x, y);
+  /** Árvore solta do pântano com água em 2 lados ou mais: nasce dentro d'água (marcadas depois de saber as árvores). */
+  const wetTree = new Uint8Array(W * H);
+  const water = (x: number, y: number) => at(x, y) === Tile.Water || onBridge(x, y) || (inMap(x, y) && wetTree[y * W + x] === 1);
 
   // Mata: árvore solta (1 tile), anciã (bloco isolado de 2×2), a árvore do coração (na arena) ou mata fechada.
   const kind = new Uint8Array(W * H); // 0 nada, 1 mata fechada, 2 solta, 3 anciã, 4 coração
@@ -94,6 +111,28 @@ export function planForest(d: Dungeon) {
     }
   /** Mata fechada (fora do mapa também é mata). */
   const forest = (x: number, y: number) => !inMap(x, y) || kind[y * W + x] === 1;
+  if (marsh)
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++)
+        if (kind[y * W + x] === 2 && DIRS.filter(([dx, dy]) => at(x + dx, y + dy) === Tile.Water).length >= 2) wetTree[y * W + x] = 1;
+  /**
+   * Lamaçais do pântano: manchas de lama no capim aberto, por um ruído suave sobre a grade de tiles (fora das clareiras,
+   * da arena e das passarelas).
+   */
+  const bogSet = new Uint8Array(W * H);
+  if (marsh) {
+    const cellNoise = (x: number, y: number) => {
+      const C = 7, gx = Math.floor(x / C), gy = Math.floor(y / C), fx = x / C - gx, fy = y / C - gy;
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const v = (i: number, j: number) => hash(i, j, 71);
+      const top = v(gx, gy) + (v(gx + 1, gy) - v(gx, gy)) * sx, bottom = v(gx, gy + 1) + (v(gx + 1, gy + 1) - v(gx, gy + 1)) * sx;
+      return top + (bottom - top) * sy;
+    };
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++)
+        if (at(x, y) === Tile.Floor && cellNoise(x, y) > 0.7 && !inRooms(x, y) && !inArena(x, y) && !onBridge(x, y)) bogSet[y * W + x] = 1;
+  }
+  const bog = (x: number, y: number) => inMap(x, y) && bogSet[y * W + x] === 1;
   /** Vizinhos (8 bits) que passam no teste. */
   const ring = (x: number, y: number, test: (x: number, y: number) => boolean) => {
     let m = 0;
@@ -139,7 +178,15 @@ export function planForest(d: Dungeon) {
       const i = y * W + x;
       const t = at(x, y);
       // Chão (debaixo de tudo, até da mata: a beira recortada da copa mostra o capim).
-      if (t === Tile.Water && !onBridge(x, y)) {
+      if (marsh && (t === Tile.Water || onBridge(x, y) || wetTree[i])) {
+        // Pântano: a água larga tem mais variações (o miolo de cada uma é diferente). Passarela e árvore dentro d'água:
+        // a água corre por baixo.
+        // As variações só no miolo da lagoa (sem terra em volta): na margem, o contorno já muda de tile para tile, e o
+        // atlas não passa do limite de textura do celular.
+        const land = edges(x, y, (a, b) => !water(a, b));
+        const v = land ? pick(x, y, 2, 5) : pick(x, y, MARSH_WATER_VARIANTS, 5);
+        put("chao", x, y, `water${land}-${v}`, () => waterTile(variant, land, v).render(false));
+      } else if (t === Tile.Water && !onBridge(x, y)) {
         const land = edges(x, y, (a, b) => !water(a, b));
         const v = pick(x, y, WATER_VARIANTS, 5);
         put("chao", x, y, `water${land}-${v}`, () => waterTile(variant, land, v).render(false));
@@ -149,6 +196,12 @@ export function planForest(d: Dungeon) {
       } else {
         const v = pick(x, y, GRASS_VARIANTS, 1);
         put("chao", x, y, `grass${v}`, draw.grass(variant, v));
+      }
+      if (marsh && onBridge(x, y)) {
+        const b = boards.get(i)!;
+        const v = pick(x, y, 3, 6);
+        put("relevo", x, y, `board${b.across ? 1 : 0}-${b.ends}-${v}`, () => boardTile(variant, b.across, b.ends, v).render(true));
+        continue;
       }
       if (onBridge(x, y)) {
         const side = bridge.get(i)!;
@@ -171,12 +224,17 @@ export function planForest(d: Dungeon) {
           put("relevo", x, y, `wall${joins}-${south ? 1 : 0}-${v}`, () => wallTile(variant, joins, south, v).render(true));
         } else put("relevo", x, y, `log${joins}-${v}`, () => logTile(variant, joins, v).render(true));
       }
-      if (t === Tile.Water || t === Tile.Ruin || kind[i] === 4) continue;
+      if (t === Tile.Water || t === Tile.Ruin || kind[i] === 4 || wetTree[i]) continue;
 
       // Bordas no chão: trilha de terra, barro perto da água, folhas secas e sombra perto da mata.
       if (trail(x, y)) {
         const out = edges(x, y, (a, b) => !trail(a, b));
         put("trilha", x, y, `dirt${out}`, () => dirtTile(variant, out).render(false));
+      }
+      if (bog(x, y)) {
+        const out = edges(x, y, (a, b) => !bog(a, b));
+        const v = out ? 0 : pick(x, y, 3, 8);
+        put("trilha", x, y, `bog${out}-${v}`, () => bogTile(variant, out, v).render(false));
       }
       const wet = edges(x, y, (a, b) => at(a, b) === Tile.Water && !onBridge(a, b));
       if (wet) put("barro", x, y, `mud${wet}`, () => mudEdge(variant, wet).render(false));
@@ -193,9 +251,9 @@ export function planForest(d: Dungeon) {
       }
       const n = hash(x, y, 91);
       const byWoods = near(x, y, 1, forest);
-      const chance = inRooms(x, y) ? 0.14 : trail(x, y) ? 0.03 : byWoods ? 0.14 : 0.09;
-      if (n >= chance) continue;
-      const k = flatKind(hash(x, y, 92), { heart, trail: trail(x, y), woods: byWoods, wet: wet !== 0, arena: inArena(x, y) });
+      const chance = inRooms(x, y) ? (marsh ? 0.4 : 0.14) : trail(x, y) ? 0.03 : byWoods ? 0.14 : marsh ? 0.13 : 0.09;
+      if (n >= chance || bog(x, y)) continue;
+      const k = flatKind(hash(x, y, 92), { heart, marsh, trail: trail(x, y), woods: byWoods, wet: wet !== 0, arena: inArena(x, y), room: inRooms(x, y) });
       const v = Math.floor(hash(x, y, 93) * 3);
       put("enfeites", x, y, `flat-${k}-${v}`, () => flatDecor(variant, k, v).render(true));
     }
@@ -209,10 +267,17 @@ export function planForest(d: Dungeon) {
       const i = y * W + x;
       const flip = hash(x, y, 95) < 0.5;
       if (kind[i] === 2) {
-        const frame = Math.floor(hash(x, y, 96) * species.length) * TREE_VARIANTS + Math.floor(hash(x, y, 97) * TREE_VARIANTS);
+        const sp = marsh ? marshSpecies(hash(x, y, 96), { inWater: wetTree[i] === 1, byWater: near(x, y, 1, (a, b) => at(a, b) === Tile.Water), byBoss: Math.hypot(x - arenaCenter.x, y - arenaCenter.y) < d.boss.w / 2 + 3 })
+          : Math.floor(hash(x, y, 96) * species.length);
+        const frame = sp * TREE_VARIANTS + Math.floor(hash(x, y, 97) * TREE_VARIANTS);
         const scale = 0.85 + hash(x, y, 98) * 0.3;
         standing.push({ sheet: "trunk", frame, x, y, span: 1, scale, flip, depth: depthOf(y) });
         standing.push({ sheet: "crown", frame, x, y, span: 1, scale, flip, depth: depthOf(y) + 0.1 });
+        continue;
+      }
+      if (marsh && at(x, y) === Tile.Ruin && lone(x, y, ruin)) {
+        // Pedra solta do pântano: um toco grande.
+        standing.push({ sheet: "tall", frame: TALL_DECOR.indexOf("stump"), x, y, span: 1, scale: 1.15, flip, depth: depthOf(y) });
         continue;
       }
       if (at(x, y) === Tile.Ruin && lone(x, y, ruin)) {
@@ -223,14 +288,14 @@ export function planForest(d: Dungeon) {
         continue;
       }
       const t = at(x, y);
-      if (t !== Tile.Floor || kind[i] || reserved(x, y) || layers.enfeites[i] >= 0 || trail(x, y) || onBridge(x, y)) continue;
+      if (t !== Tile.Floor || kind[i] || reserved(x, y) || layers.enfeites[i] >= 0 || trail(x, y) || onBridge(x, y) || bog(x, y)) continue;
       if (inArena(x, y) && Math.hypot(x - arenaCenter.x, y - arenaCenter.y) < 7) continue;
       const n = hash(x, y, 101);
       const byWater = near(x, y, 1, (a, b) => at(a, b) === Tile.Water);
       const byWoods = near(x, y, 1, forest);
-      const chance = byWater ? 0.16 : byWoods ? 0.22 : inRooms(x, y) ? 0.05 : 0.055;
+      const chance = byWater ? (marsh ? 0.3 : 0.16) : byWoods ? 0.22 : inRooms(x, y) ? 0.05 : marsh ? 0.08 : 0.055;
       if (n >= chance) continue;
-      const k = tallKind(hash(x, y, 102), { heart, water: byWater, woods: byWoods });
+      const k = tallKind(hash(x, y, 102), { heart, marsh, water: byWater, woods: byWoods });
       standing.push({ sheet: "tall", frame: TALL_DECOR.indexOf(k), x, y, span: 1, scale: 0.9 + hash(x, y, 103) * 0.2, flip, depth: depthOf(y) });
     }
   for (const g of giants) {
@@ -271,8 +336,27 @@ export function standingSheets(variant: ForestVariant) {
   } satisfies Record<Standing["sheet"], { w: number; h: number; frames: (() => Uint8ClampedArray)[] }>;
 }
 
+/** Espécie da árvore solta do pântano (índice em `SPECIES.marsh`): cipreste, mangue, salgueiro ou morta. */
+function marshSpecies(m: number, at: { inWater: boolean; byWater: boolean; byBoss: boolean }) {
+  const [cypress, mangrove, willow, dead] = [0, 1, 2, 3];
+  if (at.inWater) return m < 0.55 ? cypress : m < 0.88 ? mangrove : dead;
+  if (at.byBoss) return m < 0.85 ? cypress : dead;
+  if (at.byWater) return m < 0.5 ? willow : m < 0.8 ? cypress : mangrove;
+  return m < 0.4 ? cypress : m < 0.68 ? willow : m < 0.86 ? mangrove : dead;
+}
+
 /** Enfeite rasteiro conforme o lugar. */
-function flatKind(m: number, at: { heart: boolean; trail: boolean; woods: boolean; wet: boolean; arena: boolean }): FlatDecor {
+function flatKind(m: number, at: { heart: boolean; marsh: boolean; trail: boolean; woods: boolean; wet: boolean; arena: boolean; room: boolean }): FlatDecor {
+  if (at.marsh) {
+    // Clareiras dos baús forradas de musgo, folhas, cogumelos e ossos; no resto, o brejo.
+    if (at.room) return m < 0.25 ? "moss" : m < 0.5 ? "leaves" : m < 0.68 ? "shrooms" : m < 0.84 ? "twigs" : "bones";
+    if (at.arena) return m < 0.5 ? "moss" : m < 0.75 ? "leaves" : "roots";
+    if (at.wet) return m < 0.5 ? "moss" : m < 0.8 ? "tracks" : "pebbles";
+    const table: [number, FlatDecor][] = at.woods
+      ? [[0.3, "leaves"], [0.5, "roots"], [0.65, "moss"], [0.8, "twigs"], [0.92, "shrooms"], [1, "bones"]]
+      : [[0.14, "moss"], [0.38, "clover"], [0.58, "leaves"], [0.74, "twigs"], [0.9, "flowers"], [1, "pebbles"]];
+    return table.find(([limit]) => m < limit)![1];
+  }
   if (at.trail) return m < 0.4 ? "pebbles" : m < 0.75 ? "tracks" : "twigs";
   if (at.wet) return m < 0.5 ? "pebbles" : m < 0.8 ? "moss" : "tracks";
   if (at.arena) return at.heart ? (m < 0.5 ? "shrooms" : "moss") : m < 0.6 ? "flowers" : "clover";
@@ -285,7 +369,16 @@ function flatKind(m: number, at: { heart: boolean; trail: boolean; woods: boolea
 }
 
 /** Enfeite de pé conforme o lugar: capim alto na água, samambaias e arbustos na beira da mata. */
-function tallKind(m: number, at: { heart: boolean; water: boolean; woods: boolean }): TallDecor {
+function tallKind(m: number, at: { heart: boolean; marsh: boolean; water: boolean; woods: boolean }): TallDecor {
+  if (at.marsh) {
+    // Taboa, junco e íris na margem; samambaia, planta-jarro e cogumelos na beira da mata.
+    const table: [number, TallDecor][] = at.water
+      ? [[0.4, "cattail"], [0.72, "reeds"], [0.9, "iris"], [1, "grass"]]
+      : at.woods
+        ? [[0.35, "fern"], [0.55, "pitcher"], [0.7, "mushrooms"], [0.82, "stump"], [1, "reeds"]]
+        : [[0.3, "grass"], [0.5, "reeds"], [0.65, "iris"], [0.8, "fern"], [0.9, "pitcher"], [1, "bush"]];
+    return table.find(([limit]) => m < limit)![1];
+  }
   if (at.water) return m < 0.6 ? "grass" : m < 0.85 ? "fern" : "rocks";
   const table: [number, TallDecor][] = at.woods
     ? [[0.38, "fern"], [0.56, "bush"], [0.68, "mushrooms"], [0.78, "stump"], [0.88, "bramble"], [1, at.heart ? "mushrooms" : "foxglove"]]
