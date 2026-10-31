@@ -4,9 +4,8 @@ import { makeCanvas } from "../pixels.ts";
 /**
  * Clã do Pântano do Kosaradius (orcs e ogros) da arte nova, a partir das folhas de giro geradas por IA
  * (`docs/arte/pantano-do-kosaradius/<kind>-A.png`, recortadas e alinhadas por
- * `apps/client/scripts/kosaradiusSprites.py`). Cada folha tem 12 figuras em quadros quadrados, pés a 10 px do fundo,
- * na ordem da folha de giro: parado (0–5) e andando (6–11), cada linha com frente, 3/4 de frente, perfil (para a
- * esquerda), 3/4 de costas, costas e 3/4 de costas para o outro lado.
+ * `apps/client/scripts/kosaradiusSprites.py`). Cada folha tem as 6 figuras da folha de giro que o jogo usa, em
+ * quadros quadrados com os pés a 10 px do fundo: frente, perfil (para a esquerda) e costas, parado e depois andando.
  *
  * Só a folha de giro chegou (a de ação, com golpe, especial e morte, ainda não): o golpe e o especial saem do perfil
  * (o jogo já dá o bote do sprite no golpe), e a morte é o tombo de sempre. Monstro sem folha fica na arte por código.
@@ -14,7 +13,7 @@ import { makeCanvas } from "../pixels.ts";
 const SHEETS = import.meta.glob<string>("./kosaradius/*.png", { eager: true, import: "default", query: "?url" });
 
 /** Figuras da folha. */
-const F = { front: 0, side: 2, back: 4, frontWalk: 6, sideWalk: 8, backWalk: 10 } as const;
+const F = { front: 0, side: 1, back: 2, frontWalk: 3, sideWalk: 4, backWalk: 5 } as const;
 
 /**
  * Quem carrega a arma de outro jeito andando (o Rei: tronco em pé parado, no ombro andando) anda só com a figura de

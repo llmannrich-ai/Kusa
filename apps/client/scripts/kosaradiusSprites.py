@@ -9,7 +9,9 @@ do monstro), com os pés na linha dos outros monstros e o meio dos pés no centr
 olhar para a direita, passe `--flip` (o jogo quer tudo olhando para a esquerda); se só algumas figuras vierem viradas
 (o gerador às vezes vira o perfil andando), passe os índices delas (0–11, na ordem da folha) em `--flip=8,7`.
 
-Sai `apps/client/src/art/proto/kosaradius/<kind>.png`, as 12 figuras em quadros de `CELL` px, na ordem da folha.
+Sai `apps/client/src/art/proto/kosaradius/<kind>.png` só com as 6 figuras que o jogo usa (frente, perfil e costas,
+parado e depois andando; as de 3/4 ficam de fora), em quadros de `CELL` px e paleta de 256 cores: o jogo baixa tudo no
+começo, e a folha inteira em cores cheias pesava 4 vezes mais.
 `art/proto/kosaradiusArt.ts` monta os clipes.
 
 Uso: python3 apps/client/scripts/kosaradiusSprites.py orcSpearman [--flip | --flip=8,...]
@@ -43,6 +45,9 @@ SIZES = {
     "orcWarlord": (160, 320),
     "ogreKing": (300, 512),
 }
+
+# Figuras da folha de giro que vão para o jogo: frente, perfil e costas, parado (0, 2, 4) e andando (6, 8, 10).
+USED = (0, 2, 4, 6, 8, 10)
 
 
 def place(rgba, fig, scale, flip, cell):
@@ -81,13 +86,14 @@ def main(kind, flip=False, flip_figs=()):
     figs = [f for line in rows for f in line]
     cells = [place(rgba, f, scale, flip != (i in flip_figs), cell) for i, f in enumerate(figs)]
     DST.mkdir(parents=True, exist_ok=True)
+    cells = [cells[i] for i in USED]
     sheet = Image.new("RGBA", (cell * len(cells), cell), (0, 0, 0, 0))
     for i, c in enumerate(cells):
         sheet.alpha_composite(c, (i * cell, 0))
     dst = DST / f"{kind}.png"
-    sheet.save(dst, optimize=True)
-    top = np.where(np.array(cells[2])[:, :, 3].any(axis=1))[0][0]
-    print(f"{dst.relative_to(ROOT)}: 12 quadros de {cell} px (escala {scale:.3f}, fill do perfil {(cell - top) / cell:.2f})")
+    sheet.quantize(256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(dst, optimize=True)
+    top = np.where(np.array(cells[1])[:, :, 3].any(axis=1))[0][0]
+    print(f"{dst.relative_to(ROOT)}: {len(cells)} quadros de {cell} px (escala {scale:.3f}, fill do perfil {(cell - top) / cell:.2f})")
 
 
 if __name__ == "__main__":
