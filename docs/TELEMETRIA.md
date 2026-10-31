@@ -82,8 +82,19 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `telemetry_levels` | Em que segundo cada nível chega (os slots abrem no 3 e no 6) |
 | `telemetry_monsters` | Abates, dano causado nos jogadores e mortes por monstro |
 | `telemetry_economy` | Gold médio por hunt e de onde vem, por tamanho de equipe |
+| `telemetry_solo_fechadas` | Hunts solo sem resultado: o jogo fechou sozinho, caiu ou foi largado. Build do cliente (`client_build`), memória do aparelho (`memoria_gb`, vazia no iPhone), navegador, se passou do início (`passou_do_inicio`) e quantos segundos durou até o último sinal de vida (`ultimo_sinal_s`) |
 
 Exemplo: `select * from telemetry_classes where build = '<commit>' order by sobrevivencia_pct;`
+
+**Jogo fechando sozinho** (falta de memória no celular, por exemplo): a hunt solo não chega a `finish_solo_run` e não
+gera linha em `telemetry_runs`. Ela aparece em `telemetry_solo_fechadas`: compare por `client_build` antes e depois do
+deploy. A hunt solo grava o build do cliente e o aparelho ao começar (`solo_runs.client`, também em `stats.client` quando
+termina) e manda um sinal de vida a cada 20 s (`solo_runs.last_seen_at`, `solo_run_alive`).
+
+```sql
+select client_build, map_id, count(*) hunts, count(*) filter (where ultimo_sinal_s < 60) no_primeiro_minuto
+from telemetry_solo_fechadas where started_at > now() - interval '7 days' and not aberta group by 1, 2 order by 1, 2;
+```
 
 ## Roteiro de balanceamento
 

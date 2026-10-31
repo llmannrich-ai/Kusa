@@ -8,6 +8,7 @@ import {
 } from "./necropolisMonsters.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
+import type { SheetSource } from "./proto/sheetSource.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
 import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
 
@@ -38,6 +39,11 @@ export interface MonsterAnim {
   extra?: Partial<Record<ExtraClip, number>>;
   /** Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial), ou um por habilidade (id → clipe). */
   strike?: Clip | Record<string, Clip>;
+  /**
+   * Folha em PNG de onde saem os quadros (arte desenhada por IA): `hd`, `sheet` e `portrait` só desenham com ela
+   * carregada (`loadMapSheets` em `textures.ts`, quando a hunt começa).
+   */
+  source?: SheetSource;
 }
 
 /** Clipes a mais dos monstros da arte nova (`MonsterAnim.extra`), na ordem da folha. */
@@ -234,7 +240,7 @@ if (protoFrog) {
     anim: {
       size: frog.size, sheet: () => frog.sheet(), portrait: () => frog.portrait(), outline: "",
       fps: { idle: 4, walk: 8, attack: 10, cast: 8 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
-      hd: () => frog.frames(), fill: frog.fill, extra: { ...frog.extra }, strike: "cast",
+      hd: () => frog.frames(), fill: frog.fill, extra: { ...frog.extra }, strike: "cast", source: frog.source,
     },
   };
 }
@@ -248,6 +254,7 @@ if (protoBullywugKing) {
       size: king.size, sheet: () => king.sheet(), portrait: () => king.portrait(), outline: "",
       fps: { idle: 4, walk: 7, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
       hd: () => king.frames(), fill: king.fill, extra: { ...king.extra }, strike: { mudAmbush: "cast", spearThrust: "attack", swampCall: "attack" },
+      source: king.source,
     },
   };
   OWN_MONSTER_DRAW["monster-bullywug-king"] = () => king.portrait();
@@ -261,7 +268,7 @@ if (protoClan) {
       anim: {
         size: clan.size, sheet: () => clan.sheet(), portrait: () => clan.portrait(), outline: "",
         fps: { idle: 4, walk: 6, attack: 10, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
-        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra },
+        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra }, source: clan.source,
       },
     };
   }

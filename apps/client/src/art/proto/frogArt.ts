@@ -1,5 +1,6 @@
 import sheetUrl from "./frog.png";
 import { makeCanvas } from "../pixels.ts";
+import { SheetSource } from "./sheetSource.ts";
 
 /**
  * Sapo gigante da arte nova, a partir das folhas geradas por IA (`docs/arte/pantano-das-ruinas/frog-A.png` e
@@ -22,13 +23,15 @@ export interface FrogArt {
   frames(): (() => HTMLCanvasElement)[];
   portrait(): HTMLCanvasElement;
   sheet(): HTMLCanvasElement;
+  /** A folha em PNG: `frames`, `portrait` e `sheet` só desenham com ela carregada. */
+  source: SheetSource;
 }
 
 /** Clipes a mais do sapo (quadros), depois dos 4 de sempre, na ordem de `EXTRA_CLIPS` (`bestiary.ts`). */
 const FROG_EXTRA = { death: 3, idleDown: 4, walkDown: 4, idleUp: 4, walkUp: 4 } as const;
 
 /** Uma figura da folha, espelhada (`flip`), deslocada (`dy` negativo = para cima) e com o fôlego (encolhe na vertical). */
-function figure(img: HTMLImageElement, i: number, o: { flip?: boolean; dy?: number; breathe?: number } = {}) {
+function figure(img: CanvasImageSource, i: number, o: { flip?: boolean; dy?: number; breathe?: number } = {}) {
   const { canvas, ctx } = makeCanvas(S, S);
   ctx.imageSmoothingEnabled = false;
   ctx.save();
@@ -40,10 +43,8 @@ function figure(img: HTMLImageElement, i: number, o: { flip?: boolean; dy?: numb
 }
 
 export async function loadFrog(): Promise<FrogArt> {
-  const img = new Image();
-  img.src = sheetUrl;
-  await img.decode();
-  const at = (i: number, o: Parameters<typeof figure>[2] = {}) => () => figure(img, i, o);
+  const source = new SheetSource(sheetUrl);
+  const at = (i: number, o: Parameters<typeof figure>[2] = {}) => () => figure(source.img, i, o);
   const run = (first: number, n: number) => Array.from({ length: n }, (_, k) => at(first + k));
   // O papo do sapo sobe e desce: o fôlego é mais fundo que o dos humanoides.
   const breath = [0, 0.02, 0.04, 0.02];
@@ -65,7 +66,8 @@ export async function loadFrog(): Promise<FrogArt> {
       ...breathing(A.back),
       ...steps(A.back, A.backWalk),
     ],
-    portrait: () => figure(img, A.side),
+    portrait: () => figure(source.img, A.side),
+    source,
     sheet() {
       const all = art.frames();
       const { canvas, ctx } = makeCanvas(S * all.length, S);

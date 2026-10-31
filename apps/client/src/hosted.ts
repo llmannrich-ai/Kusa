@@ -17,7 +17,7 @@ import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
 import { Listing, Signaling, answerCalls, dial, randomId, type Link } from "./p2p.ts";
 import { recordSoloMapClear } from "./profile.ts";
-import { flushPendingSolo, noticeClosed, reportSolo, watchCommitted } from "./solo.ts";
+import { clientInfo, flushPendingSolo, noticeClosed, reportSolo, watchCommitted } from "./solo.ts";
 
 // Sala hospedada por um jogador: o aparelho dele roda a `Hunt` (a mesma do servidor) e os outros recebem o
 // estado por conexão direta. Se o anfitrião sai, o próximo da lista assume a partir do último retrato.
@@ -458,7 +458,7 @@ class HostedSession {
     // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
     await flushPendingSolo();
     // Campanha: o cenário precisa estar aberto para quem criou a sala; quem entrou na sala de outro joga livre.
-    const { data, error } = await supabase.rpc(this.creator ? "start_solo_run" : "start_guest_run", { p_class_id: this.me.classId, p_map_id: this.mapId });
+    const { data, error } = await supabase.rpc(this.creator ? "start_solo_run" : "start_guest_run", { p_class_id: this.me.classId, p_map_id: this.mapId, p_client: clientInfo() });
     if (error) {
       console.error("Falha ao abrir a hunt no banco", error);
       return;

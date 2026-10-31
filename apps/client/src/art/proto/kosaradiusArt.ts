@@ -1,5 +1,6 @@
 import type { MonsterKind } from "@kusa/shared";
 import { makeCanvas } from "../pixels.ts";
+import { SheetSource } from "./sheetSource.ts";
 
 /**
  * Clã do Pântano do Kosaradius (orcs e ogros) da arte nova, a partir das folhas de giro geradas por IA
@@ -37,10 +38,12 @@ export interface ClanArt {
   frames(): (() => HTMLCanvasElement)[];
   portrait(): HTMLCanvasElement;
   sheet(): HTMLCanvasElement;
+  /** A folha em PNG: `frames`, `portrait` e `sheet` só desenham com ela carregada. */
+  source: SheetSource;
 }
 
 /** Uma figura da folha, espelhada (`flip`), deslocada (`dx` negativo = para a frente, à esquerda) e com o fôlego. */
-function figure(img: HTMLImageElement, s: number, i: number, o: { flip?: boolean; dx?: number; dy?: number; breathe?: number } = {}) {
+function figure(img: CanvasImageSource, s: number, i: number, o: { flip?: boolean; dx?: number; dy?: number; breathe?: number } = {}) {
   const { canvas, ctx } = makeCanvas(s, s);
   ctx.imageSmoothingEnabled = false;
   ctx.save();
@@ -53,9 +56,11 @@ function figure(img: HTMLImageElement, s: number, i: number, o: { flip?: boolean
 }
 
 async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
-  const img = new Image();
-  img.src = url;
-  await img.decode();
+  // Abre a folha só para medir (tamanho, folha B e altura do corpo) e solta: as figuras são desenhadas quando a hunt
+  // no mapa começa (`loadMapSheets` em `textures.ts`).
+  const source = new SheetSource(url);
+  await source.load();
+  const img = source.img as ImageBitmap | HTMLImageElement;
   const s = img.height;
   // Tem a folha B (golpe e morte desenhados)?
   const withB = img.width / s >= B.end;
@@ -66,7 +71,7 @@ async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
   const at = (i: number, o: Parameters<typeof figure>[3] = {}) => {
     const key = `${i}:${o.dx ?? 0}:${o.dy ?? 0}:${o.breathe ?? 0}`;
     let job = made.get(key);
-    if (!job) made.set(key, job = () => figure(img, s, i, o));
+    if (!job) made.set(key, job = () => figure(source.img, s, i, o));
     return job;
   };
   const run = (first: number) => [0, 1, 2, 3].map((k) => at(first + k));
@@ -85,6 +90,7 @@ async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
   const alpha = ctx.getImageData(0, 0, s, s).data;
   let top = 0;
   while (top < s && !Array.from({ length: s }, (_, x) => alpha[(top * s + x) * 4 + 3]).some((a) => a > 0)) top++;
+  source.release();
   const art: ClanArt = {
     size: s,
     fill: (s - top) / s,
@@ -103,7 +109,8 @@ async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
       ...breathing(F.back),
       ...steps(F.back, F.backWalk),
     ],
-    portrait: () => figure(img, s, F.side),
+    portrait: () => figure(source.img, s, F.side),
+    source,
     sheet() {
       const all = art.frames();
       const { canvas, ctx } = makeCanvas(s * all.length, s);
@@ -116,9 +123,11 @@ async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
 
 /** Os monstros do clã que já têm folha (`kosaradius/<kind>.png`), carregados. */
 export async function loadClan(): Promise<Partial<Record<MonsterKind, ClanArt>>> {
-  const entries = await Promise.all(Object.entries(SHEETS).map(async ([path, url]) => {
+  // Uma de cada vez: abertas juntas, as folhas somavam dezenas de MB de uma vez no celular.
+  const clan: Partial<Record<MonsterKind, ClanArt>> = {};
+  for (const [path, url] of Object.entries(SHEETS)) {
     const kind = path.slice(path.lastIndexOf("/") + 1, -".png".length) as MonsterKind;
-    return [kind, await loadOne(kind, url)] as const;
-  }));
-  return Object.fromEntries(entries);
+    clan[kind] = await loadOne(kind, url);
+  }
+  return clan;
 }
