@@ -2,6 +2,7 @@
  * Teste do Bestiário, sem servidor: a simulação (`Hunt`) roda sozinha, com o monstro posto ao lado do herói.
  * - Elementos: o Dragão é imune a fogo; mortos-vivos não envenenam; a Fortitude segura o primeiro golpe fatal (menos luz).
  * - Troll: regenera, e fogo interrompe. Hidra: perde cabeça a cada 20% e nascem duas sem fogo; fogo cauteriza.
+ * - Rei Bullywug: some na lama e sai em bote colado no herói; com metade da vida chama 2 bullywugs, uma vez só.
  * - Efeitos no herói: controle tem teto de 2 s, impede andar e dá imunidade de 4 s; Corroído acumula até 3.
  * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável, cai colado e se recompõe antes de bater de novo;
  *   boss espera 1 s entre uma habilidade e outra.
@@ -271,6 +272,28 @@ function check(ok: boolean, what: string) {
   advance(hunt, 1500);
   check(blows() > 0, "recomposto, o Dragão devia voltar a atacar");
   console.log("Voo do Dragão OK");
+}
+{
+  // Rei Bullywug: some na lama e cai em bote colado no herói; com metade da vida chama 2 bullywugs, uma vez só.
+  const { spawn, hit, hunt, p, brain, state } = arena("swamp", "knight", 12);
+  p.hp = p.maxHp = 1_000_000;
+  const king = spawn("bullywugKing", 4);
+  brain(king).targetId = "h";
+  brain(king).abilityReadyAt.mudAmbush = 0; // sem a espera do primeiro uso
+  advance(hunt, 100);
+  check(king.hidden && brain(king).diving, "longe do herói, o Rei devia sumir na lama (Bote da Lama)");
+  check(hit(king, 100, "basic") === 0, "na lama, o Rei não devia levar dano");
+  advance(hunt, (MONSTERS.bullywugKing.abilities!.find((a) => a.id === "mudAmbush")!.vanishMs ?? 2000) + 100);
+  check(!king.hidden && tileDistance(p.x, p.y, king.x, king.y) <= 1, "o Rei devia sair da lama colado no herói");
+  const guards = () => [...state.monsters.values()].filter((m) => m.kind === "bullywug" && brain(m)?.summonedBy === king.id).length;
+  hit(king, Math.ceil(king.maxHp * 0.55), "basic");
+  advance(hunt, 100);
+  check(guards() === 2, `abaixo de 50% o Rei devia chamar 2 bullywugs (${guards()})`);
+  advance(hunt, 40_000);
+  const calls = strikes.filter((s) => s.id === king.id && s.ability === "swampCall").length;
+  check(calls === 1, `o Chamado do Brejo devia sair uma vez só (${calls})`);
+  check(strikes.some((s) => s.id === king.id && s.ability === "spearThrust"), "de perto, o Rei devia usar a Estocada");
+  console.log("Rei Bullywug OK");
 }
 {
   // Boss enfurecido: as habilidades não saem coladas (antes, sopro e Escuridão vinham com 50 ms de diferença).

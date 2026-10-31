@@ -109,7 +109,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   swamp: {
     id: "swamp", name: "Pântano das Ruínas", icon: "🌿", difficulty: 2, durationSeconds: 8 * 60,
-    description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor. A Hidra espera nas ruínas do centro.",
+    description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor. O Rei Bullywug espera nas ruínas do centro.",
     encounters: [
       { depth: [0, 0], budget: 160, table: [["frog", 4], ["bullywug", 2], ["stirge", 1]] },
       { depth: [1, 1], budget: 230, table: [["frog", 3], ["moccasin", 3], ["bullywug", 2]] },
@@ -127,7 +127,7 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
     minibosses: [["troll", 2], ["greenHag", 1], ["spiritNaga", 1]],
     mimicChance: 0,
-    bosses: [["hydra", 3], ["blackDragon", 1]],
+    bosses: [["bullywugKing", 1]],
   },
   desert: {
     id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,

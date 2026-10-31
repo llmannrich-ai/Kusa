@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -36,8 +36,8 @@ export interface MonsterAnim {
    * toca em vez de tombar) e o parado e o andar de frente (`Down`) e de costas (`Up`), quando o monstro anda na vertical.
    */
   extra?: Partial<Record<ExtraClip, number>>;
-  /** Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial). */
-  strike?: Clip;
+  /** Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial), ou um por habilidade (id → clipe). */
+  strike?: Clip | Record<string, Clip>;
 }
 
 /** Clipes a mais dos monstros da arte nova (`MonsterAnim.extra`), na ordem da folha. */
@@ -147,6 +147,8 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   bugbear: { texture: "monster-bugbear", blood: "red" },
   // Pântano 2.0
   bullywug: { texture: "monster-bullywug", facesLeft: true, blood: "green" },
+  // Na arte antiga, o bullywug do pack em tamanho de boss; na nova, a folha própria (abaixo).
+  bullywugKing: { texture: "monster-bullywug", facesLeft: true, blood: "green" },
   lizardfolk: { texture: "monster-lizardfolk", blood: "red" },
   ghoul: { texture: "monster-ghoul", blood: "none" },
   blackPudding: { texture: "monster-black-pudding", blood: "black" },
@@ -235,6 +237,20 @@ if (protoFrog) {
       hd: () => frog.frames(), fill: frog.fill, extra: { ...frog.extra }, strike: "cast",
     },
   };
+}
+// O Rei Bullywug vem das folhas geradas no Runway (PNG): o bote saindo da lama no mergulho, a lança na estocada e no
+// chamado da guarda, a morte e frente e costas. Textura própria (sem PNG no pack): o retrato fica em `OWN_MONSTER_DRAW`.
+if (protoBullywugKing) {
+  const king = protoBullywugKing;
+  BESTIARY_ART.bullywugKing = {
+    ...BESTIARY_ART.bullywugKing, texture: "monster-bullywug-king", facesLeft: true, scale: HD_SCALE,
+    anim: {
+      size: king.size, sheet: () => king.sheet(), portrait: () => king.portrait(), outline: "",
+      fps: { idle: 4, walk: 7, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+      hd: () => king.frames(), fill: king.fill, extra: { ...king.extra }, strike: { mudAmbush: "cast", spearThrust: "attack", swampCall: "attack" },
+    },
+  };
+  OWN_MONSTER_DRAW["monster-bullywug-king"] = () => king.portrait();
 }
 // Os bichos (rato, stirge, aranha, cubo, mímico e o dragão) têm desenho próprio; o dragão vem num quadro 2× maior.
 if (protoBeasts) {
