@@ -18,8 +18,6 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `monster-orc.png` | `monster/orc_warrior_new.png` | — |
 | `monster-ogre.png` | `monster/ogre_new.png` | — |
 | `monster-dragon.png` | `monster/dragons/dragon.png` | — |
-| `floor.png` | `dungeon/floor/pebble_brown_0..8_new.png` | juntos numa faixa, brilho ×1,7 |
-| `floor-boss.png` | `dungeon/floor/cobble_blood_1..4_new.png` | juntos numa faixa, brilho ×1,4 |
 | `fx-arrow.png` | `effect/arrow_2.png` | — |
 | `fx-fireball.png` | `effect/flame_0.png` | — |
 | `fx-fire-burst.png` | `effect/cloud_fire_0..2.png` | juntos numa faixa |

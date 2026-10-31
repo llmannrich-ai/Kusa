@@ -503,8 +503,9 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 ### Cripta
 
-- **Visual** (só no cliente, `apps/client/src/cryptMap.ts` e arte própria em `art/cryptDecor.ts`; não muda a jogabilidade):
-  tochas animadas nas paredes com poça de luz quente tremulando no chão, candelabros acesos, estandartes rasgados,
+- **Visual** (só no cliente, `apps/client/src/cryptMap.ts` e a arte em `art/cryptArt.ts`; não muda a jogabilidade):
+  **sempre na arte nova** (128 px por tile, por código, `docs/CENARIOS_PLANO.md`): lajes com bisel e juntas com musgo,
+  paredes de tijolos com tampo, tochas animadas nas paredes com poça de luz quente tremulando no chão, candelabros acesos, estandartes rasgados,
   correntes, nichos com caveira, rachaduras e teias nas paredes; sombra ao pé das paredes e manchas de luz e sujeira
   no chão e nos tampos; ossos, entulho, cacos, poças e teias nos cantos; barris, caixotes e sacos na entrada, urnas,
   pilhas de ossos e caixões nas salas; marcas de queimado, sangue e ossada no covil do dragão; poeira flutuando e

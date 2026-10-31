@@ -7,7 +7,8 @@ import { loadSettings } from "../settings.ts";
  */
 export const NEW_ART = loadSettings().newArt;
 export const protoHero = NEW_ART ? await import("./proto/tibiaHero.ts") : null;
-export const protoCrypt = NEW_ART ? await import("./proto/crypt.ts") : null;
+/** A Cripta em 128 px por tile (`cryptArt.ts`): sempre, como os outros cenários (`docs/CENARIOS_PLANO.md`, fase 4). */
+export const cryptArt = await import("./cryptArt.ts");
 export const protoBeasts = NEW_ART ? await import("./proto/beasts.ts") : null;
 /** O goblin desenhado a partir da arte de referência (`docs/arte/goblin-referencia.png`), não por código. */
 export const protoGoblin = NEW_ART ? await (await import("./proto/goblinArt.ts")).loadGoblin() : null;
@@ -29,8 +30,6 @@ export function protoItemOf(itemId: string): string | undefined {
   return family && `${family}-${def.tier}${def.rarity === "magic" ? "-magic" : ""}`;
 }
 
-/** Quantas vezes a arte nova do cenário é maior que a antiga (128 px por tile contra 32): o mapa desenha em 1/`ART_ZOOM`. */
-export const ART_ZOOM = NEW_ART ? 4 : 1;
 /**
  * Heróis e monstros da arte nova vão 10% maiores que o padrão de 128 px por tile: o desenho é mais fino que o antigo
  * e, do mesmo tamanho, parecia menor no celular.

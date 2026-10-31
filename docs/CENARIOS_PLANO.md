@@ -67,8 +67,8 @@ Copiar a forma dos mapas que já estão prontos (Bosque Velho é a referência m
 | **1b. Pântano das Ruínas** | Variante `swamp` do desenho da mata, com as ruínas, e apagar o chão por IA (feita) | M | 1a |
 | **2. Caverna da Travessia** | Pintor de caverna (`art/caveArt.ts`) e `cavernMap.ts` reescrito (feita) | M | 0 |
 | **3. Mar de Areia** | Variante `desert` em `duneArt.ts` e trechos de caverna da fase 2 (feita) | M | 2 |
-| **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` | P | — |
-| **5. Limpeza** | Apagar a arte de cenário de 32 px que sobrou, documentação | P | 1b, 3, 4 |
+| **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` (feita) | P | — |
+| **5. Limpeza** | Apagar a arte de cenário de 32 px que sobrou, documentação (feita) | P | 1b, 3, 4 |
 
 Cada fase é **um PR** (a 1a pode ser dois: chão e bordas primeiro, árvores e enfeites depois).
 
@@ -152,25 +152,36 @@ Pendente para depois: marolas, bolhas e libélulas do ambiente antigo não volta
 
 ![Mar de Areia: o oásis e o monte com a boca da caverna](arte/mar-de-areia.png)
 
-### Fase 4 — Cripta fora do beta
+### Fase 4 — Cripta fora do beta (feita)
 
-- `cryptMap.ts` sempre na arte de `art/proto/crypt.ts`, sem olhar `ART_ZOOM`; `protoCrypt` sai de `newArt.ts` e vira
-  importação normal (passa a ser `art/cryptArt.ts`, fora de `proto/`).
-- `crypt.ts` hoje usa o pincel dos heróis (`tibiaHero.ts`). Funciona e pode ficar assim; o custo é que a Cripta passa
-  a carregar `tibiaHero.ts` sempre. Se isso pesar, as funções usadas vão para `paint.ts`.
-- Saem as texturas de cenário de 32 px da Cripta (`cryptDecor.ts`, `walls.ts`, `floor.png`, `floor-boss.png`). Antes de
-  apagar, conferir quem mais usa: `refine.ts`, `heroes.ts` e monstros antigos importam parte disso.
+- A Cripta é sempre em 128 px por tile, com ou sem a opção Arte nova: `art/proto/crypt.ts` virou `art/cryptArt.ts` e
+  carrega sempre (`cryptArt` em `art/newArt.ts`, que perdeu o `ART_ZOOM`). Continua usando o pincel dos heróis
+  (`proto/tibiaHero.ts`).
+- A sombra das paredes e a poça de luz das chamas, que eram texturas de 32 px (a luz em blocos de 4 px), agora são de
+  128 px, em degraus de transparência (`cryptShade`, `cryptLight`).
+- Saíram o chão do pack (`floor.png`, `floor-boss.png`, `FLOOR_TEXTURE`) e as faixas antigas da Cripta em
+  `art/textures.ts`. `cryptDecor.ts` e `walls.ts` ficam pelos índices dos quadros (`CRYPT_FLOOR`, `RIM`...), pela
+  poeira e pela galeria (fase 5).
+- O teste `cenarios` não cobre a Cripta: a arte dela devolve canvas (precisa de navegador). A prévia `/mapa.html`
+  mostra o mapa.
 
-### Fase 5 — Limpeza
+### Fase 5 — Limpeza (feita)
 
-- Antes de apagar o `marshDecor.ts`: os Portões do Império importam dele o `worley` (`empireArt.ts`); mover a função
-  para `paint.ts`.
-- Apagar o que nenhum mapa usa mais: `marshDecor.ts`, `ruinsDecor.ts`, `desertDecor.ts`, `caveDecor.ts`, as chaves de
-  cenário de `MARSH_TEXTURE`/`SWAMP_TEXTURE`/`DESERT_TEXTURE` em `art/textures.ts`, e as seções de cenário da
-  galeria (`arte.ts`).
-- `docs/ARTE_TIBIA.md`: registrar a regra (cenário por código em 128 px; inimigo por IA) e tirar o "piloto da Cripta"
-  e o "chão do Pântano com a arte do agente" da lista de exceções.
-- GDD: a linha "Visual" de cada mapa passa a dizer "128 px por tile, por código".
+- Apagados os desenhos antigos de cenário que nenhum mapa usava mais: `marshDecor.ts`, `ruinsDecor.ts`,
+  `desertDecor.ts`, `caveDecor.ts`, `cryptDecor.ts`, `walls.ts` e `ambient.ts`.
+- O `worley` dos Portões foi para `paint.ts` (`worleyCells`, o mesmo cálculo: as impressões dos Portões não mudaram).
+  Os índices dos quadros, as medidas da parede e a poeira da Cripta foram para `cryptArt.ts`.
+- Galeria (`arte.ts`): saíram as seções de cenário antigo (paredes, ruínas do pântano, ambiente, detalhes da Cripta em
+  32 px); a Cripta aparece em 128 px, e a mini-cena usa o chão e as paredes novos. Os mapas inteiros se veem em
+  `/mapa.html`.
+- `docs/ARTE_TIBIA.md` registra a regra: cenário por código em 128 px; inimigo por IA.
+
+## Resultado
+
+Os 10 mapas e os objetos comuns (baú, portais, sangue) são pintados por código em 128 px por tile, sem PNG e sem
+depender da opção Arte nova. O que ficou de fora, para quando fizer falta: as marolas, bolhas e libélulas do pântano
+antigo e a poeira baixa do Mar de Areia (efeitos de ambiente); a Cripta fora do teste `cenarios` (a arte dela devolve
+canvas).
 
 ---
 
