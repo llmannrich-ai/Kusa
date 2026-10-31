@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBugbear, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -224,6 +224,13 @@ if (protoGoblin && protoHero) {
   const goblin = protoGoblin;
   BESTIARY_ART.goblin.anim = {
     ...BESTIARY_ART.goblin.anim!, sheet: () => goblin.sheet(), portrait: () => goblin.portrait(), hd: () => goblin.frames(), fill: goblin.fill,
+  };
+}
+// O Bugbear chefe também vem de uma arte de referência (PNG), com a maça cravejada e a coroa.
+if (protoBugbear && protoHero) {
+  const bugbear = protoBugbear;
+  BESTIARY_ART.bugbear.anim = {
+    ...BESTIARY_ART.bugbear.anim!, sheet: () => bugbear.sheet(), portrait: () => bugbear.portrait(), hd: () => bugbear.frames(), fill: bugbear.fill,
   };
 }
 // O sapo vem das folhas geradas por IA (PNG), com mais movimentos: a língua na habilidade, a morte e frente e costas.
