@@ -16,7 +16,10 @@ import {
  * tile para o outro, em qualquer combinação de vizinhos. A trilha de terra e as bordas usam a mesma ideia.
  */
 
-export type ForestVariant = "oldwood" | "heartwood" | "marsh";
+export type ForestVariant = "oldwood" | "heartwood" | "marsh" | "swamp";
+
+/** As duas matas alagadas: o Pântano do Kosaradius (`marsh`) e o Pântano das Ruínas (`swamp`, na paleta da baía). */
+export const isWetland = (variant: ForestVariant) => variant === "marsh" || variant === "swamp";
 
 /** Materiais (cada um é uma rampa de 6 tons por variante). */
 export enum F {
@@ -26,7 +29,8 @@ export enum F {
 
 /**
  * Cores base: o Bosque Velho em verde vivo e sol quente; o Coração da Mata em verde-azulado fechado, com brilho frio; o
- * Pântano do Kosaradius em oliva e marrom de brejo, água turva esverdeada, barba-de-velho cinza e vaga-lumes.
+ * Pântano do Kosaradius em oliva e marrom de brejo, água turva esverdeada, barba-de-velho cinza e vaga-lumes; o
+ * Pântano das Ruínas na paleta da baía (a do Kosaradius mais aberta e clara, com a água verde-azulada).
  */
 const BASES: Record<ForestVariant, Record<F, MaterialBase>> = {
   oldwood: {
@@ -52,6 +56,14 @@ const BASES: Record<ForestVariant, Record<F, MaterialBase>> = {
     [F.Water]: ["#52725a", 0.8, 8], [F.Deep]: ["#34503e", 0.8, 8], [F.Foam]: ["#a8b890", 0.35, 4], [F.Stone]: ["#6e7266", 1, 5],
     [F.Lichen]: ["#8a9a6a", 0.8, 6], [F.Fern]: ["#3e7434", 1, 8], [F.Flower]: ["#ece6d4", 0.5, 4], [F.Bloom]: ["#8a5ac8", 0.9, 8],
     [F.Cap]: ["#e4dccb", 0.7, 5], [F.Glow]: ["#d8f060", 1.2, 10, true], [F.Line]: ["#10180c", 0.4, 0],
+  },
+  swamp: {
+    [F.Grass]: ["#78893f", 0.6, 6], [F.Moss]: ["#6a7e40", 0.55, 6], [F.Litter]: ["#8e7742", 0.8, 6], [F.Dirt]: ["#755f40", 0.6, 5],
+    [F.Mud]: ["#59472f", 0.62, 5], [F.Under]: ["#1c2311", 0.5, 5], [F.Leaf]: ["#436130", 0.95, 8], [F.Leaf2]: ["#667d32", 0.95, 8],
+    [F.Leaf3]: ["#a3a890", 0.8, 5], [F.Bark]: ["#534639", 0.95, 6], [F.Birch]: ["#d1ccb9", 0.7, 4], [F.Wood]: ["#866a4a", 0.9, 6],
+    [F.Water]: ["#5e8c7e", 0.8, 8], [F.Deep]: ["#3e665c", 0.8, 8], [F.Foam]: ["#c4cbad", 0.35, 4], [F.Stone]: ["#6e7266", 1, 5],
+    [F.Lichen]: ["#a3ab80", 0.8, 6], [F.Fern]: ["#53883b", 1, 8], [F.Flower]: ["#f4f1e7", 0.5, 4], [F.Bloom]: ["#e0c040", 0.9, 8],
+    [F.Cap]: ["#ede7dc", 0.7, 5], [F.Glow]: ["#f4f68b", 1.2, 10, true], [F.Line]: ["#171f0f", 0.4, 0],
   },
 };
 
@@ -253,7 +265,7 @@ export function mudEdge(variant: ForestVariant, water: number): Paper {
 /** Sombra da mata no chão (o sol vem do noroeste): faixa ao sul e a leste do que é mata. */
 export function shadowEdge(variant: ForestVariant, from: number): Uint8ClampedArray {
   const out = new Uint8ClampedArray(HD * HD * 4);
-  const color = variant === "heartwood" ? [6, 16, 14] : variant === "marsh" ? [10, 20, 8] : [20, 34, 12];
+  const color = variant === "heartwood" ? [6, 16, 14] : isWetland(variant) ? [10, 20, 8] : [20, 34, 12];
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
       const d = distTo(from, x, y) / (40 + (sn(x, y, 32, 60) - 0.5) * 16);
@@ -395,7 +407,7 @@ export function canopyTile(variant: ForestVariant, open: number, v: number): Pap
 export function waterTile(variant: ForestVariant, land: number, v: number): Paper {
   const p = new Paper(variant);
   const heart = variant !== "oldwood";
-  const marsh = variant === "marsh";
+  const marsh = isWetland(variant);
   const shore = field(land, 64);
   p.fill([0, 0, HD - 1, HD - 1], () => true, F.Mud, () => 0.5);
   for (let y = 0; y < HD; y++)
@@ -748,6 +760,7 @@ export const SPECIES: Record<ForestVariant, readonly string[]> = {
   oldwood: ["oak", "beech", "birch", "pine"],
   heartwood: ["elder", "willow", "mushroom", "dead"],
   marsh: ["cypress", "mangrove", "willow", "dead"],
+  swamp: ["cypress", "mangrove", "willow", "dead"],
 };
 
 /** Copa de tufos: várias esferas de folhas numa cúpula, as de trás primeiro; cada tufo risca o de trás. */

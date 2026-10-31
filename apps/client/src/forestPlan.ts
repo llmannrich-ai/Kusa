@@ -6,10 +6,16 @@ import {
   heartTree, litterEdge, logTile, mudEdge, shadowEdge, stone, tallDecor, tree, wallTile, waterTile,
   type FlatDecor, type ForestVariant, type TallDecor,
 } from "./art/forestArt.ts";
+import {
+  BLOCK, COLUMN, MOSAIC_TILES, SMALL, WALL_HEIGHTS, WALL_LINK, WALL_SPRITE, pavingFringe, pavingTile, ruinColumn, ruinFlat,
+  ruinMosaic, ruinRubble, ruinSmall, ruinWall, type ColumnKind, type FlatDecor as RuinFlat, type SmallDecor,
+} from "./art/swampArt.ts";
 
-// O plano do Bosque Velho, do Coração da Mata e do Pântano do Kosaradius, sem o Phaser: que quadro vai em cada tile de
-// cada camada e que objeto fica de pé onde. `forestMap.ts` desenha no jogo; o plano também serve para prévias fora do
+// O plano do Bosque Velho, do Coração da Mata e dos dois pântanos, sem o Phaser: que quadro vai em cada tile de cada
+// camada e que objeto fica de pé onde. `forestMap.ts` desenha no jogo; o plano também serve para prévias fora do
 // navegador. O pântano é a mesma mata, alagada: passarelas em vez de pontes, lamaçais no capim, árvores dentro d'água.
+// O Pântano das Ruínas tem, no lugar dos troncos, o que resta do império afundado (`art/swampArt.ts`): lajes, muros,
+// colunas, entulho e o mosaico da arena.
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
 const RING = [[0, -1, OPEN.n], [1, 0, OPEN.e], [0, 1, OPEN.s], [-1, 0, OPEN.w], [1, -1, OPEN.ne], [-1, -1, OPEN.nw], [1, 1, OPEN.se], [-1, 1, OPEN.sw]] as const;
@@ -27,9 +33,14 @@ const CANOPY_VARIANTS = 4;
 export const LAYERS = ["chao", "trilha", "barro", "folhas", "sombra", "relevo", "enfeites"] as const;
 export type Layer = (typeof LAYERS)[number];
 
+/** Folhas fixas de cada variante (`standingSheets`); as ruínas do pântano vêm em folhas montadas pelo plano. */
+export type FixedSheet = "trunk" | "crown" | "giantTrunk" | "giantCrown" | "heartTrunk" | "heartCrown" | "heartGlow" | "stone" | "stoneGlow" | "tall";
+/** Folha de quadros: tamanho do quadro e a pintura de cada um. */
+export interface SheetSpec { w: number; h: number; frames: (() => Uint8ClampedArray)[] }
+
 /** Objeto de pé: `sheet` é a folha de quadros, `x` e `y` o tile da base (o pé do quadro fica no meio da base). */
 export interface Standing {
-  sheet: "trunk" | "crown" | "giantTrunk" | "giantCrown" | "heartTrunk" | "heartCrown" | "heartGlow" | "stone" | "stoneGlow" | "tall";
+  sheet: FixedSheet | RuinSheet;
   frame: number;
   x: number;
   y: number;
@@ -38,16 +49,24 @@ export interface Standing {
   scale: number;
   flip: boolean;
   depth: number;
+  /** Deitado no chão (o mosaico): fica logo acima das camadas de chão, abaixo de todo o resto. */
+  floor?: boolean;
+  /** Quantos px (de jogo) o pé sobe acima da linha de baixo do tile; 2 se não disser (as árvores). */
+  lift?: number;
 }
+
+type RuinSheet = "ruinWall" | "ruinColumn" | "ruinBlock" | "ruinSmall" | "ruinMosaic";
 
 /**
  * O que o mapa desenha, sem o Phaser (para o jogo e para prévias): o atlas com os quadros que o mapa usa, o quadro de
  * cada tile em cada camada e os objetos de pé.
  */
 export function planForest(d: Dungeon) {
-  const variant: ForestVariant = d.mapId === "heartwood" ? "heartwood" : d.mapId === "marsh" ? "marsh" : "oldwood";
+  const variant: ForestVariant = d.mapId === "heartwood" ? "heartwood" : d.mapId === "marsh" ? "marsh" : d.mapId === "swamp" ? "swamp" : "oldwood";
   const heart = variant === "heartwood";
-  const marsh = variant === "marsh";
+  /** As duas matas alagadas (o Kosaradius e o Pântano das Ruínas) seguem as mesmas regras de água e de árvore. */
+  const marsh = variant === "marsh" || variant === "swamp";
+  const ruins = variant === "swamp";
   const W = d.width;
   const H = d.height;
   const at = (x: number, y: number) => tileAt(d, x, y);
@@ -120,7 +139,7 @@ export function planForest(d: Dungeon) {
    * da arena e das passarelas).
    */
   const bogSet = new Uint8Array(W * H);
-  if (marsh) {
+  if (variant === "marsh") {
     const cellNoise = (x: number, y: number) => {
       const C = 7, gx = Math.floor(x / C), gy = Math.floor(y / C), fx = x / C - gx, fy = y / C - gy;
       const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
@@ -133,6 +152,34 @@ export function planForest(d: Dungeon) {
         if (at(x, y) === Tile.Floor && cellNoise(x, y) > 0.7 && !inRooms(x, y) && !inArena(x, y) && !onBridge(x, y)) bogSet[y * W + x] = 1;
   }
   const bog = (x: number, y: number) => inMap(x, y) && bogSet[y * W + x] === 1;
+
+  // Lajes (Pântano das Ruínas): as salas inteiras, uma beirada irregular em volta delas e o chão em volta dos restos de
+  // muro pelo campo. Laje solta no capim (sem duas vizinhas de laje) não fica.
+  const pavedSet = new Uint8Array(W * H);
+  if (ruins) {
+    const rooms = [d.boss, ...d.side];
+    const inRoom = (x: number, y: number) => rooms.some((r) => inRect(r, x, y));
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const t = at(x, y);
+        if (t !== Tile.Floor && t !== Tile.Ruin && t !== Tile.Portal) continue;
+        if (inRoom(x, y)) { pavedSet[y * W + x] = 1; continue; }
+        const spill = rooms.some((r) => inRect({ x: r.x - 1, y: r.y - 1, w: r.w + 2, h: r.h + 2 }, x, y)) && hash(x, y, 80) < 0.45;
+        let ruinNear = 3;
+        for (let dy = -2; dy <= 2; dy++)
+          for (let dx = -2; dx <= 2; dx++) if (ruin(x + dx, y + dy) && !inRoom(x + dx, y + dy)) ruinNear = Math.min(ruinNear, Math.max(Math.abs(dx), Math.abs(dy)));
+        const byWater = DIRS.some(([dx, dy]) => at(x + dx, y + dy) === Tile.Water);
+        if (spill || ruinNear === 0 || (ruinNear === 1 && hash(x, y, 81) < 0.8) || (ruinNear === 2 && !byWater && hash(x, y, 82) < 0.35)) pavedSet[y * W + x] = 1;
+      }
+    const spare = pavedSet.slice();
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        if (!spare[i] || ruin(x, y) || inRoom(x, y)) continue;
+        if (DIRS.filter(([dx, dy]) => inMap(x + dx, y + dy) && spare[(y + dy) * W + x + dx]).length < 2) pavedSet[i] = 0;
+      }
+  }
+  const paved = (x: number, y: number) => inMap(x, y) && pavedSet[y * W + x] === 1;
   /** Vizinhos (8 bits) que passam no teste. */
   const ring = (x: number, y: number, test: (x: number, y: number) => boolean) => {
     let m = 0;
@@ -159,6 +206,8 @@ export function planForest(d: Dungeon) {
     const n = hash(x, y, seed);
     return n < 0.5 ? 0 : 1 + Math.floor((n - 0.5) * 2 * (count - 1));
   };
+  /** Tiles cobertos pelo mosaico da arena (Pântano das Ruínas). */
+  const onMosaic = (x: number, y: number) => ruins && Math.abs(x - arenaCenter.x) <= (MOSAIC_TILES.w >> 1) && y - arenaCenter.y >= -(MOSAIC_TILES.h >> 1) && y - arenaCenter.y <= MOSAIC_TILES.h >> 1;
   const reserved = (x: number, y: number) =>
     tileDistance(x, y, d.portal.x, d.portal.y) <= 1 || d.side.some((r) => x === r.x + 1 && y === r.y + 1)
     || tileDistance(x, y, d.bossPortal.x, d.bossPortal.y) <= 1;
@@ -216,7 +265,14 @@ export function planForest(d: Dungeon) {
         put("relevo", x, y, `canopy${open}-${v}`, () => canopyTile(variant, open, v).render(true));
         continue;
       }
-      if (t === Tile.Ruin && !lone(x, y, ruin)) {
+      if (paved(x, y)) {
+        // Lajes do império (calçamento de 2×2 tiles) e o capim invadindo a beira.
+        const q = (x & 1) + 2 * (y & 1);
+        put("trilha", x, y, `paving${q}`, () => pavingTile(q));
+        const grass = edges(x, y, (a, b) => inMap(a, b) && !paved(a, b) && at(a, b) !== Tile.Water && !forest(a, b) && !wetTree[b * W + a]);
+        if (grass) put("folhas", x, y, `fringe${grass}`, () => pavingFringe(grass));
+      }
+      if (t === Tile.Ruin && !lone(x, y, ruin) && !ruins) {
         const joins = ring(x, y, ruin) & (OPEN.n | OPEN.e | OPEN.s | OPEN.w);
         const v = pick(x, y, 3, 7);
         if (heart) {
@@ -239,7 +295,7 @@ export function planForest(d: Dungeon) {
       const wet = edges(x, y, (a, b) => at(a, b) === Tile.Water && !onBridge(a, b));
       if (wet) put("barro", x, y, `mud${wet}`, () => mudEdge(variant, wet).render(false));
       const woods = edges(x, y, forest);
-      if (woods && !inArena(x, y)) put("folhas", x, y, `litter${woods}`, () => litterEdge(variant, woods).render(true));
+      if (woods && !inArena(x, y) && !paved(x, y)) put("folhas", x, y, `litter${woods}`, () => litterEdge(variant, woods).render(true));
       const shade = woods & (OPEN.n | OPEN.w | OPEN.nw);
       if (shade) put("sombra", x, y, `shade${shade}`, () => shadowEdge(variant, shade));
 
@@ -247,6 +303,16 @@ export function planForest(d: Dungeon) {
       if (kind[i] || reserved(x, y) || t === Tile.Portal) continue;
       if (fairy.has(i)) {
         put("enfeites", x, y, `flat-shrooms-${i % 3}`, () => flatDecor(variant, "shrooms", i % 3).render(true));
+        continue;
+      }
+      if (paved(x, y)) {
+        // Lajes: rachaduras, cacos, tesselas, inscrições, poças e ervas nas juntas; mais no pé dos muros.
+        if (onMosaic(x, y)) continue;
+        const byRuin = DIRS.some(([dx, dy]) => ruin(x + dx, y + dy));
+        if (hash(x, y, 91) >= (byRuin ? 0.32 : 0.16)) continue;
+        const k = ruinFlatKind(hash(x, y, 92), byRuin);
+        const v = Math.floor(hash(x, y, 93) * 3);
+        put("enfeites", x, y, `ruin-${k}-${v}`, () => ruinFlat(k, v));
         continue;
       }
       const n = hash(x, y, 91);
@@ -260,6 +326,22 @@ export function planForest(d: Dungeon) {
 
   // --- De pé ------------------------------------------------------------------------------
   const standing: Standing[] = [];
+  // Folhas das ruínas, montadas com os quadros que o mapa usa (as combinações de muro são muitas).
+  const ruinSheets: Record<RuinSheet, SheetSpec & { keys: Map<string, number> }> = {
+    ruinWall: { ...WALL_SPRITE, frames: [], keys: new Map() },
+    ruinColumn: { ...COLUMN, frames: [], keys: new Map() },
+    ruinBlock: { ...BLOCK, frames: [], keys: new Map() },
+    ruinSmall: { ...SMALL, frames: [], keys: new Map() },
+    ruinMosaic: { w: MOSAIC_TILES.w * 128, h: MOSAIC_TILES.h * 128, frames: [], keys: new Map() },
+  };
+  const ruinFrame = (sheet: RuinSheet, key: string, paint: () => Uint8ClampedArray) => {
+    const s = ruinSheets[sheet];
+    let i = s.keys.get(key);
+    if (i === undefined) { i = s.frames.length; s.keys.set(key, i); s.frames.push(paint); }
+    return i;
+  };
+  const putRuin = (sheet: RuinSheet, key: string, paint: () => Uint8ClampedArray, x: number, y: number, flip = false) =>
+    standing.push({ sheet, frame: ruinFrame(sheet, key, paint), x, y, span: 1, scale: 1, flip, depth: depthOf(y), lift: 0 });
   const depthOf = (y: number) => (y + 1) * TILE_SIZE - 0.25;
   const species = SPECIES[variant];
   for (let y = 0; y < H; y++)
@@ -273,6 +355,34 @@ export function planForest(d: Dungeon) {
         const scale = 0.85 + hash(x, y, 98) * 0.3;
         standing.push({ sheet: "trunk", frame, x, y, span: 1, scale, flip, depth: depthOf(y) });
         standing.push({ sheet: "crown", frame, x, y, span: 1, scale, flip, depth: depthOf(y) + 0.1 });
+        continue;
+      }
+      if (ruins && at(x, y) === Tile.Ruin) {
+        if (!lone(x, y, ruin)) {
+          // Muro: liga nos vizinhos que também são muro; a altura muda por trecho (3 tiles), com degrau aqui e ali.
+          const links = (ruin(x, y - 1) ? WALL_LINK.n : 0) | (ruin(x + 1, y) ? WALL_LINK.e : 0) | (ruin(x, y + 1) ? WALL_LINK.s : 0) | (ruin(x - 1, y) ? WALL_LINK.w : 0);
+          const height = (a: number, b: number) => WALL_HEIGHTS[Math.floor(hash(Math.floor(a / 3), Math.floor(b / 3), 41) * WALL_HEIGHTS.length)];
+          const h = height(x, y);
+          const step = links & WALL_LINK.s ? Math.max(0, h - height(x, y + 1)) : 0;
+          const vn = hash(Math.floor(x / 3), Math.floor(y / 3), 60);
+          const v = vn < 0.45 ? 0 : vn < 0.85 ? 1 : 2;
+          putRuin("ruinWall", `${links}-${h}-${step}-${v}`, () => ruinWall(links, h, step, v), x, y);
+          continue;
+        }
+        // Pedra solta: coluna inteira na arena, quebrada nas salas e, pelo campo, quebrada, toco ou entulho.
+        const m = hash(x, y, 55);
+        const v = Math.floor(hash(x, y, 56) * 3);
+        if (inArena(x, y) || inRooms(x, y) || m < 0.6) {
+          const kind: ColumnKind = inArena(x, y) ? (m < 0.5 ? "ionic" : "corinthian") : inRooms(x, y) ? (m < 0.7 ? "broken" : "ionic") : m < 0.35 ? "broken" : "stump";
+          putRuin("ruinColumn", `${kind}${v}`, () => ruinColumn(kind, v), x, y);
+        } else putRuin("ruinBlock", `b${v}`, () => ruinRubble(v), x, y, flip);
+        continue;
+      }
+      if (ruins && at(x, y) === Tile.Water && !wetTree[i] && hash(x, y, 19) < (near(x, y, 3, paved) ? 0.08 : 0.02)) {
+        // Ruínas dentro d'água: blocos meio afundados e tocos de coluna.
+        const v = Math.floor(hash(x, y, 20) * 3);
+        if (hash(x, y, 21) < 0.5) putRuin("ruinBlock", `u${v}`, () => ruinRubble(v, true), x, y, flip);
+        else putRuin("ruinColumn", `stump${v}`, () => ruinColumn("stump", v), x, y);
         continue;
       }
       if (marsh && at(x, y) === Tile.Ruin && lone(x, y, ruin)) {
@@ -289,6 +399,16 @@ export function planForest(d: Dungeon) {
       }
       const t = at(x, y);
       if (t !== Tile.Floor || kind[i] || reserved(x, y) || layers.enfeites[i] >= 0 || trail(x, y) || onBridge(x, y) || bog(x, y)) continue;
+      if (paved(x, y)) {
+        // De pé nas lajes: tambor de coluna, cabeça de estátua, urnas, ânfora ou acanto na fresta; nunca no mosaico nem
+        // perto dos baús.
+        if (onMosaic(x, y) || d.side.some((r) => tileDistance(x, y, r.x + 1, r.y + 1) <= 1) || hash(x, y, 101) >= (inRooms(x, y) ? 0.06 : 0.1)) continue;
+        const m = hash(x, y, 102);
+        const kind: SmallDecor = m < 0.3 ? "head" : m < 0.55 ? "urns" : m < 0.75 ? "amphora" : "acanthus";
+        const v = Math.floor(hash(x, y, 103) * 2);
+        putRuin("ruinSmall", `${kind}${v}`, () => ruinSmall(kind, v), x, y, flip);
+        continue;
+      }
       if (inArena(x, y) && Math.hypot(x - arenaCenter.x, y - arenaCenter.y) < 7) continue;
       const n = hash(x, y, 101);
       const byWater = near(x, y, 1, (a, b) => at(a, b) === Tile.Water);
@@ -304,13 +424,27 @@ export function planForest(d: Dungeon) {
     standing.push({ sheet: "giantTrunk", frame: v, x: g.x, y: g.y + 1, span: 2, scale: 1, flip, depth: depthOf(g.y + 1) });
     standing.push({ sheet: "giantCrown", frame: v, x: g.x, y: g.y + 1, span: 2, scale: 1, flip, depth: depthOf(g.y + 1) + 0.1 });
   }
+  if (ruins) {
+    // O mosaico do chão da arena, no meio dela.
+    const frame = ruinFrame("ruinMosaic", "m", ruinMosaic);
+    standing.push({ sheet: "ruinMosaic", frame, x: arenaCenter.x - (MOSAIC_TILES.w >> 1), y: arenaCenter.y + (MOSAIC_TILES.h >> 1), span: MOSAIC_TILES.w, scale: 1, flip: false, depth: 0, floor: true, lift: 0 });
+  }
   if (heartBlock) {
     const hb = { x: heartBlock.x0, y: heartBlock.y1, span: heartBlock.x1 - heartBlock.x0 + 1 };
     standing.push({ sheet: "heartTrunk", frame: 0, ...hb, scale: 1, flip: false, depth: depthOf(hb.y) });
     standing.push({ sheet: "heartGlow", frame: 0, ...hb, scale: 1, flip: false, depth: depthOf(hb.y) + 0.05 });
     standing.push({ sheet: "heartCrown", frame: 0, ...hb, scale: 1, flip: false, depth: depthOf(hb.y) + 0.1 });
   }
-  return { variant, atlas, layers, standing };
+  const extraSheets = Object.fromEntries(Object.entries(ruinSheets).map(([k, s]) => [k, { w: s.w, h: s.h, frames: s.frames }])) as Record<RuinSheet, SheetSpec>;
+  return { variant, atlas, layers, standing, extraSheets };
+}
+
+/** Enfeite rasteiro das lajes; no pé dos muros, mais entulho e erva. */
+function ruinFlatKind(m: number, byRuin: boolean): RuinFlat {
+  const table: [number, RuinFlat][] = byRuin
+    ? [[0.35, "stones"], [0.6, "shards"], [0.8, "weeds"], [0.9, "leaves"], [1, "dust"]]
+    : [[0.16, "shards"], [0.3, "tesserae"], [0.42, "weeds"], [0.54, "puddle"], [0.64, "inscription"], [0.74, "leaves"], [0.82, "drum"], [0.9, "bones"], [0.96, "skull"], [1, "stones"]];
+  return table.find(([limit]) => m < limit)![1];
 }
 
 /** Folhas de quadros dos objetos de pé: tamanho do quadro e a pintura de cada um. */
@@ -333,7 +467,7 @@ export function standingSheets(variant: ForestVariant) {
     stone: { w: TALL.w, h: TALL.h, frames: stones.map((f) => () => f().image) },
     stoneGlow: { w: TALL.w, h: TALL.h, frames: stones.map((f) => () => f().glow) },
     tall: { w: TALL.w, h: TALL.h, frames: TALL_DECOR.map((k, i) => () => tallDecor(variant, k, i)) },
-  } satisfies Record<Standing["sheet"], { w: number; h: number; frames: (() => Uint8ClampedArray)[] }>;
+  } satisfies Record<FixedSheet, { w: number; h: number; frames: (() => Uint8ClampedArray)[] }>;
 }
 
 /** Espécie da árvore solta do pântano (índice em `SPECIES.marsh`): cipreste, mangue, salgueiro ou morta. */

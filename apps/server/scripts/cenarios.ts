@@ -28,6 +28,7 @@ import {
 } from "../../client/src/art/forestArt.ts";
 import { FLAT_DECOR as EMPIRE_FLAT, flatDecor as empireFlat, grassTile } from "../../client/src/art/empireArt.ts";
 import { COLUMN_KINDS, SMALL_DECOR, columnSprite, smallDecor, statueSprite, tombSprite } from "../../client/src/art/empireMonuments.ts";
+import { pavingFringe, pavingTile, ruinColumn, ruinFlat, ruinMosaic, ruinRubble, ruinSmall, ruinWall } from "../../client/src/art/swampArt.ts";
 
 /** Tempo máximo de uma peça do tamanho de uma árvore (256×384) no CI; peça maior ganha tempo na proporção da área. */
 const PIECE_MS = 400;
@@ -85,6 +86,18 @@ const SCENERY: Record<string, Piece[]> = {
     ...[0, OPEN.n].map((e) => ({ name: `passarela norte-sul ${e}`, draw: () => boardTile("marsh", false, e, 1).render(true) })),
     ...[[0, 1], [OPEN.n, 0], [OPEN.n | OPEN.w | OPEN.nw, 0]].map(([m, v]) => ({ name: `lamaçal ${m}-${v}`, draw: () => bogTile("marsh", m, v).render(false) })),
   ],
+  "Pântano das Ruínas": [
+    ...woods("swamp"),
+    ...range(4).map((q) => ({ name: `lajes ${q}`, draw: () => pavingTile(q) })),
+    ...[OPEN.n, OPEN.s | OPEN.e].map((m) => ({ name: `capim nas lajes ${m}`, draw: () => pavingFringe(m) })),
+    ...[[2 | 8, 56, 0], [1 | 4, 82, 26], [0, 56, 0]].map(([l, h, st]) => ({ name: `muro ${l}-${h}-${st}`, draw: () => ruinWall(l, h, st, 1) })),
+    ...(["ionic", "broken", "stump"] as const).map((k) => ({ name: `coluna ${k}`, draw: () => ruinColumn(k, 0) })),
+    { name: "entulho", draw: () => ruinRubble(1) },
+    { name: "entulho na água", draw: () => ruinRubble(2, true) },
+    ...(["head", "urns"] as const).map((k) => ({ name: `enfeite de pé ${k}`, draw: () => ruinSmall(k, 0) })),
+    ...(["shards", "inscription", "puddle"] as const).map((k) => ({ name: `enfeite ${k}`, draw: () => ruinFlat(k, 0) })),
+    { name: "mosaico", draw: ruinMosaic },
+  ],
   "Portões do Império": [
     ...range(4).map((v) => ({ name: `capim ${v}`, draw: () => grassTile(v).render(false), seam: true })),
     ...EMPIRE_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => empireFlat(k, 0).render(false) })),
@@ -129,7 +142,7 @@ function seamOk(px: Uint8ClampedArray, column: boolean) {
 }
 
 // Atlas dos mapas desenhados pelo plano da mata: cabe em 4096 px de altura (o limite de textura dos celulares).
-const PLANNED: MapId[] = ["oldwood", "heartwood", "marsh"];
+const PLANNED: MapId[] = ["oldwood", "heartwood", "marsh", "swamp"];
 for (const mapId of PLANNED.filter((m) => MAP_IDS.includes(m))) {
   let worst = 0;
   for (let seed = 1; seed <= 6; seed++) {

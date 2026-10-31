@@ -22,16 +22,7 @@ import {
   caveDecorStrip, caveFloorStrip, caveGlowCanvas, caveMouthCanvas, caveShadeStrip, caveShaftCanvas, caveTallStrip, hallFloorStrip,
   rockFaceStrip, rockRimStrip, rockTopStrip,
 } from "./caveDecor.ts";
-import {
-  BUBBLE_FRAMES, TREE_CROWN, TREE_TRUNK, TREE_VARIANTS, bubbleStrip, canopyStrip, dragonflyCanvas, grassStrip, leafCanvas as marshLeafCanvas,
-  logStrip, marshFloorStrip, marshFringeStrip, marshShadeStrip, marshShoreStrip, marshTallStrip, marshWaterStrip, mudStrip, plankStrip,
-  treeCrownSheet, treeShadowCanvas, treeTrunkSheet, waterStrip as marshWaterTiles,
-} from "./marshDecor.ts";
-import { RIPPLE_FRAMES, fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./ambient.ts";
-import {
-  COLUMN_SPRITE, COLUMN_VARIANTS, columnSheet, mosaicCanvas, pavingStrip as ruinPavingStrip, ruinFloorStrip, ruinTallStrip, ruinWallCanvas,
-  ruinWaterStrip, toSwampTone,
-} from "./ruinsDecor.ts";
+import { shadeStrip } from "./ambient.ts";
 
 /**
  * Ponte entre a arte e o Phaser: carrega os PNGs do pack Dungeon Crawl (CC0, ver
@@ -413,114 +404,6 @@ export function createDesertArt(scene: Phaser.Scene) {
       hideOnComplete: true,
     });
   }
-}
-
-/** Pântano do Kosaradius: tudo em arte própria (`marshDecor.ts`), gerado na primeira hunt no Pântano do Kosaradius. */
-export const MARSH_TEXTURE = {
-  grass: "marsh-grass",
-  mud: "marsh-mud",
-  water: "marsh-water",
-  planks: "marsh-planks",
-  canopy: "marsh-canopy",
-  shore: "marsh-shore",
-  fringe: "marsh-fringe",
-  shade: "marsh-shade",
-  floor: "marsh-decor-floor",
-  waterDecor: "marsh-decor-water",
-  tall: "marsh-decor-tall",
-  logs: "marsh-logs",
-  trunk: "marsh-tree-trunk",
-  crown: "marsh-tree-crown",
-  treeShadow: "marsh-tree-shadow",
-  ripple: "marsh-ripple",
-  bubble: "marsh-bubble",
-  firefly: "marsh-firefly",
-  mist: "marsh-mist",
-  leaf: "marsh-leaf",
-  dragonfly: "marsh-dragonfly",
-};
-/** Texturas que os dois pântanos (floresta alagada) usam, cada um com as suas chaves (`wetlandMap.ts`). */
-export type WetlandTexture = typeof MARSH_TEXTURE;
-
-/**
- * Pântano das Ruínas: a natureza do Pântano do Kosaradius na paleta da baía (`swampTone`) e as ruínas em arte própria
- * (`ruinsDecor.ts`), geradas na primeira hunt no Pântano das Ruínas.
- */
-export const SWAMP_TEXTURE = {
-  ...(Object.fromEntries(Object.entries(MARSH_TEXTURE).map(([k, v]) => [k, v.replace("marsh-", "swamp-")])) as WetlandTexture),
-  paving: "swamp-paving",
-  ruinFloor: "swamp-ruin-floor",
-  ruinTall: "swamp-ruin-tall",
-  ruinWater: "swamp-ruin-water",
-  columns: "swamp-columns",
-  mosaic: "swamp-mosaic",
-};
-
-/**
- * Gera as texturas de um pântano (uma vez por jogo): faixas 32×32, as árvores, as bolhas e as marolas. `tone`
- * repinta tudo na paleta do mapa (o Pântano das Ruínas usa os desenhos do Kosaradius em outra paleta).
- */
-function createWetlandArt(scene: Phaser.Scene, tex: WetlandTexture, tone: (c: HTMLCanvasElement, water: boolean) => HTMLCanvasElement = (c) => c) {
-  const wet = [tex.water, tex.shore, tex.waterDecor, tex.planks, tex.ripple];
-  const toned = (key: string, draw: () => HTMLCanvasElement) => () => tone(draw(), wet.includes(key));
-  addStrips(scene, ([
-    [tex.grass, grassStrip],
-    [tex.mud, mudStrip],
-    [tex.water, marshWaterTiles],
-    [tex.planks, plankStrip],
-    [tex.canopy, canopyStrip],
-    [tex.shore, marshShoreStrip],
-    [tex.fringe, marshFringeStrip],
-    [tex.shade, marshShadeStrip],
-    [tex.floor, marshFloorStrip],
-    [tex.waterDecor, marshWaterStrip],
-    [tex.tall, marshTallStrip],
-    [tex.logs, logStrip],
-    [tex.ripple, rippleStrip],
-  ] as [string, () => HTMLCanvasElement][]).map(([key, draw]) => [key, toned(key, draw)]));
-  for (const [key, draw, size] of [[tex.trunk, treeTrunkSheet, TREE_TRUNK], [tex.crown, treeCrownSheet, TREE_CROWN]] as const) {
-    if (scene.textures.exists(key)) continue;
-    const texture = scene.textures.addCanvas(key, tone(draw(), false))!;
-    for (let i = 0; i < TREE_VARIANTS; i++) texture.add(i, 0, i * size.w, 0, size.w, size.h);
-  }
-  if (!scene.textures.exists(tex.bubble)) {
-    const texture = scene.textures.addCanvas(tex.bubble, bubbleStrip())!;
-    for (let i = 0; i < BUBBLE_FRAMES; i++) texture.add(i, 0, i * 16, 0, 16, 16);
-  }
-  for (const [key, draw] of [
-    [tex.treeShadow, treeShadowCanvas], [tex.firefly, fireflyCanvas], [tex.mist, mistCanvas],
-    [tex.leaf, () => tone(marshLeafCanvas(), false)], [tex.dragonfly, dragonflyCanvas],
-  ] as const) {
-    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, draw());
-  }
-  for (const [key, frames, frameRate] of [[tex.ripple, RIPPLE_FRAMES, 6], [tex.bubble, BUBBLE_FRAMES, 7]] as const) {
-    if (scene.anims.exists(key)) continue;
-    scene.anims.create({ key, frames: Array.from({ length: frames }, (_, frame) => ({ key, frame })), frameRate, hideOnComplete: true });
-  }
-}
-
-export function createMarshArt(scene: Phaser.Scene) {
-  createWetlandArt(scene, MARSH_TEXTURE);
-}
-
-export function createSwampArt(scene: Phaser.Scene) {
-  createWetlandArt(scene, SWAMP_TEXTURE, (c, water) => toSwampTone(c, water));
-  addStrips(scene, [
-    [SWAMP_TEXTURE.paving, ruinPavingStrip],
-    [SWAMP_TEXTURE.ruinFloor, ruinFloorStrip],
-    [SWAMP_TEXTURE.ruinTall, ruinTallStrip],
-    [SWAMP_TEXTURE.ruinWater, ruinWaterStrip],
-  ]);
-  if (!scene.textures.exists(SWAMP_TEXTURE.columns)) {
-    const texture = scene.textures.addCanvas(SWAMP_TEXTURE.columns, columnSheet())!;
-    for (let i = 0; i < COLUMN_VARIANTS; i++) texture.add(i, 0, i * COLUMN_SPRITE.w, 0, COLUMN_SPRITE.w, COLUMN_SPRITE.h);
-  }
-  if (!scene.textures.exists(SWAMP_TEXTURE.mosaic)) scene.textures.addCanvas(SWAMP_TEXTURE.mosaic, mosaicCanvas());
-}
-
-/** Trecho de muro das ruínas do pântano (`ruinWallCanvas`), criado na primeira vez que é pedido. */
-export function swampWallTexture(scene: Phaser.Scene, links: number, height: number, variant: number) {
-  return lazyCanvas(scene, `swamp-wall-${links}-${height}-${variant}`, () => ruinWallCanvas(links, height, variant));
 }
 
 /** Textura de tampa de parede, criada na primeira vez que é pedida. */
