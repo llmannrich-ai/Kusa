@@ -95,6 +95,13 @@ export interface FortressLayout {
   fires: { x: number; y: number }[];
   /** Colunas postas (colunatas do pátio e pilares do salão); outra ruína de 1 tile é bloco caído. */
   columns: { x: number; y: number }[];
+  /** Muralhas de lado e da beira do precipício (o muro alto, como as muralhas). */
+  ramparts: Rect[];
+  /**
+   * Calçamento antigo quebrado (o capim nas falhas): o pátio externo, o do esporão e, mais falhado, as ruas da vila baixa
+   * (o último).
+   */
+  yards: Rect[];
 }
 
 export interface EmpireLayout {
@@ -185,7 +192,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "cavern") return generateCavern(seed);
   if (mapId === "dunes" || mapId === "mesas") return generateDunes(seed, mapId);
   if (mapId === "gates") return generateGates(seed);
-  if (mapId === "fortress") return generateFortress(seed);
+  if (mapId === "fortress") return generateFortress(FORTRESS_SEED);
   if (mapId === "oldwood" || mapId === "heartwood") return generateForest(seed, mapId);
   return generateCrypt(seed);
 }
@@ -2136,6 +2143,14 @@ function carveCatacomb(rng: ReturnType<typeof createRng>, tiles: Uint8Array, wid
   return { area: underArea, sanctum, portal, treasury, chests, exit, vestibule, gallery, chambers, zones };
 }
 
+/**
+ * A Fortaleza Orc é um mapa fixo: é sempre a mesma planta, qualquer que seja a seed da sala. O gerador continua o mesmo
+ * (cliente e servidor chegam ao mesmo desenho), só que sempre com esta seed, escolhida pela composição: os dois portões,
+ * a ponte de pedra e a porta da torre de menagem quase na mesma linha, a ponte de cordas do outro lado, acampamentos
+ * cheios e 5 casernas. Trocar este número troca o mapa de todo mundo (e a versão das regras).
+ */
+export const FORTRESS_SEED = 9;
+
 const FORT_W = 84;
 const FORT_H = 128;
 /** Linhas do desfiladeiro entre a vila baixa e a muralha externa. */
@@ -2145,7 +2160,8 @@ const FORT_KEEP = { w: 19, h: 15 } as const;
 const FORT_MEADOWS = 5;
 
 /**
- * Fortaleza Orc (Ruínas do Império): um castelo do império tomado pelos orcs, em pé (o celular na vertical). A equipe
+ * Fortaleza Orc (Ruínas do Império): um castelo do império tomado pelos orcs, em pé (o celular na vertical). Mapa fixo:
+ * `generateDungeon` sempre passa `FORTRESS_SEED`. A equipe
  * chega pelo sul, na vila baixa em ruínas, e cruza o **desfiladeiro** pela ponte de pedra (até o portão da muralha
  * externa, entre duas torres) ou pela ponte de cordas dos orcs (até uma brecha). Dentro, o **pátio externo** virou
  * acampamento: tendas, fogueiras, paliçadas e totens entre casernas e cocheiras em ruínas. A **muralha interna** fecha
@@ -2284,6 +2300,28 @@ function buildFortress(seed: number): Dungeon {
     for (const x of [yard.x - 1, yard.x + yard.w])
       if (rng.next() < 0.75) { set(x, y, Tile.Ruin); props.add(y * W + x); }
   for (const t of towers) rect(t, Tile.Ruin);
+
+  // O pátio externo fechado: muralhas dos lados (a mata fica do lado de fora), a da beira do precipício no norte (dos
+  // lados do esporão) e as torres dos 4 cantos.
+  const ramparts: Rect[] = [];
+  const bailey = { y0: spurBottom + 1, y1: outerY - 1 };
+  for (let y = bailey.y0; y <= outerY + 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      if (x < 4 || x > W - 5) set(x, y, Tile.Wall);
+      else if (x < 6 || x > W - 7) set(x, y, Tile.Ruin);
+      else if (y <= bailey.y1 && get(x, y) === Tile.Wall) set(x, y, Tile.Floor);
+    }
+  ramparts.push({ x: 4, y: bailey.y0, w: 2, h: outerY - bailey.y0 }, { x: W - 6, y: bailey.y0, w: 2, h: outerY - bailey.y0 });
+  for (const [x0, x1] of [[6, left[spurBottom] - 1], [right[spurBottom] + 1, W - 7]] as const) {
+    if (x1 < x0) continue;
+    rect({ x: x0, y: bailey.y0, w: x1 - x0 + 1, h: 2 }, Tile.Ruin);
+    ramparts.push({ x: x0, y: bailey.y0, w: x1 - x0 + 1, h: 2 });
+  }
+  const corners: Rect[] = [
+    { x: 3, y: bailey.y0, w: 3, h: 4 }, { x: W - 6, y: bailey.y0, w: 3, h: 4 },
+    { x: 3, y: outerY - 2, w: 3, h: 4 }, { x: W - 6, y: outerY - 2, w: 3, h: 4 },
+  ];
+  for (const t of corners) { rect(t, Tile.Ruin); towers.push(t); }
 
   // Entrada ao sul, na vila baixa, e a estrada até a ponte (com uma curva); a trilha dos orcs vai até a de cordas.
   const spawn: Rect = { x: clamp(gx + rng.int(-18, 18) - 5, 8, W - 18), y: H - 16, w: 10, h: 9 };
@@ -2494,6 +2532,27 @@ function buildFortress(seed: number): Dungeon {
       }
     });
   }
+  // O parapeito da beira do esporão, caído em trechos: muro baixo no primeiro tile de chão junto do precipício.
+  for (let y = court.y + 1; y < innerY - 2; y++)
+    for (const x of [left[y], right[y]]) {
+      if (rng.next() < 0.3) continue;
+      obstacle(() => { if (get(x, y) === Tile.Floor) set(x, y, Tile.Ruin); });
+    }
+  // Casas do império em ruínas: alicerces maiores, de muro falhado, na vila baixa e no pátio externo.
+  for (let i = 0; i < 16; i++) {
+    const w = rng.int(5, 8), h = rng.int(4, 6);
+    const x = rng.int(6, W - w - 7);
+    const y = i < 10 ? rng.int(foot + 3, H - h - 6) : rng.int(bailey.y0 + 3, outerY - h - 3);
+    if (camps.some((c) => gapBetween(c, { x, y, w, h }) < 1)) continue;
+    obstacle(() => {
+      for (let yy = y; yy < y + h; yy++)
+        for (let xx = x; xx < x + w; xx++) {
+          const border = xx === x || yy === y || xx === x + w - 1 || yy === y + h - 1;
+          if (border && rng.next() < 0.7 && get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Ruin);
+        }
+    });
+  }
+
   // Blocos caídos e tocos de coluna soltos (no pátio interno também).
   for (let i = 0; i < 22; i++) {
     const x = rng.int(5, W - 6), y = rng.int(court.y, H - 6);
@@ -2543,6 +2602,7 @@ function buildFortress(seed: number): Dungeon {
       roads, plazas, camps: [...camps, trail],
       walls: [{ y: outerY, x0: 1, x1: W - 2 }, { y: innerY, x0: left[innerY], x1: right[innerY] }],
       gates: [outerGate, innerGate], towers, keep, door, throne, bridges: [bridge], chasm, tents, palisades, totems, fires, columns,
+      ramparts, yards: [{ x: 6, y: bailey.y0 + 2, w: W - 12, h: outerY - bailey.y0 - 2 }, court, { x: 4, y: foot, w: W - 8, h: H - foot - 4 }],
     },
   };
 }

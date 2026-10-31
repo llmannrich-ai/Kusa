@@ -19,7 +19,8 @@ import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
  * (`docs/CENARIOS_PLANO.md`). Põe também os baús (trancado, destrancado e aberto) na primeira clareira, o portal de
  * saída e uma poça de sangue no começo.
  *
- * Parâmetros: `mapa` (id do mapa), `seed`, `em` (`inicio`, `boss`, `sala` ou `x,y` em tiles).
+ * Parâmetros: `mapa` (id do mapa), `seed`, `em` (`inicio`, `boss`, `sala` ou `x,y` em tiles) e `largura` (tiles no lado
+ * curto da tela, 9 se faltar: mais que isso afasta a câmera para ver o mapa inteiro).
  * Ex.: `/mapa.html?mapa=marsh&seed=7&em=boss`. Na página, `window.pronto` vira true e `window.desenhoMs` diz quanto o
  * mapa levou para desenhar.
  */
@@ -47,7 +48,7 @@ class Previa extends Phaser.Scene {
     const [x, y] = em.split(",").map(Number);
     const at = em === "boss" ? centerOf(d.boss) : em === "sala" && room ? centerOf(room) : Number.isFinite(y) ? { x, y } : d.spawn;
     const cam = this.cameras.main.setBackgroundColor(VOID[d.mapId]).setRoundPixels(true);
-    cam.setZoom(Math.min(this.scale.gameSize.width, this.scale.gameSize.height) / (9 * TILE_SIZE)).centerOn(at.x * TILE_SIZE + 16, at.y * TILE_SIZE + 16);
+    cam.setZoom(Math.min(this.scale.gameSize.width, this.scale.gameSize.height) / (Number(q.get("largura") ?? 9) * TILE_SIZE)).centerOn(at.x * TILE_SIZE + 16, at.y * TILE_SIZE + 16);
     page.pronto = true;
   }
 

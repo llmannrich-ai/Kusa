@@ -77,6 +77,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const fires = new Set(f.fires.map((c) => c.y * W + c.x));
   const throne = (x: number, y: number) => x === f.throne.x && y === f.throne.y;
   const curtain = (y: number) => f.walls.some((w) => y === w.y || y === w.y + 1);
+  const rampart = (x: number, y: number) => f.ramparts.some((r) => inR(r, x, y));
+  /** Muro alto, com ameias: as muralhas, as dos lados e a da beira do precipício. */
+  const battlement = (x: number, y: number) => curtain(y) || rampart(x, y);
   const roomWall = (x: number, y: number) => d.side.some((r) => inR(r, x, y));
   const roomInside = (x: number, y: number) => d.side.some((r) => x > r.x && y > r.y && x < r.x + r.w - 1 && y < r.y + r.h - 1);
   const special = (x: number, y: number) => inTower(x, y) || inTent(x, y) || totems.has(y * W + x) || throne(x, y) || palisade(x, y);
@@ -86,7 +89,13 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const road = (x: number, y: number) => f.roads.some((r) => inR(r, x, y));
   const plaza = (x: number, y: number) => f.plazas.some((r) => inR(r, x, y));
   const hall = (x: number, y: number) => inR(d.boss, x, y);
-  const paved = (x: number, y: number) => road(x, y) || plaza(x, y) || bridge(x, y);
+  /** O calçamento antigo dos pátios, quebrado: o capim tomou as falhas (manchas de um ruído suave). */
+  const yard = (x: number, y: number) => {
+    const k = f.yards.findIndex((r) => inR(r, x, y));
+    if (k < 0 || camp(x, y) || plaza(x, y)) return false;
+    return field(x, y, 4, 301) + (hash(x, y, 302) - 0.5) * 0.12 > (k === f.yards.length - 1 ? 0.56 : 0.46);
+  };
+  const paved = (x: number, y: number) => road(x, y) || plaza(x, y) || bridge(x, y) || yard(x, y);
   const near = (x: number, y: number, reach: number, test: (x: number, y: number) => boolean) => {
     for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) if (test(x + dx, y + dy)) return true;
     return false;
@@ -201,6 +210,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       } else if (road(x, y)) {
         const q = quarter(x, y);
         ground[i] = atlas.frame(`basalt${q}`, () => basaltTile(q).render(false));
+      } else if (yard(x, y)) {
+        const q = quarter(x, y);
+        ground[i] = atlas.frame(`basalt${q}`, () => basaltTile(q).render(false));
       } else if (camp(x, y)) {
         const v = pick(x, y, 4, 8);
         ground[i] = atlas.frame(`dirt${v}`, () => dirtTile(v).render(false));
@@ -209,8 +221,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       // Beirada do abismo (menos nas pontes, que seguem por cima dele).
       const edge = bridge(x, y) ? 0 : mask(x, y, abyss);
       if (edge) fringe[i] = atlas.frame(`ledge${edge}`, () => ledgeEdge(edge));
-      else if ((road(x, y) || plaza(x, y)) && !hall(x, y)) {
-        const g = mask(x, y, (a, b) => solid(a, b) && !paved(a, b) && !camp(a, b) && !inKeep(a, b) && !inTower(a, b) && !(curtain(b) && ruin(a, b)) && !roomInside(a, b));
+      else if ((road(x, y) || plaza(x, y) || yard(x, y)) && !hall(x, y)) {
+        const g = mask(x, y, (a, b) => solid(a, b) && !paved(a, b) && !camp(a, b) && !inKeep(a, b) && !inTower(a, b) && !(battlement(a, b) && ruin(a, b)) && !roomInside(a, b));
         if (g) fringe[i] = atlas.frame(`fringe${g}`, () => fringeEdge(g).render(false));
       }
       const s = mask(x, y, high) & (OPEN.n | OPEN.w | OPEN.nw);
@@ -233,7 +245,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const roof = new Int32Array(KW * KH).fill(-1);
   const parapet = new Int32Array(KW * KH).fill(-1);
   const holeAt = { x: Math.floor(KW * (hash(K.x, K.y, 70) < 0.5 ? 0.28 : 0.62)), y: 3 + Math.floor(hash(K.x, K.y, 71) * 4) };
-  const hole = (x: number, y: number) => Math.abs(x - holeAt.x - 1) + Math.abs(y - holeAt.y - 1) * 1.3 < 2.4 + hash(x, y, 72) * 0.6;
+  const hole = (x: number, y: number) => Math.hypot(x - holeAt.x - 1, (y - holeAt.y - 1) * 1.2) < 1.9 + hash(x, y, 72) * 0.9;
   const terrace = (x: number, y: number) => x >= 0 && y >= 0 && x < KW && y < K.h;
   for (let y = 0; y < KH; y++)
     for (let x = 0; x < KW; x++) {
@@ -312,7 +324,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const put = (sheet: SpriteSheet, frame: number, x: number, y: number, flip = false, px = x * TILE_SIZE + TILE_SIZE / 2, py = (y + 1) * TILE_SIZE) =>
     placed.push({ sheet, frame, x, y, px, py, depth: (y + 1) * TILE_SIZE - 0.25, flip });
   const height = (x: number, y: number) => {
-    if (curtain(y) || inKeep(x, y)) return CITY_HEIGHTS[0];
+    if (battlement(x, y) || inKeep(x, y)) return CITY_HEIGHTS[0];
     if (roomWall(x, y)) return ROOM_WALL;
     // A altura muda por trecho (3 tiles), não por tile: o muro fica contínuo, com um degrau aqui e ali.
     return WALL_HEIGHTS[Math.floor(hash(Math.floor(x / 3), Math.floor(y / 3), 41) * WALL_HEIGHTS.length)];
@@ -379,12 +391,12 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       const L = WALL_LINK;
       let links = 0;
       if (masonry(x, y - 1)) links |= L.n;
-      if (masonry(x + 1, y) || (curtain(y) && inTower(x + 1, y))) links |= L.e;
-      if (masonry(x, y + 1)) links |= L.s;
-      if (masonry(x - 1, y) || (curtain(y) && inTower(x - 1, y))) links |= L.w;
+      if (masonry(x + 1, y) || (battlement(x, y) && inTower(x + 1, y))) links |= L.e;
+      if (masonry(x, y + 1) || (battlement(x, y) && inTower(x, y + 1))) links |= L.s;
+      if (masonry(x - 1, y) || (battlement(x, y) && inTower(x - 1, y))) links |= L.w;
       const h = height(x, y);
       const step = links & L.s ? Math.max(0, h - height(x, y + 1)) : 0;
-      const city = curtain(y);
+      const city = battlement(x, y);
       const vn = hash(Math.floor(x / 3), Math.floor(y / 3), 61);
       const v = city ? (vn < 0.5 ? 0 : 1) : vn < 0.45 ? 0 : vn < 0.85 ? 1 : 2;
       put(walls, walls.frame(`w${links}-${h}-${step}-${v}-${city}`, () => wallSprite(links, h, step, v, city)), x, y);
@@ -454,6 +466,12 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     const x = Math.floor(KW * (k ? 0.75 : 0.25));
     keepObjs.push(scene.add.image((K.x + x + 0.5) * TILE_SIZE, (K.y + K.h - KEEP_RISE) * TILE_SIZE + 5, hangKey(k)).setOrigin(0.5, 0).setScale(0.75 / ZOOM)
       .setDepth(keepDepth + 0.02));
+  }
+  // Torreões nos 4 cantos do terraço (as torres dos portões), mais altos que tudo: a torre de menagem se vê de longe.
+  const turretKey = single(scene, "fortress-tower", TOWER.w, TOWER.h, () => towerSprite(-1));
+  for (const [k, [tx, ty]] of ([[1.5, 3], [KW - 1.5, 3], [1.5, K.h], [KW - 1.5, K.h]] as const).entries()) {
+    const p = { px: (K.x + tx) * TILE_SIZE, py: (K.y - KEEP_RISE + ty) * TILE_SIZE };
+    keepObjs.push(scene.add.image(p.px, p.py, turretKey).setOrigin(0.5, 1).setScale(0.8 / ZOOM).setFlipX(k % 2 === 1).setDepth(keepDepth + (ty > 3 ? 0.04 : 0.015)));
   }
   uppers.push({ objs: keepObjs, area: K, alpha: 1, hidden: 0 });
 

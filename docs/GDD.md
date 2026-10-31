@@ -497,7 +497,7 @@ livre). Os Portões do Império e a Fortaleza Orc, ainda sem monstros, ficam com
 | 🍄 Coração da Mata | 6 ★★★★★★ (provisório) | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | só o terreno (os monstros ainda vêm) |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
-| ⚔️ Fortaleza Orc | 6 ★★★★★★ (provisório) | 8 min | 84×128, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | ainda sem monstros (só o terreno) |
+| ⚔️ Fortaleza Orc | 6 ★★★★★★ (provisório) | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | ainda sem monstros (só o terreno) |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -752,14 +752,17 @@ o desenho lê.
 
 Nas Ruínas do Império, ao lado dos Portões (etapa 8 da campanha; abre com o Faraó Eterno, como os Portões). Um castelo
 do império tomado pelos orcs, no alto de um esporão de rocha. Por enquanto só o terreno e a arte: sem monstros nem boss,
-★★★★★★ provisório, 8 min, até 4 jogadores. Gerador `generateFortress` em `dungeon.ts`; a planta vai em
-`Dungeon.fortress`, que só o desenho lê.
+★★★★★★ provisório, 8 min, até 4 jogadores. **Mapa fixo:** é sempre a mesma planta, qualquer que seja a seed da sala
+(`generateFortress` em `dungeon.ts`, sempre com `FORTRESS_SEED`); a planta vai em `Dungeon.fortress`, que só o desenho
+lê.
 
 - **Em pé, de baixo para cima:** a **vila baixa** em ruínas (entrada, estrada e travessas de basalto, casas caídas,
   ciprestes, uma casa com mini-boss e baú), o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
-  beira dele com o portão entre duas torres, o **pátio externo** virado acampamento (tendas, fogueiras, paliçadas,
+  beira dele com o portão entre duas torres, o **pátio externo** fechado por muralhas (dos lados e na beira do
+  precipício, com uma torre em cada canto; a mata fica do lado de fora) e virado acampamento (tendas, fogueiras, paliçadas,
   totens de caveira, estandartes, 3 casernas com mini-boss e baú), a **muralha interna** com o segundo portão, e o
-  **esporão**: o pátio de lajes com colunata, a guarda do chefe e, no norte, a **torre de menagem** (19×15), cujo salão
+  **esporão**: o pátio de lajes com colunata, o parapeito caído na beira do precipício, a guarda do chefe e, no norte, a
+  **torre de menagem** (19×15, com torreões nos cantos do terraço), cujo salão
   do trono é a sala do boss. Dos dois lados do esporão e atrás da torre, o precipício.
 - **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
   uma brecha da muralha.
@@ -775,7 +778,8 @@ do império tomado pelos orcs, no alto de um esporão de rocha. Por enquanto só
   transparentes com o herói atrás.
 - **Visual** (só no cliente, `apps/client/src/fortressMap.ts` e `art/fortressArt.ts`, com as peças de
   `art/empireArt.ts` e `art/empireMonuments.ts`): 128 px por tile. Chão: capim, basalto, terra batida com pegadas e
-  palha, lajes grandes no pátio e no terraço, o piso do salão; tendas de couro em gomos com a mão vermelha, paliçadas,
+  palha, lajes grandes no pátio e no terraço, o calçamento antigo quebrado (capim nas falhas) nos pátios e nas ruas da
+  vila, o piso do salão; tendas de couro em gomos com a mão vermelha, paliçadas,
   totens, o trono de pedra com peles, cavaletes de armas, caldeirões, lenha e ossos; as torres e o arco IMPERIVM · KVSA
   dos Portões com os panos pretos do clã.
 
