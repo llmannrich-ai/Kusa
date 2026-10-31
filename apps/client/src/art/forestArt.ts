@@ -1,6 +1,6 @@
 import type { Rgb } from "./hero/color.ts";
 import {
-  BAYER, FLAT, HD, Paper as Painter, ebox, ellipse, inEllipse, limb, line, lit, noise, palette, poly, sn, sphere,
+  BAYER, FLAT, HD, Paper as Painter, ebox, ellipse, inEllipse, limb, line, lit, noise, palette, poly, smoothNoise, sn, sphere,
   type MaterialBase, type Offset, type Shade,
 } from "./paint.ts";
 
@@ -179,6 +179,30 @@ function grassTile(variant: ForestVariant, v: number, lush = false): Paper {
     for (const [dx, dy] of [[0, -2], [-2, 1], [2, 1]] as const) { p.on(x + dx, y + dy, F.Moss, 4); p.on(x + dx + 1, y + dy, F.Moss, 3); }
     p.on(x, y + 2, F.Moss, 1);
   }
+  return p;
+}
+
+/** O capim dos pântanos é uma textura contínua de `WET_BLOCK`×`WET_BLOCK` tiles: cada tile pinta o pedaço `q` dela. */
+export const WET_BLOCK = 4;
+/** Pedaço do bloco de capim que o tile (x, y) usa. */
+export const wetPiece = (x: number, y: number) => (x & (WET_BLOCK - 1)) + WET_BLOCK * (y & (WET_BLOCK - 1));
+
+/**
+ * Capim dos pântanos: o miúdo do capim da mata e, por cima, as manchas grandes de luz e de musgo, que correm sem emenda
+ * pelo bloco de 4×4 tiles (`q` é o pedaço). Nos pântanos o mapa não tinge tile a tile (a tinta por tile deixava a grade
+ * aparecendo em quadrados no campo aberto): a variação grande vem daqui.
+ */
+function wetGrassTile(variant: ForestVariant, q: number): Paper {
+  const p = grassTile(variant, q % 6);
+  const ox = (q % WET_BLOCK) * HD, oy = Math.floor(q / WET_BLOCK) * HD, P = HD * WET_BLOCK;
+  for (let y = 0; y < HD; y++)
+    for (let x = 0; x < HD; x++) {
+      const i = y * HD + x;
+      const light = smoothNoise(x + ox, y + oy, 128, 401, P);
+      const moss = smoothNoise(x + ox, y + oy, 64, 402, P);
+      if (p.fixed[i] < 0) p.shade[i] += (light - 0.5) * 0.22;
+      if (moss > 0.66 && p.mat[i] === F.Grass && p.fixed[i] < 0) p.mat[i] = F.Moss;
+    }
   return p;
 }
 
@@ -404,7 +428,7 @@ export function canopyTile(variant: ForestVariant, open: number, v: number): Pap
  * riscos de correnteza; no Coração da Mata, a lagoa escura e parada com folhas de nenúfar; no pântano, a água turva e
  * parada com manchas de lentilha-d'água e mais nenúfares. Barro na margem.
  */
-export function waterTile(variant: ForestVariant, land: number, v: number): Paper {
+export function waterTile(variant: ForestVariant, land: number, v: number, block?: number): Paper {
   const p = new Paper(variant);
   const heart = variant !== "oldwood";
   const marsh = isWetland(variant);
@@ -420,7 +444,12 @@ export function waterTile(variant: ForestVariant, land: number, v: number): Pape
       // No pântano (água larga), o ruído perto da beira do tile é o mesmo para todos (a emenda casa) e no miolo é o da
       // variação: a lagoa não vira um xadrez de tiles iguais.
       const rim = marsh ? Math.min(1, Math.min(x, y, HD - 1 - x, HD - 1 - y) / 14) : 0;
-      const mixed = (cell: number, seed: number) => (marsh ? 0.5 + (sn(x, y, cell, seed + 40 + v * 7) - 0.5) * rim : sn(x, y, cell, seed));
+      // `block`: o miolo da lagoa do pântano pinta o pedaço `block` de um ruído contínuo de 4×4 tiles (não repete a
+      // cada tile); na beira do tile o tom é o mesmo para todos, então emenda com a margem.
+      const inner = (cell: number, seed: number) => (block === undefined
+        ? sn(x, y, cell, seed + 40 + v * 7)
+        : smoothNoise(x + (block % WET_BLOCK) * HD, y + Math.floor(block / WET_BLOCK) * HD, cell, seed + 40, HD * WET_BLOCK));
+      const mixed = (cell: number, seed: number) => (marsh ? 0.5 + (inner(cell, seed) - 0.5) * rim : sn(x, y, cell, seed));
       p.mat[i] = deep ? F.Deep : F.Water;
       // (No pântano, a água funda fica no meio de uma faixa de tom: na divisa, o pontilhado vira um xadrez na lagoa toda.)
       p.shade[i] = deep ? (marsh ? 0.6 : 0.48) + (mixed(32, 93) - 0.5) * 0.1 : 0.7 - Math.min(1, d / 30) * 0.22;
@@ -522,41 +551,6 @@ export function boardTile(variant: ForestVariant, across: boolean, ends: number,
       q.mat[o] = p.mat[i]; q.shade[o] = p.shade[i]; q.off[o] = p.off[i]; q.fixed[o] = p.fixed[i]; q.part[o] = p.part[i];
     }
   return q;
-}
-
-/**
- * Lamaçal do pântano (por cima do capim), pelos vizinhos que não são lama (`out`): a beira ondulada como a da trilha,
- * a lama escura e brilhante, poças d'água paradas e pegadas afundadas.
- */
-export function bogTile(variant: ForestVariant, out: number, v: number): Paper {
-  const p = new Paper(variant);
-  const edge = (x: number, y: number) => 22 + (sn(x, y, 32, 300) - 0.5) * 24 + (sn(x, y, 16, 301) - 0.5) * 8;
-  const dist = field(out, 62);
-  p.fill([0, 0, HD - 1, HD - 1], (x, y) => at(dist, x, y) > edge(x, y), F.Mud, (x, y) => FLAT - 0.06 + (sn(x, y, 16, 302) - 0.5) * 0.2,
-    (x, y) => (noise(x, y, 303) < 0.05 ? -1 : noise(x, y, 304) > 0.98 ? 1 : 0));
-  for (let y = 0; y < HD; y++)
-    for (let x = 0; x < HD; x++) {
-      if (!p.has(x, y)) continue;
-      const i = y * HD + x;
-      const d = dist[i] - edge(x, y);
-      if (d < 2) p.on(x, y, null, 1);
-      else if (d < 7 && noise(x >> 1, y >> 1, 305) < 0.25) { p.mat[i] = F.Grass; p.fixed[i] = noise(x, y, 306) < 0.5 ? 3 : 2; }
-    }
-  // Poças: água parada no fundo da lama, longe da beira do tile (não cruzam a emenda, então mudam com a variação).
-  for (let k = 0; k < 1 + (v % 2); k++) {
-    const cx = 34 + noise(k, v, 307) * 60, cy = 34 + noise(v, k, 308) * 60, rx = 10 + noise(k, v + 3, 309) * 12, ry = rx * (0.5 + noise(v, k + 3, 310) * 0.2);
-    const wob = (a: number) => 1 + 0.18 * Math.sin(a * 3 + k + v) + 0.1 * Math.sin(a * 5 + v);
-    for (let y = Math.floor(cy - ry - 3); y <= cy + ry + 3; y++)
-      for (let x = Math.floor(cx - rx - 3); x <= cx + rx + 3; x++) {
-        const u = (x + 0.5 - cx) / rx, w = (y + 0.5 - cy) / ry, r = Math.hypot(u, w) / wob(Math.atan2(w, u));
-        if (r > 1 || !p.has(x, y)) continue;
-        const i = y * HD + x;
-        p.mat[i] = F.Water;
-        // Beira escura, o meio na cor da água e o brilho do céu em riscos do lado da luz.
-        p.fixed[i] = r > 0.85 ? 1 : w < -0.2 && u < 0.2 && noise(x >> 2, y, 311) < 0.25 ? 4 : 2;
-      }
-  }
-  return p;
 }
 
 // --- Troncos caídos e muros ----------------------------------------------------------------
@@ -1169,6 +1163,7 @@ export function tallDecor(variant: ForestVariant, kind: TallDecor, v: number): U
 /** Atalhos dos quadros de chão. */
 export const draw = {
   grass: (variant: ForestVariant, v: number) => () => grassTile(variant, v).render(false),
+  wetGrass: (variant: ForestVariant, q: number) => () => wetGrassTile(variant, q).render(false),
   arena: (variant: ForestVariant, v: number) => () => arenaTile(variant, v).render(false),
 };
 

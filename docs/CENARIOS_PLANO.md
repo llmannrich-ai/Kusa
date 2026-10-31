@@ -97,7 +97,7 @@ comuns e os 5 mapas já padronizados (≈1 s no total). Os PNGs `chest-*`, `port
 Entregue de um jeito diferente do previsto: em vez de um pintor novo copiado do Bosque Velho, o Kosaradius virou a
 **variante `marsh` do desenho da mata** (`art/forestArt.ts`, `forestPlan.ts`, `forestMap.ts`). O gerador do pântano
 usa as mesmas regras de tile da mata (mata fechada, árvore solta, água, passarela, tronco), então o plano serve quase
-inteiro; o que é só do pântano entrou como peça nova (passarela, lamaçal, cipreste, mangue, taboa, junco, íris,
+inteiro; o que é só do pântano entrou como peça nova (passarela, cipreste, mangue, taboa, junco, íris,
 planta-jarro, ossada, água parada com lentilha-d'água, névoa). Para mexer no pintor sem estragar o Bosque e o Coração
 da Mata, o teste `cenarios` guarda a impressão digital de cada peça (`apps/server/scripts/cenarios.json`) e confere
 que o atlas de cada mapa cabe em 4096 px. `marshMap.ts` ficou só com a chamada; o `wetlandMap.ts` e o `marshDecor.ts`
@@ -108,12 +108,17 @@ servidor, com a câmera do celular, os baús, o portal e o sangue. Ex.: `/mapa.h
 
 Pendente para depois: marolas, bolhas e libélulas do ambiente antigo não voltaram (vaga-lumes, névoa e folhas, sim).
 
+Correção depois de ver no celular (o primeiro resultado ficou ruim): nos pântanos saíram a sombra e as folhas secas na
+beira da mata (as duas seguiam a linha do tile, mas a copa termina antes dela: ficavam uma faixa reta escura e uma fileira
+de folhas), a tinta de luz por tile (deixava a grade em quadrados no capim aberto; as manchas de luz e de musgo agora estão
+pintadas no capim, contínuas em blocos de 4×4 tiles) e os lamaçais (blocos com cara de tile). Enfeites rasteiros bem mais
+raros. Lição: conferir sempre no tamanho real do celular, não só ampliado.
+
 ![Pântano do Kosaradius: clareira dos baús, troncos caídos, cipreste e mangue](arte/kosaradius.png)
 
 ### Fase 1b — Pântano das Ruínas (feita)
 
-- A natureza é a **variante `swamp`** do desenho da mata (a do Kosaradius, na paleta da baía), sem lamaçais nem
-  passarelas.
+- A natureza é a **variante `swamp`** do desenho da mata (a do Kosaradius, na paleta da baía), sem passarelas.
 - As ruínas **não foram pintadas de novo**: são as peças dos Portões do Império (lajes, muros, colunas, entulho,
   cabeças, urnas, ânforas e o mosaico) pintadas noutra paleta. `empireArt.ts` ganhou `inPalette` (pinta com outras
   rampas) e `empireRampsWith` (a paleta do império com cores trocadas); `art/swampArt.ts` tem a paleta das ruínas

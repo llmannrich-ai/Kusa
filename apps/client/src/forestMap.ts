@@ -38,7 +38,8 @@ export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   for (const name of LAYERS) {
     const l = map.createBlankLayer(name, set)!.setDepth(floorDepth).setScale(1 / ZOOM);
     const data = layers[name];
-    const tint = name === "chao" || name === "trilha" || name === "relevo";
+    // Nos pântanos a variação grande já vem pintada no capim (a tinta por tile deixava a grade aparecendo).
+    const tint = !isWetland(variant) && (name === "chao" || name === "trilha" || name === "relevo");
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++) {
         const f = data[y * W + x];
