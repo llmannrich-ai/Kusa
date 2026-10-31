@@ -13,6 +13,8 @@ import {
 export { FLAT, HD, TileAtlas, ebox, ellipse, inEllipse, limb, line, lit, noise, poly, smoothNoise, sn, sphere, toCanvas, type Offset, type Pt, type Shade };
 
 export type DuneVariant = "dunes" | "mesas";
+/** Variante das Dunas ou uma paleta pronta na ordem de `M` (as cavernas pintam o chão, o paredão e a água daqui). */
+export type DunePalette = DuneVariant | Rgb[][];
 
 /** Materiais (cada um é uma rampa de 6 tons por variante). */
 export enum M { Sand, Soft, Dune, Rock, Cap, Band, Dark, Water, Deep, Foam, Wet, Trunk, Leaf, Dry, Stone, Glow, Bone, Shrub, Ruin, Clay, Line }
@@ -64,7 +66,7 @@ function ripple(x: number, y: number, amp: number, amp2: number, period: number)
 }
 
 /** Areia firme: ondulações do vento (mais fortes ou mais suaves por variação), grãos e pedrinhas soltas. */
-function sandTile(variant: DuneVariant, v: number): Paper {
+function sandTile(variant: DunePalette, v: number): Paper {
   const p = new Paper(variant);
   const amp = [3, 5, 2, 6, 4, 1.5, 5.5, 3.5][v % 8];
   const amp2 = [1.5, -2, 1, 2.5, -1, 0.5, -2.5, 2][v % 8];
@@ -209,7 +211,7 @@ const FACE = 96;
  * (pegam sol), borda escura no leste; com chão ao sul, a **face do paredão** ocupa a parte de baixo do tile, em
  * camadas de sedimento (claras, vermelhas e escuras, com a linha ondulada), fendas verticais e entulho no pé.
  */
-export function mesaTile(variant: DuneVariant, open: number, v: number): Paper {
+export function mesaTile(variant: DunePalette, open: number, v: number): Paper {
   const p = new Paper(variant);
   const south = (open & OPEN.s) !== 0;
   const top = south ? HD - FACE : HD;
@@ -353,7 +355,7 @@ export function ruinTile(variant: DuneVariant, joins: number, south: boolean, v:
  * Água do oásis pelos vizinhos que são terra (bits de `OPEN`): funda no meio, rasa e mais clara perto da margem, com a
  * espuma na beira e a margem arredondada nas quinas; o fundo de areia aparece no raso.
  */
-export function waterTile(variant: DuneVariant, land: number, v: number): Paper {
+export function waterTile(variant: DunePalette, land: number, v: number): Paper {
   const p = new Paper(variant);
   const dist = (x: number, y: number) => {
     let d = 1e9;

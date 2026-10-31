@@ -16,6 +16,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { MAP_IDS, generateDungeon, type MapId } from "@kusa/shared";
 import { HD, TileAtlas } from "../../client/src/art/paint.ts";
 import { planForest } from "../../client/src/forestPlan.ts";
+import { planCave } from "../../client/src/cavePlan.ts";
+import { FLAT_DECOR as CAVE_FLAT, TALL_DECOR as CAVE_TALL, flatDecor as caveFlat, floorTile as caveFloor, poolTile, rockTile, tallDecor as caveTall } from "../../client/src/art/caveArt.ts";
 import { PROP_PIECES } from "../../client/src/art/propsArt.ts";
 import {
   FLAT_DECOR as DUNE_FLAT, TALL_DECOR as DUNE_TALL, draw as dune, flatDecor as duneFlat, palmCrown, palmTrunk, pillar,
@@ -98,6 +100,17 @@ const SCENERY: Record<string, Piece[]> = {
     ...(["shards", "inscription", "puddle"] as const).map((k) => ({ name: `enfeite ${k}`, draw: () => ruinFlat(k, 0) })),
     { name: "mosaico", draw: ruinMosaic },
   ],
+  "Caverna da Travessia": [
+    ...[0, 5, 10, 15].flatMap((q) => [
+      { name: `chão ${q}`, draw: () => caveFloor("cavern", q) },
+      { name: `chão do covil ${q}`, draw: () => caveFloor("cavern", q, true) },
+      { name: `rocha funda ${q}`, draw: () => rockTile("cavern", 0, q) },
+    ]),
+    ...[OPEN.s, OPEN.s | OPEN.e | OPEN.se, OPEN.n | OPEN.w].map((m) => ({ name: `rocha ${m}`, draw: () => rockTile("cavern", m, 1) })),
+    ...[0, OPEN.n | OPEN.w].map((m) => ({ name: `poça ${m}`, draw: () => poolTile("cavern", m, 0) })),
+    ...CAVE_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => caveFlat("cavern", k, 0) })),
+    ...CAVE_TALL.map((k) => ({ name: `enfeite de pé ${k}`, draw: () => caveTall("cavern", k, 0) })),
+  ],
   "Portões do Império": [
     ...range(4).map((v) => ({ name: `capim ${v}`, draw: () => grassTile(v).render(false), seam: true })),
     ...EMPIRE_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => empireFlat(k, 0).render(false) })),
@@ -151,6 +164,15 @@ for (const mapId of PLANNED.filter((m) => MAP_IDS.includes(m))) {
   }
   if (worst > 4096) fail(`${mapId}: atlas de ${worst} px de altura (máximo 4096)`);
   console.log(`${mapId}: atlas de até ${worst} px de altura`);
+}
+{
+  let worst = 0;
+  for (let seed = 1; seed <= 6; seed++) {
+    const { atlas } = planCave(generateDungeon(seed * 7919, "cavern"), "cavern");
+    worst = Math.max(worst, Math.ceil(atlas.count / TileAtlas.COLUMNS) * (HD + TileAtlas.PAD * 2));
+  }
+  if (worst > 4096) fail(`cavern: atlas de ${worst} px de altura (máximo 4096)`);
+  console.log(`cavern: atlas de até ${worst} px de altura`);
 }
 
 const random = Math.random;
