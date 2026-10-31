@@ -330,3 +330,13 @@ Na arte antiga, o Rei é o bullywug do pack em tamanho de boss.
 
 Para refazer: `python3 apps/client/scripts/bullywugKingSprites.py docs/arte/pantano-das-ruinas/bullywug-A.png
 docs/arte/pantano-das-ruinas/bullywug-B.png apps/client/src/art/proto/bullywugKing.png`.
+
+### Clã do Pântano do Kosaradius a partir das folhas do ChatGPT
+
+Os orcs e ogros do Kosaradius estão trocando a arte por código (`art/marshMonsters.ts`) por folhas de giro geradas no
+ChatGPT (`docs/arte/pantano-do-kosaradius/<kind>-A.png`, fundo magenta). `apps/client/scripts/kosaradiusSprites.py
+<kind>` tira o magenta, separa as 12 figuras, põe na escala do monstro (`SIZES`, altura do perfil parado em px de
+128 por tile) e grava `art/proto/kosaradius/<kind>.png`. `art/proto/kosaradiusArt.ts` carrega todo PNG dessa pasta:
+parado respirando e andar do perfil, frente e costas ao andar na vertical, golpe e especial montados do perfil (até
+chegar a folha de ação). Lista do que já entrou em `docs/arte/pantano-do-kosaradius/README.md`.
+
