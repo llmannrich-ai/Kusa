@@ -1,4 +1,4 @@
-# Fila de arte: Fortaleza Orc (sprites de cenário)
+# Fila de arte: Fortaleza Orc (chão e sprites de cenário)
 
 Caminho híbrido (`docs/FORTALEZA_PLANO.md`, seção 5): o **chão** por onde se anda (capim, calçamento, muros, abismo) é
 desenhado pelo jogo, por código; os **objetos de pé** (tendas, totens, colunas, árvores, móveis, máquinas de guerra)
@@ -22,6 +22,97 @@ mesma conversa.
 | 3 | `natureza` | Árvores, moitas e pedras | 12 | vila e beira dos pátios |
 | 4 | `interior` | Salão do trono e casernas | 12 | fase 5 (interiores) |
 | 5 | `guerra` | Máquinas e marcos de guerra | 6 | terraço, muralhas, pátio |
+
+## Chão (prioridade: vem antes dos objetos)
+
+Cada chão é **uma textura contínua de um material só**, que emenda nos 4 lados (o jogo repete o chão tile a tile). Na
+escala do jogo: **128 px da imagem = 1 tile** (o espaço de um orc em pé), então a imagem de 1024×1024 cobre 8×8 tiles e
+o Claude a corta em 64 tiles diferentes (o chão não repete). Ele acerta a emenda que sobrar e a paleta. As **bordas
+entre materiais** (capim entrando no calçamento, terra na beira da estrada) são feitas pelo jogo, misturando estas
+texturas com um recorte irregular: a IA não acerta as 12 peças de borda que se encaixam.
+
+| # | id | Chão | Onde |
+|---|---|---|---|
+| C1 | `chao-capim` | Capim mediterrâneo | a vila baixa e as bordas dos pátios (o chão mais comum) |
+| C2 | `chao-basalto` | Calçamento romano de basalto | a estrada, os pátios e as ruas da vila |
+| C3 | `chao-terra` | Terra batida do acampamento | em volta das tendas e fogueiras |
+| C4 | `chao-lajes` | Lajes grandes de travertino | o pátio do esporão, o terraço da torre, a ponte |
+| C5 | `chao-salao` | Lajes escuras do salão | o salão do trono |
+| C6 | `chao-tabuas` | Assoalho de tábuas | o chão das casernas |
+
+**{{TEXTURA}}**
+
+```text
+Seamless tileable game ground texture: the image must repeat perfectly on all four sides (the left edge continues into the right edge and the top edge into the bottom edge, with no visible seam), with even detail across the whole image and no single focal point, no vignette, no darker or lighter corners, and no light falloff. Seen straight from above (top-down), flat ground only: no walls, no objects standing up, no characters, no cast shadows from things outside the image. Scale: every 128×128 pixels of the image is one game tile, the floor space where one orc warrior stands. Light from the upper-left. Do NOT include: text, labels, grid lines, frames, borders, watermark or UI.
+
+Square 1:1 (1024×1024).
+```
+
+**{{ESTILO_CHAO}}**
+
+```text
+Dark fantasy pixel art ground in the exact style of the attached game screenshots: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no photographic noise; ground has no outlines; 4 tones per material with a little dithering only at the boundaries between tones; earthy, slightly desaturated palette matching the screenshots. Setting: the courtyards of an ancient roman-like imperial castle on a rocky spur, taken by a clan of orcs, in the late afternoon.
+```
+
+### C1. `chao-capim`
+
+```text
+{{ESTILO_CHAO}}
+
+Mediterranean grass ground: short olive-green grass in small fan-shaped tufts (dark at the base, light at the tips), soft patches of drier yellow-green grass and of darker clover, a few tiny red poppies and white daisies in small groups, a few small pebbles and bare earth spots. Calm and readable, with small detail (each tuft is a few pixels), so characters stand out on it.
+
+{{TEXTURA}}
+```
+
+### C2. `chao-basalto`
+
+```text
+{{ESTILO_CHAO}}
+
+Old roman road paving of grey-blue basalt: large polygonal stones (about 3 to 4 stones across each 128-pixel tile), each slightly domed and polished by centuries of use, each with its own shade, dark earth joints between them with tufts of grass growing in the joints, a few cracked or missing stones showing earth, light chips and scratches on the stones.
+
+{{TEXTURA}}
+```
+
+### C3. `chao-terra`
+
+```text
+{{ESTILO_CHAO}}
+
+Trampled bare earth of an orc war camp: brown packed dirt with patches of darker mud, scattered straw and trampled dry grass, boot prints and claw prints, a few small stones, small dark ash spots. No puddles of water, no blood, no objects.
+
+{{TEXTURA}}
+```
+
+### C4. `chao-lajes`
+
+```text
+{{ESTILO_CHAO}}
+
+Large worn slabs of warm travertine stone (creamy beige), laid in staggered rows (each slab about one 128-pixel tile wide and half a tile tall), each slab with its own shade, thin dark joints, the slab edges slightly rounded and chipped, moss and little weeds growing in some joints, faint soot marks and a few cracks.
+
+{{TEXTURA}}
+```
+
+### C5. `chao-salao`
+
+```text
+{{ESTILO_CHAO}}
+
+The floor of a dark great hall: big squared slabs of dark grey-brown stone (each about one 128-pixel tile), polished in the middle by use and dusty at the edges, thin black joints, a few cracks, faint stains of old wine and soot, a little straw scattered by the orcs.
+
+{{TEXTURA}}
+```
+
+### C6. `chao-tabuas`
+
+```text
+{{ESTILO_CHAO}}
+
+A rough floor of wooden planks in an orc barracks: long planks running left to right (about 4 planks for each 128-pixel tile of height), dark brown weathered wood with visible grain, iron nails, worn lighter paths, gaps between some planks, scattered straw and a few mud stains.
+
+{{TEXTURA}}
+```
 
 ## Blocos comuns
 
