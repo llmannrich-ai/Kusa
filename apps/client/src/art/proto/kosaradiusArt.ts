@@ -52,14 +52,24 @@ async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
   img.src = url;
   await img.decode();
   const s = img.height;
-  const at = (i: number, o: Parameters<typeof figure>[3] = {}) => () => figure(img, s, i, o);
-  const breath = [0, 0.012, 0.024, 0.012];
-  const breathing = (i: number) => breath.map((b) => at(i, { breathe: b }));
+  // Cada figura (com o deslocamento) é uma função só, reaproveitada nos clipes: o jogo guarda cada uma uma vez na
+  // memória (`hdStep` em `textures.ts`). Com uma figura por quadro, os 12 do clã passavam de 150 MB e o celular fechava
+  // o jogo. Por isso os clipes usam poucas variações.
+  const made = new Map<string, () => HTMLCanvasElement>();
+  const at = (i: number, o: Parameters<typeof figure>[3] = {}) => {
+    const key = `${i}:${o.dx ?? 0}:${o.dy ?? 0}:${o.breathe ?? 0}`;
+    let job = made.get(key);
+    if (!job) made.set(key, job = () => figure(img, s, i, o));
+    return job;
+  };
+  // Fôlego: o corpo encolhe um pouco e volta.
+  const breathing = (i: number) => [at(i), at(i, { breathe: 0.02 }), at(i, { breathe: 0.02 }), at(i)];
   // A folha tem um passo por vista: entre um e outro, o corpo parado um pouco acima. Não espelha (a arma trocaria de mão).
+  // Quem anda só com a figura de andar (o Rei) sobe e desce com ela.
   const walkOnly = WALK_POSE_ONLY.has(kind);
   const steps = (still: number, walk: number) => {
-    const mid = walkOnly ? walk : still;
-    return [at(walk), at(mid, { dy: -3 }), at(walk, { dy: -1 }), at(mid, { dy: -3 })];
+    const mid = walkOnly ? at(walk, { dy: -3 }) : at(still);
+    return [at(walk), mid, at(walk), mid];
   };
   // Parte de cima do quadro ocupada pelo perfil parado (a barra de vida fica logo acima).
   const { ctx } = makeCanvas(s, s);
@@ -74,10 +84,10 @@ async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
     frames: () => [
       ...breathing(F.side),
       ...steps(F.side, F.sideWalk),
-      // Golpe: recua um pouco, avança com a passada e volta (o bote do sprite vem do jogo).
-      at(F.side, { dx: 4, dy: 1 }), at(F.sideWalk, { dx: -6 }), at(F.sideWalk, { dx: -8 }), at(F.side, { dx: -2 }),
-      // Especial: o corpo se ergue e volta, com o fôlego fundo.
-      at(F.side, { breathe: -0.02 }), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side, { breathe: 0.02 }),
+      // Golpe: avança com a passada e volta (o bote do sprite vem do jogo).
+      at(F.side), at(F.sideWalk, { dx: -8 }), at(F.sideWalk, { dx: -8 }), at(F.side),
+      // Especial: o corpo se ergue e volta.
+      at(F.side), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side),
       ...breathing(F.front),
       ...steps(F.front, F.frontWalk),
       ...breathing(F.back),

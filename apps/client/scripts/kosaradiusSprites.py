@@ -30,20 +30,21 @@ SRC = ROOT / "docs/arte/pantano-do-kosaradius"
 DST = ROOT / "apps/client/src/art/proto/kosaradius"
 
 # Altura da figura de perfil parada (do topo da arma ou do chapéu aos pés), em px de arte nova (128 por tile; o herói
-# tem ~120) e o lado do quadro. A lança e o arco sobem acima da cabeça: a altura conta com eles.
+# tem ~120) e o lado do quadro: o menor que cabe a figura mais larga com a folga do bote e do especial (o jogo guarda
+# cada quadro na memória do celular, e quadro vazio também pesa). A lança e o arco sobem acima da cabeça: a altura conta com eles.
 SIZES = {
-    "orcScout": (108, 256),
-    "orcGrunt": (128, 256),
-    "orcSpearman": (150, 256),
-    "orcArcher": (122, 256),
-    "orcShaman": (130, 256),
-    "orcBerserker": (132, 256),
-    "orcCaptain": (150, 256),
-    "ogreYoung": (170, 320),
-    "ogreBruiser": (215, 384),
-    "ogreShaman": (215, 384),
-    "orcWarlord": (160, 320),
-    "ogreKing": (300, 512),
+    "orcScout": (108, 144),
+    "orcGrunt": (128, 160),
+    "orcSpearman": (150, 176),
+    "orcArcher": (122, 160),
+    "orcShaman": (130, 176),
+    "orcBerserker": (132, 192),
+    "orcCaptain": (150, 192),
+    "ogreYoung": (170, 240),
+    "ogreBruiser": (215, 288),
+    "ogreShaman": (215, 256),
+    "orcWarlord": (160, 192),
+    "ogreKing": (300, 384),
 }
 
 # Figuras da folha de giro que vão para o jogo: frente, perfil e costas, parado (0, 2, 4) e andando (6, 8, 10).

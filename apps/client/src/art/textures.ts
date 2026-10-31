@@ -138,20 +138,28 @@ export function createCreatureArt(scene: Phaser.Scene) {
 }
 
 /** Folha animada: cada quadro é refinado à parte (o contorno não vaza para o vizinho) e vira um quadro da textura. */
-/** Folha da arte nova sendo montada: os quadros já desenhados e o próximo. */
-const hdBuilds = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; jobs: (() => HTMLCanvasElement)[]; next: number }>();
+/**
+ * Folha da arte nova sendo montada: as figuras distintas (`jobs`, cada função uma vez), a figura de cada quadro do clipe
+ * (`slot`) e a próxima a desenhar. Quadros repetidos apontam para a mesma figura: a memória da textura é a das figuras,
+ * não a dos quadros (no celular, folha grande demais fecha o jogo).
+ */
+const hdBuilds = new Map<string, {
+  canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; jobs: (() => HTMLCanvasElement)[]; slot: number[]; next: number;
+}>();
 
 /** Quadros por linha da folha da arte nova (no máximo 4096 px de largura). */
 const hdColumns = (size: number, frames: number) => Math.max(1, Math.min(frames, Math.floor(4096 / size)));
 
-/** Desenha o próximo quadro de um monstro da arte nova; com a folha completa, vira textura. Devolve se está pronta. */
+/** Desenha a próxima figura de um monstro da arte nova; com a folha completa, vira textura. Devolve se está pronta. */
 function hdStep(scene: Phaser.Scene, key: string, anim: MonsterAnim): boolean {
   if (scene.textures.exists(key)) return true;
   let b = hdBuilds.get(key);
   if (!b) {
-    const jobs = anim.hd!();
+    const frames = anim.hd!();
+    const jobs = [...new Set(frames)];
+    const slot = frames.map((job) => jobs.indexOf(job));
     const cols = hdColumns(anim.size, jobs.length);
-    b = { ...makeCanvas(anim.size * cols, anim.size * Math.ceil(jobs.length / cols)), jobs, next: 0 };
+    b = { ...makeCanvas(anim.size * cols, anim.size * Math.ceil(jobs.length / cols)), jobs, slot, next: 0 };
     hdBuilds.set(key, b);
   }
   // Em grade: textura mais larga que 4096 px fica preta no celular.
@@ -160,7 +168,7 @@ function hdStep(scene: Phaser.Scene, key: string, anim: MonsterAnim): boolean {
   b.ctx.drawImage(b.jobs[b.next](), ...cell(b.next));
   if (++b.next < b.jobs.length) return false;
   const texture = scene.textures.addCanvas(key, b.canvas)!;
-  for (let i = 0; i < b.jobs.length; i++) texture.add(i, 0, ...cell(i), anim.size, anim.size);
+  b.slot.forEach((slot, i) => texture.add(i, 0, ...cell(slot), anim.size, anim.size));
   addClips(scene, key, anim);
   hdBuilds.delete(key);
   return true;

@@ -28,3 +28,17 @@ Sem a folha B, o golpe e o especial saem do perfil (com o bote que o jogo já d�
 
 O Rei segura o tronco em pé parado e no ombro andando: ele anda só com a figura de andar (`WALK_POSE_ONLY` em
 `kosaradiusArt.ts`), senão o tronco pularia do chão para o ombro a cada passo.
+
+## Memória no celular
+
+O jogo prepara a folha de todo monstro da arte nova ao abrir (`warmMonsterArt` em `textures.ts`), e cada quadro fica
+na memória do celular (canvas e textura). Com uma figura de 256–512 px por quadro (32 quadros por monstro), os 12 do
+clã somavam ~156 MB e o celular fechava o jogo no Kosaradius. Agora:
+
+- os quadros repetidos de um clipe apontam para a mesma figura (`hdStep` guarda cada função de `hd()` uma vez; aqui,
+  `at()` devolve a mesma função para a mesma figura e deslocamento), e os clipes usam poucas variações: 11 figuras por
+  monstro (14 no Rei);
+- o quadro é o menor que cabe a figura com a folga do bote (`SIZES` em `kosaradiusSprites.py`).
+
+Resultado: ~28 MB para os 12. Monstro novo: conte figuras distintas × lado² × 4 bytes antes de publicar.
+
