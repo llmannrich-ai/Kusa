@@ -16,6 +16,12 @@ const SHEETS = import.meta.glob<string>("./kosaradius/*.png", { eager: true, imp
 /** Figuras da folha. */
 const F = { front: 0, side: 2, back: 4, frontWalk: 6, sideWalk: 8, backWalk: 10 } as const;
 
+/**
+ * Quem carrega a arma de outro jeito andando (o Rei: tronco em pé parado, no ombro andando) anda só com a figura de
+ * andar, subindo e descendo; os outros alternam a passada com a figura parada.
+ */
+const WALK_POSE_ONLY = new Set<MonsterKind>(["ogreKing"]);
+
 /** Clipes a mais (quadros), depois dos 4 de sempre, na ordem de `EXTRA_CLIPS` (`bestiary.ts`): frente e costas. */
 const CLAN_EXTRA = { idleDown: 4, walkDown: 4, idleUp: 4, walkUp: 4 } as const;
 
@@ -42,7 +48,7 @@ function figure(img: HTMLImageElement, s: number, i: number, o: { flip?: boolean
   return canvas;
 }
 
-async function loadOne(url: string): Promise<ClanArt> {
+async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
   const img = new Image();
   img.src = url;
   await img.decode();
@@ -51,7 +57,11 @@ async function loadOne(url: string): Promise<ClanArt> {
   const breath = [0, 0.012, 0.024, 0.012];
   const breathing = (i: number) => breath.map((b) => at(i, { breathe: b }));
   // A folha tem um passo por vista: entre um e outro, o corpo parado um pouco acima. Não espelha (a arma trocaria de mão).
-  const steps = (still: number, walk: number) => [at(walk), at(still, { dy: -3 }), at(walk, { dy: -1 }), at(still, { dy: -3 })];
+  const walkOnly = WALK_POSE_ONLY.has(kind);
+  const steps = (still: number, walk: number) => {
+    const mid = walkOnly ? walk : still;
+    return [at(walk), at(mid, { dy: -3 }), at(walk, { dy: -1 }), at(mid, { dy: -3 })];
+  };
   // Parte de cima do quadro ocupada pelo perfil parado (a barra de vida fica logo acima).
   const { ctx } = makeCanvas(s, s);
   ctx.drawImage(img, F.side * s, 0, s, s, 0, 0, s, s);
@@ -89,7 +99,7 @@ async function loadOne(url: string): Promise<ClanArt> {
 export async function loadClan(): Promise<Partial<Record<MonsterKind, ClanArt>>> {
   const entries = await Promise.all(Object.entries(SHEETS).map(async ([path, url]) => {
     const kind = path.slice(path.lastIndexOf("/") + 1, -".png".length) as MonsterKind;
-    return [kind, await loadOne(url)] as const;
+    return [kind, await loadOne(kind, url)] as const;
   }));
   return Object.fromEntries(entries);
 }

@@ -14,5 +14,9 @@ monstro com folha usa a arte nova; sem folha, continua com a arte por código (`
 | Orc do Brejo (`orcGrunt`) | ✅ | — |
 | Orc lanceiro (`orcSpearman`) | ✅ | — |
 | Orc arqueiro (`orcArcher`) | ✅ | — |
+| Grumak, o Rei-Ogro (`ogreKing`) | ✅ | — |
 
 Sem a folha B, o golpe e o especial saem do perfil (com o bote que o jogo já dá no golpe) e a morte é o tombo de sempre.
+
+O Rei segura o tronco em pé parado e no ombro andando: ele anda só com a figura de andar (`WALK_POSE_ONLY` em
+`kosaradiusArt.ts`), senão o tronco pularia do chão para o ombro a cada passo.
