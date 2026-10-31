@@ -4,6 +4,7 @@ import { hash, makeCanvas } from "./art/pixels.ts";
 import { CAVE_FLOOR_DECOR, CAVE_FLOOR_VARIANTS, CAVE_TALL, ROCK_FACE_VARIANTS, ROCK_TOP_VARIANTS } from "./art/caveDecor.ts";
 import { DESERT_TEXTURE } from "./art/textures.ts";
 import { patchTint, type ChunkCuller } from "./mapShared.ts";
+import { pillar } from "./cavePlan.ts";
 
 /** Fundo do subterrâneo (além da rocha): quase preto, puxado para o marrom. */
 export const CAVE_VOID = 0x0d0806;
@@ -164,11 +165,7 @@ export function drawCaveMouth(scene: Phaser.Scene, d: Dungeon, culler: ChunkCull
   return culler.add(img, x, y);
 }
 
-/** Pilar solto do covil: rocha sem rocha nos 4 lados (o gerador os põe soltos). */
-export function pillar(d: Dungeon, x: number, y: number) {
-  if (tileAt(d, x, y) !== Tile.Wall) return false;
-  return [[0, -1], [1, 0], [0, 1], [-1, 0]].every(([dx, dy]) => tileAt(d, x + dx, y + dy) !== Tile.Wall);
-}
+export { pillar } from "./cavePlan.ts";
 
 /** Área subterrânea do mapa: a caverna do deserto ou a Caverna da Travessia inteira. */
 export function undergroundArea(d: Dungeon): Rect | null {

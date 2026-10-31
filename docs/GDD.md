@@ -779,10 +779,13 @@ o desenho lê.
   **Raio Paralisante** (atordoa 1,2 s), **Raio Repulsor** (empurra 3 tiles em volta) e, ferido, **Tempestade de
   Olhares** (área que corrói). Resiste a sombra, vulnerável a luz.
 - **Loot:** teto da hunt solo 3.000 (o máximo teórico fica em ~2.700), cheio depois de 240 s.
-- **Visual** (só no cliente, `apps/client/src/cavernMap.ts`, com a arte da caverna do deserto em tons frios e os
-  bosses em `art/cavernBosses.ts`): rocha molhada azulada com paredão, chão de pedra com manchas, poças escuras,
-  estalagmites e cristais azuis que brilham, pele trocada e ossos no covil do Basilisco, brilho verde e roxo nos
-  covis, gotas pingando do teto e cantos da tela bem escuros.
+- **Visual** (só no cliente, `apps/client/src/cavernMap.ts`, o plano em `cavePlan.ts` e a arte em `art/caveArt.ts`;
+  os bosses em `art/cavernBosses.ts`): **sempre na arte nova** (128 px por tile, por código, `docs/CENARIOS_PLANO.md`).
+  Rocha fria e molhada: a massa funda escura e, onde o chão fica ao sul, o paredão em camadas (o das Mesas de Solária
+  noutra paleta); chão de pedra com manchas grandes que correm sem emenda por blocos de 4×4 tiles, rachaduras e
+  pedrinhas; sombra ao pé da rocha; poças de água escura; estalagmites (uma grande ou um grupo) e cristais azuis que
+  brilham nos túneis; pele trocada, sulcos de garras e ossos no covil do Basilisco, chão limpo no do Observador;
+  brilho verde e roxo nos covis, luz fraca no poço de chegada, gotas pingando do teto e cantos da tela bem escuros.
 
 ### Pântano do Kosaradius
 

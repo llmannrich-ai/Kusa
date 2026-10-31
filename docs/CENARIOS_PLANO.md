@@ -65,7 +65,7 @@ Copiar a forma dos mapas que já estão prontos (Bosque Velho é a referência m
 | **0. Base** | Teste `cenarios` e objetos comuns (baú, portais, sangue) em 128 px (feita) | P | — |
 | **1a. Pântano do Kosaradius** | Variante `marsh` do desenho da mata (feita) | G | 0 (só o teste) |
 | **1b. Pântano das Ruínas** | Variante `swamp` do desenho da mata, com as ruínas, e apagar o chão por IA (feita) | M | 1a |
-| **2. Caverna da Travessia** | Pintor de caverna (`art/caveArt.ts`) e `cavernMap.ts` reescrito | M | 0 |
+| **2. Caverna da Travessia** | Pintor de caverna (`art/caveArt.ts`) e `cavernMap.ts` reescrito (feita) | M | 0 |
 | **3. Mar de Areia** | Variante `desert` em `duneArt.ts` e trechos de caverna da fase 2 | M | 2 |
 | **4. Cripta fora do beta** | Cripta sempre em 128 px; apagar `cryptDecor.ts`/`walls.ts` de cenário e `floor*.png` | P | — |
 | **5. Limpeza** | Apagar a arte de cenário de 32 px que sobrou, documentação | P | 1b, 3, 4 |
@@ -126,12 +126,17 @@ Pendente para depois: marolas, bolhas e libélulas do ambiente antigo não volta
 
 ![Pântano das Ruínas: sala dos baús com as lajes, os muros e o capim invadindo](arte/pantano-das-ruinas.png)
 
-### Fase 2 — Caverna da Travessia
+### Fase 2 — Caverna da Travessia (feita)
 
-- **`art/caveArt.ts`**: chão de caverna (6 variações) e de salão, rocha (topo, face e borda), sombra junto à rocha,
-  enfeites (ossos, sulco, pele, cascalho, areia), estalagmites, cristais, água de caverna, o brilho, o poço de luz
-  e a boca da caverna.
-- `cavernMap.ts` reescrito. A escuridão com raio de luz (P6) continua a de hoje, se ainda servir na arte nova.
+- `art/caveArt.ts` com duas paletas (`cavern`, fria; `desert`, quente, para a fase 3): o **paredão** e a **água** são
+  os das Mesas e das Dunas (`mesaTile`, `waterTile` em `duneArt.ts`, que passaram a aceitar uma paleta pronta); o
+  **chão** e a **rocha funda** são uma textura contínua de 4×4 tiles (cada tile pinta o seu pedaço, `blockPiece`), sem
+  emenda nem grade; estalagmites, cristais e os enfeites dos covis são daqui.
+- `cavePlan.ts` (o plano, sem Phaser) e `drawCaveHd` em `cavernMap.ts` (desenha o plano; recebe a área, para servir
+  ao subterrâneo do Mar de Areia). As luzes são uma mancha em 3 degraus de transparência, sem degradê.
+- `pillar` mudou de `caveMap.ts` para `cavePlan.ts` (o `caveMap.ts` reexporta).
+
+![Caverna da Travessia: rocha, paredão, chão de pedra e cristal](arte/caverna-da-travessia.png)
 
 ### Fase 3 — Mar de Areia
 
