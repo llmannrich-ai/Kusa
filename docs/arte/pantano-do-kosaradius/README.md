@@ -10,6 +10,7 @@ monstro com folha usa a arte nova; sem folha, continua com a arte por código (`
 
 | Monstro | Folha A | Folha B (ação) |
 |---|---|---|
+| Orc batedor (`orcScout`) | ✅ | — |
 | Orc lanceiro (`orcSpearman`) | ✅ | — |
 | Orc arqueiro (`orcArcher`) | ✅ | — |
 
