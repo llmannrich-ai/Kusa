@@ -89,7 +89,17 @@ bordas pelos 4 lados; os telhados são tiles do atlas (os mesmos para todas as c
 têm uma altura e 2 variações; a névoa do vale cobre só as faixas com abismo. Jogar deitado (915×412) conferido: o
 vale e a beira do esporão aparecem (lê até melhor que em pé).
 
-**Falta:** a medida num celular de verdade (Android de entrada e iPhone).
+**iPhone (31/10, 402×742 @3x, app do Claude):** Fortaleza 1,9 s, 43 MB, 60 qps (piores 5%: 60); Portões 0,8 s, 39 MB,
+60; Dunas 0,5 s, 20 MB, 60. Fluidez e memória perfeitas; o desenho ficou em 2,3× o dos Portões, em parte porque a
+página media os Portões depois da Fortaleza (as peças compartilhadas já estavam pintadas).
+
+**Pintura adiada:** como os Portões já fazem com a fachada e o mosaico, o que fica longe da entrada (o vale, o terraço
+da torre de menagem, os telhados) vai num segundo atlas, pintado no quadro seguinte ao mapa aparecer. A página de
+medição passou a fazer 2 rodadas (a 2ª compara os mapas com as peças compartilhadas já prontas) e a mostrar o tempo
+da pintura adiada. Na prévia: Fortaleza 2,3 s + 0,5 s depois contra 2,2 s dos Portões na 2ª rodada (1,04×), 44 MB
+contra 48 MB (os Portões também pintam a fachada depois). **Meta da fase 0 cumprida.**
+
+**Falta:** repetir no iPhone com a página nova e, se possível, num Android de entrada.
 
 ### Fase 1 — Planta autoral
 

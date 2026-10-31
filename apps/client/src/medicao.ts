@@ -18,14 +18,19 @@ const MAP_LIST: { id: MapId; draw: typeof drawFortress; void: number }[] = [
   { id: "dunes", draw: drawDunes, void: DUNES_VOID },
 ];
 /** Duração máxima do passeio de cada mapa (ms), depois de 1 s parado. */
-const TOUR_MS = 20000;
+const TOUR_MS = 12000;
 
-interface Result { mapa: string; desenhoMs: number; texturasMb: number; qps: number; qpsPiores5: number }
+/**
+ * `depoisMs`: o que o mapa pinta logo depois de aparecer (a Fortaleza adia o vale, o terraço e os telhados). Duas
+ * rodadas: na 1ª, o primeiro mapa pinta sozinho as peças que os outros reaproveitam (o capim do império fica guardado),
+ * o pior caso de verdade; na 2ª, todos já as encontram prontas, e a comparação entre eles é justa.
+ */
+interface Result { mapa: string; desenhoMs: number; depoisMs: number; texturasMb: number; qps: number; qpsPiores5: number }
 
 const status = document.getElementById("status")!;
 const table = document.getElementById("resultado")!;
 
-function measure(entry: (typeof MAP_LIST)[number]): Promise<Result> {
+function measure(entry: (typeof MAP_LIST)[number], label: string): Promise<Result> {
   return new Promise((resolve) => {
     const d = generateDungeon(1, entry.id);
     class Medida extends Phaser.Scene {
@@ -39,11 +44,9 @@ function measure(entry: (typeof MAP_LIST)[number]): Promise<Result> {
 
       create() {
         const t = performance.now();
+        (window as unknown as { desenhoLongeMs?: number }).desenhoLongeMs = 0;
         this.ambience = entry.draw(this, d, 0, 1e6);
         this.drawMs = Math.round(performance.now() - t);
-        let bytes = 0;
-        for (const key of this.textures.getTextureKeys()) for (const src of this.textures.get(key).source) bytes += src.width * src.height * 4;
-        this.texMb = Math.round(bytes / 1048576);
         this.pts = [centerOf(d.spawn), ...d.path.map(centerOf), centerOf(d.boss)].map((p) => ({ x: p.x * TILE_SIZE + 16, y: p.y * TILE_SIZE + 16 }));
         const cam = this.cameras.main.setBackgroundColor(entry.void).setRoundPixels(true);
         cam.setZoom(Math.min(this.scale.gameSize.width, this.scale.gameSize.height) / (9 * TILE_SIZE)).centerOn(this.pts[0].x, this.pts[0].y);
@@ -62,10 +65,15 @@ function measure(entry: (typeof MAP_LIST)[number]): Promise<Result> {
           if (left <= len) { this.cameras.main.centerOn(a.x + (b.x - a.x) * (left / len), a.y + (b.y - a.y) * (left / len)); return; }
           left -= len;
         }
+        // A memória é contada no fim, com o que foi pintado depois (o atlas de longe) já incluído.
+        let bytes = 0;
+        for (const key of this.textures.getTextureKeys()) for (const src of this.textures.get(key).source) bytes += src.width * src.height * 4;
+        this.texMb = Math.round(bytes / 1048576);
         const sorted = [...this.frames].sort((x, y) => y - x);
         const worst = sorted.slice(0, Math.max(1, Math.floor(sorted.length * 0.05)));
         const avg = (v: number[]) => v.reduce((s, x) => s + x, 0) / v.length;
-        const result = { mapa: MAPS[entry.id].name, desenhoMs: this.drawMs, texturasMb: this.texMb, qps: Math.round(1000 / avg(this.frames)), qpsPiores5: Math.round(1000 / avg(worst)) };
+        const page = window as unknown as { desenhoLongeMs?: number };
+        const result = { mapa: `${MAPS[entry.id].name}${label}`, desenhoMs: this.drawMs, depoisMs: page.desenhoLongeMs ?? 0, texturasMb: this.texMb, qps: Math.round(1000 / avg(this.frames)), qpsPiores5: Math.round(1000 / avg(worst)) };
         this.ambience = null;
         game.destroy(true);
         setTimeout(() => resolve(result), 300);
@@ -83,11 +91,11 @@ function measure(entry: (typeof MAP_LIST)[number]): Promise<Result> {
 document.getElementById("comecar")!.addEventListener("click", async (e) => {
   (e.currentTarget as HTMLButtonElement).remove();
   const results: Result[] = [];
-  for (const entry of MAP_LIST) results.push(await measure(entry));
+  for (const label of [" (1ª)", " (2ª)"]) for (const entry of MAP_LIST) results.push(await measure(entry, label));
   const tela = `${innerWidth}×${innerHeight} @${devicePixelRatio}x · ${navigator.userAgent}`;
   const text = [
-    "Mapa | Desenho (ms) | Texturas (MB) | Quadros/s | Piores 5%",
-    ...results.map((r) => `${r.mapa} | ${r.desenhoMs} | ${r.texturasMb} | ${r.qps} | ${r.qpsPiores5}`),
+    "Mapa | Desenho (ms) | Depois (ms) | Texturas (MB) | Quadros/s | Piores 5%",
+    ...results.map((r) => `${r.mapa} | ${r.desenhoMs} | ${r.depoisMs} | ${r.texturasMb} | ${r.qps} | ${r.qpsPiores5}`),
     `Tela: ${tela}`,
   ].join("\n");
   status.textContent = "Pronto. Copie o resultado e cole na conversa.";

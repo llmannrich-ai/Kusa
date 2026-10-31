@@ -24,6 +24,8 @@ export const FORTRESS_VOID = 0x222b33;
 
 const ZOOM = HD / TILE_SIZE;
 const ATLAS = "fortress-atlas";
+/** Atlas do que fica longe da entrada (o vale, o terraço da torre de menagem, os telhados): montado depois. */
+const FAR_ATLAS = "fortress-atlas-longe";
 const FLAME_KEY = "fortress-flame";
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
 /**
@@ -121,9 +123,12 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
 
   // --- Andar de baixo: o vale --------------------------------------------------------------------
   const atlas = new TileAtlas();
-  const grassFrame = (x: number, y: number) => {
+  // O que não aparece nos primeiros segundos da hunt vai noutro atlas, pintado logo depois de o mapa aparecer (como a
+  // fachada e o mosaico dos Portões): o vale (a entrada fica longe do desfiladeiro), o terraço e os telhados.
+  const far = new TileAtlas();
+  const grassFrame = (x: number, y: number, into = atlas) => {
     const v = pick(x, y, 6, 1);
-    return atlas.frame(`grass${v}`, () => grassTile(v).render(false));
+    return into.frame(`grass${v}`, () => grassTile(v).render(false));
   };
   /** O vale: capim, rios serpenteando (as curvas de nível de um ruído suave) e manchas de mata. */
   const valleyWater = (x: number, y: number) => Math.abs(field(x, y, 8, 201) - 0.5) < 0.05 || field(x, y, 13, 203) < 0.07;
@@ -149,15 +154,15 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       if (!needed[i]) continue;
       if (valleyWater(x, y)) {
         const land = side4(x, y, (a, b) => !valleyWater(a, b));
-        lower[i] = atlas.frame(`river${land}`, () => waterTile("oldwood", land, 0).render(false));
+        lower[i] = far.frame(`river${land}`, () => waterTile("oldwood", land, 0).render(false));
       } else if (valleyWood(x, y)) {
         const open = side4(x, y, (a, b) => !valleyWood(a, b));
-        lower[i] = atlas.frame(`wood${open}`, () => canopyTile("oldwood", open, 0).render(false));
+        lower[i] = far.frame(`wood${open}`, () => canopyTile("oldwood", open, 0).render(false));
       } else {
-        lower[i] = grassFrame(x + 3, y + 5);
+        lower[i] = grassFrame(x + 3, y + 5, far);
         if (hash(x, y, 90) < 0.05) {
           const kind: FlatDecor = hash(x, y, 91) < 0.5 ? "stones" : hash(x, y, 92) < 0.5 ? "shards" : "weeds";
-          lowerDecor[i] = atlas.frame(`flat-${kind}-0`, () => flatDecor(kind, 0).render(true));
+          lowerDecor[i] = far.frame(`flat-${kind}-0`, () => flatDecor(kind, 0).render(true));
         }
       }
     }
@@ -269,16 +274,16 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         const kind: 0 | 1 | 2 = doorPart !== null ? 2 : x % 4 === 2 && x > 1 && x < KW - 2 ? 1 : 0;
         const end: -1 | 0 | 1 = x === 0 ? -1 : x === KW - 1 ? 1 : 0;
         const v = Math.floor(hash(gx, row, 73) * 3);
-        roof[i] = atlas.frame(`face${row}-${kind}-${doorPart ?? 0}-${end}-${v}`, () => keepFaceTile(row, kind, doorPart ?? 0, end, v));
+        roof[i] = far.frame(`face${row}-${kind}-${doorPart ?? 0}-${end}-${v}`, () => keepFaceTile(row, kind, doorPart ?? 0, end, v));
         continue;
       }
       if (hole(x, y) && x > 1 && y > 1 && x < KW - 2 && y < K.h - 2) {
         const rim = mask(x, y, (a, b) => terrace(a, b) && !(hole(a, b) && a > 1 && b > 1 && a < KW - 2 && b < K.h - 2));
         const v = Math.floor(hash(x, y, 74) * 2);
-        roof[i] = atlas.frame(`hole${rim}-${v}`, () => roofHoleTile(rim, v).render(false));
+        roof[i] = far.frame(`hole${rim}-${v}`, () => roofHoleTile(rim, v).render(false));
       } else {
         const q = quarter(x, y);
-        roof[i] = atlas.frame(`terrace${q}`, () => terraceTile(q).render(false));
+        roof[i] = far.frame(`terrace${q}`, () => terraceTile(q).render(false));
       }
       let out = 0;
       if (y === 0) out |= OPEN.n;
@@ -287,7 +292,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       if (x === KW - 1) out |= OPEN.e;
       if (out) {
         const v = Math.floor(hash(x, y, 75) * 2);
-        parapet[i] = atlas.frame(`parapet${out}-${v}`, () => parapetTile(out, v));
+        parapet[i] = far.frame(`parapet${out}-${v}`, () => parapetTile(out, v));
       }
     }
 
@@ -300,7 +305,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         const row = roofRow(y, r.h);
         const col: -1 | 0 | 1 = x === 0 ? -1 : x === r.w - 1 ? 1 : 0;
         const v = row === "south" && x === holeX && y === r.h - 2 ? 2 : row === "ridge" && x === skullX ? 3 : hash(r.x + x, r.y + y, 78) < 0.2 && row !== "ridge" ? 1 : 0;
-        roofFrames[(r.y + y) * W + r.x + x] = atlas.frame(`roof-${row}${col}-${v}`, () => roofTile(row, col, v).render(false));
+        roofFrames[(r.y + y) * W + r.x + x] = far.frame(`roof-${row}${col}-${v}`, () => roofTile(row, col, v).render(false));
       }
   }
   if (scene.textures.exists(ATLAS)) scene.textures.remove(ATLAS);
@@ -318,11 +323,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       }
     return l;
   };
-  // O vale fica atrás de tudo, escurecido e azulado pela distância; a névoa e a sombra do castelo vêm por cima dele.
-  const valley = [
-    layer("vale", lower, floorDepth - 3, (x, y) => patchTint(x, y, 0.3, [0.55, 0.68, 0.92], 5, 97)),
-    layer("vale-enfeites", lowerDecor, floorDepth - 3, (x, y) => patchTint(x, y, 0.3, [0.55, 0.68, 0.92], 5, 97)),
-  ];
+  const valley: Phaser.Tilemaps.TilemapLayer[] = [];
   // Névoa do vale: uma faixa por trecho de linhas com abismo (e não o mapa todo, que pesaria no celular).
   for (let y = 0; y < H; ) {
     if (![...Array(W).keys()].some((x) => abyss(x, y))) { y++; continue; }
@@ -478,15 +479,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const uppers: Upper[] = [];
   // Torre de menagem: o terraço e a fachada numa camada só, deslocada `KEEP_RISE` tiles para o norte, por cima de
   // quem está atrás dela (a profundidade é a da linha de baixo, como um sprite).
-  const keepMap = scene.make.tilemap({ width: KW, height: KH, tileWidth: HD, tileHeight: HD });
-  const keepSet = keepMap.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
   const keepDepth = (K.y + K.h) * TILE_SIZE - 0.2;
-  const keepLayer = (name: string, data: Int32Array, depth: number) => {
-    const l = keepMap.createBlankLayer(name, keepSet, K.x * TILE_SIZE, (K.y - KEEP_RISE) * TILE_SIZE)!.setDepth(depth).setScale(1 / ZOOM);
-    for (let y = 0; y < KH; y++) for (let x = 0; x < KW; x++) { const fr = data[y * KW + x]; if (fr >= 0) l.putTileAt(fr, x, y); }
-    return l;
-  };
-  const keepObjs: Upper["objs"] = [keepLayer("terraco", roof, keepDepth), keepLayer("parapeito", parapet, keepDepth + 0.01)];
+  const keepObjs: Upper["objs"] = [];
   // No terraço: a fogueira dos orcs, o estandarte e os panos de guerra na fachada.
   const top = (x: number, y: number) => ({ px: (K.x + x + 0.5) * TILE_SIZE, py: (K.y - KEEP_RISE + y + 1) * TILE_SIZE });
   const bannerKey = single(scene, "fortress-roof-banner", BANNER.w, BANNER.h, () => bannerSprite(1));
@@ -503,19 +497,45 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     const p = { px: (K.x + tx) * TILE_SIZE, py: (K.y - KEEP_RISE + ty) * TILE_SIZE };
     keepObjs.push(scene.add.image(p.px, p.py, turretKey).setOrigin(0.5, 1).setScale(0.8 / ZOOM).setFlipX(k % 2 === 1).setDepth(keepDepth + (ty > 3 ? 0.04 : 0.015)));
   }
-  uppers.push({ objs: keepObjs, area: K, alpha: 1, hidden: 0 });
+  const keepUpper: Upper = { objs: keepObjs, area: K, alpha: 1, hidden: 0 };
+  uppers.push(keepUpper);
 
-  // Telhados das casernas: tiles do atlas (os mesmos para todas), cada telhado numa camada própria deslocada a altura
-  // dos muros para o norte (em cima deles), que some quando o herói entra. O buraco e a caveira caem num tile só.
-  for (const r of d.side) {
-    const roofMap = scene.make.tilemap({ width: r.w, height: r.h, tileWidth: HD, tileHeight: HD });
-    const roofSet = roofMap.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
-    const l = roofMap.createBlankLayer("telhado", roofSet, r.x * TILE_SIZE, r.y * TILE_SIZE - ROOM_WALL / ZOOM)!
-      .setDepth((r.y + r.h) * TILE_SIZE - 0.2).setScale(1 / ZOOM);
-    for (let y = 0; y < r.h; y++)
-      for (let x = 0; x < r.w; x++) l.putTileAt(roofFrames[(r.y + y) * W + r.x + x], x, y);
-    uppers.push({ objs: [l], area: r, alpha: 1, hidden: 0.08 });
-  }
+  /** Monta o atlas de longe e as camadas dele: o vale, o terraço da torre de menagem e os telhados das casernas. */
+  const buildFar = () => {
+    if (scene.textures.exists(FAR_ATLAS)) scene.textures.remove(FAR_ATLAS);
+    scene.textures.addCanvas(FAR_ATLAS, far.build());
+    const farLayer = (w: number, h: number, data: Int32Array, x: number, y: number, depth: number, tint?: (x: number, y: number) => number) => {
+      const m = scene.make.tilemap({ width: w, height: h, tileWidth: HD, tileHeight: HD });
+      const ts = m.addTilesetImage(FAR_ATLAS, FAR_ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
+      const l = m.createBlankLayer("camada", ts, x, y)!.setDepth(depth).setScale(1 / ZOOM);
+      for (let ty = 0; ty < h; ty++)
+        for (let tx = 0; tx < w; tx++) {
+          const fr = data[ty * w + tx];
+          if (fr < 0) continue;
+          const tile = l.putTileAt(fr, tx, ty);
+          if (tint) tile.tint = tint(tx, ty);
+        }
+      return l;
+    };
+    // O vale fica atrás de tudo, escurecido e azulado pela distância; a névoa e a sombra do castelo vêm por cima dele.
+    const valleyTint = (x: number, y: number) => patchTint(x, y, 0.3, [0.55, 0.68, 0.92], 5, 97);
+    valley.push(farLayer(W, H, lower, 0, 0, floorDepth - 3, valleyTint), farLayer(W, H, lowerDecor, 0, 0, floorDepth - 3, valleyTint));
+    // Torre de menagem: o terraço e a fachada, deslocados `KEEP_RISE` tiles para o norte, por cima de quem está atrás
+    // dela (a profundidade é a da linha de baixo, como um sprite).
+    const kx = K.x * TILE_SIZE, ky = (K.y - KEEP_RISE) * TILE_SIZE;
+    for (const l of [farLayer(KW, KH, roof, kx, ky, keepDepth), farLayer(KW, KH, parapet, kx, ky, keepDepth + 0.01)]) {
+      l.setAlpha(keepUpper.alpha);
+      keepObjs.push(l);
+    }
+    // Telhados das casernas: tiles do atlas (os mesmos para todas), cada telhado numa camada própria deslocada a
+    // altura dos muros para o norte (em cima deles), que some quando o herói entra.
+    for (const r of d.side) {
+      const data = new Int32Array(r.w * r.h);
+      for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) data[y * r.w + x] = roofFrames[(r.y + y) * W + r.x + x];
+      const l = farLayer(r.w, r.h, data, r.x * TILE_SIZE, r.y * TILE_SIZE - ROOM_WALL / ZOOM, (r.y + r.h) * TILE_SIZE - 0.2);
+      uppers.push({ objs: [l], area: r, alpha: 1, hidden: 0.08 });
+    }
+  };
 
   // --- Fogo e luz ----------------------------------------------------------------------------------
   if (!scene.textures.exists(FLAME_KEY)) {
@@ -542,7 +562,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const roofFire = top(holeAt.x < KW / 2 ? KW - 5 : 4, K.h - 5);
   for (const o of fire(roofFire.px, roofFire.py - 6, keepDepth + 0.03, 1.6, K.x, K.y, 1.8, false)) keepObjs.push(o);
 
-  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth });
+  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar] });
 }
 
 /** Ruído suave em grade de `cell` tiles (0 a 1), para o desenho do vale. */
@@ -594,6 +614,8 @@ function createAmbience(
   art: {
     crowns: Phaser.GameObjects.Image[]; flames: Phaser.GameObjects.Image[]; glows: Phaser.GameObjects.Image[];
     big: { img: Phaser.GameObjects.Image; hide: Rect }[]; uppers: Upper[]; valley: Phaser.Tilemaps.TilemapLayer[]; floorDepth: number;
+    /** Pinturas adiadas (o atlas de longe): uma por quadro, depois do primeiro. */
+    later: (() => void)[];
   },
 ): MapAmbience {
   const cam = scene.cameras.main;
@@ -612,11 +634,19 @@ function createAmbience(
   const zone = (mist.emitZones[0] as unknown as { source: Phaser.Geom.Rectangle }).source;
   const visible = new Set<Phaser.GameObjects.GameObject>();
   const drop = DROP * TILE_SIZE;
+  let started = false;
   return {
     update(time: number) {
       const v = cam.worldView;
       if (v.width === 0) return;
       culler.update(v);
+      // O atlas de longe sai no segundo quadro (o mapa já apareceu; o vale e a torre estão fora da tela na entrada).
+      if (art.later.length && started) {
+        const t = performance.now();
+        art.later.shift()!();
+        (window as unknown as { desenhoLongeMs?: number }).desenhoLongeMs = Math.round(performance.now() - t);
+      }
+      started = true;
       // O vale: um andar abaixo (deslocado para o sul) e mais longe (anda devagar).
       for (const l of art.valley) l.setPosition(cam.scrollX * (1 - PARALLAX), drop + cam.scrollY * (1 - PARALLAX));
       zone.setTo(v.x - v.width * 0.3, v.y, v.width * 1.1, v.height);

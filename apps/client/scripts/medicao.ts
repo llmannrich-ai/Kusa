@@ -30,7 +30,7 @@ const html = `<!DOCTYPE html>
 <div id="mapa"></div>
 <div id="painel">
   <h1>Medição dos cenários do Kusa</h1>
-  <div id="status">Segure o celular em pé, feche os outros apps e toque em Começar. Leva cerca de 1 minuto: Fortaleza Orc, Portões do Império e Dunas Cantantes, um de cada vez.</div>
+  <div id="status">Segure o celular em pé, feche os outros apps e toque em Começar. Leva cerca de 1 minuto e meio: Fortaleza Orc, Portões do Império e Dunas Cantantes, um de cada vez, duas vezes.</div>
   <pre id="resultado"></pre>
   <button id="comecar">Começar</button>
 </div>
