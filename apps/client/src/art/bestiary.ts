@@ -291,8 +291,9 @@ if (protoCrypt) {
         size: crypt.size, sheet: () => crypt.sheet(), portrait: () => crypt.portrait(), outline: "",
         fps: { idle: 4, walk: 8, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
         hd: () => crypt.frames(), fill: crypt.fill, extra: { ...crypt.extra },
-        // A teia da aranha é o especial desenhado; sem habilidade, o especial fica guardado para quando houver.
-        strike: "cast",
+        // A habilidade toca o especial desenhado (a teia, o Golpe Brutal, o Engolfar, a investida do orc, o sopro); o
+        // Voo do dragão, que não tem especial próprio na folha, sai do golpe.
+        strike: kind === "dragon" ? { breath: "cast", flight: "attack" } : "cast",
       },
     };
   }

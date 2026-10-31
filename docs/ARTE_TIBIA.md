@@ -289,7 +289,8 @@ antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)*
 **Inimigos da Cripta com folhas geradas por IA** (`docs/arte/cripta/README.md`): o monstro que tem folha A (giro) e
 B (andar, golpe, especial e morte desenhados) troca o desenho por código pela folha, em todo mapa em que aparece
 (`criptaSprites.py` recorta, `art/proto/criptaArt.ts` monta os clipes). Já com folha: ratazana, kobold, estirge,
-esqueleto, aranha gigante, goblin arqueiro, esqueleto arqueiro, Bugbear chefe e Cubo Gelatinoso.
+esqueleto, aranha gigante, goblin arqueiro, esqueleto arqueiro, Bugbear chefe, Cubo Gelatinoso, orc guerreiro,
+hobgoblin capitão, gnoll e o dragão jovem (vermelho, como a regra; o verde por código saiu de cena).
 
 ### Goblin a partir de arte de referência
 

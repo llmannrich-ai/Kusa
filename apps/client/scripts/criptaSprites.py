@@ -52,6 +52,10 @@ HEIGHT = {
     "skeletonArcher": 125,
     "bugbear": 160,
     "gelatinousCube": 130,
+    "orc": 130,
+    "hobgoblin": 135,
+    "gnoll": 140,
+    "dragon": 250,
 }
 
 # Quem voa: a figura vai com o próprio pé na linha em toda folha (não cai até o chão na morte).
@@ -61,10 +65,11 @@ FLYERS = {"stirge"}
 USED = (0, 2, 4, 6, 8, 10)
 # Linhas da folha B e quantas figuras cada uma tem.
 B_ROWS = (4, 4, 4, 3)
-# Linha a mais na folha B de alguns (a emboscada do Bugbear, a cuspida do Cubo): o jogo ainda não tem clipe para ela,
-# então ela é lida (para as outras saírem certas) e fica de fora.
-B_EXTRA_ROW = {"bugbear": 4, "gelatinousCube": 3}
+# Linhas a mais na folha B de alguns (a emboscada do Bugbear, a cuspida do Cubo, o frenesi do Gnoll, a decolagem e o
+# mergulho do Dragão): o jogo ainda não tem clipe para elas, então são lidas (para as outras saírem certas) e ficam de fora.
+B_EXTRA_ROWS = {"bugbear": (4,), "gelatinousCube": (3,), "gnoll": (4,), "dragon": (4, 4)}
 HOLE = 60  # células de 2x2 px: claro sem cor desse tamanho para cima, cercado pela figura, é fundo
+SPECK = 6  # células de 2x2 px: branco puro desse tamanho para cima é fundo, mesmo pequeno
 
 
 def clean(path):
@@ -83,6 +88,14 @@ def clean(path):
     clear_small = clear[: h * k, : w * k].reshape(h, k, w, k).any(axis=(1, 3))
     sizes = np.bincount(label.ravel())
     keep = set(np.unique(label[clear_small])) | {i for i in range(1, len(sizes)) if sizes[i] >= HOLE}
+    # Branco puro (o fundo que sobrou) já é fundo em mancha pequena: entre a asa e o corpo do dragão, no ombro do
+    # hobgoblin. O brilho de dente e olho é menor que `SPECK` ou não é branco puro.
+    pure = (lo >= 244) & (hi - lo <= 8)
+    pure_small = pure[: h * k, : w * k].reshape(h, k, w, k).all(axis=(1, 3))
+    plabel, _ = components(pure_small)
+    psizes = np.bincount(plabel.ravel())
+    pure_bg = np.isin(plabel, [i for i in range(1, len(psizes)) if psizes[i] >= SPECK])
+    keep |= set(np.unique(label[pure_bg]))
     keep |= set(np.unique(np.concatenate([label[0], label[-1], label[:, 0], label[:, -1]])))
     keep.discard(0)
     bg = np.zeros_like(cand)
@@ -152,7 +165,7 @@ def main(kind, flip_figs=()):
     rows_a = figures(a)
     assert [len(r) for r in rows_a] == [6, 6], f"{kind}-A: esperava 2 linhas de 6, achei {[len(r) for r in rows_a]}"
     b = clean(SRC / f"{kind}-B.webp")
-    expected = B_ROWS + ((B_EXTRA_ROW[kind],) if kind in B_EXTRA_ROW else ())
+    expected = B_ROWS + B_EXTRA_ROWS.get(kind, ())
     rows_b = merge_loose(figures(b), expected)
     assert tuple(len(r) for r in rows_b) == expected, f"{kind}-B: esperava linhas {expected}, achei {[len(r) for r in rows_b]}"
     rows_b = rows_b[: len(B_ROWS)]

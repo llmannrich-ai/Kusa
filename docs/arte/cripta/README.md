@@ -6,7 +6,7 @@ guardadas aqui em WebP sem perda (os mesmos pixels do PNG, metade do tamanho):
 - `<kind>-A.webp` (giro): 2 linhas × 6, parado e andando; colunas: frente, 3/4 de frente, perfil para a esquerda,
   3/4 de costas, costas, 3/4 de costas para a direita.
 - `<kind>-B.webp` (ação): 4 linhas × 4, tudo de perfil para a esquerda: andar (4), golpe (4), especial (4) e morte (3).
-  Alguns têm uma 5ª linha (`B_EXTRA_ROW` no script): ela é lida e fica de fora até o jogo ter clipe para ela.
+  Alguns têm linhas a mais (`B_EXTRA_ROWS` no script): são lidas e ficam de fora até o jogo ter clipe para elas.
 
 Processadas por `apps/client/scripts/criptaSprites.py <kind>`, que grava `apps/client/src/art/proto/cripta/<kind>.png`
 (21 figuras: as 6 da A que o jogo usa e as 15 da B, paleta de 256 cores). O jogo pega sozinho todo PNG daquela pasta
@@ -24,12 +24,17 @@ o desenho por código. Diferente do Kosaradius, aqui o andar, o golpe, o especia
 | Esqueleto arqueiro (`skeletonArcher`) | A e B | 176 px | ~2,5 MB | |
 | Bugbear chefe (`bugbear`) | A e B | 224 px | ~4,0 MB | substitui a arte de referência; o especial é o Golpe Brutal; a 5ª linha (emboscada) fica de fora |
 | Cubo Gelatinoso (`gelatinousCube`) | A e B | 176 px | ~2,5 MB | o especial é o Engolfar; a 5ª linha (cuspida) fica de fora |
+| Orc guerreiro (`orc`) | A e B | 176 px | ~2,5 MB | o especial é a investida (Agressivo) |
+| Hobgoblin capitão (`hobgoblin`) | A e B | 192 px | ~3,0 MB | |
+| Gnoll (`gnoll`) | A e B | 192 px | ~3,0 MB | a 5ª linha (ataque em frenesi) fica de fora |
+| Dragão jovem (`dragon`) | A e B | 352 px | ~9,9 MB | vermelho, como a regra do jogo (troca o verde por código); o especial é o Sopro Infernal e o Voo usa o golpe; decolagem e mergulho ficam de fora |
 
 ## O que o script corrige sozinho
 
 - **Fundo:** o claro sem cor que encosta no transparente (ou forma um buraco grande dentro da figura) vira
   transparência. Pega o branco entre ossos e pernas e o xadrez pintado; o branco pequeno (dentes, brilho) e a teia
   (com cor) ficam.
+- **Branco puro:** a mancha branca pura de poucos pixels (entre a asa e o corpo do dragão) também é fundo (`SPECK`).
 - **Peça solta:** se uma figura da B se parte em duas linhas (a caveira voando), a peça vai para a figura mais perto.
 - **Escala:** a altura do perfil parado da A é `HEIGHT` do monstro (o tamanho de hoje no jogo); a B vai para a escala
   da A pela área do andar de perfil (a altura engana: cauda curvada, asas).
@@ -38,4 +43,4 @@ o desenho por código. Diferente do Kosaradius, aqui o andar, o golpe, o especia
 ## Memória no celular
 
 Só os monstros do mapa da hunt são preparados (`warmMapMonsters` em `textures.ts`). Cada monstro tem 21 figuras
-distintas: figuras × lado² × 4 bytes. Os 9 acima somam ~22 MB.
+distintas: figuras × lado² × 4 bytes. Os 13 acima somam ~40 MB, mas a hunt só prepara os do mapa dela.
