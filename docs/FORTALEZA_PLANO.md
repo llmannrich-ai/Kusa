@@ -21,10 +21,11 @@ terraço e telhados que somem com o herói embaixo), seção no GDD.
 | Acampamento orc | Tendas, totens, fogueiras, estandartes: o ponto mais vivo | 4 |
 | Interiores | Salão do trono e casernas vazios (só o piso, o trono e os pilares) | 1 |
 | Ambiente | Névoa e fogo; falta vento, fumaça, pássaros, luz de interior | 2 |
-| Desempenho | 5–9 s para desenhar na prévia sem placa de vídeo; **não medido no celular** | ? |
-| Jogar deitado (915×412) | **Não testado** | ? |
+| Desempenho | No nível dos Portões depois da fase 0 (3,7 s × 3,3 s); **falta o celular** | 3 |
+| Jogar deitado (915×412) | Conferido na prévia | 4 |
 
-Os dois "?" são o primeiro passo: não dá para decidir quanto detalhe cabe sem saber o custo.
+A fase 0 mostrou que o custo estava alto (o dobro dos Portões) e o trouxe para o nível deles: sobra espaço para
+detalhe, desde que cada peça nova seja medida.
 
 ---
 
@@ -67,6 +68,28 @@ Cada fase é **um PR**, aprovado por imagem (prévia `mapa.html?mapa=fortress`) 
 
 **Meta para seguir:** desenho ≤ 1,3× o dos Portões; 60 qps andando; sem textura acima de 4096 px. Se passar disso, a
 fase 8 vira a fase 1 (gerar o chão no build).
+
+**Ferramentas:** a prévia mede com `mapa.html?mapa=fortress&passeio=1` (a câmera anda da entrada ao boss e a tela
+mostra desenho, texturas e quadros por segundo) e `largura=<tiles>` afasta a câmera; para o celular,
+`npm run medicao -w @kusa/client -- arquivo.html` empacota uma página só que mede a Fortaleza, os Portões e as Dunas
+em sequência.
+
+**Resultado (31/10, navegador sem placa de vídeo, só a proporção vale):**
+
+| Mapa | Desenho | Texturas | Quadros/s (piores 5%) |
+|---|---|---|---|
+| Fortaleza, antes | 7,4 s | 73 MB | 49 (35) |
+| **Fortaleza, depois** | **3,7 s** | **44 MB** | **60 (59)** |
+| Portões do Império | 3,3 s | 36 MB | 60 (58) |
+| Dunas Cantantes | 1,5 s | 22 MB | 60 (58) |
+
+O que pesava: o vale (187 dos 440 quadros do atlas, e desenhado embaixo do mapa todo), um telhado pintado inteiro por
+caserna (17 MB) e variações demais de muro. Agora o vale só existe onde pode aparecer pelo abismo, com uma variação e
+bordas pelos 4 lados; os telhados são tiles do atlas (os mesmos para todas as casernas), como no Tibia; os muros soltos
+têm uma altura e 2 variações; a névoa do vale cobre só as faixas com abismo. Jogar deitado (915×412) conferido: o
+vale e a beira do esporão aparecem (lê até melhor que em pé).
+
+**Falta:** a medida num celular de verdade (Android de entrada e iPhone).
 
 ### Fase 1 — Planta autoral
 
@@ -164,14 +187,14 @@ muda (abismo é `Tile.Water`, ruína, mata, chão).
 - [ ] Desenho e quadros por segundo dentro das metas da fase 0.
 - [ ] `npm run check` verde; GDD e galeria atualizados.
 
-## 5. Decisões que dependem do Leonardo
+## 5. Decisões (aceitas pelo Leonardo em 31/10)
 
-| Decisão | Opções | Recomendação |
-|---|---|---|
-| Planta | (a) evoluir a seed 9 com ajustes no gerador; (b) planta desenhada à mão | **(b)**: mapa fixo pede autoria; o custo é uma vez só |
-| Telhado e emboscada | (a) esconde quem está dentro, como no Tibia; (b) translúcido perto da porta | **(b)**: no celular, monstro invisível parece bug |
-| Hora do dia | manhã (como os Portões), fim de tarde, noite com tochas | **fim de tarde**: diferencia dos Portões e valoriza o fogo |
-| Cachoeira | sim / não | **sim**: é o cartão-postal do mapa |
+| Decisão | Escolha |
+|---|---|
+| Planta | **Desenhada à mão** (fase 1): mapa fixo pede autoria; o custo é uma vez só |
+| Telhado e emboscada | **Translúcido perto da porta** (fase 7): no celular, monstro invisível parece bug |
+| Hora do dia | **Fim de tarde** (fase 6): diferencia dos Portões e valoriza o fogo |
+| Cachoeira | **Sim** (fase 2): é o cartão-postal do mapa |
 
 ## 6. Riscos
 

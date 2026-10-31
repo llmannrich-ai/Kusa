@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { MAP_IDS, TILE_SIZE, centerOf, generateDungeon, mapIdOf } from "@kusa/shared";
+import { MAPS, MAP_IDS, TILE_SIZE, centerOf, generateDungeon, mapIdOf } from "@kusa/shared";
 import { createPropsArt, PROP_SCALE } from "./art/props.ts";
 import { BLOOD_TEXTURE, CHEST_TEXTURE, PORTAL_TEXTURE } from "./art/textures.ts";
 import { drawCavern, CAVERN_VOID } from "./cavernMap.ts";
@@ -23,6 +23,10 @@ import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
  * curto da tela, 9 se faltar: mais que isso afasta a câmera para ver o mapa inteiro).
  * Ex.: `/mapa.html?mapa=marsh&seed=7&em=boss`. Na página, `window.pronto` vira true e `window.desenhoMs` diz quanto o
  * mapa levou para desenhar.
+ *
+ * **Medição** (`passeio=1`): a câmera anda da entrada até o boss pelas zonas do caminho, no passo de um herói, e a tela
+ * mostra o tempo de desenho, a memória das texturas (MB, sem compressão) e os quadros por segundo do passeio (a média e
+ * a dos 5% piores quadros). O resultado fica também em `window.medida`. Para medir no celular e comparar mapas.
  */
 const q = new URLSearchParams(location.search);
 const d = generateDungeon(Number(q.get("seed") ?? 1), mapIdOf(q.get("mapa") ?? MAP_IDS[0]));
@@ -50,16 +54,58 @@ class Previa extends Phaser.Scene {
     const cam = this.cameras.main.setBackgroundColor(VOID[d.mapId]).setRoundPixels(true);
     cam.setZoom(Math.min(this.scale.gameSize.width, this.scale.gameSize.height) / (Number(q.get("largura") ?? 9) * TILE_SIZE)).centerOn(at.x * TILE_SIZE + 16, at.y * TILE_SIZE + 16);
     page.pronto = true;
+    if (q.get("passeio")) this.startTour();
   }
 
-  update(time: number) {
+  /** Pontos do passeio da medição (em px) e onde a câmera está nele. */
+  private tour: { pts: { x: number; y: number }[]; dist: number; frames: number[]; t0: number; texMb: number; drawMs: number } | null = null;
+
+  private startTour() {
+    const page = window as unknown as { desenhoMs: number };
+    const stops = [centerOf(d.spawn), ...d.path.map(centerOf), centerOf(d.boss)];
+    const pts = stops.map((p) => ({ x: p.x * TILE_SIZE + 16, y: p.y * TILE_SIZE + 16 }));
+    let bytes = 0;
+    for (const key of this.textures.getTextureKeys())
+      for (const src of this.textures.get(key).source) bytes += src.width * src.height * 4;
+    this.tour = { pts, dist: 0, frames: [], t0: -1, texMb: Math.round(bytes / 1048576), drawMs: page.desenhoMs };
+    this.cameras.main.centerOn(pts[0].x, pts[0].y);
+  }
+
+  update(time: number, delta: number) {
     this.ambience?.update(time);
+    const t = this.tour;
+    if (!t) return;
+    // Espera 1 s para os quadros pintados depois (fachada, mosaico) saírem; depois anda 4 tiles por segundo.
+    if (t.t0 < 0) t.t0 = time;
+    if (time - t.t0 < 1000) return;
+    t.frames.push(delta);
+    t.dist += (delta / 1000) * 4 * TILE_SIZE;
+    let left = t.dist;
+    for (let i = 0; i + 1 < t.pts.length; i++) {
+      const a = t.pts[i], b = t.pts[i + 1], len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (left <= len) { this.cameras.main.centerOn(a.x + (b.x - a.x) * (left / len), a.y + (b.y - a.y) * (left / len)); return; }
+      left -= len;
+    }
+    // Fim do passeio: o resultado na tela.
+    const sorted = [...t.frames].sort((x, y) => y - x);
+    const worst = sorted.slice(0, Math.max(1, Math.floor(sorted.length * 0.05)));
+    const avg = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
+    const medida = {
+      mapa: d.mapId, desenhoMs: t.drawMs, texturasMb: t.texMb, qps: Math.round(1000 / avg(t.frames)), qpsPiores5: Math.round(1000 / avg(worst)),
+      tela: `${innerWidth}×${innerHeight} @${devicePixelRatio}x`,
+    };
+    (window as unknown as { medida: typeof medida }).medida = medida;
+    const box = document.createElement("pre");
+    box.style.cssText = "position:fixed;left:8px;top:8px;margin:0;padding:10px 12px;background:rgba(0,0,0,.8);color:#fff;font:15px/1.5 monospace;z-index:9;border-radius:6px";
+    box.textContent = `${MAPS[d.mapId].name}\ndesenho: ${medida.desenhoMs} ms\ntexturas: ${medida.texturasMb} MB\nquadros/s: ${medida.qps} (piores 5%: ${medida.qpsPiores5})\ntela: ${medida.tela}`;
+    document.body.appendChild(box);
+    this.tour = null;
   }
 }
 
 const parent = document.getElementById("mapa")!;
 const dpr = window.devicePixelRatio || 1;
-new Phaser.Game({
+(window as unknown as { jogo: Phaser.Game }).jogo = new Phaser.Game({
   type: Phaser.AUTO, parent, pixelArt: true, scene: [Previa],
   scale: { mode: Phaser.Scale.NONE, width: parent.clientWidth * dpr, height: parent.clientHeight * dpr, zoom: 1 / dpr },
 });

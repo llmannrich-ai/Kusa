@@ -450,70 +450,77 @@ export const KEEP_RISE = 2;
 
 /** Altura (px de arte) dos muros das casernas: o telhado fica deslocado isto para o norte, em cima deles. */
 export const ROOM_WALL = 82;
-/** Beiral do telhado além dos muros (px de arte), dos lados e embaixo. */
-export const EAVE = 18;
+/** Linha do telhado de uma caserna: a beira de cima, a água do norte, a cumeeira, a água do sul e a testeira de baixo. */
+export type RoofRow = "top" | "north" | "ridge" | "south" | "bottom";
 
 /**
- * Telhado de uma caserna (`w`×`h` tiles), com o beiral: tábuas em duas águas (a cumeeira de leste a oeste, a água do
- * norte na luz), remendos de couro dos orcs, um ou dois buracos onde o telhado caiu (vigas aparecendo no escuro),
- * musgo, e caveiras e chifres pregados na cumeeira.
+ * Um tile do telhado de uma caserna (o andar de cima da sala), montado como no Tibia: os mesmos tiles servem para
+ * todas as casernas. Tábuas em duas águas (a cumeeira de leste a oeste, a água do norte na luz, a do sul na sombra),
+ * fiadas de telha a cada 32 px (o tile emenda com o vizinho), `col` -1 e 1 nas pontas (a tábua de beirada), e por
+ * variação `v`: 0 liso, 1 remendo de couro dos orcs, 2 buraco (o escuro de dentro e as vigas), 3 caveira com chifres
+ * na cumeeira.
  */
-export function roofSprite(w: number, h: number, v: number): Uint8ClampedArray {
-  const W = w * HD + EAVE * 2, Hh = h * HD + EAVE;
-  const p = paper(W, Hh);
-  const ridge = Math.round(Hh * 0.42);
-  const holes = [0, 1].slice(0, 1 + (v % 2)).map((k) => ({
-    x: EAVE + HD + noise(k, v, 800) * (W - 2 * EAVE - 2 * HD), y: 40 + noise(v, k, 801) * (Hh - 110), r: 34 + noise(k, k + v, 802) * 26,
-  }));
-  const inHole = (x: number, y: number) => holes.some((o) => Math.hypot((x - o.x) / o.r, (y - o.y) / (o.r * 0.7)) < 1 + (noise(x >> 2, y >> 2, 803) - 0.5) * 0.3);
-  p.fill([0, 0, W - 1, Hh - 1], () => true, E.Bark, (x, y) => {
-    const north = y < ridge;
-    const plank = Math.floor(x / 22);
-    let s = (north ? 0.66 : 0.46) + (hash01(plank * 3 + (north ? 0 : 7) + v, 804) - 0.5) * 0.14;
-    if (mod(x, 22) < 2) s -= 0.22;
-    if (Math.abs(y - ridge) < 3) s += 0.15;
-    // Telhas em fiadas (linhas da água).
-    if (mod(north ? ridge - y : y - ridge, 26) < 2) s -= 0.12;
+export function roofTile(row: RoofRow, col: -1 | 0 | 1, v: number): Paper {
+  const p = paper();
+  const north = row === "top" || row === "north";
+  const ridgeY = 54;
+  p.fill([0, 0, HD - 1, HD - 1], () => true, E.Bark, (x, y) => {
+    const upper = row === "ridge" ? y < ridgeY : north;
+    const plank = Math.floor(x / 32);
+    let s = (upper ? 0.66 : 0.46) + (hash01(plank * 3 + (upper ? 0 : 7) + (row === "ridge" ? 13 : 0), 804) - 0.5) * 0.12;
+    if (mod(x, 32) < 2) s -= 0.22;
+    if (mod(y, 32) < 2) s -= 0.12;
+    if (row === "ridge" && Math.abs(y - ridgeY) < 4) s += 0.15;
     return s;
   }, (x, y) => (noise(x, y, 805 + v) < 0.05 ? -1 : 0));
-  // Remendos de couro costurados.
-  for (let k = 0; k < 3 + (v % 3); k++) {
-    const cx = 40 + noise(k, v, 806) * (W - 80), cy = 30 + noise(v, k, 807) * (Hh - 70), rw = 26 + noise(k, 1, 808) * 20, rh = 18 + noise(k, 2, 809) * 14;
-    const mat = k % 2 ? E.Dirt : E.Terracotta;
-    p.fill([cx - rw, cy - rh, cx + rw, cy + rh], (x, y) => Math.abs(x - cx) / rw + Math.abs(y - cy) / rh < 1.2 - noise(x >> 3, y >> 3, 810) * 0.25, mat,
-      (x, y) => (y < ridge ? 0.66 : 0.48) + (sn(x, y, 16, 811) - 0.5) * 0.12);
-    for (let a = 0; a < Math.PI * 2; a += 0.09) p.on(cx + Math.cos(a) * rw * 0.85, cy + Math.sin(a) * rh * 0.85, E.Line, 2);
+  if (v === 1) {
+    const cx = 40 + noise(1, col + 2, 806) * 48, cy = 40 + noise(col + 2, 1, 807) * 48;
+    p.fill([cx - 34, cy - 24, cx + 34, cy + 24], (x, y) => Math.abs(x - cx) / 30 + Math.abs(y - cy) / 20 < 1.1 - noise(x >> 3, y >> 3, 810) * 0.25,
+      E.Terracotta, (x, y) => (north ? 0.66 : 0.48) + (sn(x, y, 16, 811) - 0.5) * 0.12);
+    for (let a = 0; a < Math.PI * 2; a += 0.08) p.on(cx + Math.cos(a) * 26, cy + Math.sin(a) * 17, E.Line, 2);
   }
-  // Musgo.
-  for (let k = 0; k < 2 + w; k++) {
-    const cx = noise(k, v, 812) * W, cy = noise(v, k, 814) * Hh, r = 14 + noise(k, k, 815) * 22;
+  if (v === 2) {
+    // O telhado caiu aqui: o escuro de dentro, as vigas e a borda lascada.
+    for (let y = 0; y < HD; y++)
+      for (let x = 0; x < HD; x++) {
+        const d = Math.hypot((x - 64) / 50, (y - 64) / 40) + (noise(x >> 2, y >> 2, 803) - 0.5) * 0.3;
+        if (d >= 1) continue;
+        const i = y * HD + x, beam = mod(x, 44) < 7;
+        p.mat[i] = beam ? E.Bark : E.Void; p.shade[i] = beam ? 0.3 : 0.08; p.off[i] = 0; p.fixed[i] = -1;
+      }
+  }
+  // Musgo em manchas.
+  if (hash01(col * 7 + v * 3 + row.length, 812) < 0.5) {
+    const cx = noise(v, row.length, 813) * HD, cy = noise(row.length, v, 814) * HD, r = 14 + noise(v, col + 2, 815) * 14;
     for (let y = Math.floor(cy - r); y <= cy + r; y++)
       for (let x = Math.floor(cx - r * 1.4); x <= cx + r * 1.4; x++)
-        if (((x - cx) / (r * 1.4)) ** 2 + ((y - cy) / r) ** 2 < 1 - noise(x >> 1, y >> 1, 816) * 0.5) p.on(x, y, E.Moss, noise(x, y, 813) < 0.4 ? 2 : 3);
+        if (((x - cx) / (r * 1.4)) ** 2 + ((y - cy) / r) ** 2 < 1 - noise(x >> 1, y >> 1, 816) * 0.5) p.on(x, y, E.Moss, noise(x, y, 817) < 0.4 ? 2 : 3);
   }
-  // Buracos: o escuro de dentro e as vigas.
-  for (let y = 0; y < Hh; y++)
-    for (let x = 0; x < W; x++) {
-      if (!inHole(x, y)) continue;
-      const i = y * W + x;
-      const beam = mod(x, 44) < 7;
-      p.mat[i] = beam ? E.Bark : E.Void;
-      p.shade[i] = beam ? 0.3 : 0.08;
-      p.off[i] = 0;
-      p.fixed[i] = -1;
+  if (row === "ridge") {
+    limb(p, [0, ridgeY], [HD - 1, ridgeY], 5, 5, E.Bark);
+    if (v === 3) {
+      const x = 64;
+      ellipse(p, x, ridgeY - 6, 11, 10, E.Bone);
+      p.on(x - 4, ridgeY - 6, E.Void, 1); p.on(x + 4, ridgeY - 6, E.Void, 1); p.on(x - 3, ridgeY - 5, E.Void, 1); p.on(x + 3, ridgeY - 5, E.Void, 1);
+      limb(p, [x - 9, ridgeY - 10], [x - 22, ridgeY - 26], 3, 1.2, E.Bone);
+      limb(p, [x + 9, ridgeY - 10], [x + 22, ridgeY - 26], 3, 1.2, E.Bone);
     }
-  // Cumeeira: a viga, caveiras e chifres.
-  limb(p, [6, ridge], [W - 7, ridge], 5, 5, E.Bark);
-  for (let x = 50 + (v % 3) * 20; x < W - 40; x += 120) {
-    ellipse(p, x, ridge - 6, 11, 10, E.Bone);
-    p.on(x - 4, ridge - 6, E.Void, 1); p.on(x + 4, ridge - 6, E.Void, 1); p.on(x - 3, ridge - 5, E.Void, 1); p.on(x + 3, ridge - 5, E.Void, 1);
-    limb(p, [x - 9, ridge - 10], [x - 22, ridge - 26], 3, 1.2, E.Bone);
-    limb(p, [x + 9, ridge - 10], [x + 22, ridge - 26], 3, 1.2, E.Bone);
   }
-  // Beiral de baixo: a testeira de tábua, na sombra.
-  box(p, [0, Hh - 10, W - 1, Hh - 1], E.Bark, 0.32);
-  hline(p, 0, W - 1, Hh - 10, E.Bark, 4);
-  return p.render(true);
+  if (row === "top") { hline(p, 0, HD - 1, 0, E.Bark, 5); hline(p, 0, HD - 1, 1, E.Bark, 4); }
+  if (row === "bottom") { box(p, [0, HD - 12, HD - 1, HD - 1], E.Bark, 0.32); hline(p, 0, HD - 1, HD - 12, E.Bark, 4); }
+  // Tábua de beirada nas pontas (a da esquerda na luz).
+  if (col !== 0) {
+    const x0 = col < 0 ? 0 : HD - 10;
+    box(p, [x0, 0, x0 + 9, HD - 1], E.Bark, col < 0 ? 0.7 : 0.3);
+    vline(p, col < 0 ? x0 : x0 + 9, 0, HD - 1, E.Line, 1);
+  }
+  return p;
+}
+
+/** Linha (`RoofRow`) do telhado de uma sala de `h` tiles de altura: a cumeeira um pouco acima do meio. */
+export function roofRow(y: number, h: number): RoofRow {
+  const ridge = Math.max(1, Math.floor(h * 0.42));
+  return y === 0 ? "top" : y === h - 1 ? "bottom" : y < ridge ? "north" : y === ridge ? "ridge" : "south";
 }
 
 // --- Acampamento (de pé) --------------------------------------------------------------------
