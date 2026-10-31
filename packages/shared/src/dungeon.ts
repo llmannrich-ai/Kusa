@@ -53,6 +53,48 @@ export interface Dungeon {
   lairs?: LairRoom[];
   /** Portões do Império: a planta da cidade e da ruína subterrânea (só para o desenho; o chão é chão comum). */
   empire?: EmpireLayout;
+  /** Fortaleza Orc: a planta do castelo, do acampamento e do desfiladeiro (só para o desenho). */
+  fortress?: FortressLayout;
+}
+
+/**
+ * Planta da Fortaleza Orc (só para o desenho; o chão é chão comum). Nesse mapa toda `Tile.Water` é **abismo**: o
+ * desfiladeiro e os precipícios do esporão, que bloqueiam o passo e deixam passar a visão (flechas e magias passam por
+ * cima). O cliente desenha lá embaixo o vale, um andar abaixo do castelo.
+ */
+export interface FortressLayout {
+  /** Ruas calçadas: a estrada da vila até a ponte e o caminho dos portões até a torre de menagem. */
+  roads: Rect[];
+  /** Pátio de lajes do esporão (o pátio interno). */
+  plazas: Rect[];
+  /** Terra batida dos acampamentos orcs (tendas, fogueiras, totens). */
+  camps: Rect[];
+  /** As duas muralhas, de baixo para cima: a primeira linha de cada uma (2 tiles de espessura) e de onde a onde vai. */
+  walls: { y: number; x0: number; x1: number }[];
+  /** Vão de cada portão (o da muralha externa e o da interna). */
+  gates: { x: number; y: number; w: number }[];
+  /** Torres dos portões (3×4), duas por portão. */
+  towers: Rect[];
+  /** Torre de menagem, com as paredes; o salão de dentro é a sala do boss. */
+  keep: Rect;
+  /** Porta da torre de menagem (vão na parede sul). */
+  door: { x: number; y: number; w: number };
+  /** O trono, encostado na parede norte do salão (ruína de 1 tile). */
+  throne: { x: number; y: number };
+  /** Ponte de pedra sobre o desfiladeiro (chão). A ponte de cordas dos orcs vai em `Dungeon.planks`. */
+  bridges: Rect[];
+  /** Primeira e última linha do desfiladeiro. */
+  chasm: { y0: number; y1: number };
+  /** Tendas dos orcs (2×2 de ruína). */
+  tents: Rect[];
+  /** Paliçadas de estacas (linhas de ruína de 1 tile de espessura). */
+  palisades: Rect[];
+  /** Totens de caveira (ruína de 1 tile). */
+  totems: { x: number; y: number }[];
+  /** Fogueiras dos acampamentos (chão: só o desenho e a luz). */
+  fires: { x: number; y: number }[];
+  /** Colunas postas (colunatas do pátio e pilares do salão); outra ruína de 1 tile é bloco caído. */
+  columns: { x: number; y: number }[];
 }
 
 export interface EmpireLayout {
@@ -143,6 +185,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "cavern") return generateCavern(seed);
   if (mapId === "dunes" || mapId === "mesas") return generateDunes(seed, mapId);
   if (mapId === "gates") return generateGates(seed);
+  if (mapId === "fortress") return generateFortress(seed);
   if (mapId === "oldwood" || mapId === "heartwood") return generateForest(seed, mapId);
   return generateCrypt(seed);
 }
@@ -2091,6 +2134,417 @@ function carveCatacomb(rng: ReturnType<typeof createRng>, tiles: Uint8Array, wid
   ];
   const underArea: Rect = { x: area.x, y: treasury.y - 6, w: area.w, h: vestibule.y + vestibule.h + 6 - (treasury.y - 6) };
   return { area: underArea, sanctum, portal, treasury, chests, exit, vestibule, gallery, chambers, zones };
+}
+
+const FORT_W = 84;
+const FORT_H = 128;
+/** Linhas do desfiladeiro entre a vila baixa e a muralha externa. */
+const FORT_CHASM = 7;
+/** Torre de menagem, paredes incluídas. */
+const FORT_KEEP = { w: 19, h: 15 } as const;
+const FORT_MEADOWS = 5;
+
+/**
+ * Fortaleza Orc (Ruínas do Império): um castelo do império tomado pelos orcs, em pé (o celular na vertical). A equipe
+ * chega pelo sul, na vila baixa em ruínas, e cruza o **desfiladeiro** pela ponte de pedra (até o portão da muralha
+ * externa, entre duas torres) ou pela ponte de cordas dos orcs (até uma brecha). Dentro, o **pátio externo** virou
+ * acampamento: tendas, fogueiras, paliçadas e totens entre casernas e cocheiras em ruínas. A **muralha interna** fecha
+ * o **esporão**, a ponta de rocha onde fica o pátio de lajes e, no norte, a **torre de menagem**: o salão do trono é a
+ * sala do boss. Dos dois lados do esporão e atrás da torre, o precipício.
+ *
+ * Abismo é `Tile.Water` (bloqueia o passo, não a visão). O desenho lê `Dungeon.fortress`; a regra é a dos Portões: mata
+ * de 1 tile é árvore, ruína de 1 tile é coluna (as postas), totem ou bloco caído, ruína encostada em ruína é muro.
+ */
+function generateFortress(seed: number): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildFortress(seed + attempt);
+    if (attempt >= 20 || fortressConnected(d)) return d;
+  }
+}
+
+/** Tudo ligado a pé ao portal: as zonas, as campinas, as casernas (e o canto delas) e o salão do trono. */
+function fortressConnected(d: Dungeon) {
+  const goals = [
+    d.portal, centerOf(d.boss), ...d.path.map(centerOf), ...d.meadows.map(centerOf),
+    ...d.side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
+  return connected(d.tiles, d.width, goals);
+}
+
+function buildFortress(seed: number): Dungeon {
+  const rng = createRng(seed);
+  const W = FORT_W;
+  const H = FORT_H;
+  const tiles = new Uint8Array(W * H).fill(Tile.Floor);
+  const inside = (x: number, y: number) => x > 0 && y > 0 && x < W - 1 && y < H - 1;
+  const get = (x: number, y: number) => (inside(x, y) ? tiles[y * W + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * W + x] = t; };
+  const rect = (r: Rect, t: number) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) set(x, y, t); };
+  /** Árvores, colunas e totens postos de propósito: a limpeza final não os confunde com sobra. */
+  const props = new Set<number>();
+  const roads: Rect[] = [];
+  const plazas: Rect[] = [];
+  const camps: Rect[] = [];
+  const towers: Rect[] = [];
+  const tents: Rect[] = [];
+  const palisades: Rect[] = [];
+  const totems: { x: number; y: number }[] = [];
+  const fires: { x: number; y: number }[] = [];
+  const road = (r: Rect) => { rect(r, Tile.Floor); roads.push(r); };
+
+  // Borda: mata fechada, com a espessura ondulando devagar (o abismo corta por cima no norte).
+  for (let side = 0; side < 4; side++) {
+    const length = side % 2 === 0 ? W : H;
+    let depth = rng.int(3, 5);
+    let goal = depth;
+    for (let i = 0; i < length; i++) {
+      if (i % 6 === 0) goal = rng.int(3, 6);
+      if (rng.next() < 0.5) depth += Math.sign(goal - depth);
+      for (let d = 0; d < depth; d++) {
+        const [x, y] = side === 0 ? [i, d] : side === 1 ? [W - 1 - d, i] : side === 2 ? [i, H - 1 - d] : [d, i];
+        tiles[y * W + x] = Tile.Wall;
+      }
+    }
+  }
+
+  // Linhas da planta, de cima para baixo: a torre de menagem, a muralha interna, a externa e o desfiladeiro.
+  const kx = clamp(Math.round(W / 2) - 9 + rng.int(-4, 4), 16, W - FORT_KEEP.w - 16);
+  const keep: Rect = { x: kx, y: 4, w: FORT_KEEP.w, h: FORT_KEEP.h };
+  const kc = kx + Math.floor(keep.w / 2);
+  const innerY = rng.int(42, 46);
+  const outerY = H - 44 + rng.int(-2, 2);
+  const chasm = { y0: outerY + 2, y1: outerY + 1 + FORT_CHASM };
+  const foot = chasm.y1 + 1;
+
+  // O esporão: a rocha estreita do pátio interno, com precipício dos dois lados (alarga um pouco para o sul) e atrás
+  // da torre de menagem.
+  const spurBottom = innerY + 3;
+  const left: number[] = [];
+  const right: number[] = [];
+  let wobbleL = 0;
+  let wobbleR = 0;
+  for (let y = 0; y <= spurBottom; y++) {
+    if (y % 4 === 0) { wobbleL = rng.int(-1, 1); wobbleR = rng.int(-1, 1); }
+    const widen = Math.round((y / spurBottom) * 6);
+    left[y] = Math.max(4, kx - 5 - widen + wobbleL);
+    right[y] = Math.min(W - 5, kx + keep.w + 4 + widen + wobbleR);
+  }
+  // O abismo vai até a beira da grade (a borda de mata não sobe no esporão).
+  for (let y = 0; y <= spurBottom; y++)
+    for (let x = 0; x < W; x++) tiles[y * W + x] = y < keep.y - 1 || x < left[y] || x > right[y] ? Tile.Water : Tile.Floor;
+  for (let y = chasm.y0; y <= chasm.y1; y++) for (let x = 0; x < W; x++) tiles[y * W + x] = Tile.Water;
+
+  // Muralha externa na beira do desfiladeiro: o portão (5 de vão) entre duas torres; a ponte de pedra sai dele.
+  const gx = clamp(Math.round(W / 2) + rng.int(-10, 10), 16, W - 17);
+  for (let x = 1; x < W - 1; x++) for (let y = outerY; y < outerY + 2; y++) set(x, y, Tile.Ruin);
+  const outerGate = { x: gx - 2, y: outerY, w: 5 };
+  rect({ x: outerGate.x, y: outerY, w: outerGate.w, h: 2 }, Tile.Floor);
+  towers.push({ x: gx - 5, y: outerY - 2, w: 3, h: 4 }, { x: gx + 3, y: outerY - 2, w: 3, h: 4 });
+  const bridge: Rect = { x: gx - 1, y: chasm.y0, w: 3, h: FORT_CHASM };
+  rect(bridge, Tile.Floor);
+  // Ponte de cordas dos orcs, longe da de pedra, chegando numa brecha da muralha.
+  const ropeSides = [...(gx - 17 >= 8 ? [-1] : []), ...(gx + 16 <= W - 10 ? [1] : [])];
+  const ropeDir = rng.pick(ropeSides);
+  const rx = ropeDir < 0 ? rng.int(8, gx - 17) : rng.int(gx + 16, W - 10);
+  const rope: Rect = { x: rx, y: chasm.y0, w: 2, h: FORT_CHASM };
+  rect(rope, Tile.Floor);
+  const breach: Rect = { x: rx - 1, y: outerY, w: 4, h: 2 };
+  rect(breach, Tile.Floor);
+
+  // Muralha interna, de um precipício ao outro, com o portão entre duas torres.
+  const gi = clamp(kc + rng.int(-5, 5), left[innerY] + 7, right[innerY] - 7);
+  for (const y of [innerY, innerY + 1]) for (let x = left[y]; x <= right[y]; x++) set(x, y, Tile.Ruin);
+  const innerGate = { x: gi - 2, y: innerY, w: 5 };
+  rect({ x: innerGate.x, y: innerY, w: innerGate.w, h: 2 }, Tile.Floor);
+  towers.push({ x: gi - 5, y: innerY - 2, w: 3, h: 4 }, { x: gi + 3, y: innerY - 2, w: 3, h: 4 });
+
+  // Torre de menagem: paredes de 1 tile, a porta (3 de vão) no meio da parede sul, duas fileiras de pilares no salão e
+  // o trono encostado na parede norte. O boss nasce no meio, livre.
+  for (let y = keep.y; y < keep.y + keep.h; y++)
+    for (let x = keep.x; x < keep.x + keep.w; x++) {
+      const border = x === keep.x || y === keep.y || x === keep.x + keep.w - 1 || y === keep.y + keep.h - 1;
+      set(x, y, border ? Tile.Ruin : Tile.Floor);
+    }
+  const hall: Rect = { x: keep.x + 1, y: keep.y + 1, w: keep.w - 2, h: keep.h - 2 };
+  const door = { x: kc - 1, y: keep.y + keep.h - 1, w: 3 };
+  rect({ x: door.x, y: door.y, w: door.w, h: 1 }, Tile.Floor);
+  for (let y = hall.y + 2; y < hall.y + hall.h - 2; y += 3)
+    for (const x of [hall.x + 2, hall.x + hall.w - 3]) { set(x, y, Tile.Ruin); props.add(y * W + x); }
+  const throne = { x: kc, y: hall.y + 1 };
+  set(throne.x, throne.y, Tile.Ruin);
+
+  // Pátio interno: lajes do pé da torre até a muralha, colunata falhada dos lados, e o caminho do portão até ele.
+  const court: Rect = { x: kx - 2, y: keep.y + keep.h, w: keep.w + 4, h: innerY - keep.y - keep.h };
+  rect(court, Tile.Floor);
+  // As lajes vão do pé da torre até a muralha, numa faixa no meio do pátio (dos lados, o capim tomou conta).
+  const yard: Rect = { x: kx + 3, y: court.y, w: keep.w - 6, h: court.h };
+  plazas.push(yard);
+  road({ x: gi - 1, y: court.y + court.h - 4, w: 3, h: 6 });
+  for (let y = court.y + 2; y < court.y + court.h - 3; y += 2)
+    for (const x of [yard.x - 1, yard.x + yard.w])
+      if (rng.next() < 0.75) { set(x, y, Tile.Ruin); props.add(y * W + x); }
+  for (const t of towers) rect(t, Tile.Ruin);
+
+  // Entrada ao sul, na vila baixa, e a estrada até a ponte (com uma curva); a trilha dos orcs vai até a de cordas.
+  const spawn: Rect = { x: clamp(gx + rng.int(-18, 18) - 5, 8, W - 18), y: H - 16, w: 10, h: 9 };
+  rect(spawn, Tile.Floor);
+  const s = centerOf(spawn);
+  const bendY = rng.int(foot + 8, foot + 13);
+  road({ x: s.x - 1, y: bendY, w: 3, h: spawn.y - bendY + 1 });
+  road({ x: Math.min(s.x, gx) - 1, y: bendY, w: Math.abs(s.x - gx) + 3, h: 3 });
+  road({ x: gx - 1, y: foot, w: 3, h: bendY - foot + 1 });
+  const trail: Rect = { x: Math.min(rx, gx), y: foot + 1, w: Math.abs(rx - gx) + 2, h: 2 };
+  rect(trail, Tile.Floor);
+  // Ruas da vila baixa: travessas de basalto saindo da estrada, para os dois lados.
+  for (const dir of [-1, 1]) {
+    const y = rng.int(bendY + 4, Math.max(bendY + 4, spawn.y - 3));
+    const len = rng.int(10, 18);
+    const x0 = dir < 0 ? Math.max(5, s.x - 1 - len) : s.x + 2;
+    road({ x: x0, y, w: Math.min(len, W - 5 - x0), h: 2 });
+  }
+  // Dentro da muralha externa: a estrada do portão ao da interna, com uma curva no meio do pátio.
+  const midY = rng.int(innerY + 12, outerY - 12);
+  road({ x: gx - 1, y: midY, w: 3, h: outerY + 2 - midY });
+  road({ x: Math.min(gx, gi) - 1, y: midY, w: Math.abs(gx - gi) + 3, h: 3 });
+  road({ x: gi - 1, y: innerY, w: 3, h: midY - innerY + 1 });
+
+  // Zonas do caminho (encontros), da entrada ao trono: a vila baixa, a cabeça da ponte, o pátio do portão, o
+  // acampamento de cima, o pátio interno e o pé da torre de menagem.
+  const zone = (p: { x: number; y: number }, half = 4): Rect => ({ x: p.x - half, y: p.y - half, w: half * 2 + 1, h: half * 2 + 1 });
+  const lowSide = rng.next() < 0.5 ? -1 : 1;
+  const midSide = rng.next() < 0.5 ? -1 : 1;
+  const path: Rect[] = [
+    zone({ x: clamp(s.x + lowSide * rng.int(9, 14), 10, W - 11), y: Math.round((bendY + spawn.y) / 2) }),
+    zone({ x: gx, y: foot + 4 }),
+    zone({ x: gx, y: outerY - 6 }),
+    zone({ x: clamp(gi + midSide * rng.int(12, 18), 10, W - 11), y: innerY + 9 }),
+    zone({ x: gi, y: innerY - 6 }),
+    zone({ x: kc, y: court.y + 4 }),
+  ];
+
+  // Acampamentos (terra batida): um na cabeça da ponte, do lado de fora, e dois no pátio externo.
+  camps.push({ x: clamp(gx - 8, 3, W - 20), y: foot, w: 17, h: 7 });
+  // A guarda do chefe: um acampamento pequeno num canto do pátio interno, do lado oposto ao portão.
+  const guardLeft = gi > kc;
+  camps.push({ x: guardLeft ? court.x + 2 : court.x + court.w - 11, y: court.y + 7, w: 9, h: 6 });
+  for (let tries = 0; tries < 60 && camps.length < 3; tries++) {
+    const w = rng.int(12, 15), h = rng.int(8, 10);
+    const r: Rect = { x: rng.int(5, W - w - 5), y: rng.int(innerY + 4, outerY - h - 3), w, h };
+    if (camps.some((c) => gapBetween(c, r) < 4) || towers.some((t) => gapBetween(t, r) < 2)) continue;
+    camps.push(r);
+  }
+  for (const c of camps) rect(c, Tile.Floor);
+
+  // Casernas e cocheiras em ruínas (salas laterais: mini-boss e baú): muro com falhas e 2 portas, três no pátio externo
+  // e uma casa na vila baixa.
+  const side: Rect[] = [];
+  const blocked = (r: Rect) =>
+    [...roads, ...plazas, grow(spawn, 2), ...towers, breach, trail, ...camps].some((o) => gapBetween(r, o) < 1)
+    || side.some((o) => gapBetween(r, o) < 3);
+  const house = (r: Rect) => {
+    for (let y = r.y; y < r.y + r.h; y++)
+      for (let x = r.x; x < r.x + r.w; x++) {
+        const border = x === r.x || y === r.y || x === r.x + r.w - 1 || y === r.y + r.h - 1;
+        if (border && rng.next() >= 0.15) set(x, y, Tile.Ruin);
+      }
+    const cx = r.x + Math.floor(r.w / 2);
+    const cy = r.y + Math.floor(r.h / 2);
+    for (const door of shuffled(rng, [0, 1, 2, 3]).slice(0, 2))
+      for (let k = -1; k <= 0; k++) {
+        if (door === 0) set(cx + k, r.y, Tile.Floor);
+        if (door === 1) set(r.x + r.w - 1, cy + k, Tile.Floor);
+        if (door === 2) set(cx + k, r.y + r.h - 1, Tile.Floor);
+        if (door === 3) set(r.x, cy + k, Tile.Floor);
+      }
+    set(r.x + 1, r.y + 1, Tile.Floor);
+    side.push(r);
+  };
+  const tryHouses = (count: number, y0: number, y1: number) => {
+    for (let tries = 0, made = 0; tries < 120 && made < count; tries++) {
+      const w = rng.int(7, 9);
+      const h = rng.int(6, 8);
+      if (y1 - h < y0) return;
+      const r: Rect = { x: rng.int(6, W - w - 7), y: rng.int(y0, y1 - h), w, h };
+      if (blocked(r)) continue;
+      let ok = true;
+      for (let y = r.y - 1; y <= r.y + r.h && ok; y++) for (let x = r.x - 1; x <= r.x + r.w && ok; x++) if (get(x, y) !== Tile.Floor) ok = false;
+      if (!ok) continue;
+      house(r);
+      made++;
+    }
+  };
+  tryHouses(3, innerY + 4, outerY - 3);
+  tryHouses(2, foot + 3, H - 7);
+
+  // Campinas: pontos de monstros extras no pátio externo e na vila baixa, longe das zonas e das casernas.
+  const meadows: Rect[] = [];
+  for (let tries = 0; tries < 90 && meadows.length < FORT_MEADOWS; tries++) {
+    const p = { x: rng.int(9, W - 10), y: rng.int(innerY + 5, H - 8) };
+    if (p.y >= outerY - 2 && p.y <= foot + 1) continue;
+    const far = (q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+    if (!path.every((z) => far(centerOf(z), 12)) || !meadows.every((m) => far(centerOf(m), 13)) || !far(s, 12)) continue;
+    if (side.some((r) => gapBetween(r, { ...p, w: 1, h: 1 }) < 3) || get(p.x, p.y) !== Tile.Floor) continue;
+    meadows.push({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 });
+  }
+
+  const keepOut = [
+    grow(spawn, 2), ...roads, breach, trail, hall, ...side.map((r) => grow(r, 1)),
+    // No pátio interno, o corredor da porta da torre até o portão fica livre.
+    { x: Math.min(kc, gi) - 2, y: court.y, w: Math.abs(kc - gi) + 5, h: court.h },
+    { x: outerGate.x - 1, y: outerY - 3, w: outerGate.w + 2, h: 5 },
+    { x: innerGate.x - 1, y: innerY - 3, w: innerGate.w + 2, h: 7 },
+    { x: rx - 1, y: outerY - 3, w: 4, h: 3 }, { x: rx - 1, y: foot, w: 4, h: 3 },
+    { x: door.x - 1, y: door.y, w: door.w + 2, h: 3 },
+    ...[...path, ...meadows].map((r) => { const c = centerOf(r); return { x: c.x - 2, y: c.y - 2, w: 5, h: 5 }; }),
+  ];
+  const kept = (x: number, y: number) => keepOut.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const goals = [
+    s, centerOf(hall), ...path.map(centerOf), ...meadows.map(centerOf), ...side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
+
+  /** Põe um obstáculo; desfaz se ele invadir uma área livre ou separar algum ponto importante do resto. */
+  const obstacle = (place: () => void) => {
+    const before = tiles.slice();
+    const propsBefore = new Set(props);
+    place();
+    let undo = false;
+    for (let i = 0; i < tiles.length && !undo; i++) if (tiles[i] !== before[i] && kept(i % W, Math.floor(i / W))) undo = true;
+    if (undo || !connected(tiles, W, goals)) {
+      tiles.set(before);
+      props.clear();
+      propsBefore.forEach((i) => props.add(i));
+      return false;
+    }
+    return true;
+  };
+  const orth = (x: number, y: number, t: number) => get(x - 1, y) === t || get(x + 1, y) === t || get(x, y - 1) === t || get(x, y + 1) === t;
+  /** Árvore (cipreste ou pinheiro) só no chão e sem mata nem ruína nos 4 lados (senão vira pedaço de mata ou de muro). */
+  const tree = (x: number, y: number) => {
+    if (!inside(x, y) || get(x, y) !== Tile.Floor || orth(x, y, Tile.Wall) || orth(x, y, Tile.Ruin)) return;
+    set(x, y, Tile.Wall);
+    props.add(y * W + x);
+  };
+  /** Ruína de 1 tile solta (totem, coluna, bloco): sem ruína nos 4 lados, senão vira muro. */
+  const loneRuin = (x: number, y: number) => {
+    if (!inside(x, y) || get(x, y) !== Tile.Floor || orth(x, y, Tile.Ruin) || orth(x, y, Tile.Water)) return false;
+    set(x, y, Tile.Ruin);
+    props.add(y * W + x);
+    return true;
+  };
+  const inCamp = (x: number, y: number) => camps.some((c) => inRect(c, x, y));
+  const onRoad = (x: number, y: number) => roads.some((r) => inRect(r, x, y));
+
+  // Os acampamentos: a fogueira no meio, tendas (2×2) em volta, totens de caveira e um trecho de paliçada na beira.
+  for (const c of camps) {
+    const cc = centerOf(c);
+    const fire = onRoad(cc.x, cc.y) ? { x: cc.x + (cc.x < gx ? -3 : 3), y: cc.y } : cc;
+    if (!onRoad(fire.x, fire.y) && get(fire.x, fire.y) === Tile.Floor) fires.push(fire);
+    for (let k = 0, made = 0; k < 14 && made < 4; k++) {
+      const t: Rect = { x: rng.int(c.x, c.x + c.w - 2), y: rng.int(c.y, c.y + c.h - 2), w: 2, h: 2 };
+      if (tents.some((o) => gapBetween(o, t) < 2) || fires.some((f) => gapBetween(t, { ...f, w: 1, h: 1 }) < 2)) continue;
+      if ([0, 1].some((dy) => [0, 1].some((dx) => onRoad(t.x + dx, t.y + dy)))) continue;
+      // Em volta da tenda, só chão: encostada num muro ou numa coluna, viraria muro no desenho.
+      if ([-1, 0, 1, 2].some((dy) => [-1, 0, 1, 2].some((dx) => get(t.x + dx, t.y + dy) !== Tile.Floor))) continue;
+      if (obstacle(() => rect(t, Tile.Ruin))) { tents.push(t); made++; }
+    }
+    for (let k = 0; k < 2; k++) {
+      const x = rng.int(c.x, c.x + c.w - 1), y = rng.int(c.y, c.y + c.h - 1);
+      if (onRoad(x, y)) continue;
+      obstacle(() => { if (loneRuin(x, y)) totems.push({ x, y }); });
+    }
+    // Paliçada: estacas ao longo de um lado do acampamento, com uma passagem no meio.
+    const horizontal = rng.next() < 0.5;
+    const len = horizontal ? c.w : c.h;
+    const gap = rng.int(2, len - 4);
+    for (const [a, b] of [[0, gap], [gap + 3, len]] as const) {
+      if (b - a < 2) continue;
+      const r: Rect = horizontal
+        ? { x: c.x + a, y: rng.next() < 0.5 ? c.y - 1 : c.y + c.h, w: b - a, h: 1 }
+        : { x: rng.next() < 0.5 ? c.x - 1 : c.x + c.w, y: c.y + a, w: 1, h: b - a };
+      const free = [...Array(r.w * r.h).keys()].every((k) => {
+        const x = r.x + (k % r.w), y = r.y + Math.floor(k / r.w);
+        return get(x, y) === Tile.Floor && !onRoad(x, y);
+      });
+      if (free && obstacle(() => rect(r, Tile.Ruin))) palisades.push(r);
+    }
+  }
+  totems.splice(0, totems.length, ...totems.filter((t) => get(t.x, t.y) === Tile.Ruin));
+
+  // Totens na beira da ponte de cordas e na porta da torre de menagem (os orcs marcam o território).
+  for (const [x, y] of [[rx - 2, foot + 3], [rx + 3, foot + 3], [door.x - 2, door.y + 3], [door.x + door.w + 1, door.y + 3]] as const)
+    obstacle(() => { if (loneRuin(x, y)) totems.push({ x, y }); });
+
+  // Restos do império: trechos de muro, cantos e alicerces na vila baixa e no pátio externo.
+  for (let i = 0; i < 40; i++) {
+    const x = rng.int(6, W - 7);
+    const y = i < 20 ? rng.int(foot + 2, H - 6) : rng.int(innerY + 4, outerY - 3);
+    if (inCamp(x, y)) continue;
+    const kind = rng.int(0, 3);
+    obstacle(() => {
+      if (kind === 0) { const n = rng.int(3, 6); for (let k = 0; k < n; k++) if (rng.next() < 0.85) set(x + k, y, Tile.Ruin); }
+      else if (kind === 1) { const n = rng.int(3, 5); for (let k = 0; k < n; k++) if (rng.next() < 0.85) set(x, y + k, Tile.Ruin); }
+      else if (kind === 2) { for (let k = 0; k < 4; k++) { set(x + k, y, Tile.Ruin); set(x, y + k, Tile.Ruin); } }
+      else {
+        const w = rng.int(4, 6), h = rng.int(4, 5);
+        for (let yy = y; yy < y + h; yy++)
+          for (let xx = x; xx < x + w; xx++) {
+            const border = xx === x || yy === y || xx === x + w - 1 || yy === y + h - 1;
+            if (border && rng.next() < 0.55) set(xx, yy, Tile.Ruin);
+          }
+      }
+    });
+  }
+  // Blocos caídos e tocos de coluna soltos (no pátio interno também).
+  for (let i = 0; i < 22; i++) {
+    const x = rng.int(5, W - 6), y = rng.int(court.y, H - 6);
+    if (inCamp(x, y) || (y >= outerY - 1 && y <= foot)) continue;
+    obstacle(() => loneRuin(x, y));
+  }
+
+  // O mato: moitas e árvores na vila baixa, poucas dentro do castelo.
+  for (let i = 0; i < 14; i++) {
+    const x = rng.int(6, W - 7), y = i < 10 ? rng.int(foot + 3, H - 6) : rng.int(innerY + 4, outerY - 3);
+    if (inCamp(x, y)) continue;
+    const rx2 = 1.2 + rng.next() * 2.2, ry = 1 + rng.next() * 1.6;
+    obstacle(() => {
+      for (let yy = Math.floor(y - ry - 1); yy <= y + ry + 1; yy++)
+        for (let xx = Math.floor(x - rx2 - 1); xx <= x + rx2 + 1; xx++)
+          if (((xx - x) / rx2) ** 2 + ((yy - y) / ry) ** 2 <= 1 - rng.next() * 0.2 && get(xx, yy) === Tile.Floor) set(xx, yy, Tile.Wall);
+    });
+  }
+  for (let i = 0; i < 20; i++) {
+    const x = rng.int(6, W - 7), y = i < 14 ? rng.int(foot + 3, H - 6) : rng.int(innerY + 4, outerY - 3);
+    if (inCamp(x, y)) continue;
+    const count = rng.int(2, 4);
+    obstacle(() => { for (let k = 0; k < count * 2; k++) tree(x + rng.int(-3, 3), y + rng.int(-3, 3)); });
+  }
+
+  // Mata solta que não foi posta de propósito volta a ser chão.
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (tiles[i] === Tile.Wall && !props.has(i) && !orth(x, y, Tile.Wall)) tiles[i] = Tile.Floor;
+    }
+
+  // Bolsões sem acesso viram mata.
+  const reach = reachableFrom(tiles, W, s);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+
+  const portal = s;
+  set(portal.x, portal.y, Tile.Portal);
+  fires.splice(0, fires.length, ...fires.filter((f) => get(f.x, f.y) === Tile.Floor));
+  const totemSet = new Set(totems.map((t) => t.y * W + t.x));
+  const columns = [...props].filter((i) => tiles[i] === Tile.Ruin && !totemSet.has(i)).sort((a, b) => a - b).map((i) => ({ x: i % W, y: Math.floor(i / W) }));
+
+  return {
+    mapId: "fortress", width: W, height: H, tiles, spawn, boss: hall, bossPortal: centerOf(hall), path, side, meadows, portal,
+    planks: [rope],
+    fortress: {
+      roads, plazas, camps: [...camps, trail],
+      walls: [{ y: outerY, x0: 1, x1: W - 2 }, { y: innerY, x0: left[innerY], x1: right[innerY] }],
+      gates: [outerGate, innerGate], towers, keep, door, throne, bridges: [bridge], chasm, tents, palisades, totems, fires, columns,
+    },
+  };
 }
 
 const FOREST_W = 96;

@@ -62,6 +62,7 @@ import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
 import { DUNES_VOID, MESAS_VOID, drawDunes } from "./dunesMap.ts";
+import { FORTRESS_VOID, drawFortress } from "./fortressMap.ts";
 import { GATES_VOID, drawGates } from "./gatesMap.ts";
 import { HEARTWOOD_VOID, OLDWOOD_VOID, drawForest } from "./forestMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
@@ -284,14 +285,14 @@ export class DungeonScene extends Phaser.Scene {
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
     this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, oldwood: drawForest, heartwood: drawForest }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "oldwood", "heartwood"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);

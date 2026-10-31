@@ -27,7 +27,7 @@ const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
  * Folha de sprites de um tamanho só: cada quadro é pintado só se o mapa usar (como o atlas dos tiles), em linhas que
  * cabem no limite de textura dos celulares.
  */
-class SpriteSheet {
+export class SpriteSheet {
   private frames: (() => Uint8ClampedArray)[] = [];
   private keys = new Map<string, number>();
   constructor(readonly key: string, readonly w: number, readonly h: number) {}
@@ -54,7 +54,7 @@ class SpriteSheet {
 }
 
 /** Textura de uma imagem só (fachada, arco, torres, mosaico), feita uma vez por jogo. */
-function single(scene: Phaser.Scene, key: string, w: number, h: number, draw: () => Uint8ClampedArray) {
+export function single(scene: Phaser.Scene, key: string, w: number, h: number, draw: () => Uint8ClampedArray) {
   if (!scene.textures.exists(key)) scene.textures.addCanvas(key, toCanvas(draw(), w, h));
   return key;
 }
@@ -424,14 +424,14 @@ function flatKind(m: number, at: { paved: boolean; ruins: boolean; trees: boolea
   return m < 0.45 ? "weeds" : m < 0.7 ? "stones" : m < 0.85 ? "leaves" : m < 0.95 ? "shards" : "bones";
 }
 
-const GLOW = "gates-glow";
+export const GLOW = "gates-glow";
 const BEAM = "gates-beam";
-const MOTE = "gates-mote";
-const MIST = "gates-mist";
+export const MOTE = "gates-mote";
+export const MIST = "gates-mist";
 const GLINT = "gates-glint";
 
 /** Texturas do ambiente: luz redonda, facho de luz, cisco dourado, névoa e brilho na água. */
-function createGlowArt(scene: Phaser.Scene) {
+export function createGlowArt(scene: Phaser.Scene) {
   const add = (key: string, w: number, h: number, paint: (ctx: CanvasRenderingContext2D) => void) => {
     if (scene.textures.exists(key)) return;
     const { canvas, ctx } = makeCanvas(w, h);
