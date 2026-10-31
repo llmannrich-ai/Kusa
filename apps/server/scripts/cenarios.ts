@@ -17,7 +17,11 @@ import { MAP_IDS, generateDungeon, type MapId } from "@kusa/shared";
 import { HD, TileAtlas } from "../../client/src/art/paint.ts";
 import { planForest } from "../../client/src/forestPlan.ts";
 import { planCave } from "../../client/src/cavePlan.ts";
-import { FLAT_DECOR as CAVE_FLAT, TALL_DECOR as CAVE_TALL, flatDecor as caveFlat, floorTile as caveFloor, poolTile, rockTile, tallDecor as caveTall } from "../../client/src/art/caveArt.ts";
+import {
+  FLAT_DECOR as CAVE_FLAT, TALL_DECOR as CAVE_TALL, caveMouth, caveShaft, flatDecor as caveFlat, floorTile as caveFloor, poolTile, rockTile,
+  tallDecor as caveTall,
+} from "../../client/src/art/caveArt.ts";
+import { ruinTile, waterTile as duneWater } from "../../client/src/art/duneArt.ts";
 import { PROP_PIECES } from "../../client/src/art/propsArt.ts";
 import {
   FLAT_DECOR as DUNE_FLAT, TALL_DECOR as DUNE_TALL, draw as dune, flatDecor as duneFlat, palmCrown, palmTrunk, pillar,
@@ -111,6 +115,18 @@ const SCENERY: Record<string, Piece[]> = {
     ...CAVE_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => caveFlat("cavern", k, 0) })),
     ...CAVE_TALL.map((k) => ({ name: `enfeite de pé ${k}`, draw: () => caveTall("cavern", k, 0) })),
   ],
+  "Mar de Areia": [
+    ...dunes("desert"),
+    ...[0, 3, 5].map((v) => ({ name: `oásis ${v}`, draw: () => duneWater("desert", 0, v).render(false) })),
+    { name: "muro soterrado", draw: () => ruinTile("desert", OPEN.e | OPEN.w, true, 0).render(false) },
+    { name: "boca da caverna", draw: caveMouth },
+    { name: "corda da saída", draw: () => caveShaft("desert") },
+    ...[0, 6].map((q) => ({ name: `caverna: chão ${q}`, draw: () => caveFloor("desert", q) })),
+    { name: "caverna: chão do salão", draw: () => caveFloor("desert", 2, true) },
+    ...[0, OPEN.s].map((m) => ({ name: `caverna: rocha ${m}`, draw: () => rockTile("desert", m, 1) })),
+    ...CAVE_FLAT.map((k) => ({ name: `caverna: enfeite ${k}`, draw: () => caveFlat("desert", k, 0) })),
+    ...CAVE_TALL.map((k) => ({ name: `caverna: enfeite de pé ${k}`, draw: () => caveTall("desert", k, 0) })),
+  ],
   "Portões do Império": [
     ...range(4).map((v) => ({ name: `capim ${v}`, draw: () => grassTile(v).render(false), seam: true })),
     ...EMPIRE_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => empireFlat(k, 0).render(false) })),
@@ -173,6 +189,16 @@ for (const mapId of PLANNED.filter((m) => MAP_IDS.includes(m))) {
   }
   if (worst > 4096) fail(`cavern: atlas de ${worst} px de altura (máximo 4096)`);
   console.log(`cavern: atlas de até ${worst} px de altura`);
+  // Subterrâneo do Mar de Areia (a superfície usa o atlas das Dunas, medido no navegador: ≈1.700 px).
+  let under = 0;
+  for (let seed = 1; seed <= 6; seed++) {
+    const d = generateDungeon(seed * 7919, "desert");
+    if (!d.cave) continue;
+    const { atlas } = planCave(d, "desert", d.cave.under);
+    under = Math.max(under, Math.ceil(atlas.count / TileAtlas.COLUMNS) * (HD + TileAtlas.PAD * 2));
+  }
+  if (under > 4096) fail(`desert (caverna): atlas de ${under} px de altura (máximo 4096)`);
+  console.log(`desert (caverna): atlas de até ${under} px de altura`);
 }
 
 const random = Math.random;

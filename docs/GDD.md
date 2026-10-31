@@ -590,18 +590,18 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   passagem até uma zona ou ao centro é descartado. **Coqueiro** é um tile de mata sem mata nos 4 lados; mata
   encostada em mata é **duna** (o cliente desenha cada um por essa regra). Os dois bloqueiam passo e visão; a água
   do oásis bloqueia só o passo.
-- **Visual** (só no cliente, `apps/client/src/desertMap.ts` e `caveMap.ts`, com toda a arte própria em
-  `art/desertDecor.ts`, `art/caveDecor.ts` e `art/sandWorm.ts`, sem pack): sol de cima à esquerda em tudo. Areia com ondulações de vento (fortes, suaves ou lisa, em manchas grandes),
-  ladrilhos que fecham nas bordas; dunas com encosta iluminada, encosta na sombra, frente com crista e areia
-  escorrendo, e sombra na areia baixa; oásis com água rasa e funda, espuma, margem arredondada, areia molhada,
-  papiro, lótus e brilhos do sol na água; coqueiros em 4 formas (tronco curvo com anéis, copa de folhas penadas com
-  cocos, folha seca em alguns), com variação de tom e tamanho, sombra no chão, copa que balança e fica transparente
-  quando o jogador passa por baixo; cocos e folhas secas caídas, capim seco, arbustos, arenito, pedrinhas,
-  conchas, crânio de boi, rastro de cobra e pegadas; grãos de areia e poeira levados pelo vento. Na caverna: chão
-  de areia batida, rocha com paredão em camadas de sedimento, sulcos e pele trocada do verme no covil, ossos,
-  estalagmites, cristais âmbar que brilham, o facho de luz e a corda da saída, e o salão em lajes de arenito com
-  glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
-  Como nos outros mapas, só os sprites perto da câmera são desenhados.
+- **Visual** (só no cliente, `apps/client/src/desertMap.ts`; o verme em `art/sandWorm.ts`): **sempre na arte nova**
+  (128 px por tile, por código, `docs/CENARIOS_PLANO.md`). A superfície é a variante `desert` do desenho das Dunas
+  (`dunesMap.ts`, `art/duneArt.ts`), em areia dourada mais quente que a das Dunas: areia com ondulações de vento, dunas
+  soltas com encosta iluminada, encosta na sombra e crista, sombra na areia baixa; oásis turquesa com água rasa e
+  funda, espuma e areia molhada na margem, juncos; coqueiros com copa que balança e fica transparente com o jogador
+  embaixo; ruínas soterradas (muros de arenito meio cobertos de areia, tocos de coluna, ânforas); arbustos secos,
+  pedras, costelas, crânio, conchas, rastro de cobra e pegadas; grãos de areia levados pelo vento. A caverna: o monte
+  de pedras com a boca escura na superfície e o subterrâneo inteiro na arte das cavernas (`cavernMap.ts`,
+  `cavePlan.ts`, `art/caveArt.ts`, paleta `desert`): rocha com paredão em camadas, chão de pedra sem emenda, sulcos e
+  pele trocada do verme no covil, ossos, estalagmites, cristais âmbar que brilham, o salão dos baús com o chão gasto, a
+  luz e a corda da saída; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar
+  pela caverna. Só os sprites perto da câmera são desenhados.
 
 ### Dunas Cantantes e Mesas de Solária (terreno)
 

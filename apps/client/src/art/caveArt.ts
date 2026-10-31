@@ -216,3 +216,70 @@ export function tallDecor(variant: CaveVariant, kind: TallDecor, v: number): Uin
   }
   return p.render(true);
 }
+
+/** Boca da caverna na superfície (5×3,5 tiles; a base no tile da entrada, no meio). */
+export const MOUTH = { w: 5 * HD, h: 448 } as const;
+
+/**
+ * Monte de rocha com a abertura escura da caverna embaixo, no meio: pedras grandes empilhadas em camadas (as de trás
+ * mais altas), areia escorrida no pé e a boca em arco, preta por dentro, com a luz pegando a beira de cima.
+ */
+export function caveMouth(): Uint8ClampedArray {
+  // Na superfície do Mar de Areia: a paleta do deserto (a areia do pé é a mesma do chão em volta).
+  const p = new Paper("desert", MOUTH.w, MOUTH.h);
+  const B = MOUTH.h - 8, X = MOUTH.w / 2;
+  // Pedras do monte, de trás para a frente (as de trás mais altas e mais no meio).
+  const rocks: { x: number; y: number; rx: number; ry: number; m: M }[] = [];
+  for (let k = 0; k < 16; k++) {
+    const row = Math.floor(k / 5), t = (k % 5) / 4 - 0.5;
+    const spread = 1 - row * 0.22;
+    rocks.push({
+      x: X + t * MOUTH.w * 0.72 * spread + (noise(k, 1, 300) - 0.5) * 30,
+      y: B - 60 - (3 - row) * 70 + (noise(k, 2, 301) - 0.5) * 20,
+      rx: 70 + noise(k, 3, 302) * 40 - row * 6, ry: 56 + noise(k, 4, 303) * 26,
+      m: k % 3 === 0 ? M.Band : k % 3 === 1 ? M.Rock : M.Stone,
+    });
+  }
+  rocks.sort((a, b) => a.y - b.y);
+  for (const r of rocks) {
+    ellipse(p, r.x, r.y, r.rx, r.ry, r.m, (x, y) => (noise(x >> 2, y >> 2, 304) < 0.12 ? -1 : 0));
+    // Uma rachadura em cada pedra.
+    line(p, [r.x - r.rx * 0.3, r.y - r.ry * 0.2], [r.x + r.rx * 0.1, r.y + r.ry * 0.3], null, 1);
+  }
+  // Areia escorrida no pé do monte: um cordão baixo, de beira ondulada, que some nas pontas.
+  p.fill([0, B - 70, MOUTH.w - 1, B], (x, y) => {
+    const u = (x - X) / (MOUTH.w / 2);
+    const top = B - 8 - (1 - u * u) * 40 + (sn(x, 0, 32, 305) - 0.5) * 12;
+    return Math.abs(u) < 0.98 && y > top;
+  }, M.Soft, (x, y) => lit((x - X) / MOUTH.w, -0.5, 0.8));
+  // A boca: arco escuro no meio de baixo, com a beira de cima clara (a luz entra até ali).
+  const mw = 92, mh = 150;
+  p.fill([X - mw - 4, B - mh - 4, X + mw + 4, B + 4], (x, y) => ((x - X) / mw) ** 2 + ((y - B) / mh) ** 2 <= 1 && y <= B, M.Line, () => 0.1);
+  for (let a = Math.PI; a <= Math.PI * 2; a += 0.01) {
+    const x = X + Math.cos(a) * (mw + 2), y = B + Math.sin(a) * (mh + 2);
+    p.on(x, y, M.Rock, 5);
+    p.on(x, y - 1, M.Rock, 4);
+  }
+  // Degrau de pedra na entrada.
+  ellipse(p, X, B - 4, mw * 0.8, 10, M.Stone);
+  return p.render(true);
+}
+
+/** Saída da caverna: a corda descendo do buraco no teto (2×4 tiles; a base no tile da saída). */
+export const SHAFT = { w: 2 * HD, h: 4 * HD } as const;
+
+/** A corda de nós pendurada do buraco no teto, a areia que caiu por ele num montinho e a borda de pedra do buraco. */
+export function caveShaft(variant: CaveVariant): Uint8ClampedArray {
+  const p = paper(variant, SHAFT.w, SHAFT.h);
+  const B = SHAFT.h - 10, X = SHAFT.w / 2;
+  // Montinho de areia que caiu do buraco.
+  p.fill([X - 90, B - 40, X + 90, B + 6], (x, y) => ((x - X) / 86) ** 2 + ((y - B + 4) / 30) ** 2 <= 1 && y <= B + 2, M.Dune, (x, y) => lit((x - X) / 90, (y - B) / 30 - 0.4, 0.8));
+  // A corda: de cima até quase o chão, balançando um pouco, com nós a cada 40 px.
+  const ropeX = (y: number) => X + 8 + Math.sin(y / 70) * 6;
+  p.together(() => {
+    for (let y = 0; y < B - 30; y += 2) limb(p, [ropeX(y), y], [ropeX(y + 2), y + 2], 3.2, 3.2, M.Trunk);
+    for (let y = 40; y < B - 30; y += 40) ellipse(p, ropeX(y), y, 6, 5, M.Trunk);
+  });
+  for (let y = 0; y < B - 30; y += 3) p.on(ropeX(y) - 1, y, M.Trunk, 4);
+  return p.render(true);
+}
