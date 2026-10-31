@@ -8,6 +8,15 @@ luz, paleta, organização do mapa); não copiamos, traçamos nem recolorimos sp
 
 ---
 
+## Regra (decidida)
+
+- **Cenário** (chão, paredes, água, árvores, ruínas, enfeites, baú, portais, sangue): sempre **pintado por código em
+  128 px por tile**, com os pintores de `apps/client/src/art/` (`paint.ts` e os de cada mapa). Nada de PNG nem de arte
+  gerada por IA. Os 10 mapas já seguem a regra (`docs/CENARIOS_PLANO.md`); o teste `cenarios` guarda a impressão de
+  cada peça e a prévia `/mapa.html` mostra os mapas inteiros.
+- **Inimigos:** arte gerada por IA, aprovada e processada para 128 px por tile (como o goblin, o sapo e o Rei Bullywug,
+  abaixo).
+
 ## 1. Diagnóstico da arte atual (galeria `arte.html`)
 
 | Área | Como está | Por que não lembra o Tibia |
@@ -244,7 +253,7 @@ antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)*
 
 - **Cenário** (`art/proto/crypt.ts`): lajes com bisel e juntas com musgo, covil queimado do dragão, tampa lisa e
   face de tijolos das paredes, os 15 enfeites do chão, os 7 da parede, a tocha (4 quadros) e os 9 móveis. São os
-  mesmos quadros da arte antiga (`cryptDecor.ts`, `walls.ts`), 4× maiores: o mapa troca as texturas e desenha em
+  mesmos quadros da arte antiga de 32 px (que já saiu), 4× maiores: o mapa troca as texturas e desenha em
   1/4 de escala. A sombra das paredes, a luz das chamas e a poeira continuam as antigas. Tudo sai em ≈0,15 s.
 - **Monstros humanoides** (`MONSTER_KITS` em `tibiaHero.ts`): goblin, goblin arqueiro, kobold (com cauda),
   hobgoblin, orc, gnoll, esqueleto, esqueleto arqueiro, zumbi, bugbear e ogro usam o corpo, a caminhada e o

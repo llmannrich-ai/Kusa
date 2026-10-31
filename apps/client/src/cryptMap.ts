@@ -1,11 +1,9 @@
 import * as Phaser from "phaser";
 import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "@kusa/shared";
-import { CRYPT_FLOOR, CRYPT_TALL, CRYPT_WALL } from "./art/cryptDecor.ts";
 import { hash } from "./art/pixels.ts";
 import { CRYPT_DECOR, createCryptArt, floorVariants, wallCapTexture, wallFaceTexture } from "./art/textures.ts";
-import { RIM, WALL_RISE, WALL_VARIANTS } from "./art/walls.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
-import { CRYPT_TILE } from "./art/cryptArt.ts";
+import { CRYPT_FLOOR, CRYPT_TALL, CRYPT_TILE, CRYPT_WALL, RIM, WALL_RISE, WALL_VARIANTS } from "./art/cryptArt.ts";
 
 /** A Cripta é desenhada em 128 px por tile e entra no mapa em ¼ (`docs/CENARIOS_PLANO.md`, fase 4). */
 const ART_ZOOM = CRYPT_TILE / TILE_SIZE;

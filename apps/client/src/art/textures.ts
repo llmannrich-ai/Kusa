@@ -11,7 +11,6 @@ import { cryptArt, protoBeasts } from "./newArt.ts";
 import { SUMMON_ART, SUMMON_FRAMES, SUMMON_OUTLINE, summonPortrait, summonSheet } from "./summonCreatures.ts";
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
-import { TORCH_FRAMES, dustCanvas } from "./cryptDecor.ts";
 
 /**
  * Ponte entre a arte e o Phaser: carrega os PNGs do pack Dungeon Crawl (CC0, ver
@@ -252,7 +251,7 @@ export function createEffectArt(scene: Phaser.Scene) {
   }
 }
 
-/** Detalhes da cripta em arte própria (`cryptDecor.ts`), gerados na primeira hunt na cripta. */
+/** Detalhes da cripta (`cryptArt.ts`), gerados na primeira hunt na cripta. */
 export const CRYPT_DECOR = {
   floor: "crypt-decor-floor",
   wall: "crypt-decor-wall",
@@ -277,11 +276,11 @@ export function createCryptArt(scene: Phaser.Scene) {
     [CRYPT_DECOR.shade, cryptArt.cryptShade],
   ], cryptArt.CRYPT_TILE);
   if (!scene.textures.exists(CRYPT_DECOR.light)) scene.textures.addCanvas(CRYPT_DECOR.light, cryptArt.cryptLight());
-  if (!scene.textures.exists(CRYPT_DECOR.dust)) scene.textures.addCanvas(CRYPT_DECOR.dust, dustCanvas());
+  if (!scene.textures.exists(CRYPT_DECOR.dust)) scene.textures.addCanvas(CRYPT_DECOR.dust, cryptArt.dustCanvas());
   if (!scene.anims.exists(CRYPT_DECOR.torch)) {
     scene.anims.create({
       key: CRYPT_DECOR.torch,
-      frames: Array.from({ length: TORCH_FRAMES }, (_, frame) => ({ key: CRYPT_DECOR.torch, frame })),
+      frames: Array.from({ length: cryptArt.TORCH_FRAMES }, (_, frame) => ({ key: CRYPT_DECOR.torch, frame })),
       frameRate: 7,
       repeat: -1,
     });

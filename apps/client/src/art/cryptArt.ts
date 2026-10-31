@@ -7,7 +7,7 @@ import {
 /**
  * Cripta no padrão novo (`docs/ARTE_TIBIA.md`): o mesmo pincel dos heróis (luz de cima à esquerda em faixas,
  * contorno escuro, peça da frente riscando a de trás), em **128 px por tile**. Cada faixa tem os mesmos quadros,
- * na mesma ordem, da arte antiga (`cryptDecor.ts`, `walls.ts`), só que 4× maiores: o mapa (`cryptMap.ts`) troca a
+ * na mesma ordem, da arte antiga de 32 px (que já saiu), só que 4× maiores: o mapa (`cryptMap.ts`) troca a
  * textura e desenha em ¼ de escala.
  *
  * Unidades de projeto como nos heróis (`K` px cada): o tile tem 64 unidades.
@@ -509,5 +509,36 @@ export function cryptLight() {
       ctx.fillStyle = `rgba(255, 164, 72, ${levels[band]})`;
       ctx.fillRect(x, y, 1, 1);
     }
+  return canvas;
+}
+
+// --- Índices e medidas que o mapa usa (vieram de `cryptDecor.ts` e `walls.ts`, a arte antiga) ---------------
+
+/** Enfeites rasteiros, na ordem de `cryptFloorDecor`. */
+export const CRYPT_FLOOR = {
+  bones: 0, skull: 1, rubble: 2, crack: 3, stain: 4, puddle: 5, shards: 6, paper: 7,
+  cobwebNW: 8, cobwebNE: 9, chain: 10, candle: 11, scorch: 12, blood: 13, dragonBones: 14,
+} as const;
+/** Enfeites de parede, na ordem de `cryptWallDecor`. */
+export const CRYPT_WALL = { bannerRed: 0, bannerBlue: 1, chains: 2, niche: 3, crack: 4, web: 5, moss: 6 } as const;
+/** Móveis, na ordem de `cryptTall`. */
+export const CRYPT_TALL = {
+  barrel: 0, barrels: 1, crate: 2, urn: 3, brokenUrn: 4, candelabra: 5, bonePile: 6, coffin: 7, sack: 8,
+} as const;
+export const TORCH_FRAMES = 4;
+/** Altura da face da parede em px de jogo (a tampa sobe isso acima do tile; `CRYPT_WALL_RISE` em px de arte). */
+export const WALL_RISE = CRYPT_WALL_RISE / 4;
+export const WALL_VARIANTS = 4;
+/** Bordas da tampa iluminadas onde a parede encosta no chão. */
+export const RIM = { north: 1, west: 2, east: 4 } as const;
+
+/** Grão de poeira flutuando na luz (3×3 px de jogo: é uma partícula, não cenário). */
+export function dustCanvas() {
+  const { canvas, ctx } = makeCanvas(3, 3);
+  ctx.fillStyle = "rgba(255,228,180,0.35)";
+  ctx.fillRect(1, 0, 1, 3);
+  ctx.fillRect(0, 1, 3, 1);
+  ctx.fillStyle = "#fff0d0";
+  ctx.fillRect(1, 1, 1, 1);
   return canvas;
 }

@@ -1,6 +1,6 @@
 import { ramp, rgb, type Rgb } from "./hero/color.ts";
 import { FLAT, HD, OPEN, Paper, ellipse, limb, line, lit, noise, poly, smoothNoise, sn, sphere, type Pt } from "./duneArt.ts";
-import { worley as worleyAt } from "./marshDecor.ts";
+import { worleyCells as worleyAt } from "./paint.ts";
 
 /**
  * Arte dos Portões do Império (Ruínas do Império), no padrão novo (`docs/ARTE_TIBIA.md`), como a das Dunas: **128 px por
@@ -95,7 +95,7 @@ function pn(x: number, y: number, cell: number, seed: number) {
 
 const cells = new Map<string, { d1: Float32Array; d2: Float32Array; dx: Float32Array; dy: Float32Array; id: Int32Array }>();
 /**
- * Ruído celular (`worley` do Pântano) num período inteiro, calculado uma vez por (célula, período, semente) e lido por
+ * Ruído celular (`worleyCells` de `paint.ts`) num período inteiro, calculado uma vez por (célula, período, semente) e lido por
  * pixel: as pedras da via e os tufos das moitas usam o mesmo desenho em vários quadros, e o cálculo é o que mais pesa.
  */
 export function worley(x: number, y: number, cell: number, period: number, seed: number) {
