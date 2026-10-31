@@ -288,8 +288,8 @@ antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)*
 
 **Inimigos da Cripta com folhas geradas por IA** (`docs/arte/cripta/README.md`): o monstro que tem folha A (giro) e
 B (andar, golpe, especial e morte desenhados) troca o desenho por código pela folha, em todo mapa em que aparece
-(`criptaSprites.py` recorta, `art/proto/criptaArt.ts` monta os clipes). Primeiro lote: ratazana, kobold, estirge,
-esqueleto e aranha gigante.
+(`criptaSprites.py` recorta, `art/proto/criptaArt.ts` monta os clipes). Já com folha: ratazana, kobold, estirge,
+esqueleto, aranha gigante, goblin arqueiro, esqueleto arqueiro, Bugbear chefe e Cubo Gelatinoso.
 
 ### Goblin a partir de arte de referência
 
@@ -306,17 +306,11 @@ Para refazer depois de trocar a referência:
 
 ![Goblin: a arte de referência](arte/goblin-referencia.png)
 
-### Bugbear chefe a partir de arte de referência
+### Bugbear chefe a partir de arte de referência (substituído)
 
-No mesmo molde do goblin: a referência `docs/arte/bugbear-referencia.webp` (12 figuras em fundo branco, parado e
-andando em 6 ângulos, o perfil olhando para a direita) passa por `apps/client/scripts/bugbearSprites.py`, que tira o
-fundo branco (o que encosta na borda e os buracos grandes; o branco de dentes e brilhos fica), põe o perfil parado com
-160 px de altura (o kit do bugbear tem 1,22 da altura do herói) e grava `apps/client/src/art/proto/bugbear.png`
-(12 quadros de 192 px). `art/proto/bugbearArt.ts` espelha para a esquerda e monta os clipes: parado (o perfil
-respirando), andar (a única passada de perfil alternando com o parado), golpe (gira para trás no ¾ de costas e avança
-com a passada) e magia, que é o Golpe Brutal (o mesmo bote, mais fundo).
-
-Para refazer: `python3 apps/client/scripts/bugbearSprites.py docs/arte/bugbear-referencia.webp apps/client/src/art/proto/bugbear.png`.
+O Bugbear chefe chegou a vir de uma arte de referência (`docs/arte/bugbear-referencia.webp`, 12 figuras parado e
+andando, com os clipes montados a partir delas). Agora vem das folhas geradas por IA da Cripta (`docs/arte/cripta/`),
+com o golpe, o Golpe Brutal e a morte desenhados; a referência fica só como registro.
 
 ![Bugbear chefe: a arte de referência](arte/bugbear-referencia.webp)
 

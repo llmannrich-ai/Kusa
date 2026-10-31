@@ -6,6 +6,7 @@ guardadas aqui em WebP sem perda (os mesmos pixels do PNG, metade do tamanho):
 - `<kind>-A.webp` (giro): 2 linhas × 6, parado e andando; colunas: frente, 3/4 de frente, perfil para a esquerda,
   3/4 de costas, costas, 3/4 de costas para a direita.
 - `<kind>-B.webp` (ação): 4 linhas × 4, tudo de perfil para a esquerda: andar (4), golpe (4), especial (4) e morte (3).
+  Alguns têm uma 5ª linha (`B_EXTRA_ROW` no script): ela é lida e fica de fora até o jogo ter clipe para ela.
 
 Processadas por `apps/client/scripts/criptaSprites.py <kind>`, que grava `apps/client/src/art/proto/cripta/<kind>.png`
 (21 figuras: as 6 da A que o jogo usa e as 15 da B, paleta de 256 cores). O jogo pega sozinho todo PNG daquela pasta
@@ -19,6 +20,10 @@ o desenho por código. Diferente do Kosaradius, aqui o andar, o golpe, o especia
 | Estirge (`stirge`) | A e B | 176 px | ~2,5 MB | voa: cada figura com o próprio pé na linha (`FLYERS`) |
 | Esqueleto (`skeleton`) | A e B | 176 px | ~2,5 MB | caveira solta da morte juntada à figura; branco entre os ossos limpo |
 | Aranha gigante (`giantSpider`) | A e B | 160 px | ~2,1 MB | B veio com o xadrez de "transparente" pintado: limpo; a teia é o especial |
+| Goblin arqueiro (`goblinArcher`) | A e B | 144 px | ~1,7 MB | |
+| Esqueleto arqueiro (`skeletonArcher`) | A e B | 176 px | ~2,5 MB | |
+| Bugbear chefe (`bugbear`) | A e B | 224 px | ~4,0 MB | substitui a arte de referência; o especial é o Golpe Brutal; a 5ª linha (emboscada) fica de fora |
+| Cubo Gelatinoso (`gelatinousCube`) | A e B | 176 px | ~2,5 MB | o especial é o Engolfar; a 5ª linha (cuspida) fica de fora |
 
 ## O que o script corrige sozinho
 
@@ -33,4 +38,4 @@ o desenho por código. Diferente do Kosaradius, aqui o andar, o golpe, o especia
 ## Memória no celular
 
 Só os monstros do mapa da hunt são preparados (`warmMapMonsters` em `textures.ts`). Cada monstro tem 21 figuras
-distintas: figuras × lado² × 4 bytes. Os 5 acima somam ~11 MB.
+distintas: figuras × lado² × 4 bytes. Os 9 acima somam ~22 MB.

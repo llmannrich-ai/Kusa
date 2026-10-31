@@ -48,6 +48,10 @@ HEIGHT = {
     "stirge": 120,
     "skeleton": 125,
     "giantSpider": 100,
+    "goblinArcher": 110,
+    "skeletonArcher": 125,
+    "bugbear": 160,
+    "gelatinousCube": 130,
 }
 
 # Quem voa: a figura vai com o próprio pé na linha em toda folha (não cai até o chão na morte).
@@ -57,6 +61,9 @@ FLYERS = {"stirge"}
 USED = (0, 2, 4, 6, 8, 10)
 # Linhas da folha B e quantas figuras cada uma tem.
 B_ROWS = (4, 4, 4, 3)
+# Linha a mais na folha B de alguns (a emboscada do Bugbear, a cuspida do Cubo): o jogo ainda não tem clipe para ela,
+# então ela é lida (para as outras saírem certas) e fica de fora.
+B_EXTRA_ROW = {"bugbear": 4, "gelatinousCube": 3}
 HOLE = 60  # células de 2x2 px: claro sem cor desse tamanho para cima, cercado pela figura, é fundo
 
 
@@ -145,8 +152,10 @@ def main(kind, flip_figs=()):
     rows_a = figures(a)
     assert [len(r) for r in rows_a] == [6, 6], f"{kind}-A: esperava 2 linhas de 6, achei {[len(r) for r in rows_a]}"
     b = clean(SRC / f"{kind}-B.webp")
-    rows_b = merge_loose(figures(b), B_ROWS)
-    assert tuple(len(r) for r in rows_b) == B_ROWS, f"{kind}-B: esperava linhas {B_ROWS}, achei {[len(r) for r in rows_b]}"
+    expected = B_ROWS + ((B_EXTRA_ROW[kind],) if kind in B_EXTRA_ROW else ())
+    rows_b = merge_loose(figures(b), expected)
+    assert tuple(len(r) for r in rows_b) == expected, f"{kind}-B: esperava linhas {expected}, achei {[len(r) for r in rows_b]}"
+    rows_b = rows_b[: len(B_ROWS)]
     scale = HEIGHT[kind] / height(rows_a[0][2])
     # Pela área, não pela altura: a cauda curvada do rato e as asas da estirge mudam a altura de uma folha para a outra.
     side_a = (area(rows_a[0][2]) + area(rows_a[1][2])) / 2
