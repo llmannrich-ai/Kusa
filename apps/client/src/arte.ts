@@ -8,14 +8,16 @@ import { HERO_DIRS, HERO_FRAMES, HERO_SIZE, heroPoses, heroSheet } from "./art/h
 import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
-import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
+import { FX_ANIM, FX_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
+import {
+  CRYPT_TILE, RIM, WALL_RISE, WALL_VARIANTS, cryptFloorDecor, cryptFloorTiles, cryptLight, cryptShade, cryptTall, cryptTorch, cryptWallCap,
+  cryptWallDecor, cryptWallFace, dustCanvas,
+} from "./art/cryptArt.ts";
+import { PROP_PIECES } from "./art/propsArt.ts";
+import { toCanvas } from "./art/paint.ts";
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures, type MonsterAnim } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
-import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
 import { KNIGHT_COSMETICS, PROTO_CLASSES, PROTO_FEET, PROTO_FRAMES, PROTO_AXES, PROTO_BOWS, PROTO_ITEM_NAMES, PROTO_MAGIC_BOWS, PROTO_MAGIC_STAFFS, PROTO_MAGIC_WANDS, PROTO_ARC_HATS, PROTO_MAGIC_ARC_HATS, PROTO_ROBES, PROTO_MAGIC_ROBES, PROTO_PANTS, PROTO_MAGIC_PANTS, PROTO_GREAVES, PROTO_MAGIC_GREAVES, PROTO_BOOTS, PROTO_MAGIC_BOOTS, PROTO_SHIELDS, PROTO_MAGIC_SHIELDS, PROTO_MAGIC_XBOWS, PROTO_STAFFS, PROTO_WANDS, PROTO_XBOWS, PROTO_MAGIC_ARMORS, PROTO_MAGIC_AXES, PROTO_MAGIC_HELMETS, PROTO_MAGIC_SWORDS, PROTO_SIZE, PROTO_SWORDS, PROTO_WAR_ARMORS, PROTO_WAR_HELMETS, PROTO_TILE, protoFrame, type ProtoClass, type ProtoDir, type ProtoGear } from "./art/proto/tibiaHero.ts";
-import { fireflyCanvas, mistCanvas, rippleStrip, shadeStrip } from "./art/ambient.ts";
-import { WALL_HEIGHTS, WALL_LINK, columnSheet, mosaicCanvas, pavingStrip, ruinFloorStrip, ruinTallStrip, ruinWallCanvas, ruinWaterStrip } from "./art/ruinsDecor.ts";
 
 const ZOOM = 4;
 const gallery = document.getElementById("gallery")!;
@@ -288,13 +290,10 @@ for (const slot of ITEM_SLOTS) {
   }
 }
 
-const walls = section("Paredes (tampa + face)");
-for (let v = 0; v < WALL_VARIANTS; v++) {
-  const { canvas, ctx } = makeCanvas(TILE_SIZE, TILE_SIZE + WALL_RISE);
-  ctx.drawImage(wallCap(v, RIM.north | RIM.west | RIM.east), 0, 0);
-  ctx.drawImage(wallFace(v), 0, TILE_SIZE);
-  show(walls, canvas, `variação ${v}`);
-}
+/** Tampa e face da parede da Cripta (128 px por tile) desenhadas no tamanho do tile da galeria. */
+const wallCap = (v: number, rim: number) => cryptWallCap(v, rim);
+const wallFace = (v: number) => cryptWallFace(v);
+const quarter = (ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, x: number, y: number) => ctx.drawImage(img, x, y, img.width / 4, img.height / 4);
 
 // Mini-cena: um corredor com parede ao norte e ao sul, as 4 classes e alguns monstros.
 const sceneRow = section("Mini-cena");
@@ -306,8 +305,9 @@ const loadImage = (key: string) => new Promise<HTMLImageElement>((resolve) => {
   img.onload = () => resolve(img);
   img.src = `assets/dcss/${key}.png`;
 });
-const [floor, ...monsters] = await Promise.all([
-  loadImage(FLOOR_TEXTURE.normal),
+// O chão é o da Cripta (128 px por tile), reduzido ao tile da mini-cena.
+const floor = cryptFloorTiles();
+const monsters = await Promise.all([
   // Arte própria de monstro não tem PNG: entra o desenho direto.
   ...monsterTextures().map((key): Promise<HTMLCanvasElement | HTMLImageElement> =>
     key in OWN_MONSTER_DRAW ? Promise.resolve(OWN_MONSTER_DRAW[key]()) : loadImage(key)),
@@ -322,7 +322,7 @@ const drawHero = (sheet: HTMLCanvasElement, frame: number, x: number, y: number)
 const refinedMonsters = monsters.map((img) => refineArt(img));
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {
-    if (!isWall(x, y)) sceneCtx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    if (!isWall(x, y)) sceneCtx.drawImage(floor, ((x * 7 + y * 3) % 8) * CRYPT_TILE, 0, CRYPT_TILE, CRYPT_TILE, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
   }
 }
 // Ordem de desenho por linha, como no jogo: paredes e personagens da mesma linha, de cima para baixo.
@@ -330,8 +330,8 @@ for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {
     if (!isWall(x, y)) continue;
     const rim = (!isWall(x, y - 1) && y > 0 ? RIM.north : 0);
-    sceneCtx.drawImage(wallCap(x % WALL_VARIANTS, rim), x * TILE_SIZE, y * TILE_SIZE - WALL_RISE);
-    if (y + 1 < H && !isWall(x, y + 1)) sceneCtx.drawImage(wallFace(x % WALL_VARIANTS), x * TILE_SIZE, (y + 1) * TILE_SIZE - WALL_RISE);
+    quarter(sceneCtx, wallCap(x % WALL_VARIANTS, rim), x * TILE_SIZE, y * TILE_SIZE - WALL_RISE);
+    if (y + 1 < H && !isWall(x, y + 1)) quarter(sceneCtx, wallFace(x % WALL_VARIANTS), x * TILE_SIZE, (y + 1) * TILE_SIZE - WALL_RISE);
   }
   if (y === 1) CLASS_IDS.forEach((id, i) => drawHero(heroSheet(id), 0, 1 + i * 2, y));
   if (y === 3) refinedMonsters.slice(0, 5).forEach((art, i) => drawChar(art, 0, art.width, i * 2, y));
@@ -345,7 +345,7 @@ show(sceneRow, sceneCanvas, "corredor", 2);
   const { canvas, ctx } = makeCanvas(SW * T, SH * T);
   canvas.className = "scene";
   for (let y = 0; y < SH; y++) {
-    for (let x = 0; x < SW; x++) ctx.drawImage(floor, ((x * 7 + y * 3) % 9) * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, x * T, y * T, T, T);
+    for (let x = 0; x < SW; x++) ctx.drawImage(floor, ((x * 7 + y * 3) % 8) * CRYPT_TILE, 0, CRYPT_TILE, CRYPT_TILE, x * T, y * T, T, T);
   }
   const side = T * HERO_SCALE;
   refinedMonsters.slice(0, 4).forEach((art, i) => ctx.drawImage(art, 0, 0, art.width, art.height, (i * 2 + 1) * T, 0, T, T));
@@ -363,8 +363,6 @@ show(combat, biteStrip(), "mordida");
 show(combat, smashStrip(), "pancada");
 show(combat, leafCanvas(), "folha");
 
-// Ruínas do Pântano das Ruínas: cada faixa sobre o capim da baía, para ver o contraste como no jogo.
-const swamp = section("Pântano das Ruínas: ruínas (arte própria)");
 const onGround = (source: HTMLCanvasElement, ground: string) => {
   const { canvas, ctx } = makeCanvas(source.width, source.height);
   ctx.fillStyle = ground;
@@ -372,51 +370,25 @@ const onGround = (source: HTMLCanvasElement, ground: string) => {
   ctx.drawImage(source, 0, 0);
   return canvas;
 };
-show(swamp, pavingStrip(), "lajes", 3);
-show(swamp, onGround(ruinFloorStrip(), "#626656"), "chão", 3);
-show(swamp, onGround(ruinTallStrip(), "#4a6a30"), "altos", 3);
-show(swamp, onGround(ruinWaterStrip(), "#24423e"), "água", 3);
-show(swamp, onGround(columnSheet(), "#4a6a30"), "colunas", 3);
-// Muros: um trecho deitado (ponta oeste, meio, ponta leste), um canto e um em pé, em cada variação.
-{
-  const pieces = [WALL_LINK.e, WALL_LINK.e | WALL_LINK.w, WALL_LINK.w, WALL_LINK.e | WALL_LINK.s, WALL_LINK.n | WALL_LINK.s];
-  const { canvas, ctx } = makeCanvas(TILE_SIZE * pieces.length * 3 + 16, (TILE_SIZE + 24) * 1);
-  ctx.fillStyle = "#4a6a30";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (let v = 0; v < 3; v++) pieces.forEach((links, i) => ctx.drawImage(ruinWallCanvas(links, WALL_HEIGHTS[2 + (i % 3)], v), (v * pieces.length + i) * TILE_SIZE + v * 8, 0));
-  show(swamp, canvas, "muros", 3);
-}
-show(swamp, onGround(mosaicCanvas(), "#626656"), "mosaico da Hidra", 2);
 
-// Ambiente que os mapas dividem (cripta, pântanos).
-const ambient = section("Ambiente: sombras, ondinha, vaga-lume e névoa");
-show(ambient, onGround(shadeStrip(), "#3f6a2a"), "sombras", 3);
-show(ambient, onGround(rippleStrip(), "#2f5a5a"), "ondinha", 3);
-show(ambient, onGround(fireflyCanvas(), "#0b140a"), "vaga-lume", 8);
-show(ambient, onGround(mistCanvas(), "#3f6a2a"), "névoa", 3);
-
-// Detalhes da cripta: chão sobre ladrilho escuro; paredes sobre a face de tijolos (linhas 16 a 31).
-const crypt = section("Cripta: detalhes (arte própria)");
-const onWallFaces = (source: HTMLCanvasElement) => {
-  const { canvas, ctx } = makeCanvas(source.width, source.height);
-  for (let x = 0; x < source.width; x += TILE_SIZE) {
-    ctx.drawImage(wallCap(0, RIM.north), x, -WALL_RISE);
-    ctx.drawImage(wallFace(x / TILE_SIZE % WALL_VARIANTS), x, TILE_SIZE - WALL_RISE);
-  }
-  ctx.drawImage(source, 0, 0);
-  return canvas;
-};
-show(crypt, onGround(cryptFloorStrip(), "#5a4a38"), "chão", 3);
-show(crypt, onWallFaces(cryptWallStrip()), "paredes", 3);
-show(crypt, onWallFaces(torchStrip()), "tocha", 3);
-show(crypt, onGround(cryptTallStrip(), "#5a4a38"), "móveis", 3);
-show(crypt, onGround(lightCanvas(), "#3a2e22"), "luz", 2);
+// Detalhes da Cripta em 128 px por tile (`art/cryptArt.ts`). Os outros cenários se veem inteiros em `/mapa.html`.
+const crypt = section("Cripta: detalhes (128 px, código; os mapas inteiros em /mapa.html)");
+show(crypt, onGround(cryptFloorDecor(), "#5a4a38"), "chão", 0.75);
+show(crypt, onGround(cryptWallDecor(), "#3a2e22"), "paredes", 0.75);
+show(crypt, onGround(cryptTorch(), "#3a2e22"), "tocha", 0.75);
+show(crypt, onGround(cryptTall(), "#5a4a38"), "móveis", 0.75);
+show(crypt, onGround(cryptShade(), "#5a4a38"), "sombra das paredes", 0.75);
+show(crypt, onGround(cryptLight(), "#3a2e22"), "luz", 0.5);
 show(crypt, onGround(dustCanvas(), "#3a2e22"), "poeira", 8);
+
+// Baú, portais e sangue: 128 px por tile, por código (`art/propsArt.ts`), em tamanho real e no do jogo (¼).
+const props = section("Objetos comuns: baú, portais e sangue (128 px, código)");
+for (const [name, draw] of Object.entries(PROP_PIECES)) show(props, onGround(toCanvas(draw()), "#5a4a38"), name, 1);
 
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
-  ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
-  ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
+  ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)),
+  ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst,
 ];
 for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);

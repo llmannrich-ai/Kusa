@@ -2,20 +2,23 @@ import * as Phaser from "phaser";
 import { TILE_SIZE, Tile, tileAt, type Dungeon } from "@kusa/shared";
 import { hash, makeCanvas } from "./art/pixels.ts";
 import { HD, TileAtlas, toCanvas } from "./art/paint.ts";
-import type { ForestVariant } from "./art/forestArt.ts";
+import { isWetland, type ForestVariant } from "./art/forestArt.ts";
 import { LAYERS, planForest, standingSheets, type Standing } from "./forestPlan.ts";
-import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
+import { ChunkCuller, type MapAmbience } from "./mapShared.ts";
 
 /** Fundo além das bordas: o escuro do sub-bosque de cada variante. */
 export const OLDWOOD_VOID = 0x1c2814;
 export const HEARTWOOD_VOID = 0x0c1410;
+export const MARSH_VOID = 0x141c0e;
+export const SWAMP_VOID = 0x1c2311;
 
 /** Arte de 128 px por tile, desenhada em ¼ (sempre a arte nova: estes mapas não têm a antiga). */
 const ZOOM = HD / TILE_SIZE;
 const ATLAS = "forest-atlas";
 
 /**
- * Desenha o Bosque Velho e o Coração da Mata (o mesmo gerador, `generateForest`). Em tilemaps de 128 px (um atlas só,
+ * Desenha o Bosque Velho e o Coração da Mata (o mesmo gerador, `generateForest`) e o Pântano do Kosaradius (a mesma mata,
+ * alagada, `generateMarsh`; o plano em `forestPlan.ts`). Em tilemaps de 128 px (um atlas só,
  * com os quadros que o mapa usa): o capim, a terra das trilhas, o barro da margem, as folhas secas e a sombra perto da
  * mata, a mata fechada (copa de tufos pela distância até o chão aberto, com o sub-bosque e os troncos do lado sul), o
  * riacho ou as lagoas, as pontes, os troncos caídos ou os muros élficos e os enfeites rasteiros. Em sprites ordenados
@@ -23,7 +26,7 @@ const ATLAS = "forest-atlas";
  * e os menires da arena e os enfeites de pé. Tudo vem de `hash(x, y)`: todos veem o mesmo, e nada muda a jogabilidade.
  */
 export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, uiDepth: number): MapAmbience {
-  const { variant, atlas, layers, standing } = planForest(d);
+  const { variant, atlas, layers, standing, extraSheets } = planForest(d);
   const W = d.width;
   const H = d.height;
   if (scene.textures.exists(ATLAS)) scene.textures.remove(ATLAS);
@@ -31,23 +34,19 @@ export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   (window as unknown as { forestFrames?: number }).forestFrames = atlas.count;
   const map = scene.make.tilemap({ width: W, height: H, tileWidth: HD, tileHeight: HD });
   const set = map.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
-  const tone: [number, number, number] = variant === "heartwood" ? [0.7, 0.85, 0.85] : [0.82, 0.9, 0.7];
   for (const name of LAYERS) {
     const l = map.createBlankLayer(name, set)!.setDepth(floorDepth).setScale(1 / ZOOM);
     const data = layers[name];
-    const tint = name === "chao" || name === "trilha" || name === "relevo";
+    // Sem tinta por tile: a variação grande já vem pintada no capim (a tinta deixava a grade aparecendo em quadrados).
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++) {
         const f = data[y * W + x];
-        if (f < 0) continue;
-        const tile = l.putTileAt(f, x, y);
-        // Manchas grandes de luz e sombra (a luz que passa pela copa).
-        if (tint) tile.tint = patchTint(x, y, variant === "heartwood" ? 0.66 : 0.72, tone, 5, 73);
+        if (f >= 0) l.putTileAt(f, x, y);
       }
   }
 
   // Folhas dos objetos de pé: só as que o mapa usa.
-  const sheets = standingSheets(variant);
+  const sheets = { ...standingSheets(variant), ...extraSheets };
   const used = new Map<Standing["sheet"], Set<number>>();
   for (const s of standing) { if (!used.has(s.sheet)) used.set(s.sheet, new Set()); used.get(s.sheet)!.add(s.frame); }
   const keyOf = (sheet: Standing["sheet"]) => `${variant}-${sheet}`;
@@ -65,8 +64,8 @@ export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   const crowns: Phaser.GameObjects.Image[] = [];
   const glows: Phaser.GameObjects.Image[] = [];
   for (const s of standing) {
-    const img = scene.add.image((s.x + s.span / 2) * TILE_SIZE, (s.y + 1) * TILE_SIZE - 2, keyOf(s.sheet), s.frame)
-      .setOrigin(0.5, 1).setScale(s.scale / ZOOM).setDepth(s.depth).setFlipX(s.flip);
+    const img = scene.add.image((s.x + s.span / 2) * TILE_SIZE, (s.y + 1) * TILE_SIZE - (s.lift ?? 2), keyOf(s.sheet), s.frame)
+      .setOrigin(0.5, 1).setScale(s.scale / ZOOM).setDepth(s.floor ? floorDepth + 0.4 : s.depth).setFlipX(s.flip);
     culler.add(img, s.x, s.y);
     if (s.sheet === "crown" || s.sheet === "giantCrown" || s.sheet === "heartCrown") {
       img.setData("phase", hash(s.x, s.y, 106) * Math.PI * 2).setData("x0", img.x).setData("w", sheets[s.sheet].w);
@@ -83,6 +82,9 @@ export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
 const MOTE = "forest-mote";
 const LEAF = "forest-leaf";
 const SHAFT = "forest-shaft";
+const MIST = "forest-mist";
+/** Faixas de névoa do pântano na tela ao mesmo tempo. */
+const MIST_COUNT = 9;
 
 /** Texturas do ambiente (cisco de luz, folha caindo, facho de sol). */
 function createAmbienceArt(scene: Phaser.Scene, variant: ForestVariant) {
@@ -93,18 +95,35 @@ function createAmbienceArt(scene: Phaser.Scene, variant: ForestVariant) {
     scene.textures.addCanvas(key, canvas);
   };
   const heart = variant === "heartwood";
+  const marsh = isWetland(variant);
   add(MOTE, 3, 3, (ctx) => {
-    ctx.fillStyle = heart ? "#9affea" : "#fff4c2";
+    ctx.fillStyle = heart ? "#9affea" : marsh ? "#e4ff6a" : "#fff4c2";
     ctx.fillRect(1, 0, 1, 3);
     ctx.fillRect(0, 1, 3, 1);
   });
   add(LEAF, 6, 4, (ctx) => {
-    ctx.fillStyle = heart ? "#4a8a74" : "#c89a3a";
+    ctx.fillStyle = heart ? "#4a8a74" : marsh ? "#8a8a42" : "#c89a3a";
     ctx.fillRect(1, 1, 4, 2);
     ctx.fillRect(0, 2, 1, 1);
-    ctx.fillStyle = heart ? "#2a5a4a" : "#8a5a24";
+    ctx.fillStyle = heart ? "#2a5a4a" : marsh ? "#5a5a2a" : "#8a5a24";
     ctx.fillRect(2, 2, 3, 1);
   });
+  // Névoa do pântano: mancha larga e baixa, pintada em pixel fino (desenhada em ¼, como o cenário) com a transparência
+  // em 3 degraus de borda irregular, sem degradê e sem pontilhado (que vira uma trama na tela toda).
+  if (marsh)
+    add(MIST, 512, 200, (ctx) => {
+      for (let y = 0; y < 200; y++)
+        for (let x = 0; x < 512; x++) {
+          const u = (x - 256) / 256, w = (y - 100) / 100, a0 = Math.atan2(w, u);
+          const d = Math.hypot(u, w) / (0.86 + 0.08 * Math.sin(a0 * 5 + 1) + 0.05 * Math.sin(a0 * 11 + 2));
+          if (d >= 1) continue;
+          const v = (1 - d) * 3;
+          const a = v > 2 ? 0.2 : v > 1 ? 0.12 : v > 0.3 ? 0.05 : 0;
+          if (!a) continue;
+          ctx.fillStyle = `rgba(214, 232, 206, ${a})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+    });
   add(SHAFT, 48, 160, (ctx) => {
     // Facho de sol inclinado (do noroeste), em faixas de transparência sem suavização.
     for (let y = 0; y < 160; y++)
@@ -124,9 +143,9 @@ const LEAF_EVERY_MS = 700;
 const SHAFT_EVERY_MS = 1600;
 
 /**
- * Ambiente: ciscos de luz flutuando (no Coração da Mata, vaga-lumes frios que piscam), folhas caindo da beira da mata,
- * fachos de sol nas clareiras, as copas balançando (a de cima do jogador fica transparente) e o brilho dos menires e do
- * coração da árvore pulsando devagar.
+ * Ambiente: ciscos de luz flutuando (no Coração da Mata, vaga-lumes frios que piscam; no pântano, vaga-lumes
+ * amarelos), folhas caindo da beira da mata, fachos de sol nas clareiras (o pântano é fechado demais e não tem), as
+ * copas balançando (a de cima do jogador fica transparente) e o brilho dos menires e do coração da árvore pulsando.
  */
 function createAmbience(
   scene: Phaser.Scene, d: Dungeon, uiDepth: number, culler: ChunkCuller,
@@ -134,20 +153,29 @@ function createAmbience(
 ): MapAmbience {
   createAmbienceArt(scene, variant);
   const heart = variant === "heartwood";
+  // Vaga-lume pisca: o Coração da Mata e o pântano.
+  const blink = heart || isWetland(variant);
   const cam = scene.cameras.main;
   const motes = scene.add.particles(0, 0, MOTE, {
     lifespan: { min: 2600, max: 4200 },
     speedY: { min: -10, max: 6 },
     speedX: { min: -8, max: 10 },
-    alpha: heart ? { values: [0, 1, 0.2, 1, 0], interpolation: "linear" } : { values: [0, 0.8, 0.5, 0], interpolation: "linear" },
+    alpha: blink ? { values: [0, 1, 0.2, 1, 0], interpolation: "linear" } : { values: [0, 0.8, 0.5, 0], interpolation: "linear" },
     scale: { min: 0.4, max: 0.8 },
     blendMode: Phaser.BlendModes.ADD,
-    frequency: heart ? 140 : 180,
+    frequency: blink ? 140 : 180,
     quantity: 1,
-    maxAliveParticles: heart ? 30 : 22,
+    maxAliveParticles: blink ? 30 : 22,
     emitZone: { type: "random", source: new Phaser.Geom.Rectangle(0, 0, 1, 1), quantity: 1 } as Phaser.Types.GameObjects.Particles.EmitZoneData,
   }).setDepth(uiDepth - 4);
   const zone = (motes.emitZones[0] as unknown as { source: Phaser.Geom.Rectangle }).source;
+
+  // Névoa (pântano): espalhada na primeira vez; depois anda devagar para a direita e reaparece do outro lado da tela.
+  const mists = isWetland(variant)
+    ? Array.from({ length: MIST_COUNT }, (_, i) => scene.add.image(0, 0, MIST)
+      .setScale((2.2 + hash(i, 51) * 1.8) / ZOOM).setAlpha(0.5 + hash(i, 52) * 0.5).setDepth(uiDepth - 5).setData("speed", 3 + hash(i, 53) * 5))
+    : [];
+  let mistPlaced = false;
 
   const visible = new Set<Phaser.GameObjects.GameObject>();
   let nextLeaf = 0;
@@ -160,6 +188,17 @@ function createAmbience(
       if (v.width === 0) return;
       culler.update(v);
       zone.setTo(v.x, v.y, v.width, v.height);
+      const dt = scene.game.loop.delta / 1000;
+      mists.forEach((m, i) => {
+        if (!mistPlaced) m.setPosition(v.x + hash(i, 54) * v.width, v.y + hash(i, 55) * v.height);
+        m.x += m.getData("speed") * dt;
+        const mx = m.displayWidth / 2, my = m.displayHeight / 2;
+        if (m.x - mx > v.right) m.x = v.x - mx;
+        else if (m.x + mx < v.x) m.x = v.right + mx;
+        if (m.y - my > v.bottom) m.y = v.y - my;
+        else if (m.y + my < v.y) m.y = v.bottom + my;
+      });
+      mistPlaced = true;
 
       visible.clear();
       for (const chunk of culler.visible()) for (const obj of chunk) visible.add(obj);
@@ -192,7 +231,7 @@ function createAmbience(
         }
       }
       // Facho de sol numa clareira (chão aberto em volta).
-      if (time >= nextShaft) {
+      if (time >= nextShaft && !isWetland(variant)) {
         nextShaft = time + SHAFT_EVERY_MS;
         const x = Math.floor((v.x + Math.random() * v.width) / TILE_SIZE);
         const y = Math.floor((v.y + Math.random() * v.height) / TILE_SIZE);

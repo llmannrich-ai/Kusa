@@ -1,6 +1,6 @@
 import { ramp, rgb, type Rgb } from "./hero/color.ts";
 import { FLAT, HD, OPEN, Paper, ellipse, limb, line, lit, noise, poly, smoothNoise, sn, sphere, type Pt } from "./duneArt.ts";
-import { worley as worleyAt } from "./marshDecor.ts";
+import { worleyCells as worleyAt } from "./paint.ts";
 
 /**
  * Arte dos Portões do Império (Ruínas do Império), no padrão novo (`docs/ARTE_TIBIA.md`), como a das Dunas: **128 px por
@@ -52,8 +52,27 @@ export function empireRamps(): Rgb[][] {
   return tones;
 }
 
-/** Papel na paleta do império. */
-export const paper = (w = HD, h = HD) => new Paper(empireRamps(), w, h);
+/** Paleta trocada durante `inPalette` (o Pântano das Ruínas pinta as ruínas do império na paleta dele). */
+let override: Rgb[][] | null = null;
+
+/** Papel na paleta do império (ou na de `inPalette`). */
+export const paper = (w = HD, h = HD) => new Paper(override ?? empireRamps(), w, h);
+
+/**
+ * Pinta `draw` com outra paleta (rampas na ordem de `E`): as mesmas peças do império em outro mapa. Não use com peça
+ * guardada em cache (o capim e a moita dos Portões), que voltaria com a paleta de quando foi guardada.
+ */
+export function inPalette<T>(ramps: Rgb[][], draw: () => T): T {
+  const outer = override;
+  override = ramps;
+  try { return draw(); } finally { override = outer; }
+}
+
+/** Rampas na ordem de `E` a partir das cores base do império com algumas trocadas. */
+export function empireRampsWith(changes: Partial<Record<E, [string, number, number?, boolean?]>>): Rgb[][] {
+  return Object.values(E).filter((v): v is E => typeof v === "number")
+    .map((m) => { const [hex, contrast, shift = 6, shine = false] = changes[m] ?? BASES[m]; return ramp(hex, { contrast, shift, shine }).map(rgb); });
+}
 
 const mod = (v: number, n: number) => ((v % n) + n) % n;
 const BAYER = [0, 0.5, 0.75, 0.25];
@@ -76,7 +95,7 @@ function pn(x: number, y: number, cell: number, seed: number) {
 
 const cells = new Map<string, { d1: Float32Array; d2: Float32Array; dx: Float32Array; dy: Float32Array; id: Int32Array }>();
 /**
- * Ruído celular (`worley` do Pântano) num período inteiro, calculado uma vez por (célula, período, semente) e lido por
+ * Ruído celular (`worleyCells` de `paint.ts`) num período inteiro, calculado uma vez por (célula, período, semente) e lido por
  * pixel: as pedras da via e os tufos das moitas usam o mesmo desenho em vários quadros, e o cálculo é o que mais pesa.
  */
 export function worley(x: number, y: number, cell: number, period: number, seed: number) {

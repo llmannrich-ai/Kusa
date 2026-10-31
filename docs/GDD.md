@@ -503,8 +503,9 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 
 ### Cripta
 
-- **Visual** (só no cliente, `apps/client/src/cryptMap.ts` e arte própria em `art/cryptDecor.ts`; não muda a jogabilidade):
-  tochas animadas nas paredes com poça de luz quente tremulando no chão, candelabros acesos, estandartes rasgados,
+- **Visual** (só no cliente, `apps/client/src/cryptMap.ts` e a arte em `art/cryptArt.ts`; não muda a jogabilidade):
+  **sempre na arte nova** (128 px por tile, por código, `docs/CENARIOS_PLANO.md`): lajes com bisel e juntas com musgo,
+  paredes de tijolos com tampo, tochas animadas nas paredes com poça de luz quente tremulando no chão, candelabros acesos, estandartes rasgados,
   correntes, nichos com caveira, rachaduras e teias nas paredes; sombra ao pé das paredes e manchas de luz e sujeira
   no chão e nos tampos; ossos, entulho, cacos, poças e teias nos cantos; barris, caixotes e sacos na entrada, urnas,
   pilhas de ossos e caixões nas salas; marcas de queimado, sangue e ossada no covil do dragão; poeira flutuando e
@@ -523,32 +524,24 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   quadrado de muros com 4 portões e 4 colunas) e, pelo campo, 13 restos de construção: trechos de muro, cantos em L,
   colunatas (colunas a cada 2 tiles, umas já caídas) e alicerces de casa com a porta aberta, além de colunas soltas.
   Muro e coluna bloqueiam passo e visão.
-- **Visual** (só no cliente, toda a arte própria, sem pack; não muda a jogabilidade): o mesmo desenhista de floresta
-  alagada do Pântano do Kosaradius (`apps/client/src/wetlandMap.ts`, com o tema em `swampMap.ts`), a natureza na
-  paleta da Baía Afundada (`swampTone` em `art/ruinsDecor.ts`: verde-oliva mais aberto e claro que o do Kosaradius,
-  água verde-azulada) e as ruínas em arte própria (`art/ruinsDecor.ts`):
-  - **Natureza:** capim com folhinhas e touceiras, lama só na beira d'água, água rasa e funda, mata fechada em copa
-    contínua com a beira recortada e os troncos aparecendo do lado sul, árvores soltas de 4 espécies (salgueiro,
-    cipreste, mangue e árvore morta, sem o anel de ciprestes do Kosaradius) com sombra e copa que balança e fica
-    transparente com o jogador embaixo; as bordas entre terrenos têm lados e cantos de dentro e de fora e pegam as
-    mesmas manchas de tom do chão.
-  - **Piso de lajes:** lajes irregulares de calcário (opus incertum, fecham a cada 2×2 tiles) com bisel, desgaste e
-    juntas tomadas de musgo, nas salas laterais, na arena (com uma beirada irregular em volta) e em volta dos restos
-    de muro pelo campo; o capim invade a beira.
-  - **Muros com volume:** pedra ligada a outra é trecho de muro montado pelos vizinhos (deitado, em pé, canto, ponta),
-    com face de blocos, tampo coberto de musgo, espessura (luz a oeste, sombra a leste), ponta solta desmoronando em
-    degraus, blocos faltando no alto, a marca escura da água no pé e, conforme a variação, rachadura, musgo
-    escorrendo ou hera. A altura varia aos poucos nos trechos deitados e é a mesma em todo o trecho em pé.
-  - **Colunas:** pedra sozinha é coluna com plinto e caneluras: inteira com capitel na arena da Hidra; no resto,
-    quebrada alta (com hera), quebrada média ou toco com o tambor caído ao lado.
-  - **Arena:** no meio, o **mosaico da Hidra** em tesselas (borda escura, faixa de ondas verde-serpente e as três
-    cabeças saindo de um disco), gasto pelo tempo, com musgo entrando pela borda.
-  - **Enfeites das ruínas:** entulho no pé dos muros, rachaduras, lajes afundadas com água, lajes faltando com capim,
-    glifo da Hidra entalhado, cacos de urna, caveira, tambores de coluna caídos, cabeças de estátua, urnas e pedestais;
-    na água perto das ruínas, lajes afundadas, tocos de coluna e pedras de passagem. No capim, os enfeites do brejo
-    (taboas, juncos, íris, samambaias, cogumelos, tiririca).
-  - **Ambiente:** vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas na água, um pouco de sol no
-    meio da tela e cantos úmidos. Só os sprites perto da câmera são desenhados (blocos de 8×8 tiles).
+- **Visual** (só no cliente, `apps/client/src/swampMap.ts`; não muda a jogabilidade): **sempre na arte nova** (128 px
+  por tile, por código, `docs/CENARIOS_PLANO.md`). A natureza é a mata alagada do Pântano do Kosaradius (variante
+  `swamp` de `forestPlan.ts` e `art/forestArt.ts`) na paleta da Baía Afundada: verde-oliva mais aberto e claro, água
+  verde-azulada parada com lentilha-d'água e nenúfares, íris amarela, sem passarelas. As árvores soltas são
+  as mesmas 4 espécies (cipreste, mangue, salgueiro e morta), algumas dentro d'água. As ruínas são o que resta do
+  império afundado: as peças dos Portões do Império (`art/swampArt.ts`, que pinta `empireArt.ts` e `empireMonuments.ts`
+  noutra paleta: calcário cinza-esverdeado, musgo e hera, o tijolo e o reboco lavados até o tom da pedra):
+  - **Lajes** (calçamento que fecha a cada 2×2 tiles) nas salas laterais, na arena (com uma beirada irregular em volta)
+    e em volta dos restos de muro pelo campo, com o capim invadindo a beira; rachaduras, cacos, tesselas, inscrições,
+    poças, ervas, ossos e caveira por cima, mais no pé dos muros.
+  - **Muros:** pedra ligada a outra é trecho de muro montado pelos vizinhos, com tampo de musgo, face de blocos, hera e
+    a ponta solta desmoronando; a altura muda por trecho, com degraus.
+  - **Colunas:** pedra sozinha é coluna inteira (jônica ou coríntia) na arena, quebrada nas salas e, pelo campo,
+    quebrada, toco ou um monte de blocos. Na água perto das ruínas, blocos meio afundados e tocos de coluna.
+  - **De pé nas lajes:** cabeças de estátua, urnas, ânforas e acanto.
+  - **Arena:** no meio, o mosaico do sol do império em tesselas (11×9 tiles), gasto, com tesselas faltando.
+  - **Ambiente:** vaga-lumes, névoa baixa e folhas caindo da beira da mata. Só os sprites perto da câmera são
+    desenhados.
 - Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
@@ -598,18 +591,18 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   passagem até uma zona ou ao centro é descartado. **Coqueiro** é um tile de mata sem mata nos 4 lados; mata
   encostada em mata é **duna** (o cliente desenha cada um por essa regra). Os dois bloqueiam passo e visão; a água
   do oásis bloqueia só o passo.
-- **Visual** (só no cliente, `apps/client/src/desertMap.ts` e `caveMap.ts`, com toda a arte própria em
-  `art/desertDecor.ts`, `art/caveDecor.ts` e `art/sandWorm.ts`, sem pack): sol de cima à esquerda em tudo. Areia com ondulações de vento (fortes, suaves ou lisa, em manchas grandes),
-  ladrilhos que fecham nas bordas; dunas com encosta iluminada, encosta na sombra, frente com crista e areia
-  escorrendo, e sombra na areia baixa; oásis com água rasa e funda, espuma, margem arredondada, areia molhada,
-  papiro, lótus e brilhos do sol na água; coqueiros em 4 formas (tronco curvo com anéis, copa de folhas penadas com
-  cocos, folha seca em alguns), com variação de tom e tamanho, sombra no chão, copa que balança e fica transparente
-  quando o jogador passa por baixo; cocos e folhas secas caídas, capim seco, arbustos, arenito, pedrinhas,
-  conchas, crânio de boi, rastro de cobra e pegadas; grãos de areia e poeira levados pelo vento. Na caverna: chão
-  de areia batida, rocha com paredão em camadas de sedimento, sulcos e pele trocada do verme no covil, ossos,
-  estalagmites, cristais âmbar que brilham, o facho de luz e a corda da saída, e o salão em lajes de arenito com
-  glifos; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar pela caverna.
-  Como nos outros mapas, só os sprites perto da câmera são desenhados.
+- **Visual** (só no cliente, `apps/client/src/desertMap.ts`; o verme em `art/sandWorm.ts`): **sempre na arte nova**
+  (128 px por tile, por código, `docs/CENARIOS_PLANO.md`). A superfície é a variante `desert` do desenho das Dunas
+  (`dunesMap.ts`, `art/duneArt.ts`), em areia dourada mais quente que a das Dunas: areia com ondulações de vento, dunas
+  soltas com encosta iluminada, encosta na sombra e crista, sombra na areia baixa; oásis turquesa com água rasa e
+  funda, espuma e areia molhada na margem, juncos; coqueiros com copa que balança e fica transparente com o jogador
+  embaixo; ruínas soterradas (muros de arenito meio cobertos de areia, tocos de coluna, ânforas); arbustos secos,
+  pedras, costelas, crânio, conchas, rastro de cobra e pegadas; grãos de areia levados pelo vento. A caverna: o monte
+  de pedras com a boca escura na superfície e o subterrâneo inteiro na arte das cavernas (`cavernMap.ts`,
+  `cavePlan.ts`, `art/caveArt.ts`, paleta `desert`): rocha com paredão em camadas, chão de pedra sem emenda, sulcos e
+  pele trocada do verme no covil, ossos, estalagmites, cristais âmbar que brilham, o salão dos baús com o chão gasto, a
+  luz e a corda da saída; sem vento, fundo e cantos da tela bem escuros, e a câmera corta (com um clarão) ao passar
+  pela caverna. Só os sprites perto da câmera são desenhados.
 
 ### Dunas Cantantes e Mesas de Solária (terreno)
 
@@ -698,6 +691,8 @@ como o lado do deserto), 8 min, até 4 jogadores.
   trevos, flores, pinhas, raízes, pegadas e o círculo de cogumelos na arena do Bosque Velho. As copas balançam e ficam
   transparentes sobre o jogador. Ambiente: ciscos de luz (no Coração, vaga-lumes frios), folhas caindo da beira da
   mata, fachos de sol nas clareiras. Pintar tudo leva ~1,5 s num computador (mais no celular), na entrada da hunt.
+  Sem faixa de sombra nem folhas em fila na beira da mata, sem tinta por tile (capim e trilha em tom liso, contínuos
+  em blocos de 4×4 tiles) e poucos enfeites rasteiros: o chão não mostra a grade dos tiles.
 - **Loot:** teto da hunt solo provisório de 100 nos dois (sem monstros), cheio em 180 s; sobe junto com o bestiário.
 
 ### Portões do Império (terreno)
@@ -787,10 +782,13 @@ o desenho lê.
   **Raio Paralisante** (atordoa 1,2 s), **Raio Repulsor** (empurra 3 tiles em volta) e, ferido, **Tempestade de
   Olhares** (área que corrói). Resiste a sombra, vulnerável a luz.
 - **Loot:** teto da hunt solo 3.000 (o máximo teórico fica em ~2.700), cheio depois de 240 s.
-- **Visual** (só no cliente, `apps/client/src/cavernMap.ts`, com a arte da caverna do deserto em tons frios e os
-  bosses em `art/cavernBosses.ts`): rocha molhada azulada com paredão, chão de pedra com manchas, poças escuras,
-  estalagmites e cristais azuis que brilham, pele trocada e ossos no covil do Basilisco, brilho verde e roxo nos
-  covis, gotas pingando do teto e cantos da tela bem escuros.
+- **Visual** (só no cliente, `apps/client/src/cavernMap.ts`, o plano em `cavePlan.ts` e a arte em `art/caveArt.ts`;
+  os bosses em `art/cavernBosses.ts`): **sempre na arte nova** (128 px por tile, por código, `docs/CENARIOS_PLANO.md`).
+  Rocha fria e molhada: a massa funda escura e, onde o chão fica ao sul, o paredão em camadas (o das Mesas de Solária
+  noutra paleta); chão de pedra com manchas grandes que correm sem emenda por blocos de 4×4 tiles, rachaduras e
+  pedrinhas; sombra ao pé da rocha; poças de água escura; estalagmites (uma grande ou um grupo) e cristais azuis que
+  brilham nos túneis; pele trocada, sulcos de garras e ossos no covil do Basilisco, chão limpo no do Observador;
+  brilho verde e roxo nos covis, luz fraca no poço de chegada, gotas pingando do teto e cantos da tela bem escuros.
 
 ### Pântano do Kosaradius
 
@@ -819,21 +817,24 @@ o desenho lê.
   que fecharia a passagem até uma zona, campina, clareira ou ao centro é descartado. **Árvore solta** é um tile de
   mata sem mata nos 4 lados; mata encostada em mata é **mata fechada**. As duas bloqueiam passo e visão; a água,
   só o passo; os troncos caídos (pedra), passo e visão.
-- **Visual** (só no cliente, `apps/client/src/wetlandMap.ts` com o tema em `marshMap.ts`, e toda a arte própria em
-  `art/marshDecor.ts`, sem pack): luz baça de cima à esquerda, tons fechados. Capim do brejo com folhinhas e touceiras, lama em grão fino com
-  torrões, água escura cor de chá (rasa e funda) com lodo e lentilha-d'água na margem; capim invadindo a lama com
-  quinas arredondadas. A **mata fechada** é uma copa contínua de tufos (textura de 3×3 tiles, sem emenda) cuja beira
-  recua com borda recortada; do lado sul ela sobe e mostra a sombra, os troncos e a barba-de-velho pendurada. As
-  **árvores soltas** são de 4 espécies: **cipreste-calvo** (pé alargado, copa em camadas achatadas, barba-de-velho;
-  na água, com os "joelhos" saindo em volta), **salgueiro-chorão** (cortina de ramos até perto do chão),
-  **mangue** (raízes em arco) e **árvore morta** (galhos pelados com barba-de-velho); tronco e copa separados, com
-  variação de tom e tamanho, sombra no chão, copa que balança e fica transparente com o jogador embaixo; no meio da
-  mata fechada, copas mais altas dão volume. Passarelas de tábuas com pregos e lodo; troncos caídos com musgo, anéis
-  na ponta e orelhas-de-pau; tocos e pedras com musgo. Enfeites: taboas, juncos e íris amarela na margem, tiririca
-  em manchas pelo campo, samambaias, cogumelos, plantas-jarro, raízes, folhas caídas, ossadas, poças e pegadas de
-  garça na lama, vitórias-régias, lírios e galhos boiando; na clareira do boss, um círculo de cogumelos brancos.
-  Ambiente: vaga-lumes, névoa baixa, folhas caindo, libélulas, marolas e bolhas de gás subindo da água. Como nos
-  outros mapas, só os sprites perto da câmera são desenhados.
+- **Visual** (só no cliente, `apps/client/src/marshMap.ts`; não muda a jogabilidade): **sempre na arte nova** (128 px
+  por tile, por código, `docs/CENARIOS_PLANO.md`), como a variante `marsh` do desenho da mata (o plano em
+  `forestPlan.ts` e a arte em `art/forestArt.ts`, os mesmos do Bosque Velho, com paleta e peças próprias). Tons de brejo:
+  capim oliva, lama marrom, água turva esverdeada e parada com manchas de lentilha-d'água e nenúfares (alguns com flor),
+  barro na margem. A **mata fechada** é a copa de tufos do Bosque, com o sub-bosque e os troncos aparecendo do lado sul.
+  As **árvores soltas** são de 4 espécies: **cipreste-do-brejo** (pé em aba, os "joelhos" saindo do chão, copa estreita
+  em andares e barba-de-velho pendurada), **mangue** (ninho de raízes-escora em arco), **salgueiro-chorão** e **árvore
+  morta**; a árvore com água em 2 lados ou mais nasce dentro d'água, e em volta da clareira do boss são quase todas
+  ciprestes (o anel). Tronco e copa separados; a copa balança e fica transparente com o jogador embaixo.
+  O capim tem manchas grandes de luz e de musgo que correm sem emenda (blocos de 4×4 tiles, sem tinta por tile: a
+  grade não aparece); a beira da mata não tem faixa de sombra nem folhas em fila, e os enfeites rasteiros são poucos.
+  **Passarelas** de tábuas desiguais (algumas velhas, com
+  musgo) e postes nas pontas, com a água por baixo. Os troncos caídos das clareiras dos baús são os troncos do Bosque
+  (casca, musgo, anéis na ponta); a pedra solta é um toco. Enfeites de pé: taboas, juncos e íris roxa na margem;
+  samambaias, plantas-jarro e cogumelos na beira da mata. Rasteiros: folhas caídas, gravetos, raízes, trevos, flores,
+  musgo e, nas clareiras, ossadas; na clareira do boss, um círculo de cogumelos brancos. Ambiente: vaga-lumes amarelos
+  que piscam, névoa baixa passando devagar e folhas caindo da beira da mata. Só os sprites perto da câmera são
+  desenhados.
 
 ## Partida (hunt)
 

@@ -8,6 +8,15 @@ luz, paleta, organização do mapa); não copiamos, traçamos nem recolorimos sp
 
 ---
 
+## Regra (decidida)
+
+- **Cenário** (chão, paredes, água, árvores, ruínas, enfeites, baú, portais, sangue): sempre **pintado por código em
+  128 px por tile**, com os pintores de `apps/client/src/art/` (`paint.ts` e os de cada mapa). Nada de PNG nem de arte
+  gerada por IA. Os 10 mapas já seguem a regra (`docs/CENARIOS_PLANO.md`); o teste `cenarios` guarda a impressão de
+  cada peça e a prévia `/mapa.html` mostra os mapas inteiros.
+- **Inimigos:** arte gerada por IA, aprovada e processada para 128 px por tile (como o goblin, o sapo e o Rei Bullywug,
+  abaixo).
+
 ## 1. Diagnóstico da arte atual (galeria `arte.html`)
 
 | Área | Como está | Por que não lembra o Tibia |
@@ -234,14 +243,17 @@ no catálogo. A classe é reconhecida pela silhueta (manto comprido, arco e alja
 - **Custo de arte por código:** pintar textura à mão em grade de código é lento. Alternativa a avaliar: desenhar no
   Aseprite/Pixelorama no padrão deste documento e carregar como PNG, mantendo por código só o recolorir das zonas.
 
-### Piloto da Cripta (Fases 3 e 4, só com a Arte nova (beta))
+### Piloto da Cripta (Fases 3 e 4)
+
+O cenário da Cripta saiu da opção beta (`docs/CENARIOS_PLANO.md`, fase 4): é sempre em 128 px por tile e o código foi de
+`art/proto/crypt.ts` para `art/cryptArt.ts`. Os monstros abaixo continuam na opção **Arte nova (beta)**.
 
 A Cripta inteira no padrão novo, para medir no celular o que custa estender o padrão aos mapas e aos monstros
 antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)**; desligada, nada muda.
 
 - **Cenário** (`art/proto/crypt.ts`): lajes com bisel e juntas com musgo, covil queimado do dragão, tampa lisa e
   face de tijolos das paredes, os 15 enfeites do chão, os 7 da parede, a tocha (4 quadros) e os 9 móveis. São os
-  mesmos quadros da arte antiga (`cryptDecor.ts`, `walls.ts`), 4× maiores: o mapa troca as texturas e desenha em
+  mesmos quadros da arte antiga de 32 px (que já saiu), 4× maiores: o mapa troca as texturas e desenha em
   1/4 de escala. A sombra das paredes, a luz das chamas e a poeira continuam as antigas. Tudo sai em ≈0,15 s.
 - **Monstros humanoides** (`MONSTER_KITS` em `tibiaHero.ts`): goblin, goblin arqueiro, kobold (com cauda),
   hobgoblin, orc, gnoll, esqueleto, esqueleto arqueiro, zumbi, bugbear e ogro usam o corpo, a caminhada e o
@@ -289,12 +301,12 @@ Para refazer depois de trocar a referência:
 
 ![Goblin: a arte de referência](arte/goblin-referencia.png)
 
-### Chão do Pântano das Ruínas com a arte do agente
+### Chão do Pântano das Ruínas com a arte do agente (substituído)
 
-Com a Arte nova (beta), o chão do Pântano das Ruínas (capim, musgo, lama, água e a copa da mata fechada, com as
-bordas entre eles) vem das imagens do agente de arte, processadas por `apps/client/scripts/pantanoTexturas.py` e
-desenhadas por `apps/client/src/wetlandHd.ts` em 128 px por tile, por baixo das lajes, árvores soltas, enfeites e ruínas,
-que continuam as de antes. Detalhes e pendências em `docs/arte/pantano-das-ruinas/README.md`.
+O chão do Pântano das Ruínas chegou a vir das imagens do agente de arte (`pantanoTexturas.py`, `wetlandHd.ts`). Com a
+regra de que **cenário é sempre código** (`docs/CENARIOS_PLANO.md`), o mapa inteiro passou a ser pintado em 128 px por
+código (fase 1b) e essas texturas saíram do jogo e do repositório (ficam no histórico do git). A arte por IA ficou só
+para os inimigos.
 
 ### Sapo gigante a partir das folhas geradas por IA
 

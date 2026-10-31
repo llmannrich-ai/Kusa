@@ -18,21 +18,12 @@ Atribuição não é obrigatória, mas os autores pedem o crédito como cortesia
 | `monster-orc.png` | `monster/orc_warrior_new.png` | — |
 | `monster-ogre.png` | `monster/ogre_new.png` | — |
 | `monster-dragon.png` | `monster/dragons/dragon.png` | — |
-| `chest-locked.png` | `dungeon/chest_2_closed.png` | — |
-| `chest-unlocked.png` | `dungeon/chest.png` | — |
-| `chest-open.png` | `dungeon/chest_2_open.png` | — |
-| `portal-escape.png` | `dungeon/gateways/portal.png` | — |
-| `portal-boss.png` | `dungeon/gateways/starry_portal.png` | — |
-| `floor.png` | `dungeon/floor/pebble_brown_0..8_new.png` | juntos numa faixa, brilho ×1,7 |
-| `floor-boss.png` | `dungeon/floor/cobble_blood_1..4_new.png` | juntos numa faixa, brilho ×1,4 |
 | `fx-arrow.png` | `effect/arrow_2.png` | — |
 | `fx-fireball.png` | `effect/flame_0.png` | — |
 | `fx-fire-burst.png` | `effect/cloud_fire_0..2.png` | juntos numa faixa |
 | `fx-energy-bolt.png` | `effect/magic_dart_0.png` | — |
 | `fx-energy-hit.png` | `effect/magic_bolt_1.png` | — |
 | `fx-nature-hit.png` | `effect/magic_bolt_2.png` | — |
-| `blood-splat.png` | `misc/blood/blood_red_0, 5, 9.png` | juntos numa faixa |
-| `blood-puddle.png` | `misc/blood/blood_puddle_red, _1, _2.png` | juntos numa faixa |
 
 As criaturas invocadas vieram do repositório do jogo (https://github.com/crawl/crawl, `crawl-ref/source/rltiles/mon/`),
 com a mesma licença CC0.
@@ -59,7 +50,7 @@ Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0
 ### Bestiário 2.0
 
 Do repositório [crawl/tiles](https://github.com/crawl/tiles) (mesma origem, CC0), pasta `releases/Nov-2015/`.
-O Mímico e o Cubo Gelatinoso são arte própria (o Mímico parte do `chest-locked.png` acima).
+O Mímico e o Cubo Gelatinoso são arte própria (o Mímico parte do baú do pack, `dungeon/chest_2_closed.png`).
 
 | Arquivo | Original | Alteração |
 |---|---|---|
@@ -73,8 +64,8 @@ O Mímico e o Cubo Gelatinoso são arte própria (o Mímico parte do `chest-lock
 | `monster-hobgoblin.png` | `mon/hobgoblin.png` | — |
 | `monster-gnoll.png` | `mon/gnoll.png` | — |
 | `monster-bugbear.png` | `mon/gnoll_sergeant.png` | — |
-| `monster-mimic.png` | `chest-locked.png` (acima) | boca, dentes, língua e olhos desenhados |
-| `monster-mimic-disguise.png` | `chest-locked.png` (acima) | — (cópia: o Mímico disfarçado, refinado como os monstros) |
+| `monster-mimic.png` | `dungeon/chest_2_closed.png` | boca, dentes, língua e olhos desenhados |
+| `monster-mimic-disguise.png` | `dungeon/chest_2_closed.png` | — (cópia: o Mímico disfarçado, refinado como os monstros) |
 | `monster-gelatinous-cube.png` | — | arte própria |
 | `monster-bullywug.png` | `mon/animals/spiny_frog.png` | — |
 | `monster-lizardfolk.png` | `mon/draco/draco-base-green.png` | — |

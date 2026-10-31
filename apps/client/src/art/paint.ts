@@ -1,5 +1,5 @@
 import { ramp, rgb, type Rgb } from "./hero/color.ts";
-import { makeCanvas } from "./pixels.ts";
+import { hash, makeCanvas } from "./pixels.ts";
 
 /**
  * Pintor da arte de mapa no padrão novo (`docs/ARTE_TIBIA.md`): **128 px por tile**, luz de cima à esquerda em 4
@@ -312,4 +312,32 @@ export class TileAtlas {
     });
     return canvas;
   }
+}
+
+/**
+ * Células (ruído de Worley) que fecham a cada `period` px: para o pixel, o centro mais perto (deslocamento com sinal),
+ * a distância até ele e até o segundo mais perto. `cell` é o lado da grade de centros (um centro por casa). Veio do
+ * desenho antigo do pântano; os Portões do Império usam (as pedras da via, os tufos das moitas).
+ */
+export function worleyCells(x: number, y: number, cell: number, period: number, seed: number) {
+  const mod = (v: number, n: number) => ((v % n) + n) % n;
+  const n = period / cell;
+  const gx = Math.floor(x / cell);
+  const gy = Math.floor(y / cell);
+  let d1 = Infinity;
+  let d2 = Infinity;
+  let dx = 0;
+  let dy = 0;
+  let id = 0;
+  for (let j = -1; j <= 1; j++)
+    for (let i = -1; i <= 1; i++) {
+      const cx = mod(gx + i, n);
+      const cy = mod(gy + j, n);
+      const sx = (gx + i) * cell + hash(cx, cy, seed) * cell;
+      const sy = (gy + j) * cell + hash(cx, cy, seed + 1) * cell;
+      const d = Math.hypot(x - sx, y - sy);
+      if (d < d1) { d2 = d1; d1 = d; dx = x - sx; dy = y - sy; id = cy * n + cx; }
+      else if (d < d2) d2 = d;
+    }
+  return { d1, d2, dx, dy, id };
 }

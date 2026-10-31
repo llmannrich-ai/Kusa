@@ -1,15 +1,20 @@
 import * as Phaser from "phaser";
-import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "@kusa/shared";
+import { TILE_SIZE, Tile, isUnderground, tileAt, tileDistance, type Dungeon, type Rect } from "@kusa/shared";
 import { hash, makeCanvas } from "./art/pixels.ts";
 import {
   HD, OPEN, PALM, TALL, TALL_DECOR, TileAtlas, draw, duneTile, flatDecor, mesaTile, palmCrown, palmTrunk, pillar,
   ruinTile, shadowEdge, softEdge, tallDecor, toCanvas, waterTile, wetEdge, type DuneVariant, type FlatDecor, type TallDecor,
 } from "./art/duneArt.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
+import { MOUTH, SHAFT, caveMouth, caveShaft } from "./art/caveArt.ts";
+import { drawCaveHd, flickerLights } from "./cavernMap.ts";
 
 /** Fundo além das bordas: areia na sombra de cada variante. */
 export const DUNES_VOID = 0xa8784a;
 export const MESAS_VOID = 0x8a4a30;
+export const DESERT_VOID = 0xb98a4f;
+/** Fundo do subterrâneo do Mar de Areia: quase preto, puxado para o marrom. */
+export const CAVE_VOID = 0x0d0806;
 
 /** Arte de 128 px por tile, desenhada em ¼ (sempre a arte nova: estes mapas não têm a antiga). */
 const ZOOM = HD / TILE_SIZE;
@@ -38,13 +43,20 @@ const DUNE_TOP = 4;
  * sem ruína nos 4 lados é pedra cantante. Tudo vem de `hash(x, y)`: todos veem o mesmo, e nada muda a jogabilidade.
  */
 export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, uiDepth: number): MapAmbience {
-  const variant: DuneVariant = d.mapId === "mesas" ? "mesas" : "dunes";
+  const variant: DuneVariant = d.mapId === "mesas" ? "mesas" : d.mapId === "desert" ? "desert" : "dunes";
   const mesas = variant === "mesas";
+  /** Mar de Areia: as dunas são blocos soltos, sem arena; as ruínas soterradas e a caverna com o subterrâneo. */
+  const desert = variant === "desert";
+  /** Colunas do subterrâneo (desenhadas pela caverna, `drawCaveHd`). */
+  const under = (x: number) => !!d.cave && isUnderground(d, x);
+  /** Monte de rocha da boca da caverna: as pedras em volta da entrada (o desenho do monte vem inteiro, por cima). */
+  const mouth = d.cave?.entrance;
+  const mound = (x: number, y: number) => !!mouth && tileAt(d, x, y) === Tile.Ruin && Math.max(Math.abs(x - mouth.x), Math.abs(y - mouth.y)) <= 2;
   const W = d.width;
   const H = d.height;
   const at = (x: number, y: number) => tileAt(d, x, y);
   const wall = (x: number, y: number) => at(x, y) === Tile.Wall;
-  const ruin = (x: number, y: number) => at(x, y) === Tile.Ruin && x >= 0 && y >= 0 && x < W && y < H;
+  const ruin = (x: number, y: number) => at(x, y) === Tile.Ruin && x >= 0 && y >= 0 && x < W && y < H && !mound(x, y);
   const lone = (x: number, y: number, test: (x: number, y: number) => boolean) => test(x, y) && DIRS.every(([dx, dy]) => !test(x + dx, y + dy));
   /** Mata de 1 tile: coqueiro ou pilar (o chão em volta aparece). */
   const prop = (x: number, y: number) => x > 0 && y > 0 && x < W - 1 && y < H - 1 && lone(x, y, wall);
@@ -58,7 +70,7 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
     return false;
   };
   const arenaCenter = { x: d.boss.x + Math.floor(d.boss.w / 2), y: d.boss.y + Math.floor(d.boss.h / 2) };
-  const inArena = (x: number, y: number) => Math.hypot((x - arenaCenter.x) / 1.1, y - arenaCenter.y) <= 8.6;
+  const inArena = (x: number, y: number) => !desert && Math.hypot((x - arenaCenter.x) / 1.1, y - arenaCenter.y) <= 8.6;
   const inRuins = (x: number, y: number) => d.side.some((r) => inRect(r, x, y));
 
   // Altura das dunas: distância (contando diagonais) até o que não é relevo, no máximo `DUNE_TOP`.
@@ -123,6 +135,7 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
       const t = at(x, y);
+      if (under(x)) continue;
       if (t === Tile.Wall && solid(x, y)) {
         if (mesas) {
           const open = mask(x, y, (a, b) => !solid(a, b) && a >= 0 && b >= 0 && a < W && b < H);
@@ -143,11 +156,12 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
       }
       if (t === Tile.Water) {
         const land = mask(x, y, (a, b) => !water(a, b));
-        const v = pick(x, y, WATER_VARIANTS, 5);
+        // Mar de Areia: o miolo dos oásis largos tem mais variações (o desenho do miolo muda com a variação).
+        const v = desert && !land ? pick(x, y, 6, 5) : pick(x, y, WATER_VARIANTS, 5);
         ground[i] = atlas.frame(`water${land}-${v}`, () => waterTile(variant, land, v).render(false));
         continue;
       }
-      if (t === Tile.Ruin && !stone(x, y)) {
+      if (ruin(x, y) && !stone(x, y)) {
         const joins = mask(x, y, ruin) & (OPEN.n | OPEN.e | OPEN.s | OPEN.w);
         const south = !ruin(x, y + 1) && !solid(x, y + 1);
         const v = pick(x, y, 2, 6);
@@ -222,6 +236,7 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
     for (let x = 0; x < W; x++) {
       const depth = (y + 1) * TILE_SIZE - 0.25;
       const flip = hash(x, y, 95) < 0.5;
+      if (under(x)) continue;
       if (prop(x, y)) {
         if (!mesas || near(x, y, 3, water)) {
           const v = Math.floor(hash(x, y, 96) * PALM_VARIANTS);
@@ -231,6 +246,11 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
           crown.setData("phase", hash(x, y, 98) * Math.PI * 2).setData("x0", crown.x);
           crowns.push(crown);
         } else sprite(art.pillar, Math.floor(hash(x, y, 99) * PILLAR_VARIANTS), x, y, depth, flip);
+        continue;
+      }
+      if (ruin(x, y) && stone(x, y) && desert) {
+        // Mar de Areia: a pedra solta das ruínas é um toco de coluna.
+        sprite(art.tall, TALL_DECOR.indexOf("column"), x, y, depth, flip);
         continue;
       }
       if (ruin(x, y) && stone(x, y)) {
@@ -255,7 +275,26 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
       sprite(art.tall, TALL_DECOR.indexOf(kind), x, y, depth, flip);
     }
 
-  return createAmbience(scene, d, uiDepth, culler, crowns, glows, variant);
+  // Caverna (Mar de Areia): o monte com a boca na superfície, o subterrâneo inteiro e a corda da saída.
+  let caveLights: Phaser.GameObjects.Image[] = [];
+  if (d.cave) {
+    const c = d.cave;
+    const moundKey = single(scene, "desert-cave-mouth", MOUTH.w, MOUTH.h, caveMouth);
+    culler.add(scene.add.image(c.entrance.x * TILE_SIZE + TILE_SIZE / 2, (c.entrance.y + 1) * TILE_SIZE, moundKey)
+      .setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth((c.entrance.y + 1) * TILE_SIZE - 0.3), c.entrance.x, c.entrance.y);
+    caveLights = drawCaveHd(scene, d, "desert", floorDepth, culler, c.under);
+    const shaftKey = single(scene, "desert-cave-shaft", SHAFT.w, SHAFT.h, () => caveShaft("desert"));
+    culler.add(scene.add.image(c.exit.x * TILE_SIZE + TILE_SIZE / 2, (c.exit.y + 1) * TILE_SIZE, shaftKey)
+      .setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth((c.exit.y + 1) * TILE_SIZE - 0.2), c.exit.x, c.exit.y);
+  }
+
+  return createAmbience(scene, d, uiDepth, culler, crowns, glows, variant, caveLights);
+}
+
+/** Textura de uma peça só, pintada na primeira vez. */
+function single(scene: Phaser.Scene, key: string, w: number, h: number, paint: () => Uint8ClampedArray) {
+  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, toCanvas(paint(), w, h));
+  return key;
 }
 
 /** Enfeite rasteiro conforme o lugar: cacos e ossos nas ruínas, sal ou barro rachado e pedrinhas no campo. */
@@ -354,10 +393,12 @@ const RIBBON_EVERY_MS = 650;
  */
 function createAmbience(
   scene: Phaser.Scene, d: Dungeon, uiDepth: number, culler: ChunkCuller,
-  crowns: Phaser.GameObjects.Image[], glows: Phaser.GameObjects.Image[], variant: DuneVariant,
+  crowns: Phaser.GameObjects.Image[], glows: Phaser.GameObjects.Image[], variant: DuneVariant, caveLights: Phaser.GameObjects.Image[] = [],
 ): MapAmbience {
   createAmbienceArt(scene);
   const cam = scene.cameras.main;
+  const game = document.getElementById("game");
+  let below: boolean | null = null;
   const grains = scene.add.particles(0, 0, GRAIN, {
     lifespan: { min: 1200, max: 2200 },
     speedY: { min: 80, max: 150 },
@@ -379,6 +420,18 @@ function createAmbience(
       const v = cam.worldView;
       if (v.width === 0) return;
       culler.update(v);
+      // Mar de Areia, na caverna: sem vento, fundo quase preto e cantos bem escuros; as luzes dos cristais respiram.
+      if (d.cave) {
+        const inCave = isUnderground(d, Math.floor(v.centerX / TILE_SIZE));
+        if (inCave !== below) {
+          below = inCave;
+          grains.setVisible(!inCave);
+          grains.emitting = !inCave;
+          cam.setBackgroundColor(inCave ? CAVE_VOID : DESERT_VOID);
+          game?.classList.toggle("cave", inCave);
+        }
+        if (inCave) { flickerLights(caveLights, time); return; }
+      }
       zone.setTo(v.x, v.y - 30, v.width, v.height);
 
       visible.clear();

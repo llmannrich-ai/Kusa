@@ -1,13 +1,14 @@
 import type { Rgb } from "./hero/color.ts";
 import {
-  BAYER, FLAT, HD, Paper as Painter, ebox, ellipse, inEllipse, limb, line, lit, noise, palette, poly, sn, sphere,
+  BAYER, FLAT, HD, Paper as Painter, ebox, ellipse, inEllipse, limb, line, lit, noise, palette, poly, smoothNoise, sn, sphere,
   type MaterialBase, type Offset, type Shade,
 } from "./paint.ts";
 
 /**
- * Arte do Bosque Velho e do Coração da Mata, no padrão novo (pintor em `paint.ts`, `docs/ARTE_TIBIA.md`): 128 px por
- * tile, luz de cima à esquerda, 4 tons por material, contorno quase preto nos objetos de pé. Só estes dois mapas usam
- * este arquivo, e sempre (não há arte antiga deles).
+ * Arte do Bosque Velho, do Coração da Mata e do Pântano do Kosaradius (a mata alagada), no padrão novo (pintor em
+ * `paint.ts`, `docs/ARTE_TIBIA.md`): 128 px por tile, luz de cima à esquerda, 4 tons por material, contorno quase preto
+ * nos objetos de pé. Estes mapas usam este arquivo sempre (não há arte antiga deles). O teste `cenarios` guarda a
+ * impressão de cada peça: mexer numa variante não pode mudar o desenho das outras.
  *
  * A mata fechada é desenhada pela distância até o chão aberto: cada pixel sabe a que distância está dos tiles
  * vizinhos que não são mata, e cada tufo da copa (um campo de tufos que se repete a cada 128 px) entra se o centro dele
@@ -15,7 +16,10 @@ import {
  * tile para o outro, em qualquer combinação de vizinhos. A trilha de terra e as bordas usam a mesma ideia.
  */
 
-export type ForestVariant = "oldwood" | "heartwood";
+export type ForestVariant = "oldwood" | "heartwood" | "marsh" | "swamp";
+
+/** As duas matas alagadas: o Pântano do Kosaradius (`marsh`) e o Pântano das Ruínas (`swamp`, na paleta da baía). */
+export const isWetland = (variant: ForestVariant) => variant === "marsh" || variant === "swamp";
 
 /** Materiais (cada um é uma rampa de 6 tons por variante). */
 export enum F {
@@ -23,7 +27,11 @@ export enum F {
   Fern, Flower, Bloom, Cap, Glow, Line,
 }
 
-/** Cores base: o Bosque Velho em verde vivo e sol quente; o Coração da Mata em verde-azulado fechado, com brilho frio. */
+/**
+ * Cores base: o Bosque Velho em verde vivo e sol quente; o Coração da Mata em verde-azulado fechado, com brilho frio; o
+ * Pântano do Kosaradius em oliva e marrom de brejo, água turva esverdeada, barba-de-velho cinza e vaga-lumes; o
+ * Pântano das Ruínas na paleta da baía (a do Kosaradius mais aberta e clara, com a água verde-azulada).
+ */
 const BASES: Record<ForestVariant, Record<F, MaterialBase>> = {
   oldwood: {
     [F.Grass]: ["#6c9a3c", 0.62, 6], [F.Moss]: ["#5a8a36", 0.7, 6], [F.Litter]: ["#a2743e", 0.8, 6], [F.Dirt]: ["#9a7650", 0.6, 5],
@@ -40,6 +48,22 @@ const BASES: Record<ForestVariant, Record<F, MaterialBase>> = {
     [F.Water]: ["#2a4a52", 0.8, 8], [F.Deep]: ["#13283a", 0.8, 8], [F.Foam]: ["#a8c4bc", 0.35, 4], [F.Stone]: ["#5e6a66", 1, 5],
     [F.Lichen]: ["#6a8c72", 0.8, 6], [F.Fern]: ["#2c6a48", 1, 8], [F.Flower]: ["#d6e0f2", 0.5, 4], [F.Bloom]: ["#a070d2", 0.9, 8],
     [F.Cap]: ["#7a4aa6", 0.9, 6], [F.Glow]: ["#62f0d2", 1.2, 10, true], [F.Line]: ["#0e1612", 0.4, 0],
+  },
+  marsh: {
+    [F.Grass]: ["#62783a", 0.6, 6], [F.Moss]: ["#56703a", 0.55, 6], [F.Litter]: ["#86703e", 0.8, 6], [F.Dirt]: ["#6e5a3c", 0.6, 5],
+    [F.Mud]: ["#54432c", 0.62, 5], [F.Under]: ["#141c0e", 0.5, 5], [F.Leaf]: ["#33522a", 0.95, 8], [F.Leaf2]: ["#4e6a2c", 0.95, 8],
+    [F.Leaf3]: ["#8c967a", 0.8, 5], [F.Bark]: ["#4e4236", 0.95, 6], [F.Birch]: ["#c8c2ac", 0.7, 4], [F.Wood]: ["#7e6446", 0.9, 6],
+    [F.Water]: ["#52725a", 0.8, 8], [F.Deep]: ["#34503e", 0.8, 8], [F.Foam]: ["#a8b890", 0.35, 4], [F.Stone]: ["#6e7266", 1, 5],
+    [F.Lichen]: ["#8a9a6a", 0.8, 6], [F.Fern]: ["#3e7434", 1, 8], [F.Flower]: ["#ece6d4", 0.5, 4], [F.Bloom]: ["#8a5ac8", 0.9, 8],
+    [F.Cap]: ["#e4dccb", 0.7, 5], [F.Glow]: ["#d8f060", 1.2, 10, true], [F.Line]: ["#10180c", 0.4, 0],
+  },
+  swamp: {
+    [F.Grass]: ["#78893f", 0.6, 6], [F.Moss]: ["#6a7e40", 0.55, 6], [F.Litter]: ["#8e7742", 0.8, 6], [F.Dirt]: ["#755f40", 0.6, 5],
+    [F.Mud]: ["#59472f", 0.62, 5], [F.Under]: ["#1c2311", 0.5, 5], [F.Leaf]: ["#436130", 0.95, 8], [F.Leaf2]: ["#667d32", 0.95, 8],
+    [F.Leaf3]: ["#a3a890", 0.8, 5], [F.Bark]: ["#534639", 0.95, 6], [F.Birch]: ["#d1ccb9", 0.7, 4], [F.Wood]: ["#866a4a", 0.9, 6],
+    [F.Water]: ["#5e8c7e", 0.8, 8], [F.Deep]: ["#3e665c", 0.8, 8], [F.Foam]: ["#c4cbad", 0.35, 4], [F.Stone]: ["#6e7266", 1, 5],
+    [F.Lichen]: ["#a3ab80", 0.8, 6], [F.Fern]: ["#53883b", 1, 8], [F.Flower]: ["#f4f1e7", 0.5, 4], [F.Bloom]: ["#e0c040", 0.9, 8],
+    [F.Cap]: ["#ede7dc", 0.7, 5], [F.Glow]: ["#f4f68b", 1.2, 10, true], [F.Line]: ["#171f0f", 0.4, 0],
   },
 };
 
@@ -158,6 +182,35 @@ function grassTile(variant: ForestVariant, v: number, lush = false): Paper {
   return p;
 }
 
+/** O capim dos pântanos é uma textura contínua de `WET_BLOCK`×`WET_BLOCK` tiles: cada tile pinta o pedaço `q` dela. */
+export const WET_BLOCK = 4;
+/** Variações do miúdo da arena dentro do bloco. */
+const ARENA_PIECES = 3;
+/** Pedaço do bloco de capim que o tile (x, y) usa. */
+export const wetPiece = (x: number, y: number) => (x & (WET_BLOCK - 1)) + WET_BLOCK * (y & (WET_BLOCK - 1));
+
+/**
+ * Capim das matas e dos pântanos: o miúdo do capim e, por cima, as manchas grandes de luz e de musgo, que correm sem
+ * emenda pelo bloco de 4×4 tiles (`q` é o pedaço). O mapa não tinge tile a tile (a tinta por tile deixava a grade
+ * aparecendo em quadrados no campo aberto): a variação grande vem daqui. `arena`: o capim da arena (flores ou esporos).
+ */
+function wetGrassTile(variant: ForestVariant, q: number, arena = false): Paper {
+  const p = arena ? arenaTile(variant, q % ARENA_PIECES) : grassTile(variant, q % 6);
+  const wet = isWetland(variant);
+  const ox = (q % WET_BLOCK) * HD, oy = Math.floor(q / WET_BLOCK) * HD, P = HD * WET_BLOCK;
+  for (let y = 0; y < HD; y++)
+    for (let x = 0; x < HD; x++) {
+      const i = y * HD + x;
+      const light = smoothNoise(x + ox, y + oy, 128, 401, P);
+      const moss = smoothNoise(x + ox, y + oy, 64, 402, P);
+      // Nos pântanos, luz e manchas de musgo (o musgo tem quase o tom do capim). Nas matas o capim fica liso: o musgo
+      // é bem mais escuro e a luz fraca só aparecia como retângulos de pontilhado na troca de tom.
+      if (wet && p.fixed[i] < 0) p.shade[i] += (light - 0.5) * 0.22;
+      if (wet && moss > 0.66 && p.mat[i] === F.Grass && p.fixed[i] < 0) p.mat[i] = F.Moss;
+    }
+  return p;
+}
+
 /**
  * Arena: no Bosque Velho, capim baixo e viçoso com florzinhas; no Coração da Mata, um tapete de musgo com esporos que
  * brilham. As manchas são as fixas, então a arena emenda com o capim de fora.
@@ -185,7 +238,8 @@ export function dirtTile(variant: ForestVariant, out: number): Paper {
   const p = new Paper(variant);
   const edge = (x: number, y: number) => 26 + (sn(x, y, 32, 30) - 0.5) * 22 + (sn(x, y, 16, 31) - 0.5) * 8;
   const dist = field(out, 62);
-  p.fill([0, 0, HD - 1, HD - 1], (x, y) => at(dist, x, y) > edge(x, y), F.Dirt, (x, y) => FLAT + (sn(x, y, 16, 32) - 0.5) * 0.18,
+  // Tom liso: a variação pequena só aparecia como um quadriculado de pontilhado repetido a cada tile.
+  p.fill([0, 0, HD - 1, HD - 1], (x, y) => at(dist, x, y) > edge(x, y), F.Dirt, () => FLAT,
     (x, y) => (noise(x, y, 33) < 0.04 ? -1 : noise(x, y, 34) > 0.975 ? 1 : 0));
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
@@ -241,7 +295,7 @@ export function mudEdge(variant: ForestVariant, water: number): Paper {
 /** Sombra da mata no chão (o sol vem do noroeste): faixa ao sul e a leste do que é mata. */
 export function shadowEdge(variant: ForestVariant, from: number): Uint8ClampedArray {
   const out = new Uint8ClampedArray(HD * HD * 4);
-  const color = variant === "heartwood" ? [6, 16, 14] : [20, 34, 12];
+  const color = variant === "heartwood" ? [6, 16, 14] : isWetland(variant) ? [10, 20, 8] : [20, 34, 12];
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
       const d = distTo(from, x, y) / (40 + (sn(x, y, 32, 60) - 0.5) * 16);
@@ -377,11 +431,13 @@ export function canopyTile(variant: ForestVariant, open: number, v: number): Pap
 
 /**
  * Água pelos vizinhos que são terra (bits de `OPEN`): no Bosque Velho, o riacho claro com seixos no fundo raso e
- * riscos de correnteza; no Coração da Mata, a lagoa escura e parada com folhas de nenúfar. Barro na margem.
+ * riscos de correnteza; no Coração da Mata, a lagoa escura e parada com folhas de nenúfar; no pântano, a água turva e
+ * parada com manchas de lentilha-d'água e mais nenúfares. Barro na margem.
  */
-export function waterTile(variant: ForestVariant, land: number, v: number): Paper {
+export function waterTile(variant: ForestVariant, land: number, v: number, block?: number): Paper {
   const p = new Paper(variant);
-  const heart = variant === "heartwood";
+  const heart = variant !== "oldwood";
+  const marsh = isWetland(variant);
   const shore = field(land, 64);
   p.fill([0, 0, HD - 1, HD - 1], () => true, F.Mud, () => 0.5);
   for (let y = 0; y < HD; y++)
@@ -391,12 +447,28 @@ export function waterTile(variant: ForestVariant, land: number, v: number): Pape
       if (d < 5) { p.mat[i] = F.Mud; p.shade[i] = 0.45; p.off[i] = noise(x, y, 91) < 0.25 ? -1 : 0; continue; }
       if (d < 8 && !heart) { p.mat[i] = F.Foam; p.shade[i] = 0.7; p.off[i] = noise(x, y, 92) < 0.4 ? -1 : 0; continue; }
       const deep = d > 30;
+      // No pântano (água larga), o ruído perto da beira do tile é o mesmo para todos (a emenda casa) e no miolo é o da
+      // variação: a lagoa não vira um xadrez de tiles iguais.
+      const rim = marsh ? Math.min(1, Math.min(x, y, HD - 1 - x, HD - 1 - y) / 14) : 0;
+      // `block`: o miolo da lagoa do pântano pinta o pedaço `block` de um ruído contínuo de 4×4 tiles (não repete a
+      // cada tile); na beira do tile o tom é o mesmo para todos, então emenda com a margem.
+      const inner = (cell: number, seed: number) => (block === undefined
+        ? sn(x, y, cell, seed + 40 + v * 7)
+        : smoothNoise(x + (block % WET_BLOCK) * HD, y + Math.floor(block / WET_BLOCK) * HD, cell, seed + 40, HD * WET_BLOCK));
+      const mixed = (cell: number, seed: number) => (marsh ? 0.5 + (inner(cell, seed) - 0.5) * rim : sn(x, y, cell, seed));
       p.mat[i] = deep ? F.Deep : F.Water;
-      p.shade[i] = deep ? 0.48 + (sn(x, y, 32, 93) - 0.5) * 0.1 : 0.7 - Math.min(1, d / 30) * 0.22;
+      // (No pântano, a água funda fica no meio de uma faixa de tom: na divisa, o pontilhado vira um xadrez na lagoa toda.)
+      p.shade[i] = deep ? (marsh ? 0.6 : 0.48) + (mixed(32, 93) - 0.5) * 0.1 : 0.7 - Math.min(1, d / 30) * 0.22;
       p.off[i] = 0;
       if (heart) {
         // Reflexo parado: manchas largas e suaves.
-        if (sn(x, y, 32, 94) > 0.7) p.off[i] = 1;
+        if (mixed(32, 94) > 0.7) p.off[i] = 1;
+        // Lentilha-d'água: pontinhos verdes em manchas, mais junto da margem.
+        const duck = mixed(16, 102);
+        if (marsh && duck - Math.min(1, d / 60) * 0.25 > 0.5 && noise(x, y, 103) < 0.55) {
+          p.mat[i] = F.Leaf2;
+          p.off[i] = noise(x, y, 104) < 0.3 ? 1 : 0;
+        }
       } else {
         // Correnteza: riscos claros curtos de oeste a leste.
         const flow = ((y * 7 + Math.floor(x / 9) * 3 + Math.floor(sn(x, y, 32, 95) * 12)) % 19 + 19) % 19;
@@ -406,7 +478,7 @@ export function waterTile(variant: ForestVariant, land: number, v: number): Pape
       }
     }
   if (heart)
-    for (let k = 0; k < 1 + (v % 2); k++) {
+    for (let k = 0; k < (marsh ? v % 3 : 1 + (v % 2)); k++) {
       const cx = 30 + noise(k, v, 99) * 68, cy = 30 + noise(v, k, 100) * 68;
       if (distTo(land, cx, cy) < 18) continue;
       const notch = noise(k, v, 101) * Math.PI * 2;
@@ -416,6 +488,7 @@ export function waterTile(variant: ForestVariant, land: number, v: number): Pape
         return inEllipse(cx, cy, 9, 7)(x, y) && !gap;
       }, F.Leaf2, sphere(cx, cy, 10, 8));
       if (k === 0 && v % 3 === 0) { ellipse(p, cx + 3, cy - 2, 2.4, 2, F.Flower); p.on(cx + 3, cy - 2, F.Bloom, 4); }
+      else if (marsh && v % 2 === 1) { ellipse(p, cx + 2, cy - 2, 2.6, 2.2, F.Flower); p.on(cx + 2, cy - 3, F.Glow, 3); }
     }
   return p;
 }
@@ -443,6 +516,47 @@ export function bridgeTile(variant: ForestVariant, side: -1 | 0 | 1, v: number):
     for (let y = 8; y < HD; y += 32) ellipse(p, x0 + 9, y, 11, 8, F.Wood);
   }
   return p;
+}
+
+/**
+ * Passarela do pântano (1 tile de largura) por cima da água: tábuas atravessadas, de comprimento e altura desiguais, nas
+ * duas vigas; `across` é o caminho de leste a oeste. A água aparece dos lados e nas frestas (a camada de baixo).
+ * `ends`: os lados do caminho que terminam neste tile (bits de `OPEN`), onde ficam os postes de amarrar.
+ */
+export function boardTile(variant: ForestVariant, across: boolean, ends: number, v: number): Paper {
+  const p = new Paper(variant);
+  // Desenha como se o caminho fosse norte-sul e gira no fim.
+  const half = 38;
+  for (const bx of [64 - half + 8, 64 + half - 8]) p.fill([bx - 4, 0, bx + 4, HD - 1], () => true, F.Bark, () => 0.35);
+  for (let b = 0; b < 8; b++) {
+    const y0 = b * 16 + 2, y1 = y0 + 12;
+    const l = 64 - half + (noise(b, v, 114) - 0.5) * 10, r = 64 + half + (noise(v, b, 115) - 0.5) * 10;
+    const tilt = (noise(b, v, 116) - 0.5) * 3;
+    const old = noise(b, v, 117) < 0.18;
+    p.fill([l, y0 - 2, r, y1 + 2], (x, y) => y >= y0 + tilt * ((x - 64) / half) && y <= y1 + tilt * ((x - 64) / half), old ? F.Bark : F.Wood,
+      (x, y) => 0.64 - ((y - y0) / 12) * 0.2 + (noise(b, x >> 5, 118) - 0.5) * 0.08, (x, y) => (noise(x >> 2, y, 119 + b) < 0.08 ? -1 : 0));
+    for (let x = Math.ceil(l) + 3; x < r - 3; x++) if (noise(x >> 3, b, 126) < 0.4) p.on(x, y0 + 6 + Math.round(Math.sin(x / 7 + b) * 1.2), null, 2);
+    // Musgo na ponta das tábuas velhas.
+    if (old) for (let x = Math.ceil(l); x < l + 10; x++) for (let y = y0; y <= y1; y++) if (noise(x, y, 127) < 0.5) p.on(x, y, F.Moss, 3);
+  }
+  const post = (y: number) => {
+    for (const x of [64 - half - 2, 64 + half + 2]) {
+      ellipse(p, x, y, 8, 8, F.Bark);
+      for (let a = 0; a < 6.3; a += 0.4) p.on(x + Math.cos(a) * 5, y + Math.sin(a) * 5, null, 2);
+    }
+  };
+  const north = across ? ends & OPEN.w : ends & OPEN.n, south = across ? ends & OPEN.e : ends & OPEN.s;
+  if (north) post(10);
+  if (south) post(HD - 12);
+  if (!across) return p;
+  // Gira 90° (o norte vira o oeste): a luz continua de cima à esquerda porque as tábuas são quase chatas.
+  const q = new Paper(variant);
+  for (let y = 0; y < HD; y++)
+    for (let x = 0; x < HD; x++) {
+      const i = x * HD + y, o = y * HD + x;
+      q.mat[o] = p.mat[i]; q.shade[o] = p.shade[i]; q.off[o] = p.off[i]; q.fixed[o] = p.fixed[i]; q.part[o] = p.part[i];
+    }
+  return q;
 }
 
 // --- Troncos caídos e muros ----------------------------------------------------------------
@@ -531,7 +645,7 @@ export function wallTile(variant: ForestVariant, joins: number, south: boolean, 
 
 // --- Enfeites rasteiros --------------------------------------------------------------------
 
-export const FLAT_DECOR = ["leaves", "twigs", "clover", "pebbles", "moss", "flowers", "cones", "shrooms", "roots", "tracks"] as const;
+export const FLAT_DECOR = ["leaves", "twigs", "clover", "pebbles", "moss", "flowers", "cones", "shrooms", "roots", "tracks", "bones"] as const;
 export type FlatDecor = (typeof FLAT_DECOR)[number];
 
 /** Enfeite rasteiro de 1 tile (sem sair dele): folhas, gravetos, trevos, pedrinhas, flores, pinhas, cogumelos... */
@@ -613,6 +727,23 @@ export function flatDecor(variant: ForestVariant, kind: FlatDecor, v: number): P
         ellipse(p, x + 1.6, y, 1.6, 3.2, F.Mud);
       }
       break;
+    case "bones": {
+      // Ossos de quem chegou antes: um crânio de bicho e ossos compridos espalhados.
+      const cx = 46 + r(1) * 30, cy = 50 + r(2) * 26;
+      p.together(() => { ellipse(p, cx, cy, 11, 9, F.Birch); ellipse(p, cx + 8, cy + 4, 6, 4.5, F.Birch); });
+      ellipse(p, cx - 3, cy - 1, 2.6, 2.4, F.Line);
+      ellipse(p, cx + 4, cy - 1, 2.4, 2.2, F.Line);
+      for (let k = 0; k < 3; k++) {
+        const x = 30 + r(k + 3) * 66, y = 36 + r(k + 6) * 60, a = r(k + 9) * Math.PI, len = 10 + r(k + 12) * 8;
+        const b: Pt = [x + Math.cos(a) * len, y + Math.sin(a) * len];
+        p.together(() => {
+          limb(p, [x, y], b, 1.8, 1.8, F.Birch);
+          ellipse(p, x, y, 3, 2.6, F.Birch);
+          ellipse(p, b[0], b[1], 3, 2.6, F.Birch);
+        });
+      }
+      break;
+    }
   }
   return p;
 }
@@ -628,6 +759,8 @@ export const TALL = { w: 128, h: 224 } as const;
 export const SPECIES: Record<ForestVariant, readonly string[]> = {
   oldwood: ["oak", "beech", "birch", "pine"],
   heartwood: ["elder", "willow", "mushroom", "dead"],
+  marsh: ["cypress", "mangrove", "willow", "dead"],
+  swamp: ["cypress", "mangrove", "willow", "dead"],
 };
 
 /** Copa de tufos: várias esferas de folhas numa cúpula, as de trás primeiro; cada tufo risca o de trás. */
@@ -748,6 +881,50 @@ export function tree(variant: ForestVariant, species: string, v: number): { trun
       }
       break;
     }
+    case "cypress": {
+      // Cipreste-do-brejo: pé largo em aba, os joelhos (raízes que saem da água) em volta, copa estreita em andares e
+      // barba-de-velho pendurada.
+      const top: Pt = [X + lean * 0.4, B - 200 * h];
+      t.together(() => {
+        limb(t, [X, B], top, 12, 6, F.Bark, (x, y) => (Math.floor((x - X) / 3) % 3 === 0 && noise(x, y >> 2, 171) < 0.7 ? -1 : 0));
+        t.fill([X - 30, B - 60, X + 30, B], (x, y) => Math.abs(x - X) < 12 + ((y - (B - 60)) / 60) ** 2.2 * 18, F.Bark,
+          (x) => lit((x - X) / 30, 0, 0.8), (x) => (Math.floor((x - X) / 3) % 3 === 0 ? -1 : 0));
+      });
+      for (let k = 0; k < 5; k++) {
+        const kx = X + (k - 2) * 22 + (noise(k, v, 191) - 0.5) * 10, kh = 10 + noise(v, k, 192) * 12;
+        if (Math.abs(kx - X) < 26) continue;
+        limb(t, [kx, B - 2], [kx + 1, B - 2 - kh], 4.6, 2.4, F.Bark);
+      }
+      for (let k = 0; k < 4; k++) {
+        const yb = B - 120 * h - k * 34 * h, w = 70 - k * 12;
+        crown(c, X + lean * 0.4 + (k % 2 ? 8 : -8), yb - 24, w, 30, v + k * 3, [F.Leaf, F.Leaf2, F.Leaf], 7, 0.48);
+      }
+      for (let k = 0; k < 14; k++) {
+        const x = X + lean * 0.4 - 60 + k * 9 + (noise(k, v, 193) - 0.5) * 6;
+        const y0 = B - 130 * h - noise(v, k, 194) * 80 * h, len = 20 + noise(k, k, 195) * 34;
+        if (!c.has(x, y0)) continue;
+        for (let y = y0; y < y0 + len; y++) { c.on(x + Math.sin(y / 4) * 1.2, y, F.Leaf3, 3); c.px(x + Math.sin(y / 4) * 1.2, y, F.Leaf3, noise(x, y, 196) < 0.4 ? 2 : 3); }
+      }
+      break;
+    }
+    case "mangrove": {
+      // Mangue: o tronco sai de um ninho de raízes-escora em arco e a copa é baixa e redonda.
+      const foot = B - 46;
+      const top: Pt = [X + lean, B - 150 * h];
+      trunk(t, [X, foot], top, 10, 7, F.Bark, 0);
+      for (let k = 0; k < 7; k++) {
+        const side = k % 2 ? 1 : -1, reach = 18 + (k >> 1) * 14 + noise(k, v, 197) * 6;
+        const from: Pt = [X + side * 4, foot - 6 - (k >> 1) * 8];
+        const mid: Pt = [X + side * reach * 0.6, foot - 18 - (k >> 1) * 4];
+        const end: Pt = [X + side * reach, B - (k % 3)];
+        limb(t, from, mid, 3.4, 3, F.Bark);
+        limb(t, mid, end, 3, 2.2, F.Bark);
+      }
+      limb(t, [X + lean * 0.5, B - 110 * h], [X - 40, B - 150 * h], 5, 3, F.Bark);
+      limb(t, [X + lean * 0.6, B - 120 * h], [X + 44, B - 156 * h], 5, 3, F.Bark);
+      crown(c, X + lean, B - 190 * h, 100, 66, v, [F.Leaf, F.Leaf2, F.Leaf, F.Leaf2], 16, 0.36);
+      break;
+    }
     default: {
       // Árvore morta: galhos pelados, musgo pendurado e quase sem folha.
       const top: Pt = [X + lean, B - 200 * h];
@@ -862,7 +1039,7 @@ export function stone(variant: ForestVariant, menhir: boolean, v: number): { ima
   return { image: p.render(true), glow: g.render(false) };
 }
 
-export const TALL_DECOR = ["fern", "bush", "grass", "mushrooms", "stump", "foxglove", "bramble", "rocks"] as const;
+export const TALL_DECOR = ["fern", "bush", "grass", "mushrooms", "stump", "foxglove", "bramble", "rocks", "cattail", "reeds", "iris", "pitcher"] as const;
 export type TallDecor = (typeof TALL_DECOR)[number];
 
 /** Enfeite de pé de 1 tile (sobe até 0,75 tile acima): samambaia, arbusto, capim alto, cogumelos, toco, dedaleira... */
@@ -934,6 +1111,57 @@ export function tallDecor(variant: ForestVariant, kind: TallDecor, v: number): U
       ellipse(p, 84, B - 8, 15, 10, F.Stone);
       for (let x = 30; x < 76; x++) if (sn(x, 0, 16, 240) > 0.45) p.on(x, B - 26 + Math.sin(x / 4) * 2, F.Moss, 3);
       break;
+    case "cattail":
+      // Taboa: folhas compridas em fita e as espigas marrons em charuto.
+      for (let k = 0; k < 10; k++) {
+        const x = 38 + r(k) * 52, hgt = 70 + r(k + 10) * 70, bend = (r(k + 20) - 0.5) * 30;
+        limb(p, [x, B], [x + bend, B - hgt], 2.6, 0.8, k % 3 ? F.Fern : F.Grass);
+      }
+      for (let k = 0; k < 4; k++) {
+        const x = 46 + k * 12 + r(k + 30) * 6, hgt = 110 + r(k + 34) * 50;
+        limb(p, [x, B], [x + (k - 1.5) * 3, B - hgt], 1.4, 1, F.Grass);
+        p.together(() => limb(p, [x + (k - 1.5) * 2.4, B - hgt + 30], [x + (k - 1.5) * 2.8, B - hgt + 6], 4.6, 4.2, F.Wood));
+      }
+      break;
+    case "reeds":
+      // Junco: muitas hastes finas com o penacho claro no alto.
+      for (let k = 0; k < 18; k++) {
+        const x = 34 + r(k) * 60, hgt = 60 + r(k + 18) * 80, bend = (r(k + 36) - 0.5) * 24;
+        limb(p, [x, B], [x + bend, B - hgt], 1.6, 0.7, k % 4 ? F.Grass : F.Litter);
+        if (k % 3 === 0) for (let s = 0; s < 6; s++) ellipse(p, x + bend + (s % 2 ? 3 : -3), B - hgt + s * 4, 3, 2.4, F.Litter);
+      }
+      break;
+    case "iris":
+      // Íris-do-brejo: leque de folhas em espada e as flores roxas.
+      for (let k = 0; k < 9; k++) {
+        const a = -Math.PI / 2 + (k - 4) * 0.16, len = 54 + (4 - Math.abs(k - 4)) * 9 + r(k) * 10;
+        limb(p, [64 + (k - 4) * 2, B], [64 + Math.cos(a) * len, B + Math.sin(a) * len], 3.4, 0.8, k % 2 ? F.Fern : F.Leaf2);
+      }
+      for (let k = 0; k < 3; k++) {
+        const x = 46 + k * 18 + r(k + 12) * 6, y = B - 80 - r(k + 15) * 26;
+        limb(p, [x, B - 30], [x, y], 1.4, 1.2, F.Fern);
+        p.together(() => {
+          ellipse(p, x - 5, y + 2, 5, 3.4, F.Bloom);
+          ellipse(p, x + 5, y + 2, 5, 3.4, F.Bloom);
+          ellipse(p, x, y - 4, 3.6, 5.4, F.Bloom);
+        });
+        p.on(x, y, F.Glow, 4);
+      }
+      break;
+    case "pitcher":
+      // Planta-jarro: jarros verdes com veios escuros, boca aberta e a tampa por cima.
+      for (let k = 0; k < 4; k++) {
+        const x = 38 + k * 17 + r(k) * 6, s = 0.7 + r(k + 4) * 0.5, top = B - 30 - 34 * s;
+        p.together(() => {
+          limb(p, [x, B - 4], [x + 2, top + 8], 6 * s, 8 * s, F.Leaf2);
+          ellipse(p, x + 2, top + 4, 8 * s, 4 * s, F.Litter);
+        });
+        ellipse(p, x + 2, top + 4, 5 * s, 2.2 * s, F.Line);
+        ellipse(p, x + 6, top - 3, 6 * s, 3.4 * s, F.Litter);
+        for (let y = top + 10; y < B - 6; y += 6) line(p, [x - 4 * s, y], [x + 6 * s, y + 2], null, 2);
+      }
+      for (let k = 0; k < 5; k++) limb(p, [64, B - 2], [30 + k * 17, B - 10 - r(k + 9) * 8], 3, 1, F.Fern);
+      break;
   }
   return p.render(true);
 }
@@ -941,6 +1169,8 @@ export function tallDecor(variant: ForestVariant, kind: TallDecor, v: number): U
 /** Atalhos dos quadros de chão. */
 export const draw = {
   grass: (variant: ForestVariant, v: number) => () => grassTile(variant, v).render(false),
+  wetGrass: (variant: ForestVariant, q: number) => () => wetGrassTile(variant, q).render(false),
+  blockArena: (variant: ForestVariant, q: number) => () => wetGrassTile(variant, q, true).render(false),
   arena: (variant: ForestVariant, v: number) => () => arenaTile(variant, v).render(false),
 };
 
