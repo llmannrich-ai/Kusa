@@ -16,6 +16,8 @@ export const protoGoblin = NEW_ART ? await (await import("./proto/goblinArt.ts")
 export const protoFrog = NEW_ART ? await (await import("./proto/frogArt.ts")).loadFrog() : null;
 /** O Rei Bullywug, boss do Pântano das Ruínas, a partir das folhas geradas no Runway (`docs/arte/pantano-das-ruinas/bullywug-*.png`). */
 export const protoBullywugKing = NEW_ART ? await (await import("./proto/bullywugKingArt.ts")).loadBullywugKing() : null;
+/** O clã do Pântano do Kosaradius (orcs e ogros) a partir das folhas geradas por IA (`docs/arte/pantano-do-kosaradius/`). */
+export const protoClan = NEW_ART ? await (await import("./proto/kosaradiusArt.ts")).loadClan() : null;
 /** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */
 const PROTO_FAMILY: Record<string, string> = {
   "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",
