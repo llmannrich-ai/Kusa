@@ -12,7 +12,11 @@ olhar para a direita, passe `--flip` (o jogo quer tudo olhando para a esquerda);
 Sai `apps/client/src/art/proto/kosaradius/<kind>.png` só com as 6 figuras que o jogo usa (frente, perfil e costas,
 parado e depois andando; as de 3/4 ficam de fora), em quadros de `CELL` px e paleta de 256 cores: o jogo baixa tudo no
 começo, e a folha inteira em cores cheias pesava 4 vezes mais.
-`art/proto/kosaradiusArt.ts` monta os clipes.
+
+Folha B (ação), se existir (`docs/arte/pantano-do-kosaradius/<kind>-B.png`): 2 linhas x 6, golpe em cima e morte
+embaixo, em 3/4 de frente para a esquerda. Vai para a mesma escala da A (a figura parada do começo do golpe com a
+altura da 3/4 de frente parada da A) e entra depois das 6 da A: 4 quadros do golpe (`ATTACK_B`) e 4 da morte
+(`DEATH_B`), 14 figuras no total. `art/proto/kosaradiusArt.ts` monta os clipes.
 
 Uso: python3 apps/client/scripts/kosaradiusSprites.py orcSpearman [--flip | --flip=8,...]
 """
@@ -50,6 +54,11 @@ SIZES = {
 # Figuras da folha de giro que vão para o jogo: frente, perfil e costas, parado (0, 2, 4) e andando (6, 8, 10).
 USED = (0, 2, 4, 6, 8, 10)
 
+# Figuras da folha B (linha a linha, 0–11) que vão para o jogo: o golpe sem a pose parada do começo e do fim (o jogo
+# já mostra a parada) e a morte com o golpe recebido, de joelhos, caindo e o corpo no chão.
+ATTACK_B = (1, 2, 3, 4)
+DEATH_B = (6, 8, 9, 11)
+
 
 def place(rgba, fig, scale, flip, cell):
     """Figura reduzida num quadro de `cell` px, pés a 10 px do fundo, meio dos pés no centro, espelhada se `flip`."""
@@ -79,6 +88,17 @@ def place(rgba, fig, scale, flip, cell):
 
 def main(kind, flip=False, flip_figs=()):
     height, cell = SIZES[kind]
+    # O golpe e o corpo no chão da folha B são mais largos que a figura parada: cresce o quadro até caber tudo.
+    while True:
+        try:
+            return build(kind, flip, flip_figs, height, cell)
+        except AssertionError as e:
+            if "não cabe" not in str(e):
+                raise
+            cell += 16
+
+
+def build(kind, flip, flip_figs, height, cell):
     rgba = clean(SRC / f"{kind}-A.png")
     rows = figures(rgba)
     assert [len(r) for r in rows] == [6, 6], f"{kind}-A: esperava 2 linhas de 6, achei {[len(r) for r in rows]}"
@@ -88,6 +108,17 @@ def main(kind, flip=False, flip_figs=()):
     cells = [place(rgba, f, scale, flip != (i in flip_figs), cell) for i, f in enumerate(figs)]
     DST.mkdir(parents=True, exist_ok=True)
     cells = [cells[i] for i in USED]
+    src_b = SRC / f"{kind}-B.png"
+    if src_b.exists():
+        b = clean(src_b)
+        rows_b = figures(b)
+        assert [len(r) for r in rows_b] == [6, 6], f"{kind}-B: esperava 2 linhas de 6, achei {[len(r) for r in rows_b]}"
+        quarter = rows[0][1][0]
+        ready = rows_b[0][0][0]
+        scale_b = scale * (quarter[3] - quarter[1]) / (ready[3] - ready[1])
+        figs_b = [f for line in rows_b for f in line]
+        cells += [place(b, figs_b[i], scale_b, flip, cell) for i in ATTACK_B + DEATH_B]
+        print(f"  folha B: escala {scale_b:.3f} (A {scale:.3f})")
     sheet = Image.new("RGBA", (cell * len(cells), cell), (0, 0, 0, 0))
     for i, c in enumerate(cells):
         sheet.alpha_composite(c, (i * cell, 0))

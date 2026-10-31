@@ -15,16 +15,19 @@ monstro com folha usa a arte nova; sem folha, continua com a arte por código (`
 | Orc do Brejo (`orcGrunt`) | ✅ | — |
 | Orc lanceiro (`orcSpearman`) | ✅ | — |
 | Orc arqueiro (`orcArcher`) | ✅ | — |
-| Orc xamã (`orcShaman`) | ✅ | — |
+| Orc xamã (`orcShaman`) | ✅ | ✅ golpe e morte (`orcShaman-B.png`) |
 | Orc berserker (`orcBerserker`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | — |
-| Orc capitão (`orcCaptain`) | ✅ | — |
-| Ogro jovem (`ogreYoung`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | — |
-| Ogro do Brejo (`ogreBruiser`) | ✅ | — |
-| Ogro Xamã (`ogreShaman`) | ✅ | — |
-| Chefe de Guerra Orc (`orcWarlord`) | ✅ | — |
-| Grumak, o Rei-Ogro (`ogreKing`) | ✅ (2ª versão, com a coroa pequena e torta) | — |
+| Orc capitão (`orcCaptain`) | ✅ | ✅ golpe e morte (`orcCaptain-B.png`) |
+| Ogro jovem (`ogreYoung`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | ✅ golpe e morte (`ogreYoung-B.png`) |
+| Ogro do Brejo (`ogreBruiser`) | ✅ | ✅ golpe e morte (`ogreBruiser-B.png`) |
+| Ogro Xamã (`ogreShaman`) | ✅ | ✅ golpe e morte (`ogreShaman-B.png`) |
+| Chefe de Guerra Orc (`orcWarlord`) | ✅ | ✅ golpe e morte (`orcWarlord-B.png`) |
+| Grumak, o Rei-Ogro (`ogreKing`) | ✅ (2ª versão, com a coroa pequena e torta) | ✅ golpe e morte (`ogreKing-B.png`) |
 
-Sem a folha B, o golpe e o especial saem do perfil (com o bote que o jogo já dá no golpe) e a morte é o tombo de sempre.
+Folha B (`<kind>-B.png`, 2 linhas × 6: golpe em cima, morte embaixo, em 3/4 de frente): o script põe na escala da A e
+leva 4 quadros do golpe e 4 da morte (`ATTACK_B` e `DEATH_B`); o jogo toca o golpe desenhado e, ao morrer, a morte
+desenhada (o corpo fica no chão). Sem a folha B, o golpe sai do perfil (com o bote que o jogo já dá) e a morte é o tombo
+de sempre. O especial sai do perfil nos dois casos.
 
 O Rei segura o tronco em pé parado e no ombro andando: ele anda só com a figura de andar (`WALK_POSE_ONLY` em
 `kosaradiusArt.ts`), senão o tronco pularia do chão para o ombro a cada passo.
@@ -40,5 +43,10 @@ clã somavam ~156 MB e o celular fechava o jogo no Kosaradius. Agora:
   monstro (14 no Rei);
 - o quadro é o menor que cabe a figura com a folga do bote (`SIZES` em `kosaradiusSprites.py`).
 
-Resultado: ~28 MB para os 12. Monstro novo: conte figuras distintas × lado² × 4 bytes antes de publicar.
+Resultado: ~28 MB para os 12 só com a folha A; ~51 MB com a folha B de 7 deles (18 figuras por monstro, quadro mais
+largo para o golpe e o corpo no chão).
+
+Além disso, o jogo só prepara os monstros do mapa da hunt, quando ela começa (`warmMapMonsters` em `textures.ts`); antes
+preparava os de todos os mapas ainda no lobby (163 MB). Monstro novo: conte figuras distintas × lado² × 4 bytes antes de
+publicar.
 
