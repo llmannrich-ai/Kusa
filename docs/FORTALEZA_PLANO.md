@@ -204,6 +204,7 @@ muda (abismo é `Tile.Water`, ruína, mata, chão).
 
 | Decisão | Escolha |
 |---|---|
+| **Arte: código ou IA** | **Híbrido.** A IA pinta o que não tem colisão nem andar: **o vale lá embaixo** (uma pintura só, com névoa e paralaxe) e as **peças grandes e únicas** como sprites (torre de menagem, arco, trono, cachoeira), do jeito que já se faz com os inimigos (folha gerada, aprovada e recortada). O **chão por onde se anda continua em código** (colisão exata, memória baixa, telhados e andares funcionando). Exceção à regra "cenário é sempre código" do `CENARIOS_PLANO.md`, decidida para este mapa |
 | Planta | **Desenhada à mão** (fase 1): mapa fixo pede autoria; o custo é uma vez só |
 | Telhado e emboscada | **Translúcido perto da porta** (fase 7): no celular, monstro invisível parece bug |
 | Hora do dia | **Fim de tarde** (fase 6): diferencia dos Portões e valoriza o fogo |
