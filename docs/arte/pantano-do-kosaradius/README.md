@@ -19,6 +19,7 @@ monstro com folha usa a arte nova; sem folha, continua com a arte por código (`
 | Orc capitão (`orcCaptain`) | ✅ | — |
 | Ogro jovem (`ogreYoung`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | — |
 | Ogro do Brejo (`ogreBruiser`) | ✅ | — |
+| Ogro Xamã (`ogreShaman`) | ✅ | — |
 | Chefe de Guerra Orc (`orcWarlord`) | ✅ | — |
 | Grumak, o Rei-Ogro (`ogreKing`) | ✅ (2ª versão, com a coroa pequena e torta) | — |
 
