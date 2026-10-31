@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import type { AttackFx } from "@kusa/shared";
 import { TILE_SIZE } from "@kusa/shared";
 import { monsterAnimKey } from "./art/bestiary.ts";
+import { PROP_SCALE } from "./art/props.ts";
 import { BLOOD_TEXTURE, FX_ANIM, FX_TEXTURE } from "./art/textures.ts";
 import { ChunkCuller } from "./mapShared.ts";
 
@@ -161,6 +162,7 @@ export class CombatFx {
   private decal(key: string, at: Point, alpha: number, tint?: number) {
     const frames = this.scene.textures.get(key).frameTotal - 1;
     const image = this.scene.add.image(at.x, at.y, key, Phaser.Math.Between(0, frames - 1))
+      .setScale(PROP_SCALE)
       .setDepth(this.decalDepth)
       .setAlpha(alpha)
       .setFlipX(Math.random() < 0.5);
