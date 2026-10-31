@@ -1,10 +1,10 @@
 ordem,id,status,versao,arquivo,tentativas,data,nota
-1,rat-A,pendente,,,,,
-2,rat-B,pendente,,,,,
-3,kobold-A,pendente,,,,,
-4,kobold-B,pendente,,,,,
-5,stirge-A,pendente,,,,,
-6,stirge-B,pendente,,,,,
+1,rat-A,aprovado,v01,rat-A.webp,,2026-10-31,buracos brancos entre as pernas limpos no processamento
+2,rat-B,aprovado,v01,rat-B.webp,,2026-10-31,no jogo (parte 1 de 4)
+3,kobold-A,aprovado,v01,kobold-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+4,kobold-B,aprovado,v01,kobold-B.webp,,2026-10-31,no jogo (parte 1 de 4)
+5,stirge-A,aprovado,v01,stirge-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+6,stirge-B,aprovado,v01,stirge-B.webp,,2026-10-31,no jogo (parte 1 de 4)
 7,goblin-A,pendente,,,,,
 8,goblin-B,pendente,,,,,
 9,goblinArcher-A,pendente,,,,,
@@ -13,12 +13,12 @@ ordem,id,status,versao,arquivo,tentativas,data,nota
 12,zombie-B,pendente,,,,,
 13,hobgoblin-A,pendente,,,,,
 14,hobgoblin-B,pendente,,,,,
-15,skeleton-A,pendente,,,,,
-16,skeleton-B,pendente,,,,,
+15,skeleton-A,aprovado,v01,skeleton-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+16,skeleton-B,aprovado,v01,skeleton-B.webp,,2026-10-31,caveira solta na morte juntada à figura no processamento; buracos brancos entre os ossos limpos
 17,skeletonArcher-A,pendente,,,,,
 18,skeletonArcher-B,pendente,,,,,
-19,giantSpider-A,pendente,,,,,
-20,giantSpider-B,pendente,,,,,
+19,giantSpider-A,aprovado,v01,giantSpider-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+20,giantSpider-B,aprovado,v01,giantSpider-B.webp,,2026-10-31,"xadrez de transparente pintado no fundo, limpo no processamento"
 21,orc-A,pendente,,,,,
 22,orc-B,pendente,,,,,
 23,gnoll-A,pendente,,,,,

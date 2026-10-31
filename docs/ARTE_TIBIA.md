@@ -286,6 +286,11 @@ antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)*
 ![Dragão verde: parado e soprando gás venenoso](arte/cripta-dragao.png)
 ![No jogo: a Cripta antiga, a nova e uma sala com os monstros novos](arte/cripta-no-jogo.png)
 
+**Inimigos da Cripta com folhas geradas por IA** (`docs/arte/cripta/README.md`): o monstro que tem folha A (giro) e
+B (andar, golpe, especial e morte desenhados) troca o desenho por código pela folha, em todo mapa em que aparece
+(`criptaSprites.py` recorta, `art/proto/criptaArt.ts` monta os clipes). Primeiro lote: ratazana, kobold, estirge,
+esqueleto e aranha gigante.
+
 ### Goblin a partir de arte de referência
 
 O goblin da arte nova deixou de ser desenhado por código: vem da arte de referência em `docs/arte/goblin-referencia.png`
