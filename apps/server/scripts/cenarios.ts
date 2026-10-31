@@ -4,10 +4,14 @@
  * - nenhuma peça dá erro nem sai vazia;
  * - a pintura não usa `Math.random` (o mesmo desenho em todo aparelho) e dá o mesmo resultado duas vezes;
  * - o chão emenda: a última coluna do tile encosta na primeira (e a última linha na primeira) sem degrau visível;
- * - nenhuma peça passa de `PIECE_MS` (o celular é ≈5× mais lento que o CI).
- * Mapa novo no padrão entra em `SCENERY` com as suas peças.
- * Uso: npx tsx apps/server/scripts/cenarios.ts
+ * - nenhuma peça passa de `PIECE_MS` (o celular é ≈5× mais lento que o CI);
+ * - nenhuma peça mudou sem querer: a impressão digital de cada uma fica em `cenarios.json`. Mexer no pintor de um mapa
+ *   (para fazer outro, por exemplo) não pode mudar o desenho dos mapas prontos.
+ * Mapa novo no padrão entra em `SCENERY` com as suas peças; peça nova entra sozinha no `cenarios.json`.
+ * Uso: npx tsx apps/server/scripts/cenarios.ts            (confere)
+ *      npx tsx apps/server/scripts/cenarios.ts --atualizar (mudou o desenho de propósito: grava as impressões novas)
  */
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { HD } from "../../client/src/art/paint.ts";
 import { PROP_PIECES } from "../../client/src/art/propsArt.ts";
 import {
@@ -15,14 +19,16 @@ import {
   tallDecor as duneTall, type DuneVariant,
 } from "../../client/src/art/duneArt.ts";
 import {
-  FLAT_DECOR as FOREST_FLAT, SPECIES, TALL_DECOR as FOREST_TALL, draw as forest, flatDecor as forestFlat, stone,
-  tallDecor as forestTall, tree, type ForestVariant,
+  FLAT_DECOR as FOREST_FLAT, OPEN, SPECIES, TALL_DECOR as FOREST_TALL, bridgeTile, canopyTile, dirtTile, draw as forest,
+  flatDecor as forestFlat, giant, heartTree, litterEdge, logTile, mudEdge, shadowEdge, stone, tallDecor as forestTall, tree,
+  wallTile, waterTile, type ForestVariant,
 } from "../../client/src/art/forestArt.ts";
 import { FLAT_DECOR as EMPIRE_FLAT, flatDecor as empireFlat, grassTile } from "../../client/src/art/empireArt.ts";
 import { COLUMN_KINDS, SMALL_DECOR, columnSprite, smallDecor, statueSprite, tombSprite } from "../../client/src/art/empireMonuments.ts";
 
-/** Tempo máximo de uma peça no CI. */
+/** Tempo máximo de uma peça do tamanho de uma árvore (256×384) no CI; peça maior ganha tempo na proporção da área. */
 const PIECE_MS = 400;
+const TREE_AREA = 256 * 384;
 
 interface Piece {
   name: string;
@@ -48,6 +54,19 @@ const woods = (variant: ForestVariant): Piece[] => [
   ...FOREST_TALL.map((k) => ({ name: `enfeite de pé ${k}`, draw: () => forestTall(variant, k, 0) })),
   ...SPECIES[variant].map((s) => ({ name: `árvore ${s}`, draw: () => tree(variant, s, 0).crown })),
   { name: "menir", draw: () => stone(variant, true, 0).image },
+  { name: "pedra", draw: () => stone(variant, false, 1).image },
+  ...[0, OPEN.s, OPEN.s | OPEN.e | OPEN.se, OPEN.n | OPEN.w].map((m) => ({ name: `copa ${m}`, draw: () => canopyTile(variant, m, 0).render(true) })),
+  { name: "copa miolo 2", draw: () => canopyTile(variant, 0, 2).render(true) },
+  ...[0, OPEN.n | OPEN.w, OPEN.s].map((m) => ({ name: `água ${m}`, draw: () => waterTile(variant, m, 1).render(false) })),
+  ...[OPEN.e | OPEN.w, OPEN.n | OPEN.s, 0, OPEN.e].map((m) => ({ name: `tronco ${m}`, draw: () => logTile(variant, m, 0).render(true) })),
+  ...[OPEN.n, OPEN.n | OPEN.e].map((m) => ({ name: `trilha ${m}`, draw: () => dirtTile(variant, m).render(false) })),
+  { name: "barro", draw: () => mudEdge(variant, OPEN.n | OPEN.w).render(false) },
+  { name: "folhas", draw: () => litterEdge(variant, OPEN.n).render(true) },
+  { name: "sombra", draw: () => shadowEdge(variant, OPEN.n | OPEN.w) },
+  ...([-1, 0, 1] as const).map((side) => ({ name: `ponte ${side}`, draw: () => bridgeTile(variant, side, 0).render(false) })),
+  { name: "muro", draw: () => wallTile(variant, OPEN.e | OPEN.w, true, 0).render(true) },
+  { name: "anciã", draw: () => giant(variant, 0).crown },
+  ...(variant === "heartwood" ? [{ name: "árvore do coração", draw: () => heartTree(variant).trunk }] : []),
 ];
 
 const SCENERY: Record<string, Piece[]> = {
@@ -65,6 +84,12 @@ const SCENERY: Record<string, Piece[]> = {
     { name: "túmulo", draw: () => tombSprite(0) },
   ],
 };
+
+const DIGESTS = new URL("./cenarios.json", import.meta.url);
+const update = process.argv.includes("--atualizar");
+const saved: Record<string, number> = existsSync(DIGESTS) ? JSON.parse(readFileSync(DIGESTS, "utf8")) : {};
+const digests: Record<string, number> = {};
+let added = 0;
 
 const failures: string[] = [];
 const fail = (msg: string) => { if (failures.length < 40) failures.push(msg); };
@@ -106,9 +131,14 @@ for (const [map, pieces] of Object.entries(SCENERY)) {
       const spent = performance.now() - t;
       ms += spent;
       const again = piece.draw();
-      if (spent > PIECE_MS) fail(`${label}: ${Math.round(spent)} ms (máximo ${PIECE_MS})`);
+      const budget = PIECE_MS * Math.max(1, first.length / 4 / TREE_AREA);
+      if (spent > budget) fail(`${label}: ${Math.round(spent)} ms (máximo ${Math.round(budget)})`);
       if (!first.some((v, i) => i % 4 === 3 && v > 0)) fail(`${label}: saiu vazia`);
-      if (digest(first) !== digest(again)) fail(`${label}: duas pinturas diferentes`);
+      const h = digest(first);
+      if (h !== digest(again)) fail(`${label}: duas pinturas diferentes`);
+      digests[label] = h;
+      if (!(label in saved)) added++;
+      else if (saved[label] !== h && !update) fail(`${label}: o desenho mudou (se foi de propósito, rode com --atualizar)`);
       if (piece.seam) {
         if (first.length !== HD * HD * 4) fail(`${label}: chão fora de ${HD}×${HD}`);
         else {
@@ -124,6 +154,13 @@ for (const [map, pieces] of Object.entries(SCENERY)) {
   }
   total += ms;
   console.log(`${map}: ${pieces.length} peças em ${Math.round(ms)} ms`);
+}
+
+// Grava as impressões: sempre com --atualizar; sem ele, só se entrou peça nova (e nada falhou).
+if (update || (added && !failures.length)) {
+  const sorted = Object.fromEntries(Object.keys(digests).sort().map((k) => [k, digests[k]]));
+  writeFileSync(DIGESTS, `${JSON.stringify(sorted, null, 1)}\n`);
+  console.log(update ? "impressões gravadas" : `${added} peça(s) nova(s) gravada(s) em cenarios.json`);
 }
 
 if (failures.length) {
