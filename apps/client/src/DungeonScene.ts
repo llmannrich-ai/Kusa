@@ -54,6 +54,7 @@ import { RuneChoice } from "./runechoice.ts";
 import { SpellAim } from "./aim.ts";
 import { AttackButton } from "./attack.ts";
 import { FX } from "./art/combat.ts";
+import { PROP_SCALE } from "./art/props.ts";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
 import { drawCrypt } from "./cryptMap.ts";
@@ -336,7 +337,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     callbacks.onAdd("chests", (chest: ChestView, id: string) => {
-      const image = this.add.image(this.toPx(chest.x), this.toPx(chest.y), CHEST_TEXTURE.locked)
+      const image = this.add.image(this.toPx(chest.x), this.toPx(chest.y), CHEST_TEXTURE.locked).setScale(PROP_SCALE)
         .setDepth((chest.y + 1) * TILE_SIZE - 1);
       this.chests.set(id, image);
       if (chest.rune) this.addRuneMark(chest);
@@ -1018,7 +1019,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private drawPortal() {
     const { x, y } = this.dungeon.portal;
-    const portal = this.add.image(this.toPx(x), this.toPx(y), PORTAL_TEXTURE.escape).setDepth(y * TILE_SIZE + 1);
+    const portal = this.add.image(this.toPx(x), this.toPx(y), PORTAL_TEXTURE.escape).setScale(PROP_SCALE).setDepth(y * TILE_SIZE + 1);
     this.tweens.add({ targets: portal, alpha: { from: 1, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
   }
 
@@ -1026,13 +1027,14 @@ export class DungeonScene extends Phaser.Scene {
   private drawBossPortal(c: { x: number; y: number }) {
     const x = this.toPx(c.x);
     const y = this.toPx(c.y);
-    // A arte do pack é quase preta e some no chão escuro: um brilho roxo (a cor do portal no minimapa) pulsa por baixo.
+    // Um brilho roxo (a cor do portal no minimapa) pulsa por baixo, para achar o portal de longe no chão escuro.
     const halo = this.add.ellipse(x, y + 2, 64, 52, COLORS.bossPortal, 0.5).setDepth(c.y * TILE_SIZE + 0.5)
       .setBlendMode(Phaser.BlendModes.ADD);
     const core = this.add.ellipse(x, y, 34, 38, COLORS.bossPortal, 0.9).setDepth(c.y * TILE_SIZE + 0.6)
       .setBlendMode(Phaser.BlendModes.ADD);
-    const portal = this.add.image(x, y, PORTAL_TEXTURE.boss).setDepth(c.y * TILE_SIZE + 1);
-    this.tweens.add({ targets: [portal, core], scale: { from: 0.2, to: 1.2 }, duration: 600, ease: "Back.Out" });
+    const portal = this.add.image(x, y, PORTAL_TEXTURE.boss).setScale(0.2 * PROP_SCALE).setDepth(c.y * TILE_SIZE + 1);
+    this.tweens.add({ targets: core, scale: { from: 0.2, to: 1.2 }, duration: 600, ease: "Back.Out" });
+    this.tweens.add({ targets: portal, scale: { from: 0.2 * PROP_SCALE, to: PROP_SCALE }, duration: 600, ease: "Back.Out" });
     this.tweens.add({ targets: halo, scale: { from: 0.8, to: 1.25 }, alpha: { from: 0.55, to: 0.25 }, duration: 900, yoyo: true, repeat: -1 });
     this.tweens.add({ targets: core, alpha: { from: 0.9, to: 0.55 }, duration: 700, yoyo: true, repeat: -1, delay: 600 });
   }

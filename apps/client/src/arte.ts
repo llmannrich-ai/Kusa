@@ -9,7 +9,9 @@ import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { makeCanvas } from "./art/pixels.ts";
 import { ART_SCALE, HERO_SCALE, refineArt } from "./art/refine.ts";
 import { RIM, WALL_RISE, WALL_VARIANTS, wallCap, wallFace } from "./art/walls.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, PORTAL_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
+import { FLOOR_TEXTURE, FX_ANIM, FX_TEXTURE, SUMMON_ANIMS, SUMMON_TEXTURE } from "./art/textures.ts";
+import { PROP_PIECES } from "./art/propsArt.ts";
+import { toCanvas } from "./art/paint.ts";
 import { BESTIARY_ART, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterTextures, type MonsterAnim } from "./art/bestiary.ts";
 import { biteStrip, leafCanvas, slashStrip, smashStrip } from "./art/effects.ts";
 import { cryptFloorStrip, cryptTallStrip, cryptWallStrip, dustCanvas, lightCanvas, torchStrip } from "./art/cryptDecor.ts";
@@ -413,10 +415,14 @@ show(crypt, onGround(cryptTallStrip(), "#5a4a38"), "móveis", 3);
 show(crypt, onGround(lightCanvas(), "#3a2e22"), "luz", 2);
 show(crypt, onGround(dustCanvas(), "#3a2e22"), "poeira", 8);
 
+// Baú, portais e sangue: 128 px por tile, por código (`art/propsArt.ts`), em tamanho real e no do jogo (¼).
+const props = section("Objetos comuns: baú, portais e sangue (128 px, código)");
+for (const [name, draw] of Object.entries(PROP_PIECES)) show(props, onGround(toCanvas(draw()), "#5a4a38"), name, 1);
+
 const pack = section("Pack Dungeon Crawl (CC0)");
 const packKeys = [
-  ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)), ...Object.values(CHEST_TEXTURE), ...Object.values(PORTAL_TEXTURE),
-  ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE),
+  ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)),
+  ...Object.values(FX_TEXTURE).filter((k) => k !== FX_TEXTURE.leaf), FX_ANIM.fireBurst,
 ];
 for (const key of packKeys) {
   show(pack, await loadImage(key), key, 2);

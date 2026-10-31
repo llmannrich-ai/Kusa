@@ -63,6 +63,7 @@ export const SUMMON_ANIMS: Record<SummonKind, MonsterAnim> = Object.fromEntries(
   }),
 ) as Record<SummonKind, MonsterAnim>;
 
+/** Baú, portais e sangue: desenhados por código em 128 px (`art/propsArt.ts`, gerados em `art/props.ts`). */
 export const CHEST_TEXTURE = { locked: "chest-locked", unlocked: "chest-unlocked", open: "chest-open" };
 export const PORTAL_TEXTURE = { escape: "portal-escape", boss: "portal-boss" };
 /** Faixas de variações de chão (32×32 cada). */
@@ -78,15 +79,13 @@ export const FX_TEXTURE = {
 };
 /** Faixas animadas (quadros 32×32): as do pack e as próprias. */
 export const FX_ANIM = { fireBurst: "fx-fire-burst", slash: "fx-slash", bite: "fx-bite", smash: "fx-smash" };
-/** Manchas de sangue no chão (faixas de variações 32×32). */
+/** Manchas de sangue no chão (faixas de variações de 128 px, `art/propsArt.ts`). */
 export const BLOOD_TEXTURE = { splat: "blood-splat", puddle: "blood-puddle" };
 
 export function preloadArt(scene: Phaser.Scene) {
   scene.load.setPath(DCSS_PATH);
   for (const key of [
     ...monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key)),
-    ...Object.values(CHEST_TEXTURE),
-    ...Object.values(PORTAL_TEXTURE),
     ...Object.values(FLOOR_TEXTURE),
     FX_TEXTURE.arrow,
     FX_TEXTURE.fireball,
@@ -96,7 +95,7 @@ export function preloadArt(scene: Phaser.Scene) {
   ]) {
     scene.load.image(key, `${key}.png`);
   }
-  for (const key of [FX_ANIM.fireBurst, ...Object.values(BLOOD_TEXTURE)]) {
+  for (const key of [FX_ANIM.fireBurst]) {
     scene.load.spritesheet(key, `${key}.png`, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
   }
   scene.load.setPath();

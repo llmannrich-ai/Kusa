@@ -72,7 +72,13 @@ Copiar a forma dos mapas que já estão prontos (Bosque Velho é a referência m
 
 Cada fase é **um PR** (a 1a pode ser dois: chão e bordas primeiro, árvores e enfeites depois).
 
-### Fase 0 — Base
+### Fase 0 — Base (feita)
+
+Entregue: `art/propsArt.ts` (desenho), `art/props.ts` (texturas no jogo, em ¼) e o teste `cenarios`, que cobre os objetos
+comuns e os 5 mapas já padronizados (≈1 s no total). Os PNGs `chest-*`, `portal-*` e `blood-*` do pack saíram.
+
+![Objetos comuns: baú trancado, destrancado e aberto, portais e sangue](arte/objetos-comuns.png)
+
 
 1. **Teste `cenarios`** (`apps/server/scripts/cenarios.ts`, entra em `SUITES` de `all.ts`), sem navegador, como o
    `arte.ts` dos heróis: para cada mapa padronizado, gera um mapa de cada seed fixa e pinta todas as peças que o
@@ -140,6 +146,8 @@ Cada fase é **um PR** (a 1a pode ser dois: chão e bordas primeiro, árvores e 
 
 ### Fase 5 — Limpeza
 
+- Antes de apagar o `marshDecor.ts`: os Portões do Império importam dele o `worley` (`empireArt.ts`); mover a função
+  para `paint.ts`.
 - Apagar o que nenhum mapa usa mais: `marshDecor.ts`, `ruinsDecor.ts`, `desertDecor.ts`, `caveDecor.ts`, as chaves de
   cenário de `MARSH_TEXTURE`/`SWAMP_TEXTURE`/`DESERT_TEXTURE` em `art/textures.ts`, e as seções de cenário da
   galeria (`arte.ts`).

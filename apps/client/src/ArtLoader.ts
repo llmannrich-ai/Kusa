@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { createCombatArt } from "./art/combat.ts";
+import { createPropsArt } from "./art/props.ts";
 import { createCreatureArt, createEffectArt, createHeroArt, preloadArt } from "./art/textures.ts";
 
 let markReady: () => void;
@@ -24,6 +25,7 @@ export class ArtLoader extends Phaser.Scene {
     createCreatureArt(this);
     createEffectArt(this);
     createCombatArt(this);
+    createPropsArt(this);
     markReady();
     this.scene.stop();
   }
