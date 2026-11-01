@@ -2,6 +2,7 @@ import acampamentoUrl from "./fortaleza/acampamento.png";
 import acampamentoFrames from "./fortaleza/acampamento.json";
 import basaltoUrl from "./fortaleza/chao-basalto.webp";
 import capimUrl from "./fortaleza/chao-capim.webp";
+import terraUrl from "./fortaleza/chao-terra.webp";
 import { HD } from "../paint.ts";
 
 /**
@@ -72,3 +73,6 @@ export const CHAO_CAPIM = await loadGround(capimUrl);
 
 /** Calçamento romano de basalto (a estrada, as ruas e o calçamento quebrado dos pátios). */
 export const CHAO_BASALTO = await loadGround(basaltoUrl);
+
+/** Terra batida do acampamento (em volta das tendas e fogueiras). */
+export const CHAO_TERRA = await loadGround(terraUrl);

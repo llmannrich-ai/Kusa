@@ -24,46 +24,6 @@ function wrapOn(p: Paper, x: number, y: number, mat: number | null, tone: number
   p.on(mod(Math.round(x), HD), mod(Math.round(y), HD), mat, tone);
 }
 
-// --- Chão do acampamento -------------------------------------------------------------------
-
-/**
- * Terra batida do acampamento: barro em manchas, poças de lama escura, palha e capim pisado, pedrinhas e pegadas de
- * bota. Tudo embrulha na borda do tile.
- */
-export function dirtTile(v: number): Paper {
-  const p = paper();
-  p.fill([0, 0, HD - 1, HD - 1], () => true, E.Dirt, (x, y) => FLAT - 0.08 + (sn(x, y, 32, 700 + (v % 2)) - 0.5) * 0.24 + (sn(x, y, 8, 701 + v) - 0.5) * 0.1,
-    (x, y) => (noise(x, y, 702 + v) < 0.05 ? -1 : noise(x, y, 709 + v) > 0.985 ? 1 : 0));
-  for (let y = 0; y < HD; y++)
-    for (let x = 0; x < HD; x++) {
-      const i = y * HD + x;
-      const mud = sn(x, y, 16, 703 + v) + (noise(x, y, 704) - 0.5) * 0.1;
-      if (mud < 0.2) { p.mat[i] = E.Mortar; p.off[i] = mud < 0.12 ? -1 : 0; }
-      else if (sn(x, y, 32, 705 + v) > 0.74 && noise(x, y, 706) < 0.5) p.mat[i] = E.Dry;
-    }
-  // Palha solta e capim pisado.
-  for (let k = 0; k < 26; k++) {
-    const x = noise(k, v, 707) * HD, y = noise(v, k, 708) * HD, a = noise(k, k + v, 710) * Math.PI;
-    for (let s = 0; s < 7; s++) wrapOn(p, x + Math.cos(a) * s, y + Math.sin(a) * s, E.Dry, s % 3 === 0 ? 2 : 4);
-  }
-  // Pegadas de bota: pares de solas fundas, cada uma com a borda de baixo clara.
-  for (let k = 0; k < 3 + (v % 2); k++) {
-    const x = noise(k, v, 711) * HD, y = noise(v, k, 712) * HD;
-    for (const [dx, dy] of [[0, 0], [9, -14]] as const)
-      for (let yy = -5; yy <= 5; yy++)
-        for (let xx = -3; xx <= 3; xx++) {
-          const d = (xx / 3) ** 2 + (yy / 5.5) ** 2;
-          if (d > 1) continue;
-          wrapOn(p, x + dx + xx, y + dy + yy, null, d > 0.7 && yy > 0 ? 4 : 1);
-        }
-  }
-  for (let k = 0; k < 6; k++) {
-    const x = noise(k, v, 713) * HD, y = noise(v, k, 714) * HD;
-    wrapOn(p, x, y, E.Vein, 4); wrapOn(p, x + 1, y, E.Vein, 3); wrapOn(p, x, y + 1, E.Vein, 1); wrapOn(p, x + 1, y + 1, E.Vein, 2);
-  }
-  return p;
-}
-
 // --- Abismo -----------------------------------------------------------------------------------
 
 /** Andares entre o castelo e o vale: o paredão tem esta altura (tiles) e o vale aparece deslocado isto para o sul. */

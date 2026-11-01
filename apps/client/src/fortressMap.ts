@@ -12,11 +12,11 @@ import {
 } from "./art/empireMonuments.ts";
 import {
   DROP, HANG, KEEP_RISE, ROOM_WALL, STAKE, THRONE, bridgeTile,
-  cliffTile, dirtTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
+  cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   stakeSprite, terraceTile, throneSprite,
 } from "./art/fortressArt.ts";
 import { canopyTile, waterTile } from "./art/forestArt.ts";
-import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
+import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, CHAO_TERRA, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
 import { GLOW, MIST, SpriteSheet, createGlowArt, single } from "./gatesMap.ts";
 import { ChunkCuller, focusTile, patchTint, type MapAmbience } from "./mapShared.ts";
 
@@ -115,10 +115,6 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     if (test(x + 1, y + 1) && !(m & (OPEN.s | OPEN.e))) m |= OPEN.se;
     if (test(x - 1, y + 1) && !(m & (OPEN.s | OPEN.w))) m |= OPEN.sw;
     return m;
-  };
-  const pick = (x: number, y: number, count: number, seed = 0) => {
-    const n = hash(x, y, seed);
-    return n < 0.45 ? 0 : 1 + Math.floor((n - 0.45) / 0.55 * (count - 1));
   };
   const reserved = (x: number, y: number) =>
     tileDistance(x, y, d.portal.x, d.portal.y) <= 1 || d.side.some((r) => x === r.x + 1 && y === r.y + 1)
@@ -238,14 +234,13 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       } else if (yard(x, y)) {
         ground[i] = groundFrame("basalto", CHAO_BASALTO, x, y);
       } else if (camp(x, y)) {
-        const v = pick(x, y, 4, 8);
-        ground[i] = atlas.frame(`dirt${v}`, () => dirtTile(v).render(false));
+        ground[i] = groundFrame("terra", CHAO_TERRA, x, y);
       } else ground[i] = grassFrame(x, y);
 
       // Beirada do abismo (menos nas pontes, que seguem por cima dele).
       const edge = bridge(x, y) ? 0 : mask(x, y, abyss);
       if (edge) fringe[i] = atlas.frame(`ledge${edge}`, () => ledgeEdge(edge));
-      else if ((road(x, y) || plaza(x, y) || yard(x, y)) && !hall(x, y)) {
+      else if ((road(x, y) || plaza(x, y) || yard(x, y) || camp(x, y)) && !hall(x, y)) {
         const g = mask(x, y, (a, b) => solid(a, b) && !paved(a, b) && !camp(a, b) && !inKeep(a, b) && !inTower(a, b) && !(battlement(a, b) && ruin(a, b)) && !roomInside(a, b));
         if (g) {
           let k = maskFrames.indexOf(g);
@@ -348,7 +343,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   layer("sombra-vale", voidShade, floorDepth - 1);
   // As texturas do ChatGPT (capim, basalto) já variam sozinhas: vão sem as manchas de luz, para a camada de capim da
   // borda casar pixel a pixel com o capim de baixo.
-  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || (!paved(x, y) && !camp(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
+  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || camp(x, y) || (!paved(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
   layer("chao", ground, floorDepth, (x, y) => (plainTexture(x, y) ? 0xffffff : patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67)));
   // Por cima do chão vem a camada de capim das bordas (`floorDepth + 0.001`), e por cima dela as beiradas, sombras e
   // enfeites (que ela não pode esconder).
