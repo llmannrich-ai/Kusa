@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Room, ServerError, type Client } from "colyseus";
 import {
+  CLASSES,
+  CLASS_UNLOCK,
   MAX_PARTY_SIZE,
   MSG,
+  classUnlocked,
   SERVER_TICK_MS,
   VERSION_MISMATCH_CODE,
   MAPS,
@@ -54,6 +57,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private matchId = randomUUID();
   /** sessionId → conta do Supabase (null = convidado). */
   private users = new Map<string, string | null>();
+  /** sessionId → bosses vencidos pela conta (qualquer classe): abrem as classes trancadas, também para os bots. */
+  private bossClears = new Map<string, string[]>();
 
   onCreate(options: JoinOptions) {
     this.hunt = new Hunt(this.state, {
@@ -92,6 +97,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
     // Bot ocupa uma vaga: a sala aceita um humano a menos.
     this.onMessage(MSG.addBot, (client, msg: AddBotMessage) => {
+      if (!this.classOpen(client.sessionId, msg?.classId)) return;
       if (this.hunt.addBot(client.sessionId, msg)) this.updateListing();
     });
     this.onMessage(MSG.removeBot, (client, msg: RemoveBotMessage) => {
@@ -124,6 +130,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       throw new ServerError(VERSION_MISMATCH_CODE, `O jogo foi atualizado: recarregue a página. (servidor v999, regras ${RULES_VERSION})`);
     }
     const account = await resolveAccount(options.accessToken);
+    // Classe trancada (Xamã Orc): só entra quem já venceu o boss que a abre, com qualquer personagem da conta.
+    if (supabase && options.classId in CLASSES && !classUnlocked(account?.bossClears ?? [], options.classId)) {
+      const boss = CLASS_UNLOCK[options.classId] as keyof typeof MONSTERS;
+      throw new ServerError(4403, `${CLASSES[options.classId].name} ainda está trancado: vença ${MONSTERS[boss].name} com qualquer herói.`);
+    }
     // Campanha: quem cria a sala precisa ter o cenário aberto com a classe (quem entra na sala de outro não).
     // Sem banco (modo convidado, testes) não há campanha para conferir.
     if (supabase && this.users.size === 0) {
@@ -142,6 +153,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
   onJoin(client: Client, options: JoinOptions, auth: { account: Account | null }) {
     this.users.set(client.sessionId, auth.account?.userId ?? null);
+    this.bossClears.set(client.sessionId, auth.account?.bossClears ?? []);
     this.hunt.join(client.sessionId, {
       name: auth.account?.name ?? options.name,
       classId: options.classId,
@@ -150,6 +162,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       activeSpells: auth.account?.activeSpells ?? [],
     });
     this.updateListing();
+  }
+
+  /** O bot desta classe pode entrar? Sem banco (convidado, testes) toda classe está aberta. */
+  private classOpen(sessionId: string, classId: ClassId | undefined) {
+    if (!supabase || !classId || !(classId in CLASSES)) return true;
+    return classUnlocked(this.bossClears.get(sessionId) ?? [], classId);
   }
 
   onLeave(client: Client) {

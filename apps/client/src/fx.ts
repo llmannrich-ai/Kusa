@@ -71,6 +71,7 @@ export class CombatFx {
       case "paladin": return this.projectile(FX.arrow, from, to, ms);
       case "druid": return this.projectile(FX.greenLight, from, to, ms, { trail: 0x7bd36a, glow: 0x3fbf3a, impact: 0x9cff7a });
       case "sorcerer": return this.projectile(FX.darkLight, from, to, ms, { trail: 0x5a1c7a, glow: 0x8e44ad, impact: 0xb04ae0 });
+      case "shaman": return this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xe67e22, impact: 0xffd166, scale: 1.3 });
     }
   }
 
@@ -80,6 +81,17 @@ export class CombatFx {
     switch (spellId) {
       case "blade_spin": return this.bladeSpin(from);
       case "war_cry": return this.ring(from, radius, 0xe67e22, 500, 4);
+      // Xamã Orc. O totem: a brasa voa do xamã até o chão no lançamento e do totem até o monstro nos ecos.
+      case "ember_totem":
+        if (from.x === to.x && from.y === to.y) return this.sparks(to, 0xffd166, 6);
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xff7a1a, impact: 0xffd166, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xff7a1a, 6));
+      // O tambor: duas batidas em ondas no chão (a área do reforço), sem tremer a câmera.
+      case "war_drum": {
+        const reach = (SPELLS.war_drum.rally?.radius ?? 4) * TILE_SIZE;
+        this.ring(from, reach, 0xe67e22, 450, 4);
+        return this.later(180, () => this.ring(from, reach, 0xffb35a, 450, 3));
+      }
       case "holy_arrow":
         this.projectile(FX.holyArrow, from, to, ms, { trail: 0xffe9a3, glow: 0xf7d774, impact: 0xfff6c8, scale: 1.5 });
         return this.later(ms, () => this.holyFlash(to));

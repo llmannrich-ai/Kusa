@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
 export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -360,6 +360,22 @@ export const MAPS: Record<MapId, MapDef> = {
     minibosses: [["awakenedTree", 1], ["fallenWarden", 1], ["corruptedDryad", 1]],
     mimicChance: 0,
     bosses: [["erlking", 1]],
+  },
+  bog: {
+    id: "bog", name: "Charco Cinzento", icon: "🌫️", difficulty: 8, durationSeconds: 8 * 60,
+    description: "Uma turfeira cinzenta e alagada, coberta da cinza de um incêndio antigo. A estrada afundada do império sobe do cais até a ilha do lago negro, com dois laços: as passarelas da Lagoa ou a trilha da Mata Queimada, a estrada da Torre de Vigia ou as passarelas das Palafitas. Terreiros de paliçada, monólitos com a runa e braseiros de turfa. Mapa fixo. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
+  },
+  badlands: {
+    id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60,
+    description: "Vales largos de barro vermelho rachado entre platôs de rocha. Do desfiladeiro, o caminho se divide entre o pátio da mina de ferro e o campo das torres de pedra, cruza a Ravina Grande pela ponte, passa dentro das costelas de um bicho gigante e atravessa a segunda ravina pela ponte de cordas ou pelo arco de pedra até a cratera do crânio. Mapa fixo. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
   },
 };
 

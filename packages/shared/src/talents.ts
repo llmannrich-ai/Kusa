@@ -107,6 +107,7 @@ const AURA_NAMES: Record<ClassId, Record<AuraStat, string>> = {
   paladin: { damage: "Áurea da Mira", hp: "Áurea da Fé", mana: "Áurea Sagrada", speed: "Áurea do Batedor" },
   sorcerer: { damage: "Áurea do Caos", hp: "Áurea da Égide", mana: "Áurea Arcana", speed: "Áurea do Vento" },
   druid: { damage: "Áurea dos Espinhos", hp: "Áurea do Carvalho", mana: "Áurea da Seiva", speed: "Áurea do Cervo" },
+  shaman: { damage: "Áurea da Forja", hp: "Áurea do Couro Curtido", mana: "Áurea do Entalhe", speed: "Áurea do Clã" },
 };
 
 const AURA_ICONS: Record<AuraStat, string> = { damage: "⚔️", hp: "❤️", mana: "💧", speed: "👟" };
@@ -137,6 +138,7 @@ export const TREE_BRANCHES: Record<ClassId, [string, string, string]> = {
   paladin: ["Mira", "Luz", "Batedor"],
   sorcerer: ["Raio", "Gelo", "Trevas"],
   druid: ["Matilha", "Bosque", "Espinhos"],
+  shaman: ["Horda", "Totens", "Brasa"],
 };
 
 /**
@@ -227,6 +229,13 @@ const SHAPES: Record<ClassId, Shape> = {
     ["mamba_bite", 2, 6, "toxin", 0], ["thunderwave", 2, 6, "charged_sky", 1],
     ["poison_cloud", 2, 7, "mamba_bite", 0], ["call_lightning", 2, 7, "thunderwave", 1],
   ],
+  // Xamã Orc, Fase 1 (docs/CLASSE_XAMA_ORC.md): só as iniciais e as áureas. Os ramos Horda, Totens e Brasa crescem
+  // na Fase 2, com as invocações do clã.
+  shaman: [
+    ["ember_totem", 1, 0],
+    ["damage", 0, 1, "ember_totem"], ["mana", 1, 1, "ember_totem"], ["war_drum", 2, 1, "ember_totem"],
+    ["hp", 2, 2, "war_drum"],
+  ],
 };
 
 /**
@@ -271,6 +280,7 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["spore_burst", 2, 3, "venom_thorn", -1], ["bramble_burst", 2, 4, "spore_burst", -1, "hornet_swarm"],
     ["pack_roar", 0, 3, "spirit_wolf", -1], ["pollen_breeze", 1, 3, "healing_moth", 1], ["thorn_spray", 2, 3, "venom_thorn", 1],
   ],
+  shaman: [],
 };
 
 /** Tomo de cada ramo: +força em todas as magias do ramo por nível. */
@@ -282,6 +292,7 @@ const TOME_NAMES: Record<ClassId, [string, string, string]> = {
   paladin: ["Tomo da Mira", "Tomo da Luz", "Tomo do Batedor"],
   sorcerer: ["Tomo do Raio", "Tomo do Gelo", "Tomo das Trevas"],
   druid: ["Tomo da Matilha", "Tomo do Bosque", "Tomo dos Espinhos"],
+  shaman: ["Tomo da Horda", "Tomo dos Totens", "Tomo da Brasa"],
 };
 
 const TOME_ICONS = ["📕", "📗", "📘"];
@@ -295,6 +306,7 @@ const TOME_LANES: Record<ClassId, [number, number, number]> = {
   paladin: [2, -2, 2],
   sorcerer: [2, -2, 2],
   druid: [-2, 2, 2],
+  shaman: [2, -2, 2],
 };
 
 /** Força extra que cada nível de uso de uma magia vizinha na árvore dá (Diablo 2: sinergia). */
@@ -347,15 +359,18 @@ function classTree(classId: ClassId): TalentDef[] {
       requires: { id: id(parent), rank: 1 }, alsoRequires: also ? { id: id(also), rank: 1 } : undefined,
     };
   });
-  const tomes = TOME_LANES[classId].map((lane, col): TalentDef => {
+  // Ramo ainda sem magia (o Xamã Orc da Fase 1) não ganha Tomo: não teria o que fortalecer.
+  const branchHasSpell = (col: number) => [...trunk, ...ribs].some((t) => t.col === col && t.row > 0 && t.kind === "spell");
+  const tomes = TOME_LANES[classId].flatMap((lane, col): TalentDef[] => {
+    if (!branchHasSpell(col)) return [];
     const first = trunk.find((t) => t.col === col && t.row === 1);
     if (!first) throw new Error(`${classId}: ramo ${col} sem o primeiro nó do tronco`);
-    return {
+    return [{
       id: id(`tome${col}`), classId, col, row: 2, lane, kind: "tome", name: TOME_NAMES[classId][col], icon: TOME_ICONS[col],
       tome: { perRank: TOME_RULE.perRank, perRankAfter: TOME_RULE.perRankAfter, baseRanks: TOME_RULE.baseRanks },
       maxRank: TOME_RULE.maxRank, freeRank: 0,
       baseCost: TOME_RULE.baseCost, costGrowth: TOME_RULE.costGrowth, requires: { id: first.id, rank: 1 },
-    };
+    }];
   });
   // Dons do topo: na linha 2, do lado oposto ao Tomo, pedindo o mesmo primeiro nó do tronco (comprado, sem XP).
   const gifts = Object.values(GIFTS).filter((g) => g.classId === classId).map((g): TalentDef => {

@@ -288,6 +288,10 @@ interface Seat {
   /** Estandarte de Guerra: dano extra enquanto o herói está no campo (renovado a cada pulso). */
   fieldDamage: number;
   fieldDamageUntil: number;
+  /** Tambor de Guerra (de qualquer xamã): ataca `rallyHaste` mais rápido e causa +`rallyDamage` até `rallyUntil`. */
+  rallyHaste: number;
+  rallyDamage: number;
+  rallyUntil: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -340,6 +344,9 @@ interface SummonBrain {
   /** Grito da Fera: ataca `haste` (fração da recarga cortada) mais rápido até `hasteUntil`. */
   haste: number;
   hasteUntil: number;
+  /** Tambor de Guerra: dano +`rallyDamage` (fração) até `rallyUntil`. */
+  rallyDamage: number;
+  rallyUntil: number;
 }
 
 /** Dados do campo no chão que só o servidor precisa. */
@@ -614,6 +621,7 @@ export class Hunt {
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
+      rallyHaste: 0, rallyDamage: 0, rallyUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1206,7 +1214,8 @@ export class Hunt {
     }
 
     // Arma e botas mudam o ritmo (machado e besta são mais lentos; varinha e itens mágicos, mais rápidos).
-    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste));
+    const rallyHaste = now < seat.rallyUntil ? seat.rallyHaste : 0;
+    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste - rallyHaste));
     seat.attackUntil = 0;
     seat.basicAim = null;
     if (m && form?.maul) return this.maul(sessionId, p, m);
@@ -2047,6 +2056,8 @@ export class Hunt {
       });
     }
 
+    if (spell.rally && p.status === "playing") this.rally(sessionId, p, seat, spell.rally, now);
+
     const ally = allyId ? this.state.players.get(allyId) : undefined;
     const allySeat = allyId ? this.seats.get(allyId) : undefined;
     if (spell.cleanse && ally && allySeat) {
@@ -2058,6 +2069,32 @@ export class Hunt {
     if (spell.seed && allyId && ally?.status === "playing" && allySeat) this.plantSeed(sessionId, seat, allyId, ally, allySeat, spell.seed, now);
 
     if (spell.summon && p.status === "playing") this.summon(sessionId, p, spell, rank);
+  }
+
+  /**
+   * Tambor de Guerra: quem conjura, os heróis e as criaturas (de qualquer herói) a até `radius` tiles, com linha de
+   * visão, atacam mais rápido e batem mais forte por `ms`. Um tambor novo troca o anterior (não soma).
+   */
+  private rally(sessionId: string, p: Player, seat: Seat, rally: NonNullable<SpellDef["rally"]>, now: number) {
+    const near = (x: number, y: number) => tileDistance(p.x, p.y, x, y) <= rally.radius && hasLineOfSight(this.dungeon, p.x, p.y, x, y);
+    this.state.players.forEach((ally, id) => {
+      const allySeat = this.seats.get(id);
+      if (ally.status !== "playing" || !allySeat || !near(ally.x, ally.y)) return;
+      allySeat.rallyHaste = rally.haste;
+      allySeat.rallyDamage = rally.damage;
+      allySeat.rallyUntil = now + rally.ms;
+      seat.stats.buffMs += rally.ms;
+      if (rally.heal) this.healPlayer(ally, Math.max(1, Math.round(ally.maxHp * rally.heal)), sessionId);
+    });
+    this.state.summons.forEach((s) => {
+      const summonBrain = this.summonBrains.get(s.id);
+      if (!summonBrain || !near(s.x, s.y)) return;
+      summonBrain.haste = Math.max(now < summonBrain.hasteUntil ? summonBrain.haste : 0, rally.haste);
+      summonBrain.hasteUntil = Math.max(summonBrain.hasteUntil, now + rally.ms);
+      summonBrain.rallyDamage = rally.damage;
+      summonBrain.rallyUntil = now + rally.ms;
+      if (rally.heal) s.hp = Math.min(s.maxHp, s.hp + Math.round(s.maxHp * rally.heal));
+    });
   }
 
   /** Forma animal: troca a anterior. O urso soma vida à máxima (entra cheia) e tira de volta quando a forma acaba. */
@@ -2337,7 +2374,7 @@ export class Hunt {
       this.state.summons.set(s.id, s);
       this.summonBrains.set(s.id, {
         def: SUMMONS[kind], spellId: spell.id, damage: stats.damage, heal: stats.heal, mana: stats.mana,
-        expiresAt: now + durationMs, nextMoveAt: now + 300, nextAttackAt: now + 300, targetId: null, haste: 0, hasteUntil: 0,
+        expiresAt: now + durationMs, nextMoveAt: now + 300, nextAttackAt: now + 300, targetId: null, haste: 0, hasteUntil: 0, rallyDamage: 0, rallyUntil: 0,
         deathHeal: spell.summonDeathHeal ?? null,
       });
     }
@@ -2406,7 +2443,7 @@ export class Hunt {
       if (now < brain.nextAttackAt) return;
       brain.nextAttackAt = now + def.attackCooldownMs * (now < brain.hasteUntil ? 1 - brain.haste : 1);
       const m = target;
-      const amount = rollDamage(this.random, brain.damage);
+      const amount = rollDamage(this.random, brain.damage * (now < brain.rallyUntil ? 1 + brain.rallyDamage : 1));
       const hit: Hit = { attacker: s.id, fromX: s.x, fromY: s.y, fx: def.attackFx };
       // À distância (vespa), o ferrão voa; o cliente desenha o projétil pelo `fx` do dano.
       this.after(def.attackRange > 1 ? 200 : 0, () => {
@@ -3605,10 +3642,13 @@ export class Hunt {
     const def = spell.field!;
     const now = this.host.now();
     const traps = def.kind !== "zone" ? seat.traits.find((t) => t.traps)?.traps : undefined;
-    // Várias de uma vez (Abrolhos): cabem as de um lançamento (vezes o Engenhoso).
-    const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3 : (traps?.max ?? 1) * (def.count ?? 1);
+    // Quantos campos desta magia cabem: o limite da magia (totens) ou do Engenhoso, vezes as armadilhas de um lançamento
+    // (Abrolhos).
+    const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3 : Math.max(traps?.max ?? 1, def.max ?? 1) * (def.count ?? 1);
+    // O estilo gravado no campo é o da Pólvora ou o desenho da magia (nuvem, totem): compara com o mesmo.
+    const look = style || (def.look ?? "");
     const mine = [...this.state.fields.values()]
-      .filter((f) => f.owner === sessionId && f.spellId === spell.id && f.style === style)
+      .filter((f) => f.owner === sessionId && f.spellId === spell.id && f.style === look)
       .sort((a, b) => (this.fieldBrains.get(a.id)?.until ?? 0) - (this.fieldBrains.get(b.id)?.until ?? 0));
     // A parede troca a anterior inteira (são vários tiles da mesma magia).
     if (def.kind === "wall") mine.forEach((old) => this.removeField(old.id));
@@ -3619,7 +3659,7 @@ export class Hunt {
     f.id = `f${this.nextFieldId++}`;
     f.kind = def.kind;
     f.spellId = spell.id;
-    f.style = style || (def.look ?? "");
+    f.style = look;
     f.owner = sessionId;
     f.x = x;
     f.y = y;
@@ -3776,10 +3816,12 @@ export class Hunt {
         const target = this.nearestMonsterTo(f.x, f.y, f.radius);
         if (!target) continue;
         brain.shotsLeft--;
-        // O raio da Fúria dos Céus cai do céu quase na hora; a flecha da estaca voa até o alvo.
-        const ms = f.style === "storm" ? 150 : flightMs(18, f.x, f.y, target.x, target.y);
+        // O raio da Fúria dos Céus cai do céu quase na hora; a flecha da estaca e a brasa do totem voam até o alvo.
+        const ms = f.style === "storm" ? 150 : flightMs(f.style === "totem" ? 12 : 18, f.x, f.y, target.x, target.y);
         this.host.broadcast(MSG.spell, { from: f.owner, spellId: brain.spell.id, x: f.x, y: f.y, tx: target.x, ty: target.y, ms, echo: true } satisfies SpellMessage);
-        const hit: Hit = { attacker: f.owner, fromX: f.x, fromY: f.y, fx: "arrow" };
+        const hit: Hit = { attacker: f.owner, fromX: f.x, fromY: f.y, fx: f.style === "totem" ? "fire" : "arrow" };
+        // Totem da Brasa (Maestria): a brasa queima.
+        const burn = brain.spell.dot;
         const amount = rollDamage(this.random, brain.amount);
         // Estática (Traço) vale também para os raios da Fúria dos Céus (magia de energia).
         const stun = seat.traits.find((t) => t.stunChance && t.stunChance.element === brain.spell.element)?.stunChance;
@@ -3792,6 +3834,7 @@ export class Hunt {
             alive.stunned = true;
             seat.stats.ccMs.stun += stun.ms;
           }
+          if (burn) this.applyDot(alive, aliveBrain, f.owner, brain.spell.id, this.baseDamage(f.owner, owner, "spell") * burn.perSec, burn.ms, burn.kind, this.host.now());
           this.damageMonster(alive, amount, hit, brain.spell.id);
         });
         if (brain.shotsLeft <= 0) this.removeField(f.id);
@@ -3907,6 +3950,7 @@ export class Hunt {
     });
     bonus += voice;
     if (this.host.now() < seat.fieldDamageUntil) bonus += seat.fieldDamage;
+    if (this.host.now() < seat.rallyUntil) bonus += seat.rallyDamage;
     return bonus;
   }
 

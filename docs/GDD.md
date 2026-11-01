@@ -49,7 +49,19 @@ redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
 O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi").
 Código em `apps/client/src/menu.ts`.
 
-- **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas).
+- **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas). Tocar em **Grimório** (ou nas magias que vão para a hunt) abre **Magias da hunt** (ver abaixo); os 3 ramos abrem a árvore no ramo tocado.
+  - **Classe trancada:** o **Xamã Orc** só abre quando qualquer personagem da conta vence **Vorgak** na Fortaleza Orc
+    (`CLASS_UNLOCK` em `packages/shared/src/classes.ts`, repetido no banco em `class_unlocked`). Antes disso, o
+    medalhão aparece em silhueta escura com 🔒 e dá para ver o herói, o papel, os atributos e o Grimório, mas o
+    Batalhas recusa ("vença Vorgak..."). O servidor de jogo recusa a sala (e o bot) com a classe trancada e o banco
+    recusa a hunt solo (`start_solo_run`). Na tela de resultado da hunt em que Vorgak cai, uma carta avisa:
+    "⛓️ Os xamãs da forja estão livres — Xamã Orc liberado". Desenho completo em `docs/CLASSE_XAMA_ORC.md`.
+- **Magias da hunt** (subpágina de Heróis, `renderLoadout` em `menu.ts`, leitura em `apps/client/src/spellPlan.ts`): onde o jogador escolhe as até 3 magias ativas de cada slot sem abrir ficha por ficha na árvore.
+  - No alto, os **3 slots** lado a lado, cada um com o nível em que abre na hunt e 3 encaixes com as magias ativas; tocar abre a lista do slot. O **slot 3** aparece trancado, "em breve", até existir no jogo (`SPELL_SLOT_LEVELS`).
+  - **O que você leva para a hunt:** 4 necessidades (dano em área, dano no alvo, controle, sobrevivência) com as magias ativas dos dois slots que atendem cada uma; a primeira que falta vira uma dica com a solução (ativar uma magia conhecida que está fora, ou aprender uma da árvore).
+  - **Lista do slot:** as magias conhecidas da mais forte para a mais fraca (+10% por nível de uso vezes a sinergia e o Tomo), com nível, Maestria, papéis (área, alvo único, controle, defesa, cura, mobilidade, invocação, reforço, tirados dos efeitos), mana, recarga e força extra. A chave ao lado liga e desliga na hunt e grava na hora (`set_active_spells`); com 3 magias ou menos no slot, todas ficam ligadas e a chave trava. Tocar na magia abre a ficha da árvore.
+  - **Sugestão:** começa pela mais forte e, a cada vaga, pesa a força contra o papel novo que a magia traz ao slot e a necessidade que o outro slot não cobre, para a escolha na hunt ter opções diferentes. Cada magia sugerida diz o motivo; "Aplicar" troca o slot inteiro e o "Desfazer" volta a escolha anterior.
+  - Embaixo, **Para aprender neste slot**: as magias ainda não compradas, com o ramo, os papéis e o preço (ou 🔒), para planejar a próxima compra.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo). Os medalhões do alto são os mesmos da página Heróis: trocar de herói numa página troca na outra e no herói da próxima hunt.
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
@@ -110,6 +122,9 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Druida | Matilha | 🐺 Laço da Matilha | +1,2% de vida e de dano das suas criaturas | +30% |
   | Druida | Bosque | 🌿 Seiva Antiga | +1% de cura (magias, campos e criaturas) | +25% |
   | Druida | Espinhos | 🌵 Seiva Venenosa | +1,2% de dano dos seus venenos e sangramentos | +30% |
+  | Xamã Orc | Horda | 📯 Grito do Clã | +1% de dano para você e os aliados a até 4 tiles (entre vários, vale o grito mais forte) | +25% |
+  | Xamã Orc | Totens | 🪵 Casca de Ferro | +0,6 de armadura | +15 |
+  | Xamã Orc | Brasa | 🔥 Brasa Viva | +1,2% de dano do ataque básico | +30% |
 - **Sinergias** (inspiradas no Diablo 2): cada nível de uso de uma magia **vizinha** na árvore (ligada por galho,
   pai ou filha, inclusive o segundo pai) dá **+2% de força** a esta (`SYNERGY_PER_LEVEL`). Força = dano, dano
   contínuo, cura, escudo, armadura, marca, campos e criaturas, como o nível da magia (multiplica a força do nível).
@@ -157,8 +172,10 @@ comprar **e usar** as anteriores do mesmo ramo.
     Flecha Relâmpago salta 5 vezes; Barragem faz sangrar; Armadilha prende quem está colado; Cordão atira 7 vezes.
   - **Mortos-vivos:** Esqueleto, Esqueleto arqueiro e Zumbi (Cripta); Afogado, Carniçal e Fogo-fátuo (Pântano) (tipo `undead` em `monsters.ts`).
   - **Campos no chão** (`state.fields`): a zona brilha nos tiles do raio (laranja no chão em chamas), a armadilha aparece
-    como mandíbulas de ferro e a estaca como um poste com o alcance em volta. Conjurar de novo troca o campo mais antigo
-    da mesma magia. A estaca e a armadilha atiram e disparam sozinhas; o dano conta para quem as pôs.
+    como mandíbulas de ferro, a estaca como um poste com o alcance em volta e o totem do Xamã Orc como um poste
+    entalhado com um crânio de chifres e a chama acesa no alto. Conjurar de novo troca o campo mais antigo da mesma
+    magia (o totem deixa 2 de cada vez, `field.max`). A estaca, o totem e a armadilha atiram e disparam sozinhos; o
+    dano conta para quem os pôs. Os monstros não atacam campos.
   - **Mira em aliado** (Escudo da Luz): arrastando, o herói a até 1 tile do ponto (círculo azul nos pés); parado no
     botão, o mais ferido ao alcance. **Mira em leque** (Barragem e as magias em leque): a mira acende os tiles do leque, com o ângulo de cada magia.
   - **Feiticeiro** (os 3 ramos especializados). As magias do Feiticeiro têm elemento (energia, fogo, gelo ou trevas):
@@ -248,6 +265,7 @@ Regras em `packages/shared/src/spellxp.ts`, repetidas no banco (`spell_level`, `
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução → ✦ Berserker **ou** Duelista | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço → ✦ Guardião **ou** Inabalável | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante → ✦ Senhor da Guerra **ou** Desafiante |
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
+| Xamã Orc (raiz: Totem da Brasa) | **Horda:** Áurea da Forja (Fase 2: as invocações do clã) | **Totens:** Áurea do Entalhe (Fase 2) | **Brasa:** Tambor de Guerra → Áurea do Couro Curtido (com o Tomo da Brasa; Fase 2: o resto do ramo) |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo → ✦ Mestre das Feras **ou** Metamorfo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta → ✦ Círculo da Vida **ou** Guardião da Natureza | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza → ✦ Peste **ou** Tempestade |
 
 #### Costelas
@@ -549,7 +567,9 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
-- **Ainda não:** os outros 8 cenários da campanha não existem (medalhões numerados).
+- **Etapa 9:** o Charco Cinzento e os Ermos Rubros (só o terreno) abrem com Vorgak; a Fortaleza Orc virou a segunda
+  bifurcação, e o herói troca de ramo voltando pela trilha até o último ponto comum (`worldMap.ts`).
+- **Ainda não:** os outros 6 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
@@ -575,6 +595,8 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🍄 Coração da Mata | 6 ★★★★★★ | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | Fungóide, Javali-Espinho, Cipó Estrangulador, Cervo Corrompido, Sombra Élfica, Pantera das Sombras, Urso-coruja → Árvore Desperta, Guardião Élfico Caído, Dríade Corrompida → Rei Galhado |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
+| 🌫️ Charco Cinzento | 8 ★★★★★★★★ (provisório) | 8 min | 64×120, mapa fixo, em pé: a estrada afundada com 2 laços (passarelas da Lagoa ou Mata Queimada; Torre de Vigia ou Palafitas) até a ilha do lago negro | ainda sem monstros (só o terreno) |
+| 🦴 Ermos Rubros | 8 ★★★★★★★★ (provisório) | 8 min | 64×120, mapa fixo, em pé: desfiladeiro, a bifurcação da mina e do campo das torres, 2 ravinas com pontes, as ossadas e a cratera do crânio | ainda sem monstros (só o terreno) |
 | ⚔️ Fortaleza Orc | 8 ★★★★★★★★ | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | o clã do Pântano do Kosaradius bem mais forte (×2,4 os comuns, ×2,5 os mini-bosses; ~130 monstros por hunt, 40% a mais que nas Mesas) e em bandos que lotam as salas: Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Chefe de Guerra Orc, Ogro Xamã → Vorgak, o Senhor da Brasa |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
@@ -774,6 +796,59 @@ monstros dos dois estão em "Bestiário".
   Sem faixa de sombra nem folhas em fila na beira da mata, sem tinta por tile (capim e trilha em tom liso, contínuos
   em blocos de 4×4 tiles) e poucos enfeites rasteiros: o chão não mostra a grade dos tiles.
 - **Loot:** teto da hunt solo de 3.200 no Bosque Velho e de 3.800 no Coração da Mata, cheio em 240 s nos dois.
+
+### Mapas fixos (regra para todo mapa novo)
+
+Decisão de 01/11: mapa novo é **fixo** (a mesma planta em toda hunt, como a Fortaleza Orc), para controlar quanto o
+herói anda sem lutar. Nos mapas sorteados e abertos, de 40% a 55% do chão andável ficava a mais de 6 tiles de qualquer
+luta (Dunas 52%, Mesas 55%; a Cripta, 8%) e havia pontos a até 55 s de andada do inimigo mais perto. Regras:
+
+- **Área contida:** cerca de 64×120 tiles e ~2.800 tiles andáveis em 8 min.
+- **Regra dos 6 tiles** (teste `ritmo`): no máximo 10% do chão andável a mais de 6 tiles (o alcance de aggro) de uma
+  luta (zona, emboscada, sala lateral, arena; a entrada conta como chegada) e nenhum ponto a mais de 15 tiles (~5 s).
+- **Uma luta a cada ~18 tiles** em todo caminho, nos dois lados de cada bifurcação; as **emboscadas** são as campinas
+  (`meadows`, a tabela da zona mais perto), então o servidor e o spawn não mudam.
+- **Nenhum beco sem recompensa:** todo desvio termina numa sala lateral (mini-boss e baú).
+- **Laços em vez de labirinto:** espinha central com 2 laços que se reencontram.
+- **Sensação de mapa aberto:** caminhos largos (8–10 tiles) e de beira ondulada, áreas que emendam umas nas outras e
+  bordas que deixam ver longe (água e ravina bloqueiam o passo, não a visão); parede só onde o desenho pede.
+
+### Charco Cinzento e Ermos Rubros (terreno)
+
+A etapa 9 da campanha, a segunda bifurcação: os dois lados abrem com **Vorgak**, o boss da Fortaleza Orc (`unlockedBy`,
+no banco `map_unlocked_by`). Por enquanto só o terreno e a arte: sem monstros nem boss (`encounters`, `bosses` vazios),
+★★★★★★★★ provisório, 8 min, até 4 jogadores, teto da hunt solo 100 (cheio em 180 s). Os dois são **mapas fixos**
+(`BOG_SEED`, `BADLANDS_SEED`), em pé, 64×120, com 7 zonas, as emboscadas e 4 salas laterais; plantas em
+`docs/arte/planta-fixa-*.png`. Ritmo medido: ~1% do chão a mais de 6 tiles de luta, ponto mais isolado a 13 tiles.
+
+- **🌫️ Charco Cinzento** (`generateBog`, a planta em `Dungeon.bog`): uma turfeira sobre o lago negro. Do sul ao norte:
+  o Cais, o Aterro (zona 1) e a Vila dos Turfeiros (zona 2) pela **estrada afundada** (aterro largo com as lajes de
+  basalto no miolo); o **1º laço**, a oeste pelas **passarelas** da Lagoa (zonas 3 e 4, terreiro T1) e a leste pela
+  trilha da **Mata Queimada** (2 emboscadas, terreiro T2), que se reencontram na Ponte do Meio; a **Turfeira das
+  Cinzas** (zona 5, terreiro T3); o **2º laço**, a oeste pela estrada da Torre de Vigia (zona 6) e a leste pelas
+  passarelas das **Palafitas** (terreiro T4); o Portão dos Monólitos (zona 7) e a **ilha da arena** (praça de lajes,
+  círculo entalhado, 6 monólitos, 4 braseiros). 10 emboscadas nas plataformas e nos trechos entre as zonas.
+- **🦴 Ermos Rubros** (`generateBadlands`, a planta em `Dungeon.badlands`): vales largos de barro vermelho entre platôs de
+  rocha. O Acampamento, o **Desfiladeiro Sul** (a única garganta estreita, zonas 1 e 2), a Encruzilhada da Torre
+  (zona 3); a bifurcação, a oeste pelo **Pátio da Mina** (zona 4, trilhos, vagoneta e a boca da mina, posto P1) e a leste
+  pelo **Campo das Torres** (2 emboscadas, posto P2); a Cabeceira da Ponte (zona 5) e a **Ponte Grande** sobre a
+  ravina; o **Planalto das Ossadas** (zona 6, a luta entre as costelas, postos P3 e P4); a segunda ravina pela **ponte
+  de cordas** da Salina ou pelo **arco** do leste; a Escadaria (zona 7) e a **cratera do crânio**. 7 emboscadas.
+- **Visual** (só no cliente; arte em `art/bogArt.ts` e `art/badlandsArt.ts`, plano em `bogPlan.ts`/`badlandsPlan.ts`,
+  desenho em `bogMap.ts`/`badlandsMap.ts`; 128 px por tile, pintor de `art/paint.ts`, 3 atlas por mapa, todos abaixo de
+  2.000 px de altura). O chão é contínuo em blocos de 4×4 tiles (o barro rachado são placas de Worley que fecham no
+  bloco); as manchas (urze, capim seco e cinza no Charco; areia com marolas, crosta de sal e cascalho nos Ermos) são
+  decididas no mapa inteiro e desenhadas com a beira recortada pela distância aos vizinhos, como a lama e o rastro das
+  carroças: nada repete nem mostra a grade. O tom do chão plano fica no meio de uma faixa (sem o pontilhado que vira
+  trama na tela). **Charco:** poças com a margem de turfa, o capim debruçado e os reflexos do céu; a mata morta é um
+  maciço de troncos secos em pé (4 campos de troncos em blocos de 2×2, para não alinharem em colunas); árvores secas
+  de pé (uma com o corvo, outra com a lanterna verde dos turfeiros), barba-de-velho, monólitos com a espiral que
+  brilha, palafitas com telhado de junco, paliçadas com crânios e trapos, braseiros, taboas, algodão-do-brejo, leivas,
+  ossadas. Ambiente: névoa baixa andando, cinza caindo, fogos-fátuos sobre as poças. **Ermos:** cristas com o platô
+  em lajes e o paredão em camadas (ferrugem, ocre e creme, a capa de basalto); ravinas com a parede de longe em camadas
+  e o fundo escuro; pontes de corda, torres de pedra, costelas, o crânio com as órbitas em brasa, muros de adobe, a boca
+  da mina escorada com a lanterna, artemísia, espinheiro, agave, totem de crânio, fontes de ferrugem. Ambiente: poeira
+  vermelha e rajadas de vento, macegas rolando, fagulhas subindo da cratera.
 
 ### Portões do Império (terreno, fora da campanha)
 
@@ -1249,7 +1324,7 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
 
 ## Ataques e magias (protótipo)
 
-- Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
+- Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra; Xamã Orc lança uma brasa do cajado (fogo, alcance 3: curto de propósito, o xamã luta junto dos totens). Os projéteis voam até o alvo e o dano só entra quando chegam.
 - **Tiro que pode errar** (o básico à distância e as magias de alvo único com projétil: Flecha Sagrada, Relâmpago,
   Espinho Venenoso, Lâmina Arremessada, Corrente de Ferro...): é mirado numa **direção**, não num ponto. O projétil voa
   reto nessa direção até o alcance inteiro (ou a primeira parede), **sem seguir o monstro**, passando por um tile de cada
@@ -1285,9 +1360,12 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
     O ⚔️ é diferente: o toque continua com alvo automático.
   - A mira gruda (fica dourada) no monstro a até 1 tile do ponto; a magia vai nele e o acompanha durante o voo.
     Exceção: o **tiro** (magia de alvo único com projétil) não gruda nem acompanha: é mirado numa direção (a mira
-    acende a reta até o alcance, com o primeiro monstro em dourado) e pode errar, como o básico à distância.
+    é a linha pontilhada até onde o tiro para, dourada no primeiro monstro da reta) e pode errar, como o básico à
+    distância.
+  - **Mira padronizada:** o ⚔️, os tiros, as linhas e o alvo único usam a mesma linha reta pontilhada e tênue do
+    herói até o alvo; só área e leque desenham a área (quadrado ou tiles do leque) além da linha.
 - **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança na frente do herói. O ponto para na primeira parede do caminho.
-- **Magias em linha** (Disparo Perfurante) miram a direção: a mira acende os tiles da reta até o alcance inteiro; o toque rápido atira na frente do herói.
+- **Magias em linha** (Disparo Perfurante) miram a direção: a mira é a linha pontilhada até o alcance inteiro (dourada se pega algum monstro); o toque rápido atira na frente do herói.
 - **Errou a mira:** a magia sai, aparece na tela, gasta mana e recarga, e não acerta ninguém.
 - Magias em volta de si (Giro da Lâmina, Grito de Guerra, Tempestade do Vazio, Bênção da Floresta e as compradas do mesmo tipo) saem no toque, sem mira. Paredes bloqueiam o efeito de todas. Cada uma gasta mana e tem recarga.
 
@@ -1297,6 +1375,7 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
 | Paladino | ✴️ Flecha Sagrada: flecha dourada num alvo (2,6× dano) | 🏹 Chuva de Flechas: área de raio 2 no alvo (1,4× dano) |
 | Feiticeiro | 🔮 Esfera Sombria: explode no alvo, raio 1 (1,9× dano) | 🌑 Tempestade do Vazio: raio 3 em volta de si (2,3× dano) |
 | Druida | 🌿 Bênção da Floresta: cura 35% da vida de quem está a até 4 tiles | 🌱 Raízes Espinhosas: raio 2 no alvo, fere (1,2×) e prende por 3,5 s |
+| Xamã Orc | 🔥 Totem da Brasa: finca um totem a até 4 tiles por 10 s, que lança brasa (0,6×, fogo) no monstro mais perto a até 3 tiles a cada 1 s; cabem 2 ao mesmo tempo · Maestria: a brasa queima 3 s | 🥁 Tambor de Guerra: você, os aliados e as criaturas (de qualquer herói) a até 4 tiles atacam 25% mais rápido e causam +15% de dano por 6 s; os monstros a até 2 tiles ficam 30% mais lentos por 3 s · Maestria: cura 10% de quem está no raio |
 
 As compradas no Grimório, por slot (números do nível 0):
 
@@ -1452,7 +1531,7 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
 
 - Duração exata de cada mapa (`durationSeconds` em `packages/shared/src/maps.ts`).
 - Se a morte regride os upgrades permanentes, e quanto.
-- Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida); preços do Grimório e do mercado, e a força das magias e criaturas novas, ainda precisam de balanceamento.
+- Lista de classes (Cavaleiro, Paladino, Feiticeiro e Druida, mais o Xamã Orc, liberado por Vorgak: Fase 1 jogável, o resto em `docs/CLASSE_XAMA_ORC.md`); preços do Grimório e do mercado, e a força das magias e criaturas novas, ainda precisam de balanceamento.
 - Balanceamento do Pântano (dificuldade 2) e próximos mapas e bosses.
 - Os jogadores de uma equipe se reanimam?
 - Arte: os sprites do Tibia são da CipSoft e **não podem ser usados**. Usaremos assets com licença aberta (OpenGameArt, itch.io) ou arte própria, no mesmo estilo.

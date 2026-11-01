@@ -540,7 +540,7 @@ plano:
 - Maestrias trocadas por efeitos que já existem: Muro de Escudos dá escudo de 20% (não 5% por monstro), Brado Cortante e
   Lamento Sombrio não enfraquecem (A2 ainda não existe): lentidão de 30% e roubo de 25%; Brisa de Pólen cura 30%;
 - onda: cada passo atinge todos os anéis por onde a onda já passou (o monstro que vinha na direção do herói escapava);
-- telemetria: `stats.fanHits`; teste novo `leque`; migration `20261102010000_magias_em_leque.sql`.
+- telemetria: `stats.fanHits`; teste novo `leque`; migration `20261102030000_magias_em_leque.sql`.
 
 **Fase 2b, como foi entregue:** canalizar (L4) e várias armadilhas (A6), com o Sopro Gélido e os Abrolhos. A varredura
 (L5) foi para a fase 3, junto com a única magia que a usa (Ceifa do Campeão). Diferenças:
@@ -549,7 +549,7 @@ plano:
 - Sopro Gélido: em vez de "lentidão que cresce", 40% de lentidão a cada pulso e congelar depois de 6 pulsos seguidos
   (Maestria: 4); o Estilhaçar do Criomante solta o congelado no pulso seguinte (combo de propósito);
 - Abrolhos saem da Áurea Sagrada (Batedor), não da Chuva de Flechas;
-- migration `20261102020000_canalizar_e_abrolhos.sql`.
+- migration `20261102040000_canalizar_e_abrolhos.sql`.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
