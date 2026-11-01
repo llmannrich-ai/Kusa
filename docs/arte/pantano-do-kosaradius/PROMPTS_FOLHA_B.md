@@ -1,5 +1,8 @@
 # Pântano do Kosaradius — prompts da folha B (ação) para o ChatGPT
 
+> **Desatualizado.** As folhas B que entraram no jogo vieram em outro formato (2 linhas × 6: golpe e morte, em 3/4 de
+> frente), e o jogo foi montado para ele. Para os orcs que faltam, use `PROMPTS_FOLHA_B_ORCS.md`.
+
 Folha B = as animações de perfil para a esquerda (andar, golpe, especial, morte e, nos mini-bosses, a 2ª habilidade).
 O Grumak tem também a folha C (as habilidades a mais).
 
