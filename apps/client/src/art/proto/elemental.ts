@@ -17,7 +17,7 @@ function look(): Look {
   materials[M.eye] = { ramp: ["#7a3a06", "#c46a10", "#f2a52a", "#ffd970", "#fff6d0"], emit: 0.85 };
   materials[M.mouth] = { ramp: ["#070302", "#140904", "#22100a", "#331a10"], bias: -0.25 };
   materials[M.dust] = { ramp: ["#6b4a30", "#9a7650", "#c4a27a", "#e2c9a4", "#f4e6cc", "#fff8ec"], grain: 0.15, grainSize: 0.4, bias: 0.12, lineDepth: 0.5 };
-  return { materials, outline: "#1a0c05", bounce: { color: "#f0b46a", power: 0.55 }, occlusion: 0.55, shadow: 0.6, rim: { color: "#ffe0a0", power: 0.5 } };
+  return { materials, outline: "#1a0c05", bounce: { color: "#f0b46a", power: 0.55 }, occlusion: 0.55 };
 }
 
 // --- Pose ----------------------------------------------------------------------------------------------------------

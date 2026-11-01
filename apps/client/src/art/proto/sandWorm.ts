@@ -20,7 +20,7 @@ function look(): Look {
   materials[M.throat] = { ramp: ["#050102", "#120406", "#22080a", "#3a0f10", "#581917"], gloss: 0.8, shine: 20, bias: -0.15 };
   materials[M.sand] = { ramp: ["#3a1f0e", "#5c3216", "#82491f", "#a6622a", "#c27e3a", "#d99c52", "#ebbb72", "#f6d899"], grain: 0.3, grainSize: 0.5, bump: 0.4, bumpSize: 0.45, lineDepth: 0.8 };
   materials[M.dust] = { ramp: ["#6b4a30", "#9a7650", "#c4a27a", "#e2c9a4", "#f4e6cc"], grain: 0.15, bias: 0.1 };
-  return { materials, outline: "#140906", bounce: { color: "#f0b46a", power: 0.5 }, occlusion: 0.6, shadow: 0.65, rim: { color: "#ffe0a0", power: 0.45 } };
+  return { materials, outline: "#140906", bounce: { color: "#f0b46a", power: 0.5 }, occlusion: 0.6 };
 }
 
 // --- Pose ----------------------------------------------------------------------------------------------------------

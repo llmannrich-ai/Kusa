@@ -195,6 +195,10 @@ export function tween<P extends object>(keys: readonly P[], n: number, loop = fa
   });
 }
 
+/** Sombra projetada e luz de contorno ligadas em todo monstro esculpido, salvo quem desliga no `Look`. */
+export const DEFAULT_SHADOW = 0.6;
+export const DEFAULT_RIM = { color: "#ffe0a0", power: 0.45 } as const;
+
 // --- Câmera e quadro ---------------------------------------------------------------------------------------------
 
 export interface Shot {
@@ -224,10 +228,16 @@ export interface Look {
   outline?: string;
   /** Força da sombra de oclusão (0..1). */
   occlusion?: number;
-  /** Sombra projetada (0..1): uma parte faz sombra na outra (o braço no tronco), pelo mapa de sombra da luz. */
+  /**
+   * Sombra projetada (0..1): uma parte faz sombra na outra (o braço no tronco), pelo mapa de sombra da luz. Padrão
+   * `DEFAULT_SHADOW`; 0 desliga.
+   */
   shadow?: number;
-  /** Luz de contorno (de trás, à direita): borda clara do lado oposto à luz, que destaca o bicho do chão. */
-  rim?: { color: string; power: number };
+  /**
+   * Luz de contorno (de trás, à direita): borda clara do lado oposto à luz, que destaca o bicho do chão. Padrão
+   * `DEFAULT_RIM`; `null` desliga.
+   */
+  rim?: { color: string; power: number } | null;
 }
 
 /** Quadro em RGBA (como o `ImageData`). */
@@ -434,7 +444,8 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
   const H = norm(add(L, [0, 0, 1]));
   // Mapa de sombra: a escultura vista da luz (z para a luz), com a parte de quem está mais perto dela.
   let lit: ((i: number, x: number, y: number) => number) | null = null;
-  if (look.shadow) {
+  const shadowPower = look.shadow ?? DEFAULT_SHADOW;
+  if (shadowPower > 0) {
     let lx = cross([0, 1, 0], L);
     if (len(lx) < 1e-3) lx = [1, 0, 0];
     lx = norm(lx);
@@ -462,7 +473,8 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       return 1 - blocked / 9;
     };
   }
-  const rim = look.rim ? { c: hex(look.rim.color), p: look.rim.power, d: norm([-L[0] * 1.4, 0.25, -0.35] as V3) } : null;
+  const rimLook = look.rim === undefined ? DEFAULT_RIM : look.rim;
+  const rim = rimLook ? { c: hex(rimLook.color), p: rimLook.power, d: norm([-L[0] * 1.4, 0.25, -0.35] as V3) } : null;
   const ramps = look.materials.map((m) => m.ramp.map(hex));
   const bounce = look.bounce ? { c: hex(look.bounce.color), p: look.bounce.power } : null;
   const occ = look.occlusion ?? 0.55;
@@ -497,7 +509,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       }
       o /= AO.length / 2;
       let diff = Math.max(0, (nx * L[0] + ny * L[1] + nz * L[2] + 0.25) / 1.25);
-      if (lit && diff > 0) diff *= 1 - (look.shadow ?? 0) * (1 - lit(i, px + 0.5 - cx, shot.feet - (py + 0.5)));
+      if (lit && diff > 0) diff *= 1 - shadowPower * (1 - lit(i, px + 0.5 - cx, shot.feet - (py + 0.5)));
       const sky = 0.5 + 0.5 * ny;
       let t = 0.12 + diff * 0.72 + sky * 0.16;
       t *= 1 - occ * Math.min(1, o * 2.2);

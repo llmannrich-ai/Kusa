@@ -32,7 +32,7 @@ poses de cada clipe.
 **Humanoides** (múmia): esqueleto por ângulos (quadril, joelho, ombro, cotovelo), e o pé mais baixo encosta sozinho no
 chão; a linha do chão fica mais baixa no quadro (`sculptArt(..., feet)`), porque nada desce abaixo dela.
 
-**Recursos do motor** (todos opcionais, por material ou por `Look`):
+**Recursos do motor** (por material ou por `Look`):
 - `Material.wrap`: ataduras em espiral, cada faixa num tom, com o vinco entre elas e pedaços faltando (mostra o
   material de baixo, a carne seca);
 - `Material.emit`: brilho próprio (os olhos verdes do Olhar Pavoroso), sem luz nem sombra;
@@ -40,7 +40,8 @@ chão; a linha do chão fica mais baixa no quadro (`sculptArt(..., feet)`), porq
 - `Look.rim`: luz de contorno do lado oposto à luz, que destaca o bicho da areia;
 - `Material.wrap.stripe`: listras alternadas (o toucado do sacerdote);
 - `Shot.ground`: corta no chão (o que está abaixo da areia some: o verme entrando e saindo dela).
-A múmia, o sacerdote, o elemental e o verme usam a sombra e o contorno; o escorpião e o abutre ainda não.
+A sombra projetada e a luz de contorno são o padrão (`DEFAULT_SHADOW`, `DEFAULT_RIM`): todo monstro esculpido as
+recebe, e quem precisa ajusta no `Look` (a múmia usa sombra mais forte; `shadow: 0` ou `rim: null` desligam).
 
 **Voadores** (abutre): o corpo é desenhado já pairando acima do chão (o jogo só balança 3 px) e o perfil fica em
 três-quartos (giro de 40°): de lado, a asa aberta vira uma faixa vertical. As asas são montadas pena a pena (cobertas,
