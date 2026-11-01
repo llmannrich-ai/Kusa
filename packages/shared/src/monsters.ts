@@ -20,7 +20,10 @@ export type MonsterKind =
   | "basilisk" | "beholder"
   // Necrópole de Solária (Dunas Cantantes e Mesas de Solária, dificuldades 5 e 6): a legião soterrada e as múmias
   | "boneJackal" | "scarabSwarm" | "boneLegionary" | "boneArcher" | "wrappedMummy" | "mourner" | "buriedDead"
-  | "boneCenturion" | "royalMummy" | "sandScribe" | "singingColossus" | "eternalPharaoh";
+  | "boneCenturion" | "royalMummy" | "sandScribe" | "singingColossus" | "eternalPharaoh"
+  // Bosque Velho (dificuldade 5): as feras e os espíritos da floresta antiga do Kosaradius
+  | "twigling" | "direWolf" | "satyr" | "thornSpitter" | "shadowPanther" | "owlbear"
+  | "corruptedDryad" | "renegadeCentaur" | "menhirGuardian" | "greenDragon";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -900,6 +903,155 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "O último faraó do Império de Kusa, que se mandou enterrar com a corte e a legião para governar depois da morte. Queima com o sol morto, puxa com a mortalha, corrói com a maldição, chama a legião e, quase vencido, fecha-se no sarcófago e volta mais forte.",
+  }),
+  // --- Bosque Velho (5 estrelas): a floresta antiga do Kosaradius, do lado oeste da bifurcação da Travessia. Feras,
+  // plantas que andam e os espíritos que a corrupção virou contra quem entra. Mesma faixa de força da Necrópole de
+  // Solária (o mesmo degrau da campanha, do outro lado), mas quase nada é morto-vivo: veneno e sangramento pegam, e as
+  // plantas queimam fácil. Elenco e arte proposta em `docs/arte/agente/BOSQUE_VELHO.md`.
+  twigling: monster({
+    kind: "twigling", name: "Galhudo", rank: "common", type: "plant", role: "swarm", cr: 3, group: [3, 4],
+    hp: 36, damage: 5, xp: 24, loot: [2, 4], speed: 3.2, aggroRange: 4, attackRange: 1, attackCooldownMs: 1100, attackFx: "slash",
+    traits: { camouflage: true },
+    lore: "Feixe de galhos secos amarrados por raízes, com dois olhos de brasa no fundo. Parado no chão, é só mais um monte de gravetos; quando alguém passa perto, levanta o bando inteiro.",
+  }),
+  direWolf: monster({
+    kind: "direWolf", name: "Lobo Atroz", rank: "common", type: "beast", role: "skirmisher", cr: 4, group: [2, 3],
+    hp: 64, damage: 8, xp: 40, loot: [4, 8], speed: 4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1100, attackFx: "bite",
+    traits: { packTactics: 0.4 },
+    abilities: [
+      {
+        id: "trip", name: "Derrubar", shape: "target", range: 1, radius: 0, cooldownMs: 6000, power: 0.8,
+        effect: { kind: "stun", ms: 1000 }, color: 0x9a9a9a, fx: "rend",
+      },
+    ],
+    lore: "Lobo cinzento do tamanho de um pônei, com uma flecha velha no ombro. Caça em matilha: um derruba a presa e os outros mordem fundo (Táticas de Bando).",
+  }),
+  satyr: monster({
+    kind: "satyr", name: "Sátiro Flautista", rank: "common", type: "fey", role: "leader", cr: 4,
+    hp: 85, damage: 8, xp: 72, loot: [7, 12], speed: 2.8, aggroRange: 7, attackRange: 3, attackCooldownMs: 1600, attackFx: "nature",
+    traits: { keepDistance: 2, leader: { radius: 3, damage: 0.1, haste: 0.15 } },
+    abilities: [
+      {
+        id: "enchantingTune", name: "Melodia Encantada", shape: "cone", range: 4, radius: 0, length: 4, cooldownMs: 8000, power: 0.5,
+        slow: { factor: 0.55, durationMs: 1500 }, color: 0xc8e070, fx: "breath",
+      },
+    ],
+    lore: "Toca a flauta de juncos atrás da briga: perto dele, as feras atacam mais rápido (Comando), e quem ouve a melodia arrasta os pés. Mate-o primeiro.",
+  }),
+  thornSpitter: monster({
+    kind: "thornSpitter", name: "Espinheiro", rank: "common", type: "plant", role: "artillery", cr: 5,
+    hp: 90, damage: 11, xp: 72, loot: [7, 12], speed: 2.2, aggroRange: 8, attackRange: 5, attackCooldownMs: 1700, attackFx: "arrow",
+    traits: { keepDistance: 2 },
+    abilities: [
+      {
+        id: "thornBurst", name: "Explosão de Espinhos", shape: "self", range: 1, radius: 1, cooldownMs: 8000, power: 1.2,
+        dot: { kind: "bleed", power: 0.3, durationMs: 3000 }, color: 0xb8c84a, fx: "quake",
+      },
+      {
+        id: "thornVolley", name: "Rajada de Espinhos", shape: "bolt", range: 6, minRange: 2, radius: 0, cooldownMs: 7000, power: 1.3,
+        dot: { kind: "bleed", power: 0.3, durationMs: 3000 }, color: 0xb8c84a, fx: "spit",
+      },
+    ],
+    lore: "Moita de amora que anda curvada como gente. Atira os espinhos das costas de longe (sangra) e, se alguém cola, explode em agulhas para todo lado. Queima fácil.",
+  }),
+  shadowPanther: monster({
+    kind: "shadowPanther", name: "Pantera das Sombras", rank: "common", type: "monstrosity", role: "lurker", cr: 5,
+    hp: 120, damage: 12, xp: 84, loot: [8, 13], speed: 3.8, aggroRange: 3, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    elements: { radiant: 1.25 },
+    traits: { camouflage: true, ambush: 1.8 },
+    abilities: [
+      { id: "pounce", name: "Bote", shape: "leap", range: 4, minRange: 2, radius: 0, cooldownMs: 7000, power: 1.2, color: 0x2a3a5a, fx: "leap" },
+    ],
+    lore: "Fumaça escura com dois olhos verdes. Dorme na sombra da mata até alguém passar a 3 tiles; o primeiro golpe vem de surpresa (1,8×) e, se a presa foge, o bote a alcança. A luz a fere mais.",
+  }),
+  owlbear: monster({
+    kind: "owlbear", name: "Urso-coruja", rank: "common", type: "monstrosity", role: "brute", cr: 6,
+    hp: 200, damage: 12, xp: 100, loot: [10, 16], speed: 2.6, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "slash",
+    traits: { multiattack: { hits: 2, power: 0.6 } },
+    abilities: [
+      {
+        id: "crushingHug", name: "Abraço Esmagador", shape: "target", range: 1, radius: 0, cooldownMs: 8000, power: 1.3,
+        effect: { kind: "root", ms: 1500 }, color: 0xc89a5a, fx: "constrict",
+      },
+    ],
+    lore: "Corpo de urso, cabeça de coruja e nenhum juízo. Bica e arranha no mesmo golpe (Multiataque) e, de vez em quando, agarra a presa num abraço que não deixa sair.",
+  }),
+  // Mini-bosses das clareiras cercadas de troncos (destrancam o baú da sala).
+  corruptedDryad: monster({
+    kind: "corruptedDryad", name: "Dríade Corrompida", rank: "miniboss", type: "fey", role: "controller", cr: 7,
+    hp: 460, damage: 17, xp: 295, loot: [30, 45], speed: 2.4, aggroRange: 8, attackRange: 4, attackCooldownMs: 1500, attackFx: "nature",
+    elements: { fire: 1.25, nature: 0.75 },
+    traits: { keepDistance: 2 },
+    abilities: [
+      {
+        id: "entangle", name: "Enraizar", shape: "target", range: 6, radius: 1, cooldownMs: 9000, power: 0.8,
+        effect: { kind: "root", ms: 1500 }, color: 0x6b8e23, fx: "web",
+      },
+      {
+        id: "branchCall", name: "Chamado dos Galhos", shape: "summon", range: 7, radius: 0, cooldownMs: 18000, power: 0,
+        summon: { kind: "twigling", count: 3 }, color: 0xc8a060, fx: "summon",
+      },
+      { id: "treeStride", name: "Passo Arbóreo", shape: "vanish", range: 3, radius: 0, cooldownMs: 14000, power: 0, vanishMs: 1500, belowHp: 0.6, color: 0x4a7a3a, fx: "vanish" },
+    ],
+    lore: "Era a guardiã de uma bétula velha; a podridão subiu pelas raízes até o coração dela. Prende os pés de quem chega, chama os galhudos e, ferida, some no tronco de uma árvore.",
+  }),
+  renegadeCentaur: monster({
+    kind: "renegadeCentaur", name: "Centauro Renegado", rank: "miniboss", type: "monstrosity", role: "artillery", cr: 7,
+    hp: 440, damage: 17, xp: 295, loot: [30, 45], speed: 3.6, aggroRange: 9, attackRange: 5, attackCooldownMs: 1400, attackFx: "arrow",
+    traits: { keepDistance: 3 },
+    abilities: [
+      {
+        id: "kick", name: "Coice", shape: "self", range: 1, radius: 1, cooldownMs: 7000, power: 1.4, push: 2, color: 0x8a8a8a, fx: "slam",
+      },
+      {
+        id: "arrowRain", name: "Chuva de Flechas", shape: "target", range: 7, radius: 1, cooldownMs: 9000, power: 1.2, color: 0xd9c08a, fx: "acidRain",
+      },
+    ],
+    lore: "Expulso da manada, caça sozinho no Bosque Velho. Rápido demais para alcançar: atira de longe, cobre a clareira de flechas e, encurralado, dá um coice que joga longe.",
+  }),
+  menhirGuardian: monster({
+    kind: "menhirGuardian", name: "Guardião do Menir", rank: "miniboss", type: "construct", role: "sentinel", cr: 7,
+    hp: 600, damage: 19, xp: 310, loot: [30, 45], speed: 1.8, aggroRange: 3, attackRange: 1, attackCooldownMs: 1800, attackFx: "smash",
+    // Pedra: corte e flecha resvalam; o raio racha.
+    elements: { physical: 0.5, energy: 1.25 },
+    traits: { camouflage: true },
+    abilities: [
+      {
+        id: "runeStomp", name: "Pisão Rúnico", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 1.6,
+        slow: { factor: 0.5, durationMs: 2500 }, color: 0x4ad0c0, fx: "quake",
+      },
+      {
+        id: "stoneFist", name: "Punho de Pedra", shape: "target", range: 1, radius: 0, cooldownMs: 10000, power: 1.8,
+        effect: { kind: "stun", ms: 1000 }, color: 0x8a8f7a, fx: "slam",
+      },
+    ],
+    lore: "Menires empilhados que a runa em espiral mantém de pé. Parado, é só mais uma pedra da clareira; acorda quando alguém encosta, pisa o chão e atordoa com o punho. Corte e flecha resvalam (resiste a físico); raio racha.",
+  }),
+  // Boss: o Dragão Verde, no círculo de menires do norte. Derrotado, abre o Coração da Mata.
+  greenDragon: monster({
+    kind: "greenDragon", name: "Dragão Verde Jovem", rank: "boss", type: "dragon", role: "brute", cr: 10,
+    hp: 3200, damage: 40, xp: 3600, loot: [320, 465], speed: 2.4, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
+    // Resiste a natureza, não imune: o Druida não fica sem dano.
+    elements: { nature: 0.5 },
+    traits: { multiattack: { hits: 3, power: 0.3 } },
+    abilities: [
+      {
+        id: "flight", name: "Voo", shape: "dive", range: 8, radius: 2, cooldownMs: 15000, power: 1.5, vanishMs: 2000,
+        belowHp: 0.5, phase: true, color: 0x58d68d, fx: "dive",
+      },
+      {
+        id: "poisonBreath", name: "Sopro Venenoso", shape: "cone", range: 6, radius: 0, length: 6, cooldownMs: 8000, power: 1.8,
+        dot: { kind: "poison", power: 0.3, durationMs: 4000 }, color: 0x9acd32, fx: "breath",
+      },
+      {
+        id: "tailSweep", name: "Rabada", shape: "self", range: 2, radius: 2, cooldownMs: 9000, power: 1.3, push: 2, color: 0x2e7d4f, fx: "quake",
+      },
+      {
+        id: "menhirGas", name: "Gás dos Menires", shape: "target", range: 7, radius: 2, cooldownMs: 12000, power: 1,
+        slow: { factor: 0.6, durationMs: 2500 }, dot: { kind: "poison", power: 0.25, durationMs: 3000 }, belowHp: 0.6, color: 0x7fd36b, fx: "acidRain",
+      },
+    ],
+    lore: "Fez ninho no círculo de menires e envenenou a clareira inteira. Morde três vezes, sopra veneno em leque e varre com a cauda; ferido, os menires soltam gás e ele alça voo para cair sobre quem fugiu. Resiste a veneno.",
   }),
   // --- Pântano do Kosaradius: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
   // profundidade dobra os do fim), em bandos maiores: muito XP para quem joga sozinho. -----------------------

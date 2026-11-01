@@ -279,12 +279,21 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [],
   },
   oldwood: {
-    id: "oldwood", name: "Bosque Velho", icon: "🌳", difficulty: 5, durationSeconds: 8 * 60,
-    description: "A floresta antiga do Kosaradius: mata fechada, clareiras ligadas por trilhas e um riacho com pontes de madeira. Troncos caídos, árvores anciãs e, no norte, o círculo de menires. Terreno pronto; os monstros ainda vêm.",
-    encounters: [],
-    minibosses: [],
+    id: "oldwood", name: "Bosque Velho", icon: "🌳", difficulty: 5, durationSeconds: 8 * 60, meadowMonsters: 3,
+    minibossPower: 1.32,
+    description: "A floresta antiga do Kosaradius: mata fechada, clareiras ligadas por trilhas e um riacho com pontes de madeira. Galhudos escondidos no chão, lobos em matilha, espinheiros que atiram, panteras na sombra, sátiros que tocam para as feras e o urso-coruja; nas clareiras de troncos, a dríade, o centauro e o guardião do menir. No círculo de menires do norte, o Dragão Verde Jovem.",
+    encounters: [
+      // Todo mundo começa no nível 1: as duas primeiras zonas são de galhudos e lobos.
+      { depth: [0, 0], budget: 130, table: [["twigling", 4], ["direWolf", 2], ["thornSpitter", 1]] },
+      { depth: [1, 1], budget: 225, table: [["direWolf", 4], ["twigling", 2], ["thornSpitter", 1], ["satyr", 1]] },
+      { depth: [2, 2], budget: 345, table: [["thornSpitter", 3], ["direWolf", 2], ["satyr", 2], ["shadowPanther", 1]] },
+      { depth: [3, 3], budget: 450, table: [["thornSpitter", 2], ["shadowPanther", 2], ["owlbear", 2], ["direWolf", 2], ["satyr", 1]] },
+      { depth: [4, 4], budget: 540, table: [["owlbear", 3], ["shadowPanther", 2], ["thornSpitter", 2], ["satyr", 1], ["twigling", 1]] },
+      { depth: [5, 99], budget: 615, table: [["owlbear", 3], ["shadowPanther", 2], ["thornSpitter", 2], ["satyr", 2], ["direWolf", 1]] },
+    ],
+    minibosses: [["corruptedDryad", 1], ["renegadeCentaur", 1], ["menhirGuardian", 1]],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["greenDragon", 1]],
   },
   heartwood: {
     id: "heartwood", name: "Coração da Mata", icon: "🍄", difficulty: 6, durationSeconds: 8 * 60,

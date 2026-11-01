@@ -6,6 +6,10 @@ import {
   boneArcherCanvas, boneCenturionCanvas, boneJackalCanvas, boneLegionaryCanvas, buriedDeadCanvas, eternalPharaohCanvas, mournerCanvas,
   royalMummyCanvas, sandScribeCanvas, scarabSwarmCanvas, singingColossusCanvas, wrappedMummyCanvas,
 } from "./necropolisMonsters.ts";
+import {
+  corruptedDryadCanvas, direWolfCanvas, greenDragonCanvas, menhirGuardianCanvas, owlbearCanvas, renegadeCentaurCanvas, satyrCanvas,
+  shadowPantherCanvas, thornSpitterCanvas, twiglingCanvas,
+} from "./forestMonsters.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
@@ -95,6 +99,16 @@ export const OWN_MONSTER_DRAW: Record<string, () => HTMLCanvasElement> = {
   "monster-sand-scribe": sandScribeCanvas,
   "monster-singing-colossus": singingColossusCanvas,
   "monster-eternal-pharaoh": eternalPharaohCanvas,
+  "monster-twigling": twiglingCanvas,
+  "monster-dire-wolf": direWolfCanvas,
+  "monster-satyr": satyrCanvas,
+  "monster-thorn-spitter": thornSpitterCanvas,
+  "monster-shadow-panther": shadowPantherCanvas,
+  "monster-owlbear": owlbearCanvas,
+  "monster-corrupted-dryad": corruptedDryadCanvas,
+  "monster-renegade-centaur": renegadeCentaurCanvas,
+  "monster-menhir-guardian": menhirGuardianCanvas,
+  "monster-green-dragon": greenDragonCanvas,
 };
 
 export interface MonsterArt {
@@ -193,6 +207,17 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   sandScribe: { texture: "monster-sand-scribe", facesLeft: true, blood: "none", scale: 1.2 },
   singingColossus: { texture: "monster-singing-colossus", facesLeft: true, blood: "none" },
   eternalPharaoh: { texture: "monster-eternal-pharaoh", facesLeft: true, blood: "none", flies: true },
+  // Bosque Velho (arte própria, `forestMonsters.ts`). O Galhudo é pequeno; o Urso-coruja, o único comum maior que 1 tile.
+  twigling: { texture: "monster-twigling", facesLeft: true, blood: "none", scale: 0.8 },
+  direWolf: { texture: "monster-dire-wolf", facesLeft: true, blood: "red" },
+  satyr: { texture: "monster-satyr", facesLeft: true, blood: "red" },
+  thornSpitter: { texture: "monster-thorn-spitter", facesLeft: true, blood: "green" },
+  shadowPanther: { texture: "monster-shadow-panther", facesLeft: true, blood: "black" },
+  owlbear: { texture: "monster-owlbear", facesLeft: true, blood: "red", scale: 1.4 },
+  corruptedDryad: { texture: "monster-corrupted-dryad", facesLeft: true, blood: "green", scale: 1.25 },
+  renegadeCentaur: { texture: "monster-renegade-centaur", facesLeft: true, blood: "red", scale: 1.5 },
+  menhirGuardian: { texture: "monster-menhir-guardian", facesLeft: true, blood: "none", scale: 1.6 },
+  greenDragon: { texture: "monster-green-dragon", facesLeft: true, blood: "green" },
   // Pântano (arte própria animada, `marshMonsters.ts` e `ogreKing.ts`).
   orcScout: { texture: "monster-orc-scout", facesLeft: true, blood: "red", anim: marshAnim("orcScout") },
   orcGrunt: { texture: "monster-orc-grunt", facesLeft: true, blood: "red", anim: marshAnim("orcGrunt") },
