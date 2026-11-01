@@ -257,36 +257,33 @@ function check(ok: boolean, what: string) {
 {
   const { spawn, hit, hunt, p, brain } = arena();
   p.hp = p.maxHp = 1_000_000;
-  const dragon = spawn("dragon", 4);
-  brain(dragon).targetId = "h";
+  // Boss não mergulha: o voo/mergulho invulnerável deixava as lutas de boss quase impossíveis.
+  const divers = Object.values(MONSTERS).filter((m) => m.rank === "boss" && m.abilities?.some((a) => a.shape === "dive")).map((m) => m.kind);
+  check(divers.length === 0, `nenhum boss devia ter Voo/Mergulho (${divers.join(", ")})`);
+  // A mecânica fica nos comuns, como o Corvo Carniceiro.
+  const crow = spawn("carrionCrow", 4);
+  brain(crow).targetId = "h";
+  brain(crow).abilityReadyAt.crowDive = 0; // sem a espera do primeiro uso
   advance(hunt, 100);
-  hit(dragon, Math.ceil(dragon.maxHp * 0.55), "basic");
-  advance(hunt, 100);
-  check(dragon.hidden && brain(dragon).diving, "abaixo de 50% o Dragão devia alçar voo na hora");
-  check(hit(dragon, 100, "basic") === 0, "voando, o Dragão não devia levar dano");
-  advance(hunt, (MONSTERS.dragon.abilities!.find((a) => a.id === "flight")!.vanishMs ?? 2000) + 100);
-  check(!dragon.hidden && tileDistance(p.x, p.y, dragon.x, dragon.y) <= 1, "o Dragão devia cair colado no herói");
-  // A queda é o golpe: o Multiataque e o sopro não saem colados nela (antes vinham juntos e matavam de uma vez).
+  check(crow.hidden && brain(crow).diving, "longe do herói, o Corvo devia mergulhar na hora");
+  check(hit(crow, 10, "basic") === 0, "no ar, o Corvo não devia levar dano");
+  advance(hunt, (MONSTERS.carrionCrow.abilities!.find((a) => a.id === "crowDive")!.vanishMs ?? 900) + 100);
+  check(!crow.hidden && tileDistance(p.x, p.y, crow.x, crow.y) <= 1, "o Corvo devia cair colado no herói");
+  // A queda é o golpe: o básico não sai colado nela.
   const landed = damage.length;
-  const blows = () => damage.slice(landed).filter((x) => x.toPlayer && x.attacker === dragon.id && !x.dot).length;
+  const blows = () => damage.slice(landed).filter((x) => x.toPlayer && x.attacker === crow.id && !x.dot).length;
   advance(hunt, 1200);
-  check(blows() === 0, `logo depois de cair, o Dragão devia se recompor (${blows()} golpes)`);
-  advance(hunt, 1500);
-  check(blows() > 0, "recomposto, o Dragão devia voltar a atacar");
-  console.log("Voo do Dragão OK");
+  check(blows() === 0, `logo depois de cair, o Corvo devia se recompor (${blows()} golpes)`);
+  advance(hunt, 3000);
+  check(blows() > 0, "recomposto, o Corvo devia voltar a atacar");
+  console.log("Boss sem mergulho e Mergulho do Corvo OK");
 }
 {
-  // Rei Bullywug: some na lama e cai em bote colado no herói; com metade da vida chama 2 bullywugs, uma vez só.
+  // Rei Bullywug: com metade da vida chama 2 bullywugs, uma vez só; de perto, estoca.
   const { spawn, hit, hunt, p, brain, state } = arena("swamp", "knight", 12);
   p.hp = p.maxHp = 1_000_000;
   const king = spawn("bullywugKing", 4);
   brain(king).targetId = "h";
-  brain(king).abilityReadyAt.mudAmbush = 0; // sem a espera do primeiro uso
-  advance(hunt, 100);
-  check(king.hidden && brain(king).diving, "longe do herói, o Rei devia sumir na lama (Bote da Lama)");
-  check(hit(king, 100, "basic") === 0, "na lama, o Rei não devia levar dano");
-  advance(hunt, (MONSTERS.bullywugKing.abilities!.find((a) => a.id === "mudAmbush")!.vanishMs ?? 2000) + 100);
-  check(!king.hidden && tileDistance(p.x, p.y, king.x, king.y) <= 1, "o Rei devia sair da lama colado no herói");
   const guards = () => [...state.monsters.values()].filter((m) => m.kind === "bullywug" && brain(m)?.summonedBy === king.id).length;
   hit(king, Math.ceil(king.maxHp * 0.55), "basic");
   advance(hunt, 100);

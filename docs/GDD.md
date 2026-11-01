@@ -786,8 +786,7 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   cada um leva a sua, igual ou diferente). Com a bag cheia, não leva. O Verme não dropa runa (a recompensa são os
   baús); dropa loot, itens e poções como os outros bosses.
 - **Portal do boss:** abre no meio do salão dos baús (não no covil), depois da escolha.
-- **Verme da Areia** (boss): mergulha na areia e irrompe debaixo de quem estiver até 7 tiles (Emboscada da Areia),
-  engole quem fica colado (Engolir: controle de 1,8 s com dano por segundo) e, abaixo de metade da vida, faz o chão
+- **Verme da Areia** (boss): engole quem fica colado (Engolir: controle de 1,8 s com dano por segundo) e, abaixo de metade da vida, faz o chão
   tremer em volta (Tremor, deixa lento). Vulnerável a gelo, resiste a fogo.
 - **Balanceamento:** o caminho rende um pouco mais de XP que a Cripta (cerca de 36 monstros e 2.700 XP, contra 21 e
   1.700), então a equipe chega na caverna perto do nível 6 a 8. O Verme tem a vida do Dragão jovem (~1.340, já na
@@ -1251,7 +1250,9 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   toda fase aparece). Abaixo de 50% da vida o boss se enfurece e as recargas caem para 60%. Boss espera 1 s
   entre uma habilidade e outra, para não soltar sopro, cegueira e mergulho em sequência.
 - **Voo e Mergulho:** o monstro some invulnerável e cai colado no alvo; a queda é o golpe. Depois dela, ele se
-  recompõe por 1,5 s (sem ataque básico nem outra habilidade): é a janela para reagir.
+  recompõe por 1,5 s (sem ataque básico nem outra habilidade): é a janela para reagir. **Boss não tem Voo nem
+  Mergulho** (tirado de todos: sumir invulnerável no meio da luta deixava o boss quase impossível); a mecânica fica nos
+  comuns, como o Corvo Carniceiro. O teste `bestiario` confere.
 - **Tipos de criatura e elementos:** todo dano de herói tem elemento (básico do Cavaleiro e do Paladino é físico,
   do Feiticeiro é energia, do Druida é natureza; cada magia tem o seu, em `elements.ts`). Monstros podem ser imunes (0),
   resistentes (0,5–0,8) ou vulneráveis (1,5): o aviso sobe em cinza ("Imune", "Resiste") ou amarelo ("Vulnerável!").
@@ -1288,7 +1289,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Bugbear chefe** (mini-boss) | bruto | alcance 2 · Ataque Surpresa (primeiro golpe em cada alvo 2,5×) · Golpe Brutal (2×, empurra) |
 | **Cubo Gelatinoso** (mini-boss) | sentinela | translúcido e camuflado · Engolfar (engole 2 s com ácido) |
 | **Mímico** (mini-boss) | emboscador | 1 em 3 salas laterais: no lugar do baú, disfarçado até alguém encostar · Adesivo (prende 2 s em volta) · Mordida Ácida (2× e corrói). Morto, dá o loot do baú |
-| **Dragão jovem** (boss) | — | imune a fogo · Multiataque (3 mordidas de 0,3×) · Sopro Infernal (leque de 6 tiles, 1,9× e queimadura) · abaixo de 50%: Voo (some 2 s, invulnerável, e cai sobre um herói, área 2) |
+| **Dragão jovem** (boss) | — | imune a fogo · Multiataque (3 mordidas de 0,3×) · Sopro Infernal (leque de 6 tiles, 1,9× e queimadura) |
 
 ### Pântano das Ruínas (★2)
 
@@ -1308,9 +1309,9 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Troll do brejo** (mini-boss) | bruto | Regeneração de 2%/s, parada por 5 s com fogo ou natureza · Dilacerar (1,8× e sangramento) |
 | **Bruxa Verde** (mini-boss) | controlador | Ilusão (some 3 s e deixa 2 cópias iguais a ela, que somem com um golpe ou quando ela morre) · Nuvem Venenosa |
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
-| **Rei Bullywug** (boss) | escaramuçador | arte das folhas do Runway (`docs/arte/pantano-das-ruinas/bullywug-*.png`) · Bote da Lama (some na lama 1,5 s, invulnerável, e sai em bote colado no alvo, 1,6× em área) · Estocada (linha de 3, 1,8×, empurra) · lança de alcance 2 · abaixo de 50%: Chamado do Brejo (2 bullywugs, uma vez) · abaixo de 30%: frenesi |
-| **Hidra do pântano** (boss, fora do mapa desde o Rei Bullywug) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida · abaixo de 50%: Mergulho |
-| **Dragão negro jovem** (boss, fora do mapa desde o Rei Bullywug) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) · abaixo de 50%: Mergulho |
+| **Rei Bullywug** (boss) | escaramuçador | arte das folhas do Runway (`docs/arte/pantano-das-ruinas/bullywug-*.png`) · Estocada (linha de 3, 1,8×, empurra) · lança de alcance 2 · abaixo de 50%: Chamado do Brejo (2 bullywugs, uma vez) · abaixo de 30%: frenesi |
+| **Hidra do pântano** (boss, fora do mapa desde o Rei Bullywug) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida |
+| **Dragão negro jovem** (boss, fora do mapa desde o Rei Bullywug) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) |
 
 ### Pântano do Kosaradius (★1)
 
@@ -1366,7 +1367,7 @@ cada um tem o seu boss. Quase todos são mortos-vivos (não pegam veneno nem san
 | **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Golpe de Gládio (1,6× e sangra) · Formação! (chama 2 Legionários) |
 | **Múmia Real** (mini-boss) | controlador | máscara de ouro · Faixas Reais (puxa e prende) · Maldição do Faraó (área que corrói) · ferida, Enxame da Tumba (3 Escaravelhos) |
 | **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cegante (linha que cega) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
-| **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · Submergir (some na duna e irrompe debaixo do alvo) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
+| **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
 | **Faraó Eterno** (boss das Mesas) | artilheiro (morto-vivo, flutua) | ataca a 3 tiles e foge de quem cola · Raio do Sol Morto (linha de 8 que queima) · Mortalha (puxa e prende) · Maldição Eterna (área que corrói) · Legião Eterna (2 Legionários) · abaixo de 30%, Sarcófago (uma vez: cura 20% e empurra 3 em volta) |
 
 **Balanceamento** (medido com o simulador de duelo, herói sozinho só com ataque básico; refazer quando a telemetria
@@ -1396,7 +1397,7 @@ quase nada é morto-vivo: veneno e sangramento pegam, e as plantas queimam fáci
 | **Dríade Corrompida** (mini-boss) | controladora (fada) | Enraizar (área que prende 1,5 s) · Chamado dos Galhos (3 Galhudos) · ferida, Passo Arbóreo (some 1,5 s) |
 | **Centauro Renegado** (mini-boss) | artilheiro | rápido, fica a 3 tiles · Chuva de Flechas (área) · encurralado, Coice (em volta, empurra 2) |
 | **Guardião do Menir** (mini-boss) | sentinela (constructo) | parado é uma pedra (camuflado, acorda a 3 tiles) · resiste a físico (0,5), vulnerável a energia · Pisão Rúnico (em volta, lento) · Punho de Pedra (atordoa 1 s) |
-| **Dragão Verde Jovem** (boss) | bruto (dragão) | círculo de menires do norte; vencê-lo abre o Coração da Mata · resiste a natureza (0,5, não imune) · Multiataque (3 × 0,3) · Sopro Venenoso (leque de 6) · Rabada (em volta, empurra 2) · abaixo de 60%, Gás dos Menires (área: lento e veneno) · abaixo de 50%, Voo |
+| **Dragão Verde Jovem** (boss) | bruto (dragão) | círculo de menires do norte; vencê-lo abre o Coração da Mata · resiste a natureza (0,5, não imune) · Multiataque (3 × 0,3) · Sopro Venenoso (leque de 6) · Rabada (em volta, empurra 2) · abaixo de 60%, Gás dos Menires (área: lento e veneno) |
 
 **Balanceamento** (simulador de duelo, herói sozinho só com ataque básico, nos mesmos níveis das Dunas): os comuns
 ficam entre os Escaravelhos e a Múmia Enfaixada; os mini-bosses aguentam um pouco mais que os das Dunas (o Guardião do
@@ -1421,7 +1422,7 @@ do Bosque Velho e do pack.
 | Sombra Élfica | artilheiro (morto-vivo) | arqueira de luz fria a 6 tiles · some no ar a cada ~6,5 s · Flecha da Lua Morta (linha de 7 que cega) · a luz a desfaz (1,5×) |
 | **Árvore Desperta** (mini-boss) | sentinela (planta) | parada é uma árvore (camuflada, acorda a 4 tiles) · resiste a físico · Raízes (área que prende 1,5 s) · Varrida de Galho (em volta, empurra 2) · fogo 1,5× |
 | **Guardião Élfico Caído** (mini-boss) | líder (morto-vivo) | duas lâminas de luz fria · Comando (+20% de dano e velocidade) · Passo Sombrio (salta) · Dança das Lâminas (em volta, queima) · ferido, Chamado do Santuário (2 Sombras Élficas) |
-| **Rei Galhado** (boss) | bruto (fada) | espírito da caçada, galhada de cervo e lança de galho, alcance 2 · resiste a natureza, vulnerável a fogo e gelo · Investida da Galhada (linha de 7, empurra) · Espinhos do Coração (área de raio 3 que sangra) · abaixo de 70%, Chamado da Caçada (2 Cervos) · abaixo de 50%, Passo da Névoa · abaixo de 30%, Fúria da Mata (uma vez: raízes em volta, prende, empurra 3 e cura 15%) |
+| **Rei Galhado** (boss) | bruto (fada) | espírito da caçada, galhada de cervo e lança de galho, alcance 2 · resiste a natureza, vulnerável a fogo e gelo · Investida da Galhada (linha de 7, empurra) · Espinhos do Coração (área de raio 3 que sangra) · abaixo de 70%, Chamado da Caçada (2 Cervos) · abaixo de 30%, Fúria da Mata (uma vez: raízes em volta, prende, empurra 3 e cura 15%) |
 
 **Balanceamento** (duelo, nos mesmos níveis das Mesas): os comuns ficam entre a Carpideira e a Múmia Enfaixada (o Cervo,
 o mais duro para o Druida); os mini-bosses perto da Múmia Real (a Árvore Desperta aguenta mais e bate menos); o Rei
@@ -1449,7 +1450,7 @@ um modelo novo, o Lodo (`ooze.ts`). Prévia: `npx tsx apps/client/scripts/inimig
 | **Bruxa Cinzenta** (mini-boss) | controlador (fada) | Névoa (área que cega) · Maldição (corrói) · ferida, some e volta com 2 cópias ilusórias |
 | **Monólito Desperto** (mini-boss) | sentinela (constructo) | parado é um monólito (acorda a 4 tiles) · Pulso da Runa (atordoa em volta) · Pancada de Pedra (empurra) · resiste a físico, energia 1,4× |
 | **Cavaleiro Afogado** (mini-boss) | líder (morto-vivo) | Comando (+20% de dano e velocidade) · Investida · Varrida Enferrujada (em volta, sangra) · ferido, Chamado dos Afogados (2 Turfeiros) |
-| **Morgrana, a Rainha Afogada** (boss) | controlador (morto-vivo) | alcance 2 · resiste a fogo, vulnerável a luz e raio · Maré Negra (empurra e deixa lento em volta) · Mão do Lago (puxa e prende) · abaixo de 70%, Chamado dos Afogados · abaixo de 50%, Mergulho no Lago · abaixo de 30%, Lamento (cega em volta e cura 12%, uma vez) |
+| **Morgrana, a Rainha Afogada** (boss) | controlador (morto-vivo) | alcance 2 · resiste a fogo, vulnerável a luz e raio · Maré Negra (empurra e deixa lento em volta) · Mão do Lago (puxa e prende) · abaixo de 70%, Chamado dos Afogados · abaixo de 30%, Lamento (cega em volta e cura 12%, uma vez) |
 
 **Balanceamento** (duelo, herói sozinho só com ataque básico, níveis 15/17/20, ao lado da Fortaleza nos mesmos níveis):
 Sanguessuga e Corvo mais fáceis que o Orc batedor (zonas de entrada); Turfeiro e Lodo perto do Ogro jovem; Lanterneiro e
