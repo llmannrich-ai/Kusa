@@ -38,8 +38,8 @@ export const ROLE_INFO: Record<SpellRole, { label: string; icon: string }> = {
 /** Papéis de uma magia, na ordem de `ROLE_INFO`. */
 export function spellRoles(s: SpellDef): SpellRole[] {
   const f = s.field;
-  const hits = !!(s.damage || s.dot || f?.damage || s.burst || s.groundFire);
-  const wide = s.shape !== undefined || !!s.chain || (s.radius > 0 && !s.heal) || f?.kind === "zone" || !!s.burst || !!s.groundFire;
+  const hits = !!(s.damage || s.dot || f?.damage || s.burst || s.groundFire || f?.burst);
+  const wide = s.shape !== undefined || !!s.chain || (s.radius > 0 && !s.heal) || f?.kind === "zone" || !!s.burst || !!s.groundFire || !!f?.burst;
   const roles = new Set<SpellRole>();
   if (hits && wide) roles.add("area");
   if (hits && !wide) roles.add("alvo");
