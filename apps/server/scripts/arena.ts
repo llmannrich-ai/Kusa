@@ -8,7 +8,7 @@
  */
 import {
   MSG, SERVER_TICK_MS, Tile, createRng, generateDungeon, hasLineOfSight, isWalkable, tileAt, tileDistance,
-  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type RunEndedMessage, type SpellId, type SpellMessage,
+  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type RunEndedMessage, type SpellId, type SpellMessage, type TalentRanks,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { nextStep } from "../src/pathfinding.ts";
@@ -31,6 +31,8 @@ export interface ArenaOptions {
   allies?: { classId: ClassId; bot?: boolean }[];
   /** Runas equipadas em todos os heróis (como `KUSA_RUNES`). */
   runes?: string[];
+  /** Níveis do Grimório do herói (só com `allSpells: false`): para testar Dons, áureas e Tomos. */
+  talents?: TalentRanks;
 }
 
 /** Id do herói nas arenas. */
@@ -38,7 +40,7 @@ export const HERO = "h";
 
 /** Hunt com um herói e nenhum monstro (os do mapa saem). */
 export function arena(options: ArenaOptions = {}) {
-  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [], runes } = options;
+  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [], runes, talents = {} } = options;
   let clock = 0;
   const timers: { at: number; fn: () => void }[] = [];
   const damage: DamageMessage[] = [];
@@ -68,7 +70,7 @@ export function arena(options: ArenaOptions = {}) {
   };
   const state = new DungeonState();
   const hunt = new Hunt(state, host, { mapId, seed, startLevel, allSpells, monsterHp, runes, random: createRng(seed).next });
-  hunt.join(HERO, { name: "Teste", classId, talents: {}, spellXp: {} });
+  hunt.join(HERO, { name: "Teste", classId, talents, spellXp: {} });
   allies.forEach((ally, i) => {
     const id = `h${i + 2}`;
     hunt.join(id, { name: `Aliado ${i + 2}`, classId: ally.classId, talents: {}, spellXp: {} });

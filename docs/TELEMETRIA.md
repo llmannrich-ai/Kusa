@@ -41,6 +41,7 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.depthAt` | Segundo em que entrou em cada sala do caminho (ritmo) |
 | `stats.perksChosen` | Melhoria escolhida em cada nível, as duas oferecidas, o nível e o segundo |
 | `stats.specs` | Traços das especializações que o jogador tinha na hunt (ex.: `eagle_eye`) |
+| `stats.passives` | Níveis das passivas de gold que o jogador levou: Dons, áureas e Tomos (id do nó → nível, ex.: `{"knight_honed_edge": 12}`) |
 | `stats.spellsActive` | Magias levadas para a hunt (as ativas no Grimório, até 3 por slot): as opções da escolha de cada slot |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo / sem espaço para o Rolamento) |
 | `stats.spellXp` | XP de uso ganho por magia (lançamentos em combate × segundos de recarga), antes do teto por hunt e da perda na morte; `spellsChosen.rank` é o nível de uso (0 a 5) e `spellsChosen.bonus` a força extra das sinergias e do Tomo (fração) |
