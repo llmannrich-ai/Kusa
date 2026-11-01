@@ -37,7 +37,12 @@ import {
   SUMMONS,
   Tile,
   attackCooldownMs,
+  allSpellsRanks,
   auraBonuses,
+  giftEffects,
+  ALLY_DAMAGE_RADIUS,
+  FAR_DAMAGE_TILES,
+  type GiftEffects,
   bestPerSlot,
   caveDestination,
   centerOf,
@@ -222,6 +227,8 @@ interface Seat {
   armorUntil: number;
   /** Traços das especializações compradas no Grimório. */
   traits: TraitDef[];
+  /** Dons do Grimório (passivas de gold), já somados pelo nível de cada um. */
+  gifts: GiftEffects;
   /** Bônus em si de uma magia (Postura do Atirador, Aljava Veloz) e até quando. */
   buff: {
     until: number; basicDamage: number; attackRange: number; moveSpeed: number; attackHaste: number;
@@ -557,13 +564,14 @@ export class Hunt {
 
   join(sessionId: string, recruit: Recruit) {
     const classId: ClassId = recruit.classId in CLASSES ? recruit.classId : "knight";
-    const talents = this.allSpells
-      ? Object.fromEntries(talentTree(classId).map((t) => [t.id, t.maxRank]))
-      : recruit.talents;
+    const talents = this.allSpells ? allSpellsRanks(classId) : recruit.talents;
     const spellXp: SpellXp = this.allSpells
       ? Object.fromEntries(talentTree(classId).filter((t) => t.spellId).map((t) => [t.id, SPELL_LEVEL_XP[SPELL_LEVEL_XP.length - 1]]))
       : recruit.spellXp;
-    const bonus = auraBonuses(classId, talents);
+    const gifts = giftEffects(classId, talents);
+    // Passo de Rastreador (Dom): soma com a Áurea de velocidade.
+    const aura = auraBonuses(classId, talents);
+    const bonus = { ...aura, speed: aura.speed + gifts.speed };
     const stats = statsFor(classId, this.startLevel, bonus);
 
     const player = new Player();
@@ -592,7 +600,7 @@ export class Hunt {
     this.seats.set(sessionId, {
       nextMoveAt: 0, heading: null, nextAttackAt: 0, portalSince: null, attacking: false, attackUntil: 0, basicAim: null, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
-      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), buff: null, hasteUntil: 0, nextBasicStunMs: 0,
+      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
@@ -601,6 +609,10 @@ export class Hunt {
     });
     const joined = this.seats.get(sessionId)!;
     joined.stats.specs = joined.traits.map((t) => t.id);
+    for (const t of talentTree(classId)) {
+      const rank = t.kind === "aura" || t.kind === "tome" || t.kind === "gift" ? Math.min(t.maxRank, talents[t.id] ?? 0) : 0;
+      if (rank > 0) joined.stats.passives[t.id] = rank;
+    }
     joined.stats.spellsActive = [...player.knownSpells];
     if (!this.state.leaderId) this.state.leaderId = sessionId;
   }
@@ -1191,7 +1203,8 @@ export class Hunt {
     const oy = p.y;
     this.face(p, tx - ox, ty - oy);
     const base = this.baseDamage(sessionId, p, "basic");
-    const basicDamage = 1 + (buff?.basicDamage ?? 0);
+    // Fio Temperado (Dom) soma com a Postura do Atirador e a Fúria Berserker.
+    const basicDamage = 1 + (buff?.basicDamage ?? 0) + seat.gifts.basicDamage;
     // Rolamento: a próxima flecha atordoa (gasta no disparo, mesmo que erre ou que o monstro morra antes).
     const stunMs = seat.nextBasicStunMs;
     seat.nextBasicStunMs = 0;
@@ -1200,7 +1213,7 @@ export class Hunt {
     // O cliente já desenhou o golpe pelo `MSG.attack`: o dano chega sem projétil de novo.
     const hit: Hit = { attacker: sessionId, fromX: ox, fromY: oy, fx: cls.attackFx };
     const land = (alive: Monster) => {
-      const undead = holy && MONSTERS[alive.kind as MonsterKind]?.undead ? 1 + holy.undead : 1;
+      const undead = this.undeadBonus(seat, alive, holy?.undead ?? 0);
       const amount = rollDamage(this.random, base * basicDamage * this.farBonus(seat, { x: ox, y: oy }, alive) * undead);
       const brain = this.brains.get(alive.id);
       if (stunMs > 0 && brain) {
@@ -1687,6 +1700,7 @@ export class Hunt {
     const harvest = seat.traits.find((t) => t.harvest)?.harvest;
     const hex = seat.traits.find((t) => t.hex)?.hex;
     const toxin = seat.traits.find((t) => t.toxin)?.toxin;
+    const cc = 1 + seat.gifts.ccDuration;
     // Picada da Mamba: o veneno leva a explosão junto, para o caso de o monstro morrer com ele.
     const burst = spell.burst && { radius: spell.burst.radius, amount: this.baseDamage(sessionId, p, "spell") * spell.burst.damage, source: spell.id };
     hit.forEach((m, i) => {
@@ -1701,9 +1715,11 @@ export class Hunt {
       }
       // Corrente de Ferro: o alvo vem parar colado em quem conjura.
       if (spell.pull && m === anchor && p.status === "playing") this.pullTo(m, p);
+      // Coração Frio (Dom): as prisões e lentidões das magias do herói duram mais.
       if (spell.rootMs) {
-        this.root(m, brain, now + spell.rootMs);
-        seat.stats.ccMs.root += spell.rootMs;
+        const ms = Math.round(spell.rootMs * cc);
+        this.root(m, brain, now + ms);
+        seat.stats.ccMs.root += ms;
       }
       if (spell.stunMs) {
         brain.stunnedUntil = Math.max(brain.stunnedUntil, now + spell.stunMs);
@@ -1712,10 +1728,11 @@ export class Hunt {
       }
       if (spell.slow) {
         // Lentidão nova não soma com a antiga: fica a mais forte enquanto as duas valem.
+        const ms = Math.round(spell.slow.ms * cc);
         brain.slowPct = Math.max(now < brain.slowUntil ? brain.slowPct : 0, spell.slow.pct);
-        brain.slowUntil = Math.max(brain.slowUntil, now + spell.slow.ms);
+        brain.slowUntil = Math.max(brain.slowUntil, now + ms);
         m.slowed = true;
-        seat.stats.ccMs.slow += spell.slow.ms;
+        seat.stats.ccMs.slow += ms;
       }
       if (spell.mark) {
         brain.markPct = Math.max(now < brain.markUntil ? brain.markPct : 0, spell.mark.pct);
@@ -1742,13 +1759,15 @@ export class Hunt {
       if (spell.damage) {
         // Execução: mais forte em quem já está quase morto (vale a vida antes do golpe).
         const execute = spell.execute && m.hp < m.maxHp * spell.execute.hpPct ? 1 + spell.execute.bonus : 1;
-        const undead = spell.undeadBonus && MONSTERS[m.kind as MonsterKind]?.undead ? 1 + spell.undeadBonus : 1;
+        const undead = this.undeadBonus(seat, m, spell.undeadBonus ?? 0);
         const shattered = shatter && wasRooted ? 1 + shatter.bonus : 1;
         if (shattered > 1) {
           brain.rootedUntil = now;
           m.rooted = false;
         }
-        const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * this.farBonus(seat, p, m)));
+        // Condutor (Dom): mais dano nas magias de energia e de fogo.
+        const element = spell.element ? 1 + (seat.gifts.elementDamage[spell.element] ?? 0) : 1;
+        const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * element * this.farBonus(seat, p, m)));
         dealt += value;
         this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id);
         if (m.hp === 0) {
@@ -1778,7 +1797,9 @@ export class Hunt {
       const crater: SpellDef = { ...spell, radius: Math.max(1, spell.radius), field: { kind: "zone", ms: spell.groundFire.ms, tickMs: 1000 } };
       this.placeField(sessionId, p, seat, crater, rank, cx, cy, this.baseDamage(sessionId, p, "spell") * spell.groundFire.perSec, "fire");
     }
-    if (spell.lifesteal && dealt > 0 && p.status === "playing") this.healPlayer(p, Math.round(dealt * spell.lifesteal), sessionId);
+    // Fome Sombria (Dom): as magias de trevas devolvem parte do dano como vida, além do roubo da própria magia.
+    const lifesteal = (spell.lifesteal ?? 0) + (spell.element === "dark" ? seat.gifts.darkLifesteal : 0);
+    if (lifesteal > 0 && dealt > 0 && p.status === "playing") this.healPlayer(p, Math.round(dealt * lifesteal), sessionId);
     if (spell.manaSteal && dealt > 0 && p.status === "playing") this.giveMana(p, Math.round(dealt * spell.manaSteal), sessionId);
     // Disparo Certeiro (Maestria): matar corta o que falta da recarga; o botão do jogador acompanha.
     if (spell.killRefund && killed && now < seat.spellReadyAt[slot]) {
@@ -2017,6 +2038,8 @@ export class Hunt {
   /** `healerId` é quem leva o crédito da cura na telemetria. */
   private healPlayer(p: Player, amount: number, healerId: string) {
     const healer = this.seats.get(healerId);
+    // Seiva Antiga (Dom): as curas de quem tem o Dom curam mais.
+    if (healer && healer.gifts.healPower > 0) amount = Math.round(amount * (1 + healer.gifts.healPower));
     const sap = healer?.traits.find((t) => t.healArmor)?.healArmor;
     const bloom = healer?.traits.find((t) => t.overheal)?.overheal;
     const seat = (sap || bloom) && p.status === "playing" ? this.seatOf(p) : undefined;
@@ -2120,7 +2143,9 @@ export class Hunt {
     const now = this.host.now();
     const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "summon"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0)));
     // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
-    const boost = 1 + (this.seats.get(sessionId)?.traits.reduce((sum, t) => sum + (t.summonBoost ?? 0), 0) ?? 0);
+    // Laço da Matilha (Dom) soma com o Vínculo Selvagem.
+    const summoner = this.seats.get(sessionId);
+    const boost = 1 + (summoner?.traits.reduce((sum, t) => sum + (t.summonBoost ?? 0), 0) ?? 0) + (summoner?.gifts.summonBoost ?? 0);
     stats.maxHp = Math.round(stats.maxHp * boost);
     stats.damage *= boost;
     for (let i = 0; i < count; i++) {
@@ -2713,7 +2738,8 @@ export class Hunt {
     // Pele Selvagem (Traço) vale enquanto a forma animal dura; a Seiva Protetora, por alguns segundos depois da cura.
     const formArmor = seat?.form && now < seat.form.until ? seat.traits.reduce((sum, t) => sum + (t.formArmor ?? 0), 0) : 0;
     const sapArmor = seat && now < seat.sapUntil ? seat.sapArmor : 0;
-    const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor;
+    // Couro Curtido (Dom): armadura fixa, somada ao equipamento.
+    const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor + (seat?.gifts.armor ?? 0);
     // Corroído: a armadura derrete e cada acúmulo deixa o golpe mais forte.
     const corrode = seat?.effects.corrode && now < seat.effects.corrode.until ? 1 + CORRODE_PER_STACK * seat.effects.corrode.stacks : 1;
     let amount = Math.max(1, Math.round(raw * corrode * (1 - damageReduction(armor)) * (1 - guard) * (1 - this.allyWard(p))));
@@ -3380,6 +3406,9 @@ export class Hunt {
   ) {
     // Morto-vivo não envenena nem sangra (tipo de criatura).
     if (immuneToDot(m.kind as MonsterKind, kind)) return;
+    // Seiva Venenosa (Dom): os venenos e sangramentos de quem tem o Dom ferem mais.
+    const venom = kind === "poison" || kind === "bleed" ? this.seats.get(attacker)?.gifts.dotDamage ?? 0 : 0;
+    if (venom > 0) perTick *= 1 + venom;
     const until = now + ms;
     const old = brain.dot;
     const toxin = kind === "poison" ? this.seats.get(attacker)?.traits.find((t) => t.toxin)?.toxin : undefined;
@@ -3605,13 +3634,21 @@ export class Hunt {
     return base * Math.max(0.2, 1 + haste + buff + form);
   }
 
-  /** Olho de Águia (Traço): mais dano em monstro longe de quem bate. */
+  /** Olho de Águia (Traço) e Olhar Paciente (Dom): mais dano em monstro longe de quem bate. */
   private farBonus(seat: Seat, from: { x: number; y: number }, m: Monster) {
     let bonus = 1;
+    const dist = tileDistance(from.x, from.y, m.x, m.y);
     for (const t of seat.traits) {
-      if (t.farDamage && tileDistance(from.x, from.y, m.x, m.y) >= t.farDamage.minTiles) bonus += t.farDamage.bonus;
+      if (t.farDamage && dist >= t.farDamage.minTiles) bonus += t.farDamage.bonus;
     }
+    if (dist >= FAR_DAMAGE_TILES) bonus += seat.gifts.farDamage;
     return bonus;
+  }
+
+  /** Dano extra em morto-vivo: o da magia ou do Traço (`own`) somado à Fé Ardente (Dom). */
+  private undeadBonus(seat: Seat, m: Monster, own: number) {
+    if (!MONSTERS[m.kind as MonsterKind]?.undead) return 1;
+    return 1 + own + seat.gifts.undeadDamage;
   }
 
   /**
@@ -3686,6 +3723,13 @@ export class Hunt {
       }
     });
     bonus += lead;
+    // Voz de Comando (Dom): o maior entre os heróis por perto (contando o próprio), somado à Liderança.
+    let voice = 0;
+    this.state.players.forEach((other, id) => {
+      const gift = other.status === "playing" ? this.seats.get(id)?.gifts.allyDamage ?? 0 : 0;
+      if (gift > voice && tileDistance(p.x, p.y, other.x, other.y) <= ALLY_DAMAGE_RADIUS) voice = gift;
+    });
+    bonus += voice;
     if (this.host.now() < seat.fieldDamageUntil) bonus += seat.fieldDamage;
     return bonus;
   }
