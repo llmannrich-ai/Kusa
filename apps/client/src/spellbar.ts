@@ -137,6 +137,8 @@ export class SpellBar {
   /** Encostou no botão: magia com alvo começa a mirar; as outras seguem o teclado (`press`). */
   private down(slot: SpellSlot, e: PointerEvent) {
     if (this.aiming) return;
+    // O ⚔️ está mirando (Mira no ataque): a magia sai no toque, no alvo automático.
+    if (this.aim.active) return this.press(slot);
     const p = this.me();
     const spell = p && rankedSpell(p, spellIn(p, slot));
     const ready = performance.now() >= this.slots[slot].readyAt;

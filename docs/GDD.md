@@ -25,6 +25,14 @@ teclado e mouse no desktop são um extra.
 - **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
+- **Mira no ataque (beta):** opção nas Configurações, desligada de padrão. O ⚔️ ganha o gesto das magias de alvo único:
+  encostar mostra o alcance do golpe (o do servidor, `Player.reach`, com Traços, bônus, equipamento, Forma de Urso e
+  cegueira) e o alvo automático; arrastar a partir do botão mira (16 px de zona morta, 96 px chegam ao alcance), e a mira
+  gruda no monstro visível a até 1 tile do ponto; soltar num monstro trava o alvo nele e dá um golpe; soltar no vazio ou
+  voltar o dedo ao botão (vermelho) não faz nada. Toque rápido continua sendo um golpe e segurar parado continua
+  repetindo, só que o segurar começa depois de 0,2 s (para o arrasto não soltar um golpe antes de mirar). Enquanto o ⚔️
+  mira, as magias saem no toque, no alvo automático. O servidor não muda: a mira só manda a trava (`MSG.target`) e o
+  toque no ataque (`MSG.attacking`).
 - **Tela:** sempre 9 tiles no lado curto (pelo menos 13 no longo): em pé, 9 de largura, com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares; deitado, o tile tem o mesmo tamanho que teria em pé no mesmo celular (no iPhone, com as barras do Safari, sobram uns 7 tiles de altura; nunca menos de 6,5), com o jogador no centro. Deitado se vê menos na vertical e mais para os lados. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
 - **Princípio: a câmera nunca treme.** Nenhum efeito (magia, golpe, habilidade de boss, explosão) sacode a tela: no

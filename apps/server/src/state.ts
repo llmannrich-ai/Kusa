@@ -24,6 +24,8 @@ export class Player extends Schema {
   @type("string") status: PlayerStatus = "playing";
   /** Id do monstro selecionado para o auto-attack ("" = nenhum). */
   @type("string") target = "";
+  /** Alcance (tiles) do ataque básico agora, com Traços, bônus, equipamento, Forma de Urso e cegueira: a mira do ⚔️ desenha este. */
+  @type("number") reach = 1;
   /** Itens equipados (ids de `ITEMS` em `@kusa/shared`; "" = slot vazio). */
   @type("string") weapon = "";
   @type("string") helmet = "";

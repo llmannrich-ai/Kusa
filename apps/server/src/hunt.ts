@@ -1119,6 +1119,7 @@ export class Hunt {
       + (cls.attackRange > 1 ? seat.gear.range : 0);
     // Cego: não mira nada além de perto.
     const range = this.held(seat, "blind") ? Math.min(reach, BLIND_RANGE) : reach;
+    if (p.reach !== range) p.reach = range;
     // Atordoado ou engolido: não ataca.
     if (this.held(seat, "stun", "engulf")) return;
     // Alvo escondido (camuflado, invisível, voando) não pode ser atacado.

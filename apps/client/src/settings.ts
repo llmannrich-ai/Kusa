@@ -5,6 +5,8 @@ export interface Settings {
   fixedStick: boolean;
   /** Heróis e equipamento no padrão novo (docs/ARTE_TIBIA.md), ainda em teste. */
   newArt: boolean;
+  /** Mira de arrasto no ⚔️, igual à das magias de alvo único (ainda em teste). */
+  attackAim: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -14,6 +16,7 @@ const DEFAULTS: Settings = {
   fixedStick: true,
   // Arte nova ligada de padrão para todos (a escolha antiga é zerada uma vez em `loadSettings`).
   newArt: true,
+  attackAim: false,
 };
 
 /** Uma opção como aparece na tela de configurações; novas opções entram aqui e em `Settings`. */
@@ -39,6 +42,11 @@ export const SETTING_DEFS: SettingDef[] = [
     key: "newArt",
     label: "Arte nova (beta)",
     hint: "Heróis e equipamento no desenho novo, com mais detalhe. Ainda em teste: o jogo recarrega ao trocar.",
+  },
+  {
+    key: "attackAim",
+    label: "Mira no ataque (beta)",
+    hint: "Arraste a partir do ⚔️ para escolher o monstro, como nas magias: soltar trava o alvo e golpeia; voltar ao botão cancela. O toque rápido e o segurar continuam iguais.",
   },
 ];
 

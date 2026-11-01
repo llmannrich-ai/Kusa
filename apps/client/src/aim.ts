@@ -28,7 +28,7 @@ const COLORS = { free: 0xd7c8ff, locked: 0xf1c40f, range: 0xd7c8ff, ally: 0x7fc8
 export type BodyAt = (id: string) => { x: number; y: number } | undefined;
 
 /**
- * Mira das magias com alvo (únicas e de área), desenhada no mapa enquanto o polegar segura o botão
+ * Mira das magias com alvo (únicas e de área) e do ⚔️ (com a Mira no ataque), desenhada no mapa enquanto o polegar segura o botão
  * do slot: linha pontilhada do herói até o ponto, o alcance em volta dele e a área da magia.
  * Parado no botão, a mira mostra o alvo automático (o que o toque rápido acerta); arrastando,
  * o tamanho do arrasto vira distância até o alcance máximo. Magia de alvo único gruda no monstro
@@ -41,19 +41,35 @@ export class SpellAim {
   private drag = { x: 0, y: 0 };
   /** Já saiu da zona morta uma vez: agora é mira manual (voltar ao centro cancela). */
   private manual = false;
+  /** Mirando o ataque básico (⚔️, com a Mira no ataque ligada), com o alcance do golpe que o servidor manda. */
+  private basic = false;
 
   constructor(scene: Phaser.Scene, private room: DungeonRoom, private dungeon: Dungeon, private bodyAt: BodyAt, depth: number) {
     this.g = scene.add.graphics().setDepth(depth);
   }
 
   get active() {
-    return this.spell !== null;
+    return this.spell !== null || this.basic;
   }
 
   start(spell: SpellDef) {
     this.spell = spell;
+    this.basic = false;
     this.drag = { x: 0, y: 0 };
     this.manual = false;
+  }
+
+  /** Mira do ⚔️: alvo único com o alcance do golpe; só monstro visível (o servidor ignora o escondido). */
+  startAttack() {
+    this.spell = null;
+    this.basic = true;
+    this.drag = { x: 0, y: 0 };
+    this.manual = false;
+  }
+
+  /** Já saiu da zona morta: é mira manual, não toque rápido nem segurar. */
+  get dragging() {
+    return this.manual;
   }
 
   move(dx: number, dy: number) {
@@ -78,6 +94,7 @@ export class SpellAim {
 
   stop() {
     this.spell = null;
+    this.basic = false;
     this.g.clear();
   }
 
@@ -87,10 +104,10 @@ export class SpellAim {
     const spell = this.spell;
     const me = this.room.state.players.get(this.room.sessionId);
     const from = this.bodyAt(this.room.sessionId);
-    if (!spell || !me || !from || this.cancelled) return;
+    if ((!spell && !this.basic) || !me || !from || this.cancelled) return;
 
     // Alcance: os tiles a até `range` do herói (a distância do jogo conta a diagonal como 1).
-    const reach = (spell.range * 2 + 1) * TILE_SIZE;
+    const reach = (this.range() * 2 + 1) * TILE_SIZE;
     g.fillStyle(COLORS.range, 0.06).fillRect(from.x - reach / 2, from.y - reach / 2, reach, reach);
     dashedRect(g, from.x - reach / 2, from.y - reach / 2, reach, reach, COLORS.range, 0.35);
 
@@ -99,6 +116,14 @@ export class SpellAim {
     const locked = aim.targetId !== undefined;
     const to = (aim.targetId && this.bodyAt(aim.targetId)) || { x: toPx(aim.x), y: toPx(aim.y) };
     const color = locked ? COLORS.locked : COLORS.free;
+    if (!spell) {
+      // Ataque básico: linha até o ponto e o quadrado do tile (dourado quando grudou num monstro).
+      dottedLine(g, from.x, from.y, to.x, to.y, color);
+      const half = TILE_SIZE / 2;
+      g.fillStyle(color, 0.14).fillRect(to.x - half, to.y - half, TILE_SIZE, TILE_SIZE);
+      dashedRect(g, to.x - half, to.y - half, TILE_SIZE, TILE_SIZE, color, 0.85);
+      return;
+    }
     if (spell.aim === "ally") {
       // Aliado: linha até ele e um círculo azul nos pés (sem aliado no ponto, a mira some).
       dottedLine(g, from.x, from.y, to.x, to.y, COLORS.ally);
@@ -134,31 +159,26 @@ export class SpellAim {
   private target(): CastAim | null {
     const spell = this.spell;
     const me = this.room.state.players.get(this.room.sessionId);
-    if (!spell || !me) return null;
-    if (spell.aim === "ally") return this.allyAim(me.x, me.y, spell.range);
+    if ((!spell && !this.basic) || !me) return null;
+    const range = this.range();
+    if (spell?.aim === "ally") return this.allyAim(me.x, me.y, range);
     if (!this.manual) {
-      const id = this.autoTarget(me.x, me.y, spell.range);
+      const id = this.autoTarget(me.x, me.y, range);
       const m = id ? this.room.state.monsters.get(id) : undefined;
       return m ? { x: m.x, y: m.y, targetId: id! } : null;
     }
 
     // O arrasto vira deslocamento em tiles: na borda do arrasto, a mira chega ao alcance máximo
     // (medido como no jogo, em que a diagonal conta 1).
-    const len = Math.hypot(this.drag.x, this.drag.y);
-    const t = Math.min(1, (len - DEADZONE_PX) / (FULL_DRAG_PX - DEADZONE_PX)) * spell.range;
-    const ux = this.drag.x / len;
-    const uy = this.drag.y / len;
-    const edge = Math.max(Math.abs(ux), Math.abs(uy));
-    const raw = clampToRange(me.x, me.y, me.x + Math.round((ux / edge) * t), me.y + Math.round((uy / edge) * t), spell.range);
-    const point = lineEnd(this.dungeon, me.x, me.y, raw.x, raw.y);
-    if (!isSingleTarget(spell)) return point;
+    const point = this.dragPoint(me.x, me.y, range);
+    if (spell && !isSingleTarget(spell)) return point;
 
-    // Alvo único: gruda no monstro mais perto do ponto, se estiver a até 1 tile e ao alcance.
+    // Alvo único (e o ⚔️): gruda no monstro visível mais perto do ponto, se estiver a até 1 tile e ao alcance.
     let best: string | undefined;
     let bestDist = Infinity;
     this.room.state.monsters.forEach((m, id) => {
       const dist = tileDistance(point.x, point.y, m.x, m.y);
-      if (dist > AIM_SNAP_TILES || dist >= bestDist || !this.canHit(me.x, me.y, m.x, m.y, spell.range)) return;
+      if (m.hidden || dist > AIM_SNAP_TILES || dist >= bestDist || !this.canHit(me.x, me.y, m.x, m.y, range)) return;
       best = id;
       bestDist = dist;
     });
@@ -200,16 +220,21 @@ export class SpellAim {
   private autoTarget(x: number, y: number, range: number): string | null {
     const me = this.room.state.players.get(this.room.sessionId);
     const current = me?.target ? this.room.state.monsters.get(me.target) : undefined;
-    if (current && this.canHit(x, y, current.x, current.y, range)) return me!.target;
+    if (current && !current.hidden && this.canHit(x, y, current.x, current.y, range)) return me!.target;
     let best: string | null = null;
     let bestDist = Infinity;
     this.room.state.monsters.forEach((m, id) => {
       const dist = tileDistance(x, y, m.x, m.y);
-      if (dist >= bestDist || !this.canHit(x, y, m.x, m.y, range)) return;
+      if (m.hidden || dist >= bestDist || !this.canHit(x, y, m.x, m.y, range)) return;
       best = id;
       bestDist = dist;
     });
     return best;
+  }
+
+  /** Alcance da mira: o da magia ou, no ⚔️, o do golpe que o servidor calcula (`Player.reach`). */
+  private range() {
+    return this.spell ? this.spell.range : (this.room.state.players.get(this.room.sessionId)?.reach ?? 1);
   }
 
   private canHit(x: number, y: number, mx: number, my: number, range: number) {
