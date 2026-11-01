@@ -81,12 +81,16 @@ import {
   PORTAL_TEXTURE,
   SUMMON_ANIMS,
   SUMMON_TEXTURE,
+  heroActionAnim,
+  heroActionArt,
+  heroActionMs,
   heroArt,
   heroIdleFrame,
   heroWalkAnim,
   itemTexture,
   ensureMonsterArt,
   warmMapMonsters,
+  type HeroAction,
 } from "./art/textures.ts";
 
 /**
@@ -565,6 +569,7 @@ export class DungeonScene extends Phaser.Scene {
     if (!classId) return;
     if (msg.from === this.room.sessionId) this.attack.onAttack();
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, classId === "knight" ? 5 : 2);
+    this.heroAction(msg.from, "attack");
     this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
   }
 
@@ -576,6 +581,7 @@ export class DungeonScene extends Phaser.Scene {
     if (!msg.echo) {
       if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
       this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
+      this.heroAction(msg.from, "cast");
     }
     this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms, spell.radius);
     if (spell.shape === "line") this.showLine(spell, msg);
@@ -736,6 +742,19 @@ export class DungeonScene extends Phaser.Scene {
     unit.sprite.play(monsterAnimKey(unit.texture, clip));
     const fps = unit.anim.fps[clip === "skill" ? "cast" : clip];
     unit.busyUntil = this.time.now + (unit.sprite.anims.currentAnim?.frames.length ?? 4) / fps * 1000;
+  }
+
+  /**
+   * Movimento de ação do herói (golpe, tiro ou magia), virado para onde o tranco o deixou. Toca uma vez e segura o
+   * quadro até acabar; sem a folha pronta (ainda sendo desenhada, ou arte antiga), fica só o tranco.
+   */
+  private heroAction(sessionId: string, action: HeroAction) {
+    const unit = this.avatars.get(sessionId), player = this.room.state.players.get(sessionId);
+    if (!unit?.classId || !player || unit.dead || !unit.sprite.visible) return;
+    const key = heroActionArt(this, unit.classId, outfitOf(player));
+    if (!key) return;
+    unit.sprite.play(heroActionAnim(key, action, unit.dir));
+    unit.busyUntil = this.time.now + heroActionMs(action);
   }
 
   /** Tranco curto do sprite na direção do golpe (ida e volta). */
@@ -1148,6 +1167,9 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, top + 4, false);
     unit.classId = classId;
     unit.heroKey = heroKey;
+    unit.busyUntil = 0;
+    // Os movimentos de ação começam a ser desenhados aos poucos já (ficam prontos antes do primeiro golpe).
+    heroActionArt(this, classId, outfitOf(player));
     const label = this.add.text(0, unit.barY - 2, player.name, this.textStyle()).setOrigin(0.5, 1);
     unit.overlay.add(label);
     this.avatars.set(sessionId, unit);
@@ -1179,7 +1201,9 @@ export class DungeonScene extends Phaser.Scene {
     const heroKey = heroArt(this, unit.classId!, outfit);
     if (heroKey !== unit.heroKey) {
       unit.heroKey = heroKey;
-      unit.sprite.setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
+      unit.busyUntil = 0;
+      unit.sprite.stop().setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
+      heroActionArt(this, unit.classId!, outfit);
     }
     // Equipamento raro ou mágico brilha no herói.
     const signs = gearSigns(outfit);
@@ -1489,10 +1513,11 @@ export class DungeonScene extends Phaser.Scene {
       beast.play(monsterAnimKey(FORMS[kind].texture, walking ? "walk" : "idle"), true);
       beast.anims.timeScale = walking ? Phaser.Math.Clamp(((anim.stride ?? 3) * 1000 / unit.stepMs) / anim.fps.walk, 0.5, 2) : 1;
     }
-    if (unit.heroKey) {
+    // Herói: o movimento de ação segura o quadro até acabar; depois anda ou fica parado (na folha da caminhada).
+    if (unit.heroKey && time >= (unit.busyUntil ?? 0)) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);
-      else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
-        unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
+      else if (unit.sprite.anims.isPlaying || unit.sprite.texture.key !== unit.heroKey || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
+        unit.sprite.stop().setTexture(unit.heroKey, heroIdleFrame(unit.dir));
       }
     }
   }

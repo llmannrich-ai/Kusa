@@ -1,7 +1,10 @@
 import * as Phaser from "phaser";
 import { MAPS, MAP_IDS, TILE_SIZE, centerOf, generateDungeon, mapIdOf } from "@kusa/shared";
 import { createPropsArt, PROP_SCALE } from "./art/props.ts";
-import { BLOOD_TEXTURE, CHEST_TEXTURE, PORTAL_TEXTURE, ensureMonsterArt } from "./art/textures.ts";
+import { BLOOD_TEXTURE, CHEST_TEXTURE, PORTAL_TEXTURE, ensureMonsterArt, heroActionAnim, heroActionArt, heroArt, heroIdleFrame, heroWalkAnim, type HeroAction } from "./art/textures.ts";
+import { heroSpriteScale, type HeroDir } from "./art/heroes.ts";
+import { ITEMS, type ClassId } from "@kusa/shared";
+import { NO_OUTFIT, type Outfit } from "./art/outfit.ts";
 import { BESTIARY_ART, EXTRA_CLIPS, monsterAnimKey } from "./art/bestiary.ts";
 import { scorpionCanvas } from "./art/desertMonsters.ts";
 import { CREATURE_SPRITE_SCALE, refineArt } from "./art/refine.ts";
@@ -26,7 +29,8 @@ import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
  * Parâmetros: `mapa` (id do mapa), `seed`, `em` (`inicio`, `boss`, `sala` ou `x,y` em tiles), `largura` (tiles no lado
  * curto da tela, 9 se faltar: mais que isso afasta a câmera para ver o mapa inteiro), `bichos` (monstros da arte nova
  * lado a lado, passando por todos os clipes, posicionados como no jogo: `bichos=sandScorpion,goblin`) e `antigo=1` (o
- * escorpião da arte antiga ao lado, para comparar).
+ * escorpião da arte antiga ao lado, para comparar). `herois` (heróis lado a lado, como no jogo, repetindo andar, golpe e
+ * magia em cada direção: `herois=knight,paladin`; um item vestido com `:`, `herois=knight:weapon-axe-5-common`) e `lento` (animações N vezes mais devagar).
  * Ex.: `/mapa.html?mapa=marsh&seed=7&em=boss`. Na página, `window.pronto` vira true e `window.desenhoMs` diz quanto o
  * mapa levou para desenhar.
  *
@@ -58,6 +62,7 @@ class Previa extends Phaser.Scene {
     const [x, y] = em.split(",").map(Number);
     const at = em === "boss" ? centerOf(d.boss) : em === "sala" && room ? centerOf(room) : Number.isFinite(y) ? { x, y } : d.spawn;
     this.critters(at);
+    this.heroes(at);
     const cam = this.cameras.main.setBackgroundColor(VOID[d.mapId]).setRoundPixels(true);
     cam.setZoom(Math.min(this.scale.gameSize.width, this.scale.gameSize.height) / (Number(q.get("largura") ?? 9) * TILE_SIZE)).centerOn(at.x * TILE_SIZE + 16, at.y * TILE_SIZE + 16);
     page.pronto = true;
@@ -92,6 +97,45 @@ class Previa extends Phaser.Scene {
       if (!this.textures.exists("antigo")) this.textures.addCanvas("antigo", refineArt(scorpionCanvas()));
       place(kinds.length, this.add.sprite(0, 0, "antigo").setScale(CREATURE_SPRITE_SCALE).setFlipX(false));
     }
+  }
+
+  /**
+   * Heróis de `herois` em fila acima de `at`, como o `DungeonScene.addAvatar` os põe, repetindo andar, golpe e magia de
+   * frente, de lado (para os dois lados) e de costas, com os mesmos clipes do jogo (`heroActionArt`).
+   */
+  private heroes(at: { x: number; y: number }) {
+    const list = (q.get("herois") ?? "").split(",").filter(Boolean);
+    // `lento=4`: tudo 4× mais devagar, para ver quadro a quadro.
+    const slow = Number(q.get("lento") ?? 1);
+    this.anims.globalTimeScale = 1 / slow;
+    this.time.timeScale = 1 / slow;
+    list.forEach((entry, i) => {
+      const [classId, ...items] = entry.split(":") as [ClassId, ...string[]];
+      const outfit: Outfit = { ...NO_OUTFIT };
+      for (const id of items) if (ITEMS[id]) outfit[ITEMS[id].slot] = id;
+      const key = heroArt(this, classId, outfit);
+      const sprite = this.add.sprite(0, 0, key, heroIdleFrame("down")).setScale(heroSpriteScale()).setOrigin(0.5, 1);
+      const x = (at.x + (i % 3) * 2.6 - 2.6) * TILE_SIZE + 16, y = (at.y + 0.5 + Math.floor(i / 3) * 2.5) * TILE_SIZE + 16;
+      sprite.setPosition(x, y + TILE_SIZE / 2).setDepth(y + TILE_SIZE / 2);
+      this.add.ellipse(x, y + TILE_SIZE / 2 - 3, sprite.displayWidth * 0.55, (6 * sprite.displayHeight) / TILE_SIZE, 0x000000, 0.35).setDepth(y);
+      const steps: [HeroDir, boolean, "walk" | HeroAction][] = [];
+      for (const [dir, flip] of [["down", false], ["side", false], ["side", true], ["up", false]] as [HeroDir, boolean][])
+        for (const what of ["walk", "attack", "attack", "cast"] as const) steps.push([dir, flip, what]);
+      let k = 0;
+      const next = () => {
+        const [dir, flip, what] = steps[k++ % steps.length];
+        sprite.setFlipX(flip);
+        const acts = heroActionArt(this, classId, outfit);
+        if (what === "walk" || !acts) {
+          sprite.play({ key: heroWalkAnim(key, dir), repeat: 1 });
+          sprite.once("animationcomplete", () => { sprite.setTexture(key, heroIdleFrame(dir)); this.time.delayedCall(150, next); });
+          return;
+        }
+        sprite.play(heroActionAnim(acts, what, dir));
+        sprite.once("animationcomplete", () => { sprite.setTexture(key, heroIdleFrame(dir)); this.time.delayedCall(350, next); });
+      };
+      this.time.delayedCall(1500, next);
+    });
   }
 
   /** Pontos do passeio da medição (em px) e onde a câmera está nele. */
