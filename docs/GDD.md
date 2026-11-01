@@ -56,9 +56,9 @@ Código em `apps/client/src/menu.ts`.
     Batalhas recusa ("vença Vorgak..."). O servidor de jogo recusa a sala (e o bot) com a classe trancada e o banco
     recusa a hunt solo (`start_solo_run`). Na tela de resultado da hunt em que Vorgak cai, uma carta avisa:
     "⛓️ Os xamãs da forja estão livres — Xamã Orc liberado". Desenho completo em `docs/CLASSE_XAMA_ORC.md`.
-- **Magias da hunt** (subpágina de Heróis, `renderLoadout` em `menu.ts`, leitura em `apps/client/src/spellPlan.ts`): onde o jogador escolhe as até 3 magias ativas de cada slot sem abrir ficha por ficha na árvore.
+- **Magias da hunt** (subpágina de Heróis, aberta também pelo atalho no topo do Grimório; o "‹" volta para a página de onde veio; `renderLoadout` em `menu.ts`, leitura em `apps/client/src/spellPlan.ts`): onde o jogador escolhe as até 3 magias ativas de cada slot sem abrir ficha por ficha na árvore.
   - No alto, os **3 slots** lado a lado, cada um com o nível em que abre na hunt e 3 encaixes com as magias ativas; tocar abre a lista do slot. O **slot 3** abre no nível 12 (`SPELL_SLOT_LEVELS`).
-  - **O que você leva para a hunt:** 4 necessidades (dano em área, dano no alvo, controle, sobrevivência) com as magias ativas dos dois slots que atendem cada uma; a primeira que falta vira uma dica com a solução (ativar uma magia conhecida que está fora, ou aprender uma da árvore).
+  - **O que você leva para a hunt:** 4 necessidades (dano em área, dano no alvo, controle, sobrevivência) com as magias ativas de todos os slots que atendem cada uma; a primeira que falta vira uma dica com a solução (ativar uma magia conhecida que está fora, ou aprender uma da árvore).
   - **Lista do slot:** as magias conhecidas da mais forte para a mais fraca (+10% por nível de uso vezes a sinergia e o Tomo), com nível, Maestria, papéis (área, alvo único, controle, defesa, cura, mobilidade, invocação, reforço, tirados dos efeitos), mana, recarga e força extra. A chave ao lado liga e desliga na hunt e grava na hora (`set_active_spells`); com 3 magias ou menos no slot, todas ficam ligadas e a chave trava. Tocar na magia abre a ficha da árvore.
   - **Sugestão:** começa pela mais forte e, a cada vaga, pesa a força contra o papel novo que a magia traz ao slot e a necessidade que o outro slot não cobre, para a escolha na hunt ter opções diferentes. Cada magia sugerida diz o motivo; "Aplicar" troca o slot inteiro e o "Desfazer" volta a escolha anterior.
   - Embaixo, **Para aprender neste slot**: as magias ainda não compradas, com o ramo, os papéis e o preço (ou 🔒), para planejar a próxima compra.
@@ -102,7 +102,7 @@ comprar **e usar** as anteriores do mesmo ramo.
   mana +2%, velocidade +1%), **até o nível 20** (dano +29%, vida +43,5%, mana +58%); a velocidade para no **6** (+12%),
   porque velocidade alta deixa o herói fugir de tudo. Preço: 120–300 de gold e ×1,15 por nível (velocidade ×1,3).
   Valem sempre, desde o nível 1. Com muitos níveis, o nó mostra "7/20" em vez das bolinhas.
-- **Dons** (hexágono no desenho, um no topo de cada ramo): passivas compradas **só com gold**, sem XP, com **25 níveis**
+- **Dons** (hexágono no desenho, um no topo e um no fundo de cada ramo): passivas compradas **só com gold**, sem XP, com **25 níveis**
   (`packages/shared/src/gifts.ts`). Ficam na linha 2, do lado oposto ao Tomo, e pedem o mesmo primeiro nó do tronco.
   Valem em toda hunt e não caem na morte. Preço: 60 de gold no 1º nível e ×1,12 por nível (~8 mil até o 25; o último
   nível custa 911). A ficha compra **+1** ou **+5 níveis** de uma vez (`buy_talent_levels`). Plano dos marcos e dos
@@ -125,6 +125,51 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Xamã Orc | Horda | 📯 Grito do Clã | +1% de dano para você e os aliados a até 4 tiles (entre vários, vale o grito mais forte) | +25% |
   | Xamã Orc | Totens | 🪵 Casca de Ferro | +0,6 de armadura | +15 |
   | Xamã Orc | Brasa | 🔥 Brasa Viva | +1,2% de dano do ataque básico | +30% |
+
+  **Marcos** (`milestones` em `gifts.ts`): a cada 5 níveis (5, 10, 15, 20 e 25) o Dom ganha um comportamento novo,
+  como a Maestria das magias; a ficha lista os 5 e acende os alcançados. Entram por classe (fase 4a-2). Cavaleiro:
+  - 🗡️ Fio Temperado: o 4º golpe seguido sangra 3 s · esse golpe vira corte em leque de 60° · a cada 3º golpe · o leque
+    sangra · o leque abre a 90°.
+  - 🛡️ Couro Curtido: escudos +10% · imune às lentidões dos monstros · +5% de vida · escudos +20% no total · escudo
+    quebrado dá 2 s com 30% menos dano.
+  - 🎖️ Voz de Comando: alcance 5 · magias de área que provocam +1 tile · quem está na voz anda +5% · alcance 6 · aliado
+    abaixo de 20% ganha escudo de 15% (uma vez a cada 60 s por cavaleiro).
+  - ⚔️ Último Duelo: com a vida baixa, 10% de roubo de vida · vale abaixo de 35% · ataca 15% mais rápido · roubo de 15% ·
+    o slot 3 recarrega na metade do tempo.
+  - 🏯 Pedra Fundamental: parado, regenera 1% da vida por s · provoca os colados a cada 3 s · +5 de armadura · conta como
+    parado depois de 0,5 s · o básico corta todos os colados.
+  - 👑 Estandarte Vivo: aura de 4 tiles · +3 de armadura na aura · quem mata na aura cura 2% · aura de 5 · depois do slot 3
+    do cavaleiro, a aura corta 10% do dano por 3 s.
+  - Paladino:
+    - 🦅 Olhar Paciente: +1 tile no básico · o tiro no alcance máximo atordoa 0,3 s (a cada 10 s) · a cada 6 s · 5% de
+      chance de flecha dupla · 10%.
+    - ✝️ Fé Ardente: queimaduras +1 s · magias de luz ofuscam +0,2 s · matar morto-vivo cura 1% · +0,4 s · a magia de luz
+      de alvo único acerta também o monstro logo atrás.
+    - 🧭 Passo de Rastreador: armadilhas +10% de duração · +1 armadilha de cada · 3 s sem apanhar: o próximo tiro dá +10%
+      · armadilhas +20% · +2 armadilhas.
+    - ⛪ Graça: a cada 9 magias · a carregada cura 5% · a cada 8 · e ofusca a até 2 tiles por 0,5 s · a cada 7.
+    - 🌬️ Fôlego do Caçador: o tiro carregado atravessa · rolar devolve 10% da recarga do slot 1 · 2 tiros carregados ·
+      o tiro carregado atordoa 0,3 s · rolar dá escudo de 5%.
+    - 🎇 Mão Rápida: a flecha incendiária explode em raio 1 (0,5× do básico) · +2% de chance · chão em chamas 2 s · +4% ·
+      o 6º básico sai sempre incendiário.
+
+  **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
+  cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
+
+  | Classe | Ápice | Dom | Gatilho e efeito por nível | No nível 25 |
+  |---|---|---|---|---|
+  | Cavaleiro | Ceifa do Campeão | ⚔️ Último Duelo | vida abaixo de 30%: +1,6% de dano (básico e magias) | +40% |
+  | Cavaleiro | Baluarte | 🏯 Pedra Fundamental | parado há 1 s: -1,2% de dano recebido | -30% |
+  | Cavaleiro | Carga da Legião | 👑 Estandarte Vivo | aura de 3 tiles: você e os aliados (bots incluídos) com +0,6% de velocidade de ataque (vale o maior) | +15% |
+  | Paladino | Tiro do Fim do Mundo | 🌬️ Fôlego do Caçador | depois de rolar ou saltar, o próximo básico: +4% | +100% |
+  | Paladino | Coroa Solar | ⛪ Graça | a cada 10 magias, a seguinte sai sem mana e com +2% de dano | +50% |
+  | Paladino | Chuva sem Fim | 🎇 Mão Rápida | 0,8% de chance de o básico incendiar o alvo (3 s, 0,4× do básico por segundo) | 20% |
+  | Feiticeiro | Relâmpago Ramificado | 🔁 Circuito | magias de 3 elementos em 8 s: a seguinte sai sem mana e com +2% de dano | +50% |
+  | Feiticeiro | Era do Gelo | 🔷 Reserva Gélida | mana abaixo de 15% depois de uma magia: escudo de 1,2% da vida por 6 s (recarga 30 s) | 30% |
+  | Feiticeiro | Buraco Negro | 🦴 Ossuário | monstro morto por trevas: 1,6% de chance de um esqueleto seu por 8 s (até 2) | 40% |
+  | Druida | Caçada Selvagem | 🐾 Instinto | a cada 4º básico, uma mordida de 0,5× +2% do básico | 1× |
+  | Druida | Árvore da Vida | 🌀 Ciclo | a cada 300 de cura feita, uma onda cura você e quem estiver colado (5% +0,4% da vida máxima) | 15% |
+  | Druida | Furacão de Folhas | ⛈️ Céu Fechado | monstro que morre envenenado ou sangrando por você: 1,2% de chance de um raio (1,5× do dano mágico) no mais perto, até 4 tiles | 30% |
 - **Sinergias** (inspiradas no Diablo 2): cada nível de uso de uma magia **vizinha** na árvore (ligada por galho,
   pai ou filha, inclusive o segundo pai) dá **+2% de força** a esta (`SYNERGY_PER_LEVEL`). Força = dano, dano
   contínuo, cura, escudo, armadura, marca, campos e criaturas, como o nível da magia (multiplica a força do nível).
@@ -1418,6 +1463,24 @@ Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os tote
 
 ## Ataques e magias (protótipo)
 
+- **Reações** (`packages/shared/src/reactions.ts`, Grimório 4.0): um estado no monstro prepara o golpe seguinte, de
+  qualquer herói (no co-op, o fogo de um combina com o gelo do outro). O servidor confere a cada golpe direto; o pulso
+  do dano contínuo e a explosão de outra reação não reagem. Toda reação, menos o Exposto, gasta o estado que a preparou.
+  Força base baixa; Dons e magias de combo (fases seguintes) é que deixam cada uma forte.
+  - 💨 **Vapor**: queimando + magia de gelo (ou congelado + fogo) → explode em raio 1 (0,8× do golpe), ofusca 0,5 s e
+    apaga o fogo e o gelo.
+  - 💎 **Estilhaço**: congelado + golpe de energia ou físico → +40% no golpe e o gelo quebra (o Traço Estilhaçar,
+    quando vale, fica no lugar).
+  - 🩸 **Hemorragia**: sangrando + empurrão ou atordoamento → o resto do sangramento entra de uma vez.
+  - 🌋 **Brasa Tóxica**: envenenado + fogo → o veneno pega fogo e queima quem está em raio 1 (0,25× do golpe por s, 2 s).
+  - 🌿 **Espinheiro**: preso por raiz + magia de veneno → a raiz vira espinhos: sangra na hora 3 pulsos do veneno (o
+    veneno continua).
+  - 🌑 **Condenação**: marcado + magia de trevas → a marca explode em raio 1 (1× do golpe).
+  - 🔆 **Incandescer**: ofuscado + fogo → a luz explode em raio 1 (0,8×), o dobro em mortos-vivos.
+  - 🎯 **Exposto**: marcado e atordoado → +30% de dano de tudo enquanto os dois durarem.
+  - Estados novos: **congelado** (preso por magia de gelo: Lança de Gelo, Nova de Gelo, Prisão de Gelo, o Sopro Gélido
+    canalizado e os campos de gelo que prendem; bloco de gelo no desenho) e **ofuscado** (atordoado por magia de luz).
+
 - Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra; Xamã Orc lança uma brasa do cajado (fogo, alcance 3: curto de propósito, o xamã luta junto dos totens). Os projéteis voam até o alvo e o dano só entra quando chegam.
 - **Tiro que pode errar** (o básico à distância e as magias de alvo único com projétil: Flecha Sagrada, Relâmpago,
   Espinho Venenoso, Lâmina Arremessada, Corrente de Ferro...): é mirado numa **direção**, não num ponto. O projétil voa
@@ -1542,6 +1605,9 @@ As compradas no Grimório, por slot (números do nível 0):
     e recuperam 50% da vida por 8 s · Maestria: 4 batedores) · 🗿 Círculo dos Ancestrais (totem de raio 4 por 12 s,
     0,5×/s, 30% de lentidão e cura 3%/s nos aliados · Maestria: raio 5) · ☄️ Chuva da Forja (raio 3 a até 6 tiles, 3,2×,
     queima e deixa o chão em chamas · Maestria: raio 4).
+  - **Dons do fundo do Xamã** (embaixo de cada Ápice, 25 níveis): 🪓 Laço da Horda (+1,2% de vida e de dano das
+    criaturas por nível) · 🗿 Postura Ancestral (−0,8% de dano recebido parado, por nível) · 🔥 Fagulha da Forja (+0,8%
+    de chance por nível de o básico incendiar o alvo). Usam os efeitos dos Dons das outras classes, sem marcos próprios.
 
 - **Arte e animação** (só no cliente, `apps/client/src/art/summonCreatures.ts`): todas as criaturas têm arte própria e
   animada (parada, andando, golpe e especial), no volume de luz dos monstros do Pântano. O lobo trota (patas em

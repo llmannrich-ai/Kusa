@@ -1309,6 +1309,9 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .grim-xp small { display: block; margin-top: 3px; }
 .grim-levels { display: grid; gap: 8px; margin: 8px 0 12px; }
 .grim-level { padding: 8px 10px; background: #000; border: 1px solid var(--border); }
+.grim-marks { margin: 4px 0 8px; padding-left: 4px; list-style: none; font-size: 13px; color: var(--muted, #888); }
+.grim-marks li { margin: 2px 0; }
+.grim-marks li.on { color: #f7d774; }
 .grim-level.current { border-color: #8e6bbf; }
 .grim-level strong { font-size: 13px; color: var(--accent); }
 .grim-level ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
@@ -1694,3 +1697,8 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .lo-locked-text small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lo-cost { font-size: 12px; color: var(--accent); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .lo-row, .lo-switch i, .lo-switch i::after { transition: none; } }
+/* Atalho do Grimório para Magias da hunt. */
+.grim-loadout { display: flex; align-items: center; gap: 8px; width: 100%; margin: 4px 0 8px; padding: 8px 12px; text-align: left; background: linear-gradient(90deg, #3a2a10, #1c1714); border: 1px solid var(--accent); }
+.grim-loadout strong { color: var(--accent); font-size: 15px; }
+.grim-loadout small { margin-left: auto; font-size: 12px; }
+.grim-loadout b { font-size: 22px; line-height: 1; color: var(--accent); }

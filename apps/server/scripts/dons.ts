@@ -6,11 +6,16 @@
  *     armadura (Couro Curtido), dano da equipe (Voz de Comando), dano de longe (Olhar Paciente), dano em morto-vivo
  *     (Fé Ardente), velocidade com teto (Passo de Rastreador), elementos (Condutor), prisões e lentidões (Coração Frio),
  *     roubo de vida das trevas (Fome Sombria), criaturas (Laço da Matilha), cura (Seiva Antiga) e venenos (Seiva Venenosa);
+ *   - Dons do fundo: um embaixo de cada Ápice, pedindo o Ápice no nível 1; cada gatilho dispara na hora certa:
+ *     vida baixa (Último Duelo), parado (Pedra Fundamental), aura de ritmo (Estandarte Vivo), depois do salto (Fôlego do
+ *     Caçador), a cada 10 magias (Graça), básico incendiário (Mão Rápida), 3 elementos (Circuito), mana baixa com
+ *     recarga (Reserva Gélida), morte por trevas (Ossuário), 4º básico (Instinto), cura acumulada (Ciclo) e morte
+ *     envenenada (Céu Fechado);
  *   - a telemetria guarda os níveis das passivas que o herói levou.
  * Uso: npx tsx scripts/dons.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CLASS_IDS, GIFTS, GIFT_MAX_RANK, GIFT_SPEED_CAP, TALENTS, auraBonuses, auraText, giftEffects, spellBonus, statsFor,
+  CLASS_IDS, CYCLE_BASE, CYCLE_HEAL, GIFTS, GRACE_EVERY, NO_GIFTS, SPELLS, type GiftEffects, GIFT_MAX_RANK, GIFT_SPEED_CAP, TALENTS, auraBonuses, auraText, giftEffects, spellBonus, statsFor,
   talentCost, talentTree, type ClassId, type TalentRanks,
 } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
@@ -38,7 +43,7 @@ console.log("Regras:");
 test("um Dom no topo de cada ramo, do lado oposto ao Tomo", () => {
   for (const classId of CLASS_IDS) {
     const tree = talentTree(classId);
-    const gifts = tree.filter((t) => t.kind === "gift");
+    const gifts = tree.filter((t) => t.kind === "gift" && !GIFTS[t.giftId!].apex);
     check(gifts.map((g) => g.col).sort().join() === "0,1,2", `${classId}: devia ter um Dom por ramo`);
     for (const g of gifts) {
       // Ramo sem magia ainda não tem Tomo (o Xamã Orc da Fase 1): o Dom fica numa ponta do ramo do mesmo jeito.
@@ -49,6 +54,22 @@ test("um Dom no topo de cada ramo, do lado oposto ao Tomo", () => {
       check(g.maxRank === GIFT_MAX_RANK && GIFTS[g.giftId!].classId === classId, `${g.id}: níveis ou classe errados`);
     }
   }
+});
+test("um Dom do fundo embaixo de cada Ápice, pedindo o Ápice no nível 1", () => {
+  let total = 0;
+  for (const classId of CLASS_IDS) {
+    const tree = talentTree(classId);
+    const apices = tree.filter((t) => t.spellId && SPELLS[t.spellId].slot === 2 && t.row === 6);
+    for (const apex of apices) {
+      const below = tree.filter((t) => t.kind === "gift" && t.requires?.id === apex.id);
+      check(below.length === 1, `${apex.id}: devia ter um Dom embaixo (tem ${below.length})`);
+      const g = below[0];
+      check(g.col === apex.col && g.row === apex.row + 1 && g.lane === apex.lane && g.requires!.rank === 1, `${g.id}: fora do lugar`);
+      check(GIFTS[g.giftId!].apex === apex.spellId && g.maxRank === GIFT_MAX_RANK && talentCost(g, 0) === 60, `${g.id}: regra errada`);
+      total++;
+    }
+  }
+  check(total === 3 * CLASS_IDS.length, `${total} Dons do fundo (esperava ${3 * CLASS_IDS.length}: 3 Ápices em cada uma das ${CLASS_IDS.length} classes)`);
 });
 test("preço dos Dons: 60 no 1º nível, ~8 mil até o 25", () => {
   const def = TALENTS.knight_honed_edge;
@@ -161,6 +182,159 @@ test("a telemetria guarda os níveis das passivas", () => {
   const a = heroArena("knight", { knight_damage: 7, knight_tome1: 4, knight_honed_edge: 12, knight_crushing_blow: 1 });
   const p = a.seat().stats.passives;
   check(p.knight_damage === 7 && p.knight_tome1 === 4 && p.knight_honed_edge === 12 && !("knight_crushing_blow" in p), JSON.stringify(p));
+});
+
+console.log("Dons do fundo:");
+/** Arena com o Grimório inteiro (para lançar as magias) e um Dom do fundo ligado à mão, no valor do nível 25. */
+const giftArena = (classId: ClassId, gift: Partial<GiftEffects>, opts: Parameters<typeof arena>[0] = {}) => {
+  const a = arena({ classId, monsterHp: 50, ...opts });
+  a.seat().gifts = { ...NO_GIFTS, elementDamage: {}, ...gift };
+  return a;
+};
+const fx25 = (id: keyof typeof GIFTS) => {
+  const fx: GiftEffects = { ...NO_GIFTS, elementDamage: {} };
+  GIFTS[id].apply(fx, GIFTS[id].perRank * GIFT_MAX_RANK);
+  return fx;
+};
+test("Último Duelo: +40% de dano só com a vida abaixo de 30%", () => {
+  const a = giftArena("knight", fx25("last_duel"));
+  const full = a.any.damageBonus(a.seat(), a.p);
+  a.p.hp = Math.floor(a.p.maxHp * 0.25);
+  const low = a.any.damageBonus(a.seat(), a.p);
+  check(near(low - full, 0.4), `cheio ${full}, baixo ${low}`);
+});
+test("Pedra Fundamental: parado 1s, -30% de dano recebido", () => {
+  const hit = { attacker: "", fromX: 0, fromY: 0, fx: "slash" };
+  const taken = (still: boolean) => {
+    const a = giftArena("knight", fx25("bedrock"));
+    a.advance(2000);
+    a.seat().movedAt = still ? a.now() - 1500 : a.now();
+    const before = a.p.hp;
+    a.any.damagePlayer(HERO, 200, hit);
+    return before - a.p.hp;
+  };
+  const moving = taken(false);
+  const still = taken(true);
+  check(Math.abs(still / moving - 0.7) < 0.03, `andando ${moving}, parado ${still}`);
+});
+test("Estandarte Vivo: o herói e o aliado a até 3 tiles atacam mais rápido", () => {
+  const a = giftArena("knight", fx25("living_banner"), { allies: [{ classId: "paladin", bot: true }] });
+  const ally = a.state.players.get("h2")!;
+  check(near(a.any.bannerHaste(a.p), 0.15) && near(a.any.bannerHaste(ally), 0.15), "perto");
+  ally.x = a.p.x + 6;
+  check(near(a.any.bannerHaste(ally), 0), "longe não devia ganhar");
+});
+test("Fôlego do Caçador: o Rolamento carrega o próximo básico", () => {
+  const a = giftArena("paladin", fx25("hunter_breath"));
+  a.choose("evasive_roll");
+  const m = a.place("lizardfolk", 2, 0);
+  a.ready();
+  a.cast(0, m);
+  check(a.seat().dashBasicReady, `o salto não carregou (${a.where()})`);
+  a.seat().attacking = true;
+  a.until(() => !a.seat().dashBasicReady, 3000, "o básico não gastou o fôlego");
+  check(a.seat().stats.giftProcs.hunter_breath === 1, JSON.stringify(a.seat().stats.giftProcs));
+});
+test(`Graça: depois de ${GRACE_EVERY} magias, a seguinte sai sem mana e +50%`, () => {
+  const a = giftArena("paladin", fx25("grace"));
+  a.choose("evasive_roll");
+  for (let i = 0; i < GRACE_EVERY; i++) {
+    a.ready();
+    a.cast(0, { x: a.p.x + 2, y: a.p.y });
+    a.advance(200);
+  }
+  check(a.seat().graceReady, "a série não carregou");
+  a.ready();
+  const mana = a.p.mana;
+  a.cast(0, { x: a.p.x - 2, y: a.p.y });
+  check(a.p.mana === mana && !a.seat().graceReady && a.seat().stats.giftProcs.grace === 1, `mana ${mana} → ${a.p.mana}`);
+});
+test("Mão Rápida: com 100% de chance, todo básico incendeia", () => {
+  const a = giftArena("knight", { burnChance: 1 }, { monsterHp: 200 });
+  const m = a.place("lizardfolk", 1, 0);
+  a.p.target = m.id;
+  a.seat().attacking = true;
+  a.advance(1500);
+  check((a.seat().stats.giftProcs.quick_hand ?? 0) > 0 && a.brain(m).dot?.kind === "burn", JSON.stringify(a.seat().stats.giftProcs));
+});
+test("Circuito: fogo, gelo e energia carregam a magia seguinte, e só ela", () => {
+  const a = giftArena("sorcerer", fx25("circuit"), { monsterHp: 200 });
+  const m = a.place("lizardfolk", 2, 0);
+  // A escolha do slot só vale uma vez por nível: o teste troca a magia do slot à mão.
+  for (const spellId of ["fireball", "cone_of_cold", "energy_beam"] as const) {
+    a.p.spell1 = spellId;
+    a.ready();
+    a.cast(0, m);
+    a.advance(300);
+  }
+  check(a.seat().circuitReady, `o circuito não fechou (${a.where()})`);
+  a.p.spell1 = "fireball";
+  a.ready();
+  const mana = a.p.mana;
+  a.cast(0, m);
+  check(a.p.mana === mana, `gastou mana: ${mana} → ${a.p.mana}`);
+  check(!a.seat().circuitReady && a.seat().castBoost === 0 && a.seat().stats.giftProcs.circuit === 1, JSON.stringify(a.seat().stats.giftProcs));
+});
+test("Reserva Gélida: escudo de 30% da vida com a mana abaixo de 15%, com recarga", () => {
+  const a = giftArena("sorcerer", fx25("frost_reserve"));
+  a.choose("fireball");
+  const m = a.place("lizardfolk", 3, 0);
+  a.ready();
+  a.cast(0, m);
+  const cost = a.p.maxMana - a.p.mana;
+  check(a.p.barrier === 0 && cost > 0, "mana cheia não devia dar escudo");
+  a.ready();
+  a.p.mana = Math.floor(a.p.maxMana * 0.15) + cost - 1;
+  a.cast(0, m);
+  check(a.p.mana < a.p.maxMana * 0.15 && a.p.barrier === Math.round(a.p.maxHp * 0.3), `mana ${a.p.mana}/${a.p.maxMana}, escudo ${a.p.barrier}`);
+  a.p.barrier = 0;
+  a.seat().spellReadyAt = [0, 0, 0];
+  a.cast(0, m);
+  check(a.p.barrier === 0, "voltou antes da recarga");
+});
+test("Ossuário: morto por trevas levanta esqueleto, no máximo 2", () => {
+  const a = giftArena("sorcerer", { raiseChance: 1 });
+  const hit = { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "dark" };
+  for (const dx of [2, 3, 4]) {
+    const m = a.place("lizardfolk", dx, 0);
+    a.any.damageMonster(m, 99999, hit, "shadow_orb");
+  }
+  const bones = [...a.state.summons.values()].filter((s) => s.owner === HERO && s.kind === "skeleton");
+  check(bones.length === 2 && a.seat().stats.giftProcs.ossuary === 3, `${bones.length} esqueletos, ${a.seat().stats.giftProcs.ossuary} levantes`);
+  const m = a.place("lizardfolk", 2, 1);
+  a.any.damageMonster(m, 99999, hit, "fireball");
+  check(a.seat().stats.giftProcs.ossuary === 3, "fogo não levanta esqueleto");
+});
+test("Instinto: cada 4º básico morde (0,5 + 0,5 do básico no 25)", () => {
+  const a = giftArena("knight", fx25("instinct"), { monsterHp: 200 });
+  const m = a.place("lizardfolk", 1, 0);
+  a.p.target = m.id;
+  a.seat().attacking = true;
+  a.advance(5000);
+  const count = a.seat().basicCount;
+  check(count >= 4 && a.seat().stats.giftProcs.instinct === Math.floor(count / 4), `${count} básicos, ${a.seat().stats.giftProcs.instinct} mordidas`);
+});
+test(`Ciclo: a cada ${CYCLE_HEAL} de cura, uma onda de 15% da vida`, () => {
+  const a = giftArena("druid", fx25("cycle"));
+  const chunk = Math.min(200, a.p.maxHp - 1);
+  let healed = 0;
+  while (healed < CYCLE_HEAL) {
+    a.p.hp = 1;
+    a.any.healPlayer(a.p, chunk, HERO);
+    healed += chunk;
+  }
+  check(a.seat().stats.giftProcs.cycle === 1, JSON.stringify(a.seat().stats.giftProcs));
+  check(a.p.hp === Math.min(a.p.maxHp, 1 + chunk + Math.round(a.p.maxHp * (CYCLE_BASE + 0.1))), `vida ${a.p.hp}/${a.p.maxHp}`);
+});
+test("Céu Fechado: o envenenado morre e um raio cai no vizinho", () => {
+  const a = giftArena("druid", { skyStrike: 1 });
+  const poisoned = a.place("lizardfolk", 2, 0);
+  const other = a.place("lizardfolk", 3, 0);
+  a.any.applyDot(poisoned, a.brain(poisoned), HERO, "teste", 1, 5000, "poison", a.now());
+  const hp = other.hp;
+  a.kill(poisoned);
+  a.advance(500);
+  check(other.hp < hp && a.seat().stats.giftProcs.closed_sky === 1, `vida ${hp} → ${other.hp} (${a.where()})`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);

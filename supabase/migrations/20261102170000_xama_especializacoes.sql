@@ -43,3 +43,9 @@ update public.talents set exclusive_with = 'shaman_totem_pack' where id = 'shama
 update public.talents set exclusive_with = 'shaman_carver_hands' where id = 'shaman_totem_pack';
 update public.talents set exclusive_with = 'shaman_war_rhythm' where id = 'shaman_vorgak_legacy';
 update public.talents set exclusive_with = 'shaman_vorgak_legacy' where id = 'shaman_war_rhythm';
+
+-- Dons do fundo do Xamã Orc (gifts.ts): um embaixo de cada Ápice, pedindo o Ápice; 25 níveis, 60 de gold e ×1,12.
+insert into public.talents (id, class_id, max_rank, base_cost, cost_growth, free_rank, requires_id, requires_rank, is_spell) values
+  ('shaman_horde_bond', 'shaman', 25, 60, 1.12, 0, 'shaman_horde_roar', 1, false),
+  ('shaman_ancestor_stance', 'shaman', 25, 60, 1.12, 0, 'shaman_ancestor_circle', 1, false),
+  ('shaman_forge_spark', 'shaman', 25, 60, 1.12, 0, 'shaman_forge_rain', 1, false);

@@ -42,7 +42,11 @@ export function damageElement(source: string, classId: ClassId | undefined, dot?
   if (source === "basic") return classId ? BASIC_ELEMENT[classId] : "physical";
   if (source === "item:burn") return "fire";
   if (source === "item:poison") return "nature";
-  if (source === "charged_sky") return "energy";
+  if (source === "charged_sky" || source === "closed_sky") return "energy";
+  // Reações (`reactions.ts`): a explosão leva o elemento do que reagiu.
+  if (source === "reaction:vapor") return "ice";
+  if (source === "reaction:doom") return "dark";
+  if (source === "reaction:incandesce") return "radiant";
   if (source.startsWith("summon:")) return source === "summon:hornet" || source === "summon:treant" ? "nature" : "physical";
   if (source in SPELLS) return spellElement(source as SpellId);
   return "physical";

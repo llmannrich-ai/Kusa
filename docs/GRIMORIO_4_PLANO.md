@@ -513,7 +513,7 @@ jogador em cada passo e não deixar código sem uso.
 | **2a. Motor de leque** ✅ | L1 (abertura), L2 (onda), L3 (projéteis em leque), desenho de sopro, mira com ângulo, o desenho novo das 3 magias de leque atuais e as **11 magias em leque** das costelas novas que só dependem disso | — | G | é o pedido mais visível; as magias dão uso ao motor desde o primeiro PR |
 | **2b. Canalizar** ✅ | L4 (canalizar, o "cuspir fogo" de segurar e arrastar), A6 (várias armadilhas), Sopro Gélido e Abrolhos | 2a | M | completa as 13 magias de leque das costelas |
 | **3a. Slot 3** ✅ | abrir o slot (5.2) e as 4 magias de entrada | 2 | M | o botão já estava reservado |
-| **3b. Ápices e Dons do fundo** | os 12 Ápices (peças A1, A3, A4, A5, A9 e a varredura L5 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 3a | G | os Ápices de leque precisam da fase 2 |
+| **3b. Ápices e Dons do fundo** ✅ | os 12 Ápices (peças A1, A3, A4, A5, A9 e a varredura L5 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 3a | G | os Ápices de leque precisam da fase 2 |
 | **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado, os 24 **Dons da costela de passivas** e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
 | **6. S3 de especialização** | as 24 (6 por classe), nas 4 classes juntas e com os dois lados de cada ramo juntos (escolha permanente) | 3 | G | por sistema, como as outras fases |
@@ -577,6 +577,41 @@ da soma de duas peças que já existiam, o atraso (`delayMs`) e ficar parado (`s
 carga. Coroa Solar: peça nova órbita (A9, `orbit`), um anel que pulsa em volta do herói e anda com ele; pega de 1 a 2
 tiles (o plano dizia raio 2, mas o monstro colado no paladino escapava), Maestria até 3 tiles. Os 12 Dons do fundo
 viram a fase 3b-3 (cada um é um gatilho próprio no servidor).
+
+**Fase 3b-3, como foi entregue:** os 12 Dons do fundo, na linha VII embaixo de cada Ápice (mesma lane), pedindo o
+Ápice no nível 1 (como todo nó; a magia comprada fica no nível 0 até ser usada). Seguem a tabela da seção 7 no gatilho
+e no número por nível, com estas diferenças: Estandarte Vivo é uma aura fixa de 3 tiles (soma com o Tambor, vale o maior
+entre os cavaleiros), sem a peça A3; Mão Rápida queima por 0,4× do básico por segundo (o plano não dava o número);
+Reserva Gélida confere a mana depois de cada magia; Instinto soma a mordida no próprio golpe (sem lobo desenhado);
+Ciclo cura na hora em volta do druida (raio 1), sem a semente no básico, que é o básico transformado da fase 4. O
+Ossuário levanta esqueletos que contam como criaturas do Buraco Negro (força pelo nível dele). Telemetria nova:
+`stats.giftProcs`. Os marcos continuam para a fase 4.
+
+**Fase 4a-1, como foi entregue:** a fase 4 saiu em partes: 4a-1 (reações e estado congelado), 4a-2 (marcos dos Dons que
+já existem) e 4b (básico transformado e os 24 Dons da costela de passivas). Entraram as 8 reações da seção 6.2 em
+`packages/shared/src/reactions.ts`, conferidas em `Hunt.damageMonster` a cada golpe direto (o pulso do dano contínuo e a
+explosão de outra reação não reagem: sem cadeia), e dois estados novos no monstro: **congelado** (preso por magia de
+gelo, desenhado como bloco de gelo) e **ofuscado** (atordoado por magia de luz, sem desenho próprio). A magia que prende
+e fere passa os estados de antes dela, para não reagir consigo mesma. Diferenças: Espinheiro sangra na hora (3 pulsos
+do veneno) em vez de 3 s, porque o monstro só guarda um dano contínuo e o sangramento apagaria o veneno; a Brasa Tóxica
+queima os vizinhos (0,25× do golpe por segundo, 2 s) em vez de uma nuvem no chão; Hemorragia dispara em todo empurrão
+e atordoamento de herói ou criatura. As explosões usam o golpe que disparou como base (0,8× ou 1×), não o dano do
+herói: assim vale igual para magia, básico, criatura e campo. Telemetria: `stats.reactions`. Regras em Configurações ›
+Regras › Reações.
+
+**Fase 4a-2 (Cavaleiro), como foi entregue:** os marcos saem por classe, um PR por classe. Os 30 do Cavaleiro seguem a
+tabela da seção 7.5, com estas diferenças: Voz de Comando, marco 2, "provocar dura +1 s" virou "magias de área que
+provocam alcançam +1 tile" (a provocação não tem duração no motor: o monstro segue quem provocou até outro provocar);
+o 4º golpe do Fio Temperado conta golpes corpo a corpo dados, acertando ou não o mesmo alvo; o leque do Fio Temperado tem
+1 tile de alcance (o corte em volta do alvo); os escudos +10% do Couro Curtido valem como absorção (cada ponto de escudo
+segura 1,1), para valer em todo escudo do jogo sem mexer em cada magia. Os Dons do Xamã Orc (iguais aos do Cavaleiro no
+efeito) ainda não têm marcos.
+
+**Fase 4a-2 (Paladino), como foi entregue:** os 30 marcos seguem a tabela, com estas diferenças: Olhar Paciente usa
+alcance inteiro (+1 tile no marco 1, em vez de +0,5 nos marcos 1 e 3) e o marco 3 encurta a recarga do atordoar (10 s →
+6 s); a explosão da Mão Rápida dá 0,5× do básico (o plano não dava o número) e o chão em chamas queima 0,2× por segundo;
+o tiro calmo do Passo de Rastreador sai uma vez a cada 3 s sem apanhar; "rolar devolve 10% da recarga do slot 1" tira
+10% da recarga inteira da magia do slot 1 (o Rolamento, quando ele está lá).
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).

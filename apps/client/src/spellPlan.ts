@@ -104,7 +104,7 @@ export function slotSpells(classId: ClassId, slot: number, ranks: TalentRanks, x
 
 /** Peso de cada papel novo na sugestão, comparado a +10% de força (um nível de uso). */
 const NEW_ROLE_WEIGHT = 0.12;
-/** Peso de atender uma necessidade que o outro slot não atende. */
+/** Peso de atender uma necessidade que os outros slots não atendem. */
 const NEW_NEED_WEIGHT = 0.2;
 
 export interface Suggestion {
@@ -115,13 +115,13 @@ export interface Suggestion {
 
 /**
  * Sugestão das até 3 magias ativas de um slot: começa pela mais forte e, a cada vaga, pesa a força contra o que a
- * magia traz de novo (papéis que o slot ainda não tem e necessidades que o outro slot não cobre), para a escolha na
+ * magia traz de novo (papéis que o slot ainda não tem e necessidades que os outros slots não cobrem), para a escolha na
  * hunt ter opções diferentes entre si e não três magias que fazem a mesma coisa.
  */
-export function suggestSlot(spells: readonly PlanSpell[], otherSlot: readonly SpellId[]): Suggestion {
+export function suggestSlot(spells: readonly PlanSpell[], otherSlots: readonly SpellId[]): Suggestion {
   const picks: PlanSpell[] = [];
   const reasons: Partial<Record<SpellId, string>> = {};
-  const outside = coverage(otherSlot);
+  const outside = coverage(otherSlots);
   const pool = [...spells];
   while (picks.length < ACTIVE_SPELLS_PER_SLOT && pool.length > 0) {
     const have = new Set(picks.flatMap((p) => p.roles));
