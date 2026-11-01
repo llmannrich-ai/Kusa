@@ -459,7 +459,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
-  Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, boss do Bosque Velho →
+  Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
@@ -494,7 +494,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
-| 🌳 Bosque Velho | 5 ★★★★★☆ (provisório) | 8 min | 96×128, em pé: mata fechada com clareiras ligadas por trilhas, 7 zonas, 5 campinas, um riacho com pontes e o círculo de menires | só o terreno (os monstros ainda vêm) |
+| 🌳 Bosque Velho | 5 ★★★★★☆ | 8 min | 96×128, em pé: mata fechada com clareiras ligadas por trilhas, 7 zonas, 5 campinas, um riacho com pontes e o círculo de menires | Galhudo, Lobo Atroz, Espinheiro, Sátiro Flautista, Pantera das Sombras, Urso-coruja → Dríade Corrompida, Centauro Renegado, Guardião do Menir → Dragão Verde Jovem |
 | 🍄 Coração da Mata | 6 ★★★★★★ (provisório) | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | só o terreno (os monstros ainda vêm) |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
@@ -651,12 +651,12 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
   Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
 - **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
 
-### Bosque Velho e Coração da Mata (terreno)
+### Bosque Velho e Coração da Mata
 
 O lado da floresta da bifurcação da Travessia (etapas 6 e 7 da campanha): o Bosque Velho abre com o Basilisco (o
 boss do covil oeste da Caverna da Travessia) e o Coração da Mata com o boss do Bosque Velho. Os dois mapas usam o mesmo gerador (`generateForest` em
-`dungeon.ts`), cada um com a sua variante. **Por enquanto só o terreno, sem monstros** (dificuldade 5 e 6 provisória,
-como o lado do deserto), 8 min, até 4 jogadores.
+`dungeon.ts`), cada um com a sua variante: dificuldade 5 e 6 (a do Coração da Mata provisória), 8 min, até 4
+jogadores. O Bosque Velho já tem monstros (ver "Bestiário"); o Coração da Mata ainda é só o terreno.
 
 - **Em pé, como o celular:** 96×128. O mapa nasce todo de mata fechada e recebe **clareiras ligadas por trilhas**: a
   entrada na clareira do sul, a **arena do boss** na do norte (círculo aberto, a mata em volta) e, entre elas, as 7
@@ -696,7 +696,8 @@ como o lado do deserto), 8 min, até 4 jogadores.
   mata, fachos de sol nas clareiras. Pintar tudo leva ~1,5 s num computador (mais no celular), na entrada da hunt.
   Sem faixa de sombra nem folhas em fila na beira da mata, sem tinta por tile (capim e trilha em tom liso, contínuos
   em blocos de 4×4 tiles) e poucos enfeites rasteiros: o chão não mostra a grade dos tiles.
-- **Loot:** teto da hunt solo provisório de 100 nos dois (sem monstros), cheio em 180 s; sobe junto com o bestiário.
+- **Loot:** teto da hunt solo de 3.200 no Bosque Velho, cheio em 240 s; no Coração da Mata, provisório de 100 (sem
+  monstros), cheio em 180 s, sobe junto com o bestiário.
 
 ### Portões do Império (terreno, fora da campanha)
 
@@ -1117,6 +1118,33 @@ chegar): matando 75% do caminho, o herói chega no boss das Dunas no nível 14 e
 no nível 14 e o Faraó 4–7% no 16, contra 8–16% do Observador no 14. Os mini-bosses ficam entre o Troll e o Bugbear da
 Caverna (30–60% no nível 11). Começo no nível 1: Escaravelhos e Chacais vencíveis sozinho, mais lentos que os Kobolds
 e Goblins da Caverna. Loot máximo de uma hunt ~2.900 nas Dunas e ~3.400 nas Mesas (teto da hunt solo 3.300 e 3.800).
+
+### Bosque Velho (★5)
+
+A floresta antiga do Kosaradius, do lado oeste da bifurcação da Travessia: feras, plantas que andam e os espíritos
+que a corrupção virou contra quem entra. Mesma faixa de força da Necrópole de Solária (o mesmo degrau da campanha), mas
+quase nada é morto-vivo: veneno e sangramento pegam, e as plantas queimam fácil. Elenco e arte proposta em
+`docs/arte/agente/BOSQUE_VELHO.md`. Na arte nova, os 10 são esculpidos por código e animados (`proto/forestBeasts.ts`,
+`proto/forestFolk.ts`, `proto/greenDragon.ts`, ver `docs/ARTE_ESCULTURA.md`); na antiga, o desenho 32×32 de
+`apps/client/src/art/forestMonsters.ts`.
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Galhudo | enxame (3–4, planta) | feixe de galhos secos: camuflado no chão até alguém chegar a 4 tiles · queima fácil |
+| Lobo Atroz | escaramuçador (matilha de 2–3) | Táticas de Bando +40% · Derrubar (atordoa 1 s) |
+| Espinheiro | artilheiro (planta) | atira espinhos a 5 tiles · Rajada de Espinhos (sangra) · colado, Explosão de Espinhos em volta · queima fácil |
+| Sátiro Flautista | líder (fada) | fica a 3 tiles · Comando (feras perto +10% de dano e 15% mais rápidas) · Melodia Encantada (leque de 4 que deixa lento) |
+| Pantera das Sombras | emboscadora | camuflada na sombra até 3 tiles · Ataque Surpresa 1,8× · Bote (salta até quem foge) · a luz fere mais |
+| Urso-coruja | bruto | o maior comum · Multiataque (bico e garras, 2 × 0,6) · Abraço Esmagador (prende 1,5 s) |
+| **Dríade Corrompida** (mini-boss) | controladora (fada) | Enraizar (área que prende 1,5 s) · Chamado dos Galhos (3 Galhudos) · ferida, Passo Arbóreo (some 1,5 s) |
+| **Centauro Renegado** (mini-boss) | artilheiro | rápido, fica a 3 tiles · Chuva de Flechas (área) · encurralado, Coice (em volta, empurra 2) |
+| **Guardião do Menir** (mini-boss) | sentinela (constructo) | parado é uma pedra (camuflado, acorda a 3 tiles) · resiste a físico (0,5), vulnerável a energia · Pisão Rúnico (em volta, lento) · Punho de Pedra (atordoa 1 s) |
+| **Dragão Verde Jovem** (boss) | bruto (dragão) | círculo de menires do norte; vencê-lo abre o Coração da Mata · resiste a natureza (0,5, não imune) · Multiataque (3 × 0,3) · Sopro Venenoso (leque de 6) · Rabada (em volta, empurra 2) · abaixo de 60%, Gás dos Menires (área: lento e veneno) · abaixo de 50%, Voo |
+
+**Balanceamento** (simulador de duelo, herói sozinho só com ataque básico, nos mesmos níveis das Dunas): os comuns
+ficam entre os Escaravelhos e a Múmia Enfaixada; os mini-bosses aguentam um pouco mais que os das Dunas (o Guardião do
+Menir é o mais duro para Cavaleiro e Paladino, pela pedra); o Dragão Verde fica perto do Colosso Cantante. Loot máximo
+de uma hunt ~2.700 (teto da hunt solo 3.200). Refazer quando a telemetria chegar.
 
 ## Ataques e magias (protótipo)
 

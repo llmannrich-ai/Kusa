@@ -2,7 +2,8 @@
  * Pré-visualização da arte esculpida por código (`src/art/proto/sculpt.ts`), sem navegador: gera a folha do Escorpião
  * da Areia em PNG, ampliada, e mede quanto cada quadro leva para sair.
  *
- *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme|senhor]
+ *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme|
+ *     lobo|pantera|centauro|satiro|driade|galhudo|espinheiro|menir|urso|dragao|senhor]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -12,6 +13,9 @@ import { VULTURE_POSES, shootVulture } from "../src/art/proto/vulture.ts";
 import { ELEMENTAL_POSES, shootElemental } from "../src/art/proto/elemental.ts";
 import { WORM_POSES, WORM_SIZE, shootWorm } from "../src/art/proto/sandWorm.ts";
 import { MUMMY_POSES, PRIEST_POSES, shootMummy } from "../src/art/proto/mummy.ts";
+import { BEAST_POSES, shootBeast, type BeastKind } from "../src/art/proto/forestBeasts.ts";
+import { FOLK_POSES, shootFolk, type FolkKind } from "../src/art/proto/forestFolk.ts";
+import { DRAGON_POSES, DRAGON_SIZE, shootDragon } from "../src/art/proto/greenDragon.ts";
 import { WARLORD_POSES, WARLORD_SIZE, shootWarlord } from "../src/art/proto/warlord.ts";
 
 const out = process.argv[2] ?? "/tmp/escorpiao.png";
@@ -24,6 +28,10 @@ const BICHOS = {
   elemental: { poses: ELEMENTAL_POSES, shoot: (p: object, v: View) => shootElemental(p, v) },
   verme: { poses: WORM_POSES, shoot: (p: object, v: View) => shootWorm(p, v), size: WORM_SIZE },
   sacerdote: { poses: PRIEST_POSES, shoot: (p: object, v: View) => shootMummy(p, v, true) },
+  // Bosque Velho.
+  ...Object.fromEntries((Object.entries({ lobo: "wolf", pantera: "panther", centauro: "centaur" }) as [string, BeastKind][]).map(([k, kind]) => [k, { poses: BEAST_POSES[kind], shoot: (p: object, v: View) => shootBeast(kind, p, v) }])),
+  ...Object.fromEntries((Object.entries({ satiro: "satyr", driade: "dryad", galhudo: "twigling", espinheiro: "thorn", menir: "menhir", urso: "owlbear" }) as [string, FolkKind][]).map(([k, kind]) => [k, { poses: FOLK_POSES[kind], shoot: (p: object, v: View) => shootFolk(kind, p, v) }])),
+  dragao: { poses: DRAGON_POSES, shoot: (p: object, v: View) => shootDragon(p, v), size: DRAGON_SIZE },
   senhor: { poses: WARLORD_POSES, shoot: (p: object, v: View) => shootWarlord(p, v), size: WARLORD_SIZE },
 };
 const bicho = BICHOS[(process.argv[4] ?? "escorpiao") as keyof typeof BICHOS];

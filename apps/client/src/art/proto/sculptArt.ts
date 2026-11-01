@@ -6,6 +6,9 @@ import { VULTURE_POSES, shootVulture } from "./vulture.ts";
 import { ELEMENTAL_FEET, ELEMENTAL_POSES, shootElemental } from "./elemental.ts";
 import { WORM_FEET, WORM_POSES, WORM_SIZE, shootWorm } from "./sandWorm.ts";
 import { MUMMY_FEET, MUMMY_POSES, PRIEST_POSES, shootMummy } from "./mummy.ts";
+import { BEAST_FEET, BEAST_POSES, shootBeast, type BeastKind } from "./forestBeasts.ts";
+import { FOLK_FEET, FOLK_POSES, shootFolk, type FolkKind } from "./forestFolk.ts";
+import { DRAGON_FEET, DRAGON_POSES, DRAGON_SIZE, shootDragon } from "./greenDragon.ts";
 
 export { SHELLS };
 
@@ -132,3 +135,8 @@ export const mummyArt = () => sculptArt(MUMMY_POSES, shootMummy, { feet: MUMMY_F
 export const priestArt = () => sculptArt(PRIEST_POSES, (p, v) => shootMummy(p, v, true), { feet: MUMMY_FEET, castS: 0.8 });
 export const elementalArt = () => sculptArt(ELEMENTAL_POSES, shootElemental, { feet: ELEMENTAL_FEET, castS: 0.75 });
 export const wormArt = () => sculptArt(WORM_POSES, shootWorm, { feet: WORM_FEET, size: WORM_SIZE, attackS: 0.55, castS: 0.8 });
+
+// Bosque Velho: os quadrúpedes (`forestBeasts.ts`), os bípedes (`forestFolk.ts`) e o Dragão Verde (`greenDragon.ts`).
+export const beastArt = (kind: BeastKind) => sculptArt(BEAST_POSES[kind], (p, v) => shootBeast(kind, p, v), { feet: BEAST_FEET[kind] });
+export const folkArt = (kind: FolkKind) => sculptArt(FOLK_POSES[kind], (p, v) => shootFolk(kind, p, v), { feet: FOLK_FEET, castS: 0.7 });
+export const greenDragonArt = () => sculptArt(DRAGON_POSES, shootDragon, { feet: DRAGON_FEET, size: DRAGON_SIZE, attackS: 0.5, castS: 0.8 });

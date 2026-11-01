@@ -12,6 +12,10 @@ Teste de até onde a arte de monstro feita **só por código** chega, como alter
 | Elemental de Areia (funil de vento em espiral, pedras orbitando, desmorona em monte) | `proto/elemental.ts` | idem |
 | Verme da Areia, chefe (sai da areia, goela de três lábios e dois anéis de dentes) | `proto/sandWorm.ts` | idem |
 
+| Bosque Velho: Lobo Atroz, Pantera das Sombras e Centauro Renegado (um modelo de quadrúpede com as medidas de cada um; o centauro leva o tronco de homem e o arco) | `proto/forestBeasts.ts` | `docs/arte/bosque-velho-escultura.png` |
+| Bosque Velho: Sátiro Flautista, Dríade Corrompida, Galhudo, Espinheiro, Guardião do Menir e Urso-coruja (o esqueleto da múmia com o corpo de cada um) | `proto/forestFolk.ts` | idem |
+| Dragão Verde Jovem, chefe do Bosque Velho (asas de membrana em leque, pescoço e cauda em gomos, o sopro de gás) | `proto/greenDragon.ts` | idem |
+
 Com isso o Mar de Areia inteiro está esculpido, menos os quatro que vêm da arte de IA da Cripta (esqueleto, arqueiro,
 aranha e gnoll).
 
@@ -128,6 +132,23 @@ boss feito só por código, e a única arte dele (vale com a arte nova ligada ou
   solto, cota de malha e armadura detalhada ainda ficam melhores na IA.
 - **Custo de autoria**: o escorpião levou um modelo de ~250 linhas; cada criatura nova é um modelo, mas o motor e as
   poses-padrão (andar, golpe, morte) se reaproveitam.
+
+## 3º lote: Bosque Velho (os 10 inimigos do mapa)
+
+Três modelos cobrem o elenco inteiro, cada um com as medidas e materiais por bicho:
+- **Quadrúpede** (`forestBeasts.ts`): peito, barriga e anca numa parte só (sem linha entre eles), pescoço, cabeça com
+  focinho e mandíbula que abre, cauda em gomos e 4 pernas por cinemática inversa (cotovelo da frente e jarrete de trás
+  dobrando para o lado certo); andar em trote, as diagonais juntas. O centauro usa o corpo de cavalo do mesmo modelo,
+  com o tronco de homem em escala maior (`Z`), a pele de lobo, a aljava e o arco recurvo que puxa e solta.
+- **Bípede** (`forestFolk.ts`): o esqueleto por ângulos da múmia; o corpo muda por bicho (pernas de bode de 3 partes e
+  cascos, casca de bétula com rachaduras pintadas na forma, feixe de gravetos, moita de amora com espinhos que voam,
+  pedras de menir com a espiral acesa pintada na forma, o urso com o disco facial e o peito de penas em faixas).
+- **Dragão** (`greenDragon.ts`): quadro de 192 px; asas de morcego com 3 dedos e a membrana em lâminas finas entre eles.
+- Luz da mata: a rebatida do chão é verde (`bounce` `#9ab860`) e a luz de contorno, verde-clara, para separar o bicho
+  do capim. Tamanho na tela em `bestiary.ts` (o lobo é do tamanho de um pônei, o Guardião e o Urso-coruja os maiores).
+- Prévia: `npx tsx apps/client/scripts/esculturaPrevia.ts /tmp/bicho.png 3 lobo` (e `pantera`, `centauro`, `satiro`,
+  `driade`, `galhudo`, `espinheiro`, `menir`, `urso`, `dragao`); no jogo:
+  `/mapa.html?mapa=oldwood&bichos=twigling,direWolf,satyr,thornSpitter,shadowPanther,owlbear,corruptedDryad,renegadeCentaur,menhirGuardian,greenDragon`.
 
 ## Ver e testar
 
