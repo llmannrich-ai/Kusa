@@ -43,11 +43,36 @@ secundárias e primárias em leque); `Material.lineDepth` baixo separa as penas 
 | Variante (outra cor, outro tamanho) | trocar a paleta: 0 KB | outra folha |
 | Consistência entre quadros | exata (mesmo modelo) | varia (a IA redesenha) |
 
+## 2º piloto: Orc batedor (o primeiro humanoide)
+
+`apps/client/src/art/proto/orc.ts` (modelo e poses) e `orcArt.ts` (quadros no jogo), a partir do desenho da folha de
+IA `docs/arte/pantano-do-kosaradius/orcScout-A.png` (que saiu do jogo: o batedor não baixa mais PNG nenhum). Folha:
+`docs/arte/orc-batedor-escultura.png`.
+
+- **Esqueleto em hierarquia**: pelve → tronco → cabeça (mandíbula, orelhas, moicano) e braços (ombro → cotovelo →
+  punho → faca); pernas por cinemática inversa (o pé fica no chão, o joelho dobra para a frente). Cada pose é uma
+  lista de ângulos (`OrcPose`).
+- **Motor** (`sculpt.ts`), 4 recursos novos e opcionais: pintura presa à forma (`paint`: pintura de guerra, alça,
+  sangue na lâmina), brilho próprio (`glow`: os olhos acesos na sombra), luz de recorte (`rim`: a borda de trás
+  separa do chão escuro do brejo) e a força das linhas internas (`lines`).
+- **Movimento fino**: o parado respira (peito e ombros), passa o peso de um pé para o outro, pisca, dá um tique na
+  orelha e gira a faca na mão; o andar tem os 8 tempos do passo (contato, descida, passagem, subida), a pelve quica e
+  gira, os ombros giram ao contrário, a cabeça amortece o quique; o golpe tem antecipação, estocada, exagero, volta e
+  assentar; na morte a faca escapa, gira no ar e para no chão. Moicano, rabo de cabelo, orelhas e as tiras da tanga
+  seguem com atraso (follow-through) em todos os clipes.
+- **Peso**: 43 figuras de 136 px (≈ 3 MB de textura, contra 0,5 MB das 6 figuras da folha de IA, que só tinha parado e
+  andar), 0 KB baixados, ≈ 9 ms por figura no PC, desenhadas uma por vez no começo da hunt. Os quadros repetidos
+  (o especial usa o golpe; frente e costas paradas vão e voltam) não ocupam memória a mais.
+- Prévia: `npx tsx apps/client/scripts/orcPrevia.ts /tmp/orc.png 3`; no jogo:
+  `/mapa.html?mapa=marsh&bichos=orcScout,orcGrunt`.
+
 ## Limites (o que a IA ainda faz melhor)
 
 - **Textura pintada**: sujeira, desgaste, pelos, cicatrizes. O esculpido tem granulado e brilho, mas parece mais
   "limpo". Funciona melhor em bichos de casca, osso, pedra, gosma (insetos, esqueletos, golems, elementais).
-- **Rostos e roupas** (humanoides): formas 3D simples não dão expressão nem tecido; aí a IA ganha longe.
+- **Rostos e roupas** (humanoides): o orc batedor mostrou que dá para um humanoide de pele à mostra (rosto pela
+  silhueta: testa, focinho, presas, orelhas e olhos acesos). Tecido solto, cota de malha e armadura detalhada ainda
+  ficam melhores na IA.
 - **Custo de autoria**: o escorpião levou um modelo de ~250 linhas; cada criatura nova é um modelo, mas o motor e as
   poses-padrão (andar, golpe, morte) se reaproveitam.
 
