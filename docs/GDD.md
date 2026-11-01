@@ -56,7 +56,7 @@ Código em `apps/client/src/menu.ts`.
   - **Lista do slot:** as magias conhecidas da mais forte para a mais fraca (+10% por nível de uso vezes a sinergia e o Tomo), com nível, Maestria, papéis (área, alvo único, controle, defesa, cura, mobilidade, invocação, reforço, tirados dos efeitos), mana, recarga e força extra. A chave ao lado liga e desliga na hunt e grava na hora (`set_active_spells`); com 3 magias ou menos no slot, todas ficam ligadas e a chave trava. Tocar na magia abre a ficha da árvore.
   - **Sugestão:** começa pela mais forte e, a cada vaga, pesa a força contra o papel novo que a magia traz ao slot e a necessidade que o outro slot não cobre, para a escolha na hunt ter opções diferentes. Cada magia sugerida diz o motivo; "Aplicar" troca o slot inteiro e o "Desfazer" volta a escolha anterior.
   - Embaixo, **Para aprender neste slot**: as magias ainda não compradas, com o ramo, os papéis e o preço (ou 🔒), para planejar a próxima compra.
-- **Grimório:** a árvore de magias de cada classe (ver abaixo).
+- **Grimório:** a árvore de magias de cada classe (ver abaixo). Os medalhões do alto são os mesmos da página Heróis: trocar de herói numa página troca na outra e no herói da próxima hunt.
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
