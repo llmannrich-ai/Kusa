@@ -8,7 +8,7 @@ import {
   MAX_LOGIN_LENGTH,
   COMMON_DROP_CHANCE,
   COMMON_POTION_CHANCE,
-  DEPTH_SCALING,
+  CHEST_DEPTH_SCALING,
   ITEM_DROP_SCALE,
   LOOT_SCALE,
   GUARANTEED_DROPS,
@@ -41,6 +41,7 @@ import {
   centerOf,
   clampToRange,
   createRng,
+  crowdAt,
   encounterAt,
   pickWeighted,
   CHAMPION_AFFIX_IDS,
@@ -78,6 +79,7 @@ import {
   levelForXp,
   lineEnd,
   mapIdOf,
+  monsterPower,
   monsterStats,
   heroBonuses,
   isRune,
@@ -652,8 +654,8 @@ export class Hunt {
   maxLoot() {
     let total = 0;
     this.brains.forEach((b) => { total += b.loot[1]; });
-    this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
-    this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + DEPTH_SCALING * depth) * this.lootScale()); });
+    this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + CHEST_DEPTH_SCALING * depth) * this.lootScale()); });
+    this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + CHEST_DEPTH_SCALING * depth) * this.lootScale()); });
     return Math.round(total * (1 + this.portalBonus()));
   }
 
@@ -680,7 +682,7 @@ export class Hunt {
     const encounters = this.map.encounters.length > 0;
     d.path.forEach((room, depth) => {
       if (!encounters) return;
-      for (const kind of this.rollEncounter(encounterAt(this.map, depth), rng.next)) {
+      for (const kind of this.rollEncounter(encounterAt(this.map, depth), depth, rng.next)) {
         const spot = this.freeSpotIn(room, roll);
         if (spot) this.spawnCommon(kind, spot.x, spot.y, depth, rng.next);
       }
@@ -692,7 +694,8 @@ export class Hunt {
       if (!encounters) return;
       const depth = this.nearestPathDepth(room);
       const table = encounterAt(this.map, depth).table.filter(([kind]) => !MONSTERS[kind].group);
-      for (let i = 0; i < (this.map.meadowMonsters ?? 2); i++) {
+      const count = Math.round((this.map.meadowMonsters ?? 2) * crowdAt(depth));
+      for (let i = 0; i < count; i++) {
         const spot = this.freeSpotIn(room, roll);
         if (spot) this.spawnCommon(pickWeighted(table, rng.next()), spot.x, spot.y, depth, rng.next);
       }
@@ -752,9 +755,10 @@ export class Hunt {
    * Monstros de uma sala: sorteia da tabela pelo peso até gastar o orçamento (XP da tabela). Enxames vêm em grupo;
    * no máximo `MAX_ROOM_ARTILLERY` artilheiros, `MAX_ROOM_LEADERS` líder e `MAX_ROOM_MONSTERS` monstros.
    */
-  private rollEncounter(encounter: Encounter, next: () => number): MonsterKind[] {
+  private rollEncounter(encounter: Encounter, depth: number, next: () => number): MonsterKind[] {
     const kinds: MonsterKind[] = [];
-    let left = encounter.budget;
+    // Mais fundo, mais monstros (o orçamento cresce com `crowdAt`); cada monstro é o mesmo em qualquer sala.
+    let left = Math.round(encounter.budget * crowdAt(depth));
     const count = (role: string) => kinds.filter((k) => MONSTERS[k].role === role).length;
     for (let attempt = 0; attempt < 30 && left > 0 && kinds.length < MAX_ROOM_MONSTERS; attempt++) {
       const options = encounter.table.filter(([kind]) => {
@@ -784,7 +788,8 @@ export class Hunt {
 
   private addMonster(kind: MonsterKind, x: number, y: number, depth: number) {
     const def = MONSTERS[kind];
-    const stats = monsterStats(kind, depth);
+    // Força fixa: o comum e o boss são os mesmos em qualquer sala; o mini-boss usa o multiplicador do mapa.
+    const stats = monsterStats(kind, monsterPower(this.map, kind));
     // Corte geral do loot (`LOOT_SCALE`) e o do mapa que paga menos por monstro (muitos monstros), que deixa o boss de fora.
     stats.loot = this.scaleLoot(stats.loot[0], stats.loot[1], def.rank === "boss");
     const m = new Monster();
@@ -2777,7 +2782,7 @@ export class Hunt {
    * (padrão: o próprio tile). O gold se divide pela equipe; `openerId` conta o baú na telemetria.
    */
   private chestReward(openerId: string, x: number, y: number, depth: number, dropAt = { x, y }) {
-    const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + DEPTH_SCALING * depth) * this.lootScale());
+    const value = Math.round(rollRange(this.random, CHEST_LOOT) * (1 + CHEST_DEPTH_SCALING * depth) * this.lootScale());
     this.teamLoot(value, "chests", x, y, "Baú: ");
     const stats = this.seats.get(openerId)?.stats;
     if (stats) stats.chestsOpened++;

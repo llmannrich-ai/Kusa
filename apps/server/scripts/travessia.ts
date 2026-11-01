@@ -44,9 +44,9 @@ console.log(`covis em ${JSON.stringify(centerOf(west.room))} e ${JSON.stringify(
     const boss = bosses.find((m) => m.kind === lair.boss);
     const c = centerOf(d.lairs![i].room);
     check(!!boss && boss.x === c.x && boss.y === c.y, `${lair.boss} no centro do covil ${lair.side}`);
-    check(boss!.maxHp === monsterStats(lair.boss, lair.depth).maxHp, `${lair.boss} na profundidade ${lair.depth}`);
+    check(boss!.maxHp === monsterStats(lair.boss).maxHp, `${lair.boss} com a vida da ficha (força fixa, sem ganho por profundidade)`);
   });
-  const [basilisk, beholder] = lairs.map((l) => monsterStats(l.boss, l.depth));
+  const [basilisk, beholder] = lairs.map((l) => monsterStats(l.boss));
   check(beholder.maxHp > basilisk.maxHp * 2, `o Observador bem mais forte que o Basilisco (${beholder.maxHp} × ${basilisk.maxHp})`);
   console.log(`Basilisco ${basilisk.maxHp} de vida, Observador ${beholder.maxHp}: OK`);
 }

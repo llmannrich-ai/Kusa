@@ -6,7 +6,7 @@ import {
   CLASSES,
   CLASS_IDS,
   COMMON_DROP_CHANCE,
-  DEPTH_SCALING,
+  CROWD_PER_DEPTH,
   ITEM_BUY_PRICES,
   ITEM_SELL_PRICES,
   ITEM_RARITIES,
@@ -112,7 +112,7 @@ export function renderRules(root: HTMLElement) {
         const m = MAPS[id];
         return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), m.bosses.map(([k]) => MONSTERS[k].name).join(m.lairs ? " e " : " ou ") || "— (ainda sem monstros)"];
       })),
-      `Quem cria a sala escolhe o mapa. Cada sala mais funda é ${pct(DEPTH_SCALING)} mais forte que a anterior (vida, dano, XP e loot). `
+      `Quem cria a sala escolhe o mapa. Um monstro tem a mesma força em qualquer sala; mais fundo, as espécies são mais fortes e cada sala tem ${pct(CROWD_PER_DEPTH)} mais monstros que a anterior. `
       + "Os monstros de cada sala são sorteados a cada hunt. Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro. "
       + "No Mar de Areia, o boss mora numa caverna escondida em algum lugar do deserto; atrás dele, 4 baús de runa: cada jogador leva uma. "
       + "Na Cripta, alguns baús são Mímicos.",
