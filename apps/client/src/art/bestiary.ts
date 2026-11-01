@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero, protoSculpt } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -29,6 +29,11 @@ export interface MonsterAnim {
   stride?: number;
   /** Arte nova (128 px por tile): a folha entra como está, sem o refinamento 2×, desenhada quadro a quadro. */
   hd?: () => (() => HTMLCanvasElement)[];
+  /**
+   * Altura do ponto de apoio no quadro (0 = topo, 1 = base; padrão 1). A arte esculpida (`proto/sculpt.ts`) é vista de
+   * cima e as partes de cá (pinças de frente) descem abaixo da base do tile.
+   */
+  origin?: number;
   /** Parte de cima do quadro que o corpo ocupa (a barra de vida fica logo acima da cabeça; padrão: o quadro todo). */
   fill?: number;
   /**
@@ -298,6 +303,25 @@ if (protoCrypt) {
         // A habilidade toca o especial desenhado (a teia, o Golpe Brutal, o Engolfar, a investida do orc, o sopro, o
         // pisão do ogro, a mordida ácida); a que não tem especial próprio na folha sai do golpe (`CRYPT_STRIKE`).
         strike: CRYPT_STRIKE[kind] ?? "cast",
+      },
+    };
+  }
+}
+
+// Escorpiões do Mar de Areia esculpidos por código (`proto/scorpionArt.ts`): o comum âmbar e o Negro Gigante, o mesmo
+// modelo com a casca negra e maior. No Negro, as Pinças saem do golpe e o Ferrão Letal do especial.
+if (protoSculpt) {
+  const sculpted: [MonsterKind, ReturnType<typeof protoSculpt.scorpionArt>, number, MonsterAnim["strike"]][] = [
+    ["sandScorpion", protoSculpt.scorpionArt(), 1.2, "cast"],
+    ["blackScorpion", protoSculpt.scorpionArt(protoSculpt.SHELLS.black), 1.6, { pincers: "attack", deathSting: "cast" }],
+  ];
+  for (const [kind, art, size, strike] of sculpted) {
+    BESTIARY_ART[kind] = {
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * size,
+      anim: {
+        size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
+        fps: { idle: 4, walk: 10, attack: 11, cast: 8 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+        hd: () => art.frames(), get fill() { return art.fill; }, origin: art.origin, extra: { ...art.extra }, strike,
       },
     };
   }
