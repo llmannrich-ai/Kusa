@@ -94,8 +94,8 @@ export class AttackButton {
       if (this.aiming?.pointerId === pointerId && !this.aiming.manual) this.hold(pointerId);
     }, HOLD_DELAY_MS);
     this.aiming = { pointerId, x0: e.clientX, y0: e.clientY, timer, manual: false };
-    // O ⚔️ mira sozinho no toque (alvo automático) e desenha a mira como uma linha reta.
-    this.aim.start(basicShotAim(p.basicRange), { auto: true, line: true });
+    // O ⚔️ mira sozinho no toque (alvo automático); a mira é a mesma linha pontilhada das magias.
+    this.aim.start(basicShotAim(p.basicRange), { auto: true });
   }
 
   private drag(e: PointerEvent) {
