@@ -497,6 +497,14 @@ export function spellBonuses(classId: ClassId, ranks: TalentRanks, xp: SpellXp):
   return out;
 }
 
+/**
+ * Grimório inteiro dos testes (`KUSA_ALL_SPELLS`): magias e Traços no máximo; as passivas de gold no teto de antes do
+ * Grimório 4.0 (áureas e Tomos no 3, a velocidade no 2, sem Dons), para os números dos testes antigos não mudarem.
+ */
+export function allSpellsRanks(classId: ClassId): TalentRanks {
+  return Object.fromEntries(talentTree(classId).map((t) => [t.id, t.kind === "gift" ? 0 : (t.aura ?? t.tome)?.baseRanks ?? t.maxRank]));
+}
+
 /** Efeitos somados dos Dons que a conta tem na classe (o servidor lê ao entrar na sala). */
 export function giftEffects(classId: ClassId, ranks: TalentRanks): GiftEffects {
   return sumGifts(talentTree(classId).filter((t) => t.giftId).map((t) => ({ id: t.giftId!, rank: talentRank(t, ranks) })));

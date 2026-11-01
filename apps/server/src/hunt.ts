@@ -37,6 +37,7 @@ import {
   SUMMONS,
   Tile,
   attackCooldownMs,
+  allSpellsRanks,
   auraBonuses,
   giftEffects,
   ALLY_DAMAGE_RADIUS,
@@ -563,11 +564,7 @@ export class Hunt {
 
   join(sessionId: string, recruit: Recruit) {
     const classId: ClassId = recruit.classId in CLASSES ? recruit.classId : "knight";
-    // Grimório inteiro (testes): magias e Traços no máximo; as passivas de gold no teto de antes do Grimório 4.0
-    // (áureas e Tomos no 3, a velocidade no 2, sem Dons), para os números dos testes antigos não mudarem.
-    const talents = this.allSpells
-      ? Object.fromEntries(talentTree(classId).map((t) => [t.id, t.kind === "gift" ? 0 : (t.aura ?? t.tome)?.baseRanks ?? t.maxRank]))
-      : recruit.talents;
+    const talents = this.allSpells ? allSpellsRanks(classId) : recruit.talents;
     const spellXp: SpellXp = this.allSpells
       ? Object.fromEntries(talentTree(classId).filter((t) => t.spellId).map((t) => [t.id, SPELL_LEVEL_XP[SPELL_LEVEL_XP.length - 1]]))
       : recruit.spellXp;
