@@ -43,6 +43,9 @@ import {
   giftEffects,
   ALLY_DAMAGE_RADIUS,
   FAR_DAMAGE_TILES,
+  BANNER_RADIUS, BITE_BASE, BITE_EVERY, BURN_MS, BURN_PER_SEC, CIRCUIT_ELEMENTS, CIRCUIT_MS, CYCLE_BASE, CYCLE_HEAL, CYCLE_RADIUS,
+  FROST_COOLDOWN_MS, FROST_MANA_PCT, FROST_MS,
+  GRACE_EVERY, LOW_HP_PCT, OSSUARY_MAX, OSSUARY_MS, SKY_STRIKE_DAMAGE, SKY_STRIKE_TILES, STILL_MS,
   type GiftEffects,
   bestPerSlot,
   caveDestination,
@@ -298,6 +301,24 @@ interface Seat {
   rallyHaste: number;
   rallyDamage: number;
   rallyUntil: number;
+  /** Último passo dado (Pedra Fundamental, Dom: parado há `STILL_MS`). */
+  movedAt: number;
+  /** Fôlego do Caçador (Dom): o próximo básico sai mais forte, depois de um salto. */
+  dashBasicReady: boolean;
+  /** Graça (Dom): magias lançadas na série atual; com `graceReady`, a próxima sai sem mana e mais forte. */
+  graceCount: number;
+  graceReady: boolean;
+  /** Circuito (Dom): quando cada elemento foi lançado por último; com `circuitReady`, a próxima sai sem mana e mais forte. */
+  circuit: Record<string, number>;
+  circuitReady: boolean;
+  /** Dano extra da magia que está sendo lançada agora (Circuito e Graça): só vale dentro de `cast`. */
+  castBoost: number;
+  /** Reserva Gélida (Dom): o escudo volta a poder sair a partir deste momento. */
+  frostReadyAt: number;
+  /** Instinto (Dom): básicos dados nesta hunt. */
+  basicCount: number;
+  /** Ciclo (Dom): cura feita desde a última onda. */
+  cycleHealed: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -494,6 +515,8 @@ export class Hunt {
   private monsterHp: number;
   /** Sorteios da hunt (`HuntOptions.random`); não vai no retrato: quem continua a hunt usa o seu. */
   private random: () => number;
+  /** Ciclo (Dom): a onda está curando agora (a cura dela não enche o ciclo de novo). */
+  private cycling = false;
   private seats = new Map<string, Seat>();
   private elapsedMs = 0;
   private regenMs = 0;
@@ -630,7 +653,8 @@ export class Hunt {
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, auraFx: null, orbitFx: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
-      rallyHaste: 0, rallyDamage: 0, rallyUntil: 0,
+      rallyHaste: 0, rallyDamage: 0, rallyUntil: 0, movedAt: 0, dashBasicReady: false, graceCount: 0, graceReady: false,
+      circuit: {}, circuitReady: false, castBoost: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1036,6 +1060,7 @@ export class Hunt {
     player.stepMs = Math.round(stepMs);
     player.x = nx;
     player.y = ny;
+    seat.movedAt = now;
     this.face(player, dx, dy);
     if (this.state.phase === "running") this.trackDepth(sessionId, player);
 
@@ -1226,7 +1251,9 @@ export class Hunt {
 
     // Arma e botas mudam o ritmo (machado e besta são mais lentos; varinha e itens mágicos, mais rápidos).
     const rallyHaste = now < seat.rallyUntil ? seat.rallyHaste : 0;
-    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste - rallyHaste));
+    // Estandarte Vivo (Dom): soma com o Tambor de Guerra.
+    const bannerHaste = this.bannerHaste(p);
+    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste - rallyHaste - bannerHaste));
     seat.attackUntil = 0;
     seat.basicAim = null;
     if (m && form?.maul) return this.maul(sessionId, p, m);
@@ -1235,8 +1262,17 @@ export class Hunt {
     const oy = p.y;
     this.face(p, tx - ox, ty - oy);
     const base = this.baseDamage(sessionId, p, "basic");
+    // Fôlego do Caçador (Dom): o primeiro básico depois do salto (gasto no disparo, mesmo que erre).
+    const breath = seat.dashBasicReady ? seat.gifts.dashBasic : 0;
+    seat.dashBasicReady = false;
+    if (breath > 0) bump(seat.stats.giftProcs, "hunter_breath");
+    // Instinto (Dom): cada `BITE_EVERY`º básico morde como fera.
+    const bite = seat.gifts.fourthBite > 0 && ++seat.basicCount % BITE_EVERY === 0 ? BITE_BASE + seat.gifts.fourthBite : 0;
+    if (bite > 0) bump(seat.stats.giftProcs, "instinct");
+    // Mão Rápida (Dom): às vezes o básico sai incendiário.
+    const fiery = seat.gifts.burnChance > 0 && this.random() < seat.gifts.burnChance;
     // Fio Temperado (Dom) soma com a Postura do Atirador e a Fúria Berserker.
-    const basicDamage = 1 + (buff?.basicDamage ?? 0) + seat.gifts.basicDamage;
+    const basicDamage = 1 + (buff?.basicDamage ?? 0) + seat.gifts.basicDamage + breath + bite;
     // Rolamento: a próxima flecha atordoa (gasta no disparo, mesmo que erre ou que o monstro morra antes).
     const stunMs = seat.nextBasicStunMs;
     seat.nextBasicStunMs = 0;
@@ -1259,6 +1295,10 @@ export class Hunt {
       if (brain && (g.burn > 0 || g.poison > 0)) {
         const kind = g.burn >= g.poison ? "burn" : "poison";
         this.applyDot(alive, brain, sessionId, `item:${kind}`, base * Math.max(g.burn, g.poison), ON_HIT_DOT_MS, kind, this.host.now());
+      }
+      if (fiery && brain) {
+        bump(seat.stats.giftProcs, "quick_hand");
+        this.applyDot(alive, brain, sessionId, "quick_hand", base * BURN_PER_SEC, BURN_MS, "burn", this.host.now());
       }
       const dealt = this.damageMonster(alive, amount, hit, "basic");
       // Roubo de vida dos itens (Espada do Juramento...): sem aviso a cada golpe, como a Sede de sangue.
@@ -1446,6 +1486,16 @@ export class Hunt {
   }
 
   cast(sessionId: string, msg: CastMessage) {
+    try {
+      this.castSpell(sessionId, msg);
+    } finally {
+      // O Circuito e a Graça valem só para a magia lançada agora (o dano dela é calculado dentro de `castSpell`).
+      const seat = this.seats.get(sessionId);
+      if (seat) seat.castBoost = 0;
+    }
+  }
+
+  private castSpell(sessionId: string, msg: CastMessage) {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
     if (!p || !seat || p.status !== "playing" || this.state.phase !== "running") return;
@@ -1465,7 +1515,9 @@ export class Hunt {
     const master = masterRune([...p.runes]);
     // Runa do Eco: as magias custam mais, e a cada tantas a seguinte sai de graça e sem recarga.
     const echo = master === "echo" && seat.echoCount >= MASTER_RUNES.echo.every;
-    const manaCost = echo ? 0 : Math.round(spellManaCost(spell, p.classId, p.maxMana) * (master === "echo" ? 1 + MASTER_RUNES.echo.extraCost : 1));
+    // Circuito e Graça (Dons): a magia carregada sai sem mana.
+    const charged = seat.circuitReady || seat.graceReady;
+    const manaCost = echo || charged ? 0 : Math.round(spellManaCost(spell, p.classId, p.maxMana) * (master === "echo" ? 1 + MASTER_RUNES.echo.extraCost : 1));
     // Runa do Pacto: a mana que falta sai da vida (sem matar: precisa sobrar vida).
     const fromHp = master === "pact" ? Math.max(0, manaCost - p.mana) : 0;
     if ((p.mana < manaCost && !fromHp) || (fromHp && p.hp <= fromHp)) {
@@ -1563,6 +1615,8 @@ export class Hunt {
       }
       p.x = landing.x;
       p.y = landing.y;
+      seat.movedAt = now;
+      if (seat.gifts.dashBasic > 0) seat.dashBasicReady = true;
       seat.nextMoveAt = Math.max(seat.nextMoveAt, now + 150);
       this.trackDepth(sessionId, p);
       tx = p.x;
@@ -1613,6 +1667,20 @@ export class Hunt {
     const sky = seat.traits.find((t) => t.chargedSky)?.chargedSky;
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
     seat.spellReadyAt[slot] = echo ? now : now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
+    // Graça (Dom): a cada tantas magias, a seguinte sai sem mana e mais forte (a carregada não conta na série nova).
+    if (seat.graceReady) {
+      seat.graceReady = false;
+      seat.castBoost += seat.gifts.graceDamage;
+      bump(seat.stats.giftProcs, "grace");
+    } else if (seat.gifts.graceDamage > 0 && ++seat.graceCount >= GRACE_EVERY) {
+      seat.graceCount = 0;
+      seat.graceReady = true;
+      this.notice(p.x, p.y - 1, "Graça!", 0xfff3b0);
+    }
+    // Circuito (Dom): três elementos diferentes em pouco tempo carregam a magia seguinte.
+    if (seat.gifts.circuitDamage > 0) this.chargeCircuit(seat, p, spell, now);
+    // Reserva Gélida (Dom): a mana acabando vira uma casca de gelo (com recarga).
+    if (seat.gifts.frostBarrier > 0 && p.mana < p.maxMana * FROST_MANA_PCT && now >= seat.frostReadyAt) this.frostShell(p, seat, now);
     if (echo) this.notice(p.x, p.y - 1, "Eco!", 0xd6a2ff);
     // Magia com atraso que pede para ficar parado (Tiro do Fim do Mundo): o herói firma os pés já na carga, não no tiro.
     if (spell.delayMs && spell.selfBuff) {
@@ -2406,6 +2474,102 @@ export class Hunt {
     const stats = this.seats.get(healerId)?.stats;
     if (stats) stats.healing += healed;
     this.notice(p.x, p.y, `+${healed}`, 0x2ecc71);
+    // Ciclo (Dom): a cura feita enche o ciclo; cheio, solta uma onda de seiva em volta de quem curou.
+    if (healer && healer.gifts.cycleHeal > 0 && !this.cycling) {
+      healer.cycleHealed += healed;
+      if (healer.cycleHealed >= CYCLE_HEAL) {
+        healer.cycleHealed = Math.min(healer.cycleHealed - CYCLE_HEAL, CYCLE_HEAL - 1);
+        this.cycleWave(healerId, healer);
+      }
+    }
+  }
+
+  /** Onda do Ciclo: cura quem estiver perto de quem curou (a cura da onda não enche o ciclo de novo). */
+  private cycleWave(healerId: string, healer: Seat) {
+    const hero = this.state.players.get(healerId);
+    if (!hero || hero.status !== "playing") return;
+    bump(healer.stats.giftProcs, "cycle");
+    this.notice(hero.x, hero.y - 1, "Ciclo!", 0x7bed9f);
+    this.cycling = true;
+    try {
+      this.state.players.forEach((ally) => {
+        if (ally.status !== "playing" || tileDistance(hero.x, hero.y, ally.x, ally.y) > CYCLE_RADIUS) return;
+        this.healPlayer(ally, Math.round(ally.maxHp * (CYCLE_BASE + healer.gifts.cycleHeal)), healerId);
+      });
+    } finally {
+      this.cycling = false;
+    }
+  }
+
+  /** Estandarte Vivo: o maior entre os heróis a até `BANNER_RADIUS` tiles (contando o próprio), como a Voz de Comando. */
+  private bannerHaste(p: Player) {
+    let haste = 0;
+    this.state.players.forEach((other, id) => {
+      const gift = other.status === "playing" ? this.seats.get(id)?.gifts.bannerHaste ?? 0 : 0;
+      if (gift > haste && tileDistance(p.x, p.y, other.x, other.y) <= BANNER_RADIUS) haste = gift;
+    });
+    return haste;
+  }
+
+  /** Reserva Gélida: escudo de gelo com a mana baixa. */
+  private frostShell(p: Player, seat: Seat, now: number) {
+    seat.frostReadyAt = now + FROST_COOLDOWN_MS;
+    const shield = Math.round(p.maxHp * seat.gifts.frostBarrier);
+    if (shield > p.barrier) p.barrier = p.maxBarrier = shield;
+    seat.barrierUntil = Math.max(seat.barrierUntil, now + FROST_MS);
+    bump(seat.stats.giftProcs, "frost_reserve");
+    this.notice(p.x, p.y - 1, "Reserva Gélida!", 0xaee6ff);
+  }
+
+  /**
+   * Circuito: guarda o elemento de cada magia; com `CIRCUIT_ELEMENTS` diferentes dentro de `CIRCUIT_MS`, a magia
+   * seguinte sai mais forte (a que gasta a carga não começa um circuito novo).
+   */
+  private chargeCircuit(seat: Seat, p: Player, spell: SpellDef, now: number) {
+    if (seat.circuitReady) {
+      seat.circuitReady = false;
+      seat.castBoost += seat.gifts.circuitDamage;
+      bump(seat.stats.giftProcs, "circuit");
+      return;
+    }
+    if (!spell.element) return;
+    seat.circuit[spell.element] = now;
+    const live = Object.values(seat.circuit).filter((at) => now - at <= CIRCUIT_MS).length;
+    if (live >= CIRCUIT_ELEMENTS) {
+      seat.circuit = {};
+      seat.circuitReady = true;
+      this.notice(p.x, p.y - 1, "Circuito!", 0x9be7ff);
+    }
+  }
+
+  /** Ossuário: o monstro morto por trevas levanta como esqueleto do herói (até `OSSUARY_MAX`; o mais antigo cai). */
+  private raiseBones(sessionId: string, x: number, y: number) {
+    const hero = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!hero || !seat || hero.status !== "playing") return;
+    const bones = [...this.state.summons.values()].filter((s) => s.owner === sessionId && this.summonBrains.get(s.id)?.spellId === "black_hole");
+    if (bones.length >= OSSUARY_MAX) this.removeSummon(bones[0].id);
+    // Os esqueletos contam como criaturas do Buraco Negro (o Ápice que não invoca nada): força pelo nível dele.
+    const raise: SpellDef = { ...SPELLS.black_hole, summon: { kind: "skeleton", count: 1, durationMs: OSSUARY_MS } };
+    this.summon(sessionId, hero, raise, hero.spellRanks.get("black_hole") ?? 0, true);
+    bump(seat.stats.giftProcs, "ossuary");
+    this.notice(x, y - 1, "Ossuário!", 0xdcdde1);
+  }
+
+  /** Céu Fechado: um raio cai no monstro mais perto de onde morreu o envenenado. */
+  private closedSky(sessionId: string, x: number, y: number) {
+    const hero = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!hero || !seat || hero.status !== "playing") return;
+    const target = this.nearestMonsterTo(x, y, SKY_STRIKE_TILES);
+    if (!target) return;
+    bump(seat.stats.giftProcs, "closed_sky");
+    this.host.broadcast(MSG.spell, { from: sessionId, spellId: "call_lightning", x, y, tx: target.x, ty: target.y, ms: 150, echo: true } satisfies SpellMessage);
+    const amount = rollDamage(this.random, this.baseDamage(sessionId, hero, "spell") * SKY_STRIKE_DAMAGE);
+    this.after(150, () => {
+      const alive = this.state.monsters.get(target.id);
+      if (alive) this.damageMonster(alive, amount, { attacker: sessionId, fromX: alive.x, fromY: alive.y, fx: "nature" }, "closed_sky");
+    });
   }
 
   /** Mana dada por magia ou criatura (não poção); `giverId` leva o crédito na telemetria. */
@@ -2707,8 +2871,13 @@ export class Hunt {
     }
     // Apanhar faz o monstro perseguir quem bateu, se ainda não persegue ninguém (acima).
     this.host.broadcast(MSG.damage, { x: m.x, y: m.y, amount, toPlayer: false, ...hit } satisfies DamageMessage);
-    if (m.hp === 0) this.killMonster(m, brain, creditId);
-    else this.ai.afterDamage(m, brain, dealt, element);
+    if (m.hp === 0) {
+      // Ossuário (Dom): morto por magia (ou dano contínuo) de trevas, às vezes levanta do lado do herói.
+      const dark = seat && seat.gifts.raiseChance > 0 && SPELLS[source as SpellId]?.element === "dark";
+      const raise = dark && !brain.traits.illusion && !brain.summonedBy && this.random() < seat!.gifts.raiseChance;
+      this.killMonster(m, brain, creditId);
+      if (raise) this.raiseBones(creditId, m.x, m.y);
+    } else this.ai.afterDamage(m, brain, dealt, element);
     return dealt;
   }
 
@@ -2742,6 +2911,10 @@ export class Hunt {
       const burst = venom.burst;
       this.after(150, () => this.venomBurst(m.x, m.y, venom.attacker, burst));
     }
+    // Céu Fechado (Dom): morreu envenenado ou sangrando pelo druida, às vezes um raio cai no vizinho.
+    const sky = venom && (venom.kind === "poison" || venom.kind === "bleed") && this.host.now() < venom.until
+      ? this.seats.get(venom.attacker)?.gifts.skyStrike ?? 0 : 0;
+    if (venom && sky > 0 && this.random() < sky) this.after(150, () => this.closedSky(venom.attacker, m.x, m.y));
     this.ai.died(brain);
     this.state.monsters.delete(m.id);
     this.brains.delete(m.id);
@@ -3086,7 +3259,10 @@ export class Hunt {
     const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor + (seat?.gifts.armor ?? 0);
     // Corroído: a armadura derrete e cada acúmulo deixa o golpe mais forte.
     const corrode = seat?.effects.corrode && now < seat.effects.corrode.until ? 1 + CORRODE_PER_STACK * seat.effects.corrode.stacks : 1;
-    let amount = Math.max(1, Math.round(raw * corrode * (1 - damageReduction(armor)) * (1 - guard) * (1 - this.allyWard(p))));
+    // Pedra Fundamental (Dom): parado há um tempo, o golpe pesa menos.
+    const still = seat && seat.gifts.stillGuard > 0 && now - seat.movedAt >= STILL_MS ? seat.gifts.stillGuard : 0;
+    if (still > 0 && seat) bump(seat.stats.giftProcs, "bedrock");
+    let amount = Math.max(1, Math.round(raw * corrode * (1 - damageReduction(armor)) * (1 - guard) * (1 - this.allyWard(p)) * (1 - still)));
     // Escudo de Mana (Traço): parte do golpe sai da mana, enquanto houver.
     const manaShield = seat?.traits.find((t) => t.manaShield)?.manaShield;
     if (manaShield && p.mana > 0) {
@@ -3136,6 +3312,7 @@ export class Hunt {
       seat.barrierUntil = Math.max(seat.barrierUntil, now + lastStand.ms);
       this.notice(p.x, p.y - 1, "Último Bastião!", 0x9fd8ff);
     }
+
     if (!seat || !attacker || hit.dot || tileDistance(p.x, p.y, attacker.x, attacker.y) > 1) return;
     // Daqui para baixo, só golpe corpo a corpo de monstro.
     // Espinhos (itens) e Espinhos de Ferro (magia): parte do golpe volta para o monstro.
@@ -4060,7 +4237,9 @@ export class Hunt {
     const seat = this.seats.get(sessionId);
     const spellPower = seat?.gear.spellPower ?? 0;
     const gear = kind === "basic" ? seat?.gear.damage ?? 0 : kind === "summon" ? spellPower * SUMMON_SPELL_POWER_SHARE : spellPower;
-    return statsFor(p.classId as ClassId, p.level, seat?.bonus).damage * (1 + gear) * this.damageBonus(seat, p);
+    // Circuito e Graça (Dons): só na magia que está sendo lançada (`castBoost` volta a 0 no fim do `cast`).
+    const circuit = kind === "spell" ? seat?.castBoost ?? 0 : 0;
+    return statsFor(p.classId as ClassId, p.level, seat?.bonus).damage * (1 + gear) * this.damageBonus(seat, p) * (1 + circuit);
   }
 
   /**
@@ -4092,6 +4271,8 @@ export class Hunt {
     });
     bonus += voice;
     if (this.host.now() < seat.fieldDamageUntil) bonus += seat.fieldDamage;
+    // Último Duelo (Dom): encurralado, bate mais forte.
+    if (seat.gifts.lowHpDamage > 0 && p.hp < p.maxHp * LOW_HP_PCT) bonus += seat.gifts.lowHpDamage;
     if (this.host.now() < seat.rallyUntil) bonus += seat.rallyDamage;
     return bonus;
   }

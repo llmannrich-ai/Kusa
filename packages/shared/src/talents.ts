@@ -390,14 +390,21 @@ function classTree(classId: ClassId): TalentDef[] {
       baseCost: TOME_RULE.baseCost, costGrowth: TOME_RULE.costGrowth, requires: { id: first.id, rank: 1 },
     }];
   });
-  // Dons do topo: na linha 2, do lado oposto ao Tomo, pedindo o mesmo primeiro nó do tronco (comprado, sem XP).
+  // Dons do topo: na linha 2, do lado oposto ao Tomo, pedindo o primeiro nó do tronco no nível 1 (a magia inicial já vem nele).
+  // Dons do fundo: embaixo do Ápice do ramo (mesma faixa, uma linha abaixo), pedindo o Ápice no nível 1.
   const gifts = Object.values(GIFTS).filter((g) => g.classId === classId).map((g): TalentDef => {
-    const first = trunk.find((t) => t.col === g.col && t.row === 1)!;
-    return {
-      id: id(g.id), classId, col: g.col, row: 2, lane: -TOME_LANES[classId][g.col], kind: "gift", name: g.name, icon: g.icon,
+    const place = (row: number, lane: number, parent: string): TalentDef => ({
+      id: id(g.id), classId, col: g.col, row, lane, kind: "gift", name: g.name, icon: g.icon,
       giftId: g.id, maxRank: GIFT_MAX_RANK, freeRank: 0, baseCost: GIFT_BASE_COST, costGrowth: GIFT_COST_GROWTH,
-      requires: { id: first.id, rank: 1 },
-    };
+      requires: { id: parent, rank: 1 },
+    });
+    if (g.apex) {
+      const apex = ribs.find((t) => t.spellId === g.apex);
+      if (!apex || apex.col !== g.col) throw new Error(`${g.id}: Ápice ${g.apex} fora do ramo ${g.col} de ${classId}`);
+      return place(apex.row + 1, apex.lane, apex.id);
+    }
+    const first = trunk.find((t) => t.col === g.col && t.row === 1)!;
+    return place(2, -TOME_LANES[classId][g.col], first.id);
   });
   const tree = [...trunk, ...ribs, ...tomes, ...gifts];
   // Dois nós no mesmo lugar do desenho seriam um erro de digitação na forma.
