@@ -1,5 +1,7 @@
 import acampamentoUrl from "./fortaleza/acampamento.png";
 import acampamentoFrames from "./fortaleza/acampamento.json";
+import capimUrl from "./fortaleza/chao-capim.webp";
+import { HD } from "../paint.ts";
 
 /**
  * Folhas de sprites de cenário da Fortaleza Orc, geradas no ChatGPT (`docs/arte/agente/FORTALEZA_ORC.md`) e
@@ -22,3 +24,44 @@ async function load(url: string, frames: SceneSheet["frames"]): Promise<SceneShe
 /** Acampamento orc: tendas, fogueira, totem, estandarte, paliçada, armas, caldeirão, lenha, ossos, jaula e barris. */
 export const ACAMPAMENTO = await load(acampamentoUrl, acampamentoFrames);
 export type AcampamentoFrame = keyof typeof acampamentoFrames;
+
+/**
+ * Textura de chão do ChatGPT: 1024×1024 px, 8×8 tiles de 128 que emendam nos 4 lados. O tile (x, y) do mapa usa o
+ * pedaço (x mod 8, y mod 8), então o chão continua sem costura e só repete a cada 8 tiles.
+ */
+export interface GroundTexture {
+  /** Período em tiles. */
+  readonly period: number;
+  /** Pixels RGBA do pedaço (tx, ty), 128×128. */
+  tile(tx: number, ty: number): Uint8ClampedArray;
+}
+
+async function loadGround(url: string): Promise<GroundTexture> {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+  const period = Math.round(image.width / HD);
+  let data: Uint8ClampedArray | null = null;
+  const pixels = () => {
+    if (!data) {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+      ctx.drawImage(image, 0, 0);
+      data = ctx.getImageData(0, 0, image.width, image.height).data;
+    }
+    return data;
+  };
+  return {
+    period,
+    tile(tx, ty) {
+      const src = pixels(), out = new Uint8ClampedArray(HD * HD * 4), stride = image.width * 4;
+      for (let y = 0; y < HD; y++) out.set(src.subarray((ty * HD + y) * stride + tx * HD * 4, (ty * HD + y) * stride + (tx + 1) * HD * 4), y * HD * 4);
+      return out;
+    },
+  };
+}
+
+/** Capim mediterrâneo (a vila baixa e as bordas dos pátios). */
+export const CHAO_CAPIM = await loadGround(capimUrl);

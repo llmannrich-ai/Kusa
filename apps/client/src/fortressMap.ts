@@ -3,7 +3,7 @@ import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "
 import { hash, makeCanvas } from "./art/pixels.ts";
 import { TileAtlas, toCanvas } from "./art/duneArt.ts";
 import {
-  HD, OPEN, basaltTile, bushTile, cryptFloorTile, flatDecor, fringeEdge, grassTile, quarter, shadeEdge,
+  HD, OPEN, basaltTile, bushTile, cryptFloorTile, flatDecor, fringeEdge, quarter, shadeEdge,
   type FlatDecor,
 } from "./art/empireArt.ts";
 import {
@@ -16,7 +16,7 @@ import {
   stakeSprite, terraceTile, throneSprite,
 } from "./art/fortressArt.ts";
 import { canopyTile, waterTile } from "./art/forestArt.ts";
-import { ACAMPAMENTO, type AcampamentoFrame } from "./art/proto/fortalezaArt.ts";
+import { ACAMPAMENTO, CHAO_CAPIM, type AcampamentoFrame } from "./art/proto/fortalezaArt.ts";
 import { GLOW, MIST, SpriteSheet, createGlowArt, single } from "./gatesMap.ts";
 import { ChunkCuller, focusTile, patchTint, type MapAmbience } from "./mapShared.ts";
 
@@ -127,10 +127,12 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   // O que não aparece nos primeiros segundos da hunt vai noutro atlas, pintado logo depois de o mapa aparecer (como a
   // fachada e o mosaico dos Portões): o vale (a entrada fica longe do desfiladeiro), o terraço e os telhados.
   const far = new TileAtlas();
+  // O capim é a textura do ChatGPT, cortada em tiles: o tile (x, y) usa o pedaço (x mod 8, y mod 8).
   const grassFrame = (x: number, y: number, into = atlas) => {
-    const v = pick(x, y, 6, 1);
-    return into.frame(`grass${v}`, () => grassTile(v).render(false));
+    const p = CHAO_CAPIM.period, tx = ((x % p) + p) % p, ty = ((y % p) + p) % p;
+    return into.frame(`capim${tx}-${ty}`, () => CHAO_CAPIM.tile(tx, ty));
   };
+
   /** O vale: capim, rios serpenteando (as curvas de nível de um ruído suave) e manchas de mata. */
   const valleyWater = (x: number, y: number) => Math.abs(field(x, y, 8, 201) - 0.5) < 0.05 || field(x, y, 13, 203) < 0.07;
   const valleyWood = (x: number, y: number) => !valleyWater(x, y) && field(x, y, 6, 202) > 0.56;

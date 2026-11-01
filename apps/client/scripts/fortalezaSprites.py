@@ -1,6 +1,7 @@
 """Folhas de sprites de cenário da Fortaleza Orc (geradas no ChatGPT, fundo magenta) para o jogo.
 
-Uso: python3 apps/client/scripts/fortalezaSprites.py acampamento
+Uso: python3 apps/client/scripts/fortalezaSprites.py acampamento    (folha de objetos)
+     python3 apps/client/scripts/fortalezaSprites.py chao-capim     (textura de chão, ver CHAOS)
 
 Lê docs/arte/fortaleza/<folha>.png (grade de colunas × linhas, na ordem de `objetos`), tira o magenta, separa as
 manchas conectadas e põe cada uma no objeto da célula onde fica o centro dela (uma caveira solta conta com o objeto da
@@ -29,7 +30,27 @@ FOLHAS = {
     },
 }
 
+# Texturas de chão: cada uma vira 1024×1024 (8×8 tiles de 128 px; o jogo corta em 64 tiles) e tem a cor média puxada
+# para a do chão que ela substitui (`media`, RGB), na fração `forca`, para casar com as bordas pintadas pelo jogo.
+CHAOS = {
+    "chao-capim": {"media": (119, 142, 63), "forca": 0.7},
+}
+
 ROOT = Path(__file__).resolve().parents[3]
+
+
+def chao(nome):
+    spec = CHAOS[nome]
+    src = Image.open(ROOT / "docs/arte/fortaleza" / f"{nome}.png").convert("RGB")
+    img = src.resize((1024, 1024), Image.LANCZOS)
+    arr = np.array(img).astype(np.float32)
+    mean = arr.reshape(-1, 3).mean(0)
+    gain = 1 + (np.array(spec["media"], np.float32) / np.maximum(mean, 1) - 1) * spec["forca"]
+    arr = np.clip(arr * gain, 0, 255).astype(np.uint8)
+    dest = ROOT / "apps/client/src/art/proto/fortaleza"
+    dest.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(arr, "RGB").save(dest / f"{nome}.webp", "WEBP", quality=90, method=6)
+    print(f"{nome}: média {mean.round().tolist()} -> {arr.reshape(-1, 3).mean(0).round().tolist()}")
 
 
 def magenta(r, g, b):
@@ -122,4 +143,4 @@ def main(nome):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    chao(sys.argv[1]) if sys.argv[1] in CHAOS else main(sys.argv[1])
