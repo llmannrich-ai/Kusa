@@ -1236,8 +1236,11 @@ export class DungeonScene extends Phaser.Scene {
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
     ensureMonsterArt(this, monsterTexture(kind, monster.variant));
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
-    const top = TILE_SIZE / 2 - sprite.displayHeight * (art.anim?.fill ?? 1);
+    // Arte esculpida (`sculpt.ts`): o quadro desce abaixo da base do tile (pinças de frente, vista de cima).
+    const below = 1 - (art.anim?.origin ?? 1);
+    const top = TILE_SIZE / 2 - sprite.displayHeight * ((art.anim?.fill ?? 1) - below);
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
+    if (art.anim?.origin) sprite.setOrigin(0.5, art.anim.origin);
     unit.texture = texture;
     unit.baseScale = scale;
     unit.breath = Math.random() * Math.PI * 2;
