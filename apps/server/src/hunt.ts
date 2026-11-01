@@ -83,6 +83,7 @@ import {
   shotPath,
   coneTiles,
   spreadAimPoints,
+  forkTiles,
   isWalkable,
   isSand,
   SAND_SPEED,
@@ -237,6 +238,8 @@ interface Seat {
    * quando dura, o próximo pulso, a direção do leque (arrastada pelo jogador) e quantos pulsos seguidos cada monstro
    * levou (para congelar).
    */
+  /** Carga da Legião: aura que anda com o herói até `until`; a cada `nextAt` renova o bônus de quem está perto. */
+  auraFx: { def: NonNullable<SpellDef["aura"]>; until: number; nextAt: number } | null;
   channel: {
     spell: SpellDef; def: NonNullable<SpellDef["channel"]>; rank: number; slot: SpellSlot; amount: number; until: number; nextAt: number;
     dx: number; dy: number; streak: Record<string, number>;
@@ -468,6 +471,9 @@ export interface HuntOptions {
 const MOVE_SLACK_MS = 100;
 
 /** Campos internos que vão no retrato da hunt (o resto se recalcula: mapa, dungeon). */
+/** Carga da Legião: de quanto em quanto tempo a aura renova o bônus de quem está perto. */
+const AURA_PULSE_MS = 500;
+
 const INTERNALS = [
   "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
   "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked", "nextBotId",
@@ -619,7 +625,7 @@ export class Hunt {
     this.seats.set(sessionId, {
       nextMoveAt: 0, heading: null, nextAttackAt: 0, portalSince: null, attacking: false, attackUntil: 0, basicAim: null, targetLocked: false,
       spellReadyAt: [0, 0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
-      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
+      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, auraFx: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0,
@@ -1122,6 +1128,7 @@ export class Hunt {
     this.bots.think(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.channelTick(sessionId, p, now));
+    this.state.players.forEach((p, sessionId) => this.auraTick(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
     this.tickFields(now);
@@ -1532,6 +1539,8 @@ export class Hunt {
       const end = line[line.length - 1] ?? { x: ox, y: oy };
       tx = end.x;
       ty = end.y;
+      // Relâmpago Ramificado: no fim da reta, a linha se abre em galhos.
+      if (spell.fork) line = [...line, ...forkTiles(this.dungeon, ox, oy, end, spell.fork)];
       // O alvo do toque rápido continua valendo: a flecha o segue mesmo se ele sair da reta durante o voo.
     }
 
@@ -1645,6 +1654,8 @@ export class Hunt {
       });
     } else if (spell.wave && line) {
       this.castWave(sessionId, spell, rank, tx, ty, amount, line, slot, ox, oy);
+    } else if (spell.sweep && line) {
+      this.castSweep(sessionId, spell, rank, tx, ty, amount, line, slot, ox, oy);
     } else {
       this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount * hitFar, line, slot, ally));
     }
@@ -1664,6 +1675,8 @@ export class Hunt {
         this.host.broadcast(MSG.spell, {
           from: sessionId, spellId: spell.id, x: at.x, y: at.y, tx: at.x, ty: at.y, ms: 0, echo: true,
         } satisfies SpellMessage);
+        // Varredura (Ceifa do Campeão): cada passada varre o leque de novo, de um lado ao outro.
+        if (once.sweep && line) return this.castSweep(sessionId, once, rank, tx, ty, amount * echo.power, line, slot, ox, oy);
         this.applySpell(sessionId, once, rank, anchor?.id, at.x, at.y, amount * hitFar * echo.power, line, slot);
       });
     }
@@ -1696,6 +1709,33 @@ export class Hunt {
       const passed = order.slice(0, i + 1).flatMap((r) => rings.get(r)!);
       this.after((ring - 1) * spell.wave!.stepMs, () =>
         this.applySpell(sessionId, i === 0 ? spell : rest, rank, undefined, tx, ty, amount, passed, slot, undefined, struck));
+    });
+  }
+
+  /**
+   * Varredura (Ceifa do Campeão): a lâmina corre de uma borda do leque à outra em `sweep.ms`, em 5 fatias pelo ângulo;
+   * cada fatia atinge quem estiver nela quando a lâmina passa, e cada monstro leva o golpe uma vez por passada.
+   */
+  private castSweep(
+    sessionId: string, spell: SpellDef, rank: number, tx: number, ty: number, amount: number,
+    tiles: { x: number; y: number }[], slot: SpellSlot, ox: number, oy: number,
+  ) {
+    const SLICES = 5;
+    const dir = Math.atan2(ty - oy, tx - ox);
+    const half = ((spell.coneAngle ?? 90) * Math.PI) / 360;
+    const slices: { x: number; y: number }[][] = Array.from({ length: SLICES }, () => []);
+    for (const t of tiles) {
+      let diff = Math.atan2(t.y - oy, t.x - ox) - dir;
+      while (diff > Math.PI) diff -= 2 * Math.PI;
+      while (diff < -Math.PI) diff += 2 * Math.PI;
+      const k = Math.min(SLICES - 1, Math.max(0, Math.floor(((diff + half) / (2 * half)) * SLICES)));
+      slices[k].push(t);
+    }
+    const struck = new Set<string>();
+    slices.forEach((slice, k) => {
+      if (slice.length === 0) return;
+      this.after((spell.sweep!.ms * k) / (SLICES - 1), () =>
+        this.applySpell(sessionId, k === 0 ? spell : { ...spell, selfBuff: undefined, summon: undefined }, rank, undefined, tx, ty, amount, slice, slot, undefined, struck));
     });
   }
 
@@ -1834,6 +1874,12 @@ export class Hunt {
     const inArea = (x: number, y: number) =>
       tileDistance(cx, cy, x, y) <= spell.radius && hasLineOfSight(this.dungeon, cx, cy, x, y);
 
+    // Buraco Negro: os monstros da área são puxados para o centro antes do golpe.
+    if (spell.pullIn) {
+      const caught = [...this.state.monsters.values()].filter((m) => inArea(m.x, m.y))
+        .sort((a, b) => tileDistance(cx, cy, a.x, a.y) - tileDistance(cx, cy, b.x, b.y));
+      for (const m of caught) this.pullToward(m, cx, cy, spell.radius);
+    }
     const onLine = line && new Set(line.map((t) => t.y * this.dungeon.width + t.x));
     // Linha: quem está na reta na chegada, mais o alvo do toque rápido (que pode ter saído dela durante o voo).
     const hit = (onLine
@@ -2022,6 +2068,11 @@ export class Hunt {
       p.guarded = true;
     }
 
+    // Carga da Legião: a aura começa agora e anda com o herói (`auraTick`).
+    if (spell.aura && p.status === "playing") {
+      seat.auraFx = { def: spell.aura, until: now + spell.aura.ms, nextAt: now };
+      this.auraTick(sessionId, p, now);
+    }
     if (spell.selfBuff && p.status === "playing") {
       const b = spell.selfBuff;
       seat.buff = {
@@ -2072,12 +2123,51 @@ export class Hunt {
     if (spell.seed && allyId && ally?.status === "playing" && allySeat) this.plantSeed(sessionId, seat, allyId, ally, allySeat, spell.seed, now);
 
     if (spell.summon && p.status === "playing") this.summon(sessionId, p, spell, rank);
+    // Caçada Selvagem: a segunda leva (o urso) vem junto, sem tirar a primeira.
+    if (spell.alsoSummon && p.status === "playing") this.summon(sessionId, p, { ...spell, summon: spell.alsoSummon }, rank, true);
   }
 
   /**
    * Tambor de Guerra: quem conjura, os heróis e as criaturas (de qualquer herói) a até `radius` tiles, com linha de
    * visão, atacam mais rápido e batem mais forte por `ms`. Um tambor novo troca o anterior (não soma).
    */
+  /**
+   * Aura que anda (Carga da Legião): a cada meio segundo, renova o bônus do Tambor de Guerra (`rally`) em quem está perto
+   * do herói agora, por pouco mais de meio segundo; quem se afasta perde o bônus logo.
+   */
+  private auraTick(sessionId: string, p: Player, now: number) {
+    const seat = this.seats.get(sessionId);
+    const a = seat?.auraFx;
+    if (!seat || !a) return;
+    if (p.status !== "playing" || now >= a.until) {
+      seat.auraFx = null;
+      return;
+    }
+    if (now < a.nextAt) return;
+    a.nextAt = now + AURA_PULSE_MS;
+    this.rally(sessionId, p, seat, { radius: a.def.radius, ms: AURA_PULSE_MS + 150, haste: a.def.haste, damage: a.def.damage }, now);
+  }
+
+  /** Buraco Negro: leva o monstro para o tile livre mais perto do centro (a até `radius`), sem atravessar parede. */
+  private pullToward(m: Monster, cx: number, cy: number, radius: number) {
+    const blocked = this.occupiedTiles();
+    const w = this.dungeon.width;
+    let best: { x: number; y: number } | null = null;
+    let bestDist = tileDistance(cx, cy, m.x, m.y);
+    for (let y = cy - radius; y <= cy + radius; y++) {
+      for (let x = cx - radius; x <= cx + radius; x++) {
+        const dist = tileDistance(cx, cy, x, y);
+        if (dist >= bestDist || !isWalkable(this.dungeon, x, y) || this.specialTile(x, y) || blocked.has(y * w + x)) continue;
+        if (!hasLineOfSight(this.dungeon, cx, cy, x, y)) continue;
+        best = { x, y };
+        bestDist = dist;
+      }
+    }
+    if (!best) return;
+    m.x = best.x;
+    m.y = best.y;
+  }
+
   private rally(sessionId: string, p: Player, seat: Seat, rally: NonNullable<SpellDef["rally"]>, now: number) {
     const near = (x: number, y: number) => tileDistance(p.x, p.y, x, y) <= rally.radius && hasLineOfSight(this.dungeon, p.x, p.y, x, y);
     this.state.players.forEach((ally, id) => {
@@ -2348,11 +2438,14 @@ export class Hunt {
   // --- Criaturas invocadas ----------------------------------------------------
 
   /** Põe as criaturas da magia em volta de quem conjurou. Conjurar de novo substitui as anteriores da mesma magia. */
-  private summon(sessionId: string, p: Player, spell: SpellDef, rank: number) {
+  private summon(sessionId: string, p: Player, spell: SpellDef, rank: number, keep = false) {
     const { kind, count, durationMs } = spell.summon!;
-    this.state.summons.forEach((s) => {
-      if (s.owner === sessionId && this.summonBrains.get(s.id)?.spellId === spell.id) this.removeSummon(s.id);
-    });
+    // Conjurar de novo troca as criaturas da mesma magia (a segunda leva da mesma magia não tira a primeira).
+    if (!keep) {
+      this.state.summons.forEach((s) => {
+        if (s.owner === sessionId && this.summonBrains.get(s.id)?.spellId === spell.id) this.removeSummon(s.id);
+      });
+    }
     const now = this.host.now();
     const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "summon"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0)));
     // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
@@ -3784,6 +3877,14 @@ export class Hunt {
           if (brain.rootMs > 0 && mBrain) {
             this.root(m, mBrain, now + brain.rootMs);
             seat.stats.ccMs.root += brain.rootMs;
+          }
+          // Era do Gelo: cada pulso deixa lento.
+          const slow = brain.spell.slow;
+          if (slow && mBrain) {
+            mBrain.slowPct = Math.max(now < mBrain.slowUntil ? mBrain.slowPct : 0, slow.pct);
+            mBrain.slowUntil = Math.max(mBrain.slowUntil, now + slow.ms);
+            m.slowed = true;
+            seat.stats.ccMs.slow += slow.ms;
           }
           // Nuvem Venenosa: cada pulso envenena (com a Toxina, acumula).
           const dot = brain.spell.dot;

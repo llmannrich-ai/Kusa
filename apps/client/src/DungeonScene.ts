@@ -14,6 +14,7 @@ import {
   SPELLS,
   lineTiles,
   coneTiles,
+  forkTiles,
   SUMMONS,
   itemColor,
   TILE_SIZE,
@@ -734,7 +735,14 @@ export class DungeonScene extends Phaser.Scene {
   private showLine(spell: SpellDef, msg: SpellMessage) {
     const tiles = lineTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
     const step = tiles.length > 0 ? msg.ms / tiles.length / 45 : 0;
-    this.fx.area(tiles.map((t, i) => ({ ...this.tilePoint(t.x, t.y), ring: i * step })), spell.color, 0);
+    // Relâmpago Ramificado: no fim da reta, os galhos acendem logo depois (a mesma conta do servidor).
+    const end = tiles[tiles.length - 1];
+    const forks = spell.fork && end ? forkTiles(this.dungeon, msg.x, msg.y, end, spell.fork) : [];
+    const last = tiles.length * step;
+    this.fx.area([
+      ...tiles.map((t, i) => ({ ...this.tilePoint(t.x, t.y), ring: i * step })),
+      ...forks.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: last + tileDistance(end!.x, end!.y, t.x, t.y) })),
+    ], spell.color, 0);
   }
 
   /**

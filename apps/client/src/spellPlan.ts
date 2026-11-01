@@ -53,7 +53,8 @@ export function spellRoles(s: SpellDef): SpellRole[] {
   if (s.heal || f?.allyHeal || s.seed || s.cleanse || s.tauntHeal || s.summonDeathHeal || s.rally?.heal) roles.add("cura");
   if (s.dash || s.charge || s.form?.kind === "panther" || (s.selfBuff?.moveSpeed ?? 0) > 0) roles.add("mobilidade");
   if (s.summon || f?.kind === "turret" || s.packCall) roles.add("invocacao");
-  if (s.mark || f?.allyDamage || s.selfBuff?.basicDamage || s.selfBuff?.attackHaste || s.selfBuff?.attackRange || s.rally) roles.add("apoio");
+  // Carga da Legião (aura que anda com o herói) também é apoio.
+  if (s.mark || f?.allyDamage || s.selfBuff?.basicDamage || s.selfBuff?.attackHaste || s.selfBuff?.attackRange || s.rally || s.aura) roles.add("apoio");
   return (Object.keys(ROLE_INFO) as SpellRole[]).filter((r) => roles.has(r));
 }
 

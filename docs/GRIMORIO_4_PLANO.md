@@ -52,6 +52,9 @@ slot** continua vindo só do uso (XP, `spellxp.ts`). Gastar ouro nunca substitui
 | 15 | Magia de slot 3 grátis | **não**: todas as magias do slot 3 se compram; o slot fica vazio até a primeira compra |
 | 16 | Ordem das 3 primeiras fases | **passivas → leque → slot 3** |
 | 17 | Áurea de velocidade | **para no nível 6** (+12%) |
+| 18 | Publicar as fases | **direto**, quando o CI e os testes passarem (fila, migration, advisors, merge); parar só em conflito, CI vermelho ou aviso de segurança novo |
+| 19 | Xamã Orc (classe que entrou em 01/11, fora deste plano) | **entra no Grimório 4.0**: a magia de entrada do slot 3 já na fase 3b; Ápices e Dons do fundo quando o tronco dele existir (fase 2 de `docs/CLASSE_XAMA_ORC.md`, de outra sessão) |
+| 20 | Ápices | **os 12 do plano**, com todas as peças novas (aura que anda, carregar, órbita, cruz, puxar em área, varredura); a fase 3b sai em duas partes |
 
 Padrões assumidos sem pergunta:
 - Dons são **por classe** e comprados **só com ouro** (não pedem XP).
@@ -559,6 +562,15 @@ plano:
 - sem nenhuma magia do slot 3 comprada, o botão mostra 📖 "Grimório" e não abre uma escolha vazia;
 - o **Xamã Orc** (classe que entrou hoje, fora deste plano) ainda não tem magia de slot 3: o slot fica com o aviso;
 - banco: `record_spell_xp` guarda 3 magias por hunt; migration `20261102050000_slot_3.sql`; teste novo `slot3`.
+
+**Fase 3b-1, como foi entregue:** 10 Ápices e a magia de entrada do slot 3 do Xamã (Totem Ancestral). Peças novas:
+varredura (L5, `sweep`), aura que anda (A3, `aura`, que renova o `rally` do Xamã a cada 0,5 s em quem está perto),
+puxar para o centro (A1, `pullIn`), galhos no fim da linha (`fork`), segunda invocação (`alsoSummon`) e lentidão nos
+campos. Diferenças: Baluarte provoca no raio do escudo (4) e a Maestria aumenta o escudo (a armadura nos aliados pede
+outra peça); Carga da Legião dá ritmo de ataque, não velocidade de movimento (é o bônus do Tambor); Era do Gelo não
+estilhaça no fim; Caçada Selvagem não tem o +20% de dano (a Maestria aumenta a duração). Os Ápices ficam na linha VI,
+lane 2, e pedem só a última magia do tronco (os Dons da costela de passivas, que o plano punha como pai, são da fase 4).
+Ficam para a 3b-2: Tiro do Fim do Mundo (A4), Coroa Solar (A9) e os 12 Dons do fundo.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).

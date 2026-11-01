@@ -111,6 +111,115 @@ for (const classId of CLASS_IDS.filter((c) => c in ENTRY)) {
   });
 }
 
+console.log("Ápices (fase 3b-1):");
+test("cada Ápice fica no fim do tronco do ramo, a 2.000, pedindo a última magia do tronco", () => {
+  for (const classId of ["knight", "paladin", "sorcerer", "druid"] as const) {
+    const apices = talentTree(classId).filter((t) => t.spellId && SPELLS[t.spellId].slot === 2 && t.row > 0);
+    for (const t of apices) {
+      const parent = TALENTS[t.requires!.id];
+      check(t.baseCost === 2000 && parent.col === t.col && parent.lane === 0 && parent.spellId !== undefined, `${t.id}: lugar ou preço`);
+    }
+  }
+});
+test("Ceifa do Campeão varre a meia-lua: pega quem está dos dois lados", () => {
+  const a = arena({ classId: "knight", startLevel: 12, monsterHp: 50 });
+  const up = a.place(TARGET, 0, -2);
+  const down = a.place(TARGET, 0, 2);
+  castS3(a, "champion_reap", { x: a.p.x + 3, y: a.p.y });
+  a.advance(1500);
+  check(lostHp(a, up.id) > 0 && lostHp(a, down.id) > 0, `cima ${lostHp(a, up.id)}, baixo ${lostHp(a, down.id)}`);
+  const hits = a.damage.filter((d) => !d.toPlayer && d.attacker === HERO && !d.dot && d.x === up.x && d.y === up.y).length;
+  check(hits >= 2, `passadas no mesmo monstro: ${hits}`);
+});
+test("Baluarte: escudo em você e no aliado, e provoca", () => {
+  const a = arena({ classId: "knight", startLevel: 12, monsterHp: 50, allies: [{ classId: "druid" }] });
+  const ally = a.state.players.get("h2")!;
+  ally.x = a.p.x + 1;
+  ally.y = a.p.y;
+  const m = a.place(TARGET, -2, 0);
+  castS3(a, "bulwark", a.p);
+  a.advance(100);
+  check(a.p.barrier > 0 && ally.barrier > 0, `escudo: herói ${a.p.barrier}, aliado ${ally.barrier}`);
+  check(a.brain(m).tauntedBy === HERO, "não provocou");
+});
+test("Carga da Legião: o aliado perto ganha o bônus e perde ao se afastar", () => {
+  const a = arena({ classId: "knight", startLevel: 12, monsterHp: 50, allies: [{ classId: "sorcerer" }] });
+  const ally = a.state.players.get("h2")!;
+  ally.x = a.p.x + 1;
+  ally.y = a.p.y;
+  castS3(a, "legion_charge", a.p);
+  a.advance(200);
+  check(a.seat("h2").rallyDamage > 0 && a.now() < a.seat("h2").rallyUntil, "o aliado perto não ganhou o bônus");
+  ally.x = a.p.x + 8;
+  a.advance(1500);
+  check(a.now() >= a.seat("h2").rallyUntil, "o aliado longe continuou com o bônus");
+  check(a.now() < a.seat().rallyUntil, "o próprio cavaleiro perdeu o bônus");
+});
+test("Chuva sem Fim canaliza e fere o leque", () => {
+  const a = arena({ classId: "paladin", startLevel: 12, monsterHp: 50 });
+  const m = a.place(TARGET, 3, 0);
+  castS3(a, "endless_rain", m);
+  check(!!a.seat().channel, "não canalizou");
+  a.advance(1500);
+  const pulses = a.damage.filter((d) => !d.toPlayer && d.attacker === HERO && !d.dot).length;
+  check(pulses >= 3, `pulsos: ${pulses}`);
+});
+test("Relâmpago Ramificado: os galhos pegam quem está fora da reta", () => {
+  const a = arena({ classId: "sorcerer", startLevel: 12, monsterHp: 50 });
+  const ahead = { x: a.p.x + 7, y: a.p.y };
+  const side = a.place(TARGET, 9, 2);
+  castS3(a, "branching_bolt", ahead);
+  a.advance(500);
+  check(lostHp(a, side.id) > 0, `o galho não pegou (${a.where()})`);
+});
+test("Era do Gelo deixa lento e prende", () => {
+  const a = arena({ classId: "sorcerer", startLevel: 12, monsterHp: 50 });
+  const m = a.place(TARGET, 3, 0);
+  castS3(a, "ice_age", m);
+  a.advance(2200);
+  check(m.slowed && a.seat().stats.ccMs.root > 0, `lento ${m.slowed}, preso ${a.seat().stats.ccMs.root} ms`);
+});
+test("Buraco Negro puxa para o centro e explode", () => {
+  const a = arena({ classId: "sorcerer", startLevel: 12, monsterHp: 50 });
+  const center = { x: a.p.x + 4, y: a.p.y };
+  const m = a.place(TARGET, 6, 2);
+  a.brain(m).stunnedUntil = a.now() + 5000;
+  m.stunned = true;
+  const before = tileDistance(center.x, center.y, m.x, m.y);
+  castS3(a, "black_hole", center);
+  a.advance(100);
+  check(tileDistance(center.x, center.y, m.x, m.y) < before && lostHp(a, m.id) > 0, `distância ${before} → ${tileDistance(center.x, center.y, m.x, m.y)}`);
+});
+test("Caçada Selvagem: lobos e urso juntos", () => {
+  const a = arena({ classId: "druid", startLevel: 12, monsterHp: 50 });
+  castS3(a, "wild_hunt", a.p);
+  a.advance(100);
+  const kinds = [...a.state.summons.values()].filter((s) => s.owner === HERO).map((s) => s.kind);
+  check(kinds.includes("wolf") && kinds.includes("bear"), `criaturas: ${kinds.join(",")}`);
+});
+test("Árvore da Vida cura quem está à sombra", () => {
+  const a = arena({ classId: "druid", startLevel: 12, monsterHp: 50 });
+  a.p.hp = Math.round(a.p.maxHp / 2);
+  const before = a.p.hp;
+  castS3(a, "tree_of_life", { x: a.p.x + 1, y: a.p.y });
+  a.advance(2200);
+  check(a.p.hp > before, `vida ${before} → ${a.p.hp}`);
+});
+test("Furacão de Folhas canaliza e empurra", () => {
+  const a = arena({ classId: "druid", startLevel: 12, monsterHp: 50 });
+  const m = a.place(TARGET, 2, 0);
+  castS3(a, "leaf_hurricane", m);
+  a.advance(1000);
+  check(lostHp(a, m.id) > 0, `sem dano (${a.where()})`);
+});
+test("Xamã Orc: o Totem Ancestral queima e reforça a equipe", () => {
+  const a = arena({ classId: "shaman", startLevel: 12, monsterHp: 50 });
+  const m = a.place(TARGET, 2, 0);
+  castS3(a, "ancestral_totem", { x: a.p.x + 1, y: a.p.y });
+  a.advance(2200);
+  check(lostHp(a, m.id) > 0 && a.seat().fieldDamage > 0, `dano ${lostHp(a, m.id)}, reforço ${a.seat().fieldDamage}`);
+});
+
 console.log(`\n${passed} ok, ${failures.length} falharam`);
 if (failures.length > 0) {
   for (const f of failures) console.log(`  - ${f}`);

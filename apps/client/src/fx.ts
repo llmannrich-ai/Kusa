@@ -437,6 +437,31 @@ export class CombatFx {
         return this.projectile(FX.shadowOrb, from, to, Math.max(ms, 300), { trail: 0x7c4dff, glow: 0xb388ff, impact: 0xe1d5ff, scale: 1.8 });
       case "butterfly_swarm":
         return;
+      // Ápices e o Totem Ancestral. Os leques (Ceifa, Chuva sem Fim, Furacão) e a linha do Relâmpago são da cena.
+      case "champion_reap":
+      case "endless_rain":
+      case "leaf_hurricane":
+        return;
+      case "branching_bolt": return this.zap(from, to, 0x9ec5ff);
+      case "bulwark":
+        this.ring(from, radius, 0x7fc8ff, 600, 6);
+        return this.shieldRaise(from);
+      case "legion_charge":
+        this.ring(from, TILE_SIZE * 4, 0xf1c40f, 650, 5);
+        return this.later(150, () => this.ring(from, TILE_SIZE * 2, 0xe67e22, 450, 3));
+      case "ice_age":
+        this.snow(to, radius);
+        return this.ring(to, radius, 0xd6f1ff, 600, 6);
+      case "black_hole":
+        this.ring(to, radius, 0x4a148c, 500, 8);
+        return this.later(200, () => this.ring(to, TILE_SIZE / 2, 0x000000, 400, 6));
+      case "wild_hunt":
+        this.ring(from, TILE_SIZE * 2, 0x8d6e4a, 550, 4);
+        return this.heal(from);
+      case "tree_of_life":
+        this.ring(to, radius, 0x2ecc71, 650, 4);
+        return this.heal(to);
+      case "ancestral_totem": return this.ring(to, radius, 0xd35400, 550, 5);
       case "thorn_spray": return this.projectile(FX.leaf, from, to, ms, { trail: 0x8bc34a, glow: 0x6b8e23, impact: 0x9cff7a, scale: 0.8 });
     }
   }
