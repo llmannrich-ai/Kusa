@@ -439,11 +439,11 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
   **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
-  Solária → 🏛️ Portões do Império, a etapa 8, e ao lado deles a ⚔️ Fortaleza Orc, os dois por enquanto só o terreno) e a floresta (🌳 Bosque Velho → 🍄 Coração da
+  Solária → ⚔️ Fortaleza Orc, a etapa 8, por enquanto só o terreno) e a floresta (🌳 Bosque Velho → 🍄 Coração da
   Mata, por enquanto só o terreno). O herói anda pelos dois ramos: para ir de um lado ao outro, volta pela trilha até a
   Travessia (`OPEN_CHAINS` em `verdemar.ts`).
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
-  Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Portões do Império (charco ou ermos) e
+  Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Fortaleza Orc (charco ou ermos) e
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
 - **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
   Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. **Só o boss de um lado abre aquele lado:** o
@@ -459,7 +459,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
-  Cantante → Mesas de Solária, Faraó Eterno → Portões do Império e Fortaleza Orc; Basilisco → Bosque Velho, boss do Bosque Velho →
+  Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc; Basilisco → Bosque Velho, boss do Bosque Velho →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
@@ -485,7 +485,7 @@ recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede
 
 Escala de dificuldade de 1 a 6 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
 Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes e 6 para Mesas de Solária, o mapa mais difícil (a 3 fica
-livre). Os Portões do Império e a Fortaleza Orc, ainda sem monstros, ficam com 6 provisório.
+livre). A Fortaleza Orc, ainda sem monstros, fica com 6 provisório (os Portões do Império também, fora da campanha).
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
@@ -698,7 +698,10 @@ como o lado do deserto), 8 min, até 4 jogadores.
   em blocos de 4×4 tiles) e poucos enfeites rasteiros: o chão não mostra a grade dos tiles.
 - **Loot:** teto da hunt solo provisório de 100 nos dois (sem monstros), cheio em 180 s; sobe junto com o bestiário.
 
-### Portões do Império (terreno)
+### Portões do Império (terreno, fora da campanha)
+
+**Saiu da campanha em 01/11:** a Fortaleza Orc ocupa o ponto dele no mapa mundi (etapa 8). O mapa continua no código
+(gerador, arte, prévia), mas não abre para ninguém (`WORLD_ORDER` e `map_unlocked` no banco).
 
 A etapa 8 da campanha, na área Ruínas do Império (abre com o Faraó Eterno, das Mesas de Solária), e a bifurcação para o
 Charco Cinzento ou os Ermos Rubros. Por enquanto só o terreno e a arte: sem monstros nem boss (`encounters`, `bosses`
@@ -752,7 +755,8 @@ o desenho lê.
 
 ### Fortaleza Orc (terreno)
 
-Nas Ruínas do Império, ao lado dos Portões (etapa 8 da campanha; abre com o Faraó Eterno, como os Portões). Um castelo
+Nas Ruínas do Império, a etapa 8 da campanha, no ponto que era dos Portões do Império (abre com o Faraó Eterno; daqui a
+trilha se divide para o Charco Cinzento e os Ermos Rubros). Um castelo
 do império tomado pelos orcs, no alto de um esporão de rocha. Por enquanto só o terreno e a arte: sem monstros nem boss,
 ★★★★★★ provisório, 8 min, até 4 jogadores. **Mapa fixo:** é sempre a mesma planta, qualquer que seja a seed da sala
 (`generateFortress` em `dungeon.ts`, sempre com `FORTRESS_SEED`); a planta vai em `Dungeon.fortress`, que só o desenho
