@@ -53,15 +53,15 @@ correção do ritmo de XP e com um destino de ouro que não dependa de XP.
 | Objetivo | Métrica | Alvo (proposta) |
 |---|---|---|
 | O ouro sempre tem destino | Nós compráveis agora / gold da conta (contas ativas) | ≥ 1,5× o saldo em todas as contas com mais de 20 hunts |
-| Grimório mais longo | Custo comprável por classe | de ~29 mil para ~75–85 mil |
+| Grimório mais longo | Custo comprável por classe | de ~29 mil para o que a meta de hunts pedir (D3) |
 | Mais profundo | Linha mais funda | de 8 para 11 |
 | Slot 3 com escolha real | Magias de slot 3 por classe | 9 (3 sem especialização + 6 de especialização) |
 | Poder fora dos botões | Magias passivas por classe | 9 (3 sem especialização + 6 de especialização) |
 | Áureas com personalidade | Áureas por classe | de 4 genéricas para 4 + 6 de especialização |
 | Não quebrar o começo | Custo das linhas 0–3 | **igual ao de hoje** (o começo é onde o jogador novo fica ou sai) |
 
-Ritmo esperado: a ~250 de gold por hunt no meio do jogo, 80 mil = ~320 hunts para fechar uma classe. É longo de
-propósito, mas precisa ser decidido (ver seção 9, decisão D3).
+Ritmo esperado: a ~250 de gold por hunt no meio do jogo, cada 25 mil de Grimório = ~100 hunts. A meta de hunts para
+fechar uma classe precisa ser decidida (seção 10, decisão D3).
 
 ---
 
@@ -381,8 +381,8 @@ Ordem das classes: começar pela que tem mais telemetria (Cavaleiro) para valida
 - **D1. Áurea ativa no slot 3:** aceitar a mecânica "campo que acompanha o herói" (proposta) ou deixar o slot 3 só
   com magias de poder?
 - **D2. "Estudar" magia com gold até o nível 1:** sim ou não?
-- **D3. Ritmo alvo para fechar uma classe:** ~320 hunts (proposta, ~98 mil) ou mais curto (~80 mil, áurea de
-  especialização com 2 níveis)?
+- **D3. Meta de hunts para fechar uma classe:** com tudo a preço cheio são ~153 mil (~600 hunts). Proposta: meta de
+  ~300–400 hunts, calibrada pelo multiplicador único dos nós novos (seção 4).
 - **D4. Preço dos nós antigos de especialização:** subir como na seção 4 (quem já comprou não perde nada) ou só os
   nós novos ficam caros?
 - **D5. Passivas com 2 níveis** (destino de ouro sem XP, proposta) ou nível único (árvore mais barata)?
