@@ -587,6 +587,18 @@ Ciclo cura na hora em volta do druida (raio 1), sem a semente no básico, que é
 Ossuário levanta esqueletos que contam como criaturas do Buraco Negro (força pelo nível dele). Telemetria nova:
 `stats.giftProcs`. Os marcos continuam para a fase 4.
 
+**Fase 4a-1, como foi entregue:** a fase 4 saiu em partes: 4a-1 (reações e estado congelado), 4a-2 (marcos dos Dons que
+já existem) e 4b (básico transformado e os 24 Dons da costela de passivas). Entraram as 8 reações da seção 6.2 em
+`packages/shared/src/reactions.ts`, conferidas em `Hunt.damageMonster` a cada golpe direto (o pulso do dano contínuo e a
+explosão de outra reação não reagem: sem cadeia), e dois estados novos no monstro: **congelado** (preso por magia de
+gelo, desenhado como bloco de gelo) e **ofuscado** (atordoado por magia de luz, sem desenho próprio). A magia que prende
+e fere passa os estados de antes dela, para não reagir consigo mesma. Diferenças: Espinheiro sangra na hora (3 pulsos
+do veneno) em vez de 3 s, porque o monstro só guarda um dano contínuo e o sangramento apagaria o veneno; a Brasa Tóxica
+queima os vizinhos (0,25× do golpe por segundo, 2 s) em vez de uma nuvem no chão; Hemorragia dispara em todo empurrão
+e atordoamento de herói ou criatura. As explosões usam o golpe que disparou como base (0,8× ou 1×), não o dano do
+herói: assim vale igual para magia, básico, criatura e campo. Telemetria: `stats.reactions`. Regras em Configurações ›
+Regras › Reações.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

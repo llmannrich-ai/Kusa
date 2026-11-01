@@ -18,6 +18,7 @@ import {
   MONSTERS,
   PERKS,
   PERK_IDS,
+  REACTIONS,
   POTIONS,
   POTION_COOLDOWN_MS,
   POTION_IDS,
@@ -177,8 +178,13 @@ export function renderRules(root: HTMLElement) {
         `Magias novas viram opção quando o slot abre na hunt (nível ${SLOT1}, ${SLOT2} e ${SLOT3}).`,
         "Ramos com ✦ terminam em duas especializações, e a escolha é permanente.",
         "Áureas (dano, vida, mana e velocidade) valem sempre, desde o nível 1 da hunt. Vão até o nível 20 (a de velocidade, até o 6); do 4º nível em diante, cada um vale menos.",
-        "Dons ⬢ (um no topo de cada ramo): passivas compradas só com gold, sem XP, com 25 níveis. Valem em toda hunt e não caem na morte.",
+        "Dons ⬢ (um no topo e um no fundo de cada ramo): passivas compradas só com gold, sem XP, com 25 níveis. Valem em toda hunt e não caem na morte. Os do fundo pedem a magia suprema do ramo e têm um gatilho (vida baixa, parado, a cada tantas magias...).",
       ]),
+    ),
+
+    section("⚗️ Reações", false,
+      "Um estado no monstro prepara o golpe seguinte. Vale para qualquer herói da equipe: o fogo de um combina com o gelo do outro. Toda reação, menos o Exposto, gasta o estado que a preparou.",
+      list(Object.values(REACTIONS).map((r) => `${r.icon} ${r.name}: ${r.when} → ${r.effect}.`)),
     ),
 
     section("🎒 Itens, bag e cofre", false,
