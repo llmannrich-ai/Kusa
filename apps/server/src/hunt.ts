@@ -23,6 +23,7 @@ import {
   MAX_LEVEL,
   partySize,
   MAX_SUMMONS_PER_PLAYER,
+  CLAN_TOTEM_BONUS,
   MOVE_HOLD_MS,
   PORTAL_HOLD_MS,
   MSG,
@@ -187,6 +188,7 @@ import {
   immuneToDot,
   type DotKind,
   type SummonDef,
+  type SummonKind,
   type TargetMessage,
 } from "@kusa/shared";
 import { BotAi } from "./botAi.ts";
@@ -375,6 +377,8 @@ interface FieldBrain {
   nextTickAt: number;
   until: number;
   shotsLeft: number;
+  /** Totem do Chamado: a cada pulso chama uma criatura, até `max` vivas desta magia. */
+  spawn?: { kind: SummonKind; max: number; durationMs: number } | null;
 }
 
 /** Regeneração por segundo, em fração do máximo. */
@@ -2476,7 +2480,8 @@ export class Hunt {
   // --- Criaturas invocadas ----------------------------------------------------
 
   /** Põe as criaturas da magia em volta de quem conjurou. Conjurar de novo substitui as anteriores da mesma magia. */
-  private summon(sessionId: string, p: Player, spell: SpellDef, rank: number, keep = false) {
+  /** `at`: as criaturas aparecem em volta deste ponto (o Totem do Chamado), não de quem conjura. */
+  private summon(sessionId: string, p: Player, spell: SpellDef, rank: number, keep = false, at?: { x: number; y: number }) {
     const { kind, count, durationMs } = spell.summon!;
     // Conjurar de novo troca as criaturas da mesma magia (a segunda leva da mesma magia não tira a primeira).
     if (!keep) {
@@ -2496,7 +2501,7 @@ export class Hunt {
       const mine = [...this.state.summons.values()].filter((s) => s.owner === sessionId);
       // No limite, a criatura mais antiga dá lugar à nova.
       if (mine.length >= MAX_SUMMONS_PER_PLAYER) this.removeSummon(mine[0].id);
-      const spot = this.freeSpotNear(p.x, p.y);
+      const spot = this.freeSpotNear(at?.x ?? p.x, at?.y ?? p.y);
       if (!spot) break;
       const s = new Summon();
       s.id = `s${this.nextSummonId++}`;
@@ -2571,13 +2576,17 @@ export class Hunt {
     brain.targetId = target?.id ?? null;
     if (!target) return this.summonFollow(s, brain, owner, now);
 
+    // Arqueiro do clã: com o monstro colado demais, recua antes de atirar.
+    if (def.keepDistance && tileDistance(s.x, s.y, target.x, target.y) < def.keepDistance && this.summonRetreat(s, brain, target, now)) return;
     const inRange = tileDistance(s.x, s.y, target.x, target.y) <= def.attackRange
       && hasLineOfSight(this.dungeon, s.x, s.y, target.x, target.y);
     if (inRange) {
       if (now < brain.nextAttackAt) return;
-      brain.nextAttackAt = now + def.attackCooldownMs * (now < brain.hasteUntil ? 1 - brain.haste : 1);
+      const clan = this.clanBonus(s, def, now);
+      const haste = Math.max(now < brain.hasteUntil ? brain.haste : 0, clan.haste);
+      brain.nextAttackAt = now + def.attackCooldownMs * (1 - haste);
       const m = target;
-      const amount = rollDamage(this.random, brain.damage * (now < brain.rallyUntil ? 1 + brain.rallyDamage : 1));
+      const amount = rollDamage(this.random, brain.damage * (now < brain.rallyUntil ? 1 + brain.rallyDamage : 1) * (1 + clan.damage));
       const hit: Hit = { attacker: s.id, fromX: s.x, fromY: s.y, fx: def.attackFx };
       // À distância (vespa), o ferrão voa; o cliente desenha o projétil pelo `fx` do dano.
       this.after(def.attackRange > 1 ? 200 : 0, () => {
@@ -2593,11 +2602,60 @@ export class Hunt {
           const ownerStats = this.seats.get(s.owner)?.stats;
           if (ownerStats) ownerStats.ccMs.stun += def.stunMs;
         }
+        // Ogro da Forja: o malho em brasa queima e empurra.
+        if (def.burn) this.applyDot(alive, brainM, s.owner, `summon:${s.kind}`, brain.damage * def.burn.perSec, def.burn.ms, "burn", this.host.now());
         this.damageMonster(alive, amount, hit, `summon:${s.kind}`, s.owner);
+        if (def.push && alive.hp > 0) this.push(alive, s, def.push);
       });
       return;
     }
     this.summonStep(s, brain, target, def.attackRange, now);
+  }
+
+  /**
+   * Bônus de um orc do clã agora: o Comando do capitão mais forte do mesmo dono a até o raio dele (o capitão não comanda
+   * a si mesmo) e o de estar perto de um totem do dono (`CLAN_TOTEM_BONUS`).
+   */
+  private clanBonus(s: Summon, def: SummonDef, now: number) {
+    if (!def.clan) return { damage: 0, haste: 0 };
+    let damage = 0;
+    let haste = 0;
+    this.state.summons.forEach((other) => {
+      if (other.id === s.id || other.owner !== s.owner) return;
+      const command = this.summonBrains.get(other.id)?.def.command;
+      if (!command || tileDistance(s.x, s.y, other.x, other.y) > command.radius) return;
+      damage = Math.max(damage, command.damage);
+      haste = Math.max(haste, command.haste);
+    });
+    const totem = [...this.state.fields.values()].some((f) => f.owner === s.owner && f.style === "totem"
+      && (this.fieldBrains.get(f.id)?.until ?? 0) > now && tileDistance(s.x, s.y, f.x, f.y) <= CLAN_TOTEM_BONUS.radius);
+    if (totem) damage += CLAN_TOTEM_BONUS.damage;
+    return { damage, haste };
+  }
+
+  /** Recua um passo para o tile livre em volta que mais se afasta do monstro; devolve se andou (ou ainda espera o passo). */
+  private summonRetreat(s: Summon, brain: SummonBrain, from: { x: number; y: number }, now: number) {
+    if (now < brain.nextMoveAt) return true;
+    const blocked = this.occupiedTiles();
+    let best: { x: number; y: number } | null = null;
+    let bestDist = tileDistance(s.x, s.y, from.x, from.y);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = s.x + dx;
+        const ny = s.y + dy;
+        if ((dx === 0 && dy === 0) || !isWalkable(this.dungeon, nx, ny) || blocked.has(ny * this.dungeon.width + nx) || this.specialTile(nx, ny)) continue;
+        const dist = tileDistance(nx, ny, from.x, from.y);
+        if (dist > bestDist) { best = { x: nx, y: ny }; bestDist = dist; }
+      }
+    }
+    // Encurralado: luta de onde está.
+    if (!best) return false;
+    const diagonal = best.x !== s.x && best.y !== s.y;
+    brain.nextMoveAt = now + (1000 / brain.def.speed) * (diagonal ? Math.SQRT2 : 1);
+    s.stepMs = Math.round(1000 / brain.def.speed);
+    s.x = best.x;
+    s.y = best.y;
+    return true;
   }
 
   /** Sem monstro por perto: anda até ficar a 1 ou 2 tiles do dono. */
@@ -3803,8 +3861,8 @@ export class Hunt {
     this.fieldBrains.set(f.id, {
       spell: { ...spell, field: undefined }, rank, kind: def.kind,
       amount: def.kind === "trap" ? amount : this.baseDamage(sessionId, p, "spell") * (def.damage ?? 0) || amount,
-      allyArmor: def.allyArmor ?? 0, allyDamage: def.allyDamage ?? 0, allyHeal: def.allyHeal ?? 0, allyMana: def.allyMana ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" ? 300 : tickMs),
-      until: now + def.ms * (traps?.durationScale ?? 1), shotsLeft: def.shots ?? 0,
+      allyArmor: def.allyArmor ?? 0, allyDamage: def.allyDamage ?? 0, allyHeal: def.allyHeal ?? 0, allyMana: def.allyMana ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" || def.spawn ? 300 : tickMs),
+      until: now + def.ms * (traps?.durationScale ?? 1), shotsLeft: def.shots ?? 0, spawn: def.spawn ?? null,
     });
   }
 
@@ -3936,6 +3994,14 @@ export class Hunt {
             if (brain.allyHeal > 0) this.healPlayer(ally, Math.max(1, Math.round(ally.maxHp * brain.allyHeal)), f.owner);
             if (brain.allyMana > 0) this.giveMana(ally, Math.max(1, Math.round(ally.maxMana * brain.allyMana)), f.owner);
           });
+        }
+        // Totem do Chamado: um orc do clã atende a cada pulso, colado no totem, até o máximo desta magia.
+        if (brain.spawn) {
+          const alive = [...this.state.summons.values()].filter((s) => s.owner === f.owner && this.summonBrains.get(s.id)?.spellId === brain.spell.id).length;
+          if (alive < brain.spawn.max) {
+            const call = { ...brain.spell, summon: { kind: brain.spawn.kind, count: 1, durationMs: brain.spawn.durationMs } };
+            this.summon(f.owner, owner, call, brain.rank, true, { x: f.x, y: f.y });
+          }
         }
         if (brain.allyArmor > 0 || brain.allyDamage > 0) {
           this.state.players.forEach((ally, id) => {

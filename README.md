@@ -78,7 +78,9 @@ contra um servidor já aberto, passando a URL:
   (Configurações > Catálogo, `dropOdds`) mostra batem com a hunt: mata cada rank de cada mapa muitas vezes na arena e confere.
 - `npx tsx scripts/xama.ts` (de dentro de `apps/server`; sem servidor): o Xamã Orc só abre com Vorgak vencido e veste
   o que o druida veste; numa arena, o Totem da Brasa lança brasa sozinho, cabem 2 e somem no fim, e o Tambor de Guerra
-  reforça o xamã, o aliado e a criatura perto (não o longe), acelera o básico e deixa lento o monstro colado.
+  reforça o xamã, o aliado e a criatura perto (não o longe), acelera o básico e deixa lento o monstro colado; a Horda
+  (Fase 2): os orcs do clã lutam, o capitão e o totem os reforçam, o arqueiro recua, o Ogro da Forja queima, o Totem
+  do Chamado chama batedores até o máximo, o Totem do Lodo deixa lento, a Lança de Brasa queima e a Batida atordoa.
 - `npx tsx scripts/travessia.ts` (de dentro de `apps/server`; sem servidor): a Caverna da Travessia gera a chegada
   embaixo e um covil de cada lado, põe o Basilisco e o Observador nos covis certos e cada boss morto abre só o portal
   do covil dele, com o bônus daquele lado (também depois da troca de anfitrião).

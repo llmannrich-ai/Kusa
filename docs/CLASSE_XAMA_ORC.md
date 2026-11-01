@@ -1,6 +1,12 @@
 # Xamã Orc — desenho da 5ª classe
 
-Status: **Fase 1 implementada** (classe jogável, totem, Tambor de Guerra, desbloqueio); Fases 2 a 4 por fazer.
+Status: **Fases 1 e 2 implementadas** (classe jogável, desbloqueio, totens, Tambor de Guerra e o tronco dos 3 ramos com
+a Horda); Fases 3 (especializações) e 4 (balanceamento) por fazer. O que mudou do desenho na Fase 2:
+- Maestrias das invocações simplificadas: mais um orc (batedores, lanceiros, arqueiros) ou mais tempo (capitão, Ogro
+  da Forja), em vez de efeitos novos.
+- Grande Totem do Clã: fere em volta e dá +15% de dano aos aliados dentro, em vez de repetir os outros totens.
+- O bônus de força das magias perto dos totens não entrou; o dos orcs do clã perto do totem (+15%), sim.
+- O limite de totens é por magia (2 Totens da Brasa, 2 do Lodo, 1 de cada outro), não 2 no total.
 Id da classe no código e no banco: `shaman`. Números são de partida (nível 0) e vão para o
 `/balanceamento` depois da Fase 1.
 

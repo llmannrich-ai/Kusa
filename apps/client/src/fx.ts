@@ -92,6 +92,20 @@ export class CombatFx {
         this.ring(from, reach, 0xe67e22, 450, 4);
         return this.later(180, () => this.ring(from, reach, 0xffb35a, 450, 3));
       }
+      // O chamado do clã: um anel cor de brasa no xamã (os orcs aparecem pelo estado, com o próprio brilho).
+      case "clan_scouts": case "clan_spearmen": case "clan_archers": case "clan_captain": case "forge_ogre":
+        return this.ring(from, TILE_SIZE * 1.5, 0xff8a2a, 450, 4);
+      // Totens em zona: a brasa voa até o chão no lançamento.
+      case "mud_totem": case "call_totem": case "grand_totem":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xff7a1a, impact: 0xffd166, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xffd166, 8));
+      case "ember_lance":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff6a1a, glow: 0xff6a1a, impact: 0xffd166, scale: 1.6 });
+        return this.later(ms, () => this.sparks(to, 0xff6a1a, 10));
+      // A batida do cajado: onda no chão (sem tremer a câmera).
+      case "war_stomp":
+        this.ring(from, radius, 0xe67e22, 400, 6);
+        return this.sparks(from, 0xffb35a, 10);
       case "holy_arrow":
         this.projectile(FX.holyArrow, from, to, ms, { trail: 0xffe9a3, glow: 0xf7d774, impact: 0xfff6c8, scale: 1.5 });
         return this.later(ms, () => this.holyFlash(to));

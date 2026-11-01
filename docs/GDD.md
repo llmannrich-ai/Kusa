@@ -265,7 +265,7 @@ Regras em `packages/shared/src/spellxp.ts`, repetidas no banco (`spell_level`, `
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução → ✦ Berserker **ou** Duelista | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço → ✦ Guardião **ou** Inabalável | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante → ✦ Senhor da Guerra **ou** Desafiante |
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
-| Xamã Orc (raiz: Totem da Brasa) | **Horda:** Áurea da Forja (Fase 2: as invocações do clã) | **Totens:** Áurea do Entalhe (Fase 2) | **Brasa:** Tambor de Guerra → Áurea do Couro Curtido (com o Tomo da Brasa; Fase 2: o resto do ramo) |
+| Xamã Orc (raiz: Totem da Brasa) | **Horda:** Chamar Batedores → Áurea da Forja → Lanceiros do Clã → Arqueiros do Clã → Capitão do Clã | **Totens:** Áurea do Entalhe → Totem do Lodo → Totem do Chamado → Áurea do Clã → Grande Totem do Clã | **Brasa:** Tambor de Guerra → Lança de Brasa → Batida de Guerra → Áurea do Couro Curtido → Ogro da Forja |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo → ✦ Mestre das Feras **ou** Metamorfo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta → ✦ Círculo da Vida **ou** Guardião da Natureza | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza → ✦ Peste **ou** Tempestade |
 
 #### Costelas
@@ -1498,6 +1498,25 @@ As compradas no Grimório, por slot (números do nível 0):
 | Fogo-Fátuo | 50% | cura 8% da vida e devolve 2% da mana de quem está a até 4 tiles, a cada 2,5 s |
 | Esqueleto Erguido (Feiticeiro Necromante) | 60% | corpo a corpo (0,8×) |
 | Águia Gigante (Mestre das Feras) | 50% | voa por cima da água; o mergulho (1,2×) atordoa 0,8 s |
+| Orc batedor (Xamã Orc) | 25% | rápido (5,5), chega primeiro e distrai (0,4×) |
+| Orc lanceiro (Xamã Orc) | 80% | segura a linha: o monstro que ele acerta passa a persegui-lo (0,5×) |
+| Orc arqueiro (Xamã Orc) | 30% | atira de até 5 tiles (0,6×) e recua quando o monstro chega a menos de 2 |
+| Orc capitão (Xamã Orc) | 70% | Comando: os orcs do clã do mesmo dono a até 3 tiles causam +15% e atacam 15% mais rápido (0,6×) |
+| Ogro da Forja (Xamã Orc) | 140% | malho em brasa (1×) que empurra 1 tile e queima |
+
+- **O clã do Xamã Orc** (ramo Horda e o Totem do Chamado): orcs e ogros libertados, desenhados com a **arte dos
+  monstros do clã** (`look` em `summons.ts`: os mesmos do Pântano do Kosaradius e da Fortaleza). Para não serem
+  confundidos com os inimigos da mesma espécie, levam a **marca de aliado**: anel cor de brasa nos pés, uma faixa cor de
+  brasa sobre a barra de vida e a barra das criaturas. Perto de um totem do dono (a até 3 tiles), causam +15%
+  (`CLAN_TOTEM_BONUS`); o Comando do capitão soma por cima. Contam no limite de 6 criaturas por jogador.
+- **Magias da Horda e do tronco do Xamã** (nível 0; números em `spells.ts`): 🏃 **Chamar Batedores** (S1, 2 batedores
+  por 12 s · Maestria: 3) · 🛡️ **Lanceiros do Clã** (S1, 2 por 15 s · Maestria: 3) · 🏹 **Arqueiros do Clã** (S2, 2 por
+  15 s · Maestria: 3) · 🚩 **Capitão do Clã** (S2, 1 por 18 s · Maestria: dura 50% mais) · 🪨 **Totem do Lodo** (S1,
+  totem de raio 2 por 10 s, monstros 40% mais lentos a cada pulso; cabem 2 · Maestria: também prende 1 s) · 📯 **Totem
+  do Chamado** (S2, totem por 12 s que chama 1 batedor a cada 4 s, até 3 · Maestria: até 4) · 🏯 **Grande Totem do Clã**
+  (S2, totem de raio 3 por 12 s, 1× a cada 2 s e +15% de dano nos aliados dentro · Maestria: raio 4) · 🔱 **Lança de
+  Brasa** (S1, linha de 5 tiles, 1,7× e queima · Maestria: queima o dobro) · 💥 **Batida de Guerra** (S2, raio 2 em
+  volta de si, 1,4× e atordoa 1 s · Maestria: raio 3) · 🔨 **Ogro da Forja** (S2, 1 ogro por 15 s · Maestria: dura 50% mais).
 
 - **Arte e animação** (só no cliente, `apps/client/src/art/summonCreatures.ts`): todas as criaturas têm arte própria e
   animada (parada, andando, golpe e especial), no volume de luz dos monstros do Pântano. O lobo trota (patas em

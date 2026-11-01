@@ -1,4 +1,4 @@
-import type { SummonKind } from "@kusa/shared";
+import type { CreatureSummonKind as SummonKind } from "@kusa/shared";
 import { Sheet, makeCanvas } from "./pixels.ts";
 import {
   CLIP_ORDER, add, blitMirrored, capsule, dir, ellipse, joints, lerpPt, poly, posed, shade, stroke, weaponAngle,

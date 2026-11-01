@@ -233,12 +233,16 @@ const SHAPES: Record<ClassId, Shape> = {
     ["mamba_bite", 2, 6, "toxin", 0], ["thunderwave", 2, 6, "charged_sky", 1],
     ["poison_cloud", 2, 7, "mamba_bite", 0], ["call_lightning", 2, 7, "thunderwave", 1],
   ],
-  // Xamã Orc, Fase 1 (docs/CLASSE_XAMA_ORC.md): só as iniciais e as áureas. Os ramos Horda, Totens e Brasa crescem
-  // na Fase 2, com as invocações do clã.
+  // Xamã Orc (docs/CLASSE_XAMA_ORC.md), Fase 2: o tronco dos 3 ramos. Horda: a escada do clã, do batedor ao
+  // capitão. Totens: lodo, chamado e o Grande Totem. Brasa: o tambor, a lança, a batida e o Ogro da Forja. As
+  // especializações vêm na Fase 3.
   shaman: [
     ["ember_totem", 1, 0],
-    ["damage", 0, 1, "ember_totem"], ["mana", 1, 1, "ember_totem"], ["war_drum", 2, 1, "ember_totem"],
-    ["hp", 2, 2, "war_drum"],
+    ["clan_scouts", 0, 1, "ember_totem"], ["mana", 1, 1, "ember_totem"], ["war_drum", 2, 1, "ember_totem"],
+    ["damage", 0, 2, "clan_scouts"], ["mud_totem", 1, 2, "mana"], ["ember_lance", 2, 2, "war_drum"],
+    ["clan_spearmen", 0, 3, "damage"], ["call_totem", 1, 3, "mud_totem"], ["war_stomp", 2, 3, "ember_lance"],
+    ["clan_archers", 0, 4, "clan_spearmen"], ["speed", 1, 4, "call_totem"], ["hp", 2, 4, "war_stomp"],
+    ["clan_captain", 0, 5, "clan_archers"], ["grand_totem", 1, 5, "speed"], ["forge_ogre", 2, 5, "hp"],
   ],
 };
 

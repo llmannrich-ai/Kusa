@@ -45,6 +45,7 @@ import {
   type ShotEndMessage,
   type SpellMessage,
   type SummonKind,
+  type CreatureSummonKind,
 } from "@kusa/shared";
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
@@ -681,6 +682,12 @@ export class DungeonScene extends Phaser.Scene {
         }
       }
       this.tweens.add({ targets: g, alpha: { from: 1, to: 0.55 }, duration: field.style === "fire" ? 180 : 700, yoyo: true, repeat: -1 });
+      // Totem em zona (Lodo, Chamado, Grande Totem): o poste fica no meio da área (com um desenho próprio, para o brilho
+      // da área não piscar o poste junto).
+      if (field.style === "totem") {
+        view.add(g);
+        this.drawTotem(view, this.add.graphics(), color);
+      }
     } else if (field.kind === "wall") {
       // Muralha Mágica: um bloco de energia roxa, com brilho pulsando.
       g.fillStyle(color, 0.55).fillRect(-half + 1, -half - 6, TILE_SIZE - 2, TILE_SIZE + 4);
@@ -695,23 +702,9 @@ export class DungeonScene extends Phaser.Scene {
       g.fillStyle(0x9ec5ff, 0.5).fillCircle(4, -36, 6);
       this.tweens.add({ targets: g, alpha: { from: 1, to: 0.75 }, duration: 300, yoyo: true, repeat: -1 });
     } else if (field.style === "totem") {
-      // Totem do Xamã Orc: poste entalhado com faixas, um crânio com chifres no alto e a chama da magia acesa em
-      // cima, e o alcance tracejado. A chama tremula sozinha (sem mexer a câmera).
-      const reach = (field.radius + 0.5) * TILE_SIZE;
-      g.lineStyle(1, color, 0.4).strokeCircle(0, 0, reach);
-      g.fillStyle(0x000000, 0.25).fillEllipse(0, 9, 18, 6);
-      g.fillStyle(0x5a3a1e, 1).fillRect(-4, -16, 8, 25);
-      g.fillStyle(0x3e2712, 1).fillRect(-4, -16, 2, 25);
-      for (const y of [-6, 2]) g.fillStyle(0xd8561c, 1).fillRect(-5, y, 10, 2);
-      g.fillStyle(0xe2d6b4, 1).fillEllipse(0, -20, 12, 10);
-      g.fillStyle(0xe2d6b4, 1).fillTriangle(-6, -22, -11, -30, -4, -25).fillTriangle(6, -22, 11, -30, 4, -25);
-      g.fillStyle(0x2a1a10, 1).fillCircle(-2.5, -20, 1.6).fillCircle(2.5, -20, 1.6);
-      view.add(g);
-      const flame = this.add.graphics();
-      flame.fillStyle(color, 0.9).fillTriangle(-4, -25, 4, -25, 0, -36);
-      flame.fillStyle(0xffd166, 1).fillTriangle(-2, -25, 2, -25, 0, -31);
-      this.tweens.add({ targets: flame, scaleY: { from: 1, to: 1.25 }, alpha: { from: 1, to: 0.75 }, duration: 260, yoyo: true, repeat: -1 });
-      view.add(flame);
+      // Totem de tiro (Totem da Brasa): o alcance tracejado e o poste.
+      g.lineStyle(1, color, 0.4).strokeCircle(0, 0, (field.radius + 0.5) * TILE_SIZE);
+      this.drawTotem(view, g, color);
     } else if (field.kind === "trap") {
       // Mandíbulas abertas: arco de dentes de ferro.
       g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);
@@ -729,6 +722,26 @@ export class DungeonScene extends Phaser.Scene {
     view.setScale(0.6).setAlpha(0);
     this.tweens.add({ targets: view, scale: 1, alpha: 1, duration: 220, ease: "Back.Out" });
     this.fields.set(id, view);
+  }
+
+  /**
+   * Totem do Xamã Orc: poste entalhado com faixas, um crânio com chifres no alto e a chama da magia acesa em cima. A
+   * chama tremula sozinha (sem mexer a câmera).
+   */
+  private drawTotem(view: Phaser.GameObjects.Container, g: Phaser.GameObjects.Graphics, color: number) {
+    g.fillStyle(0x000000, 0.25).fillEllipse(0, 9, 18, 6);
+    g.fillStyle(0x5a3a1e, 1).fillRect(-4, -16, 8, 25);
+    g.fillStyle(0x3e2712, 1).fillRect(-4, -16, 2, 25);
+    for (const y of [-6, 2]) g.fillStyle(0xd8561c, 1).fillRect(-5, y, 10, 2);
+    g.fillStyle(0xe2d6b4, 1).fillEllipse(0, -20, 12, 10);
+    g.fillStyle(0xe2d6b4, 1).fillTriangle(-6, -22, -11, -30, -4, -25).fillTriangle(6, -22, 11, -30, 4, -25);
+    g.fillStyle(0x2a1a10, 1).fillCircle(-2.5, -20, 1.6).fillCircle(2.5, -20, 1.6);
+    view.add(g);
+    const flame = this.add.graphics();
+    flame.fillStyle(color, 0.9).fillTriangle(-4, -25, 4, -25, 0, -36);
+    flame.fillStyle(0xffd166, 1).fillTriangle(-2, -25, 2, -25, 0, -31);
+    this.tweens.add({ targets: flame, scaleY: { from: 1, to: 1.25 }, alpha: { from: 1, to: 0.75 }, duration: 260, yoyo: true, repeat: -1 });
+    view.add(flame);
   }
 
   /** Magia em linha: acende os tiles atravessados (a mesma conta do servidor), do herói para a ponta, no ritmo da flecha. */
@@ -1382,16 +1395,18 @@ export class DungeonScene extends Phaser.Scene {
    */
   private addSummon(id: string, summon: SummonView) {
     const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
-    const texture = SUMMON_TEXTURE[kind];
+    const look = SUMMONS[kind].look;
+    if (look) return this.addClanSummon(id, summon, look);
+    const texture = SUMMON_TEXTURE[kind as CreatureSummonKind];
     const sprite = this.add.sprite(0, 0, texture).setScale(CREATURE_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, true);
     unit.bleeds = false;
     unit.flies = FLYERS.has(kind);
     unit.texture = texture;
-    unit.anim = SUMMON_ANIMS[kind];
+    unit.anim = SUMMON_ANIMS[kind as CreatureSummonKind];
     unit.busyUntil = 0;
-    sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * SUMMON_ANIMS[kind].frames!.idle) });
+    sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * SUMMON_ANIMS[kind as CreatureSummonKind].frames!.idle) });
     // Brilho de aliado sob os pés, para não confundir com os monstros.
     const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 22, 7, 0x9cff7a, 0.35);
     unit.body.addAt(glow, 0);
@@ -1400,6 +1415,43 @@ export class DungeonScene extends Phaser.Scene {
     this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
     sprite.setScale(0.2 * CREATURE_SPRITE_SCALE);
     this.tweens.add({ targets: sprite, scale: CREATURE_SPRITE_SCALE, duration: 280, ease: "Back.Out" });
+    this.fx.summonBurst({ x: unit.body.x, y: unit.body.y });
+  }
+
+  /**
+   * Orc ou ogro do clã do Xamã Orc: a arte do monstro do clã (a mesma dos inimigos do Kosaradius e da Fortaleza) com a
+   * marca de aliado, para não confundir com o inimigo da mesma espécie: anel cor de brasa nos pés, uma faixa de brasa no
+   * alto e a barra de vida das criaturas.
+   */
+  private addClanSummon(id: string, summon: SummonView, look: MonsterKind) {
+    const art = BESTIARY_ART[look];
+    const texture = monsterTexture(look);
+    ensureMonsterArt(this, texture);
+    const scale = (art.anim ? art.scale ?? 1 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
+    const sprite = this.add.sprite(0, 0, texture).setScale(scale);
+    const below = 1 - (art.anim?.origin ?? 1);
+    const top = TILE_SIZE / 2 - sprite.displayHeight * ((art.anim?.fill ?? 1) - below);
+    // O clã olha para o mesmo lado que os monstros do clã (a arte vem virada para a esquerda).
+    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, !!art.facesLeft);
+    if (art.anim?.origin) sprite.setOrigin(0.5, art.anim.origin);
+    unit.texture = texture;
+    unit.baseScale = scale;
+    unit.bleeds = true;
+    if (art.anim) {
+      unit.anim = art.anim;
+      unit.busyUntil = 0;
+      sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * 4) });
+    }
+    const ring = this.add.ellipse(0, TILE_SIZE / 2 - 3, 26, 9).setStrokeStyle(2, 0xff8a2a, 0.9).setFillStyle(0xff8a2a, 0.18);
+    unit.body.addAt(ring, 0);
+    this.tweens.add({ targets: ring, alpha: { from: 1, to: 0.5 }, duration: 700, yoyo: true, repeat: -1 });
+    // Faixa de aliado (o pano cor de brasa do clã libertado) sobre a barra de vida.
+    const band = this.add.rectangle(0, unit.barY - 5, 10, 3, 0xff8a2a, 1).setStrokeStyle(1, 0x2a1408, 1);
+    unit.overlay.add(band);
+    this.summons.set(id, unit);
+    this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
+    sprite.setScale(0.2 * scale);
+    this.tweens.add({ targets: sprite, scale, duration: 280, ease: "Back.Out" });
     this.fx.summonBurst({ x: unit.body.x, y: unit.body.y });
   }
 

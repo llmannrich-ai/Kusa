@@ -43,6 +43,10 @@ export type SpellId =
   | "shadow_orb" | "void_storm"
   | "forest_blessing" | "thorn_roots"
   | "ember_totem" | "war_drum"
+  // Xamã Orc, tronco dos 3 ramos (Horda, Totens, Brasa).
+  | "clan_scouts" | "clan_spearmen" | "clan_archers" | "clan_captain"
+  | "mud_totem" | "call_totem" | "grand_totem"
+  | "ember_lance" | "war_stomp" | "forge_ogre"
   // Compradas no Grimório da classe (menu).
   | "crushing_blow" | "holy_shield" | "vampiric_blade" | "iron_skin" | "earthquake" | "steel_wall" | "commander_shout" | "execution"
   | "piercing_shot" | "stun_arrow" | "blessed_ward" | "healing_light" | "deadly_shot" | "divine_judgment" | "explosive_volley"
@@ -153,6 +157,11 @@ export interface SpellDef {
     look?: "storm" | "totem";
     /** Quantos campos desta magia cabem ao mesmo tempo (o mais antigo sai); sem isto, 1 (ou o do Engenhoso). */
     max?: number;
+    /**
+     * Zona: a cada pulso chama 1 criatura `kind` colada no campo, por `durationMs`, enquanto houver menos de `max`
+     * desta magia (Totem do Chamado). Conta no limite de criaturas do dono.
+     */
+    spawn?: { kind: SummonKind; max: number; durationMs: number };
     /** Armadilha: quantas saem de uma vez, espalhadas no leque à frente (`coneAngle`), na ponta do alcance (Abrolhos). */
     count?: number;
   };
@@ -1055,6 +1064,68 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 35, cooldownMs: 14000, aim: "self", range: 0, radius: 2, slow: { pct: 0.3, ms: 3000 },
     rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15 },
   }),
+  // Ramo Horda: o clã libertado, do batedor ao capitão (as criaturas em summons.ts).
+  clan_scouts: spell({
+    id: "clan_scouts", classId: "shaman", slot: 0, name: "Chamar Batedores", icon: "🏃", color: 0xd35400,
+    description: "Chama dois orcs batedores do clã: rápidos, chegam primeiro e distraem os monstros.",
+    manaCost: 25, cooldownMs: 12000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanScout", count: 2, durationMs: 12000 },
+  }),
+  clan_spearmen: spell({
+    id: "clan_spearmen", classId: "shaman", slot: 0, name: "Lanceiros do Clã", icon: "🛡️", color: 0xb7950b,
+    description: "Chama dois orcs lanceiros que seguram a linha: o monstro que eles acertam passa a persegui-los.",
+    manaCost: 35, cooldownMs: 15000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanSpearman", count: 2, durationMs: 15000 },
+  }),
+  clan_archers: spell({
+    id: "clan_archers", classId: "shaman", slot: 1, name: "Arqueiros do Clã", icon: "🏹", color: 0x8d6e4a,
+    description: "Chama dois orcs arqueiros que atiram de longe e recuam quando o monstro chega perto.",
+    manaCost: 40, cooldownMs: 16000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanArcher", count: 2, durationMs: 15000 },
+  }),
+  clan_captain: spell({
+    id: "clan_captain", classId: "shaman", slot: 1, name: "Capitão do Clã", icon: "🚩", color: 0xc0392b,
+    description: "Chama o capitão do clã: perto dele, os orcs invocados batem mais forte e mais rápido (Comando).",
+    manaCost: 50, cooldownMs: 20000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanCaptain", count: 1, durationMs: 18000 },
+  }),
+  // Ramo Totens.
+  mud_totem: spell({
+    id: "mud_totem", classId: "shaman", slot: 0, name: "Totem do Lodo", icon: "🪨", color: 0x7a8a2a,
+    description: "Finca um totem que espalha lodo em volta: os monstros perto dele andam bem mais devagar.",
+    manaCost: 24, cooldownMs: 9000, aim: "target", range: 4, radius: 2, slow: { pct: 0.4, ms: 1200 },
+    field: { kind: "zone", ms: 10000, tickMs: 1000, look: "totem", max: 2 },
+  }),
+  call_totem: spell({
+    id: "call_totem", classId: "shaman", slot: 1, name: "Totem do Chamado", icon: "📯", color: 0xe67e22,
+    description: "Finca um totem com a trompa do clã: a cada poucos segundos, um orc batedor atende o chamado.",
+    manaCost: 45, cooldownMs: 18000, aim: "target", range: 4, radius: 0,
+    field: { kind: "zone", ms: 12000, tickMs: 4000, look: "totem", spawn: { kind: "clanScout", max: 3, durationMs: 10000 } },
+  }),
+  grand_totem: spell({
+    id: "grand_totem", classId: "shaman", slot: 1, name: "Grande Totem do Clã", icon: "🏯", color: 0xd35400,
+    description: "O totem maior do clã: fere os monstros em volta a cada pulso e os aliados dentro batem mais forte.",
+    manaCost: 60, cooldownMs: 22000, aim: "target", range: 4, radius: 3,
+    field: { kind: "zone", ms: 12000, tickMs: 2000, damage: 1, allyDamage: 0.15, look: "totem" },
+  }),
+  // Ramo Brasa.
+  ember_lance: spell({
+    id: "ember_lance", classId: "shaman", slot: 0, name: "Lança de Brasa", icon: "🔱", color: 0xff6a1a,
+    description: "Uma lança de brasa em linha reta que fere e queima todos os monstros no caminho.",
+    manaCost: 26, cooldownMs: 6000, aim: "target", range: 5, radius: 0, shape: "line", damage: 1.7, projectileSpeed: 18,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  war_stomp: spell({
+    id: "war_stomp", classId: "shaman", slot: 1, name: "Batida de Guerra", icon: "💥", color: 0xe67e22,
+    description: "Bate o cajado no chão: fere e atordoa os monstros em volta de você.",
+    manaCost: 40, cooldownMs: 12000, aim: "self", range: 0, radius: 2, damage: 1.4, stunMs: 1000,
+  }),
+  forge_ogre: spell({
+    id: "forge_ogre", classId: "shaman", slot: 1, name: "Ogro da Forja", icon: "🔨", color: 0xa0522d,
+    description: "Chama o ogro da forja de Vorgak: o malho em brasa empurra e queima quem ele acerta.",
+    manaCost: 55, cooldownMs: 20000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "forgeOgre", count: 1, durationMs: 15000 },
+  }),
 
   // --- Slot 3 (magias supremas, nível 12): a de entrada de cada classe. Todas se compram (1.000 de gold). ----------
   titan_fury: spell({
@@ -1325,6 +1396,16 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   // Xamã Orc
   ember_totem: { text: "A brasa queima o monstro por 3 s.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "burn" } } },
   war_drum: { text: "A batida também cura 10% da vida de quem está no raio do tambor.", changes: { rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15, heal: 0.1 } } },
+  clan_scouts: { text: "Chama 3 batedores.", changes: { summon: { kind: "clanScout", count: 3, durationMs: 12000 } } },
+  clan_spearmen: { text: "Chama 3 lanceiros.", changes: { summon: { kind: "clanSpearman", count: 3, durationMs: 15000 } } },
+  clan_archers: { text: "Chama 3 arqueiros.", changes: { summon: { kind: "clanArcher", count: 3, durationMs: 15000 } } },
+  clan_captain: { text: "O capitão fica 50% mais tempo.", changes: { summon: { kind: "clanCaptain", count: 1, durationMs: 27000 } } },
+  mud_totem: { text: "O lodo também prende 1 s quem está dentro.", changes: { field: { kind: "zone", ms: 10000, tickMs: 1000, rootMs: 1000, look: "totem", max: 2 } } },
+  call_totem: { text: "O totem chama até 4 batedores.", changes: { field: { kind: "zone", ms: 12000, tickMs: 4000, look: "totem", spawn: { kind: "clanScout", max: 4, durationMs: 10000 } } } },
+  grand_totem: { text: "O Grande Totem cobre raio 4.", changes: { radius: 4 } },
+  ember_lance: { text: "A queimadura dura o dobro.", changes: { dot: { perSec: 0.3, ms: 6000, kind: "burn" } } },
+  war_stomp: { text: "A batida cobre raio 3.", changes: { radius: 3 } },
+  forge_ogre: { text: "O ogro fica 50% mais tempo.", changes: { summon: { kind: "forgeOgre", count: 1, durationMs: 22000 } } },
   // Slot 3
   titan_fury: { text: "A queda pega os monstros a até 3 tiles.", changes: { radius: 3 } },
   sky_arrow: { text: "O raio de luz cai em raio 3.", changes: { radius: 3 } },
@@ -1368,6 +1449,7 @@ export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
     selfBuff: def.selfBuff && { ...def.selfBuff, ms: Math.round(def.selfBuff.ms * t) },
     field: def.field && {
       ...def.field, ms: Math.round(def.field.ms * t), damage: def.field.damage && def.field.damage * k,
+      spawn: def.field.spawn && { ...def.field.spawn, durationMs: Math.round(def.field.spawn.durationMs * t) },
       allyHeal: def.field.allyHeal && def.field.allyHeal * k, allyMana: def.field.allyMana && def.field.allyMana * k,
     },
     form: def.form && { ...def.form, ms: Math.round(def.form.ms * t), pounce: def.form.pounce && def.form.pounce * k, pounceStunMs: ms(def.form.pounceStunMs) },
@@ -1431,12 +1513,14 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.undeadBonus) facts.push(`+${pct(s.undeadBonus)} de dano em mortos-vivos`);
   if (s.field?.kind === "zone") {
     const effects = [
-      s.field.damage ? `${num(s.field.damage)}× por segundo nos monstros` : "",
+      s.field.damage ? `${num(s.field.damage)}× ${(s.field.tickMs ?? 1000) === 1000 ? "por segundo" : `a cada ${sec(s.field.tickMs!)}`} nos monstros` : "",
       s.field.allyArmor ? `+${s.field.allyArmor} de armadura nos aliados` : "",
       s.field.allyDamage ? `+${pct(s.field.allyDamage)} de dano nos aliados` : "",
       s.field.allyHeal ? `cura ${pct(s.field.allyHeal)} da vida e devolve ${pct(s.field.allyMana ?? 0)} da mana por segundo` : "",
+      s.field.spawn ? `chama 1× ${SUMMONS[s.field.spawn.kind].name} a cada ${sec(s.field.tickMs ?? 250)} (até ${s.field.spawn.max}, por ${sec(s.field.spawn.durationMs)})` : "",
     ].filter(Boolean);
-    facts.push(`Campo de raio ${s.radius} por ${sec(s.field.ms)}${effects.length ? `: ${effects.join(", ")}` : ""}`);
+    const what = s.field.look === "totem" ? "Totem" : "Campo";
+    facts.push(`${what}${s.radius > 0 ? ` de raio ${s.radius}` : ""} por ${sec(s.field.ms)}${effects.length ? `: ${effects.join(", ")}` : ""}`);
   }
   if (s.field?.kind === "trap") facts.push(`Armadilha por ${sec(s.field.ms)}: dispara no primeiro monstro que pisar${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
   if (s.field?.kind === "turret") {

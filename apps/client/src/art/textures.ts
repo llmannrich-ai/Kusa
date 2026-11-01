@@ -1,5 +1,5 @@
 import type * as Phaser from "phaser";
-import { CLASS_IDS, MAPS, TILE_SIZE, mapMonsters, type ClassId, type MapId, type SummonKind } from "@kusa/shared";
+import { CLASS_IDS, MAPS, TILE_SIZE, mapMonsters, type ClassId, type MapId, type CreatureSummonKind as SummonKind } from "@kusa/shared";
 import { BESTIARY_ART, EXTRA_CLIPS, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_DRAW, monsterAnimKey, monsterTextures, type MonsterAnim } from "./bestiary.ts";
 import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
 import { makeCanvas } from "./pixels.ts";
