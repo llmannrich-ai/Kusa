@@ -53,6 +53,15 @@ export interface Material {
    * Penas finas umas sobre as outras pedem menos.
    */
   lineDepth?: number;
+  /**
+   * Ataduras: faixas em espiral em volta da forma (só elipsoides), cada uma num tom; `width` é a largura (unidades),
+   * `tilt` quanto a espiral sobe por volta, `crease` o vinco escuro entre faixas, `vary` a diferença de tom entre elas e
+   * `gap` a chance de um pedaço de faixa faltar, mostrando o material `gapMat` por baixo; com `stripe`, as faixas
+   * alternam entre este material e o `gapMat` (listras do toucado).
+   */
+  wrap?: { width: number; tilt: number; crease: number; vary: number; gap?: number; gapMat?: number; stripe?: boolean };
+  /** Brilho próprio (olhos que acendem): o tom fixo, sem luz nem sombra. */
+  emit?: number;
 }
 
 /**
@@ -166,6 +175,38 @@ export class Sculpt {
   }
 }
 
+// --- Movimento fino ------------------------------------------------------------------------------------------
+
+const ease = (t: number) => t * t * (3 - 2 * t);
+function mix<P extends object>(a: P, b: P, t: number): P {
+  const out: Record<string, unknown> = {};
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const x = (a as Record<string, unknown>)[k], y = (b as Record<string, unknown>)[k];
+    if (typeof x === "number" && typeof y === "number") out[k] = +(x + (y - x) * t).toFixed(3);
+    else if (Array.isArray(x) && Array.isArray(y)) out[k] = (x as number[]).map((v, i) => +(v + ((y as number[])[i] - v) * t).toFixed(3));
+    else out[k] = t < 0.5 ? x ?? y : y ?? x;
+  }
+  return out as P;
+}
+
+/**
+ * Movimento fino: `n` poses entre as poses-chave `keys`, com o meio suavizado (entra e sai devagar). Em laço (`loop`),
+ * a última volta para a primeira e as `n` cobrem o ciclo; senão vão da primeira à última. Campos que faltam numa pose
+ * usam o da vizinha; só números (e listas de números) se misturam.
+ */
+export function tween<P extends object>(keys: readonly P[], n: number, loop = false): P[] {
+  const segs = loop ? keys.length : keys.length - 1;
+  return Array.from({ length: n }, (_, i) => {
+    const u = loop ? (i / n) * segs : (i / Math.max(1, n - 1)) * segs;
+    const k = Math.min(segs - 1, Math.floor(u));
+    return mix(keys[k], keys[(k + 1) % keys.length], ease(u - k));
+  });
+}
+
+/** Sombra projetada e luz de contorno ligadas em todo monstro esculpido, salvo quem desliga no `Look`. */
+export const DEFAULT_SHADOW = 0.6;
+export const DEFAULT_RIM = { color: "#ffe0a0", power: 0.45 } as const;
+
 // --- Câmera e quadro ---------------------------------------------------------------------------------------------
 
 export interface Shot {
@@ -181,6 +222,8 @@ export interface Shot {
   yaw: number;
   /** Inclinação da câmera (graus acima do horizonte). */
   pitch: number;
+  /** Corta no chão: o que fica abaixo de y = 0 some (o verme mergulhando e saindo da areia). */
+  ground?: boolean;
 }
 
 export interface Look {
@@ -194,10 +237,15 @@ export interface Look {
   /** Força da sombra de oclusão (0..1). */
   occlusion?: number;
   /**
-   * Luz de recorte (contraluz): clareia a borda do lado oposto à luz, para a silhueta não sumir no chão escuro (o
-   * brejo). `power` 0..1.
+   * Sombra projetada (0..1): uma parte faz sombra na outra (o braço no tronco), pelo mapa de sombra da luz. Padrão
+   * `DEFAULT_SHADOW`; 0 desliga.
    */
-  rim?: { color: string; power: number };
+  shadow?: number;
+  /**
+   * Luz de contorno, ou contraluz (de trás, à direita): borda clara do lado oposto à luz, que destaca o bicho do chão
+   * claro do deserto e do escuro do brejo. Padrão `DEFAULT_RIM`; `null` desliga.
+   */
+  rim?: { color: string; power: number } | null;
 }
 
 /** Quadro em RGBA (como o `ImageData`). */
@@ -304,6 +352,44 @@ function hitCone(s: Extract<Shape, { kind: "cone" }>, x: number, y: number, out:
   return true;
 }
 
+/** Retângulo (x, y) que a forma pode cobrir. */
+function bounds(s: Shape) {
+  if (s.kind === "ell") {
+    const ex = Math.hypot(s.u[0] * s.r[0], s.v[0] * s.r[1], s.w[0] * s.r[2]), ey = Math.hypot(s.u[1] * s.r[0], s.v[1] * s.r[1], s.w[1] * s.r[2]);
+    return { x0: s.c[0] - ex, x1: s.c[0] + ex, y0: s.c[1] - ey, y1: s.c[1] + ey };
+  }
+  return {
+    x0: Math.min(s.a[0] - s.ra, s.b[0] - s.rb), x1: Math.max(s.a[0] + s.ra, s.b[0] + s.rb),
+    y0: Math.min(s.a[1] - s.ra, s.b[1] - s.rb), y1: Math.max(s.a[1] + s.ra, s.b[1] + s.rb),
+  };
+}
+
+/** A forma girada por `R` (para o espaço da luz). */
+function rotShape(s: Shape, R: Mat3): Shape {
+  if (s.kind === "ell") return { ...s, c: apply(R, s.c), u: apply(R, s.u), v: apply(R, s.v), w: apply(R, s.w) };
+  return { ...s, a: apply(R, s.a), b: apply(R, s.b) };
+}
+
+/**
+ * Raio por pixel numa grade `W`×`H` (o ponto (0, 0) fica no pixel (`ox`, `oy`), y para cima): para cada forma, cada
+ * pixel do retângulo dela; `hit` decide se fica (devolve a profundidade em `out`).
+ */
+function raster(shapes: readonly Shape[], W: number, H: number, ox: number, oy: number, put: (i: number, si: number, h: Hit) => void) {
+  const hit: Hit = { z: 0, nx: 0, ny: 0, nz: 0, lx: 0, ly: 0, lz: 0, along: 0 };
+  shapes.forEach((s, si) => {
+    const b = bounds(s);
+    const px0 = Math.max(0, Math.floor(ox + b.x0)), px1 = Math.min(W - 1, Math.ceil(ox + b.x1));
+    const py0 = Math.max(0, Math.floor(oy - b.y1)), py1 = Math.min(H - 1, Math.ceil(oy - b.y0));
+    for (let py = py0; py <= py1; py++) {
+      const y = oy - (py + 0.5);
+      for (let px = px0; px <= px1; px++) {
+        const x = px + 0.5 - ox;
+        if (s.kind === "ell" ? hitEll(s, x, y, hit) : hitCone(s, x, y, hit)) put(py * W + px, si, hit);
+      }
+    }
+  });
+}
+
 /** Fotografa a escultura: devolve o quadro em RGBA. */
 export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
   const S = shot.size, scale = shot.scale ?? 1, cx = shot.cx ?? S / 2;
@@ -315,42 +401,23 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
     return [(x) * scale, (p[1] * cp - z * sp) * scale, (p[1] * sp + z * cp) * scale];
   };
   const camDir = (d: V3): V3 => norm(sub(cam(d), cam([0, 0, 0])));
-  // Formas no espaço da câmera, com o retângulo da tela que cada uma pode cobrir.
-  const shapes: { s: Shape; x0: number; x1: number; y0: number; y1: number }[] = [];
-  for (const s of sculpt.shapes) {
-    if (s.kind === "ell") {
-      const c = cam(s.c), u = camDir(s.u), v = camDir(s.v), w = camDir(s.w);
-      const r: V3 = mul(s.r, scale);
-      const ex = Math.hypot(u[0] * r[0], v[0] * r[1], w[0] * r[2]), ey = Math.hypot(u[1] * r[0], v[1] * r[1], w[1] * r[2]);
-      shapes.push({ s: { ...s, c, u, v, w, r }, x0: c[0] - ex, x1: c[0] + ex, y0: c[1] - ey, y1: c[1] + ey });
-    } else {
-      const a = cam(s.a), b = cam(s.b), ra = s.ra * scale, rb = s.rb * scale;
-      shapes.push({
-        s: { ...s, a, b, ra, rb },
-        x0: Math.min(a[0] - ra, b[0] - rb), x1: Math.max(a[0] + ra, b[0] + rb), y0: Math.min(a[1] - ra, b[1] - rb), y1: Math.max(a[1] + ra, b[1] + rb),
-      });
-    }
-  }
+  // Formas no espaço da câmera (px da tela).
+  const shapes: { s: Shape }[] = sculpt.shapes.map((s) => ({
+    s: s.kind === "ell"
+      ? { ...s, c: cam(s.c), u: camDir(s.u), v: camDir(s.v), w: camDir(s.w), r: mul(s.r, scale) }
+      : { ...s, a: cam(s.a), b: cam(s.b), ra: s.ra * scale, rb: s.rb * scale },
+  }));
   const N = S * S;
   const zbuf = new Float32Array(N).fill(-Infinity);
   const nrm = new Float32Array(N * 3), loc = new Float32Array(N * 3), alongBuf = new Float32Array(N);
   const owner = new Int32Array(N).fill(-1);
-  const hit: Hit = { z: 0, nx: 0, ny: 0, nz: 0, lx: 0, ly: 0, lz: 0, along: 0 };
-  shapes.forEach(({ s, x0, x1, y0, y1 }, si) => {
-    const px0 = Math.max(0, Math.floor(cx + x0)), px1 = Math.min(S - 1, Math.ceil(cx + x1));
-    const py0 = Math.max(0, Math.floor(shot.feet - y1)), py1 = Math.min(S - 1, Math.ceil(shot.feet - y0));
-    for (let py = py0; py <= py1; py++) {
-      const y = shot.feet - (py + 0.5);
-      for (let px = px0; px <= px1; px++) {
-        const x = px + 0.5 - cx;
-        if (!(s.kind === "ell" ? hitEll(s, x, y, hit) : hitCone(s, x, y, hit))) continue;
-        const i = py * S + px;
-        if (hit.z <= zbuf[i]) continue;
-        zbuf[i] = hit.z; owner[i] = si; alongBuf[i] = hit.along;
-        nrm[i * 3] = hit.nx; nrm[i * 3 + 1] = hit.ny; nrm[i * 3 + 2] = hit.nz;
-        loc[i * 3] = hit.lx / scale; loc[i * 3 + 1] = hit.ly / scale; loc[i * 3 + 2] = hit.lz / scale;
-      }
-    }
+  raster(shapes.map((x) => x.s), S, S, cx, shot.feet, (i, si, hit) => {
+    if (hit.z <= zbuf[i]) return;
+    // Altura no modelo do ponto atingido (y da tela e profundidade de volta ao modelo): abaixo do chão, some.
+    if (shot.ground && ((shot.feet - (Math.floor(i / S) + 0.5)) * cp + hit.z * sp) / scale < -0.05) return;
+    zbuf[i] = hit.z; owner[i] = si; alongBuf[i] = hit.along;
+    nrm[i * 3] = hit.nx; nrm[i * 3 + 1] = hit.ny; nrm[i * 3 + 2] = hit.nz;
+    loc[i * 3] = hit.lx / scale; loc[i * 3 + 1] = hit.ly / scale; loc[i * 3 + 2] = hit.lz / scale;
   });
 
   // Parte de cada pixel (−1 = vazio), para as contas com os vizinhos.
@@ -383,9 +450,41 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
   // --- Luz ---
   const L = norm(look.light ?? [-0.55, 0.7, 0.55]);
   const H = norm(add(L, [0, 0, 1]));
+  // Mapa de sombra: a escultura vista da luz (z para a luz), com a parte de quem está mais perto dela.
+  let lit: ((i: number, x: number, y: number) => number) | null = null;
+  const shadowPower = look.shadow ?? DEFAULT_SHADOW;
+  if (shadowPower > 0) {
+    let lx = cross([0, 1, 0], L);
+    if (len(lx) < 1e-3) lx = [1, 0, 0];
+    lx = norm(lx);
+    const R: Mat3 = [lx, cross(L, lx), L];
+    const SL = S * 2, o = S;
+    const zl = new Float32Array(SL * SL).fill(-Infinity), pl = new Int32Array(SL * SL).fill(-1);
+    raster(shapes.map((x) => rotShape(x.s, R)), SL, SL, o, o, (i, si, hit) => {
+      if (hit.z > zl[i]) { zl[i] = hit.z; pl[i] = shapes[si].s.part; }
+    });
+    const bias = 1.2 * scale;
+    // Fração da luz que chega (3×3 em volta, contra o ponto): sombra só de outra parte (a própria forma já escurece
+    // pela normal).
+    lit = (i, x, y) => {
+      const P: V3 = [x, y, zbuf[i]];
+      const q = apply(R, P);
+      const qx = Math.floor(o + q[0]), qy = Math.floor(o - q[1]);
+      let blocked = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = qx + dx, yy = qy + dy;
+          if (xx < 0 || yy < 0 || xx >= SL || yy >= SL) continue;
+          const j = yy * SL + xx;
+          if (pl[j] >= 0 && pl[j] !== partOf[i] && zl[j] - q[2] > bias) blocked++;
+        }
+      return 1 - blocked / 9;
+    };
+  }
+  const rimLook = look.rim === undefined ? DEFAULT_RIM : look.rim;
+  const rim = rimLook ? { c: hex(rimLook.color), p: rimLook.power, d: norm([-L[0] * 1.4, 0.25, -0.35] as V3) } : null;
   const ramps = look.materials.map((m) => m.ramp.map(hex));
   const bounce = look.bounce ? { c: hex(look.bounce.color), p: look.bounce.power } : null;
-  const rim = look.rim ? { c: hex(look.rim.color), p: look.rim.power } : null;
   const occ = look.occlusion ?? 0.55;
   let zmin = Infinity, zmax = -Infinity;
   for (let i = 0; i < N; i++) if (owner[i] >= 0) { zmin = Math.min(zmin, zbuf[i]); zmax = Math.max(zmax, zbuf[i]); }
@@ -421,7 +520,8 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
         o += Math.min(1, Math.max(0, (zbuf[j] - zbuf[i] - 1.5) / 6));
       }
       o /= AO.length / 2;
-      const diff = Math.max(0, (nx * L[0] + ny * L[1] + nz * L[2] + 0.25) / 1.25);
+      let diff = Math.max(0, (nx * L[0] + ny * L[1] + nz * L[2] + 0.25) / 1.25);
+      if (lit && diff > 0) diff *= 1 - shadowPower * (1 - lit(i, px + 0.5 - cx, shot.feet - (py + 0.5)));
       const sky = 0.5 + 0.5 * ny;
       let t = 0.12 + diff * 0.72 + sky * 0.16;
       t *= 1 - occ * Math.min(1, o * 2.2);
@@ -438,6 +538,22 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
         t += (nn - 0.5) * m.grain;
       }
       t += m.bias ?? 0;
+      // Ataduras: faixas em espiral, cada uma num tom, com o vinco entre elas e pedaços faltando.
+      let gapped = false;
+      if (m.wrap && sh.kind === "ell") {
+        const w = m.wrap;
+        const ang = Math.atan2(loc[i * 3 + 2] * scale / sh.r[2], loc[i * 3 + 1] * scale / sh.r[1]) / (Math.PI * 2);
+        const sp = loc[i * 3] / w.width + ang * w.tilt;
+        const band = Math.floor(sp), f = sp - band;
+        const hb = hash3(band, sh.part, 7);
+        t += (hb - 0.5) * w.vary;
+        if (f < 0.18) t -= w.crease * (1 - f / 0.18);
+        else if (f > 0.9) t += w.crease * 0.35;
+        if (w.stripe && w.gapMat !== undefined && (band & 1)) gapped = true;
+        else if (w.gap && w.gapMat !== undefined && hash3(band, sh.part, Math.floor((ang + 0.5) * 4)) < w.gap && f > 0.12) gapped = true;
+      }
+      if (gapped) mi = m.wrap!.gapMat!;
+      if (m.emit !== undefined) t = m.emit + (0.5 - Math.abs(nz - 0.5)) * 0.1;
       // Covas do relevo e pintas: escurecem.
       if (m.bump) t -= Math.max(0, 0.35 * m.bump - height[i]) * 0.9;
       if (m.speck && hash3(Math.round(loc[i * 3] * 2.2), Math.round(loc[i * 3 + 1] * 2.2), Math.round(loc[i * 3 + 2] * 2.2)) < m.speck) t -= 0.22;
@@ -448,21 +564,21 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       // Pontilhado só onde o tom muda de cor.
       const ramp = ramps[mi];
       const k = ramp.length - 1;
+      if (gapped && !m.wrap?.stripe) t -= 0.15;
       const td = Math.min(1, Math.max(0, t)) * k + BAYER[(py & 3) * 4 + (px & 3)] * 0.55;
       const idx = Math.min(k, Math.max(0, Math.round(td)));
       tone[i] = t;
       const rgb = ramp[idx];
       let r = rgb[0], g = rgb[1], b = rgb[2];
+      // Luz de contorno: borda clara nas faces de lado, viradas para longe da luz.
+      if (rim && m.emit === undefined && !m.glow) {
+        const e = Math.max(0, nx * rim.d[0] + ny * rim.d[1] + nz * rim.d[2]) * Math.pow(1 - Math.max(0, nz), 2) * rim.p * (1 - o);
+        r += (rim.c[0] - r) * e; g += (rim.c[1] - g) * e; b += (rim.c[2] - b) * e;
+      }
       // Luz rebatida da areia (de baixo), quente, nas faces viradas para o chão.
       if (bounce) {
         const up = Math.max(0, -ny) * bounce.p * (1 - o);
         r += (bounce.c[0] - r) * up * 0.45; g += (bounce.c[1] - g) * up * 0.45; b += (bounce.c[2] - b) * up * 0.45;
-      }
-      // Contraluz: a borda virada para longe da luz (a normal quase de lado e para a direita) pega a cor do recorte.
-      if (rim && !m.glow) {
-        const edge = Math.max(0, 1 - nz * 1.6) * Math.max(0, nx * 0.8 - ny * 0.2 + 0.1);
-        const k2 = Math.min(1, edge * rim.p) * (1 - Math.min(1, o * 3));
-        r += (rim.c[0] - r) * k2; g += (rim.c[1] - g) * k2; b += (rim.c[2] - b) * k2;
       }
       color[i * 3] = r; color[i * 3 + 1] = g; color[i * 3 + 2] = b;
     }

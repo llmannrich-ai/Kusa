@@ -1,4 +1,4 @@
-import { SCULPT_FEET, SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
+import { SCULPT_FEET, SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, tween, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
 
 /**
  * Abutre Gigante esculpido por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): corpo de penas escuras, colarinho de
@@ -185,34 +185,38 @@ export function shootVulture(pose: VPose, view: View): Frame {
 }
 
 /** Poses de perfil de cada clipe: plana no parado, bate as asas para andar, mergulha com as garras e foge subindo. */
+/** Pose completa (a interpolação só mistura o que as duas poses têm). */
+const DEF: VPose = { y: 26, x: 0, lean: 0, flap: 10, fold: 0, sweep: 0, tail: 0.4, reach: 0, dip: 0, gape: 0, legs: 1, roll: 0 };
+const K = (p: VPose): VPose => ({ ...DEF, ...p });
+
 export const VULTURE_POSES = {
   // Parado: plana (asas abertas, quase sem bater), a cabeça mexe.
-  idle: [0, 1, 2, 1].map((k): VPose => ({ y: 26 + k * 0.6, flap: 12 - k * 4, tail: 0.5, dip: k * 3, legs: 0.6 })),
+  idle: tween([0, 1, 2].map((k): VPose => K({ y: 26 + k * 0.7, flap: 12 - k * 5, sweep: k * 2, tail: 0.5 + k * 0.1, dip: k * 4, reach: k * 0.3, legs: 0.6 })), 6, true),
   // Andar: o bater de asas completo (sobe dobrando, desce aberta).
-  walk: [
+  walk: tween(([
     { y: 25, flap: 58, fold: 0.35, sweep: 8, lean: -4, legs: 0.5 },
     { y: 26.5, flap: 18, fold: 0, lean: -6, legs: 0.5 },
     { y: 28, flap: -28, fold: 0.05, sweep: -6, lean: -6, legs: 0.6 },
     { y: 26.5, flap: 20, fold: 0.4, sweep: 12, lean: -5, legs: 0.5 },
-  ] satisfies VPose[],
+  ] satisfies VPose[]).map(K), 8, true),
   // Golpe: arma as asas no alto, mergulha com as garras para a frente e bica.
-  attack: [
+  attack: tween(([
     { y: 28, flap: 62, fold: 0.25, lean: 10, legs: 1.2, reach: -1, tail: 0.9 },
     { y: 20, x: -5, flap: 30, fold: 0.5, sweep: 25, lean: -14, legs: 2, reach: 2, gape: 0.6 },
     { y: 18, x: -7, flap: -10, fold: 0.3, sweep: 10, lean: -18, legs: 2, reach: 3, dip: 25, gape: 1 },
     { y: 24, x: -2, flap: 40, fold: 0.3, lean: 0, legs: 1, reach: 0 },
-  ] satisfies VPose[],
+  ] satisfies VPose[]).map(K), 6),
   // Especial (Fuga Ágil): bate forte para baixo e sobe, depois plana de volta.
-  special: [
+  special: tween(([
     { y: 24, flap: 70, fold: 0.2, lean: 8, legs: 1, tail: 1 },
     { y: 31, x: 3, flap: -35, fold: 0, sweep: -4, lean: 12, legs: 0.6, tail: 1 },
     { y: 35, x: 4, flap: 45, fold: 0.45, sweep: 15, lean: 6, legs: 0.3 },
     { y: 30, x: 2, flap: 6, lean: 0, legs: 0.5, tail: 0.6 },
-  ] satisfies VPose[],
+  ] satisfies VPose[]).map(K), 6),
   // Morte: tranco com a cabeça para trás, cai rodando e fica no chão de asas abertas, o pescoço mole.
-  death: [
+  death: tween(([
     { y: 27, flap: 50, fold: 0.1, lean: 18, legs: 1.3, reach: -2, dip: -25, gape: 1, tail: 1 },
     { y: 16, x: 2, flap: 25, fold: 0.4, lean: -25, roll: 35, legs: 1.5, dip: 30 },
     { y: 7, x: 3, flap: -14, fold: 0.1, sweep: 10, lean: -14, roll: 18, legs: 0.2, reach: 1, dip: 60, tail: 0.8 },
-  ] satisfies VPose[],
+  ] satisfies VPose[]).map(K), 5),
 };

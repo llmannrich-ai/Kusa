@@ -1,4 +1,4 @@
-import { SCULPT_FEET, SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, type Frame, type Look, type Material, type Mat3, type V3, type View } from "./sculpt.ts";
+import { SCULPT_FEET, SCULPT_SIZE, Sculpt, tween, basis, lerp3, render, rot, turn, v3, type Frame, type Look, type Material, type Mat3, type V3, type View } from "./sculpt.ts";
 
 /**
  * Escorpião da Areia esculpido por código (`sculpt.ts`), piloto do padrão de arte por escultura (`docs/ARTE_ESCULTURA.md`).
@@ -245,28 +245,35 @@ export function shootScorpion(pose: Pose, view: View, shell: Shell = SHELLS.ambe
 const WALK_STRIDE = 7;
 /** Poses de cada clipe (perfil), na ordem da folha. */
 export const SCORPION_POSES = {
-  idle: [0, 1, 2, 1].map((k): Pose => ({ lift: k * 0.35, curl: [27, 25 + k * 0.6, 24 + k * 0.6, 22], open: 0.2 + k * 0.06 })),
-  walk: [0, 0.25, 0.5, 0.75].map((phase, k): Pose => ({
-    phase, stride: WALK_STRIDE, lift: k % 2 ? 0.8 : 0, curl: [27, 25 + (k % 2 ? 1.5 : -1), 24, 22], tail: 52 + (k % 2 ? 2 : 0), open: 0.15, reach: k % 2 ? 0.1 : 0,
-  })),
+  // Parado: o corpo sobe e desce, a cauda balança devagar e as pinças abrem e fecham um pouco.
+  idle: tween([0, 1, 2].map((k): Pose => ({ lift: k * 0.4, curl: [27, 25 + k * 0.8, 24 + k * 0.7, 22 - k * 0.4], open: 0.18 + k * 0.08, tail: 52 + k })), 6, true),
+  // Andar: 8 quadros do ciclo das patas, com o corpo balançando e a cauda acompanhando o passo.
+  walk: Array.from({ length: 8 }, (_, k): Pose => {
+    const w = Math.sin((k / 8) * Math.PI * 4);
+    return {
+      phase: k / 8, stride: WALK_STRIDE, lift: 0.4 + w * 0.4, lean: w * 1.2,
+      curl: [27, 25 + w * 1.4, 24 - w * 0.6, 22], tail: 52 + w * 2, open: 0.15 + Math.max(0, w) * 0.1, reach: Math.max(0, -w) * 0.12,
+    };
+  }),
   // Golpe: arma as pinças abertas, avança fechando, o ferrão espeta por cima e volta.
-  attack: [
-    { shift: 2, lean: 4, open: 1, reach: -0.3, raise: 0.5, curl: [30, 28, 26, 24], tail: 56 },
-    { shift: -5, lean: -3, open: 0.05, reach: 1.1, raise: 0.2, curl: [26, 24, 22, 20], tail: 50 },
-    { shift: -4, lean: -5, open: 0.1, reach: 0.8, curl: [16, 18, 14, 12], tail: 46, sting: 18, venom: true },
-    { shift: -1, lean: 0, open: 0.4, reach: 0.2, curl: [25, 24, 23, 21], tail: 52 },
-  ] satisfies Pose[],
+  attack: tween([
+    { shift: 0, lean: 0, open: 0.3, reach: 0, raise: 0, curl: [27, 25, 24, 22], tail: 52, sting: 0 },
+    { shift: 2, lean: 4, open: 1, reach: -0.3, raise: 0.5, curl: [30, 28, 26, 24], tail: 56, sting: 0 },
+    { shift: -5, lean: -3, open: 0.05, reach: 1.1, raise: 0.2, curl: [26, 24, 22, 20], tail: 50, sting: 0 },
+    { shift: -4, lean: -5, open: 0.1, reach: 0.8, raise: 0, curl: [16, 18, 14, 12], tail: 46, sting: 18, venom: true },
+    { shift: -1, lean: 0, open: 0.4, reach: 0.2, raise: 0, curl: [25, 24, 23, 21], tail: 52, sting: 0 },
+  ], 6),
   // Especial: ergue a frente com as pinças abertas para cima, arma a cauda para trás e crava o ferrão na frente.
-  special: [
-    { lean: 12, lift: 2, open: 1, raise: 1, reach: 0.2, curl: [30, 30, 28, 26], tail: 62 },
-    { lean: 14, lift: 2.5, open: 1, raise: 1.1, reach: 0.1, curl: [22, 20, 16, 12], tail: 70, venom: true },
-    { lean: -6, shift: -4, open: 0.6, raise: 0.3, reach: 0.6, curl: [14, 14, 12, 10], tail: 42, sting: 30, venom: true },
-    { lean: 2, open: 0.5, raise: 0.2, curl: [26, 25, 23, 21], tail: 54 },
-  ] satisfies Pose[],
+  special: tween([
+    { lean: 12, lift: 2, shift: 0, open: 1, raise: 1, reach: 0.2, curl: [30, 30, 28, 26], tail: 62, sting: 0 },
+    { lean: 14, lift: 2.5, shift: 0, open: 1, raise: 1.1, reach: 0.1, curl: [22, 20, 16, 12], tail: 70, sting: 0, venom: true },
+    { lean: -6, lift: 0, shift: -4, open: 0.6, raise: 0.3, reach: 0.6, curl: [14, 14, 12, 10], tail: 42, sting: 30, venom: true },
+    { lean: 2, lift: 0, shift: 0, open: 0.5, raise: 0.2, reach: 0, curl: [26, 25, 23, 21], tail: 54, sting: 0 },
+  ], 6),
   // Morte: tranco para trás, rola de lado e fica de costas, patas encolhidas e a cauda mole.
-  death: [
-    { lean: 16, lift: 3, open: 1, raise: 0.9, curl: [32, 30, 28, 26], tail: 64, stride: 0 },
-    { roll: 95, lift: 4, shift: -8, curlLegs: 0.5, open: 0.6, curl: [24, 22, 18, 16], tail: 46 },
-    { roll: 180, shift: -12, curlLegs: 1, open: 0.3, curl: [14, 12, 10, 10], tail: 20 },
-  ] satisfies Pose[],
+  death: tween([
+    { lean: 16, lift: 3, roll: 0, shift: 0, curlLegs: 0, open: 1, raise: 0.9, curl: [32, 30, 28, 26], tail: 64 },
+    { lean: 0, roll: 95, lift: 4, shift: -8, curlLegs: 0.5, open: 0.6, raise: 0, curl: [24, 22, 18, 16], tail: 46 },
+    { lean: 0, roll: 180, lift: 0, shift: -12, curlLegs: 1, open: 0.3, raise: 0, curl: [14, 12, 10, 10], tail: 20 },
+  ], 5),
 };

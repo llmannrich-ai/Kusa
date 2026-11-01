@@ -7,9 +7,41 @@ Teste de até onde a arte de monstro feita **só por código** chega, como alter
 |---|---|---|
 | Escorpião da Areia e Escorpião Negro Gigante (mesmo modelo, outra casca) | `proto/scorpion.ts` | `docs/arte/escorpiao-escultura.png` |
 | Abutre Gigante (voa: pena, asa e voo) | `proto/vulture.ts` | `docs/arte/abutre-escultura.png` |
+| Múmia (humanoide: ataduras, ouro e lápis, olhos que acendem) | `proto/mummy.ts` | `docs/arte/mumia-escultura.png` |
+| Sacerdote Mumificado (o modelo da múmia com toucado, saiote e cajado com ankh) | `proto/mummy.ts` | `docs/arte/mar-de-areia-escultura.png` |
+| Elemental de Areia (funil de vento em espiral, pedras orbitando, desmorona em monte) | `proto/elemental.ts` | idem |
+| Verme da Areia, chefe (sai da areia, goela de três lábios e dois anéis de dentes) | `proto/sandWorm.ts` | idem |
+
+Com isso o Mar de Areia inteiro está esculpido, menos os quatro que vêm da arte de IA da Cripta (esqueleto, arqueiro,
+aranha e gnoll).
+
+**Movimento fino**: cada clipe tem as poses-chave e `tween` (`sculpt.ts`) gera as do meio, suavizadas (entra e sai
+devagar em cada pose-chave). Parado com 6 quadros, andar com 8, golpe e especial com 6, morte com 5; o número de
+quadros vem do número de poses, e `sculptArt` acerta o ritmo (o golpe dura o mesmo com mais quadros) e o passo por
+tile. A 2ª habilidade pode ter clipe próprio (`ClipPoses.skill`, o `skill` do jogo): a Rajada do Elemental e o Engolir
+do Verme. Ciclos que se repetem (giro do Elemental, passo do escorpião) saem direto da fase, sem `tween`.
+
+**Memória**: cada figura distinta fica na memória do celular. Andando de frente e de costas cada pose dura 2 quadros
+(metade das figuras); parado de frente e de costas são 2 figuras. Fica em ≈ 3,3 MB por monstro de 144 px (≈ 5 MB o
+Verme, de 176 px) e ≈ 25 MB os 7 esculpidos do mapa, carregados só na hunt do Mar de Areia (`warmMapMonsters`). Se o
+celular reclamar, o primeiro corte é o parado de perfil (6 → 4) e o andar de frente e de costas (4 → 2 figuras).
 
 As folhas saem por `proto/sculptArt.ts` (`sculptArt(poses, shoot)`): para um bicho novo, basta o modelo, a câmera e as
 poses de cada clipe.
+
+**Humanoides** (múmia): esqueleto por ângulos (quadril, joelho, ombro, cotovelo), e o pé mais baixo encosta sozinho no
+chão; a linha do chão fica mais baixa no quadro (`sculptArt(..., feet)`), porque nada desce abaixo dela.
+
+**Recursos do motor** (por material ou por `Look`):
+- `Material.wrap`: ataduras em espiral, cada faixa num tom, com o vinco entre elas e pedaços faltando (mostra o
+  material de baixo, a carne seca);
+- `Material.emit`: brilho próprio (os olhos verdes do Olhar Pavoroso), sem luz nem sombra;
+- `Look.shadow`: sombra projetada de uma parte na outra (braço no tronco), por mapa de sombra visto da luz;
+- `Look.rim`: luz de contorno do lado oposto à luz, que destaca o bicho da areia;
+- `Material.wrap.stripe`: listras alternadas (o toucado do sacerdote);
+- `Shot.ground`: corta no chão (o que está abaixo da areia some: o verme entrando e saindo dela).
+A sombra projetada e a luz de contorno são o padrão (`DEFAULT_SHADOW`, `DEFAULT_RIM`): todo monstro esculpido as
+recebe, e quem precisa ajusta no `Look` (a múmia usa sombra mais forte; `shadow: 0` ou `rim: null` desligam).
 
 **Voadores** (abutre): o corpo é desenhado já pairando acima do chão (o jogo só balança 3 px) e o perfil fica em
 três-quartos (giro de 40°): de lado, a asa aberta vira uma faixa vertical. As asas são montadas pena a pena (cobertas,
@@ -36,10 +68,10 @@ secundárias e primárias em leque); `Material.lineDepth` baixo separa as penas 
 | | Esculpido (código) | Folha de IA (Cripta) |
 |---|---|---|
 | Download | 0 (≈ 20 KB de código no bundle) | 100–570 KB de PNG por monstro |
-| Figuras por monstro | 30 (todas diferentes) | 21 |
+| Figuras por monstro | 42 (55 quadros: movimento fino) | 21 |
 | Tempo por figura, PC | ≈ 9 ms | decodificar o PNG |
-| Tempo por figura, celular simulado (CPU 4× mais lenta) | ≈ 31 ms o escorpião, ≈ 35 ms o abutre (≈ 1,2–1,3 s por monstro, espalhado) | — |
-| Memória (textura) | ≈ 2,5 MB | ≈ 1,7–3 MB |
+| Tempo por figura, celular simulado (CPU 4× mais lenta) | ≈ 20–30 ms por figura (≈ 56 ms o Verme, maior), ≈ 0,9–1,4 s por monstro (≈ 2,6 s o Verme), uma por vez | — |
+| Memória (textura) | ≈ 3,3 MB (≈ 5 MB o Verme) | ≈ 1,7–3 MB |
 | Variante (outra cor, outro tamanho) | trocar a paleta: 0 KB | outra folha |
 | Consistência entre quadros | exata (mesmo modelo) | varia (a IA redesenha) |
 
@@ -54,7 +86,8 @@ IA `docs/arte/pantano-do-kosaradius/orcScout-A.png` (que saiu do jogo: o batedor
   lista de ângulos (`OrcPose`).
 - **Motor** (`sculpt.ts`), 4 recursos novos e opcionais: pintura presa à forma (`paint`: pintura de guerra, alça,
   sangue na lâmina), brilho próprio (`glow`: os olhos acesos na sombra), luz de recorte (`rim`: a borda de trás
-  separa do chão escuro do brejo) e a força das linhas internas (`lines`).
+  separa do chão escuro do brejo; hoje é a mesma luz de contorno que todo esculpido recebe por padrão, com a cor e a
+  força do orc) e a força das linhas internas (`lineDepth` de cada material).
 - **Movimento fino**: o parado respira (peito e ombros), passa o peso de um pé para o outro, pisca, dá um tique na
   orelha e gira a faca na mão; o andar tem os 8 tempos do passo (contato, descida, passagem, subida), a pelve quica e
   gira, os ombros giram ao contrário, a cabeça amortece o quique; o golpe tem antecipação, estocada, exagero, volta e
@@ -70,15 +103,15 @@ IA `docs/arte/pantano-do-kosaradius/orcScout-A.png` (que saiu do jogo: o batedor
 
 - **Textura pintada**: sujeira, desgaste, pelos, cicatrizes. O esculpido tem granulado e brilho, mas parece mais
   "limpo". Funciona melhor em bichos de casca, osso, pedra, gosma (insetos, esqueletos, golems, elementais).
-- **Rostos e roupas** (humanoides): o orc batedor mostrou que dá para um humanoide de pele à mostra (rosto pela
-  silhueta: testa, focinho, presas, orelhas e olhos acesos). Tecido solto, cota de malha e armadura detalhada ainda
-  ficam melhores na IA.
+- **Rostos e roupas** (humanoides): a múmia funciona porque é "roupa justa" (ataduras), e o orc batedor mostrou que
+  dá para um humanoide de pele à mostra (rosto pela silhueta: testa, focinho, presas, orelhas e olhos acesos). Tecido
+  solto, cota de malha e armadura detalhada ainda ficam melhores na IA.
 - **Custo de autoria**: o escorpião levou um modelo de ~250 linhas; cada criatura nova é um modelo, mas o motor e as
   poses-padrão (andar, golpe, morte) se reaproveitam.
 
 ## Ver e testar
 
-- Folha em PNG, sem navegador: `npx tsx apps/client/scripts/esculturaPrevia.ts /tmp/bicho.png 3 [escorpiao|negro|abutre]`
+- Folha em PNG, sem navegador: `npx tsx apps/client/scripts/esculturaPrevia.ts /tmp/bicho.png 3 [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme]`
   (mostra também o tempo por quadro).
 - No jogo, com o cenário de verdade e o mesmo posicionamento da hunt:
-  `npm run dev:client` → `/mapa.html?mapa=desert&bichos=giantVulture,sandScorpion,blackScorpion,goblin,giantSpider,stirge&antigo=1`.
+  `npm run dev:client` → `/mapa.html?mapa=desert&bichos=sandWorm,sandElemental,mummyPriest,mummy,zombie,giantVulture,sandScorpion,blackScorpion,goblin,giantSpider,stirge&antigo=1`.

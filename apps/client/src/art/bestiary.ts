@@ -312,12 +312,17 @@ if (protoCrypt) {
   }
 }
 
-// Monstros do Mar de Areia esculpidos por código (`proto/sculptArt.ts`): o Abutre Gigante e os escorpiões (o comum
-// âmbar e o Negro Gigante, o mesmo modelo com a casca negra e maior). No Negro, as Pinças saem do golpe e o Ferrão
-// Letal do especial.
+// Monstros do Mar de Areia esculpidos por código (`proto/sculptArt.ts`): o Verme da Areia (chefe: Emboscada no especial,
+// Engolir na 2ª habilidade, Tremor no golpe), o Elemental (Redemoinho no especial, Rajada na 2ª), o Sacerdote e a
+// Múmia (as habilidades saem do especial), o Abutre Gigante e os escorpiões (o comum âmbar e o Negro Gigante, o mesmo
+// modelo com a casca negra e maior). No Negro, as Pinças saem do golpe e o Ferrão Letal do especial.
 if (protoSculpt) {
   const sculpted: [MonsterKind, ReturnType<typeof protoSculpt.scorpionArt>, number, MonsterAnim["strike"]][] = [
     ["giantVulture", protoSculpt.vultureArt(), 1.6, "cast"],
+    ["mummy", protoSculpt.mummyArt(), 1.4, { dreadfulGlare: "cast" }],
+    ["mummyPriest", protoSculpt.priestArt(), 1.55, "cast"],
+    ["sandElemental", protoSculpt.elementalArt(), 2.1, { whirlwind: "cast", sandBlast: "skill" }],
+    ["sandWorm", protoSculpt.wormArt(), 2.5, { burrow: "cast", swallow: "skill", quake: "attack" }],
     ["sandScorpion", protoSculpt.scorpionArt(), 1.2, "cast"],
     ["blackScorpion", protoSculpt.scorpionArt(protoSculpt.SHELLS.black), 1.6, { pincers: "attack", deathSting: "cast" }],
   ];
@@ -326,7 +331,7 @@ if (protoSculpt) {
       ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * size,
       anim: {
         size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
-        fps: { idle: 4, walk: 10, attack: 11, cast: 8 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+        fps: { ...art.fps }, frames: { ...art.clips }, stride: art.stride,
         hd: () => art.frames(), get fill() { return art.fill; }, origin: art.origin, extra: { ...art.extra }, strike,
       },
     };
