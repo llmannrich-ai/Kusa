@@ -13,11 +13,13 @@
  *     recarga, congelar quem bate, mana ao quebrar) e Ossuário (mais esqueletos, explosão ao sumir);
  *   - Druida: Laço da Matilha (duração, lobo a mais, volta ao cair), Seiva Antiga (escudo da sobra, lentidão, cura forte),
  *     Seiva Venenosa (duração, lentidão, veneno que pula), Instinto (série, atordoar), Ciclo (onda maior, raiz, escudo)
- *     e Céu Fechado (o raio envenena, prende e cai 2 vezes).
+ *     e Céu Fechado (o raio envenena, prende e cai 2 vezes);
+ *   - Dons da costela de passivas do Cavaleiro (fase 4b): lugar na árvore, Sangue no Aço, Fúria Crescente, Bigorna,
+ *     Repique, Eco de Guerra e Ordem de Execução, com o efeito por nível e os marcos.
  * Uso: npx tsx scripts/marcos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  ALLY_DAMAGE_RADIUS, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
+  ALLY_DAMAGE_RADIUS, ANVIL, BLOOD, EXPOSED_BONUS, FURY, talentTree, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
   type ClassId, type GiftId, type TalentRanks,
 } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
@@ -472,6 +474,87 @@ test("Céu Fechado: 2 raios que envenenam e prendem", () => {
   a.advance(300);
   check(a.seat().stats.giftProcs.closed_sky === 2, JSON.stringify(a.seat().stats.giftProcs));
   check(a.brain(one).dot?.kind === "poison" && a.brain(two).dot?.kind === "poison" && (one.rooted || two.rooted), "envenena e prende");
+});
+
+console.log("Costela de passivas (Cavaleiro):");
+test("dois Dons por ramo nas linhas VI e VII, presos à ponta do tronco", () => {
+  const tree = talentTree("knight");
+  for (const col of [0, 1, 2]) {
+    const ribs = tree.filter((t) => t.kind === "gift" && t.col === col && t.lane === -2 && t.row >= 6);
+    check(ribs.length === 2, `ramo ${col}: ${ribs.length} Dons na costela`);
+    const [p1, p2] = ribs.sort((a, b) => a.row - b.row);
+    const tip = tree.find((t) => t.id === p1.requires!.id)!;
+    check(tip.kind === "spell" && tip.lane === 0 && tip.col === col && p2.requires!.id === p1.id, `ramo ${col}: pais errados`);
+  }
+});
+test("Sangue no Aço: Hemorragia mais forte, cura e pega os colados", () => {
+  const blood = (rank: number) => {
+    const a = markArena("knight", rank ? { blood_steel: rank } : {}, { monsterHp: 400 });
+    const m = a.place("lizardfolk", 2, 0);
+    const side = a.place("lizardfolk", 2, 1);
+    a.any.applyDot(m, a.brain(m), HERO, "teste", 20, 5000, "bleed", a.now());
+    a.p.hp = Math.round(a.p.maxHp / 2);
+    const hp = a.p.hp;
+    const m0 = m.hp;
+    const s0 = side.hp;
+    a.any.hemorrhage(m, a.brain(m), HERO);
+    return { dealt: m0 - m.hp, side: s0 - side.hp, healed: a.p.hp - hp };
+  };
+  const plain = blood(0);
+  const full = blood(25);
+  // +75% do nível 25 e um pulso a mais (o marco 4 alonga o sangramento em 1 s: 6 pulsos em vez de 5).
+  check(Math.abs(full.dealt / plain.dealt - 1.75 * 6 / 5) < 0.05, `Hemorragia ${plain.dealt} → ${full.dealt}`);
+  check(full.healed > 0 && full.side > 0 && plain.side === 0, `cura ${full.healed}, colado ${full.side}`);
+});
+test("Fúria Crescente: matar soma acúmulos de dano, até o teto do marco", () => {
+  const a = markArena("knight", { rising_fury: 25 }, { monsterHp: 1 });
+  const before = a.any.damageBonus(a.seat(), a.p);
+  for (let i = 0; i < 20; i++) a.kill(a.place("lizardfolk", 2 + (i % 4), -2 + Math.floor(i / 4)));
+  check(a.seat().furyStacks === FURY.maxLater && a.seat().furyFree, `acúmulos ${a.seat().furyStacks}`);
+  const ratio = a.any.damageBonus(a.seat(), a.p) - before;
+  check(Math.abs(ratio - 0.05 * FURY.maxLater) < 1e-6, `bônus ${ratio}`);
+});
+test("Bigorna: empurrado contra o outro, atordoa os dois e o de trás anda", () => {
+  const a = markArena("knight", { anvil: 25 }, { monsterHp: 400 });
+  const front = a.place("lizardfolk", 1, 0);
+  const back = a.place("lizardfolk", 2, 0);
+  const bx = back.x;
+  const hp = front.hp;
+  a.any.push(front, a.p, 1, HERO);
+  check(front.stunned && back.stunned && front.hp < hp && back.x === bx + 1, `atordoados ${front.stunned}/${back.stunned}, trás ${bx} → ${back.x}`);
+  check(a.brain(front).stunnedUntil - a.now() === ANVIL.maxMs, `atordoar ${a.brain(front).stunnedUntil - a.now()}`);
+});
+test("Repique: o golpe no escudo fere e provoca quem está perto", () => {
+  const a = markArena("knight", { chime: 25 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 2, 0);
+  a.p.barrier = a.p.maxBarrier = 200;
+  const hp = m.hp;
+  a.any.damagePlayer(HERO, 100, { attacker: "", fromX: 0, fromY: 0, fx: "slash" });
+  check(m.hp < hp && a.brain(m).targetId === HERO, `vida ${hp} → ${m.hp}`);
+});
+test("Eco de Guerra: provocar dá escudo por monstro provocado", () => {
+  const a = markArena("knight", { war_echo: 25 }, { monsterHp: 400 });
+  for (const dx of [1, 2]) a.place("lizardfolk", dx, 1);
+  a.hunt.chooseSpell(HERO, { slot: 1, spellId: "war_cry" });
+  a.ready();
+  a.cast(1 as 0);
+  check(a.p.barrier >= Math.round(a.p.maxHp * 0.1 * 2) - 1, `escudo ${a.p.barrier} de ${a.p.maxHp}`);
+});
+test("Ordem de Execução: o Exposto recebe +60% e vale 2 s depois do atordoar", () => {
+  const exposedHit = (rank: number, afterStun: boolean) => {
+    const a = markArena("knight", rank ? { execution_order: rank } : {}, { monsterHp: 400 });
+    const m = a.place("lizardfolk", 2, 0);
+    const b = a.brain(m);
+    b.markUntil = a.now() + 10000;
+    b.stunnedUntil = afterStun ? a.now() - 1500 : a.now() + 5000;
+    const hp = m.hp;
+    a.any.damageMonster(m, 100, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "slash" }, "basic");
+    return hp - m.hp;
+  };
+  const plainExposed = exposedHit(0, false);
+  const order = exposedHit(25, false);
+  check(Math.abs(order / plainExposed - (1 + EXPOSED_BONUS + 0.6) / (1 + EXPOSED_BONUS)) < 0.03, `${plainExposed} → ${order}`);
+  check(exposedHit(25, true) > exposedHit(0, true), "1,5 s depois do atordoar ainda devia contar");
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);

@@ -69,6 +69,19 @@ export interface GiftEffects {
   cycleHeal: number;
   /** Chance de um raio cair quando morre um monstro envenenado ou sangrando por você (Céu Fechado). */
   skyStrike: number;
+  // --- Dons da costela de passivas ---
+  /** Dano a mais da Hemorragia (Sangue no Aço). */
+  hemorrhageDamage: number;
+  /** Dano por acúmulo de Fúria Crescente (matar soma um acúmulo). */
+  furyStack: number;
+  /** Atordoar (ms) do monstro empurrado contra parede ou monstro (Bigorna). */
+  anvilStunMs: number;
+  /** Fração do absorvido pelo escudo que volta em quem está perto (Repique). */
+  chimeReflect: number;
+  /** Escudo (fração da vida) por monstro provocado (Eco de Guerra). */
+  echoShield: number;
+  /** Dano a mais na reação Exposto (Ordem de Execução). */
+  exposedDamage: number;
   /** Marcos de cada Dom (0 a `GIFT_MILESTONES`): nível ÷ `GIFT_MILESTONE_EVERY`. Só os Dons que já têm marcos. */
   marks: Partial<Record<GiftId, number>>;
 }
@@ -77,7 +90,8 @@ export const NO_GIFTS: GiftEffects = {
   basicDamage: 0, armor: 0, allyDamage: 0, farDamage: 0, undeadDamage: 0, speed: 0, elementDamage: {},
   ccDuration: 0, darkLifesteal: 0, summonBoost: 0, healPower: 0, dotDamage: 0,
   lowHpDamage: 0, stillGuard: 0, bannerHaste: 0, dashBasic: 0, graceDamage: 0, burnChance: 0, circuitDamage: 0,
-  frostBarrier: 0, raiseChance: 0, fourthBite: 0, cycleHeal: 0, skyStrike: 0, marks: {},
+  frostBarrier: 0, raiseChance: 0, fourthBite: 0, cycleHeal: 0, skyStrike: 0,
+  hemorrhageDamage: 0, furyStack: 0, anvilStunMs: 0, chimeReflect: 0, echoShield: 0, exposedDamage: 0, marks: {},
 };
 
 /** Raio da Voz de Comando. */
@@ -103,6 +117,20 @@ export const DUEL = { lifesteal: 0.1, lifestealLater: 0.15, hpPctLater: 0.35, ha
 export const BEDROCK = { regen: 0.01, tauntEveryMs: 3000, armor: 5, stillMsLater: 500 } as const;
 /** Estandarte Vivo: armadura na aura, cura ao matar e o corte de dano depois do slot 3. */
 export const BANNER = { armor: 3, killHeal: 0.02, ward: 0.1, wardMs: 3000 } as const;
+
+// Dons da costela de passivas do Cavaleiro (efeito por nível e marcos).
+/** Sangue no Aço: cura, o empurrão que faz sangrar, os colados, sangramentos mais longos e a recarga devolvida. */
+export const BLOOD = { heal: 0.02, pushBleedMs: 2000, pushBleedPerSec: 0.3, splash: 0.5, bleedMs: 1000, refundMs: 1000 } as const;
+/** Fúria Crescente: acúmulos, duração, ritmo no máximo e a magia grátis no máximo. */
+export const FURY = { max: 10, maxMid: 12, maxLater: 15, ms: 6000, msLater: 8000, haste: 0.15 } as const;
+/** Bigorna: teto do atordoar, dano do impacto e lentidão do impacto. */
+export const ANVIL = { maxMs: 2000, impact: 0.5, slow: 0.3, slowMs: 3000 } as const;
+/** Repique: raio, mana, atordoar. */
+export const CHIME = { radius: 1, mana: 0.01, stunMs: 300 } as const;
+/** Eco de Guerra: monstros contados, duração do escudo, lentidão, cura e o eco. */
+export const WAR_ECHO = { max: 8, maxLater: 10, ms: 4000, msLater: 6000, slow: 0.15, slowMs: 4000, heal: 0.01, echoMs: 2000, echo: 0.5 } as const;
+/** Ordem de Execução: o Exposto que dura depois do atordoar, o atordoar da marca e a marca ao matar. */
+export const ORDER = { graceMs: 1000, markStunMs: 300, killMark: { pct: 0.15, ms: 5000 } } as const;
 
 // Números dos marcos do Paladino.
 /** Olhar Paciente: alcance do básico, o atordoar no alcance máximo (com recarga) e a flecha dupla. */
@@ -188,7 +216,8 @@ export type GiftId =
   | "last_duel" | "bedrock" | "living_banner"
   | "hunter_breath" | "grace" | "quick_hand"
   | "circuit" | "frost_reserve" | "ossuary"
-  | "instinct" | "cycle" | "closed_sky";
+  | "instinct" | "cycle" | "closed_sky"
+  | "blood_steel" | "rising_fury" | "anvil" | "chime" | "war_echo" | "execution_order";
 
 export interface GiftDef {
   id: GiftId;
@@ -197,6 +226,8 @@ export interface GiftDef {
   col: number;
   /** Dom do fundo: fica embaixo deste Ápice e pede o Ápice no nível 1. Sem isso, é Dom do topo. */
   apex?: SpellId;
+  /** Dom da costela de passivas: 1 = linha VI (pede a ponta do tronco), 2 = linha VII (pede o da linha VI). */
+  rib?: 1 | 2;
   name: string;
   icon: string;
   /** O que o Dom faz, em uma frase (sem número: o número vem de `giftText`). */
@@ -527,6 +558,79 @@ export const GIFTS: Record<GiftId, GiftDef> = {
       `o raio prende ${SKY.rootMs / 1000}s`.replace(".", ","),
       `+${pct(SKY.chance * 2)} de chance no total`,
       "caem 2 raios",
+    ],
+  }),
+  // --- Dons da costela de passivas (linhas VI e VII, do outro lado do Ápice) ------------------------------
+  blood_steel: gift({
+    id: "blood_steel", classId: "knight", col: 0, rib: 1, name: "Sangue no Aço", icon: "🩸",
+    description: "A Hemorragia (sangrando + empurrão ou atordoamento) fere mais.",
+    perRank: 0.03, apply: (fx, v) => { fx.hemorrhageDamage += v; }, text: (v) => `+${pct(v)} de dano da Hemorragia`,
+    milestones: [
+      `a Hemorragia cura ${pct(BLOOD.heal)} da sua vida`,
+      `empurrar faz sangrar por ${BLOOD.pushBleedMs / 1000}s`,
+      `a Hemorragia pega também quem está colado (${pct(BLOOD.splash)})`,
+      `seus sangramentos duram +${BLOOD.bleedMs / 1000}s`,
+      `a Hemorragia devolve ${BLOOD.refundMs / 1000}s da recarga da magia do slot 1`,
+    ],
+  }),
+  rising_fury: gift({
+    id: "rising_fury", classId: "knight", col: 0, rib: 2, name: "Fúria Crescente", icon: "💢",
+    description: `Cada monstro que você mata soma um acúmulo de fúria (até ${FURY.max}, por ${FURY.ms / 1000}s): mais dano.`,
+    perRank: 0.002, apply: (fx, v) => { fx.furyStack += v; }, text: (v) => `+${pct(v)} de dano por acúmulo (até ${FURY.max})`,
+    milestones: [
+      `até ${FURY.maxMid} acúmulos`,
+      `com o máximo, o básico sai ${pct(FURY.haste)} mais rápido`,
+      `os acúmulos duram ${FURY.msLater / 1000}s`,
+      `até ${FURY.maxLater} acúmulos`,
+      "com o máximo, a próxima magia do slot 1 não gasta mana",
+    ],
+  }),
+  anvil: gift({
+    id: "anvil", classId: "knight", col: 1, rib: 1, name: "Bigorna", icon: "🔨",
+    description: `Monstro que você empurra contra parede ou outro monstro fica atordoado (até ${ANVIL.maxMs / 1000}s).`,
+    perRank: 80, apply: (fx, v) => { fx.anvilStunMs += v; }, text: (v) => `${(Math.min(ANVIL.maxMs, v) / 1000).toFixed(2).replace(".", ",")}s de atordoar no impacto`,
+    milestones: [
+      `o impacto fere com ${pct(ANVIL.impact)} do seu básico`,
+      "o monstro de trás também é empurrado",
+      "+1 tile em todos os seus empurrões",
+      "o impacto atordoa também o monstro que segurou o empurrão",
+      `o impacto deixa ${pct(ANVIL.slow)} lento por ${ANVIL.slowMs / 1000}s`,
+    ],
+  }),
+  chime: gift({
+    id: "chime", classId: "knight", col: 1, rib: 2, name: "Repique", icon: "🔔",
+    description: `Golpe que bate no seu escudo devolve parte do absorvido nos monstros a até ${CHIME.radius} tile.`,
+    perRank: 0.02, apply: (fx, v) => { fx.chimeReflect += v; }, text: (v) => `${pct(v)} do absorvido volta em quem está perto`,
+    milestones: [
+      `raio ${CHIME.radius + 1}`,
+      "o repique provoca quem pega",
+      `o repique devolve ${pct(CHIME.mana)} da sua mana`,
+      `raio ${CHIME.radius + 2}`,
+      `o repique atordoa ${CHIME.stunMs / 1000}s`.replace(".", ","),
+    ],
+  }),
+  war_echo: gift({
+    id: "war_echo", classId: "knight", col: 2, rib: 1, name: "Eco de Guerra", icon: "📢",
+    description: `Ao provocar, você ganha um escudo por monstro provocado (até ${WAR_ECHO.max}).`,
+    perRank: 0.004, apply: (fx, v) => { fx.echoShield += v; }, text: (v) => `escudo de ${pct(v)} da vida por monstro provocado`,
+    milestones: [
+      `o escudo dura ${WAR_ECHO.msLater / 1000}s`,
+      `os provocados andam ${pct(WAR_ECHO.slow)} mais devagar`,
+      `conta até ${WAR_ECHO.maxLater} monstros`,
+      `provocar cura ${pct(WAR_ECHO.heal)} da vida por monstro`,
+      `o eco se repete ${WAR_ECHO.echoMs / 1000}s depois com ${pct(WAR_ECHO.echo)}`,
+    ],
+  }),
+  execution_order: gift({
+    id: "execution_order", classId: "knight", col: 2, rib: 2, name: "Ordem de Execução", icon: "⚖️",
+    description: "O Exposto (marcado e atordoado) recebe ainda mais do seu dano.",
+    perRank: 0.024, apply: (fx, v) => { fx.exposedDamage += v; }, text: (v) => `+${pct(v)} de dano no Exposto`,
+    milestones: [
+      `o Exposto dura +${ORDER.graceMs / 1000}s depois do atordoar`,
+      `suas marcas atordoam ${ORDER.markStunMs / 1000}s`.replace(".", ","),
+      "monstro colado num Exposto também conta como Exposto",
+      `+${(ORDER.graceMs * 2) / 1000}s depois do atordoar`,
+      "matar um Exposto marca o monstro mais perto",
     ],
   }),
 };

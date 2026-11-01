@@ -181,6 +181,18 @@ comprar **e usar** as anteriores do mesmo ramo.
     - ⛈️ Céu Fechado: o raio envenena · +5% de chance · o raio prende 0,5 s · +10% · caem 2 raios.
   - Xamã Orc: os 3 Dons dele (iguais aos do Cavaleiro no efeito) ainda não têm marcos.
 
+  **Dons da costela de passivas** (fase 4b; hexágono nas linhas VI e VII, lane -2, do outro lado do Ápice): o da linha VI
+  pede a ponta do tronco no nível 1; o da VII pede o da VI. Mesmo preço e 25 níveis, com marcos. Entram por classe:
+
+  | Classe | Ramo | Dom | Por nível | Marcos (5 · 10 · 15 · 20 · 25) |
+  |---|---|---|---|---|
+  | Cavaleiro | Lâmina | 🩸 Sangue no Aço | +3% de dano da Hemorragia | cura 2% · empurrar faz sangrar 2 s · pega os colados (50%) · sangramentos +1 s · devolve 1 s do slot 1 |
+  | Cavaleiro | Lâmina | 💢 Fúria Crescente | matar dá +0,2% de dano por acúmulo (até 10, 6 s) | até 12 · no máximo, básico 15% mais rápido · 8 s · até 15 · no máximo, a próxima do slot 1 sai sem mana |
+  | Cavaleiro | Bastião | 🔨 Bigorna | empurrado contra parede ou monstro: atordoa 0,08 s (até 2 s) | o impacto fere 0,5× do básico · empurra o de trás · +1 tile nos empurrões · atordoa o de trás · 30% lento por 3 s |
+  | Cavaleiro | Bastião | 🔔 Repique | golpe no seu escudo devolve 2% do absorvido em raio 1 | raio 2 · provoca · devolve 1% da mana · raio 3 · atordoa 0,3 s |
+  | Cavaleiro | Comando | 📢 Eco de Guerra | provocar dá escudo de 0,4% da vida por monstro (até 8, 4 s) | 6 s · provocados 15% mais lentos · até 10 · cura 1% por monstro · repete 2 s depois com 50% |
+  | Cavaleiro | Comando | ⚖️ Ordem de Execução | +2,4% de dano no Exposto | vale 1 s depois do atordoar · marcas atordoam 0,3 s · colado num Exposto conta · 2 s · matar um Exposto marca o mais perto |
+
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
 
