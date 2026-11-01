@@ -92,6 +92,61 @@ export class CombatFx {
         this.ring(from, reach, 0xe67e22, 450, 4);
         return this.later(180, () => this.ring(from, reach, 0xffb35a, 450, 3));
       }
+      // O chamado do clã: um anel cor de brasa no xamã (os orcs aparecem pelo estado, com o próprio brilho).
+      case "clan_scouts": case "clan_spearmen": case "clan_archers": case "clan_captain": case "forge_ogre":
+        return this.ring(from, TILE_SIZE * 1.5, 0xff8a2a, 450, 4);
+      // Totens em zona: a brasa voa até o chão no lançamento.
+      case "mud_totem": case "call_totem": case "grand_totem":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xff7a1a, impact: 0xffd166, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xffd166, 8));
+      case "ember_lance":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff6a1a, glow: 0xff6a1a, impact: 0xffd166, scale: 1.6 });
+        return this.later(ms, () => this.sparks(to, 0xff6a1a, 10));
+      // Fase 3 do Xamã Orc.
+      case "clan_berserkers": case "warlord_call": case "chained_ogre": case "clan_shaman":
+        return this.ring(from, TILE_SIZE * 1.5, 0xff8a2a, 450, 4);
+      case "horde_roar":
+        this.ring(from, TILE_SIZE * 4, 0xd35400, 600, 6);
+        return this.later(200, () => this.ring(from, TILE_SIZE * 2, 0xffb35a, 500, 4));
+      case "submission_chain": case "bad_omen":
+        this.projectile(FX.spark, from, to, ms, { trail: 0x95a5a6, glow: 0x6c3483, impact: 0xd7c8ff, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xd7c8ff, 8));
+      // Totem de tiro (o trovão sai do totem nos ecos) e os totens em zona: a brasa voa até o chão no lançamento.
+      case "thunder_totem":
+        if (from.x === to.x && from.y === to.y) return this.sparks(to, 0x9ec5ff, 6);
+        this.zap(from, to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 6);
+      // O Totem Vulcânico explode no fim (o eco sai do próprio totem).
+      case "volcanic_totem":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 3, 0xff5a14, 500, 7);
+          return this.sparks(to, 0xffd166, 16);
+        }
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff5a14, glow: 0xff5a14, impact: 0xffd166, scale: 1.2 });
+        return;
+      case "blood_totem": case "ash_rain": case "ancestor_circle":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xff7a1a, impact: 0xffd166, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xffd166, 8));
+      case "forge_rain":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xff5a14, glow: 0xe74c3c, impact: 0xffd166, scale: 1.6 });
+        return this.later(ms, () => { this.ring(to, radius, 0xff5a14, 500, 8); this.sparks(to, 0xffd166, 16); });
+      case "boar_charge": return this.sparks(to, 0xc8a165, 10);
+      case "totem_ring": return this.ring(from, radius, 0xff8a2a, 500, 5);
+      case "ember_rift":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff5a14, glow: 0xff5a14, impact: 0xffd166, scale: 1.8 });
+        return this.later(ms, () => this.sparks(to, 0xff5a14, 12));
+      case "ember_fury":
+        this.ring(from, radius, 0xff6a1a, 500, 7);
+        return this.sparks(from, 0xffd166, 16);
+      case "blood_drum": case "clan_march": {
+        const reach = TILE_SIZE * 4;
+        this.ring(from, reach, spellId === "blood_drum" ? 0xc0392b : 0xe67e22, 450, 4);
+        return this.later(180, () => this.ring(from, reach, 0xffb35a, 450, 3));
+      }
+      // A batida do cajado: onda no chão (sem tremer a câmera).
+      case "war_stomp":
+        this.ring(from, radius, 0xe67e22, 400, 6);
+        return this.sparks(from, 0xffb35a, 10);
       case "holy_arrow":
         this.projectile(FX.holyArrow, from, to, ms, { trail: 0xffe9a3, glow: 0xf7d774, impact: 0xfff6c8, scale: 1.5 });
         return this.later(ms, () => this.holyFlash(to));

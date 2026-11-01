@@ -130,6 +130,8 @@ export class Summon extends Schema {
   @type("number") stepMs = 0;
   @type("number") hp = 0;
   @type("number") maxHp = 0;
+  /** Monstro convertido pelo Xamã Orc: a arte é a deste monstro (`MonsterKind`); vazio = a da criatura. */
+  @type("string") look = "";
 }
 
 /** Baú de uma sala lateral: trancado até o mini-boss da sala morrer. */

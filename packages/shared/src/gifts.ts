@@ -245,7 +245,8 @@ export type GiftId =
   | "circuit" | "frost_reserve" | "ossuary"
   | "instinct" | "cycle" | "closed_sky"
   | "blood_steel" | "rising_fury" | "anvil" | "chime" | "war_echo" | "execution_order"
-  | "wide_quiver" | "weak_spot" | "dawn" | "votive_candle" | "sharp_caltrops" | "short_fuse";
+  | "wide_quiver" | "weak_spot" | "dawn" | "votive_candle" | "sharp_caltrops" | "short_fuse"
+  | "horde_bond" | "ancestor_stance" | "forge_spark";
 
 export interface GiftDef {
   id: GiftId;
@@ -732,6 +733,22 @@ export const GIFTS: Record<GiftId, GiftDef> = {
       `a explosão empurra ${FUSE.push} tile`,
       "a explosão dispara a sua armadilha mais perto",
     ],
+  }),
+  // Xamã Orc: Dons do fundo, embaixo dos Ápices (com os efeitos que já existem nos outros Dons).
+  horde_bond: gift({
+    id: "horde_bond", classId: "shaman", col: 0, apex: "horde_roar", name: "Laço da Horda", icon: "🪓",
+    description: "A horda luta por você: seus orcs, ogros e demais criaturas têm mais vida e mais dano.",
+    perRank: 0.012, apply: (fx, v) => { fx.summonBoost += v; }, text: (v) => `+${pct(v)} de vida e de dano das suas criaturas`,
+  }),
+  ancestor_stance: gift({
+    id: "ancestor_stance", classId: "shaman", col: 1, apex: "ancestor_circle", name: "Postura Ancestral", icon: "🗿",
+    description: "Parado junto dos totens, o xamã finca os pés como eles: recebe menos dano depois de um tempo sem andar.",
+    perRank: 0.008, apply: (fx, v) => { fx.stillGuard += v; }, text: (v) => `${pct(v)} de dano a menos parado`,
+  }),
+  forge_spark: gift({
+    id: "forge_spark", classId: "shaman", col: 2, apex: "forge_rain", name: "Fagulha da Forja", icon: "🔥",
+    description: "Às vezes, a brasa do cajado sai mais quente: o alvo queima.",
+    perRank: 0.008, apply: (fx, v) => { fx.burnChance += v; }, text: (v) => `${pct(v)} de chance de o básico incendiar o alvo`,
   }),
 };
 

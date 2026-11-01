@@ -38,8 +38,8 @@ export const ROLE_INFO: Record<SpellRole, { label: string; icon: string }> = {
 /** Papéis de uma magia, na ordem de `ROLE_INFO`. */
 export function spellRoles(s: SpellDef): SpellRole[] {
   const f = s.field;
-  const hits = !!(s.damage || s.dot || f?.damage || s.burst || s.groundFire);
-  const wide = s.shape !== undefined || !!s.chain || (s.radius > 0 && !s.heal) || f?.kind === "zone" || !!s.burst || !!s.groundFire;
+  const hits = !!(s.damage || s.dot || f?.damage || s.burst || s.groundFire || f?.burst);
+  const wide = s.shape !== undefined || !!s.chain || (s.radius > 0 && !s.heal) || f?.kind === "zone" || !!s.burst || !!s.groundFire || !!f?.burst;
   const roles = new Set<SpellRole>();
   if (hits && wide) roles.add("area");
   if (hits && !wide) roles.add("alvo");
@@ -52,7 +52,7 @@ export function spellRoles(s: SpellDef): SpellRole[] {
   }
   if (s.heal || f?.allyHeal || s.seed || s.cleanse || s.tauntHeal || s.summonDeathHeal || s.rally?.heal) roles.add("cura");
   if (s.dash || s.charge || s.form?.kind === "panther" || (s.selfBuff?.moveSpeed ?? 0) > 0) roles.add("mobilidade");
-  if (s.summon || f?.kind === "turret" || s.packCall) roles.add("invocacao");
+  if (s.summon || f?.kind === "turret" || f?.spawn || s.packCall) roles.add("invocacao");
   // Carga da Legião (aura que anda com o herói) também é apoio.
   if (s.mark || f?.allyDamage || s.selfBuff?.basicDamage || s.selfBuff?.attackHaste || s.selfBuff?.attackRange || s.rally || s.aura) roles.add("apoio");
   return (Object.keys(ROLE_INFO) as SpellRole[]).filter((r) => roles.has(r));

@@ -233,12 +233,28 @@ const SHAPES: Record<ClassId, Shape> = {
     ["mamba_bite", 2, 6, "toxin", 0], ["thunderwave", 2, 6, "charged_sky", 1],
     ["poison_cloud", 2, 7, "mamba_bite", 0], ["call_lightning", 2, 7, "thunderwave", 1],
   ],
-  // Xamã Orc, Fase 1 (docs/CLASSE_XAMA_ORC.md): só as iniciais e as áureas. Os ramos Horda, Totens e Brasa crescem
-  // na Fase 2, com as invocações do clã.
+  // Xamã Orc (docs/CLASSE_XAMA_ORC.md), Fase 2: o tronco dos 3 ramos. Horda: a escada do clã, do batedor ao
+  // capitão. Totens: lodo, chamado e o Grande Totem. Brasa: o tambor, a lança, a batida e o Ogro da Forja. As
+  // especializações vêm na Fase 3.
   shaman: [
     ["ember_totem", 1, 0],
-    ["damage", 0, 1, "ember_totem"], ["mana", 1, 1, "ember_totem"], ["war_drum", 2, 1, "ember_totem"],
-    ["hp", 2, 2, "war_drum"],
+    ["clan_scouts", 0, 1, "ember_totem"], ["mana", 1, 1, "ember_totem"], ["war_drum", 2, 1, "ember_totem"],
+    ["damage", 0, 2, "clan_scouts"], ["mud_totem", 1, 2, "mana"], ["ember_lance", 2, 2, "war_drum"],
+    ["clan_spearmen", 0, 3, "damage"], ["call_totem", 1, 3, "mud_totem"], ["war_stomp", 2, 3, "ember_lance"],
+    ["clan_archers", 0, 4, "clan_spearmen"], ["speed", 1, 4, "call_totem"], ["hp", 2, 4, "war_stomp"],
+    ["clan_captain", 0, 5, "clan_archers"], ["grand_totem", 1, 5, "speed"], ["forge_ogre", 2, 5, "hp"],
+    // Fase 3. Horda: Senhor da Horda (lado 0) ou Domador de Sangue (lado 1).
+    ["clan_blood", 0, 6, "clan_captain", 0], ["blood_oath", 0, 6, "clan_captain", 1],
+    ["clan_berserkers", 0, 7, "clan_blood", 0], ["submission_chain", 0, 7, "blood_oath", 1],
+    ["warlord_call", 0, 8, "clan_berserkers", 0], ["chained_ogre", 0, 8, "submission_chain", 1],
+    // Totens: Entalhador (lado 0) ou Nômade (lado 1).
+    ["carver_hands", 1, 6, "grand_totem", 0], ["totem_pack", 1, 6, "grand_totem", 1],
+    ["thunder_totem", 1, 7, "carver_hands", 0], ["boar_charge", 1, 7, "totem_pack", 1],
+    ["volcanic_totem", 1, 8, "thunder_totem", 0], ["totem_ring", 1, 8, "boar_charge", 1],
+    // Brasa: Coração de Brasa (lado 0) ou Tamboreiro (lado 1).
+    ["vorgak_legacy", 2, 6, "forge_ogre", 0], ["war_rhythm", 2, 6, "forge_ogre", 1],
+    ["ember_rift", 2, 7, "vorgak_legacy", 0], ["blood_drum", 2, 7, "war_rhythm", 1],
+    ["ember_fury", 2, 8, "ember_rift", 0], ["clan_march", 2, 8, "blood_drum", 1],
   ],
 };
 
@@ -298,6 +314,11 @@ const RIBS: Record<ClassId, Rib[]> = {
   shaman: [
     // Slot 3: a magia de entrada, ao lado da raiz (o tronco do Xamã é de docs/CLASSE_XAMA_ORC.md).
     ["ancestral_totem", 1, 0, "ember_totem", 1],
+    // Costelas (Fase 3): o xamã do clã e o Mau Agouro na Horda, o Totem de Sangue nos Totens e a Chuva de Cinzas na Brasa.
+    ["clan_shaman", 0, 4, "clan_spearmen", -1], ["bad_omen", 0, 5, "clan_shaman", -2],
+    ["blood_totem", 1, 3, "mud_totem", 1], ["ash_rain", 2, 3, "ember_lance", -1],
+    // Ápices (slot 3): no fim do tronco, na ponta do lado direito, fora da especialização.
+    ["horde_roar", 0, 6, "clan_captain", 2], ["ancestor_circle", 1, 6, "grand_totem", 2], ["forge_rain", 2, 6, "forge_ogre", 2],
   ],
 };
 

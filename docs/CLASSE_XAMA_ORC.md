@@ -1,6 +1,18 @@
 # Xamã Orc — desenho da 5ª classe
 
-Status: **Fase 1 implementada** (classe jogável, totem, Tambor de Guerra, desbloqueio); Fases 2 a 4 por fazer.
+Status: **Fases 1, 2 e 3 implementadas** (classe jogável, desbloqueio, totens, Tambor de Guerra, o tronco dos 3 ramos
+com a Horda, as 6 especializações, as costelas e os Ápices); a Fase 4 (balanceamento) segue na seção 14. O que mudou do
+desenho:
+- Maestrias das invocações simplificadas: mais um orc (batedores, lanceiros, arqueiros) ou mais tempo (capitão, Ogro
+  da Forja), em vez de efeitos novos.
+- Grande Totem do Clã: fere em volta e dá +15% de dano aos aliados dentro, em vez de repetir os outros totens.
+- O bônus de força das magias perto dos totens não entrou; o dos orcs do clã perto do totem (+15%), sim.
+- O limite de totens é por magia (2 Totens da Brasa, 2 do Lodo, 1 de cada outro), não 2 no total.
+- Fase 3: o Ogro Acorrentado atordoa a cada pancada em vez de arrebentar as correntes no fim; o Totem do Trovão é um
+  totem de tiro (não salta em cadeia); a Herança de Vorgak faz as magias queimarem, sem espalhar a queimadura na morte;
+  o Ritmo de Guerra alonga e alarga os tambores em vez de contar golpes; costelas: Xamã do Clã cura os heróis (não os
+  orcs), Totem de Sangue cura por segundo (não rouba vida) e a Chuva de Cinzas deixa lento (não cega). Os Ápices (Fúria
+  da Horda, Círculo dos Ancestrais, Chuva da Forja) entraram nesta fase.
 Id da classe no código e no banco: `shaman`. Números são de partida (nível 0) e vão para o
 `/balanceamento` depois da Fase 1.
 
@@ -280,3 +292,28 @@ Respondidas em 2026-11-01:
 | 4 | Desbloqueio | **Só vencendo Vorgak**, sem conquista alternativa |
 | 5 | Totem atacável pelos monstros | **Não**: o totem não tem vida, dura o tempo da magia |
 | 6 | Identidade | **Muitas magias de invocação de orcs** que crescem com o Grimório (pilar Horda) |
+
+## 14. Balanceamento (Fase 4)
+
+Feito em 2026-11-02 com a conta teórica (`apps/server/scripts/balanco.ts`: DPS num alvo, herói no nível 20, criaturas
+batendo o tempo todo). **Sem telemetria:** nenhuma conta venceu Vorgak até hoje, então ainda não há hunt de Xamã para
+confirmar. Rever com o `/balanceamento` quando houver dados.
+
+| Kit na Maestria (melhor equipamento) | DPS teórico |
+|---|---|
+| Druida | 823 (Enxame de Vespas + Chamado da Matilha) |
+| Feiticeiro | 775 (Esfera Sombria + Erguer Esqueletos) |
+| **Xamã Orc** | **577** (Berserkers do Clã + Arqueiros do Clã) |
+| Cavaleiro | 220 |
+| Paladino | 193 |
+
+- O Xamã fica abaixo das duas classes que invocam e acima das de golpe e tiro, como o desenho pede: o dano vem da
+  horda e dos totens, e o reforço (Tambor, Comando, totem) não entra na conta de um alvo só.
+- **Ajuste feito:** o Orc berserker passou de 1,0× para 0,8× de dano. Com 1,0, os Berserkers do Clã davam 419 na
+  Maestria, 2,4× a mediana das magias do slot 1 do Xamã (o maior da classe).
+- **Começo de jogo:** o Totem da Brasa no nível 1 (40 sem equipamento, 113 com) fica na faixa das magias iniciais de
+  dano (Esfera Sombria 37/104, Flecha Sagrada 28); o básico (49 no nível 20 sem equipamento) fica junto do Druida (47).
+- **Ápices:** 24 a 44 no nível 1 com equipamento, na faixa dos Ápices das outras classes (12 a 85).
+- **Sinais que ficam para a telemetria:** as invocações do Xamã, como as do Druida, duram a recarga inteira ou mais
+  ("sempre em campo" na conta); os Arqueiros aparecem 2,6× a mediana do slot 2 só porque o resto do slot é de área.
+  Se a horda dominar as hunts, o primeiro corte é a duração das invocações (abaixo da recarga), não o dano.
