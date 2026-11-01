@@ -7,7 +7,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "mapa": "tsx scripts/verdemar.ts"
+    "mapa": "tsx scripts/verdemar.ts",
+    "medicao": "tsx scripts/medicao.ts"
   },
   "dependencies": {
     "@colyseus/schema": "^5.0.42",

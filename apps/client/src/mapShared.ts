@@ -51,6 +51,17 @@ export class ChunkCuller {
   }
 }
 
+/**
+ * Tile de quem a câmera segue (o nosso herói) ou, sem ninguém (prévia do mapa), o do meio da tela: os telhados e os
+ * andares de cima somem quando ele entra embaixo deles.
+ */
+export function focusTile(cam: Phaser.Cameras.Scene2D.Camera) {
+  const follow = (cam as unknown as { _follow?: { x: number; y: number } | null })._follow;
+  const x = follow ? follow.x : cam.worldView.centerX;
+  const y = follow ? follow.y : cam.worldView.centerY;
+  return { x: Math.floor(x / TILE_SIZE), y: Math.floor(y / TILE_SIZE) };
+}
+
 const chunkKey = (cx: number, cy: number) => (cy + 64) * 1024 + (cx + 64);
 
 /**
