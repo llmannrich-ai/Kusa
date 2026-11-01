@@ -4,7 +4,7 @@ import { BESTIARY_ART, EXTRA_CLIPS, MONSTER_ANIMS, OWN_MONSTER_ART, OWN_MONSTER_
 import { CLIP_ORDER, CLIPS, clipStart } from "./rig.ts";
 import { makeCanvas } from "./pixels.ts";
 import { SAND_WORM_OUTLINE } from "./sandWorm.ts";
-import { HERO_DIRS, HERO_FRAMES, heroSheet, type HeroDir } from "./heroes.ts";
+import { HERO_DIRS, HERO_FRAMES, HERO_ACTION_SIZE, heroActionJobs, heroSheet, type HeroDir } from "./heroes.ts";
 import { itemIcon } from "./items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./outfit.ts";
 import { cryptArt, protoBeasts } from "./newArt.ts";
@@ -105,6 +105,56 @@ export function heroArt(scene: Phaser.Scene, classId: ClassId, outfit: Outfit = 
     });
   });
   return key;
+}
+
+/** Movimentos de ação do herói: o ataque básico e a magia, de frente, de lado e de costas. */
+export type HeroAction = "attack" | "cast";
+const HERO_ACTIONS: HeroAction[] = ["attack", "cast"];
+export const heroActionAnim = (texture: string, action: HeroAction, dir: HeroDir) => `${texture}-${action}-${dir}`;
+/**
+ * Tempo de cada quadro (ms): preparo, golpe e fim. O golpe é o mais curto (o rastro só aparece nele) e o fim segura um
+ * pouco antes de voltar a ficar parado; a magia segura o auge.
+ */
+const ACTION_MS: Record<HeroAction, number[]> = { attack: [80, 70, 120], cast: [100, 160, 130] };
+export const heroActionMs = (action: HeroAction) => ACTION_MS[action].reduce((a, b) => a + b, 0);
+
+const actionBuilds = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; jobs: (() => HTMLCanvasElement)[]; next: number }>();
+
+/**
+ * Folha dos movimentos de ação do herói vestido: 18 quadros (2 ações × 3 direções × 3), desenhados um a cada 30 ms
+ * para não travar a hunt (≈ 20 ms cada no PC). Chamar quando o herói aparece ou troca de roupa: começa a montar e
+ * devolve a chave da textura só quando ela fica pronta (até lá, o golpe é só o tranco).
+ */
+export function heroActionArt(scene: Phaser.Scene, classId: ClassId, outfit: Outfit = NO_OUTFIT): string | null {
+  const key = `${heroTexture(classId, outfit)}-acao`;
+  if (scene.textures.exists(key)) return key;
+  if (actionBuilds.has(key)) return null;
+  const jobs = heroActionJobs(classId, outfit);
+  if (!jobs) return null;
+  const size = HERO_ACTION_SIZE;
+  const cols = hdColumns(size, jobs.length);
+  const b = { ...makeCanvas(size * cols, size * Math.ceil(jobs.length / cols)), jobs, next: 0 };
+  actionBuilds.set(key, b);
+  const cell = (i: number) => [(i % cols) * size, Math.floor(i / cols) * size] as const;
+  const step = () => {
+    if (!scene.sys.isActive()) { actionBuilds.delete(key); return; }
+    b.ctx.drawImage(b.jobs[b.next](), ...cell(b.next));
+    if (++b.next < b.jobs.length) { window.setTimeout(step, 30); return; }
+    const texture = scene.textures.addCanvas(key, b.canvas)!;
+    b.jobs.forEach((_, i) => texture.add(i, 0, ...cell(i), size, size));
+    HERO_ACTIONS.forEach((action, a) => HERO_DIRS.forEach((dir, d) => {
+      const first = (a * HERO_DIRS.length + d) * 3;
+      scene.anims.create({
+        key: heroActionAnim(key, action, dir),
+        // 20 ms por quadro mais o tempo próprio de cada um.
+        frames: ACTION_MS[action].map((ms, k) => ({ key, frame: first + k, duration: ms - 20 })),
+        frameRate: 50,
+      });
+    }));
+    actionBuilds.delete(key);
+  };
+  window.setTimeout(step, 30);
+  return null;
 }
 
 /** Gera as texturas das classes sem equipamento (uma vez por jogo). */

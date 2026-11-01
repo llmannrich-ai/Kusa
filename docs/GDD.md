@@ -1218,7 +1218,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   | Elmo, armadura e perneiras de guerra | Cavaleiro e Paladino | armadura |
   | Chapéu, manto e calças arcanos | Feiticeiro e Druida | menos armadura, + dano nas magias (chapéu) e + mana (manto e calças) |
   | Botas | Todas | armadura e velocidade |
-  | Escudo | Todas | armadura |
+  | Escudo | Todas menos o paladino (arco e besta pedem as duas mãos) | armadura |
 
 - **Só varinhas, cajados e alguns itens mágicos aumentam as magias** (e os campos no chão). As criaturas invocadas
   levam só **metade** desse bônus (`SUMMON_SPELL_POWER_SHARE`): elas batem o tempo todo, e com o bônus inteiro uma
@@ -1245,7 +1245,13 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
   equipamento no padrão novo (`apps/client/src/art/proto/tibiaHero.ts`), no jogo, nos retratos e no provador. O raro
   usa o desenho do comum. Cada combinação de classe e equipamento é desenhada uma vez ao aparecer (0,1 a 0,3 s num
   computador; mais no celular) e fica guardada. O sprite vai 10% maior que 128 px por tile, com os pés no mesmo
-  ponto do herói antigo.
+  ponto do herói antigo. O corpo dos heróis é um pouco mais alto e magro que o dos monstros humanoides (pernas mais
+  longas, figura 8% mais estreita).
+  **Movimentos de ação:** o ataque básico e a magia tocam um clipe de 3 quadros na direção do golpe (preparo, golpe e
+  fim): espada e machado cortam com rastro em meia-lua (ciano no item mágico), arco e besta puxam e soltam a corda,
+  cajado e varinha estocam com faíscas, e a magia ergue os braços em V com faíscas nas mãos. Os quadros são desenhados
+  aos poucos quando o herói aparece ou troca de roupa; até ficarem prontos, o golpe é só o tranco
+  (`docs/ARTE_ITENS_CODIGO_PLANO.md`).
   Na Cripta, a opção também troca o cenário e os monstros (piloto dos mapas e monstros, `docs/ARTE_TIBIA.md`).
   Os ícones dos itens (mochila, cofre, mercado, equipamento e chão) passam a ser o mesmo desenho do item vestido
   (`docs/ARTE_ITENS.md`, seção 13).
