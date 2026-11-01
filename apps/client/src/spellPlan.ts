@@ -50,10 +50,10 @@ export function spellRoles(s: SpellDef): SpellRole[] {
   if (s.barrier || s.guard || s.armor || s.thorns || s.lifesteal || s.form?.kind === "bear" || f?.allyArmor || s.selfBuff?.slowAttackers) {
     roles.add("defesa");
   }
-  if (s.heal || f?.allyHeal || s.seed || s.cleanse || s.tauntHeal || s.summonDeathHeal) roles.add("cura");
+  if (s.heal || f?.allyHeal || s.seed || s.cleanse || s.tauntHeal || s.summonDeathHeal || s.rally?.heal) roles.add("cura");
   if (s.dash || s.charge || s.form?.kind === "panther" || (s.selfBuff?.moveSpeed ?? 0) > 0) roles.add("mobilidade");
   if (s.summon || f?.kind === "turret" || s.packCall) roles.add("invocacao");
-  if (s.mark || f?.allyDamage || s.selfBuff?.basicDamage || s.selfBuff?.attackHaste || s.selfBuff?.attackRange) roles.add("apoio");
+  if (s.mark || f?.allyDamage || s.selfBuff?.basicDamage || s.selfBuff?.attackHaste || s.selfBuff?.attackRange || s.rally) roles.add("apoio");
   return (Object.keys(ROLE_INFO) as SpellRole[]).filter((r) => roles.has(r));
 }
 

@@ -4,7 +4,8 @@
 --     de loot 100, cheio em 180 s). Quando o bestiário chegar, os tetos e `map_bosses` mudam junto.
 --   - Campanha (packages/shared/src/world.ts, mude os dois juntos): os dois abrem com o boss da Fortaleza Orc (Vorgak),
 --     `unlockedBy`, aqui `map_unlocked_by`.
--- Parte do estado depois de 20261102000000_dons_e_passivas_20_niveis.sql (que não mexe nestas funções).
+-- Parte do estado depois de 20261102010000_xama_orc.sql: `record_map_clear`, `start_solo_run` e `finish_solo_run` são
+-- remendadas no texto atual do banco (a lista de classes com 'shaman' fica como está).
 
 alter table public.solo_runs drop constraint solo_runs_map_id_check;
 alter table public.solo_runs add constraint solo_runs_map_id_check
@@ -58,19 +59,6 @@ as $$
   );
 $$;
 
-create or replace function public.record_map_clear(p_profile_id uuid, p_class_id text, p_map_id text)
-returns void
-language sql
-security definer
-set search_path = ''
-as $$
-  insert into public.profile_map_clears (profile_id, class_id, map_id)
-  select p_profile_id, p_class_id, p_map_id
-  where p_class_id in ('knight', 'paladin', 'sorcerer', 'druid')
-    and p_map_id in ('crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands')
-  on conflict do nothing;
-$$;
-
 -- `create or replace` mantém os grants; repete por garantia (só o servidor de jogo).
 revoke execute on function public.map_unlocked(uuid, text, text) from public, anon, authenticated;
 grant execute on function public.map_unlocked(uuid, text, text) to service_role;
@@ -81,6 +69,9 @@ grant execute on function public.record_map_clear(uuid, text, text) to service_r
 do $$
 declare
   v_start text := pg_get_functiondef('public.start_solo_run(text, text)'::regprocedure);
+  v_clear text := pg_get_functiondef('public.record_map_clear(uuid, text, text)'::regprocedure);
+  v_clear_old constant text := $q$p_map_id in ('crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates', 'fortress', 'oldwood', 'heartwood')$q$;
+  v_clear_new constant text := $q$p_map_id in ('crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands')$q$;
   v_finish text := pg_get_functiondef('public.finish_solo_run(uuid, text, int, int, text[], text[], jsonb)'::regprocedure);
   v_maps_old constant text := $q$p_map_id not in ('crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates', 'fortress', 'oldwood', 'heartwood')$q$;
   v_maps_new constant text := $q$p_map_id not in ('crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands')$q$;
@@ -94,6 +85,11 @@ begin
   if position(v_maps_new in v_start) = 0 then
     if position(v_maps_old in v_start) = 0 then raise exception 'start_solo_run: lista de mapas não encontrada'; end if;
     execute replace(v_start, v_maps_old, v_maps_new);
+  end if;
+
+  if position(v_clear_new in v_clear) = 0 then
+    if position(v_clear_old in v_clear) = 0 then raise exception 'record_map_clear: lista de mapas não encontrada'; end if;
+    execute replace(v_clear, v_clear_old, v_clear_new);
   end if;
 
   for i in 1 .. array_length(v_finish_pairs, 1) loop

@@ -102,7 +102,7 @@ const WALK = [1, 0, 2, 0];
 // Mesma escala de jogo nos dois: o atual tem 96 px de textura para 1,38 tile; o protótipo, `PROTO_TILE` px por tile.
 const PHONE_TILE = 412 / 9;
 const PROTO_DIRS_ALL: ProtoDir[] = ["down", "side", "up"];
-const PROTO_NAMES: Record<ProtoClass, string> = { base: "Corpo base", knight: "Cavaleiro", paladin: "Paladino", sorcerer: "Feiticeiro", druid: "Druida" };
+const PROTO_NAMES: Record<ProtoClass, string> = { base: "Corpo base", knight: "Cavaleiro", paladin: "Paladino", sorcerer: "Feiticeiro", druid: "Druida", shaman: "Xamã Orc" };
 const protoSceneRow = (() => {
   const zoomTile = PROTO_TILE;
   const oldZoom = (zoomTile * HERO_SCALE) / HERO_SIZE;

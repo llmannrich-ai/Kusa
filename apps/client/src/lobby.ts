@@ -441,7 +441,11 @@ function portrait(classId: ClassId) {
  * Desenha as vagas do mapa (`partySize`): quem já entrou (o líder primeiro, os bots por último) e as vagas livres.
  * O líder põe um bot numa vaga livre tocando na classe, e tira no ✕.
  */
-export function renderWaitingRoom(room: DungeonRoom) {
+/**
+ * Sala de espera. `classOpen`: a classe está aberta na conta de quem vê (o bot de uma classe trancada não aparece; o
+ * servidor também recusa).
+ */
+export function renderWaitingRoom(room: DungeonRoom, classOpen: (id: ClassId) => boolean = () => true) {
   const { players, leaderId } = room.state;
   const isLeader = leaderId === room.sessionId;
   const rank = (id: string) => (id === leaderId ? 0 : players.get(id)?.bot ? 2 : 1);
@@ -472,7 +476,7 @@ export function renderWaitingRoom(room: DungeonRoom) {
     } else if (isLeader) {
       slot.classList.add("bot-slot");
       const picks = el("div", "bot-picks");
-      for (const classId of CLASS_IDS) {
+      for (const classId of CLASS_IDS.filter(classOpen)) {
         const pick = el("button", "bot-pick");
         pick.type = "button";
         pick.setAttribute("aria-label", `Pôr um bot ${CLASSES[classId].name}`);

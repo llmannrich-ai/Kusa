@@ -2,6 +2,10 @@ import {
   BAG_SIZE,
   CLASSES,
   CLASS_IDS,
+  CLASS_UNLOCK,
+  MONSTERS,
+  classUnlocked,
+  type MonsterKind,
   ITEMS,
   ITEM_BUY_PRICES,
   ITEM_FAMILIES,
@@ -100,6 +104,7 @@ const ROLES: Record<ClassId, { text: string; tags: string[] }> = {
   paladin: { text: "Ataca de longe com flechas fortes.", tags: ["À distância", "Precisão"] },
   sorcerer: { text: "Dano em área enorme, mas frágil.", tags: ["Dano em área", "Frágil"] },
   druid: { text: "Cura a equipe e prende os monstros.", tags: ["Suporte", "Controle"] },
+  shaman: { text: "Finca totens que lutam sozinhos e acelera a equipe com o tambor.", tags: ["Totens", "Reforço"] },
 };
 
 /** Um atributo na página Heróis: o valor do nível 1 sem bônus, o valor com bônus e o texto mostrado. */
@@ -279,7 +284,7 @@ function heroWalker(classId: ClassId, outfit: Outfit) {
 }
 
 export class Hub {
-  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [] };
+  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [] };
   private tab: Tab = "heroes";
   private marketMode: "buy" | "sell" = "buy";
   /** Slot mostrado na compra do mercado. */
@@ -301,14 +306,18 @@ export class Hub {
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => {
       b.onclick = () => this.setTab(b.dataset.tab as Tab);
     });
-    $("play").onclick = () => this.onPlay();
+    // Classe trancada (Xamã Orc): dá para ver o herói e o Grimório, mas não entrar na hunt com ele.
+    $("play").onclick = () => {
+      if (this.locked(this.classId)) return this.toast(this.lockText(this.classId), true);
+      this.onPlay();
+    };
     $("sheet-backdrop").onclick = () => this.closeSheet();
   }
 
   /** Abre o menu da conta e busca árvore, inventário e gold. */
   async open(username: string, initialGold: number) {
     $("account-name").textContent = username;
-    this.profile = { gold: initialGold, talents: {}, spellXp: {}, activeSpells: [], items: [] };
+    this.profile = { gold: initialGold, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [] };
     this.render();
     try {
       this.profile = await loadProfile();
@@ -343,6 +352,24 @@ export class Hub {
     );
   }
 
+  /** Bosses vencidos lidos de novo (fim de hunt): devolve as classes que estavam trancadas e abriram agora. */
+  updateBossClears(bossClears: string[]): ClassId[] {
+    const opened = CLASS_IDS.filter((id) => this.locked(id) && classUnlocked(bossClears, id));
+    this.profile.bossClears = bossClears;
+    return opened;
+  }
+
+  /** A classe ainda está trancada na conta (o servidor e o banco conferem de novo)? */
+  locked(id: ClassId) {
+    return !classUnlocked(this.profile.bossClears, id);
+  }
+
+  /** Como abrir uma classe trancada. */
+  private lockText(id: ClassId) {
+    const boss = CLASS_UNLOCK[id] as MonsterKind | undefined;
+    return `🔒 ${CLASSES[id].name}: vença ${boss ? MONSTERS[boss].name : "o boss"} na Fortaleza Orc com qualquer herói para liberar.`;
+  }
+
   // --- Heróis ---------------------------------------------------------------
 
   /**
@@ -356,6 +383,7 @@ export class Hub {
     page.style.setProperty("--class-color", hex(c.color));
     page.append(el("h2", "", "Heróis"), el("p", "muted hub-hint", "Toque num herói para entrar com ele na próxima hunt."));
     page.append(this.heroPicks(id, (pick) => this.pickClass(pick)));
+    if (this.locked(id)) page.append(el("p", "hero-locked", this.lockText(id)));
 
     // Palco: o herói vestido anda e gira; as especializações escolhidas ficam em estandartes embaixo.
     const stage = el("section", "hero-stage");
@@ -550,7 +578,7 @@ export class Hub {
   private heroPicks(selected: ClassId, onPick: (id: ClassId) => void) {
     const heroes = el("div", "grim-heroes");
     for (const id of CLASS_IDS) {
-      const pick = el("button", "grim-hero");
+      const pick = el("button", this.locked(id) ? "grim-hero locked" : "grim-hero");
       pick.style.setProperty("--class-color", hex(CLASSES[id].color));
       pick.setAttribute("aria-pressed", String(id === selected));
       const frame = el("span", "grim-hero-frame");

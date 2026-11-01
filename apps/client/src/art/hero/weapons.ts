@@ -739,6 +739,20 @@ const BRANCH_STAFF: StaffDef = {
   ],
 };
 
+/** Cajado de osso do Xamã Orc sem arma: um crânio com a brasa acesa entre os chifres. */
+const SKULL_STAFF: StaffDef = {
+  shaft: M.darkWood, topY: 6, col: 3, mats: [M.bone, M.bone, M.darkWood, M.fire],
+  top: [
+    "j.....j",
+    ".k.v.k.",
+    "..cdc..",
+    ".cwdwc.",
+    "..dcd..",
+    "..edc..",
+    "...p...",
+  ],
+};
+
 function staffWeapon(def: StaffDef): WeaponArt {
   const legend = legendOf(def.mats);
   return {
@@ -840,6 +854,7 @@ export function classWeapon(classId: ClassId): WeaponArt {
     case "paladin": return bowWeapon(PLAIN_BOW);
     case "sorcerer": return staffWeapon(ORB_STAFF);
     case "druid": return staffWeapon(BRANCH_STAFF);
+    case "shaman": return staffWeapon(SKULL_STAFF);
   }
 }
 
