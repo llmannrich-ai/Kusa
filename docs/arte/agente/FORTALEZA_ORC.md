@@ -114,6 +114,48 @@ A rough floor of wooden planks in an orc barracks: long planks running left to r
 {{TEXTURA}}
 ```
 
+## Andares (vale, paredão e telhados)
+
+Também texturas contínuas, como os chãos, para o jogo cortar em tiles. Usam o mesmo bloco `{{ESTILO_CHAO}}`.
+
+| # | id | O que é | Formato |
+|---|---|---|---|
+| A1 | `vale` | O vale lá embaixo visto do alto (mata, rio, campos), **pequeno e longe** | quadrado, emenda nos 4 lados |
+| A2 | `paredao` | A face de rocha do precipício, de frente | faixa larga, emenda só na esquerda e na direita |
+| A3 | `telhado` | Telhado das casernas: tábuas e palha remendadas | quadrado, emenda nos 4 lados |
+
+### A1. `vale`
+
+```text
+{{ESTILO_CHAO}}
+
+The valley floor seen from very high above, far below a castle on a cliff, straight top-down like a map: dense dark-green forest canopy in big irregular clumps (each tree crown only 6 to 10 pixels wide), small yellow-green meadows between them, a thin winding river (8 to 12 pixels wide) with pale sandbanks, a few tiny roofless stone ruins and a thin dirt road. Everything is small and far away, slightly hazy and blue-grey, low contrast. No objects standing up, no cliffs, no castle, no sky.
+
+{{TEXTURA}}
+```
+
+### A2. `paredao`
+
+```text
+{{ESTILO_CHAO}}
+
+The vertical face of a tall grey-brown rock cliff seen from the front, as the wall of a chasm: horizontal layers of stratified rock (each layer 16 to 30 pixels tall, its top edge lit and its underside in shadow), vertical cracks, a few ledges with moss and small ferns, roots and ivy hanging from the very top edge, where a lip of grass and earth overhangs. The bottom third fades into cold blue-grey mist (the rock gets darker and hazier toward the bottom edge).
+
+Seamless horizontally only: the left edge must continue into the right edge with no visible seam; the top and bottom are NOT seamless (top = the cliff edge with grass, bottom = mist). Even detail along the width, no single focal point. Scale: every 128 pixels of width is one game tile. Light from the upper-left. Do NOT include: text, labels, frames, borders, watermark, sky, castle, characters.
+
+Wide 4:1 (1024×256).
+```
+
+### A3. `telhado`
+
+```text
+{{ESTILO_CHAO}}
+
+A crude orc-patched roof seen from above: old wooden roof planks running left to right in rows, partly covered with patches of untanned hide stitched with rope and bundles of dry straw, a few broken planks showing dark gaps, moss on the old wood, a few nails. Each plank row is about 32 pixels tall.
+
+{{TEXTURA}}
+```
+
 ## Blocos comuns
 
 **{{ESTILO}}**
