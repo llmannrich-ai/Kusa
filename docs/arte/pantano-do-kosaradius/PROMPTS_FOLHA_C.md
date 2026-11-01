@@ -57,6 +57,8 @@ Integração (depois das imagens): o `kosaradiusSprites.py` passa a ler a C (4 d
 
 ## 4. Prompts (colar no ChatGPT)
 
+> Versão atualizada para colar (com a linha MUST KEEP de cada inimigo): `FOLHA_C_CHATGPT.md`.
+
 Todos usam a mesma base; muda só o número de linhas e as linhas.
 
 ### 1. Grumak, o Rei-Ogro — folha C (4 linhas)
