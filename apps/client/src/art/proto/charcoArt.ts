@@ -63,7 +63,7 @@ export const CHARCO: CharcoSpec[] = [
   spec("poolLurker", BEAST_POSES.panther, (p, v) => shootBeast("panther", p, v, sk.lurker), { feet: BEAST_FEET.panther }, 1.5, { poolPull: "cast" }),
   spec("ashHag", FOLK_POSES.dryad, (p, v) => shootFolk("dryad", p, v, sk.hag), { feet: FOLK_FEET, castS: 0.7 }, 1.6, "cast"),
   spec("bogMonolith", FOLK_POSES.menhir, (p, v) => shootFolk("menhir", p, v, sk.monolith), { feet: FOLK_FEET, castS: 0.7 }, 1.85, { runePulse: "cast", monolithSlam: "attack" }),
-  spec("drownedKnight", FOLK_POSES.warden, (p, v) => shootFolk("warden", p, v, sk.knight), { feet: FOLK_FEET, castS: 0.7 }, 1.65, { knightCharge: "attack", drownedCall: "cast" }),
+  spec("drownedKnight", FOLK_POSES.warden, (p, v) => shootFolk("warden", p, v, sk.knight), { feet: FOLK_FEET, castS: 0.7 }, 1.65, { knightCharge: "attack", rustSweep: "cast", drownedCall: "cast" }),
   spec("morgrana", FOLK_POSES.erlking, (p, v) => shootFolk("erlking", p, v, sk.queen), { feet: FOLK_FEET, castS: 0.7 }, 2.7,
     { blackTide: "skill", lakeHand: "attack", drownedCourt: "cast", lakeDive: "cast", drownedLament: "skill" }),
 ];

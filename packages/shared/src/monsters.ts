@@ -1294,11 +1294,15 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     abilities: [
       { id: "knightCharge", name: "Investida", shape: "leap", range: 6, minRange: 2, radius: 1, cooldownMs: 8000, power: 1.5, push: 1, color: 0x8a6a4a, fx: "leap" },
       {
+        id: "rustSweep", name: "Varrida Enferrujada", shape: "self", range: 1, radius: 1, cooldownMs: 7000, power: 1.6,
+        dot: { kind: "bleed", power: 0.25, durationMs: 3000 }, color: 0x8a5a34, fx: "slam",
+      },
+      {
         id: "drownedCall", name: "Chamado dos Afogados", shape: "summon", range: 7, radius: 0, cooldownMs: 22000, power: 0,
         summon: { kind: "peatDrowned", count: 2 }, belowHp: 0.5, phase: true, color: 0x6b7360, fx: "summon",
       },
     ],
-    lore: "Cavaleiro do império que guardava a estrada do aterro e afundou com ela, de armadura e tudo. A armadura enferrujou; ele não. Investe, faz os afogados baterem mais forte e mais rápido (Comando) e, ferido, chama mais dois da lama.",
+    lore: "Cavaleiro do império que guardava a estrada do aterro e afundou com ela, de armadura e tudo. A armadura enferrujou; ele não. Investe, varre em volta com a espada enferrujada (sangra), faz os afogados baterem mais forte e mais rápido (Comando) e, ferido, chama mais dois da lama.",
   }),
   // Boss: Morgrana, na ilha do lago negro. O último boss do lado do charco.
   morgrana: monster({

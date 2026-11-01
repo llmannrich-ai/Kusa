@@ -1359,7 +1359,7 @@ um modelo novo, o Lodo (`ooze.ts`). Prévia: `npx tsx apps/client/scripts/charco
 | Espreitador da Poça | emboscador | camuflado na beira das poças · Ataque Surpresa 1,6× · Puxão (de 2 a 5 tiles, prende) · a pantera de lama |
 | **Bruxa Cinzenta** (mini-boss) | controlador (fada) | Névoa (área que cega) · Maldição (corrói) · ferida, some e volta com 2 cópias ilusórias |
 | **Monólito Desperto** (mini-boss) | sentinela (constructo) | parado é um monólito (acorda a 4 tiles) · Pulso da Runa (atordoa em volta) · Pancada de Pedra (empurra) · resiste a físico, energia 1,4× |
-| **Cavaleiro Afogado** (mini-boss) | líder (morto-vivo) | Comando (+20% de dano e velocidade) · Investida · ferido, Chamado dos Afogados (2 Turfeiros) |
+| **Cavaleiro Afogado** (mini-boss) | líder (morto-vivo) | Comando (+20% de dano e velocidade) · Investida · Varrida Enferrujada (em volta, sangra) · ferido, Chamado dos Afogados (2 Turfeiros) |
 | **Morgrana, a Rainha Afogada** (boss) | controlador (morto-vivo) | alcance 2 · resiste a fogo, vulnerável a luz e raio · Maré Negra (empurra e deixa lento em volta) · Mão do Lago (puxa e prende) · abaixo de 70%, Chamado dos Afogados · abaixo de 50%, Mergulho no Lago · abaixo de 30%, Lamento (cega em volta e cura 12%, uma vez) |
 
 **Balanceamento** (duelo, herói sozinho só com ataque básico, níveis 15/17/20, ao lado da Fortaleza nos mesmos níveis):
