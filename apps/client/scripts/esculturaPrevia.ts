@@ -3,7 +3,8 @@
  * da Areia em PNG, ampliada, e mede quanto cada quadro leva para sair.
  *
  *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme|
- *     lobo|pantera|centauro|satiro|driade|galhudo|espinheiro|menir|urso|dragao|senhor]
+ *     lobo|pantera|centauro|satiro|driade|galhudo|espinheiro|menir|urso|dragao|senhor|
+ *     javali|cervo|fungoide|sombra|cipo|arvore|guardiao|rei]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -29,8 +30,8 @@ const BICHOS = {
   verme: { poses: WORM_POSES, shoot: (p: object, v: View) => shootWorm(p, v), size: WORM_SIZE },
   sacerdote: { poses: PRIEST_POSES, shoot: (p: object, v: View) => shootMummy(p, v, true) },
   // Bosque Velho.
-  ...Object.fromEntries((Object.entries({ lobo: "wolf", pantera: "panther", centauro: "centaur" }) as [string, BeastKind][]).map(([k, kind]) => [k, { poses: BEAST_POSES[kind], shoot: (p: object, v: View) => shootBeast(kind, p, v) }])),
-  ...Object.fromEntries((Object.entries({ satiro: "satyr", driade: "dryad", galhudo: "twigling", espinheiro: "thorn", menir: "menhir", urso: "owlbear" }) as [string, FolkKind][]).map(([k, kind]) => [k, { poses: FOLK_POSES[kind], shoot: (p: object, v: View) => shootFolk(kind, p, v) }])),
+  ...Object.fromEntries((Object.entries({ lobo: "wolf", pantera: "panther", centauro: "centaur", javali: "boar", cervo: "stag" }) as [string, BeastKind][]).map(([k, kind]) => [k, { poses: BEAST_POSES[kind], shoot: (p: object, v: View) => shootBeast(kind, p, v) }])),
+  ...Object.fromEntries((Object.entries({ satiro: "satyr", driade: "dryad", galhudo: "twigling", espinheiro: "thorn", menir: "menhir", urso: "owlbear", fungoide: "myconid", sombra: "shade", cipo: "vine", arvore: "tree", guardiao: "warden", rei: "erlking" }) as [string, FolkKind][]).map(([k, kind]) => [k, { poses: FOLK_POSES[kind], shoot: (p: object, v: View) => shootFolk(kind, p, v) }])),
   dragao: { poses: DRAGON_POSES, shoot: (p: object, v: View) => shootDragon(p, v), size: DRAGON_SIZE },
   senhor: { poses: WARLORD_POSES, shoot: (p: object, v: View) => shootWarlord(p, v), size: WARLORD_SIZE },
 };

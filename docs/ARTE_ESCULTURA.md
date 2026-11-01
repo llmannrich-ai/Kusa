@@ -146,8 +146,15 @@ Três modelos cobrem o elenco inteiro, cada um com as medidas e materiais por bi
 - **Dragão** (`greenDragon.ts`): quadro de 192 px; asas de morcego com 3 dedos e a membrana em lâminas finas entre eles.
 - Luz da mata: a rebatida do chão é verde (`bounce` `#9ab860`) e a luz de contorno, verde-clara, para separar o bicho
   do capim. Tamanho na tela em `bestiary.ts` (o lobo é do tamanho de um pônei, o Guardião e o Urso-coruja os maiores).
+- **Coração da Mata** (os mesmos dois modelos): o quadrúpede ganha o Javali-Espinho (focinho de disco, presas, cerdas
+  com espinhos) e o Cervo Corrompido (galhada com musgo, manchas de podridão); o bípede ganha o Fungóide (o chapéu de
+  pintas pintado na forma, a nuvem de esporos acesa), a Sombra Élfica (material com brilho próprio baixo, o arco de
+  luz), o Cipó Estrangulador (feixe de cipós em espiral), a Árvore Desperta (tronco e copa de folhas), o Guardião Élfico
+  Caído (placas e lâminas de luz) e o Rei Galhado (pernas de bode do sátiro em casca, a galhada e o anel de raízes da
+  Fúria da Mata). Referência: `docs/arte/coracao-da-mata-escultura.png`.
 - Prévia: `npx tsx apps/client/scripts/esculturaPrevia.ts /tmp/bicho.png 3 lobo` (e `pantera`, `centauro`, `satiro`,
-  `driade`, `galhudo`, `espinheiro`, `menir`, `urso`, `dragao`); no jogo:
+  `driade`, `galhudo`, `espinheiro`, `menir`, `urso`, `dragao`, `javali`, `cervo`, `fungoide`, `sombra`, `cipo`, `arvore`,
+  `guardiao`, `rei`); no jogo:
   `/mapa.html?mapa=oldwood&bichos=twigling,direWolf,satyr,thornSpitter,shadowPanther,owlbear,corruptedDryad,renegadeCentaur,menhirGuardian,greenDragon`.
 
 ## Ver e testar
