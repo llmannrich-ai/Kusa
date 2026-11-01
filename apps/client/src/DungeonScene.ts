@@ -41,6 +41,7 @@ import {
   type SpellDef,
   type SpellId,
   type ScreenMessage,
+  type ShotEndMessage,
   type SpellMessage,
   type SummonKind,
 } from "@kusa/shared";
@@ -372,6 +373,8 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
+    // Tiro que acertou antes do fim do caminho: o projétil para no monstro.
+    this.room.onMessage(MSG.shotEnd, (msg: ShotEndMessage) => this.fx.endShot(msg.shot, this.tilePoint(msg.x, msg.y)));
     this.room.onMessage(MSG.cooldown, (msg: CooldownMessage) => this.spellBar.setCooldown(msg.slot, msg.ms));
     this.room.onMessage(MSG.chain, (msg: ChainMessage) => {
       const spell = SPELLS[msg.spellId];
@@ -570,7 +573,9 @@ export class DungeonScene extends Phaser.Scene {
     if (msg.from === this.room.sessionId) this.attack.onAttack();
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, classId === "knight" ? 5 : 2);
     this.heroAction(msg.from, "attack");
-    this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
+    const to = this.tilePoint(msg.tx, msg.ty);
+    const draw = () => this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), to, msg.ms);
+    if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
   }
 
   private onSpell(msg: SpellMessage) {
@@ -583,7 +588,9 @@ export class DungeonScene extends Phaser.Scene {
       this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
       this.heroAction(msg.from, "cast");
     }
-    this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms, spell.radius);
+    const to = this.tilePoint(msg.tx, msg.ty);
+    const draw = () => this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), to, msg.ms, spell.radius);
+    if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
     if (spell.shape === "line") this.showLine(spell, msg);
     else if (spell.shape === "cone") this.showCone(spell, msg);
     else if (spell.radius > 0 && !spell.field) {

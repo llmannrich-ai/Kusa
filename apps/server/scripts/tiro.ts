@@ -1,10 +1,12 @@
 /**
  * Teste do tiro que pode errar (básico à distância e magias `isShot`), sem servidor: a `Hunt` roda na arena
  * (`arena.ts`), com o monstro parado (atordoado) e mudado de lugar à mão durante o voo:
+ *   - o tiro é mirado numa direção e voa até o alcance inteiro (o fim do caminho vai no `MSG.attack`);
  *   - o básico do Paladino acerta o monstro parado e erra quem sai de lado durante o voo;
  *   - quem vem reto na direção do herói continua no caminho e leva o tiro;
- *   - o primeiro monstro no caminho leva o tiro no lugar do alvo de trás;
- *   - arrastando o ⚔️, o tiro vai no tile mirado (acerta quem entra nele) e sai mesmo sem monstro à vista;
+ *   - o primeiro monstro no caminho leva o tiro no lugar do alvo de trás, e o tiro que passa pelo alvo segue e acerta
+ *     quem está atrás;
+ *   - arrastando o ⚔️, o tiro segue a direção mirada além do ponto e sai mesmo sem monstro à vista;
  *   - o golpe do Cavaleiro (corpo a corpo) não muda;
  *   - a Flecha Sagrada erra quem sai de lado, e a mira com `targetId` não gruda mais no monstro;
  *   - a telemetria conta os tiros, os erros e os mirados (`RunStats.shots`).
@@ -54,6 +56,14 @@ const land = (a: Arena) => a.advance(600);
 const shots = (a: Arena, source: string) => a.seat().stats.shots[source] ?? { fired: 0, missed: 0, aimed: 0 };
 
 console.log("básico à distância:");
+test("voa na direção até o alcance inteiro", "paladin", (a) => {
+  still(a, a.place(TARGET, 2, 0));
+  shoot(a);
+  const shot = a.attacks[a.attacks.length - 1];
+  check(shot.shot !== undefined, "o tiro devia ter id");
+  check(shot.ty === a.p.y && shot.tx - a.p.x === a.p.basicRange, `o fim do caminho devia estar a ${a.p.basicRange} tiles (${shot.tx - a.p.x},${shot.ty - a.p.y})`);
+});
+
 test("acerta o monstro parado", "paladin", (a) => {
   const m = still(a, a.place(TARGET, 3, 0));
   const from = shoot(a);
@@ -92,13 +102,31 @@ test("o primeiro monstro no caminho leva o tiro", "druid", (a) => {
   check(back.hp === back.maxHp, "o monstro de trás não devia levar o tiro");
 });
 
-test("mirado à mão: acerta quem entra no tile mirado", "sorcerer", (a) => {
+test("o tiro que passa pelo alvo acerta quem está atrás", "paladin", (a) => {
+  const front = still(a, a.place(TARGET, 2, 0));
+  const back = still(a, a.place(TARGET, 4, 0));
+  shoot(a);
+  front.y += 1;
+  land(a);
+  check(front.hp === front.maxHp, "o alvo que saiu de lado não devia levar o tiro");
+  check(back.hp < back.maxHp, "o monstro de trás devia levar o tiro");
+});
+
+test("mirado à mão: segue a direção além do ponto", "sorcerer", (a) => {
+  const m = still(a, a.place(TARGET, 3, 0));
+  const from = shoot(a, { x: a.p.x + 1, y: a.p.y });
+  land(a);
+  check(a.hitsFrom(from) === 1, `devia acertar (${a.hitsFrom(from)} golpes)`);
+  check(m.hp < m.maxHp, "o monstro devia perder vida");
+  check(shots(a, "basic").aimed === 1, `telemetria: ${JSON.stringify(shots(a, "basic"))}`);
+});
+
+test("mirado à mão: acerta quem entra no caminho", "sorcerer", (a) => {
   const m = still(a, a.place(TARGET, 3, 1));
-  const from = shoot(a, { x: a.p.x + 3, y: a.p.y });
+  const from = shoot(a, { x: a.p.x + 1, y: a.p.y });
   m.y -= 1;
   land(a);
   check(a.hitsFrom(from) === 1, `devia acertar (${a.hitsFrom(from)} golpes)`);
-  check(shots(a, "basic").aimed === 1, `telemetria: ${JSON.stringify(shots(a, "basic"))}`);
 });
 
 test("mirado à mão: sai mesmo sem monstro à vista", "paladin", (a) => {
@@ -139,6 +167,15 @@ test("Flecha Sagrada erra quem sai de lado", "paladin", (a) => {
   check(shots(a, "holy_arrow").missed === 1, `telemetria: ${JSON.stringify(shots(a, "holy_arrow"))}`);
 });
 
+test("Flecha Sagrada segue a direção além do ponto mirado", "paladin", (a) => {
+  a.choose("holy_arrow");
+  const m = still(a, a.place(TARGET, 3, 0));
+  a.ready();
+  a.cast(0, { x: a.p.x + 1, y: a.p.y });
+  land(a);
+  check(m.hp < m.maxHp, "o monstro devia perder vida");
+});
+
 test("a mira não gruda no monstro ao lado do ponto", "sorcerer", (a) => {
   a.choose("lightning_bolt");
   const m = still(a, a.place(TARGET, 3, 0));
@@ -146,7 +183,7 @@ test("a mira não gruda no monstro ao lado do ponto", "sorcerer", (a) => {
   // Mira um tile abaixo do monstro, mandando o id dele como o cliente antigo mandava ao grudar.
   a.hunt.cast(HERO, { slot: 0, aim: { x: m.x, y: m.y + 1, targetId: m.id } });
   land(a);
-  check(m.hp === m.maxHp, "o tiro devia ir no tile mirado, não no monstro");
+  check(m.hp === m.maxHp, "o tiro devia ir na direção mirada, não no monstro");
   check(shots(a, "lightning_bolt").aimed === 1, `telemetria: ${JSON.stringify(shots(a, "lightning_bolt"))}`);
 });
 

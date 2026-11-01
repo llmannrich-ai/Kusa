@@ -158,6 +158,7 @@ import {
   type ScreenMessage,
   type RunOutcome,
   type SpellDef,
+  type ShotEndMessage,
   type SpellMessage,
   type SpellId,
   type SpellSlot,
@@ -200,7 +201,7 @@ interface Seat {
   attacking: boolean;
   /** Um toque rápido no ataque ainda vale até este momento (sai assim que a recarga deixar). */
   attackUntil: number;
-  /** Tiro mirado à mão (arrastou o ⚔️): sai uma vez, no tile mirado, assim que a recarga deixar. */
+  /** Tiro mirado à mão (arrastou o ⚔️): sai uma vez, na direção do herói até este ponto, assim que a recarga deixar. */
   basicAim: { x: number; y: number } | null;
   /** true quando o jogador escolheu o alvo (toque no monstro); false quando a mira automática escolheu. */
   targetLocked: boolean;
@@ -461,6 +462,8 @@ export class Hunt {
   private seats = new Map<string, Seat>();
   private elapsedMs = 0;
   private regenMs = 0;
+  /** Id do último tiro (`MSG.attack`/`MSG.spell` com `shot`), para o cliente parar o projétil certo no `MSG.shotEnd`. */
+  private shotSeq = 0;
   private brains = new Map<string, Brain>();
   private chestDepth = new Map<string, number>();
   /** Mímicos (id → profundidade da sala): morto, o Mímico dá o loot do baú que fingia ser. */
@@ -1045,7 +1048,7 @@ export class Hunt {
     if (!seat) return;
     const aim = msg?.aim;
     if (msg?.on === true && aim && Number.isFinite(aim.x) && Number.isFinite(aim.y)) {
-      // Tiro mirado à mão: um só, no tile mirado; não liga a repetição do botão segurado.
+      // Tiro mirado à mão: um só, na direção mirada; não liga a repetição do botão segurado.
       seat.basicAim = { x: Math.round(aim.x), y: Math.round(aim.y) };
       seat.attacking = false;
       seat.attackUntil = this.host.now() + attackCooldownMs(seat.perkBonus);
@@ -1144,7 +1147,7 @@ export class Hunt {
     // Alvo escolhido sozinho não fica preso: se saiu do alcance, troca pelo mais próximo que está no alcance.
     if (!seat.targetLocked && p.target && !this.canHit(p, this.state.monsters.get(p.target)!, range)) p.target = "";
     if (!p.target) p.target = this.nearestMonsterInRange(p, range) ?? "";
-    // Básico à distância (flecha e luzes) é um tiro: voa reto até o tile mirado e pode errar. Nas formas do druida, não.
+    // Básico à distância (flecha e luzes) é um tiro: voa reto na direção até o alcance e pode errar. Nas formas do druida, não.
     const speed = form ? 0 : BASIC_ATTACKS[cls.id].projectileSpeed;
     const aimed = speed > 0 ? seat.basicAim : null;
     if (!p.target && !aimed) return;
@@ -1156,13 +1159,14 @@ export class Hunt {
     if (now < seat.nextAttackAt) return;
 
     // Alvo travado fora do alcance (ou atrás de parede) não trava o botão: o golpe vai no mais próximo ao alcance
-    // e o alvo continua travado para quando voltar ao alcance. Mirado à mão, vale o tile mirado (com ou sem monstro).
+    // e o alvo continua travado para quando voltar ao alcance. Mirado à mão, vale a direção mirada (com ou sem monstro).
     let m: Monster | undefined;
+    // Direção do tiro: o ponto mirado à mão, ou o tile em que o alvo está agora.
     let tx: number;
     let ty: number;
     if (aimed) {
-      const point = clampToRange(p.x, p.y, aimed.x, aimed.y, range);
-      ({ x: tx, y: ty } = lineEnd(this.dungeon, p.x, p.y, point.x, point.y));
+      tx = aimed.x;
+      ty = aimed.y;
     } else {
       m = this.state.monsters.get(p.target)!;
       if (!this.canHit(p, m, range)) {
@@ -1181,12 +1185,8 @@ export class Hunt {
     seat.basicAim = null;
     if (m && form?.maul) return this.maul(sessionId, p, m);
     if (m && form && form.pounce > 0) return this.pounce(sessionId, p, seat, m, form, now);
-    // Flecha e luzes voam até o tile mirado: o dano entra quando chegam, em quem estiver no caminho.
     const ox = p.x;
     const oy = p.y;
-    const ms = flightMs(speed, ox, oy, tx, ty);
-    this.host.broadcast(MSG.attack, { from: sessionId, x: ox, y: oy, tx, ty, ms } satisfies AttackMessage);
-    const path = speed > 0 ? shotPath(this.dungeon, ox, oy, tx, ty) : null;
     const base = this.baseDamage(sessionId, p, "basic");
     const basicDamage = 1 + (buff?.basicDamage ?? 0);
     // Rolamento: a próxima flecha atordoa (gasta no disparo, mesmo que erre ou que o monstro morra antes).
@@ -1196,11 +1196,7 @@ export class Hunt {
     const holy = seat.traits.find((t) => t.holyBasic)?.holyBasic;
     // O cliente já desenhou o golpe pelo `MSG.attack`: o dano chega sem projétil de novo.
     const hit: Hit = { attacker: sessionId, fromX: ox, fromY: oy, fx: cls.attackFx };
-    const melee = m;
-    this.after(ms, () => {
-      const alive = path ? this.shotTarget(path) : melee && this.state.monsters.get(melee.id);
-      if (path) this.countShot(seat, "basic", !!alive, !!aimed);
-      if (!alive) return;
+    const land = (alive: Monster) => {
       const undead = holy && MONSTERS[alive.kind as MonsterKind]?.undead ? 1 + holy.undead : 1;
       const amount = rollDamage(this.random, base * basicDamage * this.farBonus(seat, { x: ox, y: oy }, alive) * undead);
       const brain = this.brains.get(alive.id);
@@ -1226,20 +1222,52 @@ export class Hunt {
           seat.stats.healing += healed;
         }
       }
+    };
+    // Corpo a corpo: o golpe é na hora, no monstro escolhido.
+    if (speed === 0) {
+      this.host.broadcast(MSG.attack, { from: sessionId, x: ox, y: oy, tx, ty, ms: 0 } satisfies AttackMessage);
+      if (m) land(m);
+      return;
+    }
+    // Flecha e luzes: tiro na direção, até o alcance inteiro; o dano entra no primeiro monstro que o projétil encontrar.
+    const path = shotPath(this.dungeon, ox, oy, tx, ty, range);
+    const end = path[path.length - 1] ?? { x: ox, y: oy };
+    const shot = ++this.shotSeq;
+    this.host.broadcast(MSG.attack, { from: sessionId, x: ox, y: oy, tx: end.x, ty: end.y, ms: flightMs(speed, ox, oy, end.x, end.y), shot } satisfies AttackMessage);
+    this.fly(shot, ox, oy, path, speed, (alive) => {
+      this.countShot(seat, "basic", !!alive, !!aimed);
+      if (alive) land(alive);
     });
   }
 
   /**
-   * Quem um tiro acerta ao chegar: o primeiro monstro à vista nos tiles do caminho (`shotPath`), do herói para o
-   * ponto mirado. Ninguém no caminho: o tiro erra.
+   * Voo de um tiro: o projétil passa pelos tiles do caminho (`shotPath`) no ritmo de `speed` (tiles por segundo) e para
+   * no primeiro monstro à vista que encontrar, inclusive um que acabou de entrar no tile de trás (cruzou com ele).
+   * Avisa o cliente onde parou (`MSG.shotEnd`) e chama `done` com o monstro, ou sem nada no fim do caminho (errou).
    */
-  private shotTarget(path: { x: number; y: number }[]): Monster | undefined {
-    const at = new Map<number, Monster>();
-    this.state.monsters.forEach((m) => { if (!m.hidden) at.set(m.y * this.dungeon.width + m.x, m); });
-    for (const t of path) {
-      const m = at.get(t.y * this.dungeon.width + t.x);
-      if (m) return m;
-    }
+  private fly(shot: number, ox: number, oy: number, path: { x: number; y: number }[], speed: number, done: (m?: Monster) => void) {
+    const start = this.host.now();
+    const arrive = (i: number) => flightMs(speed, ox, oy, path[i].x, path[i].y);
+    let i = 0;
+    const step = () => {
+      const elapsed = this.host.now() - start;
+      for (; i < path.length && arrive(i) <= elapsed; i++) {
+        const m = this.monsterOn(path[i]) ?? (i > 0 ? this.monsterOn(path[i - 1]) : undefined);
+        if (m) {
+          this.host.broadcast(MSG.shotEnd, { shot, x: m.x, y: m.y } satisfies ShotEndMessage);
+          return done(m);
+        }
+      }
+      if (i >= path.length) return done(undefined);
+      this.after(arrive(i) - elapsed, step);
+    };
+    if (path.length === 0) return done(undefined);
+    this.after(arrive(0), step);
+  }
+
+  /** Monstro à vista no tile (escondido, invisível ou voando não conta). */
+  private monsterOn(t: { x: number; y: number }): Monster | undefined {
+    for (const m of this.state.monsters.values()) if (!m.hidden && m.x === t.x && m.y === t.y) return m;
     return undefined;
   }
 
@@ -1403,7 +1431,7 @@ export class Hunt {
       ty = end.y;
       // Alvo único: vale o monstro em que a mira grudou (com 1 tile de folga para o atraso da rede).
       // Errou a mira: a magia sai do mesmo jeito, gasta mana e recarga, e só acerta quem estiver no ponto.
-      // Tiro (`isShot`): a mira não gruda, vale o tile mirado (o jogador pode mirar à frente do monstro).
+      // Tiro (`isShot`): a mira não gruda, vale a direção mirada (o jogador pode mirar à frente do monstro).
       const snapped = isSingleTarget(spell) && !isShot(spell) && typeof aim.targetId === "string" ? this.state.monsters.get(aim.targetId) : undefined;
       // Monstro escondido (camuflado, invisível, voando) não pode ser mirado.
       if (snapped && !snapped.hidden && this.canHit(p, snapped, spell.range) && tileDistance(snapped.x, snapped.y, aim.x, aim.y) <= AIM_SNAP_TILES + 1) {
@@ -1520,23 +1548,35 @@ export class Hunt {
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
     seat.spellReadyAt[slot] = echo ? now : now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
     if (echo) this.notice(p.x, p.y - 1, "Eco!", 0xd6a2ff);
+    // Tiro: mirado numa direção (à mão, o ponto mandado; no toque rápido, o tile do alvo agora), voa até o alcance
+    // inteiro e acerta o primeiro monstro que encontrar; ninguém no caminho, erra.
+    const path = isShot(spell) ? shotPath(this.dungeon, ox, oy, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, spell.range) : null;
+    if (path) {
+      const end = path[path.length - 1] ?? { x: ox, y: oy };
+      tx = end.x;
+      ty = end.y;
+      target = undefined;
+    }
+    const shot = path ? ++this.shotSeq : undefined;
     const ms = flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty);
-    this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms } satisfies SpellMessage);
-    // Disparo Certeiro: mais forte quanto mais longe estava o alvo na hora do tiro.
-    const far = spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, tx, ty) : 1;
-    const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0) * far;
+    this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms, shot } satisfies SpellMessage);
+    // Disparo Certeiro: mais forte quanto mais longe estava o alvo (no tiro, onde o projétil acertou).
+    const far = (x: number, y: number) => spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, x, y) : 1;
+    const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0);
     const rank = p.spellRanks.get(base.id) ?? 0;
-    // Tiro: voa reto até o tile mirado (no toque rápido, onde o alvo estava) e acerta quem estiver no caminho ao
-    // chegar; ninguém no caminho, erra.
-    const shot = isShot(spell) ? shotPath(this.dungeon, ox, oy, tx, ty) : null;
     let landed = target;
-    this.after(ms, () => {
-      if (shot) {
-        landed = this.shotTarget(shot);
-        this.countShot(seat, spell.id, !!landed, !!aim);
-      }
-      this.applySpell(sessionId, spell, rank, landed?.id, tx, ty, amount, line, slot, ally);
-    });
+    // O eco da Maestria repete com o mesmo bônus de distância do golpe original.
+    let hitFar = far(tx, ty);
+    if (path && shot) {
+      this.fly(shot, ox, oy, path, spell.projectileSpeed ?? 0, (m) => {
+        landed = m;
+        if (m) hitFar = far(m.x, m.y);
+        this.countShot(seat, spell.id, !!m, !!aim);
+        if (m) this.applySpell(sessionId, spell, rank, m.id, m.x, m.y, amount * hitFar, line, slot, ally);
+      });
+    } else {
+      this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount * hitFar, line, slot, ally));
+    }
     // Maestria que repete (Giro da Lâmina, Terremoto, Esfera Sombria): o efeito volta mais fraco, sem gastar mana.
     // Em volta de si, segue o herói; com alvo, segue o monstro se ele ainda estiver vivo.
     if (spell.repeat) {
@@ -1546,12 +1586,14 @@ export class Hunt {
         const caster = this.state.players.get(sessionId);
         if (!caster || caster.status !== "playing") return;
         const anchor = landed && this.state.monsters.get(landed.id);
-        const at = spell.aim === "self" ? caster : anchor ?? { x: tx, y: ty };
+        // Tiro que errou não repete.
+        const at = spell.aim === "self" ? caster : anchor ?? (path ? null : { x: tx, y: ty });
+        if (!at) return;
         // O eco nasce no próprio ponto do efeito: nada voa de novo do herói.
         this.host.broadcast(MSG.spell, {
           from: sessionId, spellId: spell.id, x: at.x, y: at.y, tx: at.x, ty: at.y, ms: 0, echo: true,
         } satisfies SpellMessage);
-        this.applySpell(sessionId, once, rank, anchor?.id, at.x, at.y, amount * echo.power, line, slot);
+        this.applySpell(sessionId, once, rank, anchor?.id, at.x, at.y, amount * hitFar * echo.power, line, slot);
       });
     }
   }
