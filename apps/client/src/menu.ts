@@ -47,6 +47,10 @@ import {
   runeEffect,
   spellFacts,
   statsFor,
+  MAX_LEVEL,
+  NO_BONUSES,
+  SUMMON_SPELL_POWER_SHARE,
+  type HeroDamage,
   talentBlocker,
   talentCost,
   talentRank,
@@ -434,6 +438,19 @@ export class Hub {
 
     page.append(el("h3", "", "Arsenal"), this.heroGrimoire(id), this.heroGear(id));
     return page;
+  }
+
+  /**
+   * Dano base do herói para as magias no nível 1 e no último nível da hunt, como `baseDamage` em hunt.ts soma: classe,
+   * áureas, runas e o equipamento vestido (poder mágico; só parte dele nas criaturas, e a arma no ataque básico).
+   * Bônus de situação (Traços, auras, Liderança, Circuito) ficam de fora.
+   */
+  private heroDamage(id: ClassId): HeroDamage {
+    const worn = this.wornItems(id).map((i) => i.itemId);
+    const bonus = { ...NO_BONUSES, damage: auraBonuses(id, this.profile.talents).damage + heroBonuses({}, worn).damage };
+    const gear = gearStats(worn);
+    const at = (gearPct: number) => [1, MAX_LEVEL].map((lv) => statsFor(id, lv, bonus).damage * (1 + gearPct)) as [number, number];
+    return { spell: at(gear.spellPower), summon: at(gear.spellPower * SUMMON_SPELL_POWER_SHARE), basic: at(gear.damage) };
   }
 
   /** Atributos do herói como a hunt soma (`applyBonuses` e `baseDamage` em hunt.ts): áureas, runas e itens vestidos por ele. */
@@ -1073,11 +1090,12 @@ export class Hub {
       sheet.append(this.synergyNote(def, bonus.synergy, bonus.tome));
     }
 
+    const hero = spell ? this.heroDamage(def.classId) : undefined;
     const levels = el("div", "grim-levels");
     const level = (n: number, current: boolean) => {
       const box = el("div", `grim-level${current ? " current" : ""}`);
       box.append(el("strong", "", `Nível ${n}${current ? " (atual)" : ""}`));
-      const lines = spell ? spellFacts(spell, n, bonus.total) : [auraText(def, n)];
+      const lines = spell ? spellFacts(spell, n, bonus.total, hero) : [auraText(def, n)];
       const list = el("ul");
       for (const line of lines) list.append(el("li", "", line));
       box.append(list);
@@ -1089,6 +1107,12 @@ export class Hub {
       level(progress.level, rank > 0);
       if (rank > 0 && progress.level < SPELL_MAX_LEVEL) level(progress.level + 1, false);
       sheet.append(levels);
+      if (spellFacts(spell, progress.level, bonus.total, hero).some((line) => line.includes("×)"))) {
+        sheet.append(el("p", "muted grim-damage-note",
+          `Dano por golpe com o ${CLASSES[def.classId].name} no nível 1 e no nível ${MAX_LEVEL} da hunt, já com áureas, runas, ` +
+          "equipamento, sinergias e Tomo de hoje. Varia ±15% a cada golpe; a armadura do monstro e bônus da hora " +
+          "(auras, Traços) mudam o valor na hunt."));
+      }
     } else if (!trait) {
       if (rank > 0) level(rank, true);
       if (!maxed) level(rank + 1, false);
