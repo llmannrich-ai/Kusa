@@ -10,8 +10,8 @@ teclado e mouse no desktop são um extra.
 
 - **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado fora da hunt (ou na hunt sem o Jogar deitado), aparece um aviso que explica e oferece ligar o Jogar deitado ali mesmo.
 - **Jogar deitado (beta):** opção nas Configurações. Da largada da hunt até o resultado, o jogo ocupa a tela deitada
-  (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo; ataque e magias em arco no canto de
-  baixo à direita, com as poções numa fileira ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
+  (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo; ataque e magias em arco embaixo à
+  direita, afastados da beirada (ver "Ações"), com as poções na beirada ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
   direita, para o meio da tela ficar livre (no iPhone, as barras do Safari deixam só uns 330 px de altura). Os menus continuam na vertical. A telemetria compara as hunts em pé e
   deitado (`stats.landscapeMs`) para decidir se o modo fica.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
@@ -22,7 +22,15 @@ teclado e mouse no desktop são um extra.
   **Deslizar na parede:** a diagonal bloqueada (parede, quina ou monstro) vira passo no eixo livre, então o polegar um pouco torto num corredor não para o herói.
   Enquanto o polegar segura uma direção, o servidor anda nela sozinho, no ritmo da velocidade do herói, e o
   cliente desenha os passos emendados, com duração constante (sem "trava e corre" quando a rede oscila).
-- **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
+- **Ações:** o ⚔️ e as magias **miram arrastando**, então ficam **longe da beirada direita** (o centro do ⚔️ a ~120 px
+  da borda), para o dedo ter espaço de arrastar para a direita e para baixo; a mira é relativa ao toque e chega ao
+  alcance máximo com 72 px de arrasto. O que só se toca (poções de vida e de mana) fica na beirada, ao lado do ⚔️.
+  - **Em pé:** o ⚔️ (o maior botão) embaixo à direita e as magias num leque **em cima** dele, da esquerda para a
+    direita (slot 1, 2 e 3), sem encostar no joystick fixo (a tela é estreita: ao lado do ⚔️ não cabe).
+  - **Deitado:** o mesmo ⚔️ afastado da beirada, com as magias em arco à esquerda e em cima dele (slot 1 à esquerda,
+    slot 2 na diagonal, slot 3 em cima).
+  - **Slot 3:** ainda não existe; o lugar dele no leque já está reservado (`#actions > [data-slot="2"]` em `style.css`).
+  - Cada botão se posiciona em volta do centro do ⚔️ (`--dx`, `--dy`); conferido em 360×780, 390×844, 412×915 e 915×412.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
 - **Tiro que pode errar:** o básico à distância (Paladino, Feiticeiro, Druida) e as magias de alvo único com projétil são mirados numa **direção** e voam reto até o alcance inteiro (ver "Ataques e magias"). Arrastar o ⚔️ mira à mão.
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
@@ -31,7 +39,7 @@ teclado e mouse no desktop são um extra.
 - **Princípio: a câmera nunca treme.** Nenhum efeito (magia, golpe, habilidade de boss, explosão) sacode a tela: no
   celular o tremor cansa, atrapalha a mira e esconde o que está acontecendo. O peso de um golpe vem do desenho no chão e
   nos alvos (clarão, rachaduras, fogo, fumaça, número de dano).
-- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias no alvo automático), Tab e Esc.
+- **Desktop é só para desenvolvimento:** o jogo aparece numa coluna 9:16 no meio da tela, com WASD, clique, Espaço (atacar), 1 e 2 (magias na frente do herói, como o toque rápido), Tab e Esc.
 - Sessões curtas (3 a 5 min) e entrar numa partida em poucos toques.
 
 ## Menu inicial (estilo Zooba / Clash)
@@ -1246,9 +1254,10 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
   tiro no lugar do de trás. Objetivo: o básico à distância deixa de
   acertar sempre e fica mais perto do Cavaleiro, que precisa chegar colado (a telemetria do nível <10 deu 3 de dano por
   segundo no básico do Cavaleiro contra 5 a 8 nas outras classes). Corpo a corpo, Investida e magias sem projétil não mudam.
-  - **No ⚔️:** toque e segurar atiram sozinhos na direção de onde o alvo está na hora do disparo (sem prever o
+  - **No ⚔️:** toque e segurar atiram sozinhos (alvo automático, ao contrário das magias) na direção de onde o alvo está na hora do disparo (sem prever o
     movimento). Arrastar a partir do botão mira a direção à mão (só a direção do arrasto conta, não o tamanho): a mira
-    acende os tiles da reta até o alcance do básico, com o primeiro monstro dela em dourado; soltar atira, mesmo sem
+    é uma linha reta pontilhada e tênue (como a das magias de área) do herói até onde o tiro para (o primeiro monstro da reta, em dourado, ou o alcance do
+    básico); soltar atira, mesmo sem
     monstro à vista; voltar ao botão cancela. O dedo parado vira "segurar" depois de 150 ms.
   - Telemetria: `RunStats.shots` (disparados, errados e mirados à mão, por fonte).
 - O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
@@ -1262,12 +1271,18 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
   - Bônus condicionais: a Execução causa o dobro em quem tem menos de 30% da vida; o Disparo Certeiro ganha +10% de dano por tile até o alvo.
   - No monstro, a lentidão aparece como gelo nos pés e o veneno como bolhas verdes subindo.
 - **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador, Raio em Cadeia) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo e o alcance em volta dele; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
-  - **Toque rápido** (sem arrastar): lança no alvo atual ou no monstro mais próximo ao alcance. Sem nenhum monstro ao alcance, não sai nem gasta mana.
+  - **Toque rápido** (sem arrastar): **sem mira automática no monstro**. A magia sai reto na **frente do herói**:
+    a direção do último passo, ataque básico ou magia mirada (`Player.faceX/faceY`; começa olhando para baixo).
+    Tiro, linha, leque e rolamento seguem essa direção até o alcance; alvo único sem projétil (golpes do Cavaleiro,
+    Desafio, Investida) e área caem no primeiro monstro dessa reta ou, sem nenhum, no fim dela. Sai sempre (gasta
+    mana e recarga, mesmo sem acertar), menos a Investida, que sem monstro na reta não sai. Parado no botão, a mira
+    mostra para onde vai. Os bots miram de propósito no monstro deles (`BotAi.aimAt`).
+    O ⚔️ é diferente: o toque continua com alvo automático.
   - A mira gruda (fica dourada) no monstro a até 1 tile do ponto; a magia vai nele e o acompanha durante o voo.
     Exceção: o **tiro** (magia de alvo único com projétil) não gruda nem acompanha: é mirado numa direção (a mira
     acende a reta até o alcance, com o primeiro monstro em dourado) e pode errar, como o básico à distância.
-- **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança no alvo automático. O ponto para na primeira parede do caminho.
-- **Magias em linha** (Disparo Perfurante) miram a direção: a mira acende os tiles da reta até o alcance inteiro; o toque rápido atira na direção do alvo automático.
+- **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança na frente do herói. O ponto para na primeira parede do caminho.
+- **Magias em linha** (Disparo Perfurante) miram a direção: a mira acende os tiles da reta até o alcance inteiro; o toque rápido atira na frente do herói.
 - **Errou a mira:** a magia sai, aparece na tela, gasta mana e recarga, e não acerta ninguém.
 - Magias em volta de si (Giro da Lâmina, Grito de Guerra, Tempestade do Vazio, Bênção da Floresta e as compradas do mesmo tipo) saem no toque, sem mira. Paredes bloqueiam o efeito de todas. Cada uma gasta mana e tem recarga.
 

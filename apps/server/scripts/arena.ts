@@ -172,14 +172,28 @@ export function arena(options: ArenaOptions = {}) {
     if (slot2) hunt.chooseSpell(HERO, { slot: 1, spellId: slot2 });
   }
 
-  /** Conjura a magia do slot, mirando no monstro (ou num tile). */
+  /**
+   * Conjura a magia do slot, mirando no monstro (ou num tile). Sem mira é o toque rápido, que sai na frente do herói:
+   * antes, o herói vira para o monstro mais perto (como o jogador faz antes de tocar), para o teste do efeito não
+   * depender de onde o mapa sorteado pôs o monstro. A regra da frente em si fica no `tiro.ts`.
+   */
   function cast(slot: 0 | 1, aim?: Monster | { x: number; y: number }) {
-    if (!aim) return hunt.cast(HERO, { slot });
+    if (!aim) {
+      const near = [...state.monsters.values()].sort((a, b) => tileDistance(p.x, p.y, a.x, a.y) - tileDistance(p.x, p.y, b.x, b.y))[0];
+      if (near) face(near);
+      return hunt.cast(HERO, { slot });
+    }
     const targetId = "id" in aim ? aim.id : undefined;
     hunt.cast(HERO, { slot, aim: { x: aim.x, y: aim.y, targetId } });
   }
 
-  /** Mana cheia e as duas magias fora da recarga (para testar a magia, não a economia de mana). */
+  /** Vira a frente do herói para o tile (o toque rápido das magias com alvo sai nesta direção). */
+  function face(to: { x: number; y: number }) {
+    p.faceX = to.x - p.x;
+    p.faceY = to.y - p.y;
+  }
+
+    /** Mana cheia e as duas magias fora da recarga (para testar a magia, não a economia de mana). */
   function ready() {
     p.mana = p.maxMana;
     any.seats.get(HERO).spellReadyAt = [0, 0];
@@ -229,7 +243,7 @@ export function arena(options: ArenaOptions = {}) {
   const now = () => clock;
   return {
     hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices,
-    advance, until, place, spawn, choose, cast, ready, kill, walkTo, end, hitsFrom, where, brain, seat, now, free,
+    advance, until, place, spawn, choose, cast, face, ready, kill, walkTo, end, hitsFrom, where, brain, seat, now, free,
   };
 }
 

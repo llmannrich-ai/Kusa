@@ -129,7 +129,9 @@ test("Rolamento afasta do monstro e Postura do Atirador fica ativa", "paladin", 
   const from = { x: a.p.x, y: a.p.y };
   const start = { x: m.x, y: m.y };
   a.hunt.target(HERO, { id: m.id });
-  a.cast(0);
+  // Toque rápido: rola para a frente do herói, que está de costas para o monstro.
+  a.face({ x: 2 * from.x - start.x, y: 2 * from.y - start.y });
+  a.hunt.cast(HERO, { slot: 0 });
   a.until(() => a.p.x !== from.x || a.p.y !== from.y, 2000, `o Rolamento não moveu o herói (avisos: ${a.notices.join(", ")})`);
   check(tileAt(a.d, a.p.x, a.p.y) !== Tile.Portal, "o Rolamento caiu no portal");
   // Para o lado oposto ao do monstro (com espaço livre, não de lado) e longe dele.

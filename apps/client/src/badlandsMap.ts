@@ -6,6 +6,7 @@ import { FLAME, flameFrame } from "./art/bogArt.ts";
 import { BADLANDS_LAYERS, LAYER_ATLAS, SHEETS, planBadlands, type Sheet } from "./badlandsPlan.ts";
 import { GLOW, createGlowArt } from "./gatesMap.ts";
 import { ChunkCuller, focusTile, type MapAmbience } from "./mapShared.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /** Fundo além das bordas: a rocha das cristas na sombra. */
 export const BADLANDS_VOID = 0x3a1c16;
@@ -26,7 +27,7 @@ export function drawBadlands(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const sets = atlases.map((atlas, k) => {
     const key = `${ATLAS}-${k}`;
     if (scene.textures.exists(key)) scene.textures.remove(key);
-    scene.textures.addCanvas(key, atlas.build());
+    addCanvasTexture(scene.textures, key, atlas.build());
     const map = scene.make.tilemap({ width: W, height: H, tileWidth: HD, tileHeight: HD });
     return { map, set: map.addTilesetImage(key, key, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)! };
   });
@@ -46,7 +47,7 @@ export function drawBadlands(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     const spec = SHEETS[sheet];
     const { canvas, ctx } = makeCanvas(spec.w * spec.frames.length, spec.h);
     for (const i of frames) ctx.drawImage(toCanvas(spec.frames[i](), spec.w, spec.h), i * spec.w, 0);
-    const texture = scene.textures.addCanvas(key, canvas)!;
+    const texture = addCanvasTexture(scene.textures, key, canvas)!;
     for (let i = 0; i < spec.frames.length; i++) texture.add(i, 0, i * spec.w, 0, spec.w, spec.h);
   }
   const flameKey = "badlands-flame";
@@ -54,7 +55,7 @@ export function drawBadlands(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   {
     const { canvas, ctx } = makeCanvas(FLAME.w * 4, FLAME.h);
     for (let k = 0; k < 4; k++) ctx.drawImage(toCanvas(flameFrame(k), FLAME.w, FLAME.h), k * FLAME.w, 0);
-    const texture = scene.textures.addCanvas(flameKey, canvas)!;
+    const texture = addCanvasTexture(scene.textures, flameKey, canvas)!;
     for (let k = 0; k < 4; k++) texture.add(k, 0, k * FLAME.w, 0, FLAME.w, FLAME.h);
   }
   createGlowArt(scene);
@@ -101,7 +102,7 @@ function createAmbienceArt(scene: Phaser.Scene) {
     if (scene.textures.exists(key)) return;
     const { canvas, ctx } = makeCanvas(w, h);
     paint(ctx);
-    scene.textures.addCanvas(key, canvas);
+    addCanvasTexture(scene.textures, key, canvas);
   };
   add(DUST, 3, 3, (ctx) => { ctx.fillStyle = "#e0a070"; ctx.fillRect(0, 1, 2, 1); ctx.fillStyle = "#c27a50"; ctx.fillRect(1, 0, 1, 1); });
   add(STREAK, 40, 2, (ctx) => {
