@@ -17,6 +17,8 @@ import {
   TIER_NAMES,
   VAULT_SIZE,
   auraBonuses,
+  giftEffects,
+  GIFTS,
   auraText,
   knownSpells,
   MASTERIES,
@@ -77,6 +79,7 @@ import {
   ProfileError,
   buyItem,
   buyTalent,
+  buyTalentLevels,
   setActiveSpells,
   equipItem,
   loadProfile,
@@ -423,7 +426,8 @@ export class Hub {
     const gear = gearStats(worn);
     const bonus = {
       hp: aura.hp + runes.hp + gear.hp, mana: aura.mana + runes.mana + gear.mana,
-      damage: aura.damage + runes.damage, speed: aura.speed + runes.speed + gear.speed,
+      // Passo de Rastreador (Dom) soma com a Áurea de velocidade, como na hunt.
+      damage: aura.damage + runes.damage, speed: aura.speed + giftEffects(id, this.profile.talents).speed + runes.speed + gear.speed,
     };
     const base = statsFor(id, 1);
     const boosted = statsFor(id, 1, bonus);
@@ -929,8 +933,10 @@ export class Hub {
       node.classList.add("active");
       orb.append(el("b", "gnode-active", "✔"));
     }
+    // Com muitos níveis (Dons, áureas e Tomos), as bolinhas viram o número: "7/25".
     const pips = el("span", "gnode-pips");
-    for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
+    if (pipCount > SPELL_MAX_LEVEL) pips.append(el("b", "gnode-rank", `${pipOn}/${pipCount}`));
+    else for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
     // O losango do Traço leva o nome da especialização (Criomante, Arcanista...); o do Traço fica na ficha.
     node.append(orb, pips, el("span", "gnode-name", def.traitId ? TRAITS[def.traitId].spec : def.name));
     node.onclick = () => this.openTalentSheet(def);
@@ -1017,7 +1023,7 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.giftId ? "Dom" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
@@ -1028,6 +1034,10 @@ export class Hub {
           `Escolha permanente: comprar ${trait.name} faz de você ${trait.spec} e fecha para sempre o outro lado do ramo ` +
           `(${TRAITS[rival.traitId!].spec}), com as magias dele.`));
       }
+    }
+    if (def.giftId) {
+      sheet.append(el("p", "", GIFTS[def.giftId].description));
+      sheet.append(el("p", "muted", "Dom: passiva comprada só com gold, sem XP. Vale em toda hunt e não cai na morte."));
     }
     if (spell) {
       sheet.append(el("p", "", spell.description));
@@ -1085,6 +1095,19 @@ export class Hub {
         buy.classList.add("danger");
       };
       actions.append(buy);
+      // Muitos níveis (Dons, áureas e Tomos): compra até 5 de uma vez, com o preço somado.
+      const many = Math.min(5, def.maxRank - rank);
+      if (!spell && !trait && def.maxRank > SPELL_MAX_LEVEL && many > 1) {
+        const total = Array.from({ length: many }, (_, i) => talentCost(def, rank + i)).reduce((a, b) => a + b, 0);
+        const bulk = el("button", "", `+${many} níveis · ${gold(total)}`);
+        bulk.disabled = this.profile.gold < total;
+        bulk.onclick = () => void this.run(async () => {
+          this.profile.gold = await buyTalentLevels(def.id, many);
+          this.profile.talents[def.id] = rank + many;
+          this.toast(`${def.name} nível ${rank + many}!`);
+        }).then(() => this.openTalentSheet(def));
+        actions.append(bulk);
+      }
     }
     const close = el("button", "", "Fechar");
     close.onclick = () => this.closeSheet();
