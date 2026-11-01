@@ -26,9 +26,11 @@ function rules() {
       for (const req of [rib.requires, rib.alsoRequires]) {
         if (req && TALENTS[req.id].col !== rib.col) throw new Error(`${rib.id}: pai ${req.id} em outro ramo`);
       }
-      // A bifurcação usa os lados −1 e 1 das linhas de baixo: a costela não pode descer até lá.
+      // A bifurcação usa os lados −1 e 1 das linhas de baixo: a costela não pode descer até lá. Os Ápices do slot 3
+      // (Grimório 4.0) ficam na altura da especialização de propósito, mas na ponta (lados −2 e 2), fora dos dois lados.
       const fork = tree.find((t) => t.kind === "trait" && t.col === rib.col);
-      if (fork && rib.row >= fork.row) throw new Error(`${rib.id}: costela na altura da especialização`);
+      const apex = SPELLS[rib.spellId!].slot === 2 && Math.abs(rib.lane) === 2;
+      if (fork && rib.row >= fork.row && !apex) throw new Error(`${rib.id}: costela na altura da especialização`);
     }
   }
   const rift = TALENTS.knight_seismic_rift;
