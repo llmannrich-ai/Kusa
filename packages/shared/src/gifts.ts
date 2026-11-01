@@ -129,6 +129,20 @@ export const FROST_MARKS = { freezeMs: 1000, cooldownMs: 25000, cooldownMsLater:
 /** Ossuário: esqueletos mais longos, mais esqueletos, marca e a explosão ao sumir. */
 export const BONES = { ms: 10000, msLater: 12000, max: 3, markPct: 0.1, markMs: 3000, burst: 1, burstRadius: 1 } as const;
 
+// Números dos marcos do Druida.
+/** Laço da Matilha: duração das criaturas, lobo a mais, roubo de vida e a volta da criatura que cai. */
+export const PACK = { duration: 0.1, lifesteal: 0.03, reviveHp: 0.3 } as const;
+/** Seiva Antiga: cura além da vida vira escudo, cura que tira lentidão, raio a mais e cura forte em quem está mal. */
+export const SAP = { overheal: 0.03, overhealLater: 0.06, lowHpPct: 0.3, lowHpBonus: 0.5 } as const;
+/** Seiva Venenosa: veneno mais longo, acúmulo a mais da Toxina, lentidão no envenenado e o veneno que pula. */
+export const VENOM = { ms: 1000, slow: 0.1, jumpTiles: 3 } as const;
+/** Instinto: atordoar da mordida, séries menores, veneno da mordida e a segunda mordida. */
+export const INSTINCT = { stunMs: 300, everyLater: 3, everyForm: 2, poisonPerSec: 0.3, poisonMs: 3000 } as const;
+/** Ciclo: cura menor para a onda, raio maior, raiz em volta e escudo. */
+export const CYCLE_MARKS = { heal: 250, healLater: 200, radius: 2, rootMs: 1000, shield: 0.05, shieldMs: 4000 } as const;
+/** Céu Fechado: o raio envenena, prende, chance a mais e o segundo raio. */
+export const SKY = { poisonPerSec: 0.3, poisonMs: 3000, rootMs: 500, chance: 0.05 } as const;
+
 /** Mão Rápida: a explosão da flecha incendiária, o chão em chamas, a chance a mais e o 6º básico. */
 export const HAND = { burstRadius: 1, burst: 0.5, fireMs: 2000, firePerSec: 0.2, chance: 0.02, every: 6 } as const;
 
@@ -322,16 +336,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "pack_bond", classId: "druid", col: 0, name: "Laço da Matilha", icon: "🐺",
     description: "Suas criaturas confiam em você: mais vida e mais dano em todas elas.",
     perRank: 0.012, apply: (fx, v) => { fx.summonBoost += v; }, text: (v) => `+${pct(v)} de vida e de dano das suas criaturas`,
+    milestones: [
+      `suas criaturas duram +${pct(PACK.duration)}`,
+      "+1 lobo em cada invocação de lobos",
+      `suas criaturas curam ${pct(PACK.lifesteal)} do dano que causam`,
+      `criaturas duram +${pct(PACK.duration * 2)}`,
+      `a criatura que cai volta uma vez com ${pct(PACK.reviveHp)} da vida`,
+    ],
   }),
   ancient_sap: gift({
     id: "ancient_sap", classId: "druid", col: 1, name: "Seiva Antiga", icon: "🌿",
     description: "A seiva das árvores mais velhas: todas as suas curas curam mais.",
     perRank: 0.01, apply: (fx, v) => { fx.healPower += v; }, text: (v) => `+${pct(v)} de cura`,
+    milestones: [
+      `a cura que passa da vida vira escudo (até ${pct(SAP.overheal)} da vida)`,
+      "curar tira a lentidão",
+      `escudo de até ${pct(SAP.overhealLater)}`,
+      "+1 tile nas curas em área",
+      `curar alguém abaixo de ${pct(SAP.lowHpPct)} da vida cura ${pct(SAP.lowHpBonus)} a mais`,
+    ],
   }),
   venom_sap: gift({
     id: "venom_sap", classId: "druid", col: 2, name: "Seiva Venenosa", icon: "🌵",
     description: "Espinhos mergulhados em seiva amarga: seus venenos e sangramentos ferem mais.",
     perRank: 0.012, apply: (fx, v) => { fx.dotDamage += v; }, text: (v) => `+${pct(v)} de dano dos seus venenos e sangramentos`,
+    milestones: [
+      `seus venenos duram +${VENOM.ms / 1000}s`,
+      "Toxina (se tiver): +1 acúmulo",
+      `o envenenado anda ${pct(VENOM.slow)} mais devagar`,
+      `venenos +${(VENOM.ms * 2) / 1000}s`,
+      `o veneno de quem morre pula para o monstro mais perto (até ${VENOM.jumpTiles} tiles)`,
+    ],
   }),
   // --- Xamã Orc ----------------------------------------------------------------------------------------------
   clan_cry: gift({
@@ -462,16 +497,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "instinct", classId: "druid", col: 0, apex: "wild_hunt", name: "Instinto", icon: "🐾",
     description: `A cada ${BITE_EVERY} ataques básicos, um lobo espectral morde junto com o último.`,
     perRank: 0.02, apply: (fx, v) => { fx.fourthBite += v; }, text: (v) => `mordida de ${pct(BITE_BASE + v)} do básico a cada ${BITE_EVERY}º básico`,
+    milestones: [
+      `a mordida atordoa ${INSTINCT.stunMs / 1000}s`.replace(".", ","),
+      `a cada ${INSTINCT.everyLater}º básico`,
+      `em forma animal, a cada ${INSTINCT.everyForm}º golpe`,
+      "a mordida envenena",
+      "morde 2 vezes",
+    ],
   }),
   cycle: gift({
     id: "cycle", classId: "druid", col: 1, apex: "tree_of_life", name: "Ciclo", icon: "🌀",
     description: `A cada ${CYCLE_HEAL} de cura que você faz, uma onda de seiva cura você e os aliados a até ${CYCLE_RADIUS} tiles.`,
     perRank: 0.004, apply: (fx, v) => { fx.cycleHeal += v; }, text: (v) => `onda de ${pct(CYCLE_BASE + v)} da vida máxima a cada ${CYCLE_HEAL} de cura`,
+    milestones: [
+      `a cada ${CYCLE_MARKS.heal} de cura`,
+      `a onda chega a ${CYCLE_MARKS.radius} tiles`,
+      `a onda prende os monstros em volta por ${CYCLE_MARKS.rootMs / 1000}s`,
+      `a cada ${CYCLE_MARKS.healLater} de cura`,
+      `a onda também dá escudo de ${pct(CYCLE_MARKS.shield)} da vida`,
+    ],
   }),
   closed_sky: gift({
     id: "closed_sky", classId: "druid", col: 2, apex: "leaf_hurricane", name: "Céu Fechado", icon: "⛈️",
     description: `Quando morre um monstro envenenado ou sangrando por você, às vezes um raio cai no monstro mais perto (até ${SKY_STRIKE_TILES} tiles).`,
     perRank: 0.012, apply: (fx, v) => { fx.skyStrike += v; }, text: (v) => `${pct(v)} de chance de um raio ao matar envenenado`,
+    milestones: [
+      "o raio envenena",
+      `+${pct(SKY.chance)} de chance`,
+      `o raio prende ${SKY.rootMs / 1000}s`.replace(".", ","),
+      `+${pct(SKY.chance * 2)} de chance no total`,
+      "caem 2 raios",
+    ],
   }),
 };
 

@@ -514,7 +514,7 @@ jogador em cada passo e não deixar código sem uso.
 | **2b. Canalizar** ✅ | L4 (canalizar, o "cuspir fogo" de segurar e arrastar), A6 (várias armadilhas), Sopro Gélido e Abrolhos | 2a | M | completa as 13 magias de leque das costelas |
 | **3a. Slot 3** ✅ | abrir o slot (5.2) e as 4 magias de entrada | 2 | M | o botão já estava reservado |
 | **3b. Ápices e Dons do fundo** ✅ | os 12 Ápices (peças A1, A3, A4, A5, A9 e a varredura L5 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 3a | G | os Ápices de leque precisam da fase 2 |
-| **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado, os 24 **Dons da costela de passivas** e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
+| **4. Reações e gatilhos** (4a ✅: reações, congelado e os 120 marcos) | reações, estado congelado, gatilhos, básico transformado, os 24 **Dons da costela de passivas** e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
 | **6. S3 de especialização** | as 24 (6 por classe), nas 4 classes juntas e com os dois lados de cada ramo juntos (escolha permanente) | 3 | G | por sistema, como as outras fases |
 | **7. Balanceamento** | `/balanceamento` com a telemetria nova: preço dos Dons e números das magias | 1, 3 | contínuo | — |
@@ -617,6 +617,13 @@ o tiro calmo do Passo de Rastreador sai uma vez a cada 3 s sem apanhar; "rolar d
 +5%" soma 5 pontos na chance da Estática e 5% no dano da Combustão; a marca dos esqueletos do Ossuário é de +10% por
 3 s (o plano não dava o número) e a explosão ao sumir conta como a reação Condenação (1× do dano do esqueleto, raio 1);
 "a próxima dura +30%" do Circuito vale para raiz, atordoar, lentidão, dano contínuo, marca e campo da magia carregada.
+
+**Fase 4a-2 (Druida), como foi entregue:** os 30 marcos seguem a tabela, com estas diferenças: os marcos do Ciclo valem
+para a onda de cura da fase 3b-3 (não há semente no básico): a semente que prende vira raiz nos monstros a até o raio da
+onda e o escudo de 5% vai para quem a onda cura; "+1 lobo no Chamado da Matilha" vale para toda invocação de lobos;
+"criaturas roubam 3% de vida" cura a própria criatura; a mordida do Instinto em forma animal sai depois do golpe da
+forma, como um golpe à parte. Com o lote do Druida, a fase 4a-2 fecha os 120 marcos das 4 classes do plano; os Dons do
+Xamã Orc continuam sem marcos (entram quando o Grimório dele tiver Ápices).
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
