@@ -1,35 +1,35 @@
 ordem,id,status,versao,arquivo,tentativas,data,nota
-1,rat-A,pendente,,,,,
-2,rat-B,pendente,,,,,
-3,kobold-A,pendente,,,,,
-4,kobold-B,pendente,,,,,
-5,stirge-A,pendente,,,,,
-6,stirge-B,pendente,,,,,
-7,goblin-A,pendente,,,,,
-8,goblin-B,pendente,,,,,
-9,goblinArcher-A,pendente,,,,,
-10,goblinArcher-B,pendente,,,,,
-11,zombie-A,pendente,,,,,
-12,zombie-B,pendente,,,,,
-13,hobgoblin-A,pendente,,,,,
-14,hobgoblin-B,pendente,,,,,
-15,skeleton-A,pendente,,,,,
-16,skeleton-B,pendente,,,,,
-17,skeletonArcher-A,pendente,,,,,
-18,skeletonArcher-B,pendente,,,,,
-19,giantSpider-A,pendente,,,,,
-20,giantSpider-B,pendente,,,,,
-21,orc-A,pendente,,,,,
-22,orc-B,pendente,,,,,
-23,gnoll-A,pendente,,,,,
-24,gnoll-B,pendente,,,,,
-25,ogre-A,pendente,,,,,
-26,ogre-B,pendente,,,,,
-27,bugbear-A,pendente,,,,,
-28,bugbear-B,pendente,,,,,
-29,gelatinousCube-A,pendente,,,,,
-30,gelatinousCube-B,pendente,,,,,
-31,mimic-A,pendente,,,,,
-32,mimic-B,pendente,,,,,
-33,dragon-A,pendente,,,,,
-34,dragon-B,pendente,,,,,
+1,rat-A,aprovado,v01,rat-A.webp,,2026-10-31,buracos brancos entre as pernas limpos no processamento
+2,rat-B,aprovado,v01,rat-B.webp,,2026-10-31,no jogo (parte 1 de 4)
+3,kobold-A,aprovado,v01,kobold-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+4,kobold-B,aprovado,v01,kobold-B.webp,,2026-10-31,no jogo (parte 1 de 4)
+5,stirge-A,aprovado,v01,stirge-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+6,stirge-B,aprovado,v01,stirge-B.webp,,2026-10-31,no jogo (parte 1 de 4)
+7,goblin-A,aprovado,v01,goblin-A.webp,,2026-11-01,substitui o goblin da arte de referência
+8,goblin-B,aprovado,v01,goblin-B.webp,,2026-11-01,no jogo (parte 4 de 4)
+9,goblinArcher-A,aprovado,v01,goblinArcher-A.webp,,2026-10-31,no jogo (parte 2 de 4)
+10,goblinArcher-B,aprovado,v01,goblinArcher-B.webp,,2026-10-31,no jogo (parte 2 de 4)
+11,zombie-A,aprovado,v01,zombie-A.webp,,2026-11-01,no jogo (parte 4 de 4)
+12,zombie-B,aprovado,v01,zombie-B.webp,,2026-11-01,a morte pega fogo e fumega
+13,hobgoblin-A,aprovado,v01,hobgoblin-A.webp,,2026-10-31,no jogo (parte 3 de 4)
+14,hobgoblin-B,aprovado,v01,hobgoblin-B.webp,,2026-10-31,no jogo (parte 3 de 4)
+15,skeleton-A,aprovado,v01,skeleton-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+16,skeleton-B,aprovado,v01,skeleton-B.webp,,2026-10-31,caveira solta na morte juntada à figura no processamento; buracos brancos entre os ossos limpos
+17,skeletonArcher-A,aprovado,v01,skeletonArcher-A.webp,,2026-10-31,no jogo (parte 2 de 4)
+18,skeletonArcher-B,aprovado,v01,skeletonArcher-B.webp,,2026-10-31,no jogo (parte 2 de 4)
+19,giantSpider-A,aprovado,v01,giantSpider-A.webp,,2026-10-31,no jogo (parte 1 de 4)
+20,giantSpider-B,aprovado,v01,giantSpider-B.webp,,2026-10-31,"xadrez de transparente pintado no fundo, limpo no processamento"
+21,orc-A,aprovado,v01,orc-A.webp,,2026-10-31,no jogo (parte 3 de 4)
+22,orc-B,aprovado,v01,orc-B.webp,,2026-10-31,no jogo (parte 3 de 4)
+23,gnoll-A,aprovado,v01,gnoll-A.webp,,2026-10-31,no jogo (parte 3 de 4)
+24,gnoll-B,aprovado,v01,gnoll-B.webp,,2026-10-31,5ª linha (ataque em frenesi) fica de fora: o jogo ainda não tem clipe
+25,ogre-A,aprovado,v01,ogre-A.webp,,2026-11-01,no jogo (parte 4 de 4)
+26,ogre-B,aprovado,v01,ogre-B.webp,,2026-11-01,5ª linha (arremesso de pedra) fica de fora; a pedra usa o golpe
+27,bugbear-A,aprovado,v01,bugbear-A.webp,,2026-10-31,no jogo (parte 2 de 4)
+28,bugbear-B,aprovado,v01,bugbear-B.webp,,2026-10-31,5ª linha (emboscada) fica de fora: o jogo ainda não tem clipe; substitui a arte de referência
+29,gelatinousCube-A,aprovado,v01,gelatinousCube-A.webp,,2026-10-31,no jogo (parte 2 de 4)
+30,gelatinousCube-B,aprovado,v01,gelatinousCube-B.webp,,2026-10-31,5ª linha (cuspida) fica de fora: o jogo ainda não tem clipe
+31,mimic-A,aprovado,v01,mimic-A.webp,,2026-11-01,o disfarce continua o baú por código (o da folha mostra as pernas e entregaria a armadilha)
+32,mimic-B,aprovado,v01,mimic-B.webp,,2026-11-01,"linhas 5 e 6 (revelar, adesivo) ficam de fora; o adesivo usa o golpe"
+33,dragon-A,aprovado,v01,dragon-A.webp,,2026-10-31,"vermelho, como a regra (Sopro Infernal, imune a fogo): troca o dragão verde por código"
+34,dragon-B,aprovado,v01,dragon-B.webp,,2026-10-31,linhas 5 e 6 (decolagem e mergulho) ficam de fora; manchas brancas entre asa e corpo limpas
