@@ -200,7 +200,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const shade = new Int32Array(W * H).fill(-1);
   const decor = new Int32Array(W * H).fill(-1);
   const voidShade = new Int32Array(W * H).fill(-1);
-  const high = (x: number, y: number) => bush(x, y) || inTower(x, y) || inTent(x, y) || masonry(x, y);
+  // As tendas ficam fora: a sombra em faixa de tile desenhava um "L" reto em volta do cone. Elas têm a sombra oval
+  // própria (`TENT_SHADOW`).
+  const high = (x: number, y: number) => bush(x, y) || inTower(x, y) || masonry(x, y);
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
@@ -515,8 +517,24 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       put(walls, walls.frame(`w${links}-${h}-${step}-${v}-${city}`, () => wallSprite(links, h, step, v, city)), x, y);
     }
 
-  // Tendas (2×2), pela linha de baixo.
+  // Tendas (2×2), pela linha de baixo, cada uma com a sombra oval no pé (puxada para o sudeste: o sol vem do noroeste).
+  const TENT_SHADOW = "fortress-sombra-tenda";
+  if (!scene.textures.exists(TENT_SHADOW)) {
+    const { canvas, ctx } = makeCanvas(96, 48);
+    const bayer = [0, 0.5, 0.75, 0.25];
+    for (let y = 0; y < 48; y++)
+      for (let x = 0; x < 96; x++) {
+        const d = Math.hypot((x - 48) / 46, (y - 24) / 22);
+        if (d >= 1) continue;
+        const v = (1 - d) * 2.2 + (bayer[(y & 1) * 2 + (x & 1)] - 0.5) * 0.6;
+        const a = v > 1.2 ? 0.34 : v > 0.45 ? 0.2 : 0;
+        if (a) { ctx.fillStyle = `rgba(20, 14, 8, ${a})`; ctx.fillRect(x, y, 1, 1); }
+      }
+    scene.textures.addCanvas(TENT_SHADOW, canvas);
+  }
   for (const t of f.tents) {
+    const sh = scene.add.image((t.x + 1.15) * TILE_SIZE, (t.y + 1.75) * TILE_SIZE, TENT_SHADOW).setScale(t.y < f.walls[1].y ? 1 : 0.72).setDepth(floorDepth + 0.003);
+    culler.add(sh, t.x, t.y);
     // A tenda do chefe é a da guarda, no pátio do esporão (acima da muralha interna).
     putCamp(t.y < f.walls[1].y ? "tendaChefe" : "tenda", t.x, t.y + 1, hash(t.x, t.y, 63) < 0.5, (t.x + 1) * TILE_SIZE, (t.y + 2) * TILE_SIZE);
   }
