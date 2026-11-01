@@ -8,6 +8,7 @@ import {
   isSingleTarget,
   lineEnd,
   coneTiles,
+  spreadAimPoints,
   shotAimPoint,
   shotPath,
   tileDistance,
@@ -127,9 +128,19 @@ export class SpellAim {
     if (spell.shape === "cone") {
       // Leque: os tiles que a rajada cobre na direção mirada.
       const size = TILE_SIZE - 2;
-      for (const t of coneTiles(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range)) {
+      for (const t of coneTiles(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range, spell.coneAngle)) {
         g.fillStyle(COLORS.free, 0.14).fillRect(toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size);
         dashedRect(g, toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size, COLORS.free, 0.6);
+      }
+      return;
+    }
+    if (spell.spread) {
+      // Projéteis em leque: uma linha pontilhada por tiro, até onde cada um para (dourada se vai acertar um monstro).
+      for (const point of spreadAimPoints(me.x, me.y, aim.x, aim.y, spell.spread.count, spell.spread.angle)) {
+        const path = shotPath(this.dungeon, me.x, me.y, point.x, point.y, spell.range);
+        const hit = path.find((t) => this.monsterAt(t.x, t.y));
+        const end = hit ?? path[path.length - 1];
+        if (end) dottedLine(g, from.x, from.y, toPx(end.x), toPx(end.y), hit ? COLORS.locked : COLORS.free);
       }
       return;
     }

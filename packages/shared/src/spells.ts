@@ -62,7 +62,10 @@ export type SpellId =
   | "stunning_roar" | "battle_order" | "challenge_mark"
   | "double_shot" | "barbed_arrow" | "sunbeam" | "holy_hammer" | "net_arrow" | "fire_arrows"
   | "spark" | "ember_rain" | "frostbite" | "frozen_orb" | "dark_seal" | "plague"
-  | "howl" | "purifying_sap" | "blossom_burst" | "vine_lash" | "spore_burst" | "bramble_burst";
+  | "howl" | "purifying_sap" | "blossom_burst" | "vine_lash" | "spore_burst" | "bramble_burst"
+  // Grimório 4.0: magias em leque nas costelas novas (docs/GRIMORIO_4_PLANO.md, seção 8).
+  | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
+  | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -91,9 +94,21 @@ export interface SpellDef {
   /**
    * `line`: acerta todos os monstros na reta do herói na direção mirada, até `range` tiles ou a primeira
    * parede (o `radius` não vale).
-   * `cone`: acerta os monstros num leque de 90° à frente do herói, na direção mirada, até `range` tiles.
+   * `cone`: acerta os monstros num leque à frente do herói (`coneAngle`, padrão 90°), na direção mirada, até `range` tiles.
    */
   shape?: "line" | "cone";
+  /** Abertura do leque em graus (só `shape: "cone"`): de 45° (estreito) a 180° (meia-lua). Padrão 90°. */
+  coneAngle?: number;
+  /**
+   * Onda (só `shape: "cone"`): o leque sai do herói e avança um anel de tiles a cada `stepMs`; quem está na ponta é
+   * atingido depois. Cada monstro leva o efeito uma vez só.
+   */
+  wave?: { stepMs: number };
+  /**
+   * Projéteis em leque (magia de tiro, com `projectileSpeed`): `count` tiros espalhados em `angle` graus em volta da
+   * direção mirada. Cada um voa reto e pode errar, como os outros tiros; colado no monstro, todos acertam o mesmo.
+   */
+  spread?: { count: number; angle: number };
   /**
    * Campo no chão onde a magia cai, por `ms`:
    * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
@@ -905,6 +920,73 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     dot: { perSec: 0.3, ms: 4000, kind: "bleed" },
   }),
 
+  // --- Grimório 4.0: magias em leque das costelas novas. -----------------------------------------------
+  gale_blade: spell({
+    id: "gale_blade", classId: "knight", slot: 0, name: "Lâmina do Vendaval", icon: "🌬️", color: 0xcfe8ff,
+    description: "Um corte tão rápido que solta uma onda de vento em leque, que empurra os monstros.",
+    manaCost: 18, cooldownMs: 6000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 60, wave: { stepMs: 90 },
+    damage: 1.4, push: 1,
+  }),
+  shield_wall: spell({
+    id: "shield_wall", classId: "knight", slot: 1, name: "Muro de Escudos", icon: "🔰", color: 0x7fc8ff,
+    description: "Avança o escudo num leque largo: empurra e atordoa os monstros à sua frente.",
+    manaCost: 35, cooldownMs: 12000, aim: "target", range: 2, radius: 0, shape: "cone", coneAngle: 120,
+    damage: 1, push: 2, stunMs: 800,
+  }),
+  cutting_shout: spell({
+    id: "cutting_shout", classId: "knight", slot: 0, name: "Brado Cortante", icon: "📢", color: 0xf39c12,
+    description: "Um grito em leque que fere, faz os monstros te perseguirem e os deixa marcados para a equipe.",
+    manaCost: 20, cooldownMs: 7000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.6, taunt: true, mark: { pct: 0.15, ms: 5000 },
+  }),
+  arrow_fan: spell({
+    id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
+    description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
+    manaCost: 20, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 0.9, projectileSpeed: 16,
+    spread: { count: 5, angle: 45 },
+  }),
+  holy_flash: spell({
+    id: "holy_flash", classId: "paladin", slot: 1, name: "Clarão Sagrado", icon: "☀️", color: 0xfff3a0,
+    description: "Uma onda de luz em leque largo: fere, ofusca e queima em dobro os mortos-vivos.",
+    manaCost: 38, cooldownMs: 12000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 80 },
+    damage: 1.2, stunMs: 1000, undeadBonus: 1,
+  }),
+  fire_spit: spell({
+    id: "fire_spit", classId: "sorcerer", slot: 0, name: "Cusparada de Fogo", icon: "🔥", color: 0xff7f27, element: "fire",
+    description: "Cospe fogo num leque à sua frente: a chama avança e deixa os monstros queimando.",
+    manaCost: 24, cooldownMs: 6000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 60, wave: { stepMs: 90 },
+    damage: 1.3, dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  lightning_fan: spell({
+    id: "lightning_fan", classId: "sorcerer", slot: 1, name: "Leque de Raios", icon: "⚡", color: 0x9ec5ff, element: "energy",
+    description: "Três raios saem das suas mãos abertos em leque, e cada um salta para mais um monstro.",
+    manaCost: 40, cooldownMs: 11000, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 24,
+    spread: { count: 3, angle: 60 }, chain: { jumps: 1, range: 3, falloff: 0.3 },
+  }),
+  dark_wail: spell({
+    id: "dark_wail", classId: "sorcerer", slot: 0, name: "Lamento Sombrio", icon: "🌑", color: 0x8e44ad, element: "dark",
+    description: "Um lamento das trevas em leque largo: fere e devolve parte do dano como vida.",
+    manaCost: 24, cooldownMs: 6500, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 100 },
+    damage: 1.1, lifesteal: 0.15,
+  }),
+  pack_roar: spell({
+    id: "pack_roar", classId: "druid", slot: 0, name: "Rugido da Alcateia", icon: "🐺", color: 0xb0bec5,
+    description: "Ruge em leque: fere e empurra os monstros, e suas criaturas atacam mais rápido por alguns segundos.",
+    manaCost: 20, cooldownMs: 7000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.8, push: 1, packCall: { haste: 0.3, ms: 4000, heal: 0 },
+  }),
+  pollen_breeze: spell({
+    id: "pollen_breeze", classId: "druid", slot: 1, name: "Brisa de Pólen", icon: "🌸", color: 0xf8bbd0,
+    description: "Uma brisa de pólen em leque largo: cura os aliados no caminho e tira o veneno deles; os monstros ficam lentos.",
+    manaCost: 40, cooldownMs: 13000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 80 },
+    heal: 0.2, cleanse: true, slow: { pct: 0.3, ms: 3000 },
+  }),
+  thorn_spray: spell({
+    id: "thorn_spray", classId: "druid", slot: 0, name: "Rajada de Espinhos", icon: "🌵", color: 0x8bc34a,
+    description: "Seis espinhos voam abertos em leque e fazem sangrar quem acertam.",
+    manaCost: 20, cooldownMs: 5500, aim: "target", range: 5, radius: 0, damage: 0.7, projectileSpeed: 14,
+    spread: { count: 6, angle: 60 }, dot: { perSec: 0.3, ms: 3000, kind: "bleed" },
+  }),
   // --- Xamã Orc: totens no chão e o tambor que acelera a equipe (docs/CLASSE_XAMA_ORC.md). ---
   ember_totem: spell({
     id: "ember_totem", classId: "shaman", slot: 0, name: "Totem da Brasa", icon: "🔥", color: 0xff7a1a,
@@ -1068,6 +1150,18 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   vine_lash: { text: "O cipó também envenena por 3 s.", changes: { dot: { perSec: 0.25, ms: 3000, kind: "poison" } } },
   spore_burst: { text: "Os esporos cobrem raio 3.", changes: { radius: 3 } },
   bramble_burst: { text: "Os espinhos brotam em raio 3.", changes: { radius: 3 } },
+  // Grimório 4.0: magias em leque.
+  gale_blade: { text: "Solta uma segunda onda logo depois, com 60% do dano.", changes: { repeat: { delayMs: 400, power: 0.6 } } },
+  shield_wall: { text: "O escudo fica com você: escudo de 20% da vida por 5 s.", changes: { barrier: 0.2, barrierMs: 5000 } },
+  cutting_shout: { text: "O grito também deixa os monstros 30% mais lentos.", changes: { slow: { pct: 0.3, ms: 3000 } } },
+  arrow_fan: { text: "Sete flechas no leque.", changes: { spread: { count: 7, angle: 55 } } },
+  holy_flash: { text: "A luz marca os ofuscados: +15% de dano da equipe por 4 s.", changes: { mark: { pct: 0.15, ms: 4000 } } },
+  fire_spit: { text: "O leque de fogo abre a 90°.", changes: { coneAngle: 90 } },
+  lightning_fan: { text: "Cinco raios no leque.", changes: { spread: { count: 5, angle: 80 } } },
+  dark_wail: { text: "O lamento rouba 25% do dano em vida.", changes: { lifesteal: 0.25 } },
+  pack_roar: { text: "O rugido também cura suas criaturas em 10%.", changes: { packCall: { haste: 0.3, ms: 4000, heal: 0.1 } } },
+  pollen_breeze: { text: "A brisa cura 30% da vida.", changes: { heal: 0.3 } },
+  thorn_spray: { text: "Oito espinhos no leque.", changes: { spread: { count: 8, angle: 70 } } },
   // Xamã Orc
   ember_totem: { text: "A brasa queima o monstro por 3 s.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "burn" } } },
   war_drum: { text: "A batida também cura 10% da vida de quem está no raio do tambor.", changes: { rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15, heal: 0.1 } } },
@@ -1123,10 +1217,11 @@ const sec = (ms: number) => `${num(ms / 1000)} s`;
 /** Efeitos da magia num nível, em linhas curtas para o menu e a escolha na hunt. */
 export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   const s = spellAtRank(def, rank, bonus);
-  const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque (${s.range} tiles)`
+  const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque de ${s.coneAngle ?? 90}° (${s.range} tiles)`
     : s.radius > 0 && !s.field ? ` em raio ${s.radius}` : "";
   const facts: string[] = [];
-  if (s.damage) facts.push(`Dano ${num(s.damage)}×${area}`);
+  if (s.damage) facts.push(s.spread ? `${s.spread.count} projéteis em leque de ${s.spread.angle}°, ${num(s.damage)}× cada` : `Dano ${num(s.damage)}×${area}`);
+  if (s.wave) facts.push("Onda: sai de você e avança pelo leque");
   if (s.chain) facts.push(`Salta para mais ${s.chain.jumps} monstros (−${pct(s.chain.falloff)} por salto)`);
   if (s.execute) facts.push(`+${pct(s.execute.bonus)} de dano em quem tem menos de ${pct(s.execute.hpPct)} da vida`);
   if (s.distanceBonus) facts.push(`+${pct(s.distanceBonus)} de dano por tile até o alvo`);
@@ -1241,7 +1336,7 @@ export function isSingleTarget(spell: Pick<SpellDef, "aim" | "radius" | "shape" 
 }
 
 /** O que a mira precisa saber de uma magia (o básico à distância usa o mesmo formato, ver `basicShotAim`). */
-export type AimDef = Pick<SpellDef, "aim" | "range" | "radius" | "shape" | "dash" | "field" | "projectileSpeed" | "charge">;
+export type AimDef = Pick<SpellDef, "aim" | "range" | "radius" | "shape" | "dash" | "field" | "projectileSpeed" | "charge" | "coneAngle" | "spread">;
 
 /** O básico à distância desenhado pela mira das magias: um tiro de alvo único com o alcance do básico. */
 export function basicShotAim(range: number): AimDef {
@@ -1291,7 +1386,8 @@ export const SHOT_AIM_REACH = 40;
  * Tiles de uma magia em cone: um leque de 90° do herói na direção do ponto mirado, até `length` tiles, só os que o
  * herói enxerga (paredes cortam o leque). Não inclui o tile do herói. Cliente e servidor usam a mesma conta.
  */
-export function coneTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {
+export function coneTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number, angle = 90) {
+  const half = (Math.min(180, Math.max(10, angle)) * Math.PI) / 360;
   const dir = Math.atan2(ay - y0, ax - x0);
   if (ax === x0 && ay === y0) return [];
   const tiles: { x: number; y: number }[] = [];
@@ -1300,11 +1396,24 @@ export function coneTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: nu
       if ((x === x0 && y === y0) || tileDistance(x0, y0, x, y) > length || blocksSight(d, x, y)) continue;
       let diff = Math.abs(Math.atan2(y - y0, x - x0) - dir);
       if (diff > Math.PI) diff = 2 * Math.PI - diff;
-      // Meia abertura de 45°, com folga para os tiles da borda não piscarem com o arredondamento.
-      if (diff <= Math.PI / 4 + 0.01 && hasLineOfSight(d, x0, y0, x, y)) tiles.push({ x, y });
+      // Meia abertura, com folga para os tiles da borda não piscarem com o arredondamento.
+      if (diff <= half + 0.01 && hasLineOfSight(d, x0, y0, x, y)) tiles.push({ x, y });
     }
   }
   return tiles;
+}
+
+/**
+ * Direções dos projéteis em leque (`spread`): um ponto longe (`SHOT_AIM_REACH`) por tiro, espalhados igualmente em
+ * `angle` graus em volta da direção do herói para (ax, ay). Cliente e servidor usam a mesma conta.
+ */
+export function spreadAimPoints(x0: number, y0: number, ax: number, ay: number, count: number, angle: number) {
+  const base = Math.atan2(ay - y0, ax - x0);
+  const span = (angle * Math.PI) / 180;
+  return Array.from({ length: count }, (_, i) => {
+    const a = count === 1 ? base : base - span / 2 + (span * i) / (count - 1);
+    return { x: x0 + Math.round(Math.cos(a) * SHOT_AIM_REACH), y: y0 + Math.round(Math.sin(a) * SHOT_AIM_REACH) };
+  });
 }
 
 export function lineTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {
