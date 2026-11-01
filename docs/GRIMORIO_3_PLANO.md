@@ -383,6 +383,6 @@ Ordem das classes: começar pela que tem mais telemetria (Cavaleiro) para valida
 - **D2. "Estudar" magia com gold até o nível 1:** sim ou não?
 - **D3. Ritmo alvo para fechar uma classe:** ~320 hunts (proposta, ~98 mil) ou mais curto (~80 mil, áurea de
   especialização com 2 níveis)?
-- **D5. Passivas com 2 níveis** (destino de ouro sem XP, proposta) ou nível único (árvore mais barata)?
 - **D4. Preço dos nós antigos de especialização:** subir como na seção 4 (quem já comprou não perde nada) ou só os
   nós novos ficam caros?
+- **D5. Passivas com 2 níveis** (destino de ouro sem XP, proposta) ou nível único (árvore mais barata)?
