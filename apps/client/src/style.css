@@ -83,6 +83,14 @@ html, body {
 #game.gates.cave::after {
   background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 28%, rgba(6, 4, 3, 0.82) 100%);
 }
+/* Fortaleza Orc: luz fria de altura, cantos puxando para o azul da névoa do vale. */
+#game.fortress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(240, 236, 220, 0.06) 0%, transparent 50%, rgba(18, 26, 36, 0.44) 100%);
+}
 /* Bosque Velho: sol filtrado pela copa, cantos em verde-escuro de mata. */
 #game.oldwood::after {
   content: "";

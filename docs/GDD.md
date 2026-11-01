@@ -439,7 +439,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
   **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
-  Solária → 🏛️ Portões do Império, a etapa 8, por enquanto só o terreno) e a floresta (🌳 Bosque Velho → 🍄 Coração da
+  Solária → 🏛️ Portões do Império, a etapa 8, e ao lado deles a ⚔️ Fortaleza Orc, os dois por enquanto só o terreno) e a floresta (🌳 Bosque Velho → 🍄 Coração da
   Mata, por enquanto só o terreno). O herói anda pelos dois ramos: para ir de um lado ao outro, volta pela trilha até a
   Travessia (`OPEN_CHAINS` em `verdemar.ts`).
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
@@ -458,7 +458,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
-  Cantante → Mesas de Solária, Faraó Eterno → Portões do Império; Basilisco → Bosque Velho, boss do Bosque Velho →
+  Cantante → Mesas de Solária, Faraó Eterno → Portões do Império e Fortaleza Orc; Basilisco → Bosque Velho, boss do Bosque Velho →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
@@ -484,7 +484,7 @@ recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede
 
 Escala de dificuldade de 1 a 6 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
 Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes e 6 para Mesas de Solária, o mapa mais difícil (a 3 fica
-livre). Os Portões do Império, ainda sem monstros, ficam com 6 provisório.
+livre). Os Portões do Império e a Fortaleza Orc, ainda sem monstros, ficam com 6 provisório.
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
@@ -497,6 +497,7 @@ livre). Os Portões do Império, ainda sem monstros, ficam com 6 provisório.
 | 🍄 Coração da Mata | 6 ★★★★★★ (provisório) | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | só o terreno (os monstros ainda vêm) |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
+| ⚔️ Fortaleza Orc | 6 ★★★★★★ (provisório) | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | ainda sem monstros (só o terreno) |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -748,6 +749,41 @@ o desenho lê.
   e cantos da tela escuros. A fachada e o mosaico, as pinturas maiores, saem nos primeiros quadros da hunt (ficam longe
   da entrada). Ambiente: ciscos dourados na luz, chamas e tochas tremendo, brilho do sol nos tanques.
 
+### Fortaleza Orc (terreno)
+
+Nas Ruínas do Império, ao lado dos Portões (etapa 8 da campanha; abre com o Faraó Eterno, como os Portões). Um castelo
+do império tomado pelos orcs, no alto de um esporão de rocha. Por enquanto só o terreno e a arte: sem monstros nem boss,
+★★★★★★ provisório, 8 min, até 4 jogadores. **Mapa fixo:** é sempre a mesma planta, qualquer que seja a seed da sala
+(`generateFortress` em `dungeon.ts`, sempre com `FORTRESS_SEED`); a planta vai em `Dungeon.fortress`, que só o desenho
+lê.
+
+- **Em pé, de baixo para cima:** a **vila baixa** em ruínas (entrada, estrada e travessas de basalto, casas caídas,
+  ciprestes, uma casa com mini-boss e baú), o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
+  beira dele com o portão entre duas torres, o **pátio externo** fechado por muralhas (dos lados e na beira do
+  precipício, com uma torre em cada canto; a mata fica do lado de fora) e virado acampamento (tendas, fogueiras, paliçadas,
+  totens de caveira, estandartes, 3 casernas com mini-boss e baú), a **muralha interna** com o segundo portão, e o
+  **esporão**: o pátio de lajes com colunata, o parapeito caído na beira do precipício, a guarda do chefe e, no norte, a
+  **torre de menagem** (19×15, com torreões nos cantos do terraço), cujo salão
+  do trono é a sala do boss. Dos dois lados do esporão e atrás da torre, o precipício.
+- **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
+  uma brecha da muralha.
+- **Abismo:** nesse mapa toda `Tile.Water` é abismo: bloqueia o passo e deixa passar a visão (flechas e magias passam
+  por cima). 6 zonas no caminho (vila, cabeça da ponte, pátio do portão, acampamento de cima, pátio interno, pé da
+  torre) e 5 campinas.
+- **Andares (como no Tibia, só no desenho):** cada andar é uma camada, desenhada do mais fundo para o mais alto e
+  deslocada pela altura, na projeção do Kusa (a altura sobe na tela): o **vale**, um andar abaixo (`DROP` = 2 tiles),
+  aparece pelo abismo, escurecido, com névoa e paralaxe (anda mais devagar que o castelo); o **paredão** de rocha desce
+  da beirada até ele; e os **andares de cima** (o terraço da torre de menagem com parapeito, o buraco do telhado, a
+  fogueira e o estandarte, mais a fachada sul; os telhados das casernas) ficam deslocados para o norte pela altura do
+  que está embaixo e **somem quando o herói entra** (a posição vem de quem a câmera segue). Torres e arcos ficam
+  transparentes com o herói atrás.
+- **Visual** (só no cliente, `apps/client/src/fortressMap.ts` e `art/fortressArt.ts`, com as peças de
+  `art/empireArt.ts` e `art/empireMonuments.ts`): 128 px por tile. Chão: capim, basalto, terra batida com pegadas e
+  palha, lajes grandes no pátio e no terraço, o calçamento antigo quebrado (capim nas falhas) nos pátios e nas ruas da
+  vila, o piso do salão; tendas de couro em gomos com a mão vermelha, paliçadas,
+  totens, o trono de pedra com peles, cavaletes de armas, caldeirões, lenha e ossos; as torres e o arco IMPERIVM · KVSA
+  dos Portões com os panos pretos do clã.
+
 ### Caverna da Travessia
 
 - **Onde:** nos Campos de Kusa, na etapa 5 da campanha de Verdemar (o ponto que era a Encruzilhada), logo depois do
@@ -843,7 +879,7 @@ o desenho lê.
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
 - **Entrada tranquila:** a até 12 tiles do portal de fuga nascem no máximo 3 monstros (mini-boss e Mímico de sala
   lateral contam), para a hunt não começar com uma sala cheia em cima da equipe.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes, nas Mesas de Solária e nos Portões do Império, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes, nas Mesas de Solária, nos Portões do Império e na Fortaleza Orc, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;

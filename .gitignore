@@ -8,3 +8,4 @@ dist/
 # Chaves e segredos locais
 API KEY.txt
 *.key
+.medicao/
