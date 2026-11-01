@@ -45,7 +45,7 @@ import {
   FAR_DAMAGE_TILES,
   BANNER_RADIUS, BITE_BASE, BITE_EVERY, BURN_MS, BURN_PER_SEC, CIRCUIT_ELEMENTS, CIRCUIT_MS, CYCLE_BASE, CYCLE_HEAL, CYCLE_RADIUS,
   FROST_COOLDOWN_MS, FROST_MANA_PCT, FROST_MS,
-  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, type GiftId,
+  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, ANVIL, BLOOD, CHIME, FURY, ORDER, WAR_ECHO, type GiftId,
   GRACE_EVERY, LOW_HP_PCT, OSSUARY_MAX, OSSUARY_MS, SKY_STRIKE_DAMAGE, SKY_STRIKE_TILES, STILL_MS,
   type GiftEffects,
   bestPerSlot,
@@ -349,6 +349,11 @@ interface Seat {
   handCount: number;
   /** Reserva Gélida: o escudo de gelo vale até este momento (quem bate nele congela; ao quebrar, devolve mana). */
   frostShellUntil: number;
+  // Dons da costela de passivas do Cavaleiro.
+  /** Fúria Crescente: acúmulos e até quando valem; `furyFree` = a próxima magia do slot 1 sai sem mana. */
+  furyStacks: number;
+  furyUntil: number;
+  furyFree: boolean;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -689,7 +694,7 @@ export class Hunt {
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0, movedAt: 0, dashBasicReady: false, graceCount: 0, graceReady: false,
       circuit: {}, circuitReady: false, castBoost: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
-      eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0,
+      eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1311,7 +1316,11 @@ export class Hunt {
     const bannerHaste = this.bannerHaste(p);
     // Último Duelo (marco 3): com a vida baixa, ataca mais rápido.
     const duelHaste = this.marks(seat, "last_duel") >= 3 && this.duelLow(seat, p) ? DUEL.haste : 0;
-    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste - rallyHaste - bannerHaste - duelHaste));
+    // Fúria Crescente (marco 2): com o máximo de acúmulos, ataca mais rápido.
+    const fury = this.marks(seat, "rising_fury");
+    const furyMax = fury >= 4 ? FURY.maxLater : fury >= 1 ? FURY.maxMid : FURY.max;
+    const furyHaste = fury >= 2 && now < seat.furyUntil && seat.furyStacks >= furyMax ? FURY.haste : 0;
+    seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste - rallyHaste - bannerHaste - duelHaste - furyHaste));
     seat.attackUntil = 0;
     seat.basicAim = null;
     // Instinto (marco 3): em forma animal, a mordida espectral vem a cada 2 golpes.
@@ -1653,7 +1662,9 @@ export class Hunt {
     // Runa do Eco: as magias custam mais, e a cada tantas a seguinte sai de graça e sem recarga.
     const echo = master === "echo" && seat.echoCount >= MASTER_RUNES.echo.every;
     // Circuito e Graça (Dons): a magia carregada sai sem mana.
-    const charged = seat.circuitReady || seat.graceReady;
+    // Fúria Crescente (marco 5): com o máximo, a magia do slot 1 sai sem mana.
+    const furyFree = slot === 0 && seat.furyFree && now < seat.furyUntil;
+    const charged = seat.circuitReady || seat.graceReady || furyFree;
     const manaCost = echo || charged ? 0 : Math.round(spellManaCost(spell, p.classId, p.maxMana) * (master === "echo" ? 1 + MASTER_RUNES.echo.extraCost : 1));
     // Runa do Pacto: a mana que falta sai da vida (sem matar: precisa sobrar vida).
     const fromHp = master === "pact" ? Math.max(0, manaCost - p.mana) : 0;
@@ -1808,6 +1819,7 @@ export class Hunt {
       if (echo) bump(seat.stats.runeProcs, "echo");
     }
     bump(seat.stats.casts, spell.id);
+    if (furyFree) seat.furyFree = false;
     // Nível pelo uso: só conta em combate (algum monstro à vista por perto), para não render XP em sala vazia.
     if (this.nearestMonsterInRange(p, SPELL_XP_COMBAT_TILES)) bump(seat.stats.spellXp, base.id, castXp(base));
     // Céu Carregado (Traço): a cada tantas magias, um raio cai no monstro mais perto.
@@ -2292,6 +2304,8 @@ export class Hunt {
 
     // Desafio Supremo: cura por cada monstro provocado.
     if (spell.tauntHeal && taunted > 0 && p.status === "playing") this.healPlayer(p, Math.round(p.maxHp * spell.tauntHeal * taunted), sessionId);
+    // Eco de Guerra (Dom): provocar dá escudo por monstro provocado.
+    if (taunted > 0 && seat.gifts.echoShield > 0 && p.status === "playing") this.warEcho(sessionId, p, seat, hit.filter(() => spell.taunt), 1);
     if (spell.thorns && p.status === "playing") {
       seat.thornsPct = spell.thorns.pct;
       seat.thornsUntil = now + spell.thorns.ms;
@@ -2813,6 +2827,8 @@ export class Hunt {
     const hunger = this.marks(seat, "shadow_hunger");
     if (spell.mark && hunger >= 1) spell = { ...spell, mark: { ...spell.mark, ms: spell.mark.ms + HUNGER.markMs * (hunger >= 3 ? 2 : 1) } };
     if (spell.element === "dark" && hunger >= 5) spell = { ...spell, manaSteal: (spell.manaSteal ?? 0) + HUNGER.manaSteal };
+    // Ordem de Execução (marco 2): as marcas também atordoam.
+    if (spell.mark && this.marks(seat, "execution_order") >= 2) spell = { ...spell, stunMs: Math.max(spell.stunMs ?? 0, ORDER.markStunMs) };
     // Seiva Antiga (marco 4): curas em área alcançam mais longe.
     if (spell.heal && spell.radius > 0 && this.marks(seat, "ancient_sap") >= 4) spell = { ...spell, radius: spell.radius + 1 };
     return spell;
@@ -2832,6 +2848,64 @@ export class Hunt {
       };
     }
     return spell;
+  }
+
+  /** Repique: parte do absorvido fere quem está perto (marcos: raio, provocar, mana, atordoar). */
+  private chime(sessionId: string, p: Player, seat: Seat, absorbed: number) {
+    const chime = this.marks(seat, "chime");
+    const radius = CHIME.radius + (chime >= 1 ? 1 : 0) + (chime >= 4 ? 1 : 0);
+    const amount = Math.max(1, Math.round(absorbed * seat.gifts.chimeReflect));
+    const now = this.host.now();
+    let hits = 0;
+    for (const m of [...this.state.monsters.values()]) {
+      const b = this.brains.get(m.id);
+      if (!b || m.hidden || tileDistance(p.x, p.y, m.x, m.y) > radius) continue;
+      hits++;
+      if (chime >= 2) {
+        b.targetId = sessionId;
+        b.tauntedBy = sessionId;
+      }
+      if (chime >= 5) {
+        b.stunnedUntil = Math.max(b.stunnedUntil, now + CHIME.stunMs);
+        m.stunned = true;
+      }
+      this.damageMonster(m, amount, { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "smash" }, "chime", sessionId);
+    }
+    if (hits > 0) bump(seat.stats.giftProcs, "chime");
+    if (hits > 0 && chime >= 3) p.mana = Math.min(p.maxMana, p.mana + Math.round(p.maxMana * CHIME.mana));
+  }
+
+  /** Eco de Guerra: escudo por monstro provocado (marcos: duração, lentidão, conta, cura e o eco 2 s depois). */
+  private warEcho(sessionId: string, p: Player, seat: Seat, taunted: Monster[], power: number) {
+    const now = this.host.now();
+    const echo = this.marks(seat, "war_echo");
+    const count = Math.min(taunted.length, echo >= 3 ? WAR_ECHO.maxLater : WAR_ECHO.max);
+    const shield = Math.round(p.maxHp * seat.gifts.echoShield * count * power);
+    if (shield > p.barrier) p.barrier = p.maxBarrier = shield;
+    seat.barrierUntil = Math.max(seat.barrierUntil, now + (echo >= 1 ? WAR_ECHO.msLater : WAR_ECHO.ms));
+    bump(seat.stats.giftProcs, "war_echo");
+    if (echo >= 2) {
+      for (const m of taunted) {
+        const b = this.brains.get(m.id);
+        if (!b) continue;
+        b.slowPct = Math.max(now < b.slowUntil ? b.slowPct : 0, WAR_ECHO.slow);
+        b.slowUntil = Math.max(b.slowUntil, now + WAR_ECHO.slowMs);
+        m.slowed = true;
+      }
+    }
+    if (echo >= 4 && power === 1) this.healPlayer(p, Math.round(p.maxHp * WAR_ECHO.heal * count), sessionId);
+    if (echo >= 5 && power === 1) {
+      this.after(WAR_ECHO.echoMs, () => {
+        const hero = this.state.players.get(sessionId);
+        if (hero?.status === "playing") this.warEcho(sessionId, hero, seat, taunted.filter((m) => this.state.monsters.has(m.id)), WAR_ECHO.echo);
+      });
+    }
+  }
+
+  /** Ordem de Execução: quanto tempo o Exposto vale depois do atordoar acabar (marcos 1 e 4). */
+  private orderGrace(seat: Seat) {
+    const order = this.marks(seat, "execution_order");
+    return order >= 4 ? ORDER.graceMs * 2 : order >= 1 ? ORDER.graceMs : 0;
   }
 
   /** Último Duelo: com a vida abaixo do limiar (que sobe no marco 2). */
@@ -3087,7 +3161,27 @@ export class Hunt {
     brain.dot = null;
     m.dot = "";
     this.reacted("hemorrhage", creditId, m.x, m.y);
-    this.damageMonster(m, Math.max(1, Math.round(dot.amount * pulses)), { attacker: dot.attacker, fromX: m.x, fromY: m.y, fx: "slash", dot: "bleed" }, "reaction:hemorrhage", dot.attacker);
+    // Sangue no Aço (Dom): a Hemorragia de quem a disparou fere mais.
+    const seat = this.seats.get(creditId);
+    const amount = Math.max(1, Math.round(dot.amount * pulses * (1 + (seat?.gifts.hemorrhageDamage ?? 0))));
+    const { x, y } = m;
+    this.damageMonster(m, amount, { attacker: dot.attacker, fromX: x, fromY: y, fx: "slash", dot: "bleed" }, "reaction:hemorrhage", dot.attacker);
+    const blood = this.marks(seat, "blood_steel");
+    const hero = this.state.players.get(creditId);
+    if (!seat || !hero || hero.status !== "playing" || blood === 0) return;
+    // Marco 1: a Hemorragia cura. Marco 3: pega também os colados. Marco 5: devolve recarga do slot 1.
+    this.healPlayer(hero, Math.round(hero.maxHp * BLOOD.heal), creditId);
+    if (blood >= 3) {
+      for (const other of [...this.state.monsters.values()]) {
+        if (other !== m && tileDistance(x, y, other.x, other.y) <= 1) {
+          this.damageMonster(other, Math.max(1, Math.round(amount * BLOOD.splash)), { attacker: creditId, fromX: x, fromY: y, fx: "slash", dot: "bleed" }, "reaction:hemorrhage", creditId);
+        }
+      }
+    }
+    if (blood >= 5 && seat.spellReadyAt[0] > now) {
+      seat.spellReadyAt[0] = Math.max(now, seat.spellReadyAt[0] - BLOOD.refundMs);
+      this.host.send(creditId, MSG.cooldown, { slot: 0, ms: seat.spellReadyAt[0] - now } satisfies CooldownMessage);
+    }
   }
 
   /** Fim do Grito de Guerra, dos escudos, da armadura extra, das raízes, do atordoamento e da lentidão; pulsos do dano contínuo. */
@@ -3392,8 +3486,16 @@ export class Hunt {
       const now = this.host.now();
       const states = before ?? this.statesOf(brain, now);
       // Exposto: marcado e atordoado, recebe mais de tudo.
-      if (states.marked && states.stunned) {
-        raw *= 1 + EXPOSED_BONUS;
+      // Ordem de Execução (Dom): o Exposto fere mais; marcos 1 e 4: vale um tempo depois do atordoar; marco 3: os colados.
+      const orderSeat = this.seats.get(creditId);
+      const order = this.marks(orderSeat, "execution_order");
+      const exposed = (b: Brain) => now < b.markUntil && now < b.stunnedUntil + (order >= 1 ? this.orderGrace(orderSeat!) : 0);
+      let isExposed = states.marked && states.stunned || (order >= 1 && exposed(brain));
+      if (!isExposed && order >= 3) {
+        isExposed = [...this.state.monsters.values()].some((o) => o !== m && tileDistance(o.x, o.y, m.x, m.y) <= 1 && exposed(this.brains.get(o.id)!));
+      }
+      if (isExposed) {
+        raw *= 1 + EXPOSED_BONUS + (orderSeat?.gifts.exposedDamage ?? 0);
         this.reacted("exposed", creditId, m.x, m.y, false);
       }
       const hitElement = damageElement(source, this.state.players.get(creditId)?.classId as ClassId | undefined);
@@ -3477,6 +3579,29 @@ export class Hunt {
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
+    // Fúria Crescente (Dom): matar soma um acúmulo.
+    const furySeat = this.seats.get(killerId);
+    if (furySeat && furySeat.gifts.furyStack > 0) {
+      const fury = this.marks(furySeat, "rising_fury");
+      const max = fury >= 4 ? FURY.maxLater : fury >= 1 ? FURY.maxMid : FURY.max;
+      const now = this.host.now();
+      furySeat.furyStacks = Math.min(max, (now < furySeat.furyUntil ? furySeat.furyStacks : 0) + 1);
+      furySeat.furyUntil = now + (fury >= 3 ? FURY.msLater : FURY.ms);
+      if (furySeat.furyStacks === max && fury >= 5) furySeat.furyFree = true;
+    }
+    // Ordem de Execução (marco 5): matar um Exposto marca o monstro mais perto.
+    if (this.marks(furySeat, "execution_order") >= 5) {
+      const now = this.host.now();
+      if (now < brain.markUntil && now < brain.stunnedUntil + this.orderGrace(furySeat!)) {
+        const next = this.nearestMonsterTo(m.x, m.y, 4, new Set([m.id]));
+        const nb = next && this.brains.get(next.id);
+        if (next && nb) {
+          nb.markPct = Math.max(now < nb.markUntil ? nb.markPct : 0, ORDER.killMark.pct);
+          nb.markUntil = Math.max(nb.markUntil, now + ORDER.killMark.ms);
+          next.marked = true;
+        }
+      }
+    }
     // Coração Frio (marco 5): o congelado que morre congela os colados.
     if (this.host.now() < brain.frozenUntil && this.marks(this.seats.get(killerId), "cold_heart") >= 5) {
       const until = this.host.now() + COLD.shatterRootMs;
@@ -3900,6 +4025,8 @@ export class Hunt {
     if (absorbed > 0) {
       p.barrier = absorbed >= Math.round(p.barrier * (1 + shieldBoost)) ? 0 : Math.max(0, p.barrier - Math.ceil(absorbed / (1 + shieldBoost)));
       amount -= absorbed;
+      // Repique (Dom): o escudo devolve parte do golpe em quem está perto.
+      if (seat && seat.gifts.chimeReflect > 0) this.chime(sessionId, p, seat, absorbed);
       // Reserva Gélida (marco 4): o escudo de gelo que quebra devolve mana.
       if (p.barrier === 0 && seat && now < seat.frostShellUntil) {
         seat.frostShellUntil = 0;
@@ -4585,6 +4712,8 @@ export class Hunt {
     if (venom > 0) perTick *= 1 + venom;
     // Fé Ardente (marco 1): as queimaduras do paladino duram mais.
     if (kind === "burn" && this.marks(this.seats.get(attacker), "burning_faith") >= 1) ms += FAITH.burnMs;
+    // Sangue no Aço (marco 4): os sangramentos do cavaleiro duram mais.
+    if (kind === "bleed" && this.marks(this.seats.get(attacker), "blood_steel") >= 4) ms += BLOOD.bleedMs;
     // Seiva Venenosa (marcos 1 e 4): os venenos do druida duram mais.
     const venomMarks = kind === "poison" ? this.marks(this.seats.get(attacker), "venom_sap") : 0;
     if (venomMarks >= 1) ms += VENOM.ms * (venomMarks >= 4 ? 2 : 1);
@@ -4690,24 +4819,72 @@ export class Hunt {
 
   /** Empurra o monstro até `tiles` tiles para longe de quem bateu, parando em parede, água, alguém ou Muralha. */
   /** Empurra o monstro para longe de `from`; empurrado por um herói (`creditId`), sangrando sofre a Hemorragia. */
-  private push(m: Monster, from: { x: number; y: number }, tiles: number, creditId?: string) {
+  private push(m: Monster, from: { x: number; y: number }, tiles: number, creditId?: string, chained = false) {
     const brain = creditId ? this.brains.get(m.id) : undefined;
     if (brain && creditId) this.hemorrhage(m, brain, creditId);
+    const seat = creditId ? this.seats.get(creditId) : undefined;
+    // Bigorna (marco 3): os empurrões do cavaleiro vão mais longe.
+    if (!chained && this.marks(seat, "anvil") >= 3) tiles += 1;
     const dx = Math.sign(m.x - from.x);
     const dy = Math.sign(m.y - from.y);
     if (dx === 0 && dy === 0) return;
     const blocked = this.occupiedTiles();
     const w = this.dungeon.width;
+    let hit: "wall" | Monster | null = null;
     for (let i = 0; i < tiles; i++) {
       const nx = m.x + dx;
       const ny = m.y + dy;
-      if (!isWalkable(this.dungeon, nx, ny) || blocked.has(ny * w + nx)) return;
-      if (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, m.y) || !isWalkable(this.dungeon, m.x, ny))) return;
+      if (!isWalkable(this.dungeon, nx, ny) || (dx !== 0 && dy !== 0 && (!isWalkable(this.dungeon, nx, m.y) || !isWalkable(this.dungeon, m.x, ny)))) {
+        hit = "wall";
+        break;
+      }
+      if (blocked.has(ny * w + nx)) {
+        hit = this.monsterOn({ x: nx, y: ny }) ?? "wall";
+        break;
+      }
       blocked.delete(m.y * w + m.x);
       m.x = nx;
       m.y = ny;
       blocked.add(ny * w + nx);
     }
+    // Sangue no Aço (marco 2): empurrar faz sangrar.
+    if (seat && creditId && brain && this.marks(seat, "blood_steel") >= 2 && this.state.monsters.has(m.id)) {
+      const hero = this.state.players.get(creditId);
+      if (hero) this.applyDot(m, brain, creditId, "blood_steel", this.baseDamage(creditId, hero, "basic") * BLOOD.pushBleedPerSec, BLOOD.pushBleedMs, "bleed", this.host.now());
+    }
+    if (hit && seat && creditId && brain && seat.gifts.anvilStunMs > 0 && !chained) this.anvilImpact(m, brain, hit, seat, creditId, dx, dy);
+  }
+
+  /** Bigorna: o monstro empurrado bateu em parede ou monstro e fica atordoado (marcos: dano, empurra o de trás, lentidão). */
+  private anvilImpact(m: Monster, brain: Brain, hit: "wall" | Monster, seat: Seat, creditId: string, dx: number, dy: number) {
+    const now = this.host.now();
+    const anvil = this.marks(seat, "anvil");
+    const ms = Math.min(ANVIL.maxMs, seat.gifts.anvilStunMs);
+    const stun = (target: Monster, b: Brain) => {
+      b.stunnedUntil = Math.max(b.stunnedUntil, now + ms);
+      target.stunned = true;
+      seat.stats.ccMs.stun += ms;
+      // Atordoar dispara a Hemorragia em quem sangra.
+      this.hemorrhage(target, b, creditId);
+      if (anvil >= 5) {
+        b.slowPct = Math.max(now < b.slowUntil ? b.slowPct : 0, ANVIL.slow);
+        b.slowUntil = Math.max(b.slowUntil, now + ANVIL.slowMs);
+        target.slowed = true;
+      }
+    };
+    bump(seat.stats.giftProcs, "anvil");
+    stun(m, brain);
+    const hero = this.state.players.get(creditId);
+    if (anvil >= 1 && hero && this.state.monsters.has(m.id)) {
+      this.damageMonster(m, rollDamage(this.random, this.baseDamage(creditId, hero, "basic") * ANVIL.impact), { attacker: creditId, fromX: m.x, fromY: m.y, fx: "smash" }, "anvil", creditId);
+    }
+    if (hit === "wall") return;
+    const other = hit;
+    const otherBrain = this.brains.get(other.id);
+    if (!otherBrain) return;
+    // Marco 2: o monstro de trás também é empurrado. Marco 4: e fica atordoado.
+    if (anvil >= 2) this.push(other, { x: other.x - dx, y: other.y - dy }, 1, creditId, true);
+    if (anvil >= 4 && this.state.monsters.has(other.id)) stun(other, otherBrain);
   }
 
   /**
@@ -4954,6 +5131,8 @@ export class Hunt {
     if (this.host.now() < seat.fieldDamageUntil) bonus += seat.fieldDamage;
     // Último Duelo (Dom): encurralado, bate mais forte.
     if (this.duelLow(seat, p)) bonus += seat.gifts.lowHpDamage;
+    // Fúria Crescente (Dom): cada acúmulo soma dano.
+    if (seat.gifts.furyStack > 0 && this.host.now() < seat.furyUntil) bonus += seat.gifts.furyStack * seat.furyStacks;
     if (this.host.now() < seat.rallyUntil) bonus += seat.rallyDamage;
     return bonus;
   }

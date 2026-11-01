@@ -43,7 +43,7 @@ console.log("Regras:");
 test("um Dom no topo de cada ramo, do lado oposto ao Tomo", () => {
   for (const classId of CLASS_IDS) {
     const tree = talentTree(classId);
-    const gifts = tree.filter((t) => t.kind === "gift" && !GIFTS[t.giftId!].apex);
+    const gifts = tree.filter((t) => t.kind === "gift" && !GIFTS[t.giftId!].apex && !GIFTS[t.giftId!].rib);
     check(gifts.map((g) => g.col).sort().join() === "0,1,2", `${classId}: devia ter um Dom por ramo`);
     for (const g of gifts) {
       // Ramo sem magia ainda não tem Tomo (o Xamã Orc da Fase 1): o Dom fica numa ponta do ramo do mesmo jeito.
