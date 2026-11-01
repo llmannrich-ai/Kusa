@@ -53,11 +53,10 @@ export interface MapDef {
   minibossPower?: number;
   /**
    * Multiplicador fixo de vida, dano, XP e loot dos monstros comuns (encontros, campinas e os que as habilidades chamam)
-   * e do boss neste mapa (padrão 1). Serve para levar um clã de um mapa fácil a um difícil sem criar outra espécie (o
-   * clã do Pântano do Kosaradius na Fortaleza Orc).
+   * neste mapa (padrão 1). Serve para levar um clã de um mapa fácil a um difícil sem criar outra espécie (o clã do
+   * Pântano do Kosaradius na Fortaleza Orc).
    */
   commonPower?: number;
-  bossPower?: number;
   /** Monstros comuns por campina na entrada (padrão 2; cresce com a profundidade como os encontros, `crowdAt`). */
   meadowMonsters?: number;
   /** Fração das campinas que ganham também um mini-boss solto, sem baú (padrão 0). */
@@ -110,7 +109,7 @@ export function crowdAt(depth: number): number {
 export function monsterPower(map: MapDef, kind: MonsterKind): number {
   const rank = MONSTERS[kind].rank;
   if (rank === "miniboss") return map.minibossPower ?? 1;
-  return (rank === "boss" ? map.bossPower : map.commonPower) ?? 1;
+  return rank === "common" ? map.commonPower ?? 1 : 1;
 }
 
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
@@ -281,11 +280,11 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   fortress: {
     id: "fortress", name: "Fortaleza Orc", icon: "⚔️", difficulty: 8, durationSeconds: 8 * 60,
-    // O clã do Pântano do Kosaradius, bem mais forte (vida, dano, XP e loot) e em bandos que lotam as salas: o mapa
-    // mais difícil do jogo. O gold é o cheio (cada orc vale mais); com tanto monstro, os drops saem menos.
-    commonPower: 2.4, minibossPower: 2.5, bossPower: 2.7,
+    // O clã do Pântano do Kosaradius, bem mais forte (vida, dano, XP e loot) e em bandos que lotam as salas, e o boss
+    // próprio, Vorgak: o mapa mais difícil do jogo. O gold é o cheio (cada orc vale mais); os drops saem menos.
+    commonPower: 2.4, minibossPower: 2.5,
     meadowMonsters: 8, meadowMinibosses: 0.6, dropScale: 0.8,
-    description: "Ruínas do Império: um castelo do império tomado pelos orcs, no alto de um esporão de rocha. Da vila baixa em ruínas, cruze o desfiladeiro pela ponte de pedra ou pela de cordas dos orcs; lá de cima se vê o vale. O pátio externo virou acampamento, com tendas, fogueiras e totens, e a muralha interna guarda o pátio do esporão e a torre de menagem. É o quartel do clã: orcs e ogros aos montes, bem mais fortes que os do brejo, e ogros e chefes de guerra em cada canto. O mapa mais difícil do jogo. Grumak, o Rei-Ogro, espera no salão do trono.",
+    description: "Ruínas do Império: um castelo do império tomado pelos orcs, no alto de um esporão de rocha. Da vila baixa em ruínas, cruze o desfiladeiro pela ponte de pedra ou pela de cordas dos orcs; lá de cima se vê o vale. O pátio externo virou acampamento, com tendas, fogueiras e totens, e a muralha interna guarda o pátio do esporão e a torre de menagem. É o quartel do clã: orcs e ogros aos montes, bem mais fortes que os do brejo, e ogros e chefes de guerra em cada canto. O mapa mais difícil do jogo. No salão do trono, Vorgak, o Senhor da Brasa, racha o chão com o cutelo em brasa.",
     encounters: [
       // Vila baixa: batedores em bando e os primeiros guerreiros.
       { depth: [0, 0], budget: 320, table: [["orcScout", 4], ["orcGrunt", 2], ["orcArcher", 1]] },
@@ -312,7 +311,7 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
     minibosses: [["ogreBruiser", 2], ["orcWarlord", 2], ["ogreShaman", 1]],
     mimicChance: 0,
-    bosses: [["ogreKing", 1]],
+    bosses: [["emberWarlord", 1]],
   },
   oldwood: {
     id: "oldwood", name: "Bosque Velho", icon: "🌳", difficulty: 5, durationSeconds: 8 * 60,

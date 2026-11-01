@@ -2,7 +2,7 @@
  * Pré-visualização da arte esculpida por código (`src/art/proto/sculpt.ts`), sem navegador: gera a folha do Escorpião
  * da Areia em PNG, ampliada, e mede quanto cada quadro leva para sair.
  *
- *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme]
+ *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme|senhor]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -12,6 +12,7 @@ import { VULTURE_POSES, shootVulture } from "../src/art/proto/vulture.ts";
 import { ELEMENTAL_POSES, shootElemental } from "../src/art/proto/elemental.ts";
 import { WORM_POSES, WORM_SIZE, shootWorm } from "../src/art/proto/sandWorm.ts";
 import { MUMMY_POSES, PRIEST_POSES, shootMummy } from "../src/art/proto/mummy.ts";
+import { WARLORD_POSES, WARLORD_SIZE, shootWarlord } from "../src/art/proto/warlord.ts";
 
 const out = process.argv[2] ?? "/tmp/escorpiao.png";
 const zoom = Number(process.argv[3] ?? 3);
@@ -23,6 +24,7 @@ const BICHOS = {
   elemental: { poses: ELEMENTAL_POSES, shoot: (p: object, v: View) => shootElemental(p, v) },
   verme: { poses: WORM_POSES, shoot: (p: object, v: View) => shootWorm(p, v), size: WORM_SIZE },
   sacerdote: { poses: PRIEST_POSES, shoot: (p: object, v: View) => shootMummy(p, v, true) },
+  senhor: { poses: WARLORD_POSES, shoot: (p: object, v: View) => shootWarlord(p, v), size: WARLORD_SIZE },
 };
 const bicho = BICHOS[(process.argv[4] ?? "escorpiao") as keyof typeof BICHOS];
 

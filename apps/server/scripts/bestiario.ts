@@ -3,6 +3,8 @@
  * - Elementos: o Dragão é imune a fogo; mortos-vivos não envenenam; a Fortitude segura o primeiro golpe fatal (menos luz).
  * - Troll: regenera, e fogo interrompe. Hidra: perde cabeça a cada 20% e nascem duas sem fogo; fogo cauteriza.
  * - Rei Bullywug: some na lama e sai em bote colado no herói; com metade da vida chama 2 bullywugs, uma vez só.
+ * - Vorgak (Fortaleza Orc): a Fenda de Brasa racha o chão em linha e queima; o Salto cai colado e atordoa; o Gancho
+ *   puxa; com 70% chama 2 berserkers, com 35% explode em brasa (empurra, se cura) e chama 2 ogros, cada um uma vez só.
  * - Efeitos no herói: controle tem teto de 2 s, impede andar e dá imunidade de 4 s; Corroído acumula até 3.
  * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável, cai colado e se recompõe antes de bater de novo;
  *   boss espera 1 s entre uma habilidade e outra.
@@ -294,6 +296,68 @@ function check(ok: boolean, what: string) {
   check(calls === 1, `o Chamado do Brejo devia sair uma vez só (${calls})`);
   check(strikes.some((s) => s.id === king.id && s.ability === "spearThrust"), "de perto, o Rei devia usar a Estocada");
   console.log("Rei Bullywug OK");
+}
+{
+  // Vorgak, o Senhor da Brasa: cada habilidade testada sozinha (as outras ficam sem recarga pronta).
+  const { spawn, hit, hunt, p, brain, state, any } = arena("fortress", "knight", 20);
+  p.hp = p.maxHp = 1_000_000;
+  const only = (boss: Monster, id: string) => {
+    for (const a of MONSTERS.emberWarlord.abilities!) brain(boss).abilityReadyAt[a.id] = a.id === id ? 0 : Number.MAX_SAFE_INTEGER;
+  };
+  const used = (boss: Monster, id: string) => strikes.some((s) => s.id === boss.id && s.ability === id);
+  {
+    const boss = spawn("emberWarlord", 3);
+    brain(boss).targetId = "h";
+    only(boss, "emberRift");
+    const hp0 = p.hp;
+    advance(hunt, 300);
+    check(used(boss, "emberRift"), "a 3 tiles, Vorgak devia rachar o chão (Fenda de Brasa)");
+    check(p.hp < hp0, "a Fenda de Brasa devia ferir o herói na linha");
+    check(any.seats.get("h").dot?.monsterId === boss.id, "a Fenda de Brasa devia deixar o herói queimando");
+    state.monsters.delete(boss.id);
+  }
+  {
+    const boss = spawn("emberWarlord", 5);
+    brain(boss).targetId = "h";
+    only(boss, "warlordLeap");
+    advance(hunt, 300);
+    check(used(boss, "warlordLeap"), "a 5 tiles, Vorgak devia saltar (Salto do Senhor da Guerra)");
+    check(tileDistance(p.x, p.y, boss.x, boss.y) <= 1, "o Salto devia cair colado no herói");
+    const stun = any.seats.get("h").effects.stun;
+    check(!!stun && stun.until > clock, "o Salto devia atordoar o herói");
+    state.monsters.delete(boss.id);
+  }
+  advance(hunt, 5000);
+  {
+    const boss = spawn("emberWarlord", 4);
+    brain(boss).targetId = "h";
+    only(boss, "ironHook");
+    const before = tileDistance(p.x, p.y, boss.x, boss.y);
+    advance(hunt, 300);
+    check(used(boss, "ironHook"), "a 4 tiles, Vorgak devia lançar o Gancho de Ferro");
+    check(tileDistance(p.x, p.y, boss.x, boss.y) < before, "o Gancho devia puxar o herói");
+    state.monsters.delete(boss.id);
+  }
+  {
+    const boss = spawn("emberWarlord", 1);
+    brain(boss).targetId = "h";
+    const called = (kind: MonsterKind) => [...state.monsters.values()].filter((m) => m.kind === kind && brain(m)?.summonedBy === boss.id).length;
+    hit(boss, Math.ceil(boss.maxHp * 0.32), "basic");
+    advance(hunt, 100);
+    check(called("orcBerserker") === 2, `abaixo de 70% Vorgak devia chamar 2 berserkers (${called("orcBerserker")})`);
+    const hp = boss.hp;
+    hit(boss, Math.ceil(boss.maxHp * 0.36), "basic");
+    advance(hunt, 2500);
+    check(used(boss, "emberFury"), "abaixo de 35% Vorgak devia explodir em brasa (Fúria de Brasa)");
+    check(called("ogreYoung") === 2, `abaixo de 35% Vorgak devia chamar 2 ogros (${called("ogreYoung")})`);
+    check(boss.hp > hp - Math.ceil(boss.maxHp * 0.36), "a Fúria de Brasa devia curar Vorgak");
+    advance(hunt, 40_000);
+    for (const id of ["fortressCall", "emberFury", "ogreGuard"]) {
+      const n = strikes.filter((s) => s.id === boss.id && s.ability === id).length;
+      check(n === 1, `${id} devia sair uma vez só (${n})`);
+    }
+  }
+  console.log("Vorgak, o Senhor da Brasa OK");
 }
 {
   // Boss enfurecido: as habilidades não saem coladas (antes, sopro e Escuridão vinham com 50 ms de diferença).
