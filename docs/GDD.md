@@ -1101,7 +1101,9 @@ e Goblins da Caverna. Loot máximo de uma hunt ~2.900 nas Dunas e ~3.400 nas Mes
 A floresta antiga do Kosaradius, do lado oeste da bifurcação da Travessia: feras, plantas que andam e os espíritos
 que a corrupção virou contra quem entra. Mesma faixa de força da Necrópole de Solária (o mesmo degrau da campanha), mas
 quase nada é morto-vivo: veneno e sangramento pegam, e as plantas queimam fácil. Elenco e arte proposta em
-`docs/arte/agente/BOSQUE_VELHO.md`; arte própria 32×32 em `apps/client/src/art/forestMonsters.ts`.
+`docs/arte/agente/BOSQUE_VELHO.md`. Na arte nova, os 10 são esculpidos por código e animados (`proto/forestBeasts.ts`,
+`proto/forestFolk.ts`, `proto/greenDragon.ts`, ver `docs/ARTE_ESCULTURA.md`); na antiga, o desenho 32×32 de
+`apps/client/src/art/forestMonsters.ts`.
 
 | Monstro | Papel | Assinatura |
 |---|---|---|

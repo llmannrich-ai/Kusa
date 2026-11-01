@@ -337,7 +337,7 @@ if (protoCrypt) {
   }
 }
 
-// Monstros do Mar de Areia esculpidos por código (`proto/sculptArt.ts`): o Verme da Areia (chefe: Emboscada no especial,
+// Monstros do Mar de Areia e do Bosque Velho esculpidos por código (`proto/sculptArt.ts`): o Verme da Areia (chefe: Emboscada no especial,
 // Engolir na 2ª habilidade, Tremor no golpe), o Elemental (Redemoinho no especial, Rajada na 2ª), o Sacerdote e a
 // Múmia (as habilidades saem do especial), o Abutre Gigante e os escorpiões (o comum âmbar e o Negro Gigante, o mesmo
 // modelo com a casca negra e maior). No Negro, as Pinças saem do golpe e o Ferrão Letal do especial.
@@ -350,6 +350,17 @@ if (protoSculpt) {
     ["sandWorm", protoSculpt.wormArt(), 2.5, { burrow: "cast", swallow: "skill", quake: "attack" }],
     ["sandScorpion", protoSculpt.scorpionArt(), 1.2, "cast"],
     ["blackScorpion", protoSculpt.scorpionArt(protoSculpt.SHELLS.black), 1.6, { pincers: "attack", deathSting: "cast" }],
+    // Bosque Velho: o golpe e o especial de cada um; a 2ª habilidade desenhada é o Coice do centauro e o Voo do dragão.
+    ["direWolf", protoSculpt.beastArt("wolf"), 1.5, { trip: "cast" }],
+    ["shadowPanther", protoSculpt.beastArt("panther"), 1.45, { pounce: "cast" }],
+    ["renegadeCentaur", protoSculpt.beastArt("centaur"), 1.85, { arrowRain: "cast", kick: "skill" }],
+    ["satyr", protoSculpt.folkArt("satyr"), 1.3, { enchantingTune: "cast" }],
+    ["twigling", protoSculpt.folkArt("twigling"), 1, "cast"],
+    ["thornSpitter", protoSculpt.folkArt("thorn"), 1.4, { thornBurst: "cast", thornVolley: "attack" }],
+    ["owlbear", protoSculpt.folkArt("owlbear"), 1.65, { crushingHug: "cast" }],
+    ["corruptedDryad", protoSculpt.folkArt("dryad"), 1.5, "cast"],
+    ["menhirGuardian", protoSculpt.folkArt("menhir"), 1.75, { runeStomp: "cast", stoneFist: "attack" }],
+    ["greenDragon", protoSculpt.greenDragonArt(), 2.3, { poisonBreath: "cast", menhirGas: "cast", flight: "skill", tailSweep: "attack" }],
   ];
   for (const [kind, art, size, strike] of sculpted) {
     BESTIARY_ART[kind] = {
