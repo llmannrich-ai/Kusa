@@ -543,7 +543,8 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   - **Arena:** no meio, o mosaico do sol do império em tesselas (11×9 tiles), gasto, com tesselas faltando.
   - **Ambiente:** vaga-lumes, névoa baixa e folhas caindo da beira da mata. Só os sprites perto da câmera são
     desenhados.
-- Mais difícil: monstros com mais vida e dano que os da cripta, e mais salas (o ganho de 12% por sala chega a +84% na Hidra).
+- Mais difícil: espécies com mais vida e dano que as da cripta, mais salas e salas fundas mais cheias (o orçamento de
+  monstros cresce 12% por sala).
   Em troca, loot maior e itens de material melhor nas salas fundas.
 
 ### Mar de Areia
@@ -583,8 +584,8 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
   engole quem fica colado (Engolir: controle de 1,8 s com dano por segundo) e, abaixo de metade da vida, faz o chão
   tremer em volta (Tremor, deixa lento). Vulnerável a gelo, resiste a fogo.
 - **Balanceamento:** o caminho rende um pouco mais de XP que a Cripta (cerca de 36 monstros e 2.700 XP, contra 21 e
-  1.700), então a equipe chega na caverna perto do nível 6 a 8. O covil é a profundidade 6 (+72%): o Verme fica com a
-  vida do Dragão jovem no covil dele (~1.340) e, no simulador de duelo (herói nível 6 sozinho, só ataque básico),
+  1.700), então a equipe chega na caverna perto do nível 6 a 8. O Verme tem a vida do Dragão jovem (~1.340, já na
+  ficha: o boss não cresce com a profundidade) e, no simulador de duelo (herói nível 6 sozinho, só ataque básico),
   derruba o herói entre o Ogro e o Dragão (6,5 a 9,7 s). Os comuns ficam no nível dos da Cripta: Escorpião como a
   Ratazana, Abutre como o Goblin, Múmia como o Orc.
 - **Campo aberto, como o pântano:** dunas altas na borda e, por cima, cristas de duna compridas no sentido do
@@ -810,10 +811,10 @@ lê.
     indo direto (nível 11, perto do muro) e ~12% pela rota completa (nível 14, entre o Dragão e a Hidra).
   - **Picos de dano:** nenhuma habilidade passa de ~25% do dano recebido no duelo (o Raio Desintegrador e a Mordida
     Venenosa foram suavizados para isso); o atordoamento dura no máximo 1,5 s.
-- **Basilisco** (covil oeste, profundidade 5: 840 de base, ~1.340 no covil): mordida que envenena às vezes, **Olhar
+- **Basilisco** (covil oeste: ~1.340 de vida): mordida que envenena às vezes, **Olhar
   Petrificante** (leque de 5 tiles que atordoa 1,5 s), **Mordida Venenosa** e, abaixo de metade da vida, **Cauda de
   Pedra** (área em volta que empurra 2 tiles). Resiste a veneno e um pouco a físico.
-- **Observador das Profundezas** (covil leste, profundidade 8: 1.450 de base, ~2.840 no covil, o boss mais forte do
+- **Observador das Profundezas** (covil leste: ~2.840 de vida, o boss mais forte do
   jogo): flutua e foge de quem cola (artilheiro), ataca a 3 tiles, **Raio Desintegrador** (linha de 7 tiles, 1,6×),
   **Raio Paralisante** (atordoa 1,2 s), **Raio Repulsor** (empurra 3 tiles em volta) e, ferido, **Tempestade de
   Olhares** (área que corrói). Resiste a sombra, vulnerável a luz.
@@ -831,10 +832,10 @@ lê.
 - **Para jogar sozinho e mais fácil:** o mapa aceita 1 jogador só (`MapDef.maxParty`; bots contam), então não há
   "Criar sala" nele, só "Jogar sozinho". É o maior mapa (128×128) e o mais longo (10 min): mais monstros que os
   outros, mais níveis e um boss no fim.
-- **O clã do brejo:** orcs e ogros em **9 zonas** do caminho em arco (cada uma mais forte), **14 campinas** com 3
+- **O clã do brejo:** orcs e ogros em **9 zonas** do caminho em arco (cada uma mais cheia e com espécies mais fortes), **14 campinas** com 3
   monstros extras cada (e, em 40% delas, um mini-boss solto, sem baú), **clareiras de mini-boss com baú** (até 2 por
   zona, 10 a 15 por mapa) e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**. Os monstros são mais fracos que
-  os da Cripta na base (o ganho de 12% por zona dobra os do fim): o mapa inteiro tem cerca de 100 monstros, 19
+  os da Cripta (a quantidade cresce 12% por zona, quase o dobro no fim): o mapa inteiro tem cerca de 145 monstros, 19
   mini-bosses e 14.700 de XP (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
   nível 12. Monstro longe da tela não é desenhado nem animado no cliente.
 - **Loot por monstro menor:** com tantos monstros, o mapa paga 35% do valor de loot dos monstros e baús e 60% dos
@@ -883,7 +884,8 @@ lê.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;
   os outros níveis dão uma melhoria à escolha (ver "Melhorias de nível").
-- A dungeon é semi-linear: monstros fracos na entrada, ficando mais fortes conforme a equipe se aprofunda.
+- A dungeon é semi-linear: poucos monstros fracos na entrada e, conforme a equipe se aprofunda, espécies mais fortes e
+  salas mais cheias. **O monstro nunca evolui na partida:** um Orc tem a mesma vida e o mesmo dano em qualquer sala.
 - Baús no meio da dungeon trazem itens ou upgrades aleatórios poderosos, possivelmente ao matar mini-bosses.
 - No centro fica o boss final do tipo de mapa.
 - **Bússola no minimapa:** uma agulha gira em volta do jogador e aponta para a sala do boss; no Mar de Areia, da
@@ -936,7 +938,13 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
 - A XP da morte é dividida em partes iguais por toda a equipe que está jogando na dungeon (bots incluídos; quem morreu ou saiu fica de fora), tenha batido no monstro ou não: 100 XP com 4 heróis dão 25 a cada um. O gold (loot) do monstro, do baú e do Mímico se divide do mesmo jeito.
 - **A dificuldade não depende do tamanho da equipe:** os monstros são os mesmos com 1 ou 4 heróis. Jogar em equipe é mais fácil de propósito, para estimular a equipe; nenhuma regra escala vida, dano ou quantidade de monstros pelo número de jogadores.
-- Cada sala do caminho é 12% mais forte que a anterior (HP, dano, XP e loot). Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
+- **Monstros de força fixa:** vida, dano, XP e loot de cada monstro são os da ficha (`monsterStats`), em qualquer
+  sala. A dificuldade sobe para o fundo de dois jeitos: as tabelas de encontro trocam por espécies mais fortes e o
+  orçamento de ameaça de cada sala (e os monstros das campinas) cresce 12% por sala (`CROWD_PER_DEPTH`): mais
+  monstros, e a XP e o gold totais crescem junto. Os bosses já trazem na ficha a força que tinham no fim do caminho;
+  os mini-bosses e o Mímico usam um multiplicador fixo do mapa (`minibossPower`, de 1,24 na Cripta a 1,54 na Caverna),
+  que não muda na partida. Os monstros que um boss chama são os comuns normais. Só os baús pagam mais no fundo (+12%
+  de gold por sala, `CHEST_DEPTH_SCALING`), e a faixa dos itens largados ainda sobe com a profundidade. Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold
   dos monstros (boss incluído) e dos baús, e a chance de item dos comuns e mini-bosses cai para 80% da base (comum:
@@ -982,8 +990,8 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   tiles) e corroído (+8% de dano recebido por acúmulo, até 3). **Controle dura no máximo 2 s** e depois o herói fica
   **4 s imune** ao mesmo efeito.
 - **Encontros sorteados:** cada sala do caminho recebe monstros sorteados da tabela da profundidade (pelo peso) até
-  gastar um orçamento de ameaça (a XP da tabela), como o orçamento de XP do D&D. Enxames (Kobold, Estirge) vêm em
-  grupo; no máximo 8 monstros, 2 artilheiros e 1 líder por sala. Tudo pela seed.
+  gastar um orçamento de ameaça (a XP da tabela, mais 12% por sala de profundidade), como o orçamento de XP do D&D.
+  Enxames (Kobold, Estirge) vêm em grupo; no máximo 12 monstros, 3 artilheiros e 1 líder por sala. Tudo pela seed.
 - **Campeões:** 5% dos comuns nascem Campeões (nome e brilho dourados): vida × 2, XP e loot × 2,5 e um afixo: Veloz
   (+40% de velocidade), Vampírico (rouba 30% do golpe), Ígneo (o golpe queima), Escudado (metade do dano físico) ou
   Comandante (aura de líder).

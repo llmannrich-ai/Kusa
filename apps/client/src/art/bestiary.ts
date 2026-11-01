@@ -1,4 +1,4 @@
-import type { MonsterKind } from "@kusa/shared";
+import { MONSTERS, type MonsterKind } from "@kusa/shared";
 import { BLACK_SHELL, mummyCanvas, sandElementalCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
 import { sandWormCanvas } from "./sandWorm.ts";
 import { basiliskCanvas, beholderCanvas } from "./cavernBosses.ts";
@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero, protoSculpt } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -29,19 +29,28 @@ export interface MonsterAnim {
   stride?: number;
   /** Arte nova (128 px por tile): a folha entra como está, sem o refinamento 2×, desenhada quadro a quadro. */
   hd?: () => (() => HTMLCanvasElement)[];
+  /**
+   * Altura do ponto de apoio no quadro (0 = topo, 1 = base; padrão 1). A arte esculpida (`proto/sculpt.ts`) é vista de
+   * cima e as partes de cá (pinças de frente) descem abaixo da base do tile.
+   */
+  origin?: number;
   /** Parte de cima do quadro que o corpo ocupa (a barra de vida fica logo acima da cabeça; padrão: o quadro todo). */
   fill?: number;
   /**
    * Clipes a mais (arte nova), na folha depois dos de `CLIP_ORDER`, na ordem de `EXTRA_CLIPS`: a morte (o cadáver
-   * toca em vez de tombar) e o parado e o andar de frente (`Down`) e de costas (`Up`), quando o monstro anda na vertical.
+   * toca em vez de tombar), o parado e o andar de frente (`Down`) e de costas (`Up`), quando o monstro anda na vertical,
+   * e a 2ª habilidade desenhada (`skill`, no ritmo do especial).
    */
   extra?: Partial<Record<ExtraClip, number>>;
-  /** Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial), ou um por habilidade (id → clipe). */
-  strike?: Clip | Record<string, Clip>;
+  /**
+   * Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial), ou um por habilidade (id → clipe). A
+   * 2ª habilidade desenhada (folha C do clã do Kosaradius) é o clipe a mais `skill`.
+   */
+  strike?: Clip | Record<string, Clip | "skill">;
 }
 
 /** Clipes a mais dos monstros da arte nova (`MonsterAnim.extra`), na ordem da folha. */
-export const EXTRA_CLIPS = ["death", "idleDown", "walkDown", "idleUp", "walkUp"] as const;
+export const EXTRA_CLIPS = ["death", "idleDown", "walkDown", "idleUp", "walkUp", "skill"] as const;
 export type ExtraClip = (typeof EXTRA_CLIPS)[number];
 
 const ANIM_FPS: Record<Clip, number> = { idle: 4, walk: 9, attack: 12, cast: 7 };
@@ -219,13 +228,6 @@ if (protoHero) {
     };
   }
 }
-// O goblin vem da arte de referência (folha em PNG), não do desenho por código: troca a animação do kit.
-if (protoGoblin && protoHero) {
-  const goblin = protoGoblin;
-  BESTIARY_ART.goblin.anim = {
-    ...BESTIARY_ART.goblin.anim!, sheet: () => goblin.sheet(), portrait: () => goblin.portrait(), hd: () => goblin.frames(), fill: goblin.fill,
-  };
-}
 // O sapo vem das folhas geradas por IA (PNG), com mais movimentos: a língua na habilidade, a morte e frente e costas.
 if (protoFrog) {
   const frog = protoFrog;
@@ -253,15 +255,20 @@ if (protoBullywugKing) {
   OWN_MONSTER_DRAW["monster-bullywug-king"] = () => king.portrait();
 }
 // O clã do Pântano do Kosaradius que já tem folha gerada por IA (PNG) troca a arte por código: parado, andar, frente e
-// costas da folha de giro; golpe e especial saem do perfil até chegar a folha de ação.
+// costas da folha de giro; golpe e especial saem do perfil até chegar a folha de ação. Orcs e ogros entram 20% maiores
+// que os outros monstros da arte nova (só o desenho: a colisão e o alcance são do servidor); o chefe e os semi-chefes
+// (`boss` e `miniboss`), que já vêm grandes na folha, ficam 10% abaixo disso.
+const CLAN_SCALE = 1.2;
+const CLAN_CHIEF_SCALE = 0.9;
 if (protoClan) {
   for (const [kind, clan] of Object.entries(protoClan) as [MonsterKind, NonNullable<(typeof protoClan)[MonsterKind]>][]) {
+    const chief = MONSTERS[kind].rank !== "common";
     BESTIARY_ART[kind] = {
-      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE,
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * CLAN_SCALE * (chief ? CLAN_CHIEF_SCALE : 1),
       anim: {
         size: clan.size, sheet: () => clan.sheet(), portrait: () => clan.portrait(), outline: "",
         fps: { idle: 4, walk: 6, attack: 10, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
-        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra },
+        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra }, strike: clan.strike,
       },
     };
   }
@@ -279,6 +286,49 @@ if (protoBeasts) {
     };
   }
   OWN_MONSTER_DRAW["monster-mimic-disguise"] = proto.protoMimicDisguise;
+}
+
+// Os inimigos da Cripta que já têm folha gerada por IA (PNG) trocam o desenho por código (vem depois dos bichos, que
+// também desenham o rato, a estirge e a aranha): andar, golpe, especial e morte desenhados na folha de ação.
+/** Habilidades dos inimigos da Cripta que não são o especial da folha: saem do golpe. */
+const CRYPT_STRIKE: Partial<Record<MonsterKind, Record<string, Clip>>> = {
+  dragon: { breath: "cast", flight: "attack" },
+  ogre: { stomp: "cast", boulder: "attack" },
+  mimic: { acidBite: "cast", adhesive: "attack" },
+};
+if (protoCrypt) {
+  for (const [kind, crypt] of Object.entries(protoCrypt) as [MonsterKind, NonNullable<(typeof protoCrypt)[MonsterKind]>][]) {
+    BESTIARY_ART[kind] = {
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE,
+      anim: {
+        size: crypt.size, sheet: () => crypt.sheet(), portrait: () => crypt.portrait(), outline: "",
+        fps: { idle: 4, walk: 8, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+        hd: () => crypt.frames(), fill: crypt.fill, extra: { ...crypt.extra },
+        // A habilidade toca o especial desenhado (a teia, o Golpe Brutal, o Engolfar, a investida do orc, o sopro, o
+        // pisão do ogro, a mordida ácida); a que não tem especial próprio na folha sai do golpe (`CRYPT_STRIKE`).
+        strike: CRYPT_STRIKE[kind] ?? "cast",
+      },
+    };
+  }
+}
+
+// Escorpiões do Mar de Areia esculpidos por código (`proto/scorpionArt.ts`): o comum âmbar e o Negro Gigante, o mesmo
+// modelo com a casca negra e maior. No Negro, as Pinças saem do golpe e o Ferrão Letal do especial.
+if (protoSculpt) {
+  const sculpted: [MonsterKind, ReturnType<typeof protoSculpt.scorpionArt>, number, MonsterAnim["strike"]][] = [
+    ["sandScorpion", protoSculpt.scorpionArt(), 1.2, "cast"],
+    ["blackScorpion", protoSculpt.scorpionArt(protoSculpt.SHELLS.black), 1.6, { pincers: "attack", deathSting: "cast" }],
+  ];
+  for (const [kind, art, size, strike] of sculpted) {
+    BESTIARY_ART[kind] = {
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * size,
+      anim: {
+        size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
+        fps: { idle: 4, walk: 10, attack: 11, cast: 8 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+        hd: () => art.frames(), get fill() { return art.fill; }, origin: art.origin, extra: { ...art.extra }, strike,
+      },
+    };
+  }
 }
 
 /** Monstros animados: textura → animação. */

@@ -1,0 +1,713 @@
+{
+ "mapa": "cripta",
+ "pasta_sharepoint": "PGG/FINANCEIRO/00 - DIRETORIA/CONFIDENCIAL LEONARDO/Kusa/Arte/cripta",
+ "como_montar_o_prompt": "Troque cada marcador {{NOME}} do prompt pelo texto do bloco de mesmo nome em 'blocos' (ESTILO, CENARIO, PROIBIDO, FOLHA_A, FOLHA_B).",
+ "blocos": {
+  "ESTILO": "Dark fantasy pixel art in the exact style of the attached goblin reference sheet: high-detail hand-painted pixel art (late 16-bit / 32-bit era), crisp hard-edged pixels with no blur, no soft gradients and no anti-aliased glow; thick near-black outline (#1a1210) around every silhouette; strong chiaroscuro with light from the upper-left and deep shadows on the lower-right; earthy desaturated palette (olive, moss, rust, bone, peat brown, dark leather) with saturated color only on eyes, blood, poison and magic; gritty surface detail (scars, warts, grime, torn cloth, dried blood, moss); grim and menacing mood, never cute or cartoonish. Top-down 3/4 RPG camera like Tibia: we see the front and a little of the top of everything.",
+  "CENARIO": "Setting: the Crypt - cramped burial halls and narrow corridors of cold cut stone deep underground, lit only by torches: dust, cobwebs, cracked sarcophagi, bone niches, iron candle racks, old soot. Colors of the place: cold blue-grey stone, bone white, ash, rust, with warm torch-orange highlights. The creature must read clearly against a dark cold-grey stone floor: keep its main colors contrasting with grey.",
+  "PROIBIDO": "Do NOT include: background scenery, floor, cast shadow on the ground, text, labels, numbers, grid lines, frames, borders, watermark, signature, UI, or soft semi-transparent glow (draw glows as solid pixel rings).",
+  "FOLHA_A": "SHEET: character turnaround sprite sheet on a fully transparent background (PNG with alpha), 2 rows x 6 columns = 12 figures of the SAME character, each figure completely separated from the others by empty transparent space (no overlap, nothing touching). Row 1: standing idle. Row 2: walking, mid-stride. Columns from left to right: (1) front view; (2) 3/4 front view turned to the LEFT; (3) side profile facing LEFT; (4) 3/4 back view turned to the LEFT; (5) back view; (6) 3/4 back view turned to the right. Same scale, outfit, colors and proportions in all figures. Aspect ratio 3:1.",
+  "FOLHA_B": "SHEET: animation sprite sheet on a fully transparent background (PNG with alpha), 4 columns, one animation per row. EVERY figure is in side profile FACING LEFT. Each figure is completely separated from the others by empty transparent space. The frames of each row are consecutive frames of one animation, read left to right. Use the attached turnaround sheet of this same character as the model: identical design, colors and scale."
+ },
+ "itens": [
+  {
+   "ordem": 1,
+   "id": "rat-A",
+   "folha": "A",
+   "grupo": "inimigos/rat",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Giant crypt rat the size of a small dog: mangy grey-brown fur with bald scabby patches, long naked pink tail with a notch bitten out, yellow chisel teeth, beady red eyes, a scrap of burial shroud caught on one hind leg, dust and cobwebs on the back. Low to the ground on four legs.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 0.35 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Táticas de Bando: o especial é o chamado do bando (o jogo usa quando há outras ratazanas perto).",
+   "nome": "Ratazana",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "rat",
+   "escala": 0.35,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 2,
+   "id": "rat-B",
+   "folha": "B",
+   "grupo": "inimigos/rat",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Giant crypt rat the size of a small dog: mangy grey-brown fur with bald scabby patches, long naked pink tail with a notch bitten out, yellow chisel teeth, beady red eyes, a scrap of burial shroud caught on one hind leg, dust and cobwebs on the back. Low to the ground on four legs.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 0.35 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: scurrying run, body low, tail whipping\nRow 2 - ATTACK, 4 frames: crouch, spring forward, bite with teeth bared, land\nRow 3 - SPECIAL, 4 frames: PACK SQUEAL: rears up on the hind legs, mouth wide open squealing with fur bristling, drops back down, darts forward\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Táticas de Bando: o especial é o chamado do bando (o jogo usa quando há outras ratazanas perto).",
+   "nome": "Ratazana",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "rat",
+   "escala": 0.35,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "rat-A (o mesmo personagem)"
+   ],
+   "depende_de": "rat-A"
+  },
+  {
+   "ordem": 3,
+   "id": "kobold-A",
+   "folha": "A",
+   "grupo": "inimigos/kobold",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Kobold: a small scrawny dog-headed reptile humanoid with rust-red scales, a short snout with needle teeth, small horns, yellow slit eyes, a thin whipping tail. Wears a dented oversized iron pot as a helmet with a stub of melted candle glued on top (the flame is a solid pixel shape), a ragged leather vest hung with stolen grave trinkets. Holds a short rusty spear made from a broken pick.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 0.6 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Vem em grupo de 2–3: a vela no capacete ajuda a ler o bando no escuro da Cripta.",
+   "nome": "Kobold",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "kobold",
+   "escala": 0.6,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 4,
+   "id": "kobold-B",
+   "folha": "B",
+   "grupo": "inimigos/kobold",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Kobold: a small scrawny dog-headed reptile humanoid with rust-red scales, a short snout with needle teeth, small horns, yellow slit eyes, a thin whipping tail. Wears a dented oversized iron pot as a helmet with a stub of melted candle glued on top (the flame is a solid pixel shape), a ragged leather vest hung with stolen grave trinkets. Holds a short rusty spear made from a broken pick.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 0.6 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: quick nervous steps, hunched forward\nRow 2 - ATTACK, 4 frames: pull the spear back, quick jab, second quick jab, recover\nRow 3 - SPECIAL, 4 frames: GANG STAB: crouches low and sneaks one step, darts forward under the guard, stabs upward, hops back grinning\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Vem em grupo de 2–3: a vela no capacete ajuda a ler o bando no escuro da Cripta.",
+   "nome": "Kobold",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "kobold",
+   "escala": 0.6,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "kobold-A (o mesmo personagem)"
+   ],
+   "depende_de": "kobold-A"
+  },
+  {
+   "ordem": 5,
+   "id": "stirge-A",
+   "folha": "A",
+   "grupo": "inimigos/stirge",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Crypt stirge: a cat-sized blood-sucking horror between a mosquito and a bat, pale from living in the dark. Leathery tattered greyish bat wings with visible veins, sparse bristly ash-colored body, four hooked insect legs, a long needle-like proboscis, small glowing red eyes, a translucent belly swollen with dark red blood.\n\n{{FOLHA_A}} It flies: in every figure the body hovers about one third of a human height above the row's baseline (leave a gap); keep the hover height the same in all figures. Size: the character is 0.4 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Versão pálida da Cripta. Se preferir uma estirge só para os dois mapas, pule este par e use a do Pântano.",
+   "nome": "Estirge",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "stirge",
+   "escala": 0.4,
+   "voa": true,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 6,
+   "id": "stirge-B",
+   "folha": "B",
+   "grupo": "inimigos/stirge",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Crypt stirge: a cat-sized blood-sucking horror between a mosquito and a bat, pale from living in the dark. Leathery tattered greyish bat wings with visible veins, sparse bristly ash-colored body, four hooked insect legs, a long needle-like proboscis, small glowing red eyes, a translucent belly swollen with dark red blood.\n\n{{FOLHA_B}} 4 rows. It flies: keep the body hovering one third of a human height above each row's baseline. Size: the character is 0.4 times the height of one human adult (1 tile).\nRow 1 - FLIGHT cycle, 4 frames: wings up, wings mid, wings down, wings mid\nRow 2 - ATTACK, 4 frames: draw back, dive forward, proboscis stabs to the left, pull out\nRow 3 - SPECIAL, 4 frames: DRAIN BLOOD: proboscis sunk forward, belly swelling red in steps, belly fully swollen and glowing, pulls away\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Versão pálida da Cripta. Se preferir uma estirge só para os dois mapas, pule este par e use a do Pântano.",
+   "nome": "Estirge",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "stirge",
+   "escala": 0.4,
+   "voa": true,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "stirge-A (o mesmo personagem)"
+   ],
+   "depende_de": "stirge-A"
+  },
+  {
+   "ordem": 7,
+   "id": "goblin-A",
+   "folha": "A",
+   "grupo": "inimigos/goblin",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Goblin raider in the exact design family of the attached goblin reference: wiry, hunched, sickly green-grey skin, huge pointed ears with notches, wide grin of crooked yellow teeth, big hooked nose, mean yellow eyes. Wears a patchwork leather jerkin, a cracked skull-cap of bone and a belt of pouches stuffed with stolen grave goods. Holds a jagged notched short sword.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 0.8 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Fuga Ágil: o especial é o salto para trás depois do golpe. É o monstro mais próximo da referência: tem que parecer da mesma família.",
+   "nome": "Goblin",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "goblin",
+   "escala": 0.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 8,
+   "id": "goblin-B",
+   "folha": "B",
+   "grupo": "inimigos/goblin",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Goblin raider in the exact design family of the attached goblin reference: wiry, hunched, sickly green-grey skin, huge pointed ears with notches, wide grin of crooked yellow teeth, big hooked nose, mean yellow eyes. Wears a patchwork leather jerkin, a cracked skull-cap of bone and a belt of pouches stuffed with stolen grave goods. Holds a jagged notched short sword.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 0.8 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (quick, sneaky)\nRow 2 - ATTACK, 4 frames: wind up, slash across, follow-through, recover\nRow 3 - SPECIAL, 4 frames: HIT AND RUN: slashes, then springs BACKWARD (moving to the right) in a low acrobatic hop, lands crouched, taunting with the tongue out\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Fuga Ágil: o especial é o salto para trás depois do golpe. É o monstro mais próximo da referência: tem que parecer da mesma família.",
+   "nome": "Goblin",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "goblin",
+   "escala": 0.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "goblin-A (o mesmo personagem)"
+   ],
+   "depende_de": "goblin-A"
+  },
+  {
+   "ordem": 9,
+   "id": "goblinArcher-A",
+   "folha": "A",
+   "grupo": "inimigos/goblinArcher",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Goblin archer: wiry, hunched goblin with sickly green-grey skin, huge notched ears, one eye squinting, the other eye covered by a leather patch. Wears a hooded ragged cloak of grave cloth, leather bracers, a quiver of crow-fletched arrows on the back. Holds a crude short bow of bone and sinew.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 0.8 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Mantém distância: o especial é o recuo. A flecha em voo é desenhada pelo jogo; aqui só a saída do arco.",
+   "nome": "Goblin arqueiro",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "goblinArcher",
+   "escala": 0.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 10,
+   "id": "goblinArcher-B",
+   "folha": "B",
+   "grupo": "inimigos/goblinArcher",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Goblin archer: wiry, hunched goblin with sickly green-grey skin, huge notched ears, one eye squinting, the other eye covered by a leather patch. Wears a hooded ragged cloak of grave cloth, leather bracers, a quiver of crow-fletched arrows on the back. Holds a crude short bow of bone and sinew.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 0.8 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (crouched, careful)\nRow 2 - ATTACK, 4 frames: nock an arrow, draw the bow aiming LEFT, release (arrow just leaving the bow), lower the bow\nRow 3 - SPECIAL, 4 frames: BACK OFF: hops backward (moving to the right) while nocking an arrow, lands, aims again to the LEFT, sneers\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Mantém distância: o especial é o recuo. A flecha em voo é desenhada pelo jogo; aqui só a saída do arco.",
+   "nome": "Goblin arqueiro",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "goblinArcher",
+   "escala": 0.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "goblinArcher-A (o mesmo personagem)"
+   ],
+   "depende_de": "goblinArcher-A"
+  },
+  {
+   "ordem": 11,
+   "id": "zombie-A",
+   "folha": "A",
+   "grupo": "inimigos/zombie",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Crypt zombie: a bloated, shambling corpse in a rotted burial shroud and the remains of a noble's doublet, grey-green mottled skin with dark purple bruises, sunken milky eyes, jaw hanging loose, exposed ribs on one side, an iron nail driven through one hand, grave dirt on the knees. Arms reaching forward. Slow and heavy.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.0 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Fortitude Morta-viva: o especial é o zumbi que não cai. A morte de verdade (linha 4) só vem com luz ou fogo: dá para desenhar a carne fumegando.",
+   "nome": "Zumbi",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "zombie",
+   "escala": 1.0,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 12,
+   "id": "zombie-B",
+   "folha": "B",
+   "grupo": "inimigos/zombie",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Crypt zombie: a bloated, shambling corpse in a rotted burial shroud and the remains of a noble's doublet, grey-green mottled skin with dark purple bruises, sunken milky eyes, jaw hanging loose, exposed ribs on one side, an iron nail driven through one hand, grave dirt on the knees. Arms reaching forward. Slow and heavy.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 1.0 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: dragging shamble, one foot dragged behind\nRow 2 - ATTACK, 4 frames: raise both fists, bring them down, heavy hammer blow, slump\nRow 3 - SPECIAL, 4 frames: UNDEAD FORTITUDE: knocked down to one knee with the head lolling, twitches, pushes itself back up, stands again with a broken neck tilt\nRow 4 - DEATH, 3 frames: hit by fire and smoking, collapsing into a heap, smouldering corpse on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Fortitude Morta-viva: o especial é o zumbi que não cai. A morte de verdade (linha 4) só vem com luz ou fogo: dá para desenhar a carne fumegando.",
+   "nome": "Zumbi",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "zombie",
+   "escala": 1.0,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "zombie-A (o mesmo personagem)"
+   ],
+   "depende_de": "zombie-A"
+  },
+  {
+   "ordem": 13,
+   "id": "hobgoblin-A",
+   "folha": "A",
+   "grupo": "inimigos/hobgoblin",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Hobgoblin captain: a disciplined, broad-shouldered goblinoid soldier with dark orange skin, flat nose, sharp tusks, cold yellow eyes, black hair in a tight topknot. Wears blackened lamellar armor with rusty red lacing, a captain's crested iron helm, a tattered red war banner strapped to the back on a short pole. Holds a well-kept curved sword and a war horn on the belt.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.05 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Comando: perto dele goblins e kobolds batem mais forte. Os anéis vermelhos do especial ajudam a ler a aura.",
+   "nome": "Hobgoblin capitão",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "hobgoblin",
+   "escala": 1.05,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 14,
+   "id": "hobgoblin-B",
+   "folha": "B",
+   "grupo": "inimigos/hobgoblin",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Hobgoblin captain: a disciplined, broad-shouldered goblinoid soldier with dark orange skin, flat nose, sharp tusks, cold yellow eyes, black hair in a tight topknot. Wears blackened lamellar armor with rusty red lacing, a captain's crested iron helm, a tattered red war banner strapped to the back on a short pole. Holds a well-kept curved sword and a war horn on the belt.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 1.05 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (marching, upright)\nRow 2 - ATTACK, 4 frames: guard up, precise cut, follow-through, back to guard\nRow 3 - SPECIAL, 4 frames: COMMAND: raises the sword high and blows the war horn, solid red pixel rings spread out from him, points the sword forward to the LEFT\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Comando: perto dele goblins e kobolds batem mais forte. Os anéis vermelhos do especial ajudam a ler a aura.",
+   "nome": "Hobgoblin capitão",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "hobgoblin",
+   "escala": 1.05,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "hobgoblin-A (o mesmo personagem)"
+   ],
+   "depende_de": "hobgoblin-A"
+  },
+  {
+   "ordem": 15,
+   "id": "skeleton-A",
+   "folha": "A",
+   "grupo": "inimigos/skeleton",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Skeleton warrior: yellowed cracked bones held together by faint blue necromantic sparks at the joints (solid pixel sparks), empty eye sockets with tiny cold-blue points of light, a dented rusty half-helm, scraps of rotten chainmail on the ribs, a rusty notched longsword and a splintered round shield with a faded crest.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.0 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "",
+   "nome": "Esqueleto",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "skeleton",
+   "escala": 1.0,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 16,
+   "id": "skeleton-B",
+   "folha": "B",
+   "grupo": "inimigos/skeleton",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Skeleton warrior: yellowed cracked bones held together by faint blue necromantic sparks at the joints (solid pixel sparks), empty eye sockets with tiny cold-blue points of light, a dented rusty half-helm, scraps of rotten chainmail on the ribs, a rusty notched longsword and a splintered round shield with a faded crest.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 1.0 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (stiff, rattling)\nRow 2 - ATTACK, 4 frames: raise the sword overhead, chop down, sword hits low, recover\nRow 3 - SPECIAL, 4 frames: SHIELD BASH: raises the shield, slams it forward to the LEFT, bones rattling, steps back\nRow 4 - DEATH, 3 frames: struck and the skull flying loose, bones collapsing, a pile of bones with helm and sword on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "",
+   "nome": "Esqueleto",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "skeleton",
+   "escala": 1.0,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "skeleton-A (o mesmo personagem)"
+   ],
+   "depende_de": "skeleton-A"
+  },
+  {
+   "ordem": 17,
+   "id": "skeletonArcher-A",
+   "folha": "A",
+   "grupo": "inimigos/skeletonArcher",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Skeleton archer: yellowed cracked bones with faint blue necromantic sparks at the joints, empty eye sockets with cold-blue points of light, a tattered hooded cloak of grave cloth, a quiver of black-fletched arrows on the hip, a tall old yew longbow with frayed string.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.0 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "",
+   "nome": "Esqueleto arqueiro",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "skeletonArcher",
+   "escala": 1.0,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 18,
+   "id": "skeletonArcher-B",
+   "folha": "B",
+   "grupo": "inimigos/skeletonArcher",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Skeleton archer: yellowed cracked bones with faint blue necromantic sparks at the joints, empty eye sockets with cold-blue points of light, a tattered hooded cloak of grave cloth, a quiver of black-fletched arrows on the hip, a tall old yew longbow with frayed string.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 1.0 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (stiff)\nRow 2 - ATTACK, 4 frames: nock an arrow, draw the longbow aiming LEFT, release (arrow just leaving the bow), lower the bow\nRow 3 - SPECIAL, 4 frames: BACK OFF: steps backward (moving to the right) with the bow drawn, stops, aims to the LEFT, holds aim\nRow 4 - DEATH, 3 frames: struck and the skull flying loose, bones collapsing, a pile of bones with bow and cloak on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "",
+   "nome": "Esqueleto arqueiro",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "skeletonArcher",
+   "escala": 1.0,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "skeletonArcher-A (o mesmo personagem)"
+   ],
+   "depende_de": "skeletonArcher-A"
+  },
+  {
+   "ordem": 19,
+   "id": "giantSpider-A",
+   "folha": "A",
+   "grupo": "inimigos/giantSpider",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Giant crypt spider, as long as a wolf: bloated black-violet abdomen with a pale bone-white skull-shaped marking, eight long hairy jointed legs with pale bands, a cluster of glossy red eyes, dripping green venom fangs, strands of web and a tiny desiccated rat caught on its back hairs. Low and wide.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 0.7 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Teia: no quadro 3 a teia sai bem comprida para a esquerda (prende de 2 a 5 tiles). Picada envenena: verde só no veneno.",
+   "nome": "Aranha gigante",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "giantSpider",
+   "escala": 0.7,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 20,
+   "id": "giantSpider-B",
+   "folha": "B",
+   "grupo": "inimigos/giantSpider",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Giant crypt spider, as long as a wolf: bloated black-violet abdomen with a pale bone-white skull-shaped marking, eight long hairy jointed legs with pale bands, a cluster of glossy red eyes, dripping green venom fangs, strands of web and a tiny desiccated rat caught on its back hairs. Low and wide.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 0.7 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: legs moving in alternating sets, body steady\nRow 2 - ATTACK, 4 frames: front legs rise, lunge, venomous bite with green drip, back down\nRow 3 - SPECIAL, 4 frames: WEB SHOT: abdomen curls forward under the body, a thick white sticky web strand shoots far to the LEFT, strand fully extended, settles\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Teia: no quadro 3 a teia sai bem comprida para a esquerda (prende de 2 a 5 tiles). Picada envenena: verde só no veneno.",
+   "nome": "Aranha gigante",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "giantSpider",
+   "escala": 0.7,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "giantSpider-A (o mesmo personagem)"
+   ],
+   "depende_de": "giantSpider-A"
+  },
+  {
+   "ordem": 21,
+   "id": "orc-A",
+   "folha": "A",
+   "grupo": "inimigos/orc",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Orc warrior: a muscular, scarred brute with grey-green skin, heavy jaw with big lower tusks, small red eyes under a thick brow, a crest of black hair. Wears spiked black iron pauldrons, a chain shirt, a belt hung with trophy skulls, war paint of a red hand across the face. Holds a huge notched cleaver-axe in two hands.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.1 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Agressivo: o especial é o salto de 3 a 5 tiles até o herói.",
+   "nome": "Orc guerreiro",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "orc",
+   "escala": 1.1,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 22,
+   "id": "orc-B",
+   "folha": "B",
+   "grupo": "inimigos/orc",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:4",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Orc warrior: a muscular, scarred brute with grey-green skin, heavy jaw with big lower tusks, small red eyes under a thick brow, a crest of black hair. Wears spiked black iron pauldrons, a chain shirt, a belt hung with trophy skulls, war paint of a red hand across the face. Holds a huge notched cleaver-axe in two hands.\n\n{{FOLHA_B}} 4 rows. Feet aligned on each row's baseline. Size: the character is 1.1 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (aggressive stride)\nRow 2 - ATTACK, 4 frames: lift the axe over the shoulder, swing down across, axe low after the hit, recover\nRow 3 - SPECIAL, 4 frames: AGGRESSIVE CHARGE: crouches roaring, leaps far forward to the LEFT with the axe raised, airborne, lands with the axe smashing down\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Agressivo: o especial é o salto de 3 a 5 tiles até o herói.",
+   "nome": "Orc guerreiro",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "orc",
+   "escala": 1.1,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "orc-A (o mesmo personagem)"
+   ],
+   "depende_de": "orc-A"
+  },
+  {
+   "ordem": 23,
+   "id": "gnoll-A",
+   "folha": "A",
+   "grupo": "inimigos/gnoll",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Gnoll: a tall, lanky hyena-headed humanoid with spotted dirty-yellow fur, a bristly black mane down the spine, a long muzzle with yellow fangs and drool, mad amber eyes. Wears a ragged hide harness, bone fetishes and a necklace of finger bones. Holds a crude flail of chain and bone.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.2 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Rompante: ferido (metade da vida) entra em frenesi e ataca mais rápido. A linha 5 é o ataque nesse estado.",
+   "nome": "Gnoll",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "gnoll",
+   "escala": 1.2,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 24,
+   "id": "gnoll-B",
+   "folha": "B",
+   "grupo": "inimigos/gnoll",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:5",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Gnoll: a tall, lanky hyena-headed humanoid with spotted dirty-yellow fur, a bristly black mane down the spine, a long muzzle with yellow fangs and drool, mad amber eyes. Wears a ragged hide harness, bone fetishes and a necklace of finger bones. Holds a crude flail of chain and bone.\n\n{{FOLHA_B}} 5 rows. Feet aligned on each row's baseline. Size: the character is 1.2 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: hunched loping run, knees bent\nRow 2 - ATTACK, 4 frames: snarl, lunge with jaws open, bite, recover\nRow 3 - SPECIAL, 4 frames: FRENZY: throws the head back cackling, eyes turn solid red, foam on the jaws, crouches ready to pounce with the mane standing up\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\nRow 5 - FRENZIED ATTACK, 4 frames: the same attack as row 2 but wilder and faster: bite, claw, bite, claw (eyes red, foaming)\n\n{{PROIBIDO}}",
+   "notas": "Rompante: ferido (metade da vida) entra em frenesi e ataca mais rápido. A linha 5 é o ataque nesse estado.",
+   "nome": "Gnoll",
+   "tipo": "monstro",
+   "papel": "comum",
+   "kind": "gnoll",
+   "escala": 1.2,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "gnoll-A (o mesmo personagem)"
+   ],
+   "depende_de": "gnoll-A"
+  },
+  {
+   "ordem": 25,
+   "id": "ogre-A",
+   "folha": "A",
+   "grupo": "inimigos/ogre",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Ogre (MINI-BOSS): a huge, fat, slow giant with a pot belly, lumpy sallow skin with warts and old scars, tiny dim eyes, a jutting underbite with broken teeth, greasy black hair. Wears a filthy loincloth, a cracked tomb lid strapped to one shoulder as armor, chains around the wrists. Drags a massive club made from a stone grave pillar.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.8 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Mini-boss: maior e mais detalhado que os comuns. Pisão Sísmico de perto, Arremesso de Pedra de longe.",
+   "nome": "Ogro",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "ogre",
+   "escala": 1.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 26,
+   "id": "ogre-B",
+   "folha": "B",
+   "grupo": "inimigos/ogre",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:5",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Ogre (MINI-BOSS): a huge, fat, slow giant with a pot belly, lumpy sallow skin with warts and old scars, tiny dim eyes, a jutting underbite with broken teeth, greasy black hair. Wears a filthy loincloth, a cracked tomb lid strapped to one shoulder as armor, chains around the wrists. Drags a massive club made from a stone grave pillar.\n\n{{FOLHA_B}} 5 rows. Feet aligned on each row's baseline. Size: the character is 1.8 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (slow, heavy, club dragging)\nRow 2 - ATTACK, 4 frames: raise the pillar club, swing it down, club smashing the ground, lift it back\nRow 3 - SPECIAL, 4 frames: SEISMIC STOMP: lifts one huge foot high, slams it down, cracked-stone ring and dust burst around the foot (solid pixel shapes), stands up\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\nRow 5 - BOULDER THROW, 4 frames: rips a big chunk of stone from the floor, raises it overhead, throws it to the LEFT (stone leaving the hands), follow-through\n\n{{PROIBIDO}}",
+   "notas": "Mini-boss: maior e mais detalhado que os comuns. Pisão Sísmico de perto, Arremesso de Pedra de longe.",
+   "nome": "Ogro",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "ogre",
+   "escala": 1.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "ogre-A (o mesmo personagem)"
+   ],
+   "depende_de": "ogre-A"
+  },
+  {
+   "ordem": 27,
+   "id": "bugbear-A",
+   "folha": "A",
+   "grupo": "inimigos/bugbear",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Bugbear chieftain (MINI-BOSS): a big, hairy goblinoid with very long arms that reach past the knees, coarse matted brown fur, a bear-like face with a flat nose, yellow fangs and small cruel eyes, big round ears. Wears a trophy cloak of patched hides, a chieftain's iron crown of spikes, bone bracers. Holds a heavy spiked morningstar on a long haft.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.5 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Ataque Surpresa: o primeiro golpe em quem não esperava sai brutal. Alcance 2: o golpe tem que chegar longe.",
+   "nome": "Bugbear chefe",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "bugbear",
+   "escala": 1.5,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 28,
+   "id": "bugbear-B",
+   "folha": "B",
+   "grupo": "inimigos/bugbear",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:5",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Bugbear chieftain (MINI-BOSS): a big, hairy goblinoid with very long arms that reach past the knees, coarse matted brown fur, a bear-like face with a flat nose, yellow fangs and small cruel eyes, big round ears. Wears a trophy cloak of patched hides, a chieftain's iron crown of spikes, bone bracers. Holds a heavy spiked morningstar on a long haft.\n\n{{FOLHA_B}} 5 rows. Feet aligned on each row's baseline. Size: the character is 1.5 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (prowling, long arms swinging)\nRow 2 - ATTACK, 4 frames: wind up the morningstar, long reaching swing far to the LEFT, impact, recover\nRow 3 - SPECIAL, 4 frames: BRUTAL BLOW: raises the morningstar with both hands, smashes it down, impact burst knocks forward (solid pixel shapes), heaves it back up\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\nRow 5 - AMBUSH, 4 frames: crouched low half-hidden in shadow (body darkened), eyes gleaming, explodes upward, first swing at full reach\n\n{{PROIBIDO}}",
+   "notas": "Ataque Surpresa: o primeiro golpe em quem não esperava sai brutal. Alcance 2: o golpe tem que chegar longe.",
+   "nome": "Bugbear chefe",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "bugbear",
+   "escala": 1.5,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "bugbear-A (o mesmo personagem)"
+   ],
+   "depende_de": "bugbear-A"
+  },
+  {
+   "ordem": 29,
+   "id": "gelatinousCube-A",
+   "folha": "A",
+   "grupo": "inimigos/gelatinousCube",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Gelatinous cube (MINI-BOSS): a perfect cube of pale glassy green ooze that fills a corridor from wall to wall. Draw the translucency with SOLID pixel colors only (lighter green where you see through, darker green inside, bright highlight pixels on the upper-left edges, no alpha blending). Things are suspended inside it: a half-dissolved adventurer's skeleton, a rusty sword, a helmet, gold coins and bubbles. Slime drips from the bottom edges.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 1.3 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Mini-boss. Translúcido sem transparência de verdade: tudo em cor chapada (o recorte do jogo não aceita alfa parcial). Camuflado: o jogo escurece quando ele está parado.",
+   "nome": "Cubo Gelatinoso",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "gelatinousCube",
+   "escala": 1.3,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 30,
+   "id": "gelatinousCube-B",
+   "folha": "B",
+   "grupo": "inimigos/gelatinousCube",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:5",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Gelatinous cube (MINI-BOSS): a perfect cube of pale glassy green ooze that fills a corridor from wall to wall. Draw the translucency with SOLID pixel colors only (lighter green where you see through, darker green inside, bright highlight pixels on the upper-left edges, no alpha blending). Things are suspended inside it: a half-dissolved adventurer's skeleton, a rusty sword, a helmet, gold coins and bubbles. Slime drips from the bottom edges.\n\n{{FOLHA_B}} 5 rows. Feet aligned on each row's baseline. Size: the character is 1.3 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: the cube slides forward, the bottom edge bulging and dragging, wobble, settle\nRow 2 - ATTACK, 4 frames: the front face swells, surges forward, slams, ripples back\nRow 3 - SPECIAL, 4 frames: ENGULF: the front face opens like a mouth, surges over the space to the LEFT, closes around it (a dark silhouette of a victim inside), bubbling\nRow 4 - DEATH, 3 frames: the cube quivers, collapses into a spreading puddle, flat puddle of ooze with the skeleton, sword and coins left on it (column 4 empty)\nRow 5 - SPIT OUT, 3 frames: the cube convulses, bulges forward, spits a gob of slime to the LEFT (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Mini-boss. Translúcido sem transparência de verdade: tudo em cor chapada (o recorte do jogo não aceita alfa parcial). Camuflado: o jogo escurece quando ele está parado.",
+   "nome": "Cubo Gelatinoso",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "gelatinousCube",
+   "escala": 1.3,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "gelatinousCube-A (o mesmo personagem)"
+   ],
+   "depende_de": "gelatinousCube-A"
+  },
+  {
+   "ordem": 31,
+   "id": "mimic-A",
+   "folha": "A",
+   "grupo": "inimigos/mimic",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Mimic (MINI-BOSS): a monster disguised as an old iron-banded wooden treasure chest. Revealed: the lid is a huge jaw lined with rows of jagged teeth, a long purple-red tongue, a single yellow eye opening on the front where the lock was, wood grain that turns into wet flesh at the edges, sticky amber glue dripping, four stubby pseudopod legs pushing out from under the chest. When disguised it must look EXACTLY like the attached chest from the common chests sheet.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 0.8 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Mini-boss. Anexe também a folha de baús aprovada (`comum-baus-portais`, item 60 do Pântano): fechado, ele tem que ser igual ao baú do jogo. Quem encosta fica grudado (Adesivo).",
+   "nome": "Mímico",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "mimic",
+   "escala": 0.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "comum-baus-portais (o baú do jogo)"
+   ],
+   "depende_de": "comum-baus-portais"
+  },
+  {
+   "ordem": 32,
+   "id": "mimic-B",
+   "folha": "B",
+   "grupo": "inimigos/mimic",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:6",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Mimic (MINI-BOSS): a monster disguised as an old iron-banded wooden treasure chest. Revealed: the lid is a huge jaw lined with rows of jagged teeth, a long purple-red tongue, a single yellow eye opening on the front where the lock was, wood grain that turns into wet flesh at the edges, sticky amber glue dripping, four stubby pseudopod legs pushing out from under the chest. When disguised it must look EXACTLY like the attached chest from the common chests sheet.\n\n{{FOLHA_B}} 6 rows. Feet aligned on each row's baseline. Size: the character is 0.8 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: lurching hops on the pseudopod legs, lid flapping\nRow 2 - ATTACK, 4 frames: lid opens wide, lunge forward, jaws snap shut, settle\nRow 3 - SPECIAL, 4 frames: ACID BITE: tongue lashes out to the LEFT, jaws open dripping acid-green, bite, acid drool\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\nRow 5 - REVEAL, 4 frames: closed chest identical to the attached chest, lid twitches with teeth showing at the seam, the eye opens, fully revealed with jaws open\nRow 6 - ADHESIVE, 3 frames: amber glue bursts out of the body in sticky strands (solid pixel strands), strands spread around the base, glue settles (column 4 empty)\n\n{{PROIBIDO}}",
+   "notas": "Mini-boss. Anexe também a folha de baús aprovada (`comum-baus-portais`, item 60 do Pântano): fechado, ele tem que ser igual ao baú do jogo. Quem encosta fica grudado (Adesivo).",
+   "nome": "Mímico",
+   "tipo": "monstro",
+   "papel": "mini-boss",
+   "kind": "mimic",
+   "escala": 0.8,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "comum-baus-portais (o baú do jogo)",
+    "mimic-A (o mesmo personagem)"
+   ],
+   "depende_de": "mimic-A"
+  },
+  {
+   "ordem": 33,
+   "id": "dragon-A",
+   "folha": "A",
+   "grupo": "inimigos/dragon",
+   "molde": "molde-A-turnaround.png",
+   "proporcao": "3:1",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Young red dragon (BOSS), about 2x2 tiles: crimson-red scales darkening to black at the edges, a pale ember-orange throat and belly that glows faintly from inside (solid pixel glow), swept-back horns and a frill of spines, smoke curling from the nostrils, cracked old scars, big leathery bat wings with torn membranes, a long spiked tail, molten-gold eyes. Soot and old bones from its burned lair stuck to the claws.\n\n{{FOLHA_A}} All feet on the same horizontal baseline in each row. Size: the character is 2.5 times the height of one human adult (1 tile).\n\n{{PROIBIDO}}",
+   "notas": "Boss. Dragão vermelho, imune a fogo (é o que a regra do jogo diz: `monsters.ts`). Voo abaixo de metade da vida: some e cai sobre a presa (linhas 5 e 6).",
+   "nome": "Dragão jovem",
+   "tipo": "monstro",
+   "papel": "boss",
+   "kind": "dragon",
+   "escala": 2.5,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)"
+   ],
+   "depende_de": null
+  },
+  {
+   "ordem": 34,
+   "id": "dragon-B",
+   "folha": "B",
+   "grupo": "inimigos/dragon",
+   "molde": "molde-B-acao.png",
+   "proporcao": "4:6",
+   "prompt": "{{ESTILO}} {{CENARIO}}\n\nSUBJECT: Young red dragon (BOSS), about 2x2 tiles: crimson-red scales darkening to black at the edges, a pale ember-orange throat and belly that glows faintly from inside (solid pixel glow), swept-back horns and a frill of spines, smoke curling from the nostrils, cracked old scars, big leathery bat wings with torn membranes, a long spiked tail, molten-gold eyes. Soot and old bones from its burned lair stuck to the claws.\n\n{{FOLHA_B}} 6 rows. Feet aligned on each row's baseline. Size: the character is 2.5 times the height of one human adult (1 tile).\nRow 1 - WALK cycle, 4 frames: contact, passing, contact with the other leg, passing (heavy, wings half open)\nRow 2 - ATTACK, 4 frames: bite forward, left claw rake, right claw rake, recover (one bite and two claws)\nRow 3 - SPECIAL, 4 frames: INFERNAL BREATH: inhales with the chest glowing, jaws open, a wide cone of fire pours out to the LEFT, fire ends in smoke\nRow 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the ground (column 4 empty)\nRow 5 - TAKE OFF, 4 frames: crouches and spreads the wings, beats the wings lifting off, rising with legs tucked, high in the air (hovering above the baseline)\nRow 6 - DIVE LANDING, 4 frames: diving down head first, wings folded, slams into the ground with a burst of fire and cracked stone (solid pixel shapes), rises roaring\n\n{{PROIBIDO}}",
+   "notas": "Boss. Dragão vermelho, imune a fogo (é o que a regra do jogo diz: `monsters.ts`). Voo abaixo de metade da vida: some e cai sobre a presa (linhas 5 e 6).",
+   "nome": "Dragão jovem",
+   "tipo": "monstro",
+   "papel": "boss",
+   "kind": "dragon",
+   "escala": 2.5,
+   "voa": false,
+   "referencias": [
+    "_referencias/goblin-referencia.png (estilo)",
+    "dragon-A (o mesmo personagem)"
+   ],
+   "depende_de": "dragon-A"
+  }
+ ]
+}

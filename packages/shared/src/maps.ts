@@ -46,7 +46,12 @@ export interface MapDef {
    */
   lootScale?: number;
   dropScale?: number;
-  /** Monstros comuns por campina (padrão 2). */
+  /**
+   * Multiplicador fixo de vida, dano, XP e loot dos mini-bosses e do Mímico neste mapa (padrão 1). É a força que eles
+   * tinham na profundidade média das salas laterais quando o monstro ainda crescia por sala; não muda na partida.
+   */
+  minibossPower?: number;
+  /** Monstros comuns por campina na entrada (padrão 2; cresce com a profundidade como os encontros, `crowdAt`). */
   meadowMonsters?: number;
   /** Fração das campinas que ganham também um mini-boss solto, sem baú (padrão 0). */
   meadowMinibosses?: number;
@@ -54,7 +59,7 @@ export interface MapDef {
   maxParty?: number;
   /**
    * Covis com boss fixo (Caverna da Travessia): um boss por covil, na ordem de `Dungeon.lairs`, cada um na
-   * profundidade dele (o ganho por profundidade) e com o bônus de loot do portal que abre ao lado quando ele morre.
+   * profundidade dele (a faixa dos itens que larga) e com o bônus de loot do portal que abre ao lado quando ele morre.
    * Com isto não há sorteio: `bosses` só lista os mesmos bosses (menu e banco).
    */
   lairs?: Lair[];
@@ -82,10 +87,27 @@ export const LOOT_SCALE = 0.8;
  */
 export const ITEM_DROP_SCALE = 0.6;
 
+/**
+ * Quantidade a mais de monstros por sala de profundidade (+12% por sala): o orçamento de ameaça de cada encontro e os
+ * monstros das campinas crescem assim. O monstro em si não fica mais forte no fundo (`monsterStats`); a dificuldade
+ * sobe com espécies mais fortes nas tabelas e com mais monstros.
+ */
+export const CROWD_PER_DEPTH = 0.12;
+
+/** Multiplicador de quantidade de uma profundidade (`CROWD_PER_DEPTH`). */
+export function crowdAt(depth: number): number {
+  return 1 + CROWD_PER_DEPTH * Math.max(0, depth);
+}
+
+/** Multiplicador fixo de força de `kind` em `map` (`monsterStats`): o do mapa para mini-bosses, 1 para o resto. */
+export function monsterPower(map: MapDef, kind: MonsterKind): number {
+  return MONSTERS[kind].rank === "miniboss" ? map.minibossPower ?? 1 : 1;
+}
+
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
-export const MAX_ROOM_MONSTERS = 8;
+export const MAX_ROOM_MONSTERS = 12;
 /** Artilheiros e líderes por sala no máximo. */
-export const MAX_ROOM_ARTILLERY = 2;
+export const MAX_ROOM_ARTILLERY = 3;
 export const MAX_ROOM_LEADERS = 1;
 /** Chance de um monstro comum nascer Campeão (ver `CHAMPION_AFFIXES`). */
 export const CHAMPION_CHANCE = 0.05;
@@ -93,6 +115,7 @@ export const CHAMPION_CHANCE = 0.05;
 export const MAPS: Record<MapId, MapDef> = {
   crypt: {
     id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 1, durationSeconds: 4 * 60,
+    minibossPower: 1.24,
     description: "Salas de pedra e corredores apertados. Kobolds, goblins, mortos-vivos e orcs até o Dragão jovem. Cuidado com os baús.",
     encounters: [
       { depth: [0, 0], budget: 60, table: [["rat", 4], ["kobold", 4], ["stirge", 2]] },
@@ -109,6 +132,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   swamp: {
     id: "swamp", name: "Pântano das Ruínas", icon: "🌿", difficulty: 2, durationSeconds: 8 * 60,
+    minibossPower: 1.3,
     description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor. O Rei Bullywug espera nas ruínas do centro.",
     encounters: [
       { depth: [0, 0], budget: 160, table: [["frog", 4], ["bullywug", 2], ["stirge", 1]] },
@@ -131,6 +155,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   desert: {
     id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,
+    minibossPower: 1.25,
     description: "Dunas, oásis e coqueiros. Escorpiões, abutres, gnolls, esqueletos e múmias; ruínas soterradas com mini-boss e baú. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
     encounters: [
       { depth: [0, 0], budget: 60, table: [["sandScorpion", 4], ["giantVulture", 2]] },
@@ -147,6 +172,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   marsh: {
     id: "marsh", name: "Pântano do Kosaradius", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
+    minibossPower: 1.52,
     meadowMonsters: 3, meadowMinibosses: 0.4, lootScale: 0.35, dropScale: 0.6,
     description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando, e ogros e chefes de guerra em cada clareira: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
     encounters: [
@@ -180,6 +206,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   cavern: {
     id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 4, durationSeconds: 10 * 60, meadowMonsters: 3,
+    minibossPower: 1.54,
     description: "Túneis por baixo dos Campos de Kusa, onde a campanha se divide entre a floresta e o deserto: o mapa mais difícil do jogo. Depois do tronco, a caverna se bifurca: a oeste, o Basilisco; a leste, mais fundo, o Observador das Profundezas, o boss mais forte de Kosaradius. Cada boss morto abre o portal do covil dele.",
     encounters: [
       // Tronco (zonas 0 e 1): aquecimento, todo mundo começa no nível 1.
@@ -204,6 +231,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   dunes: {
     id: "dunes", name: "Dunas Cantantes", icon: "🌬️", difficulty: 5, durationSeconds: 8 * 60, meadowMonsters: 3,
+    minibossPower: 1.32,
     description: "Solária profunda: cordilheiras de dunas que cantam com o vento, vales compridos e selas entre eles, e a areia fofa que prende o passo. A legião soterrada do Império marcha de novo: chacais e legionários de osso, arqueiros nas cristas, múmias que puxam com as faixas e mortos escondidos na areia. Na bacia das pedras cantantes, o Colosso Cantante.",
     encounters: [
       // Todo mundo começa no nível 1: as duas primeiras zonas são de bichos e chacais.
@@ -220,6 +248,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   mesas: {
     id: "mesas", name: "Mesas de Solária", icon: "🪨", difficulty: 6, durationSeconds: 8 * 60, meadowMonsters: 3, meadowMinibosses: 0.25,
+    minibossPower: 1.3,
     description: "Platôs de arenito em camadas cortados por cânions estreitos, casas escavadas na rocha e a corte enterrada do último faraó. A mesma legião e as mesmas múmias, mais fundas e em bandos maiores, e mini-bosses soltos nos cânions: o mapa mais difícil do jogo. No anfiteatro dos platôs, o Faraó Eterno.",
     encounters: [
       { depth: [0, 0], budget: 170, table: [["scarabSwarm", 3], ["boneJackal", 3], ["boneLegionary", 1]] },

@@ -1,7 +1,10 @@
 # Pântano do Kosaradius — prompts da folha B (ação) para o ChatGPT
 
 Folha B = as animações de perfil para a esquerda (andar, golpe, especial, morte e, nos mini-bosses, a 2ª habilidade).
-O Grumak tem também a folha C (as habilidades a mais).
+As habilidades de todos (folha C) estão em `PROMPTS_FOLHA_C.md`.
+
+> A folha B entregue saiu em outro formato (2 linhas × 6, golpe e morte, 3/4 de frente; ver `README.md`). Os prompts
+> abaixo são o formato antigo (perfil, 4×4).
 
 ## Como usar
 
@@ -129,7 +132,7 @@ Row 4 - DEATH, 3 frames: hit and recoiling, collapsing, corpse lying on the grou
 Background: one flat solid magenta color (#FF00FF), no checkerboard pattern. No text, numbers, labels, grid, frame, floor, scenery, cast shadow or watermark.
 ```
 
-### 10. Grumak, o Rei-Ogro — folha C
+### 10. Grumak, o Rei-Ogro — folha C (substituída por `PROMPTS_FOLHA_C.md`)
 ```text
 Animation sprite sheet of the SAME character shown in the attached turnaround sheet: identical design, colors, outfit, proportions and weapon, drawn in the exact same pixel art style (crisp hard-edged pixels, thick near-black outline, light from the upper-left, deep shadows, grim and menacing).
 

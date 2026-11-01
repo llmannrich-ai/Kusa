@@ -229,17 +229,18 @@ function addClips(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
       repeat: clip === "idle" || clip === "walk" ? -1 : 0,
     });
   }
-  // Clipes a mais (arte nova): depois dos de sempre, na ordem de `EXTRA_CLIPS`; a morte no ritmo do golpe e não repete.
+  // Clipes a mais (arte nova): depois dos de sempre, na ordem de `EXTRA_CLIPS`; a morte no ritmo do golpe e a 2ª
+  // habilidade no do especial, e as duas não repetem.
   let start = CLIP_ORDER.reduce((n, c) => n + frames[c], 0);
   for (const clip of EXTRA_CLIPS) {
     const n = anim.extra?.[clip];
     if (!n) continue;
-    const base = clip === "death" ? "attack" : clip.startsWith("walk") ? "walk" : "idle";
+    const base = clip === "death" ? "attack" : clip === "skill" ? "cast" : clip.startsWith("walk") ? "walk" : "idle";
     scene.anims.create({
       key: monsterAnimKey(key, clip),
       frames: Array.from({ length: n }, (_, k) => ({ key, frame: start + k })),
       frameRate: clip === "death" ? anim.fps.attack * 0.7 : anim.fps[base],
-      repeat: clip === "death" ? 0 : -1,
+      repeat: clip === "death" || clip === "skill" ? 0 : -1,
     });
     start += n;
   }

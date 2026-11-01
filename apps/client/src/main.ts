@@ -43,8 +43,11 @@ import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
+import { travarZoom } from "./semZoom.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
+
+travarZoom();
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
