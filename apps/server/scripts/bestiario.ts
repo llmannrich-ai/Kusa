@@ -140,7 +140,7 @@ function check(ok: boolean, what: string) {
   const { spawn, brain, state, hit, any } = arena("marsh");
   const k = MAPS.marsh.lootScale! * LOOT_SCALE;
   const grunt = spawn("orcGrunt");
-  const full = monsterStats("orcGrunt", 0).loot;
+  const full = monsterStats("orcGrunt").loot;
   check(brain(grunt).loot[1] === Math.round(full[1] * k), `loot do orc devia ser ${k} do normal (${brain(grunt).loot[1]} de ${full[1]})`);
   // Mini-bosses: dos 40 mortos, só parte larga o item garantido (≈ dropScale × LOOT_SCALE × ITEM_DROP_SCALE, 29%).
   let items = 0;
