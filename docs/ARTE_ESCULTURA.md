@@ -16,6 +16,8 @@ Teste de até onde a arte de monstro feita **só por código** chega, como alter
 | Bosque Velho: Sátiro Flautista, Dríade Corrompida, Galhudo, Espinheiro, Guardião do Menir e Urso-coruja (o esqueleto da múmia com o corpo de cada um) | `proto/forestFolk.ts` | idem |
 | Dragão Verde Jovem, chefe do Bosque Velho (asas de membrana em leque, pescoço e cauda em gomos, o sopro de gás) | `proto/greenDragon.ts` | idem |
 
+| Charco Cinzento: os 10 inimigos (pele do charco nos modelos do verme, abutre, múmia, sacerdote, pantera, dríade, menir, guardião e Rei Galhado; o Lodo de Cinza é modelo novo) | `proto/charcoArt.ts`, `proto/ooze.ts` | `docs/arte/charco-cinzento-escultura.png` |
+
 Com isso o Mar de Areia inteiro está esculpido, menos os quatro que vêm da arte de IA da Cripta (esqueleto, arqueiro,
 aranha e gnoll).
 
@@ -163,3 +165,10 @@ Três modelos cobrem o elenco inteiro, cada um com as medidas e materiais por bi
   (mostra também o tempo por quadro).
 - No jogo, com o cenário de verdade e o mesmo posicionamento da hunt:
   `npm run dev:client` → `/mapa.html?mapa=desert&bichos=sandWorm,sandElemental,mummyPriest,mummy,zombie,giantVulture,sandScorpion,blackScorpion,goblin,giantSpider,stirge&antigo=1`.
+
+## Peles: o mesmo modelo noutra cor (Charco Cinzento)
+
+`Skin` e `applySkin` (`sculpt.ts`): cada cor da rampa de cada material vai para um tom-alvo mantendo o claro e o escuro
+dela, então volume, luz e contorno ficam iguais; o que brilha (`emit`/`glow`) tem tom próprio e `ramps` troca a rampa
+de um material pelo índice. Todo `shoot*` reaproveitado aceita a pele. Com isso o Charco ganhou 9 inimigos sem modelo
+novo (só o Lodo é novo) e 0 KB baixados.

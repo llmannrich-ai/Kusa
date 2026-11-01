@@ -1,4 +1,4 @@
-import { SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, tween, type Frame, type Look, type Mat3, type Material, type V3, type View } from "./sculpt.ts";
+import { SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, tween, type Frame, type Look, type Mat3, type Material, type V3, type View, applySkin, type Skin } from "./sculpt.ts";
 
 /**
  * Quadrúpedes do Bosque Velho esculpidos por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): o Lobo Atroz, a Pantera
@@ -495,9 +495,9 @@ const YAW: Record<View, number> = { side: 14, front: 90, back: -90 };
 /** Linha do chão: os quadrúpedes ocupam a largura do quadro; o centauro é alto. */
 export const BEAST_FEET: Record<BeastKind, number> = { wolf: SCULPT_SIZE - 30, panther: SCULPT_SIZE - 34, centaur: SCULPT_SIZE - 8, boar: SCULPT_SIZE - 26, stag: SCULPT_SIZE - 14 };
 
-export function shootBeast(kind: BeastKind, pose: BPose, view: View): Frame {
+export function shootBeast(kind: BeastKind, pose: BPose, view: View, skin?: Skin): Frame {
   const cx = view === "side" ? SCULPT_SIZE / 2 + (kind === "panther" ? 4 : 2) : SCULPT_SIZE / 2;
-  return render(beast(kind, pose), { size: SCULPT_SIZE, feet: BEAST_FEET[kind], cx, yaw: YAW[view], pitch: PITCH, scale: SCALE[kind] }, look(kind));
+  return render(beast(kind, pose), { size: SCULPT_SIZE, feet: BEAST_FEET[kind], cx, yaw: YAW[view], pitch: PITCH, scale: SCALE[kind] }, applySkin(look(kind), skin));
 }
 
 // --- Poses -----------------------------------------------------------------------------------------------------------

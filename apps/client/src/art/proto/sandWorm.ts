@@ -1,4 +1,4 @@
-import { Sculpt, render, tween, v3, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
+import { Sculpt, render, tween, v3, type Frame, type Look, type Material, type V3, type View, applySkin, type Skin } from "./sculpt.ts";
 
 /**
  * Verme da Areia (chefe) esculpido por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): o pescoço gigante sai da areia
@@ -150,9 +150,9 @@ const PITCH = 34;
 const SCALE = 1.8;
 const YAW: Record<View, number> = { side: 22, front: 90, back: -90 };
 
-export function shootWorm(pose: WPose, view: View): Frame {
+export function shootWorm(pose: WPose, view: View, skin?: Skin): Frame {
   const cx = view === "side" ? WORM_SIZE / 2 - 4 : WORM_SIZE / 2;
-  return render(sandWorm(pose), { size: WORM_SIZE, feet: WORM_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE, ground: true }, look());
+  return render(sandWorm(pose), { size: WORM_SIZE, feet: WORM_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE, ground: true }, applySkin(look(), skin));
 }
 
 const DEF: WPose = { rise: 1, reach: 0, sway: 0, wave: 0, dip: 0, gape: 0.15, gulp: 0, fall: 0, hump: 1 };
