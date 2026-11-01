@@ -40,11 +40,19 @@ export interface Material {
   bumpSize?: number;
   /** Pintas escuras soltas (cerdas, poros): fração dos pixels (0..1). */
   speck?: number;
+  /** Brilho próprio (0..1): o tom não cai abaixo disto, nem na sombra (olho que brilha no escuro). */
+  glow?: number;
 }
+
+/**
+ * Pintura presa à forma (pintura de guerra, alça, sangue na lâmina): recebe o ponto no espaço do elipsoide (unidades do
+ * modelo, a partir do centro, nos eixos dele) e devolve o material daquele ponto, ou −1 para manter o da forma.
+ */
+export type Paint = (x: number, y: number, z: number) => number;
 
 /** Forma da escultura, já no espaço da câmera na hora de desenhar. */
 type Shape =
-  | { kind: "ell"; c: V3; u: V3; v: V3; w: V3; r: V3; mat: number; part: number; band?: Band }
+  | { kind: "ell"; c: V3; u: V3; v: V3; w: V3; r: V3; mat: number; part: number; band?: Band; paint?: Paint }
   | { kind: "cone"; a: V3; b: V3; ra: number; rb: number; mat: number; part: number; band?: Band };
 
 /** Faixas ao longo da forma (anéis de segmento, listras): `n` faixas, a cada uma escurece `depth` no começo. */
@@ -116,16 +124,16 @@ export class Sculpt {
   private d(d: V3) { return norm(apply(this.xf.m, d)); }
 
   /** Elipsoide de centro `c`, raios `r` nos eixos `axes` (padrão: os do modelo). */
-  ell(c: V3, r: V3, mat: number, o: { axes?: [V3, V3, V3]; part?: number; band?: Band } = {}) {
+  ell(c: V3, r: V3, mat: number, o: { axes?: [V3, V3, V3]; part?: number; band?: Band; paint?: Paint } = {}) {
     const [u, v, w] = o.axes ?? [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-    this.shapes.push({ kind: "ell", c: this.p(c), u: this.d(u), v: this.d(v), w: this.d(w), r, mat, part: o.part ?? this.part(), band: o.band });
+    this.shapes.push({ kind: "ell", c: this.p(c), u: this.d(u), v: this.d(v), w: this.d(w), r, mat, part: o.part ?? this.part(), band: o.band, paint: o.paint });
   }
 
   /** Elipsoide esticado de `a` até `b` (gomo de cauda, placa), com raios `ry` (em cima) e `rz` (de lado). */
-  seg(a: V3, b: V3, ry: number, rz: number, mat: number, o: { up?: V3; part?: number; band?: Band; over?: number } = {}) {
+  seg(a: V3, b: V3, ry: number, rz: number, mat: number, o: { up?: V3; part?: number; band?: Band; over?: number; paint?: Paint } = {}) {
     const axes = basis(sub(b, a), o.up);
     const half = len(sub(b, a)) / 2 + (o.over ?? 0);
-    this.ell(lerp3(a, b, 0.5), [half, ry, rz], mat, { axes, part: o.part, band: o.band });
+    this.ell(lerp3(a, b, 0.5), [half, ry, rz], mat, { axes, part: o.part, band: o.band, paint: o.paint });
   }
 
   /** Cone arredondado de `a` (raio `ra`) a `b` (raio `rb`): com raios iguais é uma cápsula; com `b = a`, uma esfera. */
@@ -174,6 +182,13 @@ export interface Look {
   outline?: string;
   /** Força da sombra de oclusão (0..1). */
   occlusion?: number;
+  /**
+   * Luz de recorte (contraluz): clareia a borda do lado oposto à luz, para a silhueta não sumir no chão escuro (o
+   * brejo). `power` 0..1.
+   */
+  rim?: { color: string; power: number };
+  /** Linha interna: diferença de profundidade (em unidades do modelo) a partir da qual uma parte na frente de outra ganha contorno (padrão 2.2). */
+  lines?: number;
 }
 
 /** Quadro em RGBA (como o `ImageData`). */
@@ -361,6 +376,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
   const H = norm(add(L, [0, 0, 1]));
   const ramps = look.materials.map((m) => m.ramp.map(hex));
   const bounce = look.bounce ? { c: hex(look.bounce.color), p: look.bounce.power } : null;
+  const rim = look.rim ? { c: hex(look.rim.color), p: look.rim.power } : null;
   const occ = look.occlusion ?? 0.55;
   let zmin = Infinity, zmax = -Infinity;
   for (let i = 0; i < N; i++) if (owner[i] >= 0) { zmin = Math.min(zmin, zbuf[i]); zmax = Math.max(zmax, zbuf[i]); }
@@ -380,6 +396,10 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       if (m0.belly !== undefined && sh.kind === "ell") {
         const ly = loc[i * 3 + 1] * scale / sh.r[1];
         if (ly < -0.35) mi = m0.belly;
+      }
+      if (sh.kind === "ell" && sh.paint) {
+        const pm = sh.paint(loc[i * 3], loc[i * 3 + 1], loc[i * 3 + 2]);
+        if (pm >= 0) mi = pm;
       }
       const m = look.materials[mi];
       // Oclusão: vizinhos bem na frente escondem a luz do céu.
@@ -415,6 +435,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       // Brilho especular da quitina.
       const spec = m.gloss ? Math.pow(Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]), m.shine ?? 24) * m.gloss : 0;
       t += spec * 0.9;
+      if (m.glow) t = Math.max(t, m.glow + spec * 0.5);
       // Pontilhado só onde o tom muda de cor.
       const ramp = ramps[mi];
       const k = ramp.length - 1;
@@ -428,12 +449,19 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
         const up = Math.max(0, -ny) * bounce.p * (1 - o);
         r += (bounce.c[0] - r) * up * 0.45; g += (bounce.c[1] - g) * up * 0.45; b += (bounce.c[2] - b) * up * 0.45;
       }
+      // Contraluz: a borda virada para longe da luz (a normal quase de lado e para a direita) pega a cor do recorte.
+      if (rim && !m.glow) {
+        const edge = Math.max(0, 1 - nz * 1.6) * Math.max(0, nx * 0.8 - ny * 0.2 + 0.1);
+        const k2 = Math.min(1, edge * rim.p) * (1 - Math.min(1, o * 3));
+        r += (rim.c[0] - r) * k2; g += (rim.c[1] - g) * k2; b += (rim.c[2] - b) * k2;
+      }
       color[i * 3] = r; color[i * 3 + 1] = g; color[i * 3 + 2] = b;
     }
 
   // --- Contornos ---
   const out = new Uint8ClampedArray(N * 4);
   const outline = hex(look.outline ?? "#1b1008");
+  const lineDepth = (look.lines ?? 2.2) * scale;
   for (let i = 0; i < N; i++) {
     if (owner[i] < 0) continue;
     let r = color[i * 3], g = color[i * 3 + 1], b = color[i * 3 + 2];
@@ -446,7 +474,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       if (qx < 0 || qy < 0 || qx >= S || qy >= S) continue;
       const j = qy * S + qx;
       if (owner[j] < 0) continue;
-      if (partOf[j] !== partOf[i] && zbuf[j] - zbuf[i] > 2.2 * scale) { line = true; break; }
+      if (partOf[j] !== partOf[i] && zbuf[j] - zbuf[i] > lineDepth) { line = true; break; }
     }
     if (line) { r = r * 0.42 + outline[0] * 0.58; g = g * 0.42 + outline[1] * 0.58; b = b * 0.42 + outline[2] * 0.58; }
     out[i * 4] = r; out[i * 4 + 1] = g; out[i * 4 + 2] = b; out[i * 4 + 3] = 255;
