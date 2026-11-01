@@ -168,7 +168,8 @@ test("Seiva Antiga cura mais", () => {
     a.any.healPlayer(a.p, 100, HERO);
     return a.p.hp - 1;
   };
-  check(healed(withGift("druid", "ancient_sap")) === 125 && healed({}) === 100, "cura");
+  // Nível 20: +20% de cura, sem o marco 5 (que cura 50% a mais em quem está abaixo de 30% da vida; ver `marcos`).
+  check(healed(withGift("druid", "ancient_sap", 20)) === 120 && healed({}) === 100, "cura");
 });
 test("Seiva Venenosa fortalece o veneno, não a queimadura", () => {
   const a = heroArena("druid", withGift("druid", "venom_sap"));
