@@ -49,7 +49,7 @@ redondo de **Batalhas** (espadas cruzadas), um pouco maior que as abas.
 O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi").
 Código em `apps/client/src/menu.ts`.
 
-- **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas). Tocar em **Grimório** (ou nas magias que vão para a hunt) abre **Magias da hunt** (ver abaixo); os 3 ramos abrem a árvore no ramo tocado.
+- **Heróis:** um medalhão por classe com o retrato de busto do herói vestido (`heroPortrait`, ver `docs/ARTE_HEROIS_ROSTO.md`; tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas). Tocar em **Grimório** (ou nas magias que vão para a hunt) abre **Magias da hunt** (ver abaixo); os 3 ramos abrem a árvore no ramo tocado.
   - **Classe trancada:** o **Xamã Orc** só abre quando qualquer personagem da conta vence **Vorgak** na Fortaleza Orc
     (`CLASS_UNLOCK` em `packages/shared/src/classes.ts`, repetido no banco em `class_unlocked`). Antes disso, o
     medalhão aparece em silhueta escura com 🔒 e dá para ver o herói, o papel, os atributos e o Grimório, mas o
@@ -152,6 +152,18 @@ comprar **e usar** as anteriores do mesmo ramo.
       o tiro carregado atordoa 0,3 s · rolar dá escudo de 5%.
     - 🎇 Mão Rápida: a flecha incendiária explode em raio 1 (0,5× do básico) · +2% de chance · chão em chamas 2 s · +4% ·
       o 6º básico sai sempre incendiário.
+  - Feiticeiro:
+    - ⚡ Condutor: cadeias +1 salto · queimaduras +1 s · Estática e Combustão +5% · +2 saltos · o 1º salto não perde dano.
+    - ❄️ Coração Frio: lentidões +5% · monstro lento recebe +5% do seu dano · +10% · prender com magia dá escudo de 5% ·
+      o congelado que morre congela os colados por 1 s.
+    - 🌑 Fome Sombria: marcas +1 s · matar com magia devolve 1% da mana · +2 s · +1% de roubo de vida · as magias de
+      trevas roubam 2% do dano em mana.
+    - 🔁 Circuito: janela de 10 s · a carregada salta para mais 1 monstro · 2 elementos bastam · os efeitos dela duram +30%
+      · ela recarrega na metade do tempo.
+    - 🔷 Reserva Gélida: quem bate no escudo de gelo congela 1 s · a cada 25 s · abaixo de 20% da mana · o escudo devolve
+      10% da mana ao quebrar · a cada 20 s.
+    - 🦴 Ossuário: esqueletos de 10 s · até 3 · marcam quem atacam (+10% por 3 s) · 12 s · ao sumir, explodem em
+      Condenação (raio 1).
 
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
