@@ -1258,9 +1258,12 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
     O ⚔️ é diferente: o toque continua com alvo automático.
   - A mira gruda (fica dourada) no monstro a até 1 tile do ponto; a magia vai nele e o acompanha durante o voo.
     Exceção: o **tiro** (magia de alvo único com projétil) não gruda nem acompanha: é mirado numa direção (a mira
-    acende a reta até o alcance, com o primeiro monstro em dourado) e pode errar, como o básico à distância.
+    é a linha pontilhada até onde o tiro para, dourada no primeiro monstro da reta) e pode errar, como o básico à
+    distância.
+  - **Mira padronizada:** o ⚔️, os tiros, as linhas e o alvo único usam a mesma linha reta pontilhada e tênue do
+    herói até o alvo; só área e leque desenham a área (quadrado ou tiles do leque) além da linha.
 - **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança na frente do herói. O ponto para na primeira parede do caminho.
-- **Magias em linha** (Disparo Perfurante) miram a direção: a mira acende os tiles da reta até o alcance inteiro; o toque rápido atira na frente do herói.
+- **Magias em linha** (Disparo Perfurante) miram a direção: a mira é a linha pontilhada até o alcance inteiro (dourada se pega algum monstro); o toque rápido atira na frente do herói.
 - **Errou a mira:** a magia sai, aparece na tela, gasta mana e recarga, e não acerta ninguém.
 - Magias em volta de si (Giro da Lâmina, Grito de Guerra, Tempestade do Vazio, Bênção da Floresta e as compradas do mesmo tipo) saem no toque, sem mira. Paredes bloqueiam o efeito de todas. Cada uma gasta mana e tem recarga.
 
