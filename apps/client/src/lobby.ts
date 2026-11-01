@@ -1,5 +1,5 @@
 import { CLASSES, CLASS_IDS, MAPS, MSG, difficultyStars, mapIdOf, partySize, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
-import { heroPoses } from "./art/heroes.ts";
+import { heroPortrait } from "./art/heroes.ts";
 import type { DungeonRoom } from "./net.ts";
 
 // Telas antes da hunt: o cenário e o servidor da sala criada e a sala de espera com as vagas da equipe.
@@ -430,8 +430,8 @@ export const MAP_ART: Record<MapId, string> = {
 const portraits = new Map<string, string>();
 
 function portrait(classId: ClassId) {
-  if (!portraits.has(classId)) portraits.set(classId, heroPoses(classId, undefined, ["down"]).toDataURL());
-  const img = el("img", "slot-portrait");
+  if (!portraits.has(classId)) portraits.set(classId, heroPortrait(classId).toDataURL());
+  const img = el("img", "slot-portrait hero-bust");
   img.src = portraits.get(classId)!;
   img.alt = "";
   return img;
