@@ -1638,13 +1638,30 @@ const num = (v: number, digits = 1) => v.toLocaleString("pt-BR", { maximumFracti
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const sec = (ms: number) => `${num(ms / 1000)} s`;
 
+/**
+ * Dano base do herói para a magia (`baseDamage` em hunt.ts), num intervalo de níveis da hunt: `spell` para magias,
+ * campos e torres, `summon` para criaturas (só parte do poder mágico do equipamento). Com ele, `spellFacts` mostra o
+ * dano em números além do multiplicador. `basic` é o dano do ataque básico (arma), usado pelo salto da Pantera.
+ */
+export interface HeroDamage {
+  spell: readonly [min: number, max: number];
+  basic: readonly [min: number, max: number];
+  summon: readonly [min: number, max: number];
+}
+
 /** Efeitos da magia num nível, em linhas curtas para o menu e a escolha na hunt. */
-export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
+export function spellFacts(def: SpellDef, rank = 0, bonus = 0, hero?: HeroDamage): string[] {
   const s = spellAtRank(def, rank, bonus);
+  // "2,3×" ou, com o herói, "23 a 98 (2,3×)": o dano de um golpe, antes da variação de ±15% e da defesa do monstro.
+  const dmg = (mult: number, base = hero?.spell) => {
+    if (!base) return `${num(mult)}×`;
+    const [lo, hi] = base.map((b) => Math.max(1, Math.round(mult * b)));
+    return `${lo === hi ? lo : `${lo} a ${hi}`} (${num(mult)}×)`;
+  };
   const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque de ${s.coneAngle ?? 90}° (${s.range} tiles)`
     : s.radius > 0 && !s.field ? ` em raio ${s.radius}` : "";
   const facts: string[] = [];
-  if (s.damage) facts.push(s.spread ? `${s.spread.count} projéteis em leque de ${s.spread.angle}°, ${num(s.damage)}× cada` : `Dano ${num(s.damage)}×${area}`);
+  if (s.damage) facts.push(s.spread ? `${s.spread.count} projéteis em leque de ${s.spread.angle}°, ${dmg(s.damage)} cada` : `Dano ${dmg(s.damage)}${area}`);
   if (s.wave) facts.push("Onda: sai de você e avança pelo leque");
   if (s.sweep) facts.push("Varre o leque de um lado ao outro");
   if (s.fork) facts.push(`No fim da linha, abre ${s.fork.count} raios de ${s.fork.length} tiles em leque`);
@@ -1660,7 +1677,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.chain) facts.push(`Salta para mais ${s.chain.jumps} monstros (−${pct(s.chain.falloff)} por salto)`);
   if (s.execute) facts.push(`+${pct(s.execute.bonus)} de dano em quem tem menos de ${pct(s.execute.hpPct)} da vida`);
   if (s.distanceBonus) facts.push(`+${pct(s.distanceBonus)} de dano por tile até o alvo`);
-  if (s.dot) facts.push(`${DOT_NAMES[s.dot.kind]}: ${num(s.dot.perSec)}× por segundo por ${sec(s.dot.ms)}`);
+  if (s.dot) facts.push(`${DOT_NAMES[s.dot.kind]}: ${dmg(s.dot.perSec)} por segundo por ${sec(s.dot.ms)}`);
   if (s.lifesteal) facts.push(`Rouba ${pct(s.lifesteal)} do dano em vida`);
   if (s.heal) facts.push(`Cura ${pct(s.heal)} da vida${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
   if (s.barrier && s.barrierMs) facts.push(`Escudo de ${pct(s.barrier)} da vida por ${sec(s.barrierMs)}${s.barrierAllies ? " (aliados também)" : ""}`);
@@ -1674,7 +1691,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.undeadBonus) facts.push(`+${pct(s.undeadBonus)} de dano em mortos-vivos`);
   if (s.field?.kind === "zone") {
     const effects = [
-      s.field.damage ? `${num(s.field.damage)}× ${(s.field.tickMs ?? 1000) === 1000 ? "por segundo" : `a cada ${sec(s.field.tickMs!)}`} nos monstros` : "",
+      s.field.damage ? `${dmg(s.field.damage)} ${(s.field.tickMs ?? 1000) === 1000 ? "por segundo" : `a cada ${sec(s.field.tickMs!)}`} nos monstros` : "",
       s.field.allyArmor ? `+${s.field.allyArmor} de armadura nos aliados` : "",
       s.field.allyDamage ? `+${pct(s.field.allyDamage)} de dano nos aliados` : "",
       s.field.allyHeal ? `cura ${pct(s.field.allyHeal)} da vida e devolve ${pct(s.field.allyMana ?? 0)} da mana por segundo` : "",
@@ -1687,7 +1704,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.field?.kind === "turret") {
     const what = s.field.look === "storm" ? "Nuvem" : s.field.look === "totem" ? "Totem" : "Estaca";
     const shots = s.field.look === "storm" ? "raios" : s.field.look === "totem" ? "brasas" : "tiros";
-    facts.push(`${what} por ${sec(s.field.ms)}: ${s.field.shots} ${shots} de ${num(s.field.damage ?? 0)}× a até ${s.field.reach} tiles`);
+    facts.push(`${what} por ${sec(s.field.ms)}: ${s.field.shots} ${shots} de ${dmg(s.field.damage ?? 0)} a até ${s.field.reach} tiles`);
     if ((s.field.max ?? 1) > 1) facts.push(`Até ${s.field.max} ao mesmo tempo (o mais antigo sai)`);
   }
   if (s.field?.kind === "wall") facts.push(`Parede de ${s.field.length} tiles por ${sec(s.field.ms)}`);
@@ -1696,7 +1713,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.dash) facts.push(s.dash.teleport ? `Teleporta até ${s.dash.tiles} tiles` : `Salta até ${s.dash.tiles} tiles`);
   if (s.form?.kind === "panther") {
     facts.push(`Pantera por ${sec(s.form.ms)}: anda ${pct(s.form.moveSpeed ?? 0)} mais rápido`);
-    facts.push(`O próximo ataque salta no alvo: ${num(s.form.pounce ?? 1)}×${s.form.pounceStunMs ? `, atordoa por ${sec(s.form.pounceStunMs)}` : ""}`);
+    facts.push(`O próximo ataque salta no alvo: ${dmg(s.form.pounce ?? 1, hero?.basic)}${s.form.pounceStunMs ? `, atordoa por ${sec(s.form.pounceStunMs)}` : ""}`);
   }
   if (s.form?.kind === "bear") facts.push(`Urso por ${sec(s.form.ms)}: +${pct(s.form.hp ?? 0)} de vida; o ataque fere e provoca todos os monstros colados`);
   if (s.rally) {
@@ -1710,7 +1727,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
     if (s.rally.heal) facts.push(`Cura ${pct(s.rally.heal)} da vida deles`);
   }
   if (s.convert) facts.push(`Abaixo de ${pct(s.convert.hpPct)} da vida, o monstro comum vira seu aliado por ${sec(s.convert.ms)}`);
-  if (s.field?.burst) facts.push(`No fim, explode: ${num(s.field.burst.damage)}× em raio ${s.field.burst.radius}${s.field.burst.burn ? " e queima" : ""}`);
+  if (s.field?.burst) facts.push(`No fim, explode: ${dmg(s.field.burst.damage)} em raio ${s.field.burst.radius}${s.field.burst.burn ? " e queima" : ""}`);
   if (s.packCall) facts.push(`Suas criaturas atacam ${pct(s.packCall.haste)} mais rápido por ${sec(s.packCall.ms)} e recuperam ${pct(s.packCall.heal)} da vida`);
   if (s.seed) facts.push(`Semente por ${sec(s.seed.ms)}: se o aliado morrer, renasce com ${pct(s.seed.hp)} da vida, sem perder nada`);
   if (s.cleanse) facts.push("Tira veneno, queimadura e lentidão");
@@ -1718,10 +1735,10 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.charge) facts.push("Corre até o alvo antes do golpe");
   if (s.pull) facts.push("Puxa o alvo para perto de você");
   if (s.tauntHeal) facts.push(`Cura ${pct(s.tauntHeal)} da vida por monstro provocado`);
-  if (s.groundFire) facts.push(`O chão fica em chamas por ${sec(s.groundFire.ms)} (${num(s.groundFire.perSec)}× por segundo)`);
+  if (s.groundFire) facts.push(`O chão fica em chamas por ${sec(s.groundFire.ms)} (${dmg(s.groundFire.perSec)} por segundo)`);
   if (s.breakPush) facts.push(`Ao quebrar, empurra ${s.breakPush} tiles os monstros colados`);
   if (s.summonDeathHeal) facts.push(`A criatura, ao morrer, cura ${pct(s.summonDeathHeal.pct)} da equipe a até ${s.summonDeathHeal.radius} tiles`);
-  if (s.burst) facts.push(`Se o alvo morrer envenenado, explode: ${num(s.burst.damage)}× em raio ${s.burst.radius}, e envenena`);
+  if (s.burst) facts.push(`Se o alvo morrer envenenado, explode: ${dmg(s.burst.damage)} em raio ${s.burst.radius}, e envenena`);
   if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
   if (s.selfBuff) {
     const b = s.selfBuff;
@@ -1749,7 +1766,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
     const power = rankPower(rank) * (1 + bonus);
     const what = s.summon.count > 1 ? `${s.summon.count}× ${sum.name}` : sum.name;
     facts.push(`Invoca ${what} por ${sec(s.summon.durationMs)}`);
-    facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
+    facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${dmg(sum.damage * power, hero?.summon)}` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
   }
   if (s.alsoSummon) {
     const what = s.alsoSummon.count > 1 ? `${s.alsoSummon.count}× ${SUMMONS[s.alsoSummon.kind].name}` : SUMMONS[s.alsoSummon.kind].name;
