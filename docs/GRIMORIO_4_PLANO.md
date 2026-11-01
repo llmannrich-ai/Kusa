@@ -36,7 +36,7 @@ slot** continua vindo só do uso (XP, `spellxp.ts`). Gastar ouro nunca substitui
 |---|---|---|
 | 1 | Objetivo do jogo nos próximos meses | validar com público real: a comunidade Tibia/RPG BR |
 | 2 | Co-op | solo primeiro, co-op como bônus (o plano não pode depender de grupo) |
-| 3 | Nível do slot 3 | **12** (magia suprema) |
+| 3 | Nível do slot 3 | **12** (magia suprema); os mapas mais longos que vêm aí vão levar mais hunts até ele, então o plano não compensa o slot aparecer pouco hoje |
 | 4 | Magias de slot 3 por classe | **9**: 3 Ápices (um por ramo) + 1 por lado de especialização |
 | 5 | Crescimento da árvore | **+2 costelas e +2 linhas por ramo** |
 | 6 | Passivas que já existem | **Áureas e Tomos ganham níveis** (até 20); Traços continuam com nível único |
@@ -62,9 +62,9 @@ ouro novo vai para **passivas longas**, não para magias.
 **Leque invisível.** O motor já tem `shape: "cone"` (90°, `coneTiles`) em 3 magias (Corte Largo, Barragem, Cone de
 Frio). Duas ficam atrás de especialização, e o desenho só acende os tiles do chão: nada sai do herói.
 
-**Slot 3 tardio.** Só **8% das hunts** em sala (26 de 325) chegam ao nível 12. Consequências: as magias do slot 3
-precisam valer a espera (efeito que muda a luta), e o XP delas precisa de um ajuste (seção 5.3), senão o nível 5 de uma
-magia suprema pede centenas de hunts.
+**Slot 3 tardio, por enquanto.** Hoje só 8% das hunts em sala (26 de 325) chegam ao nível 12, mas os mapas novos, mais
+longos, vão levar mais hunts até lá (decisão do Leonardo: o plano não compensa isso). As magias do slot 3 só precisam
+valer a espera: efeito que muda a luta, não só mais dano.
 
 **Público.** 7 contas, quase todo o uso de quem desenvolve e testa; 49% das hunts terminam em morte. As passivas
 baratas no começo (nível 1 de um Dom custa 60) servem de progressão visível para o jogador novo que morre cedo.
@@ -130,15 +130,13 @@ baratas no começo (nível 1 de um Dom custa 60) servem de progressão visível 
 | `apps/server/src/botAi.ts` | bots usam o slot 3 |
 | `apps/client/src/spellbar.ts` | `SLOTS` com o 2, botão no `data-slot="2"`, janela de escolha |
 | `apps/client/src/rules.ts`, `menu.ts`, `catalog.ts` | textos das regras, selo "slot 3" no nó, filtro do catálogo |
-| Supabase | `record_spell_xp` hoje para na 2ª magia (`exit when v_count >= 2`): passa a aceitar 3; `finish_solo_run` idem; o banco repete a regra do XP do slot 3 (5.3) |
+| Supabase | `record_spell_xp` hoje para na 2ª magia (`exit when v_count >= 2`): passa a aceitar 3; `finish_solo_run` idem |
 | Testes | `ativas.ts`, `spells.ts`, `magiaxp.ts`, `bots.ts` cobrem o 3º slot |
 
 ### 5.3 XP do slot 3
 
-O XP de um lançamento é a recarga em segundos (`castXp`). Com 2–4 lançamentos por hunt e só nas hunts que chegam
-ao 12, uma magia suprema renderia ~100 XP por hunt boa: nível 1 em uma hunt, mas **nível 5 só depois de ~55 hunts que
-cheguem ao nível 12** (centenas de hunts no total). Proposta: **XP ×2 no slot 3** (`castXp` olha o slot e o banco
-repete a regra). Assim, quem usa a magia suprema chega ao nível 5 no mesmo ritmo das outras.
+Mesma regra dos outros slots (`castXp` = recarga em segundos, teto de 400 por hunt). Sem compensação para o slot
+aparecer pouco hoje: os mapas mais longos que estão vindo resolvem isso (decisão do Leonardo).
 
 ---
 
@@ -473,12 +471,11 @@ alguma compra quase toda hunt.
 | `packages/shared/src/reactions.ts` (novo) | tabela das reações, estado congelado, força base |
 | `packages/shared/src/gifts.ts` (novo) | catálogo dos 48 Dons (por nível, marcos, tema); `giftBonuses(ranks)` |
 | `packages/shared/src/talents.ts` | `kind: "gift"`; lanes e linhas novas (até X); regra dos 20 níveis de Áureas/Tomos; preços do S3 |
-| `packages/shared/src/spellxp.ts` | XP ×2 no slot 3 (5.3); o banco repete |
 | `apps/server/src/hunt.ts` | formas de leque (canalizar com tique de 250 ms), reações, gatilhos, básico transformado, Dons lidos ao entrar; estado novo da canalização e das reações em `INTERNALS` (troca de anfitrião); nada de `process`/`node:*` |
 | `apps/server/src/state.ts` | `Player.spell3`, `Player.channel` (para o cliente desenhar o sopro), estado congelado no monstro |
 | `apps/client/src/fx.ts`, `aim.ts`, `DungeonScene.ts` | família sopro, mira com ângulo, desenho das reações (ícone curto sobre o monstro) |
 | `apps/client/src/menu.ts` | linhas até X, hexágono do Dom, ficha com "Nv x/25" e marcos, botões +1/+5 |
-| Supabase | migration por fase: Dons, magias, `max_rank`/`cost_growth` de Áureas e Tomos, `buy_talent_levels`, `record_spell_xp` com 3 magias e XP ×2 do slot 3; advisors depois de cada uma |
+| Supabase | migration por fase: Dons, magias, `max_rank`/`cost_growth` de Áureas e Tomos, `buy_talent_levels`, `record_spell_xp` com 3 magias; advisors depois de cada uma |
 | Telemetria | `reactions`, `channelMs`, `coneHits` (monstros por leque), `gifts` (níveis da conta na hunt), `giftDamage`/`giftHeal`, `slot3Casts`; view `telemetry_grimoire` com chegada ao nível 12 |
 | Testes | arena (`scripts/arena.ts`) para as formas, reações, gatilhos e Dons (`efeitos.ts` e teste novo `dons`); `ativas`, `magiaxp`, `bots` com o 3º slot; testes novos entram em `SUITES` |
 
@@ -493,11 +490,11 @@ jogador em cada passo e não deixar código sem uso.
 |---|---|---|---|---|
 | **1. Passivas de ouro** | `kind: "gift"`, os 48 Dons **com o efeito por nível** (sem marcos), Áureas e Tomos até 20, `buy_talent_levels`, menu, migration, teste `dons` | — | M–G | resolve o ouro parado já; não depende de nada |
 | **2. Motor de leque** | L1–L5, família sopro, mira com ângulo, refazer o desenho das 3 magias de leque atuais | — | G | é o pedido mais visível e destrava metade das magias novas |
-| **3. Slot 3** | abrir o slot (5.2), XP ×2, as 4 magias iniciais e os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
+| **3. Slot 3** | abrir o slot (5.2), as 4 magias iniciais e os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
 | **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
 | **6a–6d. S3 de especialização** | 6 por classe, os dois lados juntos (escolha permanente): Feiticeiro → Paladino → Druida → Cavaleiro | 3 | M cada | a classe mais jogada primeiro (43% das hunts) |
-| **7. Balanceamento** | `/balanceamento` com a telemetria nova: preço dos Dons, números das magias, XP do slot 3 | 1, 3 | contínuo | — |
+| **7. Balanceamento** | `/balanceamento` com a telemetria nova: preço dos Dons e números das magias | 1, 3 | contínuo | — |
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
@@ -511,7 +508,6 @@ e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `
 | Ouro parado (mediana do saldo das contas ativas) | cair semana a semana depois da fase 1 |
 | Compras por conta nova nas primeiras 10 hunts | ≥ 5 |
 | Dom mais comprado por classe | < 30% dos níveis comprados da classe (nenhum Dom obrigatório) |
-| Hunts que chegam ao nível 12 | acompanhar (hoje 8%); se ficar abaixo de 10%, rever o nível do slot 3 |
 | Uso do slot 3 em quem chega ao 12 | ≥ 2 lançamentos por hunt |
 | Leque | `coneHits` médio ≥ 2 monstros por lançamento (senão o leque não vale a forma) |
 | Reações | ≥ 1 reação por hunt em quem tem um Dom de combo no nível 5+ |
@@ -525,7 +521,6 @@ e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `
 |---|---|
 | **Escopo** (64 magias, 48 Dons, 3 sistemas novos) | 7 fases independentes; a fase 1 sozinha já resolve o ouro; cortes em ordem: Coroa Solar (órbita), Vórtice Arcano (projétil lento), Barril de Pólvora |
 | **Veterano muito mais forte que novato** | teto da 7.2; efeitos condicionais; mapas ★ altos para o veterano; métrica de diferença (seção 11) |
-| **Slot 3 pouco visto** (8% das hunts) | magia inicial grátis, XP ×2, métrica de chegada ao 12; reavaliar o nível com dados |
 | **Reações confusas** | só 8, com ícone curto sobre o monstro quando acontecem; descritas em Configurações › Regras e no Catálogo |
 | **Canalizar no celular** | toque rápido sai para a frente; segurar e arrastar gira; canalização curta (2–3 s); testar em 412×915 e 915×412 |
 | **Tela poluída e desempenho** | um sopro por herói; rastro de 0,5 s; tique de 250 ms; medir o tick com 4 jogadores (lembrar do #219, lag na Fortaleza) |
@@ -548,8 +543,7 @@ e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `
 
 | # | Pergunta | Recomendação (vale se ninguém mudar) |
 |---|---|---|
-| 1 | XP do slot 3 multiplicado por quanto? | **×2** (seção 5.3) |
-| 2 | Reações valem para golpes de aliados (co-op)? | **sim**: dá um motivo a mais para jogar junto sem obrigar o grupo |
-| 3 | A magia inicial do slot 3 é grátis? | **sim**, como as iniciais dos slots 1 e 2 |
-| 4 | Ordem das fases 1 a 3 | Dons → leque → slot 3; se o slot 3 precisar sair antes, a fase 3 vem logo depois da 2 |
-| 5 | Áurea de velocidade até o nível 6 (não 20) | **sim**: velocidade alta quebra a sensação do jogo |
+| 1 | Reações valem para golpes de aliados (co-op)? | **sim**: dá um motivo a mais para jogar junto sem obrigar o grupo |
+| 2 | A magia inicial do slot 3 é grátis? | **sim**, como as iniciais dos slots 1 e 2 |
+| 3 | Ordem das fases 1 a 3 | Dons → leque → slot 3; se o slot 3 precisar sair antes, a fase 3 vem logo depois da 2 |
+| 4 | Áurea de velocidade até o nível 6 (não 20) | **sim**: velocidade alta quebra a sensação do jogo |
