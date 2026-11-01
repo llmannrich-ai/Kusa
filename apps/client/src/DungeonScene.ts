@@ -416,11 +416,11 @@ export class DungeonScene extends Phaser.Scene {
     }, loadSettings().fixedStick);
     // O ⚔️ fica embaixo, mais perto do polegar; os slots de magia entram acima dele.
     const actions = document.getElementById("actions")!;
-    this.attack = new AttackButton(this.room, actions);
     this.aim = new SpellAim(this, this.room, this.dungeon, (id) => {
       const unit = this.avatars.get(id) ?? this.monsters.get(id);
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
+    this.attack = new AttackButton(this.room, actions, this.aim);
     this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.aboveMe());
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing, () => this.aboveMe());
     this.runeChoice = new RuneChoice(this.room, () => this.spellBar.choosing || this.perkChoice.open, () => this.aboveMe());

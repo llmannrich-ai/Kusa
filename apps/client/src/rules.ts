@@ -101,6 +101,7 @@ export function renderRules(root: HTMLElement) {
       "Polegar esquerdo, na parte de baixo da tela: o joystick aparece onde você toca e move o herói.",
       "⚔️ ataque básico: um toque dá um golpe, segurar repete. Vai no alvo travado ou no monstro mais próximo ao alcance.",
       "Tocar num monstro trava o alvo nele (anel vermelho).",
+      "Flechas, luzes e magias de alvo único com projétil voam reto até onde o alvo estava e podem errar: quem anda de lado escapa, quem vem na sua direção leva. Arraste o ⚔️ para mirar à frente do monstro.",
       "Magias de alvo: segure o botão, arraste para mirar e solte para lançar. Voltar o dedo para o botão cancela. Um toque rápido lança no alvo automático.",
       "Poções: botões ❤️ e 💧 ao lado das magias.",
       "Bag: toque na fileira embaixo do loot para ver, equipar ou largar itens sem pausar a hunt.",

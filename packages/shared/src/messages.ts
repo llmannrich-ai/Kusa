@@ -87,8 +87,11 @@ export interface AddBotMessage { classId: ClassId }
 /** Cliente → servidor (só o líder, na sala de espera): tira o bot da vaga. */
 export interface RemoveBotMessage { id: string }
 
-/** Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe. */
-export interface AttackingMessage { on: boolean }
+/**
+ * Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe.
+ * Com `aim` (arrastou o ⚔️ do básico à distância), é um tiro só, no tile mirado, mesmo sem monstro à vista.
+ */
+export interface AttackingMessage { on: boolean; aim?: { x: number; y: number } }
 
 /** Ponto escolhido com a mira (tile). `targetId` é o monstro em que a mira de alvo único grudou. */
 export interface CastAim { x: number; y: number; targetId?: string }

@@ -5,8 +5,9 @@ import type { Element } from "./traits.ts";
 import { SUMMONS, type SummonKind } from "./summons.ts";
 
 /**
- * Ataque básico de cada classe: sai enquanto o jogador segura o botão de ataque. Com `projectileSpeed`, o golpe viaja até o alvo
- * e o dano só entra quando chega; 0 = corpo a corpo, o dano é na hora.
+ * Ataque básico de cada classe: sai enquanto o jogador segura o botão de ataque. Com `projectileSpeed`, o golpe é um
+ * tiro: voa reto até o tile mirado e o dano só entra quando chega, em quem estiver no caminho (pode errar, ver
+ * `shotPath`); 0 = corpo a corpo, o dano é na hora.
  */
 export interface BasicAttackDef {
   name: string;
@@ -1198,8 +1199,35 @@ export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly 
  * Magia de alvo único (`aim: "target"` sem área): a mira gruda no monstro a até `AIM_SNAP_TILES`
  * do ponto mirado. As de área caem no ponto, sem ímã.
  */
-export function isSingleTarget(spell: SpellDef) {
+export function isSingleTarget(spell: Pick<SpellDef, "aim" | "radius" | "shape" | "dash" | "field">) {
   return spell.aim === "target" && spell.radius === 0 && !spell.shape && !spell.dash && !spell.field;
+}
+
+/** O que a mira precisa saber de uma magia (o básico à distância usa o mesmo formato, ver `basicShotAim`). */
+export type AimDef = Pick<SpellDef, "aim" | "range" | "radius" | "shape" | "dash" | "field" | "projectileSpeed" | "charge">;
+
+/** O básico à distância desenhado pela mira das magias: um tiro de alvo único com o alcance do básico. */
+export function basicShotAim(range: number): AimDef {
+  return { aim: "target", range, radius: 0, projectileSpeed: 1 };
+}
+
+/**
+ * Tiro que pode errar: magia de alvo único com projétil (Flecha Sagrada, Relâmpago, Lâmina Arremessada...). Voa reto
+ * até o tile mirado, sem seguir o monstro, e acerta quem estiver no caminho quando chega (ver `shotPath`). A mira não
+ * gruda no monstro: o jogador pode mirar à frente dele.
+ */
+export function isShot(spell: AimDef) {
+  return isSingleTarget(spell) && (spell.projectileSpeed ?? 0) > 0 && !spell.charge;
+}
+
+/**
+ * Caminho de um tiro (básico à distância ou `isShot`): os tiles do herói até o ponto mirado, em ordem, sem o tile do
+ * herói e parando antes da primeira parede. Na chegada, o primeiro monstro num desses tiles leva o golpe; sem nenhum,
+ * o tiro erra. Quem vem reto na direção do herói continua no caminho; quem anda de lado sai dele.
+ */
+export function shotPath(d: Dungeon, x0: number, y0: number, tx: number, ty: number) {
+  if (x0 === tx && y0 === ty) return [{ x: tx, y: ty }];
+  return lineTiles(d, x0, y0, tx, ty, tileDistance(x0, y0, tx, ty));
 }
 
 /**
