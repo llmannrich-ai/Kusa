@@ -219,6 +219,15 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   renegadeCentaur: { texture: "monster-renegade-centaur", facesLeft: true, blood: "red", scale: 1.5 },
   menhirGuardian: { texture: "monster-menhir-guardian", facesLeft: true, blood: "none", scale: 1.6 },
   greenDragon: { texture: "monster-green-dragon", facesLeft: true, blood: "green" },
+  // Coração da Mata: na arte antiga, o desenho mais parecido do Bosque Velho e do pack (a arte deles é a esculpida).
+  myconid: { texture: "monster-shambling-mound", blood: "green" },
+  thornBoar: { texture: "monster-dire-wolf", facesLeft: true, blood: "red" },
+  corruptedStag: { texture: "monster-dire-wolf", facesLeft: true, blood: "black", scale: 1.2 },
+  elvenShade: { texture: "monster-mourner", facesLeft: true, blood: "none" },
+  stranglerVine: { texture: "monster-shambling-mound", blood: "green", scale: 1.15 },
+  awakenedTree: { texture: "monster-thorn-spitter", facesLeft: true, blood: "green", scale: 1.7 },
+  fallenWarden: { texture: "monster-bone-legionary", facesLeft: true, blood: "none", scale: 1.3 },
+  erlking: { texture: "monster-satyr", facesLeft: true, blood: "green" },
   // Pântano (arte própria animada, `marshMonsters.ts` e `ogreKing.ts`).
   orcScout: { texture: "monster-orc-scout", facesLeft: true, blood: "red", anim: marshAnim("orcScout") },
   orcGrunt: { texture: "monster-orc-grunt", facesLeft: true, blood: "red", anim: marshAnim("orcGrunt") },
@@ -363,11 +372,23 @@ if (protoSculpt) {
     ["owlbear", protoSculpt.folkArt("owlbear"), 1.65, { crushingHug: "cast" }],
     ["corruptedDryad", protoSculpt.folkArt("dryad"), 1.5, "cast"],
     ["menhirGuardian", protoSculpt.folkArt("menhir"), 1.75, { runeStomp: "cast", stoneFist: "attack" }],
+    // Coração da Mata.
+    ["thornBoar", protoSculpt.beastArt("boar"), 1.35, { gore: "cast" }],
+    ["corruptedStag", protoSculpt.beastArt("stag"), 1.65, { antlerCharge: "cast" }],
+    ["myconid", protoSculpt.folkArt("myconid"), 1.2, { sporeCloud: "cast" }],
+    ["elvenShade", protoSculpt.folkArt("shade"), 1.35, { moonArrow: "cast" }],
+    ["stranglerVine", protoSculpt.folkArt("vine"), 1.35, { strangle: "cast" }],
+    ["awakenedTree", protoSculpt.folkArt("tree"), 2, { rootGrasp: "cast", branchSweep: "attack" }],
+    ["fallenWarden", protoSculpt.folkArt("warden"), 1.55, { shadowStep: "attack", bladeDance: "cast", shadeCall: "cast" }],
+    ["erlking", protoSculpt.folkArt("erlking"), 2.6, { royalCharge: "attack", heartThorns: "cast", wildHunt: "cast", mistStep: "cast", forestWrath: "skill" }],
     ["greenDragon", protoSculpt.greenDragonArt(), 2.3, { poisonBreath: "cast", menhirGas: "cast", flight: "skill", tailSweep: "attack" }],
   ];
+  // A animação é guardada pela textura: monstro que, na arte antiga, usa a textura de outro (o Coração da Mata) ganha
+  // uma só dele, senão os dois tocariam a mesma folha.
+  const shared = (kind: MonsterKind) => Object.entries(BESTIARY_ART).some(([k, a]) => k !== kind && a.texture === BESTIARY_ART[kind].texture);
   for (const [kind, art, size, strike] of sculpted) {
     BESTIARY_ART[kind] = {
-      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * size,
+      ...BESTIARY_ART[kind], ...(shared(kind) ? { texture: `monster-hd-${kind}` } : {}), facesLeft: true, scale: HD_SCALE * size,
       anim: {
         size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
         fps: { ...art.fps }, frames: { ...art.clips }, stride: art.stride,

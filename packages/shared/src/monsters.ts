@@ -25,7 +25,9 @@ export type MonsterKind =
   | "twigling" | "direWolf" | "satyr" | "thornSpitter" | "shadowPanther" | "owlbear"
   | "corruptedDryad" | "renegadeCentaur" | "menhirGuardian" | "greenDragon"
   // Fortaleza Orc (dificuldade 8): o senhor do castelo (o resto é o clã do Pântano do Kosaradius, mais forte)
-  | "emberWarlord";
+  | "emberWarlord"
+  // Coração da Mata (dificuldade 6): o fundo da floresta, a caçada do Rei Galhado e os mortos dos santuários élficos
+  | "myconid" | "thornBoar" | "corruptedStag" | "elvenShade" | "stranglerVine" | "awakenedTree" | "fallenWarden" | "erlking";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -1054,6 +1056,128 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "Fez ninho no círculo de menires e envenenou a clareira inteira. Morde três vezes, sopra veneno em leque e varre com a cauda; ferido, os menires soltam gás e ele alça voo para cair sobre quem fugiu. Resiste a veneno.",
+  }),
+  // --- Coração da Mata (6 estrelas): o fundo da floresta do Kosaradius, depois do Bosque Velho. A luz quase não chega:
+  // fungos e cipós que se mexem, a caçada corrompida do Rei Galhado (javalis e cervos) e os mortos dos santuários
+  // élficos. Também vêm do Bosque Velho, mais fundo, a Pantera das Sombras, o Urso-coruja e a Dríade Corrompida. Na
+  // faixa de força das Mesas de Solária (o mesmo degrau, do outro lado da bifurcação).
+  myconid: monster({
+    kind: "myconid", name: "Fungóide", rank: "common", type: "plant", role: "controller", cr: 5, group: [2, 3],
+    hp: 110, damage: 10, xp: 74, loot: [7, 12], speed: 2.2, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "smash",
+    traits: { onHit: { chance: 0.5, dot: { kind: "poison", power: 0.25, durationMs: 3000 } } },
+    abilities: [
+      {
+        id: "sporeCloud", name: "Nuvem de Esporos", shape: "self", range: 2, radius: 2, cooldownMs: 9000, power: 0.7,
+        slow: { factor: 0.6, durationMs: 2500 }, dot: { kind: "poison", power: 0.3, durationMs: 4000 }, color: 0xb8d070, fx: "acidRain",
+      },
+    ],
+    lore: "Cogumelo do tamanho de um homem, que anda em bando debaixo das árvores anciãs. Bate com o chapéu e, quando alguém chega perto, solta a nuvem de esporos: envenena e pesa nas pernas. Queima fácil.",
+  }),
+  thornBoar: monster({
+    kind: "thornBoar", name: "Javali-Espinho", rank: "common", type: "beast", role: "brute", cr: 5, group: [2, 2],
+    hp: 150, damage: 12, xp: 82, loot: [8, 13], speed: 3.4, aggroRange: 6, attackRange: 1, attackCooldownMs: 1400, attackFx: "bite",
+    traits: { onHit: { chance: 0.35, dot: { kind: "bleed", power: 0.3, durationMs: 3000 } } },
+    abilities: [
+      { id: "gore", name: "Investida", shape: "leap", range: 5, minRange: 2, radius: 1, cooldownMs: 7000, power: 1.4, push: 1, color: 0x8a5a3a, fx: "leap" },
+    ],
+    lore: "Javali da caçada do Rei Galhado, com espinhos de amora nascendo do lombo. Vem em dupla, abaixa a cabeça e investe de longe; a presa rasga quem encosta.",
+  }),
+  corruptedStag: monster({
+    kind: "corruptedStag", name: "Cervo Corrompido", rank: "common", type: "monstrosity", role: "skirmisher", cr: 6,
+    hp: 170, damage: 11, xp: 98, loot: [10, 16], speed: 3.8, aggroRange: 7, attackRange: 1, attackCooldownMs: 1400, attackFx: "smash",
+    traits: { hitAndRun: { cooldownMs: 4000 } },
+    abilities: [
+      {
+        id: "antlerCharge", name: "Galhada", shape: "line", range: 5, minRange: 2, radius: 0, length: 5, cooldownMs: 8000, power: 1.6, push: 2,
+        color: 0xc8b890, fx: "breath",
+      },
+    ],
+    lore: "Cervo de olhos vazios e galhada coberta de musgo podre, o cão de caça do Rei Galhado. Atravessa a clareira em linha reta e joga longe quem estiver no caminho; depois de bater, recua (Fuga Ágil).",
+  }),
+  elvenShade: monster({
+    kind: "elvenShade", name: "Sombra Élfica", rank: "common", type: "undead", role: "artillery", cr: 6,
+    hp: 95, damage: 13, xp: 92, loot: [9, 15], speed: 2.8, aggroRange: 8, attackRange: 6, attackCooldownMs: 1700, attackFx: "energy",
+    elements: { radiant: 1.5, dark: 0.5 },
+    traits: { keepDistance: 3, blink: { everyMs: 6500, ms: 1500 } },
+    abilities: [
+      {
+        id: "moonArrow", name: "Flecha da Lua Morta", shape: "line", range: 7, radius: 0, length: 7, cooldownMs: 9000, power: 1.4,
+        effect: { kind: "blind", ms: 1200 }, color: 0x9af0e4, fx: "lightning",
+      },
+    ],
+    lore: "Arqueira élfica que morreu no santuário e não saiu de lá. Atira de longe, some no ar de vez em quando e a flecha da lua morta atravessa tudo em linha e cega. A luz a desfaz.",
+  }),
+  stranglerVine: monster({
+    kind: "stranglerVine", name: "Cipó Estrangulador", rank: "common", type: "plant", role: "lurker", cr: 5,
+    hp: 140, damage: 11, xp: 86, loot: [8, 14], speed: 2, aggroRange: 3, attackRange: 2, attackCooldownMs: 1500, attackFx: "nature",
+    traits: { camouflage: true, ambush: 1.6 },
+    abilities: [
+      {
+        id: "strangle", name: "Estrangular", shape: "pull", range: 5, minRange: 2, radius: 0, cooldownMs: 8000, power: 0.6,
+        effect: { kind: "root", ms: 1500 }, color: 0x4a7a2a, fx: "tongue",
+      },
+    ],
+    lore: "Um emaranhado de cipós escuros que parece só mais um pedaço da mata. Ninguém o vê antes do primeiro bote; quem foge é laçado, puxado de volta e preso. Queima fácil.",
+  }),
+  // Mini-bosses (os santuários élficos guardam o baú).
+  awakenedTree: monster({
+    kind: "awakenedTree", name: "Árvore Desperta", rank: "miniboss", type: "plant", role: "sentinel", cr: 8,
+    hp: 720, damage: 21, xp: 340, loot: [32, 48], speed: 1.7, aggroRange: 4, attackRange: 2, attackCooldownMs: 1900, attackFx: "smash",
+    elements: { physical: 0.75 },
+    traits: { camouflage: true },
+    abilities: [
+      {
+        id: "rootGrasp", name: "Raízes", shape: "target", range: 6, radius: 2, cooldownMs: 10000, power: 0.9,
+        effect: { kind: "root", ms: 1500 }, color: 0x6b4a2a, fx: "web",
+      },
+      { id: "branchSweep", name: "Varrida de Galho", shape: "self", range: 2, radius: 2, cooldownMs: 8000, power: 1.6, push: 2, color: 0x5a7a2a, fx: "slam" },
+    ],
+    lore: "Um carvalho velho que acordou de mau humor. Parado, é só mais uma árvore do santuário; quando alguém encosta, prende os pés com as raízes e varre a clareira com os galhos. A casca aguenta corte (resiste a físico); o fogo, não.",
+  }),
+  fallenWarden: monster({
+    kind: "fallenWarden", name: "Guardião Élfico Caído", rank: "miniboss", type: "undead", role: "leader", cr: 8,
+    hp: 560, damage: 22, xp: 330, loot: [32, 48], speed: 3.2, aggroRange: 8, attackRange: 1, attackCooldownMs: 1300, attackFx: "slash",
+    elements: { radiant: 1.25, dark: 0.75 },
+    traits: { leader: { radius: 4, damage: 0.2, haste: 0.2 } },
+    abilities: [
+      { id: "shadowStep", name: "Passo Sombrio", shape: "leap", range: 6, minRange: 2, radius: 1, cooldownMs: 8000, power: 1.3, color: 0x4ad0c0, fx: "leap" },
+      {
+        id: "bladeDance", name: "Dança das Lâminas", shape: "self", range: 1, radius: 1, cooldownMs: 7000, power: 1.7,
+        dot: { kind: "burn", power: 0.25, durationMs: 3000 }, color: 0x9af0e4, fx: "slam",
+      },
+      {
+        id: "shadeCall", name: "Chamado do Santuário", shape: "summon", range: 7, radius: 0, cooldownMs: 20000, power: 0,
+        summon: { kind: "elvenShade", count: 2 }, belowHp: 0.5, phase: true, color: 0x9af0e4, fx: "summon",
+      },
+    ],
+    lore: "O último guardião do santuário, de armadura élfica e duas lâminas de luz fria. Salta da sombra, gira as lâminas em volta (a luz queima) e, ferido, chama as arqueiras mortas; perto dele, todos batem mais forte e mais rápido (Comando).",
+  }),
+  // Boss: o Rei Galhado, na clareira da árvore do coração. O último boss do lado da floresta.
+  erlking: monster({
+    kind: "erlking", name: "Rei Galhado", rank: "boss", type: "fey", role: "brute", cr: 11,
+    hp: 4300, damage: 48, xp: 4800, loot: [405, 590], speed: 2.6, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "slash",
+    // Espírito da mata: o veneno da floresta mal o toca; o fogo e o ferro frio (gelo), sim.
+    elements: { nature: 0.5, fire: 1.25, ice: 1.15 },
+    abilities: [
+      {
+        id: "royalCharge", name: "Investida da Galhada", shape: "line", range: 7, minRange: 2, radius: 1, length: 7, cooldownMs: 9000, power: 1.7, push: 2,
+        color: 0xd8c8a0, fx: "breath",
+      },
+      {
+        id: "heartThorns", name: "Espinhos do Coração", shape: "target", range: 7, radius: 3, cooldownMs: 11000, power: 1.2,
+        dot: { kind: "bleed", power: 0.3, durationMs: 4000 }, color: 0x9a2a3a, fx: "acidRain",
+      },
+      {
+        id: "wildHunt", name: "Chamado da Caçada", shape: "summon", range: 8, radius: 0, cooldownMs: 22000, power: 0,
+        summon: { kind: "corruptedStag", count: 2 }, belowHp: 0.7, phase: true, color: 0xc8b890, fx: "summon",
+      },
+      { id: "mistStep", name: "Passo da Névoa", shape: "dive", range: 8, radius: 2, cooldownMs: 15000, power: 1.4, vanishMs: 1600, belowHp: 0.5, color: 0x9ab8a0, fx: "dive" },
+      {
+        id: "forestWrath", name: "Fúria da Mata", shape: "self", range: 3, radius: 3, cooldownMs: 30000, power: 1.5, push: 3,
+        effect: { kind: "root", ms: 1200 }, selfHeal: 0.15, belowHp: 0.3, phase: true, once: true, color: 0x6b8e23, fx: "quake",
+      },
+    ],
+    lore: "O senhor da caçada da floresta do Kosaradius, alto como uma árvore nova, com a galhada de cervo cheia de musgo e o manto de folhas mortas. Atravessa a clareira de galhada baixa, faz chover espinhos que sangram, chama os cervos, some na névoa para cair sobre quem fugiu e, quase vencido, a mata inteira levanta em volta dele.",
   }),
   // --- Pântano do Kosaradius: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
   // profundidade dobra os do fim), em bandos maiores: muito XP para quem joga sozinho. -----------------------
