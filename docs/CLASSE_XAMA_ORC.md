@@ -1,6 +1,6 @@
 # Xamã Orc — desenho da 5ª classe (proposta)
 
-Status: **proposta para decidir**, nada implementado. Números são de partida (nível 0) e vão para o
+Status: **decisões 1 a 4 fechadas, 5 em aberto**, nada implementado. Números são de partida (nível 0) e vão para o
 `/balanceamento` depois da Fase 1.
 
 ## 1. Conceito em uma frase
@@ -176,12 +176,22 @@ Os três ganchos que fazem a classe ser lembrada:
 
 Fase 1 sozinha já é um PR grande; as outras são PRs separados.
 
-## 12. Decisões para o Leonardo
+## 12. Decisões
 
-1. **Nome da classe:** "Xamã Orc" (direto) ou "Xamã da Brasa" (puxa a história de Vorgak)?
-2. **Campanha:** o xamã começa no Pântano como qualquer personagem (recomendado: consistente e o mapa fácil ensina a
-   classe) ou já abre a campanha que a conta venceu?
-3. **Equipamento:** usa os cajados e as armaduras arcanas que já existem (recomendado na Fase 1: zero itens novos) ou
-   ganha uma família de itens própria (presas, ossos, pele)?
-4. **Desbloqueio alternativo** para quem não vence a ★8 (conquista acumulada)? Sim ou não.
-5. **Totem atacável pelos monstros** (mais tático, mais complexo) ou não (recomendado na Fase 1)?
+Respondidas em 2026-11-01:
+
+| # | Decisão | Escolha |
+|---|---|---|
+| 1 | Nome da classe | **Xamã Orc** |
+| 2 | Campanha | **Começa no Pântano**, como todo personagem (progresso por personagem, regra atual) |
+| 3 | Equipamento | **Cajados e itens arcanos** que já existem (os mesmos do Feiticeiro e do Druida); nenhum item novo |
+| 4 | Desbloqueio | **Só vencendo Vorgak**, sem conquista alternativa |
+| 5 | Totem atacável pelos monstros | **Em aberto** (falta explicar o que é o totem; ver seção 5) |
+
+Consequências:
+
+- Decisão 4 deixa o risco 1 da seção 10 de pé: pouca gente vai liberar no começo. Para testar e balancear, a classe
+  precisa ser liberada à mão nas contas de desenvolvimento (no banco, um registro em `profile_boss_clears` com
+  `emberWarlord`), sem mudar a regra para os jogadores.
+- Decisão 3: na migration, o Xamã Orc entra no mesmo grupo do `staff`/`arcane` (`class_id in ('sorcerer', 'druid')`
+  passa a incluir `orcShaman`).
