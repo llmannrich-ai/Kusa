@@ -72,8 +72,8 @@ contra um servidor já aberto, passando a URL:
   spells e bestiario) com mapas e seeds sorteados. Roda todo dia no CI (`.github/workflows/caos.yml`) e, se falhar, abre
   uma issue com o rótulo `caos` e o comando que reproduz a falha (`KUSA_MAP=... KUSA_SEED=... npx tsx scripts/<teste>.ts`).
 - `npx tsx scripts/tiro.ts` (de dentro de `apps/server`; sem servidor): numa arena, o básico à distância e as magias
-  de alvo único com projétil erram quem sai de lado durante o voo, acertam quem vem reto e o primeiro monstro no
-  caminho, e o tiro mirado à mão vai no tile mirado.
+  de alvo único com projétil voam na direção até o alcance inteiro, erram quem sai de lado durante o voo, acertam quem
+  vem reto, o primeiro monstro no caminho e quem está atrás do alvo que saiu, e o tiro mirado à mão segue a direção.
 - `npx tsx scripts/catalogo.ts` (de dentro de `apps/server`; sem servidor): as chances de drop e o gold que o Catálogo
   (Configurações > Catálogo, `dropOdds`) mostra batem com a hunt: mata cada rank de cada mapa muitas vezes na arena e confere.
 - `npx tsx scripts/travessia.ts` (de dentro de `apps/server`; sem servidor): a Caverna da Travessia gera a chegada

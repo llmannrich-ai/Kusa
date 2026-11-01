@@ -6,7 +6,7 @@ import { SUMMONS, type SummonKind } from "./summons.ts";
 
 /**
  * Ataque básico de cada classe: sai enquanto o jogador segura o botão de ataque. Com `projectileSpeed`, o golpe é um
- * tiro: voa reto até o tile mirado e o dano só entra quando chega, em quem estiver no caminho (pode errar, ver
+ * tiro: voa reto na direção mirada até o alcance e o dano entra no primeiro monstro que encontrar (pode errar, ver
  * `shotPath`); 0 = corpo a corpo, o dano é na hora.
  */
 export interface BasicAttackDef {
@@ -1212,23 +1212,37 @@ export function basicShotAim(range: number): AimDef {
 }
 
 /**
- * Tiro que pode errar: magia de alvo único com projétil (Flecha Sagrada, Relâmpago, Lâmina Arremessada...). Voa reto
- * até o tile mirado, sem seguir o monstro, e acerta quem estiver no caminho quando chega (ver `shotPath`). A mira não
- * gruda no monstro: o jogador pode mirar à frente dele.
+ * Tiro que pode errar: magia de alvo único com projétil (Flecha Sagrada, Relâmpago, Lâmina Arremessada...). É mirado
+ * numa **direção**, não num ponto: voa reto até o alcance inteiro (ou a primeira parede), sem seguir o monstro, e acerta
+ * o primeiro monstro que encontrar no caminho durante o voo (ver `shotPath`). A mira não gruda no monstro.
  */
 export function isShot(spell: AimDef) {
   return isSingleTarget(spell) && (spell.projectileSpeed ?? 0) > 0 && !spell.charge;
 }
 
 /**
- * Caminho de um tiro (básico à distância ou `isShot`): os tiles do herói até o ponto mirado, em ordem, sem o tile do
- * herói e parando antes da primeira parede. Na chegada, o primeiro monstro num desses tiles leva o golpe; sem nenhum,
- * o tiro erra. Quem vem reto na direção do herói continua no caminho; quem anda de lado sai dele.
+ * Caminho de um tiro (básico à distância ou `isShot`): os tiles do herói na direção de (ax, ay) até `range` tiles, em
+ * ordem, sem o tile do herói e parando antes da primeira parede (a reta segue a direção mesmo depois do ponto, como
+ * `lineTiles`). O projétil passa por um tile de cada vez (`flightMs` até ele) e para no primeiro monstro que encontrar.
+ * Quem vem reto na direção do herói continua no caminho; quem anda de lado sai dele. Ponto igual ao herói: sem direção.
  */
-export function shotPath(d: Dungeon, x0: number, y0: number, tx: number, ty: number) {
-  if (x0 === tx && y0 === ty) return [{ x: tx, y: ty }];
-  return lineTiles(d, x0, y0, tx, ty, tileDistance(x0, y0, tx, ty));
+export function shotPath(d: Dungeon, x0: number, y0: number, ax: number, ay: number, range: number) {
+  if (x0 === ax && y0 === ay) return [];
+  return lineTiles(d, x0, y0, ax, ay, range);
 }
+
+/**
+ * Ponto distante na direção (dx, dy) a partir do herói, para mandar como mira de tiro: quanto mais longe, mais fina a
+ * direção que a reta de tiles consegue seguir. Cliente (mira) e servidor (bots, testes) usam a mesma conta.
+ */
+export function shotAimPoint(x0: number, y0: number, dx: number, dy: number) {
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return { x: x0, y: y0 };
+  return { x: x0 + Math.round((dx / len) * SHOT_AIM_REACH), y: y0 + Math.round((dy / len) * SHOT_AIM_REACH) };
+}
+
+/** Distância (tiles) do ponto que representa a direção de um tiro (ver `shotAimPoint`). */
+export const SHOT_AIM_REACH = 40;
 
 /**
  * Tiles de uma magia em linha: do herói na direção do ponto mirado até `length` tiles, parando antes

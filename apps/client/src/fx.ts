@@ -29,7 +29,41 @@ function lava(heat: number) {
  * desenhado coincidir com o número de dano.
  */
 export class CombatFx {
+  /** Tiro sendo desenhado agora (`track`): os projéteis e efeitos atrasados dele ficam guardados aqui. */
+  private tracking: ShotFx | null = null;
+  /** Tiros em voo, pelo id do servidor, para parar no `MSG.shotEnd`. */
+  private shots = new Map<number, ShotFx>();
+
   constructor(private scene: Phaser.Scene) {}
+
+  /**
+   * Desenha um tiro que pode errar (`draw` chama `basicAttack` ou `spell` com `to` = fim do caminho) e guarda o que
+   * ele criou, para `endShot` parar o projétil onde ele acertou.
+   */
+  track(shot: number, to: Point, draw: () => void) {
+    const fx: ShotFx = { to, tweens: [], timers: [] };
+    this.tracking = fx;
+    try {
+      draw();
+    } finally {
+      this.tracking = null;
+    }
+    this.shots.set(shot, fx);
+    // Sem `MSG.shotEnd` (errou), o tiro some sozinho no fim do caminho; aqui só se esquece dele.
+    this.scene.time.delayedCall(5000, () => this.shots.delete(shot));
+  }
+
+  /** O tiro acertou antes do fim do caminho: o projétil some em `at` e o impacto sai ali, na hora. */
+  endShot(shot: number, at: Point) {
+    const fx = this.shots.get(shot);
+    if (!fx) return;
+    this.shots.delete(shot);
+    // Os efeitos leem `to` quando acontecem: mudar o ponto leva o impacto para onde o tiro parou.
+    fx.to.x = at.x;
+    fx.to.y = at.y;
+    for (const tween of fx.tweens) if (tween.isPlaying()) tween.complete();
+    for (const timer of fx.timers) if (!timer.hasDispatched) timer.remove(true);
+  }
 
   basicAttack(classId: ClassId, from: Point, to: Point, ms: number) {
     switch (classId) {
@@ -981,7 +1015,7 @@ export class CombatFx {
     parts.push(shot);
     const duration = Math.max(60, ms);
     let lastTrail = 0;
-    this.scene.tweens.add({
+    const tween = this.scene.tweens.add({
       targets: glow ? [shot, glow] : shot,
       x: to.x,
       y: to.y - 6,
@@ -996,6 +1030,7 @@ export class CombatFx {
         if (opts.impact !== undefined) this.sparks({ x: to.x, y: to.y - 6 }, opts.impact, 6);
       },
     });
+    this.tracking?.tweens.push(tween);
   }
 
   // --- Magias ---------------------------------------------------------------
@@ -1188,6 +1223,15 @@ export class CombatFx {
   }
 
   private later(ms: number, fn: () => void) {
-    if (ms <= 0) fn(); else this.scene.time.delayedCall(ms, fn);
+    if (ms <= 0) return fn();
+    const timer = this.scene.time.delayedCall(ms, fn);
+    this.tracking?.timers.push(timer);
   }
+}
+
+/** O que um tiro em voo criou (ver `CombatFx.track`). */
+interface ShotFx {
+  to: Point;
+  tweens: Phaser.Tweens.Tween[];
+  timers: Phaser.Time.TimerEvent[];
 }

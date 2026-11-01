@@ -24,7 +24,7 @@ teclado e mouse no desktop são um extra.
   cliente desenha os passos emendados, com duração constante (sem "trava e corre" quando a rede oscila).
 - **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
-- **Tiro que pode errar:** o básico à distância (Paladino, Feiticeiro, Druida) e as magias de alvo único com projétil voam reto até o tile mirado (ver "Ataques e magias"). Arrastar o ⚔️ mira à mão.
+- **Tiro que pode errar:** o básico à distância (Paladino, Feiticeiro, Druida) e as magias de alvo único com projétil são mirados numa **direção** e voam reto até o alcance inteiro (ver "Ataques e magias"). Arrastar o ⚔️ mira à mão.
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").
 - **Tela:** sempre 9 tiles no lado curto (pelo menos 13 no longo): em pé, 9 de largura, com o jogador um pouco acima do centro, porque a parte de baixo é dos polegares; deitado, o tile tem o mesmo tamanho que teria em pé no mesmo celular (no iPhone, com as barras do Safari, sobram uns 7 tiles de altura; nunca menos de 6,5), com o jogador no centro. Deitado se vê menos na vertical e mais para os lados. HUD no topo (tempo, barras de HP, mana e XP, loot), respeitando o notch (safe area).
 - Sem zoom de pinça nem rolagem acidental. O jogo pede tela cheia e tenta travar na vertical ao entrar na hunt.
@@ -1179,15 +1179,18 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
 
 - Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
 - **Tiro que pode errar** (o básico à distância e as magias de alvo único com projétil: Flecha Sagrada, Relâmpago,
-  Espinho Venenoso, Lâmina Arremessada, Corrente de Ferro...): o projétil voa reto até o tile mirado, **sem seguir o
-  monstro**. Ao chegar, acerta o primeiro monstro à vista nos tiles do caminho (do herói até o ponto, `shotPath`);
-  ninguém no caminho, erra. Quem vem reto na direção do herói continua no caminho e leva o tiro; quem anda de lado
-  durante o voo escapa. Um monstro na frente leva o tiro no lugar do de trás. Objetivo: o básico à distância deixa de
+  Espinho Venenoso, Lâmina Arremessada, Corrente de Ferro...): é mirado numa **direção**, não num ponto. O projétil voa
+  reto nessa direção até o alcance inteiro (ou a primeira parede), **sem seguir o monstro**, passando por um tile de cada
+  vez, e para no primeiro monstro à vista que encontrar (`shotPath`, `Hunt.fly`); o cliente para o desenho ali
+  (`MSG.shotEnd`). Ninguém no caminho, erra. Quem vem reto na direção do herói continua no caminho e leva o tiro; quem
+  anda de lado durante o voo escapa, e o tiro segue e pode acertar quem está atrás dele. Um monstro na frente leva o
+  tiro no lugar do de trás. Objetivo: o básico à distância deixa de
   acertar sempre e fica mais perto do Cavaleiro, que precisa chegar colado (a telemetria do nível <10 deu 3 de dano por
   segundo no básico do Cavaleiro contra 5 a 8 nas outras classes). Corpo a corpo, Investida e magias sem projétil não mudam.
-  - **No ⚔️:** toque e segurar miram sozinhos onde o alvo está na hora do disparo (sem prever o movimento). Arrastar
-    a partir do botão mira à mão (a mesma mira das magias, até o alcance do básico): soltar atira no tile mirado, mesmo
-    sem monstro à vista; voltar ao botão cancela. O dedo parado vira "segurar" depois de 150 ms.
+  - **No ⚔️:** toque e segurar atiram sozinhos na direção de onde o alvo está na hora do disparo (sem prever o
+    movimento). Arrastar a partir do botão mira a direção à mão (só a direção do arrasto conta, não o tamanho): a mira
+    acende os tiles da reta até o alcance do básico, com o primeiro monstro dela em dourado; soltar atira, mesmo sem
+    monstro à vista; voltar ao botão cancela. O dedo parado vira "segurar" depois de 150 ms.
   - Telemetria: `RunStats.shots` (disparados, errados e mirados à mão, por fonte).
 - O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
 - Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível da magia, mana e recarga; sem rolagem: com 3 a 6 magias as cartas viram uma grade de 3 colunas só com o efeito principal e o custo, e com 7 ou mais, 4 colunas com nome e custo); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
@@ -1202,8 +1205,8 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
 - **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador, Raio em Cadeia) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo e o alcance em volta dele; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
   - **Toque rápido** (sem arrastar): lança no alvo atual ou no monstro mais próximo ao alcance. Sem nenhum monstro ao alcance, não sai nem gasta mana.
   - A mira gruda (fica dourada) no monstro a até 1 tile do ponto; a magia vai nele e o acompanha durante o voo.
-    Exceção: o **tiro** (magia de alvo único com projétil) não gruda nem acompanha: vai no tile mirado (fica dourada
-    só com monstro nele) e pode errar, como o básico à distância.
+    Exceção: o **tiro** (magia de alvo único com projétil) não gruda nem acompanha: é mirado numa direção (a mira
+    acende a reta até o alcance, com o primeiro monstro em dourado) e pode errar, como o básico à distância.
 - **Magias de área com alvo** (Chuva de Flechas, Esfera Sombria, Raízes Espinhosas, Fúria da Natureza) miram do mesmo jeito: segurar o botão, arrastar e soltar. A mira mostra o quadrado da área em volta do ponto, sem grudar em monstro; o toque rápido lança no alvo automático. O ponto para na primeira parede do caminho.
 - **Magias em linha** (Disparo Perfurante) miram a direção: a mira acende os tiles da reta até o alcance inteiro; o toque rápido atira na direção do alvo automático.
 - **Errou a mira:** a magia sai, aparece na tela, gasta mana e recarga, e não acerta ninguém.
