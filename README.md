@@ -68,9 +68,12 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx scripts/grimorio.ts` (de dentro de `apps/server`; sem servidor): confere as Maestrias de todas as magias e a
   reta das magias em linha; numa arena, o Escudo da Fé absorve dano, o Giro da Lâmina gira de novo, os lobos do druida
   atacam, a flecha perfurante vai até o fim da reta e o Disparo Certeiro que mata devolve a recarga.
-- `npm run test:caos [seeds]` (não entra no `npm test`): roda os testes da arena (efeitos, grimorio, costelas, specials,
+- `npm run test:caos [seeds]` (não entra no `npm test`): roda os testes da arena (efeitos, tiro, grimorio, costelas, specials,
   spells e bestiario) com mapas e seeds sorteados. Roda todo dia no CI (`.github/workflows/caos.yml`) e, se falhar, abre
   uma issue com o rótulo `caos` e o comando que reproduz a falha (`KUSA_MAP=... KUSA_SEED=... npx tsx scripts/<teste>.ts`).
+- `npx tsx scripts/tiro.ts` (de dentro de `apps/server`; sem servidor): numa arena, o básico à distância e as magias
+  de alvo único com projétil erram quem sai de lado durante o voo, acertam quem vem reto e o primeiro monstro no
+  caminho, e o tiro mirado à mão vai no tile mirado.
 - `npx tsx scripts/catalogo.ts` (de dentro de `apps/server`; sem servidor): as chances de drop e o gold que o Catálogo
   (Configurações > Catálogo, `dropOdds`) mostra batem com a hunt: mata cada rank de cada mapa muitas vezes na arena e confere.
 - `npx tsx scripts/travessia.ts` (de dentro de `apps/server`; sem servidor): a Caverna da Travessia gera a chegada
