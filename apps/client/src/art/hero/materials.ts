@@ -41,6 +41,9 @@ export const M = {
   hairWhite: def("cabelo branco", "#dedae6", { contrast: 0.95, shift: 5 }),
   hairAuburn: def("cabelo ruivo", "#9a4a22", { contrast: 1.1 }),
   facePaint: def("pintura verde", "#4f9a3a", { contrast: 0.8 }),
+  skinOrc: def("pele de orc", "#7d9256", { contrast: 0.85, shift: 3 }),
+  hairBlack: def("cabelo preto", "#2e2624", { contrast: 1.1 }),
+  emberPaint: def("pintura de brasa", "#d8561c", { contrast: 0.8 }),
 
   // Roupa das classes (o que aparece sem equipamento ou onde ele não cobre).
   knightRed: def("vermelho do cavaleiro", "#b8362d", CLOTH),
@@ -51,6 +54,8 @@ export const M = {
   sorcDeep: def("roxo escuro", "#41255f", CLOTH),
   druidGreen: def("verde do druida", "#3f8a3c", CLOTH),
   druidBrown: def("calça de couro", "#5e4329", CLOTH),
+  shamanHide: def("couro do xamã", "#6b4a2e", CLOTH),
+  shamanAsh: def("pano de cinzas do xamã", "#4e4a46", CLOTH),
   shoe: def("sapato", "#5a3822", { contrast: 0.9 }),
 
   // Materiais dos itens.

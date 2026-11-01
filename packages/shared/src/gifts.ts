@@ -57,7 +57,8 @@ export type GiftId =
   | "honed_edge" | "tanned_hide" | "command_voice"
   | "patient_eye" | "burning_faith" | "tracker_step"
   | "conductor" | "cold_heart" | "shadow_hunger"
-  | "pack_bond" | "ancient_sap" | "venom_sap";
+  | "pack_bond" | "ancient_sap" | "venom_sap"
+  | "clan_cry" | "ironwood_skin" | "living_ember";
 
 export interface GiftDef {
   id: GiftId;
@@ -148,6 +149,22 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "venom_sap", classId: "druid", col: 2, name: "Seiva Venenosa", icon: "🌵",
     description: "Espinhos mergulhados em seiva amarga: seus venenos e sangramentos ferem mais.",
     perRank: 0.012, apply: (fx, v) => { fx.dotDamage += v; }, text: (v) => `+${pct(v)} de dano dos seus venenos e sangramentos`,
+  }),
+  // --- Xamã Orc ----------------------------------------------------------------------------------------------
+  clan_cry: gift({
+    id: "clan_cry", classId: "shaman", col: 0, name: "Grito do Clã", icon: "📯",
+    description: `O clã luta junto: você e os aliados a até ${ALLY_DAMAGE_RADIUS} tiles (bots incluídos) causam mais dano. Entre vários, vale o grito mais forte.`,
+    perRank: 0.01, apply: (fx, v) => { fx.allyDamage += v; }, text: (v) => `+${pct(v)} de dano para você e aliados a até ${ALLY_DAMAGE_RADIUS} tiles`,
+  }),
+  ironwood_skin: gift({
+    id: "ironwood_skin", classId: "shaman", col: 1, name: "Casca de Ferro", icon: "🪵",
+    description: "Placas de madeira-de-ferro entalhadas presas no couro: mais armadura em toda hunt.",
+    perRank: 0.6, apply: (fx, v) => { fx.armor += v; }, text: (v) => `+${Math.round(v * 10) / 10} de armadura`.replace(".", ","),
+  }),
+  living_ember: gift({
+    id: "living_ember", classId: "shaman", col: 2, name: "Brasa Viva", icon: "🔥",
+    description: "A brasa do cajado nunca apaga: o ataque básico bate mais forte.",
+    perRank: 0.012, apply: (fx, v) => { fx.basicDamage += v; }, text: (v) => `+${pct(v)} de dano do ataque básico`,
   }),
 };
 

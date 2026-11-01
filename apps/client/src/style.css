@@ -1122,7 +1122,7 @@ body.busy #hub-body { opacity: 0.7; }
   overflow: hidden;
 }
 /* Escolha do personagem: um medalhão por classe, com o retrato vestido e a cor da classe. */
-.grim-heroes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; }
+.grim-heroes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 0 14px; }
 .grim-hero {
   display: grid;
   justify-items: center;
@@ -1151,6 +1151,19 @@ body.busy #hub-body { opacity: 0.7; }
 .grim-hero-frame .hero-img { width: 82%; height: auto; aspect-ratio: 1; background: none; border: none; }
 .grim-hero-name { max-width: 100%; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .grim-hero[aria-pressed="true"] { color: var(--accent); }
+/* Classe trancada (Xamã Orc antes de vencer Vorgak): retrato em silhueta escura com o cadeado e a corrente. */
+.grim-hero.locked .grim-hero-frame { position: relative; }
+.grim-hero.locked .grim-hero-frame .hero-img { filter: brightness(0) drop-shadow(0 0 3px color-mix(in srgb, var(--class-color) 60%, transparent)); }
+.grim-hero.locked .grim-hero-frame::after { content: "🔒"; position: absolute; right: 2px; bottom: 2px; font-size: 16px; }
+.hero-locked {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #ffd9b8;
+  background: color-mix(in srgb, var(--class-color) 18%, #120e0b);
+  border: 1px solid color-mix(in srgb, var(--class-color) 60%, transparent);
+  border-radius: 8px;
+}
 .grim-hero[aria-pressed="true"] .grim-hero-frame {
   opacity: 1;
   transform: translateY(-2px);
@@ -1259,6 +1272,18 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 }
 .gnode.locked .gnode-name { color: var(--muted); }
 .sheet-icon { display: grid; place-items: center; width: 48px; height: 48px; font-size: 30px; flex: none; background: #000; border: 2px solid var(--accent); border-radius: 50%; }
+.result-unlock {
+  margin: 0 0 12px;
+  padding: 12px;
+  text-align: center;
+  color: #ffe2c4;
+  background: radial-gradient(ellipse at 50% 0%, #d3540055, transparent 70%), #1a110b;
+  border: 1px solid #d35400;
+  border-radius: 10px;
+  box-shadow: 0 0 18px #d3540066;
+}
+.result-unlock strong { display: block; margin: 4px 0; font-size: 18px; color: #ffb35a; }
+.result-unlock small { color: var(--muted); }
 #result-spells { margin: 0 0 12px; padding-left: 18px; font-size: 13px; text-align: left; }
 #result-spells .up { color: #c9a0ff; font-weight: bold; }
 #result-spells .down { color: #e57373; }

@@ -98,6 +98,10 @@ interface Look {
   brow: number;
   beard?: boolean;
   paint?: boolean;
+  /** Cor da pintura no rosto (sem isto, a verde do druida). */
+  paintMat?: number;
+  /** Presas saindo da boca (Xamã Orc). */
+  tusks?: boolean;
 }
 
 function headBase(c: Ctx, look: Look) {
@@ -126,7 +130,10 @@ function face(c: Ctx, look: Look) {
     cv.dot(23, 20 + b, M.mouth, 3); cv.dot(24, 20 + b, M.mouth, 2);
     cv.dot(18, 19 + b, look.skin, 4); cv.dot(29, 19 + b, look.skin, 2);
     if (look.paint) {
-      for (const x of [18, 19, 28, 29]) cv.dot(x, 19 + b + (x === 19 || x === 28 ? 1 : 0), M.facePaint, x < 24 ? 3 : 2);
+      for (const x of [18, 19, 28, 29]) cv.dot(x, 19 + b + (x === 19 || x === 28 ? 1 : 0), look.paintMat ?? M.facePaint, x < 24 ? 3 : 2);
+    }
+    if (look.tusks) {
+      for (const x of [22, 25]) { cv.dot(x, 20 + b, M.ivory, 5); cv.dot(x, 19 + b, M.ivory, 4); }
     }
   } else if (p.dir === "side") {
     cv.dot(18, 17 + b, M.eye, 0); cv.dot(18, 18 + b, M.eye, 1); cv.dot(19, 17 + b, M.eyeWhite, 4);
@@ -135,7 +142,8 @@ function face(c: Ctx, look: Look) {
     cv.paint(rect(15, 18 + b, 15, 19 + b), look.skin, { light: "flat", line: "none", group: "keep" });
     cv.dot(16, 19 + b, look.skin, 2);
     cv.dot(17, 21 + b, M.mouth, 2);
-    if (look.paint) { cv.dot(19, 20 + b, M.facePaint, 3); cv.dot(20, 20 + b, M.facePaint, 2); }
+    if (look.paint) { cv.dot(19, 20 + b, look.paintMat ?? M.facePaint, 3); cv.dot(20, 20 + b, look.paintMat ?? M.facePaint, 2); }
+    if (look.tusks) { cv.dot(17, 20 + b, M.ivory, 5); cv.dot(17, 19 + b, M.ivory, 4); }
   }
 }
 
@@ -326,6 +334,33 @@ const LEAF_BROOCH: Wear = {
   },
 };
 
+/**
+ * Xamã Orc: o tambor de pele nas costas (de frente, só a borda sobre o ombro; de costas, inteiro) e o colar de
+ * ossos no peito.
+ */
+const WAR_DRUM: Wear = {
+  back(c) {
+    const { cv, p } = c;
+    const b = p.bob;
+    if (p.dir === "up") return;
+    const [x, y] = p.dir === "down" ? [30.5, 21 + b] : [30, 25 + b];
+    cv.paint(ellipse(x, y, 2.6, 3.4), M.fur, { light: "sphere" });
+    cv.paint(minus(ellipse(x, y, 3.2, 4), ellipse(x, y, 2.6, 3.4)), M.darkWood, { light: "flat", line: "soft" });
+  },
+  over(c) {
+    const { cv, p } = c;
+    const b = p.bob;
+    if (p.dir === "up") {
+      cv.paint(ellipse(24, 28 + b, 5, 5.5), M.fur, { light: "sphere", tex: (x, y) => ((x + y) % 7 === 0 ? -1 : 0) });
+      cv.paint(minus(ellipse(24, 28 + b, 5.8, 6.3), ellipse(24, 28 + b, 5, 5.5)), M.darkWood, { light: "flat", line: "soft" });
+      cv.dot(24, 28 + b, M.emberPaint, 3);
+      return;
+    }
+    if (p.dir === "down") for (const [x, dy] of [[21, 0], [22.5, 1], [24, 1.5], [25.5, 1], [27, 0]] as const) cv.dot(Math.round(x), 23 + b + Math.round(dy), M.bone, 4);
+    else cv.dot(20, 24 + b, M.bone, 4);
+  },
+};
+
 const CLASS_LOOKS: Record<ClassId, ClassLook> = {
   knight: {
     skin: M.skinFair, hair: M.hairBrown, brow: M.hairBrown, style: "short",
@@ -345,6 +380,11 @@ const CLASS_LOOKS: Record<ClassId, ClassLook> = {
     skin: M.skinTan, hair: M.hairAuburn, brow: M.hairAuburn, style: "wild", paint: true,
     shirt: M.druidGreen, pants: M.druidBrown, trim: M.leather, tunic: "knee",
     hat: druidHood, extras: LEAF_BROOCH,
+  },
+  shaman: {
+    skin: M.skinOrc, hair: M.hairBlack, brow: M.hairBlack, style: "wild", paint: true, paintMat: M.emberPaint, tusks: true,
+    shirt: M.shamanHide, pants: M.shamanAsh, trim: M.bone, tunic: "knee",
+    extras: WAR_DRUM,
   },
 };
 

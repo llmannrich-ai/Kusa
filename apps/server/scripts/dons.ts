@@ -41,9 +41,10 @@ test("um Dom no topo de cada ramo, do lado oposto ao Tomo", () => {
     const gifts = tree.filter((t) => t.kind === "gift");
     check(gifts.map((g) => g.col).sort().join() === "0,1,2", `${classId}: devia ter um Dom por ramo`);
     for (const g of gifts) {
-      const tome = tree.find((t) => t.kind === "tome" && t.col === g.col)!;
+      // Ramo sem magia ainda não tem Tomo (o Xamã Orc da Fase 1): o Dom fica numa ponta do ramo do mesmo jeito.
+      const tome = tree.find((t) => t.kind === "tome" && t.col === g.col);
       const parent = TALENTS[g.requires!.id];
-      check(g.row === 2 && g.lane === -tome.lane, `${g.id}: fora do lugar (linha ${g.row}, lado ${g.lane})`);
+      check(g.row === 2 && (tome ? g.lane === -tome.lane : Math.abs(g.lane) === 2), `${g.id}: fora do lugar (linha ${g.row}, lado ${g.lane})`);
       check(parent.col === g.col && parent.row === 1 && parent.lane === 0 && g.requires!.rank === 1, `${g.id}: pai fora do tronco`);
       check(g.maxRank === GIFT_MAX_RANK && GIFTS[g.giftId!].classId === classId, `${g.id}: níveis ou classe errados`);
     }
