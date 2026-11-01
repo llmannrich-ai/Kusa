@@ -70,7 +70,10 @@ export type SpellId =
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
-  | "titan_fury" | "sky_arrow" | "arcane_vortex" | "butterfly_swarm";
+  | "titan_fury" | "sky_arrow" | "arcane_vortex" | "butterfly_swarm" | "ancestral_totem"
+  // Slot 3: Ápices (um no fim de cada ramo, para os dois lados da especialização).
+  | "champion_reap" | "bulwark" | "legion_charge" | "endless_rain" | "branching_bolt" | "ice_age" | "black_hole"
+  | "wild_hunt" | "tree_of_life" | "leaf_hurricane";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -259,6 +262,22 @@ export interface SpellDef {
   projectileSpeed?: number;
   /** O efeito cai no ponto mirado depois deste tempo, em vez de voar até lá (Flecha Celeste: atira para o alto). */
   delayMs?: number;
+  /**
+   * Varredura (só `shape: "cone"`): um golpe corre de uma borda do leque à outra em `ms`; cada tile é atingido quando a
+   * lâmina passa, e cada monstro uma vez por passada (Ceifa do Campeão).
+   */
+  sweep?: { ms: number };
+  /** Linha que se abre no fim (só `shape: "line"`): `count` linhas de `length` tiles em leque de `angle` graus (Relâmpago Ramificado). */
+  fork?: { count: number; length: number; angle: number };
+  /** Puxa os monstros da área para o centro (Buraco Negro): cada um vai para o tile livre mais perto do ponto. */
+  pullIn?: boolean;
+  /**
+   * Aura que anda com quem conjura por `ms` (Carga da Legião): a cada meio segundo, você, os aliados e as criaturas a até
+   * `radius` tiles atacam `haste` mais rápido e causam +`damage`; quem se afasta perde o bônus logo depois.
+   */
+  aura?: { radius: number; ms: number; haste: number; damage: number };
+  /** Segunda invocação da mesma magia, de outro tipo (Caçada Selvagem: os lobos e o urso). */
+  alsoSummon?: { kind: SummonKind; count: number; durationMs: number };
   /**
    * Tambor de Guerra: por `ms`, quem conjura, os aliados e as criaturas (de qualquer herói) a até `radius` tiles atacam
    * `haste` mais rápido (fração da recarga cortada) e causam +`damage` de dano; `heal` cura essa fração da vida deles.
@@ -1054,6 +1073,74 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 55, cooldownMs: 30000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 90 },
     damage: 1.2, heal: 0.15, lifesteal: 0.2,
   }),
+
+  // --- Slot 3: o Xamã Orc ganha a magia de entrada dele (o resto do Grimório do Xamã é de docs/CLASSE_XAMA_ORC.md). ---
+  ancestral_totem: spell({
+    id: "ancestral_totem", classId: "shaman", slot: 2, name: "Totem Ancestral", icon: "🗿", color: 0xd35400,
+    description: "Finca o totem dos ancestrais do clã: queima os monstros em volta e quem luta perto dele causa mais dano.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 4, radius: 3,
+    field: { kind: "zone", ms: 12000, tickMs: 1000, damage: 0.4, allyDamage: 0.2 },
+  }),
+  // --- Slot 3: Ápices (2.000 de gold), no fim do tronco de cada ramo, valem para os dois lados da especialização. ------
+  champion_reap: spell({
+    id: "champion_reap", classId: "knight", slot: 2, name: "Ceifa do Campeão", icon: "⚔️", color: 0xe0e0e0,
+    description: "Três passadas da espada que varrem a meia-lua inteira à sua frente, de um lado ao outro. Quem é cortado sangra.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 180, sweep: { ms: 300 },
+    damage: 1.6, dot: { perSec: 0.3, ms: 4000, kind: "bleed" }, repeat: { delayMs: 450, power: 1, times: 2 },
+  }),
+  bulwark: spell({
+    id: "bulwark", classId: "knight", slot: 2, name: "Baluarte", icon: "🏰", color: 0x7fc8ff,
+    description: "Vira um baluarte: escudo enorme em você e nos aliados por perto, armadura extra, e todos os monstros em volta passam a te perseguir.",
+    manaCost: 60, cooldownMs: 35000, aim: "self", range: 0, radius: 4, taunt: true,
+    barrier: 0.35, barrierMs: 8000, barrierAllies: true, armor: { points: 8, ms: 8000 },
+  }),
+  legion_charge: spell({
+    id: "legion_charge", classId: "knight", slot: 2, name: "Carga da Legião", icon: "🐎", color: 0xf1c40f,
+    description: "Ergue o estandarte e puxa a carga: enquanto dura, você e quem estiver perto de você batem mais forte e mais rápido.",
+    manaCost: 55, cooldownMs: 32000, aim: "self", range: 0, radius: 0, aura: { radius: 4, ms: 8000, haste: 0.2, damage: 0.25 },
+  }),
+  endless_rain: spell({
+    id: "endless_rain", classId: "paladin", slot: 2, name: "Chuva sem Fim", icon: "🏹", color: 0xf5deb3,
+    description: "Atira sem parar num leque à sua frente enquanto segura o botão; arraste para mirar a chuva. Anda bem devagar enquanto atira.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 90, damage: 0.5,
+    channel: { ms: 3000, tickMs: 300, moveSlow: 0.6 },
+  }),
+  branching_bolt: spell({
+    id: "branching_bolt", classId: "sorcerer", slot: 2, name: "Relâmpago Ramificado", icon: "🌩️", color: 0x9ec5ff, element: "energy",
+    description: "Um relâmpago corre reto e, no fim, se abre em três raios em leque.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 7, radius: 0, shape: "line", fork: { count: 3, length: 4, angle: 60 },
+    damage: 2.4,
+  }),
+  ice_age: spell({
+    id: "ice_age", classId: "sorcerer", slot: 2, name: "Era do Gelo", icon: "🧊", color: 0xd6f1ff, element: "ice",
+    description: "Congela uma área grande: os monstros dentro ficam muito lentos e o gelo os prende de tempos em tempos.",
+    manaCost: 65, cooldownMs: 35000, aim: "target", range: 5, radius: 4, slow: { pct: 0.7, ms: 2100 },
+    field: { kind: "zone", ms: 6000, tickMs: 2000, damage: 0.6, rootMs: 1000 },
+  }),
+  black_hole: spell({
+    id: "black_hole", classId: "sorcerer", slot: 2, name: "Buraco Negro", icon: "🕳️", color: 0x4a148c, element: "dark",
+    description: "Abre um buraco negro no ponto mirado: puxa os monstros em volta para o centro e explode duas vezes.",
+    manaCost: 65, cooldownMs: 35000, aim: "target", range: 5, radius: 3, pullIn: true, damage: 1.8,
+    repeat: { delayMs: 1200, power: 1 },
+  }),
+  wild_hunt: spell({
+    id: "wild_hunt", classId: "druid", slot: 2, name: "Caçada Selvagem", icon: "🐾", color: 0x8d6e4a,
+    description: "Chama a caçada inteira: três lobos e um urso lutam por você.",
+    manaCost: 65, cooldownMs: 35000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "wolf", count: 3, durationMs: 12000 }, alsoSummon: { kind: "bear", count: 1, durationMs: 12000 },
+  }),
+  tree_of_life: spell({
+    id: "tree_of_life", classId: "druid", slot: 2, name: "Árvore da Vida", icon: "🌳", color: 0x2ecc71,
+    description: "Planta uma árvore sagrada: os aliados à sombra dela se curam a cada segundo.",
+    manaCost: 60, cooldownMs: 35000, aim: "target", range: 4, radius: 3,
+    field: { kind: "zone", ms: 12000, tickMs: 1000, allyHeal: 0.05 },
+  }),
+  leaf_hurricane: spell({
+    id: "leaf_hurricane", classId: "druid", slot: 2, name: "Furacão de Folhas", icon: "🍂", color: 0xc0a050,
+    description: "Solta um furacão de folhas afiadas num leque à sua frente enquanto segura o botão: fere e empurra. Arraste para virar.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90, damage: 0.5, push: 1,
+    channel: { ms: 3000, tickMs: 300, moveSlow: 0.5 },
+  }),
 };
 
 /**
@@ -1226,6 +1313,17 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   sky_arrow: { text: "O raio de luz cai em raio 3.", changes: { radius: 3 } },
   arcane_vortex: { text: "O orbe vai até 8 tiles.", changes: { range: 8 } },
   butterfly_swarm: { text: "As borboletas curam 25% da vida.", changes: { heal: 0.25 } },
+  ancestral_totem: { text: "O totem dura 18 s.", changes: { field: { kind: "zone", ms: 18000, tickMs: 1000, damage: 0.4, allyDamage: 0.2 } } },
+  champion_reap: { text: "Quatro passadas.", changes: { repeat: { delayMs: 450, power: 1, times: 3 } } },
+  bulwark: { text: "O escudo é de 45% da vida.", changes: { barrier: 0.45 } },
+  legion_charge: { text: "A carga dura 12 s.", changes: { aura: { radius: 4, ms: 12000, haste: 0.2, damage: 0.25 } } },
+  endless_rain: { text: "Atira sem ficar lento.", changes: { channel: { ms: 3000, tickMs: 300, moveSlow: 0 } } },
+  branching_bolt: { text: "Cinco raios no fim.", changes: { fork: { count: 5, length: 4, angle: 90 } } },
+  ice_age: { text: "O gelo cobre raio 5.", changes: { radius: 5 } },
+  black_hole: { text: "Puxa e explode três vezes.", changes: { repeat: { delayMs: 1200, power: 1, times: 2 } } },
+  wild_hunt: { text: "A caçada dura 18 s.", changes: { summon: { kind: "wolf", count: 3, durationMs: 18000 }, alsoSummon: { kind: "bear", count: 1, durationMs: 18000 } } },
+  tree_of_life: { text: "A árvore cura 8% por segundo.", changes: { field: { kind: "zone", ms: 12000, tickMs: 1000, allyHeal: 0.08 } } },
+  leaf_hurricane: { text: "O furacão prende 0,5 s a cada pulso.", changes: { rootMs: 500 } },
 };
 
 /**
@@ -1265,6 +1363,8 @@ export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
     summon: def.summon && { ...def.summon, durationMs: Math.round(def.summon.durationMs * t) },
+    alsoSummon: def.alsoSummon && { ...def.alsoSummon, durationMs: Math.round(def.alsoSummon.durationMs * t) },
+    aura: def.aura && { ...def.aura, ms: Math.round(def.aura.ms * t), damage: def.aura.damage * k },
     rally: def.rally && { ...def.rally, ms: Math.round(def.rally.ms * t), damage: def.rally.damage * k, heal: def.rally.heal && def.rally.heal * k },
   };
 }
@@ -1283,6 +1383,10 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   const facts: string[] = [];
   if (s.damage) facts.push(s.spread ? `${s.spread.count} projéteis em leque de ${s.spread.angle}°, ${num(s.damage)}× cada` : `Dano ${num(s.damage)}×${area}`);
   if (s.wave) facts.push("Onda: sai de você e avança pelo leque");
+  if (s.sweep) facts.push("Varre o leque de um lado ao outro");
+  if (s.fork) facts.push(`No fim da linha, abre ${s.fork.count} raios de ${s.fork.length} tiles em leque`);
+  if (s.pullIn) facts.push("Puxa os monstros da área para o centro");
+  if (s.aura) facts.push(`Aura por ${sec(s.aura.ms)}: você e quem estiver a até ${s.aura.radius} tiles causam +${pct(s.aura.damage)} de dano e atacam ${pct(s.aura.haste)} mais rápido`);
   if (s.channel) {
     facts.push(`Canaliza por até ${sec(s.channel.ms)}: um pulso a cada ${sec(s.channel.tickMs)}; segure e arraste para girar`);
     if (s.channel.freezeTicks && s.channel.freezeMs) facts.push(`${s.channel.freezeTicks} pulsos seguidos no mesmo monstro o prendem por ${sec(s.channel.freezeMs)}`);
@@ -1372,6 +1476,10 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
     facts.push(`Invoca ${what} por ${sec(s.summon.durationMs)}`);
     facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
   }
+  if (s.alsoSummon) {
+    const what = s.alsoSummon.count > 1 ? `${s.alsoSummon.count}× ${SUMMONS[s.alsoSummon.kind].name}` : SUMMONS[s.alsoSummon.kind].name;
+    facts.push(`E também ${what} por ${sec(s.alsoSummon.durationMs)}`);
+  }
   facts.push(`${s.manaCost} de mana · recarga ${num(s.cooldownMs / 1000)} s${s.aim !== "self" ? ` · alcance ${s.range}` : ""}`);
   if (rank >= MASTERY_RANK) facts.push(`★ Maestria: ${MASTERIES[def.id].text}`);
   return facts;
@@ -1402,7 +1510,7 @@ export function isSingleTarget(spell: Pick<SpellDef, "aim" | "radius" | "shape" 
 }
 
 /** O que a mira precisa saber de uma magia (o básico à distância usa o mesmo formato, ver `basicShotAim`). */
-export type AimDef = Pick<SpellDef, "aim" | "range" | "radius" | "shape" | "dash" | "field" | "projectileSpeed" | "charge" | "coneAngle" | "spread">;
+export type AimDef = Pick<SpellDef, "aim" | "range" | "radius" | "shape" | "dash" | "field" | "projectileSpeed" | "charge" | "coneAngle" | "spread" | "fork">;
 
 /** O básico à distância desenhado pela mira das magias: um tiro de alvo único com o alcance do básico. */
 export function basicShotAim(range: number): AimDef {
@@ -1480,6 +1588,17 @@ export function spreadAimPoints(x0: number, y0: number, ax: number, ay: number, 
     const a = count === 1 ? base : base - span / 2 + (span * i) / (count - 1);
     return { x: x0 + Math.round(Math.cos(a) * SHOT_AIM_REACH), y: y0 + Math.round(Math.sin(a) * SHOT_AIM_REACH) };
   });
+}
+
+/**
+ * Galhos no fim de uma linha (Relâmpago Ramificado): `fork.count` linhas de `fork.length` tiles saindo do último tile
+ * (`end`), abertas em leque de `fork.angle` graus em volta da direção do herói até ele. Cliente e servidor usam a mesma conta.
+ */
+export function forkTiles(d: Dungeon, x0: number, y0: number, end: { x: number; y: number }, fork: { count: number; length: number; angle: number }) {
+  if (end.x === x0 && end.y === y0) return [];
+  const ahead = { x: end.x + (end.x - x0), y: end.y + (end.y - y0) };
+  return spreadAimPoints(end.x, end.y, ahead.x, ahead.y, fork.count, fork.angle)
+    .flatMap((point) => lineTiles(d, end.x, end.y, point.x, point.y, fork.length));
 }
 
 export function lineTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {

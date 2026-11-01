@@ -307,7 +307,27 @@ XP de até 3 magias por hunt (`record_spell_xp`). O nível 12 não dá melhoria 
 | Feiticeiro | 🌀 **Vórtice Arcano** | orbe lento que atravessa a reta (6 tiles, em onda), 2,6× em tudo que pega | alcance 8 |
 | Druida | 🦋 **Revoada** | borboletas em leque de 120° e 4 tiles (onda): 1,2×, curam 15% dos aliados no caminho e 20% do dano volta como vida | cura 25% |
 
-Os Ápices (um por ramo) e as magias de slot 3 das especializações vêm nas próximas fases (`docs/GRIMORIO_4_PLANO.md`).
+O **Xamã Orc** também tem magia de entrada: 🗿 **Totem Ancestral** (campo de raio 3 por 12 s: 0,4× por segundo nos
+monstros e +20% de dano para os aliados dentro; Maestria: 18 s).
+
+**Ápices** (2.000 de gold): um no fim do tronco de cada ramo, na ponta direita, fora da especialização (valem para os
+dois lados); pedem a última magia do tronco no nível 1 de uso.
+
+| Classe | Ramo | Ápice | O que faz (nível 0) | Maestria |
+|---|---|---|---|---|
+| Cavaleiro | Lâmina | ⚔️ **Ceifa do Campeão** | **varredura** de 180° e 3 tiles: a lâmina corre de um lado ao outro, 3 passadas de 1,6× que sangram | 4 passadas |
+| Cavaleiro | Bastião | 🏰 **Baluarte** | escudo de 35% em você e nos aliados a até 4 tiles, +8 de armadura por 8 s e provoca | escudo de 45% |
+| Cavaleiro | Comando | 🐎 **Carga da Legião** | **aura que anda com você** por 8 s: quem estiver a até 4 tiles causa +25% e ataca 20% mais rápido; quem se afasta perde o bônus | 12 s |
+| Paladino | Batedor | 🏹 **Chuva sem Fim** | canaliza 3 s: leque de 90° e 6 tiles, 0,5× a cada 0,3 s; anda 60% mais devagar | não fica lento |
+| Feiticeiro | Raio | 🌩️ **Relâmpago Ramificado** | linha de 7 tiles que se abre em 3 galhos de 4 tiles em leque no fim, 2,4× | 5 galhos |
+| Feiticeiro | Gelo | 🧊 **Era do Gelo** | campo de raio 4 por 6 s: 70% de lentidão e, a cada 2 s, 0,6× e prende 1 s | raio 5 |
+| Feiticeiro | Trevas | 🕳️ **Buraco Negro** | raio 3 no ponto: **puxa os monstros para o centro** e explode (1,8×) duas vezes | três vezes |
+| Druida | Matilha | 🐾 **Caçada Selvagem** | 3 lobos e 1 urso por 12 s | 18 s |
+| Druida | Bosque | 🌳 **Árvore da Vida** | campo de raio 3 por 12 s que cura 5% por segundo os aliados dentro | 8% |
+| Druida | Espinhos | 🍂 **Furacão de Folhas** | canaliza 3 s: leque de 90° e 5 tiles, 0,5× a cada 0,3 s e empurra | prende 0,5 s por pulso |
+
+Faltam os Ápices de Mira e Luz do Paladino (Tiro do Fim do Mundo e Coroa Solar, que pedem carregar antes de soltar e
+órbita), os do Xamã (quando o tronco dele existir) e as magias de slot 3 das especializações.
 
 #### Magias em leque (Grimório 4.0)
 

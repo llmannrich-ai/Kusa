@@ -8,6 +8,7 @@ import {
   isSingleTarget,
   lineEnd,
   coneTiles,
+  lineTiles,
   spreadAimPoints,
   shotAimPoint,
   shotPath,
@@ -161,6 +162,15 @@ export class SpellAim {
       const len = Math.hypot(end.x - me.x, end.y - me.y) * TILE_SIZE;
       // `dottedLine` já começa um pouco fora do herói.
       dottedLine(g, from.x, from.y, from.x + Math.cos(angle) * len, from.y + Math.sin(angle) * len, hit ? COLORS.locked : COLORS.free);
+      // Relâmpago Ramificado: os galhos que se abrem no fim da reta.
+      if (spell.fork && spell.shape === "line") {
+        const ahead = { x: end.x + (end.x - me.x), y: end.y + (end.y - me.y) };
+        for (const point of spreadAimPoints(end.x, end.y, ahead.x, ahead.y, spell.fork.count, spell.fork.angle)) {
+          const branch = lineTiles(this.dungeon, end.x, end.y, point.x, point.y, spell.fork.length);
+          const tip = branch[branch.length - 1];
+          if (tip) dottedLine(g, toPx(end.x), toPx(end.y), toPx(tip.x), toPx(tip.y), COLORS.free);
+        }
+      }
       return;
     }
     dottedLine(g, from.x, from.y, to.x, to.y, color);
