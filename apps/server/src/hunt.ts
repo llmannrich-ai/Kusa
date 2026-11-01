@@ -45,7 +45,7 @@ import {
   FAR_DAMAGE_TILES,
   BANNER_RADIUS, BITE_BASE, BITE_EVERY, BURN_MS, BURN_PER_SEC, CIRCUIT_ELEMENTS, CIRCUIT_MS, CYCLE_BASE, CYCLE_HEAL, CYCLE_RADIUS,
   FROST_COOLDOWN_MS, FROST_MANA_PCT, FROST_MS,
-  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, type GiftId,
+  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, type GiftId,
   GRACE_EVERY, LOW_HP_PCT, OSSUARY_MAX, OSSUARY_MS, SKY_STRIKE_DAMAGE, SKY_STRIKE_TILES, STILL_MS,
   type GiftEffects,
   bestPerSlot,
@@ -347,6 +347,8 @@ interface Seat {
   breathShots: number;
   /** Mão Rápida: básicos dados (o 6º sai sempre incendiário). */
   handCount: number;
+  /** Reserva Gélida: o escudo de gelo vale até este momento (quem bate nele congela; ao quebrar, devolve mana). */
+  frostShellUntil: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -685,7 +687,7 @@ export class Hunt {
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0, movedAt: 0, dashBasicReady: false, graceCount: 0, graceReady: false,
       circuit: {}, circuitReady: false, castBoost: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
-      eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0,
+      eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1628,6 +1630,7 @@ export class Hunt {
     let spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0, p.spellBonus.get(base.id) ?? 0);
     // Voz de Comando (marco 2): as magias de área que provocam alcançam mais longe.
     if (spell.taunt && spell.radius > 0 && this.marks(seat, "command_voice") >= 2) spell = { ...spell, radius: spell.radius + VOICE.tauntRadius };
+    spell = this.markedSpell(seat, spell);
 
     const now = this.host.now();
     if (now < seat.spellReadyAt[slot]) return;
@@ -1835,9 +1838,14 @@ export class Hunt {
       this.notice(p.x, p.y - 1, "Graça!", 0xfff3b0);
     }
     // Circuito (Dom): três elementos diferentes em pouco tempo carregam a magia seguinte.
-    if (seat.gifts.circuitDamage > 0) this.chargeCircuit(seat, p, spell, now);
+    if (seat.gifts.circuitDamage > 0 && this.chargeCircuit(seat, p, spell, now)) {
+      spell = this.circuitSpell(seat, spell);
+      // Circuito (marco 5): a magia carregada recarrega na metade do tempo.
+      if (this.marks(seat, "circuit") >= 5 && !echo) seat.spellReadyAt[slot] = now + Math.round((seat.spellReadyAt[slot] - now) * CIRCUIT_MARKS.cooldown);
+    }
     // Reserva Gélida (Dom): a mana acabando vira uma casca de gelo (com recarga).
-    if (seat.gifts.frostBarrier > 0 && p.mana < p.maxMana * FROST_MANA_PCT && now >= seat.frostReadyAt) this.frostShell(p, seat, now);
+    const frostPct = this.marks(seat, "frost_reserve") >= 3 ? FROST_MARKS.manaPctLater : FROST_MANA_PCT;
+    if (seat.gifts.frostBarrier > 0 && p.mana < p.maxMana * frostPct && now >= seat.frostReadyAt) this.frostShell(p, seat, now);
     if (echo) this.notice(p.x, p.y - 1, "Eco!", 0xd6a2ff);
     // Magia com atraso que pede para ficar parado (Tiro do Fim do Mundo): o herói firma os pés já na carga, não no tiro.
     if (spell.delayMs && spell.selfBuff) {
@@ -2134,7 +2142,9 @@ export class Hunt {
         const next = this.nearestMonsterTo(from.x, from.y, spell.chain.range, new Set(hit.map((m) => m.id)));
         if (!next) break;
         hit.push(next);
-        power.push((1 - spell.chain.falloff) ** i);
+        // Condutor (marco 5): o 1º salto não perde dano.
+        const conductorFirst = i === 1 && this.marks(seat, "conductor") >= 5;
+        power.push(conductorFirst ? 1 : (1 - spell.chain.falloff) ** i);
         points.push({ x: next.x, y: next.y });
         from = next;
       }
@@ -2144,8 +2154,12 @@ export class Hunt {
     let killed = false;
     let taunted = 0;
     // Traços do Feiticeiro que valem a cada monstro atingido.
-    const stunChance = seat.traits.find((t) => t.stunChance && t.stunChance.element === spell.element)?.stunChance;
-    const spellBurn = seat.traits.find((t) => t.spellBurn)?.spellBurn;
+    // Condutor (marco 3): Estática e Combustão mais fortes.
+    const traitBoost = this.marks(seat, "conductor") >= 3 ? CONDUCTOR.traitBonus : 0;
+    const staticTrait = seat.traits.find((t) => t.stunChance && t.stunChance.element === spell.element)?.stunChance;
+    const stunChance = staticTrait && { ...staticTrait, chance: staticTrait.chance + traitBoost };
+    const burnTrait = seat.traits.find((t) => t.spellBurn)?.spellBurn;
+    const spellBurn = burnTrait && { ...burnTrait, perSec: burnTrait.perSec * (1 + traitBoost) };
     const shatter = seat.traits.find((t) => t.shatter)?.shatter;
     const harvest = seat.traits.find((t) => t.harvest)?.harvest;
     const hex = seat.traits.find((t) => t.hex)?.hex;
@@ -2277,7 +2291,17 @@ export class Hunt {
       this.placeField(sessionId, p, seat, crater, rank, cx, cy, this.baseDamage(sessionId, p, "spell") * spell.groundFire.perSec, "fire");
     }
     // Fome Sombria (Dom): as magias de trevas devolvem parte do dano como vida, além do roubo da própria magia.
-    const lifesteal = (spell.lifesteal ?? 0) + (spell.element === "dark" ? seat.gifts.darkLifesteal : 0);
+    // Coração Frio (marco 4): prender com magia dá um escudo.
+    if (spell.rootMs && hit.length > 0 && p.status === "playing" && this.marks(seat, "cold_heart") >= 4) {
+      const shield = Math.round(p.maxHp * COLD.rootShield);
+      if (shield > p.barrier) p.barrier = p.maxBarrier = shield;
+      seat.barrierUntil = Math.max(seat.barrierUntil, now + COLD.rootShieldMs);
+    }
+    // Fome Sombria (marco 2): matar com magia devolve mana.
+    if (killed && p.status === "playing" && this.marks(seat, "shadow_hunger") >= 2) this.giveMana(p, Math.max(1, Math.round(p.maxMana * HUNGER.killMana)), sessionId);
+    // Fome Sombria (marco 4): mais roubo de vida nas magias de trevas.
+    const hungerSteal = spell.element === "dark" && this.marks(seat, "shadow_hunger") >= 4 ? HUNGER.lifesteal : 0;
+    const lifesteal = (spell.lifesteal ?? 0) + (spell.element === "dark" ? seat.gifts.darkLifesteal + hungerSteal : 0);
     if (lifesteal > 0 && dealt > 0 && p.status === "playing") this.healPlayer(p, Math.round(dealt * lifesteal), sessionId);
     if (spell.manaSteal && dealt > 0 && p.status === "playing") this.giveMana(p, Math.round(dealt * spell.manaSteal), sessionId);
     // Disparo Certeiro (Maestria): matar corta o que falta da recarga; o botão do jogador acompanha.
@@ -2725,6 +2749,37 @@ export class Hunt {
     return this.aurasOver(p, "command_voice", ALLY_DAMAGE_RADIUS, (s) => (s.gifts.marks.command_voice ?? 0) > 0);
   }
 
+  /**
+   * Marcos que mudam a própria magia ao lançar: Condutor (saltos da cadeia), Coração Frio (lentidão), Fome Sombria
+   * (marca mais longa e roubo de mana nas magias de trevas).
+   */
+  private markedSpell(seat: Seat, spell: SpellDef): SpellDef {
+    const conductor = this.marks(seat, "conductor");
+    if (spell.chain && conductor >= 1) spell = { ...spell, chain: { ...spell.chain, jumps: spell.chain.jumps + CONDUCTOR.jumps * (conductor >= 4 ? 2 : 1) } };
+    const cold = this.marks(seat, "cold_heart");
+    if (spell.slow && cold >= 1) spell = { ...spell, slow: { ...spell.slow, pct: Math.min(0.9, spell.slow.pct + COLD.slow * (cold >= 3 ? 2 : 1)) } };
+    const hunger = this.marks(seat, "shadow_hunger");
+    if (spell.mark && hunger >= 1) spell = { ...spell, mark: { ...spell.mark, ms: spell.mark.ms + HUNGER.markMs * (hunger >= 3 ? 2 : 1) } };
+    if (spell.element === "dark" && hunger >= 5) spell = { ...spell, manaSteal: (spell.manaSteal ?? 0) + HUNGER.manaSteal };
+    return spell;
+  }
+
+  /** Circuito (marcos 2 e 4): a magia carregada salta para mais um monstro e os efeitos dela duram mais. */
+  private circuitSpell(seat: Seat, spell: SpellDef): SpellDef {
+    const circuit = this.marks(seat, "circuit");
+    if (circuit >= 2) spell = { ...spell, chain: spell.chain ? { ...spell.chain, jumps: spell.chain.jumps + 1 } : { ...CIRCUIT_MARKS.chain } };
+    if (circuit >= 4) {
+      const k = 1 + CIRCUIT_MARKS.duration;
+      const ms = (v: number | undefined) => (v === undefined ? undefined : Math.round(v * k));
+      spell = {
+        ...spell, rootMs: ms(spell.rootMs), stunMs: ms(spell.stunMs),
+        slow: spell.slow && { ...spell.slow, ms: ms(spell.slow.ms)! }, dot: spell.dot && { ...spell.dot, ms: ms(spell.dot.ms)! },
+        mark: spell.mark && { ...spell.mark, ms: ms(spell.mark.ms)! }, field: spell.field && { ...spell.field, ms: ms(spell.field.ms)! },
+      };
+    }
+    return spell;
+  }
+
   /** Último Duelo: com a vida abaixo do limiar (que sobe no marco 2). */
   private duelLow(seat: Seat, p: Player) {
     if (seat.gifts.lowHpDamage <= 0) return false;
@@ -2752,7 +2807,10 @@ export class Hunt {
 
   /** Reserva Gélida: escudo de gelo com a mana baixa. */
   private frostShell(p: Player, seat: Seat, now: number) {
-    seat.frostReadyAt = now + FROST_COOLDOWN_MS;
+    // Reserva Gélida (marcos 2 e 5): volta mais cedo.
+    const frost = this.marks(seat, "frost_reserve");
+    seat.frostReadyAt = now + (frost >= 5 ? FROST_MARKS.cooldownMsLater : frost >= 2 ? FROST_MARKS.cooldownMs : FROST_COOLDOWN_MS);
+    seat.frostShellUntil = now + FROST_MS;
     const shield = Math.round(p.maxHp * seat.gifts.frostBarrier);
     if (shield > p.barrier) p.barrier = p.maxBarrier = shield;
     seat.barrierUntil = Math.max(seat.barrierUntil, now + FROST_MS);
@@ -2764,21 +2822,24 @@ export class Hunt {
    * Circuito: guarda o elemento de cada magia; com `CIRCUIT_ELEMENTS` diferentes dentro de `CIRCUIT_MS`, a magia
    * seguinte sai mais forte (a que gasta a carga não começa um circuito novo).
    */
-  private chargeCircuit(seat: Seat, p: Player, spell: SpellDef, now: number) {
+  private chargeCircuit(seat: Seat, p: Player, spell: SpellDef, now: number): boolean {
     if (seat.circuitReady) {
       seat.circuitReady = false;
       seat.castBoost += seat.gifts.circuitDamage;
       bump(seat.stats.giftProcs, "circuit");
-      return;
+      return true;
     }
-    if (!spell.element) return;
+    if (!spell.element) return false;
     seat.circuit[spell.element] = now;
-    const live = Object.values(seat.circuit).filter((at) => now - at <= CIRCUIT_MS).length;
-    if (live >= CIRCUIT_ELEMENTS) {
+    // Circuito (marcos 1 e 3): janela maior e menos elementos.
+    const circuit = this.marks(seat, "circuit");
+    const live = Object.values(seat.circuit).filter((at) => now - at <= (circuit >= 1 ? CIRCUIT_MARKS.msLater : CIRCUIT_MS)).length;
+    if (live >= (circuit >= 3 ? 2 : CIRCUIT_ELEMENTS)) {
       seat.circuit = {};
       seat.circuitReady = true;
       this.notice(p.x, p.y - 1, "Circuito!", 0x9be7ff);
     }
+    return false;
   }
 
   /** Ossuário: o monstro morto por trevas levanta como esqueleto do herói (até `OSSUARY_MAX`; o mais antigo cai). */
@@ -2787,9 +2848,12 @@ export class Hunt {
     const seat = this.seats.get(sessionId);
     if (!hero || !seat || hero.status !== "playing") return;
     const bones = [...this.state.summons.values()].filter((s) => s.owner === sessionId && this.summonBrains.get(s.id)?.spellId === "black_hole");
-    if (bones.length >= OSSUARY_MAX) this.removeSummon(bones[0].id);
+    // Ossuário (marcos 1, 2 e 4): mais esqueletos e por mais tempo.
+    const ossuary = this.marks(seat, "ossuary");
+    if (bones.length >= (ossuary >= 2 ? BONES.max : OSSUARY_MAX)) this.removeSummon(bones[0].id);
+    const ms = ossuary >= 4 ? BONES.msLater : ossuary >= 1 ? BONES.ms : OSSUARY_MS;
     // Os esqueletos contam como criaturas do Buraco Negro (o Ápice que não invoca nada): força pelo nível dele.
-    const raise: SpellDef = { ...SPELLS.black_hole, summon: { kind: "skeleton", count: 1, durationMs: OSSUARY_MS } };
+    const raise: SpellDef = { ...SPELLS.black_hole, summon: { kind: "skeleton", count: 1, durationMs: ms } };
     this.summon(sessionId, hero, raise, hero.spellRanks.get("black_hole") ?? 0, true);
     bump(seat.stats.giftProcs, "ossuary");
     this.notice(x, y - 1, "Ossuário!", 0xdcdde1);
@@ -3047,7 +3111,14 @@ export class Hunt {
   private summonThink(s: Summon, now: number) {
     const brain = this.summonBrains.get(s.id);
     const owner = this.state.players.get(s.owner);
-    if (!brain || !owner || owner.status !== "playing" || now >= brain.expiresAt) return this.removeSummon(s.id);
+    if (!brain || !owner || owner.status !== "playing" || now >= brain.expiresAt) {
+      // Ossuário (marco 5): o esqueleto que some no fim do tempo explode em Condenação.
+      if (brain && owner?.status === "playing" && brain.spellId === "black_hole" && this.marks(this.seats.get(s.owner), "ossuary") >= 5) {
+        this.reacted("doom", s.owner, s.x, s.y);
+        this.reactionBurst("doom", s.x, s.y, BONES.burstRadius, brain.damage * BONES.burst, s.owner, "energy");
+      }
+      return this.removeSummon(s.id);
+    }
     const def = brain.def;
 
     if (brain.heal > 0) {
@@ -3088,6 +3159,13 @@ export class Hunt {
         if (!alive || !brainM || !this.state.summons.has(s.id)) return;
         if (def.taunt) brainM.targetId = s.id;
         if (def.rootMs) this.root(alive, brainM, this.host.now() + def.rootMs);
+        // Ossuário (marco 3): os esqueletos marcam quem atacam.
+        if (brain.spellId === "black_hole" && this.marks(this.seats.get(s.owner), "ossuary") >= 3) {
+          const t = this.host.now();
+          brainM.markPct = Math.max(t < brainM.markUntil ? brainM.markPct : 0, BONES.markPct);
+          brainM.markUntil = Math.max(brainM.markUntil, t + BONES.markMs);
+          alive.marked = true;
+        }
         // Águia Gigante: o mergulho deixa o monstro tonto.
         if (def.stunMs) {
           brainM.stunnedUntil = Math.max(brainM.stunnedUntil, this.host.now() + def.stunMs);
@@ -3189,6 +3267,8 @@ export class Hunt {
     const brain = this.brains.get(m.id);
     if (!brain) return 0;
     // Reações (`reactions.ts`): só golpe direto (não o pulso do dano contínuo nem a própria explosão de uma reação).
+    // Coração Frio (marco 2): monstro lento recebe mais do dano do feiticeiro.
+    if (this.marks(this.seats.get(creditId), "cold_heart") >= 2 && this.host.now() < brain.slowUntil) raw *= 1 + COLD.slowedDamage;
     let reaction: ReactionId | null = null;
     if (!hit.dot && !source.startsWith("reaction:")) {
       const now = this.host.now();
@@ -3279,6 +3359,14 @@ export class Hunt {
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
+    // Coração Frio (marco 5): o congelado que morre congela os colados.
+    if (this.host.now() < brain.frozenUntil && this.marks(this.seats.get(killerId), "cold_heart") >= 5) {
+      const until = this.host.now() + COLD.shatterRootMs;
+      this.state.monsters.forEach((other) => {
+        const b = this.brains.get(other.id);
+        if (b && other !== m && tileDistance(m.x, m.y, other.x, other.y) <= 1) this.root(other, b, until, true);
+      });
+    }
     // Estandarte Vivo (marco 3): quem mata na aura de um cavaleiro cura um pouco.
     const killer = this.state.players.get(killerId);
     if (killer?.status === "playing") {
@@ -3678,11 +3766,18 @@ export class Hunt {
     // O escudo absorve primeiro; o que sobra vai para a vida.
     // Couro Curtido (marcos 1 e 4): o escudo absorve mais do que tem (cada ponto vale 1,1 ou 1,2).
     const hideMarks = this.marks(seat, "tanned_hide");
+    // Reserva Gélida: o golpe bateu no escudo de gelo (antes de ele quebrar).
+    const iceShell = !!seat && now < seat.frostShellUntil && p.barrier > 0;
     const shieldBoost = (hideMarks >= 1 ? HIDE.shield : 0) + (hideMarks >= 4 ? HIDE.shield : 0);
     const absorbed = Math.min(Math.round(p.barrier * (1 + shieldBoost)), amount);
     if (absorbed > 0) {
       p.barrier = absorbed >= Math.round(p.barrier * (1 + shieldBoost)) ? 0 : Math.max(0, p.barrier - Math.ceil(absorbed / (1 + shieldBoost)));
       amount -= absorbed;
+      // Reserva Gélida (marco 4): o escudo de gelo que quebra devolve mana.
+      if (p.barrier === 0 && seat && now < seat.frostShellUntil) {
+        seat.frostShellUntil = 0;
+        if (this.marks(seat, "frost_reserve") >= 4) p.mana = Math.min(p.maxMana, p.mana + Math.round(p.maxMana * FROST_MARKS.breakMana));
+      }
       if (p.barrier === 0 && seat && hideMarks >= 5) {
         seat.hideGuardUntil = now + HIDE.breakMs;
         bump(seat.stats.giftProcs, "tanned_hide");
@@ -3740,6 +3835,10 @@ export class Hunt {
 
     if (!seat || !attacker || hit.dot || tileDistance(p.x, p.y, attacker.x, attacker.y) > 1) return;
     // Daqui para baixo, só golpe corpo a corpo de monstro.
+    // Reserva Gélida (marco 1): quem bate no escudo de gelo congela.
+    if (iceShell && absorbed > 0 && this.marks(seat, "frost_reserve") >= 1 && attackerBrain) {
+      this.root(attacker, attackerBrain, now + FROST_MARKS.freezeMs, true);
+    }
     // Espinhos (itens) e Espinhos de Ferro (magia): parte do golpe volta para o monstro.
     const spellThorns = now < seat.thornsUntil ? seat.thornsPct : 0;
     const thorns = seat.gear.thorns + spellThorns;
@@ -4359,6 +4458,8 @@ export class Hunt {
     if (venom > 0) perTick *= 1 + venom;
     // Fé Ardente (marco 1): as queimaduras do paladino duram mais.
     if (kind === "burn" && this.marks(this.seats.get(attacker), "burning_faith") >= 1) ms += FAITH.burnMs;
+    // Condutor (marco 2): as queimaduras do feiticeiro duram mais.
+    if (kind === "burn" && this.marks(this.seats.get(attacker), "conductor") >= 2) ms += CONDUCTOR.burnMs;
     const until = now + ms;
     const old = brain.dot;
     const toxin = kind === "poison" ? this.seats.get(attacker)?.traits.find((t) => t.toxin)?.toxin : undefined;
