@@ -9,6 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
+import { warlordArt } from "./proto/warlordArt.ts";
 import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero, protoOrcScout, protoSculpt } from "./newArt.ts";
 
 /**
@@ -209,6 +210,8 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
     texture: "monster-ogre-king", facesLeft: true, blood: "red", scale: 1.35,
     anim: { size: KING_SIZE, sheet: ogreKingSheet, portrait: ogreKingPortrait, outline: KING_OUTLINE, fps: { idle: 3.5, walk: 8, attack: 9, cast: 6 } },
   },
+  // Fortaleza Orc: a arte (esculpida por código) entra logo abaixo, com a arte nova ligada ou não.
+  emberWarlord: { texture: "monster-ember-warlord", facesLeft: true, blood: "red" },
 };
 
 // Arte nova (beta): os monstros humanoides da Cripta vêm do protótipo, animados e já em 128 px por tile (o sprite vai
@@ -349,6 +352,22 @@ if (protoOrcScout) {
       size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
       fps: { idle: 7, walk: 12, attack: 14, cast: 14 }, frames: { ...protoOrcScout.ORC_CLIP_FRAMES }, stride: 4,
       hd: () => art.frames(), get fill() { return art.fill; }, origin: art.origin, extra: { ...art.extra },
+    },
+  };
+}
+
+// Vorgak, o Senhor da Brasa (boss da Fortaleza Orc), esculpido por código (`proto/warlord.ts`): é a única arte dele,
+// então vale também com a arte nova desligada. O golpe e o Gancho saem do golpe (o cutelo de cima para baixo; a Fenda de
+// Brasa é o cutelo rachando o chão), o salto da 2ª habilidade, e os chamados e a Fúria do grito de guerra (especial).
+{
+  const art = warlordArt();
+  BESTIARY_ART.emberWarlord = {
+    ...BESTIARY_ART.emberWarlord, facesLeft: true, scale: HD_SCALE * 3.4,
+    anim: {
+      size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
+      fps: { ...art.fps }, frames: { ...art.clips }, stride: art.stride,
+      hd: () => art.frames(), get fill() { return art.fill; }, origin: art.origin, extra: { ...art.extra },
+      strike: { emberRift: "attack", ironHook: "attack", warlordLeap: "skill", fortressCall: "cast", emberFury: "cast", ogreGuard: "cast" },
     },
   };
 }

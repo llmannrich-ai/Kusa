@@ -99,6 +99,26 @@ IA `docs/arte/pantano-do-kosaradius/orcScout-A.png` (que saiu do jogo: o batedor
 - Prévia: `npx tsx apps/client/scripts/orcPrevia.ts /tmp/orc.png 3`; no jogo:
   `/mapa.html?mapa=marsh&bichos=orcScout,orcGrunt`.
 
+## 3º humanoide: Vorgak, o Senhor da Brasa (boss da Fortaleza Orc)
+
+`apps/client/src/art/proto/warlord.ts` (modelo e poses) e `warlordArt.ts` (quadros no jogo, por `sculptArt`). O primeiro
+boss feito só por código, e a única arte dele (vale com a arte nova ligada ou não).
+
+- **Armadura de verdade**: elmo com viseira em fenda, chifres em 5 gomos, ombreiras de duas lâminas com espigões,
+  peitoral com friso de latão pintado na forma (`paint`), saiote de placas que balança, joelheiras e grevas.
+- **Brasa viva**: o fio do cutelo, as runas da lâmina, as três garras do peitoral e os olhos usam `emit`; a pose tem
+  `flicker` (a fase do pulsar: as manchas mais quentes correm pelo fio) e `glow` (na morte, a brasa vira ferro frio e
+  os olhos se apagam).
+- **Pano e atraso**: o estandarte é um pano em 6 gomos que ondula (`wave`, `flap`) com a caveira chifruda pintada; o
+  manto de lobo, a corrente com o gancho, o rabo de cabelo e a haste seguem com atraso em todos os clipes.
+- **Movimento fino**: poses-chave com mistura profunda (pés e braços são objetos; `tween` próprio, a partir da pose
+  parada completa): parado 8, andar 8, golpe 8, especial 8, salto 8 (o clipe a mais `skill`), morte 5.
+- **Peso**: 200 px por figura (57 figuras distintas, ≈ 9 MB de textura, só na hunt da Fortaleza), ≈ 20 ms por figura
+  no PC. Folha: `docs/arte/vorgak-escultura.png`; no jogo (412×915, ao lado do Ogro jovem e do Orc berserker): `docs/arte/vorgak-no-jogo.png`. Se o celular reclamar, o primeiro corte é o especial e o salto em 6.
+- Prévia: `npx tsx apps/client/scripts/esculturaPrevia.ts /tmp/senhor.png 2 senhor`.
+- Efeito próprio no cliente (`fx.ts`, `emberRift`): a fenda no chão abre, fica incandescente e esfria, com labaredas
+  e brasas subindo (a câmera não treme).
+
 ## Limites (o que a IA ainda faz melhor)
 
 - **Textura pintada**: sujeira, desgaste, pelos, cicatrizes. O esculpido tem granulado e brilho, mas parece mais

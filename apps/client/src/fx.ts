@@ -760,6 +760,9 @@ export class CombatFx {
           this.bubbles(to, color);
           flash();
         });
+      case "emberRift":
+        this.emberRift(from, ability.shape === "self" ? null : to, ability.shape === "self" ? radius : Math.max(1, ability.length ?? 4) * TILE_SIZE);
+        return this.later(160, () => flash(0.35));
       case "lightning":
         for (const t of tiles) this.zap(from, t, color);
         return flash(0.3);
@@ -807,6 +810,95 @@ export class CombatFx {
       },
       onComplete: () => g.destroy(),
     });
+  }
+
+  /**
+   * Fenda de Brasa (Vorgak): o chão racha a partir do cutelo, numa linha reta até `to` (ou em raios para todo lado, sem
+   * `to`), e a fenda fica incandescente e esfria devagar (laranja, vermelho, escuro), com labaredas saindo dela em
+   * sequência e brasas subindo. O impacto está no desenho do chão (a câmera não treme).
+   */
+  private emberRift(from: Point, to: Point | null, reach: number) {
+    const cracks: Point[][] = [];
+    const crack = (angle: number, length: number) => {
+      const pts: Point[] = [{ x: from.x, y: from.y + 6 }];
+      const steps = Math.max(4, Math.round(length / 9));
+      for (let i = 1; i <= steps; i++) {
+        const d = (i / steps) * length;
+        const jag = i === steps ? 0 : Phaser.Math.Between(-5, 5);
+        pts.push({ x: from.x + Math.cos(angle) * d - Math.sin(angle) * jag, y: from.y + 6 + Math.sin(angle) * d + Math.cos(angle) * jag });
+        // Galhos curtos saindo da fenda principal.
+        if (i > 1 && i < steps && Math.random() < 0.35) {
+          const b = angle + (Math.random() < 0.5 ? -1 : 1) * Phaser.Math.FloatBetween(0.5, 1);
+          const at = pts[pts.length - 1], bl = Phaser.Math.Between(6, 14);
+          cracks.push([at, { x: at.x + Math.cos(b) * bl * 0.5 + Phaser.Math.Between(-2, 2), y: at.y + Math.sin(b) * bl * 0.5 }, { x: at.x + Math.cos(b) * bl, y: at.y + Math.sin(b) * bl }]);
+        }
+      }
+      cracks.unshift(pts);
+    };
+    if (to) crack(Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y), reach);
+    else for (let i = 0; i < 7; i++) crack((i / 7) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.2, 0.2), reach * Phaser.Math.FloatBetween(0.75, 1.05));
+
+    const scorch = this.scene.add.graphics().setDepth(GROUND_DEPTH + 0.05);
+    const glow = this.scene.add.graphics().setDepth(GROUND_DEPTH + 0.06).setBlendMode(Phaser.BlendModes.ADD);
+    const path = (g: Phaser.GameObjects.Graphics, pts: Point[], upTo: number) => {
+      const n = Math.max(1, Math.ceil(upTo * (pts.length - 1)));
+      g.beginPath().moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i <= n && i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y);
+      g.strokePath();
+    };
+    const lerpColor = (a: number, b: number, t: number) => {
+      const c = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ValueToColor(a), Phaser.Display.Color.ValueToColor(b), 100, t * 100);
+      return Phaser.Display.Color.GetColor(c.r, c.g, c.b);
+    };
+    // Abre em 220 ms, fica em brasa e esfria até 2,6 s; a marca escura some por último.
+    const OPEN = 220, LIFE = 2600;
+    this.scene.tweens.addCounter({
+      from: 0, to: LIFE, duration: LIFE,
+      onUpdate: (tween) => {
+        const ms = tween.getValue() ?? 0;
+        const open = Math.min(1, ms / OPEN);
+        const heat = ms < OPEN ? 1 : Math.max(0, 1 - (ms - OPEN) / 1500);
+        const fade = ms < LIFE - 700 ? 1 : (LIFE - ms) / 700;
+        scorch.clear();
+        glow.clear();
+        cracks.forEach((pts, k) => {
+          const main = k === 0 || (to === null && pts.length > 3);
+          scorch.lineStyle(main ? 7 : 4, 0x140a06, 0.6 * fade);
+          path(scorch, pts, open);
+          scorch.lineStyle(main ? 3 : 2, lerpColor(0x2a0d06, 0xff8a1a, heat), Math.max(0.35 * fade, heat));
+          path(scorch, pts, open);
+          if (heat > 0) {
+            glow.lineStyle(main ? 12 : 7, 0xff4a0a, 0.32 * heat);
+            path(glow, pts, open);
+            glow.lineStyle(1.2, 0xfff0b0, heat);
+            path(glow, pts, open);
+          }
+        });
+      },
+      onComplete: () => { scorch.destroy(); glow.destroy(); },
+    });
+    // Labaredas saindo da fenda em sequência, do cutelo para a ponta.
+    cracks.forEach((pts, k) => pts.forEach((pt, i) => {
+      if (i === 0 || (k > 0 && to)) return;
+      this.later(i * (OPEN / pts.length) + 40, () => {
+        const flame = this.scene.add.circle(pt.x, pt.y - 3, 4, 0xffd166, 0.95).setDepth(FX_DEPTH).setBlendMode(Phaser.BlendModes.ADD);
+        const outer = this.scene.add.circle(pt.x, pt.y - 3, 8, 0xff6b1a, 0.55).setDepth(FX_DEPTH - 1).setBlendMode(Phaser.BlendModes.ADD);
+        this.scene.tweens.add({
+          targets: [flame, outer], scale: { from: 0.5, to: 1.5 }, alpha: { from: 1, to: 0 }, y: pt.y - 18 - Phaser.Math.Between(0, 8),
+          duration: 460, ease: "Quad.Out", onComplete: () => { flame.destroy(); outer.destroy(); },
+        });
+      });
+    }));
+    // Brasas subindo devagar da fenda, enquanto ela esfria.
+    const main = cracks[0];
+    for (let i = 0; i < 18; i++) {
+      const pt = main[Phaser.Math.Between(0, main.length - 1)];
+      const e = this.scene.add.image(pt.x + Phaser.Math.Between(-4, 4), pt.y, FX.spark).setDepth(FX_DEPTH).setTint(i % 3 ? 0xff8a1a : 0xffd166).setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({
+        targets: e, x: e.x + Phaser.Math.Between(-8, 8), y: pt.y - Phaser.Math.Between(20, 40), alpha: { from: 1, to: 0 }, scale: { from: 1, to: 0.4 },
+        delay: OPEN + i * 45, duration: 900, onComplete: () => e.destroy(),
+      });
+    }
   }
 
   /** Bolhas de veneno subindo. */
