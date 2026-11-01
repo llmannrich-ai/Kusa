@@ -540,7 +540,7 @@ plano:
 - Maestrias trocadas por efeitos que já existem: Muro de Escudos dá escudo de 20% (não 5% por monstro), Brado Cortante e
   Lamento Sombrio não enfraquecem (A2 ainda não existe): lentidão de 30% e roubo de 25%; Brisa de Pólen cura 30%;
 - onda: cada passo atinge todos os anéis por onde a onda já passou (o monstro que vinha na direção do herói escapava);
-- telemetria: `stats.fanHits`; teste novo `leque`; migration `20261102010000_magias_em_leque.sql`.
+- telemetria: `stats.fanHits`; teste novo `leque`; migration `20261102030000_magias_em_leque.sql`.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
