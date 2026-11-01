@@ -10,8 +10,6 @@ export const protoHero = NEW_ART ? await import("./proto/tibiaHero.ts") : null;
 /** A Cripta em 128 px por tile (`cryptArt.ts`): sempre, como os outros cenários (`docs/CENARIOS_PLANO.md`, fase 4). */
 export const cryptArt = await import("./cryptArt.ts");
 export const protoBeasts = NEW_ART ? await import("./proto/beasts.ts") : null;
-/** O goblin desenhado a partir da arte de referência (`docs/arte/goblin-referencia.png`), não por código. */
-export const protoGoblin = NEW_ART ? await (await import("./proto/goblinArt.ts")).loadGoblin() : null;
 /** O sapo gigante a partir das folhas geradas por IA (`docs/arte/pantano-das-ruinas/frog-*.png`). */
 export const protoFrog = NEW_ART ? await (await import("./proto/frogArt.ts")).loadFrog() : null;
 /** O Rei Bullywug, boss do Pântano das Ruínas, a partir das folhas geradas no Runway (`docs/arte/pantano-das-ruinas/bullywug-*.png`). */

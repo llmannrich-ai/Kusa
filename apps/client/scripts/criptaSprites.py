@@ -56,6 +56,10 @@ HEIGHT = {
     "hobgoblin": 135,
     "gnoll": 140,
     "dragon": 250,
+    "goblin": 110,
+    "zombie": 125,
+    "ogre": 190,
+    "mimic": 90,
 }
 
 # Quem voa: a figura vai com o próprio pé na linha em toda folha (não cai até o chão na morte).
@@ -66,8 +70,8 @@ USED = (0, 2, 4, 6, 8, 10)
 # Linhas da folha B e quantas figuras cada uma tem.
 B_ROWS = (4, 4, 4, 3)
 # Linhas a mais na folha B de alguns (a emboscada do Bugbear, a cuspida do Cubo, o frenesi do Gnoll, a decolagem e o
-# mergulho do Dragão): o jogo ainda não tem clipe para elas, então são lidas (para as outras saírem certas) e ficam de fora.
-B_EXTRA_ROWS = {"bugbear": (4,), "gelatinousCube": (3,), "gnoll": (4,), "dragon": (4, 4)}
+# mergulho do Dragão, a pedra do Ogro, o revelar e o adesivo do Mímico): o jogo ainda não tem clipe para elas, então são lidas (para as outras saírem certas) e ficam de fora.
+B_EXTRA_ROWS = {"bugbear": (4,), "gelatinousCube": (3,), "gnoll": (4,), "dragon": (4, 4), "ogre": (4,), "mimic": (4, 3)}
 HOLE = 60  # células de 2x2 px: claro sem cor desse tamanho para cima, cercado pela figura, é fundo
 SPECK = 6  # células de 2x2 px: branco puro desse tamanho para cima é fundo, mesmo pequeno
 

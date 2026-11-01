@@ -54,8 +54,9 @@ async function loadOne(url: string): Promise<CryptArt> {
   };
   const run = (first: number, n = 4) => Array.from({ length: n }, (_, k) => at(first + k));
   const breathing = (i: number) => [at(i), at(i, { breathe: 0.02 }), at(i, { breathe: 0.02 }), at(i)];
+  const still = (i: number) => [at(i), at(i), at(i), at(i)];
   // De frente e de costas a folha só tem um passo: alterna com a figura parada.
-  const steps = (still: number, walk: number) => [at(walk), at(still), at(walk), at(still)];
+  const steps = (rest: number, walk: number) => [at(walk), at(rest), at(walk), at(rest)];
   // Parte de cima do quadro ocupada pelo perfil parado (a barra de vida fica logo acima).
   const { ctx } = makeCanvas(s, s);
   ctx.drawImage(img, F.side * s, 0, s, s, 0, 0, s, s);
@@ -72,9 +73,11 @@ async function loadOne(url: string): Promise<CryptArt> {
       ...run(F.attack),
       ...run(F.special),
       ...run(F.death, 3),
-      ...breathing(F.front),
+      // Frente e costas paradas sem o fôlego: cada fôlego é uma figura a mais na memória do celular, e a Cripta carrega
+      // os 17 de uma vez (~50 MB com 21 figuras por monstro).
+      ...still(F.front),
       ...steps(F.front, F.frontWalk),
-      ...breathing(F.back),
+      ...still(F.back),
       ...steps(F.back, F.backWalk),
     ],
     portrait: () => figure(img, s, F.side),

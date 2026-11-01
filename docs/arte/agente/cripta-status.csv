@@ -5,12 +5,12 @@ ordem,id,status,versao,arquivo,tentativas,data,nota
 4,kobold-B,aprovado,v01,kobold-B.webp,,2026-10-31,no jogo (parte 1 de 4)
 5,stirge-A,aprovado,v01,stirge-A.webp,,2026-10-31,no jogo (parte 1 de 4)
 6,stirge-B,aprovado,v01,stirge-B.webp,,2026-10-31,no jogo (parte 1 de 4)
-7,goblin-A,pendente,,,,,
-8,goblin-B,pendente,,,,,
+7,goblin-A,aprovado,v01,goblin-A.webp,,2026-11-01,substitui o goblin da arte de referência
+8,goblin-B,aprovado,v01,goblin-B.webp,,2026-11-01,no jogo (parte 4 de 4)
 9,goblinArcher-A,aprovado,v01,goblinArcher-A.webp,,2026-10-31,no jogo (parte 2 de 4)
 10,goblinArcher-B,aprovado,v01,goblinArcher-B.webp,,2026-10-31,no jogo (parte 2 de 4)
-11,zombie-A,pendente,,,,,
-12,zombie-B,pendente,,,,,
+11,zombie-A,aprovado,v01,zombie-A.webp,,2026-11-01,no jogo (parte 4 de 4)
+12,zombie-B,aprovado,v01,zombie-B.webp,,2026-11-01,a morte pega fogo e fumega
 13,hobgoblin-A,aprovado,v01,hobgoblin-A.webp,,2026-10-31,no jogo (parte 3 de 4)
 14,hobgoblin-B,aprovado,v01,hobgoblin-B.webp,,2026-10-31,no jogo (parte 3 de 4)
 15,skeleton-A,aprovado,v01,skeleton-A.webp,,2026-10-31,no jogo (parte 1 de 4)
@@ -23,13 +23,13 @@ ordem,id,status,versao,arquivo,tentativas,data,nota
 22,orc-B,aprovado,v01,orc-B.webp,,2026-10-31,no jogo (parte 3 de 4)
 23,gnoll-A,aprovado,v01,gnoll-A.webp,,2026-10-31,no jogo (parte 3 de 4)
 24,gnoll-B,aprovado,v01,gnoll-B.webp,,2026-10-31,5ª linha (ataque em frenesi) fica de fora: o jogo ainda não tem clipe
-25,ogre-A,pendente,,,,,
-26,ogre-B,pendente,,,,,
+25,ogre-A,aprovado,v01,ogre-A.webp,,2026-11-01,no jogo (parte 4 de 4)
+26,ogre-B,aprovado,v01,ogre-B.webp,,2026-11-01,5ª linha (arremesso de pedra) fica de fora; a pedra usa o golpe
 27,bugbear-A,aprovado,v01,bugbear-A.webp,,2026-10-31,no jogo (parte 2 de 4)
 28,bugbear-B,aprovado,v01,bugbear-B.webp,,2026-10-31,5ª linha (emboscada) fica de fora: o jogo ainda não tem clipe; substitui a arte de referência
 29,gelatinousCube-A,aprovado,v01,gelatinousCube-A.webp,,2026-10-31,no jogo (parte 2 de 4)
 30,gelatinousCube-B,aprovado,v01,gelatinousCube-B.webp,,2026-10-31,5ª linha (cuspida) fica de fora: o jogo ainda não tem clipe
-31,mimic-A,pendente,,,,,
-32,mimic-B,pendente,,,,,
+31,mimic-A,aprovado,v01,mimic-A.webp,,2026-11-01,o disfarce continua o baú por código (o da folha mostra as pernas e entregaria a armadilha)
+32,mimic-B,aprovado,v01,mimic-B.webp,,2026-11-01,"linhas 5 e 6 (revelar, adesivo) ficam de fora; o adesivo usa o golpe"
 33,dragon-A,aprovado,v01,dragon-A.webp,,2026-10-31,"vermelho, como a regra (Sopro Infernal, imune a fogo): troca o dragão verde por código"
 34,dragon-B,aprovado,v01,dragon-B.webp,,2026-10-31,linhas 5 e 6 (decolagem e mergulho) ficam de fora; manchas brancas entre asa e corpo limpas

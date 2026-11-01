@@ -28,6 +28,10 @@ o desenho por código. Diferente do Kosaradius, aqui o andar, o golpe, o especia
 | Hobgoblin capitão (`hobgoblin`) | A e B | 192 px | ~3,0 MB | |
 | Gnoll (`gnoll`) | A e B | 192 px | ~3,0 MB | a 5ª linha (ataque em frenesi) fica de fora |
 | Dragão jovem (`dragon`) | A e B | 352 px | ~9,9 MB | vermelho, como a regra do jogo (troca o verde por código); o especial é o Sopro Infernal e o Voo usa o golpe; decolagem e mergulho ficam de fora |
+| Goblin (`goblin`) | A e B | 144 px | ~1,7 MB | substitui o goblin da arte de referência |
+| Zumbi (`zombie`) | A e B | 160 px | ~2,1 MB | a morte pega fogo |
+| Ogro (`ogre`) | A e B | 256 px | ~5,2 MB | o especial é o Pisão Sísmico; a pedra usa o golpe (a 5ª linha, o arremesso, fica de fora) |
+| Mímico (`mimic`) | A e B | 128 px | ~1,3 MB | o especial é a Mordida Ácida; o Adesivo usa o golpe; o disfarce continua o baú por código (o da folha mostra as pernas) |
 
 ## O que o script corrige sozinho
 
@@ -43,4 +47,6 @@ o desenho por código. Diferente do Kosaradius, aqui o andar, o golpe, o especia
 ## Memória no celular
 
 Só os monstros do mapa da hunt são preparados (`warmMapMonsters` em `textures.ts`). Cada monstro tem 21 figuras
-distintas: figuras × lado² × 4 bytes. Os 13 acima somam ~40 MB, mas a hunt só prepara os do mapa dela.
+distintas na memória (as 20 da folha que o jogo usa, porque o andar de perfil vem da B, e o fôlego do perfil parado;
+frente e costas ficam paradas sem fôlego): figuras × lado² × 4 bytes. A Cripta usa os 17 de uma vez: ~50 MB (o dragão
+sozinho, ~10 MB), no nível do Kosaradius (~51 MB). A Caverna da Travessia usa 14 deles (~33 MB).
