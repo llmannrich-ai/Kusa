@@ -140,6 +140,7 @@ import {
   type RemoveBotMessage,
   type Bonuses,
   type CastMessage,
+  type ChannelMessage,
   type ChoosePerkMessage,
   type ChooseRuneMessage,
   type ChooseSpellMessage,
@@ -230,6 +231,15 @@ interface Seat {
   traits: TraitDef[];
   /** Dons do Grimório (passivas de gold), já somados pelo nível de cada um. */
   gifts: GiftEffects;
+  /**
+   * Magia canalizada em curso (Sopro Gélido): a magia no nível de quem conjura, o slot, o dano de cada pulso, até
+   * quando dura, o próximo pulso, a direção do leque (arrastada pelo jogador) e quantos pulsos seguidos cada monstro
+   * levou (para congelar).
+   */
+  channel: {
+    spell: SpellDef; def: NonNullable<SpellDef["channel"]>; rank: number; slot: SpellSlot; amount: number; until: number; nextAt: number;
+    dx: number; dy: number; streak: Record<string, number>;
+  } | null;
   /** Bônus em si de uma magia (Postura do Atirador, Aljava Veloz) e até quando. */
   buff: {
     until: number; basicDamage: number; attackRange: number; moveSpeed: number; attackHaste: number;
@@ -608,7 +618,7 @@ export class Hunt {
     this.seats.set(sessionId, {
       nextMoveAt: 0, heading: null, nextAttackAt: 0, portalSince: null, attacking: false, attackUntil: 0, basicAim: null, targetLocked: false,
       spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
-      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
+      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0,
@@ -1110,6 +1120,7 @@ export class Hunt {
     if (this.state.phase !== "running") return;
     this.bots.think(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
+    this.state.players.forEach((p, sessionId) => this.channelTick(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
     this.tickFields(now);
@@ -1592,6 +1603,17 @@ export class Hunt {
     if (echo) this.notice(p.x, p.y - 1, "Eco!", 0xd6a2ff);
     // Projéteis em leque (Leque de Flechas, Leque de Raios, Rajada de Espinhos): cada tiro voa na sua direção e pode errar.
     if (spell.spread) return this.castSpread(sessionId, p, seat, spell, base.id, slot, ox, oy, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, !!aim);
+    // Canalizar (Sopro Gélido): o leque se repete a cada pulso, na direção que o jogador arrastar, até soltar ou acabar.
+    if (spell.channel && spell.shape === "cone") {
+      const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0);
+      this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms: 0 } satisfies SpellMessage);
+      seat.channel = {
+        spell: { ...spell, channel: undefined }, def: spell.channel, rank: p.spellRanks.get(base.id) ?? 0, slot, amount,
+        until: now + spell.channel.ms, nextAt: now, dx: tx - ox, dy: ty - oy, streak: {},
+      };
+      this.channelTick(sessionId, p, now);
+      return;
+    }
     // Tiro: mirado numa direção (à mão, o ponto mandado; no toque rápido, o tile do alvo agora), voa até o alcance
     // inteiro e acerta o primeiro monstro que encontrar; ninguém no caminho, erra.
     const path = isShot(spell) ? shotPath(this.dungeon, ox, oy, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, spell.range) : null;
@@ -1701,6 +1723,66 @@ export class Hunt {
     }
   }
 
+  /**
+   * Cliente: o jogador arrastou o dedo (o leque da canalização vira para o ponto) ou soltou (`stop`: acaba agora).
+   * Sem canalização em curso, nada.
+   */
+  channel(sessionId: string, msg: ChannelMessage) {
+    const seat = this.seats.get(sessionId);
+    const p = this.state.players.get(sessionId);
+    if (!seat?.channel || !p || !msg) return;
+    if (msg.stop === true) {
+      seat.channel = null;
+      return;
+    }
+    if (!Number.isFinite(msg.x) || !Number.isFinite(msg.y)) return;
+    const dx = Math.round(msg.x!) - p.x;
+    const dy = Math.round(msg.y!) - p.y;
+    if (dx === 0 && dy === 0) return;
+    seat.channel.dx = dx;
+    seat.channel.dy = dy;
+    this.face(p, dx, dy);
+  }
+
+  /**
+   * Pulsos da canalização que já venceram: cada um acerta o leque inteiro na direção de agora, a partir de onde o herói
+   * está (ele pode andar, mais devagar). Monstro pego `freezeTicks` pulsos seguidos congela (fica preso).
+   */
+  private channelTick(sessionId: string, p: Player, now: number) {
+    const seat = this.seats.get(sessionId);
+    const c = seat?.channel;
+    if (!seat || !c) return;
+    const def = c.def;
+    if (p.status !== "playing" || this.held(seat, "stun", "engulf")) {
+      seat.channel = null;
+      return;
+    }
+    while (now >= c.nextAt && c.nextAt < c.until) {
+      c.nextAt += def.tickMs;
+      const aim = shotAimPoint(p.x, p.y, c.dx, c.dy);
+      const tiles = coneTiles(this.dungeon, p.x, p.y, aim.x, aim.y, c.spell.range, c.spell.coneAngle);
+      const end = tiles.reduce((far, t) => (tileDistance(p.x, p.y, t.x, t.y) > tileDistance(p.x, p.y, far.x, far.y) ? t : far), { x: p.x, y: p.y });
+      this.host.broadcast(MSG.spell, { from: sessionId, spellId: c.spell.id, x: p.x, y: p.y, tx: end.x, ty: end.y, ms: 0, echo: true } satisfies SpellMessage);
+      // Congelar: conta os pulsos seguidos em cada monstro do leque; quem saiu dele recomeça do zero.
+      const onTiles = new Set(tiles.map((t) => t.y * this.dungeon.width + t.x));
+      const inside = [...this.state.monsters.values()].filter((m) => onTiles.has(m.y * this.dungeon.width + m.x));
+      const streak: Record<string, number> = {};
+      for (const m of inside) {
+        streak[m.id] = (c.streak[m.id] ?? 0) + 1;
+        const brain = this.brains.get(m.id);
+        if (def.freezeTicks && def.freezeMs && brain && streak[m.id] >= def.freezeTicks) {
+          const ms = Math.round(def.freezeMs * (1 + seat.gifts.ccDuration));
+          this.root(m, brain, now + ms);
+          seat.stats.ccMs.root += ms;
+          streak[m.id] = 0;
+        }
+      }
+      c.streak = streak;
+      this.applySpell(sessionId, c.spell, c.rank, undefined, end.x, end.y, c.amount, tiles, c.slot);
+    }
+    if (now >= c.until) seat.channel = null;
+  }
+
   /** Céu Carregado (Traço): um raio cai do céu no monstro mais perto do druida. */
   private skyBolt(sessionId: string, p: Player, sky: NonNullable<TraitDef["chargedSky"]>) {
     const target = this.nearestMonsterTo(p.x, p.y, sky.range);
@@ -1727,7 +1809,17 @@ export class Hunt {
     if (!p || !seat) return;
     // Campo no chão (Solo Consagrado, armadilha, estaca): os efeitos saem depois, pelos pulsos do campo.
     if (spell.field) {
-      if (p.status === "playing") this.placeField(sessionId, p, seat, spell, rank, tx, ty, amount);
+      if (p.status !== "playing") return;
+      // Abrolhos: várias armadilhas espalhadas no leque à frente, cada uma na ponta da reta dela (parando na parede).
+      if (spell.field.count && spell.field.count > 1) {
+        for (const point of spreadAimPoints(p.x, p.y, tx, ty, spell.field.count, spell.coneAngle ?? 90)) {
+          const reach = clampToRange(p.x, p.y, point.x, point.y, spell.range);
+          const end = lineEnd(this.dungeon, p.x, p.y, reach.x, reach.y);
+          if (end.x !== p.x || end.y !== p.y) this.placeField(sessionId, p, seat, spell, rank, end.x, end.y, amount);
+        }
+        return;
+      }
+      this.placeField(sessionId, p, seat, spell, rank, tx, ty, amount);
       return;
     }
     const now = this.host.now();
@@ -3550,7 +3642,9 @@ export class Hunt {
     const def = spell.field!;
     const now = this.host.now();
     const traps = def.kind !== "zone" ? seat.traits.find((t) => t.traps)?.traps : undefined;
-    const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3 : Math.max(traps?.max ?? 1, def.max ?? 1);
+    // Quantos campos desta magia cabem: o limite da magia (totens) ou do Engenhoso, vezes as armadilhas de um lançamento
+    // (Abrolhos).
+    const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3 : Math.max(traps?.max ?? 1, def.max ?? 1) * (def.count ?? 1);
     // O estilo gravado no campo é o da Pólvora ou o desenho da magia (nuvem, totem): compara com o mesmo.
     const look = style || (def.look ?? "");
     const mine = [...this.state.fields.values()]
@@ -3754,7 +3848,9 @@ export class Hunt {
     const haste = now < seat.hasteUntil ? seat.traits.reduce((sum, t) => sum + (t.castHaste?.speed ?? 0), 0) : 0;
     const buff = seat.buff && now < seat.buff.until ? seat.buff.moveSpeed : 0;
     const form = seat.form && now < seat.form.until ? seat.form.moveSpeed : 0;
-    return base * Math.max(0.2, 1 + haste + buff + form);
+    // Canalizando, anda mais devagar.
+    const channel = seat.channel && now < seat.channel.until ? seat.channel.def.moveSlow : 0;
+    return base * Math.max(0.2, 1 + haste + buff + form - channel);
   }
 
   /** Olho de Águia (Traço) e Olhar Paciente (Dom): mais dano em monstro longe de quem bate. */

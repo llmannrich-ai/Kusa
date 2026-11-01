@@ -197,6 +197,7 @@ class HostRuntime {
       case MSG.choosePerk: return this.hunt.choosePerk(sessionId, msg);
       case MSG.chooseRune: return this.hunt.chooseRune(sessionId, msg);
       case MSG.cast: return this.hunt.cast(sessionId, msg);
+      case MSG.channel: return this.hunt.channel(sessionId, msg);
       case MSG.drink: return this.hunt.drink(sessionId, msg);
       case MSG.bagEquip: return this.hunt.bagEquip(sessionId, msg);
       case MSG.unequip: return this.hunt.unequip(sessionId, msg);

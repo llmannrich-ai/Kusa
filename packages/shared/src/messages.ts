@@ -103,6 +103,12 @@ export interface CastAim { x: number; y: number; targetId?: string }
  */
 export interface CastMessage { slot: SpellSlot; aim?: CastAim }
 
+/**
+ * Cliente → servidor: magia canalizada (Sopro Gélido...). Com `x`/`y`, o leque vira para o ponto (o arrasto do dedo);
+ * com `stop`, a canalização acaba antes do tempo (soltou o dedo). Sem nada disso, ignora.
+ */
+export interface ChannelMessage { x?: number; y?: number; stop?: boolean }
+
 /** Cliente → servidor: a tela está deitada ou em pé (só telemetria: `RunStats.landscapeMs`). */
 export interface ScreenMessage { landscape: boolean }
 
@@ -235,6 +241,7 @@ export const MSG = {
   choosePerk: "choosePerk",
   chooseRune: "chooseRune",
   cast: "cast",
+  channel: "channel",
   spell: "spell",
   chain: "chain",
   shotEnd: "shotEnd",

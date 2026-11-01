@@ -303,6 +303,12 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
   efeito uma vez só (o monstro que anda na direção do herói não escapa por trás da onda).
 - **Projéteis em leque** (`spread`): vários tiros espalhados em volta da mira, cada um pode errar; colado no monstro,
   todos acertam nele.
+- **Canalizar** (`channel`, o "cuspir fogo"): a magia sai ao encostar no botão, para a frente do herói, e o leque se
+  repete a cada pulso. **Segurar e arrastar** vira o leque (o cliente manda a direção a cada 80 ms, `MSG.channel`);
+  **soltar** encerra. **Toque rápido** (menos de 250 ms, sem arrastar) deixa o sopro ir até o fim para a frente.
+  Canalizando, o herói anda mais devagar. Mana e recarga saem uma vez, no começo. Atordoado ou engolido, para.
+- **Várias armadilhas** (`field.count`): os Abrolhos espalham as armadilhas no leque, cada uma na ponta da reta dela
+  (parando na parede); cabem as de um lançamento ao mesmo tempo (vezes o Engenhoso).
 - **Desenho de sopro:** partículas saem do herói e abrem no ângulo; cada tile acende quando a onda chega. Vale também
   para o Corte Largo, a Barragem e o Cone de Frio. A mira mostra os tiles do leque (com o ângulo da magia) ou uma linha
   pontilhada por projétil.
@@ -320,6 +326,8 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 | Druida | Matilha (Lobo Espiritual) | 🐺 **Rugido da Alcateia** | 1 | leque de 90°, 3 tiles, 0,8×, empurra 1; criaturas 30% mais rápidas por 4 s | as criaturas curam 10% |
 | Druida | Bosque (Mariposa Curandeira) | 🌸 **Brisa de Pólen** | 2 | onda de 120°, 5 tiles: cura 20% dos **aliados** no leque e tira veneno, queimadura e lentidão; monstros 30% lentos | cura 30% |
 | Druida | Espinhos (Espinho Venenoso) | 🌵 **Rajada de Espinhos** | 1 | 6 espinhos em 60°, 0,7× cada, que sangram | 8 espinhos |
+| Feiticeiro | Gelo (Nova de Gelo) | 🌨️ **Sopro Gélido** | 2 | **canalizada** por até 2 s: leque de 60°, 4 tiles, 0,4× e 40% de lentidão a cada 0,25 s; 6 pulsos seguidos no mesmo monstro o congelam 1 s | congela com 4 pulsos |
+| Paladino | Batedor (Áurea Sagrada) | 🪤 **Abrolhos** | 1 | 3 estrepes espalhados num leque de 90°, na ponta do alcance (3 tiles), por 20 s: quem pisa fica 50% lento e sangra | 5 estrepes |
 
 - Preço: 500 (linha 3) e 800 (Leque de Raios, linha 4), como as costelas. Cada uma pede o pai no nível 1 de uso.
 - Telemetria: `stats.fanHits` (monstros pegos por magia em leque).
