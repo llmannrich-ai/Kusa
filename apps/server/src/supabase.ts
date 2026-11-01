@@ -59,6 +59,21 @@ export async function takeLoadout(userId: string, classId: string): Promise<stri
 }
 
 /**
+ * Equipamento e runas equipados na classe, sem tirar da conta: o bot da equipe veste uma cópia (não larga nada e
+ * nada volta para a conta). Precisa ser lido antes do `take_loadout` de um humano da mesma classe.
+ */
+export async function readLoadout(userId: string, classId: string): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("profile_items").select("item_id")
+    .eq("profile_id", userId).eq("class_id", classId).eq("equipped", true);
+  if (error) {
+    console.error("Falha ao ler o equipamento do bot", error);
+    return [];
+  }
+  return (data ?? []).map((r) => r.item_id as string);
+}
+
+/**
  * Cenários e bosses que este personagem (conta e classe) já venceu: abrem o seguinte da campanha (`mapUnlocked`; os
  * bosses contam nos lados das bifurcações).
  */
