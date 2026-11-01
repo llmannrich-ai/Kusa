@@ -10,11 +10,14 @@
  *     ofuscar), Fôlego do Caçador (tiros carregados, recarga devolvida, escudo) e Mão Rápida (6º básico e explosão);
  *   - Feiticeiro: Condutor (saltos, queimadura), Coração Frio (lentidão, dano em lento, escudo, congelar em volta),
  *     Fome Sombria (marca, mana ao matar, roubo de mana), Circuito (2 elementos, recarga), Reserva Gélida (limiar,
- *     recarga, congelar quem bate, mana ao quebrar) e Ossuário (mais esqueletos, explosão ao sumir).
+ *     recarga, congelar quem bate, mana ao quebrar) e Ossuário (mais esqueletos, explosão ao sumir);
+ *   - Druida: Laço da Matilha (duração, lobo a mais, volta ao cair), Seiva Antiga (escudo da sobra, lentidão, cura forte),
+ *     Seiva Venenosa (duração, lentidão, veneno que pula), Instinto (série, atordoar), Ciclo (onda maior, raiz, escudo)
+ *     e Céu Fechado (o raio envenena, prende e cai 2 vezes).
  * Uso: npx tsx scripts/marcos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  ALLY_DAMAGE_RADIUS, BANNER, BONES, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
+  ALLY_DAMAGE_RADIUS, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
   type ClassId, type GiftId, type TalentRanks,
 } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
@@ -394,6 +397,81 @@ test("Ossuário: até 3 esqueletos de 12 s, e explodem ao sumir", () => {
   const hp = victim.hp;
   a.any.summonThink(bones[0], a.now());
   check(victim.hp < hp && a.seat().stats.reactions.doom === 1, `vida ${hp} → ${victim.hp}`);
+});
+
+console.log("Druida:");
+test("Laço da Matilha: lobos +1, duram +20% e voltam uma vez ao cair", () => {
+  const summon = (gift: number) => {
+    const b = markArena("druid", gift ? { pack_bond: gift } : {});
+    b.choose("spirit_wolf");
+    b.ready();
+    b.cast(0);
+    const wolves = [...b.state.summons.values()].filter((s) => s.owner === HERO && s.kind === "wolf");
+    return { b, wolves, ms: b.any.summonBrains.get(wolves[0].id).expiresAt - b.now() };
+  };
+  const plain = summon(0);
+  const { b: a, wolves, ms } = summon(25);
+  check(wolves.length === plain.wolves.length + 1, `${plain.wolves.length} → ${wolves.length} lobos`);
+  check(Math.abs(ms - plain.ms * (1 + PACK.duration * 2)) < 2, `duração ${plain.ms} → ${ms}`);
+  a.any.damageSummon(wolves[0], wolves[0].hp + 10, { attacker: "", fromX: 0, fromY: 0, fx: "bite" });
+  check(a.state.summons.has(wolves[0].id) && wolves[0].hp === Math.round(wolves[0].maxHp * PACK.reviveHp), `voltou com ${wolves[0].hp}`);
+  a.any.damageSummon(wolves[0], wolves[0].hp + 10, { attacker: "", fromX: 0, fromY: 0, fx: "bite" });
+  check(!a.state.summons.has(wolves[0].id), "só volta uma vez");
+});
+test("Seiva Antiga: sobra vira escudo, tira lentidão e cura mais quem está mal", () => {
+  const a = markArena("druid", { ancient_sap: 25 });
+  // Sem o Florescer (Traço), que também guarda a sobra da cura como escudo.
+  a.seat().traits = [];
+  a.seat().slow = { factor: 0.5, until: a.now() + 5000 };
+  a.p.slowed = true;
+  a.p.hp = a.p.maxHp - 5;
+  a.any.healPlayer(a.p, 100, HERO);
+  check(a.p.barrier === Math.round(a.p.maxHp * SAP.overhealLater) && !a.seat().slow, `escudo ${a.p.barrier}`);
+  const b = markArena("druid", { ancient_sap: 25 });
+  b.seat().traits = [];
+  b.p.hp = 1;
+  b.any.healPlayer(b.p, 20, HERO);
+  // 20 de cura, +25% do próprio Dom no nível 25, e +50% por estar abaixo de 30%.
+  check(b.p.hp === 1 + Math.round(Math.round(20 * 1.25) * (1 + SAP.lowHpBonus)), `vida ${b.p.hp}`);
+});
+test("Seiva Venenosa: veneno +2 s e lento, e pula para o vizinho quando o envenenado morre", () => {
+  const a = markArena("druid", { venom_sap: 25 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 2, 0);
+  const next = a.place("lizardfolk", 3, 0);
+  a.any.applyDot(m, a.brain(m), HERO, "teste", 5, 3000, "poison", a.now());
+  check(a.brain(m).dot.until - a.now() === 3000 + VENOM.ms * 2 && m.slowed, `veneno até ${a.brain(m).dot.until}, lento ${m.slowed}`);
+  a.kill(m);
+  check(a.brain(next).dot?.kind === "poison", "o veneno devia pular");
+});
+test("Instinto: a cada 3º básico, a mordida atordoa", () => {
+  const a = markArena("knight", { instinct: 10 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 1, 0);
+  a.p.target = m.id;
+  a.seat().attacking = true;
+  a.seat().targetLocked = true;
+  a.until(() => a.seat().basicCount >= INSTINCT.everyLater, 8000, "não deu 3 básicos");
+  check(a.brain(m).stunnedUntil > 0 && a.seat().stats.giftProcs.instinct === 1, `procs ${a.seat().stats.giftProcs.instinct}`);
+});
+test("Ciclo: a cada 200 de cura, a onda chega a 2 tiles, prende e dá escudo", () => {
+  const a = markArena("druid", { cycle: 25 });
+  const m = a.place("lizardfolk", 2, 0);
+  a.seat().traits = [];
+  // Duas curas de 100 (a vida máxima do druida não cabe 200 de uma vez).
+  for (let i = 0; i < 2; i++) {
+    a.p.hp = 1;
+    a.any.healPlayer(a.p, CYCLE_MARKS.healLater / 2, HERO);
+  }
+  check(a.seat().stats.giftProcs.cycle === 1, JSON.stringify(a.seat().stats.giftProcs));
+  check(m.rooted && a.p.barrier === Math.round(a.p.maxHp * CYCLE_MARKS.shield), `preso ${m.rooted}, escudo ${a.p.barrier}`);
+});
+test("Céu Fechado: 2 raios que envenenam e prendem", () => {
+  const a = markArena("druid", { closed_sky: 25 }, { monsterHp: 400 });
+  const one = a.place("lizardfolk", 2, 0);
+  const two = a.place("lizardfolk", 3, 0);
+  a.any.closedSky(HERO, a.p.x + 2, a.p.y + 1);
+  a.advance(300);
+  check(a.seat().stats.giftProcs.closed_sky === 2, JSON.stringify(a.seat().stats.giftProcs));
+  check(a.brain(one).dot?.kind === "poison" && a.brain(two).dot?.kind === "poison" && (one.rooted || two.rooted), "envenena e prende");
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);
