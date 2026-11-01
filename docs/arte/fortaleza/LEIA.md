@@ -13,8 +13,16 @@ desenho) e esta pasta fica só com a imagem.
 |---|---|---|---|
 | Acampamento orc | `acampamento.png` | `apps/client/src/art/proto/fortaleza/acampamento.png` + `.json` | ✅ tendas (a do chefe no pátio do esporão), totens, estandartes (também no terraço), fogueiras, paliçada de leste a oeste, armas, caldeirão, lenha, ossos, barris. A jaula ainda não tem lugar |
 | Chão C1: capim | `chao-capim.png` (1254 px, emenda nos 4 lados) | `apps/client/src/art/proto/fortaleza/chao-capim.webp` (1024 px, 8×8 tiles, cor média puxada 70% para a do capim antigo, para casar com as bordas pintadas pelo jogo) | ✅ a vila, os pátios e o vale lá embaixo |
-| Chão C2: basalto | `chao-basalto.png` (1254 px) | `chao-basalto.webp` (8×8 tiles, cerca de 1 pedra por tile; a 4×4 ficou embolada, ver `no-jogo-basalto-A-B.png`) | ✅ a estrada, as ruas e o calçamento quebrado dos pátios |
+| Chão C2: basalto | `chao-basalto.png` (1254 px) | `chao-basalto.webp` (4×4 tiles, pedras menores, escolha do Leonardo; a comparação com 8×8 está em `no-jogo-basalto-A-B.png`) | ✅ a estrada, as ruas e o calçamento quebrado dos pátios |
 
 Para refazer depois de trocar o original: `python3 apps/client/scripts/fortalezaSprites.py acampamento` (ou
 `chao-capim`; os chãos ficam em `CHAOS`) (tira o magenta e o
 halo rosado, separa os objetos pela célula da grade e põe cada um na largura do jogo, em `FOLHAS`).
+
+## Bordas
+
+O capim do ChatGPT cobre a beira do calçamento (basalto e lajes): uma camada com a textura do capim repetida no mundo
+(alinhada com os tiles de capim) é vista só por uma máscara com o formato das bordas (`grassMask` em `fortressArt.ts`:
+lóbulos de 25% a 45% do tile e tufos), no filtro de máscara do Phaser 4. A borda é o próprio capim do vizinho, sem
+degrau de tile (`no-jogo-bordas.png`). A terra do acampamento e as lajes ganham o mesmo quando as texturas delas
+chegarem.

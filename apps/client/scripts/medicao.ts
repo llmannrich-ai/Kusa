@@ -8,7 +8,7 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const out = process.argv[2] ?? "medicao.html";
 const bundle = await build({
   entryPoints: [here("../src/medicao.ts")], bundle: true, write: false, format: "esm", platform: "browser", minify: true, target: "es2022",
-  loader: { ".png": "dataurl" }, define: { "import.meta.env": "{}" },
+  loader: { ".png": "dataurl", ".webp": "dataurl" }, define: { "import.meta.env": "{}" },
 });
 const js = bundle.outputFiles[0].text.replace(/<\/script/g, "<\\/script");
 const html = `<!DOCTYPE html>

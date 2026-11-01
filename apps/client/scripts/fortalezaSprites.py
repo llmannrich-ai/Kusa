@@ -35,7 +35,7 @@ FOLHAS = {
 # pelo jogo.
 CHAOS = {
     "chao-capim": {"media": (119, 142, 63), "forca": 0.7},
-    "chao-basalto": {"media": (105, 107, 108), "forca": 0.6},
+    "chao-basalto": {"media": (105, 107, 108), "forca": 0.6, "tiles": 4},
 }
 
 ROOT = Path(__file__).resolve().parents[3]

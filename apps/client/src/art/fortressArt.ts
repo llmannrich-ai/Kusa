@@ -580,3 +580,42 @@ export function throneSprite(): Uint8ClampedArray {
   p.on(cx - 4, 80, E.Void, 1); p.on(cx + 4, 80, E.Void, 1);
   return p.render(true);
 }
+
+/**
+ * Máscara da borda do capim (bits de `OPEN`: os lados com capim), em branco: o capim do ChatGPT aparece por cima do
+ * calçamento só aqui. A beira ondula e se quebra em dentes, com tufos saindo para dentro da pedra. A onda vale o mesmo
+ * nas duas pontas de cada lado, então a borda segue de um tile para o outro.
+ */
+export function grassMask(grass: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(HD * HD * 4);
+  // Lóbulos largos (o capim avança de 25% a 45% do tile sobre a pedra) com a beira em dentes.
+  const depth = (t: number, seed: number) =>
+    40 + 14 * Math.sin((2 * Math.PI * t) / HD * 2 + seed) + 7 * Math.sin((6 * Math.PI * t) / HD + seed * 2) + (noise(t >> 2, seed, 880) - 0.5) * 10;
+  const corner = (d: number, seed: number) => d < 44 + (noise(Math.round(d) >> 2, seed, 881) - 0.5) * 10;
+  const inside = (x: number, y: number) => Boolean(
+    (grass & OPEN.n && y < depth(x, 1)) || (grass & OPEN.s && HD - 1 - y < depth(x, 2))
+    || (grass & OPEN.w && x < depth(y, 3)) || (grass & OPEN.e && HD - 1 - x < depth(y, 4))
+    || (grass & OPEN.nw && corner(Math.hypot(x, y), 5)) || (grass & OPEN.ne && corner(Math.hypot(HD - 1 - x, y), 6))
+    || (grass & OPEN.sw && corner(Math.hypot(x, HD - 1 - y), 7)) || (grass & OPEN.se && corner(Math.hypot(HD - 1 - x, HD - 1 - y), 8)));
+  const on = (x: number, y: number) => {
+    x = Math.round(x); y = Math.round(y);
+    if (x < 0 || y < 0 || x >= HD || y >= HD) return;
+    out.set([255, 255, 255, 255], (y * HD + x) * 4);
+  };
+  for (let y = 0; y < HD; y++) for (let x = 0; x < HD; x++) if (inside(x + 0.5, y + 0.5)) on(x, y);
+  // Tufos: folhas de 2 a 3 px de largura saindo da beira para dentro da pedra.
+  for (let k = 0; k < 220; k++) {
+    const x = Math.floor(noise(k, grass, 882) * HD), y = Math.floor(noise(grass, k, 883) * HD);
+    if (!inside(x, y)) continue;
+    const dirs: [number, number][] = [];
+    if (grass & OPEN.n) dirs.push([0, 1]);
+    if (grass & OPEN.s) dirs.push([0, -1]);
+    if (grass & OPEN.w) dirs.push([1, 0]);
+    if (grass & OPEN.e) dirs.push([-1, 0]);
+    if (!dirs.length) continue;
+    const [dx, dy] = dirs[k % dirs.length];
+    const len = 6 + Math.floor(noise(k, 7, 884) * 12);
+    for (let s = 0; s < len; s++) { on(x + dx * s, y + dy * s); if (s < len - 2) on(x + dx * s + dy, y + dy * s + dx); }
+  }
+  return out;
+}

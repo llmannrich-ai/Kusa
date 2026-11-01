@@ -31,6 +31,8 @@ export type AcampamentoFrame = keyof typeof acampamentoFrames;
  * o pedaço (x mod N, y mod N), então o chão continua sem costura e só repete a cada N tiles.
  */
 export interface GroundTexture {
+  /** A textura inteira (a camada de capim da borda repete ela no mundo). */
+  readonly image: HTMLImageElement;
   /** Período em tiles. */
   readonly period: number;
   /** Pixels RGBA do pedaço (tx, ty), 128×128. */
@@ -55,6 +57,7 @@ async function loadGround(url: string): Promise<GroundTexture> {
     return data;
   };
   return {
+    image,
     period,
     tile(tx, ty) {
       const src = pixels(), out = new Uint8ClampedArray(HD * HD * 4), stride = image.width * 4;

@@ -3,7 +3,7 @@ import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "
 import { hash, makeCanvas } from "./art/pixels.ts";
 import { TileAtlas, toCanvas } from "./art/duneArt.ts";
 import {
-  HD, OPEN, bushTile, cryptFloorTile, flatDecor, fringeEdge, quarter, shadeEdge,
+  HD, OPEN, bushTile, cryptFloorTile, flatDecor, quarter, shadeEdge,
   type FlatDecor,
 } from "./art/empireArt.ts";
 import {
@@ -12,7 +12,7 @@ import {
 } from "./art/empireMonuments.ts";
 import {
   DROP, HANG, KEEP_RISE, ROOM_WALL, STAKE, THRONE, bridgeTile,
-  cliffTile, dirtTile, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
+  cliffTile, dirtTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   stakeSprite, terraceTile, throneSprite,
 } from "./art/fortressArt.ts";
 import { canopyTile, waterTile } from "./art/forestArt.ts";
@@ -174,6 +174,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   // --- Andar do castelo: chão, beiradas, paredão e enfeites rasteiros ------------------------------
   const ground = new Int32Array(W * H).fill(-1);
   const fringe = new Int32Array(W * H).fill(-1);
+  /** Onde o capim do ChatGPT cobre a beira do calçamento (a máscara da camada de capim de cima). */
+  const grassEdge = new Int32Array(W * H).fill(-1);
   const shade = new Int32Array(W * H).fill(-1);
   const decor = new Int32Array(W * H).fill(-1);
   const voidShade = new Int32Array(W * H).fill(-1);
@@ -241,7 +243,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       if (edge) fringe[i] = atlas.frame(`ledge${edge}`, () => ledgeEdge(edge));
       else if ((road(x, y) || plaza(x, y) || yard(x, y)) && !hall(x, y)) {
         const g = mask(x, y, (a, b) => solid(a, b) && !paved(a, b) && !camp(a, b) && !inKeep(a, b) && !inTower(a, b) && !(battlement(a, b) && ruin(a, b)) && !roomInside(a, b));
-        if (g) fringe[i] = atlas.frame(`fringe${g}`, () => fringeEdge(g).render(false));
+        if (g) grassEdge[i] = atlas.frame(`gmask${g}`, () => grassMask(g));
       }
       const s = mask(x, y, high) & (OPEN.n | OPEN.w | OPEN.nw);
       if (s && !high(x, y)) shade[i] = atlas.frame(`shade${s}`, () => shadeEdge(s, 40));
@@ -336,10 +338,24 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     y = y1 + 1;
   }
   layer("sombra-vale", voidShade, floorDepth - 1);
-  layer("chao", ground, floorDepth, (x, y) => (abyss(x, y) ? 0xffffff : patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67)));
+  // As texturas do ChatGPT (capim, basalto) já variam sozinhas: vão sem as manchas de luz, para a camada de capim da
+  // borda casar pixel a pixel com o capim de baixo.
+  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || (!paved(x, y) && !camp(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
+  layer("chao", ground, floorDepth, (x, y) => (plainTexture(x, y) ? 0xffffff : patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67)));
   layer("beiradas", fringe, floorDepth, (x, y) => patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67));
   layer("sombra", shade, floorDepth);
   layer("enfeites", decor, floorDepth);
+  // A borda do capim: a textura do capim repetida no mundo inteiro (alinhada com os tiles de capim: 8 tiles por volta),
+  // vista só pela máscara das bordas. O capim de verdade cobre a beira da pedra, sem degrau de tile.
+  const GRASS_KEY = "fortress-capim";
+  if (!scene.textures.exists(GRASS_KEY)) scene.textures.addImage(GRASS_KEY, CHAO_CAPIM.image);
+  // A máscara fica embaixo de tudo (só existe nos tiles de calçamento, que são opacos): na tela não aparece; o filtro a
+  // desenha à parte.
+  const edgeMask = map.createBlankLayer("mascara-capim", set)!.setScale(1 / ZOOM).setDepth(floorDepth - 10);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (grassEdge[y * W + x] >= 0) edgeMask.putTileAt(grassEdge[y * W + x], x, y);
+  const grassOver = scene.add.tileSprite(0, 0, W * TILE_SIZE, H * TILE_SIZE, GRASS_KEY).setOrigin(0).setTileScale(1 / ZOOM).setDepth(floorDepth + 0.01);
+  grassOver.enableFilters();
+  grassOver.filters!.external.addMask(edgeMask, false, scene.cameras.main);
 
   // --- De pé -------------------------------------------------------------------------------------
   const culler = new ChunkCuller();
