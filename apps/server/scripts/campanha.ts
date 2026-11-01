@@ -11,7 +11,7 @@ import { WORLD_ORDER, lastUnlocked, mapUnlocked, unlockedBy, type MapId } from "
 import { HERO, arena, check } from "./arena.ts";
 
 // --- Ordem da campanha -----------------------------------------------------------------------
-check(WORLD_ORDER.join() === "marsh,crypt,desert,swamp,cavern,oldwood,heartwood,dunes,mesas,gates,fortress", `ordem da campanha: ${WORLD_ORDER}`);
+check(WORLD_ORDER.join() === "marsh,crypt,desert,swamp,cavern,oldwood,heartwood,dunes,mesas,fortress", `ordem da campanha: ${WORLD_ORDER}`);
 const open = (clears: string[]) => WORLD_ORDER.filter((id) => mapUnlocked(clears, id)).join();
 check(open([]) === "marsh", `conta nova: só o Kosaradius aberto (veio ${open([])})`);
 check(open(["marsh"]) === "marsh,crypt", `Grumak vencido abre a Cripta (veio ${open(["marsh"])})`);
@@ -27,11 +27,12 @@ check(open(["beholder"]) === "marsh,dunes", "o Observador vencido como convidado
 check(open(["basilisk"]) === "marsh,oldwood", "o Basilisco vencido como convidado abre o Bosque Velho, mesmo sem a Travessia vencida");
 check(open([...travessia, "basilisk", "oldwood"]) === [...travessia, "oldwood", "heartwood"].join(), "o boss do Bosque Velho abre o Coração da Mata");
 check(open([...travessia, "beholder", "dunes"]) === [...travessia, "dunes", "mesas"].join(), "o boss das Dunas abre as Mesas de Solária");
-check(open([...travessia, "beholder", "dunes", "mesas"]) === [...travessia, "dunes", "mesas", "gates", "fortress"].join(), "o boss das Mesas abre os Portões do Império e a Fortaleza Orc");
+check(open([...travessia, "beholder", "dunes", "mesas"]) === [...travessia, "dunes", "mesas", "fortress"].join(), "o boss das Mesas abre a Fortaleza Orc");
 check(open([...travessia, "basilisk", "oldwood", "beholder", "dunes", "mesas"]) === WORLD_ORDER.join(), "os dois lados vencidos abrem tudo");
 check(open(["crypt"]) === "marsh,desert", "a Cripta vencida (como convidado) abre o Mar de Areia, mesmo sem a Cripta aberta para criar");
 check(unlockedBy("marsh") === undefined && unlockedBy("swamp") === "desert" && unlockedBy("cavern") === "swamp", "quem abre cada cenário");
-check(unlockedBy("dunes") === "cavern" && unlockedBy("oldwood") === "cavern" && unlockedBy("heartwood") === "oldwood" && unlockedBy("gates") === "mesas" && unlockedBy("fortress") === "mesas", "a bifurcação da Travessia e as Ruínas do Império");
+check(unlockedBy("dunes") === "cavern" && unlockedBy("oldwood") === "cavern" && unlockedBy("heartwood") === "oldwood" && unlockedBy("fortress") === "mesas", "a bifurcação da Travessia e as Ruínas do Império");
+check(!mapUnlocked(["marsh", "crypt", "desert", "swamp", "cavern", "beholder", "dunes", "mesas"], "gates"), "os Portões do Império saíram da campanha (não abrem)");
 check(lastUnlocked([]) === "marsh" && lastUnlocked(["marsh", "crypt"]) === "desert" && lastUnlocked([...travessia, "basilisk"]) === "oldwood", "o herói espera no último cenário aberto");
 console.log("ordem da campanha OK");
 
