@@ -13,6 +13,7 @@ desenho) e esta pasta fica só com a imagem.
 |---|---|---|---|
 | Acampamento orc | `acampamento.png` | `apps/client/src/art/proto/fortaleza/acampamento.png` + `.json` | ✅ tendas (a do chefe no pátio do esporão), totens, estandartes (também no terraço), fogueiras, paliçada de leste a oeste, armas, caldeirão, lenha, ossos, barris. A jaula ainda não tem lugar |
 | Chão C1: capim | `chao-capim.png` (1254 px, emenda nos 4 lados) | `apps/client/src/art/proto/fortaleza/chao-capim.webp` (1024 px, 8×8 tiles, cor média puxada 70% para a do capim antigo, para casar com as bordas pintadas pelo jogo) | ✅ a vila, os pátios e o vale lá embaixo |
+| Chão C2: basalto | `chao-basalto.png` (1254 px) | `chao-basalto.webp` (8×8 tiles, cerca de 1 pedra por tile; a 4×4 ficou embolada, ver `no-jogo-basalto-A-B.png`) | ✅ a estrada, as ruas e o calçamento quebrado dos pátios |
 
 Para refazer depois de trocar o original: `python3 apps/client/scripts/fortalezaSprites.py acampamento` (ou
 `chao-capim`; os chãos ficam em `CHAOS`) (tira o magenta e o

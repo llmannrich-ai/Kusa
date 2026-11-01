@@ -1,5 +1,6 @@
 import acampamentoUrl from "./fortaleza/acampamento.png";
 import acampamentoFrames from "./fortaleza/acampamento.json";
+import basaltoUrl from "./fortaleza/chao-basalto.webp";
 import capimUrl from "./fortaleza/chao-capim.webp";
 import { HD } from "../paint.ts";
 
@@ -26,8 +27,8 @@ export const ACAMPAMENTO = await load(acampamentoUrl, acampamentoFrames);
 export type AcampamentoFrame = keyof typeof acampamentoFrames;
 
 /**
- * Textura de chão do ChatGPT: 1024×1024 px, 8×8 tiles de 128 que emendam nos 4 lados. O tile (x, y) do mapa usa o
- * pedaço (x mod 8, y mod 8), então o chão continua sem costura e só repete a cada 8 tiles.
+ * Textura de chão do ChatGPT: N×N tiles de 128 px que emendam nos 4 lados (o capim tem 8). O tile (x, y) do mapa usa
+ * o pedaço (x mod N, y mod N), então o chão continua sem costura e só repete a cada N tiles.
  */
 export interface GroundTexture {
   /** Período em tiles. */
@@ -65,3 +66,6 @@ async function loadGround(url: string): Promise<GroundTexture> {
 
 /** Capim mediterrâneo (a vila baixa e as bordas dos pátios). */
 export const CHAO_CAPIM = await loadGround(capimUrl);
+
+/** Calçamento romano de basalto (a estrada, as ruas e o calçamento quebrado dos pátios). */
+export const CHAO_BASALTO = await loadGround(basaltoUrl);

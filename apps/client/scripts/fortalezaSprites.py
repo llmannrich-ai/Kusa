@@ -30,10 +30,12 @@ FOLHAS = {
     },
 }
 
-# Texturas de chão: cada uma vira 1024×1024 (8×8 tiles de 128 px; o jogo corta em 64 tiles) e tem a cor média puxada
-# para a do chão que ela substitui (`media`, RGB), na fração `forca`, para casar com as bordas pintadas pelo jogo.
+# Texturas de chão: cada uma vira `tiles`×`tiles` tiles de 128 px (padrão 8: 1024×1024; o jogo corta nos tiles) e tem a
+# cor média puxada para a do chão que ela substitui (`media`, RGB), na fração `forca`, para casar com as bordas pintadas
+# pelo jogo.
 CHAOS = {
     "chao-capim": {"media": (119, 142, 63), "forca": 0.7},
+    "chao-basalto": {"media": (105, 107, 108), "forca": 0.6},
 }
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -42,7 +44,8 @@ ROOT = Path(__file__).resolve().parents[3]
 def chao(nome):
     spec = CHAOS[nome]
     src = Image.open(ROOT / "docs/arte/fortaleza" / f"{nome}.png").convert("RGB")
-    img = src.resize((1024, 1024), Image.LANCZOS)
+    side = 128 * int(sys.argv[2] if len(sys.argv) > 2 else spec.get("tiles", 8))
+    img = src.resize((side, side), Image.LANCZOS)
     arr = np.array(img).astype(np.float32)
     mean = arr.reshape(-1, 3).mean(0)
     gain = 1 + (np.array(spec["media"], np.float32) / np.maximum(mean, 1) - 1) * spec["forca"]
