@@ -10,8 +10,8 @@ teclado e mouse no desktop são um extra.
 
 - **Celular na vertical (retrato)**, jogável com uma mão ou com os dois polegares. Deitado fora da hunt (ou na hunt sem o Jogar deitado), aparece um aviso que explica e oferece ligar o Jogar deitado ali mesmo.
 - **Jogar deitado (beta):** opção nas Configurações. Da largada da hunt até o resultado, o jogo ocupa a tela deitada
-  (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo; ataque e magias em arco no canto de
-  baixo à direita, com as poções numa fileira ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
+  (o Android vira sozinho; no iPhone o jogador gira): joystick no polegar esquerdo; ataque e magias em arco embaixo à
+  direita, afastados da beirada (ver "Ações"), com as poções na beirada ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
   direita, para o meio da tela ficar livre (no iPhone, as barras do Safari deixam só uns 330 px de altura). Os menus continuam na vertical. A telemetria compara as hunts em pé e
   deitado (`stats.landscapeMs`) para decidir se o modo fica.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
@@ -22,7 +22,15 @@ teclado e mouse no desktop são um extra.
   **Deslizar na parede:** a diagonal bloqueada (parede, quina ou monstro) vira passo no eixo livre, então o polegar um pouco torto num corredor não para o herói.
   Enquanto o polegar segura uma direção, o servidor anda nela sozinho, no ritmo da velocidade do herói, e o
   cliente desenha os passos emendados, com duração constante (sem "trava e corre" quando a rede oscila).
-- **Ações:** botões grandes no canto inferior direito: o ⚔️ do ataque básico embaixo, mais perto do polegar, e os 2 slots de magia acima dele; numa coluna ao lado, as poções de vida e de mana.
+- **Ações:** o ⚔️ e as magias **miram arrastando**, então ficam **longe da beirada direita** (o centro do ⚔️ a ~120 px
+  da borda), para o dedo ter espaço de arrastar para a direita e para baixo; a mira é relativa ao toque e chega ao
+  alcance máximo com 72 px de arrasto. O que só se toca (poções de vida e de mana) fica na beirada, ao lado do ⚔️.
+  - **Em pé:** o ⚔️ (o maior botão) embaixo à direita e as magias num leque **em cima** dele, da esquerda para a
+    direita (slot 1, 2 e 3), sem encostar no joystick fixo (a tela é estreita: ao lado do ⚔️ não cabe).
+  - **Deitado:** o mesmo ⚔️ afastado da beirada, com as magias em arco à esquerda e em cima dele (slot 1 à esquerda,
+    slot 2 na diagonal, slot 3 em cima).
+  - **Slot 3:** ainda não existe; o lugar dele no leque já está reservado (`#actions > [data-slot="2"]` em `style.css`).
+  - Cada botão se posiciona em volta do centro do ⚔️ (`--dx`, `--dy`); conferido em 360×780, 390×844, 412×915 e 915×412.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
 - **Tiro que pode errar:** o básico à distância (Paladino, Feiticeiro, Druida) e as magias de alvo único com projétil são mirados numa **direção** e voam reto até o alcance inteiro (ver "Ataques e magias"). Arrastar o ⚔️ mira à mão.
 - **Mira das magias:** magia com alvo (única ou de área) mira arrastando a partir do botão (ver "Ataques e magias").

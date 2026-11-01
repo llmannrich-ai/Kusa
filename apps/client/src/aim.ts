@@ -20,8 +20,11 @@ import type { DungeonRoom } from "./net.ts";
 
 /** Arrasto (px) a partir do botão abaixo do qual a mira não sai do lugar; voltar para cá cancela. */
 const DEADZONE_PX = 16;
-/** Arrasto (px) que leva a mira até o alcance máximo da magia. */
-const FULL_DRAG_PX = 96;
+/**
+ * Arrasto (px) que leva a mira até o alcance máximo da magia. Curto o bastante para caber entre o botão e a beirada da
+ * tela (o ⚔️ fica a ~120 px da borda direita, ver `#actions` no CSS): mirar para a direita alcança o máximo também.
+ */
+const FULL_DRAG_PX = 72;
 /** Espaço (px do mundo) entre os pontos da linha pontilhada. */
 const DOT_GAP = 7;
 
