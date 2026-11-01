@@ -203,6 +203,8 @@ button.primary { background: #4a3417; border-color: var(--accent); width: 100%; 
 .slot.open { border-style: dashed; border-color: #3a2f27; font-size: 14px; }
 .slot.me { border-color: var(--accent); background: #2a211b; }
 .slot-portrait { flex: none; width: 48px; height: 48px; image-rendering: pixelated; }
+/* Retrato de busto (arte nova, 128 px): reduzido no medalhão, então sem o "pixelated" que serrilha ao diminuir. */
+.hero-img.hero-bust, .slot-portrait.hero-bust { image-rendering: auto; }
 .slot-portrait.empty { display: grid; place-items: center; font-size: 24px; color: #5a4632; border: 1px dashed #3a2f27; }
 .slot-info { display: grid; flex: 1; min-width: 0; }
 .slot-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
