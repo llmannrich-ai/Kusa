@@ -362,12 +362,25 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["erlking", 1]],
   },
   bog: {
-    id: "bog", name: "Charco Cinzento", icon: "🌫️", difficulty: 8, durationSeconds: 8 * 60,
-    description: "Uma turfeira cinzenta e alagada, coberta da cinza de um incêndio antigo. A estrada afundada do império sobe do cais até a ilha do lago negro, com dois laços: as passarelas da Lagoa ou a trilha da Mata Queimada, a estrada da Torre de Vigia ou as passarelas das Palafitas. Terreiros de paliçada, monólitos com a runa e braseiros de turfa. Mapa fixo. Terreno pronto; os monstros ainda vêm.",
-    encounters: [],
-    minibosses: [],
+    id: "bog", name: "Charco Cinzento", icon: "🌫️", difficulty: 8, durationSeconds: 8 * 60, meadowMonsters: 4, meadowMinibosses: 0.25, lootScale: 0.78,
+    description: "Uma turfeira cinzenta e alagada, coberta da cinza de um incêndio antigo. A estrada afundada do império sobe do cais até a ilha do lago negro, com dois laços: as passarelas da Lagoa ou a trilha da Mata Queimada, a estrada da Torre de Vigia ou as passarelas das Palafitas. Os turfeiros que morreram no fogo e na água voltaram da lama, a Bruxa Cinzenta chama a névoa e os monólitos acordaram. Na ilha do lago negro, Morgrana, a Rainha Afogada. Mapa fixo.",
+    encounters: [
+      // Cais e Aterro: sanguessugas e corvos (todo mundo começa no nível 1 da hunt).
+      { depth: [0, 0], budget: 400, table: [["giantLeech", 4], ["carrionCrow", 2]] },
+      // Vila dos Turfeiros: os primeiros afogados.
+      { depth: [1, 1], budget: 590, table: [["giantLeech", 3], ["carrionCrow", 3], ["peatDrowned", 2]] },
+      // 1º laço (Lagoa e Mata Queimada).
+      { depth: [2, 2], budget: 680, table: [["peatDrowned", 3], ["lanternBearer", 2], ["carrionCrow", 2], ["poolLurker", 1]] },
+      { depth: [3, 3], budget: 850, table: [["peatDrowned", 3], ["lanternBearer", 2], ["ashOoze", 2], ["poolLurker", 2]] },
+      // Turfeira das Cinzas e o 2º laço.
+      { depth: [4, 4], budget: 815, table: [["ashOoze", 3], ["peatDrowned", 2], ["lanternBearer", 2], ["poolLurker", 2], ["carrionCrow", 1]] },
+      { depth: [5, 5], budget: 875, table: [["peatDrowned", 3], ["ashOoze", 2], ["lanternBearer", 2], ["poolLurker", 2]] },
+      // Portão dos Monólitos.
+      { depth: [6, 99], budget: 815, table: [["peatDrowned", 3], ["lanternBearer", 3], ["ashOoze", 2], ["poolLurker", 1]] },
+    ],
+    minibosses: [["ashHag", 1], ["bogMonolith", 1], ["drownedKnight", 1]],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["morgrana", 1]],
   },
   badlands: {
     id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60,

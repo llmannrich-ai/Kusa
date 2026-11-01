@@ -1,4 +1,4 @@
-import { SCULPT_FEET, SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, tween, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
+import { SCULPT_FEET, SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, tween, type Frame, type Look, type Material, type V3, type View, applySkin, type Skin } from "./sculpt.ts";
 
 /**
  * Abutre Gigante esculpido por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): corpo de penas escuras, colarinho de
@@ -179,9 +179,9 @@ const SCALE = 1.28;
 /** O perfil de um voador fica em três-quartos: de lado, as asas abertas viram uma faixa vertical. */
 const YAW: Record<View, number> = { side: 40, front: 90, back: -90 };
 
-export function shootVulture(pose: VPose, view: View): Frame {
+export function shootVulture(pose: VPose, view: View, skin?: Skin): Frame {
   const cx = view === "side" ? SCULPT_SIZE / 2 + 4 : SCULPT_SIZE / 2;
-  return render(vulture(pose), { size: SCULPT_SIZE, feet: SCULPT_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look());
+  return render(vulture(pose), { size: SCULPT_SIZE, feet: SCULPT_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, applySkin(look(), skin));
 }
 
 /** Poses de perfil de cada clipe: plana no parado, bate as asas para andar, mergulha com as garras e foge subindo. */

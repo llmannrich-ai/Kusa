@@ -32,6 +32,7 @@ const LEVEL: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
   oldwood: { common: 9, miniboss: 11, boss: 14 },
   heartwood: { common: 11, miniboss: 13, boss: 16 },
   gates: { common: 13, miniboss: 15, boss: 18 },
+  fortress: { common: 15, miniboss: 17, boss: 20 },
   bog: { common: 15, miniboss: 17, boss: 20 },
   badlands: { common: 15, miniboss: 17, boss: 20 },
 };
@@ -47,6 +48,7 @@ const DEPTH: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
   oldwood: { common: 3, miniboss: 4, boss: 7 },
   heartwood: { common: 3, miniboss: 4, boss: 7 },
   gates: { common: 3, miniboss: 4, boss: 8 },
+  fortress: { common: 3, miniboss: 4, boss: 6 },
   bog: { common: 3, miniboss: 4, boss: 7 },
   badlands: { common: 3, miniboss: 4, boss: 7 },
 };

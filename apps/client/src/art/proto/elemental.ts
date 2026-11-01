@@ -1,4 +1,4 @@
-import { SCULPT_SIZE, Sculpt, render, tween, v3, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
+import { SCULPT_SIZE, Sculpt, render, tween, v3, type Frame, type Look, type Material, type V3, type View, applySkin, type Skin } from "./sculpt.ts";
 
 /**
  * Elemental de Areia esculpido por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): um redemoinho que pensa. Da areia
@@ -150,9 +150,9 @@ const PITCH = 30;
 const SCALE = 1.9;
 const YAW: Record<View, number> = { side: 18, front: 90, back: -90 };
 
-export function shootElemental(pose: EPose, view: View): Frame {
+export function shootElemental(pose: EPose, view: View, skin?: Skin): Frame {
   const cx = view === "side" ? SCULPT_SIZE / 2 + 4 : SCULPT_SIZE / 2;
-  return render(elemental(pose), { size: SCULPT_SIZE, feet: ELEMENTAL_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look());
+  return render(elemental(pose), { size: SCULPT_SIZE, feet: ELEMENTAL_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, applySkin(look(), skin));
 }
 
 const DEF: EPose = { spin: 0, lean: 0, x: 0, rise: 0, width: 1, arm: [40, 40], elbow: [40, 40], spread: 0, blast: 0, fall: 0, glow: 1 };

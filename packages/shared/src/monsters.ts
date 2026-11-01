@@ -27,7 +27,10 @@ export type MonsterKind =
   // Fortaleza Orc (dificuldade 8): o senhor do castelo (o resto é o clã do Pântano do Kosaradius, mais forte)
   | "emberWarlord"
   // Coração da Mata (dificuldade 6): o fundo da floresta, a caçada do Rei Galhado e os mortos dos santuários élficos
-  | "myconid" | "thornBoar" | "corruptedStag" | "elvenShade" | "stranglerVine" | "awakenedTree" | "fallenWarden" | "erlking";
+  | "myconid" | "thornBoar" | "corruptedStag" | "elvenShade" | "stranglerVine" | "awakenedTree" | "fallenWarden" | "erlking"
+  // Charco Cinzento (dificuldade 8): os afogados do incêndio da turfeira e a dona do lago negro
+  | "giantLeech" | "carrionCrow" | "peatDrowned" | "lanternBearer" | "ashOoze" | "poolLurker"
+  | "ashHag" | "ashHagIllusion" | "bogMonolith" | "drownedKnight" | "morgrana";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -1178,6 +1181,151 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "O senhor da caçada da floresta do Kosaradius, alto como uma árvore nova, com a galhada de cervo cheia de musgo e o manto de folhas mortas. Atravessa a clareira de galhada baixa, faz chover espinhos que sangram, chama os cervos, some na névoa para cair sobre quem fugiu e, quase vencido, a mata inteira levanta em volta dele.",
+  }),
+  // --- Charco Cinzento (8 estrelas): a turfeira queimou há gerações; os turfeiros que morreram no fogo e na água voltaram
+  // da lama, e o lago negro tem uma dona. No degrau da Fortaleza Orc (a etapa 9 vem depois de Vorgak), sem multiplicador
+  // de força: as fichas já são as do degrau.
+  giantLeech: monster({
+    kind: "giantLeech", name: "Sanguessuga Gigante", rank: "common", type: "beast", role: "swarm", cr: 6, group: [3, 4],
+    hp: 95, damage: 11, xp: 72, loot: [7, 11], speed: 2.6, aggroRange: 5, attackRange: 1, attackCooldownMs: 1300, attackFx: "bite",
+    traits: { onHit: { lifesteal: 0.5 } },
+    lore: "Sanguessuga do tamanho de um braço, que sai da lama em bando quando sente passo. Gruda e chupa: cada mordida a deixa mais cheia de vida.",
+  }),
+  carrionCrow: monster({
+    kind: "carrionCrow", name: "Corvo Carniceiro", rank: "common", type: "beast", role: "skirmisher", cr: 6, group: [2, 3],
+    hp: 110, damage: 13, xp: 92, loot: [9, 14], speed: 4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "bite",
+    traits: { hitAndRun: { cooldownMs: 3500 }, onHit: { chance: 0.25, effect: { kind: "blind", ms: 900 } } },
+    abilities: [
+      { id: "crowDive", name: "Mergulho", shape: "dive", range: 6, minRange: 2, radius: 1, cooldownMs: 9000, power: 1.4, vanishMs: 900, color: 0x2a2a30, fx: "dive" },
+    ],
+    lore: "Corvo grande como um cão, que vive do que o charco devolve. Desce do céu cinza em bando, cai colado em quem anda sozinho e mira nos olhos (a bicada pode cegar).",
+  }),
+  peatDrowned: monster({
+    kind: "peatDrowned", name: "Turfeiro Afogado", rank: "common", type: "undead", role: "brute", cr: 8,
+    hp: 300, damage: 21, xp: 175, loot: [14, 22], speed: 2.1, aggroRange: 6, attackRange: 1, attackCooldownMs: 1700, attackFx: "smash",
+    // Turfa encharcada: o corte entra pouco; a turfa seca por fora queima bem.
+    elements: { physical: 0.85, fire: 1.5 },
+    traits: { onHit: { chance: 0.4, corrode: 6000 } },
+    lore: "Um dos turfeiros que o incêndio empurrou para dentro da água. Voltou com o corpo de turfa encharcada: anda devagar, aguenta muito, e o golpe de lama gruda e corrói. A turfa queima.",
+  }),
+  lanternBearer: monster({
+    kind: "lanternBearer", name: "Lanterneiro", rank: "common", type: "undead", role: "artillery", cr: 8,
+    hp: 170, damage: 19, xp: 165, loot: [13, 21], speed: 2.6, aggroRange: 8, attackRange: 5, attackCooldownMs: 1800, attackFx: "fire",
+    elements: { radiant: 1.25 },
+    traits: { keepDistance: 3 },
+    abilities: [
+      {
+        id: "wispFire", name: "Fogo-Fátuo", shape: "bolt", range: 6, radius: 1, cooldownMs: 7000, power: 1.4,
+        dot: { kind: "burn", power: 0.3, durationMs: 3000 }, color: 0x8ef0d8, fx: "bolt",
+      },
+    ],
+    lore: "O turfeiro que guiava os outros pela névoa com a lanterna verde, e ainda guia. Fica longe, atira o fogo-fátuo da lanterna (queima) e recua se alguém chega perto.",
+  }),
+  ashOoze: monster({
+    kind: "ashOoze", name: "Lodo de Cinza", rank: "common", type: "ooze", role: "controller", cr: 8,
+    hp: 250, damage: 17, xp: 180, loot: [14, 22], speed: 1.8, aggroRange: 5, attackRange: 1, attackCooldownMs: 1700, attackFx: "smash",
+    elements: { ice: 0.6 },
+    traits: { split: { by: ["physical"], minHit: 0.12, max: 3 } },
+    abilities: [
+      {
+        id: "ashEngulf", name: "Engolir", shape: "target", range: 1, radius: 0, cooldownMs: 10000, power: 0.5,
+        effect: { kind: "engulf", ms: 1800, power: 0.6 }, color: 0x8d8c86, fx: "engulf",
+      },
+    ],
+    lore: "Cinza do incêndio que a chuva virou lama e a lama aprendeu a andar. Engole quem encosta (os aliados batendo nele o fazem cuspir) e o golpe forte de lâmina o parte em dois.",
+  }),
+  poolLurker: monster({
+    kind: "poolLurker", name: "Espreitador da Poça", rank: "common", type: "monstrosity", role: "lurker", cr: 8,
+    hp: 240, damage: 20, xp: 175, loot: [14, 22], speed: 3, aggroRange: 3, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
+    traits: { camouflage: true, ambush: 1.6 },
+    abilities: [
+      {
+        id: "poolPull", name: "Puxão", shape: "pull", range: 5, minRange: 2, radius: 0, cooldownMs: 8000, power: 0.7,
+        effect: { kind: "root", ms: 1200 }, color: 0x2d3b41, fx: "tongue",
+      },
+    ],
+    lore: "Fica deitado na beira das poças, coberto de lama, até ser só mais um monte de turfa. O primeiro bote vem de surpresa; quem foge é puxado de volta para a água.",
+  }),
+  // Mini-bosses (os terreiros de paliçada guardam o baú; nas emboscadas, 25% trazem um solto).
+  ashHag: monster({
+    kind: "ashHag", name: "Bruxa Cinzenta", rank: "miniboss", type: "fey", role: "controller", cr: 10,
+    hp: 640, damage: 28, xp: 520, loot: [46, 66], speed: 3, aggroRange: 7, attackRange: 1, attackCooldownMs: 1500, attackFx: "slash",
+    abilities: [
+      {
+        id: "ashIllusion", name: "Ilusão", shape: "vanish", range: 6, radius: 0, cooldownMs: 15000, power: 0, vanishMs: 3000,
+        summon: { kind: "ashHagIllusion", count: 2 }, belowHp: 0.6, color: 0xb8b8b0, fx: "vanish",
+      },
+      {
+        id: "ashFog", name: "Névoa", shape: "target", range: 6, radius: 2, cooldownMs: 10000, power: 0.9,
+        effect: { kind: "blind", ms: 1500 }, color: 0xd8dcd8, fx: "acidRain",
+      },
+      {
+        id: "hagCurse", name: "Maldição", shape: "bolt", range: 6, radius: 0, cooldownMs: 8000, power: 1.2,
+        effect: { kind: "corrode", ms: 6000 }, color: 0x7a6272, fx: "bolt",
+      },
+    ],
+    lore: "A velha que os turfeiros pagavam para afastar a névoa e que, no fim, a chamou. Cega a clareira com a névoa, amaldiçoa (corrói) e, ferida, some e volta em três: só uma é ela.",
+  }),
+  ashHagIllusion: monster({
+    kind: "ashHagIllusion", name: "Bruxa Cinzenta", rank: "common", type: "fey", role: "swarm", cr: 1,
+    hp: 1, damage: 0, xp: 0, loot: [0, 0], speed: 3, aggroRange: 8, attackRange: 1, attackCooldownMs: 1500, attackFx: "slash",
+    traits: { illusion: true },
+    lore: "Uma das cópias da Bruxa Cinzenta: desfaz-se no primeiro golpe.",
+  }),
+  bogMonolith: monster({
+    kind: "bogMonolith", name: "Monólito Desperto", rank: "miniboss", type: "construct", role: "sentinel", cr: 10,
+    hp: 760, damage: 30, xp: 540, loot: [46, 66], speed: 1.8, aggroRange: 4, attackRange: 2, attackCooldownMs: 2000, attackFx: "smash",
+    elements: { physical: 0.8, energy: 1.4 },
+    traits: { camouflage: true },
+    abilities: [
+      {
+        id: "runePulse", name: "Pulso da Runa", shape: "self", range: 2, radius: 2, cooldownMs: 10000, power: 1.3,
+        effect: { kind: "stun", ms: 900 }, color: 0x8ef0d8, fx: "quake",
+      },
+      { id: "monolithSlam", name: "Pancada de Pedra", shape: "target", range: 2, radius: 1, cooldownMs: 7000, power: 1.7, push: 2, color: 0x87898a, fx: "slam" },
+    ],
+    lore: "Um dos monólitos da turfeira, que acordou quando a runa da espiral acendeu de novo. Parado, é só pedra; perto, a runa pulsa e atordoa, e a pancada joga longe. A pedra aguenta corte; o raio a racha.",
+  }),
+  drownedKnight: monster({
+    kind: "drownedKnight", name: "Cavaleiro Afogado", rank: "miniboss", type: "undead", role: "leader", cr: 10,
+    hp: 700, damage: 31, xp: 540, loot: [46, 66], speed: 2.8, aggroRange: 8, attackRange: 1, attackCooldownMs: 1500, attackFx: "slash",
+    elements: { radiant: 1.25, physical: 0.9 },
+    traits: { leader: { radius: 4, damage: 0.2, haste: 0.2 } },
+    abilities: [
+      { id: "knightCharge", name: "Investida", shape: "leap", range: 6, minRange: 2, radius: 1, cooldownMs: 8000, power: 1.5, push: 1, color: 0x8a6a4a, fx: "leap" },
+      {
+        id: "drownedCall", name: "Chamado dos Afogados", shape: "summon", range: 7, radius: 0, cooldownMs: 22000, power: 0,
+        summon: { kind: "peatDrowned", count: 2 }, belowHp: 0.5, phase: true, color: 0x6b7360, fx: "summon",
+      },
+    ],
+    lore: "Cavaleiro do império que guardava a estrada do aterro e afundou com ela, de armadura e tudo. A armadura enferrujou; ele não. Investe, faz os afogados baterem mais forte e mais rápido (Comando) e, ferido, chama mais dois da lama.",
+  }),
+  // Boss: Morgrana, na ilha do lago negro. O último boss do lado do charco.
+  morgrana: monster({
+    kind: "morgrana", name: "Morgrana, a Rainha Afogada", rank: "boss", type: "undead", role: "controller", cr: 13,
+    hp: 4900, damage: 49, xp: 5800, loot: [460, 680], speed: 2.5, aggroRange: 9, attackRange: 2, attackCooldownMs: 1600, attackFx: "energy",
+    // A água do lago a protege do fogo; a luz e o raio, não.
+    elements: { fire: 0.6, radiant: 1.3, energy: 1.15 },
+    abilities: [
+      {
+        id: "blackTide", name: "Maré Negra", shape: "self", range: 3, radius: 3, cooldownMs: 11000, power: 1.4, push: 2,
+        slow: { factor: 0.55, durationMs: 2500 }, color: 0x1d2a30, fx: "quake",
+      },
+      {
+        id: "lakeHand", name: "Mão do Lago", shape: "pull", range: 7, minRange: 3, radius: 0, cooldownMs: 9000, power: 1,
+        effect: { kind: "root", ms: 1200 }, color: 0x2d3b41, fx: "tongue",
+      },
+      {
+        id: "drownedCourt", name: "Chamado dos Afogados", shape: "summon", range: 8, radius: 0, cooldownMs: 22000, power: 0,
+        summon: { kind: "peatDrowned", count: 2 }, belowHp: 0.7, phase: true, color: 0x6b7360, fx: "summon",
+      },
+      { id: "lakeDive", name: "Mergulho no Lago", shape: "dive", range: 8, radius: 2, cooldownMs: 15000, power: 1.5, vanishMs: 1700, belowHp: 0.5, color: 0x93a9b1, fx: "dive" },
+      {
+        id: "drownedLament", name: "Lamento", shape: "self", range: 3, radius: 3, cooldownMs: 30000, power: 1.2,
+        effect: { kind: "blind", ms: 1500 }, selfHeal: 0.12, belowHp: 0.3, phase: true, once: true, color: 0x8ef0d8, fx: "quake",
+      },
+    ],
+    lore: "Era a senhora da vila dos turfeiros quando o fogo veio; fugiu para o lago e o lago a guardou. Agora é dele: sai da água negra em volta da ilha, empurra tudo com a maré, puxa quem foge e chama os afogados; ferida, mergulha e volta colada, e quase vencida solta o lamento que cega e a cura. A água a protege do fogo.",
   }),
   // --- Pântano do Kosaradius: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
   // profundidade dobra os do fim), em bandos maiores: muito XP para quem joga sozinho. -----------------------

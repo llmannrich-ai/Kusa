@@ -611,7 +611,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🍄 Coração da Mata | 6 ★★★★★★ | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | Fungóide, Javali-Espinho, Cipó Estrangulador, Cervo Corrompido, Sombra Élfica, Pantera das Sombras, Urso-coruja → Árvore Desperta, Guardião Élfico Caído, Dríade Corrompida → Rei Galhado |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
-| 🌫️ Charco Cinzento | 8 ★★★★★★★★ (provisório) | 8 min | 64×120, mapa fixo, em pé: a estrada afundada com 2 laços (passarelas da Lagoa ou Mata Queimada; Torre de Vigia ou Palafitas) até a ilha do lago negro | ainda sem monstros (só o terreno) |
+| 🌫️ Charco Cinzento | 8 ★★★★★★★★ | 8 min | 64×120, mapa fixo, em pé: a estrada afundada com 2 laços (passarelas da Lagoa ou Mata Queimada; Torre de Vigia ou Palafitas) até a ilha do lago negro | Sanguessuga Gigante, Corvo Carniceiro, Turfeiro Afogado, Lanterneiro, Lodo de Cinza, Espreitador da Poça → Bruxa Cinzenta, Monólito Desperto, Cavaleiro Afogado → Morgrana, a Rainha Afogada (~120 monstros por hunt) |
 | 🦴 Ermos Rubros | 8 ★★★★★★★★ (provisório) | 8 min | 64×120, mapa fixo, em pé: desfiladeiro, a bifurcação da mina e do campo das torres, 2 ravinas com pontes, as ossadas e a cratera do crânio | ainda sem monstros (só o terreno) |
 | ⚔️ Fortaleza Orc | 8 ★★★★★★★★ | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | o clã do Pântano do Kosaradius bem mais forte (×2,4 os comuns, ×2,5 os mini-bosses; ~130 monstros por hunt, 40% a mais que nas Mesas) e em bandos que lotam as salas: Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Chefe de Guerra Orc, Ogro Xamã → Vorgak, o Senhor da Brasa |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
@@ -832,8 +832,9 @@ luta (Dunas 52%, Mesas 55%; a Cripta, 8%) e havia pontos a até 55 s de andada d
 ### Charco Cinzento e Ermos Rubros (terreno)
 
 A etapa 9 da campanha, a segunda bifurcação: os dois lados abrem com **Vorgak**, o boss da Fortaleza Orc (`unlockedBy`,
-no banco `map_unlocked_by`). Por enquanto só o terreno e a arte: sem monstros nem boss (`encounters`, `bosses` vazios),
-★★★★★★★★ provisório, 8 min, até 4 jogadores, teto da hunt solo 100 (cheio em 180 s). Os dois são **mapas fixos**
+no banco `map_unlocked_by`). ★★★★★★★★, 8 min, até 4 jogadores. O **Charco Cinzento** já tem os monstros (ver
+"Bestiário"; teto da hunt solo 4.600, cheio em 240 s); os **Ermos Rubros** ainda são só o terreno (teto 100, cheio em
+180 s). Os dois são **mapas fixos**
 (`BOG_SEED`, `BADLANDS_SEED`), em pé, 64×120, com 7 zonas, as emboscadas e 4 salas laterais; plantas em
 `docs/arte/planta-fixa-*.png`. Ritmo medido: ~1% do chão a mais de 6 tiles de luta, ponto mais isolado a 13 tiles.
 
@@ -1337,6 +1338,34 @@ do Bosque Velho e do pack.
 o mais duro para o Druida); os mini-bosses perto da Múmia Real (a Árvore Desperta aguenta mais e bate menos); o Rei
 Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot máximo de uma hunt ~3.340, como as Mesas
 (teto da hunt solo 3.800).
+
+### Charco Cinzento (★8)
+
+A turfeira queimou há gerações: os turfeiros que morreram no fogo e na água voltaram da lama, e o lago negro tem uma
+dona. No degrau da Fortaleza Orc (a etapa 9 vem depois de Vorgak), sem multiplicador de força: as fichas já são as do
+degrau. ~120 monstros por hunt (11% menos que a Fortaleza, porque a planta fixa já põe uma luta a cada ~6 s), 4 por
+emboscada e 25% delas com um mini-boss solto; loot máximo ~4.060 (`lootScale` 0,78; teto da hunt solo 4.600). Arte
+**esculpida por código** (`apps/client/src/art/proto/charcoArt.ts`), a única deles (vale com a arte nova ligada ou não):
+os modelos que já existem com a **pele** do charco (`Skin` em `sculpt.ts`: recolore as rampas mantendo luz e volume) e
+um modelo novo, o Lodo (`ooze.ts`). Prévia: `npx tsx apps/client/scripts/charcoPrevia.ts saida.png`.
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Sanguessuga Gigante | enxame (bando de 3–4) | rouba metade do golpe em vida · zonas 1 e 2 · o Verme da Areia pequeno e escuro |
+| Corvo Carniceiro | escaramuçador (bando de 2–3) | bate e recua · Mergulho (cai colado) · a bicada pode cegar · o abutre negro |
+| Turfeiro Afogado | bruto (morto-vivo) | turfa encharcada: resiste a físico, fogo 1,5× · o golpe corrói · a múmia de turfa com os olhos de luz fria |
+| Lanterneiro | artilheiro (morto-vivo) | atira de 5 tiles e recua · Fogo-Fátuo (projétil que queima) · o sacerdote com a lanterna verde |
+| Lodo de Cinza | controlador (limo) | Engolir (os aliados batendo o fazem cuspir) · golpe físico forte o divide (até 3) · resiste a gelo |
+| Espreitador da Poça | emboscador | camuflado na beira das poças · Ataque Surpresa 1,6× · Puxão (de 2 a 5 tiles, prende) · a pantera de lama |
+| **Bruxa Cinzenta** (mini-boss) | controlador (fada) | Névoa (área que cega) · Maldição (corrói) · ferida, some e volta com 2 cópias ilusórias |
+| **Monólito Desperto** (mini-boss) | sentinela (constructo) | parado é um monólito (acorda a 4 tiles) · Pulso da Runa (atordoa em volta) · Pancada de Pedra (empurra) · resiste a físico, energia 1,4× |
+| **Cavaleiro Afogado** (mini-boss) | líder (morto-vivo) | Comando (+20% de dano e velocidade) · Investida · ferido, Chamado dos Afogados (2 Turfeiros) |
+| **Morgrana, a Rainha Afogada** (boss) | controlador (morto-vivo) | alcance 2 · resiste a fogo, vulnerável a luz e raio · Maré Negra (empurra e deixa lento em volta) · Mão do Lago (puxa e prende) · abaixo de 70%, Chamado dos Afogados · abaixo de 50%, Mergulho no Lago · abaixo de 30%, Lamento (cega em volta e cura 12%, uma vez) |
+
+**Balanceamento** (duelo, herói sozinho só com ataque básico, níveis 15/17/20, ao lado da Fortaleza nos mesmos níveis):
+Sanguessuga e Corvo mais fáceis que o Orc batedor (zonas de entrada); Turfeiro e Lodo perto do Ogro jovem; Lanterneiro e
+Espreitador perto do Orc berserker; mini-bosses perto do Ogro do Brejo e do Chefe de Guerra (o Monólito aguenta mais
+contra físico: é para magia); Morgrana ~10% acima de Vorgak (o fim do ramo).
 
 ## Ataques e magias (protótipo)
 
