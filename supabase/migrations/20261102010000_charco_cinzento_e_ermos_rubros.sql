@@ -4,7 +4,7 @@
 --     de loot 100, cheio em 180 s). Quando o bestiário chegar, os tetos e `map_bosses` mudam junto.
 --   - Campanha (packages/shared/src/world.ts, mude os dois juntos): os dois abrem com o boss da Fortaleza Orc (Vorgak),
 --     `unlockedBy`, aqui `map_unlocked_by`.
--- Parte do estado depois de 20261101160000_inimigos_coracao_da_mata.sql.
+-- Parte do estado depois de 20261102000000_dons_e_passivas_20_niveis.sql (que não mexe nestas funções).
 
 alter table public.solo_runs drop constraint solo_runs_map_id_check;
 alter table public.solo_runs add constraint solo_runs_map_id_check
