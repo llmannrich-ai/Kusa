@@ -35,7 +35,7 @@ import { heroSheet } from "./art/heroes.ts";
 import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
 import { renderCatalog } from "./catalog.ts";
 import { renderHistory } from "./history.ts";
-import { loadMapClears } from "./profile.ts";
+import { loadBossClears, loadMapClears } from "./profile.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { watchHostedRooms, type HostedListing } from "./p2p.ts";
@@ -547,7 +547,7 @@ function bindRoom(room: DungeonRoom) {
   });
 
   const callbacks = Callbacks.get(room);
-  const renderLobby = () => renderWaitingRoom(room);
+  const renderLobby = () => renderWaitingRoom(room, (id) => !hub.locked(id));
   callbacks.onAdd("players", renderLobby);
   callbacks.onRemove("players", renderLobby);
   callbacks.listen("leaderId", renderLobby);
@@ -680,9 +680,33 @@ function showResult(msg: RunEndedMessage) {
   if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
   showLost(msg);
   renderSpellProgress(msg);
+  if (account && !msg.saving) void showClassUnlock();
   // "Voltar ao menu" recarrega a página: espera o banco gravar para não cortar a gravação.
   ($("back") as HTMLButtonElement).disabled = !!msg.saving;
   show("result", true);
+}
+
+/**
+ * Classe trancada que abriu nesta hunt (o boss que a libera caiu com o jogador na hunt): a carta do desbloqueio. O
+ * boss é anotado no banco na hora em que morre, então no resultado ele já está lá.
+ */
+async function showClassUnlock() {
+  const opened = hub.updateBossClears(await loadBossClears());
+  const box = $("result-unlock");
+  if (opened.length === 0) return;
+  box.replaceChildren();
+  for (const id of opened) {
+    const card = document.createElement("div");
+    const lead = document.createElement("span");
+    lead.textContent = id === "shaman" ? "⛓️ Os xamãs da forja estão livres!" : "🔓 Classe nova!";
+    const name = document.createElement("strong");
+    name.textContent = `${CLASSES[id].name} liberado`;
+    const hint = document.createElement("small");
+    hint.textContent = "Escolha o herói na aba Heróis.";
+    card.append(lead, name, hint);
+    box.append(card);
+  }
+  show("result-unlock", true);
 }
 
 /** Na morte, destaca o que ficou no chão: o equipamento sorteado do corpo e a bag inteira. */

@@ -68,6 +68,8 @@ import { GATES_VOID, drawGates } from "./gatesMap.ts";
 import { HEARTWOOD_VOID, OLDWOOD_VOID, drawForest } from "./forestMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
 import { CAVERN_VOID, drawCavern } from "./cavernMap.ts";
+import { BOG_VOID, drawBog } from "./bogMap.ts";
+import { BADLANDS_VOID, drawBadlands } from "./badlandsMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -295,14 +297,14 @@ export class DungeonScene extends Phaser.Scene {
     this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
     warmMapMonsters(this, mapId);
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest, bog: drawBog, badlands: drawBadlands }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID, bog: BOG_VOID, badlands: BADLANDS_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood", "bog", "badlands"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -690,6 +692,24 @@ export class DungeonScene extends Phaser.Scene {
       for (const [cx, cy, r] of [[-10, -40, 12], [6, -44, 14], [18, -38, 10], [-2, -34, 11]]) g.fillStyle(0x2c3e50, 0.85).fillCircle(cx, cy, r);
       g.fillStyle(0x9ec5ff, 0.5).fillCircle(4, -36, 6);
       this.tweens.add({ targets: g, alpha: { from: 1, to: 0.75 }, duration: 300, yoyo: true, repeat: -1 });
+    } else if (field.style === "totem") {
+      // Totem do Xamã Orc: poste entalhado com faixas, um crânio com chifres no alto e a chama da magia acesa em
+      // cima, e o alcance tracejado. A chama tremula sozinha (sem mexer a câmera).
+      const reach = (field.radius + 0.5) * TILE_SIZE;
+      g.lineStyle(1, color, 0.4).strokeCircle(0, 0, reach);
+      g.fillStyle(0x000000, 0.25).fillEllipse(0, 9, 18, 6);
+      g.fillStyle(0x5a3a1e, 1).fillRect(-4, -16, 8, 25);
+      g.fillStyle(0x3e2712, 1).fillRect(-4, -16, 2, 25);
+      for (const y of [-6, 2]) g.fillStyle(0xd8561c, 1).fillRect(-5, y, 10, 2);
+      g.fillStyle(0xe2d6b4, 1).fillEllipse(0, -20, 12, 10);
+      g.fillStyle(0xe2d6b4, 1).fillTriangle(-6, -22, -11, -30, -4, -25).fillTriangle(6, -22, 11, -30, 4, -25);
+      g.fillStyle(0x2a1a10, 1).fillCircle(-2.5, -20, 1.6).fillCircle(2.5, -20, 1.6);
+      view.add(g);
+      const flame = this.add.graphics();
+      flame.fillStyle(color, 0.9).fillTriangle(-4, -25, 4, -25, 0, -36);
+      flame.fillStyle(0xffd166, 1).fillTriangle(-2, -25, 2, -25, 0, -31);
+      this.tweens.add({ targets: flame, scaleY: { from: 1, to: 1.25 }, alpha: { from: 1, to: 0.75 }, duration: 260, yoyo: true, repeat: -1 });
+      view.add(flame);
     } else if (field.kind === "trap") {
       // Mandíbulas abertas: arco de dentes de ferro.
       g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);

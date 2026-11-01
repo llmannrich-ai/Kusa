@@ -76,6 +76,9 @@ contra um servidor já aberto, passando a URL:
   vem reto, o primeiro monstro no caminho e quem está atrás do alvo que saiu, e o tiro mirado à mão segue a direção.
 - `npx tsx scripts/catalogo.ts` (de dentro de `apps/server`; sem servidor): as chances de drop e o gold que o Catálogo
   (Configurações > Catálogo, `dropOdds`) mostra batem com a hunt: mata cada rank de cada mapa muitas vezes na arena e confere.
+- `npx tsx scripts/xama.ts` (de dentro de `apps/server`; sem servidor): o Xamã Orc só abre com Vorgak vencido e veste
+  o que o druida veste; numa arena, o Totem da Brasa lança brasa sozinho, cabem 2 e somem no fim, e o Tambor de Guerra
+  reforça o xamã, o aliado e a criatura perto (não o longe), acelera o básico e deixa lento o monstro colado.
 - `npx tsx scripts/travessia.ts` (de dentro de `apps/server`; sem servidor): a Caverna da Travessia gera a chegada
   embaixo e um covil de cada lado, põe o Basilisco e o Observador nos covis certos e cada boss morto abre só o portal
   do covil dele, com o bônus daquele lado (também depois da troca de anfitrião).

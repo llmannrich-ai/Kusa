@@ -107,6 +107,22 @@ html, body {
   pointer-events: none;
   background: radial-gradient(ellipse 78% 66% at 50% 40%, rgba(150, 255, 230, 0.05) 0%, transparent 46%, rgba(4, 16, 14, 0.58) 100%);
 }
+/* Charco Cinzento: céu branco de névoa, cantos fechados em cinza-chumbo. */
+#game.bog::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(230, 236, 232, 0.07) 0%, transparent 50%, rgba(14, 18, 20, 0.5) 100%);
+}
+/* Ermos Rubros: sol forte e poeira, cantos puxando para o vermelho da rocha. */
+#game.badlands::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 220, 170, 0.08) 0%, transparent 50%, rgba(70, 20, 10, 0.44) 100%);
+}
 /* Caverna da Travessia: toda subterrânea, escura e fria nos cantos. */
 #game.cavern::after {
   content: "";
@@ -1118,12 +1134,11 @@ body.busy #hub-body { opacity: 0.7; }
   background:
     radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--class-color) 22%, transparent), transparent 60%),
     linear-gradient(#1a1410, #120e0b);
-  border: 1px solid var(--border);
   box-shadow: inset 0 0 40px #000;
   overflow: hidden;
 }
 /* Escolha do personagem: um medalhão por classe, com o retrato vestido e a cor da classe. */
-.grim-heroes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; }
+.grim-heroes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 0 14px; }
 .grim-hero {
   display: grid;
   justify-items: center;
@@ -1152,6 +1167,19 @@ body.busy #hub-body { opacity: 0.7; }
 .grim-hero-frame .hero-img { width: 82%; height: auto; aspect-ratio: 1; background: none; border: none; }
 .grim-hero-name { max-width: 100%; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .grim-hero[aria-pressed="true"] { color: var(--accent); }
+/* Classe trancada (Xamã Orc antes de vencer Vorgak): retrato em silhueta escura com o cadeado e a corrente. */
+.grim-hero.locked .grim-hero-frame { position: relative; }
+.grim-hero.locked .grim-hero-frame .hero-img { filter: brightness(0) drop-shadow(0 0 3px color-mix(in srgb, var(--class-color) 60%, transparent)); }
+.grim-hero.locked .grim-hero-frame::after { content: "🔒"; position: absolute; right: 2px; bottom: 2px; font-size: 16px; }
+.hero-locked {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #ffd9b8;
+  background: color-mix(in srgb, var(--class-color) 18%, #120e0b);
+  border: 1px solid color-mix(in srgb, var(--class-color) 60%, transparent);
+  border-radius: 8px;
+}
 .grim-hero[aria-pressed="true"] .grim-hero-frame {
   opacity: 1;
   transform: translateY(-2px);
@@ -1260,6 +1288,18 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 }
 .gnode.locked .gnode-name { color: var(--muted); }
 .sheet-icon { display: grid; place-items: center; width: 48px; height: 48px; font-size: 30px; flex: none; background: #000; border: 2px solid var(--accent); border-radius: 50%; }
+.result-unlock {
+  margin: 0 0 12px;
+  padding: 12px;
+  text-align: center;
+  color: #ffe2c4;
+  background: radial-gradient(ellipse at 50% 0%, #d3540055, transparent 70%), #1a110b;
+  border: 1px solid #d35400;
+  border-radius: 10px;
+  box-shadow: 0 0 18px #d3540066;
+}
+.result-unlock strong { display: block; margin: 4px 0; font-size: 18px; color: #ffb35a; }
+.result-unlock small { color: var(--muted); }
 #result-spells { margin: 0 0 12px; padding-left: 18px; font-size: 13px; text-align: left; }
 #result-spells .up { color: #c9a0ff; font-weight: bold; }
 #result-spells .down { color: #e57373; }
@@ -1581,3 +1621,76 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .world-sheet .server-card.selected { background: #e2c98a; border-color: #c8962e; }
 .world-sheet .server-card small, .world-sheet .room small { color: #5a4128; }
 .world-sheet .room-join { color: #7a4a1c; font-weight: bold; }
+
+/* Magias da hunt (subpágina de Heróis, aberta pelo Grimório): os 3 slots, a cobertura e a lista do slot aberto. */
+.hero-spells { width: 100%; padding: 8px 0 0; text-align: left; background: none; border: none; border-top: 1px solid #3a2f27; }
+.lo-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; margin: -16px -16px 0; padding: 10px 12px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.lo-top .page-back { font-size: 28px; line-height: 1; }
+.lo-face { flex: none; width: 40px; height: 40px; display: grid; place-items: center; overflow: hidden; background: color-mix(in srgb, var(--class-color) 25%, #0d0a08); border: 2px solid color-mix(in srgb, var(--class-color) 60%, #3a2f27); border-radius: 50%; }
+.lo-face .hero-img { width: 44px; height: 44px; background: none; border: none; }
+.lo-title { display: grid; min-width: 0; }
+.hub-page .lo-title h2 { margin: 0; font-size: 18px; }
+.lo-title small { font-size: 12px; }
+.lo-tree { margin-left: auto; flex: none; padding: 6px 12px; font-size: 13px; color: var(--accent); }
+.hub-hint.lo-hint { margin: 10px 0 12px; font-size: 13px; }
+.lo-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.lo-slot { display: grid; justify-items: center; gap: 6px; min-width: 0; padding: 8px 4px; background: #150f0c; border: 2px solid #3a2f27; }
+.lo-slot[aria-selected="true"] { background: color-mix(in srgb, var(--class-color) 16%, #150f0c); border-color: var(--accent); box-shadow: 0 0 10px #c9a24a40; }
+.lo-slot.soon { opacity: 0.55; border-style: dashed; }
+.lo-slot-head { display: flex; align-items: baseline; gap: 5px; }
+.lo-slot-head b { display: grid; place-items: center; width: 20px; height: 20px; font-size: 12px; color: #000; background: var(--accent); border-radius: 50%; }
+.lo-slot.soon .lo-slot-head b { background: var(--muted); }
+.lo-slot-head small { font-size: 11px; color: var(--muted); }
+.lo-sockets { display: flex; gap: 4px; }
+.lo-sockets i { display: grid; place-items: center; width: 28px; height: 28px; font-size: 15px; font-style: normal; background: #0d0a08; border: 1px dashed #5a4632; border-radius: 50%; }
+.lo-sockets i.filled { border: 1px solid var(--spell-color); box-shadow: inset 0 0 8px color-mix(in srgb, var(--spell-color) 45%, transparent); }
+.lo-slot-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lo-cover { display: grid; gap: 8px; margin-top: 12px; padding: 10px 12px; background: var(--panel); border: 1px solid #3a2f27; border-left: 4px solid var(--class-color); }
+.lo-cover-title { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: normal; }
+.lo-needs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.lo-need { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 6px 8px; font-size: 13px; background: #2a0f0c80; border: 1px solid #6b2a22; }
+.lo-need b { color: #ff8a80; }
+.lo-need.on { background: #0f1f1480; border-color: #2f6b45; }
+.lo-need.on b { color: #7bed9f; }
+.lo-need small { white-space: nowrap; }
+.lo-gap { margin: 0; font-size: 13px; color: #ffcf8a; }
+.lo-list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lo-undo { min-height: 36px; padding: 4px 12px; font-size: 13px; color: var(--accent); }
+.lo-note { margin: 0 0 10px; padding: 8px 10px; font-size: 13px; color: var(--muted); background: #150f0c; border: 1px solid #3a2f27; }
+.lo-note.ok { color: #7bed9f; border-color: #2f6b45; }
+.lo-suggest { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px 12px; background: linear-gradient(90deg, #3a2a10, #1c1714); border: 1px solid var(--accent); }
+.lo-suggest > div { display: grid; gap: 2px; min-width: 0; }
+.lo-suggest strong { font-size: 14px; color: var(--accent); }
+.lo-suggest small { font-size: 12px; }
+.lo-suggest button.primary { width: auto; padding: 8px 16px; }
+.lo-list { display: grid; gap: 8px; }
+.lo-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; background: #150f0c; border: 1px solid #3a2f27; border-left: 4px solid #3a2f27; transition: border-color 0.2s, background 0.2s; }
+.lo-row.on { background: color-mix(in srgb, var(--spell-color) 9%, #1c1714); border-color: color-mix(in srgb, var(--spell-color) 50%, #3a2f27); border-left-color: var(--spell-color); }
+.lo-info { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; padding: 10px; text-align: left; background: none; border: none; }
+.lo-orb { display: grid; place-items: center; width: 48px; height: 48px; font-size: 24px; background: radial-gradient(circle at 50% 40%, #2a211b, #0d0a08 80%); border: 2px solid color-mix(in srgb, var(--spell-color) 55%, #3a2f27); border-radius: 50%; filter: grayscale(0.7) brightness(0.8); }
+.lo-row.on .lo-orb { filter: none; box-shadow: 0 0 12px color-mix(in srgb, var(--spell-color) 50%, transparent); }
+.lo-text { display: grid; justify-items: start; gap: 4px; min-width: 0; }
+.lo-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.lo-name strong { font-size: 15px; }
+.lo-mastery { font-size: 11px; font-style: normal; color: var(--accent); }
+.lo-roles { display: flex; flex-wrap: wrap; gap: 4px; }
+.lo-role { padding: 1px 7px; font-size: 11px; background: #0d0a08; border: 1px solid #3a2f27; border-radius: 9px; }
+.lo-meta { font-size: 12px; font-variant-numeric: tabular-nums; }
+.lo-reason { font-size: 12px; color: var(--accent); }
+/* Chave liga/desliga: 52×44 de toque, trilho de 44×24. */
+.lo-switch { display: grid; place-items: center; width: 60px; height: 100%; min-height: 64px; padding: 0; background: none; border: none; border-left: 1px solid #3a2f27; }
+.lo-switch i { position: relative; width: 44px; height: 24px; background: #2a211b; border: 1px solid #5a4632; border-radius: 12px; transition: background 0.2s; }
+.lo-switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+.lo-switch[aria-checked="true"] i { background: #2f6b45; border-color: #7bed9f; }
+.lo-switch[aria-checked="true"] i::after { transform: translateX(20px); background: #e8fff0; }
+.lo-switch:disabled { cursor: default; opacity: 0.6; }
+.lo-switch.blocked i { opacity: 0.45; }
+.lo-more { margin-top: 16px; background: var(--panel); border: 1px solid #3a2f27; }
+.lo-more summary { min-height: 44px; display: flex; align-items: center; padding: 0 12px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.lo-locked { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; border-top: 1px solid #3a2f27; }
+.lo-locked-icon { font-size: 20px; filter: grayscale(1); opacity: 0.7; }
+.lo-locked-text { display: grid; min-width: 0; }
+.lo-locked-text strong { font-size: 14px; font-weight: normal; }
+.lo-locked-text small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lo-cost { font-size: 12px; color: var(--accent); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .lo-row, .lo-switch i, .lo-switch i::after { transition: none; } }

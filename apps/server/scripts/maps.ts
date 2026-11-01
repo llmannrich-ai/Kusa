@@ -57,6 +57,12 @@ for (const mapId of MAP_IDS) {
   if (a.tiles.some((t, k) => b.tiles[k] !== t)) throw new Error("Fortaleza Orc: o mapa mudou com a seed (deveria ser fixo)");
   console.log("Fortaleza Orc: mapa fixo");
 }
+// Charco Cinzento e Ermos Rubros também (a regra para mapa novo: planta fixa, ritmo conferido em `ritmo.ts`).
+for (const mapId of ["bog", "badlands"] as const) {
+  const a = generateDungeon(1, mapId), b = generateDungeon(987654321, mapId);
+  if (a.tiles.some((t, k) => b.tiles[k] !== t)) throw new Error(`${MAPS[mapId].name}: o mapa mudou com a seed (deveria ser fixo)`);
+  console.log(`${MAPS[mapId].name}: mapa fixo`);
+}
 
 // A versão das regras é o hash de RULES_FILES: o gerador não pode depender (em tempo de execução) de arquivo fora da
 // lista, senão o mapa mudaria sem mudar a versão e cliente e servidor desenhariam mapas diferentes.

@@ -1,6 +1,6 @@
 import type { AttackFx } from "./messages.ts";
 
-export type ClassId = "knight" | "paladin" | "sorcerer" | "druid";
+export type ClassId = "knight" | "paladin" | "sorcerer" | "druid" | "shaman";
 
 export interface ClassDef {
   id: ClassId;
@@ -44,6 +44,25 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     baseHp: 100, baseMana: 95, baseDamage: 9, baseSpeed: 4,
     hpPerLevel: 8, manaPerLevel: 30, damagePerLevel: 2, attackRange: 4,
   },
+  // Xamã Orc: liberado ao vencer Vorgak na Fortaleza Orc (`CLASS_UNLOCK`). Fica no meio da briga, junto dos totens:
+  // alcance curto e mais vida que os conjuradores (docs/CLASSE_XAMA_ORC.md).
+  shaman: {
+    id: "shaman", name: "Xamã Orc", color: 0xd35400, attackFx: "fire",
+    baseHp: 135, baseMana: 70, baseDamage: 11, baseSpeed: 3.8,
+    hpPerLevel: 12, manaPerLevel: 20, damagePerLevel: 2, attackRange: 3,
+  },
 };
 
 export const CLASS_IDS = Object.keys(CLASSES) as ClassId[];
+
+/**
+ * Classes que não vêm abertas: abrem na conta inteira quando qualquer personagem dela vence este boss. O banco repete
+ * em `public.class_unlocked` (mude os dois juntos).
+ */
+export const CLASS_UNLOCK: Partial<Record<ClassId, string>> = { shaman: "emberWarlord" };
+
+/** A classe está aberta para a conta que venceu `bossClears` (bosses vencidos por qualquer personagem da conta)? */
+export function classUnlocked(bossClears: readonly string[], classId: ClassId): boolean {
+  const boss = CLASS_UNLOCK[classId];
+  return boss === undefined || bossClears.includes(boss);
+}

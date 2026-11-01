@@ -19,6 +19,8 @@ import { GATES_VOID, drawGates } from "./gatesMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
+import { BOG_VOID, drawBog } from "./bogMap.ts";
+import { BADLANDS_VOID, drawBadlands } from "./badlandsMap.ts";
 import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /**
@@ -41,8 +43,8 @@ import { addCanvasTexture } from "./art/canvasTexture.ts";
  */
 const q = new URLSearchParams(location.search);
 const d = generateDungeon(Number(q.get("seed") ?? 1), mapIdOf(q.get("mapa") ?? MAP_IDS[0]));
-const DRAW = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest };
-const VOID = { crypt: 0x000000, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID };
+const DRAW = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest, bog: drawBog, badlands: drawBadlands };
+const VOID = { crypt: 0x000000, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID, bog: BOG_VOID, badlands: BADLANDS_VOID };
 
 class Previa extends Phaser.Scene {
   private ambience: MapAmbience | null = null;
