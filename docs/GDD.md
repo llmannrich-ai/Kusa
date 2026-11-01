@@ -127,8 +127,7 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Xamã Orc | Brasa | 🔥 Brasa Viva | +1,2% de dano do ataque básico | +30% |
 
   **Marcos** (`milestones` em `gifts.ts`): a cada 5 níveis (5, 10, 15, 20 e 25) o Dom ganha um comportamento novo,
-  como a Maestria das magias; a ficha lista os 5 e acende os alcançados. Entram por classe (fase 4a-2); por enquanto,
-  os do Cavaleiro:
+  como a Maestria das magias; a ficha lista os 5 e acende os alcançados. Entram por classe (fase 4a-2). Cavaleiro:
   - 🗡️ Fio Temperado: o 4º golpe seguido sangra 3 s · esse golpe vira corte em leque de 60° · a cada 3º golpe · o leque
     sangra · o leque abre a 90°.
   - 🛡️ Couro Curtido: escudos +10% · imune às lentidões dos monstros · +5% de vida · escudos +20% no total · escudo
@@ -141,6 +140,18 @@ comprar **e usar** as anteriores do mesmo ramo.
     parado depois de 0,5 s · o básico corta todos os colados.
   - 👑 Estandarte Vivo: aura de 4 tiles · +3 de armadura na aura · quem mata na aura cura 2% · aura de 5 · depois do slot 3
     do cavaleiro, a aura corta 10% do dano por 3 s.
+  - Paladino:
+    - 🦅 Olhar Paciente: +1 tile no básico · o tiro no alcance máximo atordoa 0,3 s (a cada 10 s) · a cada 6 s · 5% de
+      chance de flecha dupla · 10%.
+    - ✝️ Fé Ardente: queimaduras +1 s · magias de luz ofuscam +0,2 s · matar morto-vivo cura 1% · +0,4 s · a magia de luz
+      de alvo único acerta também o monstro logo atrás.
+    - 🧭 Passo de Rastreador: armadilhas +10% de duração · +1 armadilha de cada · 3 s sem apanhar: o próximo tiro dá +10%
+      · armadilhas +20% · +2 armadilhas.
+    - ⛪ Graça: a cada 9 magias · a carregada cura 5% · a cada 8 · e ofusca a até 2 tiles por 0,5 s · a cada 7.
+    - 🌬️ Fôlego do Caçador: o tiro carregado atravessa · rolar devolve 10% da recarga do slot 1 · 2 tiros carregados ·
+      o tiro carregado atordoa 0,3 s · rolar dá escudo de 5%.
+    - 🎇 Mão Rápida: a flecha incendiária explode em raio 1 (0,5× do básico) · +2% de chance · chão em chamas 2 s · +4% ·
+      o 6º básico sai sempre incendiário.
 
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.

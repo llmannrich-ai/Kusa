@@ -104,6 +104,20 @@ export const BEDROCK = { regen: 0.01, tauntEveryMs: 3000, armor: 5, stillMsLater
 /** Estandarte Vivo: armadura na aura, cura ao matar e o corte de dano depois do slot 3. */
 export const BANNER = { armor: 3, killHeal: 0.02, ward: 0.1, wardMs: 3000 } as const;
 
+// Números dos marcos do Paladino.
+/** Olhar Paciente: alcance do básico, o atordoar no alcance máximo (com recarga) e a flecha dupla. */
+export const EYE = { range: 1, stunMs: 300, stunEveryMs: 10000, stunEveryMsLater: 6000, double: 0.05, doubleLater: 0.1 } as const;
+/** Fé Ardente: queimaduras mais longas, ofuscar mais longo, cura ao matar morto-vivo e a luz que atravessa. */
+export const FAITH = { burnMs: 1000, dazzleMs: 200, undeadKillHeal: 0.01 } as const;
+/** Passo de Rastreador: duração das armadilhas, armadilhas a mais e o tiro depois de um tempo sem apanhar. */
+export const TRACKER = { trapMs: 0.1, calmMs: 3000, calmShot: 0.1 } as const;
+/** Graça: a série encurta, a magia carregada cura e ofusca em volta. */
+export const GRACE_MARKS = { heal: 0.05, dazzleMs: 500, dazzleRadius: 2 } as const;
+/** Fôlego do Caçador: recarga devolvida ao rolar, tiros carregados, atordoar e escudo. */
+export const BREATH = { refund: 0.1, shots: 2, stunMs: 300, shield: 0.05, shieldMs: 4000 } as const;
+/** Mão Rápida: a explosão da flecha incendiária, o chão em chamas, a chance a mais e o 6º básico. */
+export const HAND = { burstRadius: 1, burst: 0.5, fireMs: 2000, firePerSec: 0.2, chance: 0.02, every: 6 } as const;
+
 // Gatilhos dos Dons do fundo.
 /** Último Duelo: vale abaixo desta fração da vida. */
 export const LOW_HP_PCT = 0.3;
@@ -220,16 +234,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "patient_eye", classId: "paladin", col: 0, name: "Olhar Paciente", icon: "🦅",
     description: `Quem mira com calma acerta onde dói: mais dano em monstros a ${FAR_DAMAGE_TILES} tiles ou mais (básico e magias).`,
     perRank: 0.012, apply: (fx, v) => { fx.farDamage += v; }, text: (v) => `+${pct(v)} de dano a ${FAR_DAMAGE_TILES} tiles ou mais`,
+    milestones: [
+      `básico com +${EYE.range} tile de alcance`,
+      `o básico no alcance máximo atordoa ${EYE.stunMs / 1000}s (a cada ${EYE.stunEveryMs / 1000}s)`.replace(".", ","),
+      `o atordoar volta a cada ${EYE.stunEveryMsLater / 1000}s`,
+      `${pct(EYE.double)} de chance de flecha dupla`,
+      `${pct(EYE.doubleLater)} de chance de flecha dupla`,
+    ],
   }),
   burning_faith: gift({
     id: "burning_faith", classId: "paladin", col: 1, name: "Fé Ardente", icon: "✝️",
     description: "A fé queima os mortos que andam: mais dano em mortos-vivos (básico e magias).",
     perRank: 0.016, apply: (fx, v) => { fx.undeadDamage += v; }, text: (v) => `+${pct(v)} de dano em mortos-vivos`,
+    milestones: [
+      `suas queimaduras duram +${FAITH.burnMs / 1000}s`,
+      `suas magias de luz ofuscam +${FAITH.dazzleMs / 1000}s`.replace(".", ","),
+      `matar um morto-vivo cura ${pct(FAITH.undeadKillHeal)} da vida`,
+      `ofuscam +${(FAITH.dazzleMs * 2) / 1000}s`.replace(".", ","),
+      "a magia de luz de alvo único atravessa: acerta também o monstro logo atrás",
+    ],
   }),
   tracker_step: gift({
     id: "tracker_step", classId: "paladin", col: 2, name: "Passo de Rastreador", icon: "🧭",
     description: `Passos leves de quem segue rastros: mais velocidade de movimento (até +${pct(GIFT_SPEED_CAP)}).`,
     perRank: 0.004, apply: (fx, v) => { fx.speed += v; }, text: (v) => `+${pct(Math.min(GIFT_SPEED_CAP, v))} de velocidade de movimento`,
+    milestones: [
+      `armadilhas duram +${pct(TRACKER.trapMs)}`,
+      "+1 armadilha de cada ao mesmo tempo",
+      `${TRACKER.calmMs / 1000}s sem levar dano: o próximo tiro dá +${pct(TRACKER.calmShot)}`,
+      `armadilhas duram +${pct(TRACKER.trapMs * 2)}`,
+      "+2 armadilhas de cada ao mesmo tempo",
+    ],
   }),
   // --- Feiticeiro --------------------------------------------------------------------------------------------
   conductor: gift({
@@ -320,16 +355,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "hunter_breath", classId: "paladin", col: 0, apex: "doomsday_shot", name: "Fôlego do Caçador", icon: "🌬️",
     description: "Depois de um salto ou rolamento, o próximo ataque básico sai mais forte.",
     perRank: 0.04, apply: (fx, v) => { fx.dashBasic += v; }, text: (v) => `+${pct(v)} de dano no primeiro básico depois de um salto`,
+    milestones: [
+      "o tiro carregado atravessa e acerta também o monstro de trás",
+      `rolar devolve ${pct(BREATH.refund)} da recarga da magia do slot 1`,
+      `os ${BREATH.shots} próximos tiros saem carregados`,
+      `o tiro carregado atordoa ${BREATH.stunMs / 1000}s`.replace(".", ","),
+      `rolar dá um escudo de ${pct(BREATH.shield)} da vida`,
+    ],
   }),
   grace: gift({
     id: "grace", classId: "paladin", col: 1, apex: "solar_crown", name: "Graça", icon: "⛪",
     description: `A cada ${GRACE_EVERY} magias lançadas, a seguinte não gasta mana e sai mais forte.`,
     perRank: 0.02, apply: (fx, v) => { fx.graceDamage += v; }, text: (v) => `+${pct(v)} de dano, sem mana, na magia depois de cada ${GRACE_EVERY}`,
+    milestones: [
+      `a cada ${GRACE_EVERY - 1} magias`,
+      `a magia carregada também cura ${pct(GRACE_MARKS.heal)} da vida`,
+      `a cada ${GRACE_EVERY - 2} magias`,
+      `e ofusca os monstros a até ${GRACE_MARKS.dazzleRadius} tiles por ${GRACE_MARKS.dazzleMs / 1000}s`.replace(".", ","),
+      `a cada ${GRACE_EVERY - 3} magias`,
+    ],
   }),
   quick_hand: gift({
     id: "quick_hand", classId: "paladin", col: 2, apex: "endless_rain", name: "Mão Rápida", icon: "🎇",
     description: `Às vezes, o ataque básico sai incendiário: o alvo queima por ${BURN_MS / 1000}s.`,
     perRank: 0.008, apply: (fx, v) => { fx.burnChance += v; }, text: (v) => `${pct(v)} de chance de o básico incendiar o alvo`,
+    milestones: [
+      `a flecha incendiária explode em raio ${HAND.burstRadius}`,
+      `+${pct(HAND.chance)} de chance`,
+      `a explosão deixa o chão em chamas por ${HAND.fireMs / 1000}s`,
+      `+${pct(HAND.chance * 2)} de chance no total`,
+      `a cada ${HAND.every}º básico, a flecha sai sempre incendiária`,
+    ],
   }),
   circuit: gift({
     id: "circuit", classId: "sorcerer", col: 0, apex: "branching_bolt", name: "Circuito", icon: "🔁",
