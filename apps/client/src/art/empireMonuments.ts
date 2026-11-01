@@ -10,19 +10,19 @@ import type { Paper } from "./duneArt.ts";
  * sarcófagos, entulho e o mosaico do santuário.
  */
 
-type Box = readonly [number, number, number, number];
+export type Box = readonly [number, number, number, number];
 const mod = (v: number, n: number) => ((v % n) + n) % n;
 
 /** Retângulo com luz própria (`shade` fixo ou função) e desvio de tom. */
-function box(p: Paper, b: Box, mat: number, shade: number | ((x: number, y: number) => number), offset?: (x: number, y: number) => number) {
+export function box(p: Paper, b: Box, mat: number, shade: number | ((x: number, y: number) => number), offset?: (x: number, y: number) => number) {
   return p.fill(b, () => true, mat, typeof shade === "number" ? () => shade : shade, offset);
 }
 
 /** Linha horizontal de tom fixo por cima do que já está pintado. */
-function hline(p: Paper, x0: number, x1: number, y: number, mat: number | null, tone: number) {
+export function hline(p: Paper, x0: number, x1: number, y: number, mat: number | null, tone: number) {
   for (let x = Math.ceil(x0); x <= x1; x++) p.on(x, y, mat, tone);
 }
-function vline(p: Paper, x: number, y0: number, y1: number, mat: number | null, tone: number) {
+export function vline(p: Paper, x: number, y0: number, y1: number, mat: number | null, tone: number) {
   for (let y = Math.ceil(y0); y <= y1; y++) p.on(x, y, mat, tone);
 }
 
@@ -30,7 +30,7 @@ function vline(p: Paper, x: number, y0: number, y1: number, mat: number | null, 
  * Face de alvenaria romana na caixa: blocos de tufo em fiadas de 16 px desencontradas (cada bloco com o seu tom e
  * bisel) e, com `bricks`, uma faixa de 3 fiadas de tijolo a cada 3 de blocos; buracos de andaime numa fiada.
  */
-function masonry(p: Paper, b: Box, seed: number, opts: { bricks?: boolean; shade?: number; dark?: number; mat?: number; bw?: number; bh?: number } = {}) {
+export function masonry(p: Paper, b: Box, seed: number, opts: { bricks?: boolean; shade?: number; dark?: number; mat?: number; bw?: number; bh?: number } = {}) {
   const BW = opts.bw ?? 32, BH = opts.bh ?? 16;
   const [x0, y0, x1, y1] = b;
   const base = opts.shade ?? 0.52;
@@ -70,7 +70,7 @@ function masonry(p: Paper, b: Box, seed: number, opts: { bricks?: boolean; shade
  * Topo de alvenaria: o núcleo de pedras irregulares assentadas na argamassa (cada pedra abaulada, com o seu tom),
  * musgo tomando parte do topo e tufos de capim brotando nas juntas.
  */
-function rubbleTop(p: Paper, b: Box, seed: number, test: (x: number, y: number) => boolean = () => true) {
+export function rubbleTop(p: Paper, b: Box, seed: number, test: (x: number, y: number) => boolean = () => true) {
   const id = p.fill(b, test, E.Mortar, () => FLAT, () => 0);
   for (let y = Math.max(0, Math.ceil(b[1])); y <= Math.min(p.h - 1, b[3]); y++)
     for (let x = Math.max(0, Math.ceil(b[0])); x <= Math.min(p.w - 1, b[2]); x++) {
@@ -93,7 +93,7 @@ function rubbleTop(p: Paper, b: Box, seed: number, test: (x: number, y: number) 
 }
 
 /** Hera caindo de uma linha (y) entre x0 e x1: cortina de folhas que desce até `len` px, mais comprida em alguns trechos. */
-function ivy(p: Paper, x0: number, x1: number, y: number, len: number, seed: number) {
+export function ivy(p: Paper, x0: number, x1: number, y: number, len: number, seed: number) {
   for (let x = Math.ceil(x0); x <= x1; x++) {
     const reach = len * Math.max(0, sn(x, 0, 32, 520 + seed) * 1.6 - 0.45) + (noise(x >> 2, seed, 521) - 0.5) * 6;
     for (let d = 0; d < reach; d++) {

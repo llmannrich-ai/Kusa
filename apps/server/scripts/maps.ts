@@ -51,6 +51,13 @@ for (const mapId of MAP_IDS) {
   console.log(`${MAPS[mapId].name}: ${SEEDS} seeds conectadas e determinísticas`);
 }
 
+// A Fortaleza Orc é um mapa fixo: a mesma planta em qualquer seed.
+{
+  const a = generateDungeon(1, "fortress"), b = generateDungeon(987654321, "fortress");
+  if (a.tiles.some((t, k) => b.tiles[k] !== t)) throw new Error("Fortaleza Orc: o mapa mudou com a seed (deveria ser fixo)");
+  console.log("Fortaleza Orc: mapa fixo");
+}
+
 // A versão das regras é o hash de RULES_FILES: o gerador não pode depender (em tempo de execução) de arquivo fora da
 // lista, senão o mapa mudaria sem mudar a versão e cliente e servidor desenhariam mapas diferentes.
 for (const file of ["dungeon.ts", "rng.ts"]) {

@@ -19,6 +19,12 @@
 
 export type V3 = readonly [number, number, number];
 
+/** Lado do quadro e linha do chão (o centro do bicho no chão): as partes de cá descem abaixo dela (vista de cima). */
+export const SCULPT_SIZE = 144;
+export const SCULPT_FEET = SCULPT_SIZE - 56;
+/** Vistas da folha: perfil (olhando para a esquerda), frente e costas. */
+export type View = "side" | "front" | "back";
+
 /** Material: rampa de cores do escuro ao claro (hex) e como a superfície reage à luz. */
 export interface Material {
   ramp: readonly string[];
@@ -42,6 +48,11 @@ export interface Material {
   speck?: number;
   /** Brilho próprio (0..1): o tom não cai abaixo disto, nem na sombra (olho que brilha no escuro). */
   glow?: number;
+  /**
+   * Diferença de profundidade (unidades) a partir da qual uma parte na frente desenha a linha sobre esta (padrão 2.2).
+   * Penas finas umas sobre as outras pedem menos.
+   */
+  lineDepth?: number;
 }
 
 /**
@@ -187,8 +198,6 @@ export interface Look {
    * brejo). `power` 0..1.
    */
   rim?: { color: string; power: number };
-  /** Linha interna: diferença de profundidade (em unidades do modelo) a partir da qual uma parte na frente de outra ganha contorno (padrão 2.2). */
-  lines?: number;
 }
 
 /** Quadro em RGBA (como o `ImageData`). */
@@ -461,7 +470,6 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
   // --- Contornos ---
   const out = new Uint8ClampedArray(N * 4);
   const outline = hex(look.outline ?? "#1b1008");
-  const lineDepth = (look.lines ?? 2.2) * scale;
   for (let i = 0; i < N; i++) {
     if (owner[i] < 0) continue;
     let r = color[i * 3], g = color[i * 3 + 1], b = color[i * 3 + 2];
@@ -474,7 +482,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       if (qx < 0 || qy < 0 || qx >= S || qy >= S) continue;
       const j = qy * S + qx;
       if (owner[j] < 0) continue;
-      if (partOf[j] !== partOf[i] && zbuf[j] - zbuf[i] > lineDepth) { line = true; break; }
+      if (partOf[j] !== partOf[i] && zbuf[j] - zbuf[i] > (look.materials[shapes[owner[i]].s.mat].lineDepth ?? 2.2) * scale) { line = true; break; }
     }
     if (line) { r = r * 0.42 + outline[0] * 0.58; g = g * 0.42 + outline[1] * 0.58; b = b * 0.42 + outline[2] * 0.58; }
     out[i * 4] = r; out[i * 4 + 1] = g; out[i * 4 + 2] = b; out[i * 4 + 3] = 255;

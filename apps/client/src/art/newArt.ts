@@ -22,7 +22,7 @@ export const protoCrypt = NEW_ART ? await (await import("./proto/criptaArt.ts"))
  * Arte esculpida por código (`proto/sculpt.ts`, `docs/ARTE_ESCULTURA.md`), piloto no Escorpião da Areia: só código,
  * nada a baixar; cada figura é desenhada no aparelho quando a hunt pede.
  */
-export const protoSculpt = NEW_ART ? await import("./proto/scorpionArt.ts") : null;
+export const protoSculpt = NEW_ART ? await import("./proto/sculptArt.ts") : null;
 /** O Orc batedor do Pântano do Kosaradius, esculpido por código (`proto/orc.ts`): o 1º humanoide do padrão. */
 export const protoOrcScout = NEW_ART ? await import("./proto/orcArt.ts") : null;
 /** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */

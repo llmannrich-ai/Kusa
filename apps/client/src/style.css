@@ -24,6 +24,9 @@ html, body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  /* Rolagem dos menus continua; pinça e duplo toque para zoom não (vale para toda a página, porque o
+     navegador soma o touch-action dos ancestrais). O resto da trava está em semZoom.ts. */
+  touch-action: pan-x pan-y;
 }
 /* Sem pinça, rolagem ou duplo toque para zoom dentro do jogo. */
 #game { position: fixed; top: 0; bottom: 0; left: var(--col-x); width: var(--col-w); touch-action: none; }
@@ -79,6 +82,14 @@ html, body {
 /* Ruína subterrânea dos Portões: escura, só o meio da tela (as tochas) iluminado. */
 #game.gates.cave::after {
   background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 28%, rgba(6, 4, 3, 0.82) 100%);
+}
+/* Fortaleza Orc: luz fria de altura, cantos puxando para o azul da névoa do vale. */
+#game.fortress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(240, 236, 220, 0.06) 0%, transparent 50%, rgba(18, 26, 36, 0.44) 100%);
 }
 /* Bosque Velho: sol filtrado pela copa, cantos em verde-escuro de mata. */
 #game.oldwood::after {

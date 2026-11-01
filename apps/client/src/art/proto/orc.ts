@@ -40,8 +40,10 @@ function look(): Look {
   m[M.blood] = { ramp: ["#170304", "#2e0606", "#4a0c0a", "#68130e", "#861d14"], gloss: 0.9, shine: 30 };
   m[M.earIn] = { ramp: ["#1d1214", "#30201f", "#463126", "#5d442f", "#76583a", "#8f6d47"], grain: 0.08, bias: -0.04 };
   m[M.lid] = { ramp: SKIN, bias: -0.18 };
+  // Linhas internas mais fortes que o padrão: o braço na frente do tronco, a orelha na frente da cabeça.
+  for (const mat of m) mat.lineDepth = 1.3;
   return {
-    materials: m, outline: "#0b0c08", occlusion: 0.6, lines: 1.3,
+    materials: m, outline: "#0b0c08", occlusion: 0.6,
     // O chão do brejo rebate uma luz verde-oliva por baixo; a borda de trás pega um recorte frio (separa do chão).
     bounce: { color: "#7d8a45", power: 0.35 },
     rim: { color: "#b9d6c8", power: 0.42 },
