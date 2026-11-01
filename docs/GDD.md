@@ -97,6 +97,10 @@ comprar **e usar** as anteriores do mesmo ramo.
   `packages/shared/src/spells.ts`). No menu, a ficha da magia mostra a Maestria antes de comprar; na hunt, a escolha
   mostra "★ Maestria". Três efeitos existem só nas Maestrias: **repetir** (o efeito volta sozinho logo depois, mais
   fraco), **devolver recarga ao matar** e **roubar mana**.
+- **Dano na ficha:** cada efeito de dano da ficha da magia mostra o dano de um golpe em números, com o herói no
+  nível 1 e no nível 20 da hunt, e o multiplicador entre parênteses ("Dano 42 a 169 (2,1×)"). A conta repete
+  `baseDamage` (hunt.ts): classe, áureas, runas, equipamento vestido (poder mágico; metade dele nas criaturas, a arma no
+  salto da Pantera), sinergias e Tomo. Fora do número: a variação de ±15%, a armadura do monstro e bônus da hora.
 - **Áureas** (quadrado no desenho): dano +4%/nível, vida +6%/nível, mana +8%/nível nos 3 primeiros níveis e
   velocidade +4%/nível nos 2 primeiros. Do nível seguinte em diante, cada nível vale menos (dano +1%, vida +1,5%,
   mana +2%, velocidade +1%), **até o nível 20** (dano +29%, vida +43,5%, mana +58%); a velocidade para no **6** (+12%),
