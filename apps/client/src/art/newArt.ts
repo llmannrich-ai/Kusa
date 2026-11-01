@@ -22,7 +22,7 @@ export const protoCrypt = NEW_ART ? await (await import("./proto/criptaArt.ts"))
  * Arte esculpida por código (`proto/sculpt.ts`, `docs/ARTE_ESCULTURA.md`), piloto no Escorpião da Areia: só código,
  * nada a baixar; cada figura é desenhada no aparelho quando a hunt pede.
  */
-export const protoSculpt = NEW_ART ? await import("./proto/scorpionArt.ts") : null;
+export const protoSculpt = NEW_ART ? await import("./proto/sculptArt.ts") : null;
 /** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */
 const PROTO_FAMILY: Record<string, string> = {
   "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",
