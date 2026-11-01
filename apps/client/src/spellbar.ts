@@ -80,6 +80,14 @@ export class SpellBar {
     // polegar; o 3 (supremo) no lugar que estava reservado.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
     actions.prepend(this.slots[2].button, this.slots[1].button, this.slots[0].button);
+    // Rede de segurança: o dedo que mirava saiu da tela, mas o botão não recebeu o `pointerup` (no iPhone acontece, e a
+    // mira ficava presa na tela com o botão aceso). Qualquer `pointerup` do mesmo dedo, em qualquer lugar, termina a
+    // mira; se o botão já tratou, `aiming` está vazio e nada acontece.
+    window.addEventListener("pointerup", this.onWindowUp);
+    window.addEventListener("pointercancel", this.onWindowCancel);
+    // App em segundo plano ou aba trocada no meio da mira: cancela, como o ⚔️.
+    window.addEventListener("blur", this.abortAim);
+    document.addEventListener("visibilitychange", this.abortAim);
   }
 
   /**
@@ -124,6 +132,10 @@ export class SpellBar {
   }
 
   destroy() {
+    window.removeEventListener("pointerup", this.onWindowUp);
+    window.removeEventListener("pointercancel", this.onWindowCancel);
+    window.removeEventListener("blur", this.abortAim);
+    document.removeEventListener("visibilitychange", this.abortAim);
     this.aim.stop();
     this.slots.forEach((s) => s.button.remove());
     this.chooser?.remove();
@@ -147,6 +159,8 @@ export class SpellBar {
     button.addEventListener("pointermove", (e) => this.drag(e));
     button.addEventListener("pointerup", (e) => this.up(e));
     button.addEventListener("pointercancel", (e) => this.up(e, true));
+    // Perdeu o dedo sem `pointerup` (o navegador tirou a captura): cancela em vez de deixar a mira presa.
+    button.addEventListener("lostpointercapture", (e) => this.up(e, true));
     return { button, icon, label, readyAt: 0, cooldownMs: 1, offered: false, key: "" };
   }
 
@@ -187,7 +201,23 @@ export class SpellBar {
     this.slots[a.slot].button.dataset.aim = this.aim.cancelled ? "cancel" : "on";
   }
 
-  /** Soltou: lança no ponto mirado, no alvo automático (toque rápido) ou nada (cancelou). */
+  private onWindowUp = (e: PointerEvent) => this.up(e);
+  private onWindowCancel = (e: PointerEvent) => this.up(e, true);
+
+  /** Cancela a mira em curso sem lançar nada (app em segundo plano ou aba trocada). */
+  private abortAim = () => {
+    const a = this.aiming;
+    if (!a) return;
+    this.aiming = null;
+    delete this.slots[a.slot].button.dataset.aim;
+    if (this.channeling) {
+      this.channeling = null;
+      this.room.send(MSG.channel, { stop: true });
+    }
+    this.aim.stop();
+  };
+
+  /** Soltou: lança na direção ou no ponto mirado, na frente do herói (toque rápido) ou nada (cancelou). */
   private up(e: PointerEvent, aborted = false) {
     const a = this.aiming;
     if (!a || e.pointerId !== a.pointerId) return;

@@ -26,7 +26,7 @@ export class AttackButton {
   private readyAt = 0;
   private cooldownMs = 1;
   /** Dedo no ⚔️ do básico à distância: ainda decidindo entre toque, segurar e mirar. */
-  private aiming: { pointerId: number; x0: number; y0: number; timer: number; manual: boolean } | null = null;
+  private aiming: { pointerId: number; x0: number; y0: number; timer: number; manual: boolean; session: number } | null = null;
 
   constructor(private room: DungeonRoom, actions: HTMLElement, private aim: SpellAim) {
     const button = document.createElement("button");
@@ -43,6 +43,9 @@ export class AttackButton {
     button.addEventListener("pointerup", (e) => this.up(e));
     button.addEventListener("pointercancel", (e) => this.up(e, true));
     button.addEventListener("lostpointercapture", (e) => this.up(e, true));
+    // Rede de segurança: o dedo saiu da tela sem o `pointerup` chegar no botão (iPhone): termina por aqui.
+    window.addEventListener("pointerup", this.onWindowUp);
+    window.addEventListener("pointercancel", this.onWindowCancel);
     // App em segundo plano ou aba trocada: solta, para o ataque não ficar preso.
     window.addEventListener("blur", this.releaseAll);
     document.addEventListener("visibilitychange", this.releaseAll);
@@ -78,6 +81,8 @@ export class AttackButton {
 
   destroy() {
     this.releaseAll();
+    window.removeEventListener("pointerup", this.onWindowUp);
+    window.removeEventListener("pointercancel", this.onWindowCancel);
     window.removeEventListener("blur", this.releaseAll);
     document.removeEventListener("visibilitychange", this.releaseAll);
     this.button.remove();
@@ -93,14 +98,14 @@ export class AttackButton {
       // Ficou parado: vira segurar (repete sozinho). Ainda dá para arrastar e mirar depois.
       if (this.aiming?.pointerId === pointerId && !this.aiming.manual) this.hold(pointerId);
     }, HOLD_DELAY_MS);
-    this.aiming = { pointerId, x0: e.clientX, y0: e.clientY, timer, manual: false };
     // O ⚔️ mira sozinho no toque (alvo automático); a mira é a mesma linha pontilhada das magias.
-    this.aim.start(basicShotAim(p.basicRange), { auto: true });
+    const session = this.aim.start(basicShotAim(p.basicRange), { auto: true });
+    this.aiming = { pointerId, x0: e.clientX, y0: e.clientY, timer, manual: false, session };
   }
 
   private drag(e: PointerEvent) {
     const a = this.aiming;
-    if (!a || e.pointerId !== a.pointerId) return;
+    if (!a || e.pointerId !== a.pointerId || !this.aim.owns(a.session)) return;
     this.aim.move(e.clientX - a.x0, e.clientY - a.y0);
     if (!a.manual && this.aim.aimed) {
       // Saiu do botão: agora é mira à mão. Para a repetição, se já tinha começado.
@@ -118,6 +123,8 @@ export class AttackButton {
     this.aiming = null;
     window.clearTimeout(a.timer);
     delete this.button.dataset.aim;
+    // Uma magia tomou a mira depois (dois dedos): a dela fica; o ⚔️ só solta o botão.
+    if (!this.aim.owns(a.session)) return this.release(a.pointerId);
     if (a.manual) {
       const result = this.aim.finish();
       if (result?.aim && !aborted) this.room.send(MSG.attacking, { on: true, aim: { x: result.aim.x, y: result.aim.y } });
@@ -130,12 +137,20 @@ export class AttackButton {
     this.release(a.pointerId);
   }
 
+  /** Só termina o que é deste botão: o dedo que mira o ⚔️ ou que o segura (a tecla Espaço não passa por aqui). */
+  private onWindowUp = (e: PointerEvent) => {
+    if (this.aiming?.pointerId === e.pointerId || this.holders.has(e.pointerId)) this.up(e);
+  };
+  private onWindowCancel = (e: PointerEvent) => {
+    if (this.aiming?.pointerId === e.pointerId || this.holders.has(e.pointerId)) this.up(e, true);
+  };
+
   private releaseAll = () => {
     if (this.aiming) {
       window.clearTimeout(this.aiming.timer);
+      if (this.aim.owns(this.aiming.session)) this.aim.stop();
       this.aiming = null;
       delete this.button.dataset.aim;
-      this.aim.stop();
     }
     for (const holder of [...this.holders]) this.release(holder);
   };
