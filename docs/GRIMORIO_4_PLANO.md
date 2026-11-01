@@ -607,6 +607,17 @@ o 4º golpe do Fio Temperado conta golpes corpo a corpo dados, acertando ou não
 segura 1,1), para valer em todo escudo do jogo sem mexer em cada magia. Os Dons do Xamã Orc (iguais aos do Cavaleiro no
 efeito) ainda não têm marcos.
 
+**Fase 4a-2 (Paladino), como foi entregue:** os 30 marcos seguem a tabela, com estas diferenças: Olhar Paciente usa
+alcance inteiro (+1 tile no marco 1, em vez de +0,5 nos marcos 1 e 3) e o marco 3 encurta a recarga do atordoar (10 s →
+6 s); a explosão da Mão Rápida dá 0,5× do básico (o plano não dava o número) e o chão em chamas queima 0,2× por segundo;
+o tiro calmo do Passo de Rastreador sai uma vez a cada 3 s sem apanhar; "rolar devolve 10% da recarga do slot 1" tira
+10% da recarga inteira da magia do slot 1 (o Rolamento, quando ele está lá).
+
+**Fase 4a-2 (Feiticeiro), como foi entregue:** os 30 marcos seguem a tabela, com estas diferenças: "Estática/Combustão
++5%" soma 5 pontos na chance da Estática e 5% no dano da Combustão; a marca dos esqueletos do Ossuário é de +10% por
+3 s (o plano não dava o número) e a explosão ao sumir conta como a reação Condenação (1× do dano do esqueleto, raio 1);
+"a próxima dura +30%" do Circuito vale para raiz, atordoar, lentidão, dano contínuo, marca e campo da magia carregada.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
