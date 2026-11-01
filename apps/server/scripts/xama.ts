@@ -100,7 +100,8 @@ function rules() {
   for (const kind of ["clanScout", "clanSpearman", "clanArcher", "clanCaptain", "forgeOgre"] as const) {
     check(!!SUMMONS[kind].look && !!MONSTERS[SUMMONS[kind].look!] && !!SUMMONS[kind].clan, `${kind} devia ter a arte de um monstro do clã`);
   }
-  check(tree.filter((t) => t.kind === "gift").map((t) => t.col).sort().join() === "0,1,2", "um Dom por ramo");
+  // Dois Dons por ramo: o do topo e o do fundo, embaixo do Ápice.
+  check(tree.filter((t) => t.kind === "gift").map((t) => t.col).sort().join() === "0,0,1,1,2,2", "dois Dons por ramo (topo e fundo)");
   check(SPELLS.ember_totem.classId === "shaman" && SPELLS.war_drum.classId === "shaman", "as iniciais são do Xamã");
 }
 
@@ -318,7 +319,7 @@ function phase3Rules() {
   }
   const apices = tree.filter((t) => t.spellId && SPELLS[t.spellId].slot === 2 && t.row > 0).map((t) => t.spellId).sort();
   check(apices.join() === "ancestor_circle,forge_rain,horde_roar", `Ápices: ${apices}`);
-  check(tree.length === 48, `48 nós no Grimório do Xamã (${tree.length})`);
+  check(tree.length === 51, `51 nós no Grimório do Xamã (${tree.length})`);
 }
 
 /** Arena do xamã com estas magias e Traços comprados (`slot3`: a magia do slot 3, no nível 12). */
