@@ -441,14 +441,47 @@ button { min-height: 44px; touch-action: manipulation; }
 .bar.mana i { background: #2f5fa8; }
 .bar.xp i { background: #8a6d2c; }
 
-/* Zona do polegar direito, em baixo. */
+/*
+ * Zona do polegar direito. Os botões que miram arrastando (⚔️ e magias) ficam longe da borda direita, para o dedo ter
+ * espaço de arrastar para a direita e para baixo (a mira é relativa ao toque, ver `FULL_DRAG_PX` em aim.ts): o ⚔️ no
+ * centro de um arco e as magias em volta dele, do lado de dentro da tela, ao alcance do polegar sem esticar. O que só
+ * se toca (poções) vai para a beirada, onde não se mira.
+ *
+ * `#actions` é um ponto (o centro do ⚔️); cada botão se posiciona em volta dele por `--dx` (para a esquerda) e `--dy`
+ * (para cima). Slot 3 (`data-slot="2"`) ainda não existe: o lugar dele, em cima do ⚔️, já fica reservado.
+ */
 #actions {
+  --atk-right: 112px;
+  --atk-bottom: 100px;
   position: fixed;
-  right: calc(var(--col-x) + max(16px, env(safe-area-inset-right)));
-  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
-  display: grid;
-  justify-items: center;
-  gap: 16px;
+  right: calc(var(--col-x) + max(8px, env(safe-area-inset-right)) + var(--atk-right));
+  bottom: calc(max(0px, env(safe-area-inset-bottom)) + var(--atk-bottom));
+  width: 0;
+  height: 0;
+}
+#actions > .action {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  --dx: 0px;
+  --dy: 0px;
+  translate: calc(-50% - var(--dx)) calc(50% - var(--dy));
+}
+/*
+ * Em pé a tela é estreita e o joystick ocupa o canto esquerdo: as magias abrem um leque EM CIMA do ⚔️, da esquerda
+ * para a direita (slot 1, 2 e 3), em vez de ao lado dele, sem encostar no joystick fixo nem nas poções.
+ */
+#actions > .action.attack { width: 80px; height: 80px; }
+#actions > .action.spell { width: 64px; height: 64px; }
+#actions > [data-slot="0"] { --dx: 84px; --dy: 70px; }
+#actions > [data-slot="1"] { --dx: 30px; --dy: 122px; }
+#actions > [data-slot="2"] { --dx: -40px; --dy: 104px; }
+/* Celular estreito (360 px): o leque fecha um pouco, para o slot 1 não encostar no joystick. */
+@media (max-width: 379px) {
+  #actions > .action.spell { width: 60px; height: 60px; }
+  #actions > [data-slot="0"] { --dx: 68px; --dy: 84px; }
+  #actions > [data-slot="1"] { --dx: 6px; --dy: 128px; }
+  #actions > [data-slot="2"] { --dx: -52px; --dy: 98px; }
 }
 .action {
   width: 72px;
@@ -466,16 +499,15 @@ button { min-height: 44px; touch-action: manipulation; }
 }
 .action:active { transform: scale(0.94); background: #4a3417; }
 
-/* Poções: coluna menor à esquerda das magias, alinhada com a base dos botões. */
+/* Poções: só se tocam, então ficam na beirada direita, ao lado do ⚔️ (a vida em cima, a mana embaixo). */
 #potions {
   position: fixed;
-  /* À esquerda do ⚔️ (84px), o botão mais largo da coluna de ações. */
-  right: calc(var(--col-x) + max(16px, env(safe-area-inset-right)) + 84px + 16px);
-  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
+  right: calc(var(--col-x) + max(8px, env(safe-area-inset-right)));
+  bottom: calc(max(0px, env(safe-area-inset-bottom)) + 60px);
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
-.action.potion { position: relative; width: 60px; height: 60px; display: grid; place-items: center; overflow: hidden; border-color: #b0413e; }
+.action.potion { position: relative; width: 48px; height: 48px; display: grid; place-items: center; overflow: hidden; border-color: #b0413e; }
 .action.potion + .action.potion { border-color: #2f6fb0; }
 .action.potion::after {
   content: "";
@@ -572,29 +604,23 @@ button { min-height: 44px; touch-action: manipulation; }
     height: min(calc(100dvh - 16px), 360px);
   }
 
-  /* Arco: ⚔️ no canto, a magia 1 à esquerda dele e a magia 2 em cima (ordem no DOM: magia 2, magia 1, ⚔️). */
-  body.deitado #actions {
-    right: var(--pad-r);
-    bottom: var(--pad-b);
-    grid-template-areas: ". s2" "s1 atk";
-    gap: 8px;
-    align-items: end;
-  }
-  body.deitado #actions > :nth-child(1) { grid-area: s2; }
-  body.deitado #actions > :nth-child(2) { grid-area: s1; }
-  body.deitado #actions > .attack { grid-area: atk; }
+  /* O mesmo arco, menor (raio ~86 px), com o ⚔️ longe da beirada para mirar para a direita e para baixo. */
+  body.deitado #actions { right: calc(var(--pad-r) + 100px); bottom: calc(var(--pad-b) + 78px); }
+  body.deitado #actions > [data-slot="0"] { --dx: 84px; --dy: 0px; }
+  body.deitado #actions > [data-slot="1"] { --dx: 62px; --dy: 62px; }
+  body.deitado #actions > [data-slot="2"] { --dx: 0px; --dy: 86px; }
   body.deitado .action { width: 56px; height: 56px; font-size: 24px; }
-  body.deitado .action.attack { width: 72px; height: 72px; font-size: 30px; }
+  body.deitado #actions > .action.spell { width: 56px; height: 56px; }
+  body.deitado #actions > .action.attack { width: 72px; height: 72px; font-size: 30px; }
   body.deitado .spell-icon { font-size: 22px; }
   body.deitado .spell-label { bottom: 4px; font-size: 10px; }
-  /* Poções numa fileira à esquerda do arco, na altura do ⚔️. */
+  /* Poções na beirada direita, ao lado do ⚔️. */
   body.deitado #potions {
-    right: calc(var(--pad-r) + 56px + 8px + 72px + 14px);
-    bottom: var(--pad-b);
-    grid-auto-flow: column;
+    right: var(--pad-r);
+    bottom: calc(var(--pad-b) + 30px);
     gap: 8px;
   }
-  body.deitado .action.potion { width: 48px; height: 48px; }
+  body.deitado .action.potion { width: 46px; height: 46px; }
   body.deitado .potion-icon { width: 26px; height: 26px; margin-top: -4px; }
   body.deitado .potion-count { bottom: 2px; font-size: 11px; }
 

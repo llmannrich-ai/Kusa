@@ -20,8 +20,11 @@ import type { DungeonRoom } from "./net.ts";
 
 /** Arrasto (px) a partir do botão abaixo do qual a mira não sai do lugar; voltar para cá cancela. */
 const DEADZONE_PX = 16;
-/** Arrasto (px) que leva a mira até o alcance máximo da magia. */
-const FULL_DRAG_PX = 96;
+/**
+ * Arrasto (px) que leva a mira até o alcance máximo da magia. Curto o bastante para caber entre o botão e a beirada da
+ * tela (o ⚔️ fica a ~120 px da borda direita, ver `#actions` no CSS): mirar para a direita alcança o máximo também.
+ */
+const FULL_DRAG_PX = 72;
 /** Espaço (px do mundo) entre os pontos da linha pontilhada. */
 const DOT_GAP = 7;
 
@@ -46,6 +49,13 @@ export class SpellAim {
   private drag = { x: 0, y: 0 };
   /** Já saiu da zona morta uma vez: agora é mira manual (voltar ao centro cancela). */
   private manual = false;
+  /**
+   * Parado no botão, a mira mostra o alvo automático (o ⚔️: o travado ou o mais perto). Sem isto (magias), mostra o
+   * que o toque rápido faz: sair reto na frente do herói.
+   */
+  private auto = false;
+  /** Desenho em linha contínua do herói até onde o tiro para (o ⚔️), em vez dos tiles da reta. */
+  private line = false;
 
   constructor(scene: Phaser.Scene, private room: DungeonRoom, private dungeon: Dungeon, private bodyAt: BodyAt, depth: number) {
     this.g = scene.add.graphics().setDepth(depth);
@@ -55,8 +65,10 @@ export class SpellAim {
     return this.spell !== null;
   }
 
-  start(spell: AimDef) {
+  start(spell: AimDef, opts: { auto?: boolean; line?: boolean } = {}) {
     this.spell = spell;
+    this.auto = opts.auto ?? false;
+    this.line = opts.line ?? false;
     this.drag = { x: 0, y: 0 };
     this.manual = false;
   }
@@ -124,6 +136,25 @@ export class SpellAim {
       }
       return;
     }
+    if (isShot(spell) && this.line) {
+      // Básico: uma linha reta do herói até onde o tiro para (o primeiro monstro da reta, em dourado, ou o alcance).
+      const path = shotPath(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range);
+      const hit = path.find((t) => this.monsterAt(t.x, t.y));
+      const end = hit ?? path[path.length - 1];
+      if (!end) return;
+      const angle = Math.atan2(toPx(aim.y) - toPx(me.y), toPx(aim.x) - toPx(me.x));
+      const len = Math.hypot(end.x - me.x, end.y - me.y) * TILE_SIZE;
+      const tipX = from.x + Math.cos(angle) * len;
+      const tipY = from.y + Math.sin(angle) * len;
+      const c = hit ? COLORS.locked : COLORS.free;
+      // Começa um pouco fora do herói, para não cobrir o sprite; contorno escuro para ler em qualquer chão.
+      const startX = from.x + Math.cos(angle) * 12;
+      const startY = from.y + Math.sin(angle) * 12;
+      g.lineStyle(5, 0x000000, 0.35).lineBetween(startX, startY, tipX, tipY);
+      g.lineStyle(2, c, 0.9).lineBetween(startX, startY, tipX, tipY);
+      g.fillStyle(c, 0.9).fillCircle(tipX, tipY, 3.5);
+      return;
+    }
     if (isShot(spell)) {
       // Tiro: a reta inteira na direção mirada; o primeiro monstro nela (quem leva o tiro se ninguém se mexer) em dourado.
       const size = TILE_SIZE - 2;
@@ -160,10 +191,21 @@ export class SpellAim {
     const me = this.room.state.players.get(this.room.sessionId);
     if (!spell || !me) return null;
     if (spell.aim === "ally") return this.allyAim(me.x, me.y, spell.range);
-    if (!this.manual) {
+    if (!this.manual && this.auto) {
       const id = this.autoTarget(me.x, me.y, spell.range);
       const m = id ? this.room.state.monsters.get(id) : undefined;
       return m ? { x: m.x, y: m.y, targetId: id! } : null;
+    }
+    if (!this.manual) {
+      // Toque rápido numa magia: reto na frente do herói (a mesma regra do servidor, `Hunt.cast`).
+      const front = shotAimPoint(me.x, me.y, me.faceX, me.faceY);
+      if (isShot(spell) || spell.shape || spell.dash) return front;
+      const path = shotPath(this.dungeon, me.x, me.y, front.x, front.y, spell.range);
+      const first = path.find((t) => this.monsterAt(t.x, t.y));
+      const end = first ?? path[path.length - 1];
+      if (!end) return null;
+      const id = first && isSingleTarget(spell) ? this.monsterAt(first.x, first.y) : undefined;
+      return id ? { x: end.x, y: end.y, targetId: id } : end;
     }
 
     // Tiro: só a direção do arrasto importa (um ponto bem longe nela).
@@ -223,7 +265,14 @@ export class SpellAim {
     return lineEnd(this.dungeon, x, y, raw.x, raw.y);
   }
 
-  /** O mesmo alvo que o servidor usa no toque rápido: o travado, se ao alcance; senão, o mais próximo. */
+  /** Id do monstro no tile, se houver. */
+  private monsterAt(x: number, y: number): string | undefined {
+    let found: string | undefined;
+    this.room.state.monsters.forEach((m, id) => { if (!found && !m.hidden && m.x === x && m.y === y) found = id; });
+    return found;
+  }
+
+  /** O mesmo alvo que o servidor usa no ⚔️: o travado, se ao alcance; senão, o mais próximo. */
   private autoTarget(x: number, y: number, range: number): string | null {
     const me = this.room.state.players.get(this.room.sessionId);
     const current = me?.target ? this.room.state.monsters.get(me.target) : undefined;

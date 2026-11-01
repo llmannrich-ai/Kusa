@@ -26,6 +26,12 @@ export class Player extends Schema {
   @type("string") target = "";
   /** Alcance (tiles) do ataque básico agora (classe, Traços, Postura, equipamento, cegueira): a mira do ⚔️ desenha. */
   @type("number") basicRange = 1;
+  /**
+   * Frente do herói: a direção (em tiles) do último passo, golpe ou magia mirada. O toque rápido numa magia com alvo
+   * sai nesta direção (sem mira automática no monstro). Começa olhando para baixo.
+   */
+  @type("number") faceX = 0;
+  @type("number") faceY = 1;
   /** Itens equipados (ids de `ITEMS` em `@kusa/shared`; "" = slot vazio). */
   @type("string") weapon = "";
   @type("string") helmet = "";
