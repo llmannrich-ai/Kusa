@@ -85,6 +85,11 @@ export function buyTalent(talentId: string): Promise<number> {
   return call("buy_talent", { p_talent_id: talentId });
 }
 
+/** Compra vários níveis de uma vez (Dom, áurea ou Tomo, até 5); devolve o gold que sobrou. */
+export function buyTalentLevels(talentId: string, count: number): Promise<number> {
+  return call("buy_talent_levels", { p_talent_id: talentId, p_count: count });
+}
+
 /** Grava as magias ativadas no Grimório (a lista inteira, de todas as classes; ver `toggleActiveSpell`). */
 export async function setActiveSpells(spells: string[]): Promise<void> {
   await call("set_active_spells", { p_spells: spells });

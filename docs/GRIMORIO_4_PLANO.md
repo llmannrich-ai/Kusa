@@ -7,7 +7,8 @@ o `GRIMORIO_GALHOS.md` (3.0, costelas, sinergias, Tomos). Nada do que existe é 
 continuam valendo. Quando uma fase for entregue, o `GDD.md` passa a descrever o que vale e este arquivo marca a fase.
 
 **Andamento:** planejamento fechado com o Leonardo (seção 2). Base: `main` em `c3c9ed8` (01/11/2026). O slot 3 hoje
-é só o lugar reservado do botão (`#actions > [data-slot="2"]` em `style.css`, em pé e deitado); abri-lo é a fase 4.
+é só o lugar reservado do botão (`#actions > [data-slot="2"]` em `style.css`, em pé e deitado); abri-lo é a fase 3.
+**Fase 1 feita** (ver "Fase 1, como foi entregue" na seção 10): os 12 Dons do topo e as áureas e Tomos até o nível 20.
 
 ---
 
@@ -83,8 +84,8 @@ baratas no começo (nível 1 de um Dom custa 60) servem de progressão visível 
 ```
  linha
    0          [raiz S1]   ★ magia de entrada do slot 3 (1.000)
-   I     ◇ Dom do ramo ── tronco ── (Áurea)
-   II                     tronco ── 📕 Tomo
+   I                      tronco ── (Áurea)
+   II    ◇ Dom do ramo ── tronco ── 📕 Tomo     ← o Dom e o Tomo saem do mesmo nó, um de cada lado
    III   ● leque ──┐      tronco      costela de hoje
    IV    ● combo ──┘      tronco      costela de hoje
    V                      ponta do tronco ──┐
@@ -97,7 +98,7 @@ baratas no começo (nível 1 de um Dom custa 60) servem de progressão visível 
 
 | Nó novo (por ramo) | Linha | Lado | Pede | Preço |
 |---|---|---|---|---|
-| ◇ **Dom do ramo** | I | o do Tomo | 1º nó do tronco (comprado) | curva dos Dons (7.3) |
+| ◇ **Dom do ramo** | II | o oposto ao Tomo | 1º nó do tronco (comprado) | curva dos Dons (7.3) |
 | ● **Magia em leque** (S1 ou S2) | III–IV | o lado sem costela | nó do tronco da linha II–III, nível 1 de uso | tabela de hoje (300–500) |
 | ● **Magia de combo** (S1 ou S2) | IV–V | mesma costela | a magia em leque, nível 1 | tabela de hoje (500–800) |
 | ◇ **2 Dons da costela de passivas** | VI–VII | lane ±2 | a ponta do tronco **comprada** | curva dos Dons |
@@ -301,7 +302,7 @@ costela de passivas (VI–VII), **F** = fundo (X). Números de partida para o ba
 | Lâmina | P1 | 🩸 **Sangue no Aço** | C | +3% de dano da Hemorragia | Hemorragia cura 2% · empurrar faz sangrar 2 s · Hemorragia pega também quem está colado · +1 s de sangramento em tudo · Hemorragia devolve 1 s de recarga do slot 1 |
 | Lâmina | P2 | 💢 **Fúria Crescente** | G | matar dá +0,2% de dano por acúmulo (até 10, por 6 s) | até 12 acúmulos · com o máximo, básico 15% mais rápido · acúmulos duram 8 s · até 15 · com o máximo, a próxima magia do slot 1 não gasta mana |
 | Lâmina | F | ⚔️ **Último Duelo** | G | abaixo de 30% da vida: +1,6% de dano | e 10% de roubo de vida · abaixo de 35% · e 15% mais rápido · roubo 15% · abaixo de 30%, a recarga do slot 3 corre 2× |
-| Bastião | T | 🛡️ **Couro Curtido** | — | +0,8 de armadura | escudos +10% · imune a lentidão · +5% de vida · escudos +10% · ao quebrar um escudo, 2 s com 30% menos dano |
+| Bastião | T | 🛡️ **Couro Curtido** | — | +0,6 de armadura (15 no 25: a armadura tem retorno decrescente e 20 pontos já cortariam 50%) | escudos +10% · imune a lentidão · +5% de vida · escudos +10% · ao quebrar um escudo, 2 s com 30% menos dano |
 | Bastião | P1 | 🧱 **Bigorna** | C | monstro empurrado contra parede ou monstro fica atordoado +0,08 s (até 2 s) | e leva 0,5× · empurra também o de trás · +1 tile em todos os empurrões · o impacto conta como atordoar para a Hemorragia · o impacto deixa 30% lento por 3 s |
 | Bastião | P2 | 🔔 **Repique** | G | golpe recebido com escudo ativo devolve +2% do absorvido em raio 1 | raio 2 · o repique provoca · devolve também em mana (1%) · raio 3 · o repique atordoa 0,3 s |
 | Bastião | F | 🏯 **Pedra Fundamental** | G | parado há 1 s: +1,2% de corte de dano | parado regenera 1% da vida por s · parado provoca os colados a cada 3 s · +5 de armadura parado · parado há 0,5 s · parado, o básico corta todos os colados |
@@ -505,13 +506,28 @@ jogador em cada passo e não deixar código sem uso.
 
 | Fase | Entrega | Depende de | Tam. | Por que nesta ordem |
 |---|---|---|---|---|
-| **1. Passivas de ouro** | `kind: "gift"`, os 48 Dons **com o efeito por nível** (sem marcos), Áureas e Tomos até 20, `buy_talent_levels`, menu, migration, teste `dons` | — | M–G | resolve o ouro parado já; não depende de nada |
+| **1. Passivas de ouro** ✅ | `kind: "gift"`, os **12 Dons do topo** com o efeito por nível, Áureas e Tomos até 20, `buy_talent_levels`, menu, migration, teste `dons` | — | M–G | resolve o ouro parado já; não depende de nada |
 | **2. Motor de leque** | L1–L5, família sopro, mira com ângulo, refazer o desenho das 3 magias de leque atuais | — | G | é o pedido mais visível e destrava metade das magias novas |
-| **3. Slot 3** | abrir o slot (5.2), as 4 magias de entrada e os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
-| **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
+| **3. Slot 3** | abrir o slot (5.2), as 4 magias de entrada, os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
+| **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado, os 24 **Dons da costela de passivas** e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
 | **6. S3 de especialização** | as 24 (6 por classe), nas 4 classes juntas e com os dois lados de cada ramo juntos (escolha permanente) | 3 | G | por sistema, como as outras fases |
 | **7. Balanceamento** | `/balanceamento` com a telemetria nova: preço dos Dons e números das magias | 1, 3 | contínuo | — |
+
+**Fase 1, como foi entregue:** entraram os 12 Dons do topo (um por ramo), não os 48. Os outros 36 dependem de peças que
+ainda não existem e ficariam à venda sem fazer nada: os da costela de passivas são de combo (reações), de gatilho ou de
+ataque básico transformado (fase 4), e os do fundo pedem o Ápice como pai (fase 3). Diferenças em relação ao resto do
+plano:
+- o Dom do topo fica na **linha II, do lado oposto ao Tomo** (o Dom e o Tomo saem do mesmo nó do tronco), em vez da
+  linha I: no mesmo nível do pai, o galho do desenho dava uma volta para cima;
+- Couro Curtido dá +0,6 de armadura por nível (não 0,8);
+- Voz de Comando: entre vários heróis com o Dom, vale a voz mais forte (não somam), como a Liderança;
+- no modo de testes com o Grimório inteiro (`KUSA_ALL_SPELLS`), as passivas de gold ficam no teto de antes (áureas e
+  Tomos no 3, sem Dons), para os números dos testes antigos não mudarem;
+- telemetria: `stats.passives` (níveis dos Dons, áureas e Tomos que o herói levou); o dano que vem de cada Dom ainda
+  não é separado (fica para o balanceamento, se precisar);
+- banco: `20261102000000_dons_e_passivas_20_niveis.sql` (Dons, `max_rank`/`cost_growth` de áureas e Tomos e
+  `buy_talent_levels`); os marcos ficam para a fase 4.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
