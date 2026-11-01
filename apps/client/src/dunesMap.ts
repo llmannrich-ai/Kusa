@@ -8,6 +8,7 @@ import {
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
 import { MOUTH, SHAFT, caveMouth, caveShaft } from "./art/caveArt.ts";
 import { drawCaveHd, flickerLights } from "./cavernMap.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /** Fundo além das bordas: areia na sombra de cada variante. */
 export const DUNES_VOID = 0xa8784a;
@@ -201,7 +202,7 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
 
   // --- Tilemap -----------------------------------------------------------------------------
   if (scene.textures.exists(ATLAS)) scene.textures.remove(ATLAS);
-  scene.textures.addCanvas(ATLAS, atlas.build());
+  addCanvasTexture(scene.textures, ATLAS, atlas.build());
   const map = scene.make.tilemap({ width: W, height: H, tileWidth: HD, tileHeight: HD });
   const set = map.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
   const layer = (name: string, data: Int32Array, tint = false) => {
@@ -293,7 +294,7 @@ export function drawDunes(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
 
 /** Textura de uma peça só, pintada na primeira vez. */
 function single(scene: Phaser.Scene, key: string, w: number, h: number, paint: () => Uint8ClampedArray) {
-  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, toCanvas(paint(), w, h));
+  if (!scene.textures.exists(key)) addCanvasTexture(scene.textures, key, toCanvas(paint(), w, h));
   return key;
 }
 
@@ -329,7 +330,7 @@ function createStandingArt(scene: Phaser.Scene, variant: DuneVariant): StandingA
     if (scene.textures.exists(key)) return;
     const { canvas, ctx } = makeCanvas(w * count, h);
     for (let i = 0; i < count; i++) ctx.drawImage(toCanvas(frame(i), w, h), i * w, 0);
-    const texture = scene.textures.addCanvas(key, canvas)!;
+    const texture = addCanvasTexture(scene.textures, key, canvas)!;
     for (let i = 0; i < count; i++) texture.add(i, 0, i * w, 0, w, h);
   };
   const palms = Array.from({ length: PALM_VARIANTS }, (_, v) => palmTrunk(variant, v));
@@ -353,7 +354,7 @@ function createAmbienceArt(scene: Phaser.Scene) {
     if (scene.textures.exists(key)) return;
     const { canvas, ctx } = makeCanvas(w, h);
     paint(ctx);
-    scene.textures.addCanvas(key, canvas);
+    addCanvasTexture(scene.textures, key, canvas);
   };
   add(GRAIN, 2, 2, (ctx) => { ctx.fillStyle = "#fff1d0"; ctx.fillRect(0, 0, 2, 2); });
   add(RIBBON, 64, 4, (ctx) => {
