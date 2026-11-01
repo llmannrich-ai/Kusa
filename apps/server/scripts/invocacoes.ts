@@ -14,8 +14,9 @@ const failures: string[] = [];
 const fail = (msg: string) => { if (failures.length < 40) failures.push(msg); };
 
 let frames = 0;
-// O clã do Xamã Orc usa a arte dos monstros do clã (`look`), conferida no `arte` e no bestiário.
-for (const kind of (Object.keys(SUMMONS) as SummonKind[]).filter((k): k is CreatureSummonKind => !SUMMONS[k].look)) {
+// O clã do Xamã Orc usa a arte dos monstros do clã (`look`), conferida no `arte` e no bestiário; o monstro convertido
+// (`bound`), a do monstro que ele era.
+for (const kind of (Object.keys(SUMMONS) as SummonKind[]).filter((k): k is CreatureSummonKind => !SUMMONS[k].look && k !== "bound")) {
   const art = SUMMON_ART[kind];
   if (!art) { fail(`${kind}: sem arte animada`); continue; }
   for (const clip of CLIP_ORDER) {

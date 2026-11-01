@@ -8,7 +8,11 @@ import type { MonsterKind } from "./monsters.ts";
 /** Criaturas com arte própria de invocação (`summonCreatures.ts` no cliente). */
 export type CreatureSummonKind = "wolf" | "hornet" | "moth" | "bear" | "treant" | "wisp" | "skeleton" | "eagle";
 /** O clã do Xamã Orc: orcs e ogros libertados, desenhados com a arte dos monstros do clã (`look`) e a marca de aliado. */
-export type ClanSummonKind = "clanScout" | "clanSpearman" | "clanArcher" | "clanCaptain" | "forgeOgre";
+export type ClanSummonKind =
+  | "clanScout" | "clanSpearman" | "clanArcher" | "clanCaptain" | "forgeOgre"
+  // Especializações e costelas do Xamã Orc (Fase 3). O `bound` é o monstro convertido (Corrente da Submissão e
+  // Juramento de Sangue): a arte e os números vêm do monstro, não daqui.
+  | "clanBerserker" | "clanWarlord" | "chainedOgre" | "clanShaman" | "bound";
 export type SummonKind = CreatureSummonKind | ClanSummonKind;
 
 export interface SummonDef {
@@ -50,6 +54,8 @@ export interface SummonDef {
   push?: number;
   /** O golpe queima: `perSec` × o dano da criatura por segundo, por `ms`. */
   burn?: { perSec: number; ms: number };
+  /** Rompante: abaixo de `belowHp` da vida, ataca `haste` mais rápido (o berserker). */
+  frenzy?: { belowHp: number; haste: number };
 }
 
 export const SUMMONS: Record<SummonKind, SummonDef> = {
@@ -99,11 +105,37 @@ export const SUMMONS: Record<SummonKind, SummonDef> = {
     kind: "forgeOgre", name: "Ogro da Forja", hp: 1.4, damage: 1, attackRange: 1, attackCooldownMs: 1700, speed: 3, attackFx: "smash",
     look: "ogreYoung", clan: true, push: 1, burn: { perSec: 0.25, ms: 3000 },
   },
+  clanBerserker: {
+    // Dano 0,8 (Fase 4): com 1,0, a conta teórica (`balanco.ts`) dava 2,4× a mediana das magias do slot do Xamã.
+    kind: "clanBerserker", name: "Orc berserker", hp: 0.6, damage: 0.8, attackRange: 1, attackCooldownMs: 1000, speed: 5, attackFx: "slash",
+    look: "orcBerserker", clan: true, frenzy: { belowHp: 0.5, haste: 0.4 },
+  },
+  clanWarlord: {
+    kind: "clanWarlord", name: "Chefe de Guerra Orc", hp: 1.6, damage: 1.2, attackRange: 1, attackCooldownMs: 1400, speed: 3.5, attackFx: "slash",
+    look: "orcWarlord", clan: true, taunt: true, command: { radius: 3, damage: 0.2, haste: 0.15 },
+  },
+  chainedOgre: {
+    kind: "chainedOgre", name: "Ogro Acorrentado", hp: 1.8, damage: 1.1, attackRange: 1, attackCooldownMs: 1800, speed: 2.8, attackFx: "smash",
+    look: "ogreBruiser", clan: true, taunt: true, stunMs: 600,
+  },
+  clanShaman: {
+    kind: "clanShaman", name: "Xamã do Clã", hp: 0.4, damage: 0, attackRange: 0, attackCooldownMs: 2000, speed: 3.5, attackFx: "nature",
+    look: "orcShaman", clan: true, heal: 0.05, healRadius: 3,
+  },
+  bound: {
+    kind: "bound", name: "Monstro acorrentado", hp: 0.5, damage: 0.8, attackRange: 1, attackCooldownMs: 1400, speed: 3.5, attackFx: "slash",
+  },
   wisp: {
     kind: "wisp", name: "Fogo-Fátuo", hp: 0.5, damage: 0, attackRange: 0, attackCooldownMs: 2500, speed: 4.5, attackFx: "nature",
     heal: 0.08, healRadius: 4, mana: 0.02,
   },
 };
+
+/**
+ * Monstro convertido (Corrente da Submissão, Juramento de Sangue): fica com esta fração da vida máxima e do dano dele, e
+ * só um por herói de cada vez. Mini-boss, boss e monstro chamado por outro não se convertem.
+ */
+export const BOUND_POWER = { hp: 0.6, damage: 0.8 };
 
 /** Perto de um totem do dono (a até `radius` tiles), os orcs do clã causam +`damage`. */
 export const CLAN_TOTEM_BONUS = { radius: 3, damage: 0.15 };

@@ -337,7 +337,19 @@ export class DungeonScene extends Phaser.Scene {
       this.addSummon(id, summon);
       callbacks.onChange(summon, () => this.syncSummon(id, summon));
     });
-    callbacks.onAdd("fields", (field: FieldView, id: string) => this.addField(id, field));
+    callbacks.onAdd("fields", (field: FieldView, id: string) => {
+      this.addField(id, field);
+      // Totem nas Costas (Xamã Orc): o totem anda com o xamã.
+      callbacks.onChange(field, () => {
+        const view = this.fields.get(id);
+        if (!view) return;
+        const x = this.toPx(field.x);
+        const y = this.toPx(field.y);
+        if (view.x === x && view.y === y) return;
+        this.tweens.add({ targets: view, x, y, duration: 180 });
+        view.setDepth(field.y * TILE_SIZE - 1);
+      });
+    });
     callbacks.onRemove("fields", (_field: FieldView, id: string) => {
       const view = this.fields.get(id);
       this.fields.delete(id);
@@ -1395,7 +1407,8 @@ export class DungeonScene extends Phaser.Scene {
    */
   private addSummon(id: string, summon: SummonView) {
     const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
-    const look = SUMMONS[kind].look;
+    // O monstro convertido (Xamã Orc) usa a arte do monstro dele; o clã, a do monstro do clã.
+    const look = (summon.look && summon.look in MONSTERS ? summon.look as MonsterKind : undefined) ?? SUMMONS[kind].look;
     if (look) return this.addClanSummon(id, summon, look);
     const texture = SUMMON_TEXTURE[kind as CreatureSummonKind];
     const sprite = this.add.sprite(0, 0, texture).setScale(CREATURE_SPRITE_SCALE);

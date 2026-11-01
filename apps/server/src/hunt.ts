@@ -24,6 +24,7 @@ import {
   partySize,
   MAX_SUMMONS_PER_PLAYER,
   CLAN_TOTEM_BONUS,
+  BOUND_POWER,
   MOVE_HOLD_MS,
   PORTAL_HOLD_MS,
   MSG,
@@ -300,6 +301,9 @@ interface Seat {
   rallyHaste: number;
   rallyDamage: number;
   rallyUntil: number;
+  /** Marcha do Clã: anda `rallyMove` mais rápido até `rallyUntil`; até `freeUntil`, não fica preso nem lento. */
+  rallyMove: number;
+  freeUntil: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -379,6 +383,10 @@ interface FieldBrain {
   shotsLeft: number;
   /** Totem do Chamado: a cada pulso chama uma criatura, até `max` vivas desta magia. */
   spawn?: { kind: SummonKind; max: number; durationMs: number } | null;
+  /** Totem Vulcânico: explode ao acabar o tempo (`amount` da explosão já com o dano base de quem criou). */
+  burst?: { radius: number; amount: number; burn?: { perSec: number; ms: number } } | null;
+  /** Totem nas Costas (Traço): este totem anda com o dono. */
+  follows?: boolean;
 }
 
 /** Regeneração por segundo, em fração do máximo. */
@@ -634,7 +642,7 @@ export class Hunt {
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, auraFx: null, orbitFx: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
-      rallyHaste: 0, rallyDamage: 0, rallyUntil: 0,
+      rallyHaste: 0, rallyDamage: 0, rallyUntil: 0, rallyMove: 0, freeUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -2006,6 +2014,10 @@ export class Hunt {
         }
       }
       if (spell.push && m.hp > 0) this.push(m, p, spell.push);
+      // Corrente da Submissão: o alvo comum que ficou abaixo do limite vira aliado.
+      if (spell.convert && m === anchor && m.hp > 0 && m.hp <= m.maxHp * spell.convert.hpPct && p.status === "playing") {
+        this.bindMonster(sessionId, p, m, brain, spell.convert.ms);
+      }
     });
 
     // Pólvora (Traço): magia de área deixa o chão em chamas onde caiu.
@@ -2106,6 +2118,8 @@ export class Hunt {
       seat.stats.buffMs += spell.form.ms;
     }
 
+    // As criaturas novas aparecem antes do Grito da Fera e da Fúria da Horda, para receberem o reforço junto.
+    if (spell.summon && p.status === "playing") this.summon(sessionId, p, spell, rank);
     // Grito da Fera: as criaturas do druida atacam mais rápido e recuperam vida.
     if (spell.packCall && p.status === "playing") {
       const call = spell.packCall;
@@ -2130,7 +2144,6 @@ export class Hunt {
     }
     if (spell.seed && allyId && ally?.status === "playing" && allySeat) this.plantSeed(sessionId, seat, allyId, ally, allySeat, spell.seed, now);
 
-    if (spell.summon && p.status === "playing") this.summon(sessionId, p, spell, rank);
     // Caçada Selvagem: a segunda leva (o urso) vem junto, sem tirar a primeira.
     if (spell.alsoSummon && p.status === "playing") this.summon(sessionId, p, { ...spell, summon: spell.alsoSummon }, rank, true);
   }
@@ -2210,16 +2223,28 @@ export class Hunt {
     m.y = best.y;
   }
 
-  private rally(sessionId: string, p: Player, seat: Seat, rally: NonNullable<SpellDef["rally"]>, now: number) {
+  private rally(sessionId: string, p: Player, seat: Seat, base: NonNullable<SpellDef["rally"]>, now: number) {
+    // Ritmo de Guerra (Traço): o tambor dura mais e alcança mais longe.
+    const boost = seat.traits.find((t) => t.rallyBoost)?.rallyBoost;
+    const rally = boost ? { ...base, radius: base.radius + boost.radius, ms: Math.round(base.ms * boost.durationScale) } : base;
     const near = (x: number, y: number) => tileDistance(p.x, p.y, x, y) <= rally.radius && hasLineOfSight(this.dungeon, p.x, p.y, x, y);
     this.state.players.forEach((ally, id) => {
       const allySeat = this.seats.get(id);
       if (ally.status !== "playing" || !allySeat || !near(ally.x, ally.y)) return;
       allySeat.rallyHaste = rally.haste;
       allySeat.rallyDamage = rally.damage;
+      allySeat.rallyMove = rally.move ?? 0;
       allySeat.rallyUntil = now + rally.ms;
       seat.stats.buffMs += rally.ms;
       if (rally.heal) this.healPlayer(ally, Math.max(1, Math.round(ally.maxHp * rally.heal)), sessionId);
+      // Marcha do Clã: solta quem está preso ou lento e protege até o fim da marcha.
+      if (rally.free) {
+        allySeat.freeUntil = now + rally.ms;
+        delete allySeat.effects.root;
+        allySeat.slow = null;
+        ally.slowed = false;
+        this.syncEffects(ally, allySeat);
+      }
     });
     this.state.summons.forEach((s) => {
       const summonBrain = this.summonBrains.get(s.id);
@@ -2519,6 +2544,62 @@ export class Hunt {
     }
   }
 
+  /**
+   * Converte um monstro em aliado de quem conjurou (Corrente da Submissão): ele some da lista de monstros sem render XP,
+   * loot nem item e volta como criatura (`bound`) com a arte e os números dele (`BOUND_POWER`), por `ms`. Só monstro
+   * comum que não foi chamado por outro; um convertido por herói (o anterior se solta). Devolve se converteu.
+   */
+  private bindMonster(sessionId: string, p: Player, m: Monster, brain: Brain, ms: number, at?: { x: number; y: number; hp: number }) {
+    if (brain.def.rank !== "common" || brain.summonedBy || brain.traits.illusion) return false;
+    this.state.summons.forEach((s) => { if (s.owner === sessionId && s.kind === "bound") this.removeSummon(s.id); });
+    const mine = [...this.state.summons.values()].filter((s) => s.owner === sessionId);
+    if (mine.length >= MAX_SUMMONS_PER_PLAYER) this.removeSummon(mine[0].id);
+    const x = at?.x ?? m.x;
+    const y = at?.y ?? m.y;
+    if (!at) {
+      this.ai.died(brain);
+      this.state.monsters.delete(m.id);
+      this.brains.delete(m.id);
+      this.state.players.forEach((other) => { if (other.target === m.id) other.target = ""; });
+    }
+    const def: SummonDef = {
+      ...SUMMONS.bound, name: brain.def.name, attackRange: Math.max(1, brain.def.attackRange), attackFx: brain.def.attackFx,
+      attackCooldownMs: brain.def.attackCooldownMs, speed: brain.def.speed,
+    };
+    const s = new Summon();
+    s.id = `s${this.nextSummonId++}`;
+    s.kind = "bound";
+    s.look = m.kind;
+    s.owner = sessionId;
+    s.x = x;
+    s.y = y;
+    s.maxHp = Math.max(1, Math.round(m.maxHp * BOUND_POWER.hp));
+    s.hp = Math.max(1, Math.min(s.maxHp, Math.round(at ? s.maxHp : m.hp)));
+    this.state.summons.set(s.id, s);
+    const now = this.host.now();
+    this.summonBrains.set(s.id, {
+      def, spellId: "submission_chain", damage: brain.damage * BOUND_POWER.damage, heal: 0, mana: 0,
+      expiresAt: now + ms, nextMoveAt: now + 300, nextAttackAt: now + 300, targetId: null, haste: 0, hasteUntil: 0, rallyDamage: 0, rallyUntil: 0,
+      deathHeal: null,
+    });
+    const stats = this.seats.get(sessionId)?.stats;
+    if (stats) bump(stats.converted, m.kind);
+    this.notice(x, y - 1, "Acorrentado!", 0x95a5a6);
+    return true;
+  }
+
+  /** Juramento de Sangue: o monstro comum que morre perto de um totem de um xamã com o Traço pode se levantar aliado dele. */
+  private bloodOath(m: Monster, brain: Brain) {
+    if (brain.def.rank !== "common" || brain.traits.illusion) return;
+    this.state.players.forEach((p, id) => {
+      const oath = this.seats.get(id)?.traits.find((t) => t.bloodOath)?.bloodOath;
+      if (!oath || p.status !== "playing") return;
+      const near = [...this.state.fields.values()].some((f) => f.owner === id && f.style === "totem" && tileDistance(f.x, f.y, m.x, m.y) <= oath.radius);
+      if (!near || this.random() >= oath.chance) return;
+      this.bindMonster(id, p, m, brain, oath.ms, { x: m.x, y: m.y, hp: 1 });
+    });
+  }
+
   /** Tile livre mais perto de (x, y), com linha de visão, a até 2 tiles. */
   private freeSpotNear(x: number, y: number) {
     const blocked = this.occupiedTiles();
@@ -2583,7 +2664,9 @@ export class Hunt {
     if (inRange) {
       if (now < brain.nextAttackAt) return;
       const clan = this.clanBonus(s, def, now);
-      const haste = Math.max(now < brain.hasteUntil ? brain.haste : 0, clan.haste);
+      // Rompante (berserker do clã): ferido, ataca mais rápido.
+      const frenzy = def.frenzy && s.hp < s.maxHp * def.frenzy.belowHp ? def.frenzy.haste : 0;
+      const haste = Math.min(0.7, Math.max(now < brain.hasteUntil ? brain.haste : 0, clan.haste) + frenzy);
       brain.nextAttackAt = now + def.attackCooldownMs * (1 - haste);
       const m = target;
       const amount = rollDamage(this.random, brain.damage * (now < brain.rallyUntil ? 1 + brain.rallyDamage : 1) * (1 + clan.damage));
@@ -2814,6 +2897,9 @@ export class Hunt {
     for (const [id, other] of [...this.brains]) {
       if (other.summonedBy === m.id && other.traits.illusion) this.vanishMonster(id);
     }
+
+    // Juramento de Sangue (Traço do Xamã Orc): o monstro comum que morre perto de um totem dele pode se levantar aliado.
+    if (!brain.summonedBy) this.bloodOath(m, brain);
 
     // Chamado por outro monstro (Chamado do Clã, Rugido do Rei, Praga de Escaravelhos): não rende XP, loot nem item,
     // senão bastava ficar ao lado de quem chama para subir de nível sem fim.
@@ -3256,6 +3342,8 @@ export class Hunt {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
     if (!p || !seat || p.status !== "playing") return;
+    // Marcha do Clã: ninguém fica lento enquanto ela dura.
+    if (this.host.now() < seat.freeUntil) return;
     seat.slow = { factor: Math.min(factor, seat.slow?.factor ?? 1), until: this.host.now() + ms };
     p.slowed = true;
   }
@@ -3273,6 +3361,8 @@ export class Hunt {
     const current = seat.effects[kind];
     if (CONTROL_EFFECTS.includes(kind)) {
       if (current && now < current.until) return false;
+      // Marcha do Clã: ninguém fica preso enquanto ela dura.
+      if (kind === "root" && now < seat.freeUntil) return false;
       if (now < (seat.effectImmuneUntil[kind] ?? 0)) return false;
       const ms = Math.min(effect.ms, CONTROL_MAX_MS);
       seat.effects[kind] = {
@@ -3836,9 +3926,13 @@ export class Hunt {
     const traps = def.kind !== "zone" ? seat.traits.find((t) => t.traps)?.traps : undefined;
     // Quantos campos desta magia cabem: o limite da magia (totens) ou do Engenhoso, vezes as armadilhas de um lançamento
     // (Abrolhos).
-    const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3 : Math.max(traps?.max ?? 1, def.max ?? 1) * (def.count ?? 1);
     // O estilo gravado no campo é o da Pólvora ou o desenho da magia (nuvem, totem): compara com o mesmo.
     const look = style || (def.look ?? "");
+    // Mãos de Entalhe e Totem nas Costas (Traços do Xamã Orc): valem para os totens.
+    const craft = look === "totem" ? seat.traits.find((t) => t.totemCraft)?.totemCraft : undefined;
+    const follow = look === "totem" ? seat.traits.find((t) => t.totemFollow)?.totemFollow : undefined;
+    const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3
+      : Math.max(traps?.max ?? 1, def.max ?? 1) * (def.count ?? 1) + (craft?.extra ?? 0);
     const mine = [...this.state.fields.values()]
       .filter((f) => f.owner === sessionId && f.spellId === spell.id && f.style === look)
       .sort((a, b) => (this.fieldBrains.get(a.id)?.until ?? 0) - (this.fieldBrains.get(b.id)?.until ?? 0));
@@ -3862,8 +3956,32 @@ export class Hunt {
       spell: { ...spell, field: undefined }, rank, kind: def.kind,
       amount: def.kind === "trap" ? amount : this.baseDamage(sessionId, p, "spell") * (def.damage ?? 0) || amount,
       allyArmor: def.allyArmor ?? 0, allyDamage: def.allyDamage ?? 0, allyHeal: def.allyHeal ?? 0, allyMana: def.allyMana ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" || def.spawn ? 300 : tickMs),
-      until: now + def.ms * (traps?.durationScale ?? 1), shotsLeft: def.shots ?? 0, spawn: def.spawn ?? null,
+      until: now + def.ms * (traps?.durationScale ?? 1) * (craft?.durationScale ?? 1) * (follow?.durationScale ?? 1),
+      shotsLeft: def.shots ?? 0, spawn: def.spawn ?? null,
+      burst: def.burst ? { radius: def.burst.radius, amount: this.baseDamage(sessionId, p, "spell") * def.burst.damage, burn: def.burst.burn } : null,
+      follows: !!follow,
     });
+    // Totem nas Costas: só o último totem anda com o xamã; os anteriores ficam onde estão.
+    if (follow) {
+      this.fieldBrains.forEach((other, id) => {
+        if (id !== f.id && other.follows && this.state.fields.get(id)?.owner === sessionId) other.follows = false;
+      });
+    }
+  }
+
+  /**
+   * Totem Vulcânico: o tempo acabou e o totem explode em volta de si (com a queimadura), como uma magia de área que
+   * sai do totem. Trocado por outro antes do fim, não explode.
+   */
+  private fieldBurst(f: Field, brain: FieldBrain) {
+    const burst = brain.burst;
+    if (!burst) return;
+    this.host.broadcast(MSG.spell, { from: f.owner, spellId: brain.spell.id, x: f.x, y: f.y, tx: f.x, ty: f.y, ms: 0, echo: true } satisfies SpellMessage);
+    const blast: SpellDef = {
+      ...brain.spell, radius: burst.radius, damage: 1, summon: undefined,
+      dot: burst.burn && { perSec: burst.burn.perSec, ms: burst.burn.ms, kind: "burn" },
+    };
+    this.applySpell(f.owner, blast, brain.rank, undefined, f.x, f.y, burst.amount, undefined, 0);
   }
 
   /**
@@ -3956,8 +4074,15 @@ export class Hunt {
       const owner = this.state.players.get(f.owner);
       const seat = this.seats.get(f.owner);
       if (!brain || !owner || !seat || owner.status !== "playing" || now >= brain.until) {
+        // Totem Vulcânico: o tempo acabou (com o dono ainda na hunt), explode antes de sumir.
+        if (brain?.burst && owner?.status === "playing" && now >= brain.until) this.fieldBurst(f, brain);
         this.removeField(f.id);
         continue;
+      }
+      // Totem nas Costas: o último totem anda com o xamã (pulsa de onde ele está).
+      if (brain.follows && (f.x !== owner.x || f.y !== owner.y)) {
+        f.x = owner.x;
+        f.y = owner.y;
       }
       if (now < brain.nextTickAt) continue;
       brain.nextTickAt += brain.tickMs;
@@ -4058,7 +4183,8 @@ export class Hunt {
     const form = seat.form && now < seat.form.until ? seat.form.moveSpeed : 0;
     // Canalizando, anda mais devagar.
     const channel = seat.channel && now < seat.channel.until ? seat.channel.def.moveSlow : 0;
-    return base * Math.max(0.2, 1 + haste + buff + form - channel);
+    const march = now < seat.rallyUntil ? seat.rallyMove : 0;
+    return base * Math.max(0.2, 1 + haste + buff + form + march - channel);
   }
 
   /** Olho de Águia (Traço) e Olhar Paciente (Dom): mais dano em monstro longe de quem bate. */
