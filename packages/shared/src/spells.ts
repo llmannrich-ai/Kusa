@@ -63,7 +63,8 @@ export type SpellId =
   | "howl" | "purifying_sap" | "blossom_burst" | "vine_lash" | "spore_burst" | "bramble_burst"
   // Grimório 4.0: magias em leque nas costelas novas (docs/GRIMORIO_4_PLANO.md, seção 8).
   | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
-  | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray";
+  | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
+  | "frost_breath" | "caltrops";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -108,6 +109,13 @@ export interface SpellDef {
    */
   spread?: { count: number; angle: number };
   /**
+   * Canalizar (só `shape: "cone"`): o leque se repete a cada `tickMs` por até `ms`, na direção que o jogador arrasta
+   * (soltar o dedo encerra; o toque rápido solta tudo para a frente). Quem conjura anda `moveSlow` mais devagar. Com
+   * `freezeTicks`, o monstro pego tantos pulsos seguidos fica preso por `freezeMs` (Sopro Gélido). Mana e recarga saem
+   * uma vez, no começo.
+   */
+  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number };
+  /**
    * Campo no chão onde a magia cai, por `ms`:
    * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
    * - `trap`: armadilha invisível para os monstros; o primeiro que pisar dispara os efeitos da magia
@@ -131,6 +139,8 @@ export interface SpellDef {
     length?: number;
     /** Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus), em vez da estaca. */
     look?: "storm";
+    /** Armadilha: quantas saem de uma vez, espalhadas no leque à frente (`coneAngle`), na ponta do alcance (Abrolhos). */
+    count?: number;
   };
   /** Elemento (só do Feiticeiro): Estática vale para energia. */
   element?: Element;
@@ -975,6 +985,21 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 20, cooldownMs: 5500, aim: "target", range: 5, radius: 0, damage: 0.7, projectileSpeed: 14,
     spread: { count: 6, angle: 60 }, dot: { perSec: 0.3, ms: 3000, kind: "bleed" },
   }),
+
+  frost_breath: spell({
+    id: "frost_breath", classId: "sorcerer", slot: 1, name: "Sopro Gélido", icon: "🌨️", color: 0xbfe9ff, element: "ice",
+    description: "Sopra gelo num leque à sua frente enquanto segura o botão: arraste para virar o sopro. Quem fica no frio congela.",
+    manaCost: 40, cooldownMs: 12000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 60,
+    damage: 0.4, slow: { pct: 0.4, ms: 1000 },
+    channel: { ms: 2000, tickMs: 250, moveSlow: 0.5, freezeTicks: 6, freezeMs: 1000 },
+  }),
+  caltrops: spell({
+    id: "caltrops", classId: "paladin", slot: 0, name: "Abrolhos", icon: "🪤", color: 0xa4b0be,
+    description: "Espalha três estrepes no chão em leque à sua frente: quem pisa fica lento e sangra.",
+    manaCost: 20, cooldownMs: 8000, aim: "target", range: 3, radius: 0, coneAngle: 90,
+    slow: { pct: 0.5, ms: 3000 }, dot: { perSec: 0.3, ms: 3000, kind: "bleed" },
+    field: { kind: "trap", ms: 20000, count: 3 },
+  }),
 };
 
 /**
@@ -1137,6 +1162,8 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   pack_roar: { text: "O rugido também cura suas criaturas em 10%.", changes: { packCall: { haste: 0.3, ms: 4000, heal: 0.1 } } },
   pollen_breeze: { text: "A brisa cura 30% da vida.", changes: { heal: 0.3 } },
   thorn_spray: { text: "Oito espinhos no leque.", changes: { spread: { count: 8, angle: 70 } } },
+  frost_breath: { text: "Congela mais rápido: 4 pulsos seguidos bastam.", changes: { channel: { ms: 2000, tickMs: 250, moveSlow: 0.5, freezeTicks: 4, freezeMs: 1000 } } },
+  caltrops: { text: "Cinco estrepes no leque.", changes: { field: { kind: "trap", ms: 20000, count: 5 } } },
 };
 
 /**
@@ -1193,6 +1220,11 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   const facts: string[] = [];
   if (s.damage) facts.push(s.spread ? `${s.spread.count} projéteis em leque de ${s.spread.angle}°, ${num(s.damage)}× cada` : `Dano ${num(s.damage)}×${area}`);
   if (s.wave) facts.push("Onda: sai de você e avança pelo leque");
+  if (s.channel) {
+    facts.push(`Canaliza por até ${sec(s.channel.ms)}: um pulso a cada ${sec(s.channel.tickMs)}; segure e arraste para girar`);
+    if (s.channel.freezeTicks && s.channel.freezeMs) facts.push(`${s.channel.freezeTicks} pulsos seguidos no mesmo monstro o prendem por ${sec(s.channel.freezeMs)}`);
+  }
+  if (s.field?.count) facts.push(`${s.field.count} armadilhas espalhadas no leque`);
   if (s.chain) facts.push(`Salta para mais ${s.chain.jumps} monstros (−${pct(s.chain.falloff)} por salto)`);
   if (s.execute) facts.push(`+${pct(s.execute.bonus)} de dano em quem tem menos de ${pct(s.execute.hpPct)} da vida`);
   if (s.distanceBonus) facts.push(`+${pct(s.distanceBonus)} de dano por tile até o alvo`);

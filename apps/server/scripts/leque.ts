@@ -117,6 +117,57 @@ test("Brisa de Pólen cura o aliado no leque e deixa o monstro lento", "druid", 
   check(m.slowed, "monstro não ficou lento");
 }, [{ classId: "knight" }]);
 
+console.log("Canalizar e armadilhas (fase 2b):");
+test("Sopro Gélido pulsa enquanto dura, congela quem fica e deixa o herói lento", "sorcerer", (a) => {
+  const m = a.place(TARGET, 2, 0);
+  const slow = a.any.moveSpeed(a.p, a.seat(), a.now());
+  castAt(a, "frost_breath", m);
+  check(!!a.seat().channel, "não começou a canalizar");
+  check(a.any.moveSpeed(a.p, a.seat(), a.now()) < slow, "o herói não ficou mais lento");
+  a.advance(1100);
+  const pulses = a.damage.filter((d) => !d.toPlayer && d.attacker === HERO && !d.dot).length;
+  check(pulses >= 4, `pulsos no monstro: ${pulses}`);
+  // A arena tem todos os Traços: o Estilhaçar solta o congelado no pulso seguinte. Vale que ele congelou.
+  check(a.seat().stats.ccMs.root > 0, "o monstro não congelou");
+  a.advance(1500);
+  check(!a.seat().channel, "a canalização não acabou no tempo");
+});
+test("Sopro Gélido: soltar o dedo encerra", "sorcerer", (a) => {
+  const m = a.place(TARGET, 2, 0);
+  castAt(a, "frost_breath", m);
+  a.advance(300);
+  a.hunt.channel(HERO, { stop: true });
+  // Conta só os pulsos (a arena tem a Combustão, que deixa o monstro queimando depois).
+  const pulses = () => a.damage.filter((d) => !d.toPlayer && d.attacker === HERO && !d.dot).length;
+  const before = pulses();
+  a.advance(1000);
+  check(!a.seat().channel && pulses() === before, `continuou depois de soltar (${before} → ${pulses()} pulsos)`);
+});
+test("Sopro Gélido: arrastar vira o leque", "sorcerer", (a) => {
+  const east = a.place(TARGET, 2, 0);
+  const west = a.place(TARGET, -2, 0);
+  castAt(a, "frost_breath", east);
+  a.advance(100);
+  const westBefore = lostHp(a, west.id);
+  a.hunt.channel(HERO, { x: a.p.x - 4, y: a.p.y });
+  a.advance(600);
+  check(westBefore === 0 && lostHp(a, west.id) > 0, `o leque não virou para o oeste (${westBefore} → ${lostHp(a, west.id)})`);
+});
+test("Abrolhos espalha várias armadilhas no leque", "paladin", (a) => {
+  castAt(a, "caltrops", { x: a.p.x + 3, y: a.p.y });
+  a.advance(50);
+  const traps = [...a.state.fields.values()].filter((f) => f.spellId === "caltrops");
+  const count = spellAtRank(SPELLS.caltrops, SPELL_MAX_LEVEL).field!.count!;
+  check(traps.length === count, `armadilhas: ${traps.length} de ${count}`);
+  check(new Set(traps.map((f) => `${f.x},${f.y}`)).size === traps.length, "armadilhas no mesmo tile");
+  // Atordoado em cima da armadilha: ela confere o tile a cada pulso, e o monstro não sai andando antes.
+  const m = a.place(TARGET, traps[0].x - a.p.x, traps[0].y - a.p.y);
+  a.brain(m).stunnedUntil = a.now() + 2000;
+  m.stunned = true;
+  a.advance(500);
+  check(m.slowed && a.brain(m).dot?.kind === "bleed", "a armadilha não deixou lento e sangrando");
+});
+
 console.log(`\n${passed} ok, ${failures.length} falharam`);
 if (failures.length > 0) {
   for (const f of failures) console.log(`  - ${f}`);

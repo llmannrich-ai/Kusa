@@ -84,6 +84,11 @@ export class SpellAim {
     return this.manual;
   }
 
+  /** Ponto mirado à mão agora (null antes de sair da zona morta): a canalização vira o leque para ele. */
+  point(): CastAim | null {
+    return this.manual ? this.target() : null;
+  }
+
   /** Voltou para perto do botão depois de mirar: soltar agora não lança nada. */
   get cancelled() {
     return this.manual && Math.hypot(this.drag.x, this.drag.y) <= DEADZONE_PX;

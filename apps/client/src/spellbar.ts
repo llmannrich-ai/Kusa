@@ -43,6 +43,11 @@ interface SlotView {
   key: string;
 }
 
+/** Canalizar: de quanto em quanto tempo o arrasto manda a nova direção do leque ao servidor. */
+const CHANNEL_AIM_MS = 80;
+/** Canalizar: soltar antes disto (sem arrastar) é toque rápido, e o sopro vai até o fim. */
+const CHANNEL_TAP_MS = 250;
+
 /**
  * Botões dos 2 slots de magia (acima do ⚔️, na zona do polegar direito) e a janela de escolha
  * (cartas acima do personagem) que abre quando ele alcança o nível de um slot. Magia com alvo (única ou de área) mira
@@ -54,6 +59,11 @@ export class SpellBar {
   private chooser: ChoiceCards | null = null;
   /** Slot mirando agora e o dedo que segura o botão. */
   private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
+  /**
+   * Magia canalizada em curso (Sopro Gélido): já saiu ao encostar no botão. Arrastar vira o leque (mandado a cada
+   * `CHANNEL_AIM_MS`); soltar encerra, menos no toque rápido, que deixa o sopro ir até o fim para a frente.
+   */
+  private channeling: { startedAt: number; sentAt: number; moved: boolean } | null = null;
 
   /**
    * A escolha de magia tem prioridade: o nível que abre um slot não dá melhoria, e uma melhoria que
@@ -143,6 +153,11 @@ export class SpellBar {
     const spell = p && rankedSpell(p, spellIn(p, slot));
     const ready = performance.now() >= this.slots[slot].readyAt;
     if (!p || !spell || spell.aim === "self" || !ready || p.mana < spellManaCost(spell, p.classId, p.maxMana)) return this.press(slot);
+    // Canalizar: sai na hora, para a frente do herói; o arrasto vira o leque enquanto o dedo segura.
+    if (spell.channel) {
+      this.room.send(MSG.cast, { slot });
+      this.channeling = { startedAt: performance.now(), sentAt: 0, moved: false };
+    }
     // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
     this.slots[slot].button.setPointerCapture(e.pointerId);
     this.aiming = { slot, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY };
@@ -154,6 +169,17 @@ export class SpellBar {
     const a = this.aiming;
     if (!a || e.pointerId !== a.pointerId) return;
     this.aim.move(e.clientX - a.x0, e.clientY - a.y0);
+    const c = this.channeling;
+    if (c) {
+      const point = this.aim.point();
+      const now = performance.now();
+      if (point && now - c.sentAt >= CHANNEL_AIM_MS) {
+        this.room.send(MSG.channel, { x: point.x, y: point.y });
+        c.sentAt = now;
+        c.moved = true;
+      }
+      return;
+    }
     this.slots[a.slot].button.dataset.aim = this.aim.cancelled ? "cancel" : "on";
   }
 
@@ -163,6 +189,14 @@ export class SpellBar {
     if (!a || e.pointerId !== a.pointerId) return;
     this.aiming = null;
     delete this.slots[a.slot].button.dataset.aim;
+    const c = this.channeling;
+    if (c) {
+      // Segurou ou arrastou: soltar encerra o sopro. Toque rápido: o sopro vai até o fim, para a frente.
+      this.channeling = null;
+      this.aim.stop();
+      if (c.moved || performance.now() - c.startedAt >= CHANNEL_TAP_MS) this.room.send(MSG.channel, { stop: true });
+      return;
+    }
     const result = this.aim.finish();
     if (result && !aborted) this.room.send(MSG.cast, { slot: a.slot, ...result });
   }

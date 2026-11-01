@@ -405,7 +405,10 @@ export class CombatFx {
       case "dark_wail":
       case "pack_roar":
       case "pollen_breeze":
+      case "frost_breath":
         return;
+      // Abrolhos: as armadilhas aparecem pelo estado (campos); aqui só o arremesso.
+      case "caltrops": return this.sparks(from, 0xa4b0be, 6);
       case "arrow_fan": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf5deb3, glow: 0xf1c40f });
       case "lightning_fan":
         this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.9 });

@@ -18,7 +18,7 @@ import {
   type BagDropMessage,
   type ScreenMessage,
   type BagEquipMessage,
-  type CastMessage,
+  type CastMessage, type ChannelMessage,
   type ChoosePerkMessage,
   type ChooseRuneMessage,
   type ChooseSpellMessage,
@@ -105,6 +105,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.onMessage(MSG.choosePerk, (client, msg: ChoosePerkMessage) => this.hunt.choosePerk(client.sessionId, msg));
     this.onMessage(MSG.chooseRune, (client, msg: ChooseRuneMessage) => this.hunt.chooseRune(client.sessionId, msg));
     this.onMessage(MSG.cast, (client, msg: CastMessage) => this.hunt.cast(client.sessionId, msg));
+    this.onMessage(MSG.channel, (client, msg: ChannelMessage) => this.hunt.channel(client.sessionId, msg));
     this.onMessage(MSG.drink, (client, msg: DrinkMessage) => this.hunt.drink(client.sessionId, msg));
     this.onMessage(MSG.bagEquip, (client, msg: BagEquipMessage) => this.hunt.bagEquip(client.sessionId, msg));
     this.onMessage(MSG.unequip, (client, msg: UnequipMessage) => this.hunt.unequip(client.sessionId, msg));

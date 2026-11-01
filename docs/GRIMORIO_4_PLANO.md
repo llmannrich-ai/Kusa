@@ -508,7 +508,7 @@ jogador em cada passo e não deixar código sem uso.
 |---|---|---|---|---|
 | **1. Passivas de ouro** ✅ | `kind: "gift"`, os **12 Dons do topo** com o efeito por nível, Áureas e Tomos até 20, `buy_talent_levels`, menu, migration, teste `dons` | — | M–G | resolve o ouro parado já; não depende de nada |
 | **2a. Motor de leque** ✅ | L1 (abertura), L2 (onda), L3 (projéteis em leque), desenho de sopro, mira com ângulo, o desenho novo das 3 magias de leque atuais e as **11 magias em leque** das costelas novas que só dependem disso | — | G | é o pedido mais visível; as magias dão uso ao motor desde o primeiro PR |
-| **2b. Canalizar e varredura** | L4 (canalizar, o "cuspir fogo" de segurar e arrastar), L5 (varredura), A6 (várias armadilhas), Sopro Gélido e Abrolhos | 2a | M | completa as 13 magias de leque das costelas |
+| **2b. Canalizar** ✅ | L4 (canalizar, o "cuspir fogo" de segurar e arrastar), A6 (várias armadilhas), Sopro Gélido e Abrolhos | 2a | M | completa as 13 magias de leque das costelas |
 | **3. Slot 3** | abrir o slot (5.2), as 4 magias de entrada, os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
 | **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado, os 24 **Dons da costela de passivas** e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
@@ -541,6 +541,15 @@ plano:
   Lamento Sombrio não enfraquecem (A2 ainda não existe): lentidão de 30% e roubo de 25%; Brisa de Pólen cura 30%;
 - onda: cada passo atinge todos os anéis por onde a onda já passou (o monstro que vinha na direção do herói escapava);
 - telemetria: `stats.fanHits`; teste novo `leque`; migration `20261102010000_magias_em_leque.sql`.
+
+**Fase 2b, como foi entregue:** canalizar (L4) e várias armadilhas (A6), com o Sopro Gélido e os Abrolhos. A varredura
+(L5) foi para a fase 3, junto com a única magia que a usa (Ceifa do Campeão). Diferenças:
+- mensagem nova `MSG.channel` (girar o leque e soltar): muda `messages.ts`, então a `RULES_VERSION` muda e os clientes
+  antigos recarregam;
+- Sopro Gélido: em vez de "lentidão que cresce", 40% de lentidão a cada pulso e congelar depois de 6 pulsos seguidos
+  (Maestria: 4); o Estilhaçar do Criomante solta o congelado no pulso seguinte (combo de propósito);
+- Abrolhos saem da Áurea Sagrada (Batedor), não da Chuva de Flechas;
+- migration `20261102020000_canalizar_e_abrolhos.sql`.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).

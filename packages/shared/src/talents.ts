@@ -254,7 +254,7 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["double_shot", 0, 3, "piercing_shot", -1], ["barbed_arrow", 0, 4, "double_shot", -2],
     ["sunbeam", 1, 2, "hp", 1], ["holy_hammer", 1, 4, "sunbeam", 1, "blessed_ward"],
     ["net_arrow", 2, 2, "arrow_rain", -1], ["fire_arrows", 2, 4, "speed", 1],
-    ["arrow_fan", 0, 3, "piercing_shot", 1], ["holy_flash", 1, 3, "healing_light", -1],
+    ["arrow_fan", 0, 3, "piercing_shot", 1], ["holy_flash", 1, 3, "healing_light", -1], ["caltrops", 2, 3, "mana", 1],
   ],
   sorcerer: [
     ["spark", 0, 3, "lightning_bolt", -1], ["ember_rain", 0, 4, "spark", -2],
@@ -262,6 +262,7 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["frostbite", 1, 3, "frost_nova", 1], ["frozen_orb", 1, 4, "frostbite", 1, "ice_lance"],
     ["dark_seal", 2, 2, "void_storm", -1], ["plague", 2, 4, "drain_life", 1],
     ["fire_spit", 0, 3, "lightning_bolt", 1], ["lightning_fan", 0, 4, "fire_spit", 1], ["dark_wail", 2, 3, "hp", -1],
+    ["frost_breath", 1, 3, "frost_nova", -1],
   ],
   druid: [
     ["howl", 0, 3, "spirit_wolf", 1],
