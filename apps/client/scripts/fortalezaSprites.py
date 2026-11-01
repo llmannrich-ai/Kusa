@@ -39,6 +39,9 @@ CHAOS = {
     "chao-terra": {"media": (127, 101, 71), "forca": 0.4, "tiles": 4},
     # O travertino creme é o que se pediu (as lajes antigas eram cinza): a cor quase não muda.
     "chao-lajes": {"media": (160, 128, 94), "forca": 0.5, "tiles": 4},
+    # Interiores: a cor fica a do ChatGPT (não há chão antigo para casar; só se vê com o telhado sumido).
+    "chao-salao": {"media": (87, 72, 64), "forca": 0, "tiles": 4},
+    "chao-tabuas": {"media": (90, 54, 37), "forca": 0, "tiles": 4},
 }
 
 ROOT = Path(__file__).resolve().parents[3]

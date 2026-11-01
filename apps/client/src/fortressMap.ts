@@ -3,7 +3,7 @@ import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "
 import { hash, makeCanvas } from "./art/pixels.ts";
 import { TileAtlas, toCanvas } from "./art/duneArt.ts";
 import {
-  HD, OPEN, bushTile, cryptFloorTile, flatDecor, quarter, shadeEdge,
+  HD, OPEN, bushTile, flatDecor, quarter, shadeEdge,
   type FlatDecor,
 } from "./art/empireArt.ts";
 import {
@@ -16,7 +16,7 @@ import {
   stakeSprite, throneSprite,
 } from "./art/fortressArt.ts";
 import { canopyTile, waterTile } from "./art/forestArt.ts";
-import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, CHAO_LAJES, CHAO_TERRA, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
+import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, CHAO_LAJES, CHAO_SALAO, CHAO_TABUAS, CHAO_TERRA, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
 import { GLOW, MIST, SpriteSheet, createGlowArt, single } from "./gatesMap.ts";
 import { ChunkCuller, focusTile, patchTint, type MapAmbience } from "./mapShared.ts";
 
@@ -131,6 +131,27 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     return into.frame(`${name}${tx}-${ty}`, () => tex.tile(tx, ty));
   };
   const grassFrame = (x: number, y: number, into = atlas) => groundFrame("capim", CHAO_CAPIM, x, y, into);
+  /**
+   * Basalto com a beira coberta pela terra do acampamento ou pelas lajes do pátio vizinhos, montado já pronto no atlas:
+   * as três texturas repetem a cada 4 tiles, então o pedaço é o mesmo (x mod 4, y mod 4) nas três e os quadros são
+   * poucos (cerca de 64). Sai mais barato que outra camada com máscara (que no iPhone cresce com a tela).
+   */
+  const basaltFrame = (x: number, y: number) => {
+    const terra = mask(x, y, (a, b) => inGrid(a, b) && camp(a, b) && solid(a, b));
+    const lajes = mask(x, y, (a, b) => inGrid(a, b) && plaza(a, b) && solid(a, b));
+    if (!terra && !lajes) return groundFrame("basalto", CHAO_BASALTO, x, y);
+    const p = CHAO_BASALTO.period, tx = ((x % p) + p) % p, ty = ((y % p) + p) % p;
+    return atlas.frame(`basalto${tx}-${ty}-t${terra}-l${lajes}`, () => {
+      const out = CHAO_BASALTO.tile(tx, ty);
+      for (const [bits, tex] of [[terra, CHAO_TERRA], [lajes, CHAO_LAJES]] as const) {
+        if (!bits) continue;
+        const shape = grassMask(bits), q = tex.period;
+        const over = tex.tile(((x % q) + q) % q, ((y % q) + q) % q);
+        for (let k = 0; k < shape.length; k += 4) if (shape[k + 3]) { out[k] = over[k]; out[k + 1] = over[k + 1]; out[k + 2] = over[k + 2]; }
+      }
+      return out;
+    });
+  };
 
   /** O vale: capim, rios serpenteando (as curvas de nível de um ruído suave) e manchas de mata. */
   const valleyWater = (x: number, y: number) => Math.abs(field(x, y, 8, 201) - 0.5) < 0.05 || field(x, y, 13, 203) < 0.07;
@@ -220,17 +241,13 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         ground[i] = atlas.frame(`rope${side}-${v}`, () => ropeBridgeTile(side, v).render(false));
         continue;
       } else if (hall(x, y) || inKeep(x, y)) {
-        const q = quarter(x, y);
-        ground[i] = atlas.frame(`hall${q}`, () => cryptFloorTile(q, 1).render(false));
+        ground[i] = groundFrame("salao", CHAO_SALAO, x, y);
       } else if (roomInside(x, y)) {
-        const q = quarter(x, y);
-        ground[i] = atlas.frame(`room${q}`, () => cryptFloorTile(q, 0).render(false));
+        ground[i] = groundFrame("tabuas", CHAO_TABUAS, x, y);
       } else if (plaza(x, y)) {
         ground[i] = groundFrame("lajes", CHAO_LAJES, x, y);
-      } else if (road(x, y)) {
-        ground[i] = groundFrame("basalto", CHAO_BASALTO, x, y);
-      } else if (yard(x, y)) {
-        ground[i] = groundFrame("basalto", CHAO_BASALTO, x, y);
+      } else if (road(x, y) || yard(x, y)) {
+        ground[i] = basaltFrame(x, y);
       } else if (camp(x, y)) {
         ground[i] = groundFrame("terra", CHAO_TERRA, x, y);
       } else ground[i] = grassFrame(x, y);
@@ -343,7 +360,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   layer("sombra-vale", voidShade, floorDepth - 1);
   // As texturas do ChatGPT (capim, basalto) já variam sozinhas: vão sem as manchas de luz, para a camada de capim da
   // borda casar pixel a pixel com o capim de baixo.
-  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || camp(x, y) || plaza(x, y) || (!paved(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
+  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || camp(x, y) || plaza(x, y) || hall(x, y) || inKeep(x, y) || roomInside(x, y) || (!paved(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
   layer("chao", ground, floorDepth, (x, y) => (plainTexture(x, y) ? 0xffffff : patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67)));
   // Por cima do chão vem a camada de capim das bordas (`floorDepth + 0.001`), e por cima dela as beiradas, sombras e
   // enfeites (que ela não pode esconder).

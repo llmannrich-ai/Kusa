@@ -16,6 +16,8 @@ desenho) e esta pasta fica só com a imagem.
 | Chão C2: basalto | `chao-basalto.png` (1254 px) | `chao-basalto.webp` (4×4 tiles, pedras menores, escolha do Leonardo; a comparação com 8×8 está em `no-jogo-basalto-A-B.png`) | ✅ a estrada, as ruas e o calçamento quebrado dos pátios |
 | Chão C3: terra | `chao-terra.png` (1254 px) | `chao-terra.webp` (4×4 tiles, cor média puxada 40% para a terra antiga) | ✅ os acampamentos; o capim cobre a beira dela como cobre a do calçamento |
 | Chão C4: lajes | `chao-lajes.png` (1254 px) | `chao-lajes.webp` (4×4 tiles: cada laje com ~1 tile de largura e meio de altura; a cor quase não muda, o travertino creme é o pedido) | ✅ o pátio do esporão e o terraço da torre de menagem (o terraço num tom mais frio e escuro, para se separar do pátio) |
+| Chão C5: salão | `chao-salao.png` | `chao-salao.webp` (4×4 tiles, uma laje por tile, cor do ChatGPT) | ✅ o salão do trono |
+| Chão C6: tábuas | `chao-tabuas.png` | `chao-tabuas.webp` (4×4 tiles, cor do ChatGPT) | ✅ o chão das casernas |
 
 Para refazer depois de trocar o original: `python3 apps/client/scripts/fortalezaSprites.py acampamento` (ou
 `chao-capim`; os chãos ficam em `CHAOS`) (tira o magenta e o
@@ -30,5 +32,6 @@ lóbulos de 25% a 45% do tile e tufos), no filtro de máscara do Phaser 4. A má
 câmera invisível de meio tamanho que acompanha a principal; ela é uma `TilemapGPULayer` (sem frestas entre tiles), com
 um atlas próprio sem margem e o quadro 0 vazio, e os tiles de capim em volta da borda levam a máscara cheia (a fresta
 que sobrar mostra o capim de baixo). A borda é o próprio capim do vizinho, sem
-degrau de tile (`no-jogo-bordas.png`). A terra do acampamento e as lajes ganham o mesmo quando as texturas delas
-chegarem.
+degrau de tile (`no-jogo-bordas.png`). A terra do acampamento e as lajes cobrem a beira do basalto de outro jeito, mais
+barato: como as três texturas repetem a cada 4 tiles, o tile de basalto da borda é montado já pronto no atlas (o pedaço
+de basalto com o de terra ou de lajes recortado pelo mesmo formato de borda), cerca de 64 quadros, sem filtro.

@@ -3,6 +3,8 @@ import acampamentoFrames from "./fortaleza/acampamento.json";
 import basaltoUrl from "./fortaleza/chao-basalto.webp";
 import capimUrl from "./fortaleza/chao-capim.webp";
 import lajesUrl from "./fortaleza/chao-lajes.webp";
+import salaoUrl from "./fortaleza/chao-salao.webp";
+import tabuasUrl from "./fortaleza/chao-tabuas.webp";
 import terraUrl from "./fortaleza/chao-terra.webp";
 import { HD } from "../paint.ts";
 
@@ -80,3 +82,9 @@ export const CHAO_TERRA = await loadGround(terraUrl);
 
 /** Lajes de travertino (o pátio do esporão e o terraço da torre de menagem). */
 export const CHAO_LAJES = await loadGround(lajesUrl);
+
+/** Lajes escuras do salão do trono (dentro da torre de menagem). */
+export const CHAO_SALAO = await loadGround(salaoUrl);
+
+/** Assoalho de tábuas das casernas. */
+export const CHAO_TABUAS = await loadGround(tabuasUrl);
