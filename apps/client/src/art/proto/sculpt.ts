@@ -54,9 +54,10 @@ export interface Material {
   /**
    * Ataduras: faixas em espiral em volta da forma (só elipsoides), cada uma num tom; `width` é a largura (unidades),
    * `tilt` quanto a espiral sobe por volta, `crease` o vinco escuro entre faixas, `vary` a diferença de tom entre elas e
-   * `gap` a chance de um pedaço de faixa faltar, mostrando o material `gapMat` por baixo.
+   * `gap` a chance de um pedaço de faixa faltar, mostrando o material `gapMat` por baixo; com `stripe`, as faixas
+   * alternam entre este material e o `gapMat` (listras do toucado).
    */
-  wrap?: { width: number; tilt: number; crease: number; vary: number; gap?: number; gapMat?: number };
+  wrap?: { width: number; tilt: number; crease: number; vary: number; gap?: number; gapMat?: number; stripe?: boolean };
   /** Brilho próprio (olhos que acendem): o tom fixo, sem luz nem sombra. */
   emit?: number;
 }
@@ -166,6 +167,34 @@ export class Sculpt {
   }
 }
 
+// --- Movimento fino ------------------------------------------------------------------------------------------
+
+const ease = (t: number) => t * t * (3 - 2 * t);
+function mix<P extends object>(a: P, b: P, t: number): P {
+  const out: Record<string, unknown> = {};
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const x = (a as Record<string, unknown>)[k], y = (b as Record<string, unknown>)[k];
+    if (typeof x === "number" && typeof y === "number") out[k] = +(x + (y - x) * t).toFixed(3);
+    else if (Array.isArray(x) && Array.isArray(y)) out[k] = (x as number[]).map((v, i) => +(v + ((y as number[])[i] - v) * t).toFixed(3));
+    else out[k] = t < 0.5 ? x ?? y : y ?? x;
+  }
+  return out as P;
+}
+
+/**
+ * Movimento fino: `n` poses entre as poses-chave `keys`, com o meio suavizado (entra e sai devagar). Em laço (`loop`),
+ * a última volta para a primeira e as `n` cobrem o ciclo; senão vão da primeira à última. Campos que faltam numa pose
+ * usam o da vizinha; só números (e listas de números) se misturam.
+ */
+export function tween<P extends object>(keys: readonly P[], n: number, loop = false): P[] {
+  const segs = loop ? keys.length : keys.length - 1;
+  return Array.from({ length: n }, (_, i) => {
+    const u = loop ? (i / n) * segs : (i / Math.max(1, n - 1)) * segs;
+    const k = Math.min(segs - 1, Math.floor(u));
+    return mix(keys[k], keys[(k + 1) % keys.length], ease(u - k));
+  });
+}
+
 // --- Câmera e quadro ---------------------------------------------------------------------------------------------
 
 export interface Shot {
@@ -181,6 +210,8 @@ export interface Shot {
   yaw: number;
   /** Inclinação da câmera (graus acima do horizonte). */
   pitch: number;
+  /** Corta no chão: o que fica abaixo de y = 0 some (o verme mergulhando e saindo da areia). */
+  ground?: boolean;
 }
 
 export interface Look {
@@ -364,6 +395,8 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
   const owner = new Int32Array(N).fill(-1);
   raster(shapes.map((x) => x.s), S, S, cx, shot.feet, (i, si, hit) => {
     if (hit.z <= zbuf[i]) return;
+    // Altura no modelo do ponto atingido (y da tela e profundidade de volta ao modelo): abaixo do chão, some.
+    if (shot.ground && ((shot.feet - (Math.floor(i / S) + 0.5)) * cp + hit.z * sp) / scale < -0.05) return;
     zbuf[i] = hit.z; owner[i] = si; alongBuf[i] = hit.along;
     nrm[i * 3] = hit.nx; nrm[i * 3 + 1] = hit.ny; nrm[i * 3 + 2] = hit.nz;
     loc[i * 3] = hit.lx / scale; loc[i * 3 + 1] = hit.ly / scale; loc[i * 3 + 2] = hit.lz / scale;
@@ -492,7 +525,8 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
         t += (hb - 0.5) * w.vary;
         if (f < 0.18) t -= w.crease * (1 - f / 0.18);
         else if (f > 0.9) t += w.crease * 0.35;
-        if (w.gap && w.gapMat !== undefined && hash3(band, sh.part, Math.floor((ang + 0.5) * 4)) < w.gap && f > 0.12) gapped = true;
+        if (w.stripe && w.gapMat !== undefined && (band & 1)) gapped = true;
+        else if (w.gap && w.gapMat !== undefined && hash3(band, sh.part, Math.floor((ang + 0.5) * 4)) < w.gap && f > 0.12) gapped = true;
       }
       if (gapped) mi = m.wrap!.gapMat!;
       if (m.emit !== undefined) t = m.emit + (0.5 - Math.abs(nz - 0.5)) * 0.1;
@@ -505,7 +539,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       // Pontilhado só onde o tom muda de cor.
       const ramp = ramps[mi];
       const k = ramp.length - 1;
-      if (gapped) t -= 0.15;
+      if (gapped && !m.wrap?.stripe) t -= 0.15;
       const td = Math.min(1, Math.max(0, t)) * k + BAYER[(py & 3) * 4 + (px & 3)] * 0.55;
       const idx = Math.min(k, Math.max(0, Math.round(td)));
       tone[i] = t;

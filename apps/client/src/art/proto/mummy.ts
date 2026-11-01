@@ -1,4 +1,4 @@
-import { SCULPT_SIZE, Sculpt, render as renderSculpt, rot, v3, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
+import { SCULPT_SIZE, Sculpt, render as renderSculpt, rot, turn, v3, tween, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
 
 /**
  * Múmia esculpida por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): humanoide grande e curvado, todo em ataduras de
@@ -8,7 +8,7 @@ import { SCULPT_SIZE, Sculpt, render as renderSculpt, rot, v3, type Frame, type 
  * mais baixo encosta sozinho no chão. Olha para a esquerda (x negativo).
  */
 
-const M = { linen: 0, flesh: 1, gold: 2, lapis: 3, eye: 4, socket: 5, strip: 6 } as const;
+const M = { linen: 0, flesh: 1, gold: 2, lapis: 3, eye: 4, socket: 5, strip: 6, nemes: 7, robe: 8, curse: 9 } as const;
 
 function look(): Look {
   const materials: Material[] = [];
@@ -23,6 +23,10 @@ function look(): Look {
   materials[M.eye] = { ramp: ["#1d4a16", "#3f8a2c", "#7fd36b", "#c4f7a6", "#f4fff0"], emit: 0.8 };
   materials[M.socket] = { ramp: ["#050302", "#0d0705", "#170d08", "#24150d"], bias: -0.2 };
   materials[M.strip] = { ramp: ["#211b16", "#3a322a", "#574c3f", "#776a57", "#978a71", "#b4a98d", "#cfc6aa", "#e2dbc4"], grain: 0.15, grainSize: 0.6, lineDepth: 0.5, bias: 0.12 };
+  // Sacerdote: toucado listrado de ouro e lápis, saiote de linho claro e a luz verde da maldição no ankh.
+  materials[M.nemes] = { ramp: materials[M.gold].ramp, gloss: 1, shine: 22, lineDepth: 0.6, wrap: { width: 1.3, tilt: 0, crease: 0.15, vary: 0, gapMat: M.lapis, stripe: true } };
+  materials[M.robe] = { ramp: ["#2a241d", "#463d33", "#685d4f", "#8c806e", "#b0a48f", "#cdc3ad", "#e6dfcc", "#f6f1e4"], grain: 0.1, grainSize: 0.8, lineDepth: 1, wrap: { width: 1.6, tilt: 0, crease: 0.25, vary: 0.08 } };
+  materials[M.curse] = { ramp: ["#1d4a16", "#3f8a2c", "#7fd36b", "#c4f7a6", "#f4fff0"], emit: 0.7 };
   return {
     materials, outline: "#140c07", bounce: { color: "#f0b46a", power: 0.5 }, occlusion: 0.6,
     shadow: 0.7, rim: { color: "#ffe3a8", power: 0.45 },
@@ -51,6 +55,9 @@ export interface MPose {
   glare?: number;
   /** Morte: cai para a frente (graus em volta dos pés). */
   fall?: number;
+  /** Sacerdote: inclinação do cajado (graus; 0 = de pé, positivo = para a frente) e a luz da maldição no ankh (0..1). */
+  staff?: number;
+  curse?: number;
 }
 
 const D2R = Math.PI / 180;
@@ -60,7 +67,8 @@ const THIGH = 13, SHIN = 13;
 /** Ponto do membro: `len` na direção do ângulo (0 = para baixo, positivo = para a frente, −x). */
 const swing = (o: V3, deg: number, len: number, z = 0): V3 => v3.add(o, [-Math.sin(deg * D2R) * len, -Math.cos(deg * D2R) * len, z]);
 
-export function mummy(p: MPose = {}): Sculpt {
+/** Múmia (ou, com `priest`, o Sacerdote Mumificado: toucado, saiote, cajado com ankh). */
+export function mummy(p: MPose = {}, priest = false): Sculpt {
   const sc = new Sculpt();
   const thigh = p.thigh ?? [4, -4], knee = p.knee ?? [8, 8];
   // Altura do quadril: o tornozelo mais baixo fica a 2.4 do chão.
@@ -102,6 +110,10 @@ export function mummy(p: MPose = {}): Sculpt {
     const top = at(-4.6 - Math.abs(k) * 0.1, 2.8, k * 0.95), bottom = at(-5.2 - (p.sway ?? 0) * 0.05, -4.2 + Math.abs(k) * 0.5, k * 1.05);
     sc.seg(top, bottom, 0.35, 0.55, k % 2 ? M.gold : M.lapis, { up: [1, 0, 0], over: 0.2 });
   }
+  if (priest) {
+    // Saiote de linho claro, de pregas, até os joelhos.
+    sc.cone(at(0.3, 3), at(-0.4 - (p.sway ?? 0) * 0.05, -6.5), 4.8, 6, M.robe);
+  }
   // Escaravelho de lápis com asas de ouro no peito.
   sc.ell(at(-5, 12.5, 0), [0.8, 1.6, 1.3], M.lapis);
   for (const s of [1, -1]) sc.seg(at(-4.8, 12.8, s * 0.8), at(-4.5, 13.6, s * 3.2), 0.45, 0.9, M.gold, { up: [1, 0, 0] });
@@ -127,7 +139,15 @@ export function mummy(p: MPose = {}): Sculpt {
   const glare = p.glare ?? 0;
   for (const s of [1, -1]) sc.ball(v3.add(head, [-4.7, 0.6, s * 1.65]), 0.75 + glare * 0.5, M.eye);
   sc.ell(v3.add(head, [-4.4, -3.4, 0]), [0.9, 0.6, 1.6], M.socket, { part: skull });
-  strip(sc, v3.add(head, [3.5, 1.5, -1.5]), (p.sway ?? 0) * 1.2, 3);
+  if (priest) {
+    // Toucado (nemes): pano listrado por cima e atrás da cabeça, as abas caindo nos ombros e a cobra na testa.
+    const nemes = sc.part();
+    sc.ell(v3.add(head, [1.9, 1.6, 0]), [5.2, 4.8, 5.3], M.nemes, { part: nemes, axes: [[0, 1, 0], [-1, 0, 0], [0, 0, 1]] });
+    sc.ell(v3.add(head, [3.8, -3.2, 0]), [3.4, 3.4, 4.4], M.nemes, { part: nemes, axes: [[0, 1, 0], [-1, 0, 0], [0, 0, 1]] });
+    for (const s of [1, -1]) sc.seg(v3.add(head, [0.2, 0, s * 4.6]), v3.add(head, [-0.8, -10, s * 5.2]), 0.6, 2.2, M.nemes, { part: nemes, up: [0, 0, s] });
+    sc.cone(v3.add(head, [-4.3, 4.2, 0]), v3.add(head, [-5.6, 5.8, 0]), 0.75, 0.45, M.gold);
+    sc.ball(v3.add(head, [-5.8, 6.1, 0]), 0.7, M.gold);
+  } else strip(sc, v3.add(head, [3.5, 1.5, -1.5]), (p.sway ?? 0) * 1.2, 3);
   sc.pop();
 
   // --- Braços (o de lá primeiro não importa: o z decide) ---
@@ -150,6 +170,24 @@ export function mummy(p: MPose = {}): Sculpt {
       const f1 = v3.add(f0, v3.add(v3.mul(fd, 2.2), [0, -0.9, 0]));
       sc.cone(f0, f1, 0.6, 0.45, M.flesh, { part });
       sc.cone(f1, v3.add(f1, [-0.4, -1.5, 0]), 0.45, 0.25, M.flesh, { part });
+    }
+    // Cajado do sacerdote na mão de cá: haste escura com o ankh de ouro no alto, que brilha na maldição.
+    if (priest && k === 0) {
+      const d = turn(rot("z", p.staff ?? 0), [0, 1, 0]);
+      const grip = v3.add(hand, [0, 0, 1.6]);
+      const bottom = v3.add(grip, v3.mul(d, -17)), top = v3.add(grip, v3.mul(d, 19));
+      const sp = sc.part();
+      sc.cone(bottom, top, 0.7, 0.8, M.socket, { part: sp });
+      sc.cone(v3.add(grip, v3.mul(d, -1.2)), v3.add(grip, v3.mul(d, 1.6)), 1, 1, M.gold, { part: sp });
+      const side = turn(rot("z", p.staff ?? 0), [1, 0, 0]);
+      sc.cone(v3.add(top, v3.mul(side, -2.6)), v3.add(top, v3.mul(side, 2.6)), 0.75, 0.75, M.gold, { part: sp });
+      const loop = v3.add(top, v3.mul(d, 2.6));
+      for (let q = 0; q < 10; q++) {
+        const a = (q / 10) * Math.PI * 2;
+        sc.ball(v3.add(loop, v3.add(v3.mul(d, Math.cos(a) * 2.2), v3.mul(side, Math.sin(a) * 1.6))), 0.6, M.gold, sp);
+      }
+      const curse = p.curse ?? 0;
+      if (curse > 0) sc.ball(loop, 0.8 + curse * 2.6, M.curse);
     }
     // Faixa solta pendurada do antebraço.
     strip(sc, v3.add(lerp(el, wr, 0.55), [0, -1.5, s * 1.5]), (p.sway ?? 0) + k * 8, 3 + k);
@@ -181,39 +219,76 @@ const PITCH = 28;
 const SCALE = 1.75;
 const YAW: Record<View, number> = { side: 18, front: 90, back: -90 };
 
-export function shootMummy(pose: MPose, view: View): Frame {
+export function shootMummy(pose: MPose, view: View, priest = false): Frame {
   const cx = view === "side" ? SCULPT_SIZE / 2 + 8 : SCULPT_SIZE / 2;
-  return renderSculpt(mummy(pose), { size: SCULPT_SIZE, feet: MUMMY_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look());
+  return renderSculpt(mummy(pose, priest), { size: SCULPT_SIZE, feet: MUMMY_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look());
 }
 
 /** Poses de perfil: arrasta os pés com os braços esticados, esmaga com os dois braços, encara (olhos acesos) e desaba. */
+/** Pose completa (a interpolação só mistura o que as duas poses têm). */
+const DEF: MPose = { lean: 10, x: 0, thigh: [4, -4], knee: [8, 8], arm: [70, 60], elbow: [10, 14], spread: 0, nod: 0, sway: 0, glare: 0, fall: 0, staff: 0, curse: 0 };
+const K = (p: MPose): MPose => ({ ...DEF, ...p });
+
 export const MUMMY_POSES = {
-  idle: [0, 1, 2, 1].map((k): MPose => ({ lean: 12 + k * 0.6, arm: [62 + k * 3, 54 + k * 2], elbow: [16, 20], nod: 6 - k, sway: k * 3 })),
+  idle: tween([0, 1, 2].map((k): MPose => K({ lean: 12 + k * 0.8, arm: [62 + k * 4, 54 + k * 3], elbow: [16 - k, 20 - k], nod: 6 - k * 1.5, sway: k * 4 - 3 })), 6, true),
   // Andar arrastado: uma perna dura, a outra puxa; braços esticados para a frente.
-  walk: [
+  walk: tween(([
     { lean: 15, thigh: [22, -12], knee: [6, 22], arm: [84, 76], elbow: [4, 10], sway: -6, nod: 4 },
     { lean: 13, thigh: [6, 2], knee: [4, 30], arm: [80, 82], elbow: [6, 6], sway: 0, nod: 6 },
     { lean: 15, thigh: [-12, 20], knee: [22, 6], arm: [76, 84], elbow: [10, 4], sway: 6, nod: 4 },
     { lean: 13, thigh: [2, 6], knee: [30, 4], arm: [82, 80], elbow: [6, 6], sway: 0, nod: 6 },
-  ] satisfies MPose[],
+  ] satisfies MPose[]).map(K), 8, true),
   // Golpe: ergue os dois braços e desce esmagando.
-  attack: [
+  attack: tween(([
     { lean: -6, arm: [165, 158], elbow: [20, 26], nod: -10, sway: -8, thigh: [8, -6], knee: [6, 6] },
     { lean: 8, arm: [120, 114], elbow: [6, 10], nod: -2, sway: -4, thigh: [14, -8], knee: [10, 8] },
     { lean: 30, x: -2, arm: [48, 42], elbow: [0, 4], nod: 12, sway: 10, thigh: [24, -14], knee: [26, 12] },
     { lean: 16, arm: [72, 66], elbow: [12, 16], nod: 6, sway: 4 },
-  ] satisfies MPose[],
+  ] satisfies MPose[]).map(K), 6),
   // Especial (Olhar Pavoroso): levanta a cabeça, abre os braços e os olhos acendem.
-  special: [
+  special: tween(([
     { lean: 2, arm: [100, 96], elbow: [10, 10], spread: 0.35, nod: -12, glare: 0.4 },
     { lean: -4, arm: [118, 112], elbow: [6, 6], spread: 0.6, nod: -8, glare: 1, sway: -6 },
     { lean: 4, arm: [112, 108], elbow: [6, 6], spread: 0.55, nod: -2, glare: 1, sway: 6 },
     { lean: 10, arm: [80, 72], elbow: [12, 14], spread: 0.15, nod: 4, glare: 0.35 },
-  ] satisfies MPose[],
+  ] satisfies MPose[]).map(K), 6),
   // Morte: tranco para trás, os joelhos dobram e desaba de cara no chão.
-  death: [
+  death: tween(([
     { lean: -18, arm: [140, 120], elbow: [30, 40], spread: 0.3, nod: -18, glare: 0.2, sway: -12 },
     { lean: 38, thigh: [50, 46], knee: [95, 90], arm: [40, 34], elbow: [20, 24], nod: 22, sway: 10 },
     { fall: 84, x: 30, lean: 0, thigh: [4, 0], knee: [10, 6], arm: [170, 165], elbow: [6, 6], spread: 0.15, nod: 8, sway: 20 },
-  ] satisfies MPose[],
+  ] satisfies MPose[]).map(K), 5),
+};
+
+/**
+ * Sacerdote Mumificado: o cajado fica de pé na mão de cá (o braço segura em vez de esticar), golpeia com ele de cima
+ * para baixo e, no especial (Praga de Escaravelhos e Maldição da Tumba), ergue o ankh, que acende verde.
+ */
+export const PRIEST_POSES = {
+  idle: tween([0, 1, 2].map((k): MPose => K({ lean: 6 + k * 0.6, arm: [28 + k * 2, 50 + k * 3], elbow: [62, 20 - k], nod: 2 - k, sway: k * 4 - 3, staff: 4 + k })), 6, true),
+  walk: tween(([
+    { lean: 8, thigh: [20, -12], knee: [6, 20], arm: [34, 60], elbow: [58, 14], sway: -6, nod: 2, staff: 12 },
+    { lean: 7, thigh: [6, 2], knee: [4, 26], arm: [30, 56], elbow: [62, 16], sway: 0, nod: 3, staff: 6 },
+    { lean: 8, thigh: [-12, 20], knee: [20, 6], arm: [26, 50], elbow: [64, 18], sway: 6, nod: 2, staff: -2 },
+    { lean: 7, thigh: [2, 6], knee: [26, 4], arm: [30, 56], elbow: [62, 16], sway: 0, nod: 3, staff: 6 },
+  ] satisfies MPose[]).map(K), 8, true),
+  // Golpe: ergue o cajado com as duas mãos e bate de cima para baixo.
+  attack: tween(([
+    { lean: 6, arm: [28, 50], elbow: [62, 20], staff: 4 },
+    { lean: -10, arm: [150, 140], elbow: [30, 30], staff: -40, nod: -10, sway: -6 },
+    { lean: 24, x: -2, arm: [80, 76], elbow: [10, 12], staff: 95, nod: 10, sway: 8, thigh: [20, -12], knee: [20, 10] },
+    { lean: 10, arm: [40, 54], elbow: [50, 20], staff: 20 },
+  ] satisfies MPose[]).map(K), 6),
+  // Especial: ergue o ankh bem alto, os olhos e o ankh acendem verde, e aponta para a frente.
+  special: tween(([
+    { lean: 4, arm: [60, 70], elbow: [40, 20], staff: 0, curse: 0.2, glare: 0.3, nod: -4 },
+    { lean: -6, arm: [150, 120], elbow: [10, 20], spread: 0.25, staff: -8, curse: 0.8, glare: 1, nod: -14, sway: -8 },
+    { lean: 2, arm: [118, 110], elbow: [4, 10], spread: 0.3, staff: 30, curse: 1, glare: 1, nod: -6, sway: 6 },
+    { lean: 6, arm: [40, 54], elbow: [56, 20], staff: 6, curse: 0, glare: 0.2 },
+  ] satisfies MPose[]).map(K), 6),
+  death: tween(([
+    { lean: -18, arm: [120, 130], elbow: [30, 40], spread: 0.3, nod: -18, glare: 0.3, sway: -12, staff: -25 },
+    { lean: 38, thigh: [50, 46], knee: [95, 90], arm: [40, 34], elbow: [20, 24], nod: 22, sway: 10, staff: 40 },
+    { fall: 84, x: 30, lean: 0, thigh: [4, 0], knee: [10, 6], arm: [170, 165], elbow: [6, 6], spread: 0.15, nod: 8, sway: 20, staff: 90 },
+  ] satisfies MPose[]).map(K), 5),
 };

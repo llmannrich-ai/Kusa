@@ -2,14 +2,16 @@
  * Pré-visualização da arte esculpida por código (`src/art/proto/sculpt.ts`), sem navegador: gera a folha do Escorpião
  * da Areia em PNG, ampliada, e mede quanto cada quadro leva para sair.
  *
- *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia]
+ *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { SCORPION_POSES, SHELLS, shootScorpion } from "../src/art/proto/scorpion.ts";
 import { SCULPT_SIZE, type Frame, type View } from "../src/art/proto/sculpt.ts";
 import { VULTURE_POSES, shootVulture } from "../src/art/proto/vulture.ts";
-import { MUMMY_POSES, shootMummy } from "../src/art/proto/mummy.ts";
+import { ELEMENTAL_POSES, shootElemental } from "../src/art/proto/elemental.ts";
+import { WORM_POSES, WORM_SIZE, shootWorm } from "../src/art/proto/sandWorm.ts";
+import { MUMMY_POSES, PRIEST_POSES, shootMummy } from "../src/art/proto/mummy.ts";
 
 const out = process.argv[2] ?? "/tmp/escorpiao.png";
 const zoom = Number(process.argv[3] ?? 3);
@@ -18,6 +20,9 @@ const BICHOS = {
   negro: { poses: SCORPION_POSES, shoot: (p: object, v: View) => shootScorpion(p, v, SHELLS.black) },
   abutre: { poses: VULTURE_POSES, shoot: (p: object, v: View) => shootVulture(p, v) },
   mumia: { poses: MUMMY_POSES, shoot: (p: object, v: View) => shootMummy(p, v) },
+  elemental: { poses: ELEMENTAL_POSES, shoot: (p: object, v: View) => shootElemental(p, v) },
+  verme: { poses: WORM_POSES, shoot: (p: object, v: View) => shootWorm(p, v), size: WORM_SIZE },
+  sacerdote: { poses: PRIEST_POSES, shoot: (p: object, v: View) => shootMummy(p, v, true) },
 };
 const bicho = BICHOS[(process.argv[4] ?? "escorpiao") as keyof typeof BICHOS];
 
@@ -35,7 +40,7 @@ function png(w: number, h: number, rgba: Uint8Array) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
 
-const S = SCULPT_SIZE;
+const S = (bicho as { size?: number }).size ?? SCULPT_SIZE;
 const rows: { name: string; frames: Frame[] }[] = [];
 const times: number[] = [];
 const take = (pose: object, view: View) => {
@@ -45,7 +50,7 @@ const take = (pose: object, view: View) => {
   return f;
 };
 const P = bicho.poses as Record<string, readonly object[]>;
-for (const [clip, poses] of Object.entries(P)) rows.push({ name: clip, frames: poses.map((p) => take(p, "side")) });
+for (const [clip, poses] of Object.entries(P)) if (poses) rows.push({ name: clip, frames: poses.map((p) => take(p, "side")) });
 rows.push({ name: "front", frames: [P.idle[0], ...P.walk].map((p) => take(p, "front")) });
 rows.push({ name: "back", frames: [P.idle[0], ...P.walk].map((p) => take(p, "back")) });
 
