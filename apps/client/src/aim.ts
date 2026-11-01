@@ -65,11 +65,25 @@ export class SpellAim {
     return this.spell !== null;
   }
 
+  /**
+   * Começa uma mira e devolve o número dela. O ⚔️ e as magias dividem a mesma mira na tela: quem abriu uma mira só
+   * termina a sua (`finish`/`stop` com o número), para soltar o ⚔️ não apagar a mira de uma magia aberta depois.
+   */
   start(spell: AimDef, opts: { auto?: boolean } = {}) {
+    this.session++;
     this.spell = spell;
     this.auto = opts.auto ?? false;
     this.drag = { x: 0, y: 0 };
     this.manual = false;
+    return this.session;
+  }
+
+  /** Número da mira aberta agora (ver `start`). */
+  private session = 0;
+
+  /** A mira `session` ainda é a que está na tela. */
+  owns(session: number) {
+    return this.spell !== null && this.session === session;
   }
 
   move(dx: number, dy: number) {
