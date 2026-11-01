@@ -3,7 +3,8 @@
  * relógio falso, sorteios de seed fixa, monstro posto onde o teste precisa; nível 8 com o Grimório inteiro):
  *   - regras: toda magia tem Maestria, que só entra no último nível, e os efeitos sobem com o nível; as
  *     especializações do Grimório se excluem (comprar um lado fecha o outro) e as magias de um lado pedem o Traço;
- *     o nó de baixo pede a magia de cima no nível 1 (ganho com o uso, não com gold);
+ *     o nó de baixo pede a magia de cima no nível 1 (ganho com o uso, não com gold); com o dano do herói, a ficha
+ *     mostra o dano de cada efeito em números;
  *   - o Cavaleiro ergue o Escudo da Fé, que absorve o dano dos monstros antes da vida;
  *   - o Giro da Lâmina gira de novo sozinho (Maestria);
  *   - o Druida invoca 2 Lobos Espirituais e a Matilha de 4 (Maestria), e os lobos ferem os monstros;
@@ -54,6 +55,17 @@ function rules() {
     const three = spellAtRank(SPELLS[id], MASTERY_RANK);
     const changed = (Object.keys(changes) as (keyof typeof changes)[]).some((k) => JSON.stringify(two[k]) !== JSON.stringify(three[k]));
     if (!changed) throw new Error(`${id}: a Maestria não muda nada`);
+  }
+  // Com o dano do herói, a ficha mostra o dano em números (o multiplicador vezes o dano base), sem sobrar "N×" solto.
+  const hero = { spell: [20, 80], summon: [15, 60], basic: [18, 70] } as const;
+  const spin = spellAtRank(SPELLS.blade_spin, 3);
+  const shown = `Dano ${Math.round(spin.damage! * 20)} a ${Math.round(spin.damage! * 80)} (`;
+  if (!spellFacts(SPELLS.blade_spin, 3, 0, hero)[0].startsWith(shown)) throw new Error(`dano do Giro sem número: ${spellFacts(SPELLS.blade_spin, 3, 0, hero)[0]}`);
+  for (const id of Object.keys(SPELLS) as SpellId[]) {
+    for (const line of spellFacts(SPELLS[id], MASTERY_RANK, 0, hero)) {
+      // "2× Lobo Espiritual" é quantidade, não dano.
+      if (/\d×(?!\)| \p{Lu})/u.test(line)) throw new Error(`${id}: multiplicador sem o dano em números: ${line}`);
+    }
   }
   if (spellAtRank(SPELLS.piercing_shot, MASTERY_RANK).range !== 9) throw new Error("a Maestria do Disparo Perfurante devia dar alcance 9");
   if (spellAtRank(SPELLS.spirit_wolf, MASTERY_RANK).summon!.count !== 2) throw new Error("a Maestria do Lobo Espiritual devia dar 2 lobos");
