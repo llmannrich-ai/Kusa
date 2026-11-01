@@ -164,6 +164,18 @@ comprar **e usar** as anteriores do mesmo ramo.
       10% da mana ao quebrar · a cada 20 s.
     - 🦴 Ossuário: esqueletos de 10 s · até 3 · marcam quem atacam (+10% por 3 s) · 12 s · ao sumir, explodem em
       Condenação (raio 1).
+  - Druida:
+    - 🐺 Laço da Matilha: criaturas +10% de duração · +1 lobo em cada invocação de lobos · criaturas curam 3% do dano que
+      causam · +20% · a criatura que cai volta uma vez com 30% da vida.
+    - 🌿 Seiva Antiga: a sobra da cura vira escudo (até 3%) · curar tira a lentidão · escudo até 6% · curas em área +1 tile
+      · quem está abaixo de 30% recebe 50% a mais.
+    - 🌵 Seiva Venenosa: venenos +1 s · Toxina +1 acúmulo · o envenenado anda 10% mais devagar · +2 s · o veneno de quem
+      morre pula para o monstro mais perto (até 3 tiles).
+    - 🐾 Instinto: a mordida atordoa 0,3 s · a cada 3º básico · em forma animal, a cada 2º golpe · a mordida envenena ·
+      morde 2 vezes.
+    - 🌀 Ciclo: a cada 250 de cura · onda de 2 tiles · prende os monstros em volta 1 s · a cada 200 · a onda dá escudo de 5%.
+    - ⛈️ Céu Fechado: o raio envenena · +5% de chance · o raio prende 0,5 s · +10% · caem 2 raios.
+  - Xamã Orc: os 3 Dons dele (iguais aos do Cavaleiro no efeito) ainda não têm marcos.
 
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.

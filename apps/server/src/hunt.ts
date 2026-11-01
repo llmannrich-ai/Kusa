@@ -47,7 +47,7 @@ import {
   FAR_DAMAGE_TILES,
   BANNER_RADIUS, BITE_BASE, BITE_EVERY, BURN_MS, BURN_PER_SEC, CIRCUIT_ELEMENTS, CIRCUIT_MS, CYCLE_BASE, CYCLE_HEAL, CYCLE_RADIUS,
   FROST_COOLDOWN_MS, FROST_MANA_PCT, FROST_MS,
-  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, type GiftId,
+  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, type GiftId,
   GRACE_EVERY, LOW_HP_PCT, OSSUARY_MAX, OSSUARY_MS, SKY_STRIKE_DAMAGE, SKY_STRIKE_TILES, STILL_MS,
   type GiftEffects,
   bestPerSlot,
@@ -390,6 +390,8 @@ interface Seat {
 /** Dados da criatura invocada que só o servidor precisa. */
 interface SummonBrain {
   def: SummonDef;
+  /** Laço da Matilha (marco 5): já voltou uma vez depois de cair. */
+  revived?: boolean;
   /** Magia que invocou: conjurar de novo substitui as criaturas dela. */
   spellId: SpellId;
   damage: number;
@@ -1325,6 +1327,10 @@ export class Hunt {
     seat.nextAttackAt = now + Math.round(attackCooldownMs(seat.perkBonus) * Math.max(0.4, 1 - (buff?.attackHaste ?? 0) - seat.gear.haste - rallyHaste - bannerHaste - duelHaste));
     seat.attackUntil = 0;
     seat.basicAim = null;
+    // Instinto (marco 3): em forma animal, a mordida espectral vem a cada 2 golpes.
+    if (m && form && seat.gifts.fourthBite > 0 && this.marks(seat, "instinct") >= 3 && ++seat.basicCount % INSTINCT.everyForm === 0) {
+      this.after(0, () => this.formBite(sessionId, m.id));
+    }
     if (m && form?.maul) return this.maul(sessionId, p, m);
     if (m && form && form.pounce > 0) return this.pounce(sessionId, p, seat, m, form, now);
     const ox = p.x;
@@ -1342,7 +1348,10 @@ export class Hunt {
     const calm = this.marks(seat, "tracker_step") >= 3 && now - Math.max(seat.lastHurtAt, seat.calmShotAt) >= TRACKER.calmMs ? TRACKER.calmShot : 0;
     if (calm > 0) seat.calmShotAt = now;
     // Instinto (Dom): cada `BITE_EVERY`º básico morde como fera.
-    const bite = seat.gifts.fourthBite > 0 && ++seat.basicCount % BITE_EVERY === 0 ? BITE_BASE + seat.gifts.fourthBite : 0;
+    // Instinto (marcos 2 e 5): série menor e mordida dobrada.
+    const instinct = this.marks(seat, "instinct");
+    const biteEvery = instinct >= 2 ? INSTINCT.everyLater : BITE_EVERY;
+    const bite = seat.gifts.fourthBite > 0 && ++seat.basicCount % biteEvery === 0 ? (BITE_BASE + seat.gifts.fourthBite) * (instinct >= 5 ? 2 : 1) : 0;
     if (bite > 0) bump(seat.stats.giftProcs, "instinct");
     // Mão Rápida (Dom): às vezes o básico sai incendiário.
     const hand = this.marks(seat, "quick_hand");
@@ -1387,6 +1396,8 @@ export class Hunt {
         bump(seat.stats.giftProcs, "patient_eye");
         this.hemorrhage(alive, brain, sessionId);
       }
+      // Instinto (marcos 1 e 4): a mordida atordoa e envenena.
+      if (bite > 0 && brain) this.biteEffects(sessionId, seat, alive, brain, base, instinct);
       if (fiery && brain) {
         bump(seat.stats.giftProcs, "quick_hand");
         this.applyDot(alive, brain, sessionId, "quick_hand", base * BURN_PER_SEC, BURN_MS, "burn", this.host.now());
@@ -2689,6 +2700,28 @@ export class Hunt {
     const healer = this.seats.get(healerId);
     // Seiva Antiga (Dom): as curas de quem tem o Dom curam mais.
     if (healer && healer.gifts.healPower > 0) amount = Math.round(amount * (1 + healer.gifts.healPower));
+    // Seiva Antiga (marco 5): quem está mal recebe mais.
+    const sapMarks = this.marks(healer, "ancient_sap");
+    if (sapMarks >= 5 && p.hp < p.maxHp * SAP.lowHpPct) amount = Math.round(amount * (1 + SAP.lowHpBonus));
+    if (sapMarks >= 1 && p.status === "playing") {
+      const target = this.seatOf(p);
+      // Seiva Antiga (marco 2): curar tira a lentidão.
+      if (sapMarks >= 2 && target?.slow) {
+        target.slow = null;
+        p.slowed = false;
+      }
+      // Seiva Antiga (marcos 1 e 3): o que passa da vida vira escudo.
+      const extra = amount - (p.maxHp - p.hp);
+      if (target && extra > 0) {
+        const cap = Math.round(p.maxHp * (sapMarks >= 3 ? SAP.overhealLater : SAP.overheal));
+        const shield = Math.min(cap, p.barrier + extra);
+        if (shield > p.barrier) {
+          p.maxBarrier = Math.max(p.maxBarrier, shield);
+          p.barrier = shield;
+          target.barrierUntil = Math.max(target.barrierUntil, this.host.now() + 4000);
+        }
+      }
+    }
     const sap = healer?.traits.find((t) => t.healArmor)?.healArmor;
     const bloom = healer?.traits.find((t) => t.overheal)?.overheal;
     const seat = (sap || bloom) && p.status === "playing" ? this.seatOf(p) : undefined;
@@ -2717,8 +2750,11 @@ export class Hunt {
     // Ciclo (Dom): a cura feita enche o ciclo; cheio, solta uma onda de seiva em volta de quem curou.
     if (healer && healer.gifts.cycleHeal > 0 && !this.cycling) {
       healer.cycleHealed += healed;
-      if (healer.cycleHealed >= CYCLE_HEAL) {
-        healer.cycleHealed = Math.min(healer.cycleHealed - CYCLE_HEAL, CYCLE_HEAL - 1);
+      // Ciclo (marcos 1 e 4): a onda pede menos cura.
+      const cycle = this.marks(healer, "cycle");
+      const need = cycle >= 4 ? CYCLE_MARKS.healLater : cycle >= 1 ? CYCLE_MARKS.heal : CYCLE_HEAL;
+      if (healer.cycleHealed >= need) {
+        healer.cycleHealed = Math.min(healer.cycleHealed - need, need - 1);
         this.cycleWave(healerId, healer);
       }
     }
@@ -2730,14 +2766,30 @@ export class Hunt {
     if (!hero || hero.status !== "playing") return;
     bump(healer.stats.giftProcs, "cycle");
     this.notice(hero.x, hero.y - 1, "Ciclo!", 0x7bed9f);
+    // Ciclo (marcos 2, 3 e 5): raio maior, raiz nos monstros em volta e escudo.
+    const cycle = this.marks(healer, "cycle");
+    const radius = cycle >= 2 ? CYCLE_MARKS.radius : CYCLE_RADIUS;
+    const now = this.host.now();
     this.cycling = true;
     try {
       this.state.players.forEach((ally) => {
-        if (ally.status !== "playing" || tileDistance(hero.x, hero.y, ally.x, ally.y) > CYCLE_RADIUS) return;
+        if (ally.status !== "playing" || tileDistance(hero.x, hero.y, ally.x, ally.y) > radius) return;
         this.healPlayer(ally, Math.round(ally.maxHp * (CYCLE_BASE + healer.gifts.cycleHeal)), healerId);
+        const allySeat = this.seatOf(ally);
+        if (cycle >= 5 && allySeat) {
+          const shield = Math.round(ally.maxHp * CYCLE_MARKS.shield);
+          if (shield > ally.barrier) ally.barrier = ally.maxBarrier = shield;
+          allySeat.barrierUntil = Math.max(allySeat.barrierUntil, now + CYCLE_MARKS.shieldMs);
+        }
       });
     } finally {
       this.cycling = false;
+    }
+    if (cycle >= 3) {
+      this.state.monsters.forEach((m) => {
+        const b = this.brains.get(m.id);
+        if (b && tileDistance(hero.x, hero.y, m.x, m.y) <= radius) this.root(m, b, now + CYCLE_MARKS.rootMs);
+      });
     }
   }
 
@@ -2791,6 +2843,8 @@ export class Hunt {
     const hunger = this.marks(seat, "shadow_hunger");
     if (spell.mark && hunger >= 1) spell = { ...spell, mark: { ...spell.mark, ms: spell.mark.ms + HUNGER.markMs * (hunger >= 3 ? 2 : 1) } };
     if (spell.element === "dark" && hunger >= 5) spell = { ...spell, manaSteal: (spell.manaSteal ?? 0) + HUNGER.manaSteal };
+    // Seiva Antiga (marco 4): curas em área alcançam mais longe.
+    if (spell.heal && spell.radius > 0 && this.marks(seat, "ancient_sap") >= 4) spell = { ...spell, radius: spell.radius + 1 };
     return spell;
   }
 
@@ -2820,6 +2874,33 @@ export class Hunt {
   private standingStill(seat: Seat, now: number) {
     if (seat.gifts.stillGuard <= 0) return false;
     return now - seat.movedAt >= (this.marks(seat, "bedrock") >= 4 ? BEDROCK.stillMsLater : STILL_MS);
+  }
+
+  /** Instinto: a mordida espectral atordoa (marco 1) e envenena (marco 4). */
+  private biteEffects(sessionId: string, seat: Seat, m: Monster, brain: Brain, base: number, instinct: number) {
+    const now = this.host.now();
+    if (instinct >= 1) {
+      brain.stunnedUntil = Math.max(brain.stunnedUntil, now + INSTINCT.stunMs);
+      m.stunned = true;
+      seat.stats.ccMs.stun += INSTINCT.stunMs;
+      this.hemorrhage(m, brain, sessionId);
+    }
+    if (instinct >= 4) this.applyDot(m, brain, sessionId, "instinct", base * INSTINCT.poisonPerSec, INSTINCT.poisonMs, "poison", now);
+  }
+
+  /** Instinto (marco 3): a mordida espectral em forma animal, depois do golpe da forma. */
+  private formBite(sessionId: string, monsterId: string) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    const m = this.state.monsters.get(monsterId);
+    const brain = m && this.brains.get(m.id);
+    if (!p || !seat || !m || !brain || p.status !== "playing") return;
+    const instinct = this.marks(seat, "instinct");
+    const base = this.baseDamage(sessionId, p, "basic");
+    bump(seat.stats.giftProcs, "instinct");
+    this.biteEffects(sessionId, seat, m, brain, base, instinct);
+    const power = (BITE_BASE + seat.gifts.fourthBite) * (instinct >= 5 ? 2 : 1);
+    this.damageMonster(m, rollDamage(this.random, base * power), { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "bite" }, "instinct");
   }
 
   /** Mão Rápida: a flecha incendiária explode em volta do alvo e, no marco 3, deixa o chão em chamas. */
@@ -2889,20 +2970,42 @@ export class Hunt {
     this.notice(x, y - 1, "Ossuário!", 0xdcdde1);
   }
 
+  /** Céu Fechado: chance do raio, com os marcos 2 e 4. */
+  private skyChance(seat: Seat | undefined) {
+    if (!seat || seat.gifts.skyStrike <= 0) return 0;
+    const sky = this.marks(seat, "closed_sky");
+    return Math.min(1, seat.gifts.skyStrike + (sky >= 2 ? SKY.chance : 0) + (sky >= 4 ? SKY.chance : 0));
+  }
+
   /** Céu Fechado: um raio cai no monstro mais perto de onde morreu o envenenado. */
   private closedSky(sessionId: string, x: number, y: number) {
     const hero = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
     if (!hero || !seat || hero.status !== "playing") return;
-    const target = this.nearestMonsterTo(x, y, SKY_STRIKE_TILES);
-    if (!target) return;
-    bump(seat.stats.giftProcs, "closed_sky");
-    this.host.broadcast(MSG.spell, { from: sessionId, spellId: "call_lightning", x, y, tx: target.x, ty: target.y, ms: 150, echo: true } satisfies SpellMessage);
-    const amount = rollDamage(this.random, this.baseDamage(sessionId, hero, "spell") * SKY_STRIKE_DAMAGE);
-    this.after(150, () => {
-      const alive = this.state.monsters.get(target.id);
-      if (alive) this.damageMonster(alive, amount, { attacker: sessionId, fromX: alive.x, fromY: alive.y, fx: "nature" }, "closed_sky");
-    });
+    // Céu Fechado (marco 5): caem 2 raios, em monstros diferentes.
+    const sky = this.marks(seat, "closed_sky");
+    const first = this.nearestMonsterTo(x, y, SKY_STRIKE_TILES);
+    if (!first) return;
+    const targets = [first];
+    if (sky >= 5) {
+      const second = this.nearestMonsterTo(x, y, SKY_STRIKE_TILES, new Set([first.id]));
+      if (second) targets.push(second);
+    }
+    bump(seat.stats.giftProcs, "closed_sky", targets.length);
+    const base = this.baseDamage(sessionId, hero, "spell");
+    for (const target of targets) {
+      this.host.broadcast(MSG.spell, { from: sessionId, spellId: "call_lightning", x, y, tx: target.x, ty: target.y, ms: 150, echo: true } satisfies SpellMessage);
+      const amount = rollDamage(this.random, base * SKY_STRIKE_DAMAGE);
+      this.after(150, () => {
+        const alive = this.state.monsters.get(target.id);
+        const b = alive && this.brains.get(alive.id);
+        if (!alive || !b) return;
+        // Céu Fechado (marcos 1 e 3): o raio envenena e prende.
+        if (sky >= 1) this.applyDot(alive, b, sessionId, "closed_sky", base * SKY.poisonPerSec, SKY.poisonMs, "poison", this.host.now());
+        if (sky >= 3) this.root(alive, b, this.host.now() + SKY.rootMs);
+        this.damageMonster(alive, amount, { attacker: sessionId, fromX: alive.x, fromY: alive.y, fx: "nature" }, "closed_sky");
+      });
+    }
   }
 
   /** Mana dada por magia ou criatura (não poção); `giverId` leva o crédito na telemetria. */
@@ -3074,7 +3177,12 @@ export class Hunt {
   /** Põe as criaturas da magia em volta de quem conjurou. Conjurar de novo substitui as anteriores da mesma magia. */
   /** `at`: as criaturas aparecem em volta deste ponto (o Totem do Chamado), não de quem conjura. */
   private summon(sessionId: string, p: Player, spell: SpellDef, rank: number, keep = false, at?: { x: number; y: number }) {
-    const { kind, count, durationMs } = spell.summon!;
+    const summoner0 = this.seats.get(sessionId);
+    const pack = this.marks(summoner0, "pack_bond");
+    // Laço da Matilha (marcos 1, 2 e 4): criaturas mais longas e um lobo a mais.
+    const kind = spell.summon!.kind;
+    const count = spell.summon!.count + (pack >= 2 && kind === "wolf" ? 1 : 0);
+    const durationMs = Math.round(spell.summon!.durationMs * (1 + PACK.duration * ((pack >= 1 ? 1 : 0) + (pack >= 4 ? 1 : 0))));
     // Conjurar de novo troca as criaturas da mesma magia (a segunda leva da mesma magia não tira a primeira).
     if (!keep) {
       this.state.summons.forEach((s) => {
@@ -3269,7 +3377,9 @@ export class Hunt {
         }
         // Ogro da Forja: o malho em brasa queima e empurra.
         if (def.burn) this.applyDot(alive, brainM, s.owner, `summon:${s.kind}`, brain.damage * def.burn.perSec, def.burn.ms, "burn", this.host.now());
-        this.damageMonster(alive, amount, hit, `summon:${s.kind}`, s.owner);
+        const dealt = this.damageMonster(alive, amount, hit, `summon:${s.kind}`, s.owner);
+        // Laço da Matilha (marco 3): as criaturas se curam com o dano que causam.
+        if (dealt > 0 && this.marks(this.seats.get(s.owner), "pack_bond") >= 3) s.hp = Math.min(s.maxHp, s.hp + Math.max(1, Math.round(dealt * PACK.lifesteal)));
         if (def.push && alive.hp > 0) this.push(alive, s, def.push);
       });
       return;
@@ -3365,6 +3475,14 @@ export class Hunt {
     const amount = Math.max(1, Math.round(raw));
     s.hp = Math.max(0, s.hp - amount);
     this.host.broadcast(MSG.damage, { x: s.x, y: s.y, amount, toPlayer: true, ...hit } satisfies DamageMessage);
+    // Laço da Matilha (marco 5): a criatura que cai volta uma vez.
+    const sBrain = this.summonBrains.get(s.id);
+    if (s.hp === 0 && sBrain && !sBrain.revived && this.marks(this.seats.get(s.owner), "pack_bond") >= 5) {
+      sBrain.revived = true;
+      s.hp = Math.max(1, Math.round(s.maxHp * PACK.reviveHp));
+      bump(this.seats.get(s.owner)!.stats.giftProcs, "pack_bond");
+      return;
+    }
     if (s.hp === 0) {
       // Urso Ancestral (Maestria): ao cair, cura a equipe por perto.
       const heal = this.summonBrains.get(s.id)?.deathHeal;
@@ -3540,8 +3658,17 @@ export class Hunt {
     }
     // Céu Fechado (Dom): morreu envenenado ou sangrando pelo druida, às vezes um raio cai no vizinho.
     const sky = venom && (venom.kind === "poison" || venom.kind === "bleed") && this.host.now() < venom.until
-      ? this.seats.get(venom.attacker)?.gifts.skyStrike ?? 0 : 0;
+      ? this.skyChance(this.seats.get(venom.attacker)) : 0;
     if (venom && sky > 0 && this.random() < sky) this.after(150, () => this.closedSky(venom.attacker, m.x, m.y));
+    // Seiva Venenosa (marco 5): o veneno de quem morre pula para o monstro mais perto.
+    if (venom?.kind === "poison" && this.host.now() < venom.until && this.marks(this.seats.get(venom.attacker), "venom_sap") >= 5) {
+      const next = this.nearestMonsterTo(m.x, m.y, VENOM.jumpTiles, new Set([m.id]));
+      const nextBrain = next && this.brains.get(next.id);
+      if (next && nextBrain) {
+        bump(this.seats.get(venom.attacker)!.stats.giftProcs, "venom_sap");
+        this.applyDot(next, nextBrain, venom.attacker, venom.source, venom.perStack, venom.until - this.host.now(), "poison", this.host.now());
+      }
+    }
     this.ai.died(brain);
     this.state.monsters.delete(m.id);
     this.brains.delete(m.id);
@@ -4607,11 +4734,22 @@ export class Hunt {
     if (venom > 0) perTick *= 1 + venom;
     // Fé Ardente (marco 1): as queimaduras do paladino duram mais.
     if (kind === "burn" && this.marks(this.seats.get(attacker), "burning_faith") >= 1) ms += FAITH.burnMs;
+    // Seiva Venenosa (marcos 1 e 4): os venenos do druida duram mais.
+    const venomMarks = kind === "poison" ? this.marks(this.seats.get(attacker), "venom_sap") : 0;
+    if (venomMarks >= 1) ms += VENOM.ms * (venomMarks >= 4 ? 2 : 1);
     // Condutor (marco 2): as queimaduras do feiticeiro duram mais.
     if (kind === "burn" && this.marks(this.seats.get(attacker), "conductor") >= 2) ms += CONDUCTOR.burnMs;
     const until = now + ms;
     const old = brain.dot;
-    const toxin = kind === "poison" ? this.seats.get(attacker)?.traits.find((t) => t.toxin)?.toxin : undefined;
+    const toxinTrait = kind === "poison" ? this.seats.get(attacker)?.traits.find((t) => t.toxin)?.toxin : undefined;
+    // Seiva Venenosa (marco 2): a Toxina acumula uma vez a mais.
+    const toxin = toxinTrait && { ...toxinTrait, maxStacks: toxinTrait.maxStacks + (venomMarks >= 2 ? 1 : 0) };
+    // Seiva Venenosa (marco 3): o envenenado anda mais devagar.
+    if (venomMarks >= 3) {
+      brain.slowPct = Math.max(now < brain.slowUntil ? brain.slowPct : 0, VENOM.slow);
+      brain.slowUntil = Math.max(brain.slowUntil, now + ms);
+      m.slowed = true;
+    }
     if (toxin && old?.kind === "poison" && old.attacker === attacker && now < old.until) {
       const stacks = Math.min(toxin.maxStacks, old.stacks + 1);
       const perStack = Math.max(old.perStack, perTick);
