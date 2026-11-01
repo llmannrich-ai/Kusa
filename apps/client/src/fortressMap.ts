@@ -379,17 +379,21 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const MASK_ATLAS = "fortress-mascara";
   if (scene.textures.exists(MASK_ATLAS)) scene.textures.remove(MASK_ATLAS);
   // O atlas da máscara vai sem margem entre os quadros (a camada da placa de vídeo não aceita margem).
+  // Os formatos ficam em 64 px por tile: a máscara é desenhada em meia resolução, então é o mesmo na tela, com um quarto
+  // da memória do atlas.
+  const MT = HD / 2;
   const maskCols = 16, maskRows = Math.max(1, Math.ceil((maskFrames.length + 1) / maskCols));
-  const maskCanvas = makeCanvas(maskCols * HD, maskRows * HD);
+  const maskCanvas = makeCanvas(maskCols * MT, maskRows * MT);
+  maskCanvas.ctx.imageSmoothingEnabled = false;
   maskFrames.forEach((g, i) => {
     const k = i + 1;
-    if (g === FULL) { maskCanvas.ctx.fillStyle = "#fff"; maskCanvas.ctx.fillRect((k % maskCols) * HD, Math.floor(k / maskCols) * HD, HD, HD); }
-    else maskCanvas.ctx.drawImage(toCanvas(grassMask(g), HD, HD), (k % maskCols) * HD, Math.floor(k / maskCols) * HD);
+    if (g === FULL) { maskCanvas.ctx.fillStyle = "#fff"; maskCanvas.ctx.fillRect((k % maskCols) * MT, Math.floor(k / maskCols) * MT, MT, MT); }
+    else maskCanvas.ctx.drawImage(toCanvas(grassMask(g), HD, HD), (k % maskCols) * MT, Math.floor(k / maskCols) * MT, MT, MT);
   });
   scene.textures.addCanvas(MASK_ATLAS, maskCanvas.canvas);
-  const maskMap = scene.make.tilemap({ data: maskData, tileWidth: HD, tileHeight: HD });
-  const maskSet = maskMap.addTilesetImage(MASK_ATLAS, MASK_ATLAS, HD, HD, 0, 0, 0)!;
-  const edgeMask = maskMap.createLayer(0, maskSet, 0, 0, true)!.setScale(1 / ZOOM).setDepth(floorDepth - 10);
+  const maskMap = scene.make.tilemap({ data: maskData, tileWidth: MT, tileHeight: MT });
+  const maskSet = maskMap.addTilesetImage(MASK_ATLAS, MASK_ATLAS, MT, MT, 0, 0, 0)!;
+  const edgeMask = maskMap.createLayer(0, maskSet, 0, 0, true)!.setScale(TILE_SIZE / MT).setDepth(floorDepth - 10);
   const grassOver = scene.add.tileSprite(0, 0, W * TILE_SIZE, H * TILE_SIZE, GRASS_KEY).setOrigin(0).setTileScale(1 / ZOOM).setDepth(floorDepth + 0.001);
   // A máscara é desenhada em meia resolução (um quarto da memória: no iPhone, a tela inteira em 3x pesava ~19 MB), vista
   // por uma câmera invisível de meio tamanho que acompanha a principal a cada quadro.

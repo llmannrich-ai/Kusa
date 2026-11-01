@@ -222,3 +222,15 @@ ficou borrada e destoou; o vale continua por código. |
 | Planta à mão muda a versão das regras | Clientes antigos recarregam | Esperado e automático (`RULES_VERSION`); mesclar num deploy só |
 | Pássaros e névoa pesando | Queda de quadros | Limite de partículas; só na tela; medir na fase 8 |
 | Trabalho paralelo de outras sessões em `gatesMap`/`empireMonuments` | Conflito de merge | PRs pequenos, mesclar `origin/main` antes de cada fase |
+
+## 7. Medidas no iPhone com a arte do ChatGPT (01/11)
+
+| Versão | Fortaleza (2ª rodada) | Texturas | Quadros/s (piores 5%) |
+|---|---|---|---|
+| Acampamento, capim e basalto, bordas com máscara do tamanho da tela | 748 ms + 192 | 67 MB | 60 (60) |
+| Máscara em meia resolução | 867 ms + 271 | 59 MB | 60 (60) |
+| Portões do Império (referência) | 707 ms | 48 MB | 60 (60) |
+
+Depois disso, o atlas dos formatos da máscara passou a ser guardado em 64 px por tile (a máscara já é desenhada em meia
+resolução: na tela é o mesmo, com um quarto da memória desse atlas).
+
