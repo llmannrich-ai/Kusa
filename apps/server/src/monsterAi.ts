@@ -76,6 +76,10 @@ export interface Brain {
   rootedUntil: number;
   /** Atordoado até este momento (ms). */
   stunnedUntil: number;
+  /** Congelado (preso por magia de gelo) até este momento: o Vapor e o Estilhaço leem (`reactions.ts`). */
+  frozenUntil: number;
+  /** Ofuscado (atordoado por magia de luz) até este momento: o Incandescer lê. */
+  dazzledUntil: number;
   /** Lento até este momento (ms), perdendo `slowPct` da velocidade. */
   slowUntil: number;
   slowPct: number;
@@ -161,7 +165,7 @@ export class MonsterAi {
     const heads = traits.heads?.start ?? 0;
     return {
       def, traits, elements: {}, speed: def.speed, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
-      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, slowUntil: 0, slowPct: 0,
+      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, frozenUntil: 0, dazzledUntil: 0, slowUntil: 0, slowPct: 0,
       markUntil: 0, markPct: 0, dot: null, tauntedBy: null, abilityReadyAt: {}, phased: new Set(), used: new Set(), enraged: false,
       invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
       regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,

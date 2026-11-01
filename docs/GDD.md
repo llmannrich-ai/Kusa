@@ -1436,6 +1436,24 @@ Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os tote
 
 ## Ataques e magias (protótipo)
 
+- **Reações** (`packages/shared/src/reactions.ts`, Grimório 4.0): um estado no monstro prepara o golpe seguinte, de
+  qualquer herói (no co-op, o fogo de um combina com o gelo do outro). O servidor confere a cada golpe direto; o pulso
+  do dano contínuo e a explosão de outra reação não reagem. Toda reação, menos o Exposto, gasta o estado que a preparou.
+  Força base baixa; Dons e magias de combo (fases seguintes) é que deixam cada uma forte.
+  - 💨 **Vapor**: queimando + magia de gelo (ou congelado + fogo) → explode em raio 1 (0,8× do golpe), ofusca 0,5 s e
+    apaga o fogo e o gelo.
+  - 💎 **Estilhaço**: congelado + golpe de energia ou físico → +40% no golpe e o gelo quebra (o Traço Estilhaçar,
+    quando vale, fica no lugar).
+  - 🩸 **Hemorragia**: sangrando + empurrão ou atordoamento → o resto do sangramento entra de uma vez.
+  - 🌋 **Brasa Tóxica**: envenenado + fogo → o veneno pega fogo e queima quem está em raio 1 (0,25× do golpe por s, 2 s).
+  - 🌿 **Espinheiro**: preso por raiz + magia de veneno → a raiz vira espinhos: sangra na hora 3 pulsos do veneno (o
+    veneno continua).
+  - 🌑 **Condenação**: marcado + magia de trevas → a marca explode em raio 1 (1× do golpe).
+  - 🔆 **Incandescer**: ofuscado + fogo → a luz explode em raio 1 (0,8×), o dobro em mortos-vivos.
+  - 🎯 **Exposto**: marcado e atordoado → +30% de dano de tudo enquanto os dois durarem.
+  - Estados novos: **congelado** (preso por magia de gelo: Lança de Gelo, Nova de Gelo, Prisão de Gelo, o Sopro Gélido
+    canalizado e os campos de gelo que prendem; bloco de gelo no desenho) e **ofuscado** (atordoado por magia de luz).
+
 - Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra; Xamã Orc lança uma brasa do cajado (fogo, alcance 3: curto de propósito, o xamã luta junto dos totens). Os projéteis voam até o alvo e o dano só entra quando chegam.
 - **Tiro que pode errar** (o básico à distância e as magias de alvo único com projétil: Flecha Sagrada, Relâmpago,
   Espinho Venenoso, Lâmina Arremessada, Corrente de Ferro...): é mirado numa **direção**, não num ponto. O projétil voa

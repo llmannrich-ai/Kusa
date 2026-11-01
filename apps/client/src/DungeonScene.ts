@@ -1003,6 +1003,20 @@ export class DungeonScene extends Phaser.Scene {
     return g;
   }
 
+  /** Congelado: um bloco de gelo translúcido em volta do corpo, com brilho nas arestas. */
+  private iceAt() {
+    const g = this.add.graphics();
+    const w = TILE_SIZE - 6;
+    const h = TILE_SIZE - 4;
+    const top = TILE_SIZE / 2 - h;
+    g.fillStyle(0xbfe9ff, 0.38).fillRoundedRect(-w / 2, top, w, h, 3);
+    g.lineStyle(1.5, 0xe8f8ff, 0.95).strokeRoundedRect(-w / 2, top, w, h, 3);
+    g.lineStyle(1, 0xffffff, 0.8).lineBetween(-w / 2 + 3, top + 4, -w / 2 + 8, top + 2).lineBetween(w / 2 - 6, top + h - 5, w / 2 - 3, top + h - 9);
+    g.setScale(1, 0.2);
+    this.tweens.add({ targets: g, scaleY: 1, duration: 160, ease: "Back.Out" });
+    return g;
+  }
+
   /** Dano contínuo no monstro: bolhas (veneno), brasas (queimadura) subindo ou gotas (sangramento) caindo. */
   private dotAt(kind: DotKind) {
     const color = DOT_COLORS[kind];
@@ -1352,7 +1366,9 @@ export class DungeonScene extends Phaser.Scene {
       unit.sprite.setTexture(texture);
     }
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
-    this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
+    // Congelado (preso por gelo): bloco de gelo no lugar das raízes; o Vapor e o Estilhaço leem este estado.
+    this.setStatus(unit, "roots", monster.rooted && !monster.frozen, () => this.thornsAt());
+    this.setStatus(unit, "frozen", monster.frozen, () => this.iceAt());
     this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
     this.setStatus(unit, "slow", monster.slowed, () => this.frostAt());
     this.setStatus(unit, "mark", monster.marked, () => this.markAt(unit.barY - 14));
