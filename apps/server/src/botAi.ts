@@ -9,6 +9,7 @@ import {
   spellChoices,
   tileAt,
   tileDistance,
+  type CastAim,
   type ChoosePerkMessage,
   type CastMessage,
   type ChooseSpellMessage,
@@ -155,8 +156,18 @@ export class BotAi {
     for (const slot of [0, 1] as const) {
       const spell = SPELLS[(slot === 0 ? p.spell1 : p.spell2) as SpellId];
       if (!spell || now < this.w.spellReadyAt(id, slot) || p.mana < spell.manaCost) continue;
-      if (this.worthCasting(p, spell, foe)) this.w.cast(id, { slot });
+      if (this.worthCasting(p, spell, foe)) this.w.cast(id, { slot, aim: this.aimAt(p, spell, foe) });
     }
+  }
+
+  /**
+   * Para onde o bot mira: o toque rápido das magias com alvo sai na frente do herói (sem mira automática), então o bot
+   * mira de propósito no monstro dele (e o rolamento, para longe dele). Magia em si ou em aliado: sem mira.
+   */
+  private aimAt(p: Player, spell: SpellDef, foe: Monster | undefined): CastAim | undefined {
+    if (spell.aim !== "target" || !foe) return undefined;
+    if (spell.dash) return { x: 2 * p.x - foe.x, y: 2 * p.y - foe.y };
+    return { x: foe.x, y: foe.y, targetId: foe.id };
   }
 
   private worthCasting(p: Player, spell: SpellDef, foe: Monster | undefined) {

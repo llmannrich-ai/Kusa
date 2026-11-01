@@ -9,10 +9,12 @@
  *   - arrastando o ⚔️, o tiro segue a direção mirada além do ponto e sai mesmo sem monstro à vista;
  *   - o golpe do Cavaleiro (corpo a corpo) não muda;
  *   - a Flecha Sagrada erra quem sai de lado, e a mira com `targetId` não gruda mais no monstro;
- *   - a telemetria conta os tiros, os erros e os mirados (`RunStats.shots`).
+ *   - a telemetria conta os tiros, os erros e os mirados (`RunStats.shots`);
+ *   - o toque rápido nas magias com alvo sai na frente do herói (último passo, golpe ou mira), sem mira automática no
+ *     monstro; o toque no ⚔️ continua mirando sozinho.
  * Uso: npx tsx apps/server/scripts/tiro.ts (de dentro de apps/server)
  */
-import type { ClassId, MonsterKind } from "@kusa/shared";
+import { shotPath, type ClassId, type MonsterKind } from "@kusa/shared";
 import { HERO, arena, check, type Arena } from "./arena.ts";
 import type { Monster } from "../src/state.ts";
 
@@ -61,7 +63,10 @@ test("voa na direção até o alcance inteiro", "paladin", (a) => {
   shoot(a);
   const shot = a.attacks[a.attacks.length - 1];
   check(shot.shot !== undefined, "o tiro devia ter id");
-  check(shot.ty === a.p.y && shot.tx - a.p.x === a.p.basicRange, `o fim do caminho devia estar a ${a.p.basicRange} tiles (${shot.tx - a.p.x},${shot.ty - a.p.y})`);
+  // O alcance inteiro na direção do monstro, ou até a primeira parede (o mapa sorteado pode ter uma antes).
+  const path = shotPath(a.d, a.p.x, a.p.y, a.p.x + 40, a.p.y, a.p.basicRange);
+  const end = path[path.length - 1];
+  check(path.length >= 3 && shot.tx === end.x && shot.ty === end.y, `o fim do caminho devia ser ${end.x - a.p.x},${end.y - a.p.y} (${shot.tx - a.p.x},${shot.ty - a.p.y})`);
 });
 
 test("acerta o monstro parado", "paladin", (a) => {
@@ -103,8 +108,9 @@ test("o primeiro monstro no caminho leva o tiro", "druid", (a) => {
 });
 
 test("o tiro que passa pelo alvo acerta quem está atrás", "paladin", (a) => {
-  const front = still(a, a.place(TARGET, 2, 0));
-  const back = still(a, a.place(TARGET, 4, 0));
+  // A arena só garante 3 tiles livres em volta do herói.
+  const front = still(a, a.place(TARGET, 1, 0));
+  const back = still(a, a.place(TARGET, 3, 0));
   shoot(a);
   front.y += 1;
   land(a);
@@ -185,6 +191,64 @@ test("a mira não gruda no monstro ao lado do ponto", "sorcerer", (a) => {
   land(a);
   check(m.hp === m.maxHp, "o tiro devia ir na direção mirada, não no monstro");
   check(shots(a, "lightning_bolt").aimed === 1, `telemetria: ${JSON.stringify(shots(a, "lightning_bolt"))}`);
+});
+
+console.log("toque rápido:");
+test("o toque rápido na magia sai na frente do herói, não no monstro", "paladin", (a) => {
+  a.choose("holy_arrow");
+  const m = still(a, a.place(TARGET, 3, 0));
+  a.ready();
+  // O herói olha para baixo (como ao entrar); o monstro está à direita.
+  a.face({ x: a.p.x, y: a.p.y + 1 });
+  a.hunt.cast(HERO, { slot: 0 });
+  land(a);
+  const shot = a.spells[a.spells.length - 1];
+  check(shot.tx === a.p.x && shot.ty > a.p.y, `a flecha devia sair para baixo (${shot.tx - a.p.x},${shot.ty - a.p.y})`);
+  check(m.hp === m.maxHp, "o monstro à direita não devia levar a flecha");
+});
+
+test("a frente do herói segue o último passo", "paladin", (a) => {
+  a.choose("holy_arrow");
+  a.hunt.move(HERO, { dx: 1, dy: 0 });
+  a.advance(400);
+  check(a.p.faceX === 1 && a.p.faceY === 0, `o herói devia olhar para a direita (${a.p.faceX},${a.p.faceY})`);
+  const m = still(a, a.place(TARGET, 2, 0));
+  a.ready();
+  a.hunt.cast(HERO, { slot: 0 });
+  land(a);
+  check(m.hp < m.maxHp, "a flecha devia sair para a direita e acertar");
+});
+
+test("a frente do herói segue o último ataque básico (que mira sozinho)", "sorcerer", (a) => {
+  a.choose("lightning_bolt");
+  const m = still(a, a.place(TARGET, -3, 0));
+  a.face({ x: a.p.x, y: a.p.y + 1 });
+  shoot(a);
+  land(a);
+  check(a.p.faceX < 0 && a.p.faceY === 0, `o herói devia olhar para o monstro (${a.p.faceX},${a.p.faceY})`);
+  const hp = m.hp;
+  a.ready();
+  a.hunt.cast(HERO, { slot: 0 });
+  land(a);
+  check(m.hp < hp, "o Relâmpago devia sair na direção do último golpe e acertar");
+});
+
+test("golpe do Cavaleiro no toque rápido vai no monstro da frente", "knight", (a) => {
+  a.choose("crushing_blow");
+  // O monstro colado pode morder e a Riposta devolver (dano do herói): confere pelo golpe, não pela vida.
+  const right = still(a, a.place(TARGET, 1, 0));
+  a.face({ x: a.p.x, y: a.p.y + 1 });
+  a.ready();
+  a.hunt.cast(HERO, { slot: 0 });
+  land(a);
+  const down = a.spells[a.spells.length - 1];
+  check(down.tx === a.p.x && down.ty === a.p.y + 1, `olhando para baixo, o golpe devia ir no tile de baixo (${down.tx - a.p.x},${down.ty - a.p.y})`);
+  a.face(right);
+  a.ready();
+  a.hunt.cast(HERO, { slot: 0 });
+  land(a);
+  const side = a.spells[a.spells.length - 1];
+  check(side.tx === right.x && side.ty === right.y, `olhando para ele, o golpe devia ir no monstro (${side.tx - a.p.x},${side.ty - a.p.y})`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falha(s)`);
