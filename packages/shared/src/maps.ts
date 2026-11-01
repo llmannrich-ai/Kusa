@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood";
+export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
 export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -360,6 +360,22 @@ export const MAPS: Record<MapId, MapDef> = {
     minibosses: [["awakenedTree", 1], ["fallenWarden", 1], ["corruptedDryad", 1]],
     mimicChance: 0,
     bosses: [["erlking", 1]],
+  },
+  bog: {
+    id: "bog", name: "Charco Cinzento", icon: "🌫️", difficulty: 8, durationSeconds: 8 * 60,
+    description: "Uma turfeira cinzenta e alagada, coberta da cinza de um incêndio antigo: poças negras que não deixam passar, maciços de árvores mortas e a névoa baixa. A estrada afundada do império sobe num aterro até a ilha do lago negro, com o anel de monólitos e os braseiros de turfa; trilhas de barro e passarelas de tábuas ligam as palafitas dos turfeiros e os terreiros de paliçada. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
+  },
+  badlands: {
+    id: "badlands", name: "Ermos Rubros", icon: "🏜️", difficulty: 8, durationSeconds: 8 * 60,
+    description: "Ermos de barro vermelho rachado ao sol, com torres de pedra roídas pelo vento, cristas de rocha e ravinas fundas que só se cruzam pelas pontes. Ossadas de bichos gigantes, a mina de ferro abandonada com os trilhos e as vagonetas e as fontes de ferrugem. No fundo da cratera do norte, a arena. Terreno pronto; os monstros ainda vêm.",
+    encounters: [],
+    minibosses: [],
+    mimicChance: 0,
+    bosses: [],
   },
 };
 

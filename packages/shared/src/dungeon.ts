@@ -55,6 +55,27 @@ export interface Dungeon {
   empire?: EmpireLayout;
   /** Fortaleza Orc: a planta do castelo, do acampamento e do desfiladeiro (só para o desenho). */
   fortress?: FortressLayout;
+  /** Charco Cinzento: a estrada afundada, as passarelas, os monólitos, as palafitas e os braseiros (só para o desenho). */
+  bog?: BogLayout;
+}
+
+/**
+ * Planta do Charco Cinzento (só para o desenho; o chão é chão comum). As poças são `Tile.Water`, a mata morta é
+ * `Tile.Wall` e os monólitos, as palafitas e as paliçadas das salas são `Tile.Ruin`.
+ */
+export interface BogLayout {
+  /** Estrada afundada do império (lajes de basalto, chão), `y * width + x` de cada tile. */
+  causeway: number[];
+  /** Passarelas de tábuas por cima das poças (chão), `y * width + x` de cada tile. */
+  boards: number[];
+  /** Monólitos (ruína de 1 tile): os da arena e os soltos na turfa. */
+  stones: { x: number; y: number }[];
+  /** Palafitas dos turfeiros (ruína de 2×2), com os pés na água. */
+  huts: Rect[];
+  /** Braseiros de turfa (chão: só o desenho e a luz). */
+  fires: { x: number; y: number }[];
+  /** Ilha da arena: centro e raio (tiles); em volta, o lago negro. */
+  arena: { x: number; y: number; r: number };
 }
 
 /**
@@ -194,6 +215,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "gates") return generateGates(seed);
   if (mapId === "fortress") return generateFortress(FORTRESS_SEED);
   if (mapId === "oldwood" || mapId === "heartwood") return generateForest(seed, mapId);
+  if (mapId === "bog") return generateBog(seed);
   return generateCrypt(seed);
 }
 
@@ -3005,6 +3027,373 @@ function buildForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
   const portal = s;
   set(portal.x, portal.y, Tile.Portal);
   return { mapId, width: W, height: H, tiles, spawn, boss, bossPortal: centerOf(boss), path: zones, side, meadows, portal, planks, trails };
+}
+
+const BOG_W = 96;
+const BOG_H = 128;
+/** Zonas de monstros do caminho, do sul (entrada) ao norte (ilha da arena). */
+const BOG_STEPS = 7;
+const BOG_MEADOWS = 5;
+/** Ilhotas só de passagem (sem monstros). */
+const BOG_ISLETS = 8;
+
+/**
+ * Ruído de valor suave em grade de `cell` tiles, com os nós sorteados pelo `rng` (determinístico pela seed): as manchas
+ * das poças e da mata morta.
+ */
+function latticeNoise(rng: ReturnType<typeof createRng>, w: number, h: number, cell: number) {
+  const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
+  const nodes = new Float32Array(gw * gh);
+  for (let i = 0; i < nodes.length; i++) nodes[i] = rng.next();
+  return (x: number, y: number) => {
+    const fx = x / cell, fy = y / cell;
+    const gx = Math.max(0, Math.min(gw - 2, Math.floor(fx))), gy = Math.max(0, Math.min(gh - 2, Math.floor(fy)));
+    const tx = fx - gx, ty = fy - gy;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const v = (i: number, j: number) => nodes[j * gw + i];
+    const top = v(gx, gy) + (v(gx + 1, gy) - v(gx, gy)) * sx;
+    const bottom = v(gx, gy + 1) + (v(gx + 1, gy + 1) - v(gx, gy + 1)) * sx;
+    return top + (bottom - top) * sy;
+  };
+}
+
+/**
+ * Charco Cinzento (Verdemar, etapa 9, o lado do charco): uma turfeira cinzenta e alagada, em pé (o celular na vertical).
+ * Ao contrário das matas, o chão é aberto: a turfa de capim-de-brejo e urze, cortada por poças negras (bloqueiam o passo,
+ * não a visão) e por maciços de mata morta, árvores secas e queimadas (bloqueiam os dois). A estrada afundada do império
+ * sobe do sul até a ilha da arena, num aterro com água dos dois lados; trilhas de barro ligam as zonas e, onde a água é
+ * funda, viram passarelas de tábuas. Palafitas dos turfeiros, monólitos soltos e salas laterais cercadas de paliçada (2
+ * portões). No norte, a ilha da arena num lago negro, com o anel de monólitos e os braseiros.
+ */
+function generateBog(seed: number): Dungeon {
+  for (let attempt = 0; ; attempt++) {
+    const d = buildBog(seed + attempt);
+    if (attempt >= 20 || connected(d.tiles, d.width, dunesGoals(d))) return d;
+  }
+}
+
+function buildBog(seed: number): Dungeon {
+  const rng = createRng(seed);
+  const W = BOG_W;
+  const H = BOG_H;
+  const tiles = new Uint8Array(W * H).fill(Tile.Floor);
+  const inside = (x: number, y: number) => x >= 2 && y >= 2 && x < W - 2 && y < H - 2;
+  const inGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;
+  const get = (x: number, y: number) => (inGrid(x, y) ? tiles[y * W + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * W + x] = t; };
+  /** Chão que não recebe água, mata nem obstáculo (entrada, arena, miolo das zonas, salas). */
+  const firm = new Uint8Array(W * H);
+  /** Trilha de barro (o cliente desenha a lama pisada). */
+  const trail = new Uint8Array(W * H);
+  /** Estrada afundada. */
+  const road = new Uint8Array(W * H);
+  /** Meio da trilha: a lama pisada que o cliente desenha (a trilha inteira só reserva o caminho). */
+  const mud = new Uint8Array(W * H);
+  const wave = () => ({ a: rng.next() * Math.PI * 2, f: 0.15 + rng.next() * 0.2 });
+  const wet1 = latticeNoise(rng, W, H, 11), wet2 = latticeNoise(rng, W, H, 5);
+  const wood1 = latticeNoise(rng, W, H, 9), wood2 = latticeNoise(rng, W, H, 4);
+  const wet = (x: number, y: number) => wet1(x, y) * 0.72 + wet2(x, y) * 0.28;
+  const woody = (x: number, y: number) => wood1(x, y) * 0.7 + wood2(x, y) * 0.3;
+  const edgeNoise = latticeNoise(rng, W, H, 6);
+
+  const firmDisc = (cx: number, cy: number, rx: number, ry: number) => {
+    for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++)
+      for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++)
+        if (inside(x, y) && Math.hypot((x - cx) / rx, (y - cy) / ry) <= 1) firm[y * W + x] = 1;
+  };
+  /** Trilha de `a` até `b`, serpenteando (ou reta, `amp` 0: a estrada), marcando `mark` no meio. */
+  const path = (a: { x: number; y: number }, b: { x: number; y: number }, half: number, mark: Uint8Array, wiggle = 1) => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 1) return;
+    const nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len;
+    const amp = Math.min(6, len * 0.12) * (0.5 + rng.next()) * wiggle;
+    const w1 = wave(), w2 = wave();
+    const steps = Math.ceil(len * 2);
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps;
+      const bend = Math.sin(t * Math.PI) * (Math.sin(t * Math.PI * 2 * w1.f * 5 + w1.a) * amp + Math.sin(t * Math.PI * 7 + w2.a) * 0.8 * wiggle);
+      const px = a.x + (b.x - a.x) * t + nx * bend, py = a.y + (b.y - a.y) * t + ny * bend;
+      for (let y = Math.floor(py - half - 1); y <= py + half + 1; y++)
+        for (let x = Math.floor(px - half - 1); x <= px + half + 1; x++) {
+          const d = Math.hypot(x - px, y - py);
+          if (!inside(x, y) || d > half) continue;
+          mark[y * W + x] = 1;
+          if (mark === trail && d <= 0.8) mud[y * W + x] = 1;
+        }
+    }
+  };
+
+  // Entrada no sul, onde a estrada começa.
+  const spawn: Rect = { x: rng.int(30, W - 40), y: H - 16, w: 10, h: 10 };
+  const s = centerOf(spawn);
+  firmDisc(s.x, s.y, 7, 6);
+
+  // Ilha da arena no norte.
+  const ac = { x: Math.round(W / 2) + rng.int(-10, 10), y: 21 };
+  const boss: Rect = { x: ac.x - 8, y: ac.y - 7, w: 17, h: 15 };
+  const arenaR = 9.5;
+  firmDisc(ac.x, ac.y, arenaR, arenaR - 0.5);
+  const arenaBottom = ac.y + 14;
+
+  // Zonas: sobem do sul ao norte trocando de lado (3 colunas), como nas matas.
+  const zones: Rect[] = [];
+  const anchors: { x: number; y: number }[] = [];
+  const zone = (x: number, y: number) => {
+    const h = rng.int(5, 6);
+    const cx = clamp(x, h + 7, W - h - 8);
+    const cy = clamp(y, h + 7, H - h - 8);
+    anchors.push({ x: cx, y: cy });
+    zones.push({ x: cx - h, y: cy - h, w: h * 2 + 1, h: h * 2 + 1 });
+    firmDisc(cx, cy, h + 1.5 + rng.next() * 1.5, h + 1 + rng.next() * 1.5);
+  };
+  const columns = [W * 0.22, W * 0.5, W * 0.78];
+  zone(s.x + (s.x < W / 2 ? 1 : -1) * rng.int(18, 24), H - 27 + rng.int(-2, 2));
+  let column = anchors[0].x < W / 3 ? 0 : anchors[0].x > (W * 2) / 3 ? 2 : 1;
+  const top = arenaBottom + 8;
+  const low = H - 44;
+  for (let i = 1; i < BOG_STEPS; i++) {
+    column = rng.pick([0, 1, 2].filter((c) => c !== column));
+    const y = Math.round(low + ((top - low) * (i - 1)) / (BOG_STEPS - 2)) + rng.int(-2, 2);
+    zone(columns[column] + rng.int(-5, 5), y);
+  }
+
+  // Campinas e ilhotas de passagem.
+  const meadows: Rect[] = [];
+  const far = (p: { x: number; y: number }, q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
+  for (let tries = 0; tries < 160 && meadows.length < BOG_MEADOWS; tries++) {
+    const p = { x: rng.int(12, W - 13), y: rng.int(arenaBottom + 6, H - 24) };
+    if (!far(p, s, 22) || !anchors.every((a) => far(p, a, 15)) || !meadows.every((m) => far(p, centerOf(m), 15)) || !far(p, ac, 20)) continue;
+    meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
+    firmDisc(p.x, p.y, 4.5 + rng.next() * 1.5, 4 + rng.next() * 1.5);
+  }
+  const islets: { x: number; y: number }[] = [];
+  const nodes = () => [s, ...anchors, ...meadows.map(centerOf), ...islets];
+  for (let tries = 0; tries < 160 && islets.length < BOG_ISLETS; tries++) {
+    const p = { x: rng.int(10, W - 11), y: rng.int(arenaBottom + 4, H - 14) };
+    if (!nodes().every((q) => far(p, q, 12)) || !far(p, ac, 16)) continue;
+    islets.push(p);
+    firmDisc(p.x, p.y, 2.4 + rng.next() * 1.6, 2.2 + rng.next() * 1.4);
+  }
+
+  // A estrada afundada: da entrada até a ilha da arena, em trechos quase retos que passam perto de 2 ou 3 zonas.
+  const spine = [s, ...anchors.filter((_, i) => i % 3 === 1), { x: ac.x, y: ac.y + 5 }]
+    .sort((a, b) => b.y - a.y);
+  for (let i = 1; i < spine.length; i++) path(spine[i - 1], spine[i], 1.25, road, 0.25);
+
+  // Trilhas: a entrada na primeira zona, cada zona na seguinte, as duas últimas na arena; campinas e ilhotas nas
+  // pontas mais perto; às vezes um atalho.
+  const arenaGate = (x: number) => ({ x: clamp(x, ac.x - 6, ac.x + 6), y: ac.y + 6 });
+  const half = 1.45;
+  path(s, anchors[0], half + 0.2, trail);
+  for (let i = 1; i < anchors.length; i++) path(anchors[i - 1], anchors[i], half, trail);
+  path(anchors[anchors.length - 1], arenaGate(anchors[anchors.length - 1].x), half, trail);
+  path(anchors[anchors.length - 2], arenaGate(anchors[anchors.length - 2].x), half, trail);
+  for (const p of [...meadows.map(centerOf), ...islets]) {
+    const others = nodes().filter((q) => !(q.x === p.x && q.y === p.y)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    for (const q of others.slice(0, rng.next() < 0.5 ? 2 : 1)) path(p, q, half - 0.2, trail);
+  }
+  for (let i = 0; i < anchors.length - 2; i++) if (rng.next() < 0.45) path(anchors[i], anchors[i + 2], half - 0.2, trail);
+
+  // Borda: mata morta, numa faixa irregular de 2 a 6 tiles.
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
+      if (edge < 2 + edgeNoise(x, y) * 4.5 && !firm[y * W + x] && !road[y * W + x]) tiles[y * W + x] = Tile.Wall;
+    }
+
+  // Poças negras e mata morta pelo ruído; a trilha que passa na água funda vira passarela.
+  const boardSet = new Uint8Array(W * H);
+  const WET = 0.6, WOOD = 0.47;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (!inside(x, y) || tiles[i] !== Tile.Floor || firm[i] || road[i]) continue;
+      const w = wet(x, y);
+      if (trail[i]) { if (w > WET + 0.03) { if (mud[i]) boardSet[i] = 1; else tiles[i] = Tile.Water; } continue; }
+      // Perto da estrada o aterro fica seco numa faixa estreita; depois dela, a água encosta.
+      if (w > WET) tiles[i] = Tile.Water;
+      else if (woody(x, y) > WOOD && w < WET - 0.02) tiles[i] = Tile.Wall;
+    }
+  // O lago negro em volta da ilha da arena: só as trilhas e a estrada chegam nela.
+  for (let y = ac.y - 15; y <= ac.y + 15; y++)
+    for (let x = ac.x - 16; x <= ac.x + 16; x++) {
+      if (!inside(x, y)) continue;
+      const i = y * W + x;
+      const r = Math.hypot((x - ac.x) / 1.08, y - ac.y);
+      if (r <= arenaR + 0.6 || r > arenaR + 3.6 + edgeNoise(x, y) * 1.8 || firm[i] || road[i]) continue;
+      if (trail[i] && mud[i]) { boardSet[i] = 1; continue; }
+      tiles[i] = Tile.Water;
+    }
+  // Passarela solta (1 tile sem água em volta) volta a ser trilha de barro.
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (!boardSet[i]) continue;
+      const waterNear = [tiles[i - 1], tiles[i + 1], tiles[i - W], tiles[i + W]].some((t) => t === Tile.Water);
+      if (!waterNear) boardSet[i] = 0;
+    }
+
+  // Salas laterais (mini-boss e baú): um terreiro de turfeiros cercado de paliçada, com 2 portões e as trilhas.
+  const side: Rect[] = [];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (rng.next() < 0.3) continue;
+    const anchor = anchors[i];
+    const w = rng.int(7, 9);
+    const h = rng.int(7, 9);
+    const room = shuffled(rng, SWAMP_SIDE_DIRS)
+      .map(([dx, dy]): Rect => ({
+        x: clamp(anchor.x + dx * 13 - w / 2, 5, W - w - 6),
+        y: clamp(anchor.y + dy * 13 - h / 2, arenaBottom + 3, H - h - 6),
+        w, h,
+      }))
+      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP && gapBetween(r, boss) >= 6
+        && side.every((o) => gapBetween(r, o) >= 4)
+        && nodes().every((p) => gapBetween(r, { x: p.x, y: p.y, w: 1, h: 1 }) >= 4));
+    if (!room) continue;
+    const before = tiles.slice(), firmBefore = firm.slice(), trailBefore = trail.slice(), boardBefore = boardSet.slice(), mudBefore = mud.slice();
+    for (let y = room.y; y < room.y + room.h; y++)
+      for (let x = room.x; x < room.x + room.w; x++) {
+        const border = x === room.x || y === room.y || x === room.x + room.w - 1 || y === room.y + room.h - 1;
+        set(x, y, border ? Tile.Ruin : Tile.Floor);
+        firm[y * W + x] = 1;
+        boardSet[y * W + x] = 0;
+      }
+    // Um aro de turfa seca em volta da paliçada.
+    for (let y = room.y - 1; y <= room.y + room.h; y++)
+      for (let x = room.x - 1; x <= room.x + room.w; x++) {
+        const ring = x < room.x || y < room.y || x >= room.x + room.w || y >= room.y + room.h;
+        if (ring && get(x, y) !== Tile.Ruin && inside(x, y)) { set(x, y, Tile.Floor); boardSet[y * W + x] = 0; }
+      }
+    const cx = room.x + Math.floor(room.w / 2);
+    const cy = room.y + Math.floor(room.h / 2);
+    const gateAt = (gate: number) => gate === 0 ? { x: cx, y: room.y, ox: 0, oy: -1 } : gate === 1 ? { x: room.x + room.w - 1, y: cy, ox: 1, oy: 0 }
+      : gate === 2 ? { x: cx, y: room.y + room.h - 1, ox: 0, oy: 1 } : { x: room.x, y: cy, ox: -1, oy: 0 };
+    const toward = Math.abs(anchor.x - cx) > Math.abs(anchor.y - cy) ? (anchor.x > cx ? 1 : 3) : anchor.y > cy ? 2 : 0;
+    const gates = [toward, rng.pick([0, 1, 2, 3].filter((g) => g !== toward))];
+    const opened: number[] = [];
+    gates.forEach((gate, k) => {
+      const g = gateAt(gate);
+      for (let j = -1; j <= 1; j++) set(g.x + (g.ox ? 0 : j), g.y + (g.oy ? 0 : j), Tile.Floor);
+      const out = { x: g.x + g.ox * 2, y: g.y + g.oy * 2 };
+      const to = k === 0 ? anchor : nodes().filter((p) => p !== anchor).sort((a, b) => Math.hypot(a.x - out.x, a.y - out.y) - Math.hypot(b.x - out.x, b.y - out.y))[0];
+      const fresh = new Uint8Array(W * H);
+      path(out, to, half - 0.2, fresh);
+      for (let j = 0; j < fresh.length; j++) if (fresh[j]) opened.push(j);
+    });
+    // A trilha nova abre a turfa (a água funda vira passarela); não atravessa a paliçada fora dos portões.
+    for (const j of opened) {
+      const x = j % W, y = Math.floor(j / W);
+      if (inRect(room, x, y)) continue;
+      trail[j] = 1;
+      mud[j] = 1;
+      if (tiles[j] === Tile.Water) { tiles[j] = Tile.Floor; boardSet[j] = 1; }
+      else if (tiles[j] === Tile.Wall) tiles[j] = Tile.Floor;
+    }
+    for (let y = room.y; y < room.y + room.h; y++) for (let x = room.x; x < room.x + room.w; x++) { trail[y * W + x] = 0; mud[y * W + x] = 0; }
+    const rooms = [...side, room].flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]);
+    if (!connected(tiles, W, [s, ...anchors, ...meadows.map(centerOf), ...rooms])) {
+      tiles.set(before); firm.set(firmBefore); trail.set(trailBefore); boardSet.set(boardBefore); mud.set(mudBefore);
+      continue;
+    }
+    side.push(room);
+  }
+
+  const keep = [
+    grow(spawn, 2), grow(boss, 1), ...side.map((r) => grow(r, 1)),
+    ...[...anchors, ...meadows.map(centerOf)].map((p) => ({ x: p.x - 3, y: p.y - 3, w: 7, h: 7 })),
+  ];
+  const kept = (x: number, y: number) => keep.some((r) => inRect(r, x, y));
+  const goals = dunesGoals({ portal: s, boss, path: zones, side, meadows });
+  const busy = (i: number) => firm[i] || trail[i] || road[i] || boardSet[i];
+  /** Põe um obstáculo; desfaz se cair em área livre, na trilha, ou separar algum ponto importante. */
+  const obstacle = (cells: { x: number; y: number }[], t: number) => {
+    if (cells.some(({ x, y }) => !inside(x, y) || kept(x, y) || busy(y * W + x))) return false;
+    const before = cells.map(({ x, y }) => get(x, y));
+    cells.forEach(({ x, y }) => set(x, y, t));
+    if (connected(tiles, W, goals)) return true;
+    cells.forEach(({ x, y }, k) => set(x, y, before[k]));
+    return false;
+  };
+  const ringIs = (x: number, y: number, w: number, h: number, test: (t: number) => boolean) => {
+    for (let yy = y - 1; yy <= y + h; yy++) for (let xx = x - 1; xx <= x + w; xx++) if (!test(get(xx, yy))) return false;
+    return true;
+  };
+
+  // Palafitas: casas de 2×2 com os pés na água, na beira de uma poça (com terra encostada para alguém chegar).
+  const huts: Rect[] = [];
+  for (let tries = 0; tries < 300 && huts.length < 7; tries++) {
+    const x = rng.int(5, W - 7), y = rng.int(arenaBottom + 4, H - 8);
+    let water = 0, land = 0;
+    for (let yy = y - 1; yy <= y + 2; yy++) for (let xx = x - 1; xx <= x + 2; xx++) { const t = get(xx, yy); if (t === Tile.Water) water++; else if (t === Tile.Floor) land++; }
+    if (water < 5 || land < 4 || huts.some((h) => gapBetween(h, { x, y, w: 2, h: 2 }) < 6)) continue;
+    const cells = [{ x, y }, { x: x + 1, y }, { x, y: y + 1 }, { x: x + 1, y: y + 1 }];
+    if (cells.some(({ x: cx, y: cy }) => get(cx, cy) === Tile.Wall || get(cx, cy) === Tile.Ruin)) continue;
+    if (obstacle(cells, Tile.Ruin)) huts.push({ x, y, w: 2, h: 2 });
+  }
+  // Árvores secas soltas: na beira das poças e da mata morta, e umas no meio da turfa.
+  for (let y = 4; y < H - 4; y++)
+    for (let x = 4; x < W - 4; x++) {
+      if (get(x, y) !== Tile.Floor || kept(x, y) || busy(y * W + x)) continue;
+      if (!ringIs(x, y, 1, 1, (t) => t !== Tile.Ruin && t !== Tile.Portal)) continue;
+      let rough = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const t = get(x + dx, y + dy); if (t === Tile.Wall || t === Tile.Water) rough++; }
+      if (rng.next() < (rough >= 4 ? 0.07 : 0.012)) obstacle([{ x, y }], Tile.Wall);
+    }
+  // Monólitos soltos e montes de pedra.
+  const stones: { x: number; y: number }[] = [];
+  for (let i = 0; i < 18; i++) {
+    const x = rng.int(5, W - 6), y = rng.int(arenaBottom + 3, H - 7);
+    if (get(x, y) !== Tile.Floor || !ringIs(x, y, 1, 1, (t) => t === Tile.Floor)) continue;
+    if (obstacle([{ x, y }], Tile.Ruin)) stones.push({ x, y });
+  }
+
+  // Ilha da arena: o anel de 6 monólitos e 4 braseiros entre eles.
+  const turn = rng.next() * Math.PI * 2;
+  const fires: { x: number; y: number }[] = [];
+  for (let k = 0; k < 6; k++) {
+    const a = turn + (k * Math.PI * 2) / 6;
+    const p = { x: Math.round(ac.x + Math.cos(a) * 6.5), y: Math.round(ac.y + Math.sin(a) * 5.5) };
+    set(p.x, p.y, Tile.Ruin);
+    stones.push(p);
+  }
+  for (const [dx, dy] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) fires.push({ x: ac.x + dx, y: ac.y + dy });
+  // Braseiros na entrada e nas zonas (a luz que guia pela névoa).
+  fires.push({ x: s.x - 3, y: s.y - 2 });
+  for (const a of anchors) if (rng.next() < 0.5) fires.push({ x: a.x + rng.int(-2, 2), y: a.y + rng.int(-2, 2) });
+
+  // Água de 1 tile vira turfa; mata fina vira chão.
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (tiles[i] !== Tile.Water) continue;
+      if (![tiles[i - 1], tiles[i + 1], tiles[i - W], tiles[i + W]].some((t) => t === Tile.Water)) tiles[i] = Tile.Floor;
+    }
+  for (let y = 4; y < H - 4; y++)
+    for (let x = 4; x < W - 4; x++) {
+      const i = y * W + x;
+      if (tiles[i] !== Tile.Wall) continue;
+      const open = [tiles[i - 1], tiles[i + 1], tiles[i - W], tiles[i + W]].filter((t) => t !== Tile.Wall).length;
+      // Árvore solta tem os 4 lados abertos de propósito; a mata fina (3 lados) vira chão.
+      if (open === 3) tiles[i] = Tile.Floor;
+    }
+
+  // Bolsões sem acesso viram mata morta.
+  const reach = reachableFrom(tiles, W, s);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+  const trails: number[] = [], causeway: number[] = [], boards: number[] = [];
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i] !== Tile.Floor) continue;
+    if (boardSet[i]) boards.push(i);
+    else if (road[i]) causeway.push(i);
+    else if (mud[i]) trails.push(i);
+  }
+
+  const portal = s;
+  set(portal.x, portal.y, Tile.Portal);
+  return {
+    mapId: "bog", width: W, height: H, tiles, spawn, boss, bossPortal: centerOf(boss), path: zones, side, meadows, portal, trails,
+    bog: { causeway, boards, stones: stones.filter((p) => get(p.x, p.y) === Tile.Ruin), huts, fires: fires.filter((p) => get(p.x, p.y) === Tile.Floor), arena: { x: ac.x, y: ac.y, r: arenaR } },
+  };
 }
 
 /** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */

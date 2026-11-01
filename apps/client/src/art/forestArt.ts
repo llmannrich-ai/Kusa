@@ -96,7 +96,7 @@ const NEIGHBORS: [number, number, number][] = [
  * troncos). Só depende de onde o ponto e o tile estão, não de qual tile pergunta: dois tiles vizinhos chegam ao mesmo
  * valor para o mesmo ponto, e é isso que faz a copa emendar.
  */
-function distTo(mask: number, x: number, y: number, south = 0) {
+export function distTo(mask: number, x: number, y: number, south = 0) {
   let d = 1e9;
   for (const [bit, dx, dy] of NEIGHBORS) {
     if (!(mask & bit)) continue;
@@ -129,7 +129,7 @@ function shoreDist(land: number, x: number, y: number, R = 44) {
 
 const fields = new Map<string, Float32Array>();
 /** `shoreDist` (ou `distTo`, com `R` 0) de cada pixel do tile, calculado uma vez por máscara e guardado. */
-function field(mask: number, R: number) {
+export function field(mask: number, R: number) {
   const key = `${mask}:${R}`;
   let f = fields.get(key);
   if (!f) {
@@ -140,7 +140,7 @@ function field(mask: number, R: number) {
   return f;
 }
 /** Valor do campo no pixel (x, y) do tile (coordenadas de `fill`, com o meio do pixel). */
-const at = (f: Float32Array, x: number, y: number) => f[Math.min(HD - 1, Math.max(0, Math.floor(y))) * HD + Math.min(HD - 1, Math.max(0, Math.floor(x)))];
+export const fieldAt = (f: Float32Array, x: number, y: number) => f[Math.min(HD - 1, Math.max(0, Math.floor(y))) * HD + Math.min(HD - 1, Math.max(0, Math.floor(x)))];
 
 // --- Chão ---------------------------------------------------------------------------------
 
@@ -239,7 +239,7 @@ export function dirtTile(variant: ForestVariant, out: number): Paper {
   const edge = (x: number, y: number) => 26 + (sn(x, y, 32, 30) - 0.5) * 22 + (sn(x, y, 16, 31) - 0.5) * 8;
   const dist = field(out, 62);
   // Tom liso: a variação pequena só aparecia como um quadriculado de pontilhado repetido a cada tile.
-  p.fill([0, 0, HD - 1, HD - 1], (x, y) => at(dist, x, y) > edge(x, y), F.Dirt, () => FLAT,
+  p.fill([0, 0, HD - 1, HD - 1], (x, y) => fieldAt(dist, x, y) > edge(x, y), F.Dirt, () => FLAT,
     (x, y) => (noise(x, y, 33) < 0.04 ? -1 : noise(x, y, 34) > 0.975 ? 1 : 0));
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
@@ -281,8 +281,8 @@ export function mudEdge(variant: ForestVariant, water: number): Paper {
   const p = new Paper(variant);
   const reach = (x: number, y: number) => 30 + (sn(x, y, 32, 50) - 0.5) * 18;
   const dist = field(water, 0);
-  p.fill([0, 0, HD - 1, HD - 1], (x, y) => at(dist, x, y) < reach(x, y), F.Mud, (x, y) => 0.48 + Math.min(1, at(dist, x, y) / reach(x, y)) * 0.16,
-    (x, y) => (at(dist, x, y) > reach(x, y) - 5 && noise(x, y, 51) < 0.5 ? 1 : noise(x, y, 52) < 0.04 ? -1 : 0));
+  p.fill([0, 0, HD - 1, HD - 1], (x, y) => fieldAt(dist, x, y) < reach(x, y), F.Mud, (x, y) => 0.48 + Math.min(1, fieldAt(dist, x, y) / reach(x, y)) * 0.16,
+    (x, y) => (fieldAt(dist, x, y) > reach(x, y) - 5 && noise(x, y, 51) < 0.5 ? 1 : noise(x, y, 52) < 0.04 ? -1 : 0));
   // Pedrinhas lavadas e pegadas de bicho na lama.
   for (let k = 0; k < 6; k++) {
     const x = noise(k, water, 53) * HD, y = noise(water, k, 54) * HD;
