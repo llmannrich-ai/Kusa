@@ -117,7 +117,9 @@ export class BotAi {
     for (const slot of [0, 1] as const) {
       if (p.level < SPELL_SLOT_LEVELS[slot] || (slot === 0 ? p.spell1 : p.spell2)) continue;
       const choices = spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes]));
-      if (choices.length > 0) this.w.chooseSpell(id, { slot, spellId: choices[0].id });
+      // A de maior nível na conta (empate: a primeira da árvore).
+      const best = choices.reduce<SpellDef | undefined>((top, s) => (!top || (p.spellRanks.get(s.id) ?? 0) > (p.spellRanks.get(top.id) ?? 0) ? s : top), undefined);
+      if (best) this.w.chooseSpell(id, { slot, spellId: best.id });
     }
 
     const foe = this.pickFoe(p, anchor);

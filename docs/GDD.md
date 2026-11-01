@@ -369,12 +369,16 @@ O líder completa a equipe com bots: cada vaga livre mostra os retratos das 4 cl
 classe ("Bot Paladino", com 🤖 na vaga); o ✕ tira. O bot ocupa a vaga (a sala aceita um humano a menos) e nunca vira líder.
 Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espera, então não tem bot.
 
-- **Força:** entra como um convidado, sem Grimório comprado nem equipamento, no mesmo nível inicial dos humanos.
+- **Força:** o bot leva a configuração da classe dele na conta de quem o pôs: o Grimório inteiro (magias compradas e o
+  nível delas, magias ativas, auras, traços e tomos) e o equipamento e as runas equipados naquela classe, no mesmo nível
+  inicial dos humanos. O equipamento é uma **cópia**: nada sai da conta, o bot não larga nada ao morrer e nada volta
+  (o que não serve na classe fica de fora, sem ir para bag). A cópia é lida antes de retirar o equipamento dos humanos,
+  então um humano e um bot da mesma classe vestem o mesmo conjunto. Quem entra sem conta põe bot sem nada comprado.
 - **Comportamento** (`apps/server/src/botAi.ts`): segue o líder (ou o humano vivo mais perto), enfrenta o alvo do líder ou o monstro
-  mais perto da equipe, escolhe a 1ª magia oferecida em cada slot e a 1ª melhoria de cada nível, e conjura assim que a magia recarrega:
+  mais perto da equipe, escolhe a magia de maior nível entre as oferecidas em cada slot e a 1ª melhoria de cada nível, e conjura assim que a magia recarrega:
   cura e escudo em quem está ferido, dano em quem está ao alcance, bônus e campos quando a luta está perto. Longe demais do líder
   (passou pela caverna, ficou preso), reaparece ao lado dele. Não pisa no portal nem na caverna.
-- **Sem gold nem itens:** o bot não abre baú, não pega item nem poção do chão e não recebe runa. Ele conta na divisão da XP e do
+- **Sem gold nem loot:** o bot não abre baú, não pega item nem poção do chão e não recebe runa de boss. Ele conta na divisão da XP e do
   gold como qualquer herói da equipe (com 1 humano e 1 bot, cada um leva metade), mas não guarda gold: a parte dele se perde.
   O que o bot mata rende XP e gold para a equipe como qualquer morte.
 - **Menos itens com bots:** como o bot não pega item do chão, sem corte quem joga com bots levaria sozinho os itens da equipe

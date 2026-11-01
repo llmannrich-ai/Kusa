@@ -33,7 +33,7 @@ import {
 import { RULES_VERSION } from "./rulesVersion.ts";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
-import { mapClears, recordMapClear, recordRun, resolveAccount, storeBag, supabase, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
+import { mapClears, readLoadout, recordMapClear, recordRun, resolveAccount, storeBag, supabase, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
 import { recordTelemetry } from "./telemetry.ts";
 
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
@@ -87,7 +87,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.maxClients = this.hunt.partySize();
 
     this.onMessage(MSG.start, (client) => {
-      if (this.hunt.start(client.sessionId)) this.startRun();
+      if (this.hunt.start(client.sessionId)) void this.startRun();
     });
 
     // Bot ocupa uma vaga: a sala aceita um humano a menos.
@@ -158,8 +158,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.updateListing();
   }
 
-  private startRun() {
+  private async startRun() {
     this.lock();
+    // Os bots vestem uma cópia do equipamento da classe deles na conta de quem os pôs. A leitura vem antes de
+    // retirar o equipamento dos humanos: um humano da mesma classe tiraria os itens da conta.
+    await Promise.allSettled([...this.users].flatMap(([sessionId, userId]) => (userId ? this.hunt.botsOf(sessionId) : [])
+      .map(async (bot) => this.hunt.equip(bot.id, await readLoadout(userId!, bot.classId)))));
     // O equipamento escolhido no menu e a bag saem da conta e entram na dungeon (chegam logo depois do início).
     this.users.forEach((userId, sessionId) => {
       const classId = this.state.players.get(sessionId)?.classId;

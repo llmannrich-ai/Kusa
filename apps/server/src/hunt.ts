@@ -244,6 +244,10 @@ interface Seat {
   castCount: number;
   /** XP de uso das magias da conta ao entrar (quem grava o novo é o banco, no fim da hunt). */
   spellXp: SpellXp;
+  /** Grimório da conta ao entrar (talentos, XP e magias ativas): o bot que este jogador põe copia daqui. */
+  recruit: Recruit;
+  /** Bot: quem o pôs na sala. O equipamento da classe do bot vem da conta dessa pessoa (vazio = humano). */
+  botOwner: string;
   /** Espinhos de Ferro: fração do golpe corpo a corpo devolvida, até quando. */
   thornsPct: number;
   thornsUntil: number;
@@ -582,7 +586,8 @@ export class Hunt {
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
-      landscape: false,
+      landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
+      botOwner: "",
     });
     const joined = this.seats.get(sessionId)!;
     joined.stats.specs = joined.traits.map((t) => t.id);
@@ -618,10 +623,26 @@ export class Hunt {
     if (sessionId !== this.state.leaderId || this.state.phase !== "lobby") return null;
     if (this.state.players.size >= this.partySize() || typeof msg?.classId !== "string" || !(msg.classId in CLASSES)) return null;
     const id = `bot${this.nextBotId++}`;
-    // Bot entra como um convidado: sem Grimório comprado nem equipamento.
-    this.join(id, { name: `Bot ${CLASSES[msg.classId].name}`, classId: msg.classId, talents: {}, spellXp: {} });
+    // O bot leva o Grimório da conta de quem o pôs (talentos, nível e magias ativas da classe dele). O equipamento e as
+    // runas da classe chegam no início da hunt (`equip`), como cópia: nada sai da conta.
+    const owner = this.seats.get(sessionId)?.recruit;
+    this.join(id, {
+      name: `Bot ${CLASSES[msg.classId].name}`, classId: msg.classId,
+      talents: owner?.talents ?? {}, spellXp: owner?.spellXp ?? {}, activeSpells: owner?.activeSpells ?? [],
+    });
     this.state.players.get(id)!.bot = true;
+    this.seats.get(id)!.botOwner = sessionId;
     return id;
+  }
+
+  /** Bots que este jogador pôs na sala (o equipamento da classe de cada um sai da conta dele, como cópia). */
+  botsOf(sessionId: string): { id: string; classId: ClassId }[] {
+    const bots: { id: string; classId: ClassId }[] = [];
+    this.seats.forEach((seat, id) => {
+      const p = this.state.players.get(id);
+      if (p?.bot && seat.botOwner === sessionId) bots.push({ id, classId: p.classId as ClassId });
+    });
+    return bots;
   }
 
   /** O líder tira um bot da sala de espera. */
@@ -880,7 +901,8 @@ export class Hunt {
       p[slot] = best[slot];
     }
     // O que não foi vestido vai para a bag (pode passar de BAG_SIZE, raro): nada se perde.
-    p.bag.push(...rest);
+    // O bot veste uma cópia do equipamento da conta: o que não serve nele não entra na dungeon.
+    if (!p.bot) p.bag.push(...rest);
     this.refreshGear(sessionId);
     return true;
   }
@@ -3070,7 +3092,8 @@ export class Hunt {
     const seat = this.seats.get(sessionId);
     let lost: string | undefined;
     let lostBag: string[] = [];
-    if (!survived) {
+    // O bot veste uma cópia do equipamento da conta: não larga nada no chão (seria item duplicado).
+    if (!survived && !player.bot) {
       const worn = ITEM_SLOTS.filter((slot) => player[slot]);
       const slot = worn[Math.floor(this.random() * worn.length)];
       if (slot) {

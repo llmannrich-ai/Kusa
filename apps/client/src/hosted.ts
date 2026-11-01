@@ -46,7 +46,8 @@ interface Snapshot {
 type Down =
   | { k: "msg"; type: string; msg: unknown }
   | { k: "result"; result: RunEndedMessage; report: HuntReport }
-  | { k: "begin" }
+  /** A hunt começou; `bots` são os que este jogador pôs na sala (vestem uma cópia do equipamento da classe na conta dele). */
+  | { k: "begin"; bots?: { id: string; classId: ClassId }[] }
   | { k: "roster"; roster: string[]; host: string }
   | { k: "snap"; snap: Snapshot }
   | { k: "ping" }
@@ -58,7 +59,7 @@ type Down =
 type Up =
   | { k: "hello"; recruit: Recruit; rulesVersion: string; resume: boolean }
   | { k: "msg"; type: string; msg: unknown }
-  | { k: "loadout"; items: string[]; bag: string[]; bossRunes?: string[] }
+  | { k: "loadout"; items: string[]; bag: string[]; bossRunes?: string[]; bots?: { id: string; items: string[] }[] }
   | { k: "bye" };
 
 /** Para onde o anfitrião manda as coisas de um jogador (o próprio, direto; os convidados, pelo canal). */
@@ -169,6 +170,11 @@ class HostRuntime {
       this.hunt.equip(sessionId, up.items ?? []);
       this.hunt.fillBag(sessionId, up.bag ?? []);
       this.hunt.knownBossRunes(sessionId, Array.isArray(up.bossRunes) ? up.bossRunes : []);
+      // Só os bots que este jogador pôs na sala vestem o equipamento que ele mandou.
+      const mine = new Set(this.hunt.botsOf(sessionId).map((b) => b.id));
+      for (const bot of Array.isArray(up.bots) ? up.bots : []) {
+        if (mine.has(bot?.id) && Array.isArray(bot.items)) this.hunt.equip(bot.id, bot.items.filter((id) => typeof id === "string"));
+      }
     }
   }
 
@@ -177,7 +183,7 @@ class HostRuntime {
       case MSG.start:
         if (!this.hunt.start(sessionId)) return;
         // Cada jogador abre a própria hunt no banco (equipamento e bag saem da conta dele).
-        this.sinks.forEach((sink) => sink.down({ k: "begin" }));
+        this.sinks.forEach((sink, id) => sink.down({ k: "begin", bots: this.hunt.botsOf(id) }));
         this.onChange();
         return;
       case MSG.addBot:
@@ -446,7 +452,7 @@ class HostedSession {
       case "snap":
         this.lastSnap = down.snap;
         return;
-      case "begin": return void this.beginRun(client);
+      case "begin": return void this.beginRun(client, Array.isArray(down.bots) ? down.bots : []);
       case "result":
         return reportSolo(this.runId, this.me.classId, down.result, down.report, (msg) => client.emit(MSG.runEnded, msg));
       case "cleared": return void recordSoloMapClear(this.runId, typeof down.boss === "string" ? down.boss : "");
@@ -454,9 +460,11 @@ class HostedSession {
   }
 
   /** A hunt começou: abre a hunt deste jogador no banco e manda o equipamento e a bag para a dungeon. */
-  private async beginRun(client: RoomClient) {
+  private async beginRun(client: RoomClient, bots: { id: string; classId: ClassId }[]) {
     // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
     await flushPendingSolo();
+    // Os bots que pus vestem uma cópia do equipamento da classe deles, lida antes de a minha hunt tirar o da minha classe.
+    const botItems = await botLoadouts(bots);
     // Campanha: o cenário precisa estar aberto para quem criou a sala; quem entrou na sala de outro joga livre.
     const { data, error } = await supabase.rpc(this.creator ? "start_solo_run" : "start_guest_run", { p_class_id: this.me.classId, p_map_id: this.mapId });
     if (error) {
@@ -467,7 +475,7 @@ class HostedSession {
     this.runId = run.run_id;
     noticeClosed(run.closed);
     watchCommitted(() => (this.left ? null : this.client as unknown as DungeonRoom | null), run.run_id);
-    const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [], bossRunes: run.boss_runes ?? [] };
+    const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [], bossRunes: run.boss_runes ?? [], bots: botItems };
     if (this.runtime) this.runtime.receive(this.myId, up);
     else if (this.link) send(this.link, up);
   }
@@ -549,6 +557,16 @@ async function loadSimulation() {
     import("../../server/src/snapshot.ts"),
   ]);
   return { Hunt, DungeonState, stateFromJSON };
+}
+
+/** Equipamento e runas equipados na classe de cada bot, sem tirar da conta (o bot veste uma cópia). */
+async function botLoadouts(bots: { id: string; classId: ClassId }[]): Promise<{ id: string; items: string[] }[]> {
+  if (bots.length === 0) return [];
+  const { data, error } = await supabase.from("profile_items").select("item_id, class_id")
+    .eq("equipped", true).in("class_id", [...new Set(bots.map((b) => b.classId))]);
+  if (error) console.error("Falha ao ler o equipamento dos bots", error);
+  const rows = (data ?? []) as { item_id: string; class_id: string }[];
+  return bots.map((b) => ({ id: b.id, items: rows.filter((r) => r.class_id === b.classId).map((r) => r.item_id) }));
 }
 
 /** Talentos, XP e magias ativas da conta (precisam entrar na hunt antes do início, como no servidor). */
