@@ -371,12 +371,16 @@ O líder completa a equipe com bots: cada vaga livre mostra os retratos das 4 cl
 classe ("Bot Paladino", com 🤖 na vaga); o ✕ tira. O bot ocupa a vaga (a sala aceita um humano a menos) e nunca vira líder.
 Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espera, então não tem bot.
 
-- **Força:** entra como um convidado, sem Grimório comprado nem equipamento, no mesmo nível inicial dos humanos.
+- **Força:** o bot leva a configuração da classe dele na conta de quem o pôs: o Grimório inteiro (magias compradas e o
+  nível delas, magias ativas, auras, traços e tomos) e o equipamento e as runas equipados naquela classe, no mesmo nível
+  inicial dos humanos. O equipamento é uma **cópia**: nada sai da conta, o bot não larga nada ao morrer e nada volta
+  (o que não serve na classe fica de fora, sem ir para bag). A cópia é lida antes de retirar o equipamento dos humanos,
+  então um humano e um bot da mesma classe vestem o mesmo conjunto. Quem entra sem conta põe bot sem nada comprado.
 - **Comportamento** (`apps/server/src/botAi.ts`): segue o líder (ou o humano vivo mais perto), enfrenta o alvo do líder ou o monstro
-  mais perto da equipe, escolhe a 1ª magia oferecida em cada slot e a 1ª melhoria de cada nível, e conjura assim que a magia recarrega:
+  mais perto da equipe, escolhe a magia de maior nível entre as oferecidas em cada slot e a 1ª melhoria de cada nível, e conjura assim que a magia recarrega:
   cura e escudo em quem está ferido, dano em quem está ao alcance, bônus e campos quando a luta está perto. Longe demais do líder
   (passou pela caverna, ficou preso), reaparece ao lado dele. Não pisa no portal nem na caverna.
-- **Sem gold nem itens:** o bot não abre baú, não pega item nem poção do chão e não recebe runa. Ele conta na divisão da XP e do
+- **Sem gold nem loot:** o bot não abre baú, não pega item nem poção do chão e não recebe runa de boss. Ele conta na divisão da XP e do
   gold como qualquer herói da equipe (com 1 humano e 1 bot, cada um leva metade), mas não guarda gold: a parte dele se perde.
   O que o bot mata rende XP e gold para a equipe como qualquer morte.
 - **Menos itens com bots:** como o bot não pega item do chão, sem corte quem joga com bots levaria sozinho os itens da equipe
@@ -497,7 +501,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
 | 🌳 Bosque Velho | 5 ★★★★★☆ | 8 min | 96×128, em pé: mata fechada com clareiras ligadas por trilhas, 7 zonas, 5 campinas, um riacho com pontes e o círculo de menires | Galhudo, Lobo Atroz, Espinheiro, Sátiro Flautista, Pantera das Sombras, Urso-coruja → Dríade Corrompida, Centauro Renegado, Guardião do Menir → Dragão Verde Jovem |
-| 🍄 Coração da Mata | 6 ★★★★★★ (provisório) | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | só o terreno (os monstros ainda vêm) |
+| 🍄 Coração da Mata | 6 ★★★★★★ | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | Fungóide, Javali-Espinho, Cipó Estrangulador, Cervo Corrompido, Sombra Élfica, Pantera das Sombras, Urso-coruja → Árvore Desperta, Guardião Élfico Caído, Dríade Corrompida → Rei Galhado |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
 | ⚔️ Fortaleza Orc | 8 ★★★★★★★★ | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | o clã do Pântano do Kosaradius bem mais forte (×2,4 os comuns, ×2,5 os mini-bosses; ~130 monstros por hunt, 40% a mais que nas Mesas) e em bandos que lotam as salas: Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Chefe de Guerra Orc, Ogro Xamã → Vorgak, o Senhor da Brasa |
@@ -657,8 +661,8 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
 
 O lado da floresta da bifurcação da Travessia (etapas 6 e 7 da campanha): o Bosque Velho abre com o Basilisco (o
 boss do covil oeste da Caverna da Travessia) e o Coração da Mata com o boss do Bosque Velho. Os dois mapas usam o mesmo gerador (`generateForest` em
-`dungeon.ts`), cada um com a sua variante: dificuldade 5 e 6 (a do Coração da Mata provisória), 8 min, até 4
-jogadores. O Bosque Velho já tem monstros (ver "Bestiário"); o Coração da Mata ainda é só o terreno.
+`dungeon.ts`), cada um com a sua variante: dificuldade 5 e 6, 8 min, até 4 jogadores. Os
+monstros dos dois estão em "Bestiário".
 
 - **Em pé, como o celular:** 96×128. O mapa nasce todo de mata fechada e recebe **clareiras ligadas por trilhas**: a
   entrada na clareira do sul, a **arena do boss** na do norte (círculo aberto, a mata em volta) e, entre elas, as 7
@@ -698,8 +702,7 @@ jogadores. O Bosque Velho já tem monstros (ver "Bestiário"); o Coração da Ma
   mata, fachos de sol nas clareiras. Pintar tudo leva ~1,5 s num computador (mais no celular), na entrada da hunt.
   Sem faixa de sombra nem folhas em fila na beira da mata, sem tinta por tile (capim e trilha em tom liso, contínuos
   em blocos de 4×4 tiles) e poucos enfeites rasteiros: o chão não mostra a grade dos tiles.
-- **Loot:** teto da hunt solo de 3.200 no Bosque Velho, cheio em 240 s; no Coração da Mata, provisório de 100 (sem
-  monstros), cheio em 180 s, sobe junto com o bestiário.
+- **Loot:** teto da hunt solo de 3.200 no Bosque Velho e de 3.800 no Coração da Mata, cheio em 240 s nos dois.
 
 ### Portões do Império (terreno, fora da campanha)
 
@@ -1147,6 +1150,31 @@ quase nada é morto-vivo: veneno e sangramento pegam, e as plantas queimam fáci
 ficam entre os Escaravelhos e a Múmia Enfaixada; os mini-bosses aguentam um pouco mais que os das Dunas (o Guardião do
 Menir é o mais duro para Cavaleiro e Paladino, pela pedra); o Dragão Verde fica perto do Colosso Cantante. Loot máximo
 de uma hunt ~2.700 (teto da hunt solo 3.200). Refazer quando a telemetria chegar.
+
+### Coração da Mata (★6)
+
+O fundo da floresta do Kosaradius, depois do Bosque Velho: a luz quase não chega. Fungos e cipós que se mexem, a
+caçada corrompida do Rei Galhado (javalis e cervos) e os mortos dos santuários élficos; do Bosque Velho, mais fundo,
+vêm a Pantera das Sombras, o Urso-coruja e a Dríade Corrompida. Na faixa de força das Mesas de Solária (o mesmo degrau
+do outro lado da bifurcação): orçamentos maiores, 25% das campinas com um mini-boss solto. Arte esculpida por código na
+arte nova (os mesmos modelos do Bosque Velho: `forestBeasts.ts` e `forestFolk.ts`); na antiga, o desenho mais parecido
+do Bosque Velho e do pack.
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Fungóide | controlador (planta, bando de 2–3) | chapéu vermelho de pintas · metade dos golpes envenena · Nuvem de Esporos (em volta: veneno e lento) · queima fácil |
+| Javali-Espinho | bruto (dupla) | espinhos de amora no lombo · a presa sangra · Investida (salta de 2–5 tiles, empurra) |
+| Cipó Estrangulador | emboscador (planta) | camuflado na mata até 3 tiles · Ataque Surpresa 1,6× · Estrangular (puxa de 2–5 tiles e prende 1,5 s) · queima fácil |
+| Cervo Corrompido | escaramuçador | galhada de musgo podre · Galhada (linha de 5 que empurra 2) · Fuga Ágil |
+| Sombra Élfica | artilheiro (morto-vivo) | arqueira de luz fria a 6 tiles · some no ar a cada ~6,5 s · Flecha da Lua Morta (linha de 7 que cega) · a luz a desfaz (1,5×) |
+| **Árvore Desperta** (mini-boss) | sentinela (planta) | parada é uma árvore (camuflada, acorda a 4 tiles) · resiste a físico · Raízes (área que prende 1,5 s) · Varrida de Galho (em volta, empurra 2) · fogo 1,5× |
+| **Guardião Élfico Caído** (mini-boss) | líder (morto-vivo) | duas lâminas de luz fria · Comando (+20% de dano e velocidade) · Passo Sombrio (salta) · Dança das Lâminas (em volta, queima) · ferido, Chamado do Santuário (2 Sombras Élficas) |
+| **Rei Galhado** (boss) | bruto (fada) | espírito da caçada, galhada de cervo e lança de galho, alcance 2 · resiste a natureza, vulnerável a fogo e gelo · Investida da Galhada (linha de 7, empurra) · Espinhos do Coração (área de raio 3 que sangra) · abaixo de 70%, Chamado da Caçada (2 Cervos) · abaixo de 50%, Passo da Névoa · abaixo de 30%, Fúria da Mata (uma vez: raízes em volta, prende, empurra 3 e cura 15%) |
+
+**Balanceamento** (duelo, nos mesmos níveis das Mesas): os comuns ficam entre a Carpideira e a Múmia Enfaixada (o Cervo,
+o mais duro para o Druida); os mini-bosses perto da Múmia Real (a Árvore Desperta aguenta mais e bate menos); o Rei
+Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot máximo de uma hunt ~3.340, como as Mesas
+(teto da hunt solo 3.800).
 
 ## Ataques e magias (protótipo)
 

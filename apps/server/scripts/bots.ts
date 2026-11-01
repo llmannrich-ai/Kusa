@@ -3,9 +3,13 @@
  * - Sala de espera: só o líder põe e tira bot, até a equipe ter `MAX_PARTY_SIZE`; a liderança nunca vai para um bot.
  * - Na hunt: os bots escolhem magias, batem e conjuram, seguem o líder e nunca levam loot, itens nem poções.
  * - O retrato da troca de anfitrião guarda quem é bot; o último humano saindo leva os bots junto e a hunt acaba.
+ * - O bot leva o Grimório da conta de quem o pôs e veste uma cópia do equipamento da classe: não larga nada ao morrer.
  * Uso: npx tsx apps/server/scripts/bots.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { MAX_PARTY_SIZE, MSG, createRng, generateDungeon, tileDistance, type AttackMessage, type SpellMessage } from "@kusa/shared";
+import {
+  MAX_PARTY_SIZE, MSG, RUNE_IDS, SPELLS, SPELL_LEVEL_XP, createRng, generateDungeon, itemId, talentTree, tileDistance,
+  type AttackMessage, type SpellMessage,
+} from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { nextStep } from "../src/pathfinding.ts";
 import { stateFromJSON } from "../src/snapshot.ts";
@@ -120,4 +124,25 @@ check(bots.every((id) => restored.players.get(id!)?.bot === true), "o retrato da
 hunt.leave("a");
 check(ended.length === 1 && ended[0] === "a", "só o humano tem resultado de hunt (bot não grava conta nem telemetria)");
 check(team.every((b) => b.status !== "playing") && huntOver, "sem humanos na dungeon, os bots saem e a hunt acaba");
+
+// --- Configuração da conta --------------------------------------------------
+// O bot copia o Grimório de quem o pôs (magia comprada e o nível dela) e veste uma cópia do equipamento da classe.
+const bought = talentTree("knight").find((t) => t.spellId && t.freeRank === 0 && SPELLS[t.spellId].slot === 0)!;
+const maxXp = SPELL_LEVEL_XP[SPELL_LEVEL_XP.length - 1];
+const account = new Hunt(new DungeonState(), host, { mapId: "crypt", seed: 777, startLevel: 8, random: createRng(3).next });
+account.join("dono", { name: "Dono", classId: "sorcerer", talents: { [bought.id]: 1 }, spellXp: { [bought.id]: maxXp }, activeSpells: [] });
+const copy = account.addBot("dono", { classId: "knight" })!;
+const knightBot = () => account.state.players.get(copy)!;
+check(knightBot().knownSpells.includes(bought.spellId!), "o bot conhece a magia que a conta comprou no Grimório");
+check((knightBot().spellRanks.get(bought.spellId!) ?? 0) > 1, "a magia do bot tem o nível da conta");
+check(account.botsOf("dono").length === 1 && account.botsOf("dono")[0].classId === "knight", "a hunt sabe de quem é o bot");
+check(account.start("dono"), "a hunt com o bot da conta começa");
+const sword = itemId("weapon", "sword", 3);
+account.equip(copy, [sword, itemId("helmet", "arcane", 2), RUNE_IDS[0]]);
+check(knightBot().weapon === sword, "o bot veste o equipamento da classe");
+check(knightBot().runes.includes(RUNE_IDS[0]), "o bot leva as runas equipadas na classe");
+check(knightBot().bag.length === 0, "o que não serve no bot não vira item na bag dele");
+(account as unknown as { endRun(id: string, outcome: string): void }).endRun(copy, "died");
+check(account.state.items.size === 0, "o bot morto não larga equipamento no chão (é cópia)");
+
 console.log("\nBOTS OK");

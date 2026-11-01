@@ -9,13 +9,14 @@ import { SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, tween, type F
  * escorpião sai da fase. Olha para a esquerda (x negativo), chão em y = 0.
  */
 
-export type BeastKind = "wolf" | "panther" | "centaur";
+export type BeastKind = "wolf" | "panther" | "centaur" | "boar" | "stag";
 
 // --- Materiais -----------------------------------------------------------------------------------------------------
 
 const M = {
   coat: 0, coatDark: 1, belly: 2, muzzle: 3, nose: 4, eye: 5, mouth: 6, tooth: 7, claw: 8, smoke: 9,
   skin: 10, leather: 11, pelt: 12, wood: 13, string: 14, hair: 15, paint: 16, hoof: 17, feather: 18, arrow: 19, steel: 20,
+  antler: 21, moss: 22, thorn: 23, rot: 24,
 } as const;
 
 interface Palette { coat: readonly string[]; coatDark: readonly string[]; belly: readonly string[]; muzzle: readonly string[]; eye: readonly string[]; outline: string }
@@ -48,6 +49,24 @@ const PALETTES: Record<BeastKind, Palette> = {
     eye: ["#2a1606", "#5a320e", "#8a5a20", "#c08a40", "#f0d090"],
     outline: "#0a0909",
   },
+  // Javali-Espinho: pardo-escuro de cerdas grossas, o olho vermelho.
+  boar: {
+    coat: ["#0c0705", "#170e09", "#24160d", "#331f12", "#442a18", "#57361f", "#6b4428", "#805434"],
+    coatDark: ["#050302", "#0b0705", "#130c08", "#1c120b", "#26190f", "#312114"],
+    belly: ["#1e140c", "#322216", "#483222", "#5e422e", "#74543a"],
+    muzzle: ["#2a1a14", "#44302a", "#5e463e", "#7a5e54", "#96786c", "#b2948a"],
+    eye: ["#3a0404", "#7a0a08", "#c01810", "#ff4a30", "#ffc0a0"],
+    outline: "#070403",
+  },
+  // Cervo Corrompido: cinza-pardo pálido, manchas de podridão escura, o olho verde doente.
+  stag: {
+    coat: ["#16120e", "#262019", "#3a3126", "#4f4434", "#665844", "#7e6e56", "#968568", "#ae9c7e", "#c6b496"],
+    coatDark: ["#08070a", "#100e12", "#1a161c", "#242026", "#2e2a32", "#3a3540"],
+    belly: ["#3a342a", "#5a5242", "#7a705c", "#9a8e76", "#b8ac92", "#d4caae"],
+    muzzle: ["#1c1814", "#302a22", "#463e32", "#5e5444", "#786c58"],
+    eye: ["#1a4a08", "#3a8a10", "#7ad030", "#c4ff70", "#f4ffd0"],
+    outline: "#0a0806",
+  },
 };
 
 function look(kind: BeastKind): Look {
@@ -74,6 +93,10 @@ function look(kind: BeastKind): Look {
   materials[M.hoof] = { ramp: ["#060505", "#0f0d0c", "#1c1816", "#2c2622", "#403832"], gloss: 0.5, shine: 20, lineDepth: 0.6 };
   materials[M.feather] = { ramp: ["#030303", "#0a0a0b", "#141416", "#202024", "#303036"], lineDepth: 0.4 };
   materials[M.arrow] = { ramp: ["#3a2614", "#5a3c1e", "#7c5530", "#9e7044", "#c09060"], lineDepth: 0.4 };
+  materials[M.antler] = { ramp: ["#2a2216", "#463a28", "#665640", "#88765a", "#a89676", "#c6b694", "#e0d2b2"], gloss: 0.3, shine: 16, bump: 0.35, bumpSize: 0.35, lineDepth: 0.5 };
+  materials[M.moss] = { ramp: ["#0e1406", "#1a240a", "#283810", "#364c16", "#46621e", "#5a7a28"], grain: 0.3, grainSize: 0.4, bump: 0.5, bumpSize: 0.3, lineDepth: 0.5 };
+  materials[M.thorn] = { ramp: ["#4a4430", "#7a7250", "#a8a074", "#d0ca9e", "#eeeacc"], gloss: 0.5, shine: 20, lineDepth: 0.3 };
+  materials[M.rot] = { ramp: ["#05020a", "#0e0614", "#1a0c22", "#2a1434", "#3c1e48"], gloss: 0.5, shine: 20, bump: 0.5, bumpSize: 0.3, lineDepth: 0.4 };
   materials[M.steel] = { ramp: ["#1c1f24", "#343940", "#525962", "#767e88", "#a0a8b2", "#d0d6dc", "#f4f8fc"], gloss: 1.2, shine: 30, lineDepth: 0.5 };
   // Mata: a luz que vem de cima é verde, e a rebatida do chão também.
   return { materials, outline: pal.outline, bounce: { color: "#9ab860", power: 0.35 }, occlusion: 0.6, rim: { color: "#e8f0c0", power: 0.45 } };
@@ -113,6 +136,16 @@ const SPECS: Record<BeastKind, Spec> = {
     shoulderY: 30, hipY: 30, half: 13, chest: [9.5, 8.4, 7.4], waist: [12, 8, 7.2], rump: [8.4, 8.6, 7.8],
     fore: [14, 14, 3.2], hind: [14.5, 14, 3.8], legR: [2.8, 1.7], neck: [0, 0], head: [0, 0, 0], snout: [0, 0],
     tail: [6, 3, 1.6, 2.6], gauge: 4.6,
+  },
+  boar: {
+    shoulderY: 19, hipY: 16, half: 10, chest: [9, 8.6, 7], waist: [9.6, 6.8, 6.4], rump: [6.4, 6.6, 6],
+    fore: [8, 8, 2.4], hind: [8.5, 8, 3], legR: [2.4, 1.4], neck: [5, 5], head: [5, 4.4, 3.8], snout: [7, 2.6],
+    tail: [3, 2, 0.8, 0.5], gauge: 4.4,
+  },
+  stag: {
+    shoulderY: 24, hipY: 24, half: 11, chest: [8, 7.4, 6], waist: [10, 6.6, 5.6], rump: [6.4, 7, 6],
+    fore: [11, 11, 2.6], hind: [11.5, 11, 3.2], legR: [2.2, 1.2], neck: [11, 3.4], head: [4.4, 3.4, 3], snout: [5.6, 1.9],
+    tail: [2, 2, 1.4, 1], gauge: 3.8,
   },
 };
 
@@ -208,7 +241,7 @@ export function beast(kind: BeastKind, p: BPose = {}): Sculpt {
     const part = sc.part();
     const [r0, r1] = sp.legR;
     const coat = front ? M.coat : M.coat;
-    if (kind === "centaur") {
+    if (kind === "centaur" || kind === "boar" || kind === "stag") {
       sc.cone(root, knee, r0 + 1.6, r0, coat, { part });
       sc.cone(knee, ankle, r0 * 0.75, r1, coat, { part });
       sc.ball(knee, r0 * 0.85, coat, part);
@@ -241,6 +274,19 @@ export function beast(kind: BeastKind, p: BPose = {}): Sculpt {
       sc.ell([x, sp.shoulderY + sp.chest[1] * 0.72 - k * 0.35, 0], [3.4, 2.4, 3.4], M.coatDark, { part: body });
     }
   }
+  if (kind === "boar") {
+    // Crina de cerdas escuras e espinhos de amora nascendo do lombo.
+    for (let k = 0; k < 8; k++) {
+      const x = -sp.half - 2 + k * 3.2, y = sp.shoulderY + sp.chest[1] * 0.8 - k * 0.5;
+      sc.ell([x, y, 0], [2.6, 2.2, 2.8], M.coatDark, { part: body });
+      sc.cone([x, y + 1, 0], [x + 2 + (k % 2), y + 4.4 - (k % 3) * 0.6, (k % 2 ? 1 : -1) * 1.2], 0.7, 0.08, M.thorn);
+    }
+  }
+  if (kind === "stag") {
+    // Manchas de podridão e musgo nas costas.
+    const spots: V3[] = [[-6, 29.5, 5], [3, 30, -4.6], [9, 30, 4.6], [-1, 31, 0], [12, 26, -5.6]];
+    spots.forEach((q, k) => sc.ell(q, [2.2, 1.6, 1.2], k % 2 ? M.rot : M.moss, { part: body, axes: basis([1, 0.2, 0]) }));
+  }
   if (kind === "centaur") {
     // Malhas escuras soltas pelo corpo.
     const spots: V3[] = [[-6, 35, 6], [2, 36, -5], [9, 34, 7], [14, 37, 3], [-2, 32, 7.4], [12, 29, -7.8], [5, 28, 7.4], [-10, 28, -7]];
@@ -250,7 +296,7 @@ export function beast(kind: BeastKind, p: BPose = {}): Sculpt {
   // --- Cauda: gomos em arco, balançando ---
   const [nT, lenT, rT0, rT1] = sp.tail;
   let at: V3 = [sp.half + sp.rump[0] - 2, sp.hipY + 2.5, 0];
-  let ang = p.tail ?? (kind === "panther" ? -20 : kind === "centaur" ? -60 : -35);
+  let ang = p.tail ?? (kind === "panther" ? -20 : kind === "centaur" ? -60 : kind === "stag" ? 30 : kind === "boar" ? -50 : -35);
   const tailPart = sc.part();
   for (let k = 0; k < nT; k++) {
     const a = (ang + (kind === "panther" ? (k < 3 ? -k * 6 : (k - 3) * 11 - 18) : -k * 3)) * D2R;
@@ -283,9 +329,9 @@ export function beast(kind: BeastKind, p: BPose = {}): Sculpt {
 /** Pescoço, cabeça, focinho e mandíbula, orelhas e olhos (lobo e pantera). */
 function head(sc: Sculpt, kind: BeastKind, p: BPose, sp: Spec) {
   const nod = p.nod ?? 0, reach = p.reach ?? 0, gape = p.gape ?? 0;
-  const wolf = kind === "wolf";
+  const wolf = kind === "wolf", boar = kind === "boar", stag = kind === "stag";
   const neck0: V3 = [-sp.half - 3, sp.shoulderY + 2, 0];
-  const neckDir = turn(rot("z", -nod * 0.6), v3.norm(wolf ? [-0.62, 0.55, 0] : [-0.75, 0.42, 0]));
+  const neckDir = turn(rot("z", -nod * 0.6), v3.norm(wolf ? [-0.62, 0.55, 0] : stag ? [-0.42, 0.9, 0] : boar ? [-1, -0.15, 0] : [-0.75, 0.42, 0]));
   const neck1 = v3.add(neck0, v3.mul(neckDir, sp.neck[0] + reach));
   const part = sc.part();
   sc.cone(neck0, neck1, sp.neck[1] + 1, sp.neck[1], M.coat, { part });
@@ -299,7 +345,7 @@ function head(sc: Sculpt, kind: BeastKind, p: BPose, sp: Spec) {
   const hp = sc.part();
   sc.ell(hc, sp.head, M.coat, { part: hp, axes: basis([1, -0.1, 0]) });
   // Focinho (o de cima) e a mandíbula (abre com `gape`).
-  const sDir = v3.norm([-1, wolf ? -0.22 : -0.15, 0]);
+  const sDir = v3.norm([-1, wolf ? -0.22 : stag ? -0.5 : boar ? -0.35 : -0.15, 0]);
   const s0 = v3.add(hc, [-sp.head[0] * 0.55, -0.6, 0]);
   const s1 = v3.add(s0, v3.mul(sDir, sp.snout[0]));
   sc.cone(s0, s1, sp.snout[1] + 0.7, sp.snout[1] * 0.85, M.muzzle, { part: hp });
@@ -313,7 +359,14 @@ function head(sc: Sculpt, kind: BeastKind, p: BPose, sp: Spec) {
     // Boca por dentro e as presas.
     sc.cone(v3.add(s0, [0, -sp.snout[1] * 0.5, 0]), v3.add(lerp3(s1, j1, 0.5), [0.8, 0, 0]), sp.snout[1] * 0.55, 0.6, M.mouth);
   }
-  for (const s of [1, -1]) {
+  if (boar) {
+    // Disco do focinho e as presas curvas para cima.
+    sc.ell(v3.add(s1, [-0.4, 0, 0]), [0.8, sp.snout[1] * 0.9, sp.snout[1] * 1.05], M.muzzle, { part: hp });
+    for (const s of [1, -1]) {
+      sc.ball(v3.add(s1, [-1.1, 0.3, s * 1.1]), 0.55, M.nose, hp);
+      sc.limb([v3.add(s1, [2.6, -1.6, s * 2.2]), v3.add(s1, [0.4, -0.2, s * 3.2]), v3.add(s1, [0.2, 2.8, s * 3.6]), v3.add(s1, [1.6, 4, s * 3.4])], 1.1, 0.2, M.tooth);
+    }
+  } else if (!stag) for (const s of [1, -1]) {
     sc.cone(v3.add(s1, [1.2, -sp.snout[1] * 0.6, s * 1.1]), v3.add(s1, [1.4, -sp.snout[1] * 0.6 - 1.8, s * 1]), 0.55, 0.15, M.tooth);
     sc.cone(v3.add(j1, [1.4, sp.snout[1] * 0.45, s * 0.9]), v3.add(j1, [1.6, sp.snout[1] * 0.45 + 1.3, s * 0.8]), 0.45, 0.12, M.tooth);
   }
@@ -325,6 +378,19 @@ function head(sc: Sculpt, kind: BeastKind, p: BPose, sp: Spec) {
       // Orelhas em pé, a de lá rasgada (mais curta).
       const tip = v3.add(e0, [1.6, s > 0 ? 6 : 4.2, s * 1.2]);
       sc.cone(e0, tip, 2.1, 0.35, M.coatDark, { part: sc.part() });
+    } else if (stag) {
+      // Orelhas de cervo para o lado e a galhada: o galho principal para trás e para cima, com as pontas e musgo.
+      sc.ell(v3.add(e0, [1, -0.4, s * 1.8]), [1.2, 0.6, 2.2], M.coat, { part: sc.part(), axes: basis([0.3, 0.2, s]) });
+      const ant = sc.part();
+      const a0 = v3.add(hc, [0.4, sp.head[1] * 0.8, s * 1.4]);
+      const main = [a0, v3.add(a0, [1.4, 4, s * 2.4]), v3.add(a0, [3.6, 8.4, s * 3.6]), v3.add(a0, [4.6, 12.6, s * 3.4]), v3.add(a0, [3.6, 16, s * 2.6])];
+      sc.limb(main, 0.9, 0.35, M.antler, { part: ant });
+      for (const [i, dx, dy, dz] of [[1, -3.4, 2.6, 0.6], [2, -3, 3.2, 1.2], [3, 0.6, 3, 1.6], [3, -2.2, 2.2, 0]] as const)
+        sc.cone(main[i], v3.add(main[i], [dx, dy, s * dz]), 0.55, 0.15, M.antler, { part: ant });
+      sc.ell(v3.add(main[2], [0, -0.4, 0]), [1.2, 0.7, 1], M.moss);
+      sc.ell(lerp3(main[3], main[4], 0.5), [0.6, 1.6, 0.5], M.moss);
+    } else if (boar) {
+      sc.ell(v3.add(e0, [0.6, 0.8, s * 0.6]), [1.2, 2, 0.8], M.coatDark, { part: sc.part(), axes: basis([0.4, 1, s * 0.3]) });
     } else {
       sc.ell(v3.add(e0, [0, 0.6, 0]), [1.5, 1.8, 0.9], M.coatDark, { part: sc.part() });
     }
@@ -424,10 +490,10 @@ function centaurTop(sc: Sculpt, p: BPose, sp: Spec) {
 // --- Quadros ---------------------------------------------------------------------------------------------------------
 
 const PITCH = 36;
-const SCALE: Record<BeastKind, number> = { wolf: 1.85, panther: 1.8, centaur: 1.3 };
+const SCALE: Record<BeastKind, number> = { wolf: 1.85, panther: 1.8, centaur: 1.3, boar: 1.8, stag: 1.5 };
 const YAW: Record<View, number> = { side: 14, front: 90, back: -90 };
 /** Linha do chão: os quadrúpedes ocupam a largura do quadro; o centauro é alto. */
-export const BEAST_FEET: Record<BeastKind, number> = { wolf: SCULPT_SIZE - 30, panther: SCULPT_SIZE - 34, centaur: SCULPT_SIZE - 8 };
+export const BEAST_FEET: Record<BeastKind, number> = { wolf: SCULPT_SIZE - 30, panther: SCULPT_SIZE - 34, centaur: SCULPT_SIZE - 8, boar: SCULPT_SIZE - 26, stag: SCULPT_SIZE - 14 };
 
 export function shootBeast(kind: BeastKind, pose: BPose, view: View): Frame {
   const cx = view === "side" ? SCULPT_SIZE / 2 + (kind === "panther" ? 4 : 2) : SCULPT_SIZE / 2;
@@ -450,7 +516,52 @@ function trot(stride: number, extra: (w: number, k: number) => BPose = () => ({}
   });
 }
 
-export const BEAST_POSES = {
+export const BEAST_POSES: Record<BeastKind, { idle: BPose[]; walk: BPose[]; attack: BPose[]; special: BPose[]; death: BPose[]; skill?: BPose[] }> = {
+  // Javali: fuça o chão parado; o golpe é a presa de baixo para cima, o especial a investida de cabeça baixa.
+  boar: {
+    idle: tween([0, 1, 2].map((k) => K({ lift: k * 0.2, nod: 10 + k * 3, tail: -50 + k * 4, wag: k * 2 - 2 })), 6, true),
+    walk: trot(8, (w) => ({ nod: 8 - w * 3, tail: -45 + w * 6, wag: w * 3 })),
+    attack: tween([
+      K({ crouch: 0.3, nod: 22, tail: -50 }),
+      K({ crouch: 0.5, x: 1, nod: 30, tail: -55 }),
+      K({ x: -5, lean: 6, nod: -18, gape: 0.4, lift: 1.5, tail: -30 }),
+      K({ x: -3, lean: 2, nod: 0, tail: -40 }),
+    ], 6),
+    special: tween([
+      K({ crouch: 0.7, x: 4, nod: 26, tail: -60 }),
+      K({ crouch: 0.5, x: 2, nod: 30, lean: -4, tail: -60 }),
+      K({ x: -6, lean: -6, nod: 28, phase: 0.25, stride: 12, lift: 1, tail: -20 }),
+      K({ x: -9, lean: 4, nod: -10, gape: 0.4, lift: 1.5, tail: -30 }),
+      K({ x: -8, nod: 6, tail: -45 }),
+    ], 6),
+    death: tween([
+      K({ lean: 10, lift: 1.5, nod: -16, gape: 0.6, tail: -20 }),
+      K({ roll: 45, crouch: 0.6, nod: 10, curl: 0.4, tail: -50 }),
+      K({ roll: 90, nod: 12, curl: 0.25, tail: -60 }),
+    ], 5),
+  },
+  // Cervo: altivo, a galhada erguida; o golpe é a cabeçada, o especial a galhada baixa em disparada.
+  stag: {
+    idle: tween([0, 1, 2].map((k) => K({ lift: k * 0.2, nod: -4 + k * 4, tail: 30 + k * 4, wag: k - 1 })), 6, true),
+    walk: trot(11, (w) => ({ nod: -2 - w * 2, tail: 26 + w * 4, wag: w * 2 })),
+    attack: tween([
+      K({ nod: -14, lean: 6, lift: 1, tail: 40 }),
+      K({ nod: -20, lean: 10, lift: 2, tail: 44 }),
+      K({ x: -5, nod: 34, lean: -6, tail: 20 }),
+      K({ x: -3, nod: 10, tail: 30 }),
+    ], 6),
+    special: tween([
+      K({ crouch: 0.4, x: 3, nod: 30, tail: 40 }),
+      K({ x: -8, nod: 40, lean: -4, phase: 0.25, stride: 14, tail: 10 }),
+      K({ x: -16, nod: 42, lean: -6, phase: 0.75, stride: 14, tail: 10 }),
+      K({ x: -18, nod: 0, lean: 8, lift: 1, tail: 30 }),
+    ], 6),
+    death: tween([
+      K({ lean: 16, lift: 2, nod: -30, tail: 50 }),
+      K({ roll: 45, crouch: 0.6, nod: 20, curl: 0.5, tail: 10 }),
+      K({ roll: 90, nod: 30, curl: 0.3, tail: 0 }),
+    ], 5),
+  },
   // Lobo: cabeça baixa, rosnando; morde avançando e, no especial (Derrubar), salta e prende a presa no chão.
   wolf: {
     idle: tween([0, 1, 2].map((k) => K({ lift: k * 0.25, nod: 8 - k * 2, gape: 0.1 + k * 0.08, tail: -38 + k * 2, wag: k - 1 })), 6, true),

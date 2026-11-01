@@ -345,12 +345,21 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["greenDragon", 1]],
   },
   heartwood: {
-    id: "heartwood", name: "Coração da Mata", icon: "🍄", difficulty: 6, durationSeconds: 8 * 60,
-    description: "O fundo da floresta, onde a luz quase não chega: trilhas estreitas, árvores anciãs, lagoas escuras e santuários élficos tomados pelo musgo. No norte, a árvore do coração. Terreno pronto; os monstros ainda vêm.",
-    encounters: [],
-    minibosses: [],
+    id: "heartwood", name: "Coração da Mata", icon: "🍄", difficulty: 6, durationSeconds: 8 * 60, meadowMonsters: 3, meadowMinibosses: 0.25,
+    minibossPower: 1.3,
+    description: "O fundo da floresta, onde a luz quase não chega: trilhas estreitas, árvores anciãs, lagoas escuras e santuários élficos tomados pelo musgo. Fungóides em bando, cipós que laçam, javalis e cervos da caçada corrompida e as arqueiras mortas dos santuários; nas clareiras, a árvore desperta e o guardião élfico caído. No norte, junto à árvore do coração, o Rei Galhado.",
+    encounters: [
+      // A entrada ainda é mata de bichos: fungos e javalis.
+      { depth: [0, 0], budget: 170, table: [["myconid", 3], ["thornBoar", 2], ["stranglerVine", 1]] },
+      { depth: [1, 1], budget: 300, table: [["thornBoar", 3], ["myconid", 2], ["stranglerVine", 2], ["shadowPanther", 1]] },
+      { depth: [2, 2], budget: 440, table: [["corruptedStag", 2], ["thornBoar", 2], ["elvenShade", 2], ["stranglerVine", 1], ["myconid", 1]] },
+      { depth: [3, 3], budget: 570, table: [["corruptedStag", 3], ["elvenShade", 2], ["shadowPanther", 2], ["owlbear", 1], ["myconid", 1]] },
+      { depth: [4, 4], budget: 680, table: [["owlbear", 2], ["corruptedStag", 2], ["elvenShade", 2], ["shadowPanther", 2], ["stranglerVine", 1]] },
+      { depth: [5, 99], budget: 760, table: [["owlbear", 3], ["corruptedStag", 2], ["elvenShade", 2], ["shadowPanther", 1], ["thornBoar", 1]] },
+    ],
+    minibosses: [["awakenedTree", 1], ["fallenWarden", 1], ["corruptedDryad", 1]],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["erlking", 1]],
   },
 };
 
