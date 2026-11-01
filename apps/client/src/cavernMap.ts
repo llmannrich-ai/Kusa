@@ -5,6 +5,7 @@ import { HD, TileAtlas, toCanvas } from "./art/paint.ts";
 import { TALL, tallDecor, type CaveVariant } from "./art/caveArt.ts";
 import { CAVE_LAYERS, TALL_DECOR, planCave, type CaveLight } from "./cavePlan.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /** Fundo além da rocha: quase preto, puxado para o azul do mar lá em cima. */
 export const CAVERN_VOID = 0x05080d;
@@ -27,7 +28,7 @@ export function drawCaveHd(scene: Phaser.Scene, d: Dungeon, variant: CaveVariant
   const { atlas, layers, standing, lights } = planCave(d, variant, area);
   const key = `cave-atlas-${variant}`;
   if (scene.textures.exists(key)) scene.textures.remove(key);
-  scene.textures.addCanvas(key, atlas.build());
+  addCanvasTexture(scene.textures, key, atlas.build());
   const map = scene.make.tilemap({ width: d.width, height: d.height, tileWidth: HD, tileHeight: HD });
   const set = map.addTilesetImage(key, key, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
   const shade = variant === "cavern" ? ([0.86, 0.92, 1] as const) : ([1, 0.92, 0.82] as const);
@@ -50,7 +51,7 @@ export function drawCaveHd(scene: Phaser.Scene, d: Dungeon, variant: CaveVariant
   if (scene.textures.exists(sheetKey)) scene.textures.remove(sheetKey);
   const { canvas, ctx } = makeCanvas(TALL.w * Math.max(1, frames.size), TALL.h);
   for (const f of frames.values()) ctx.drawImage(toCanvas(tallDecor(variant, f.kind, f.v), TALL.w, TALL.h), f.i * TALL.w, 0);
-  const texture = scene.textures.addCanvas(sheetKey, canvas)!;
+  const texture = addCanvasTexture(scene.textures, sheetKey, canvas)!;
   for (const f of frames.values()) texture.add(f.i, 0, f.i * TALL.w, 0, TALL.w, TALL.h);
   for (const s of standing) {
     culler.add(scene.add.image(s.x * TILE_SIZE + TILE_SIZE / 2, (s.y + 1) * TILE_SIZE, sheetKey, frames.get(`${s.kind}${s.v}`)!.i)
@@ -71,7 +72,7 @@ export function addLight(scene: Phaser.Scene, culler: ChunkCuller, l: CaveLight,
         ctx.fillStyle = `rgba(255, 255, 255, ${dd < 0.35 ? 0.42 : dd < 0.65 ? 0.24 : 0.1})`;
         ctx.fillRect(x, y, 1, 1);
       }
-    scene.textures.addCanvas(LIGHT, canvas);
+    addCanvasTexture(scene.textures, LIGHT, canvas);
   }
   const img = scene.add.image(l.x, l.y, LIGHT).setScale((l.scale * LIGHT_BASE) / 128).setAlpha(l.alpha).setTint(l.tint)
     .setBlendMode(Phaser.BlendModes.ADD).setDepth(floorDepth + 0.6).setData("alpha", l.alpha).setData("phase", hash(l.x, l.y, 190) * 6);

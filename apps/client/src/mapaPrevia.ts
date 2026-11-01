@@ -19,6 +19,7 @@ import { GATES_VOID, drawGates } from "./gatesMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /**
  * Prévia de mapa só para desenvolvimento (`npm run dev:client` → `/mapa.html`, fora do build): desenha o cenário de um
@@ -94,7 +95,7 @@ class Previa extends Phaser.Scene {
       next();
     });
     if (q.get("antigo")) {
-      if (!this.textures.exists("antigo")) this.textures.addCanvas("antigo", refineArt(scorpionCanvas()));
+      if (!this.textures.exists("antigo")) addCanvasTexture(this.textures, "antigo", refineArt(scorpionCanvas()));
       place(kinds.length, this.add.sprite(0, 0, "antigo").setScale(CREATURE_SPRITE_SCALE).setFlipX(false));
     }
   }

@@ -11,6 +11,7 @@ import { cryptArt, protoBeasts } from "./newArt.ts";
 import { SUMMON_ART, SUMMON_FRAMES, SUMMON_OUTLINE, summonPortrait, summonSheet } from "./summonCreatures.ts";
 import { refineArt } from "./refine.ts";
 import { BITE_FRAMES, SLASH_FRAMES, SMASH_FRAMES, biteStrip, leafCanvas, slashStrip, smashStrip } from "./effects.ts";
+import { addCanvasTexture } from "./canvasTexture.ts";
 
 /**
  * Ponte entre a arte e o Phaser: carrega os PNGs do pack Dungeon Crawl (CC0, ver
@@ -91,7 +92,7 @@ export function heroArt(scene: Phaser.Scene, classId: ClassId, outfit: Outfit = 
   if (scene.textures.exists(key)) return key;
   const sheet = heroSheet(classId, outfit);
   const size = sheet.height;
-  const texture = scene.textures.addCanvas(key, sheet)!;
+  const texture = addCanvasTexture(scene.textures, key, sheet)!;
   for (let i = 0; i < HERO_DIRS.length * HERO_FRAMES; i++) {
     texture.add(i, 0, i * size, 0, size, size);
   }
@@ -140,7 +141,7 @@ export function heroActionArt(scene: Phaser.Scene, classId: ClassId, outfit: Out
     if (!scene.sys.isActive()) { actionBuilds.delete(key); return; }
     b.ctx.drawImage(b.jobs[b.next](), ...cell(b.next));
     if (++b.next < b.jobs.length) { window.setTimeout(step, 30); return; }
-    const texture = scene.textures.addCanvas(key, b.canvas)!;
+    const texture = addCanvasTexture(scene.textures, key, b.canvas)!;
     b.jobs.forEach((_, i) => texture.add(i, 0, ...cell(i), size, size));
     HERO_ACTIONS.forEach((action, a) => HERO_DIRS.forEach((dir, d) => {
       const first = (a * HERO_DIRS.length + d) * 3;
@@ -168,14 +169,14 @@ export function createHeroArt(scene: Phaser.Scene) {
  * animação (uma vez por jogo).
  */
 export function createCreatureArt(scene: Phaser.Scene) {
-  if (protoBeasts && !scene.textures.exists("monster-mimic-disguise")) scene.textures.addCanvas("monster-mimic-disguise", protoBeasts.protoMimicDisguise());
+  if (protoBeasts && !scene.textures.exists("monster-mimic-disguise")) addCanvasTexture(scene.textures, "monster-mimic-disguise", protoBeasts.protoMimicDisguise());
   const packed = monsterTextures().filter((key) => !OWN_MONSTER_ART.includes(key));
   for (const key of packed) {
     const source = scene.textures.get(key).getSourceImage() as HTMLImageElement;
     if (source.width !== TILE_SIZE) continue;
     const refined = refineArt(source);
     scene.textures.remove(key);
-    scene.textures.addCanvas(key, refined);
+    addCanvasTexture(scene.textures, key, refined);
   }
   // A arte nova dos monstros não é feita aqui: só a do mapa da hunt, quando ela começa (`warmMapMonsters`).
   for (const [key, anim] of Object.entries(MONSTER_ANIMS)) if (!anim.hd) addAnimatedArt(scene, key, anim);
@@ -183,7 +184,7 @@ export function createCreatureArt(scene: Phaser.Scene) {
   for (const [key, draw] of Object.entries(OWN_MONSTER_DRAW)) {
     // A arte nova é desenhada na hunt (`warmMapMonsters`): o retrato não pode ocupar a chave da folha animada.
     if (MONSTER_ANIMS[key]?.hd) continue;
-    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
+    if (!scene.textures.exists(key)) addCanvasTexture(scene.textures, key, refineArt(draw(), { outline: SAND_WORM_OUTLINE }));
   }
 }
 
@@ -217,7 +218,7 @@ function hdStep(scene: Phaser.Scene, key: string, anim: MonsterAnim): boolean {
   const cell = (i: number) => [(i % cols) * anim.size, Math.floor(i / cols) * anim.size] as const;
   b.ctx.drawImage(b.jobs[b.next](), ...cell(b.next));
   if (++b.next < b.jobs.length) return false;
-  const texture = scene.textures.addCanvas(key, b.canvas)!;
+  const texture = addCanvasTexture(scene.textures, key, b.canvas)!;
   b.slot.forEach((slot, i) => texture.add(i, 0, ...cell(slot), anim.size, anim.size));
   addClips(scene, key, anim);
   hdBuilds.delete(key);
@@ -262,7 +263,7 @@ function addAnimatedArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
     frame.ctx.drawImage(sheet, i * anim.size, 0, anim.size, anim.size, 0, 0, anim.size, anim.size);
     ctx.drawImage(refineArt(frame.canvas, { outline: anim.outline }), i * big, 0);
   }
-  const texture = scene.textures.addCanvas(key, canvas)!;
+  const texture = addCanvasTexture(scene.textures, key, canvas)!;
   for (let i = 0; i < n; i++) texture.add(i, 0, i * big, 0, big, big);
   addClips(scene, key, anim);
 }
@@ -298,7 +299,7 @@ function addClips(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
 
 /** Gera as texturas próprias dos efeitos e as animações de impacto (uma vez por jogo). */
 export function createEffectArt(scene: Phaser.Scene) {
-  if (!scene.textures.exists(FX_TEXTURE.leaf)) scene.textures.addCanvas(FX_TEXTURE.leaf, leafCanvas());
+  if (!scene.textures.exists(FX_TEXTURE.leaf)) addCanvasTexture(scene.textures, FX_TEXTURE.leaf, leafCanvas());
   const strips: [string, () => HTMLCanvasElement, number][] = [
     [FX_ANIM.slash, slashStrip, SLASH_FRAMES],
     [FX_ANIM.bite, biteStrip, BITE_FRAMES],
@@ -306,7 +307,7 @@ export function createEffectArt(scene: Phaser.Scene) {
   ];
   for (const [key, draw, frames] of strips) {
     if (scene.textures.exists(key)) continue;
-    const texture = scene.textures.addCanvas(key, draw())!;
+    const texture = addCanvasTexture(scene.textures, key, draw())!;
     for (let i = 0; i < frames; i++) texture.add(i, 0, i * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE);
   }
   for (const key of Object.values(FX_ANIM)) {
@@ -339,8 +340,8 @@ export function createCryptArt(scene: Phaser.Scene) {
     [CRYPT_DECOR.torch, cryptArt.cryptTorch],
     [CRYPT_DECOR.shade, cryptArt.cryptShade],
   ], cryptArt.CRYPT_TILE);
-  if (!scene.textures.exists(CRYPT_DECOR.light)) scene.textures.addCanvas(CRYPT_DECOR.light, cryptArt.cryptLight());
-  if (!scene.textures.exists(CRYPT_DECOR.dust)) scene.textures.addCanvas(CRYPT_DECOR.dust, cryptArt.dustCanvas());
+  if (!scene.textures.exists(CRYPT_DECOR.light)) addCanvasTexture(scene.textures, CRYPT_DECOR.light, cryptArt.cryptLight());
+  if (!scene.textures.exists(CRYPT_DECOR.dust)) addCanvasTexture(scene.textures, CRYPT_DECOR.dust, cryptArt.dustCanvas());
   if (!scene.anims.exists(CRYPT_DECOR.torch)) {
     scene.anims.create({
       key: CRYPT_DECOR.torch,
@@ -356,7 +357,7 @@ function addStrips(scene: Phaser.Scene, strips: [string, () => HTMLCanvasElement
   for (const [key, draw] of strips) {
     if (scene.textures.exists(key)) continue;
     const canvas = draw();
-    const texture = scene.textures.addCanvas(key, canvas)!;
+    const texture = addCanvasTexture(scene.textures, key, canvas)!;
     for (let i = 0; i < canvas.width / size; i++) texture.add(i, 0, i * size, 0, size, canvas.height);
   }
 }
@@ -376,7 +377,7 @@ export function itemTexture(scene: Phaser.Scene, itemId: string) {
 }
 
 function lazyCanvas(scene: Phaser.Scene, key: string, draw: () => HTMLCanvasElement) {
-  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, draw());
+  if (!scene.textures.exists(key)) addCanvasTexture(scene.textures, key, draw());
   return key;
 }
 
