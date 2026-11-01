@@ -234,31 +234,6 @@ export function ropeBridgeTile(side: -1 | 1, v: number): Paper {
 
 // --- Torre de menagem (o andar de cima) ----------------------------------------------------
 
-/**
- * Terraço do alto da torre de menagem (o andar de cima, desenhado acima do salão): lajes grandes e gastas, com musgo,
- * manchas de fuligem das fogueiras dos orcs e palha. Período de 2×2 tiles (`q`).
- */
-export function terraceTile(q: number, v = 0): Paper {
-  const p = paper();
-  const ox = (q % 2) * HD, oy = (q >> 1) * HD;
-  p.fill([0, 0, HD - 1, HD - 1], () => true, E.Slab, (x, y) => {
-    const gx = x + ox, gy = y + oy;
-    const row = Math.floor(gy / 64);
-    const lx = mod(gx + (row % 2) * 40, 80);
-    const id = row * 9 + Math.floor((gx + (row % 2) * 40) / 80);
-    let s = FLAT - 0.02 + (hash01(id, 780) - 0.5) * 0.16 + (sn(x, y, 32, 781 + q) - 0.5) * 0.1;
-    if (mod(gy, 64) < 2 || lx < 2) s -= 0.26;
-    else if (mod(gy, 64) < 4 || lx < 4) s += 0.07;
-    return s;
-  }, (x, y) => (noise(x, y, 782 + q) < 0.05 ? -1 : 0));
-  for (let y = 0; y < HD; y++)
-    for (let x = 0; x < HD; x++) {
-      if (sn(x, y, 32, 783 + q * 4 + v) + (noise(x, y, 787) - 0.5) * 0.12 > 0.8) p.on(x, y, E.Moss, noise(x, y, 784) < 0.4 ? 2 : 3);
-      else if (sn(x, y, 32, 785 + q) < 0.12 && noise(x, y, 786) < 0.35) p.nudge(x, y, -1);
-    }
-  return p;
-}
-
 /** Buraco do telhado caído no terraço (bits de `OPEN`: os lados com terraço): o escuro do salão, vigas quebradas e a borda lascada. */
 export function roofHoleTile(rim: number, v: number): Paper {
   const p = paper();

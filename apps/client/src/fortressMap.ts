@@ -13,10 +13,10 @@ import {
 import {
   DROP, HANG, KEEP_RISE, ROOM_WALL, STAKE, THRONE, bridgeTile,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
-  stakeSprite, terraceTile, throneSprite,
+  stakeSprite, throneSprite,
 } from "./art/fortressArt.ts";
 import { canopyTile, waterTile } from "./art/forestArt.ts";
-import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, CHAO_TERRA, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
+import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, CHAO_LAJES, CHAO_TERRA, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
 import { GLOW, MIST, SpriteSheet, createGlowArt, single } from "./gatesMap.ts";
 import { ChunkCuller, focusTile, patchTint, type MapAmbience } from "./mapShared.ts";
 
@@ -226,9 +226,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         const q = quarter(x, y);
         ground[i] = atlas.frame(`room${q}`, () => cryptFloorTile(q, 0).render(false));
       } else if (plaza(x, y)) {
-        const q = quarter(x, y);
-        const v = Math.floor(hash(x, y, 9) * 4);
-        ground[i] = atlas.frame(`yard${q}-${v}`, () => terraceTile(q, v).render(false));
+        ground[i] = groundFrame("lajes", CHAO_LAJES, x, y);
       } else if (road(x, y)) {
         ground[i] = groundFrame("basalto", CHAO_BASALTO, x, y);
       } else if (yard(x, y)) {
@@ -257,7 +255,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       const n = hash(x, y, 4);
       const chance = camp(x, y) ? 0.1 : paved(x, y) || hall(x, y) ? (byRuin ? 0.08 : 0.03) : byRuin ? 0.12 : 0.03;
       if (n >= chance) continue;
-      const kind = flatKind(hash(x, y, 5), { camp: camp(x, y), paved: paved(x, y) || hall(x, y) || roomInside(x, y), ruins: byRuin });
+      let kind = flatKind(hash(x, y, 5), { camp: camp(x, y), paved: paved(x, y) || hall(x, y) || roomInside(x, y), ruins: byRuin });
+      // Poça só no basalto (no travertino creme e no salão ela parecia tinta azul).
+      if (kind === "puddle" && !road(x, y) && !yard(x, y)) kind = "shards";
       const v = Math.floor(hash(x, y, 6) * 3);
       decor[i] = atlas.frame(`flat-${kind}-${v}`, () => flatDecor(kind, v).render(kind !== "puddle" && kind !== "dust"));
     }
@@ -289,8 +289,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         const v = Math.floor(hash(x, y, 74) * 2);
         roof[i] = far.frame(`hole${rim}-${v}`, () => roofHoleTile(rim, v).render(false));
       } else {
-        const q = quarter(x, y);
-        roof[i] = far.frame(`terrace${q}`, () => terraceTile(q).render(false));
+        // O terraço usa as mesmas lajes do pátio (no atlas de longe).
+        roof[i] = groundFrame("lajes", CHAO_LAJES, x, y, far);
       }
       let out = 0;
       if (y === 0) out |= OPEN.n;
@@ -343,7 +343,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   layer("sombra-vale", voidShade, floorDepth - 1);
   // As texturas do ChatGPT (capim, basalto) já variam sozinhas: vão sem as manchas de luz, para a camada de capim da
   // borda casar pixel a pixel com o capim de baixo.
-  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || camp(x, y) || (!paved(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
+  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || camp(x, y) || plaza(x, y) || (!paved(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
   layer("chao", ground, floorDepth, (x, y) => (plainTexture(x, y) ? 0xffffff : patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67)));
   // Por cima do chão vem a camada de capim das bordas (`floorDepth + 0.001`), e por cima dela as beiradas, sombras e
   // enfeites (que ela não pode esconder).
@@ -588,7 +588,10 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     // Torre de menagem: o terraço e a fachada, deslocados `KEEP_RISE` tiles para o norte, por cima de quem está atrás
     // dela (a profundidade é a da linha de baixo, como um sprite).
     const kx = K.x * TILE_SIZE, ky = (K.y - KEEP_RISE) * TILE_SIZE;
-    for (const l of [farLayer(KW, KH, roof, kx, ky, keepDepth), farLayer(KW, KH, parapet, kx, ky, keepDepth + 0.01)]) {
+    // O terraço é das mesmas lajes do pátio: um tom mais frio e escuro (a pedra mais velha, sem o sol do pátio) separa o
+    // andar de cima do de baixo.
+    const terraceTint = (_x: number, y: number) => (y < K.h ? 0xb8b0a6 : 0xffffff);
+    for (const l of [farLayer(KW, KH, roof, kx, ky, keepDepth, terraceTint), farLayer(KW, KH, parapet, kx, ky, keepDepth + 0.01)]) {
       l.setAlpha(keepUpper.alpha);
       keepObjs.push(l);
     }

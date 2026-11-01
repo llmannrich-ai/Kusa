@@ -2,6 +2,7 @@ import acampamentoUrl from "./fortaleza/acampamento.png";
 import acampamentoFrames from "./fortaleza/acampamento.json";
 import basaltoUrl from "./fortaleza/chao-basalto.webp";
 import capimUrl from "./fortaleza/chao-capim.webp";
+import lajesUrl from "./fortaleza/chao-lajes.webp";
 import terraUrl from "./fortaleza/chao-terra.webp";
 import { HD } from "../paint.ts";
 
@@ -76,3 +77,6 @@ export const CHAO_BASALTO = await loadGround(basaltoUrl);
 
 /** Terra batida do acampamento (em volta das tendas e fogueiras). */
 export const CHAO_TERRA = await loadGround(terraUrl);
+
+/** Lajes de travertino (o pátio do esporão e o terraço da torre de menagem). */
+export const CHAO_LAJES = await loadGround(lajesUrl);

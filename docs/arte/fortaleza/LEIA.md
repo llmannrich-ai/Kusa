@@ -15,6 +15,7 @@ desenho) e esta pasta fica só com a imagem.
 | Chão C1: capim | `chao-capim.png` (1254 px, emenda nos 4 lados) | `apps/client/src/art/proto/fortaleza/chao-capim.webp` (1024 px, 8×8 tiles, cor média puxada 70% para a do capim antigo, para casar com as bordas pintadas pelo jogo) | ✅ a vila, os pátios e o vale lá embaixo |
 | Chão C2: basalto | `chao-basalto.png` (1254 px) | `chao-basalto.webp` (4×4 tiles, pedras menores, escolha do Leonardo; a comparação com 8×8 está em `no-jogo-basalto-A-B.png`) | ✅ a estrada, as ruas e o calçamento quebrado dos pátios |
 | Chão C3: terra | `chao-terra.png` (1254 px) | `chao-terra.webp` (4×4 tiles, cor média puxada 40% para a terra antiga) | ✅ os acampamentos; o capim cobre a beira dela como cobre a do calçamento |
+| Chão C4: lajes | `chao-lajes.png` (1254 px) | `chao-lajes.webp` (4×4 tiles: cada laje com ~1 tile de largura e meio de altura; a cor quase não muda, o travertino creme é o pedido) | ✅ o pátio do esporão e o terraço da torre de menagem (o terraço num tom mais frio e escuro, para se separar do pátio) |
 
 Para refazer depois de trocar o original: `python3 apps/client/scripts/fortalezaSprites.py acampamento` (ou
 `chao-capim`; os chãos ficam em `CHAOS`) (tira o magenta e o

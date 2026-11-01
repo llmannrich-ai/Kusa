@@ -37,6 +37,8 @@ CHAOS = {
     "chao-capim": {"media": (119, 142, 63), "forca": 0.7},
     "chao-basalto": {"media": (105, 107, 108), "forca": 0.6, "tiles": 4},
     "chao-terra": {"media": (127, 101, 71), "forca": 0.4, "tiles": 4},
+    # O travertino creme é o que se pediu (as lajes antigas eram cinza): a cor quase não muda.
+    "chao-lajes": {"media": (160, 128, 94), "forca": 0.5, "tiles": 4},
 }
 
 ROOT = Path(__file__).resolve().parents[3]
