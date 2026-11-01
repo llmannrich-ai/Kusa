@@ -54,9 +54,10 @@ const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
 
 // --- Menu ---------------------------------------------------------------
 
-// Batalhas com o mapa já aberto: abre a ficha do cenário onde o herói está, em vez de recarregar o mapa.
+// Batalhas com o mapa já aberto: leva a câmera ao herói e abre a ficha do cenário onde ele está, em vez de recarregar
+// o mapa (tocar num ponto não mexe na câmera; aqui o jogador pediu para voltar ao herói).
 const hub = new Hub(() => {
-  if (!$("rooms").hidden) return pickPoint(createMapId());
+  if (!$("rooms").hidden) { pickPoint(createMapId()); world?.focus(createMapId(), 0.4, true); return; }
   void openRooms();
 });
 let account: Account | null = null;
@@ -254,15 +255,15 @@ function toast(message: string) {
   toastTimer = window.setTimeout(() => show("world-toast", false), 3500);
 }
 
-/** Tocar num ponto do mapa: o herói anda até ele pela trilha e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
+/** Tocar num ponto do mapa: o herói anda até ele pela trilha (sem mexer na câmera) e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
 function pickPoint(id: MapId) {
   if (entering) return;
   if (world?.walkingTo() === id) return world.skip();
   chooseMap(id);
   // Fechado: a ficha diz como abrir (as salas abertas dele continuam ali); o herói não vai até lá.
   if (!isOpen(id)) return openSheet();
-  // A ficha cobre a parte de baixo: o mapa rola com o herói e o ponto para à vista acima dela.
-  world?.select(id, { anchor: 0.4 });
+  // A câmera fica onde o jogador deixou (zoom e posição): só o herói anda. O 📍 do mapa leva a câmera até ele.
+  world?.select(id);
   openSheet();
 }
 

@@ -330,6 +330,36 @@ export const MAP_ART: Record<MapId, string> = {
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#7aa84a" stroke-width="1.5"/>
   </svg>`,
+  // Fortaleza Orc: o castelo no alto do esporão de rocha, com a torre de menagem e o estandarte preto da mão vermelha,
+  // a ponte de pedra cruzando o desfiladeiro e o vale azul de névoa lá embaixo, com o brilho de uma fogueira.
+  fortress: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="fo-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7e9cb8"/><stop offset="1" stop-color="#d9d2c0"/></linearGradient>
+      <linearGradient id="fo-vale" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d7488"/><stop offset="1" stop-color="#2a3644"/></linearGradient>
+      <radialGradient id="fo-fogo" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#f08a26" stop-opacity="0"/></radialGradient>
+      <clipPath id="fo-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#fo-roda)">
+      <rect width="48" height="48" fill="url(#fo-ceu)"/>
+      <rect y="30" width="48" height="18" fill="url(#fo-vale)"/>
+      <path d="M0 40Q10 37 20 41T48 39" stroke="#8fb4c8" stroke-width="1.2" fill="none" opacity="0.7"/>
+      <path d="M11 48L14 30L12 24H36L34 30L38 48Z" fill="#6e665c"/>
+      <path d="M14 30L12 24H24V48H11Z" fill="#8a8074"/>
+      <path d="M13 27h22M14 31h20M15 36h18M16 41h16" stroke="#4e473f" stroke-width="0.6"/>
+      <path d="M12 24h24" stroke="#7d9442" stroke-width="1.6"/>
+      <path d="M14 24V17H34V24Z" fill="#c4a876"/>
+      <path d="M14 17V15H16V17M18 17V15H20V17M22 17V15H24V17M26 17V15H28V17M30 17V15H32V17" fill="#c4a876"/>
+      <path d="M19 24V9H29V24Z" fill="#b39566"/>
+      <path d="M19 9V7H21V9M23 9V7H25V9M27 9V7H29V9" fill="#b39566"/>
+      <path d="M22 24V20Q24 18 26 20V24Z" fill="#1c1614"/>
+      <path d="M21.5 13h1.2v3h-1.2zM25.3 13h1.2v3h-1.2z" fill="#1c1614"/>
+      <path d="M31 17V3" stroke="#5a4030" stroke-width="0.9"/>
+      <path d="M31 3.5H38.5L37 6.5L38.5 9.5H31Z" fill="#2a2420"/>
+      <circle cx="34.6" cy="6.5" r="1.3" fill="#c8402a"/>
+      <circle cx="36" cy="22" r="3" fill="url(#fo-fogo)"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#b7c4cf" stroke-width="1.5"/>
+  </svg>`,
   // Coração da Mata: escuro, a árvore do coração com o oco que brilha, cogumelos frios e vaga-lumes.
   heartwood: `<svg viewBox="0 0 48 48" aria-hidden="true">
     <defs>
