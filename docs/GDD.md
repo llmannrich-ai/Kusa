@@ -102,7 +102,7 @@ comprar **e usar** as anteriores do mesmo ramo.
   mana +2%, velocidade +1%), **até o nível 20** (dano +29%, vida +43,5%, mana +58%); a velocidade para no **6** (+12%),
   porque velocidade alta deixa o herói fugir de tudo. Preço: 120–300 de gold e ×1,15 por nível (velocidade ×1,3).
   Valem sempre, desde o nível 1. Com muitos níveis, o nó mostra "7/20" em vez das bolinhas.
-- **Dons** (hexágono no desenho, um no topo de cada ramo): passivas compradas **só com gold**, sem XP, com **25 níveis**
+- **Dons** (hexágono no desenho, um no topo e um no fundo de cada ramo): passivas compradas **só com gold**, sem XP, com **25 níveis**
   (`packages/shared/src/gifts.ts`). Ficam na linha 2, do lado oposto ao Tomo, e pedem o mesmo primeiro nó do tronco.
   Valem em toda hunt e não caem na morte. Preço: 60 de gold no 1º nível e ×1,12 por nível (~8 mil até o 25; o último
   nível custa 911). A ficha compra **+1** ou **+5 níveis** de uma vez (`buy_talent_levels`). Plano dos marcos e dos
@@ -125,6 +125,24 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Xamã Orc | Horda | 📯 Grito do Clã | +1% de dano para você e os aliados a até 4 tiles (entre vários, vale o grito mais forte) | +25% |
   | Xamã Orc | Totens | 🪵 Casca de Ferro | +0,6 de armadura | +15 |
   | Xamã Orc | Brasa | 🔥 Brasa Viva | +1,2% de dano do ataque básico | +30% |
+
+  **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
+  cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
+
+  | Classe | Ápice | Dom | Gatilho e efeito por nível | No nível 25 |
+  |---|---|---|---|---|
+  | Cavaleiro | Ceifa do Campeão | ⚔️ Último Duelo | vida abaixo de 30%: +1,6% de dano (básico e magias) | +40% |
+  | Cavaleiro | Baluarte | 🏯 Pedra Fundamental | parado há 1 s: -1,2% de dano recebido | -30% |
+  | Cavaleiro | Carga da Legião | 👑 Estandarte Vivo | aura de 3 tiles: você e os aliados (bots incluídos) com +0,6% de velocidade de ataque (vale o maior) | +15% |
+  | Paladino | Tiro do Fim do Mundo | 🌬️ Fôlego do Caçador | depois de rolar ou saltar, o próximo básico: +4% | +100% |
+  | Paladino | Coroa Solar | ⛪ Graça | a cada 10 magias, a seguinte sai sem mana e com +2% de dano | +50% |
+  | Paladino | Chuva sem Fim | 🎇 Mão Rápida | 0,8% de chance de o básico incendiar o alvo (3 s, 0,4× do básico por segundo) | 20% |
+  | Feiticeiro | Relâmpago Ramificado | 🔁 Circuito | magias de 3 elementos em 8 s: a seguinte sai sem mana e com +2% de dano | +50% |
+  | Feiticeiro | Era do Gelo | 🔷 Reserva Gélida | mana abaixo de 15% depois de uma magia: escudo de 1,2% da vida por 6 s (recarga 30 s) | 30% |
+  | Feiticeiro | Buraco Negro | 🦴 Ossuário | monstro morto por trevas: 1,6% de chance de um esqueleto seu por 8 s (até 2) | 40% |
+  | Druida | Caçada Selvagem | 🐾 Instinto | a cada 4º básico, uma mordida de 0,5× +2% do básico | 1× |
+  | Druida | Árvore da Vida | 🌀 Ciclo | a cada 300 de cura feita, uma onda cura você e quem estiver colado (5% +0,4% da vida máxima) | 15% |
+  | Druida | Furacão de Folhas | ⛈️ Céu Fechado | monstro que morre envenenado ou sangrando por você: 1,2% de chance de um raio (1,5× do dano mágico) no mais perto, até 4 tiles | 30% |
 - **Sinergias** (inspiradas no Diablo 2): cada nível de uso de uma magia **vizinha** na árvore (ligada por galho,
   pai ou filha, inclusive o segundo pai) dá **+2% de força** a esta (`SYNERGY_PER_LEVEL`). Força = dano, dano
   contínuo, cura, escudo, armadura, marca, campos e criaturas, como o nível da magia (multiplica a força do nível).

@@ -103,6 +103,12 @@ export interface RunStats {
    * gasta no lugar da mana. A cura do Ceifador entra em `healing`; o dano da Vingança, em `damageDealt["rune:vengeance"]`.
    */
   runeProcs: Record<string, number>;
+  /**
+   * Dons do fundo: quantas vezes cada gatilho disparou (id do Dom). O dano extra entra em `damageDealt` (o raio do Céu
+   * Fechado como "closed_sky", a queimadura da Mão Rápida como "quick_hand", os esqueletos do Ossuário como "summon:skeleton"); a cura do Ciclo, em `healing`; o
+   * escudo da Reserva Gélida, em `absorbed`.
+   */
+  giftProcs: Record<string, number>;
 }
 
 export function newRunStats(): RunStats {
@@ -110,7 +116,7 @@ export function newRunStats(): RunStats {
     levelAt: {}, depthAt: {}, specs: [], passives: {}, spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, fanHits: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0, shots: {},
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], bossClear: false, bossKills: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0, drops: { common: 0, miniboss: 0, boss: 0, chest: 0 } },
-    minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {},
+    minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, giftProcs: {},
   };
 }
 
