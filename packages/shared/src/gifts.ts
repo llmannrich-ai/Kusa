@@ -115,6 +115,20 @@ export const TRACKER = { trapMs: 0.1, calmMs: 3000, calmShot: 0.1 } as const;
 export const GRACE_MARKS = { heal: 0.05, dazzleMs: 500, dazzleRadius: 2 } as const;
 /** Fôlego do Caçador: recarga devolvida ao rolar, tiros carregados, atordoar e escudo. */
 export const BREATH = { refund: 0.1, shots: 2, stunMs: 300, shield: 0.05, shieldMs: 4000 } as const;
+// Números dos marcos do Feiticeiro.
+/** Condutor: saltos a mais nas cadeias, queimaduras mais longas, Estática e Combustão mais fortes. */
+export const CONDUCTOR = { jumps: 1, burnMs: 1000, traitBonus: 0.05 } as const;
+/** Coração Frio: lentidão mais forte, dano a mais em monstro lento, escudo ao prender e o congelar em volta. */
+export const COLD = { slow: 0.05, slowedDamage: 0.05, rootShield: 0.05, rootShieldMs: 4000, shatterRootMs: 1000 } as const;
+/** Fome Sombria: marcas mais longas, mana ao matar com magia, roubo de vida e de mana. */
+export const HUNGER = { markMs: 1000, killMana: 0.01, lifesteal: 0.01, manaSteal: 0.02 } as const;
+/** Circuito: janela maior, salto a mais, menos elementos, efeitos mais longos e recarga menor na magia carregada. */
+export const CIRCUIT_MARKS = { msLater: 10000, chain: { jumps: 1, range: 3, falloff: 0.3 }, duration: 0.3, cooldown: 0.5 } as const;
+/** Reserva Gélida: quem bate no escudo congela, recargas menores, limiar maior e mana ao quebrar. */
+export const FROST_MARKS = { freezeMs: 1000, cooldownMs: 25000, cooldownMsLater: 20000, manaPctLater: 0.2, breakMana: 0.1 } as const;
+/** Ossuário: esqueletos mais longos, mais esqueletos, marca e a explosão ao sumir. */
+export const BONES = { ms: 10000, msLater: 12000, max: 3, markPct: 0.1, markMs: 3000, burst: 1, burstRadius: 1 } as const;
+
 /** Mão Rápida: a explosão da flecha incendiária, o chão em chamas, a chance a mais e o 6º básico. */
 export const HAND = { burstRadius: 1, burst: 0.5, fireMs: 2000, firePerSec: 0.2, chance: 0.02, every: 6 } as const;
 
@@ -271,16 +285,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "conductor", classId: "sorcerer", col: 0, name: "Condutor", icon: "⚡",
     description: "O corpo vira condutor dos elementos: mais dano nas magias de energia e de fogo.",
     perRank: 0.012, apply: (fx, v) => addElement(fx, ["energy", "fire"], v), text: (v) => `+${pct(v)} de dano nas magias de energia e de fogo`,
+    milestones: [
+      "suas magias em cadeia saltam +1 vez",
+      `suas queimaduras duram +${CONDUCTOR.burnMs / 1000}s`,
+      `Estática e Combustão (se tiver) +${pct(CONDUCTOR.traitBonus)}`,
+      "as cadeias saltam +2 vezes",
+      "o 1º salto da cadeia não perde dano",
+    ],
   }),
   cold_heart: gift({
     id: "cold_heart", classId: "sorcerer", col: 1, name: "Coração Frio", icon: "❄️",
     description: "O frio demora a sair: as raízes, prisões e lentidões das suas magias duram mais.",
     perRank: 0.01, apply: (fx, v) => { fx.ccDuration += v; }, text: (v) => `+${pct(v)} de duração das prisões e lentidões das suas magias`,
+    milestones: [
+      `suas lentidões +${pct(COLD.slow)} mais fortes`,
+      `monstro lento recebe +${pct(COLD.slowedDamage)} do seu dano`,
+      `lentidões +${pct(COLD.slow * 2)} mais fortes`,
+      `prender um monstro com magia dá um escudo de ${pct(COLD.rootShield)} da vida`,
+      `monstro que morre congelado congela os colados por ${COLD.shatterRootMs / 1000}s`,
+    ],
   }),
   shadow_hunger: gift({
     id: "shadow_hunger", classId: "sorcerer", col: 2, name: "Fome Sombria", icon: "🌑",
     description: "As trevas bebem por você: parte do dano das magias de trevas volta como vida.",
     perRank: 0.008, apply: (fx, v) => { fx.darkLifesteal += v; }, text: (v) => `${pct(v)} do dano das magias de trevas volta como vida`,
+    milestones: [
+      `suas marcas duram +${HUNGER.markMs / 1000}s`,
+      `matar com magia devolve ${pct(HUNGER.killMana)} da mana`,
+      `marcas +${(HUNGER.markMs * 2) / 1000}s`,
+      `+${pct(HUNGER.lifesteal)} de roubo de vida`,
+      `as magias de trevas roubam também ${pct(HUNGER.manaSteal)} do dano em mana`,
+    ],
   }),
   // --- Druida ------------------------------------------------------------------------------------------------
   pack_bond: gift({
@@ -391,16 +426,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "circuit", classId: "sorcerer", col: 0, apex: "branching_bolt", name: "Circuito", icon: "🔁",
     description: `Lance magias de ${CIRCUIT_ELEMENTS} elementos diferentes em ${CIRCUIT_MS / 1000}s e o circuito fecha: a magia seguinte não gasta mana e causa mais dano.`,
     perRank: 0.02, apply: (fx, v) => { fx.circuitDamage += v; }, text: (v) => `+${pct(v)} de dano na magia depois do circuito`,
+    milestones: [
+      `a janela do circuito vai a ${CIRCUIT_MARKS.msLater / 1000}s`,
+      "a magia carregada também salta para mais 1 monstro",
+      "2 elementos bastam para fechar o circuito",
+      `os efeitos da magia carregada duram +${pct(CIRCUIT_MARKS.duration)}`,
+      "a magia carregada recarrega na metade do tempo",
+    ],
   }),
   frost_reserve: gift({
     id: "frost_reserve", classId: "sorcerer", col: 1, apex: "ice_age", name: "Reserva Gélida", icon: "🔷",
     description: `Com a mana abaixo de ${pct(FROST_MANA_PCT)}, uma casca de gelo absorve dano por ${FROST_MS / 1000}s (uma vez a cada ${FROST_COOLDOWN_MS / 1000}s).`,
     perRank: 0.012, apply: (fx, v) => { fx.frostBarrier += v; }, text: (v) => `escudo de ${pct(v)} da vida máxima com a mana baixa`,
+    milestones: [
+      `quem bate no escudo de gelo congela por ${FROST_MARKS.freezeMs / 1000}s`,
+      `volta a cada ${FROST_MARKS.cooldownMs / 1000}s`,
+      `vale abaixo de ${pct(FROST_MARKS.manaPctLater)} da mana`,
+      `o escudo de gelo devolve ${pct(FROST_MARKS.breakMana)} da mana ao quebrar`,
+      `volta a cada ${FROST_MARKS.cooldownMsLater / 1000}s`,
+    ],
   }),
   ossuary: gift({
     id: "ossuary", classId: "sorcerer", col: 2, apex: "black_hole", name: "Ossuário", icon: "🦴",
     description: `Monstro morto por magia de trevas às vezes se levanta como esqueleto seu por ${OSSUARY_MS / 1000}s (até ${OSSUARY_MAX} de uma vez).`,
     perRank: 0.016, apply: (fx, v) => { fx.raiseChance += v; }, text: (v) => `${pct(v)} de chance de levantar um esqueleto`,
+    milestones: [
+      `os esqueletos duram ${BONES.ms / 1000}s`,
+      `até ${BONES.max} esqueletos`,
+      `os esqueletos marcam quem atacam (+${pct(BONES.markPct)} de dano por ${BONES.markMs / 1000}s)`,
+      `duram ${BONES.msLater / 1000}s`,
+      `o esqueleto explode ao sumir (Condenação em raio ${BONES.burstRadius})`,
+    ],
   }),
   instinct: gift({
     id: "instinct", classId: "druid", col: 0, apex: "wild_hunt", name: "Instinto", icon: "🐾",
