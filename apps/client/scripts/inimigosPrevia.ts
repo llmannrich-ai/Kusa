@@ -1,16 +1,20 @@
 /**
- * Prévia dos inimigos do Charco Cinzento esculpidos por código (`src/art/proto/charcoArt.ts`), sem navegador: uma linha
- * por monstro com o parado, o andar, o golpe e o especial de perfil, a morte e o parado de frente e de costas.
+ * Prévia dos inimigos esculpidos por código de um mapa (Charco Cinzento em `src/art/proto/charcoArt.ts`, Ermos Rubros em
+ * `ermosArt.ts`), sem navegador: uma linha por monstro com o parado, o andar, o golpe e o especial de perfil, a morte e
+ * o parado de frente e de costas.
  *
- *   npx tsx apps/client/scripts/charcoPrevia.ts saida.png [zoom]
+ *   npx tsx apps/client/scripts/inimigosPrevia.ts saida.png charco|ermos [zoom]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { CHARCO } from "../src/art/proto/charcoArt.ts";
+import { ERMOS } from "../src/art/proto/ermosArt.ts";
 
 // Galeria: para cada inimigo, alguns quadros lado a lado (parado de perfil, golpe, especial, morte, frente e costas).
-const list = CHARCO;
-const zoom = Number(process.argv[3] ?? 2);
+const LISTS = { charco: CHARCO, ermos: ERMOS };
+const list = LISTS[(process.argv[3] ?? "charco") as keyof typeof LISTS];
+if (!list) throw new Error(`mapa: ${Object.keys(LISTS).join(" ou ")}`);
+const zoom = Number(process.argv[4] ?? 2);
 type F = { width: number; height: number; data: Uint8ClampedArray };
 const rows: F[][] = [];
 for (const c of list) {

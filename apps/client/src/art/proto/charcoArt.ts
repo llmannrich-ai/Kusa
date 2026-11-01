@@ -40,7 +40,7 @@ export const CHARCO_SKINS = {
 
 const sk = CHARCO_SKINS;
 export type SculptedArt = ReturnType<typeof sculptArt>;
-type Strike = Record<string, "attack" | "cast" | "skill"> | "cast" | "attack";
+export type Strike = Record<string, "attack" | "cast" | "skill"> | "cast" | "attack";
 
 /** Um inimigo esculpido: as poses, a foto de cada pose, as opções da folha, o tamanho na tela e de onde sai cada habilidade. */
 export interface CharcoSpec {
@@ -51,7 +51,7 @@ export interface CharcoSpec {
   size: number;
   strike: Strike;
 }
-const spec = <P>(kind: MonsterKind, poses: ClipPoses<P>, shoot: (pose: P, view: View) => Frame, opts: SculptOptions, size: number, strike: Strike): CharcoSpec =>
+export const spec = <P>(kind: MonsterKind, poses: ClipPoses<P>, shoot: (pose: P, view: View) => Frame, opts: SculptOptions, size: number, strike: Strike): CharcoSpec =>
   ({ kind, poses: poses as unknown as ClipPoses<never>, shoot: shoot as unknown as (pose: never, view: View) => Frame, opts, size, strike });
 
 export const CHARCO: CharcoSpec[] = [
