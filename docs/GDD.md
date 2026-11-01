@@ -192,6 +192,12 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Cavaleiro | Bastião | 🔔 Repique | golpe no seu escudo devolve 2% do absorvido em raio 1 | raio 2 · provoca · devolve 1% da mana · raio 3 · atordoa 0,3 s |
   | Cavaleiro | Comando | 📢 Eco de Guerra | provocar dá escudo de 0,4% da vida por monstro (até 8, 4 s) | 6 s · provocados 15% mais lentos · até 10 · cura 1% por monstro · repete 2 s depois com 50% |
   | Cavaleiro | Comando | ⚖️ Ordem de Execução | +2,4% de dano no Exposto | vale 1 s depois do atordoar · marcas atordoam 0,3 s · colado num Exposto conta · 2 s · matar um Exposto marca o mais perto |
+  | Paladino | Mira | 🪶 Aljava Larga | o 5º básico solta junto um leque de 3 flechas (30% +2% do básico) | a cada 4º · 4 flechas · a cada 3º · 5 flechas · atravessam 1 monstro |
+  | Paladino | Mira | 🎯 Ponto Fraco | +2,4% de dano no Exposto e em marcado sangrando | marcas fazem sangrar 2 s · Exposto vale 1 s depois do atordoar · sangramento em marcado +20% · 2 s · matar um marcado marca o mais perto |
+  | Paladino | Luz | 🔆 Aurora | +3% de dano do Incandescer | raio 2 · ofuscado que começa a queimar fica +0,3 s · queimaduras +1 s · cura 1% dos aliados perto · ofusca quem pega 0,5 s |
+  | Paladino | Luz | 🕯️ Vela Votiva | morto por luz deixa vela 3 s (raio 1, 10% +2% do dano mágico por s) | 4 s · a vela ofusca quem passa · 2 velas em morto-vivo · 5 s · +3 de armadura aos aliados perto |
+  | Paladino | Batedor | 🪤 Estrepes Afiados | +1,2% de dano dos seus campos | campos deixam 5% lento · +1 s · fazem sangrar · +2 s · quem morre num campo deixa estrepes |
+  | Paladino | Batedor | 🧨 Pavio Curto | armadilha em monstro queimando explode em raio 1 (1× +4% do dano mágico) | raio 2 · a explosão queima · a armadilha queima quem prende · empurra 1 tile · dispara a armadilha mais perto |
 
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.

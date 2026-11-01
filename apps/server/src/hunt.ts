@@ -45,7 +45,7 @@ import {
   FAR_DAMAGE_TILES,
   BANNER_RADIUS, BITE_BASE, BITE_EVERY, BURN_MS, BURN_PER_SEC, CIRCUIT_ELEMENTS, CIRCUIT_MS, CYCLE_BASE, CYCLE_HEAL, CYCLE_RADIUS,
   FROST_COOLDOWN_MS, FROST_MANA_PCT, FROST_MS,
-  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, ANVIL, BLOOD, CHIME, FURY, ORDER, WAR_ECHO, type GiftId,
+  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, ANVIL, BLOOD, CHIME, FURY, ORDER, WAR_ECHO, CANDLE, DAWN, FUSE, QUIVER, SPIKES, WEAK, type GiftId,
   GRACE_EVERY, LOW_HP_PCT, OSSUARY_MAX, OSSUARY_MS, SKY_STRIKE_DAMAGE, SKY_STRIKE_TILES, STILL_MS,
   type GiftEffects,
   bestPerSlot,
@@ -354,6 +354,8 @@ interface Seat {
   furyStacks: number;
   furyUntil: number;
   furyFree: boolean;
+  /** Aljava Larga: básicos à distância dados (o leque sai a cada tantos). */
+  quiverCount: number;
   /** Áureas compradas na árvore da classe. */
   aura: Bonuses;
   /** Melhorias escolhidas ao subir de nível nesta hunt e o efeito somado delas. */
@@ -694,7 +696,7 @@ export class Hunt {
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0, movedAt: 0, dashBasicReady: false, graceCount: 0, graceReady: false,
       circuit: {}, circuitReady: false, castBoost: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
-      eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false,
+      eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false, quiverCount: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1445,6 +1447,12 @@ export class Hunt {
         if (series && edge >= 4) bleed(other);
       }
       return;
+    }
+    // Aljava Larga (Dom): a cada tantos básicos, sai junto um leque de flechas.
+    if (seat.gifts.quiverPower > 0) {
+      const quiver = this.marks(seat, "wide_quiver");
+      const every = quiver >= 3 ? QUIVER.everyLater : quiver >= 1 ? QUIVER.everyMid : QUIVER.every;
+      if (++seat.quiverCount % every === 0) this.quiverFan(sessionId, seat, ox, oy, tx, ty, base, range, speed, quiver);
     }
     // Flecha e luzes: tiro na direção, até o alcance inteiro; o dano entra no primeiro monstro que o projétil encontrar.
     const path = shotPath(this.dungeon, ox, oy, tx, ty, range);
@@ -2234,6 +2242,8 @@ export class Hunt {
         brain.markPct = Math.max(now < brain.markUntil ? brain.markPct : 0, spell.mark.pct);
         brain.markUntil = Math.max(brain.markUntil, now + spell.mark.ms);
         m.marked = true;
+        // Ponto Fraco (marco 1): a marca do paladino faz sangrar.
+        if (this.marks(seat, "weak_spot") >= 1) this.applyDot(m, brain, sessionId, "weak_spot", this.baseDamage(sessionId, p, "spell") * WEAK.markBleedPerSec, WEAK.markBleedMs, "bleed", now);
       }
       if (stunChance && this.random() < stunChance.chance) {
         brain.stunnedUntil = Math.max(brain.stunnedUntil, now + stunChance.ms);
@@ -2947,6 +2957,83 @@ export class Hunt {
     this.damageMonster(m, rollDamage(this.random, base * power), { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "bite" }, "instinct");
   }
 
+  /** Aljava Larga: um leque de flechas mais fracas na direção do básico (marco 5: cada uma atravessa 1 monstro). */
+  private quiverFan(sessionId: string, seat: Seat, ox: number, oy: number, tx: number, ty: number, base: number, range: number, speed: number, quiver: number) {
+    const arrows = quiver >= 4 ? QUIVER.arrowsLater : quiver >= 2 ? QUIVER.arrowsMid : QUIVER.arrows;
+    const power = QUIVER.base + seat.gifts.quiverPower;
+    bump(seat.stats.giftProcs, "wide_quiver");
+    for (const point of spreadAimPoints(ox, oy, tx, ty, arrows, QUIVER.angle)) {
+      const path = shotPath(this.dungeon, ox, oy, point.x, point.y, range);
+      const end = path[path.length - 1] ?? { x: ox, y: oy };
+      const shot = ++this.shotSeq;
+      this.host.broadcast(MSG.attack, { from: sessionId, x: ox, y: oy, tx: end.x, ty: end.y, ms: flightMs(speed, ox, oy, end.x, end.y), shot } satisfies AttackMessage);
+      this.fly(shot, ox, oy, path, speed, (alive) => {
+        if (!alive) return;
+        const hit: Hit = { attacker: sessionId, fromX: ox, fromY: oy, fx: "arrow" };
+        this.damageMonster(alive, rollDamage(this.random, base * power), hit, "wide_quiver");
+        if (quiver >= 5) {
+          const behind = this.monsterOn({ x: alive.x + Math.sign(alive.x - ox), y: alive.y + Math.sign(alive.y - oy) });
+          if (behind && behind !== alive && !behind.hidden) this.damageMonster(behind, rollDamage(this.random, base * power), hit, "wide_quiver");
+        }
+      });
+    }
+  }
+
+  /** Vela Votiva: velas no lugar do monstro morto por luz (marco 3: duas em morto-vivo). */
+  private votiveCandle(sessionId: string, x: number, y: number, undead: boolean) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!p || !seat || p.status !== "playing") return;
+    const candle = this.marks(seat, "votive_candle");
+    const ms = candle >= 4 ? CANDLE.msLater : candle >= 1 ? CANDLE.msMid : CANDLE.ms;
+    const def: SpellDef = {
+      ...SPELLS.holy_arrow, radius: CANDLE.radius, damage: undefined, dot: undefined, stunMs: undefined, chain: undefined,
+      field: { kind: "zone", ms, tickMs: 1000, max: 4, allyArmor: candle >= 5 ? CANDLE.armor : undefined },
+    };
+    const amount = this.baseDamage(sessionId, p, "spell") * (CANDLE.base + seat.gifts.candlePower);
+    const spots = [{ x, y }];
+    if (undead && candle >= 3) {
+      const extra = this.freeSpotNear(x, y);
+      if (extra) spots.push(extra);
+    }
+    for (const spot of spots) this.placeField(sessionId, p, seat, def, 0, spot.x, spot.y, amount, "candle");
+    bump(seat.stats.giftProcs, "votive_candle", spots.length);
+  }
+
+  /** Pavio Curto: a armadilha explode em volta do monstro queimando (marcos: raio, queimadura, empurrão, a seguinte). */
+  private shortFuse(sessionId: string, x: number, y: number, chained = false) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!p || !seat || p.status !== "playing") return;
+    const fuse = this.marks(seat, "short_fuse");
+    const radius = fuse >= 1 ? FUSE.radiusLater : FUSE.radius;
+    const base = this.baseDamage(sessionId, p, "spell");
+    const now = this.host.now();
+    bump(seat.stats.giftProcs, "short_fuse");
+    this.notice(x, y - 1, "Pavio Curto!", 0xff9f43);
+    this.host.broadcast(MSG.spell, { from: sessionId, spellId: "explosive_volley", x, y, tx: x, ty: y, ms: 0, echo: true } satisfies SpellMessage);
+    for (const m of [...this.state.monsters.values()]) {
+      const b = this.brains.get(m.id);
+      if (!b || m.hidden || tileDistance(x, y, m.x, m.y) > radius) continue;
+      if (fuse >= 2) this.applyDot(m, b, sessionId, "short_fuse", base * FUSE.burnPerSec, FUSE.burnMs, "burn", now);
+      this.damageMonster(m, rollDamage(this.random, base * (1 + seat.gifts.fusePower)), { attacker: sessionId, fromX: x, fromY: y, fx: "fire" }, "short_fuse");
+      if (fuse >= 4 && this.state.monsters.has(m.id)) this.push(m, { x, y }, FUSE.push, sessionId);
+    }
+    // Marco 5: dispara a armadilha mais perto (uma vez, sem cadeia infinita).
+    if (fuse >= 5 && !chained) {
+      const next = [...this.state.fields.values()]
+        .filter((f) => f.owner === sessionId && this.fieldBrains.get(f.id)?.kind === "trap" && tileDistance(x, y, f.x, f.y) <= FUSE.chainTiles)
+        .sort((a, b) => tileDistance(x, y, a.x, a.y) - tileDistance(x, y, b.x, b.y))[0];
+      const brain = next && this.fieldBrains.get(next.id);
+      if (next && brain) {
+        this.removeField(next.id);
+        this.host.broadcast(MSG.spell, { from: sessionId, spellId: brain.spell.id, x: next.x, y: next.y, tx: next.x, ty: next.y, ms: 0, echo: true } satisfies SpellMessage);
+        this.applySpell(sessionId, brain.spell, brain.rank, undefined, next.x, next.y, brain.amount, undefined, 0);
+        this.shortFuse(sessionId, next.x, next.y, true);
+      }
+    }
+  }
+
   /** Mão Rápida: a flecha incendiária explode em volta do alvo e, no marco 3, deixa o chão em chamas. */
   private handBurst(sessionId: string, x: number, y: number, base: number, fire: boolean, target: Monster) {
     for (const m of [...this.state.monsters.values()]) {
@@ -3123,8 +3210,23 @@ export class Hunt {
       });
     } else if (id === "incandesce") {
       brain.dazzledUntil = now;
-      this.reactionBurst(id, x, y, INCANDESCE.radius, raw * INCANDESCE.power, creditId, "fire",
-        (other) => (MONSTERS[other.kind as MonsterKind]?.undead ? INCANDESCE.undead : 1));
+      // Aurora (Dom): o Incandescer fere mais; marcos 1, 4 e 5: raio maior, cura os aliados e ofusca quem pega.
+      const seat = this.seats.get(creditId);
+      const dawn = this.marks(seat, "dawn");
+      const power = INCANDESCE.power * (1 + (seat?.gifts.incandesceDamage ?? 0));
+      this.reactionBurst(id, x, y, dawn >= 1 ? DAWN.radius : INCANDESCE.radius, raw * power, creditId, "fire", (other, b) => {
+        if (dawn >= 5) {
+          b.stunnedUntil = Math.max(b.stunnedUntil, now + DAWN.stunMs);
+          b.dazzledUntil = Math.max(b.dazzledUntil, now + DAWN.stunMs);
+          other.stunned = true;
+        }
+        return MONSTERS[other.kind as MonsterKind]?.undead ? INCANDESCE.undead : 1;
+      });
+      if (dawn >= 4) {
+        this.state.players.forEach((ally) => {
+          if (ally.status === "playing" && tileDistance(x, y, ally.x, ally.y) <= DAWN.healRadius) this.healPlayer(ally, Math.round(ally.maxHp * DAWN.heal), creditId);
+        });
+      }
     } else if (id === "doom") {
       brain.markUntil = now;
       m.marked = false;
@@ -3479,6 +3581,8 @@ export class Hunt {
     const brain = this.brains.get(m.id);
     if (!brain) return 0;
     // Reações (`reactions.ts`): só golpe direto (não o pulso do dano contínuo nem a própria explosão de uma reação).
+    // Ponto Fraco (marco 3): o sangramento em monstro marcado fere mais.
+    if (hit.dot === "bleed" && this.host.now() < brain.markUntil && this.marks(this.seats.get(creditId), "weak_spot") >= 3) raw *= 1 + WEAK.markedBleed;
     // Coração Frio (marco 2): monstro lento recebe mais do dano do feiticeiro.
     if (this.marks(this.seats.get(creditId), "cold_heart") >= 2 && this.host.now() < brain.slowUntil) raw *= 1 + COLD.slowedDamage;
     let reaction: ReactionId | null = null;
@@ -3489,14 +3593,21 @@ export class Hunt {
       // Ordem de Execução (Dom): o Exposto fere mais; marcos 1 e 4: vale um tempo depois do atordoar; marco 3: os colados.
       const orderSeat = this.seats.get(creditId);
       const order = this.marks(orderSeat, "execution_order");
-      const exposed = (b: Brain) => now < b.markUntil && now < b.stunnedUntil + (order >= 1 ? this.orderGrace(orderSeat!) : 0);
-      let isExposed = states.marked && states.stunned || (order >= 1 && exposed(brain));
+      // Ponto Fraco (marcos 2 e 4): também dá tempo de graça ao Exposto.
+      const weak = this.marks(orderSeat, "weak_spot");
+      const grace = Math.max(order >= 1 ? this.orderGrace(orderSeat!) : 0, weak >= 4 ? WEAK.graceMs * 2 : weak >= 2 ? WEAK.graceMs : 0);
+      // Só conta quem foi atordoado de fato (stunnedUntil > 0), não o monstro que nunca foi atordoado.
+      const exposed = (b: Brain) => now < b.markUntil && b.stunnedUntil > 0 && now < b.stunnedUntil + grace;
+      let isExposed = (states.marked && states.stunned) || (grace > 0 && exposed(brain));
       if (!isExposed && order >= 3) {
         isExposed = [...this.state.monsters.values()].some((o) => o !== m && tileDistance(o.x, o.y, m.x, m.y) <= 1 && exposed(this.brains.get(o.id)!));
       }
       if (isExposed) {
-        raw *= 1 + EXPOSED_BONUS + (orderSeat?.gifts.exposedDamage ?? 0);
+        raw *= 1 + EXPOSED_BONUS + (orderSeat?.gifts.exposedDamage ?? 0) + (orderSeat?.gifts.weakSpot ?? 0);
         this.reacted("exposed", creditId, m.x, m.y, false);
+      } else if (orderSeat && orderSeat.gifts.weakSpot > 0 && states.marked && states.bleeding) {
+        // Ponto Fraco (Dom): marcado e sangrando também leva mais.
+        raw *= 1 + orderSeat.gifts.weakSpot;
       }
       const hitElement = damageElement(source, this.state.players.get(creditId)?.classId as ClassId | undefined);
       reaction = hitReaction(states, hitElement, source in SPELLS);
@@ -3547,8 +3658,12 @@ export class Hunt {
       // Ossuário (Dom): morto por magia (ou dano contínuo) de trevas, às vezes levanta do lado do herói.
       const dark = seat && seat.gifts.raiseChance > 0 && SPELLS[source as SpellId]?.element === "dark";
       const raise = dark && !brain.traits.illusion && !brain.summonedBy && this.random() < seat!.gifts.raiseChance;
+      // Vela Votiva (Dom): morto por luz (ou pelo Incandescer) deixa uma vela.
+      const light = source === "reaction:incandesce" || (source in SPELLS && spellElement(source as SpellId) === "radiant");
+      const candle = light && (seat?.gifts.candlePower ?? 0) > 0;
       this.killMonster(m, brain, creditId);
       if (raise) this.raiseBones(creditId, m.x, m.y);
+      if (candle) this.votiveCandle(creditId, m.x, m.y, !!MONSTERS[m.kind as MonsterKind]?.undead);
     } else this.ai.afterDamage(m, brain, dealt, element);
     // Depois do golpe (e da morte): a explosão da reação pega quem está em volta.
     if (reaction) this.afterReaction(reaction, m, brain, raw, creditId);
@@ -3589,10 +3704,11 @@ export class Hunt {
       furySeat.furyUntil = now + (fury >= 3 ? FURY.msLater : FURY.ms);
       if (furySeat.furyStacks === max && fury >= 5) furySeat.furyFree = true;
     }
-    // Ordem de Execução (marco 5): matar um Exposto marca o monstro mais perto.
-    if (this.marks(furySeat, "execution_order") >= 5) {
+    // Ordem de Execução (marco 5): matar um Exposto marca o mais perto. Ponto Fraco (marco 5): matar um marcado, também.
+    const weakKill = this.marks(furySeat, "weak_spot") >= 5 && this.host.now() < brain.markUntil;
+    if (this.marks(furySeat, "execution_order") >= 5 || weakKill) {
       const now = this.host.now();
-      if (now < brain.markUntil && now < brain.stunnedUntil + this.orderGrace(furySeat!)) {
+      if (weakKill || (now < brain.markUntil && brain.stunnedUntil > 0 && now < brain.stunnedUntil + this.orderGrace(furySeat!))) {
         const next = this.nearestMonsterTo(m.x, m.y, 4, new Set([m.id]));
         const nb = next && this.brains.get(next.id);
         if (next && nb) {
@@ -3600,6 +3716,20 @@ export class Hunt {
           nb.markUntil = Math.max(nb.markUntil, now + ORDER.killMark.ms);
           next.marked = true;
         }
+      }
+    }
+    // Estrepes Afiados (marco 5): quem morre num campo do paladino deixa estrepes no tile.
+    const spikesOwner = [...this.state.fields.values()].find((f) => {
+      const fb = this.fieldBrains.get(f.id);
+      return fb?.kind === "zone" && f.style !== "candle" && tileDistance(f.x, f.y, m.x, m.y) <= f.radius && this.marks(this.seats.get(f.owner), "sharp_caltrops") >= 5;
+    })?.owner;
+    if (spikesOwner) {
+      const owner = this.state.players.get(spikesOwner);
+      const ownerSeat = this.seats.get(spikesOwner);
+      if (owner?.status === "playing" && ownerSeat) {
+        const trap: SpellDef = { ...SPELLS.caltrops, field: { kind: "trap", ms: 8000, count: 1 } };
+        this.after(0, () => this.placeField(spikesOwner, owner, ownerSeat, trap, 0, m.x, m.y, this.baseDamage(spikesOwner, owner, "spell") * 0.5));
+        bump(ownerSeat.stats.giftProcs, "sharp_caltrops");
       }
     }
     // Coração Frio (marco 5): o congelado que morre congela os colados.
@@ -4717,6 +4847,13 @@ export class Hunt {
     // Seiva Venenosa (marcos 1 e 4): os venenos do druida duram mais.
     const venomMarks = kind === "poison" ? this.marks(this.seats.get(attacker), "venom_sap") : 0;
     if (venomMarks >= 1) ms += VENOM.ms * (venomMarks >= 4 ? 2 : 1);
+    // Aurora (marcos 2 e 3): queimaduras do paladino mais longas e o ofuscado que queima fica ofuscado mais.
+    const dawn = kind === "burn" ? this.marks(this.seats.get(attacker), "dawn") : 0;
+    if (dawn >= 3) ms += DAWN.burnMs;
+    if (dawn >= 2 && now < brain.dazzledUntil && now < brain.stunnedUntil) {
+      brain.dazzledUntil += DAWN.dazzleMs;
+      brain.stunnedUntil += DAWN.dazzleMs;
+    }
     // Condutor (marco 2): as queimaduras do feiticeiro duram mais.
     if (kind === "burn" && this.marks(this.seats.get(attacker), "conductor") >= 2) ms += CONDUCTOR.burnMs;
     const until = now + ms;
@@ -4754,6 +4891,10 @@ export class Hunt {
     const tracker = def.kind === "trap" ? this.marks(seat, "tracker_step") : 0;
     const extraTraps = (tracker >= 2 ? 1 : 0) + (tracker >= 5 ? 1 : 0);
     const trapScale = 1 + (tracker >= 1 ? TRACKER.trapMs : 0) + (tracker >= 4 ? TRACKER.trapMs : 0);
+    // Estrepes Afiados (Dom; marcos 2 e 4): campos mais fortes e mais longos (a vela fica de fora).
+    const spikes = style === "candle" ? 0 : this.marks(seat, "sharp_caltrops");
+    const fieldBoost = style === "candle" ? 1 : 1 + seat.gifts.fieldDamage;
+    const extraMs = (spikes >= 2 ? SPIKES.ms : 0) + (spikes >= 4 ? SPIKES.ms : 0);
     // Quantos campos desta magia cabem: o limite da magia (totens) ou do Engenhoso, vezes as armadilhas de um lançamento
     // (Abrolhos).
     const max = style === "fire" ? 3 : def.kind === "wall" ? def.length ?? 3 : (Math.max(traps?.max ?? 1, def.max ?? 1) + extraTraps) * (def.count ?? 1);
@@ -4780,9 +4921,9 @@ export class Hunt {
     const tickMs = def.tickMs ?? 250;
     this.fieldBrains.set(f.id, {
       spell: { ...spell, field: undefined }, rank, kind: def.kind,
-      amount: def.kind === "trap" ? amount : this.baseDamage(sessionId, p, "spell") * (def.damage ?? 0) || amount,
+      amount: (def.kind === "trap" ? amount : this.baseDamage(sessionId, p, "spell") * (def.damage ?? 0) || amount) * fieldBoost,
       allyArmor: def.allyArmor ?? 0, allyDamage: def.allyDamage ?? 0, allyHeal: def.allyHeal ?? 0, allyMana: def.allyMana ?? 0, rootMs: def.rootMs ?? 0, tickMs, nextTickAt: now + (def.kind === "turret" ? 300 : tickMs),
-      until: now + def.ms * (traps?.durationScale ?? 1) * trapScale, shotsLeft: def.shots ?? 0,
+      until: now + def.ms * (traps?.durationScale ?? 1) * trapScale + extraMs, shotsLeft: def.shots ?? 0,
     });
   }
 
@@ -4953,6 +5094,20 @@ export class Hunt {
             m.slowed = true;
             seat.stats.ccMs.slow += slow.ms;
           }
+          // Estrepes Afiados (marcos 1 e 3): os campos do paladino deixam lento e fazem sangrar.
+          const spikes = f.style === "candle" ? 0 : this.marks(seat, "sharp_caltrops");
+          if (spikes >= 1 && mBrain) {
+            mBrain.slowPct = Math.max(now < mBrain.slowUntil ? mBrain.slowPct : 0, SPIKES.slow);
+            mBrain.slowUntil = Math.max(mBrain.slowUntil, now + SPIKES.slowMs);
+            m.slowed = true;
+          }
+          if (spikes >= 3 && mBrain) this.applyDot(m, mBrain, f.owner, "sharp_caltrops", this.baseDamage(f.owner, owner, "spell") * SPIKES.bleedPerSec, SPIKES.bleedMs, "bleed", now);
+          // Vela Votiva (marco 2): a vela ofusca quem passa.
+          if (f.style === "candle" && mBrain && this.marks(seat, "votive_candle") >= 2) {
+            mBrain.stunnedUntil = Math.max(mBrain.stunnedUntil, now + CANDLE.dazzleMs);
+            mBrain.dazzledUntil = Math.max(mBrain.dazzledUntil, now + CANDLE.dazzleMs);
+            m.stunned = true;
+          }
           // Nuvem Venenosa: cada pulso envenena (com a Toxina, acumula).
           const dot = brain.spell.dot;
           if (dot && mBrain) this.applyDot(m, mBrain, f.owner, brain.spell.id, this.baseDamage(f.owner, owner, "spell") * dot.perSec, dot.ms, dot.kind, now);
@@ -4982,7 +5137,13 @@ export class Hunt {
         if (!prey) continue;
         this.removeField(f.id);
         this.host.broadcast(MSG.spell, { from: f.owner, spellId: brain.spell.id, x: f.x, y: f.y, tx: f.x, ty: f.y, ms: 0, echo: true } satisfies SpellMessage);
+        // Pavio Curto (Dom; marco 3: a armadilha queima quem prende): monstro queimando faz a armadilha explodir.
+        const fuse = seat.gifts.fusePower > 0 ? this.marks(seat, "short_fuse") : -1;
+        const preyBrain = this.brains.get(prey.id);
+        if (fuse >= 3 && preyBrain) this.applyDot(prey, preyBrain, f.owner, "short_fuse", this.baseDamage(f.owner, owner, "spell") * FUSE.burnPerSec, FUSE.burnMs, "burn", now);
+        const burning = preyBrain?.dot?.kind === "burn" && now < preyBrain.dot.until;
         this.applySpell(f.owner, brain.spell, brain.rank, undefined, f.x, f.y, brain.amount, undefined, 0);
+        if (fuse >= 0 && burning) this.shortFuse(f.owner, f.x, f.y);
       } else {
         const target = this.nearestMonsterTo(f.x, f.y, f.radius);
         if (!target) continue;

@@ -633,6 +633,12 @@ de trás"; o Exposto não tem duração própria (vale enquanto marca e atordoar
 é um tempo de graça depois do atordoar acabar. O básico transformado (Dons B da costela de outras classes) entra junto
 com o lote de cada classe.
 
+**Fase 4b (Paladino), como foi entregue:** os 6 Dons da costela do Paladino. A Aljava Larga é o primeiro básico
+transformado: a cada tantos básicos à distância, sai junto um leque de flechas mais fracas (cada uma voa e pode errar,
+como o básico). A Vela Votiva é um campo (zona de raio 1) que fere, ofusca e dá armadura aos aliados nos marcos; ela não
+conta para os Estrepes Afiados. O Exposto agora só vale para monstro que foi atordoado de fato (o tempo de graça dos
+marcos não conta para quem nunca foi atordoado).
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
