@@ -122,6 +122,8 @@ export class SpellBar {
   private makeButton(slot: SpellSlot): SlotView {
     const button = document.createElement("button");
     button.className = "action spell";
+    // Posição no leque em volta do ⚔️ (CSS `#actions > [data-slot]`).
+    button.dataset.slot = String(slot);
     const icon = document.createElement("span");
     icon.className = "spell-icon";
     const label = document.createElement("small");
