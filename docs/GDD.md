@@ -612,7 +612,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
 | 🌫️ Charco Cinzento | 8 ★★★★★★★★ | 8 min | 64×120, mapa fixo, em pé: a estrada afundada com 2 laços (passarelas da Lagoa ou Mata Queimada; Torre de Vigia ou Palafitas) até a ilha do lago negro | Sanguessuga Gigante, Corvo Carniceiro, Turfeiro Afogado, Lanterneiro, Lodo de Cinza, Espreitador da Poça → Bruxa Cinzenta, Monólito Desperto, Cavaleiro Afogado → Morgrana, a Rainha Afogada (~120 monstros por hunt) |
-| 🦴 Ermos Rubros | 8 ★★★★★★★★ | 8 min | 64×120, mapa fixo, em pé: desfiladeiro, a bifurcação da mina e do campo das torres, 2 ravinas com pontes, as ossadas e a cratera do crânio | Escaravelho de Ferrugem, Hiena dos Ermos, Saqueador Rubro, Mineiro Perdido, Lagarto-Couraça, Redemoinho de Ferrugem → Capataz Morto, Golem de Minério, Mãe-Hiena → Kragmor, o Gigante da Cratera (~120 monstros por hunt) |
+| 🦴 Ermos Rubros | 8 ★★★★★★★★ | 8 min | 64×120, mapa fixo, em pé: desfiladeiro, a bifurcação da mina e do campo das torres, 2 ravinas com pontes, as ossadas e a cratera do crânio | Escaravelho de Ferrugem, Hiena dos Ermos, Saqueador Rubro, Mineiro Perdido, Lagarto-Couraça, Redemoinho de Ferrugem → Capataz Morto, Golem de Minério, Mãe-Hiena → Kragmor, o Gigante da Cratera (~105 monstros por hunt) |
 | ⚔️ Fortaleza Orc | 8 ★★★★★★★★ | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | o clã do Pântano do Kosaradius bem mais forte (×2,4 os comuns, ×2,5 os mini-bosses; ~130 monstros por hunt, 40% a mais que nas Mesas) e em bandos que lotam as salas: Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Chefe de Guerra Orc, Ogro Xamã → Vorgak, o Senhor da Brasa |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
@@ -1370,8 +1370,9 @@ contra físico: é para magia); Morgrana ~10% acima de Vorgak (o fim do ramo).
 
 A mina de ferro do império, abandonada quando a cratera desabou: a ferrugem tomou o vale, os mineiros que ficaram lá
 embaixo voltaram e o gigante que cavava com eles ainda guarda a cratera. O outro lado da etapa 9, no mesmo degrau do
-Charco (as mesmas verbas por zona, ~120 monstros por hunt, 4 por emboscada e 25% delas com um mini-boss solto; loot
-máximo perto de 4.100, `lootScale` 0,78; teto da hunt solo 4.600). Arte **esculpida por código**
+Charco (as mesmas verbas por zona: ~105 monstros por hunt, menos que os ~120 do Charco porque o Mineiro e o Lagarto
+custam mais; 4 por emboscada e 25% delas com um mini-boss solto; loot máximo ~3.750, `lootScale` 0,78; teto da hunt
+solo 4.600). Arte **esculpida por código**
 (`apps/client/src/art/proto/ermosArt.ts`), com a pele dos ermos (a luz rebatida vermelha do barro no lugar da verde da
 mata) e dois modelos novos: o Escaravelho (`beetle.ts`) e o Lagarto-Couraça (o quadrúpede baixo de `forestBeasts.ts`).
 Kragmor é o Vorgak na variante gigante (`shootWarlord(..., "giant")`: sem estandarte nem elmo, a cabeça de pedra e o
