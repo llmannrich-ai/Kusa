@@ -303,15 +303,11 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     traits: { multiattack: { hits: 3, power: 0.3 } },
     abilities: [
       {
-        id: "flight", name: "Voo", shape: "dive", range: 8, radius: 2, cooldownMs: 16000, power: 1.6, vanishMs: 2000,
-        belowHp: 0.5, phase: true, color: 0xff9f43, fx: "dive",
-      },
-      {
         id: "breath", name: "Sopro Infernal", shape: "cone", range: 6, radius: 0, length: 6, cooldownMs: 7000, power: 1.9,
         dot: { kind: "burn", power: 0.25, durationMs: 4000 }, color: 0xff6b1a, fx: "breath",
       },
     ],
-    lore: "Dragão vermelho jovem: mordida e duas garras, sopro em leque e, ferido, alça voo e cai sobre a presa. Imune a fogo.",
+    lore: "Dragão vermelho jovem: mordida e duas garras, sopro em leque e garras que não param. Imune a fogo.",
   }),
 
   kobold: monster({
@@ -538,26 +534,18 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     traits: { multiattack: { hits: 3, power: 0.3 } },
     abilities: [
       {
-        id: "submerge", name: "Mergulho", shape: "dive", range: 9, radius: 2, cooldownMs: 15000, power: 1.5, vanishMs: 1800,
-        belowHp: 0.5, phase: true, color: 0x4db6ac, fx: "dive",
-      },
-      {
         id: "acidBreath", name: "Sopro Ácido", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 7000, power: 1.9,
         dot: { kind: "poison", power: 0.25, durationMs: 5000 }, color: 0x9acd32, fx: "breath",
       },
       { id: "darkness", name: "Escuridão", shape: "target", range: 6, radius: 2, cooldownMs: 12000, power: 0, effect: { kind: "blind", ms: 2000 }, color: 0x37305a, fx: "vanish" },
     ],
-    lore: "Dragão do brejo: sopro ácido em linha, nuvem de Escuridão que cega e mergulhos na lama. Resiste a ácido e veneno.",
+    lore: "Dragão do brejo: sopro ácido em linha, nuvem de Escuridão que cega. Resiste a ácido e veneno.",
   }),
   hydra: monster({
     kind: "hydra", name: "Hidra do pântano", rank: "boss", type: "monstrosity", role: "brute", cr: 8,
     hp: 1600, damage: 16, xp: 1300, loot: [120, 180], speed: 2.2, aggroRange: 9, attackRange: 2, attackCooldownMs: 1500, attackFx: "bite",
     traits: { heads: { start: 3, max: 5, step: 0.2, regrowMs: 6000, regrowHeal: 0.05 } },
     abilities: [
-      {
-        id: "submerge", name: "Mergulho", shape: "dive", range: 9, radius: 1, cooldownMs: 15000, power: 1.2, vanishMs: 1500,
-        belowHp: 0.5, phase: true, color: 0x4fc3f7, fx: "dive",
-      },
       {
         id: "acid", name: "Chuva Ácida", shape: "target", range: 7, radius: 2, cooldownMs: 7000, power: 1.7,
         dot: { kind: "poison", power: 0.25, durationMs: 5000 }, color: 0xa3e635, fx: "acidRain",
@@ -570,17 +558,13 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     hp: 2024, damage: 26, xp: 2024, loot: [221, 331], speed: 2.6, aggroRange: 8, attackRange: 2, attackCooldownMs: 1400, attackFx: "slash",
     traits: { frenzy: { belowHp: 0.3, haste: 0.35 } },
     abilities: [
-      {
-        id: "mudAmbush", name: "Bote da Lama", shape: "dive", range: 8, minRange: 2, radius: 1, cooldownMs: 12000, power: 1.6, vanishMs: 1500,
-        color: 0x6d4c41, fx: "dive",
-      },
       { id: "spearThrust", name: "Estocada", shape: "line", range: 3, radius: 0, length: 3, cooldownMs: 7000, power: 1.8, push: 1, color: 0xb0bec5, fx: "tongue" },
       {
         id: "swampCall", name: "Chamado do Brejo", shape: "summon", range: 8, radius: 0, cooldownMs: 30000, power: 0, summon: { kind: "bullywug", count: 2 },
         belowHp: 0.5, phase: true, once: true, color: 0x9ccc65, fx: "summon",
       },
     ],
-    lore: "Rei do brejo, com lança de farpas e escudo de junco. Some na lama e sai dela em bote em cima da presa; de perto, estoca em linha e empurra. Com metade da vida, chama a guarda de bullywugs, e quase morto ataca em frenesi.",
+    lore: "Rei do brejo, com lança de farpas e escudo de junco. De perto, estoca em linha e empurra. Com metade da vida, chama a guarda de bullywugs, e quase morto ataca em frenesi.",
   }),
 
   // --- Mar de Areia ------------------------------------------------------------------------------------------
@@ -712,10 +696,6 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     elements: { ice: 1.3, fire: 0.75 },
     abilities: [
       {
-        id: "burrow", name: "Emboscada da Areia", shape: "dive", range: 7, radius: 1, cooldownMs: 11000, power: 1.5, vanishMs: 1600,
-        color: 0xd9a35b, fx: "dive",
-      },
-      {
         id: "swallow", name: "Engolir", shape: "target", range: 1, radius: 0, cooldownMs: 10000, power: 0.4,
         effect: { kind: "engulf", ms: 1800, power: 0.5 }, color: 0xb5651d, fx: "engulf",
       },
@@ -724,7 +704,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         belowHp: 0.5, color: 0xc8a165, fx: "quake",
       },
     ],
-    lore: "Verme gigante das dunas, dono da caverna. Some na areia e irrompe debaixo da presa, engole quem fica colado e, ferido, faz o chão tremer.",
+    lore: "Verme gigante das dunas, dono da caverna. Engole quem fica colado e, ferido, faz o chão tremer.",
   }),
   // --- Necrópole de Solária: Dunas Cantantes (5 estrelas) e Mesas de Solária (6). A legião do Império de Kusa que a areia
   // enterrou viva e as múmias da corte que a guardam. Os dois mapas usam os mesmos comuns e mini-bosses (as Mesas, mais
@@ -871,10 +851,6 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         effect: { kind: "corrode", ms: 6000 }, color: 0x7fe0f0, fx: "lightning",
       },
       {
-        id: "submerge", name: "Submergir", shape: "dive", range: 8, radius: 2, cooldownMs: 14000, power: 1.5, vanishMs: 1800,
-        color: 0xd9a35b, fx: "dive",
-      },
-      {
         id: "buriedChoir", name: "Coro Soterrado", shape: "summon", range: 8, radius: 0, cooldownMs: 20000, power: 0,
         summon: { kind: "mourner", count: 2 }, belowHp: 0.6, phase: true, color: 0xb9c7e0, fx: "summon",
       },
@@ -883,7 +859,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         effect: { kind: "blind", ms: 1500 }, belowHp: 0.4, color: 0xf0d29c, fx: "acidRain",
       },
     ],
-    lore: "O canto das dunas tem dono. Um gigante de areia em volta dos ossos da legião, furado pelo vento: cada nota empurra, a ária estilhaça, ele some na duna e volta debaixo de quem fugiu e, ferido, chama o coro e a tempestade.",
+    lore: "O canto das dunas tem dono. Um gigante de areia em volta dos ossos da legião, furado pelo vento: cada nota empurra, a ária estilhaça e, ferido, chama o coro e a tempestade.",
   }),
   eternalPharaoh: monster({
     kind: "eternalPharaoh", name: "Faraó Eterno", rank: "boss", type: "undead", role: "artillery", cr: 11,
@@ -1046,10 +1022,6 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     traits: { multiattack: { hits: 3, power: 0.3 } },
     abilities: [
       {
-        id: "flight", name: "Voo", shape: "dive", range: 8, radius: 2, cooldownMs: 15000, power: 1.5, vanishMs: 2000,
-        belowHp: 0.5, phase: true, color: 0x58d68d, fx: "dive",
-      },
-      {
         id: "poisonBreath", name: "Sopro Venenoso", shape: "cone", range: 6, radius: 0, length: 6, cooldownMs: 8000, power: 1.8,
         dot: { kind: "poison", power: 0.3, durationMs: 4000 }, color: 0x9acd32, fx: "breath",
       },
@@ -1061,7 +1033,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         slow: { factor: 0.6, durationMs: 2500 }, dot: { kind: "poison", power: 0.25, durationMs: 3000 }, belowHp: 0.6, color: 0x7fd36b, fx: "acidRain",
       },
     ],
-    lore: "Fez ninho no círculo de menires e envenenou a clareira inteira. Morde três vezes, sopra veneno em leque e varre com a cauda; ferido, os menires soltam gás e ele alça voo para cair sobre quem fugiu. Resiste a veneno.",
+    lore: "Fez ninho no círculo de menires e envenenou a clareira inteira. Morde três vezes, sopra veneno em leque e varre com a cauda; ferido, os menires soltam gás. Resiste a veneno.",
   }),
   // --- Coração da Mata (6 estrelas): o fundo da floresta do Kosaradius, depois do Bosque Velho. A luz quase não chega:
   // fungos e cipós que se mexem, a caçada corrompida do Rei Galhado (javalis e cervos) e os mortos dos santuários
@@ -1177,13 +1149,12 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         id: "wildHunt", name: "Chamado da Caçada", shape: "summon", range: 8, radius: 0, cooldownMs: 22000, power: 0,
         summon: { kind: "corruptedStag", count: 2 }, belowHp: 0.7, phase: true, color: 0xc8b890, fx: "summon",
       },
-      { id: "mistStep", name: "Passo da Névoa", shape: "dive", range: 8, radius: 2, cooldownMs: 15000, power: 1.4, vanishMs: 1600, belowHp: 0.5, color: 0x9ab8a0, fx: "dive" },
       {
         id: "forestWrath", name: "Fúria da Mata", shape: "self", range: 3, radius: 3, cooldownMs: 30000, power: 1.5, push: 3,
         effect: { kind: "root", ms: 1200 }, selfHeal: 0.15, belowHp: 0.3, phase: true, once: true, color: 0x6b8e23, fx: "quake",
       },
     ],
-    lore: "O senhor da caçada da floresta do Kosaradius, alto como uma árvore nova, com a galhada de cervo cheia de musgo e o manto de folhas mortas. Atravessa a clareira de galhada baixa, faz chover espinhos que sangram, chama os cervos, some na névoa para cair sobre quem fugiu e, quase vencido, a mata inteira levanta em volta dele.",
+    lore: "O senhor da caçada da floresta do Kosaradius, alto como uma árvore nova, com a galhada de cervo cheia de musgo e o manto de folhas mortas. Atravessa a clareira de galhada baixa, faz chover espinhos que sangram, chama os cervos e, quase vencido, a mata inteira levanta em volta dele.",
   }),
   // --- Charco Cinzento (8 estrelas): a turfeira queimou há gerações; os turfeiros que morreram no fogo e na água voltaram
   // da lama, e o lago negro tem uma dona. No degrau da Fortaleza Orc (a etapa 9 vem depois de Vorgak), sem multiplicador
@@ -1326,13 +1297,12 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         id: "drownedCourt", name: "Chamado dos Afogados", shape: "summon", range: 8, radius: 0, cooldownMs: 22000, power: 0,
         summon: { kind: "peatDrowned", count: 2 }, belowHp: 0.7, phase: true, color: 0x6b7360, fx: "summon",
       },
-      { id: "lakeDive", name: "Mergulho no Lago", shape: "dive", range: 8, radius: 2, cooldownMs: 15000, power: 1.5, vanishMs: 1700, belowHp: 0.5, color: 0x93a9b1, fx: "dive" },
       {
         id: "drownedLament", name: "Lamento", shape: "self", range: 3, radius: 3, cooldownMs: 30000, power: 1.2,
         effect: { kind: "blind", ms: 1500 }, selfHeal: 0.12, belowHp: 0.3, phase: true, once: true, color: 0x8ef0d8, fx: "quake",
       },
     ],
-    lore: "Era a senhora da vila dos turfeiros quando o fogo veio; fugiu para o lago e o lago a guardou. Agora é dele: sai da água negra em volta da ilha, empurra tudo com a maré, puxa quem foge e chama os afogados; ferida, mergulha e volta colada, e quase vencida solta o lamento que cega e a cura. A água a protege do fogo.",
+    lore: "Era a senhora da vila dos turfeiros quando o fogo veio; fugiu para o lago e o lago a guardou. Agora é dele: sai da água negra em volta da ilha, empurra tudo com a maré, puxa quem foge e chama os afogados; quase vencida solta o lamento que cega e a cura. A água a protege do fogo.",
   }),
   // --- Ermos Rubros (8 estrelas): a mina de ferro do império, abandonada quando a cratera desabou. A ferrugem tomou o
   // vale, os mineiros que ficaram lá embaixo voltaram e o gigante que cavava com eles ainda guarda a cratera. No degrau
