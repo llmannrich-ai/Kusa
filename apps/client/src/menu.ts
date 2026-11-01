@@ -16,6 +16,8 @@ import {
   TIER_NAMES,
   VAULT_SIZE,
   auraBonuses,
+  giftEffects,
+  GIFTS,
   auraText,
   knownSpells,
   MASTERIES,
@@ -70,6 +72,7 @@ import {
   ProfileError,
   buyItem,
   buyTalent,
+  buyTalentLevels,
   setActiveSpells,
   equipItem,
   loadProfile,
@@ -275,16 +278,14 @@ export class Hub {
   private marketSlot: ItemSlot = "weapon";
   private busy = false;
   private toastTimer = 0;
-  /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
+  /** Classe escolhida para a próxima hunt: a mesma nas páginas Heróis e Grimório (trocar numa troca na outra). */
   classId: ClassId;
-  private treeClass: ClassId;
   /** Ramo aberto no Grimório (0 a 2): um por tela. */
   private treeBranch = 0;
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
     this.classId = saved && saved in CLASSES ? saved : "knight";
-    this.treeClass = this.classId;
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => {
       b.onclick = () => this.setTab(b.dataset.tab as Tab);
     });
@@ -339,14 +340,7 @@ export class Hub {
     const page = el("div", "hub-page heroes");
     page.style.setProperty("--class-color", hex(c.color));
     page.append(el("h2", "", "Heróis"), el("p", "muted hub-hint", "Toque num herói para entrar com ele na próxima hunt."));
-    page.append(this.heroPicks(id, (pick) => {
-      if (pick === this.classId) return;
-      this.classId = pick;
-      this.treeClass = pick;
-      this.treeBranch = 0;
-      storageSet("kusa:class", pick);
-      this.render();
-    }));
+    page.append(this.heroPicks(id, (pick) => this.pickClass(pick)));
 
     // Palco: o herói vestido anda e gira; as especializações escolhidas ficam em estandartes embaixo.
     const stage = el("section", "hero-stage");
@@ -408,7 +402,8 @@ export class Hub {
     const gear = gearStats(worn);
     const bonus = {
       hp: aura.hp + runes.hp + gear.hp, mana: aura.mana + runes.mana + gear.mana,
-      damage: aura.damage + runes.damage, speed: aura.speed + runes.speed + gear.speed,
+      // Passo de Rastreador (Dom) soma com a Áurea de velocidade, como na hunt.
+      damage: aura.damage + runes.damage, speed: aura.speed + giftEffects(id, this.profile.talents).speed + runes.speed + gear.speed,
     };
     const base = statsFor(id, 1);
     const boosted = statsFor(id, 1, bonus);
@@ -432,7 +427,6 @@ export class Hub {
     const tree = talentTree(id);
     const card = el("div", "hero-link");
     const open = (branch?: number) => {
-      this.treeClass = id;
       if (branch !== undefined) this.treeBranch = branch;
       this.setTab("spells");
     };
@@ -521,6 +515,15 @@ export class Hub {
     return head;
   }
 
+  /** Troca o herói da próxima hunt (medalhões de Heróis e do Grimório): vale nas duas páginas e fica salvo. */
+  private pickClass(pick: ClassId) {
+    if (pick === this.classId) return;
+    this.classId = pick;
+    this.treeBranch = 0;
+    storageSet("kusa:class", pick);
+    this.render();
+  }
+
   /** Um medalhão por herói, com o retrato vestido e a cor da classe (Heróis e Grimório). */
   private heroPicks(selected: ClassId, onPick: (id: ClassId) => void) {
     const heroes = el("div", "grim-heroes");
@@ -548,9 +551,9 @@ export class Hub {
     page.append(el("h2", "", "Grimório"));
 
     // Um botão por personagem, com o retrato vestido e a cor da classe.
-    page.append(this.heroPicks(this.treeClass, (id) => { this.treeClass = id; this.render(); }));
+    page.append(this.heroPicks(this.classId, (id) => this.pickClass(id)));
 
-    const tree = talentTree(this.treeClass);
+    const tree = talentTree(this.classId);
     const ranks = this.profile.talents;
     const xp = this.profile.spellXp;
 
@@ -559,8 +562,8 @@ export class Hub {
     const col = this.treeBranch;
     const tabs = el("div", "grim-tabs");
     tabs.setAttribute("role", "tablist");
-    tabs.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
-    const branchName = TREE_BRANCHES[this.treeClass];
+    tabs.style.setProperty("--class-color", hex(CLASSES[this.classId].color));
+    const branchName = TREE_BRANCHES[this.classId];
     const counts = branchName.map((_, c) => {
       const branch = tree.filter((t) => t.col === c && t.kind === "spell" && t.row > 0);
       return { owned: branch.filter((t) => talentRank(t, ranks) > 0).length, total: branch.length, spec: tree.some((t) => t.col === c && t.side !== undefined) };
@@ -572,7 +575,7 @@ export class Hub {
       tab.setAttribute("aria-selected", String(c === col));
       tab.setAttribute("aria-label", `${name}${spec ? ", com especialização" : ""}: ${owned} de ${total} magias`);
       const emblem = el("span", "grim-tab-emblem");
-      emblem.append(branchIcon(this.treeClass, c));
+      emblem.append(branchIcon(this.classId, c));
       tab.append(emblem, el("small", "", `${owned}/${total}`));
       tab.onclick = () => { this.treeBranch = c; this.render(); };
       tabs.append(tab);
@@ -586,7 +589,7 @@ export class Hub {
     const rows = Math.max(...shown.map((t) => t.row)) + 1;
     const grim = el("div", "grimoire");
     grim.style.setProperty("--rows", String(rows));
-    grim.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
+    grim.style.setProperty("--class-color", hex(CLASSES[this.classId].color));
 
     // Galhos: SVG atrás dos nós, em unidades de 300 na largura × pixels de linha.
     const svgNs = "http://www.w3.org/2000/svg";
@@ -676,8 +679,10 @@ export class Hub {
       node.classList.add("active");
       orb.append(el("b", "gnode-active", "✔"));
     }
+    // Com muitos níveis (Dons, áureas e Tomos), as bolinhas viram o número: "7/25".
     const pips = el("span", "gnode-pips");
-    for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
+    if (pipCount > SPELL_MAX_LEVEL) pips.append(el("b", "gnode-rank", `${pipOn}/${pipCount}`));
+    else for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
     // O losango do Traço leva o nome da especialização (Criomante, Arcanista...); o do Traço fica na ficha.
     node.append(orb, pips, el("span", "gnode-name", def.traitId ? TRAITS[def.traitId].spec : def.name));
     node.onclick = () => this.openTalentSheet(def);
@@ -764,7 +769,7 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.giftId ? "Dom" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
@@ -775,6 +780,10 @@ export class Hub {
           `Escolha permanente: comprar ${trait.name} faz de você ${trait.spec} e fecha para sempre o outro lado do ramo ` +
           `(${TRAITS[rival.traitId!].spec}), com as magias dele.`));
       }
+    }
+    if (def.giftId) {
+      sheet.append(el("p", "", GIFTS[def.giftId].description));
+      sheet.append(el("p", "muted", "Dom: passiva comprada só com gold, sem XP. Vale em toda hunt e não cai na morte."));
     }
     if (spell) {
       sheet.append(el("p", "", spell.description));
@@ -832,6 +841,19 @@ export class Hub {
         buy.classList.add("danger");
       };
       actions.append(buy);
+      // Muitos níveis (Dons, áureas e Tomos): compra até 5 de uma vez, com o preço somado.
+      const many = Math.min(5, def.maxRank - rank);
+      if (!spell && !trait && def.maxRank > SPELL_MAX_LEVEL && many > 1) {
+        const total = Array.from({ length: many }, (_, i) => talentCost(def, rank + i)).reduce((a, b) => a + b, 0);
+        const bulk = el("button", "", `+${many} níveis · ${gold(total)}`);
+        bulk.disabled = this.profile.gold < total;
+        bulk.onclick = () => void this.run(async () => {
+          this.profile.gold = await buyTalentLevels(def.id, many);
+          this.profile.talents[def.id] = rank + many;
+          this.toast(`${def.name} nível ${rank + many}!`);
+        }).then(() => this.openTalentSheet(def));
+        actions.append(bulk);
+      }
     }
     const close = el("button", "", "Fechar");
     close.onclick = () => this.closeSheet();

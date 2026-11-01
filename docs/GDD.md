@@ -50,7 +50,7 @@ O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi
 Código em `apps/client/src/menu.ts`.
 
 - **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas).
-- **Grimório:** a árvore de magias de cada classe (ver abaixo).
+- **Grimório:** a árvore de magias de cada classe (ver abaixo). Os medalhões do alto são os mesmos da página Heróis: trocar de herói numa página troca na outra e no herói da próxima hunt.
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
@@ -85,8 +85,31 @@ comprar **e usar** as anteriores do mesmo ramo.
   `packages/shared/src/spells.ts`). No menu, a ficha da magia mostra a Maestria antes de comprar; na hunt, a escolha
   mostra "★ Maestria". Três efeitos existem só nas Maestrias: **repetir** (o efeito volta sozinho logo depois, mais
   fraco), **devolver recarga ao matar** e **roubar mana**.
-- **Áureas** (quadrado no desenho): dano +4%/nível, vida +6%/nível, mana +8%/nível (3 níveis cada) e
-  velocidade +4%/nível (2 níveis). Valem sempre, desde o nível 1.
+- **Áureas** (quadrado no desenho): dano +4%/nível, vida +6%/nível, mana +8%/nível nos 3 primeiros níveis e
+  velocidade +4%/nível nos 2 primeiros. Do nível seguinte em diante, cada nível vale menos (dano +1%, vida +1,5%,
+  mana +2%, velocidade +1%), **até o nível 20** (dano +29%, vida +43,5%, mana +58%); a velocidade para no **6** (+12%),
+  porque velocidade alta deixa o herói fugir de tudo. Preço: 120–300 de gold e ×1,15 por nível (velocidade ×1,3).
+  Valem sempre, desde o nível 1. Com muitos níveis, o nó mostra "7/20" em vez das bolinhas.
+- **Dons** (hexágono no desenho, um no topo de cada ramo): passivas compradas **só com gold**, sem XP, com **25 níveis**
+  (`packages/shared/src/gifts.ts`). Ficam na linha 2, do lado oposto ao Tomo, e pedem o mesmo primeiro nó do tronco.
+  Valem em toda hunt e não caem na morte. Preço: 60 de gold no 1º nível e ×1,12 por nível (~8 mil até o 25; o último
+  nível custa 911). A ficha compra **+1** ou **+5 níveis** de uma vez (`buy_talent_levels`). Plano dos marcos e dos
+  outros Dons em `docs/GRIMORIO_4_PLANO.md`.
+
+  | Classe | Ramo | Dom | Por nível | No nível 25 |
+  |---|---|---|---|---|
+  | Cavaleiro | Lâmina | 🗡️ Fio Temperado | +1,2% de dano do ataque básico | +30% |
+  | Cavaleiro | Bastião | 🛡️ Couro Curtido | +0,6 de armadura | +15 |
+  | Cavaleiro | Comando | 🎖️ Voz de Comando | +1% de dano para você e os aliados a até 4 tiles (bots incluídos; entre vários, vale a voz mais forte) | +25% |
+  | Paladino | Mira | 🦅 Olhar Paciente | +1,2% de dano (básico e magias) em monstros a 4 tiles ou mais | +30% |
+  | Paladino | Luz | ✝️ Fé Ardente | +1,6% de dano (básico e magias) em mortos-vivos | +40% |
+  | Paladino | Batedor | 🧭 Passo de Rastreador | +0,4% de velocidade de movimento | +10% (teto) |
+  | Feiticeiro | Raio | ⚡ Condutor | +1,2% de dano nas magias de energia e de fogo | +30% |
+  | Feiticeiro | Gelo | ❄️ Coração Frio | +1% de duração das prisões e lentidões das suas magias | +25% |
+  | Feiticeiro | Trevas | 🌑 Fome Sombria | 0,8% do dano das magias de trevas volta como vida | 20% |
+  | Druida | Matilha | 🐺 Laço da Matilha | +1,2% de vida e de dano das suas criaturas | +30% |
+  | Druida | Bosque | 🌿 Seiva Antiga | +1% de cura (magias, campos e criaturas) | +25% |
+  | Druida | Espinhos | 🌵 Seiva Venenosa | +1,2% de dano dos seus venenos e sangramentos | +30% |
 - **Sinergias** (inspiradas no Diablo 2): cada nível de uso de uma magia **vizinha** na árvore (ligada por galho,
   pai ou filha, inclusive o segundo pai) dá **+2% de força** a esta (`SYNERGY_PER_LEVEL`). Força = dano, dano
   contínuo, cura, escudo, armadura, marca, campos e criaturas, como o nível da magia (multiplica a força do nível).
@@ -99,8 +122,8 @@ comprar **e usar** as anteriores do mesmo ramo.
   - com mais de 3 e nenhuma ativada (conta antiga), entram as 3 de maior nível de uso, para a escolha nunca ficar vazia.
   A escolha fica na conta (`profiles.active_spells`, gravada por `set_active_spells`) e vale em qualquer aparelho. O
   servidor lê ao entrar na sala e só oferece (e só aceita) as ativas; a hunt solo usa a mesma regra.
-- **Tomos** (livro no desenho, um por ramo: 📕 📗 📘): +5% de força em todas as magias do ramo por nível, 3 níveis,
-  300 de gold e ×1,8 por nível. Ficam na linha 2, na ponta oposta às costelas, e pedem o primeiro nó do tronco.
+- **Tomos** (livro no desenho, um por ramo: 📕 📗 📘): +5% de força em todas as magias do ramo por nível nos 3
+  primeiros níveis e +1,2% do 4º ao **20** (+35,4% no 20), 300 de gold e ×1,12 por nível. Ficam na linha 2, na ponta oposta às costelas, e pedem o primeiro nó do tronco.
   A raiz (magia inicial do slot 1) não é de nenhum ramo: não ganha Tomo.
 - A força extra (sinergia + Tomo) é calculada pelo servidor ao entrar na sala (`spellBonuses`) e vai para o cliente em
   `Player.spellBonus`: as cartas da hunt mostram "Nv 2 · +26%" e os números já somados. Não muda durante a hunt.

@@ -176,7 +176,8 @@ export function renderRules(root: HTMLElement) {
         `Só as magias ativas (✔, até ${ACTIVE_SPELLS_PER_SLOT} por slot) aparecem na escolha da hunt. Ative na ficha da magia.`,
         `Magias novas viram opção quando o slot abre na hunt (nível ${SLOT1} e ${SLOT2}).`,
         "Ramos com ✦ terminam em duas especializações, e a escolha é permanente.",
-        "Áureas (dano, vida, mana e velocidade) valem sempre, desde o nível 1 da hunt.",
+        "Áureas (dano, vida, mana e velocidade) valem sempre, desde o nível 1 da hunt. Vão até o nível 20 (a de velocidade, até o 6); do 4º nível em diante, cada um vale menos.",
+        "Dons ⬢ (um no topo de cada ramo): passivas compradas só com gold, sem XP, com 25 níveis. Valem em toda hunt e não caem na morte.",
       ]),
     ),
 
