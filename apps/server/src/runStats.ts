@@ -28,7 +28,7 @@ export interface RunStats {
   basicRetargets: number;
   /**
    * Tiros que podem errar (básico à distância e magias `isShot`), por fonte ("basic" ou id da magia): disparados,
-   * errados (ninguém no caminho na chegada) e mirados à mão (arrastando o botão).
+   * errados (ninguém no caminho até o fim do alcance) e mirados à mão (arrastando o botão).
    */
   shots: Record<string, { fired: number; missed: number; aimed: number }>;
   /** Dano efetivo causado (sem contar o que passa da vida do monstro), por fonte: "basic", id da magia ou "summon:<tipo>" (criaturas invocadas). */

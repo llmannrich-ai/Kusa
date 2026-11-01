@@ -9,6 +9,8 @@ import {
   lineEnd,
   lineTiles,
   coneTiles,
+  shotAimPoint,
+  shotPath,
   tileDistance,
   type CastAim,
   type AimDef,
@@ -33,8 +35,9 @@ export type BodyAt = (id: string) => { x: number; y: number } | undefined;
  * do slot: linha pontilhada do herói até o ponto, o alcance em volta dele e a área da magia.
  * Parado no botão, a mira mostra o alvo automático (o que o toque rápido acerta); arrastando,
  * o tamanho do arrasto vira distância até o alcance máximo. Magia de alvo único gruda no monstro
- * a até 1 tile do ponto; a de área cai no ponto. Tiro (`isShot`, e o básico à distância pelo ⚔️) não gruda: vai no
- * tile mirado, e a mira fica dourada se tem monstro nele agora. O servidor confere tudo de novo ao conjurar.
+ * a até 1 tile do ponto; a de área cai no ponto. Tiro (`isShot`, e o básico à distância pelo ⚔️) é mirado numa
+ * direção: a mira acende os tiles da reta até o alcance inteiro, com o primeiro monstro dela em dourado (o tamanho do
+ * arrasto não importa, só a direção). O servidor confere tudo de novo ao conjurar.
  */
 export class SpellAim {
   private g: Phaser.GameObjects.Graphics;
@@ -121,6 +124,20 @@ export class SpellAim {
       }
       return;
     }
+    if (isShot(spell)) {
+      // Tiro: a reta inteira na direção mirada; o primeiro monstro nela (quem leva o tiro se ninguém se mexer) em dourado.
+      const size = TILE_SIZE - 2;
+      let first = true;
+      for (const t of shotPath(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range)) {
+        let monster = false;
+        if (first) this.room.state.monsters.forEach((m) => { if (m.x === t.x && m.y === t.y) monster = true; });
+        const c = monster ? COLORS.locked : COLORS.free;
+        if (monster) first = false;
+        g.fillStyle(c, monster ? 0.3 : 0.16).fillRect(toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size);
+        dashedRect(g, toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size, c, 0.7);
+      }
+      return;
+    }
     if (spell.shape === "line") {
       // Linha: os tiles que a flecha atravessa até o alcance inteiro, na direção mirada.
       const size = TILE_SIZE - 2;
@@ -149,6 +166,9 @@ export class SpellAim {
       return m ? { x: m.x, y: m.y, targetId: id! } : null;
     }
 
+    // Tiro: só a direção do arrasto importa (um ponto bem longe nela).
+    if (isShot(spell)) return shotAimPoint(me.x, me.y, this.drag.x, this.drag.y);
+
     // O arrasto vira deslocamento em tiles: na borda do arrasto, a mira chega ao alcance máximo
     // (medido como no jogo, em que a diagonal conta 1).
     const len = Math.hypot(this.drag.x, this.drag.y);
@@ -159,12 +179,6 @@ export class SpellAim {
     const raw = clampToRange(me.x, me.y, me.x + Math.round((ux / edge) * t), me.y + Math.round((uy / edge) * t), spell.range);
     const point = lineEnd(this.dungeon, me.x, me.y, raw.x, raw.y);
     if (!isSingleTarget(spell)) return point;
-    // Tiro: vai no tile mirado (dá para mirar à frente do monstro); dourado só com monstro no tile.
-    if (isShot(spell)) {
-      let on: string | undefined;
-      this.room.state.monsters.forEach((m, id) => { if (m.x === point.x && m.y === point.y) on = id; });
-      return on ? { ...point, targetId: on } : point;
-    }
 
     // Alvo único: gruda no monstro mais perto do ponto, se estiver a até 1 tile e ao alcance.
     let best: string | undefined;
