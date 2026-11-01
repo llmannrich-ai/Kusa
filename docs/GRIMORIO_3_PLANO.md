@@ -99,12 +99,17 @@ viram 9–11 do mesmo jeito; o desenho do Grimório (`menu.ts`) precisa de rolag
 
 Assim o começo libera rápido (o ouro tem destino) e o fim continua pedindo ter jogado com as magias.
 
-### 3.2 Novo destino de ouro sem XP: "Estudar" (opcional, decisão D2)
+### 3.2 Como cada nó sobe de nível (decidido pelo Leonardo, 01/11)
 
-Botão na ficha de uma magia comprada: paga gold e recebe XP de uso, **só até o nível 1** (60 XP). Preço proposto:
-2× o preço da magia. Resolve o caso "comprei e nunca usei", vira destino de ouro e não deixa pular o fim do jogo.
-Risco: cheira a pagar para pular; por isso o teto no nível 1. Precisa de uma função `security definer` nova
-(`study_spell`) e da mesma conta no `packages/shared`.
+| Nó | Compra com gold | Sobe de nível |
+|---|---|---|
+| Magia que ocupa slot (1, 2 e 3) | só a 1ª vez (aprender) | **só usando na hunt** (XP de uso, como hoje). Nada de comprar nível ou XP |
+| Magia passiva | aprender e cada nível | **só com gold**: níveis 1 a 3 e o nível 4, a **Maestria** |
+| Áurea, Tomo | cada nível | com gold (como hoje) |
+| Traço | nível único | — |
+
+Assim o gold vai para as passivas, as áureas e os Tomos, e quem quer magia de slot forte precisa jogar com ela.
+A ideia de "Estudar" (comprar XP de uso com gold) foi descartada.
 
 ---
 
@@ -120,16 +125,17 @@ Risco: cheira a pagar para pular; por isso o teto no nível 1. Precisa de uma fu
 | **Slot 3 da especialização** (novo) | — | 5.000 |
 | **Áurea da especialização** (nova, 3 níveis, ×1,8) | — | 2.000 + 3.600 + 6.480 = 12.080 |
 | **Costela rara** (nova) | — | 2.500 |
-| **Passiva do tronco** (nova, 2 níveis, ×1,8) | — | 2.500 + 4.500 = 7.000 |
-| **Passiva da especialização** (nova, 2 níveis, ×1,8) | — | 4.000 + 7.200 = 11.200 |
+| **Passiva do tronco** (nova, níveis 1–3 + Maestria, ×1,8) | — | 1.500 + 2.700 + 4.860 + 8.748 = 17.808 |
+| **Passiva da especialização** (nova, níveis 1–3 + Maestria, ×1,8) | — | 2.500 + 4.500 + 8.100 + 14.580 = 29.680 |
 
 Conta do comprável por classe: ~33 mil (hoje, com os aumentos) + 9 mil (slot 3 tronco) + 15 mil (slot 3 spec) +
-36 mil (áureas spec) + 5 mil (raras) + 21 mil (passivas do tronco) + 34 mil (passivas spec) ≈ **153 mil**.
+36 mil (áureas spec) + 5 mil (raras) + 53 mil (passivas do tronco) + 89 mil (passivas spec) ≈ **240 mil**.
+As passivas viram o principal destino do gold (~60%), de propósito: é a única coisa que se compra nível a nível.
 
-Isso é ~600 hunts a 250 de gold: longo demais se nada mais mudar. Recomendação: decidir a meta em hunts (D3) e
+Isso é ~960 hunts a 250 de gold: longo demais se nada mais mudar. Recomendação: decidir a meta em hunts (D3) e
 calibrar com **um multiplicador único** nos preços novos (`NEW_NODE_PRICE_SCALE` em `talents.ts`, repetido na
-migration), em vez de mexer nó por nó. Exemplos: meta de 300 hunts → multiplicador ~0,45 nos nós novos; meta de
-400 → ~0,65. Os mapas novos (Mata Antiga, Coração da Mata, Fortaleza) pagam mais e encurtam isso; medir antes.
+migration), em vez de mexer nó por nó. Exemplos (o multiplicador vale só nos nós novos; os ~33 mil de hoje ficam): meta de 300 hunts → ~0,20; meta
+de 400 → ~0,32; meta de 500 → ~0,45. Os mapas novos (Mata Antiga, Coração da Mata, Fortaleza) pagam mais e encurtam isso; medir antes.
 
 Quem já comprou não paga a diferença (o banco cobra pelo `base_cost` na hora da compra). Mudar o preço é uma
 migration no `talents` + a mesma tabela em `talents.ts` (o teste do catálogo confere).
@@ -250,8 +256,9 @@ especialização, **R** = costela rara. Os efeitos usam campos que já existem e
 
 Nó novo do tipo **passiva**: comprada no Grimório, vale a hunt inteira e **dispara sozinha** quando o gatilho
 acontece. Não tem botão, não gasta mana e não entra na escolha dos slots. Cada uma tem **chance** e **recarga
-interna** (para não disparar sem parar), e 2 níveis comprados com gold (o nível 2 sobe chance ou força). Não sobe
-por uso: é o destino de ouro que não depende de XP.
+interna** (para não disparar sem parar). Sobe **só com gold**: os níveis 1 a 3 aumentam a chance ou a força
+(+25% por nível sobre o número do nível 1) e o nível 4, a **Maestria**, muda o comportamento (tabela abaixo).
+Não sobe por uso.
 
 Diferença para o resto: a **áurea** é número fixo (+5% de armadura); o **Traço** é a regra da especialização
 (nível único, um por ramo); a **passiva** é um evento ("ao matar, explode").
@@ -298,6 +305,47 @@ N s, a cada N magias, ficar parado, sair da forma animal, criatura matar, curar 
 | Druida | Peste | Toxina Lenta | Monstros envenenados por você andam 15% mais devagar |
 | Druida | Tempestade | Condutor | Monstro atingido por raio seu recebe +20% do próximo dano (3 s) |
 
+**Maestria de cada passiva** (nível 4):
+
+| Passiva | Maestria |
+|---|---|
+| Golpe Reflexo | O corte em volta também faz sangrar (0,3×/s por 3 s) |
+| Vigília | O golpe que sai pela metade devolve 1× ao atacante |
+| Brado Vitorioso | Também dá +10% de dano aos aliados curados por 4 s |
+| Sede Insaciável | Cura em qualquer morte, não só com o básico |
+| Golpe de Misericórdia | Matar com ele zera a recarga do slot 1 |
+| Escudo Leal | Protege os 2 aliados mais feridos |
+| Raiz de Ferro | Parado, os monstros colados ficam 30% mais lentos |
+| Tambores de Guerra | A cada 2 magias, não 3 |
+| Ira Provocada | O revide também atordoa 0,5 s (uma vez a cada 4 s por monstro) |
+| Tiro Certeiro | No 3º básico, não no 4º, e atravessa o alvo |
+| Bênção Silenciosa | Cura todos os aliados a até 3 tiles |
+| Flecha Ricochete | Salta 2 vezes |
+| Ponto Fraco | A marca acumula até 2 vezes |
+| Instinto de Fuga | Também cura 10% da vida |
+| Martelo da Fé | Vale para qualquer monstro (mortos-vivos explodem com o dobro) |
+| Graça Protetora | O paladino também recebe a cura |
+| Estilhaços | Monstro morto pelos estilhaços também explode (uma vez) |
+| Mina de Sobra | A mina menor também prende por 1,5 s |
+| Descarga | A faísca salta 2 vezes |
+| Pele Gélida | O 3º golpe recebido em 4 s prende o atacante por 1,5 s |
+| Toque Sombrio | O dano contínuo devolve 10% como mana |
+| Sobrecarga | A magia carregada também atordoa 0,5 s |
+| Rastro em Chamas | A explosão deixa o chão em chamas por 2 s |
+| Fragmentos | Os estilhaços prendem por 1 s |
+| Eco Arcano | Também devolve a mana da magia |
+| Servo Eterno | O esqueleto dura 15 s e cabem até 3 |
+| Mau Olhado | Quando o amaldiçoado morre, a maldição passa ao monstro mais perto |
+| Instinto da Matilha | A criatura que matou também cura 10% |
+| Orvalho | Também devolve 2% da mana |
+| Pólen Tóxico | O veneno acumula 2 vezes |
+| Ira do Alfa | As criaturas também curam 20% da vida |
+| Instinto Selvagem | Também dá +30% de velocidade por 3 s |
+| Cura Gêmea | O 2º aliado recebe a cura inteira |
+| Casca Viva | A armadura vale para os aliados a até 2 tiles |
+| Toxina Lenta | Os envenenados também causam 15% menos dano |
+| Condutor | O bônus vale para toda a equipe e dura 5 s |
+
 Cuidados de design das passivas:
 - **Não repetir Traço:** contra-ataque (Riposta), escudo abaixo de 25% (Último Bastião), raio a cada 4 magias (Céu
   Carregado) e mana ao matar (Colheita) já existem e ficaram de fora.
@@ -334,7 +382,7 @@ Uma branch e um PR por fase (fluxo do `CLAUDE.md`). Fases 4 a 7 podem andar em p
 | Fase | Entrega | Depende de | Tamanho |
 |---|---|---|---|
 | **0. Contrato com o slot 3** | Combinar com a sessão do slot 3: `SpellSlot = 0 \| 1 \| 2`, nível de abertura (`SPELL_SLOT_LEVELS[2]`), `finish_solo_run`/`record_spell_xp` aceitando 3 magias, botão na `#actions`, bot usando o slot 3. **Esta sessão não mexe nisso.** | — | conversa |
-| **1. Ritmo de XP e economia** | Travas da seção 3.1, preços da seção 4, `study_spell` (se D2 = sim). Migration + `talents.ts`. Mede o efeito antes de entrar conteúdo | — | P |
+| **1. Ritmo de XP e economia** | Travas da seção 3.1, preços da seção 4, regra de níveis da seção 3.2. Migration + `talents.ts`. Mede o efeito antes de entrar conteúdo | — | P |
 | **2. Motor** | Campo que acompanha, guarda em aliados, 8 atributos de áurea, contadores no `RunStats`. Testes na arena (`arena.ts`) para cada peça | 0 mesclado | M |
 | **2b. Passivas (motor + 3 do tronco de 1 classe)** | Tipo `passive`, `passives.ts`, ganchos de gatilho, ícone de disparo, telemetria. Pode entrar **antes do slot 3** (não depende dele) e já dá destino ao ouro | 1 | M |
 | **3. Desenho do Grimório** | Linhas 9–11, rolagem, selo "slot 3" no nó, desenho do nó de passiva (anel), ficha da áurea nova. Testar em 412×915 com toque e deitado (915×412) | 0 | P |
@@ -378,11 +426,13 @@ Ordem das classes: começar pela que tem mais telemetria (Cavaleiro) para valida
 
 ## 10. Decisões pendentes
 
-- **D1. Áurea ativa no slot 3:** aceitar a mecânica "campo que acompanha o herói" (proposta) ou deixar o slot 3 só
-  com magias de poder?
-- **D2. "Estudar" magia com gold até o nível 1:** sim ou não?
+- **D1. O que são as "áureas" do pedido original:** (a) as áureas que já existem, nós passivos de bônus fixo
+  (Áurea de Fúria +4% de dano) — o plano propõe 6 novas por classe, ligadas à especialização; e/ou (b) uma magia de
+  slot 3 que, ao apertar, cria um círculo em volta do herói que anda junto com ele por alguns segundos (ex.: Clamor
+  de Guerra, 10 s, aliados dentro do círculo +20% de dano). O plano tem as duas; falta confirmar quais ficam.
+- ~~D2. "Estudar" magia com gold~~ **decidido: não.** Magia de slot só sobe usando (seção 3.2).
 - **D3. Meta de hunts para fechar uma classe:** com tudo a preço cheio são ~153 mil (~600 hunts). Proposta: meta de
   ~300–400 hunts, calibrada pelo multiplicador único dos nós novos (seção 4).
 - **D4. Preço dos nós antigos de especialização:** subir como na seção 4 (quem já comprou não perde nada) ou só os
   nós novos ficam caros?
-- **D5. Passivas com 2 níveis** (destino de ouro sem XP, proposta) ou nível único (árvore mais barata)?
+- ~~D5. Níveis das passivas~~ **decidido:** compradas com gold, níveis 1 a 3 + Maestria (seção 6.5).
