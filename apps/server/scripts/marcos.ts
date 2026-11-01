@@ -4,11 +4,14 @@
  *   - Cavaleiro: Fio Temperado (série que sangra e corta em leque), Couro Curtido (escudos, lentidão, vida, quebra),
  *     Voz de Comando (alcance, velocidade, socorro), Último Duelo (limiar, roubo de vida, recarga do slot 3),
  *     Pedra Fundamental (regeneração, provocação, armadura, corte nos colados) e Estandarte Vivo (raio, armadura,
- *     cura ao matar, corte de dano depois do slot 3).
+ *     cura ao matar, corte de dano depois do slot 3);
+ *   - Paladino: Olhar Paciente (alcance, atordoar no alcance máximo), Fé Ardente (queimadura e ofuscar mais longos, cura
+ *     ao matar morto-vivo, luz que atravessa), Passo de Rastreador (armadilhas e tiro calmo), Graça (série menor, cura e
+ *     ofuscar), Fôlego do Caçador (tiros carregados, recarga devolvida, escudo) e Mão Rápida (6º básico e explosão).
  * Uso: npx tsx scripts/marcos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  ALLY_DAMAGE_RADIUS, BANNER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
+  ALLY_DAMAGE_RADIUS, BANNER, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
   type ClassId, type GiftId, type TalentRanks,
 } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
@@ -170,6 +173,112 @@ test("Estandarte Vivo: raio 5, armadura e cura ao matar na aura, corte depois do
   a.ready();
   a.hunt.cast(HERO, { slot: 2, aim: { x: target.x, y: target.y, targetId: target.id } });
   check(a.seat().bannerWardUntil > a.now(), "o slot 3 não ligou o corte de dano");
+});
+
+console.log("Paladino:");
+test("Olhar Paciente: +1 tile no básico e o tiro no alcance máximo atordoa", () => {
+  const plain = markArena("paladin", {});
+  const a = markArena("paladin", { patient_eye: 10 }, { monsterHp: 400 });
+  plain.advance(100);
+  a.advance(100);
+  check(a.p.basicRange === plain.p.basicRange + 1, `alcance ${plain.p.basicRange} → ${a.p.basicRange}`);
+  const m = a.place("lizardfolk", a.p.basicRange, 0);
+  attack(a, m, 2500);
+  check(a.seat().eyeStunAt > 0 && (a.seat().stats.giftProcs.patient_eye ?? 0) >= 1, JSON.stringify(a.seat().stats.giftProcs));
+});
+test("Fé Ardente: queimadura +1 s, ofuscar +0,4 s, cura ao matar morto-vivo, luz que atravessa", () => {
+  const a = markArena("paladin", { burning_faith: 25 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.applyDot(m, a.brain(m), HERO, "teste", 1, 3000, "burn", a.now());
+  check(a.brain(m).dot.until - a.now() === 3000 + FAITH.burnMs, `queima até ${a.brain(m).dot.until}`);
+  const stun = (gift: number) => {
+    const b = markArena("paladin", gift ? { burning_faith: gift } : {}, { monsterHp: 400 });
+    b.hunt.chooseSpell(HERO, { slot: 1, spellId: "divine_judgment" });
+    const t = b.place("lizardfolk", 2, 0);
+    b.ready();
+    b.cast(1 as 0, t);
+    b.advance(400);
+    return b.brain(t).stunnedUntil;
+  };
+  check(stun(25) - stun(0) === FAITH.dazzleMs * 2, `ofuscar ${stun(0)} → ${stun(25)}`);
+  a.p.hp = Math.round(a.p.maxHp / 2);
+  const hp = a.p.hp;
+  const undead = a.place("skeleton", 3, 0);
+  a.kill(undead);
+  check(a.p.hp > hp, `vida ${hp} → ${a.p.hp}`);
+  a.choose("holy_arrow");
+  const front = a.place("lizardfolk", 2, 2);
+  const back = a.place("lizardfolk", 3, 3);
+  // Presos no lugar: o teste é a luz atravessar, não a perseguição.
+  for (const x of [front, back]) a.any.root(x, a.brain(x), a.now() + 60000);
+  const backHp = back.hp;
+  a.ready();
+  a.cast(0, front);
+  a.advance(1000);
+  check(back.hp < backHp, `o de trás devia apanhar (${backHp} → ${back.hp}; ${a.where()})`);
+});
+test("Passo de Rastreador: armadilha a mais e mais longa, tiro calmo", () => {
+  const a = markArena("paladin", { tracker_step: 25 });
+  a.choose("bear_trap");
+  for (const dx of [2, 3, 4]) {
+    a.ready();
+    a.cast(0, { x: a.p.x + dx, y: a.p.y });
+    a.advance(200);
+  }
+  const traps = [...a.state.fields.values()].filter((f) => f.owner === HERO && f.spellId === "bear_trap");
+  check(traps.length === 3, `${traps.length} armadilhas (1 + 2 dos marcos)`);
+  const until = a.any.fieldBrains.get(traps[2].id).until - a.now();
+  check(until > 20000 * (1 + TRACKER.trapMs * 2) - 500, `dura ${until} ms`);
+  a.advance(TRACKER.calmMs);
+  const m = a.place("lizardfolk", 2, 1);
+  attack(a, m, 800);
+  check(a.seat().calmShotAt > 0, "o tiro calmo não saiu");
+});
+test(`Graça: série de ${GRACE_EVERY - 3} no marco 5; a carregada cura e ofusca`, () => {
+  const a = markArena("paladin", { grace: 25 }, { monsterHp: 400 });
+  a.choose("holy_arrow");
+  const target = a.place("lizardfolk", 4, 0);
+  const m = a.place("lizardfolk", 1, 1);
+  for (const x of [target, m]) a.any.root(x, a.brain(x), a.now() + 60000);
+  for (let i = 0; i < GRACE_EVERY - 3; i++) {
+    a.ready();
+    a.cast(0, target);
+    a.advance(200);
+  }
+  check(a.seat().graceReady, "a série de 7 não carregou");
+  a.p.hp = Math.round(a.p.maxHp / 2);
+  const hp = a.p.hp;
+  a.ready();
+  a.cast(0, target);
+  check(a.p.hp >= hp + Math.round(a.p.maxHp * GRACE_MARKS.heal) - 1, `vida ${hp} → ${a.p.hp}`);
+  check(a.brain(m).dazzledUntil > a.now(), "devia ofuscar quem está perto");
+});
+test("Fôlego do Caçador: 2 tiros carregados, recarga devolvida e escudo no salto", () => {
+  const cd = (gift: number) => {
+    const b = markArena("paladin", { hunter_breath: gift });
+    b.choose("evasive_roll");
+    b.ready();
+    b.cast(0, { x: b.p.x + 2, y: b.p.y });
+    return { b, cd: b.seat().spellReadyAt[0] - b.now() };
+  };
+  const plain = cd(1);
+  const { b, cd: refunded } = cd(25);
+  check(refunded < plain.cd && b.seat().breathShots === BREATH.shots && b.p.barrier > 0, `recarga ${plain.cd} → ${refunded}, tiros ${b.seat().breathShots}, escudo ${b.p.barrier}`);
+  const m = b.place("lizardfolk", 2, 1);
+  attack(b, m, 600);
+  check(b.seat().breathShots <= 1, `tiros que sobraram: ${b.seat().breathShots}`);
+});
+test(`Mão Rápida: o ${HAND.every}º básico incendeia e a flecha explode em volta`, () => {
+  const a = markArena("paladin", { quick_hand: 25 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 3, 0);
+  const near = a.place("lizardfolk", 3, 1);
+  const hp = near.hp;
+  a.p.target = m.id;
+  a.seat().attacking = true;
+  a.seat().targetLocked = true;
+  a.until(() => a.seat().handCount >= HAND.every, 10000, "não deu 6 básicos");
+  a.advance(800);
+  check((a.seat().stats.giftProcs.quick_hand ?? 0) >= 1 && near.hp < hp, `procs ${a.seat().stats.giftProcs.quick_hand}, vizinho ${hp} → ${near.hp}`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);
