@@ -1,10 +1,19 @@
 # Arte esculpida por código — protótipo (Escorpião da Areia)
 
 Teste de até onde a arte de monstro feita **só por código** chega, como alternativa às folhas geradas por IA
-(`docs/arte/cripta/`). Piloto: o **Escorpião da Areia** do Mar de Areia; o **Escorpião Negro Gigante** saiu de graça
-(mesmo modelo, outra casca). Só na Arte nova (`Settings.newArt`); com ela desligada fica a arte antiga.
+(`docs/arte/cripta/`). Só na Arte nova (`Settings.newArt`); com ela desligada fica a arte antiga.
 
-Comparação no jogo e a folha inteira: `docs/arte/escorpiao-escultura.png`.
+| Monstro | Modelo | Comparação |
+|---|---|---|
+| Escorpião da Areia e Escorpião Negro Gigante (mesmo modelo, outra casca) | `proto/scorpion.ts` | `docs/arte/escorpiao-escultura.png` |
+| Abutre Gigante (voa: pena, asa e voo) | `proto/vulture.ts` | `docs/arte/abutre-escultura.png` |
+
+As folhas saem por `proto/sculptArt.ts` (`sculptArt(poses, shoot)`): para um bicho novo, basta o modelo, a câmera e as
+poses de cada clipe.
+
+**Voadores** (abutre): o corpo é desenhado já pairando acima do chão (o jogo só balança 3 px) e o perfil fica em
+três-quartos (giro de 40°): de lado, a asa aberta vira uma faixa vertical. As asas são montadas pena a pena (cobertas,
+secundárias e primárias em leque); `Material.lineDepth` baixo separa as penas finas umas das outras.
 
 ## Como funciona
 
@@ -17,7 +26,7 @@ Comparação no jogo e a folha inteira: `docs/arte/escorpiao-escultura.png`.
    pela profundidade, luz quente rebatida da areia, brilho na quitina, granulado em relevo preso à forma, rampas de cor
    à mão com matiz deslocado, pontilhado só nas transições, contorno colorido por fora e linhas onde uma parte passa
    na frente da outra.
-4. **No jogo** (`proto/scorpionArt.ts`, `bestiary.ts`): mesma ordem de quadros das folhas da Cripta (parado, andar,
+4. **No jogo** (`proto/sculptArt.ts`, `bestiary.ts`): mesma ordem de quadros das folhas da Cripta (parado, andar,
    golpe, especial, morte, frente e costas). Cada figura é desenhada no aparelho quando a hunt pede, uma por vez
    (`hdStep`), e só nos mapas que têm o bicho. `MonsterAnim.origin` diz onde fica o apoio no quadro (a vista é de
    cima: as pinças de frente descem abaixo da base do tile).
@@ -29,7 +38,7 @@ Comparação no jogo e a folha inteira: `docs/arte/escorpiao-escultura.png`.
 | Download | 0 (≈ 20 KB de código no bundle) | 100–570 KB de PNG por monstro |
 | Figuras por monstro | 30 (todas diferentes) | 21 |
 | Tempo por figura, PC | ≈ 9 ms | decodificar o PNG |
-| Tempo por figura, celular simulado (CPU 4× mais lenta) | ≈ 31 ms (1,3 s no total, espalhado) | — |
+| Tempo por figura, celular simulado (CPU 4× mais lenta) | ≈ 31 ms o escorpião, ≈ 35 ms o abutre (≈ 1,2–1,3 s por monstro, espalhado) | — |
 | Memória (textura) | ≈ 2,5 MB | ≈ 1,7–3 MB |
 | Variante (outra cor, outro tamanho) | trocar a paleta: 0 KB | outra folha |
 | Consistência entre quadros | exata (mesmo modelo) | varia (a IA redesenha) |
@@ -44,7 +53,7 @@ Comparação no jogo e a folha inteira: `docs/arte/escorpiao-escultura.png`.
 
 ## Ver e testar
 
-- Folha em PNG, sem navegador: `npx tsx apps/client/scripts/esculturaPrevia.ts /tmp/escorpiao.png 3 [amber|black]`
+- Folha em PNG, sem navegador: `npx tsx apps/client/scripts/esculturaPrevia.ts /tmp/bicho.png 3 [escorpiao|negro|abutre]`
   (mostra também o tempo por quadro).
 - No jogo, com o cenário de verdade e o mesmo posicionamento da hunt:
-  `npm run dev:client` → `/mapa.html?mapa=desert&bichos=sandScorpion,blackScorpion,goblin,giantSpider&antigo=1`.
+  `npm run dev:client` → `/mapa.html?mapa=desert&bichos=giantVulture,sandScorpion,blackScorpion,goblin,giantSpider,stirge&antigo=1`.

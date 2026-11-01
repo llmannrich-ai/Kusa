@@ -1,4 +1,4 @@
-import { Sculpt, basis, lerp3, render, rot, turn, v3, type Frame, type Look, type Material, type Mat3, type V3 } from "./sculpt.ts";
+import { SCULPT_FEET, SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, type Frame, type Look, type Material, type Mat3, type V3, type View } from "./sculpt.ts";
 
 /**
  * Escorpião da Areia esculpido por código (`sculpt.ts`), piloto do padrão de arte por escultura (`docs/ARTE_ESCULTURA.md`).
@@ -232,26 +232,19 @@ function leg(sc: Sculpt, hip: V3, foot: V3, i: number, kneeDir: V3) {
 
 // --- Quadros -------------------------------------------------------------------------------------------------------
 
-/** Lado do quadro e linha dos pés (como as folhas da Cripta: pés a 10 px do fundo). */
-export const SCORPION_SIZE = 144;
-/** O centro do bicho no chão; as patas de cá descem abaixo disto (a câmera é de cima). */
-export const SCORPION_FEET = SCORPION_SIZE - 56;
 const PITCH = 42;
 /** Px por unidade do modelo. */
 const SCALE = 1.22;
-const SIDE_YAW = 10;
+const YAW: Record<View, number> = { side: 10, front: 90, back: -90 };
 
-export type View = "side" | "front" | "back";
-const YAW: Record<View, number> = { side: SIDE_YAW, front: 90, back: -90 };
-
-export function shoot(pose: Pose, view: View, shell: Shell = SHELLS.amber): Frame {
-  const cx = view === "side" ? SCORPION_SIZE / 2 + 20 : SCORPION_SIZE / 2;
-  return render(scorpion(pose), { size: SCORPION_SIZE, feet: SCORPION_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look(shell));
+export function shootScorpion(pose: Pose, view: View, shell: Shell = SHELLS.amber): Frame {
+  const cx = view === "side" ? SCULPT_SIZE / 2 + 20 : SCULPT_SIZE / 2;
+  return render(scorpion(pose), { size: SCULPT_SIZE, feet: SCULPT_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look(shell));
 }
 
 const WALK_STRIDE = 7;
 /** Poses de cada clipe (perfil), na ordem da folha. */
-export const CLIP_POSES = {
+export const SCORPION_POSES = {
   idle: [0, 1, 2, 1].map((k): Pose => ({ lift: k * 0.35, curl: [27, 25 + k * 0.6, 24 + k * 0.6, 22], open: 0.2 + k * 0.06 })),
   walk: [0, 0.25, 0.5, 0.75].map((phase, k): Pose => ({
     phase, stride: WALK_STRIDE, lift: k % 2 ? 0.8 : 0, curl: [27, 25 + (k % 2 ? 1.5 : -1), 24, 22], tail: 52 + (k % 2 ? 2 : 0), open: 0.15, reach: k % 2 ? 0.1 : 0,
