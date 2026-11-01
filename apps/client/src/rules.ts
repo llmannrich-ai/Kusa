@@ -99,10 +99,10 @@ export function renderRules(root: HTMLElement) {
 
     section("👆 Controles", false, list([
       "Polegar esquerdo, na parte de baixo da tela: o joystick aparece onde você toca e move o herói.",
-      "⚔️ ataque básico: um toque dá um golpe, segurar repete. Vai no alvo travado ou no monstro mais próximo ao alcance.",
+      "⚔️ ataque básico: um toque dá um golpe, segurar repete. Mira sozinho no alvo travado ou no monstro mais próximo ao alcance.",
       "Tocar num monstro trava o alvo nele (anel vermelho).",
       "Flechas, luzes e magias de alvo único com projétil são atiradas numa direção e voam reto até o alcance: acertam o primeiro monstro no caminho. Quem anda de lado escapa, quem vem na sua direção leva. Arraste o ⚔️ (ou a magia) para escolher a direção.",
-      "Magias de alvo: segure o botão, arraste para mirar e solte para lançar. Voltar o dedo para o botão cancela. Um toque rápido lança no alvo automático.",
+      "Magias de alvo: segure o botão, arraste para mirar e solte para lançar. Voltar o dedo para o botão cancela. Um toque rápido lança reto na frente do herói (para onde ele andou ou atacou por último), sem mirar sozinho no monstro.",
       "Poções: botões ❤️ e 💧 ao lado das magias.",
       "Bag: toque na fileira embaixo do loot para ver, equipar ou largar itens sem pausar a hunt.",
       "Minimapa: toque nele para ver o mapa inteiro. A bússola em volta de você aponta para o boss (no deserto, para a caverna dele) e, depois que ele cai, para o portal do boss.",

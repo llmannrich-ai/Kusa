@@ -73,6 +73,7 @@ import {
   activeTraits,
   TRAITS,
   lineTiles,
+  shotAimPoint,
   shotPath,
   coneTiles,
   isWalkable,
@@ -995,6 +996,7 @@ export class Hunt {
     player.stepMs = Math.round(stepMs);
     player.x = nx;
     player.y = ny;
+    this.face(player, dx, dy);
     if (this.state.phase === "running") this.trackDepth(sessionId, player);
 
     if (tileAt(this.dungeon, nx, ny) === Tile.Cave) this.throughCave(sessionId, player);
@@ -1187,6 +1189,7 @@ export class Hunt {
     if (m && form && form.pounce > 0) return this.pounce(sessionId, p, seat, m, form, now);
     const ox = p.x;
     const oy = p.y;
+    this.face(p, tx - ox, ty - oy);
     const base = this.baseDamage(sessionId, p, "basic");
     const basicDamage = 1 + (buff?.basicDamage ?? 0);
     // Rolamento: a próxima flecha atordoa (gasta no disparo, mesmo que erre ou que o monstro morra antes).
@@ -1263,6 +1266,13 @@ export class Hunt {
     };
     if (path.length === 0) return done(undefined);
     this.after(arrive(0), step);
+  }
+
+  /** Vira a frente do herói para a direção (dx, dy) em tiles (`Player.faceX/faceY`); sem direção, fica como estava. */
+  private face(p: Player, dx: number, dy: number) {
+    if (dx === 0 && dy === 0) return;
+    if (p.faceX !== dx) p.faceX = dx;
+    if (p.faceY !== dy) p.faceY = dy;
   }
 
   /** Monstro à vista no tile (escondido, invisível ou voando não conta). */
@@ -1440,19 +1450,27 @@ export class Hunt {
         ty = snapped.y;
       }
     } else if (spell.aim === "target") {
-      // Toque rápido: alvo atual se estiver ao alcance; senão, o monstro mais próximo. Sem nenhum, não sai.
-      const current = this.state.monsters.get(p.target);
-      target = current && this.canHit(p, current, spell.range)
-        ? current
-        : this.state.monsters.get(this.nearestMonsterInRange(p, spell.range) ?? "");
-      if (!target) {
-        seat.stats.castFails.noTarget++;
-        this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Nenhum alvo ao alcance", color: 0xbdc3c7 } satisfies NoticeMessage);
-        return;
+      // Toque rápido: sem mira automática no monstro. A magia sai reto na frente do herói (a direção do último passo,
+      // golpe ou magia mirada), como se o jogador arrastasse para onde ele olha.
+      const front = shotAimPoint(p.x, p.y, p.faceX, p.faceY);
+      if (isShot(spell) || spell.shape || spell.dash) {
+        // Tiro, linha, leque e rolamento: só a direção importa.
+        tx = front.x;
+        ty = front.y;
+      } else {
+        // Alvo único sem projétil (golpes do Cavaleiro, Desafio, Investida) e área: no primeiro monstro da reta da
+        // frente, até o alcance; sem nenhum, no fim da reta (parando na parede). A área cai ali.
+        const path = shotPath(this.dungeon, p.x, p.y, front.x, front.y, spell.range);
+        const first = path.map((t) => this.monsterOn(t)).find((m) => m);
+        if (isSingleTarget(spell)) target = first;
+        const end = first ?? path[path.length - 1] ?? p;
+        tx = end.x;
+        ty = end.y;
       }
-      tx = target.x;
-      ty = target.y;
     }
+
+    // Mirou à mão: o herói passa a olhar para lá (o próximo toque rápido sai na mesma direção).
+    if (spell.aim === "target" && aim && Number.isFinite(aim.x) && Number.isFinite(aim.y)) this.face(p, Math.round(aim.x) - p.x, Math.round(aim.y) - p.y);
 
     // Mira em aliado (Escudo da Luz): o aliado mais perto do ponto mirado; no toque rápido, o mais ferido ao alcance.
     let ally: string | undefined;
@@ -1506,7 +1524,8 @@ export class Hunt {
     }
     // Investida: corre até ficar colado no alvo antes do golpe (sem alvo ou sem lugar, não sai nem gasta mana).
     if (spell.charge) {
-      if (!target) target = this.nearestMonsterTo(tx, ty, AIM_SNAP_TILES);
+      // Mirada à mão, gruda no monstro perto do ponto; no toque rápido, só vale o que estava na reta da frente.
+      if (!target && aim) target = this.nearestMonsterTo(tx, ty, AIM_SNAP_TILES);
       if (!target || !this.canHit(p, target, spell.range)) {
         seat.stats.castFails.noTarget++;
         this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Nenhum alvo ao alcance", color: 0xbdc3c7 } satisfies NoticeMessage);
