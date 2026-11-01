@@ -160,7 +160,7 @@ comprar **e usar** as anteriores do mesmo ramo.
     como mandíbulas de ferro e a estaca como um poste com o alcance em volta. Conjurar de novo troca o campo mais antigo
     da mesma magia. A estaca e a armadilha atiram e disparam sozinhas; o dano conta para quem as pôs.
   - **Mira em aliado** (Escudo da Luz): arrastando, o herói a até 1 tile do ponto (círculo azul nos pés); parado no
-    botão, o mais ferido ao alcance. **Mira em leque** (Barragem): a mira acende os tiles do leque.
+    botão, o mais ferido ao alcance. **Mira em leque** (Barragem e as magias em leque): a mira acende os tiles do leque, com o ângulo de cada magia.
   - **Feiticeiro** (os 3 ramos especializados). As magias do Feiticeiro têm elemento (energia, fogo, gelo ou trevas):
 
     | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
@@ -274,6 +274,37 @@ Magias das costelas (números do nível 0). Todas combinam efeitos que o servido
 | Druida | Bosque | Mariposa Curandeira → Seiva Purificadora → Florada | 🫧 **Seiva Purificadora** (S1): cura 20% de um aliado e tira veneno, queimadura e lentidão · Maestria: escudo de 10% · 🌺 **Florada** (S2): cura 25% e escudo de 10% em raio 3 · Maestria: raio 4 |
 | Druida | Espinhos | Raízes Espinhosas → Chicote de Cipó | 🪢 **Chicote de Cipó** (S1): linha de 4 tiles, 1,3× e prende 1 s · Maestria: envenena |
 | Druida | Espinhos | Espinho Venenoso → Esporos → Explosão de Espinhos (+ Enxame de Vespas) | 🍄 **Esporos** (S2): raio 2, 0,6×, veneno e 30% de lentidão · Maestria: raio 3 · 🌵 **Explosão de Espinhos** (S2): raio 2 em volta de si, 1,6×, sangra e prende 1,5 s · Maestria: raio 3 |
+
+#### Magias em leque (Grimório 4.0)
+
+Magias que saem **do herói em leque**, na direção mirada (no toque rápido, para a frente do herói). Plano em
+`docs/GRIMORIO_4_PLANO.md` (seções 6.1 e 8). Três formas, todas com a mesma conta no cliente e no servidor:
+
+- **Abertura** (`coneAngle`): de 45° (estreito e longo) a 180° (meia-lua); as 3 magias de leque antigas continuam com 90°.
+- **Onda** (`wave`): o leque avança um anel de tiles por vez; quem está na ponta apanha depois, e cada monstro leva o
+  efeito uma vez só (o monstro que anda na direção do herói não escapa por trás da onda).
+- **Projéteis em leque** (`spread`): vários tiros espalhados em volta da mira, cada um pode errar; colado no monstro,
+  todos acertam nele.
+- **Desenho de sopro:** partículas saem do herói e abrem no ângulo; cada tile acende quando a onda chega. Vale também
+  para o Corte Largo, a Barragem e o Cone de Frio. A mira mostra os tiles do leque (com o ângulo da magia) ou uma linha
+  pontilhada por projétil.
+
+| Classe | Ramo (pai) | Magia | Slot | O que faz (nível 0) | Maestria |
+|---|---|---|---|---|---|
+| Cavaleiro | Lâmina (Golpe Esmagador) | 🌬️ **Lâmina do Vendaval** | 1 | onda de 60°, 3 tiles, 1,4× e empurra 1 | segunda onda com 60% |
+| Cavaleiro | Bastião (Escudo da Fé) | 🔰 **Muro de Escudos** | 2 | leque de 120°, 2 tiles, 1×, empurra 2 e atordoa 0,8 s | escudo de 20% por 5 s |
+| Cavaleiro | Comando (Áurea da Disciplina) | 📢 **Brado Cortante** | 1 | leque de 90°, 4 tiles, 0,6×, provoca e marca (+15% por 5 s) | 30% de lentidão |
+| Paladino | Mira (Disparo Perfurante) | 🪶 **Leque de Flechas** | 1 | 5 flechas em 45°, 0,9× cada | 7 flechas |
+| Paladino | Luz (Luz Curativa) | ☀️ **Clarão Sagrado** | 2 | onda de 120°, 4 tiles, 1,2×, ofusca 1 s, dobro em mortos-vivos | marca os ofuscados (+15% por 4 s) |
+| Feiticeiro | Raio (Relâmpago) | 🔥 **Cusparada de Fogo** | 1 | onda de fogo de 60°, 3 tiles, 1,3× e queima 3 s | leque de 90° |
+| Feiticeiro | Raio (Cusparada de Fogo) | ⚡ **Leque de Raios** | 2 | 3 raios em 60°, 1,4× cada, e cada um salta 1 vez | 5 raios |
+| Feiticeiro | Trevas (Áurea da Égide) | 🌑 **Lamento Sombrio** | 1 | onda de 120°, 3 tiles, 1,1× e rouba 15% de vida | rouba 25% |
+| Druida | Matilha (Lobo Espiritual) | 🐺 **Rugido da Alcateia** | 1 | leque de 90°, 3 tiles, 0,8×, empurra 1; criaturas 30% mais rápidas por 4 s | as criaturas curam 10% |
+| Druida | Bosque (Mariposa Curandeira) | 🌸 **Brisa de Pólen** | 2 | onda de 120°, 5 tiles: cura 20% dos **aliados** no leque e tira veneno, queimadura e lentidão; monstros 30% lentos | cura 30% |
+| Druida | Espinhos (Espinho Venenoso) | 🌵 **Rajada de Espinhos** | 1 | 6 espinhos em 60°, 0,7× cada, que sangram | 8 espinhos |
+
+- Preço: 500 (linha 3) e 800 (Leque de Raios, linha 4), como as costelas. Cada uma pede o pai no nível 1 de uso.
+- Telemetria: `stats.fanHits` (monstros pegos por magia em leque).
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.
 - A escolha sorteada da fase 5f deu lugar às magias ativas: o jogador escolhe no Grimório as até 3 por slot.

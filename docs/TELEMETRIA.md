@@ -44,6 +44,7 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.passives` | Níveis das passivas de gold que o jogador levou: Dons, áureas e Tomos (id do nó → nível, ex.: `{"knight_honed_edge": 12}`) |
 | `stats.spellsActive` | Magias levadas para a hunt (as ativas no Grimório, até 3 por slot): as opções da escolha de cada slot |
 | `stats.spellsChosen`, `casts`, `castFails` | Magia escolhida por slot, quantas vezes usou e quantas falhou (sem mana / sem alvo / sem espaço para o Rolamento) |
+| `stats.fanHits` | Monstros atingidos pelas magias em leque, somados por magia (÷ `casts` = média por lançamento; meta ≥ 2) |
 | `stats.spellXp` | XP de uso ganho por magia (lançamentos em combate × segundos de recarga), antes do teto por hunt e da perda na morte; `spellsChosen.rank` é o nível de uso (0 a 5) e `spellsChosen.bonus` a força extra das sinergias e do Tomo (fração) |
 | `stats.basicRetargets` | Golpes básicos que foram no monstro mais próximo porque o alvo travado estava fora do alcance (muito alto = o jogador trava alvo sem querer) |
 | `stats.shots` | Tiros que podem errar (básico à distância e magias de alvo único com projétil), por fonte (`basic` ou id da magia): `fired` disparados, `missed` errados (ninguém no caminho até o fim do alcance), `aimed` mirados à mão. A taxa de erro por classe mede o efeito no balanceamento |

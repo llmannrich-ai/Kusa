@@ -645,10 +645,14 @@ export class DungeonScene extends Phaser.Scene {
     this.fx.volcano(this.tilePoint(msg.x, msg.y), tiles, hits);
   }
 
-  /** Magia em cone: acende o leque (a mesma conta do servidor), do herói para fora. */
+  /**
+   * Magia em leque: um sopro sai do herói e acende o leque (a mesma conta do servidor), anel por anel. Na onda, no
+   * ritmo do servidor (`wave.stepMs`), para o chão acender quando o golpe chega.
+   */
   private showCone(spell: SpellDef, msg: SpellMessage) {
-    const tiles = coneTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
-    this.fx.area(tiles.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: tileDistance(msg.x, msg.y, t.x, t.y) })), spell.color, 0);
+    const tiles = coneTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range, spell.coneAngle);
+    const at = this.tilePoint(msg.x, msg.y);
+    this.fx.fan(at, tiles.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: tileDistance(msg.x, msg.y, t.x, t.y) })), spell.color, spell.wave?.stepMs ?? 45);
   }
 
   /**

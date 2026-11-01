@@ -81,6 +81,7 @@ import {
   shotAimPoint,
   shotPath,
   coneTiles,
+  spreadAimPoints,
   isWalkable,
   isSand,
   SAND_SPEED,
@@ -1504,7 +1505,7 @@ export class Hunt {
     const oy = p.y;
     let line: { x: number; y: number }[] | undefined;
     // Cone: o leque fica fixo na direção mirada na hora do tiro.
-    if (spell.shape === "cone") line = coneTiles(this.dungeon, ox, oy, tx, ty, spell.range);
+    if (spell.shape === "cone") line = coneTiles(this.dungeon, ox, oy, tx, ty, spell.range, spell.coneAngle);
     if (spell.shape === "line") {
       line = lineTiles(this.dungeon, ox, oy, tx, ty, spell.range);
       const end = line[line.length - 1] ?? { x: ox, y: oy };
@@ -1580,6 +1581,8 @@ export class Hunt {
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
     seat.spellReadyAt[slot] = echo ? now : now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
     if (echo) this.notice(p.x, p.y - 1, "Eco!", 0xd6a2ff);
+    // Projéteis em leque (Leque de Flechas, Leque de Raios, Rajada de Espinhos): cada tiro voa na sua direção e pode errar.
+    if (spell.spread) return this.castSpread(sessionId, p, seat, spell, base.id, slot, ox, oy, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, !!aim);
     // Tiro: mirado numa direção (à mão, o ponto mandado; no toque rápido, o tile do alvo agora), voa até o alcance
     // inteiro e acerta o primeiro monstro que encontrar; ninguém no caminho, erra.
     const path = isShot(spell) ? shotPath(this.dungeon, ox, oy, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, spell.range) : null;
@@ -1606,6 +1609,8 @@ export class Hunt {
         this.countShot(seat, spell.id, !!m, !!aim);
         if (m) this.applySpell(sessionId, spell, rank, m.id, m.x, m.y, amount * hitFar, line, slot, ally);
       });
+    } else if (spell.wave && line) {
+      this.castWave(sessionId, spell, rank, tx, ty, amount, line, slot, ox, oy);
     } else {
       this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount * hitFar, line, slot, ally));
     }
@@ -1630,6 +1635,63 @@ export class Hunt {
     }
   }
 
+  /**
+   * Onda (Lâmina do Vendaval, Cusparada de Fogo...): o leque avança um anel de tiles a cada `stepMs`, e cada passo
+   * atinge quem estiver nos anéis por onde a onda já passou. Cada monstro (e cada aliado curado) leva o efeito uma vez só. Os efeitos
+   * que não são de alvo (bônus em si, criaturas, escudo em si) saem só no primeiro anel.
+   */
+  private castWave(
+    sessionId: string, spell: SpellDef, rank: number, tx: number, ty: number, amount: number,
+    tiles: { x: number; y: number }[], slot: SpellSlot, ox: number, oy: number,
+  ) {
+    const rings = new Map<number, { x: number; y: number }[]>();
+    for (const t of tiles) {
+      const ring = tileDistance(ox, oy, t.x, t.y);
+      rings.set(ring, [...(rings.get(ring) ?? []), t]);
+    }
+    const struck = new Set<string>();
+    const rest: SpellDef = {
+      ...spell, packCall: undefined, summon: undefined, selfBuff: undefined, guard: undefined, guardMs: undefined,
+      thorns: undefined, form: undefined, armor: undefined, groundFire: undefined, killRefund: undefined,
+      barrier: spell.barrierAllies ? spell.barrier : undefined,
+    };
+    // Cada passo atinge todos os anéis por onde a onda já passou: o monstro que anda na direção do herói não escapa
+    // por trás da onda (quem já levou o efeito fica de fora pelo `struck`).
+    const order = [...rings.keys()].sort((a, b) => a - b);
+    order.forEach((ring, i) => {
+      const passed = order.slice(0, i + 1).flatMap((r) => rings.get(r)!);
+      this.after((ring - 1) * spell.wave!.stepMs, () =>
+        this.applySpell(sessionId, i === 0 ? spell : rest, rank, undefined, tx, ty, amount, passed, slot, undefined, struck));
+    });
+  }
+
+  /**
+   * Projéteis em leque: `spread.count` tiros espalhados em volta da direção mirada, cada um com o caminho dele (pode
+   * errar). Com um monstro colado na direção mirada, todos acertam nele.
+   */
+  private castSpread(
+    sessionId: string, p: Player, seat: Seat, spell: SpellDef, baseId: SpellId, slot: SpellSlot,
+    ox: number, oy: number, ax: number, ay: number, aimed: boolean,
+  ) {
+    const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0);
+    const rank = p.spellRanks.get(baseId) ?? 0;
+    const speed = spell.projectileSpeed ?? 0;
+    const center = shotPath(this.dungeon, ox, oy, ax, ay, spell.range);
+    const close = center[0] && this.monsterOn(center[0]) ? [center[0]] : null;
+    for (const point of spreadAimPoints(ox, oy, ax, ay, spell.spread!.count, spell.spread!.angle)) {
+      const path = close ?? shotPath(this.dungeon, ox, oy, point.x, point.y, spell.range);
+      const end = path[path.length - 1] ?? { x: ox, y: oy };
+      const shot = ++this.shotSeq;
+      this.host.broadcast(MSG.spell, {
+        from: sessionId, spellId: spell.id, x: ox, y: oy, tx: end.x, ty: end.y, ms: flightMs(speed, ox, oy, end.x, end.y), shot,
+      } satisfies SpellMessage);
+      this.fly(shot, ox, oy, path, speed, (m) => {
+        this.countShot(seat, spell.id, !!m, aimed);
+        if (m) this.applySpell(sessionId, spell, rank, m.id, m.x, m.y, amount, undefined, slot);
+      });
+    }
+  }
+
   /** Céu Carregado (Traço): um raio cai do céu no monstro mais perto do druida. */
   private skyBolt(sessionId: string, p: Player, sky: NonNullable<TraitDef["chargedSky"]>) {
     const target = this.nearestMonsterTo(p.x, p.y, sky.range);
@@ -1649,7 +1711,7 @@ export class Hunt {
    */
   private applySpell(
     sessionId: string, spell: SpellDef, rank: number, targetId: string | undefined, tx: number, ty: number, amount: number,
-    line: { x: number; y: number }[] | undefined, slot: SpellSlot, allyId?: string,
+    line: { x: number; y: number }[] | undefined, slot: SpellSlot, allyId?: string, struck?: Set<string>,
   ) {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
@@ -1670,11 +1732,16 @@ export class Hunt {
 
     const onLine = line && new Set(line.map((t) => t.y * this.dungeon.width + t.x));
     // Linha: quem está na reta na chegada, mais o alvo do toque rápido (que pode ter saído dela durante o voo).
-    const hit = onLine
+    const hit = (onLine
       ? [...this.state.monsters.values()].filter((m) => m === anchor || onLine.has(m.y * this.dungeon.width + m.x))
       : spell.radius === 0 && anchor
         ? [anchor]
-        : [...this.state.monsters.values()].filter((m) => inArea(m.x, m.y));
+        : [...this.state.monsters.values()].filter((m) => inArea(m.x, m.y))
+    ).filter((m) => !struck?.has(m.id));
+    // Onda: quem já levou o efeito num anel anterior não leva de novo.
+    for (const m of hit) struck?.add(m.id);
+    // Leque: quantos monstros cada lançamento pegou (para saber se a forma vale a pena).
+    if (spell.shape === "cone" && hit.length > 0) bump(seat.stats.fanHits, spell.id, hit.length);
     // Cadeia: depois do alvo, salta para o monstro mais perto ainda não atingido, perdendo força a cada salto.
     const power = hit.map(() => 1);
     if (spell.chain && anchor) {
@@ -1809,8 +1876,22 @@ export class Hunt {
     }
 
     if (spell.heal) {
-      this.state.players.forEach((ally) => {
-        if (ally.status === "playing" && inArea(ally.x, ally.y)) this.healPlayer(ally, Math.round(ally.maxHp * spell.heal!), sessionId);
+      // Leque de cura (Brisa de Pólen): os aliados nos tiles do leque (quem conjura fica de fora), uma vez por onda.
+      const healed = (ally: Player, id: string) => spell.shape === "cone" && onLine
+        ? onLine.has(ally.y * this.dungeon.width + ally.x) && !struck?.has(`heal:${id}`)
+        : inArea(ally.x, ally.y);
+      this.state.players.forEach((ally, id) => {
+        if (ally.status !== "playing" || !healed(ally, id)) return;
+        struck?.add(`heal:${id}`);
+        this.healPlayer(ally, Math.round(ally.maxHp * spell.heal!), sessionId);
+        // Brisa de Pólen: a cura em leque também tira veneno, queimadura e lentidão.
+        const allySeat = spell.cleanse && spell.shape === "cone" ? this.seats.get(id) : undefined;
+        if (allySeat) {
+          allySeat.dot = null;
+          ally.dot = "";
+          allySeat.slow = null;
+          ally.slowed = false;
+        }
       });
     }
 

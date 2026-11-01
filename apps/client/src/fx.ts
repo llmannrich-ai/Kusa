@@ -396,18 +396,55 @@ export class CombatFx {
       case "forest_heart":
         this.ring(from, Math.max(radius, TILE_SIZE * 1.5), SPELLS[spellId].color, 550, 3);
         return this.heal(from);
+      // Grimório 4.0: o leque (sopro) é desenhado pela cena (`fan`); os projéteis em leque chegam um por mensagem.
+      case "gale_blade":
+      case "shield_wall":
+      case "cutting_shout":
+      case "holy_flash":
+      case "fire_spit":
+      case "dark_wail":
+      case "pack_roar":
+      case "pollen_breeze":
+        return;
+      case "arrow_fan": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf5deb3, glow: 0xf1c40f });
+      case "lightning_fan":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.9 });
+        return this.later(ms, () => this.sparks(to, 0xffffff, 5));
+      case "thorn_spray": return this.projectile(FX.leaf, from, to, ms, { trail: 0x8bc34a, glow: 0x6b8e23, impact: 0x9cff7a, scale: 0.8 });
     }
+  }
+
+  /**
+   * Leque das magias (sopro): partículas saem de quem conjura e voam até cada tile do leque, abrindo no ângulo; o tile
+   * acende quando a partícula chega (`ring` = distância em tiles até quem conjura, `stepMs` = tempo por anel, o mesmo
+   * da onda no servidor). Sem tremor de tela: o peso vem do chão aceso.
+   */
+  fan(from: Point, tiles: (Point & { ring: number })[], color: number, stepMs: number) {
+    for (const t of tiles) {
+      const travel = Math.max(60, t.ring * stepMs);
+      for (let k = 0; k < 2; k++) {
+        const dot = this.scene.add.circle(from.x, from.y, k === 0 ? 4 : 2.5, k === 0 ? color : 0xffffff, 0.9).setDepth(FX_DEPTH);
+        this.scene.tweens.add({
+          targets: dot,
+          x: t.x + Phaser.Math.Between(-8, 8), y: t.y + Phaser.Math.Between(-8, 8),
+          scale: { from: 0.6, to: 1.6 }, alpha: { from: 0.95, to: 0.2 },
+          delay: k * 40, duration: travel, ease: "Quad.Out",
+          onComplete: () => dot.destroy(),
+        });
+      }
+    }
+    this.area(tiles, color, 0, stepMs);
   }
 
   /**
    * Área de uma magia: cada tile atingido acende com a cor da magia e solta faíscas, em onda do centro
    * para fora (`ring` = distância em tiles até o centro). `delay` espera o projétil chegar.
    */
-  area(tiles: (Point & { ring: number })[], color: number, delay: number) {
+  area(tiles: (Point & { ring: number })[], color: number, delay: number, stepMs = 45) {
     const half = TILE_SIZE / 2;
     this.later(delay, () => {
       for (const t of tiles) {
-        this.later(t.ring * 45, () => {
+        this.later(t.ring * stepMs, () => {
           const g = this.scene.add.graphics().setDepth(FX_DEPTH - 2).setPosition(t.x, t.y);
           g.fillStyle(color, 0.35).fillRect(-half + 1, -half + 1, TILE_SIZE - 2, TILE_SIZE - 2);
           g.lineStyle(1, color, 0.9).strokeRect(-half + 1.5, -half + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);

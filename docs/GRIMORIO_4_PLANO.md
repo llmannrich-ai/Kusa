@@ -507,7 +507,8 @@ jogador em cada passo e não deixar código sem uso.
 | Fase | Entrega | Depende de | Tam. | Por que nesta ordem |
 |---|---|---|---|---|
 | **1. Passivas de ouro** ✅ | `kind: "gift"`, os **12 Dons do topo** com o efeito por nível, Áureas e Tomos até 20, `buy_talent_levels`, menu, migration, teste `dons` | — | M–G | resolve o ouro parado já; não depende de nada |
-| **2. Motor de leque** | L1–L5, família sopro, mira com ângulo, refazer o desenho das 3 magias de leque atuais | — | G | é o pedido mais visível e destrava metade das magias novas |
+| **2a. Motor de leque** ✅ | L1 (abertura), L2 (onda), L3 (projéteis em leque), desenho de sopro, mira com ângulo, o desenho novo das 3 magias de leque atuais e as **11 magias em leque** das costelas novas que só dependem disso | — | G | é o pedido mais visível; as magias dão uso ao motor desde o primeiro PR |
+| **2b. Canalizar e varredura** | L4 (canalizar, o "cuspir fogo" de segurar e arrastar), L5 (varredura), A6 (várias armadilhas), Sopro Gélido e Abrolhos | 2a | M | completa as 13 magias de leque das costelas |
 | **3. Slot 3** | abrir o slot (5.2), as 4 magias de entrada, os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
 | **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado, os 24 **Dons da costela de passivas** e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
@@ -528,6 +529,18 @@ plano:
   não é separado (fica para o balanceamento, se precisar);
 - banco: `20261102000000_dons_e_passivas_20_niveis.sql` (Dons, `max_rank`/`cost_growth` de áureas e Tomos e
   `buy_talent_levels`); os marcos ficam para a fase 4.
+
+**Fase 2a, como foi entregue:** o motor de leque entrou junto com as 11 magias das costelas novas que só dependem dele
+(sem código sem uso). Diferenças em relação à seção 8:
+- só a magia em leque de cada costela nova; a magia de combo da mesma costela entra com as reações (fase 5);
+- posições: Lâmina do Vendaval sai do Golpe Esmagador, Muro de Escudos do Escudo da Fé, Brado Cortante da Áurea da
+  Disciplina, Leque de Flechas do Disparo Perfurante, Clarão Sagrado da Luz Curativa, Cusparada de Fogo do Relâmpago (e o
+  Leque de Raios dela), Lamento Sombrio da Áurea da Égide, Rugido da Alcateia do Lobo Espiritual, Brisa de Pólen da
+  Mariposa Curandeira, Rajada de Espinhos do Espinho Venenoso;
+- Maestrias trocadas por efeitos que já existem: Muro de Escudos dá escudo de 20% (não 5% por monstro), Brado Cortante e
+  Lamento Sombrio não enfraquecem (A2 ainda não existe): lentidão de 30% e roubo de 25%; Brisa de Pólen cura 30%;
+- onda: cada passo atinge todos os anéis por onde a onda já passou (o monstro que vinha na direção do herói escapava);
+- telemetria: `stats.fanHits`; teste novo `leque`; migration `20261102010000_magias_em_leque.sql`.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
