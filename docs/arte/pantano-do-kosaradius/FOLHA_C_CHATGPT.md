@@ -182,3 +182,21 @@ Row 1 - HIT AND RUN, 6 frames: quick stab forward, knife extended, pulls the kni
 No motion trails, dust or impact effects: the game draws them.
 Background: one flat solid magenta color (#FF00FF), no checkerboard pattern. No text, numbers, labels, grid, frame, floor, scenery, cast shadow or watermark.
 ```
+
+---
+
+## Se o personagem sair diferente: modo edição
+
+Já aconteceu com o Chefe de Guerra e o Grumak: o movimento sai certo, mas o personagem muda (outro elmo, outra coroa,
+outra arma). Nesse caso, em vez do prompt acima, anexe **só a folha B** do inimigo (`<kind>-B.png`) e peça uma
+**edição** dela. O ChatGPT preserva melhor o desenho quando parte da própria imagem. Troque `<ROWS>` pelas linhas do
+prompt do inimigo (as linhas `Row 1 - ...`, `Row 2 - ...`) e `<N>` pelo número de linhas.
+
+```text
+Edit the attached image. Keep the character EXACTLY as drawn in it: same head, helmet or crown, face, hair, armor, clothes, colors, weapon shape and size, proportions, pixel art style, outline and level of detail. Do not redesign, simplify or restyle anything. Only change the poses.
+
+Replace the two rows with <N> new rows of 6 frames each, same 3/4 front view facing the lower-left, same scale as the attached figures, one action per row, performed in place:
+<ROWS>
+
+No effects, dust, motion trails or glow. Background: the same flat solid magenta (#FF00FF). No text, numbers, grid, floor or shadow.
+```
