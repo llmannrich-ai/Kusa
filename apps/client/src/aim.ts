@@ -7,7 +7,6 @@ import {
   isShot,
   isSingleTarget,
   lineEnd,
-  lineTiles,
   coneTiles,
   shotAimPoint,
   shotPath,
@@ -39,8 +38,9 @@ export type BodyAt = (id: string) => { x: number; y: number } | undefined;
  * Parado no botão, a mira mostra o alvo automático (o que o toque rápido acerta); arrastando,
  * o tamanho do arrasto vira distância até o alcance máximo. Magia de alvo único gruda no monstro
  * a até 1 tile do ponto; a de área cai no ponto. Tiro (`isShot`, e o básico à distância pelo ⚔️) é mirado numa
- * direção: a mira acende os tiles da reta até o alcance inteiro, com o primeiro monstro dela em dourado (o tamanho do
- * arrasto não importa, só a direção). O servidor confere tudo de novo ao conjurar.
+ * direção. Tiro, linha e alvo único usam a mesma linha pontilhada e tênue (dourada no primeiro monstro da reta); só
+ * área e leque ganham o desenho da área (o tamanho do arrasto não importa no tiro, só a direção). O servidor confere
+ * tudo de novo ao conjurar.
  */
 export class SpellAim {
   private g: Phaser.GameObjects.Graphics;
@@ -54,8 +54,6 @@ export class SpellAim {
    * que o toque rápido faz: sair reto na frente do herói.
    */
   private auto = false;
-  /** Desenho em linha pontilhada do herói até onde o tiro para (o ⚔️), em vez dos tiles da reta. */
-  private line = false;
 
   constructor(scene: Phaser.Scene, private room: DungeonRoom, private dungeon: Dungeon, private bodyAt: BodyAt, depth: number) {
     this.g = scene.add.graphics().setDepth(depth);
@@ -65,10 +63,9 @@ export class SpellAim {
     return this.spell !== null;
   }
 
-  start(spell: AimDef, opts: { auto?: boolean; line?: boolean } = {}) {
+  start(spell: AimDef, opts: { auto?: boolean } = {}) {
     this.spell = spell;
     this.auto = opts.auto ?? false;
-    this.line = opts.line ?? false;
     this.drag = { x: 0, y: 0 };
     this.manual = false;
   }
@@ -136,46 +133,23 @@ export class SpellAim {
       }
       return;
     }
-    if (isShot(spell) && this.line) {
-      // Básico: uma linha reta pontilhada do herói até onde o tiro para (o primeiro monstro da reta, em dourado, ou o
-      // alcance).
+    if (isShot(spell) || spell.shape === "line") {
+      // Tiro (o ⚔️ e as magias de alvo único com projétil) e linha: uma linha reta pontilhada e tênue do herói na
+      // direção mirada, igual à das magias de área. O tiro para no primeiro monstro da reta (em dourado); a linha
+      // atravessa todos e vai até o alcance (dourada se pega alguém).
       const path = shotPath(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range);
       const hit = path.find((t) => this.monsterAt(t.x, t.y));
-      const end = hit ?? path[path.length - 1];
+      const end = (isShot(spell) ? hit : undefined) ?? path[path.length - 1];
       if (!end) return;
       const angle = Math.atan2(toPx(aim.y) - toPx(me.y), toPx(aim.x) - toPx(me.x));
       const len = Math.hypot(end.x - me.x, end.y - me.y) * TILE_SIZE;
-      const tipX = from.x + Math.cos(angle) * len;
-      const tipY = from.y + Math.sin(angle) * len;
-      const c = hit ? COLORS.locked : COLORS.free;
-      // Pontilhada e tênue, como a linha das magias de área (`dottedLine` já começa fora do herói).
-      dottedLine(g, from.x, from.y, tipX, tipY, c);
-      return;
-    }
-    if (isShot(spell)) {
-      // Tiro: a reta inteira na direção mirada; o primeiro monstro nela (quem leva o tiro se ninguém se mexer) em dourado.
-      const size = TILE_SIZE - 2;
-      let first = true;
-      for (const t of shotPath(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range)) {
-        let monster = false;
-        if (first) this.room.state.monsters.forEach((m) => { if (m.x === t.x && m.y === t.y) monster = true; });
-        const c = monster ? COLORS.locked : COLORS.free;
-        if (monster) first = false;
-        g.fillStyle(c, monster ? 0.3 : 0.16).fillRect(toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size);
-        dashedRect(g, toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size, c, 0.7);
-      }
-      return;
-    }
-    if (spell.shape === "line") {
-      // Linha: os tiles que a flecha atravessa até o alcance inteiro, na direção mirada.
-      const size = TILE_SIZE - 2;
-      for (const t of lineTiles(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range)) {
-        g.fillStyle(COLORS.free, 0.16).fillRect(toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size);
-        dashedRect(g, toPx(t.x) - size / 2, toPx(t.y) - size / 2, size, size, COLORS.free, 0.7);
-      }
+      // `dottedLine` já começa um pouco fora do herói.
+      dottedLine(g, from.x, from.y, from.x + Math.cos(angle) * len, from.y + Math.sin(angle) * len, hit ? COLORS.locked : COLORS.free);
       return;
     }
     dottedLine(g, from.x, from.y, to.x, to.y, color);
+    // Alvo único sem projétil (golpes, Desafio): só a linha até o alvo, como no tiro; a área ganha o quadrado.
+    if (spell.radius === 0) return;
 
     const area = (spell.radius * 2 + 1) * TILE_SIZE;
     g.fillStyle(color, 0.14).fillRect(to.x - area / 2, to.y - area / 2, area, area);
