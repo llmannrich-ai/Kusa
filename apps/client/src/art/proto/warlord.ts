@@ -1,4 +1,4 @@
-import { Sculpt, basis, lerp3, render, rot, turn, v3, type Frame, type Look, type Material, type Mat3, type Paint, type V3, type View } from "./sculpt.ts";
+import { Sculpt, applySkin, basis, lerp3, render, rot, turn, v3, type Frame, type Look, type Material, type Mat3, type Paint, type Skin, type V3, type View } from "./sculpt.ts";
 
 /**
  * Vorgak, o Senhor da Brasa: o boss da Fortaleza Orc, esculpido por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`).
@@ -119,6 +119,14 @@ export const REST: Full = {
 
 const PELVIS_Y = 40;
 
+/**
+ * Variante gigante (Kragmor, o Gigante da Cratera, nos Ermos Rubros): o mesmo esqueleto e a mesma armadura, sem o
+ * estandarte, sem o elmo (a cabeça nua de pedra, com a testa pesada, as placas de rocha no crânio e a barba) e com o
+ * martelo de forja no lugar do cutelo. Vale durante um `shootWarlord(..., "giant")` (o desenho é síncrono).
+ */
+export type WarlordVariant = "warlord" | "giant";
+let variant: WarlordVariant = "warlord";
+
 // --- Escultura -------------------------------------------------------------------------------------------------------
 
 export function warlord(pose: WarlordPose = {}): Sculpt {
@@ -150,7 +158,7 @@ export function warlord(pose: WarlordPose = {}): Sculpt {
   const chestM = mulM(mulM(rot("y", -p.twist), rot("x", -p.sway)), rot("z", p.lean));
   sc.push(chestM, [0, 0, 0], waist);
   torso(sc, p, ember);
-  banner(sc, p, ember);
+  if (variant !== "giant") banner(sc, p, ember);
   cape(sc, p);
   const neckTop: V3 = [-3.5, 33 + p.breath * 0.5, 0];
   sc.cone([0, 25, 0], neckTop, 6.4, 5.6, M.skin);
@@ -165,7 +173,7 @@ export function warlord(pose: WarlordPose = {}): Sculpt {
   sc.pop();
   if (p.axeAt) {
     sc.push(rot("z", p.axeAt.spin), p.axeAt.at);
-    cleaver(sc, p.axeAt.at, ember);
+    (variant === "giant" ? hammer : cleaver)(sc, p.axeAt.at, ember);
     sc.pop();
   }
   return sc;
@@ -349,6 +357,10 @@ function head(sc: Sculpt, o: V3, p: Full) {
   sc.pop();
   // Olhos na fenda da viseira.
   for (const s of [1, -1]) sc.ell(at(-11.8, 8.2, s * 3.2), [1.2, 1.1, 1.8], hot ? M.eye : M.eyeOff);
+  if (variant === "giant") {
+    giantHead(sc, at, part);
+    return;
+  }
   // Elmo: a cúpula, a viseira com a fenda dos olhos, o nasal, as faces e o friso de latão.
   const hp = sc.part();
   const domePaint: Paint = (x, y, z) => (Math.abs(z) < 0.8 && y > 0 ? M.brass : y < -3.2 && y > -4.6 ? M.brass : -1);
@@ -384,6 +396,42 @@ function head(sc: Sculpt, o: V3, p: Full) {
   }
 }
 
+/** Cabeça nua do gigante: o alto do crânio, a testa pesada por cima dos olhos, placas de rocha e a barba grossa. */
+function giantHead(sc: Sculpt, at: (x: number, y: number, z: number) => V3, part: number) {
+  sc.ell(at(-3, 11, 0), [8.8, 7, 8.2], M.skin, { part });
+  // Testa: o osso saltado que deixa os olhos no fundo.
+  sc.ell(at(-10.4, 10, 0), [3, 2.2, 6.8], M.skinDark, { part, axes: basis([1, -0.2, 0]) });
+  // Placas de rocha no crânio (a pele virou pedra da cratera), com as frestas entre elas.
+  const plates: [number, number, number, number][] = [[-5, 16.4, 2.6, 3.6], [0.5, 16.6, -2.4, 3.4], [3.6, 13.6, 5.2, 3], [-7.6, 14, -4.6, 2.8], [1.4, 12, -6.6, 2.6], [-2, 17.6, -0.2, 2.4]];
+  for (const [x, y, z, r] of plates) sc.ell(at(x, y, z), [r, r * 0.55, r * 0.9], M.skinDark, { axes: basis([1, 0.2, z * 0.1]) });
+  // Orelhas pequenas e rasgadas, coladas no crânio.
+  for (const s of [1, -1]) sc.ell(at(1.5, 8.6, s * 8), [2, 2.6, 1], M.skin, { part: sc.part(), axes: basis([1, 0.4, s * 0.3]) });
+  // Barba: mechas grossas do queixo e dos lados, caindo no peito.
+  for (const [z, x, l] of [[0, -9.6, 9], [3.2, -8.4, 8], [-3.2, -8.4, 8], [5.6, -5.6, 6], [-5.6, -5.6, 6]] as const) {
+    const top = at(x, 0.4, z);
+    sc.cone(top, v3.add(top, [1.2, -l, z * 0.15]), 2.2, 0.6, M.hair);
+  }
+}
+
+/** Martelo de forja do gigante: cabo longo de madeira com tiras de couro, cabeça de ferro maciça com a face em brasa. */
+function hammer(sc: Sculpt, fist: V3, ember: (k: number) => number) {
+  const part = sc.part();
+  const butt = v3.add(fist, [9, 0, 0]);
+  const neck = v3.add(fist, [-24, 0, 0]);
+  sc.cone(butt, neck, 1.7, 1.5, M.wood, { part, band: { n: 8, depth: 0.25 } });
+  sc.cone(v3.add(fist, [4.5, 0, 0]), v3.add(fist, [-4.5, 0, 0]), 1.9, 1.9, M.leather, { part, band: { n: 4, depth: 0.3 } });
+  sc.ball(v3.add(butt, [1, 0, 0]), 2.2, M.iron, part);
+  // Cabeça: o bloco atravessado no fim do cabo, as bordas chanfradas e as cintas de ferro.
+  const hp = sc.part();
+  const head = v3.add(neck, [-2, -3, 0]);
+  sc.ell(head, [7.6, 13, 8.4], M.iron, { part: hp, band: { n: 3, depth: 0.12 } });
+  for (const dy of [-8.6, 8.6]) sc.ell(v3.add(head, [0, dy, 0]), [8.1, 1.6, 8.9], M.ironDark, { part: hp });
+  // As duas faces: a de baixo em brasa (acabou de sair da forja), a de cima rachada.
+  sc.ell(v3.add(head, [0, -12.6, 0]), [6.4, 1.6, 7.2], ember(3));
+  sc.ell(v3.add(head, [0, 12.6, 0]), [6.4, 1.3, 7.2], M.ironDark);
+  for (const z of [-3, 3]) sc.cone(v3.add(head, [-7.4, -6, z]), v3.add(head, [-7.6, 4, z * 0.6]), 0.6, 0.6, ember(5 + z));
+}
+
 /** Braço: ombreira de espigões, braço, cotovelo, braçal de ferro e a mão (o cutelo, ou a corrente no de lá). */
 function arm(sc: Sculpt, sh: V3, a: Arm, side: number, p: Full, ember: (k: number) => number) {
   const part = sc.part();
@@ -416,7 +464,7 @@ function arm(sc: Sculpt, sh: V3, a: Arm, side: number, p: Full, ember: (k: numbe
   for (let k = 0; k < 4; k++) sc.ball(v3.add(fist, [-3.2, 2 - k * 1.5, side * 2]), 1.3, M.skin, fp);
   if (side > 0 && !p.axeAt) {
     sc.push(rot("z", p.axe), fist);
-    cleaver(sc, fist, ember);
+    (variant === "giant" ? hammer : cleaver)(sc, fist, ember);
     sc.pop();
   } else if (side < 0) {
     // Soco-inglês de espigões e a corrente: voltas no antebraço e o pedaço solto com o gancho, com atraso.
@@ -540,9 +588,14 @@ const PITCH = 22;
 const SCALE = 1.3;
 const YAW: Record<View, number> = { side: 24, front: 90, back: -90 };
 
-export function shootWarlord(pose: WarlordPose, view: View): Frame {
+export function shootWarlord(pose: WarlordPose, view: View, skin?: Skin, as: WarlordVariant = "warlord"): Frame {
   const cx = view === "side" ? WARLORD_SIZE / 2 + 6 : WARLORD_SIZE / 2;
-  return render(warlord(pose), { size: WARLORD_SIZE, feet: WARLORD_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look());
+  variant = as;
+  try {
+    return render(warlord(pose), { size: WARLORD_SIZE, feet: WARLORD_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, applySkin(look(), skin));
+  } finally {
+    variant = "warlord";
+  }
 }
 
 // --- Clipes ----------------------------------------------------------------------------------------------------------

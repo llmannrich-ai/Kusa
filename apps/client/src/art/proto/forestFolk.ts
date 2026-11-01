@@ -1,4 +1,4 @@
-import { SCULPT_SIZE, Sculpt, basis, lerp3, render, rot, turn, v3, tween, type Frame, type Look, type Material, type Paint, type V3, type View } from "./sculpt.ts";
+import { SCULPT_SIZE, Sculpt, applySkin, basis, type Skin, lerp3, render, rot, turn, v3, tween, type Frame, type Look, type Material, type Paint, type V3, type View } from "./sculpt.ts";
 
 /**
  * Bípedes do Bosque Velho esculpidos por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): o Sátiro Flautista, a Dríade
@@ -841,9 +841,9 @@ const SCALE: Record<FolkKind, number> = { satyr: 2.35, dryad: 2.05, twigling: 2.
 const YAW: Record<View, number> = { side: 18, front: 90, back: -90 };
 export const FOLK_FEET = SCULPT_SIZE - 14;
 
-export function shootFolk(kind: FolkKind, pose: FPose, view: View): Frame {
+export function shootFolk(kind: FolkKind, pose: FPose, view: View, skin?: Skin): Frame {
   const cx = view === "side" ? SCULPT_SIZE / 2 + 6 : SCULPT_SIZE / 2;
-  return render(folk(kind, pose), { size: SCULPT_SIZE, feet: FOLK_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE[kind] }, look(kind));
+  return render(folk(kind, pose), { size: SCULPT_SIZE, feet: FOLK_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE[kind] }, applySkin(look(kind), skin));
 }
 
 // --- Poses -----------------------------------------------------------------------------------------------------------

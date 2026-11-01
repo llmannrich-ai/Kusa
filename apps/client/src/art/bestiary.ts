@@ -14,6 +14,8 @@ import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, ty
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
 import { warlordArt } from "./proto/warlordArt.ts";
+import { charcoArt } from "./proto/charcoArt.ts";
+import { ermosArt } from "./proto/ermosArt.ts";
 import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero, protoOrcScout, protoSculpt } from "./newArt.ts";
 
 /**
@@ -228,6 +230,30 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   awakenedTree: { texture: "monster-thorn-spitter", facesLeft: true, blood: "green", scale: 1.7 },
   fallenWarden: { texture: "monster-bone-legionary", facesLeft: true, blood: "none", scale: 1.3 },
   erlking: { texture: "monster-satyr", facesLeft: true, blood: "green" },
+  // Charco Cinzento: esculpidos por código (`proto/charcoArt.ts`), com a arte nova ligada ou não (abaixo). A ilusão usa a
+  // folha da Bruxa Cinzenta: não dá para saber qual é a verdadeira.
+  giantLeech: { texture: "monster-hd-giantLeech", facesLeft: true, blood: "red" },
+  carrionCrow: { texture: "monster-hd-carrionCrow", facesLeft: true, blood: "red", flies: true },
+  peatDrowned: { texture: "monster-hd-peatDrowned", facesLeft: true, blood: "none" },
+  lanternBearer: { texture: "monster-hd-lanternBearer", facesLeft: true, blood: "none" },
+  ashOoze: { texture: "monster-hd-ashOoze", facesLeft: true, blood: "black" },
+  poolLurker: { texture: "monster-hd-poolLurker", facesLeft: true, blood: "red" },
+  ashHag: { texture: "monster-hd-ashHag", facesLeft: true, blood: "red" },
+  ashHagIllusion: { texture: "monster-hd-ashHag", facesLeft: true, blood: "none" },
+  bogMonolith: { texture: "monster-hd-bogMonolith", facesLeft: true, blood: "none" },
+  drownedKnight: { texture: "monster-hd-drownedKnight", facesLeft: true, blood: "none" },
+  morgrana: { texture: "monster-hd-morgrana", facesLeft: true, blood: "none" },
+  // Ermos Rubros: esculpidos por código (`proto/ermosArt.ts`), como os do Charco.
+  rustBeetle: { texture: "monster-hd-rustBeetle", facesLeft: true, blood: "none" },
+  badlandsHyena: { texture: "monster-hd-badlandsHyena", facesLeft: true, blood: "red" },
+  redRaider: { texture: "monster-hd-redRaider", facesLeft: true, blood: "red" },
+  lostMiner: { texture: "monster-hd-lostMiner", facesLeft: true, blood: "none" },
+  plateLizard: { texture: "monster-hd-plateLizard", facesLeft: true, blood: "red" },
+  rustDevil: { texture: "monster-hd-rustDevil", facesLeft: true, blood: "none" },
+  deadForeman: { texture: "monster-hd-deadForeman", facesLeft: true, blood: "none" },
+  oreGolem: { texture: "monster-hd-oreGolem", facesLeft: true, blood: "none" },
+  hyenaMatriarch: { texture: "monster-hd-hyenaMatriarch", facesLeft: true, blood: "red" },
+  kragmor: { texture: "monster-hd-kragmor", facesLeft: true, blood: "red" },
   // Pântano (arte própria animada, `marshMonsters.ts` e `ogreKing.ts`).
   orcScout: { texture: "monster-orc-scout", facesLeft: true, blood: "red", anim: marshAnim("orcScout") },
   orcGrunt: { texture: "monster-orc-grunt", facesLeft: true, blood: "red", anim: marshAnim("orcGrunt") },
@@ -428,6 +454,21 @@ if (protoOrcScout) {
     },
   };
 }
+
+// Inimigos do Charco Cinzento esculpidos por código (`proto/charcoArt.ts`): são a única arte deles, então valem com a
+// arte nova ligada ou não, como Vorgak. A ilusão da Bruxa Cinzenta toca a mesma folha dela.
+// Os dos Ermos Rubros (`proto/ermosArt.ts`) também.
+for (const [kind, art, size, strike] of [...charcoArt(), ...ermosArt()]) {
+  BESTIARY_ART[kind] = {
+    ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * size,
+    anim: {
+      size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
+      fps: { ...art.fps }, frames: { ...art.clips }, stride: art.stride,
+      hd: () => art.frames(), get fill() { return art.fill; }, origin: art.origin, extra: { ...art.extra }, strike,
+    },
+  };
+}
+BESTIARY_ART.ashHagIllusion = { ...BESTIARY_ART.ashHag, blood: "none" };
 
 /** Monstros animados: textura → animação. */
 export const MONSTER_ANIMS: Record<string, MonsterAnim> = Object.fromEntries(

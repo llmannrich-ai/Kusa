@@ -626,3 +626,69 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
   void tone;
   return { width: S, height: S, data: out };
 }
+
+// --- Pele (outra cor para o mesmo modelo) ------------------------------------------------------------------------
+
+/** Tom-alvo de uma pele: o matiz e a saturação vão para os da cor `hex` na fração `amount`; `light` clareia ou escurece. */
+export interface SkinTone { hex: string; amount: number; sat?: number; light?: number }
+
+/**
+ * Pele: o mesmo modelo noutra cor (o Turfeiro Afogado é a múmia de turfa, o Corvo é o abutre negro). Cada cor da rampa
+ * de cada material vai para o tom-alvo mantendo o claro e o escuro dela, então o volume, a luz e o contorno do modelo
+ * ficam iguais. O que brilha (olhos, runas: `emit` ou `glow`) tem o tom próprio; `ramps` troca a rampa inteira de um
+ * material do modelo (pelo índice dele).
+ */
+export interface Skin {
+  tone?: SkinTone;
+  glow?: SkinTone;
+  ramps?: Record<number, readonly string[]>;
+  outline?: string;
+  rim?: Look["rim"];
+  bounce?: Look["bounce"];
+}
+
+const hexToHsl = (hex: string): [number, number, number] => {
+  const n = parseInt(hex.slice(1), 16), r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+};
+const hslToHex = (h: number, s: number, l: number) => {
+  const f = (n: number) => {
+    const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l);
+    return Math.round(255 * Math.max(0, Math.min(1, l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))));
+  };
+  return `#${[f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+};
+
+/** Uma cor levada para o tom-alvo (o matiz pelo caminho mais curto do círculo). */
+export function toneColor(hex: string, t: SkinTone) {
+  const [h, s, l] = hexToHsl(hex), [th, ts] = hexToHsl(t.hex);
+  let dh = th - h;
+  if (dh > 0.5) dh -= 1;
+  if (dh < -0.5) dh += 1;
+  const nh = (h + dh * t.amount + 1) % 1;
+  const ns = Math.max(0, Math.min(1, (s + (ts - s) * t.amount) * (t.sat ?? 1)));
+  const nl = Math.max(0, Math.min(1, l * (1 + (t.light ?? 0))));
+  return hslToHex(nh, ns, nl);
+}
+
+/** O `Look` do modelo com a pele por cima (sem pele, o mesmo `Look`). */
+export function applySkin(look: Look, skin?: Skin): Look {
+  if (!skin) return look;
+  const materials = look.materials.map((m, i) => {
+    if (!m) return m;
+    const ramp = skin.ramps?.[i];
+    if (ramp) return { ...m, ramp };
+    const t = m.emit || m.glow ? skin.glow : skin.tone;
+    return t ? { ...m, ramp: m.ramp.map((c) => toneColor(c, t)) } : m;
+  });
+  return {
+    ...look, materials,
+    ...(skin.outline ? { outline: skin.outline } : {}),
+    ...(skin.rim !== undefined ? { rim: skin.rim } : {}),
+    ...(skin.bounce ? { bounce: skin.bounce } : {}),
+  };
+}

@@ -1,4 +1,4 @@
-import { SCULPT_SIZE, Sculpt, render as renderSculpt, rot, turn, v3, tween, type Frame, type Look, type Material, type V3, type View } from "./sculpt.ts";
+import { SCULPT_SIZE, Sculpt, render as renderSculpt, rot, turn, v3, tween, type Frame, type Look, type Material, type V3, type View, applySkin, type Skin } from "./sculpt.ts";
 
 /**
  * Múmia esculpida por código (`sculpt.ts`, `docs/ARTE_ESCULTURA.md`): humanoide grande e curvado, todo em ataduras de
@@ -219,9 +219,9 @@ const PITCH = 28;
 const SCALE = 1.75;
 const YAW: Record<View, number> = { side: 18, front: 90, back: -90 };
 
-export function shootMummy(pose: MPose, view: View, priest = false): Frame {
+export function shootMummy(pose: MPose, view: View, priest = false, skin?: Skin): Frame {
   const cx = view === "side" ? SCULPT_SIZE / 2 + 8 : SCULPT_SIZE / 2;
-  return renderSculpt(mummy(pose, priest), { size: SCULPT_SIZE, feet: MUMMY_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, look());
+  return renderSculpt(mummy(pose, priest), { size: SCULPT_SIZE, feet: MUMMY_FEET, cx, yaw: YAW[view], pitch: PITCH, scale: SCALE }, applySkin(look(), skin));
 }
 
 /** Poses de perfil: arrasta os pés com os braços esticados, esmaga com os dois braços, encara (olhos acesos) e desaba. */
