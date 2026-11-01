@@ -87,7 +87,25 @@ interface Kit {
   ragged?: boolean;
   /** Largura do tórax e do abdome em relação ao corpo dos heróis (padrão 1; o goblin é mirrado). */
   chest?: number;
+  /** Proporção do corpo (heróis): pernas e braços mais longos e a figura mais estreita. Sem ela, o corpo atarracado. */
+  build?: Build;
 }
+
+/** Quanto a figura alonga e afina a partir do corpo atarracado (unidades de projeto e fração da largura). */
+interface Build {
+  /** Pernas mais longas: o quadril (e tudo acima dele) sobe esse tanto; os pés ficam no chão. */
+  legs: number;
+  /** Braços mais longos: a mão desce esse tanto (o cotovelo, metade). */
+  arms: number;
+  /** Largura da figura inteira (cabeça, tronco, membros, roupa e arma), em volta do meio. */
+  slim: number;
+}
+
+/**
+ * Corpo dos heróis: um pouco mais alto e magro que o atarracado dos monstros humanoides (a mudança é de propósito
+ * sutil: 3 unidades a mais de perna, ≈ 4% de altura, e 8% mais estreito; a cabeça fica do mesmo tamanho na altura).
+ */
+const HERO_BUILD: Build = { legs: 3, arms: 1, slim: 0.92 };
 
 /** Aperta a forma na horizontal em volta do meio do corpo (tórax e abdome mais estreitos, `Kit.chest`). */
 const squeeze = (pts: Pt[], w = 1): Pt[] => (w === 1 ? pts : pts.map(([x, y]) => [CX + (x - CX) * w, y]));
@@ -143,22 +161,27 @@ const tierOf = (id: string) => Number(/(\d)(?:-magic)?$/.exec(id)?.[1] ?? 0);
 
 const KITS: Record<ProtoClass, Kit> = {
   base: {
+    build: HERO_BUILD,
     look: { skin: "#e6b48e", head: "#5a3a22", primary: "#8a7a62", secondary: "#8a7a62", detail: "#6a5040", trim: "#a08a60" },
     hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "none",
   },
   knight: {
+    build: HERO_BUILD,
     look: { skin: "#ecbc96", head: "#7a4a24", primary: "#a8302a", secondary: "#6c7078", detail: "#5e3e26", trim: "#c09030" },
     hair: "short", beard: "stubble", scar: true, top: "gambeson", sleeves: "quilt", pants: "full", feet: "boots", waist: "belt", weapon: "sword",
   },
   paladin: {
+    build: HERO_BUILD,
     look: { skin: "#dca47c", head: "#d8ac48", primary: "#c08c34", secondary: "#5e5838", detail: "#8a6038", trim: "#8a3a26" },
     hair: "medium", beard: "none", headband: true, top: "tunic", sleeves: "short", pants: "full", feet: "tall", waist: "strap", weapon: "bow", quiver: true,
   },
   sorcerer: {
+    build: HERO_BUILD,
     look: { skin: "#e8c0a4", head: "#d2cdc4", primary: "#4a2c6e", secondary: "#4e566a", detail: "#5a4434", trim: "#c8a040" },
     hair: "long", beard: "long", top: "robe", sleeves: "bell", pants: "full", feet: "shoes", waist: "sash", weapon: "staff",
   },
   druid: {
+    build: HERO_BUILD,
     look: { skin: "#c88d62", head: "#6a4426", primary: "#4e6a34", secondary: "#6a5034", detail: "#5a3e26", trim: "#b06a3a" },
     hair: "flowing", beard: "none", wild: true, top: "leaf", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "branch",
   },
@@ -249,8 +272,11 @@ export type Shade = (x: number, y: number) => number;
 export type Offset = (X: number, Y: number) => number;
 export type Box = readonly [number, number, number, number];
 
-/** Escala local: em volta de um ponto (`ox`, `oy`) ou afim (`p × k + t`), com a de fora em `parent`. */
-interface Xf { k: number; ox?: number; oy?: number; tx: number; ty: number; parent: Xf | null }
+/**
+ * Escala local: em volta de um ponto (`ox`, `oy`) ou afim (`p × k + t`), com a de fora em `parent`. Na horizontal a
+ * escala é `k × sx` (`sx` < 1 afina a figura: o corpo dos heróis, `slimmed`).
+ */
+interface Xf { k: number; sx: number; ox?: number; oy?: number; tx: number; ty: number; parent: Xf | null }
 
 export class Canvas {
   readonly n: number;
@@ -292,8 +318,20 @@ export class Canvas {
   scaled<T>(o: Pt, k: number, draw: () => T): T {
     const outer = this.xf;
     this.xf = outer
-      ? { k: outer.k * k, tx: outer.tx + o[0] * (1 - k) * outer.k, ty: outer.ty + o[1] * (1 - k) * outer.k, parent: outer }
-      : { k, ox: o[0], oy: o[1], tx: o[0] * (1 - k), ty: o[1] * (1 - k), parent: null };
+      ? { k: outer.k * k, sx: outer.sx, tx: outer.tx + o[0] * (1 - k) * outer.k * outer.sx, ty: outer.ty + o[1] * (1 - k) * outer.k, parent: outer }
+      : { k, sx: 1, ox: o[0], oy: o[1], tx: o[0] * (1 - k), ty: o[1] * (1 - k), parent: null };
+    try { return draw(); } finally { this.xf = outer; }
+  }
+
+  /**
+   * Afina: o que `draw` pintar fica `sx` vezes mais estreito em volta da coluna `x` (a altura não muda). As formas são
+   * amostradas já estreitas, então o pixel continua fino; os detalhes à mão (`px`) só mudam de lugar.
+   */
+  slimmed<T>(x: number, sx: number, draw: () => T): T {
+    const outer = this.xf;
+    this.xf = outer
+      ? { k: outer.k, sx: outer.sx * sx, tx: outer.tx + x * (1 - sx) * outer.k * outer.sx, ty: outer.ty, parent: outer }
+      : { k: 1, sx, tx: x * (1 - sx), ty: 0, parent: null };
     try { return draw(); } finally { this.xf = outer; }
   }
 
@@ -301,8 +339,8 @@ export class Canvas {
   placed<T>(k: number, t: Pt, draw: () => T): T {
     const outer = this.xf;
     this.xf = outer
-      ? { k: outer.k * k, tx: outer.tx + t[0] * outer.k, ty: outer.ty + t[1] * outer.k, parent: outer }
-      : { k, tx: t[0], ty: t[1], parent: null };
+      ? { k: outer.k * k, sx: outer.sx, tx: outer.tx + t[0] * outer.k * outer.sx, ty: outer.ty + t[1] * outer.k, parent: outer }
+      : { k, sx: 1, tx: t[0], ty: t[1], parent: null };
     try { return draw(); } finally { this.xf = outer; }
   }
 
@@ -319,7 +357,8 @@ export class Canvas {
   private fwd(u: number, axis: 0 | 1) {
     const f = this.xf!;
     const o = axis ? f.oy : f.ox;
-    return o !== undefined ? o + (u - o) * f.k : u * f.k + (axis ? f.ty : f.tx);
+    const k = axis ? f.k : f.k * f.sx;
+    return o !== undefined ? o + (u - o) * k : u * k + (axis ? f.ty : f.tx);
   }
 
   /** Pixel final levado pela escala local. */
@@ -336,8 +375,8 @@ export class Canvas {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil((x1 + 1) * K)); X++) {
         let x = (X + 0.5) / K - 0.5, y = (Y + 0.5) / K - 0.5;
         if (f) {
-          if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x + 0.5 - f.ox) / f.k - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
-          else { x = (x + 0.5 - f.tx) / f.k - 0.5; y = (y + 0.5 - f.ty) / f.k - 0.5; }
+          if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x + 0.5 - f.ox) / (f.k * f.sx) - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
+          else { x = (x + 0.5 - f.tx) / (f.k * f.sx) - 0.5; y = (y + 0.5 - f.ty) / f.k - 0.5; }
         }
         if (!test(x, y, X, Y)) continue;
         const i = Y * this.w + X;
@@ -1398,13 +1437,14 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
 
 function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: { s: number; b: number }) {
   const s = mp ? mp.s : SWING[frame], b = mp ? mp.b : BOB[frame];
-  const hipY = 66 + b;
-  const top = 47 + b;
+  const tall = kit.build?.legs ?? 0, reach = kit.build?.arms ?? 0;
+  const hipY = 66 - tall + b;
+  const top = 47 - tall + b;
   // Pernas: no passo, a de trás tira o calcanhar do chão (pé 2 unidades acima).
   const legs: [number, number][] = [[CX - 4.5, s < 0 ? -2 : 0], [CX + 4.5, s > 0 ? -2 : 0]];
   legs.forEach(([x, lift], i) => {
     const far = back ? i === 0 : i === 1;
-    const knee: Pt = [x + (i ? 0.5 : -0.5), 77 + b + lift / 2];
+    const knee: Pt = [x + (i ? 0.5 : -0.5), 77 - tall / 2 + b + lift / 2];
     const ankle: Pt = [x + (i ? 0.5 : -0.5), FEET - 3 + lift];
     leg(c, kit, [x, hipY], knee, ankle, [ankle[0], ankle[1] + 1.5], far, !back);
   });
@@ -1427,8 +1467,8 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: { s: numb
   for (const side of [-1, 1]) {
     const w = kit.chest ?? 1;
     const sh: Pt = [CX + side * 12.5 * w, top + 3];
-    const el: Pt = [CX + side * (14 * w + (1 - w) * 2), top + 10 + armY(side) * 0.5];
-    const ha: Pt = [CX + side * (13.5 * w + (1 - w) * 2.6), top + 18 + armY(side)];
+    const el: Pt = [CX + side * (14 * w + (1 - w) * 2), top + 10 + reach / 2 + armY(side) * 0.5];
+    const ha: Pt = [CX + side * (13.5 * w + (1 - w) * 2.6), top + 18 + reach + armY(side)];
     const holds = (side < 0) === !back;
     arm(c, kit, sh, el, ha, false, holds ? weaponFront(c, kit, ha, side, top) : undefined);
     if (!holds && kit.shield) shieldArt(c, kit.shield, ha, back ? "up" : "down", side);
@@ -1442,8 +1482,10 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: { s: numb
 
 function side(c: Canvas, kit: Kit, frame: number, mp?: MonsterPose) {
   const s = mp ? mp.s : SWING[frame], b = mp ? mp.b : BOB[frame];
-  const hip: Pt = [CX + 1, 66 + b];
-  const top = 47 + b;
+  const tall = kit.build?.legs ?? 0, reach = kit.build?.arms ?? 0;
+  const hip: Pt = [CX + 1, 66 - tall + b];
+  const top = 47 - tall + b;
+  const knee = 77 - tall / 2 + b;
   // Monstro: o tronco inclina para a frente (golpe) ou para trás (preparo); as pernas ficam onde estão.
   const hx = (mp?.lean ?? 0) + (kit.hunch ?? 0), hy = (kit.hunch ?? 0) * 0.55;
   const up = <T>(draw: () => T): T => (hx || hy ? c.placed(1, [-hx, hy], draw) : draw());
@@ -1452,10 +1494,10 @@ function side(c: Canvas, kit: Kit, frame: number, mp?: MonsterPose) {
   // Passo: perna da frente à esquerda, a outra atrás com o calcanhar no ar. Passagem: juntas (os monstros param
   // com as pernas um pouco abertas, entre um e outro).
   const pose = (fwd: number): [Pt, Pt, Pt] => {
-    const pass: [Pt, Pt, Pt] = [[hip[0] - 1, 77 + b], [hip[0], FEET - 3], [hip[0] - 5, FEET - 2]];
+    const pass: [Pt, Pt, Pt] = [[hip[0] - 1, knee], [hip[0], FEET - 3], [hip[0] - 5, FEET - 2]];
     if (fwd === 0) return pass;
-    const step: [Pt, Pt, Pt] = fwd > 0 ? [[hip[0] - 4, 77 + b], [hip[0] - 7, FEET - 3], [hip[0] - 12, FEET - 2]]
-      : [[hip[0] + 3, 77 + b], [hip[0] + 7, FEET - 5], [hip[0] + 2.5, FEET - 3]];
+    const step: [Pt, Pt, Pt] = fwd > 0 ? [[hip[0] - 4, knee], [hip[0] - 7, FEET - 3], [hip[0] - 12, FEET - 2]]
+      : [[hip[0] + 3, knee], [hip[0] + 7, FEET - 5], [hip[0] + 2.5, FEET - 3]];
     const t = Math.abs(fwd);
     return t >= 1 ? step : [lerp(pass[0], step[0], t), lerp(pass[1], step[1], t), lerp(pass[2], step[2], t)];
   };
@@ -1463,7 +1505,7 @@ function side(c: Canvas, kit: Kit, frame: number, mp?: MonsterPose) {
   leg(c, kit, hip, fk, fa, ft, true, false);
   // Braço de lá, atrás do tronco, balançando ao contrário da perna.
   up(() => {
-    arm(c, kit, [CX + 2, top + 3], at(mp?.backElbow, [CX + 3 + s * 2, top + 10]), at(mp?.back, [CX + 3 + s * 4, top + 18]), true);
+    arm(c, kit, [CX + 2, top + 3], at(mp?.backElbow, [CX + 3 + s * 2, top + 10 + reach / 2]), at(mp?.back, [CX + 3 + s * 4, top + 18 + reach]), true);
     if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX + 3, top + 2]], true);
   });
   const [nk, na, nt] = pose(s);
@@ -1501,7 +1543,8 @@ function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: 
   // O escudo vai no braço de lá, na frente do tronco (visto quase de perfil).
   if (kit.shield) shieldArt(c, kit.shield, [CX - 10.4, top + 13], "side", -1);
   // Braço de cá na frente do tronco, com a arma (girada em volta da mão quando a pose aponta para outro lado).
-  const ha: Pt = at(mp?.hand, [CX - 4 - s * 3, top + 18]);
+  const reach = kit.build?.arms ?? 0;
+  const ha: Pt = at(mp?.hand, [CX - 4 - s * 3, top + 18 + reach]);
   const a = (mp?.point === undefined ? mp?.tilt ?? 0 : mp.point - weaponAngle(kit, ha, top)) * Math.PI / 180;
   const ca = Math.cos(a), sa = Math.sin(a);
   const turn = (p: Pt): Pt => (a ? [ha[0] + (p[0] - ha[0]) * ca - (p[1] - ha[1]) * sa, ha[1] + (p[0] - ha[0]) * sa + (p[1] - ha[1]) * ca] : p);
@@ -1520,7 +1563,7 @@ function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: 
       swordById(c, kit.weapon, ha, turn(t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]));
     }
     : undefined;
-  arm(c, kit, [CX - 1, top + 3], at(mp?.elbow, [CX - 2 - s * 1.5, top + 10]), ha, false, grip);
+  arm(c, kit, [CX - 1, top + 3], at(mp?.elbow, [CX - 2 - s * 1.5, top + 10 + reach / 2]), ha, false, grip);
   if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX - 0.6, top + 2]]);
   if (kit.weapon === "sword") sword(c, ha, [ha[0] - 16, ha[1] + 15]);
   if (kit.weapon === "sword-4-magic") dancingSword(c, [ha[0] - 7, ha[1] - 9], [ha[0] - 19, ha[1] + 4]);
@@ -5617,20 +5660,33 @@ const cache = new Map<string, Uint8ClampedArray>();
  * passagem. `look` troca as cores das zonas (cosmético) sem mudar o desenho.
  */
 export function protoFrame(dir: ProtoDir, frame: number, cls: ProtoClass = "knight", look?: Partial<ProtoLook>, gear: ProtoGear = {}): HTMLCanvasElement {
-  const kit: Kit = { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.armor ? { armor: gear.armor } : {}), ...(gear.legs ? { legs: gear.legs } : {}), ...(gear.boots ? { boots: gear.boots } : {}), ...(gear.shield ? { shield: gear.shield } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: /^x?bow-/.test(gear.weapon) && KITS[cls].quiver } : {}) };
+  const kit = protoKit(cls, gear);
   const colors = { ...kit.look, ...look };
   const key = `${cls}${dir}${frame}${JSON.stringify(colors)}${JSON.stringify(gear)}`;
   let data = cache.get(key);
-  if (!data) {
-    const c = new Canvas();
-    if (dir === "side") side(c, kit, frame);
-    else front(c, kit, frame, dir === "up");
-    data = c.render(colors);
-    cache.set(key, data);
-  }
+  if (!data) cache.set(key, (data = protoFrameData(dir, frame, kit, colors)));
   const { canvas, ctx } = makeCanvas(S, S);
   const image = ctx.createImageData(S, S);
   image.data.set(data);
   ctx.putImageData(image, 0, 0);
   return canvas;
+}
+
+/** O kit da classe vestindo o equipamento (os itens por cima das roupas da classe). */
+function protoKit(cls: ProtoClass, gear: ProtoGear): Kit {
+  return { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.armor ? { armor: gear.armor } : {}), ...(gear.legs ? { legs: gear.legs } : {}), ...(gear.boots ? { boots: gear.boots } : {}), ...(gear.shield ? { shield: gear.shield } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: /^x?bow-/.test(gear.weapon) && KITS[cls].quiver } : {}) };
+}
+
+/** Pixels RGBA de um quadro do herói (sem navegador: a prévia em PNG usa direto). */
+export function protoHeroData(dir: ProtoDir, frame: number, cls: ProtoClass = "knight", gear: ProtoGear = {}, look?: Partial<ProtoLook>) {
+  const kit = protoKit(cls, gear);
+  return protoFrameData(dir, frame, kit, { ...kit.look, ...look });
+}
+
+function protoFrameData(dir: ProtoDir, frame: number, kit: Kit, colors: ProtoLook) {
+  const c = new Canvas();
+  const draw = () => (dir === "side" ? side(c, kit, frame) : front(c, kit, frame, dir === "up"));
+  if (kit.build) c.slimmed(CX + 0.5, kit.build.slim, draw);
+  else draw();
+  return c.render(colors);
 }
