@@ -363,7 +363,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   bog: {
     id: "bog", name: "Charco Cinzento", icon: "🌫️", difficulty: 8, durationSeconds: 8 * 60,
-    description: "Uma turfeira cinzenta e alagada, coberta da cinza de um incêndio antigo: poças negras que não deixam passar, maciços de árvores mortas e a névoa baixa. A estrada afundada do império sobe num aterro até a ilha do lago negro, com o anel de monólitos e os braseiros de turfa; trilhas de barro e passarelas de tábuas ligam as palafitas dos turfeiros e os terreiros de paliçada. Terreno pronto; os monstros ainda vêm.",
+    description: "Uma turfeira cinzenta e alagada, coberta da cinza de um incêndio antigo. A estrada afundada do império sobe do cais até a ilha do lago negro, com dois laços: as passarelas da Lagoa ou a trilha da Mata Queimada, a estrada da Torre de Vigia ou as passarelas das Palafitas. Terreiros de paliçada, monólitos com a runa e braseiros de turfa. Mapa fixo. Terreno pronto; os monstros ainda vêm.",
     encounters: [],
     minibosses: [],
     mimicChance: 0,
@@ -371,7 +371,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   badlands: {
     id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60,
-    description: "Ermos de barro vermelho rachado ao sol, com torres de pedra roídas pelo vento, cristas de rocha e ravinas fundas que só se cruzam pelas pontes. Ossadas de bichos gigantes, a mina de ferro abandonada com os trilhos e as vagonetas e as fontes de ferrugem. No fundo da cratera do norte, a arena. Terreno pronto; os monstros ainda vêm.",
+    description: "Vales largos de barro vermelho rachado entre platôs de rocha. Do desfiladeiro, o caminho se divide entre o pátio da mina de ferro e o campo das torres de pedra, cruza a Ravina Grande pela ponte, passa dentro das costelas de um bicho gigante e atravessa a segunda ravina pela ponte de cordas ou pelo arco de pedra até a cratera do crânio. Mapa fixo. Terreno pronto; os monstros ainda vêm.",
     encounters: [],
     minibosses: [],
     mimicChance: 0,
