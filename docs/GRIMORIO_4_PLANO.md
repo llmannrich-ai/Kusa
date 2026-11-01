@@ -625,6 +625,14 @@ onda e o escudo de 5% vai para quem a onda cura; "+1 lobo no Chamado da Matilha"
 forma, como um golpe à parte. Com o lote do Druida, a fase 4a-2 fecha os 120 marcos das 4 classes do plano; os Dons do
 Xamã Orc continuam sem marcos (entram quando o Grimório dele tiver Ápices).
 
+**Fase 4b (Cavaleiro), como foi entregue:** os 6 Dons da costela de passivas do Cavaleiro, com o efeito por nível e os
+5 marcos de cada, um PR por classe como na 4a-2. Ficam nas linhas VI e VII, lane -2 (do outro lado do Ápice): o da VI
+pede a ponta do tronco no nível 1, o da VII pede o da VI. Diferenças: o marco 4 da Bigorna ("o impacto conta como
+atordoar para a Hemorragia") já valia desde a 4a-1 (todo atordoar dispara a Hemorragia) e virou "atordoa também o monstro
+de trás"; o Exposto não tem duração própria (vale enquanto marca e atordoar duram), então o "+1 s" da Ordem de Execução
+é um tempo de graça depois do atordoar acabar. O básico transformado (Dons B da costela de outras classes) entra junto
+com o lote de cada classe.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

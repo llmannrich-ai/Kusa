@@ -181,6 +181,18 @@ comprar **e usar** as anteriores do mesmo ramo.
     - ⛈️ Céu Fechado: o raio envenena · +5% de chance · o raio prende 0,5 s · +10% · caem 2 raios.
   - Xamã Orc: os 3 Dons dele (iguais aos do Cavaleiro no efeito) ainda não têm marcos.
 
+  **Dons da costela de passivas** (fase 4b; hexágono nas linhas VI e VII, lane -2, do outro lado do Ápice): o da linha VI
+  pede a ponta do tronco no nível 1; o da VII pede o da VI. Mesmo preço e 25 níveis, com marcos. Entram por classe:
+
+  | Classe | Ramo | Dom | Por nível | Marcos (5 · 10 · 15 · 20 · 25) |
+  |---|---|---|---|---|
+  | Cavaleiro | Lâmina | 🩸 Sangue no Aço | +3% de dano da Hemorragia | cura 2% · empurrar faz sangrar 2 s · pega os colados (50%) · sangramentos +1 s · devolve 1 s do slot 1 |
+  | Cavaleiro | Lâmina | 💢 Fúria Crescente | matar dá +0,2% de dano por acúmulo (até 10, 6 s) | até 12 · no máximo, básico 15% mais rápido · 8 s · até 15 · no máximo, a próxima do slot 1 sai sem mana |
+  | Cavaleiro | Bastião | 🔨 Bigorna | empurrado contra parede ou monstro: atordoa 0,08 s (até 2 s) | o impacto fere 0,5× do básico · empurra o de trás · +1 tile nos empurrões · atordoa o de trás · 30% lento por 3 s |
+  | Cavaleiro | Bastião | 🔔 Repique | golpe no seu escudo devolve 2% do absorvido em raio 1 | raio 2 · provoca · devolve 1% da mana · raio 3 · atordoa 0,3 s |
+  | Cavaleiro | Comando | 📢 Eco de Guerra | provocar dá escudo de 0,4% da vida por monstro (até 8, 4 s) | 6 s · provocados 15% mais lentos · até 10 · cura 1% por monstro · repete 2 s depois com 50% |
+  | Cavaleiro | Comando | ⚖️ Ordem de Execução | +2,4% de dano no Exposto | vale 1 s depois do atordoar · marcas atordoam 0,3 s · colado num Exposto conta · 2 s · matar um Exposto marca o mais perto |
+
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
 
@@ -236,7 +248,7 @@ comprar **e usar** as anteriores do mesmo ramo.
 
     | Ramo | Lado | Traço | Magia slot 1 | Magia slot 2 |
     |---|---|---|---|---|
-    | Luz | **Cruzado** | ✝️ Flechas Consagradas: básico +30% em mortos-vivos e queima o alvo por 2 s | 🔱 Lança Etérea: 1,6×, recarga de 2,5 s, +50% em mortos-vivos | 🌞 Caldeira Divina: raio 3 em volta de si, 2,2×, dobro em mortos-vivos |
+    | Luz | **Cruzado** | ✝️ Flechas Consagradas: básico +30% em mortos-vivos e queima o alvo por 2 s | 🔱 Lança Etérea: 1,6×, recarga de 1,25 s, +50% em mortos-vivos | 🌞 Caldeira Divina: raio 3 em volta de si, 2,2×, dobro em mortos-vivos |
     | Luz | **Guardião da Luz** | 😇 Aura Sagrada: você e os aliados a até 3 tiles recebem 10% menos dano | 🔆 Escudo da Luz: escudo de 30% num aliado mirado (no toque rápido, o mais ferido ao alcance, você incluído) | ⛪ Solo Consagrado: campo de raio 2 por 8 s, fere os monstros dentro (0,35× por segundo) e dá +5 de armadura aos aliados |
     | Batedor | **Artilheiro** | 🧨 Pólvora: suas magias de área deixam o chão em chamas por 3 s | ⚡ Flecha Relâmpago: 1,5× e salta para mais 3 monstros | 🎇 Barragem: leque de 90° e 5 tiles à sua frente, 2× |
     | Batedor | **Armadilheiro** | ⚙️ Engenhoso: armadilhas e estacas duram o dobro, e cabem 3 de cada | 🪤 Armadilha de Urso: fica no chão por 20 s; o primeiro monstro que pisar fica preso 3 s e sangra | 🎋 Cordão de Flechas: estaca por 12 s que atira 4 vezes nos monstros a até 3 tiles |
@@ -357,7 +369,7 @@ Magias das costelas (números do nível 0). Todas combinam efeitos que o servido
 | Paladino | Luz | Áurea da Fé → Raio Solar → Martelo Sagrado (+ Bênção Protetora) | 🌅 **Raio Solar** (S1): linha de 6 tiles, 1,6×, +50% em mortos-vivos · Maestria: ofusca 0,5 s · ⚒️ **Martelo Sagrado** (S2): 2,6×, marca o alvo (+15% por 6 s), +50% em mortos-vivos · Maestria: raio 1 |
 | Paladino | Batedor | Chuva de Flechas → Flecha de Rede | 🕸️ **Flecha de Rede** (S1): raio 1, 0,6× e prende 2,5 s · Maestria: raio 2 |
 | Paladino | Batedor | Áurea do Batedor → Flechas Incendiárias | 🏮 **Flechas Incendiárias** (S2): raio 2, 1× e queima 0,4×/s por 4 s · Maestria: raio 3 |
-| Feiticeiro | Raio | Relâmpago → Faísca → Chuva de Brasas | ✨ **Faísca** (S1, energia): 1,1×, salta 1 vez, recarga de 2,5 s · Maestria: salta 2 · 🌠 **Chuva de Brasas** (S2, fogo): campo de raio 2 por 5 s, 0,5×/s · Maestria: queima |
+| Feiticeiro | Raio | Relâmpago → Faísca → Chuva de Brasas | ✨ **Faísca** (S1, energia): 1,1×, salta 1 vez, recarga de 1,25 s · Maestria: salta 2 · 🌠 **Chuva de Brasas** (S2, fogo): campo de raio 2 por 5 s, 0,5×/s · Maestria: queima |
 | Feiticeiro | Gelo | Nova de Gelo → Geada → Orbe Congelado (+ Lança de Gelo) | 🥶 **Geada** (S1): 1,3× e 60% de lentidão por 4 s · Maestria: raio 1 · 💠 **Orbe Congelado** (S2): raio 2, 1,8×, lentidão e explode de novo com 60% · Maestria: prende 1,5 s |
 | Feiticeiro | Trevas | Tempestade do Vazio → Selo Sombrio | 🕳️ **Selo Sombrio** (S1): 1× e marca o alvo (+20% por 6 s) · Maestria: raio 1 |
 | Feiticeiro | Trevas | Drenar Vida → Praga | 🧫 **Praga** (S2): raio 2, 0,8× e veneno 0,4×/s por 6 s · Maestria: raio 3 |

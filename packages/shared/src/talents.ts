@@ -419,6 +419,13 @@ function classTree(classId: ClassId): TalentDef[] {
       giftId: g.id, maxRank: GIFT_MAX_RANK, freeRank: 0, baseCost: GIFT_BASE_COST, costGrowth: GIFT_COST_GROWTH,
       requires: { id: parent, rank: 1 },
     });
+    // Dons da costela de passivas: linha VI (lane -2) pede a ponta do tronco; linha VII pede o da linha VI.
+    if (g.rib) {
+      const tip = trunk.filter((t) => t.col === g.col && t.kind === "spell" && t.lane === 0).sort((x, y) => y.row - x.row)[0];
+      if (!tip) throw new Error(`${g.id}: ramo ${g.col} de ${classId} sem tronco`);
+      const first = Object.values(GIFTS).find((o) => o.classId === classId && o.col === g.col && o.rib === 1);
+      return g.rib === 1 ? place(6, -2, tip.id) : place(7, -2, id(first!.id));
+    }
     if (g.apex) {
       const apex = ribs.find((t) => t.spellId === g.apex);
       if (!apex || apex.col !== g.col) throw new Error(`${g.id}: Ápice ${g.apex} fora do ramo ${g.col} de ${classId}`);

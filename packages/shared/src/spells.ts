@@ -336,7 +336,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   crushing_blow: spell({
     id: "crushing_blow", classId: "knight", slot: 0, name: "Golpe Esmagador", icon: "🔨", color: 0xd35400,
     description: "Uma pancada brutal no monstro colado em você.",
-    manaCost: 15, cooldownMs: 4500, aim: "target", range: 1, radius: 0, damage: 2.8,
+    manaCost: 15, cooldownMs: 2250, aim: "target", range: 1, radius: 0, damage: 2.8,
   }),
   holy_shield: spell({
     id: "holy_shield", classId: "knight", slot: 0, name: "Escudo da Fé", icon: "🛡️", color: 0x7fc8ff,
@@ -346,7 +346,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   vampiric_blade: spell({
     id: "vampiric_blade", classId: "knight", slot: 0, name: "Lâmina Sedenta", icon: "🩸", color: 0xc0392b,
     description: "Um corte que bebe o sangue do monstro e devolve parte do dano como vida.",
-    manaCost: 16, cooldownMs: 6000, aim: "target", range: 1, radius: 0, damage: 2, lifesteal: 0.5,
+    manaCost: 16, cooldownMs: 3000, aim: "target", range: 1, radius: 0, damage: 2, lifesteal: 0.5,
   }),
   iron_skin: spell({
     id: "iron_skin", classId: "knight", slot: 1, name: "Pele de Ferro", icon: "⛓️", color: 0xa4b0be,
@@ -372,7 +372,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   execution: spell({
     id: "execution", classId: "knight", slot: 1, name: "Execução", icon: "⚔️", color: 0x922b21,
     description: "Um golpe devastador no monstro colado, que ainda o deixa atordoado. Dano dobrado em quem já está quase morto.",
-    manaCost: 35, cooldownMs: 16000, aim: "target", range: 1, radius: 0, damage: 4.5, stunMs: 1000,
+    manaCost: 35, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 4.5, stunMs: 1000,
     execute: { hpPct: 0.3, bonus: 1 },
   }),
 
@@ -393,20 +393,20 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   thrown_blade: spell({
     id: "thrown_blade", classId: "knight", slot: 0, name: "Lâmina Arremessada", icon: "🗡️", color: 0xa4b0be,
     description: "Arremessa a espada num monstro distante, que fica sangrando.",
-    manaCost: 20, cooldownMs: 5000, aim: "target", range: 4, radius: 0, damage: 1.8, projectileSpeed: 18,
+    manaCost: 20, cooldownMs: 2500, aim: "target", range: 4, radius: 0, damage: 1.8, projectileSpeed: 18,
     dot: { perSec: 0.3, ms: 4000, kind: "bleed" },
   }),
   thousand_cuts: spell({
     id: "thousand_cuts", classId: "knight", slot: 1, name: "Mil Cortes", icon: "🔪", color: 0xe74c3c,
     description: "Cinco cortes rápidos no monstro colado em você, que fica atordoado enquanto apanha.",
-    manaCost: 40, cooldownMs: 14000, aim: "target", range: 1, radius: 0, damage: 0.9, stunMs: 900,
+    manaCost: 40, cooldownMs: 7000, aim: "target", range: 1, radius: 0, damage: 0.9, stunMs: 900,
     repeat: { delayMs: 180, power: 1, times: 4 },
   }),
   // Guardião (ramo Bastião).
   shield_bash: spell({
     id: "shield_bash", classId: "knight", slot: 0, name: "Bater com Escudo", icon: "💥", color: 0x7fc8ff,
     description: "Uma pancada com o escudo no monstro colado: ele é empurrado e fica atordoado.",
-    manaCost: 20, cooldownMs: 7000, aim: "target", range: 1, radius: 0, damage: 1.2, push: 2, stunMs: 1000,
+    manaCost: 20, cooldownMs: 3500, aim: "target", range: 1, radius: 0, damage: 1.2, push: 2, stunMs: 1000,
   }),
   shared_aegis: spell({
     id: "shared_aegis", classId: "knight", slot: 1, name: "Égide Compartilhada", icon: "🏛️", color: 0x9fd8ff,
@@ -429,7 +429,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   charge: spell({
     id: "charge", classId: "knight", slot: 0, name: "Investida", icon: "🐎", color: 0xe67e22,
     description: "Corre até um monstro a até 4 tiles e o atinge, deixando-o atordoado.",
-    manaCost: 25, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 1.5, stunMs: 1000, charge: true,
+    manaCost: 25, cooldownMs: 4500, aim: "target", range: 4, radius: 0, damage: 1.5, stunMs: 1000, charge: true,
   }),
   war_banner: spell({
     id: "war_banner", classId: "knight", slot: 1, name: "Estandarte de Guerra", icon: "🚩", color: 0xf1c40f,
@@ -441,7 +441,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   iron_chain: spell({
     id: "iron_chain", classId: "knight", slot: 0, name: "Corrente de Ferro", icon: "🔗", color: 0x95a5a6,
     description: "Laça um monstro de até 5 tiles, puxa-o para perto de você e o prende no lugar.",
-    manaCost: 20, cooldownMs: 8000, aim: "target", range: 5, radius: 0, damage: 0.8, rootMs: 2000, pull: true, projectileSpeed: 20,
+    manaCost: 20, cooldownMs: 4000, aim: "target", range: 5, radius: 0, damage: 0.8, rootMs: 2000, pull: true, projectileSpeed: 20,
   }),
   supreme_challenge: spell({
     id: "supreme_challenge", classId: "knight", slot: 1, name: "Desafio Supremo", icon: "👊", color: 0xe74c3c,
@@ -453,7 +453,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   holy_arrow: spell({
     id: "holy_arrow", classId: "paladin", slot: 0, name: "Flecha Sagrada", icon: "✴️", color: 0xf7d774,
     description: "Uma flecha de luz dourada que causa dano pesado num alvo.",
-    manaCost: 25, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 2.6, projectileSpeed: 20,
+    manaCost: 25, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 2.6, projectileSpeed: 20,
   }),
   arrow_rain: spell({
     id: "arrow_rain", classId: "paladin", slot: 1, name: "Chuva de Flechas", icon: "🏹", color: 0xa08f78,
@@ -468,7 +468,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   stun_arrow: spell({
     id: "stun_arrow", classId: "paladin", slot: 0, name: "Flecha Atordoante", icon: "💫", color: 0xa4b0be,
     description: "Uma flecha de ponta rombuda que deixa o alvo tonto, sem andar nem atacar.",
-    manaCost: 24, cooldownMs: 7000, aim: "target", range: 6, radius: 0, damage: 1.5, stunMs: 2000, projectileSpeed: 20,
+    manaCost: 24, cooldownMs: 3500, aim: "target", range: 6, radius: 0, damage: 1.5, stunMs: 2000, projectileSpeed: 20,
   }),
   blessed_ward: spell({
     id: "blessed_ward", classId: "paladin", slot: 0, name: "Bênção Protetora", icon: "🕊️", color: 0xfff6c8,
@@ -483,7 +483,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   deadly_shot: spell({
     id: "deadly_shot", classId: "paladin", slot: 1, name: "Disparo Certeiro", icon: "🏆", color: 0xf7d774,
     description: "Mira com calma e acerta um tiro enorme num alvo distante: quanto mais longe, mais forte.",
-    manaCost: 40, cooldownMs: 14000, aim: "target", range: 8, radius: 0, damage: 3.2, distanceBonus: 0.1, projectileSpeed: 26,
+    manaCost: 40, cooldownMs: 7000, aim: "target", range: 8, radius: 0, damage: 3.2, distanceBonus: 0.1, projectileSpeed: 26,
   }),
   divine_judgment: spell({
     id: "divine_judgment", classId: "paladin", slot: 1, name: "Julgamento Divino", icon: "⚖️", color: 0xfff6c8,
@@ -500,7 +500,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   hunter_mark: spell({
     id: "hunter_mark", classId: "paladin", slot: 0, name: "Marca do Caçador", icon: "🎯", color: 0xe74c3c,
     description: "Marca um monstro: ele recebe mais dano de toda a equipe por alguns segundos.",
-    manaCost: 20, cooldownMs: 9000, aim: "target", range: 7, radius: 0, damage: 0.8, mark: { pct: 0.25, ms: 10000 },
+    manaCost: 20, cooldownMs: 4500, aim: "target", range: 7, radius: 0, damage: 0.8, mark: { pct: 0.25, ms: 10000 },
     projectileSpeed: 24,
   }),
   sniper_stance: spell({
@@ -525,7 +525,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   holy_spear: spell({
     id: "holy_spear", classId: "paladin", slot: 0, name: "Lança Etérea", icon: "🔱", color: 0xfff6c8,
     description: "Uma lança de luz rápida, de recarga curta. Fere mais os mortos-vivos.",
-    manaCost: 14, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 1.6, undeadBonus: 0.5, projectileSpeed: 26,
+    manaCost: 14, cooldownMs: 1250, aim: "target", range: 6, radius: 0, damage: 1.6, undeadBonus: 0.5, projectileSpeed: 26,
   }),
   divine_caldera: spell({
     id: "divine_caldera", classId: "paladin", slot: 1, name: "Caldeira Divina", icon: "🌞", color: 0xf7d774,
@@ -548,7 +548,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   lightning_arrow: spell({
     id: "lightning_arrow", classId: "paladin", slot: 0, name: "Flecha Relâmpago", icon: "⚡", color: 0x9ec5ff,
     description: "Uma flecha carregada que acerta o alvo e salta para os monstros perto dele.",
-    manaCost: 28, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1.5, projectileSpeed: 28,
+    manaCost: 28, cooldownMs: 3000, aim: "target", range: 6, radius: 0, damage: 1.5, projectileSpeed: 28,
     chain: { jumps: 3, range: 3, falloff: 0.2 },
   }),
   barrage: spell({
@@ -621,7 +621,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   sudden_death: spell({
     id: "sudden_death", classId: "sorcerer", slot: 0, name: "Morte Súbita", icon: "☠️", color: 0x2d0a40, element: "dark",
     description: "Um golpe de morte num único alvo: o maior dano de alvo único do Feiticeiro.",
-    manaCost: 40, cooldownMs: 8000, aim: "target", range: 5, radius: 0, damage: 3.4, projectileSpeed: 14,
+    manaCost: 40, cooldownMs: 4000, aim: "target", range: 5, radius: 0, damage: 3.4, projectileSpeed: 14,
   }),
   raise_skeletons: spell({
     id: "raise_skeletons", classId: "sorcerer", slot: 1, name: "Erguer Esqueletos", icon: "🦴", color: 0xdcdde1, element: "dark",
@@ -632,7 +632,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   eldritch_blast: spell({
     id: "eldritch_blast", classId: "sorcerer", slot: 0, name: "Rajada Mística", icon: "🟣", color: 0xb04ae0, element: "dark",
     description: "Um raio arcano que fere o alvo e o empurra para longe de você.",
-    manaCost: 26, cooldownMs: 4500, aim: "target", range: 6, radius: 0, damage: 2.2, push: 1, projectileSpeed: 20,
+    manaCost: 26, cooldownMs: 2250, aim: "target", range: 6, radius: 0, damage: 2.2, push: 1, projectileSpeed: 20,
   }),
   black_tentacles: spell({
     id: "black_tentacles", classId: "sorcerer", slot: 1, name: "Tentáculos Negros", icon: "🐙", color: 0x9b59b6, element: "dark",
@@ -655,23 +655,23 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   lightning_bolt: spell({
     id: "lightning_bolt", classId: "sorcerer", slot: 0, name: "Relâmpago", icon: "⚡", color: 0x9ec5ff, element: "energy",
     description: "Um raio rápido que causa dano altíssimo num único alvo.",
-    manaCost: 35, cooldownMs: 4500, aim: "target", range: 6, radius: 0, damage: 2.9, projectileSpeed: 30,
+    manaCost: 35, cooldownMs: 2250, aim: "target", range: 6, radius: 0, damage: 2.9, projectileSpeed: 30,
   }),
   chain_lightning: spell({
     id: "chain_lightning", classId: "sorcerer", slot: 0, name: "Raio em Cadeia", icon: "🌩️", color: 0x9ec5ff, element: "energy",
     description: "O raio acerta o alvo e salta de monstro em monstro, perdendo um pouco de força a cada salto.",
-    manaCost: 32, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 1.6, projectileSpeed: 30,
+    manaCost: 32, cooldownMs: 2750, aim: "target", range: 6, radius: 0, damage: 1.6, projectileSpeed: 30,
     chain: { jumps: 3, range: 3, falloff: 0.15 },
   }),
   ice_lance: spell({
     id: "ice_lance", classId: "sorcerer", slot: 0, name: "Lança de Gelo", icon: "🧊", color: 0x7fd8ff, element: "ice",
     description: "Uma lança de gelo que fere e congela o alvo no lugar.",
-    manaCost: 28, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 2, rootMs: 2000, projectileSpeed: 18,
+    manaCost: 28, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 2, rootMs: 2000, projectileSpeed: 18,
   }),
   drain_life: spell({
     id: "drain_life", classId: "sorcerer", slot: 0, name: "Drenar Vida", icon: "🦇", color: 0x8e44ad, element: "dark",
     description: "Suga a força vital do alvo e devolve boa parte do dano como vida.",
-    manaCost: 30, cooldownMs: 6000, aim: "target", range: 5, radius: 0, damage: 1.8, lifesteal: 0.6, projectileSpeed: 12,
+    manaCost: 30, cooldownMs: 3000, aim: "target", range: 5, radius: 0, damage: 1.8, lifesteal: 0.6, projectileSpeed: 12,
   }),
   frost_nova: spell({
     id: "frost_nova", classId: "sorcerer", slot: 1, name: "Nova de Gelo", icon: "❄️", color: 0x7fd8ff, element: "ice",
@@ -708,7 +708,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   venom_thorn: spell({
     id: "venom_thorn", classId: "druid", slot: 0, name: "Espinho Venenoso", icon: "🦂", color: 0x6ab04c,
     description: "Um espinho envenenado: fere o alvo e o veneno continua corroendo por alguns segundos.",
-    manaCost: 30, cooldownMs: 4500, aim: "target", range: 5, radius: 0, damage: 1.4,
+    manaCost: 30, cooldownMs: 2250, aim: "target", range: 5, radius: 0, damage: 1.4,
     dot: { perSec: 0.3, ms: 4000, kind: "poison" }, projectileSpeed: 12,
   }),
   spirit_wolf: spell({
@@ -802,7 +802,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   mamba_bite: spell({
     id: "mamba_bite", classId: "druid", slot: 0, name: "Picada da Mamba", icon: "🐍", color: 0x2d6a1f,
     description: "Um veneno fortíssimo num alvo. Se ele morrer envenenado, explode e espalha o veneno em volta.",
-    manaCost: 30, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1, projectileSpeed: 14,
+    manaCost: 30, cooldownMs: 3000, aim: "target", range: 6, radius: 0, damage: 1, projectileSpeed: 14,
     dot: { perSec: 0.6, ms: 5000, kind: "poison" }, burst: { radius: 2, damage: 1.5 },
   }),
   poison_cloud: spell({
@@ -828,7 +828,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   twin_slash: spell({
     id: "twin_slash", classId: "knight", slot: 0, name: "Corte Duplo", icon: "✂️", color: 0xd2d6de,
     description: "Dois cortes seguidos no mesmo monstro.",
-    manaCost: 14, cooldownMs: 5000, aim: "target", range: 1, radius: 0, damage: 1.5, repeat: { delayMs: 350, power: 0.9 },
+    manaCost: 14, cooldownMs: 2500, aim: "target", range: 1, radius: 0, damage: 1.5, repeat: { delayMs: 350, power: 0.9 },
   }),
   cross_cut: spell({
     id: "cross_cut", classId: "knight", slot: 0, name: "Corte Largo", icon: "🌒", color: 0xd2d6de,
@@ -838,7 +838,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   open_wound: spell({
     id: "open_wound", classId: "knight", slot: 1, name: "Ferida Aberta", icon: "💔", color: 0xc0392b,
     description: "Um golpe fundo que faz o monstro sangrar por 6 s.",
-    manaCost: 30, cooldownMs: 12000, aim: "target", range: 1, radius: 0, damage: 2.4,
+    manaCost: 30, cooldownMs: 6000, aim: "target", range: 1, radius: 0, damage: 2.4,
     dot: { perSec: 0.5, ms: 6000, kind: "bleed" },
   }),
   seismic_rift: spell({
@@ -850,7 +850,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   aegis_strike: spell({
     id: "aegis_strike", classId: "knight", slot: 0, name: "Golpe de Égide", icon: "🔰", color: 0x5dade2,
     description: "Bate com o escudo e ganha um escudo de 15% da vida por 6 s.",
-    manaCost: 18, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 1.4, barrier: 0.15, barrierMs: 6000,
+    manaCost: 18, cooldownMs: 4000, aim: "target", range: 1, radius: 0, damage: 1.4, barrier: 0.15, barrierMs: 6000,
   }),
   shield_quake: spell({
     id: "shield_quake", classId: "knight", slot: 1, name: "Tremor do Escudo", icon: "🥁", color: 0x5dade2,
@@ -873,20 +873,20 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   challenge_mark: spell({
     id: "challenge_mark", classId: "knight", slot: 0, name: "Desafio", icon: "🤜", color: 0xe67e22,
     description: "Desafia um monstro: ele vem atrás de você e recebe +20% de dano de toda a equipe por 8 s.",
-    manaCost: 16, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 0.6, taunt: true,
+    manaCost: 16, cooldownMs: 4500, aim: "target", range: 4, radius: 0, damage: 0.6, taunt: true,
     mark: { pct: 0.2, ms: 8000 },
   }),
   // Paladino, ramo Mira.
   double_shot: spell({
     id: "double_shot", classId: "paladin", slot: 0, name: "Tiro Duplo", icon: "🪶", color: 0xf1c40f,
     description: "Duas flechas seguidas no mesmo alvo.",
-    manaCost: 26, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 22,
+    manaCost: 26, cooldownMs: 2750, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 22,
     repeat: { delayMs: 300, power: 0.9 },
   }),
   barbed_arrow: spell({
     id: "barbed_arrow", classId: "paladin", slot: 1, name: "Flecha Farpada", icon: "🪝", color: 0xc0392b,
     description: "Uma flecha com farpas que faz o alvo sangrar por 5 s.",
-    manaCost: 40, cooldownMs: 12000, aim: "target", range: 7, radius: 0, damage: 2.4, projectileSpeed: 22,
+    manaCost: 40, cooldownMs: 6000, aim: "target", range: 7, radius: 0, damage: 2.4, projectileSpeed: 22,
     dot: { perSec: 0.5, ms: 5000, kind: "bleed" },
   }),
   // Paladino, ramo Luz.
@@ -898,7 +898,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   holy_hammer: spell({
     id: "holy_hammer", classId: "paladin", slot: 1, name: "Martelo Sagrado", icon: "⚒️", color: 0xfff6c8,
     description: "Um martelo de luz que marca o alvo: +15% de dano de toda a equipe nele por 6 s.",
-    manaCost: 45, cooldownMs: 13000, aim: "target", range: 5, radius: 0, damage: 2.6, undeadBonus: 0.5,
+    manaCost: 45, cooldownMs: 6500, aim: "target", range: 5, radius: 0, damage: 2.6, undeadBonus: 0.5,
     mark: { pct: 0.15, ms: 6000 }, projectileSpeed: 12,
   }),
   // Paladino, ramo Batedor.
@@ -917,7 +917,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   spark: spell({
     id: "spark", classId: "sorcerer", slot: 0, name: "Faísca", icon: "✨", color: 0x9ec5ff, element: "energy",
     description: "Uma faísca barata e rápida que salta para mais um monstro.",
-    manaCost: 16, cooldownMs: 2500, aim: "target", range: 5, radius: 0, damage: 1.1, projectileSpeed: 30,
+    manaCost: 16, cooldownMs: 1250, aim: "target", range: 5, radius: 0, damage: 1.1, projectileSpeed: 30,
     chain: { jumps: 1, range: 2, falloff: 0.3 },
   }),
   ember_rain: spell({
@@ -930,7 +930,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   frostbite: spell({
     id: "frostbite", classId: "sorcerer", slot: 0, name: "Geada", icon: "🥶", color: 0xd6f1ff, element: "ice",
     description: "Um sopro gelado que deixa o alvo 60% mais lento.",
-    manaCost: 26, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 1.3, projectileSpeed: 16,
+    manaCost: 26, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 1.3, projectileSpeed: 16,
     slow: { pct: 0.6, ms: 4000 },
   }),
   frozen_orb: spell({
@@ -943,7 +943,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   dark_seal: spell({
     id: "dark_seal", classId: "sorcerer", slot: 0, name: "Selo Sombrio", icon: "🕳️", color: 0x8e44ad, element: "dark",
     description: "Sela o alvo: ele recebe +20% de dano de toda a equipe por 6 s.",
-    manaCost: 22, cooldownMs: 6000, aim: "target", range: 5, radius: 0, damage: 1, projectileSpeed: 14,
+    manaCost: 22, cooldownMs: 3000, aim: "target", range: 5, radius: 0, damage: 1, projectileSpeed: 14,
     mark: { pct: 0.2, ms: 6000 },
   }),
   plague: spell({
