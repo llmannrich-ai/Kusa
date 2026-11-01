@@ -1311,6 +1311,9 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .grim-xp small { display: block; margin-top: 3px; }
 .grim-levels { display: grid; gap: 8px; margin: 8px 0 12px; }
 .grim-level { padding: 8px 10px; background: #000; border: 1px solid var(--border); }
+.grim-marks { margin: 4px 0 8px; padding-left: 4px; list-style: none; font-size: 13px; color: var(--muted, #888); }
+.grim-marks li { margin: 2px 0; }
+.grim-marks li.on { color: #f7d774; }
 .grim-level.current { border-color: #8e6bbf; }
 .grim-level strong { font-size: 13px; color: var(--accent); }
 .grim-level ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
