@@ -6,7 +6,7 @@
  * - a animação anda de verdade: no ciclo parado e no andar não há dois quadros seguidos iguais, e o golpe muda a pose.
  * Uso: npx tsx apps/server/scripts/invocacoes.ts
  */
-import { SUMMONS, type SummonKind } from "@kusa/shared";
+import { MONSTERS, SUMMONS, type CreatureSummonKind, type SummonKind } from "@kusa/shared";
 import { SUMMON_ART, SUMMON_FRAMES, drawSummon } from "../../client/src/art/summonCreatures.ts";
 import { CLIP_ORDER } from "../../client/src/art/rig.ts";
 
@@ -14,7 +14,9 @@ const failures: string[] = [];
 const fail = (msg: string) => { if (failures.length < 40) failures.push(msg); };
 
 let frames = 0;
-for (const kind of Object.keys(SUMMONS) as SummonKind[]) {
+// O clã do Xamã Orc usa a arte dos monstros do clã (`look`), conferida no `arte` e no bestiário; o monstro convertido
+// (`bound`), a do monstro que ele era.
+for (const kind of (Object.keys(SUMMONS) as SummonKind[]).filter((k): k is CreatureSummonKind => !SUMMONS[k].look && k !== "bound")) {
   const art = SUMMON_ART[kind];
   if (!art) { fail(`${kind}: sem arte animada`); continue; }
   for (const clip of CLIP_ORDER) {
@@ -35,6 +37,10 @@ for (const kind of Object.keys(SUMMONS) as SummonKind[]) {
       prints.forEach((p, i) => { if (p === prints[(i + 1) % prints.length]) fail(`${kind} ${clip}: quadros ${i} e ${(i + 1) % prints.length} iguais`); });
     } else if (new Set(prints).size < 3) fail(`${kind} ${clip}: quase sem movimento`);
   }
+}
+
+for (const [kind, def] of Object.entries(SUMMONS)) {
+  if (def.look && !MONSTERS[def.look]) fail(`${kind}: a arte ${def.look} não é de um monstro`);
 }
 
 if (failures.length) {

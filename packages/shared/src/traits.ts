@@ -11,7 +11,8 @@ export type TraitId =
   | "gunpowder" | "ingenious"
   | "static_charge" | "combustion" | "shatter" | "mana_shield" | "harvest" | "hex"
   | "wild_bond" | "wild_hide" | "bloom" | "protective_sap" | "toxin" | "charged_sky"
-  | "battle_thirst" | "riposte" | "intervene" | "last_bastion" | "leadership" | "intimidate";
+  | "battle_thirst" | "riposte" | "intervene" | "last_bastion" | "leadership" | "intimidate"
+  | "clan_blood" | "blood_oath" | "carver_hands" | "totem_pack" | "vorgak_legacy" | "war_rhythm";
 
 export interface TraitDef {
   id: TraitId;
@@ -74,6 +75,17 @@ export interface TraitDef {
   leadership?: { radius: number; pct: number };
   /** Monstros provocados pelo herói (e ainda atrás dele) causam `pct` a menos de dano nele. */
   intimidate?: { pct: number };
+  /**
+   * Juramento de Sangue: monstro comum que morre a até `radius` tiles de um totem do herói tem `chance` de se levantar
+   * como aliado dele por `ms` (o monstro convertido, `BOUND_POWER`).
+   */
+  bloodOath?: { chance: number; radius: number; ms: number };
+  /** Mãos de Entalhe: os totens do herói duram `durationScale` vezes mais e cabe +`extra` de cada magia de totem. */
+  totemCraft?: { durationScale: number; extra: number };
+  /** Totem nas Costas: o último totem que o herói finca anda com ele, com `durationScale` da duração. */
+  totemFollow?: { durationScale: number };
+  /** Ritmo de Guerra: os tambores do herói (`rally`) duram `durationScale` vezes mais e alcançam +`radius` tiles. */
+  rallyBoost?: { durationScale: number; radius: number };
 }
 
 /** Elemento de uma magia do Feiticeiro (Estática vale para energia). */
@@ -213,6 +225,39 @@ export const TRAITS: Record<TraitId, TraitDef> = {
     id: "charged_sky", classId: "druid", spec: "Tempestade", name: "Céu Carregado", icon: "🌩️",
     description: "A cada 4 magias, um raio cai no monstro mais perto de você.",
     chargedSky: { every: 4, damage: 2, range: 6 },
+  }),
+  // Xamã Orc, ramo Horda.
+  clan_blood: trait({
+    id: "clan_blood", classId: "shaman", spec: "Senhor da Horda", name: "Sangue do Clã", icon: "🪓",
+    description: "Seus orcs, ogros e demais criaturas têm +25% de vida e de dano.",
+    summonBoost: 0.25,
+  }),
+  blood_oath: trait({
+    id: "blood_oath", classId: "shaman", spec: "Domador de Sangue", name: "Juramento de Sangue", icon: "⛓️",
+    description: "Monstro comum que morre a até 3 tiles de um totem seu tem 20% de chance de se levantar como seu aliado por 10 s.",
+    bloodOath: { chance: 0.2, radius: 3, ms: 10000 },
+  }),
+  // Xamã Orc, ramo Totens.
+  carver_hands: trait({
+    id: "carver_hands", classId: "shaman", spec: "Entalhador", name: "Mãos de Entalhe", icon: "🪵",
+    description: "Seus totens duram 50% mais e cabe mais um de cada.",
+    totemCraft: { durationScale: 1.5, extra: 1 },
+  }),
+  totem_pack: trait({
+    id: "totem_pack", classId: "shaman", spec: "Nômade", name: "Totem nas Costas", icon: "🎒",
+    description: "O último totem que você finca anda com você, com metade da duração.",
+    totemFollow: { durationScale: 0.5 },
+  }),
+  // Xamã Orc, ramo Brasa.
+  vorgak_legacy: trait({
+    id: "vorgak_legacy", classId: "shaman", spec: "Coração de Brasa", name: "Herança de Vorgak", icon: "🔥",
+    description: "Suas magias que causam dano queimam os atingidos por 4 s.",
+    spellBurn: { perSec: 0.2, ms: 4000 },
+  }),
+  war_rhythm: trait({
+    id: "war_rhythm", classId: "shaman", spec: "Tamboreiro", name: "Ritmo de Guerra", icon: "🥁",
+    description: "Seus tambores duram 50% mais e alcançam 2 tiles além.",
+    rallyBoost: { durationScale: 1.5, radius: 2 },
   }),
 };
 

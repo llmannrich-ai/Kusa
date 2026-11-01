@@ -69,7 +69,7 @@ test("um Dom do fundo embaixo de cada Ápice, pedindo o Ápice no nível 1", () 
       total++;
     }
   }
-  check(total === 12, `${total} Dons do fundo (esperava 12: 3 Ápices em cada uma das 4 classes)`);
+  check(total === 3 * CLASS_IDS.length, `${total} Dons do fundo (esperava ${3 * CLASS_IDS.length}: 3 Ápices em cada uma das ${CLASS_IDS.length} classes)`);
 });
 test("preço dos Dons: 60 no 1º nível, ~8 mil até o 25", () => {
   const def = TALENTS.knight_honed_edge;
