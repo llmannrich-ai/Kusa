@@ -10,6 +10,8 @@ import {
   COMMON_POTION_CHANCE,
   CHEST_DEPTH_SCALING,
   ITEM_DROP_SCALE,
+  DEATH_LOSS_WEIGHT,
+  DEATH_SAFE_LEVEL,
   LOOT_SCALE,
   GUARANTEED_DROPS,
   GUARANTEED_POTIONS,
@@ -3054,6 +3056,18 @@ export class Hunt {
     this.host.broadcast(MSG.notice, { x, y, text, color, ms } satisfies NoticeMessage);
   }
 
+  /** Equipamento que o corpo larga na morte: sorteio entre os usados, com peso pela raridade (`DEATH_LOSS_WEIGHT`). */
+  private lostSlot(player: Player) {
+    const worn = ITEM_SLOTS.filter((slot) => player[slot]);
+    const weights = worn.map((slot) => DEATH_LOSS_WEIGHT[ITEMS[player[slot]]?.rarity ?? "common"]);
+    let roll = this.random() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < worn.length; i++) {
+      roll -= weights[i];
+      if (roll < 0) return worn[i];
+    }
+    return worn[worn.length - 1];
+  }
+
   /** Aviso que só um jogador vê. */
   private noticeTo(sessionId: string, x: number, y: number, text: string, color: number, ms?: number) {
     this.host.send(sessionId, MSG.notice, { x, y, text, color, ms } satisfies NoticeMessage);
@@ -3066,13 +3080,13 @@ export class Hunt {
     const survived = outcome === "escaped" || outcome === "completed";
     if (!survived) player.loot = 0; // Morrer perde todo o loot.
     // Quem morre (ou fica soterrado) perde 1 equipamento sorteado, a bag inteira e as poções: caem no chão e
-    // os outros podem saquear. O resto do equipamento volta para a conta.
+    // os outros podem saquear. O resto do equipamento volta para a conta. Abaixo de `DEATH_SAFE_LEVEL` o corpo
+    // não perde equipamento, e no sorteio o item mais raro pesa menos (`DEATH_LOSS_WEIGHT`).
     const seat = this.seats.get(sessionId);
     let lost: string | undefined;
     let lostBag: string[] = [];
     if (!survived) {
-      const worn = ITEM_SLOTS.filter((slot) => player[slot]);
-      const slot = worn[Math.floor(this.random() * worn.length)];
+      const slot = player.level >= DEATH_SAFE_LEVEL ? this.lostSlot(player) : undefined;
       if (slot) {
         lost = player[slot];
         this.dropItem(lost, player.x, player.y);
