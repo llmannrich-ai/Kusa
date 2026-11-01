@@ -276,7 +276,20 @@ export type Box = readonly [number, number, number, number];
  * Escala local: em volta de um ponto (`ox`, `oy`) ou afim (`p × k + t`), com a de fora em `parent`. Na horizontal a
  * escala é `k × sx` (`sx` < 1 afina a figura: o corpo dos heróis, `slimmed`).
  */
-interface Xf { k: number; sx: number; ox?: number; oy?: number; tx: number; ty: number; parent: Xf | null }
+interface Xf { k: number; sx: number; ox?: number; oy?: number; tx: number; ty: number; parent: Xf | null; m?: Aff }
+
+/**
+ * Transformação completa `[a, b, c, d, e, f]`: `x' = a·x + b·y + c`, `y' = d·x + e·y + f` (em unidades). Só existe
+ * quando há giro (`Canvas.rotated`); sem giro vale a conta simples de sempre, por eixo.
+ */
+type Aff = readonly [number, number, number, number, number, number];
+const mulAff = (A: Aff, B: Aff): Aff => [
+  A[0] * B[0] + A[1] * B[3], A[0] * B[1] + A[1] * B[4], A[0] * B[2] + A[1] * B[5] + A[2],
+  A[3] * B[0] + A[4] * B[3], A[3] * B[1] + A[4] * B[4], A[3] * B[2] + A[4] * B[5] + A[5],
+];
+const affOf = (f: Xf): Aff => f.m ?? [f.k * f.sx, 0, f.ox !== undefined ? f.ox * (1 - f.k * f.sx) : f.tx, 0, f.k, f.oy !== undefined ? f.oy * (1 - f.k) : f.ty];
+/** Dentro de um giro, a escala local também vira transformação completa. */
+const within = (node: Xf, outer: Xf | null, local: Aff): Xf => (outer?.m ? { ...node, m: mulAff(outer.m, local) } : node);
 
 export class Canvas {
   readonly n: number;
@@ -317,9 +330,9 @@ export class Canvas {
   /** Escala local: o que `draw` pintar cresce `k` vezes em volta de `o` (a textura continua fina). */
   scaled<T>(o: Pt, k: number, draw: () => T): T {
     const outer = this.xf;
-    this.xf = outer
+    this.xf = within(outer
       ? { k: outer.k * k, sx: outer.sx, tx: outer.tx + o[0] * (1 - k) * outer.k * outer.sx, ty: outer.ty + o[1] * (1 - k) * outer.k, parent: outer }
-      : { k, sx: 1, ox: o[0], oy: o[1], tx: o[0] * (1 - k), ty: o[1] * (1 - k), parent: null };
+      : { k, sx: 1, ox: o[0], oy: o[1], tx: o[0] * (1 - k), ty: o[1] * (1 - k), parent: null }, outer, [k, 0, o[0] * (1 - k), 0, k, o[1] * (1 - k)]);
     try { return draw(); } finally { this.xf = outer; }
   }
 
@@ -329,18 +342,32 @@ export class Canvas {
    */
   slimmed<T>(x: number, sx: number, draw: () => T): T {
     const outer = this.xf;
-    this.xf = outer
+    this.xf = within(outer
       ? { k: outer.k, sx: outer.sx * sx, tx: outer.tx + x * (1 - sx) * outer.k * outer.sx, ty: outer.ty, parent: outer }
-      : { k: 1, sx, tx: x * (1 - sx), ty: 0, parent: null };
+      : { k: 1, sx, tx: x * (1 - sx), ty: 0, parent: null }, outer, [sx, 0, x * (1 - sx), 0, 1, 0]);
+    try { return draw(); } finally { this.xf = outer; }
+  }
+
+  /**
+   * Gira o que `draw` pintar `ang` radianos (sentido horário na tela) em volta de `o`: a arma em volta da mão nos
+   * movimentos de ação. As formas são amostradas já giradas (o pixel continua fino); a textura fica presa à tela.
+   */
+  rotated<T>(o: Pt, ang: number, draw: () => T): T {
+    if (!ang) return draw();
+    const outer = this.xf;
+    const c = Math.cos(ang), s = Math.sin(ang);
+    const local: Aff = [c, -s, o[0] - c * o[0] + s * o[1], s, c, o[1] - s * o[0] - c * o[1]];
+    const base: Xf = outer ?? { k: 1, sx: 1, tx: 0, ty: 0, parent: null };
+    this.xf = { ...base, parent: outer, m: mulAff(affOf(base), local) };
     try { return draw(); } finally { this.xf = outer; }
   }
 
   /** Enquadra: o que `draw` pintar vai para `p × k + t` (em unidades), por cima da escala que já houver (ícones). */
   placed<T>(k: number, t: Pt, draw: () => T): T {
     const outer = this.xf;
-    this.xf = outer
+    this.xf = within(outer
       ? { k: outer.k * k, sx: outer.sx, tx: outer.tx + t[0] * outer.k * outer.sx, ty: outer.ty + t[1] * outer.k, parent: outer }
-      : { k, sx: 1, tx: t[0], ty: t[1], parent: null };
+      : { k, sx: 1, tx: t[0], ty: t[1], parent: null }, outer, [k, 0, t[0], 0, k, t[1]]);
     try { return draw(); } finally { this.xf = outer; }
   }
 
@@ -364,12 +391,15 @@ export class Canvas {
   /** Pixel final levado pela escala local. */
   private tx(X: number, Y: number): [number, number] {
     if (!this.xf) return [X, Y];
+    const m = this.xf.m;
+    if (m) { const u = X / K, v = Y / K; return [(m[0] * u + m[1] * v + m[2]) * K, (m[3] * u + m[4] * v + m[5]) * K]; }
     return [this.fwd(X / K, 0) * K, this.fwd(Y / K, 1) * K];
   }
 
   fill(box: Box, test: Test, mat: Mat, shade: Shade, offset?: Offset) {
     const id = this.group || ++this.seq;
     const f = this.xf;
+    if (f?.m) return this.fillAff(id, f.m, box, test, mat, shade, offset);
     const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
     for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil((y1 + 1) * K)); Y++) {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil((x1 + 1) * K)); X++) {
@@ -378,6 +408,29 @@ export class Canvas {
           if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x + 0.5 - f.ox) / (f.k * f.sx) - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
           else { x = (x + 0.5 - f.tx) / (f.k * f.sx) - 0.5; y = (y + 0.5 - f.ty) / f.k - 0.5; }
         }
+        if (!test(x, y, X, Y)) continue;
+        const i = Y * this.w + X;
+        this.mat[i] = mat;
+        this.shade[i] = shade(x, y);
+        this.off[i] = offset ? offset(X, Y) : 0;
+        this.fixed[i] = -1;
+        this.order[i] = id;
+        this.part[i] = id;
+      }
+    }
+    return id;
+  }
+
+  /** `fill` dentro de um giro: o retângulo vira o que o cerca na tela e cada pixel volta pela transformação inversa. */
+  private fillAff(id: number, m: Aff, box: Box, test: Test, mat: Mat, shade: Shade, offset?: Offset) {
+    const corners = [[box[0], box[1]], [box[2] + 1, box[1]], [box[0], box[3] + 1], [box[2] + 1, box[3] + 1]].map(([u, v]) => [m[0] * u + m[1] * v + m[2], m[3] * u + m[4] * v + m[5]]);
+    const x0 = Math.min(...corners.map((p) => p[0])) - 1, x1 = Math.max(...corners.map((p) => p[0])) + 1;
+    const y0 = Math.min(...corners.map((p) => p[1])) - 1, y1 = Math.max(...corners.map((p) => p[1])) + 1;
+    const det = m[0] * m[4] - m[1] * m[3];
+    for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil(y1 * K)); Y++) {
+      for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil(x1 * K)); X++) {
+        const px = (X + 0.5) / K - m[2], py = (Y + 0.5) / K - m[5];
+        const x = (m[4] * px - m[1] * py) / det - 0.5, y = (-m[3] * px + m[0] * py) / det - 0.5;
         if (!test(x, y, X, Y)) continue;
         const i = Y * this.w + X;
         this.mat[i] = mat;
@@ -1435,7 +1488,90 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
   }
 }
 
-function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: { s: number; b: number }) {
+// --- Movimentos de ação dos heróis: giro da arma, rastro do golpe e brilho da magia ----------------
+
+const deg = (v: Pt) => (Math.atan2(v[1], v[0]) * 180) / Math.PI;
+const RAD = Math.PI / 180;
+
+/** Como a arma é usada no ataque básico: golpe (espada, machado), tiro (arco, besta) ou cajado e varinha. */
+export type HeroGrip = "melee" | "bow" | "staff";
+function gripOf(kit: Kit): HeroGrip {
+  const w = kit.weapon;
+  if (w === "bow" || /^x?bow-/.test(w)) return "bow";
+  if (w === "staff" || w === "branch" || /^(staff|wand)-/.test(w)) return "staff";
+  return "melee";
+}
+
+/** Direção (graus, 0 = para a direita, 90 = para baixo) da arma na pose de sempre, de frente; `out` = lado da mão. */
+function frontAngle(kit: Kit, ha: Pt, out: number, top: number): number {
+  const w = kit.weapon, t = tierOf(w);
+  if (w === "sword") return deg([out * 4, 21]);
+  if (w.startsWith("sword-")) return t === 5 ? deg([out * 3, top - 30 - ha[1]]) : deg([out * 4, SWORD_LEN[t]]);
+  if (w.startsWith("axe-")) return axeTwoHanded(w) ? deg([out * 1.6, top - 20 - (FEET - 0.6)]) : deg([out * 1.2, -AXE_LEN[t] - 3]);
+  if (w.startsWith("wand-")) return deg([out * 4.2, -7.4 - t * 0.4]);
+  return -90;
+}
+
+/** Da mão à ponta da arma, em unidades (o rastro do golpe passa pela ponta). */
+function weaponReach(kit: Kit): number {
+  const w = kit.weapon, t = tierOf(w);
+  if (w === "sword") return 21;
+  if (w.startsWith("sword-")) return t === 5 ? 30 : SWORD_LEN[t];
+  if (w.startsWith("axe-")) return axeTwoHanded(w) ? 26 : AXE_LEN[t] + 2;
+  return 12;
+}
+
+/** Papel do rastro e do brilho do quadro de ação em desenho (sem contorno, por baixo da figura). */
+let fxLayer: Canvas | null = null;
+
+/**
+ * Rastro do golpe (smear): meia-lua clara da ponta da arma no preparo (`from`) até onde ela está agora (`to`), curvada
+ * para fora do corpo (`body` = meio do tronco), fina no começo e grossa na ponta, como o borrão de movimento da pixel art.
+ */
+function slashTrail(kit: Kit, from: Pt, to: Pt, body: Pt) {
+  if (!fxLayer) return;
+  const mid: Pt = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+  const chord = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  if (chord < 4) return;
+  // Normal da corda virada para o corpo: o centro do arco fica desse lado e a meia-lua estufa para fora.
+  let nx = -(to[1] - from[1]) / chord, ny = (to[0] - from[0]) / chord;
+  if (nx * (body[0] - mid[0]) + ny * (body[1] - mid[1]) < 0) { nx = -nx; ny = -ny; }
+  const pivot: Pt = [mid[0] + nx * chord * 0.45, mid[1] + ny * chord * 0.45];
+  const r = Math.hypot(from[0] - pivot[0], from[1] - pivot[1]);
+  const norm = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+  const a0 = Math.atan2(from[1] - pivot[1], from[0] - pivot[0]);
+  const sweep = norm(Math.atan2(to[1] - pivot[1], to[0] - pivot[0]) - a0);
+  const mat = kit.weapon.endsWith("-magic") ? Mat.Arcane : Mat.White;
+  const along = (x: number, y: number) => norm(Math.atan2(y + 0.5 - pivot[1], x + 0.5 - pivot[0]) - a0) / sweep;
+  const depth = (x: number, y: number) => r + 0.6 - Math.hypot(x + 0.5 - pivot[0], y + 0.5 - pivot[1]);
+  fxLayer.fill([pivot[0] - r - 2, pivot[1] - r - 2, pivot[0] + r + 2, pivot[1] + r + 2], (x, y) => {
+    const e = along(x, y), d = depth(x, y);
+    return e >= 0.08 && e <= 1 && d >= 0 && d <= 0.8 + 6.5 * e ** 1.3;
+  }, mat, (x, y) => {
+    const e = along(x, y), d = depth(x, y);
+    // Mais claro na borda de fora e perto da arma; a cauda e a borda de dentro somem no escuro.
+    return Math.min(1, 0.15 + 0.6 * e + 0.35 * Math.max(0, 1 - d / 3));
+  });
+}
+
+/** Faíscas da magia em volta de um ponto (as mãos e a ponta do cajado no auge da conjuração). */
+function sparks(at: Pt, k: number) {
+  const fx = fxLayer;
+  if (!fx) return;
+  const glint = (x: number, y: number, arm: number) => {
+    const X = F(x), Y = F(y);
+    fx.px(X, Y, Mat.White, 5);
+    for (let d = 1; d <= arm; d++) {
+      const t = d === arm ? 3 : 4;
+      fx.px(X + d, Y, Mat.Arcane, t); fx.px(X - d, Y, Mat.Arcane, t); fx.px(X, Y + d, Mat.Arcane, t); fx.px(X, Y - d, Mat.Arcane, t);
+    }
+    fx.px(X + 1, Y + 1, Mat.Arcane, 2); fx.px(X - 1, Y - 1, Mat.Arcane, 2); fx.px(X + 1, Y - 1, Mat.Arcane, 2); fx.px(X - 1, Y + 1, Mat.Arcane, 2);
+  };
+  const pts: [number, number, number][] = [[0, -5, 4], [-4.5, -1.5, 2], [4.4, -2.8, 3], [-2.2, 3.4, 2], [3, 3, 1]];
+  for (const [dx, dy, arm] of pts) glint(at[0] + dx * k, at[1] + dy * k, Math.max(1, Math.round(arm * k)));
+}
+
+function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: MonsterPose) {
   const s = mp ? mp.s : SWING[frame], b = mp ? mp.b : BOB[frame];
   const tall = kit.build?.legs ?? 0, reach = kit.build?.arms ?? 0;
   const hipY = 66 - tall + b;
@@ -1467,13 +1603,28 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: { s: numb
   for (const side of [-1, 1]) {
     const w = kit.chest ?? 1;
     const sh: Pt = [CX + side * 12.5 * w, top + 3];
-    const el: Pt = [CX + side * (14 * w + (1 - w) * 2), top + 10 + reach / 2 + armY(side) * 0.5];
-    const ha: Pt = [CX + side * (13.5 * w + (1 - w) * 2.6), top + 18 + reach + armY(side)];
     const holds = (side < 0) === !back;
-    arm(c, kit, sh, el, ha, false, holds ? weaponFront(c, kit, ha, side, top) : undefined);
+    // Movimento de ação: a pose dá a mão e o cotovelo (a partir de [CX, top]) de cada braço.
+    const handAt = holds ? mp?.hand : mp?.back, elbowAt = holds ? mp?.elbow : mp?.backElbow;
+    const rest: Pt = [CX + side * (13.5 * w + (1 - w) * 2.6), top + 18 + reach + armY(side)];
+    const el: Pt = elbowAt ? [CX + elbowAt[0], top + elbowAt[1]] : [CX + side * (14 * w + (1 - w) * 2), top + 10 + reach / 2 + armY(side) * 0.5];
+    const ha: Pt = handAt ? [CX + handAt[0], top + handAt[1]] : rest;
+    // A arma gira em volta da mão até a direção da pose (arco e besta não giram: a pose move as mãos); o cajado sobe
+    // e desce com a mão.
+    const grip = gripOf(kit);
+    const spin = holds && mp?.point !== undefined && grip !== "bow" ? (mp.point - frontAngle(kit, ha, side, top)) * RAD : 0;
+    const lift = holds && grip === "staff" && !kit.weapon.startsWith("wand-") ? Math.max(-8, Math.min(3, ha[1] - rest[1])) : 0;
+    const wield = (draw: () => void) => c.rotated(ha, spin, () => (lift ? c.placed(1, [0, lift], draw) : draw()));
+    const held = holds ? weaponFront(c, kit, ha, side, top) : undefined;
+    arm(c, kit, sh, el, ha, false, held && (() => wield(held)));
     if (!holds && kit.shield) shieldArt(c, kit.shield, ha, back ? "up" : "down", side);
-    if (holds && kit.weapon === "sword") sword(c, ha, [ha[0] + side * 4, ha[1] + 21]);
+    if (holds && kit.weapon === "sword") wield(() => sword(c, ha, [ha[0] + side * 4, ha[1] + 21]));
     if (holds && kit.weapon === "sword-4-magic") dancingSword(c, [ha[0] + side * 6, ha[1] - 10], [ha[0] + side * 8.4, ha[1] + 12]);
+    if (holds && mp?.smear && mp.point !== undefined) {
+      const len = weaponReach(kit);
+      slashTrail(kit, [CX + mp.smear[0], top + mp.smear[1]], [ha[0] + Math.cos(mp.point * RAD) * len, ha[1] + Math.sin(mp.point * RAD) * len], [CX, top + 10]);
+    }
+    if (mp?.spark) sparks(holds && grip === "staff" && lift ? [ha[0], top - 19 + lift] : ha, 1);
   }
   if (kit.armor) armorShoulders(c, kit.armor, top, back ? "up" : "down", [[CX - 12.8, top + 2], [CX + 12.8, top + 2]]);
   if (back) headBack(c, kit, b, top);
@@ -1518,7 +1669,13 @@ function side(c: Canvas, kit: Kit, frame: number, mp?: MonsterPose) {
  * (em unidades a partir do ombro: `[CX, top]`) e a direção para onde a arma aponta, em graus (0 = para a direita,
  * 90 = para baixo), ou só quanto ela gira a partir da pose de sempre (`tilt`).
  */
-export interface MonsterPose { s: number; b: number; lean?: number; hand?: Pt; elbow?: Pt; back?: Pt; backElbow?: Pt; point?: number; tilt?: number }
+export interface MonsterPose {
+  s: number; b: number; lean?: number; hand?: Pt; elbow?: Pt; back?: Pt; backElbow?: Pt; point?: number; tilt?: number;
+  /** Heróis: rastro do golpe, de onde a ponta da arma estava no preparo (a partir de [CX, top]) até onde ela está. */
+  smear?: Pt;
+  /** Heróis: faíscas da magia nas mãos (no cajado, na ponta). */
+  spark?: boolean;
+}
 
 /** Direção (graus) para onde a arma aponta na pose de sempre, para girar até a da pose. */
 function weaponAngle(kit: Kit, ha: Pt, top: number): number {
@@ -1527,6 +1684,8 @@ function weaponAngle(kit: Kit, ha: Pt, top: number): number {
   if (w === "branch") return deg([0, top + 2 - FEET]);
   if (w.startsWith("axe-")) return axeTwoHanded(w) ? deg([-10, top - 18 - FEET + 1]) : deg([-6.6, -AXE_LEN[tierOf(w)] - 3]);
   if (w.startsWith("sword-")) return tierOf(w) === 5 ? deg([-22, top - 22 - ha[1]]) : deg([-0.74, 0.68]);
+  if (w.startsWith("wand-")) return deg([-7.4 - tierOf(w) * 0.3, -4.4]);
+  if (w === "staff" || w.startsWith("staff-")) return -90;
   return 0;
 }
 
@@ -1548,11 +1707,18 @@ function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: 
   const a = (mp?.point === undefined ? mp?.tilt ?? 0 : mp.point - weaponAngle(kit, ha, top)) * Math.PI / 180;
   const ca = Math.cos(a), sa = Math.sin(a);
   const turn = (p: Pt): Pt => (a ? [ha[0] + (p[0] - ha[0]) * ca - (p[1] - ha[1]) * sa, ha[1] + (p[0] - ha[0]) * sa + (p[1] - ha[1]) * ca] : p);
+  // Heróis: cajado, varinha e a espada do kit giram em volta da mão (os monstros seguem como sempre); o cajado sobe e
+  // desce com a mão.
+  const hero = !!kit.build && mp !== undefined;
+  const style = gripOf(kit);
+  const spin = hero && style === "staff" && kit.weapon !== "branch" ? a : 0;
+  const lift = hero && style === "staff" && !kit.weapon.startsWith("wand-") ? Math.max(-8, Math.min(3, ha[1] - (top + 18 + reach))) : 0;
+  const wield = (draw: () => void) => () => c.rotated(ha, spin, () => (lift ? c.placed(1, [0, lift], draw) : draw()));
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
-    : kit.weapon === "staff" ? () => staff(c, ha, top - 19, FEET - 0.5)
-    : kit.weapon === "branch" ? () => branch(c, ha, top + 2, FEET - 1, a)
-    : kit.weapon.startsWith("wand-") ? () => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4]))
-    : kit.weapon.startsWith("staff-") ? () => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5)
+    : kit.weapon === "staff" ? wield(() => staff(c, ha, top - 19, FEET - 0.5))
+    : kit.weapon === "branch" ? () => (lift ? c.placed(1, [0, lift], () => branch(c, ha, top + 2, FEET - 1, a)) : branch(c, ha, top + 2, FEET - 1, a))
+    : kit.weapon.startsWith("wand-") ? wield(() => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4])))
+    : kit.weapon.startsWith("staff-") ? wield(() => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5))
     : kit.weapon.startsWith("bow-") ? () => bowArt(c, kit.weapon, ha, -1)
     : kit.weapon.startsWith("xbow-") ? () => crossbowArt(c, kit.weapon, ha, [-0.97, 0.24], true)
     : kit.weapon.startsWith("axe-") ? () => (axeTwoHanded(kit.weapon)
@@ -1565,8 +1731,16 @@ function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: 
     : undefined;
   arm(c, kit, [CX - 1, top + 3], at(mp?.elbow, [CX - 2 - s * 1.5, top + 10 + reach / 2]), ha, false, grip);
   if (kit.armor) armorShoulders(c, kit.armor, top, "side", [[CX - 0.6, top + 2]]);
-  if (kit.weapon === "sword") sword(c, ha, [ha[0] - 16, ha[1] + 15]);
+  if (kit.weapon === "sword") c.rotated(ha, hero && mp?.point !== undefined ? (mp.point - deg([-16, 15])) * RAD : 0, () => sword(c, ha, [ha[0] - 16, ha[1] + 15]));
   if (kit.weapon === "sword-4-magic") dancingSword(c, [ha[0] - 7, ha[1] - 9], [ha[0] - 19, ha[1] + 4]);
+  if (hero && mp?.smear && mp.point !== undefined) {
+    const len = weaponReach(kit);
+    slashTrail(kit, [CX + mp.smear[0], top + mp.smear[1]], [ha[0] + Math.cos(mp.point * RAD) * len, ha[1] + Math.sin(mp.point * RAD) * len], [CX + 2, top + 10]);
+  }
+  if (hero && mp?.spark) {
+    sparks(style === "staff" && lift ? [ha[0], top - 19 + lift] : ha, 1);
+    if (mp.back) sparks([CX + mp.back[0], top + mp.back[1]], 0.8);
+  }
   headSide(c, kit, b, top);
 }
 
@@ -5689,4 +5863,110 @@ function protoFrameData(dir: ProtoDir, frame: number, kit: Kit, colors: ProtoLoo
   if (kit.build) c.slimmed(CX + 0.5, kit.build.slim, draw);
   else draw();
   return c.render(colors);
+}
+
+// --- Movimentos de ação (golpe, tiro, cajado e magia) ---------------------------------------
+
+/** Clipes de ação do herói: o ataque básico (`MSG.attack`) e a magia (`MSG.spell`). */
+export type HeroAction = "attack" | "cast";
+export const HERO_ACTIONS: HeroAction[] = ["attack", "cast"];
+/** Quadros de cada clipe: preparo, golpe (ou auge) e fim; depois o herói volta a ficar parado. */
+export const HERO_ACTION_FRAMES = 3;
+
+/**
+ * Poses dos clipes, de frente (arma na mão da esquerda da tela) e de lado (olhando para a esquerda). Mãos e cotovelos
+ * a partir de [CX, top]; `point` = para onde a arma aponta (graus, 0 = direita, 90 = baixo). De costas, a pose de
+ * frente espelhada. O rastro do golpe sai sozinho do preparo (`smear`).
+ */
+const ACTION_POSES: Record<HeroGrip | "cast", { down: MonsterPose[]; side: MonsterPose[] }> = {
+  melee: {
+    down: [
+      { s: 0, b: -0.6, hand: [-12, -4], elbow: [-16, 2], back: [12.5, 15], backElbow: [14.5, 9], point: -125 },
+      { s: 1, b: 0.8, hand: [-2, 14], elbow: [-10, 10], back: [13, 12], backElbow: [15, 7], point: 35, smear: [0, 0] },
+      { s: 0.6, b: 0.5, hand: [4, 18], elbow: [-5, 12], back: [13.5, 17], backElbow: [14.5, 10], point: 70 },
+    ],
+    side: [
+      { s: 0.3, b: -0.6, lean: -1.4, hand: [4, -4], elbow: [5, 3], back: [-5, 13], backElbow: [-1, 10], point: -70 },
+      { s: 1, b: 0.8, lean: 2.6, hand: [-14, 8], elbow: [-8, 7], back: [8, 13], backElbow: [5, 10], point: 185, smear: [0, 0] },
+      { s: 1, b: 1, lean: 2, hand: [-11, 17], elbow: [-6, 11], back: [7, 15], backElbow: [4, 11], point: 115 },
+    ],
+  },
+  bow: {
+    down: [
+      { s: 0, b: 0, hand: [-7, 9], elbow: [-13, 6], back: [2, 8], backElbow: [10, 7] },
+      { s: 0, b: 0.3, hand: [-7.5, 8.5], elbow: [-13, 6], back: [7, 5], backElbow: [13, 4] },
+      { s: 0.4, b: 0, hand: [-8, 10], elbow: [-13.5, 7], back: [14, 3], backElbow: [15, 7] },
+    ],
+    side: [
+      { s: 0.6, b: 0.5, lean: -0.6, hand: [-13, 7], elbow: [-7, 5], back: [3, 6], backElbow: [6, 6] },
+      { s: 0.6, b: 0.5, lean: -0.3, hand: [-13, 7], elbow: [-7, 5], back: [7, 4], backElbow: [6, 7] },
+      { s: 0.5, b: 0.2, lean: 0.4, hand: [-12, 8], elbow: [-7, 6], back: [11, 7], backElbow: [7, 8] },
+    ],
+  },
+  staff: {
+    down: [
+      { s: 0, b: -0.5, hand: [-12, 6], elbow: [-16, 5], point: -90 },
+      { s: 0.8, b: 0.6, hand: [-9, 13], elbow: [-14, 10], point: -72, spark: true },
+      { s: 0.3, b: 0.3, hand: [-12, 17], elbow: [-14.5, 10], point: -86 },
+    ],
+    side: [
+      { s: 0.2, b: -0.4, lean: -0.8, hand: [-2, 9], elbow: [1, 7], point: -108 },
+      { s: 0.8, b: 0.6, lean: 1.6, hand: [-12, 9], elbow: [-7, 7], point: -55, spark: true },
+      { s: 0.5, b: 0.4, lean: 0.6, hand: [-9, 14], elbow: [-5, 10], point: -76 },
+    ],
+  },
+  cast: {
+    down: [
+      { s: 0, b: -0.3, hand: [-14, 7], elbow: [-16, 5], back: [14, 7], backElbow: [16, 5], point: -100 },
+      { s: 0, b: -1.4, hand: [-14, -9], elbow: [-17, -1], back: [14, -9], backElbow: [17, -1], point: -95, spark: true },
+      { s: 0, b: 0.6, hand: [-8, 11], elbow: [-13, 8], back: [8, 11], backElbow: [13, 8], point: -75 },
+    ],
+    side: [
+      { s: 0.35, b: -0.3, lean: -0.3, hand: [-6, 6], elbow: [-4, 6], back: [2, 6], backElbow: [4, 6], point: -95 },
+      { s: 0.35, b: -1.2, lean: -0.6, hand: [-7, -6], elbow: [-6, 3], back: [1, -7], backElbow: [4, 2], point: -100, spark: true },
+      { s: 0.6, b: 0.4, lean: 1.2, hand: [-13, 9], elbow: [-7, 7], back: [-9, 10], backElbow: [-3, 8], point: -45 },
+    ],
+  },
+};
+
+/** De costas: a pose de frente espelhada (a arma vai na mão da direita da tela). */
+const mirrorPose = (p: MonsterPose): MonsterPose => {
+  const m = (q?: Pt): Pt | undefined => q && [-q[0], q[1]];
+  return { ...p, hand: m(p.hand), elbow: m(p.elbow), back: m(p.back), backElbow: m(p.backElbow), point: p.point === undefined ? undefined : 180 - p.point };
+};
+
+/** Pose de um quadro de ação, com o começo do rastro (onde a ponta estava no preparo, em volta do ombro). */
+function heroActionPose(kit: Kit, action: HeroAction, k: number, dir: ProtoDir): MonsterPose {
+  const set = ACTION_POSES[action === "cast" ? "cast" : gripOf(kit)];
+  const poses = dir === "side" ? set.side : set.down;
+  const pose = (i: number) => (dir === "up" ? mirrorPose(poses[i]) : poses[i]);
+  const p = pose(k);
+  if (!p.smear || p.point === undefined) return p;
+  const prep = pose(0);
+  const len = weaponReach(kit);
+  return { ...p, smear: [prep.hand![0] + Math.cos(prep.point! * RAD) * len, prep.hand![1] + Math.sin(prep.point! * RAD) * len] };
+}
+
+/**
+ * Um quadro de ação do herói (192 px, de lado olhando para a esquerda): a figura por cima do rastro do golpe e das
+ * faíscas da magia, que ficam sem contorno e um pouco transparentes.
+ */
+export function protoActionData(dir: ProtoDir, action: HeroAction, k: number, cls: ProtoClass = "knight", gear: ProtoGear = {}, look?: Partial<ProtoLook>): Uint8ClampedArray {
+  const kit = protoKit(cls, gear);
+  const colors = { ...kit.look, ...look };
+  const mp = heroActionPose(kit, action, k, dir);
+  const c = new Canvas(), fx = new Canvas();
+  const draw = () => (dir === "side" ? side(c, kit, 0, mp) : front(c, kit, 0, dir === "up", mp));
+  fxLayer = fx;
+  try {
+    const slim = kit.build?.slim ?? 1;
+    fx.slimmed(CX + 0.5, slim, () => c.slimmed(CX + 0.5, slim, draw));
+  } finally { fxLayer = null; }
+  const body = c.render(colors);
+  const glow = fx.render(colors, false);
+  for (let i = 0; i < body.length; i += 4) {
+    if (body[i + 3]) continue;
+    if (glow[i + 3]) { body.set(glow.subarray(i, i + 3), i); body[i + 3] = 215; }
+  }
+  return body;
 }

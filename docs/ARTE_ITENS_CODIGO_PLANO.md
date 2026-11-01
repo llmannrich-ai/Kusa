@@ -20,6 +20,26 @@ A largura vem de `Canvas.slimmed`: as formas são amostradas já estreitas, ent�
 reamostrar a imagem). Comparação: `docs/arte/herois-proporcao.png` (em cima antes, embaixo agora). Prévia:
 `npx tsx apps/client/scripts/heroiPrevia.ts /tmp/herois.png 2 [andar]`.
 
+## 0.1 Feito: movimentos de ação dos heróis
+
+O herói não dá mais só o tranco: o ataque básico (`MSG.attack`) e a magia (`MSG.spell`) tocam um clipe de 3 quadros
+(preparo, golpe ou auge, fim) na direção para onde ele virou, de frente, de lado e de costas.
+
+| Clipe | Arma | Movimento |
+|---|---|---|
+| Golpe | espada, machado | ergue a arma por cima do ombro, desce cortando com **rastro em meia-lua** (branco; ciano no item mágico) e termina embaixo, com um passo à frente |
+| Tiro | arco, besta | levanta o arco, puxa a corda e solta (a mão de trás pula para trás) |
+| Cajado | cajado, varinha, galho | ergue, estoca com **faíscas** na ponta e volta |
+| Magia | todas | os dois braços sobem em V, o corpo sobe na ponta dos pés com faíscas nas mãos e solta para a frente |
+
+- Arte (`proto/tibiaHero.ts`): `Canvas.rotated` gira a arma em volta da mão sem perder o pixel; `ACTION_POSES` tem as
+  poses; `protoActionData` desenha o quadro com o rastro e as faíscas por baixo da figura, sem contorno.
+- Jogo (`art/textures.ts`, `heroActionArt`): os 18 quadros por roupa (2 clipes × 3 direções × 3) são desenhados um a
+  cada 30 ms quando o herói aparece ou troca de roupa (≈ 20 ms cada no PC), para não travar a hunt; até ficarem
+  prontos, o golpe é só o tranco. Memória: ≈ 2,4 MB por herói vestido. Tempos: golpe 270 ms, magia 390 ms.
+- Ver: `npx tsx apps/client/scripts/heroiPrevia.ts /tmp/acao.png 2 acao` (PNG) ou, no navegador,
+  `/mapa.html?mapa=crypt&herois=knight,paladin,sorcerer,druid&lento=4`.
+
 ## 1. Diagnóstico do código atual
 
 Os 120 itens (6 slots × 2 famílias × 5 níveis × comum/mágico) já têm desenho próprio, mas:
