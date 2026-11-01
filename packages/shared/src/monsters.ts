@@ -284,7 +284,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
   dragon: monster({
     kind: "dragon", name: "Dragão jovem", rank: "boss", type: "dragon", role: "brute", cr: 6,
-    hp: 900, damage: 24, xp: 700, loot: [60, 100], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
+    hp: 1332, damage: 36, xp: 1036, loot: [89, 148], speed: 2.4, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "fire",
     elements: { fire: 0 },
     // Multiataque: 3 × 0,3 (era 0,4: só as mordidas matavam um feiticeiro solo nível 8 em ~6 s).
     traits: { multiattack: { hits: 3, power: 0.3 } },
@@ -554,7 +554,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
   bullywugKing: monster({
     kind: "bullywugKing", name: "Rei Bullywug", rank: "boss", type: "humanoid", role: "skirmisher", cr: 7,
-    hp: 1100, damage: 14, xp: 1100, loot: [120, 180], speed: 2.6, aggroRange: 8, attackRange: 2, attackCooldownMs: 1400, attackFx: "slash",
+    hp: 2024, damage: 26, xp: 2024, loot: [221, 331], speed: 2.6, aggroRange: 8, attackRange: 2, attackCooldownMs: 1400, attackFx: "slash",
     traits: { frenzy: { belowHp: 0.3, haste: 0.35 } },
     abilities: [
       {
@@ -646,7 +646,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   // dele; o Observador (leste) é o muito difícil, acima da Hidra. A profundidade de cada covil está em `MAPS.cavern.lairs`.
   basilisk: monster({
     kind: "basilisk", name: "Basilisco", rank: "boss", type: "monstrosity", role: "brute", cr: 6,
-    hp: 840, damage: 20, xp: 800, loot: [70, 110], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
+    hp: 1344, damage: 32, xp: 1280, loot: [112, 176], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1500, attackFx: "bite",
     // Escamas de pedra: corte resvala um pouco; o veneno é dele.
     elements: { physical: 0.85, nature: 0.5 },
     traits: { onHit: { chance: 0.4, dot: { kind: "poison", power: 0.25, durationMs: 4000 } } },
@@ -668,7 +668,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
   beholder: monster({
     kind: "beholder", name: "Observador das Profundezas", rank: "boss", type: "aberration", role: "controller", cr: 9,
-    hp: 1450, damage: 18, xp: 1600, loot: [150, 230], speed: 1.8, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
+    hp: 2842, damage: 35, xp: 3136, loot: [294, 451], speed: 1.8, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
     // Flutua longe de quem chega perto e atira com os olhos menores.
     elements: { dark: 0.5, radiant: 1.25 },
     traits: { keepDistance: 2 },
@@ -694,7 +694,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
   sandWorm: monster({
     kind: "sandWorm", name: "Verme da Areia", rank: "boss", type: "monstrosity", role: "lurker", cr: 6,
-    hp: 780, damage: 22, xp: 700, loot: [60, 100], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
+    hp: 1342, damage: 38, xp: 1204, loot: [103, 172], speed: 2.2, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
     // Couro grosso de areia: o frio da caverna o deixa lento de reagir (vulnerável a gelo); resiste ao calor.
     elements: { ice: 1.3, fire: 0.75 },
     abilities: [
@@ -845,7 +845,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   // Bosses: o Colosso Cantante (Dunas) e o Faraó Eterno (Mesas). Mais fortes que o Observador, o das Mesas o mais forte.
   singingColossus: monster({
     kind: "singingColossus", name: "Colosso Cantante", rank: "boss", type: "elemental", role: "brute", cr: 10,
-    hp: 1800, damage: 23, xp: 2000, loot: [180, 260], speed: 1.9, aggroRange: 9, attackRange: 2, attackCooldownMs: 1600, attackFx: "smash",
+    hp: 3312, damage: 42, xp: 3680, loot: [331, 478], speed: 1.9, aggroRange: 9, attackRange: 2, attackCooldownMs: 1600, attackFx: "smash",
     // Areia e osso: corte passa por ela, o veneno não pega e o gelo a endurece.
     elements: { physical: 0.8, ice: 1.3, nature: 0.5 },
     abilities: [
@@ -874,7 +874,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
   eternalPharaoh: monster({
     kind: "eternalPharaoh", name: "Faraó Eterno", rank: "boss", type: "undead", role: "artillery", cr: 11,
-    hp: 2300, damage: 24, xp: 2600, loot: [220, 320], speed: 2, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
+    hp: 4232, damage: 44, xp: 4784, loot: [405, 589], speed: 2, aggroRange: 9, attackRange: 3, attackCooldownMs: 1400, attackFx: "energy",
     elements: { fire: 1.25, dark: 0.5, radiant: 1.25 },
     traits: { keepDistance: 2 },
     abilities: [
@@ -994,7 +994,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   }),
   ogreKing: monster({
     kind: "ogreKing", name: "Grumak, o Rei-Ogro", rank: "boss", type: "giant", role: "brute", cr: 6,
-    hp: 430, damage: 10, xp: 340, loot: [30, 50], speed: 2.4, aggroRange: 7, attackRange: 2, attackCooldownMs: 1700, attackFx: "smash",
+    hp: 894, damage: 21, xp: 707, loot: [62, 104], speed: 2.4, aggroRange: 7, attackRange: 2, attackCooldownMs: 1700, attackFx: "smash",
     traits: { frenzy: { belowHp: 0.3, haste: 0.35 } },
     abilities: [
       {
@@ -1116,8 +1116,11 @@ export function abilityTiles(dungeon: Dungeon, ability: MonsterAbility, x: numbe
   return tiles;
 }
 
-/** Ganho de HP, dano, XP e loot por sala de profundidade (+12% por sala). */
-export const DEPTH_SCALING = 0.12;
+/**
+ * Gold a mais do baú por sala de profundidade (+12% por sala). Só os baús (e o Mímico, que guarda o baú) pagam mais
+ * no fundo: os monstros não ficam mais fortes com a profundidade (ver `monsterStats` e `CROWD_PER_DEPTH`).
+ */
+export const CHEST_DEPTH_SCALING = 0.12;
 
 /** Bônus de loot do baú das salas laterais (liberado ao matar o mini-boss). */
 export const CHEST_LOOT: [number, number] = [30, 55];
@@ -1138,18 +1141,21 @@ export interface MonsterStats {
   loot: [number, number];
 }
 
-/** Atributos de um monstro numa profundidade (0 = primeira sala depois da entrada). */
-export function monsterStats(kind: MonsterKind, depth: number): MonsterStats {
+/**
+ * Atributos de um monstro. São sempre os mesmos durante a partida, em qualquer sala: a dificuldade cresce para o fundo
+ * do mapa com espécies mais fortes e mais monstros por sala (`CROWD_PER_DEPTH`), nunca com o mesmo monstro mais forte.
+ * `power` é o multiplicador fixo do mapa para mini-bosses e o Mímico (`MapDef.minibossPower`); o resto usa 1.
+ */
+export function monsterStats(kind: MonsterKind, power = 1): MonsterStats {
   const m = MONSTERS[kind];
-  const k = 1 + DEPTH_SCALING * Math.max(0, depth);
   const common = m.rank === "common";
   const hit = common ? 1 + COMMON_DAMAGE_BONUS : 1;
   const life = common ? 1 + COMMON_HP_BONUS : 1;
   return {
-    maxHp: Math.round(m.hp * k * life),
-    damage: Math.round(m.damage * k * hit),
-    xp: Math.round(m.xp * k),
-    loot: [Math.round(m.loot[0] * k), Math.round(m.loot[1] * k)],
+    maxHp: Math.round(m.hp * power * life),
+    damage: Math.round(m.damage * power * hit),
+    xp: Math.round(m.xp * power),
+    loot: [Math.round(m.loot[0] * power), Math.round(m.loot[1] * power)],
   };
 }
 
