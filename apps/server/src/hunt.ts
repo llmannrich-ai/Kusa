@@ -788,7 +788,7 @@ export class Hunt {
 
   private addMonster(kind: MonsterKind, x: number, y: number, depth: number) {
     const def = MONSTERS[kind];
-    // Força fixa: o comum e o boss são os mesmos em qualquer sala; o mini-boss usa o multiplicador do mapa.
+    // Força fixa: o monstro é o mesmo em qualquer sala, com o multiplicador do mapa para a categoria dele.
     const stats = monsterStats(kind, monsterPower(this.map, kind));
     // Corte geral do loot (`LOOT_SCALE`) e o do mapa que paga menos por monstro (muitos monstros), que deixa o boss de fora.
     stats.loot = this.scaleLoot(stats.loot[0], stats.loot[1], def.rank === "boss");
