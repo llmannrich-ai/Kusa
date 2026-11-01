@@ -272,6 +272,7 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["sunbeam", 1, 2, "hp", 1], ["holy_hammer", 1, 4, "sunbeam", 1, "blessed_ward"],
     ["net_arrow", 2, 2, "arrow_rain", -1], ["fire_arrows", 2, 4, "speed", 1],
     ["sky_arrow", 1, 0, "holy_arrow", 1],
+    ["doomsday_shot", 0, 6, "deadly_shot", 2], ["solar_crown", 1, 6, "divine_judgment", 2],
     ["endless_rain", 2, 6, "explosive_volley", 2],
     ["arrow_fan", 0, 3, "piercing_shot", 1], ["holy_flash", 1, 3, "healing_light", -1], ["caltrops", 2, 3, "mana", 1],
   ],

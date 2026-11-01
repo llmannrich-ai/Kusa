@@ -240,6 +240,8 @@ interface Seat {
    */
   /** Carga da Legião: aura que anda com o herói até `until`; a cada `nextAt` renova o bônus de quem está perto. */
   auraFx: { def: NonNullable<SpellDef["aura"]>; until: number; nextAt: number } | null;
+  /** Coroa Solar: o anel em volta do herói, a magia no nível de quem conjura, o dano de cada pulso e até quando. */
+  orbitFx: { spell: SpellDef; rank: number; slot: SpellSlot; amount: number; until: number; nextAt: number } | null;
   channel: {
     spell: SpellDef; def: NonNullable<SpellDef["channel"]>; rank: number; slot: SpellSlot; amount: number; until: number; nextAt: number;
     dx: number; dy: number; streak: Record<string, number>;
@@ -625,7 +627,7 @@ export class Hunt {
     this.seats.set(sessionId, {
       nextMoveAt: 0, heading: null, nextAttackAt: 0, portalSince: null, attacking: false, attackUntil: 0, basicAim: null, targetLocked: false,
       spellReadyAt: [0, 0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
-      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, auraFx: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
+      traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, auraFx: null, orbitFx: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0,
@@ -1129,6 +1131,7 @@ export class Hunt {
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.channelTick(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.auraTick(sessionId, p, now));
+    this.state.players.forEach((p, sessionId) => this.orbitTick(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
     this.tickFields(now);
@@ -1611,6 +1614,11 @@ export class Hunt {
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
     seat.spellReadyAt[slot] = echo ? now : now + spellCooldownMs(spell.cooldownMs, seat.perkBonus);
     if (echo) this.notice(p.x, p.y - 1, "Eco!", 0xd6a2ff);
+    // Magia com atraso que pede para ficar parado (Tiro do Fim do Mundo): o herói firma os pés já na carga, não no tiro.
+    if (spell.delayMs && spell.selfBuff) {
+      this.applySelfBuff(p, seat, spell, now);
+      spell = { ...spell, selfBuff: undefined };
+    }
     // Projéteis em leque (Leque de Flechas, Leque de Raios, Rajada de Espinhos): cada tiro voa na sua direção e pode errar.
     if (spell.spread) return this.castSpread(sessionId, p, seat, spell, base.id, slot, ox, oy, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, !!aim);
     // Canalizar (Sopro Gélido): o leque se repete a cada pulso, na direção que o jogador arrastar, até soltar ou acabar.
@@ -2068,21 +2076,17 @@ export class Hunt {
       p.guarded = true;
     }
 
+    // Coroa Solar: o anel começa agora e gira em volta do herói (`orbitTick`).
+    if (spell.orbit && p.status === "playing") {
+      seat.orbitFx = { spell: { ...spell, orbit: undefined }, rank, slot, amount, until: now + spell.orbit.ms, nextAt: now };
+      this.orbitTick(sessionId, p, now);
+    }
     // Carga da Legião: a aura começa agora e anda com o herói (`auraTick`).
     if (spell.aura && p.status === "playing") {
       seat.auraFx = { def: spell.aura, until: now + spell.aura.ms, nextAt: now };
       this.auraTick(sessionId, p, now);
     }
-    if (spell.selfBuff && p.status === "playing") {
-      const b = spell.selfBuff;
-      seat.buff = {
-        until: now + b.ms, basicDamage: b.basicDamage ?? 0, attackRange: b.attackRange ?? 0,
-        moveSpeed: b.moveSpeed ?? 0, attackHaste: b.attackHaste ?? 0,
-        damageTaken: b.damageTaken ?? 0, rooted: b.rooted ?? false, slowAttackers: b.slowAttackers ?? null,
-      };
-      p.buff = spell.id;
-      seat.stats.buffMs += b.ms;
-    }
+    if (spell.selfBuff && p.status === "playing") this.applySelfBuff(p, seat, spell, now);
 
     if (spell.armor && p.status === "playing") {
       // Mira em aliado (Pele de Casca): a armadura vai para ele.
@@ -2146,6 +2150,40 @@ export class Hunt {
     if (now < a.nextAt) return;
     a.nextAt = now + AURA_PULSE_MS;
     this.rally(sessionId, p, seat, { radius: a.def.radius, ms: AURA_PULSE_MS + 150, haste: a.def.haste, damage: a.def.damage }, now);
+  }
+
+  /** Bônus em si de uma magia (Postura do Atirador, Fúria Berserker, Fortaleza Viva, a carga do Tiro do Fim do Mundo). */
+  private applySelfBuff(p: Player, seat: Seat, spell: SpellDef, now: number) {
+    const b = spell.selfBuff!;
+    seat.buff = {
+      until: now + b.ms, basicDamage: b.basicDamage ?? 0, attackRange: b.attackRange ?? 0,
+      moveSpeed: b.moveSpeed ?? 0, attackHaste: b.attackHaste ?? 0,
+      damageTaken: b.damageTaken ?? 0, rooted: b.rooted ?? false, slowAttackers: b.slowAttackers ?? null,
+    };
+    p.buff = spell.id;
+    seat.stats.buffMs += b.ms;
+  }
+
+  /** Coroa Solar: a cada pulso, o anel acerta quem está na faixa dele em volta do herói (onde ele estiver agora). */
+  private orbitTick(sessionId: string, p: Player, now: number) {
+    const seat = this.seats.get(sessionId);
+    const o = seat?.orbitFx;
+    const def = o && SPELLS[o.spell.id].orbit;
+    if (!seat || !o || !def) return;
+    if (p.status !== "playing" || now >= o.until) {
+      seat.orbitFx = null;
+      return;
+    }
+    if (now < o.nextAt) return;
+    o.nextAt = now + def.tickMs;
+    const ring = [...this.state.monsters.values()].filter((m) => {
+      const d = tileDistance(p.x, p.y, m.x, m.y);
+      return d > def.radius - def.width && d <= def.radius && hasLineOfSight(this.dungeon, p.x, p.y, m.x, m.y);
+    });
+    this.host.broadcast(MSG.spell, { from: sessionId, spellId: o.spell.id, x: p.x, y: p.y, tx: p.x, ty: p.y, ms: 0, echo: true } satisfies SpellMessage);
+    if (ring.length === 0) return;
+    // O pulso usa o caminho normal da magia, nos tiles de quem está no anel (cada um uma vez).
+    this.applySpell(sessionId, o.spell, o.rank, undefined, p.x, p.y, o.amount, ring.map((m) => ({ x: m.x, y: m.y })), o.slot);
   }
 
   /** Buraco Negro: leva o monstro para o tile livre mais perto do centro (a até `radius`), sem atravessar parede. */

@@ -73,7 +73,7 @@ export type SpellId =
   | "titan_fury" | "sky_arrow" | "arcane_vortex" | "butterfly_swarm" | "ancestral_totem"
   // Slot 3: Ápices (um no fim de cada ramo, para os dois lados da especialização).
   | "champion_reap" | "bulwark" | "legion_charge" | "endless_rain" | "branching_bolt" | "ice_age" | "black_hole"
-  | "wild_hunt" | "tree_of_life" | "leaf_hurricane";
+  | "wild_hunt" | "tree_of_life" | "leaf_hurricane" | "doomsday_shot" | "solar_crown";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -276,6 +276,11 @@ export interface SpellDef {
    * `radius` tiles atacam `haste` mais rápido e causam +`damage`; quem se afasta perde o bônus logo depois.
    */
   aura?: { radius: number; ms: number; haste: number; damage: number };
+  /**
+   * Órbita (Coroa Solar): por `ms`, um anel gira em volta de quem conjura; a cada `tickMs`, os monstros entre
+   * `radius - width` (exclusivo) e `radius` tiles levam o efeito da magia (dano, atordoamento). Anda com o herói.
+   */
+  orbit?: { radius: number; width: number; ms: number; tickMs: number };
   /** Segunda invocação da mesma magia, de outro tipo (Caçada Selvagem: os lobos e o urso). */
   alsoSummon?: { kind: SummonKind; count: number; durationMs: number };
   /**
@@ -1141,6 +1146,18 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 60, cooldownMs: 30000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90, damage: 0.5, push: 1,
     channel: { ms: 3000, tickMs: 300, moveSlow: 0.5 },
   }),
+  doomsday_shot: spell({
+    id: "doomsday_shot", classId: "paladin", slot: 2, name: "Tiro do Fim do Mundo", icon: "🎯", color: 0xfff176,
+    description: "Firma os pés e carrega a flecha por 1 s; ela sai numa reta de 12 tiles que atravessa tudo, com dano dobrado em quem está quase morto.",
+    manaCost: 65, cooldownMs: 32000, aim: "target", range: 12, radius: 0, shape: "line", delayMs: 1000,
+    damage: 4, execute: { hpPct: 0.3, bonus: 1 }, selfBuff: { ms: 1000, rooted: true },
+  }),
+  solar_crown: spell({
+    id: "solar_crown", classId: "paladin", slot: 2, name: "Coroa Solar", icon: "👑", color: 0xffe082,
+    description: "Um anel de luz gira em volta de você por alguns segundos: fere e ofusca os monstros que encostam nele.",
+    manaCost: 60, cooldownMs: 32000, aim: "self", range: 0, radius: 0, damage: 0.6, stunMs: 300,
+    orbit: { radius: 2, width: 2, ms: 8000, tickMs: 500 },
+  }),
 };
 
 /**
@@ -1324,6 +1341,8 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   wild_hunt: { text: "A caçada dura 18 s.", changes: { summon: { kind: "wolf", count: 3, durationMs: 18000 }, alsoSummon: { kind: "bear", count: 1, durationMs: 18000 } } },
   tree_of_life: { text: "A árvore cura 8% por segundo.", changes: { field: { kind: "zone", ms: 12000, tickMs: 1000, allyHeal: 0.08 } } },
   leaf_hurricane: { text: "O furacão prende 0,5 s a cada pulso.", changes: { rootMs: 500 } },
+  doomsday_shot: { text: "Carrega em 0,5 s.", changes: { delayMs: 500, selfBuff: { ms: 500, rooted: true } } },
+  solar_crown: { text: "O anel abre até 3 tiles.", changes: { orbit: { radius: 3, width: 3, ms: 8000, tickMs: 500 } } },
 };
 
 /**
@@ -1363,6 +1382,7 @@ export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
     summon: def.summon && { ...def.summon, durationMs: Math.round(def.summon.durationMs * t) },
+    orbit: def.orbit && { ...def.orbit, ms: Math.round(def.orbit.ms * t) },
     alsoSummon: def.alsoSummon && { ...def.alsoSummon, durationMs: Math.round(def.alsoSummon.durationMs * t) },
     aura: def.aura && { ...def.aura, ms: Math.round(def.aura.ms * t), damage: def.aura.damage * k },
     rally: def.rally && { ...def.rally, ms: Math.round(def.rally.ms * t), damage: def.rally.damage * k, heal: def.rally.heal && def.rally.heal * k },
@@ -1386,6 +1406,8 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.sweep) facts.push("Varre o leque de um lado ao outro");
   if (s.fork) facts.push(`No fim da linha, abre ${s.fork.count} raios de ${s.fork.length} tiles em leque`);
   if (s.pullIn) facts.push("Puxa os monstros da área para o centro");
+  if (s.orbit) facts.push(`Anel de luz em volta de você por ${sec(s.orbit.ms)}: um pulso a cada ${sec(s.orbit.tickMs)} em quem está a ${s.orbit.width > 1 ? `${s.orbit.radius - s.orbit.width + 1} a ` : ""}${s.orbit.radius} tiles`);
+  if (s.delayMs && s.selfBuff?.rooted) facts.push(`Carrega por ${sec(s.delayMs)} parado antes de soltar`);
   if (s.aura) facts.push(`Aura por ${sec(s.aura.ms)}: você e quem estiver a até ${s.aura.radius} tiles causam +${pct(s.aura.damage)} de dano e atacam ${pct(s.aura.haste)} mais rápido`);
   if (s.channel) {
     facts.push(`Canaliza por até ${sec(s.channel.ms)}: um pulso a cada ${sec(s.channel.tickMs)}; segure e arraste para girar`);

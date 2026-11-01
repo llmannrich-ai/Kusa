@@ -318,6 +318,8 @@ dois lados); pedem a última magia do tronco no nível 1 de uso.
 | Cavaleiro | Lâmina | ⚔️ **Ceifa do Campeão** | **varredura** de 180° e 3 tiles: a lâmina corre de um lado ao outro, 3 passadas de 1,6× que sangram | 4 passadas |
 | Cavaleiro | Bastião | 🏰 **Baluarte** | escudo de 35% em você e nos aliados a até 4 tiles, +8 de armadura por 8 s e provoca | escudo de 45% |
 | Cavaleiro | Comando | 🐎 **Carga da Legião** | **aura que anda com você** por 8 s: quem estiver a até 4 tiles causa +25% e ataca 20% mais rápido; quem se afasta perde o bônus | 12 s |
+| Paladino | Mira | 🎯 **Tiro do Fim do Mundo** | **carrega 1 s parado** e solta uma reta de 12 tiles que atravessa tudo: 4×, dobro abaixo de 30% da vida | carrega em 0,5 s |
+| Paladino | Luz | 👑 **Coroa Solar** | **anel de luz em órbita** em volta de você por 8 s: a cada 0,5 s, 0,6× e ofusca 0,3 s quem está a 1–2 tiles; anda com você | o anel vai até 3 tiles |
 | Paladino | Batedor | 🏹 **Chuva sem Fim** | canaliza 3 s: leque de 90° e 6 tiles, 0,5× a cada 0,3 s; anda 60% mais devagar | não fica lento |
 | Feiticeiro | Raio | 🌩️ **Relâmpago Ramificado** | linha de 7 tiles que se abre em 3 galhos de 4 tiles em leque no fim, 2,4× | 5 galhos |
 | Feiticeiro | Gelo | 🧊 **Era do Gelo** | campo de raio 4 por 6 s: 70% de lentidão e, a cada 2 s, 0,6× e prende 1 s | raio 5 |
@@ -326,8 +328,7 @@ dois lados); pedem a última magia do tronco no nível 1 de uso.
 | Druida | Bosque | 🌳 **Árvore da Vida** | campo de raio 3 por 12 s que cura 5% por segundo os aliados dentro | 8% |
 | Druida | Espinhos | 🍂 **Furacão de Folhas** | canaliza 3 s: leque de 90° e 5 tiles, 0,5× a cada 0,3 s e empurra | prende 0,5 s por pulso |
 
-Faltam os Ápices de Mira e Luz do Paladino (Tiro do Fim do Mundo e Coroa Solar, que pedem carregar antes de soltar e
-órbita), os do Xamã (quando o tronco dele existir) e as magias de slot 3 das especializações.
+Faltam os Ápices do Xamã (quando o tronco dele existir) e as magias de slot 3 das especializações.
 
 #### Magias em leque (Grimório 4.0)
 

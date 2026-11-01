@@ -220,6 +220,33 @@ test("Xamã Orc: o Totem Ancestral queima e reforça a equipe", () => {
   check(lostHp(a, m.id) > 0 && a.seat().fieldDamage > 0, `dano ${lostHp(a, m.id)}, reforço ${a.seat().fieldDamage}`);
 });
 
+console.log("Ápices do Paladino (fase 3b-2):");
+test("Tiro do Fim do Mundo: parado na carga, a flecha sai depois e atravessa a reta", () => {
+  const a = arena({ classId: "paladin", startLevel: 12, monsterHp: 50 });
+  const near = a.place(TARGET, 3, 0);
+  const far = a.place(TARGET, 9, 0);
+  for (const m of [near, far]) { a.brain(m).stunnedUntil = a.now() + 5000; m.stunned = true; }
+  castS3(a, "doomsday_shot", far);
+  check(!!a.seat().buff?.rooted, "não ficou parado na carga");
+  a.advance(400);
+  check(lostHp(a, near.id) === 0, "a flecha saiu antes da carga");
+  a.advance(900);
+  check(lostHp(a, near.id) > 0 && lostHp(a, far.id) > 0, `perto ${lostHp(a, near.id)}, longe ${lostHp(a, far.id)}`);
+});
+test("Coroa Solar: o anel fere quem encosta, anda com o herói e acaba", () => {
+  const a = arena({ classId: "paladin", startLevel: 12, monsterHp: 50 });
+  const ring = a.place(TARGET, 2, 0);
+  // Fora do anel, mesmo com a Maestria (até 3 tiles) da arena no nível máximo.
+  const far = a.place(TARGET, 5, 0);
+  for (const m of [ring, far]) { a.brain(m).stunnedUntil = a.now() + 20000; m.stunned = true; }
+  castS3(a, "solar_crown", a.p);
+  a.advance(1100);
+  check(lostHp(a, ring.id) > 0 && lostHp(a, far.id) === 0, `anel ${lostHp(a, ring.id)}, longe ${lostHp(a, far.id)}`);
+  // No nível máximo da arena, a duração sobe (+7,5% por nível): 11 s.
+  a.advance(12000);
+  check(!a.seat().orbitFx, "o anel não acabou");
+});
+
 console.log(`\n${passed} ok, ${failures.length} falharam`);
 if (failures.length > 0) {
   for (const f of failures) console.log(`  - ${f}`);

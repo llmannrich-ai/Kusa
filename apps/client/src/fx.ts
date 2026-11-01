@@ -462,6 +462,12 @@ export class CombatFx {
         this.ring(to, radius, 0x2ecc71, 650, 4);
         return this.heal(to);
       case "ancestral_totem": return this.ring(to, radius, 0xd35400, 550, 5);
+      // Tiro do Fim do Mundo: o brilho da carga em volta do paladino; a reta acende pela cena (`showLine`).
+      case "doomsday_shot":
+        this.ring(from, TILE_SIZE, 0xfff176, ms, 4);
+        return this.later(ms, () => this.zap(from, to, 0xfff176));
+      // Coroa Solar: a cada pulso (eco no próprio herói), o anel de luz gira em volta dele.
+      case "solar_crown": return this.ring(from, TILE_SIZE * (SPELLS.solar_crown.orbit!.radius + 0.5), 0xffe082, 450, 4);
       case "thorn_spray": return this.projectile(FX.leaf, from, to, ms, { trail: 0x8bc34a, glow: 0x6b8e23, impact: 0x9cff7a, scale: 0.8 });
     }
   }

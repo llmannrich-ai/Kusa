@@ -572,6 +572,12 @@ estilhaça no fim; Caçada Selvagem não tem o +20% de dano (a Maestria aumenta 
 lane 2, e pedem só a última magia do tronco (os Dons da costela de passivas, que o plano punha como pai, são da fase 4).
 Ficam para a 3b-2: Tiro do Fim do Mundo (A4), Coroa Solar (A9) e os 12 Dons do fundo.
 
+**Fase 3b-2, como foi entregue:** os Ápices de Mira e Luz do Paladino. Tiro do Fim do Mundo: o "carregar" (A4) saiu
+da soma de duas peças que já existiam, o atraso (`delayMs`) e ficar parado (`selfBuff.rooted`), que agora vale já na
+carga. Coroa Solar: peça nova órbita (A9, `orbit`), um anel que pulsa em volta do herói e anda com ele; pega de 1 a 2
+tiles (o plano dizia raio 2, mas o monstro colado no paladino escapava), Maestria até 3 tiles. Os 12 Dons do fundo
+viram a fase 3b-3 (cada um é um gatilho próprio no servidor).
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
