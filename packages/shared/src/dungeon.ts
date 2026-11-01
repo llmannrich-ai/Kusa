@@ -55,6 +55,52 @@ export interface Dungeon {
   empire?: EmpireLayout;
   /** Fortaleza Orc: a planta do castelo, do acampamento e do desfiladeiro (só para o desenho). */
   fortress?: FortressLayout;
+  /** Charco Cinzento: a estrada afundada, as passarelas, os monólitos, as palafitas e os braseiros (só para o desenho). */
+  bog?: BogLayout;
+  /** Ermos Rubros: as pontes, as torres de pedra, as ossadas, a mina e os trilhos, as fogueiras e a cratera (só para o desenho). */
+  badlands?: BadlandsLayout;
+}
+
+/**
+ * Planta dos Ermos Rubros (só para o desenho; o chão é chão comum). As ravinas são `Tile.Water`, as cristas de rocha
+ * `Tile.Wall` e as torres de pedra, as ossadas, o crânio e os muros de adobe das salas `Tile.Ruin`.
+ */
+export interface BadlandsLayout {
+  /** Pontes de tábuas por cima das ravinas (chão), `y * width + x`. */
+  boards: number[];
+  /** Torres de pedra roídas pelo vento (ruína de 1 tile). */
+  hoodoos: { x: number; y: number }[];
+  /** Costelas das ossadas gigantes (ruína de 1 tile, em filas de 4). */
+  bones: { x: number; y: number }[];
+  /** Trilhos da mina (chão), `y * width + x`, da boca até o terreiro. */
+  rails: number[];
+  /** Boca da mina: um tile de rocha com chão ao sul (null se não coube). */
+  mine: { x: number; y: number } | null;
+  /** Fogueiras (chão: só o desenho e a luz). */
+  fires: { x: number; y: number }[];
+  /** A cratera do norte: centro e raio (tiles). */
+  crater: { x: number; y: number; r: number };
+  /** O crânio gigante (ruína de 3×2) no alto da cratera. */
+  skull: Rect;
+}
+
+/**
+ * Planta do Charco Cinzento (só para o desenho; o chão é chão comum). As poças são `Tile.Water`, a mata morta é
+ * `Tile.Wall` e os monólitos, as palafitas e as paliçadas das salas são `Tile.Ruin`.
+ */
+export interface BogLayout {
+  /** Estrada afundada do império (lajes de basalto, chão), `y * width + x` de cada tile. */
+  causeway: number[];
+  /** Passarelas de tábuas por cima das poças (chão), `y * width + x` de cada tile. */
+  boards: number[];
+  /** Monólitos (ruína de 1 tile): os da arena e os soltos na turfa. */
+  stones: { x: number; y: number }[];
+  /** Palafitas dos turfeiros (ruína de 2×2), com os pés na água. */
+  huts: Rect[];
+  /** Braseiros de turfa (chão: só o desenho e a luz). */
+  fires: { x: number; y: number }[];
+  /** Ilha da arena: centro e raio (tiles); em volta, o lago negro. */
+  arena: { x: number; y: number; r: number };
 }
 
 /**
@@ -194,6 +240,8 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "gates") return generateGates(seed);
   if (mapId === "fortress") return generateFortress(FORTRESS_SEED);
   if (mapId === "oldwood" || mapId === "heartwood") return generateForest(seed, mapId);
+  if (mapId === "bog") return generateBog(BOG_SEED);
+  if (mapId === "badlands") return generateBadlands(BADLANDS_SEED);
   return generateCrypt(seed);
 }
 
@@ -3005,6 +3053,335 @@ function buildForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
   const portal = s;
   set(portal.x, portal.y, Tile.Portal);
   return { mapId, width: W, height: H, tiles, spawn, boss, bossPortal: centerOf(boss), path: zones, side, meadows, portal, planks, trails };
+}
+
+/** Charco Cinzento e Ermos Rubros são mapas fixos: a mesma planta em toda hunt, como a Fortaleza Orc. */
+export const BOG_SEED = 91;
+export const BADLANDS_SEED = 92;
+const FIXED_W = 64;
+const FIXED_H = 120;
+
+type Pt2 = { x: number; y: number };
+
+/**
+ * Pincel das plantas fixas: a grade começa toda num tile (`base`) e recebe manchas de beira ondulada (as áreas),
+ * pinceladas grossas que serpenteiam um pouco (os caminhos largos) e as salas laterais, com o sorteio de seed fixa
+ * (o desenho é sempre o mesmo). Marca à parte o que o cliente desenha diferente (estrada, passarela, trilha).
+ */
+function fixedCanvas(seed: number, base: number) {
+  const rng = createRng(seed);
+  const W = FIXED_W, H = FIXED_H;
+  const tiles = new Uint8Array(W * H).fill(base);
+  const inside = (x: number, y: number) => x >= 2 && y >= 2 && x < W - 2 && y < H - 2;
+  const inGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;
+  const get = (x: number, y: number) => (inGrid(x, y) ? tiles[y * W + x] : Tile.Wall);
+  const set = (x: number, y: number, t: number) => { if (inside(x, y)) tiles[y * W + x] = t; };
+  const mark = () => new Uint8Array(W * H);
+  const wave = () => ({ a: rng.next() * Math.PI * 2, b: rng.next() * Math.PI * 2 });
+  /** Mancha: elipse de beira ondulada (3 ondas no ângulo). `test` decide onde pode pintar. */
+  const blob = (cx: number, cy: number, rx: number, ry: number, t: number, jag = 0.14, into?: Uint8Array, test?: (x: number, y: number) => boolean) => {
+    const w1 = wave(), w2 = wave();
+    for (let y = Math.floor(cy - ry * 1.3 - 1); y <= cy + ry * 1.3 + 1; y++)
+      for (let x = Math.floor(cx - rx * 1.3 - 1); x <= cx + rx * 1.3 + 1; x++) {
+        if (!inside(x, y) || (test && !test(x, y))) continue;
+        const a = Math.atan2(y - cy, x - cx);
+        const edge = 1 + Math.sin(a * 3 + w1.a) * jag + Math.sin(a * 5 + w2.a) * jag * 0.6 + Math.sin(a * 8 + w1.b) * jag * 0.3;
+        if (Math.hypot((x - cx) / rx, (y - cy) / ry) <= edge) { set(x, y, t); if (into) into[y * W + x] = 1; }
+      }
+  };
+  /**
+   * Pincelada pelos pontos, com `half` de meia largura (a largura ondula um pouco). `core`: meia largura do miolo que vai
+   * marcado em `into` (a estrada, a passarela ou a lama); `t` o tile do corpo (null: só marca o miolo, como `coreTile`).
+   */
+  const stroke = (pts: Pt2[], half: number, t: number | null, into?: Uint8Array, core = 0.9, coreTile: number = Tile.Floor, over?: number) => {
+    for (let k = 1; k < pts.length; k++) {
+      const a = pts[k - 1], b = pts[k];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const w = wave();
+      const steps = Math.ceil(len * 3);
+      for (let s = 0; s <= steps; s++) {
+        const f = s / steps;
+        const nx = -(b.y - a.y) / (len || 1), ny = (b.x - a.x) / (len || 1);
+        const bend = Math.sin(f * Math.PI) * Math.sin(f * Math.PI * 2 + w.a) * Math.min(1.5, len * 0.06);
+        const px = a.x + (b.x - a.x) * f + nx * bend, py = a.y + (b.y - a.y) * f + ny * bend;
+        const r = half * (1 + Math.sin(f * 7 + w.b) * 0.12);
+        for (let y = Math.floor(py - r - 1); y <= py + r + 1; y++)
+          for (let x = Math.floor(px - r - 1); x <= px + r + 1; x++) {
+            if (!inside(x, y)) continue;
+            const d = Math.hypot(x - px, y - py);
+            if (d <= r && t !== null) set(x, y, t);
+            // `over`: o miolo só marca onde o tile era esse (a passarela sobre a água, não na terra firme).
+            if (d <= core) { if (into && (over === undefined || get(x, y) === over || into[y * W + x])) into[y * W + x] = 1; set(x, y, coreTile); }
+          }
+      }
+    }
+  };
+  /** Sala lateral (9×9) de borda em `wall`, com 2 portões de 3 tiles: `gates` são os lados (0 norte, 1 leste, 2 sul, 3 oeste). */
+  const room = (cx: number, cy: number, wall: number, gates: number[]): Rect => {
+    const r: Rect = { x: cx - 4, y: cy - 4, w: 9, h: 9 };
+    for (let y = r.y - 1; y <= r.y + r.h; y++)
+      for (let x = r.x - 1; x <= r.x + r.w; x++) {
+        const ring = x < r.x || y < r.y || x >= r.x + r.w || y >= r.y + r.h;
+        const border = !ring && (x === r.x || y === r.y || x === r.x + r.w - 1 || y === r.y + r.h - 1);
+        set(x, y, border ? wall : Tile.Floor);
+      }
+    for (const g of gates)
+      for (let j = -1; j <= 1; j++) {
+        if (g === 0) set(cx + j, r.y, Tile.Floor);
+        if (g === 2) set(cx + j, r.y + r.h - 1, Tile.Floor);
+        if (g === 1) set(r.x + r.w - 1, cy + j, Tile.Floor);
+        if (g === 3) set(r.x, cy + j, Tile.Floor);
+      }
+    return r;
+  };
+  /** Borda irregular de `t` em volta do mapa, de 2 a `max` tiles. */
+  const border = (t: number, max: number) => {
+    const w1 = wave(), w2 = wave();
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
+        const reach = 2 + (max - 2) * (0.5 + 0.3 * Math.sin((x + y) * 0.21 + w1.a) + 0.2 * Math.sin((x - y) * 0.37 + w2.a));
+        if (edge < reach) tiles[y * W + x] = t;
+      }
+  };
+  const zoneAt = (p: Pt2): Rect => ({ x: Math.round(p.x) - 5, y: Math.round(p.y) - 5, w: 11, h: 11 });
+  const meadowAt = (p: Pt2): Rect => ({ x: Math.round(p.x) - 4, y: Math.round(p.y) - 4, w: 9, h: 9 });
+  return { rng, W, H, tiles, inside, get, set, mark, blob, stroke, room, border, zoneAt, meadowAt };
+}
+
+const P = (x: number, y: number): Pt2 => ({ x, y });
+
+/**
+ * Charco Cinzento (Verdemar, etapa 9, o lado do charco): mapa fixo de 64×120, em pé. Uma turfeira cinzenta sobre o lago
+ * negro: as áreas de terra, largas e de beira ondulada, ligadas pela estrada afundada do império, por passarelas de
+ * tábuas e por trilhas de barro; entre elas a água (bloqueia o passo, não a visão: de um lado se vê o outro) e maciços de
+ * mata morta. Do sul ao norte: o Cais, o Aterro (zona 1), a Vila dos Turfeiros (zona 2); o 1º laço, a oeste pelas
+ * passarelas da Lagoa (zonas 3 e 4) e a leste pela trilha da Mata Queimada, que se reencontram na Ponte do Meio; a
+ * Turfeira das Cinzas (zona 5); o 2º laço, a oeste pela estrada da Torre de Vigia (zona 6) e a leste pelas passarelas
+ * das Palafitas; o Portão dos Monólitos (zona 7) e a ilha da arena. As emboscadas (`meadows`) ficam nos trechos entre
+ * as zonas: nenhum caminho passa de ~18 tiles sem luta, e 4 terreiros de paliçada pendem dos laços.
+ */
+function generateBog(_seed: number): Dungeon {
+  const c = fixedCanvas(BOG_SEED, Tile.Water);
+  const { W, H, tiles, get, set, blob, stroke, room, border, zoneAt, meadowAt } = c;
+  const road = c.mark(), boards = c.mark(), mud = c.mark();
+  const L = Tile.Floor;
+
+  // Mata morta: a Mata Queimada (leste do 1º laço), as margens a oeste da Torre e a borda do mapa.
+  blob(50, 76, 13, 14, Tile.Wall, 0.18);
+  blob(8, 40, 6, 10, Tile.Wall, 0.2);
+  blob(58, 100, 7, 9, Tile.Wall, 0.2);
+  blob(6, 104, 6, 8, Tile.Wall, 0.2);
+  blob(58, 24, 6, 10, Tile.Wall, 0.2);
+  blob(6, 20, 6, 9, Tile.Wall, 0.2);
+
+  // Áreas de terra.
+  const ac = P(32, 13);
+  blob(32, 111, 9, 5, L);                 // Cais
+  blob(32, 101, 6, 4.5, L);               // Aterro
+  blob(32, 90, 12, 6.5, L);               // Vila dos Turfeiros
+  blob(14, 82, 6.5, 5.5, L);              // ilhota da Lagoa
+  blob(12, 70, 6.5, 5.5, L);              // ilhota dos monólitos
+  blob(50, 82, 7, 5.5, L);                // clareira da Mata Queimada
+  blob(50, 70, 7, 5.5, L);                // a árvore grande queimada
+  blob(32, 64.5, 7, 3.5, L);              // Ponte do Meio
+  blob(32, 56, 19, 7, L, 0.1);            // Turfeira das Cinzas
+  blob(18, 40, 8, 7, L);                  // Torre de Vigia
+  blob(46, 40, 6, 5, L);                  // Palafitas
+  blob(32, 28.5, 10, 4.5, L);             // Portão dos Monólitos
+  blob(ac.x, ac.y, 10.2, 9.6, L, 0.06);   // ilha da arena
+
+  // Caminhos: a estrada (aterro largo, com o calçamento no miolo), as passarelas (só as tábuas, sobre a água) e as trilhas.
+  stroke([P(32, 111), P(32, 90)], 3, L, road, 1.4);
+  stroke([P(32, 64), P(32, 56)], 3, L, road, 1.4);
+  stroke([P(23, 52), P(18, 45), P(18, 36), P(27, 30)], 3, L, road, 1.4);
+  stroke([P(32, 25), P(32, 20)], 2.6, L, road, 1.4);
+  stroke([P(23, 88), P(16, 85), P(14, 82)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(13, 77), P(12, 70)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(17, 68), P(22, 66), P(26, 64.5)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(41, 52), P(46, 45)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(46, 35), P(42, 31), P(38, 29)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(41, 88), P(48, 85), P(50, 82), P(50, 70), P(43, 66), P(38, 64.5)], 3.2, L, mud, 0.9);
+  // As emboscadas das passarelas: plataformas de turfa no meio da lagoa.
+  blob(22, 66, 3.2, 2.6, L);
+  blob(42, 66, 3.5, 3, L);
+  blob(22, 48, 4, 3.4, L);
+  blob(42, 48, 4, 3.4, L);
+  blob(44, 31, 3.4, 2.8, L);
+  stroke([P(42, 66), P(38, 64.5)], 2.2, L, mud, 0.9);
+
+  // Terreiros de paliçada (mini-boss e baú), cada um com o seu caminho.
+  const side = [
+    room(7, 80, Tile.Ruin, [1, 0]),
+    room(57, 71, Tile.Ruin, [3, 2]),
+    room(7, 53, Tile.Ruin, [1, 2]),
+    room(56, 40, Tile.Ruin, [3, 0]),
+  ];
+  stroke([P(11, 81), P(8, 81)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(7, 76), P(9, 72), P(11, 70)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(56, 71), P(53, 71)], 2.4, L, mud, 0.9);
+  stroke([P(57, 75), P(55, 80), P(52, 82)], 2.2, L, mud, 0.9);
+  stroke([P(11, 53), P(16, 54)], 2.6, L, mud, 0.9);
+  stroke([P(7, 57), P(10, 62), P(11, 66)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(52, 40), P(49, 40)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(56, 36), P(52, 31), P(45, 30)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  border(Tile.Wall, 4);
+
+  // Palafitas (2×2, com os pés na água), monólitos, braseiros.
+  const huts: Rect[] = [];
+  for (const [x, y] of [[50, 36], [50, 44], [41, 37], [24, 92], [39, 93], [8, 87], [27, 76]] as const) {
+    let water = 0;
+    for (let yy = y - 1; yy <= y + 2; yy++) for (let xx = x - 1; xx <= x + 2; xx++) if (get(xx, yy) === Tile.Water) water++;
+    if (water < 3) continue;
+    for (let yy = y; yy < y + 2; yy++) for (let xx = x; xx < x + 2; xx++) set(xx, yy, Tile.Ruin);
+    huts.push({ x, y, w: 2, h: 2 });
+  }
+  const stones: Pt2[] = [];
+  const stone = (x: number, y: number) => { if (get(x, y) === L) { set(x, y, Tile.Ruin); stones.push(P(x, y)); } };
+  for (let k = 0; k < 6; k++) { const a = 0.3 + (k * Math.PI * 2) / 6; stone(Math.round(ac.x + Math.cos(a) * 7), Math.round(ac.y + Math.sin(a) * 6)); }
+  for (const [x, y] of [[25, 27], [39, 27], [26, 30], [38, 30], [9, 68], [15, 72], [10, 73], [21, 38], [14, 43], [44, 58], [20, 58]] as const) stone(x, y);
+  // Árvores secas soltas na terra (a mata se desfaz aos poucos).
+  for (const [x, y] of [[23, 99], [41, 97], [19, 86], [44, 90], [47, 79], [54, 85], [46, 68], [55, 67], [16, 60], [48, 55], [26, 43], [12, 36], [42, 25], [22, 25], [30, 106], [36, 116]] as const)
+    if (get(x, y) === L && [get(x - 1, y), get(x + 1, y), get(x, y - 1), get(x, y + 1)].every((t) => t !== Tile.Wall)) set(x, y, Tile.Wall);
+  const fires = [P(28, 110), P(27, 88), P(37, 92), P(26, 31), P(38, 31), P(32, 53), P(ac.x - 3, ac.y - 3), P(ac.x + 3, ac.y - 3), P(ac.x - 3, ac.y + 3), P(ac.x + 3, ac.y + 3)];
+
+  // Zonas e emboscadas.
+  const path = [P(32, 101), P(32, 90), P(14, 82), P(12, 70), P(32, 56), P(18, 40), P(32, 28)].map(zoneAt);
+  const meadows = [P(50, 82), P(50, 70), P(22, 66), P(42, 66), P(32, 64), P(17, 55), P(22, 48), P(46, 40), P(42, 48), P(44, 31)].map(meadowAt);
+  const spawn: Rect = { x: 27, y: 108, w: 10, h: 7 };
+  const boss: Rect = { x: ac.x - 8, y: ac.y - 7, w: 17, h: 15 };
+  return finishFixed("bog", tiles, W, H, spawn, boss, path, side, meadows, (portal) => ({
+    trails: listOf(mud, tiles, W, (i) => !boards[i] && !road[i]),
+    bog: {
+      causeway: listOf(road, tiles, W, (i) => !boards[i]), boards: listOf(boards, tiles, W), stones: stones.filter((p) => get(p.x, p.y) === Tile.Ruin),
+      huts, fires: fires.filter((p) => get(p.x, p.y) === L && !(p.x === portal.x && p.y === portal.y)), arena: { x: ac.x, y: ac.y, r: 9.5 },
+    },
+  }));
+}
+
+/**
+ * Ermos Rubros (Verdemar, etapa 9, o lado dos ermos): mapa fixo de 64×120, em pé. Vales largos de barro vermelho entre
+ * os platôs de rocha e duas ravinas que cortam o mapa de oeste a leste (de uma beira se vê a outra; só se cruza pelas
+ * pontes). Do sul ao norte: o Acampamento, o Desfiladeiro Sul, a única garganta estreita (zonas 1 e 2), a Encruzilhada
+ * da Torre (zona 3); a bifurcação, a oeste pelo Pátio da Mina (zona 4, com os trilhos e a boca da mina) e a leste pelo
+ * Campo das Torres; a Cabeceira da Ponte (zona 5) e a Ponte Grande; o Planalto das Ossadas (zona 6, a luta dentro do
+ * costelame); a segunda ravina, pela ponte de cordas da Salina ou pelo arco de pedra; a Escadaria (zona 7) e a cratera.
+ */
+function generateBadlands(_seed: number): Dungeon {
+  const c = fixedCanvas(BADLANDS_SEED, Tile.Wall);
+  const { W, H, tiles, get, set, blob, stroke, room, border, zoneAt, meadowAt } = c;
+  const track = c.mark(), boards = c.mark(), rail = c.mark();
+  const L = Tile.Floor, R = Tile.Water;
+
+  // Vales e planaltos (o chão), largos e de beira ondulada.
+  const ac = P(32, 13);
+  blob(32, 111, 11, 6, L);
+  stroke([P(32, 107), P(30, 100), P(35, 90), P(32, 83)], 4.2, L, track, 1);
+  blob(32, 79, 12, 6, L);
+  blob(14, 70, 9.5, 7, L);
+  blob(50, 67, 8.5, 11, L);
+  stroke([P(24, 77), P(17, 72)], 4, L, track, 1);
+  stroke([P(14, 64), P(17, 60), P(25, 58)], 4, L, track, 1);
+  stroke([P(41, 77), P(49, 73)], 4, L, track, 1);
+  stroke([P(50, 59), P(39, 58)], 4, L, track, 1);
+  blob(20, 60, 4, 3.5, L);
+  blob(32, 57.5, 10, 4.5, L);
+  blob(32, 44, 13, 6.5, L);
+  blob(17, 39, 7.5, 5, L);
+  blob(47, 39, 7.5, 5, L);
+  stroke([P(25, 42), P(18, 39)], 4, L, track, 1);
+  stroke([P(39, 42), P(46, 39)], 4, L, track, 1);
+  blob(18, 27.5, 5, 3.6, L);
+  blob(46, 27.5, 5, 3.6, L);
+  stroke([P(19, 26), P(27, 24.5)], 3.6, L, track, 1);
+  stroke([P(45, 26), P(37, 24.5)], 3.6, L, track, 1);
+  blob(32, 24.5, 7, 3.6, L);
+  blob(ac.x, ac.y, 10.2, 9.6, L, 0.06);
+  stroke([P(32, 23), P(32, 20)], 3, L, track, 1);
+  // Ravinas: a Grande (y ≈ 51) e a das Cordas (y ≈ 32), de beira a beira; as pontes por cima.
+  for (const [y0, amp] of [[51, 1.4], [32.5, 1.2]] as const)
+    for (let x = 2; x < W - 2; x++) {
+      const yc = y0 + Math.sin(x * 0.19 + y0) * amp + Math.sin(x * 0.47) * 0.5;
+      const r = 1.6 + Math.max(0, Math.sin(x * 0.13 + y0)) * 0.9;
+      for (let y = Math.floor(yc - r - 1); y <= yc + r + 1; y++) if (Math.abs(y + 0.5 - yc) <= r) set(x, y, R);
+    }
+  stroke([P(32, 55), P(32, 47.5)], 0, null, boards, 2.2, Tile.Floor, R);
+  stroke([P(18, 36), P(18, 29)], 0, null, boards, 1.3, Tile.Floor, Tile.Water);
+  stroke([P(46, 36), P(46, 29)], 0, null, boards, 2.2, Tile.Floor, R);
+
+  // Postos de adobe (mini-boss e baú), cada um com o seu caminho.
+  const side = [
+    room(7, 81, Tile.Ruin, [1, 0]),
+    room(56, 81, Tile.Ruin, [3, 0]),
+    room(56, 45, Tile.Ruin, [3, 2]),
+    room(7, 46, Tile.Ruin, [1, 0]),
+  ];
+  stroke([P(11, 81), P(16, 77), P(20, 76)], 2.6, L, track, 0.9);
+  stroke([P(7, 77), P(8, 72)], 2.4, L, track, 0.9);
+  stroke([P(52, 81), P(45, 78)], 2.6, L, track, 0.9);
+  stroke([P(56, 77), P(54, 73)], 2.4, L, track, 0.9);
+  stroke([P(52, 45), P(44, 45)], 2.6, L, track, 0.9);
+  stroke([P(56, 49), P(56, 49)], 0, null);
+  stroke([P(11, 46), P(20, 45)], 2.6, L, track, 0.9);
+  stroke([P(7, 42), P(10, 39)], 2.4, L, track, 0.9);
+  border(Tile.Wall, 3);
+
+  // A mina: a boca no paredão ao norte do pátio, os trilhos descendo até a vagoneta.
+  const mine = P(11, 62);
+  for (let y = mine.y - 2; y <= mine.y; y++) for (let x = mine.x - 2; x <= mine.x + 2; x++) set(x, y, Tile.Wall);
+  set(mine.x, mine.y + 1, L);
+  stroke([P(11, 63), P(11, 69), P(19, 69)], 0, null, rail, 0.5);
+  // Anel da cratera: rocha em volta, com a entrada pela escadaria.
+  for (let y = ac.y - 13; y <= ac.y + 13; y++)
+    for (let x = ac.x - 14; x <= ac.x + 14; x++) {
+      const r = Math.hypot((x - ac.x) / 1.08, y - ac.y);
+      if (r > 10.6 && r < 12.6 && !(Math.abs(x - ac.x) <= 2 && y > ac.y)) set(x, y, Tile.Wall);
+    }
+  const skull: Rect = { x: ac.x - 1, y: ac.y - 8, w: 3, h: 2 };
+  for (let y = skull.y; y < skull.y + skull.h; y++) for (let x = skull.x; x < skull.x + skull.w; x++) set(x, y, Tile.Ruin);
+
+  // Torres de pedra (o Campo das Torres e algumas soltas), as costelas das Ossadas.
+  const hoodoos: Pt2[] = [];
+  const spire = (x: number, y: number) => { if (get(x, y) === L) { set(x, y, Tile.Ruin); hoodoos.push(P(x, y)); } };
+  for (const [x, y] of [[45, 60], [54, 61], [46, 66], [55, 68], [44, 72], [53, 75], [49, 63], [29, 75], [36, 82], [21, 70], [8, 66], [26, 112], [39, 109], [12, 40], [51, 41], [28, 58], [37, 60]] as const) spire(x, y);
+  const bones: Pt2[] = [];
+  for (const y of [40, 48]) for (let k = 0; k < 4; k++) { const x = 27 + k * 3; if (get(x, y) === L) { set(x, y, Tile.Ruin); bones.push(P(x, y)); } }
+  const fires = [P(36, 110), P(28, 113), P(36, 78), P(18, 72), P(32, 60), P(ac.x - 5, ac.y - 2), P(ac.x + 5, ac.y - 2), P(ac.x - 5, ac.y + 4), P(ac.x + 5, ac.y + 4)];
+
+  const path = [P(30, 100), P(34, 89), P(32, 79), P(14, 70), P(32, 57), P(32, 44), P(32, 25)].map(zoneAt);
+  const meadows = [P(50, 72), P(50, 61), P(21, 60), P(17, 39), P(47, 39), P(18, 27), P(46, 27)].map(meadowAt);
+  const spawn: Rect = { x: 27, y: 107, w: 10, h: 8 };
+  const boss: Rect = { x: ac.x - 8, y: ac.y - 7, w: 17, h: 15 };
+  return finishFixed("badlands", tiles, W, H, spawn, boss, path, side, meadows, (portal) => ({
+    trails: listOf(track, tiles, W, (i) => !boards[i] && !rail[i]),
+    bossPortal: { x: ac.x, y: ac.y + 2 },
+    badlands: {
+      boards: listOf(boards, tiles, W), hoodoos: hoodoos.filter((p) => get(p.x, p.y) === Tile.Ruin), bones: bones.filter((p) => get(p.x, p.y) === Tile.Ruin),
+      rails: listOf(rail, tiles, W), mine: get(mine.x, mine.y) === Tile.Wall ? mine : null,
+      fires: fires.filter((p) => get(p.x, p.y) === L && !(p.x === portal.x && p.y === portal.y)), crater: { x: ac.x, y: ac.y, r: 10 }, skull,
+    },
+  }));
+}
+
+/** Índices `y * width + x` marcados em `set` que ficaram chão (e passam em `keep`). */
+function listOf(set: Uint8Array, tiles: Uint8Array, width: number, keep: (i: number) => boolean = () => true) {
+  const out: number[] = [];
+  for (let i = 0; i < set.length; i++) if (set[i] && tiles[i] === Tile.Floor && keep(i)) out.push(i);
+  void width;
+  return out;
+}
+
+/** Fecha uma planta fixa: o chão sem acesso vira o tile de fora, o portal no meio da entrada e o resto do `Dungeon`. */
+function finishFixed(
+  mapId: MapId, tiles: Uint8Array, W: number, H: number, spawn: Rect, boss: Rect, path: Rect[], side: Rect[], meadows: Rect[],
+  extra: (portal: Pt2) => Partial<Dungeon>,
+): Dungeon {
+  const portal = centerOf(spawn);
+  const reach = reachableFrom(tiles, W, portal);
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === Tile.Floor && !reach[i]) tiles[i] = Tile.Wall;
+  const more = extra(portal);
+  tiles[portal.y * W + portal.x] = Tile.Portal;
+  return { mapId, width: W, height: H, tiles, spawn, boss, bossPortal: centerOf(boss), path, side, meadows, portal, ...more };
 }
 
 /** Direções (8) em que uma sala lateral do pântano pode ficar em relação à zona. */
