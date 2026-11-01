@@ -32,8 +32,10 @@ export function flightMs(speed: number, x0: number, y0: number, x1: number, y1: 
 }
 
 /** Nível em que cada slot de magia abre (slot 0 e slot 1). */
-export const SPELL_SLOT_LEVELS = [3, 6] as const;
-export type SpellSlot = 0 | 1;
+export const SPELL_SLOT_LEVELS = [3, 6, 12] as const;
+export type SpellSlot = 0 | 1 | 2;
+/** Os slots de magia da hunt, na ordem (o 3º é o das magias supremas). */
+export const SPELL_SLOTS: readonly SpellSlot[] = [0, 1, 2];
 
 export type SpellId =
   | "blade_spin" | "war_cry"
@@ -66,7 +68,9 @@ export type SpellId =
   // Grimório 4.0: magias em leque nas costelas novas (docs/GRIMORIO_4_PLANO.md, seção 8).
   | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
-  | "frost_breath" | "caltrops";
+  | "frost_breath" | "caltrops"
+  // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
+  | "titan_fury" | "sky_arrow" | "arcane_vortex" | "butterfly_swarm";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -253,6 +257,8 @@ export interface SpellDef {
   summon?: { kind: SummonKind; count: number; durationMs: number };
   /** Tiles por segundo até o alvo; sem isso o efeito é imediato. */
   projectileSpeed?: number;
+  /** O efeito cai no ponto mirado depois deste tempo, em vez de voar até lá (Flecha Celeste: atira para o alto). */
+  delayMs?: number;
   /**
    * Tambor de Guerra: por `ms`, quem conjura, os aliados e as criaturas (de qualquer herói) a até `radius` tiles atacam
    * `haste` mais rápido (fração da recarga cortada) e causam +`damage` de dano; `heal` cura essa fração da vida deles.
@@ -1025,6 +1031,29 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 35, cooldownMs: 14000, aim: "self", range: 0, radius: 2, slow: { pct: 0.3, ms: 3000 },
     rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15 },
   }),
+
+  // --- Slot 3 (magias supremas, nível 12): a de entrada de cada classe. Todas se compram (1.000 de gold). ----------
+  titan_fury: spell({
+    id: "titan_fury", classId: "knight", slot: 2, name: "Fúria do Titã", icon: "🌋", color: 0xd35400,
+    description: "Salta até o ponto mirado e cai com a espada no chão: fere e atordoa todos os monstros em volta.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 3, radius: 2, dash: { tiles: 3 }, damage: 2.5, stunMs: 1000,
+  }),
+  sky_arrow: spell({
+    id: "sky_arrow", classId: "paladin", slot: 2, name: "Flecha Celeste", icon: "🏹", color: 0xfff3a0,
+    description: "Atira uma flecha para o céu; um segundo depois ela cai no ponto mirado como um raio de luz, que fere e ofusca.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 7, radius: 2, delayMs: 1000, damage: 3, stunMs: 1000,
+  }),
+  arcane_vortex: spell({
+    id: "arcane_vortex", classId: "sorcerer", slot: 2, name: "Vórtice Arcano", icon: "🌀", color: 0xb388ff, element: "energy",
+    description: "Um orbe lento de energia atravessa a sala em linha reta e fere tudo por onde passa.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "line", wave: { stepMs: 150 }, damage: 2.6,
+  }),
+  butterfly_swarm: spell({
+    id: "butterfly_swarm", classId: "druid", slot: 2, name: "Revoada", icon: "🦋", color: 0xffb3e6,
+    description: "Uma revoada de borboletas sai em leque largo: fere os monstros, cura os aliados no caminho e o que ferem volta como vida para você.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 90 },
+    damage: 1.2, heal: 0.15, lifesteal: 0.2,
+  }),
 };
 
 /**
@@ -1192,6 +1221,11 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   // Xamã Orc
   ember_totem: { text: "A brasa queima o monstro por 3 s.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "burn" } } },
   war_drum: { text: "A batida também cura 10% da vida de quem está no raio do tambor.", changes: { rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15, heal: 0.1 } } },
+  // Slot 3
+  titan_fury: { text: "A queda pega os monstros a até 3 tiles.", changes: { radius: 3 } },
+  sky_arrow: { text: "O raio de luz cai em raio 3.", changes: { radius: 3 } },
+  arcane_vortex: { text: "O orbe vai até 8 tiles.", changes: { range: 8 } },
+  butterfly_swarm: { text: "As borboletas curam 25% da vida.", changes: { heal: 0.25 } },
 };
 
 /**

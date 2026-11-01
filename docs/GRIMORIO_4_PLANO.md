@@ -509,7 +509,8 @@ jogador em cada passo e não deixar código sem uso.
 | **1. Passivas de ouro** ✅ | `kind: "gift"`, os **12 Dons do topo** com o efeito por nível, Áureas e Tomos até 20, `buy_talent_levels`, menu, migration, teste `dons` | — | M–G | resolve o ouro parado já; não depende de nada |
 | **2a. Motor de leque** ✅ | L1 (abertura), L2 (onda), L3 (projéteis em leque), desenho de sopro, mira com ângulo, o desenho novo das 3 magias de leque atuais e as **11 magias em leque** das costelas novas que só dependem disso | — | G | é o pedido mais visível; as magias dão uso ao motor desde o primeiro PR |
 | **2b. Canalizar** ✅ | L4 (canalizar, o "cuspir fogo" de segurar e arrastar), A6 (várias armadilhas), Sopro Gélido e Abrolhos | 2a | M | completa as 13 magias de leque das costelas |
-| **3. Slot 3** | abrir o slot (5.2), as 4 magias de entrada, os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
+| **3a. Slot 3** ✅ | abrir o slot (5.2) e as 4 magias de entrada | 2 | M | o botão já estava reservado |
+| **3b. Ápices e Dons do fundo** | os 12 Ápices (peças A1, A3, A4, A5, A9 e a varredura L5 que eles usam) e os 12 **Dons do fundo** (pedem o Ápice) | 3a | G | os Ápices de leque precisam da fase 2 |
 | **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado, os 24 **Dons da costela de passivas** e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
 | **6. S3 de especialização** | as 24 (6 por classe), nas 4 classes juntas e com os dois lados de cada ramo juntos (escolha permanente) | 3 | G | por sistema, como as outras fases |
@@ -550,6 +551,14 @@ plano:
   (Maestria: 4); o Estilhaçar do Criomante solta o congelado no pulso seguinte (combo de propósito);
 - Abrolhos saem da Áurea Sagrada (Batedor), não da Chuva de Flechas;
 - migration `20261102040000_canalizar_e_abrolhos.sql`.
+
+**Fase 3a, como foi entregue:** o slot 3 abre no nível 12 com as 4 magias de entrada. Diferenças:
+- três delas usam peças que já existiam: Fúria do Titã (salto + área no pouso), Vórtice Arcano (linha em onda, em vez do
+  projétil lento A11) e Revoada (leque em onda com cura nos aliados e roubo de vida, em vez do bumerangue A10); só a
+  Flecha Celeste pediu peça nova, pequena (`delayMs`, a A7);
+- sem nenhuma magia do slot 3 comprada, o botão mostra 📖 "Grimório" e não abre uma escolha vazia;
+- o **Xamã Orc** (classe que entrou hoje, fora deste plano) ainda não tem magia de slot 3: o slot fica com o aviso;
+- banco: `record_spell_xp` guarda 3 magias por hunt; migration `20261102050000_slot_3.sql`; teste novo `slot3`.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).

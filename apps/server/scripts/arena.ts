@@ -198,7 +198,7 @@ export function arena(options: ArenaOptions = {}) {
     /** Mana cheia e as duas magias fora da recarga (para testar a magia, não a economia de mana). */
   function ready() {
     p.mana = p.maxMana;
-    any.seats.get(HERO).spellReadyAt = [0, 0];
+    any.seats.get(HERO).spellReadyAt = [0, 0, 0];
   }
 
   /** Mata o monstro pelo caminho normal da morte (XP, loot e drops sorteados com a seed da arena), como se o herói o matasse. */

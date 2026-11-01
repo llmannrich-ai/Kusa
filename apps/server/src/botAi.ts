@@ -2,6 +2,7 @@ import {
   CLASSES,
   SPELLS,
   SPELL_SLOT_LEVELS,
+  SPELL_SLOTS,
   Tile,
   hasLineOfSight,
   isWalkable,
@@ -115,8 +116,8 @@ export class BotAi {
   /** Escolhas da subida de nível, alvo, ataque e magias. */
   private decide(id: string, p: Player, anchor: Player, mem: BotMemory) {
     if (p.perkOffer.length > 0) this.w.choosePerk(id, { perk: p.perkOffer[0] as PerkId });
-    for (const slot of [0, 1] as const) {
-      if (p.level < SPELL_SLOT_LEVELS[slot] || (slot === 0 ? p.spell1 : p.spell2)) continue;
+    for (const slot of SPELL_SLOTS) {
+      if (p.level < SPELL_SLOT_LEVELS[slot] || botSpellIn(p, slot)) continue;
       const choices = spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes]));
       // A de maior nível na conta (empate: a primeira da árvore).
       const best = choices.reduce<SpellDef | undefined>((top, s) => (!top || (p.spellRanks.get(s.id) ?? 0) > (p.spellRanks.get(top.id) ?? 0) ? s : top), undefined);
@@ -153,8 +154,8 @@ export class BotAi {
   /** Magia pronta e com mana sai assim que fizer sentido: cura em quem está ferido, dano em quem está ao alcance. */
   private castSpells(id: string, p: Player, foe: Monster | undefined) {
     const now = this.w.now();
-    for (const slot of [0, 1] as const) {
-      const spell = SPELLS[(slot === 0 ? p.spell1 : p.spell2) as SpellId];
+    for (const slot of SPELL_SLOTS) {
+      const spell = SPELLS[botSpellIn(p, slot) as SpellId];
       if (!spell || now < this.w.spellReadyAt(id, slot) || p.mana < spell.manaCost) continue;
       if (this.worthCasting(p, spell, foe)) this.w.cast(id, { slot, aim: this.aimAt(p, spell, foe) });
     }
@@ -229,4 +230,9 @@ export class BotAi {
     mem.stuckSince = 0;
     this.w.bringBeside(id, anchorId);
   }
+}
+
+/** Magia que o bot tem no slot ("" = vazio). */
+function botSpellIn(p: Player, slot: SpellSlot) {
+  return slot === 0 ? p.spell1 : slot === 1 ? p.spell2 : p.spell3;
 }

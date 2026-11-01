@@ -405,6 +405,7 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keyup-SPACE", () => this.attack.release("key"));
     kb?.on("keydown-ONE", () => this.spellBar.press(0));
     kb?.on("keydown-TWO", () => this.spellBar.press(1));
+    kb?.on("keydown-THREE", () => this.spellBar.press(2));
     kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
     kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
     kb?.on("keydown-B", () => this.bagBar.toggle());

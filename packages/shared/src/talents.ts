@@ -1,5 +1,5 @@
 import { CLASS_IDS, type ClassId } from "./classes.ts";
-import { STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
+import { SPELL_SLOTS, STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
 import { STARTER_SPELL_XP, spellLevelFromXp } from "./spellxp.ts";
 import { GIFTS, GIFT_BASE_COST, GIFT_COST_GROWTH, GIFT_MAX_RANK, sumGifts, type GiftEffects, type GiftId } from "./gifts.ts";
 import { TRAITS, isTrait, type TraitId } from "./traits.ts";
@@ -127,6 +127,8 @@ const AURA_RULES: Record<AuraStat, StackedRule & { maxRank: number; baseCost: nu
 const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
 /** Preço do 1º nível das magias de uma especialização: a 1ª do lado (logo abaixo do Traço) e a 2ª. */
 const SIDE_SPELL_COST = [1200, 1600];
+/** Preço da magia de entrada do slot 3 (ao lado da raiz): todas as do slot 3 se compram. */
+const S3_ENTRY_COST = 1000;
 /** Preço do Traço de uma especialização (nível único). */
 const TRAIT_COST = 1000;
 /** As iniciais já vêm compradas: o preço nunca é cobrado (o banco só pede um valor positivo). */
@@ -257,12 +259,15 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["stunning_roar", 2, 2, "war_cry", -1],
     ["battle_order", 2, 3, "mana", 1], ["challenge_mark", 2, 4, "battle_order", 1, "speed"],
     // Grimório 4.0: costelas de leque.
+    // Slot 3: a magia de entrada fica ao lado da raiz (aparece em todas as abas) e pede só a raiz.
+    ["titan_fury", 1, 0, "blade_spin", 1],
     ["gale_blade", 0, 3, "crushing_blow", 2], ["shield_wall", 1, 3, "holy_shield", -1], ["cutting_shout", 2, 3, "mana", -2],
   ],
   paladin: [
     ["double_shot", 0, 3, "piercing_shot", -1], ["barbed_arrow", 0, 4, "double_shot", -2],
     ["sunbeam", 1, 2, "hp", 1], ["holy_hammer", 1, 4, "sunbeam", 1, "blessed_ward"],
     ["net_arrow", 2, 2, "arrow_rain", -1], ["fire_arrows", 2, 4, "speed", 1],
+    ["sky_arrow", 1, 0, "holy_arrow", 1],
     ["arrow_fan", 0, 3, "piercing_shot", 1], ["holy_flash", 1, 3, "healing_light", -1], ["caltrops", 2, 3, "mana", 1],
   ],
   sorcerer: [
@@ -270,6 +275,7 @@ const RIBS: Record<ClassId, Rib[]> = {
     // Gelo: o Orbe Congelado pede a Geada e a Lança de Gelo (no Diablo 2, pede a Nevasca e a Nova de Gelo).
     ["frostbite", 1, 3, "frost_nova", 1], ["frozen_orb", 1, 4, "frostbite", 1, "ice_lance"],
     ["dark_seal", 2, 2, "void_storm", -1], ["plague", 2, 4, "drain_life", 1],
+    ["arcane_vortex", 1, 0, "shadow_orb", 1],
     ["fire_spit", 0, 3, "lightning_bolt", 1], ["lightning_fan", 0, 4, "fire_spit", 1], ["dark_wail", 2, 3, "hp", -1],
     ["frost_breath", 1, 3, "frost_nova", -1],
   ],
@@ -278,6 +284,7 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["purifying_sap", 1, 3, "healing_moth", -1], ["blossom_burst", 1, 4, "purifying_sap", -2],
     ["vine_lash", 2, 2, "thorn_roots", 1],
     ["spore_burst", 2, 3, "venom_thorn", -1], ["bramble_burst", 2, 4, "spore_burst", -1, "hornet_swarm"],
+    ["butterfly_swarm", 1, 0, "forest_blessing", 1],
     ["pack_roar", 0, 3, "spirit_wolf", -1], ["pollen_breeze", 1, 3, "healing_moth", 1], ["thorn_spray", 2, 3, "venom_thorn", 1],
   ],
   shaman: [],
@@ -355,7 +362,7 @@ function classTree(classId: ClassId): TalentDef[] {
     keys.add(key);
     return {
       id: id(key), classId, col, row, lane, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
-      maxRank: 1, freeRank: 0, baseCost: SPELL_COST_BY_ROW[row], costGrowth: 1,
+      maxRank: 1, freeRank: 0, baseCost: row === 0 && spell.slot === 2 ? S3_ENTRY_COST : SPELL_COST_BY_ROW[row], costGrowth: 1,
       requires: { id: id(parent), rank: 1 }, alsoRequires: also ? { id: id(also), rank: 1 } : undefined,
     };
   });
@@ -573,7 +580,7 @@ export function activeSlotSpells(
 
 /** Magias ativas da classe nos dois slots (as que vão para a hunt). */
 export function activeSpells(classId: ClassId, ranks: TalentRanks, xp: SpellXp, chosen: readonly string[]): SpellId[] {
-  return [0, 1].flatMap((slot) => activeSlotSpells(classId, slot, ranks, xp, chosen));
+  return SPELL_SLOTS.flatMap((slot) => activeSlotSpells(classId, slot, ranks, xp, chosen));
 }
 
 /**
