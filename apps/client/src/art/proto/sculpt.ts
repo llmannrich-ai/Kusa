@@ -46,6 +46,8 @@ export interface Material {
   bumpSize?: number;
   /** Pintas escuras soltas (cerdas, poros): fração dos pixels (0..1). */
   speck?: number;
+  /** Brilho próprio (0..1): o tom não cai abaixo disto, nem na sombra (olho que brilha no escuro). */
+  glow?: number;
   /**
    * Diferença de profundidade (unidades) a partir da qual uma parte na frente desenha a linha sobre esta (padrão 2.2).
    * Penas finas umas sobre as outras pedem menos.
@@ -62,9 +64,15 @@ export interface Material {
   emit?: number;
 }
 
+/**
+ * Pintura presa à forma (pintura de guerra, alça, sangue na lâmina): recebe o ponto no espaço do elipsoide (unidades do
+ * modelo, a partir do centro, nos eixos dele) e devolve o material daquele ponto, ou −1 para manter o da forma.
+ */
+export type Paint = (x: number, y: number, z: number) => number;
+
 /** Forma da escultura, já no espaço da câmera na hora de desenhar. */
 type Shape =
-  | { kind: "ell"; c: V3; u: V3; v: V3; w: V3; r: V3; mat: number; part: number; band?: Band }
+  | { kind: "ell"; c: V3; u: V3; v: V3; w: V3; r: V3; mat: number; part: number; band?: Band; paint?: Paint }
   | { kind: "cone"; a: V3; b: V3; ra: number; rb: number; mat: number; part: number; band?: Band };
 
 /** Faixas ao longo da forma (anéis de segmento, listras): `n` faixas, a cada uma escurece `depth` no começo. */
@@ -136,16 +144,16 @@ export class Sculpt {
   private d(d: V3) { return norm(apply(this.xf.m, d)); }
 
   /** Elipsoide de centro `c`, raios `r` nos eixos `axes` (padrão: os do modelo). */
-  ell(c: V3, r: V3, mat: number, o: { axes?: [V3, V3, V3]; part?: number; band?: Band } = {}) {
+  ell(c: V3, r: V3, mat: number, o: { axes?: [V3, V3, V3]; part?: number; band?: Band; paint?: Paint } = {}) {
     const [u, v, w] = o.axes ?? [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-    this.shapes.push({ kind: "ell", c: this.p(c), u: this.d(u), v: this.d(v), w: this.d(w), r, mat, part: o.part ?? this.part(), band: o.band });
+    this.shapes.push({ kind: "ell", c: this.p(c), u: this.d(u), v: this.d(v), w: this.d(w), r, mat, part: o.part ?? this.part(), band: o.band, paint: o.paint });
   }
 
   /** Elipsoide esticado de `a` até `b` (gomo de cauda, placa), com raios `ry` (em cima) e `rz` (de lado). */
-  seg(a: V3, b: V3, ry: number, rz: number, mat: number, o: { up?: V3; part?: number; band?: Band; over?: number } = {}) {
+  seg(a: V3, b: V3, ry: number, rz: number, mat: number, o: { up?: V3; part?: number; band?: Band; over?: number; paint?: Paint } = {}) {
     const axes = basis(sub(b, a), o.up);
     const half = len(sub(b, a)) / 2 + (o.over ?? 0);
-    this.ell(lerp3(a, b, 0.5), [half, ry, rz], mat, { axes, part: o.part, band: o.band });
+    this.ell(lerp3(a, b, 0.5), [half, ry, rz], mat, { axes, part: o.part, band: o.band, paint: o.paint });
   }
 
   /** Cone arredondado de `a` (raio `ra`) a `b` (raio `rb`): com raios iguais é uma cápsula; com `b = a`, uma esfera. */
@@ -234,8 +242,8 @@ export interface Look {
    */
   shadow?: number;
   /**
-   * Luz de contorno (de trás, à direita): borda clara do lado oposto à luz, que destaca o bicho do chão. Padrão
-   * `DEFAULT_RIM`; `null` desliga.
+   * Luz de contorno, ou contraluz (de trás, à direita): borda clara do lado oposto à luz, que destaca o bicho do chão
+   * claro do deserto e do escuro do brejo. Padrão `DEFAULT_RIM`; `null` desliga.
    */
   rim?: { color: string; power: number } | null;
 }
@@ -497,6 +505,10 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
         const ly = loc[i * 3 + 1] * scale / sh.r[1];
         if (ly < -0.35) mi = m0.belly;
       }
+      if (sh.kind === "ell" && sh.paint) {
+        const pm = sh.paint(loc[i * 3], loc[i * 3 + 1], loc[i * 3 + 2]);
+        if (pm >= 0) mi = pm;
+      }
       const m = look.materials[mi];
       // Oclusão: vizinhos bem na frente escondem a luz do céu.
       let o = 0;
@@ -548,6 +560,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       // Brilho especular da quitina.
       const spec = m.gloss ? Math.pow(Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]), m.shine ?? 24) * m.gloss : 0;
       t += spec * 0.9;
+      if (m.glow) t = Math.max(t, m.glow + spec * 0.5);
       // Pontilhado só onde o tom muda de cor.
       const ramp = ramps[mi];
       const k = ramp.length - 1;
@@ -558,7 +571,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       const rgb = ramp[idx];
       let r = rgb[0], g = rgb[1], b = rgb[2];
       // Luz de contorno: borda clara nas faces de lado, viradas para longe da luz.
-      if (rim && m.emit === undefined) {
+      if (rim && m.emit === undefined && !m.glow) {
         const e = Math.max(0, nx * rim.d[0] + ny * rim.d[1] + nz * rim.d[2]) * Math.pow(1 - Math.max(0, nz), 2) * rim.p * (1 - o);
         r += (rim.c[0] - r) * e; g += (rim.c[1] - g) * e; b += (rim.c[2] - b) * e;
       }

@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero, protoSculpt } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero, protoOrcScout, protoSculpt } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -336,6 +336,21 @@ if (protoSculpt) {
       },
     };
   }
+}
+
+// Orc batedor esculpido por código (`proto/orcArt.ts`): mesmo tamanho na tela que o resto do clã (`CLAN_SCALE`).
+// Ciclos mais longos que os 4 quadros de sempre (o parado respira em 6, o andar tem os 8 tempos do passo, o golpe tem
+// antecipação e volta): o movimento fino é o ponto deste desenho.
+if (protoOrcScout) {
+  const art = protoOrcScout.orcScoutArt();
+  BESTIARY_ART.orcScout = {
+    ...BESTIARY_ART.orcScout, facesLeft: true, scale: HD_SCALE * CLAN_SCALE,
+    anim: {
+      size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
+      fps: { idle: 7, walk: 12, attack: 14, cast: 14 }, frames: { ...protoOrcScout.ORC_CLIP_FRAMES }, stride: 4,
+      hd: () => art.frames(), get fill() { return art.fill; }, origin: art.origin, extra: { ...art.extra },
+    },
+  };
 }
 
 /** Monstros animados: textura → animação. */
