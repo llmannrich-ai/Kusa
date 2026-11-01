@@ -1,4 +1,4 @@
-# Grimório 3.0: slot 3, áureas novas e economia de ouro
+# Grimório 3.0: slot 3, áureas, passivas e economia de ouro
 
 Plano de expansão do Grimório das 4 classes. Documento de planejamento: quando uma fase for entregue, o `GDD.md`
 passa a descrever o que vale e este arquivo marca a fase como feita.
@@ -56,6 +56,7 @@ correção do ritmo de XP e com um destino de ouro que não dependa de XP.
 | Grimório mais longo | Custo comprável por classe | de ~29 mil para ~75–85 mil |
 | Mais profundo | Linha mais funda | de 8 para 11 |
 | Slot 3 com escolha real | Magias de slot 3 por classe | 9 (3 sem especialização + 6 de especialização) |
+| Poder fora dos botões | Magias passivas por classe | 9 (3 sem especialização + 6 de especialização) |
 | Áureas com personalidade | Áureas por classe | de 4 genéricas para 4 + 6 de especialização |
 | Não quebrar o começo | Custo das linhas 0–3 | **igual ao de hoje** (o começo é onde o jogador novo fica ou sai) |
 
@@ -72,14 +73,17 @@ Mantém as **3 colunas** (o desenho no celular em retrato não comporta uma 4ª)
 linha 0      raiz (slot 1)
 linhas 1–4   tronco + costelas + Tomo          (igual a hoje, mesmos preços)
 linha 5      ★ magia de slot 3 do ramo          (NOVA, sem especialização: todos chegam)
+linha 4–5    ○ passiva do ramo, costela         (NOVA, sem especialização: todos chegam)
 linhas 5–8   Traço → magias da especialização   (igual a hoje, preços sobem)
 linha 9      ◆ magia de slot 3 da especialização (NOVA, uma de cada lado)
+             ○ passiva da especialização ao lado dela, nas pistas −2/+2 (NOVA, uma de cada lado)
 linha 10     ✦ áurea da especialização, 3 níveis (NOVA, uma de cada lado)
 linha 11     ◆ costela rara (slot 1 ou 2), 1 por classe, presa num ramo   (NOVA)
 ```
 
-Por classe entram **17 nós**: 3 magias de slot 3 do tronco, 6 de especialização, 6 áureas de especialização e
-2 magias raras de slot 1/2 (costelas). O jogador alcança 3 + 3 + 3 + 2 = 11 deles.
+Por classe entram **26 nós**: 3 magias de slot 3 do tronco, 6 de especialização, 6 áureas de especialização,
+9 passivas (3 do tronco + 6 de especialização) e 2 magias raras de slot 1/2 (costelas). O jogador alcança
+3 + 3 + 3 + 6 + 2 = 17 deles.
 
 Onde a classe já está na linha 8 (Cavaleiro Lâmina, Feiticeiro Trevas, Druida Matilha e Bosque), as novas linhas
 viram 9–11 do mesmo jeito; o desenho do Grimório (`menu.ts`) precisa de rolagem vertical se ainda não tiver.
@@ -116,10 +120,16 @@ Risco: cheira a pagar para pular; por isso o teto no nível 1. Precisa de uma fu
 | **Slot 3 da especialização** (novo) | — | 5.000 |
 | **Áurea da especialização** (nova, 3 níveis, ×1,8) | — | 2.000 + 3.600 + 6.480 = 12.080 |
 | **Costela rara** (nova) | — | 2.500 |
+| **Passiva do tronco** (nova, 2 níveis, ×1,8) | — | 2.500 + 4.500 = 7.000 |
+| **Passiva da especialização** (nova, 2 níveis, ×1,8) | — | 4.000 + 7.200 = 11.200 |
 
 Conta do comprável por classe: ~33 mil (hoje, com os aumentos) + 9 mil (slot 3 tronco) + 15 mil (slot 3 spec) +
-36 mil (áureas spec) + 5 mil (raras) ≈ **98 mil**. Se for longo demais (D3), o ajuste mais simples é a áurea de
-especialização com 2 níveis (cai para ~83 mil).
+36 mil (áureas spec) + 5 mil (raras) + 21 mil (passivas do tronco) + 34 mil (passivas spec) ≈ **153 mil**.
+
+Isso é ~600 hunts a 250 de gold: longo demais se nada mais mudar. Recomendação: decidir a meta em hunts (D3) e
+calibrar com **um multiplicador único** nos preços novos (`NEW_NODE_PRICE_SCALE` em `talents.ts`, repetido na
+migration), em vez de mexer nó por nó. Exemplos: meta de 300 hunts → multiplicador ~0,45 nos nós novos; meta de
+400 → ~0,65. Os mapas novos (Mata Antiga, Coração da Mata, Fortaleza) pagam mais e encurtam isso; medir antes.
 
 Quem já comprou não paga a diferença (o banco cobra pelo `base_cost` na hora da compra). Mudar o preço é uma
 migration no `talents` + a mesma tabela em `talents.ts` (o teste do catálogo confere).
@@ -236,7 +246,67 @@ especialização, **R** = costela rara. Os efeitos usam campos que já existem e
 | Bosque (costela) | R, slot 1 | Semente Explosiva | Semente no alvo que explode em 1,5 s (raio 1,5) |
 | Espinhos (costela) | R, slot 2 | Raízes Profundas | Linha de raízes que prende todos na reta por 2 s |
 
-**Total:** 36 magias de slot 3, 8 raras de slot 1/2 e 24 áureas de especialização (68 nós novos).
+### 6.5 Magias passivas (não ocupam slot)
+
+Nó novo do tipo **passiva**: comprada no Grimório, vale a hunt inteira e **dispara sozinha** quando o gatilho
+acontece. Não tem botão, não gasta mana e não entra na escolha dos slots. Cada uma tem **chance** e **recarga
+interna** (para não disparar sem parar), e 2 níveis comprados com gold (o nível 2 sobe chance ou força). Não sobe
+por uso: é o destino de ouro que não depende de XP.
+
+Diferença para o resto: a **áurea** é número fixo (+5% de armadura); o **Traço** é a regra da especialização
+(nível único, um por ramo); a **passiva** é um evento ("ao matar, explode").
+
+Gatilhos (cada um é um gancho na `Hunt`): acertar o básico, matar, levar golpe, cair abaixo de X% da vida, a cada
+N s, a cada N magias, ficar parado, sair da forma animal, criatura matar, curar com magia.
+
+| Classe | Ramo / lado | Nome | Gatilho → efeito |
+|---|---|---|---|
+| Cavaleiro | Lâmina (T) | Golpe Reflexo | Básico, 15%: corte em volta (raio 1, 1,2×). Recarga 2 s |
+| Cavaleiro | Bastião (T) | Vigília | 8 s sem levar dano: o próximo golpe recebido sai pela metade |
+| Cavaleiro | Comando (T) | Brado Vitorioso | Matar: aliados a até 4 tiles curam 3% da vida. Recarga 5 s |
+| Cavaleiro | Berserker | Sede Insaciável | Matar com o básico: recupera 4% da vida |
+| Cavaleiro | Duelista | Golpe de Misericórdia | Básico em monstro abaixo de 25% da vida: +60% de dano |
+| Cavaleiro | Guardião | Escudo Leal | A cada 10 s: o aliado mais ferido a até 4 tiles ganha +6 de armadura por 4 s |
+| Cavaleiro | Inabalável | Raiz de Ferro | Parado por 2 s: +5 de armadura até andar |
+| Cavaleiro | Senhor da Guerra | Tambores de Guerra | A cada 3 magias: aliados a até 4 tiles +15% de dano por 5 s |
+| Cavaleiro | Desafiante | Ira Provocada | Monstro provocado que bate em você leva 0,5× de volta |
+| Paladino | Mira (T) | Tiro Certeiro | 4º básico seguido no mesmo alvo: 2× de dano |
+| Paladino | Luz (T) | Bênção Silenciosa | A cada 12 s: cura 5% em você e no aliado mais ferido a até 5 tiles |
+| Paladino | Batedor (T) | Flecha Ricochete | Básico, 15%: a flecha salta para outro monstro (0,7×) |
+| Paladino | Atirador de Elite | Ponto Fraco | Básico a 6 tiles ou mais: marca o alvo (+10% de dano da equipe, 4 s) |
+| Paladino | Caçador Ágil | Instinto de Fuga | Abaixo de 35% da vida: +40% de velocidade por 3 s e monstros a até 2 tiles ficam 50% mais lentos. Recarga 25 s |
+| Paladino | Cruzado | Martelo da Fé | Matar morto-vivo: explosão sagrada (raio 1,5, 1×) |
+| Paladino | Guardião da Luz | Graça Protetora | Aliado abaixo de 30% da vida: +8 de armadura e cura de 10%. Recarga 20 s por aliado |
+| Paladino | Artilheiro | Estilhaços | Monstro morto por magia de área explode (raio 1, 0,5×) |
+| Paladino | Armadilheiro | Mina de Sobra | Armadilha disparada deixa uma menor no lugar (uma vez) |
+| Feiticeiro | Raio (T) | Descarga | Magia, 15%: solta uma faísca (0,6×) no monstro mais perto |
+| Feiticeiro | Gelo (T) | Pele Gélida | Quem bate em você corpo a corpo fica 30% mais lento por 2 s |
+| Feiticeiro | Trevas (T) | Toque Sombrio | Básico, 20%: dano contínuo de sombra (0,3×/s por 4 s) |
+| Feiticeiro | Tempestuoso | Sobrecarga | A cada 4 magias de energia: a próxima salta em +2 monstros |
+| Feiticeiro | Piromante | Rastro em Chamas | Monstro que morre queimando explode em fogo (raio 1, 0,6×) |
+| Feiticeiro | Criomante | Fragmentos | Monstro que morre preso ou lento solta estilhaços (raio 1,5, 0,6×) |
+| Feiticeiro | Arcanista | Eco Arcano | Magia, 10%: não entra em recarga. Recarga 10 s |
+| Feiticeiro | Necromante | Servo Eterno | Matar, 10%: levanta um esqueleto por 8 s. Recarga 6 s |
+| Feiticeiro | Bruxo | Mau Olhado | Básico, 25%: amaldiçoa o alvo (+8% de dano da equipe, 4 s) |
+| Druida | Matilha (T) | Instinto da Matilha | Criatura sua mata: você cura 5% da vida |
+| Druida | Bosque (T) | Orvalho | A cada 8 s: aliados a até 4 tiles curam 2% da vida |
+| Druida | Espinhos (T) | Pólen Tóxico | Básico, 20%: envenena (0,3×/s por 4 s) |
+| Druida | Mestre das Feras | Ira do Alfa | Você abaixo de 50% da vida: criaturas +30% de dano por 6 s. Recarga 20 s |
+| Druida | Metamorfo | Instinto Selvagem | Ao sair da forma animal: cura 10% da vida |
+| Druida | Círculo da Vida | Cura Gêmea | Curar com magia, 20%: outro aliado ferido recebe metade da cura |
+| Druida | Guardião da Natureza | Casca Viva | Levar golpe, 15%: +4 de armadura por 4 s |
+| Druida | Peste | Toxina Lenta | Monstros envenenados por você andam 15% mais devagar |
+| Druida | Tempestade | Condutor | Monstro atingido por raio seu recebe +20% do próximo dano (3 s) |
+
+Cuidados de design das passivas:
+- **Não repetir Traço:** contra-ataque (Riposta), escudo abaixo de 25% (Último Bastião), raio a cada 4 magias (Céu
+  Carregado) e mana ao matar (Colheita) já existem e ficaram de fora.
+- **Ver que disparou:** no celular, efeito invisível não existe para o jogador. Toda passiva mostra um ícone pequeno
+  sobre o herói quando dispara (sem tremor de câmera) e conta na telemetria como fonte de dano/cura própria.
+- **Orçamento de poder:** cada passiva vale ~5–10% do DPS ou da sobrevivência da classe; o `balanco.ts` confere.
+- **Bots:** passivas funcionam sozinhas, então os bots ganham com elas sem código novo no `botAi.ts`.
+
+**Total:** 36 magias de slot 3, 36 passivas, 8 raras de slot 1/2 e 24 áureas de especialização (104 nós novos).
 
 ---
 
@@ -248,7 +318,8 @@ Para não espalhar código único, os efeitos novos foram agrupados em poucas pe
 |---|---|---|
 | **Campo que acompanha o herói** (`field.follow: true`) | 9 áureas ativas | `hunt.ts` (posição do campo = posição do herói a cada pulso), desenho no cliente |
 | **Guarda em aliados** no campo (`field.allyGuard`) | Égide do Rei | `hunt.ts` |
-| **8 atributos novos de áurea passiva**: roubo de vida, recarga, armadura, cura feita, dano em área, dano contínuo, poder das criaturas, dano de elemento/tipo (energia, mortos-vivos, alvo único, forma animal) | 24 áureas | `AuraStat`/`Bonuses` em `talents.ts`, aplicação em `hunt.ts`, ficha do herói, `RunStats` |
+| **Atributos novos de áurea**: roubo de vida, recarga e armadura **já existem** em `PerkBonuses` (`lifesteal`, `castHaste`, `armor`): a áurea só passa a alimentá-los. Novos de verdade: cura feita, dano em área, dano contínuo, poder das criaturas, dano por tipo (energia, mortos-vivos, alvo único, forma animal) | 24 áureas | `AuraStat`/`Bonuses` em `talents.ts`, aplicação em `hunt.ts`, ficha do herói, `RunStats` |
+| **Passivas**: tipo de nó `passive`, catálogo novo `packages/shared/src/passives.ts` (`{ trigger, chance, cooldownMs, efeito }`), 10 ganchos de gatilho na `Hunt`. O efeito reaproveita `applySpell` (mesmo caminho das armadilhas e campos) ou um bônus curto. Teto global: 1 disparo de passiva a cada 300 ms por herói | 36 passivas | `hunt.ts`, `talents.ts`, ícone de disparo no cliente, `RunStats` (fonte `passiva:<id>`) |
 | Peças únicas (1 por classe no máximo): cadeia de investidas, várias armadilhas, zerar recarga, veneno que se espalha, Grifo | 5 magias | `hunt.ts`, `summons.ts`, arte |
 
 Recomendação: se o prazo apertar, as 5 peças únicas são as primeiras a virar efeito simples (ex.: Campo Minado vira
@@ -265,8 +336,9 @@ Uma branch e um PR por fase (fluxo do `CLAUDE.md`). Fases 4 a 7 podem andar em p
 | **0. Contrato com o slot 3** | Combinar com a sessão do slot 3: `SpellSlot = 0 \| 1 \| 2`, nível de abertura (`SPELL_SLOT_LEVELS[2]`), `finish_solo_run`/`record_spell_xp` aceitando 3 magias, botão na `#actions`, bot usando o slot 3. **Esta sessão não mexe nisso.** | — | conversa |
 | **1. Ritmo de XP e economia** | Travas da seção 3.1, preços da seção 4, `study_spell` (se D2 = sim). Migration + `talents.ts`. Mede o efeito antes de entrar conteúdo | — | P |
 | **2. Motor** | Campo que acompanha, guarda em aliados, 8 atributos de áurea, contadores no `RunStats`. Testes na arena (`arena.ts`) para cada peça | 0 mesclado | M |
-| **3. Desenho do Grimório** | Linhas 9–11, rolagem, selo "slot 3" no nó, ficha da áurea nova. Testar em 412×915 com toque e deitado (915×412) | 0 | P |
-| **4. Cavaleiro** | 17 nós: `spells.ts`, `talents.ts`, migration dos `talents`, testes na arena, ícones | 1, 2, 3 | M |
+| **2b. Passivas (motor + 3 do tronco de 1 classe)** | Tipo `passive`, `passives.ts`, ganchos de gatilho, ícone de disparo, telemetria. Pode entrar **antes do slot 3** (não depende dele) e já dá destino ao ouro | 1 | M |
+| **3. Desenho do Grimório** | Linhas 9–11, rolagem, selo "slot 3" no nó, desenho do nó de passiva (anel), ficha da áurea nova. Testar em 412×915 com toque e deitado (915×412) | 0 | P |
+| **4. Cavaleiro** | 26 nós: `spells.ts`, `talents.ts`, migration dos `talents`, testes na arena, ícones | 1, 2, 3 | M |
 | **5. Paladino** | idem | 1, 2, 3 | M |
 | **6. Feiticeiro** | idem | 1, 2, 3 | M |
 | **7. Druida** | idem (+ Grifo) | 1, 2, 3 | M+ |
@@ -276,7 +348,8 @@ Ordem das classes: começar pela que tem mais telemetria (Cavaleiro) para valida
 
 ### 8.1 Checklist de cada PR de conteúdo
 
-- [ ] Magia nova em `SpellId` e `SPELLS`, nó em `SHAPES`/`RIBS`, preço na tabela.
+- [ ] Magia nova em `SpellId` e `SPELLS` (ou passiva em `passives.ts`), nó em `SHAPES`/`RIBS`, preço na tabela.
+- [ ] Passiva: teste na arena do gatilho, da chance (seed fixa) e da recarga interna.
 - [ ] Migration nova em `supabase/migrations/` com as linhas do `talents` (mesmo id, preço e pai); advisors de segurança.
 - [ ] Teste na arena para cada efeito novo ou combinação nova (sem depender de mapa sorteado).
 - [ ] Catálogo mostra as magias (vem sozinho do `packages/shared`); teste `catalogo` verde.
@@ -298,7 +371,8 @@ Ordem das classes: começar pela que tem mais telemetria (Cavaleiro) para valida
 | Áureas passivas somadas (8 atributos + 4 antigos) | ficha confusa, poder escondido | 1 áurea nova por especialização; mostrar tudo na ficha do herói |
 | Preço do fim alto demais | jogador desiste antes de completar | medir "hunts até completar a classe" na telemetria; cortar a áurea de especialização para 2 níveis |
 | Hunt solo credita pelo cliente | XP de 3 magias precisa caber no `SOLO_LIMITS` | parte da Fase 0 (`spellXpPerSecond` e o limite de magias por hunt) |
-| 68 nós novos de uma vez | bug difícil de achar | 1 classe por PR, arena para cada efeito |
+| Passivas disparando demais (efeito poluído na tela, custo de CPU na sala do aparelho) | celular esquenta, jogador não entende | recarga interna em toda passiva + teto global por herói; medir na sala hospedada |
+| 104 nós novos de uma vez | bug difícil de achar | 1 classe por PR, arena para cada efeito |
 
 ---
 
@@ -309,5 +383,6 @@ Ordem das classes: começar pela que tem mais telemetria (Cavaleiro) para valida
 - **D2. "Estudar" magia com gold até o nível 1:** sim ou não?
 - **D3. Ritmo alvo para fechar uma classe:** ~320 hunts (proposta, ~98 mil) ou mais curto (~80 mil, áurea de
   especialização com 2 níveis)?
+- **D5. Passivas com 2 níveis** (destino de ouro sem XP, proposta) ou nível único (árvore mais barata)?
 - **D4. Preço dos nós antigos de especialização:** subir como na seção 4 (quem já comprou não perde nada) ou só os
   nós novos ficam caros?
