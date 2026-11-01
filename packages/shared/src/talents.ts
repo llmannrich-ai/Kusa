@@ -1,6 +1,7 @@
 import { CLASS_IDS, type ClassId } from "./classes.ts";
 import { STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
 import { STARTER_SPELL_XP, spellLevelFromXp } from "./spellxp.ts";
+import { GIFTS, GIFT_BASE_COST, GIFT_COST_GROWTH, GIFT_MAX_RANK, sumGifts, type GiftEffects, type GiftId } from "./gifts.ts";
 import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 
 // Grimório: a árvore de magias de cada classe, comprada no menu com o gold das hunts.
@@ -11,7 +12,8 @@ import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 //   áurea: bônus passivo de dano, vida, mana ou velocidade, com vários níveis;
 //   traço: a passiva de uma especialização. No fim de um ramo, a árvore se divide em dois lados (`side`);
 //          comprar o Traço de um lado tranca o outro para sempre (`exclusiveWith`), e as magias do lado
-//          pedem o Traço.
+//          pedem o Traço;
+//   dom:   passiva comprada só com gold, com 25 níveis (`gifts.ts`). Não pede XP: o gold sempre tem para onde ir.
 // Cada ramo é uma espinha de peixe (inspirada no Diablo 2): o tronco desce no meio e as costelas (`RIBS`) saem
 // para os lados em alturas e tamanhos diferentes, então nenhum ramo tem a mesma forma. Um nó de costela pode
 // pedir dois pais (`alsoRequires`), como a Nevasca do Diablo 2 pede duas magias.
@@ -38,15 +40,17 @@ export interface TalentDef {
   row: number;
   /** Posição de lado dentro do ramo: 0 = tronco, −2 a 2 = costelas e lados das especializações. */
   lane: number;
-  kind: "spell" | "aura" | "trait" | "tome";
+  kind: "spell" | "aura" | "trait" | "tome" | "gift";
   name: string;
   icon: string;
   /** Magia liberada (só `kind: "spell"`). */
   spellId?: SpellId;
-  /** Bônus por nível da áurea, em fração (0.05 = +5%). */
-  aura?: { stat: AuraStat; perRank: number };
-  /** Força extra por nível do Tomo nas magias do ramo dele (só `kind: "tome"`), em fração. */
-  tome?: { perRank: number };
+  /** Bônus por nível da áurea, em fração (0.05 = +5%): `perRank` nos `baseRanks` primeiros níveis, `perRankAfter` nos outros. */
+  aura?: { stat: AuraStat } & StackedRule;
+  /** Força extra por nível do Tomo nas magias do ramo dele (só `kind: "tome"`), em fração, com a mesma regra da áurea. */
+  tome?: StackedRule;
+  /** Dom liberado (só `kind: "gift"`). */
+  giftId?: GiftId;
   /** Traço liberado (só `kind: "trait"`). */
   traitId?: TraitId;
   /** Lado da especialização (0 ou 1) no fim do ramo; ausente no tronco. */
@@ -63,6 +67,22 @@ export interface TalentDef {
   requires?: { id: string; rank: number };
   /** Segundo pai (nó de costela que cruza com o tronco): também precisa ter `rank` níveis. */
   alsoRequires?: { id: string; rank: number };
+}
+
+/**
+ * Ganho por nível das áureas e dos Tomos: os `baseRanks` primeiros níveis (os de antes do Grimório 4.0) valem
+ * `perRank` cada; do nível seguinte até o 20, cada nível vale `perRankAfter` (menos, mas são muitos níveis).
+ */
+export interface StackedRule {
+  perRank: number;
+  perRankAfter: number;
+  baseRanks: number;
+}
+
+/** Total de uma áurea ou de um Tomo num nível. */
+export function stackedValue(rule: StackedRule, rank: number): number {
+  const first = Math.min(rank, rule.baseRanks);
+  return first * rule.perRank + Math.max(0, rank - rule.baseRanks) * rule.perRankAfter;
 }
 
 /** Níveis comprados por nó (id → nível). Nó ausente = 0. Uma magia tem no máximo 1: comprada. */
@@ -92,12 +112,15 @@ const AURA_NAMES: Record<ClassId, Record<AuraStat, string>> = {
 
 const AURA_ICONS: Record<AuraStat, string> = { damage: "⚔️", hp: "❤️", mana: "💧", speed: "👟" };
 
-/** Bônus, níveis e preço de cada áurea (iguais em todas as classes). */
-const AURA_RULES: Record<AuraStat, { perRank: number; maxRank: number; baseCost: number }> = {
-  damage: { perRank: 0.04, maxRank: 3, baseCost: 120 },
-  hp: { perRank: 0.06, maxRank: 3, baseCost: 120 },
-  mana: { perRank: 0.08, maxRank: 3, baseCost: 150 },
-  speed: { perRank: 0.04, maxRank: 2, baseCost: 300 },
+/**
+ * Bônus, níveis e preço de cada áurea (iguais em todas as classes). Os primeiros níveis são os de antes do Grimório
+ * 4.0; os outros (até o 20) valem menos cada. A velocidade para no 6: velocidade alta deixa o herói fugir de tudo.
+ */
+const AURA_RULES: Record<AuraStat, StackedRule & { maxRank: number; baseCost: number; costGrowth: number }> = {
+  damage: { perRank: 0.04, perRankAfter: 0.01, baseRanks: 3, maxRank: 20, baseCost: 120, costGrowth: 1.15 },
+  hp: { perRank: 0.06, perRankAfter: 0.015, baseRanks: 3, maxRank: 20, baseCost: 120, costGrowth: 1.15 },
+  mana: { perRank: 0.08, perRankAfter: 0.02, baseRanks: 3, maxRank: 20, baseCost: 150, costGrowth: 1.15 },
+  speed: { perRank: 0.04, perRankAfter: 0.01, baseRanks: 2, maxRank: 6, baseCost: 300, costGrowth: 1.3 },
 };
 
 /** Preço do 1º nível de uma magia do tronco ou de uma costela, pela profundidade na árvore (a ponta é mais cara). */
@@ -255,7 +278,7 @@ const RIBS: Record<ClassId, Rib[]> = {
 };
 
 /** Tomo de cada ramo: +força em todas as magias do ramo por nível. */
-const TOME_RULE = { perRank: 0.05, maxRank: 3, baseCost: 300, costGrowth: 1.8 };
+const TOME_RULE = { perRank: 0.05, perRankAfter: 0.012, baseRanks: 3, maxRank: 20, baseCost: 300, costGrowth: 1.12 };
 
 /** Nome do Tomo de cada ramo (na ordem de `TREE_BRANCHES`). */
 const TOME_NAMES: Record<ClassId, [string, string, string]> = {
@@ -304,8 +327,8 @@ function classTree(classId: ClassId): TalentDef[] {
       const rule = AURA_RULES[key];
       return {
         id: id(key), classId, col, row, lane: 0, kind: "aura", name: AURA_NAMES[classId][key], icon: AURA_ICONS[key],
-        aura: { stat: key, perRank: rule.perRank }, maxRank: rule.maxRank, freeRank: 0,
-        baseCost: rule.baseCost, costGrowth: 1.8, requires,
+        aura: { stat: key, perRank: rule.perRank, perRankAfter: rule.perRankAfter, baseRanks: rule.baseRanks }, maxRank: rule.maxRank,
+        freeRank: 0, baseCost: rule.baseCost, costGrowth: rule.costGrowth, requires,
       };
     }
     const spell = SPELLS[key];
@@ -338,11 +361,21 @@ function classTree(classId: ClassId): TalentDef[] {
     if (!first) throw new Error(`${classId}: ramo ${col} sem o primeiro nó do tronco`);
     return [{
       id: id(`tome${col}`), classId, col, row: 2, lane, kind: "tome", name: TOME_NAMES[classId][col], icon: TOME_ICONS[col],
-      tome: { perRank: TOME_RULE.perRank }, maxRank: TOME_RULE.maxRank, freeRank: 0,
+      tome: { perRank: TOME_RULE.perRank, perRankAfter: TOME_RULE.perRankAfter, baseRanks: TOME_RULE.baseRanks },
+      maxRank: TOME_RULE.maxRank, freeRank: 0,
       baseCost: TOME_RULE.baseCost, costGrowth: TOME_RULE.costGrowth, requires: { id: first.id, rank: 1 },
     }];
   });
-  const tree = [...trunk, ...ribs, ...tomes];
+  // Dons do topo: na linha 2, do lado oposto ao Tomo, pedindo o mesmo primeiro nó do tronco (comprado, sem XP).
+  const gifts = Object.values(GIFTS).filter((g) => g.classId === classId).map((g): TalentDef => {
+    const first = trunk.find((t) => t.col === g.col && t.row === 1)!;
+    return {
+      id: id(g.id), classId, col: g.col, row: 2, lane: -TOME_LANES[classId][g.col], kind: "gift", name: g.name, icon: g.icon,
+      giftId: g.id, maxRank: GIFT_MAX_RANK, freeRank: 0, baseCost: GIFT_BASE_COST, costGrowth: GIFT_COST_GROWTH,
+      requires: { id: first.id, rank: 1 },
+    };
+  });
+  const tree = [...trunk, ...ribs, ...tomes, ...gifts];
   // Dois nós no mesmo lugar do desenho seriam um erro de digitação na forma.
   const spots = new Set<string>();
   for (const t of tree) {
@@ -410,7 +443,7 @@ export function auraBonuses(classId: ClassId, ranks: TalentRanks): Bonuses {
   const bonus = { ...NO_BONUSES };
   for (const t of talentTree(classId)) {
     const rank = talentRank(t, ranks);
-    if (t.aura && rank > 0) bonus[t.aura.stat] += t.aura.perRank * rank;
+    if (t.aura && rank > 0) bonus[t.aura.stat] += stackedValue(t.aura, rank);
   }
   return bonus;
 }
@@ -464,7 +497,7 @@ export function spellBonus(
   const synergy = spellNeighbors(classId, spellId).reduce((sum, id) => sum + (levels[id] ?? 0) * SYNERGY_PER_LEVEL, 0);
   const self = TALENTS[spellTalentId(classId, spellId)];
   const book = self && self.row > 0 ? talentTree(classId).find((t) => t.kind === "tome" && t.col === self.col) : undefined;
-  const tome = book ? talentRank(book, ranks) * book.tome!.perRank : 0;
+  const tome = book ? stackedValue(book.tome!, talentRank(book, ranks)) : 0;
   return { synergy, tome, total: synergy + tome };
 }
 
@@ -477,6 +510,19 @@ export function spellBonuses(classId: ClassId, ranks: TalentRanks, xp: SpellXp):
     if (total > 0) out[id] = Math.round(total * 1000) / 1000;
   }
   return out;
+}
+
+/**
+ * Grimório inteiro dos testes (`KUSA_ALL_SPELLS`): magias e Traços no máximo; as passivas de gold no teto de antes do
+ * Grimório 4.0 (áureas e Tomos no 3, a velocidade no 2, sem Dons), para os números dos testes antigos não mudarem.
+ */
+export function allSpellsRanks(classId: ClassId): TalentRanks {
+  return Object.fromEntries(talentTree(classId).map((t) => [t.id, t.kind === "gift" ? 0 : (t.aura ?? t.tome)?.baseRanks ?? t.maxRank]));
+}
+
+/** Efeitos somados dos Dons que a conta tem na classe (o servidor lê ao entrar na sala). */
+export function giftEffects(classId: ClassId, ranks: TalentRanks): GiftEffects {
+  return sumGifts(talentTree(classId).filter((t) => t.giftId).map((t) => ({ id: t.giftId!, rank: talentRank(t, ranks) })));
 }
 
 /** Traços que a conta tem na classe (um por ramo especializado, no máximo). */
@@ -557,7 +603,9 @@ export function toggleActiveSpell(
 
 /** Texto curto do efeito de um nível de áurea ou de Tomo. */
 export function auraText(def: TalentDef, rank: number): string {
-  if (def.tome) return `+${Math.round(def.tome.perRank * rank * 100)}% de força nas magias do ramo ${TREE_BRANCHES[def.classId][def.col]}`;
+  const pct = (v: number) => `${Math.round(v * 1000) / 10}%`.replace(".", ",");
+  if (def.giftId) return GIFTS[def.giftId].text(GIFTS[def.giftId].perRank * rank);
+  if (def.tome) return `+${pct(stackedValue(def.tome, rank))} de força nas magias do ramo ${TREE_BRANCHES[def.classId][def.col]}`;
   if (!def.aura) return "";
-  return `+${Math.round(def.aura.perRank * rank * 100)}% de ${AURA_STAT_NAMES[def.aura.stat]}`;
+  return `+${pct(stackedValue(def.aura, rank))} de ${AURA_STAT_NAMES[def.aura.stat]}`;
 }

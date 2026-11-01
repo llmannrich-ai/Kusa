@@ -4,8 +4,8 @@
 --     juntos). O servidor de jogo confere ao entrar na sala; a hunt solo e a sala no aparelho, em `start_solo_run`.
 --   - Começa a campanha no Pântano como qualquer personagem (o progresso continua por conta e classe).
 --   - Veste os cajados, as varinhas e as vestes arcanas (como o Feiticeiro e o Druida) e o escudo.
---   - Grimório da Fase 1: as 2 iniciais (Totem da Brasa e Tambor de Guerra), as áureas de dano, mana e vida e o Tomo
---     da Brasa. Os ramos Horda, Totens e Brasa crescem na Fase 2.
+--   - Grimório da Fase 1: as 2 iniciais (Totem da Brasa e Tambor de Guerra), as áureas de dano, mana e vida, o Tomo
+--     da Brasa e os 3 Dons (Grito do Clã, Casca de Ferro, Brasa Viva). Os ramos Horda, Totens e Brasa crescem na Fase 2.
 
 -- 1. A classe entra nas restrições de todas as tabelas por classe.
 alter table public.talents drop constraint talents_class_id_check;
@@ -90,11 +90,16 @@ begin
 end;
 $$;
 
--- 6. Grimório da Fase 1 (`SHAPES.shaman` e `TOME_LANES` em talents.ts).
+-- 6. Grimório da Fase 1 (`SHAPES.shaman`, `TOME_LANES`, `AURA_RULES` e `TOME_RULE` em talents.ts; Dons em
+-- gifts.ts): as 2 iniciais grátis, as áureas de dano, mana e vida (20 níveis), o Tomo da Brasa (20 níveis) e um Dom por
+-- ramo (25 níveis), cada um pedindo o primeiro nó do tronco do ramo.
 insert into public.talents (id, class_id, max_rank, base_cost, cost_growth, requires_id, requires_rank, free_rank, is_spell) values
   ('shaman_ember_totem', 'shaman', 1, 150, 1, null, 0, 1, true),
   ('shaman_war_drum', 'shaman', 1, 150, 1, 'shaman_ember_totem', 1, 1, true),
-  ('shaman_damage', 'shaman', 3, 120, 1.8, 'shaman_ember_totem', 1, 0, false),
-  ('shaman_mana', 'shaman', 3, 150, 1.8, 'shaman_ember_totem', 1, 0, false),
-  ('shaman_hp', 'shaman', 3, 120, 1.8, 'shaman_war_drum', 1, 0, false),
-  ('shaman_tome2', 'shaman', 3, 300, 1.8, 'shaman_war_drum', 1, 0, false);
+  ('shaman_damage', 'shaman', 20, 120, 1.15, 'shaman_ember_totem', 1, 0, false),
+  ('shaman_mana', 'shaman', 20, 150, 1.15, 'shaman_ember_totem', 1, 0, false),
+  ('shaman_hp', 'shaman', 20, 120, 1.15, 'shaman_war_drum', 1, 0, false),
+  ('shaman_tome2', 'shaman', 20, 300, 1.12, 'shaman_war_drum', 1, 0, false),
+  ('shaman_clan_cry', 'shaman', 25, 60, 1.12, 'shaman_damage', 1, 0, false),
+  ('shaman_ironwood_skin', 'shaman', 25, 60, 1.12, 'shaman_mana', 1, 0, false),
+  ('shaman_living_ember', 'shaman', 25, 60, 1.12, 'shaman_war_drum', 1, 0, false);

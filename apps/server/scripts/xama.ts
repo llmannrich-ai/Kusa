@@ -63,6 +63,7 @@ function rules() {
   const tomes = tree.filter((t) => t.kind === "tome");
   check(tomes.length === 1 && tomes[0].col === 2, `só o ramo Brasa (com o Tambor) devia ter Tomo: ${tomes.map((t) => t.id)}`);
   check(tree.filter((t) => t.kind === "aura").length === 3, "o Grimório da Fase 1 tem 3 áureas");
+  check(tree.filter((t) => t.kind === "gift").map((t) => t.col).sort().join() === "0,1,2", "um Dom por ramo");
   check(SPELLS.ember_totem.classId === "shaman" && SPELLS.war_drum.classId === "shaman", "as iniciais são do Xamã");
 }
 
