@@ -23,6 +23,10 @@ halo rosado, separa os objetos pela célula da grade e põe cada um na largura d
 
 O capim do ChatGPT cobre a beira do calçamento (basalto e lajes): uma camada com a textura do capim repetida no mundo
 (alinhada com os tiles de capim) é vista só por uma máscara com o formato das bordas (`grassMask` em `fortressArt.ts`:
-lóbulos de 25% a 45% do tile e tufos), no filtro de máscara do Phaser 4. A borda é o próprio capim do vizinho, sem
+lóbulos de 25% a 45% do tile e tufos), no filtro de máscara do Phaser 4. A máscara é desenhada em **meia resolução**
+(no iPhone, em 3x, a máscara do tamanho da tela pesava ~19 MB: 67 MB no total contra 48 dos Portões), vista por uma
+câmera invisível de meio tamanho que acompanha a principal; ela é uma `TilemapGPULayer` (sem frestas entre tiles), com
+um atlas próprio sem margem e o quadro 0 vazio, e os tiles de capim em volta da borda levam a máscara cheia (a fresta
+que sobrar mostra o capim de baixo). A borda é o próprio capim do vizinho, sem
 degrau de tile (`no-jogo-bordas.png`). A terra do acampamento e as lajes ganham o mesmo quando as texturas delas
 chegarem.

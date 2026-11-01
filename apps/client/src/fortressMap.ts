@@ -27,6 +27,8 @@ const ZOOM = HD / TILE_SIZE;
 const ATLAS = "fortress-atlas";
 /** Atlas do que fica longe da entrada (o vale, o terraço da torre de menagem, os telhados): montado depois. */
 const FAR_ATLAS = "fortress-atlas-longe";
+/** Resolução da máscara da borda do capim em relação à tela. */
+const MASK_SCALE = 0.5;
 const FLAME_KEY = "fortress-flame";
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
 /**
@@ -174,8 +176,10 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   // --- Andar do castelo: chão, beiradas, paredão e enfeites rasteiros ------------------------------
   const ground = new Int32Array(W * H).fill(-1);
   const fringe = new Int32Array(W * H).fill(-1);
-  /** Onde o capim do ChatGPT cobre a beira do calçamento (a máscara da camada de capim de cima). */
+  /** Onde o capim do ChatGPT cobre a beira do calçamento (a máscara da camada de capim de cima): o índice do formato. */
   const grassEdge = new Int32Array(W * H).fill(-1);
+  /** Os formatos de borda usados (bits de `OPEN`), na ordem do atlas da máscara. */
+  const maskFrames: number[] = [];
   const shade = new Int32Array(W * H).fill(-1);
   const decor = new Int32Array(W * H).fill(-1);
   const voidShade = new Int32Array(W * H).fill(-1);
@@ -243,7 +247,11 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       if (edge) fringe[i] = atlas.frame(`ledge${edge}`, () => ledgeEdge(edge));
       else if ((road(x, y) || plaza(x, y) || yard(x, y)) && !hall(x, y)) {
         const g = mask(x, y, (a, b) => solid(a, b) && !paved(a, b) && !camp(a, b) && !inKeep(a, b) && !inTower(a, b) && !(battlement(a, b) && ruin(a, b)) && !roomInside(a, b));
-        if (g) grassEdge[i] = atlas.frame(`gmask${g}`, () => grassMask(g));
+        if (g) {
+          let k = maskFrames.indexOf(g);
+          if (k < 0) k = maskFrames.push(g) - 1;
+          grassEdge[i] = k;
+        }
       }
       const s = mask(x, y, high) & (OPEN.n | OPEN.w | OPEN.nw);
       if (s && !high(x, y)) shade[i] = atlas.frame(`shade${s}`, () => shadeEdge(s, 40));
@@ -342,20 +350,52 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   // borda casar pixel a pixel com o capim de baixo.
   const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || (!paved(x, y) && !camp(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
   layer("chao", ground, floorDepth, (x, y) => (plainTexture(x, y) ? 0xffffff : patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67)));
-  layer("beiradas", fringe, floorDepth, (x, y) => patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67));
-  layer("sombra", shade, floorDepth);
-  layer("enfeites", decor, floorDepth);
+  // Por cima do chão vem a camada de capim das bordas (`floorDepth + 0.001`), e por cima dela as beiradas, sombras e
+  // enfeites (que ela não pode esconder).
+  layer("beiradas", fringe, floorDepth + 0.002, (x, y) => patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67));
+  layer("sombra", shade, floorDepth + 0.002);
+  layer("enfeites", decor, floorDepth + 0.002);
   // A borda do capim: a textura do capim repetida no mundo inteiro (alinhada com os tiles de capim: 8 tiles por volta),
   // vista só pela máscara das bordas. O capim de verdade cobre a beira da pedra, sem degrau de tile.
   const GRASS_KEY = "fortress-capim";
   if (!scene.textures.exists(GRASS_KEY)) scene.textures.addImage(GRASS_KEY, CHAO_CAPIM.image);
   // A máscara fica embaixo de tudo (só existe nos tiles de calçamento, que são opacos): na tela não aparece; o filtro a
   // desenha à parte.
-  const edgeMask = map.createBlankLayer("mascara-capim", set)!.setScale(1 / ZOOM).setDepth(floorDepth - 10);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (grassEdge[y * W + x] >= 0) edgeMask.putTileAt(grassEdge[y * W + x], x, y);
-  const grassOver = scene.add.tileSprite(0, 0, W * TILE_SIZE, H * TILE_SIZE, GRASS_KEY).setOrigin(0).setTileScale(1 / ZOOM).setDepth(floorDepth + 0.01);
+  // A máscara é uma camada desenhada de uma vez na placa de vídeo (`TilemapGPULayer`): em meia resolução, uma camada
+  // de tiles comum deixava frestas de 1 px entre os tiles.
+  // Os tiles de capim em volta da borda levam a máscara cheia (o formato 0xff): a fresta de 1 px que a meia resolução
+  // pode deixar entre dois tiles mostra o capim de baixo, igual, e não a pedra.
+  const FULL = 0xff;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (grassEdge[i] >= 0 || at(x, y) !== Tile.Floor || paved(x, y) || camp(x, y) || !near(x, y, 1, (a, b) => inGrid(a, b) && grassEdge[b * W + a] >= 0 && maskFrames[grassEdge[b * W + a]] !== FULL)) continue;
+      let k = maskFrames.indexOf(FULL);
+      if (k < 0) k = maskFrames.push(FULL) - 1;
+      grassEdge[i] = k;
+    }
+  // O quadro 0 é vazio (a camada da placa de vídeo desenha a célula sem tile como o quadro 0).
+  const maskData = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => grassEdge[y * W + x] + 1));
+  const MASK_ATLAS = "fortress-mascara";
+  if (scene.textures.exists(MASK_ATLAS)) scene.textures.remove(MASK_ATLAS);
+  // O atlas da máscara vai sem margem entre os quadros (a camada da placa de vídeo não aceita margem).
+  const maskCols = 16, maskRows = Math.max(1, Math.ceil((maskFrames.length + 1) / maskCols));
+  const maskCanvas = makeCanvas(maskCols * HD, maskRows * HD);
+  maskFrames.forEach((g, i) => {
+    const k = i + 1;
+    if (g === FULL) { maskCanvas.ctx.fillStyle = "#fff"; maskCanvas.ctx.fillRect((k % maskCols) * HD, Math.floor(k / maskCols) * HD, HD, HD); }
+    else maskCanvas.ctx.drawImage(toCanvas(grassMask(g), HD, HD), (k % maskCols) * HD, Math.floor(k / maskCols) * HD);
+  });
+  scene.textures.addCanvas(MASK_ATLAS, maskCanvas.canvas);
+  const maskMap = scene.make.tilemap({ data: maskData, tileWidth: HD, tileHeight: HD });
+  const maskSet = maskMap.addTilesetImage(MASK_ATLAS, MASK_ATLAS, HD, HD, 0, 0, 0)!;
+  const edgeMask = maskMap.createLayer(0, maskSet, 0, 0, true)!.setScale(1 / ZOOM).setDepth(floorDepth - 10);
+  const grassOver = scene.add.tileSprite(0, 0, W * TILE_SIZE, H * TILE_SIZE, GRASS_KEY).setOrigin(0).setTileScale(1 / ZOOM).setDepth(floorDepth + 0.001);
+  // A máscara é desenhada em meia resolução (um quarto da memória: no iPhone, a tela inteira em 3x pesava ~19 MB), vista
+  // por uma câmera invisível de meio tamanho que acompanha a principal a cada quadro.
+  const maskCam = scene.cameras.add(0, 0, 1, 1, false, "mascara-capim").setVisible(false);
   grassOver.enableFilters();
-  grassOver.filters!.external.addMask(edgeMask, false, scene.cameras.main);
+  grassOver.filters!.external.addMask(edgeMask, false, maskCam, "world", MASK_SCALE);
 
   // --- De pé -------------------------------------------------------------------------------------
   const culler = new ChunkCuller();
@@ -596,7 +636,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const roofFire = top(holeAt.x < KW / 2 ? KW - 5 : 4, K.h - 5);
   for (const o of fire(roofFire.px, roofFire.py - 6, keepDepth + 0.03, 1.6, K.x, K.y, 1.8, false)) keepObjs.push(o);
 
-  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar] });
+  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar], maskCam });
 }
 
 /** Ruído suave em grade de `cell` tiles (0 a 1), para o desenho do vale. */
@@ -650,6 +690,8 @@ function createAmbience(
     big: { img: Phaser.GameObjects.Image; hide: Rect }[]; uppers: Upper[]; valley: Phaser.Tilemaps.TilemapLayer[]; floorDepth: number;
     /** Pinturas adiadas (o atlas de longe): uma por quadro, depois do primeiro. */
     later: (() => void)[];
+    /** A câmera da máscara da borda do capim, que acompanha a principal em meia resolução. */
+    maskCam: Phaser.Cameras.Scene2D.Camera;
   },
 ): MapAmbience {
   const cam = scene.cameras.main;
@@ -674,6 +716,11 @@ function createAmbience(
       const v = cam.worldView;
       if (v.width === 0) return;
       culler.update(v);
+      const mc = art.maskCam;
+      mc.setSize(cam.width * MASK_SCALE, cam.height * MASK_SCALE).setZoom(cam.zoom * MASK_SCALE);
+      mc.centerOn(v.centerX, v.centerY);
+      // Câmera invisível: o Phaser não recalcula a matriz dela no desenho, então ela é recalculada aqui.
+      mc.preRender();
       // O atlas de longe sai no segundo quadro (o mapa já apareceu; o vale e a torre estão fora da tela na entrada).
       if (art.later.length && started) {
         const t = performance.now();
