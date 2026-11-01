@@ -727,11 +727,14 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** Monstro animado: toca um clipe que não se repete (golpe, especial) e segura o quadro até ele acabar. */
-  private playClip(unit: Unit, clip: Clip) {
+  private playClip(unit: Unit, clip: Clip | "skill") {
     if (!unit.anim || unit.dead || !unit.texture) return;
+    // A 2ª habilidade desenhada só existe em quem tem folha para ela; sem ela, o especial.
+    if (clip === "skill" && !unit.anim.extra?.skill) clip = "cast";
     unit.sprite.anims.timeScale = 1;
     unit.sprite.play(monsterAnimKey(unit.texture, clip));
-    unit.busyUntil = this.time.now + (unit.sprite.anims.currentAnim?.frames.length ?? 4) / unit.anim.fps[clip] * 1000;
+    const fps = unit.anim.fps[clip === "skill" ? "cast" : clip];
+    unit.busyUntil = this.time.now + (unit.sprite.anims.currentAnim?.frames.length ?? 4) / fps * 1000;
   }
 
   /** Tranco curto do sprite na direção do golpe (ida e volta). */

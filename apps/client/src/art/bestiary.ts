@@ -38,15 +38,19 @@ export interface MonsterAnim {
   fill?: number;
   /**
    * Clipes a mais (arte nova), na folha depois dos de `CLIP_ORDER`, na ordem de `EXTRA_CLIPS`: a morte (o cadáver
-   * toca em vez de tombar) e o parado e o andar de frente (`Down`) e de costas (`Up`), quando o monstro anda na vertical.
+   * toca em vez de tombar), o parado e o andar de frente (`Down`) e de costas (`Up`), quando o monstro anda na vertical,
+   * e a 2ª habilidade desenhada (`skill`, no ritmo do especial).
    */
   extra?: Partial<Record<ExtraClip, number>>;
-  /** Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial), ou um por habilidade (id → clipe). */
-  strike?: Clip | Record<string, Clip>;
+  /**
+   * Clipe da habilidade (padrão: o golpe; chamar a guarda e sumir: o especial), ou um por habilidade (id → clipe). A
+   * 2ª habilidade desenhada (folha C do clã do Kosaradius) é o clipe a mais `skill`.
+   */
+  strike?: Clip | Record<string, Clip | "skill">;
 }
 
 /** Clipes a mais dos monstros da arte nova (`MonsterAnim.extra`), na ordem da folha. */
-export const EXTRA_CLIPS = ["death", "idleDown", "walkDown", "idleUp", "walkUp"] as const;
+export const EXTRA_CLIPS = ["death", "idleDown", "walkDown", "idleUp", "walkUp", "skill"] as const;
 export type ExtraClip = (typeof EXTRA_CLIPS)[number];
 
 const ANIM_FPS: Record<Clip, number> = { idle: 4, walk: 9, attack: 12, cast: 7 };
@@ -264,7 +268,7 @@ if (protoClan) {
       anim: {
         size: clan.size, sheet: () => clan.sheet(), portrait: () => clan.portrait(), outline: "",
         fps: { idle: 4, walk: 6, attack: 10, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
-        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra },
+        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra }, strike: clan.strike,
       },
     };
   }
