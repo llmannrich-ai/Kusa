@@ -32,6 +32,9 @@ de sempre. O especial sai do perfil nos dois casos.
 O Rei segura o tronco em pé parado e no ombro andando: ele anda só com a figura de andar (`WALK_POSE_ONLY` em
 `kosaradiusArt.ts`), senão o tronco pularia do chão para o ombro a cada passo.
 
+Folha C (`<kind>-C.png`, uma linha por habilidade, 6 quadros, 3/4 de frente): lista de ações e prompts em
+`PROMPTS_FOLHA_C.md`. Ainda não gerada nem lida pelo jogo.
+
 ## Memória no celular
 
 O jogo prepara a folha de todo monstro da arte nova ao abrir (`warmMonsterArt` em `textures.ts`), e cada quadro fica
