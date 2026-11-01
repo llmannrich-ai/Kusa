@@ -116,6 +116,8 @@ interface Build {
  */
 const HERO_BUILD: Build = { legs: 3, arms: 1, slim: 0.92, head: 0.88 };
 /** Tom heroico e sério dos heróis: pele com mais contraste e luz dura (sombra mais funda no lado de lá). */
+/** Quanto os ombros e o peito dos heróis alargam (de frente e de costas), em fração da largura. */
+const HERO_SHOULDERS = 0.12;
 const HERO_SKIN = 0.95, HERO_GRIM = 1.12;
 
 /** Aperta a forma na horizontal em volta do meio do corpo (tórax e abdome mais estreitos, `Kit.chest`). */
@@ -405,22 +407,68 @@ export class Canvas {
     return o !== undefined ? o + (u - o) * k : u * k + (axis ? f.ty : f.tx);
   }
 
+  /**
+   * Ombros largos (heróis): alarga na horizontal, em volta da coluna `cx`, só a faixa do corpo entre `y0` e `y3` (em
+   * unidades da tela), no máximo `1 + a` entre `y1` e `y2`, e nada fora dela. Vale para tudo o que é desenhado ali
+   * (tronco, armadura, ombreira, braço), então o equipamento acompanha sem desenho novo. É a transformação de fora:
+   * fica por cima de qualquer escala local.
+   */
+  private flare: { cx: number; y0: number; y1: number; y2: number; y3: number; a: number } | null = null;
+
+  /** Liga os ombros largos durante `draw`; a faixa vem em unidades locais e é levada para a tela agora. */
+  flared<T>(cx: number, y0: number, y1: number, y2: number, y3: number, a: number, draw: () => T): T {
+    if (!a) return draw();
+    const outer = this.flare;
+    const f = this.xf && !this.xf.m ? (u: number, axis: 0 | 1) => this.fwd(u, axis) : (u: number) => u;
+    this.flare = { cx: f(cx, 0), y0: f(y0, 1), y1: f(y1, 1), y2: f(y2, 1), y3: f(y3, 1), a };
+    try { return draw(); } finally { this.flare = outer; }
+  }
+
+  /** Quanto a faixa dos ombros alarga na altura `y` (unidades da tela). */
+  private flareAt(y: number) {
+    const w = this.flare!;
+    const ease = (t: number) => t * t * (3 - 2 * t);
+    const k = y <= w.y0 || y >= w.y3 ? 0 : y < w.y1 ? ease((y - w.y0) / (w.y1 - w.y0)) : y <= w.y2 ? 1 : ease((w.y3 - y) / (w.y3 - w.y2));
+    return 1 + w.a * k;
+  }
+
+  /** Ponto da tela (unidades) de volta para antes do alargamento dos ombros. */
+  private unflare(x: number, y: number) {
+    return this.flare ? this.flare.cx + (x - this.flare.cx) / this.flareAt(y) : x;
+  }
+
   /** Pixel final levado pela escala local. */
   private tx(X: number, Y: number): [number, number] {
+    const [x, y] = this.txLocal(X, Y);
+    if (!this.flare) return [x, y];
+    const w = this.flare;
+    return [(w.cx + (x / K - w.cx) * this.flareAt(y / K)) * K, y];
+  }
+
+  private txLocal(X: number, Y: number): [number, number] {
     if (!this.xf) return [X, Y];
     const m = this.xf.m;
     if (m) { const u = X / K, v = Y / K; return [(m[0] * u + m[1] * v + m[2]) * K, (m[3] * u + m[4] * v + m[5]) * K]; }
     return [this.fwd(X / K, 0) * K, this.fwd(Y / K, 1) * K];
   }
 
+  /** Alarga o retângulo da tela para caber o alargamento dos ombros. */
+  private flareBox(x0: number, x1: number): [number, number] {
+    const w = this.flare;
+    if (!w) return [x0, x1];
+    return [w.cx + Math.min(0, x0 - w.cx) * (1 + w.a) + Math.max(0, x0 - w.cx) - 1, w.cx + Math.max(0, x1 - w.cx) * (1 + w.a) + Math.min(0, x1 - w.cx) + 1];
+  }
+
   fill(box: Box, test: Test, mat: Mat, shade: Shade, offset?: Offset) {
     const id = this.group || ++this.seq;
     const f = this.xf;
     if (f?.m) return this.fillAff(id, f.m, box, test, mat, shade, offset);
-    const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
+    const [bx0, y0, bx1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
+    const [x0, x1] = this.flareBox(bx0, bx1);
     for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil((y1 + 1) * K)); Y++) {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil((x1 + 1) * K)); X++) {
         let x = (X + 0.5) / K - 0.5, y = (Y + 0.5) / K - 0.5;
+        if (this.flare) x = this.unflare(x + 0.5, y + 0.5) - 0.5;
         if (f) {
           if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x + 0.5 - f.ox) / (f.k * f.sx) - 0.5; y = f.oy + (y + 0.5 - f.oy) / f.k - 0.5; }
           else { x = (x + 0.5 - f.tx) / (f.k * f.sx) - 0.5; y = (y + 0.5 - f.ty) / f.k - 0.5; }
@@ -441,12 +489,12 @@ export class Canvas {
   /** `fill` dentro de um giro: o retângulo vira o que o cerca na tela e cada pixel volta pela transformação inversa. */
   private fillAff(id: number, m: Aff, box: Box, test: Test, mat: Mat, shade: Shade, offset?: Offset) {
     const corners = [[box[0], box[1]], [box[2] + 1, box[1]], [box[0], box[3] + 1], [box[2] + 1, box[3] + 1]].map(([u, v]) => [m[0] * u + m[1] * v + m[2], m[3] * u + m[4] * v + m[5]]);
-    const x0 = Math.min(...corners.map((p) => p[0])) - 1, x1 = Math.max(...corners.map((p) => p[0])) + 1;
+    const [x0, x1] = this.flareBox(Math.min(...corners.map((p) => p[0])) - 1, Math.max(...corners.map((p) => p[0])) + 1);
     const y0 = Math.min(...corners.map((p) => p[1])) - 1, y1 = Math.max(...corners.map((p) => p[1])) + 1;
     const det = m[0] * m[4] - m[1] * m[3];
     for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil(y1 * K)); Y++) {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil(x1 * K)); X++) {
-        const px = (X + 0.5) / K - m[2], py = (Y + 0.5) / K - m[5];
+        const px = this.unflare((X + 0.5) / K, (Y + 0.5) / K) - m[2], py = (Y + 0.5) / K - m[5];
         const x = (m[4] * px - m[1] * py) / det - 0.5, y = (-m[3] * px + m[0] * py) / det - 0.5;
         if (!test(x, y, X, Y)) continue;
         const i = Y * this.w + X;
@@ -1694,6 +1742,8 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: MonsterPo
 
   // Atrás do corpo: cabelo comprido (de frente) e a aljava (de frente só aparece acima do ombro).
   const head = headScale(c, kit, [CX, top + 1]);
+  // Heróis: ombros e peito mais largos que o quadril (tronco, armadura e braços juntos; a cabeça fica de fora).
+  c.flared(CX + 0.5, top - 2, top + 3, top + 9, top + 19, kit.build ? HERO_SHOULDERS : 0, () => {
   if (!back) head(() => hairBehind(c, kit, b, top));
   if (kit.quiver && !back) quiver(c, [CX + 9.5, top - 3], [CX + 2, top + 14], 6.5);
 
@@ -1735,6 +1785,7 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: MonsterPo
     if (mp?.spark) sparks(holds && grip === "staff" && lift ? [ha[0], top - 19 + lift] : ha, 1);
   }
   if (kit.armor) armorShoulders(c, kit.armor, top, back ? "up" : "down", [[CX - 12.8, top + 2], [CX + 12.8, top + 2]]);
+  });
   head(() => (back ? headBack(c, kit, b, top) : headFront(c, kit, b, top)));
 }
 

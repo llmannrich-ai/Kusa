@@ -34,7 +34,12 @@ porque o `pixelated` serrilha ao diminuir.
 | Boca com lábio claro | linha fina e reta, cantos para baixo | `headFront` |
 | Mão redonda maior que o antebraço | punho menor e mais quadrado | `hand(…, hero)` |
 | Pés juntos | pés afastados 1,6 unidade de cada lado | `front` (`spread`) |
+| Ombros da largura do quadril (corpo reto de boneco) | ombros e peito 12% mais largos, em V (de frente e de costas) | `HERO_SHOULDERS`, `Canvas.flared` |
 | Pintura do Xamã Orc parecia blush | riscos finos e escuros cruzando o olho | `headFront`, `headSide` |
+
+Os ombros largos não redesenham nada: `Canvas.flared` alarga na horizontal só a faixa dos ombros e do peito (com
+transição suave para o pescoço e para a cintura), por cima de tudo o que é desenhado ali, então tronco, armadura,
+ombreira e braço alargam juntos e a cabeça fica de fora. De perfil não alarga (seria profundidade do peito).
 
 A cabeça é reduzida em volta do pescoço, então os encaixes dos itens (centro da cabeça, pescoço, ombros) não mudaram:
 os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.ts` (parado, andar e ação).
@@ -46,6 +51,6 @@ os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.
 
 ## Próximos passos possíveis
 
-- Ombros mais largos e braços menos cilíndricos (mexe no tronco e nas armaduras: pede conferir item por item).
+- Braços menos cilíndricos (deltoide e antebraço com forma própria).
 - Os heróis no motor de escultura (`sculpt.ts`), no nível do Orc batedor e do Vorgak: teto bem maior, mas reescreve os
   desenhos de itens de `tibiaHero.ts`. Só se este passo não bastar.
