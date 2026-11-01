@@ -599,6 +599,14 @@ e atordoamento de herói ou criatura. As explosões usam o golpe que disparou co
 herói: assim vale igual para magia, básico, criatura e campo. Telemetria: `stats.reactions`. Regras em Configurações ›
 Regras › Reações.
 
+**Fase 4a-2 (Cavaleiro), como foi entregue:** os marcos saem por classe, um PR por classe. Os 30 do Cavaleiro seguem a
+tabela da seção 7.5, com estas diferenças: Voz de Comando, marco 2, "provocar dura +1 s" virou "magias de área que
+provocam alcançam +1 tile" (a provocação não tem duração no motor: o monstro segue quem provocou até outro provocar);
+o 4º golpe do Fio Temperado conta golpes corpo a corpo dados, acertando ou não o mesmo alvo; o leque do Fio Temperado tem
+1 tile de alcance (o corte em volta do alvo); os escudos +10% do Couro Curtido valem como absorção (cada ponto de escudo
+segura 1,1), para valer em todo escudo do jogo sem mexer em cada magia. Os Dons do Xamã Orc (iguais aos do Cavaleiro no
+efeito) ainda não têm marcos.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

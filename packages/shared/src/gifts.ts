@@ -5,7 +5,8 @@ import type { Element } from "./traits.ts";
 // Dons: passivas do Grimório compradas só com gold, com muitos níveis (plano em docs/GRIMORIO_4_PLANO.md, seção 7).
 // Não ocupam slot e valem em toda hunt, como as áureas; o nível não sobe com o uso nem cai na morte. Cada nível soma
 // um pouco de um efeito com mecânica (dano em morto-vivo, duração do gelo, força das criaturas...), nunca dano cru em
-// tudo. Os marcos (comportamento novo a cada 5 níveis) chegam numa fase seguinte, com as reações.
+// tudo. A cada `GIFT_MILESTONE_EVERY` níveis o Dom ganha um marco: um comportamento novo (`milestones`), como a Maestria das
+// magias. O servidor lê quantos marcos o herói tem (`GiftEffects.marks`) e liga cada um no gancho certo da `Hunt`.
 // Os Dons do topo ficam no alto de cada ramo, presos ao primeiro nó do tronco. Os Dons do fundo (`apex`) ficam embaixo
 // do Ápice do ramo, pedem o Ápice no nível 1 e trazem um gatilho de momento (vida baixa, parado, depois do salto, a cada
 // tantas magias, ao matar...), sempre ligado ao estilo do Ápice.
@@ -68,13 +69,15 @@ export interface GiftEffects {
   cycleHeal: number;
   /** Chance de um raio cair quando morre um monstro envenenado ou sangrando por você (Céu Fechado). */
   skyStrike: number;
+  /** Marcos de cada Dom (0 a `GIFT_MILESTONES`): nível ÷ `GIFT_MILESTONE_EVERY`. Só os Dons que já têm marcos. */
+  marks: Partial<Record<GiftId, number>>;
 }
 
 export const NO_GIFTS: GiftEffects = {
   basicDamage: 0, armor: 0, allyDamage: 0, farDamage: 0, undeadDamage: 0, speed: 0, elementDamage: {},
   ccDuration: 0, darkLifesteal: 0, summonBoost: 0, healPower: 0, dotDamage: 0,
   lowHpDamage: 0, stillGuard: 0, bannerHaste: 0, dashBasic: 0, graceDamage: 0, burnChance: 0, circuitDamage: 0,
-  frostBarrier: 0, raiseChance: 0, fourthBite: 0, cycleHeal: 0, skyStrike: 0,
+  frostBarrier: 0, raiseChance: 0, fourthBite: 0, cycleHeal: 0, skyStrike: 0, marks: {},
 };
 
 /** Raio da Voz de Comando. */
@@ -83,6 +86,23 @@ export const ALLY_DAMAGE_RADIUS = 4;
 export const FAR_DAMAGE_TILES = 4;
 /** Teto de velocidade dos Dons (velocidade alta deixa o herói fugir de tudo). */
 export const GIFT_SPEED_CAP = 0.1;
+/** Um marco a cada tantos níveis (5, 10, 15, 20 e 25). */
+export const GIFT_MILESTONE_EVERY = 5;
+export const GIFT_MILESTONES = 5;
+
+// Números dos marcos do Cavaleiro (os textos ficam em `milestones` de cada Dom).
+/** Fio Temperado: o golpe da série (o 4º; o 3º no marco 3) sangra e vira corte em leque. */
+export const EDGE = { every: 4, everyLater: 3, bleedPerSec: 0.3, bleedMs: 3000, fanRange: 1, fanAngle: 60, fanAngleLater: 90 } as const;
+/** Couro Curtido: escudos mais fortes, vida extra e o corte de dano quando um escudo quebra. */
+export const HIDE = { shield: 0.1, hp: 0.05, breakGuard: 0.3, breakMs: 2000 } as const;
+/** Voz de Comando: raio a mais por marco, provocar mais longe, velocidade e o escudo de socorro. */
+export const VOICE = { tauntRadius: 1, speed: 0.05, rescueHpPct: 0.2, rescueShield: 0.15, rescueMs: 6000, rescueCooldownMs: 60000 } as const;
+/** Último Duelo: roubo de vida, limiar maior, ritmo de ataque e a recarga do slot 3 com a vida baixa. */
+export const DUEL = { lifesteal: 0.1, lifestealLater: 0.15, hpPctLater: 0.35, haste: 0.15, slot3Cooldown: 0.5 } as const;
+/** Pedra Fundamental: regeneração, provocação, armadura e o tempo parado menor. */
+export const BEDROCK = { regen: 0.01, tauntEveryMs: 3000, armor: 5, stillMsLater: 500 } as const;
+/** Estandarte Vivo: armadura na aura, cura ao matar e o corte de dano depois do slot 3. */
+export const BANNER = { armor: 3, killHeal: 0.02, ward: 0.1, wardMs: 3000 } as const;
 
 // Gatilhos dos Dons do fundo.
 /** Último Duelo: vale abaixo desta fração da vida. */
@@ -141,6 +161,8 @@ export interface GiftDef {
   description: string;
   /** Quanto cada nível soma no efeito. */
   perRank: number;
+  /** Os 5 marcos (níveis 5, 10, 15, 20 e 25), em uma frase cada. Sem isso, o Dom ainda não tem marcos. */
+  milestones?: readonly [string, string, string, string, string];
   /** Aplica `value` (o total do nível) nos efeitos somados. */
   apply: (fx: GiftEffects, value: number) => void;
   /** Texto do efeito com o total de um nível. */
@@ -161,16 +183,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "honed_edge", classId: "knight", col: 0, name: "Fio Temperado", icon: "🗡️",
     description: "A espada afiada a cada nível: o ataque básico bate mais forte.",
     perRank: 0.012, apply: (fx, v) => { fx.basicDamage += v; }, text: (v) => `+${pct(v)} de dano do ataque básico`,
+    milestones: [
+      `a cada ${EDGE.every} golpes, o golpe faz sangrar por ${EDGE.bleedMs / 1000}s`,
+      `esse golpe vira um corte em leque de ${EDGE.fanAngle}°`,
+      `a cada ${EDGE.everyLater} golpes`,
+      "o leque também faz sangrar",
+      `o leque abre a ${EDGE.fanAngleLater}°`,
+    ],
   }),
   tanned_hide: gift({
     id: "tanned_hide", classId: "knight", col: 1, name: "Couro Curtido", icon: "🛡️",
     description: "Couro curtido por baixo da armadura: mais armadura em toda hunt.",
     perRank: 0.6, apply: (fx, v) => { fx.armor += v; }, text: (v) => `+${Math.round(v * 10) / 10} de armadura`.replace(".", ","),
+    milestones: [
+      `seus escudos absorvem +${pct(HIDE.shield)}`,
+      "imune às lentidões dos monstros",
+      `+${pct(HIDE.hp)} de vida`,
+      `escudos +${pct(HIDE.shield)} (+${pct(HIDE.shield * 2)} no total)`,
+      `quando um escudo seu quebra, ${HIDE.breakMs / 1000}s com ${pct(HIDE.breakGuard)} menos dano`,
+    ],
   }),
   command_voice: gift({
     id: "command_voice", classId: "knight", col: 2, name: "Voz de Comando", icon: "🎖️",
     description: `Você e os aliados a até ${ALLY_DAMAGE_RADIUS} tiles (bots incluídos) causam mais dano. Entre vários comandantes, vale a voz mais forte.`,
     perRank: 0.01, apply: (fx, v) => { fx.allyDamage += v; }, text: (v) => `+${pct(v)} de dano para você e aliados a até ${ALLY_DAMAGE_RADIUS} tiles`,
+    milestones: [
+      `alcance ${ALLY_DAMAGE_RADIUS + 1}`,
+      `suas magias que provocam alcançam +${VOICE.tauntRadius} tile`,
+      `você e os aliados na voz andam +${pct(VOICE.speed)} mais rápido`,
+      `alcance ${ALLY_DAMAGE_RADIUS + 2}`,
+      `aliado na voz que cai abaixo de ${pct(VOICE.rescueHpPct)} da vida ganha escudo de ${pct(VOICE.rescueShield)} (uma vez a cada ${VOICE.rescueCooldownMs / 1000}s)`,
+    ],
   }),
   // --- Paladino ----------------------------------------------------------------------------------------------
   patient_eye: gift({
@@ -241,16 +284,37 @@ export const GIFTS: Record<GiftId, GiftDef> = {
     id: "last_duel", classId: "knight", col: 0, apex: "champion_reap", name: "Último Duelo", icon: "⚔️",
     description: `Encurralado, o campeão bate mais forte: com a vida abaixo de ${pct(LOW_HP_PCT)}, mais dano (básico e magias).`,
     perRank: 0.016, apply: (fx, v) => { fx.lowHpDamage += v; }, text: (v) => `+${pct(v)} de dano com a vida abaixo de ${pct(LOW_HP_PCT)}`,
+    milestones: [
+      `com a vida baixa, ${pct(DUEL.lifesteal)} do dano volta como vida`,
+      `vale abaixo de ${pct(DUEL.hpPctLater)} da vida`,
+      `com a vida baixa, ataca ${pct(DUEL.haste)} mais rápido`,
+      `roubo de vida de ${pct(DUEL.lifestealLater)}`,
+      "com a vida baixa, a magia do slot 3 recarrega na metade do tempo",
+    ],
   }),
   bedrock: gift({
     id: "bedrock", classId: "knight", col: 1, apex: "bulwark", name: "Pedra Fundamental", icon: "🏯",
     description: `Pés fincados viram muralha: parado há ${STILL_MS / 1000}s ou mais, você recebe menos dano.`,
     perRank: 0.012, apply: (fx, v) => { fx.stillGuard += v; }, text: (v) => `-${pct(v)} de dano recebido depois de ${STILL_MS / 1000}s parado`,
+    milestones: [
+      `parado, regenera ${pct(BEDROCK.regen)} da vida por segundo`,
+      `parado, provoca os monstros colados a cada ${BEDROCK.tauntEveryMs / 1000}s`,
+      `parado, +${BEDROCK.armor} de armadura`,
+      `conta como parado depois de ${BEDROCK.stillMsLater / 1000}s`.replace(".", ","),
+      "parado, o ataque básico corta todos os monstros colados",
+    ],
   }),
   living_banner: gift({
     id: "living_banner", classId: "knight", col: 2, apex: "legion_charge", name: "Estandarte Vivo", icon: "👑",
     description: `O estandarte anda com você: você e os aliados a até ${BANNER_RADIUS} tiles (bots incluídos) atacam mais rápido. Entre vários, vale o mais forte.`,
     perRank: 0.006, apply: (fx, v) => { fx.bannerHaste += v; }, text: (v) => `+${pct(v)} de velocidade de ataque para você e aliados a até ${BANNER_RADIUS} tiles`,
+    milestones: [
+      `aura de ${BANNER_RADIUS + 1} tiles`,
+      `+${BANNER.armor} de armadura na aura`,
+      `quem mata um monstro na aura cura ${pct(BANNER.killHeal)} da vida`,
+      `aura de ${BANNER_RADIUS + 2} tiles`,
+      `depois da sua magia do slot 3, a aura corta ${pct(BANNER.ward)} do dano por ${BANNER.wardMs / 1000}s`,
+    ],
   }),
   hunter_breath: gift({
     id: "hunter_breath", classId: "paladin", col: 0, apex: "doomsday_shot", name: "Fôlego do Caçador", icon: "🌬️",
@@ -299,6 +363,11 @@ export const GIFTS: Record<GiftId, GiftDef> = {
   }),
 };
 
+/** Quantos marcos um Dom tem neste nível. */
+export function giftMilestones(rank: number): number {
+  return Math.min(GIFT_MILESTONES, Math.floor(rank / GIFT_MILESTONE_EVERY));
+}
+
 export function isGift(id: string): id is GiftId {
   return id in GIFTS;
 }
@@ -311,8 +380,12 @@ export function giftText(id: GiftId, rank: number): string {
 
 /** Soma os Dons de uma lista de (id, nível). A velocidade para no teto. */
 export function sumGifts(levels: { id: GiftId; rank: number }[]): GiftEffects {
-  const fx: GiftEffects = { ...NO_GIFTS, elementDamage: {} };
-  for (const { id, rank } of levels) if (rank > 0) GIFTS[id].apply(fx, GIFTS[id].perRank * rank);
+  const fx: GiftEffects = { ...NO_GIFTS, elementDamage: {}, marks: {} };
+  for (const { id, rank } of levels) {
+    if (rank <= 0) continue;
+    GIFTS[id].apply(fx, GIFTS[id].perRank * rank);
+    if (GIFTS[id].milestones) fx.marks[id] = giftMilestones(rank);
+  }
   fx.speed = Math.min(GIFT_SPEED_CAP, fx.speed);
   // Chances não passam de 100% (e ficam longe disso com 25 níveis).
   fx.burnChance = Math.min(1, fx.burnChance);
