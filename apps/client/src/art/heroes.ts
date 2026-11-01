@@ -94,6 +94,21 @@ export function heroSheet(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCan
   return scale2x(canvas);
 }
 
+/**
+ * Retrato de busto do herói para o menu (medalhões, sala de espera): a mesma figura do jogo, vestida, redesenhada
+ * maior em volta do rosto (`protoPortraitData`), para o rosto e o elmo aparecerem num medalhão de 44 a 80 px. Sem a
+ * arte nova, o quadro parado de frente.
+ */
+export function heroPortrait(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCanvasElement {
+  const p = proto;
+  if (!NEW_ART || !p) return heroPoses(classId, outfit, ["down"]);
+  const { canvas, ctx } = makeCanvas(p.PORTRAIT_SIZE, p.PORTRAIT_SIZE);
+  const image = ctx.createImageData(p.PORTRAIT_SIZE, p.PORTRAIT_SIZE);
+  image.data.set(p.protoPortraitData(classId, protoGear(outfit)));
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+}
+
 /** Quadro parado de cada direção pedida, lado a lado (retratos e prévia do equipamento). */
 export function heroPoses(classId: ClassId, outfit: Outfit = NO_OUTFIT, dirs: HeroDir[] = ["down", "side", "up"]) {
   const sheet = heroSheet(classId, outfit);
