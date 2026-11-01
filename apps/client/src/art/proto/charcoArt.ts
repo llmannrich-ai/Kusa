@@ -65,7 +65,7 @@ export const CHARCO: CharcoSpec[] = [
   spec("bogMonolith", FOLK_POSES.menhir, (p, v) => shootFolk("menhir", p, v, sk.monolith), { feet: FOLK_FEET, castS: 0.7 }, 1.85, { runePulse: "cast", monolithSlam: "attack" }),
   spec("drownedKnight", FOLK_POSES.warden, (p, v) => shootFolk("warden", p, v, sk.knight), { feet: FOLK_FEET, castS: 0.7 }, 1.65, { knightCharge: "attack", rustSweep: "cast", drownedCall: "cast" }),
   spec("morgrana", FOLK_POSES.erlking, (p, v) => shootFolk("erlking", p, v, sk.queen), { feet: FOLK_FEET, castS: 0.7 }, 2.7,
-    { blackTide: "skill", lakeHand: "attack", drownedCourt: "cast", lakeDive: "cast", drownedLament: "skill" }),
+    { blackTide: "skill", lakeHand: "attack", drownedCourt: "cast", drownedLament: "skill" }),
 ];
 
 /** As folhas no jogo (cada figura é desenhada no aparelho quando a hunt pede). */
