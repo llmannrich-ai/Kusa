@@ -312,7 +312,7 @@ if (protoBullywugKing) {
     anim: {
       size: king.size, sheet: () => king.sheet(), portrait: () => king.portrait(), outline: "",
       fps: { idle: 4, walk: 7, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
-      hd: () => king.frames(), fill: king.fill, extra: { ...king.extra }, strike: { mudAmbush: "cast", spearThrust: "attack", swampCall: "attack" },
+      hd: () => king.frames(), fill: king.fill, extra: { ...king.extra }, strike: { spearThrust: "attack", swampCall: "attack" },
     },
   };
   OWN_MONSTER_DRAW["monster-bullywug-king"] = () => king.portrait();
@@ -355,7 +355,7 @@ if (protoBeasts) {
 // também desenham o rato, a estirge e a aranha): andar, golpe, especial e morte desenhados na folha de ação.
 /** Habilidades dos inimigos da Cripta que não são o especial da folha: saem do golpe. */
 const CRYPT_STRIKE: Partial<Record<MonsterKind, Record<string, Clip>>> = {
-  dragon: { breath: "cast", flight: "attack" },
+  dragon: { breath: "cast" },
   ogre: { stomp: "cast", boulder: "attack" },
   mimic: { acidBite: "cast", adhesive: "attack" },
 };
@@ -406,8 +406,8 @@ if (protoSculpt) {
     ["stranglerVine", protoSculpt.folkArt("vine"), 1.35, { strangle: "cast" }],
     ["awakenedTree", protoSculpt.folkArt("tree"), 2, { rootGrasp: "cast", branchSweep: "attack" }],
     ["fallenWarden", protoSculpt.folkArt("warden"), 1.55, { shadowStep: "attack", bladeDance: "cast", shadeCall: "cast" }],
-    ["erlking", protoSculpt.folkArt("erlking"), 2.6, { royalCharge: "attack", heartThorns: "cast", wildHunt: "cast", mistStep: "cast", forestWrath: "skill" }],
-    ["greenDragon", protoSculpt.greenDragonArt(), 2.3, { poisonBreath: "cast", menhirGas: "cast", flight: "skill", tailSweep: "attack" }],
+    ["erlking", protoSculpt.folkArt("erlking"), 2.6, { royalCharge: "attack", heartThorns: "cast", wildHunt: "cast", forestWrath: "skill" }],
+    ["greenDragon", protoSculpt.greenDragonArt(), 2.3, { poisonBreath: "cast", menhirGas: "cast", tailSweep: "attack" }],
   ];
   // A animação é guardada pela textura: monstro que, na arte antiga, usa a textura de outro (o Coração da Mata) ganha
   // uma só dele, senão os dois tocariam a mesma folha.
