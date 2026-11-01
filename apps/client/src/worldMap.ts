@@ -1,5 +1,5 @@
 import { MAPS, type MapId } from "@kusa/shared";
-import { EDGES, EDGE_D, FOG, FORK, H, LABELS, NODES, OPEN_CHAINS, PLACES, W } from "./world/verdemar.ts";
+import { EDGES, EDGE_D, FOG, H, LABELS, NODES, OPEN_CHAINS, PLACES, W } from "./world/verdemar.ts";
 
 // Mapa mundi (tela de Batalhas): a carta de Verdemar, o continente da campanha. A arte é uma imagem pronta
 // (public/mapa/verdemar.svg, gerada por scripts/verdemar.ts); por cima vão as trilhas, os nomes, os pontos e o herói.
@@ -293,7 +293,7 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
 
   // --- Herói e caminhada ---------------------------------------------------------------------------------------
   // Cada ramo da parte aberta da trilha é uma linha só: a posição do herói é o ramo e a distância andada nele, e
-  // `stops` diz onde fica cada cenário do ramo. Os ramos são iguais até a bifurcação (`FORK`).
+  // `stops` diz onde fica cada cenário do ramo. Dois ramos são iguais até a bifurcação em que se separam.
   for (const r of routes) {
     r.total = r.path.getTotalLength();
     r.stops.set(r.chain[0], 0);
@@ -305,8 +305,14 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
       r.stops.set(r.chain[i], Math.min(acc, r.total));
     }
   }
-  /** Ramo de cada ponto: o do lado da bifurcação, ou nenhum (`-1`) nos pontos de antes dela, que estão nos dois. */
-  const branchOf = (node: string) => (routes.filter((r) => r.chain.includes(node)).length > 1 ? -1 : routes.findIndex((r) => r.chain.includes(node)));
+  /** Ramo para chegar no ponto: o de agora, se o ponto está nele; senão, o primeiro que passa por ele. */
+  const branchOf = (node: string) => (route.chain.includes(node) ? routes.indexOf(route) : routes.findIndex((r) => r.chain.includes(node)));
+  /** Bifurcação entre dois ramos: o último ponto que eles têm em comum. */
+  const forkOf = (a: (typeof routes)[number], b: (typeof routes)[number]) => {
+    let k = 0;
+    while (k < a.chain.length && k < b.chain.length && a.chain[k] === b.chain[k]) k++;
+    return a.chain[Math.max(0, k - 1)];
+  };
   let route = routes[0];
   let at = 0;
   let facing: (typeof SHEET_DIRS)[number] = "down";
@@ -353,10 +359,9 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
       }
       if (walk) { cancelAnimationFrame(walk.raf); walk = null; }
       // Ponto do outro lado da bifurcação: o herói volta pela trilha até ela e segue pelo outro ramo.
-      const side = branchOf(NODE_OF[id]);
-      const next = side < 0 ? route : routes[side];
+      const next = routes[Math.max(0, branchOf(NODE_OF[id]))];
       const to = next.stops.get(NODE_OF[id]) ?? 0;
-      const fork = route.stops.get(FORK) ?? 0;
+      const fork = route.stops.get(forkOf(route, next)) ?? 0;
       const back = next === route ? 0 : Math.abs(at - fork);
       const n = NODES[NODE_OF[id]];
       if (instant || reducedMotion() || (next === route && Math.abs(to - at) < 0.5)) {

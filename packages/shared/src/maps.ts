@@ -370,7 +370,7 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [],
   },
   badlands: {
-    id: "badlands", name: "Ermos Rubros", icon: "🏜️", difficulty: 8, durationSeconds: 8 * 60,
+    id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60,
     description: "Ermos de barro vermelho rachado ao sol, com torres de pedra roídas pelo vento, cristas de rocha e ravinas fundas que só se cruzam pelas pontes. Ossadas de bichos gigantes, a mina de ferro abandonada com os trilhos e as vagonetas e as fontes de ferrugem. No fundo da cratera do norte, a arena. Terreno pronto; os monstros ainda vêm.",
     encounters: [],
     minibosses: [],

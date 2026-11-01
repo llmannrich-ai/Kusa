@@ -13,6 +13,7 @@ mudam, então `RULES_VERSION` não muda.
 |---|---|---|
 | 🌬️ Dunas Cantantes, 🪨 Mesas de Solária | ✅ 128 px por código (`dunesMap.ts`, `art/duneArt.ts`) | — |
 | 🌳 Bosque Velho, 🍄 Coração da Mata | ✅ 128 px por código (`forestMap.ts`, `forestPlan.ts`, `art/forestArt.ts`) | — |
+| 🌫️ Charco Cinzento, 🦴 Ermos Rubros | ✅ 128 px por código (`bogMap.ts`, `art/bogArt.ts`; `badlandsMap.ts`, `art/badlandsArt.ts`), feitos já no padrão | — |
 | 🏛️ Portões do Império | ✅ 128 px por código (`gatesMap.ts`, `art/empireArt.ts`, `art/empireMonuments.ts`) | — |
 | 🏚️ Cripta | ⚠️ 128 px por código (`art/proto/crypt.ts`), mas só com **Arte nova (beta)** | tirar da opção beta e apagar a versão de 32 px |
 | 🌿 Pântano das Ruínas | ⚠️ chão em 128 px feito com **imagens de IA** (`art/proto/pantano/`, `wetlandHd.ts`); lajes, árvores, enfeites e ruínas em 32 px | **tudo**: refazer em código, chão incluído |
@@ -182,6 +183,16 @@ aparecia como retângulos de pontilhado) e menos enfeites rasteiros.
   32 px); a Cripta aparece em 128 px, e a mini-cena usa o chão e as paredes novos. Os mapas inteiros se veem em
   `/mapa.html`.
 - `docs/ARTE_TIBIA.md` registra a regra: cenário por código em 128 px; inimigo por IA.
+
+## Etapa 9: Charco Cinzento e Ermos Rubros
+
+Os dois mapas novos já nasceram no padrão: arte por código, plano separado (`bogPlan.ts`, `badlandsPlan.ts`, cobertos
+pelo teste `cenarios`) e 3 atlas por mapa. Lições aplicadas: manchas decididas no mapa inteiro (não no bloco, que
+repetia a cada 4 tiles), tom do chão no meio da faixa (o pontilhado de Bayer na fronteira vira trama) e campos de
+objetos em blocos de 2×2 (o mesmo campo em todo tile alinha os troncos em colunas).
+
+![Charco Cinzento: terreiro de paliçada na estrada afundada](arte/charco-cinzento.png)
+![Ermos Rubros: a boca da mina, os trilhos e a vagoneta](arte/ermos-rubros.png)
 
 ## Resultado
 

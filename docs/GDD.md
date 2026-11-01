@@ -479,7 +479,9 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
-- **Ainda não:** os outros 8 cenários da campanha não existem (medalhões numerados).
+- **Etapa 9:** o Charco Cinzento e os Ermos Rubros (só o terreno) abrem com Vorgak; a Fortaleza Orc virou a segunda
+  bifurcação, e o herói troca de ramo voltando pela trilha até o último ponto comum (`worldMap.ts`).
+- **Ainda não:** os outros 6 cenários da campanha não existem (medalhões numerados).
 
 ## Mapas
 
@@ -505,6 +507,8 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🍄 Coração da Mata | 6 ★★★★★★ | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | Fungóide, Javali-Espinho, Cipó Estrangulador, Cervo Corrompido, Sombra Élfica, Pantera das Sombras, Urso-coruja → Árvore Desperta, Guardião Élfico Caído, Dríade Corrompida → Rei Galhado |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
+| 🌫️ Charco Cinzento | 8 ★★★★★★★★ (provisório) | 8 min | 96×128, em pé: turfeira aberta com poças negras, mata morta, a estrada afundada, passarelas, palafitas e a ilha da arena no lago negro | ainda sem monstros (só o terreno) |
+| 🦴 Ermos Rubros | 8 ★★★★★★★★ (provisório) | 8 min | 96×128, em pé: barro rachado, cristas de rocha, ravinas com pontes, torres de pedra, a mina abandonada e a cratera do crânio | ainda sem monstros (só o terreno) |
 | ⚔️ Fortaleza Orc | 8 ★★★★★★★★ | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | o clã do Pântano do Kosaradius bem mais forte (×2,4 os comuns, ×2,5 os mini-bosses; ~130 monstros por hunt, 40% a mais que nas Mesas) e em bandos que lotam as salas: Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Chefe de Guerra Orc, Ogro Xamã → Vorgak, o Senhor da Brasa |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
@@ -704,6 +708,44 @@ monstros dos dois estão em "Bestiário".
   Sem faixa de sombra nem folhas em fila na beira da mata, sem tinta por tile (capim e trilha em tom liso, contínuos
   em blocos de 4×4 tiles) e poucos enfeites rasteiros: o chão não mostra a grade dos tiles.
 - **Loot:** teto da hunt solo de 3.200 no Bosque Velho e de 3.800 no Coração da Mata, cheio em 240 s nos dois.
+
+### Charco Cinzento e Ermos Rubros (terreno)
+
+A etapa 9 da campanha, a segunda bifurcação: os dois lados abrem com **Vorgak**, o boss da Fortaleza Orc (`unlockedBy`,
+no banco `map_unlocked_by`). Por enquanto só o terreno e a arte: sem monstros nem boss (`encounters`, `bosses` vazios),
+★★★★★★★★ provisório, 8 min, até 4 jogadores, teto da hunt solo 100 (cheio em 180 s). Os dois em pé (96×128), com a
+mesma estrutura das matas: entrada no sul, a arena no norte, 7 zonas subindo e trocando de lado, 5 campinas, pontos
+de passagem e salas laterais (mini-boss e baú) de 2 portões, cada um com a sua trilha.
+
+- **🌫️ Charco Cinzento** (`generateBog`, a planta em `Dungeon.bog`): uma turfeira cinzenta, coberta da cinza de um
+  incêndio antigo. O chão é **aberto** (ao contrário das matas), cortado por **poças negras** (`Tile.Water`: bloqueiam o
+  passo, não a visão) e por maciços de **mata morta** (`Tile.Wall`). A **estrada afundada** do império (lajes de
+  basalto) sobe num aterro da entrada até a ilha da arena; as **trilhas de barro** ligam as zonas e, onde a água é
+  funda, o meio delas vira **passarela de tábuas** (as beiradas viram poça). **Palafitas** dos turfeiros (2×2, com os
+  pés na água), **monólitos** soltos, árvores secas e as salas laterais como **terreiros de paliçada**. No norte, a
+  **ilha do lago negro**: a praça de lajes com o círculo entalhado, o anel de 6 monólitos e 4 braseiros.
+- **🦴 Ermos Rubros** (`generateBadlands`, a planta em `Dungeon.badlands`): ermos de barro vermelho rachado. Chão aberto
+  cortado por **cristas de rocha** compridas de leste a oeste (`Tile.Wall`, com passagens) e por 2 ou 3 **ravinas**
+  fundas (`Tile.Water`) que só se cruzam pelas **pontes de tábuas** onde a trilha passa. **Torres de pedra** (hoodoos)
+  em campos, **costelas** de bichos gigantes em fila, a **mina de ferro** abandonada numa crista com os **trilhos**
+  descendo até a zona e a vagoneta, fogueiras de acampamento e as salas laterais como **postos de muro de adobe**. No
+  norte, a **cratera**: o anel de rocha, o chão queimado com as rachaduras em brasa e o **crânio gigante** (3×2)
+  encostado na borda.
+- **Visual** (só no cliente; arte em `art/bogArt.ts` e `art/badlandsArt.ts`, plano em `bogPlan.ts`/`badlandsPlan.ts`,
+  desenho em `bogMap.ts`/`badlandsMap.ts`; 128 px por tile, pintor de `art/paint.ts`, 3 atlas por mapa, todos abaixo de
+  2.000 px de altura). O chão é contínuo em blocos de 4×4 tiles (o barro rachado são placas de Worley que fecham no
+  bloco); as manchas (urze, capim seco e cinza no Charco; areia com marolas, crosta de sal e cascalho nos Ermos) são
+  decididas no mapa inteiro e desenhadas com a beira recortada pela distância aos vizinhos, como a lama e o rastro das
+  carroças: nada repete nem mostra a grade. O tom do chão plano fica no meio de uma faixa (sem o pontilhado que vira
+  trama na tela). **Charco:** poças com a margem de turfa, o capim debruçado e os reflexos do céu; a mata morta é um
+  maciço de troncos secos em pé (4 campos de troncos em blocos de 2×2, para não alinharem em colunas); árvores secas
+  de pé (uma com o corvo, outra com a lanterna verde dos turfeiros), barba-de-velho, monólitos com a espiral que
+  brilha, palafitas com telhado de junco, paliçadas com crânios e trapos, braseiros, taboas, algodão-do-brejo, leivas,
+  ossadas. Ambiente: névoa baixa andando, cinza caindo, fogos-fátuos sobre as poças. **Ermos:** cristas com o platô
+  em lajes e o paredão em camadas (ferrugem, ocre e creme, a capa de basalto); ravinas com a parede de longe em camadas
+  e o fundo escuro; pontes de corda, torres de pedra, costelas, o crânio com as órbitas em brasa, muros de adobe, a boca
+  da mina escorada com a lanterna, artemísia, espinheiro, agave, totem de crânio, fontes de ferrugem. Ambiente: poeira
+  vermelha e rajadas de vento, macegas rolando, fagulhas subindo da cratera.
 
 ### Portões do Império (terreno, fora da campanha)
 
