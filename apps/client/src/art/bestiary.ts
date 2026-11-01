@@ -9,7 +9,7 @@ import {
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
-import { NEW_ART_ZOOM, protoBeasts, protoBugbear, protoBullywugKing, protoClan, protoFrog, protoGoblin, protoHero } from "./newArt.ts";
+import { NEW_ART_ZOOM, protoBeasts, protoBullywugKing, protoClan, protoCrypt, protoFrog, protoHero } from "./newArt.ts";
 
 /**
  * Monstro animado (arte própria em folha, `rig.ts`): os quadros de `CLIP_ORDER` lado a lado, cada um `size` px de
@@ -219,20 +219,6 @@ if (protoHero) {
     };
   }
 }
-// O goblin vem da arte de referência (folha em PNG), não do desenho por código: troca a animação do kit.
-if (protoGoblin && protoHero) {
-  const goblin = protoGoblin;
-  BESTIARY_ART.goblin.anim = {
-    ...BESTIARY_ART.goblin.anim!, sheet: () => goblin.sheet(), portrait: () => goblin.portrait(), hd: () => goblin.frames(), fill: goblin.fill,
-  };
-}
-// O Bugbear chefe também vem de uma arte de referência (PNG), com a maça cravejada e a coroa.
-if (protoBugbear && protoHero) {
-  const bugbear = protoBugbear;
-  BESTIARY_ART.bugbear.anim = {
-    ...BESTIARY_ART.bugbear.anim!, sheet: () => bugbear.sheet(), portrait: () => bugbear.portrait(), hd: () => bugbear.frames(), fill: bugbear.fill,
-  };
-}
 // O sapo vem das folhas geradas por IA (PNG), com mais movimentos: a língua na habilidade, a morte e frente e costas.
 if (protoFrog) {
   const frog = protoFrog;
@@ -288,6 +274,30 @@ if (protoBeasts) {
     };
   }
   OWN_MONSTER_DRAW["monster-mimic-disguise"] = proto.protoMimicDisguise;
+}
+
+// Os inimigos da Cripta que já têm folha gerada por IA (PNG) trocam o desenho por código (vem depois dos bichos, que
+// também desenham o rato, a estirge e a aranha): andar, golpe, especial e morte desenhados na folha de ação.
+/** Habilidades dos inimigos da Cripta que não são o especial da folha: saem do golpe. */
+const CRYPT_STRIKE: Partial<Record<MonsterKind, Record<string, Clip>>> = {
+  dragon: { breath: "cast", flight: "attack" },
+  ogre: { stomp: "cast", boulder: "attack" },
+  mimic: { acidBite: "cast", adhesive: "attack" },
+};
+if (protoCrypt) {
+  for (const [kind, crypt] of Object.entries(protoCrypt) as [MonsterKind, NonNullable<(typeof protoCrypt)[MonsterKind]>][]) {
+    BESTIARY_ART[kind] = {
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE,
+      anim: {
+        size: crypt.size, sheet: () => crypt.sheet(), portrait: () => crypt.portrait(), outline: "",
+        fps: { idle: 4, walk: 8, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
+        hd: () => crypt.frames(), fill: crypt.fill, extra: { ...crypt.extra },
+        // A habilidade toca o especial desenhado (a teia, o Golpe Brutal, o Engolfar, a investida do orc, o sopro, o
+        // pisão do ogro, a mordida ácida); a que não tem especial próprio na folha sai do golpe (`CRYPT_STRIKE`).
+        strike: CRYPT_STRIKE[kind] ?? "cast",
+      },
+    };
+  }
 }
 
 /** Monstros animados: textura → animação. */

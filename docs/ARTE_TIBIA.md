@@ -286,32 +286,26 @@ antes de fazer os outros 3 cenários. Tudo atrás da opção **Arte nova (beta)*
 ![Dragão verde: parado e soprando gás venenoso](arte/cripta-dragao.png)
 ![No jogo: a Cripta antiga, a nova e uma sala com os monstros novos](arte/cripta-no-jogo.png)
 
-### Goblin a partir de arte de referência
+**Inimigos da Cripta com folhas geradas por IA** (`docs/arte/cripta/README.md`): o monstro que tem folha A (giro) e
+B (andar, golpe, especial e morte desenhados) troca o desenho por código pela folha, em todo mapa em que aparece
+(`criptaSprites.py` recorta, `art/proto/criptaArt.ts` monta os clipes). Com folha: ratazana, kobold, estirge,
+esqueleto, aranha gigante, goblin arqueiro, esqueleto arqueiro, Bugbear chefe, Cubo Gelatinoso, orc guerreiro,
+hobgoblin capitão, gnoll, o dragão jovem (vermelho, como a regra; o verde por código saiu de cena), goblin, zumbi,
+ogro e mímico: os 17 da Cripta. O baú do disfarce do mímico continua por código, igual aos baús de verdade.
 
-O goblin da arte nova deixou de ser desenhado por código: vem da arte de referência em `docs/arte/goblin-referencia.png`
-(12 figuras: parado e andando em 6 ângulos). O script `apps/client/scripts/goblinSprites.py` recorta cada figura,
-reduz para a escala da arte nova (128 px por tile, o goblin com ~110 px de altura), alinha os pés na linha dos outros
-monstros e grava a folha `apps/client/src/art/proto/goblin.png` (12 quadros de 192 px). `art/proto/goblinArt.ts` monta
-os clipes do jogo, de perfil e olhando para a esquerda: parado (o perfil respirando), andar (as três passadas), golpe
-(um bote montado com a passada, porque a referência não tem golpe) e magia (o fôlego). Frente e costas ficam prontas
-para as 3 vistas. O goblin arqueiro continua desenhado por código.
+### Goblin a partir de arte de referência (substituído)
 
-Para refazer depois de trocar a referência:
-`python3 apps/client/scripts/goblinSprites.py docs/arte/goblin-referencia.png apps/client/src/art/proto/goblin.png`.
+O goblin chegou a vir da arte de referência `docs/arte/goblin-referencia.png` (12 figuras parado e andando, com o golpe
+montado a partir da passada). Agora vem das folhas geradas por IA da Cripta (`docs/arte/cripta/`), com golpe, especial
+e morte desenhados. A referência continua: é o padrão de estilo que todo prompt de arte anexa.
 
 ![Goblin: a arte de referência](arte/goblin-referencia.png)
 
-### Bugbear chefe a partir de arte de referência
+### Bugbear chefe a partir de arte de referência (substituído)
 
-No mesmo molde do goblin: a referência `docs/arte/bugbear-referencia.webp` (12 figuras em fundo branco, parado e
-andando em 6 ângulos, o perfil olhando para a direita) passa por `apps/client/scripts/bugbearSprites.py`, que tira o
-fundo branco (o que encosta na borda e os buracos grandes; o branco de dentes e brilhos fica), põe o perfil parado com
-160 px de altura (o kit do bugbear tem 1,22 da altura do herói) e grava `apps/client/src/art/proto/bugbear.png`
-(12 quadros de 192 px). `art/proto/bugbearArt.ts` espelha para a esquerda e monta os clipes: parado (o perfil
-respirando), andar (a única passada de perfil alternando com o parado), golpe (gira para trás no ¾ de costas e avança
-com a passada) e magia, que é o Golpe Brutal (o mesmo bote, mais fundo).
-
-Para refazer: `python3 apps/client/scripts/bugbearSprites.py docs/arte/bugbear-referencia.webp apps/client/src/art/proto/bugbear.png`.
+O Bugbear chefe chegou a vir de uma arte de referência (`docs/arte/bugbear-referencia.webp`, 12 figuras parado e
+andando, com os clipes montados a partir delas). Agora vem das folhas geradas por IA da Cripta (`docs/arte/cripta/`),
+com o golpe, o Golpe Brutal e a morte desenhados; a referência fica só como registro.
 
 ![Bugbear chefe: a arte de referência](arte/bugbear-referencia.webp)
 
