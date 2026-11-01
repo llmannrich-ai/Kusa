@@ -1144,7 +1144,7 @@ export interface MonsterStats {
 /**
  * Atributos de um monstro. São sempre os mesmos durante a partida, em qualquer sala: a dificuldade cresce para o fundo
  * do mapa com espécies mais fortes e mais monstros por sala (`CROWD_PER_DEPTH`), nunca com o mesmo monstro mais forte.
- * `power` é o multiplicador fixo do mapa para mini-bosses e o Mímico (`MapDef.minibossPower`); o resto usa 1.
+ * `power` é o multiplicador fixo do mapa (`monsterPower`: `MapDef.minibossPower`, `commonPower` e `bossPower`; padrão 1).
  */
 export function monsterStats(kind: MonsterKind, power = 1): MonsterStats {
   const m = MONSTERS[kind];

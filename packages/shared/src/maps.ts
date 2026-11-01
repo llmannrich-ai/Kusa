@@ -4,7 +4,7 @@ import { MONSTERS, type MonsterKind } from "./monsters.ts";
 export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
-export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6;
+export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 /**
  * Encontro das salas do caminho numa faixa de profundidade, como o orçamento de XP do D&D: a sala recebe monstros
@@ -51,6 +51,13 @@ export interface MapDef {
    * tinham na profundidade média das salas laterais quando o monstro ainda crescia por sala; não muda na partida.
    */
   minibossPower?: number;
+  /**
+   * Multiplicador fixo de vida, dano, XP e loot dos monstros comuns (encontros, campinas e os que as habilidades chamam)
+   * e do boss neste mapa (padrão 1). Serve para levar um clã de um mapa fácil a um difícil sem criar outra espécie (o
+   * clã do Pântano do Kosaradius na Fortaleza Orc).
+   */
+  commonPower?: number;
+  bossPower?: number;
   /** Monstros comuns por campina na entrada (padrão 2; cresce com a profundidade como os encontros, `crowdAt`). */
   meadowMonsters?: number;
   /** Fração das campinas que ganham também um mini-boss solto, sem baú (padrão 0). */
@@ -99,9 +106,11 @@ export function crowdAt(depth: number): number {
   return 1 + CROWD_PER_DEPTH * Math.max(0, depth);
 }
 
-/** Multiplicador fixo de força de `kind` em `map` (`monsterStats`): o do mapa para mini-bosses, 1 para o resto. */
+/** Multiplicador fixo de força de `kind` em `map` (`monsterStats`): o do mapa para a categoria do monstro (padrão 1). */
 export function monsterPower(map: MapDef, kind: MonsterKind): number {
-  return MONSTERS[kind].rank === "miniboss" ? map.minibossPower ?? 1 : 1;
+  const rank = MONSTERS[kind].rank;
+  if (rank === "miniboss") return map.minibossPower ?? 1;
+  return (rank === "boss" ? map.bossPower : map.commonPower) ?? 1;
 }
 
 /** Monstros por sala no máximo (o celular desenha e o servidor sincroniza todos). */
@@ -249,7 +258,7 @@ export const MAPS: Record<MapId, MapDef> = {
   mesas: {
     id: "mesas", name: "Mesas de Solária", icon: "🪨", difficulty: 6, durationSeconds: 8 * 60, meadowMonsters: 3, meadowMinibosses: 0.25,
     minibossPower: 1.3,
-    description: "Platôs de arenito em camadas cortados por cânions estreitos, casas escavadas na rocha e a corte enterrada do último faraó. A mesma legião e as mesmas múmias, mais fundas e em bandos maiores, e mini-bosses soltos nos cânions: o mapa mais difícil do jogo. No anfiteatro dos platôs, o Faraó Eterno.",
+    description: "Platôs de arenito em camadas cortados por cânions estreitos, casas escavadas na rocha e a corte enterrada do último faraó. A mesma legião e as mesmas múmias, mais fundas e em bandos maiores, e mini-bosses soltos nos cânions. No anfiteatro dos platôs, o Faraó Eterno.",
     encounters: [
       { depth: [0, 0], budget: 170, table: [["scarabSwarm", 3], ["boneJackal", 3], ["boneLegionary", 1]] },
       { depth: [1, 1], budget: 300, table: [["boneJackal", 3], ["boneLegionary", 2], ["scarabSwarm", 1], ["boneArcher", 1]] },
@@ -271,12 +280,39 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [],
   },
   fortress: {
-    id: "fortress", name: "Fortaleza Orc", icon: "⚔️", difficulty: 6, durationSeconds: 8 * 60,
-    description: "Ruínas do Império: um castelo do império tomado pelos orcs, no alto de um esporão de rocha. Da vila baixa em ruínas, cruze o desfiladeiro pela ponte de pedra ou pela de cordas dos orcs; lá de cima se vê o vale. O pátio externo virou acampamento, com tendas, fogueiras e totens, e a muralha interna guarda o pátio do esporão e a torre de menagem, com o salão do trono. Terreno pronto; os monstros ainda vêm.",
-    encounters: [],
-    minibosses: [],
+    id: "fortress", name: "Fortaleza Orc", icon: "⚔️", difficulty: 8, durationSeconds: 8 * 60,
+    // O clã do Pântano do Kosaradius, bem mais forte (vida, dano, XP e loot) e em bandos que lotam as salas: o mapa
+    // mais difícil do jogo. O gold é o cheio (cada orc vale mais); com tanto monstro, os drops saem menos.
+    commonPower: 2.4, minibossPower: 2.5, bossPower: 2.7,
+    meadowMonsters: 8, meadowMinibosses: 0.6, dropScale: 0.8,
+    description: "Ruínas do Império: um castelo do império tomado pelos orcs, no alto de um esporão de rocha. Da vila baixa em ruínas, cruze o desfiladeiro pela ponte de pedra ou pela de cordas dos orcs; lá de cima se vê o vale. O pátio externo virou acampamento, com tendas, fogueiras e totens, e a muralha interna guarda o pátio do esporão e a torre de menagem. É o quartel do clã: orcs e ogros aos montes, bem mais fortes que os do brejo, e ogros e chefes de guerra em cada canto. O mapa mais difícil do jogo. Grumak, o Rei-Ogro, espera no salão do trono.",
+    encounters: [
+      // Vila baixa: batedores em bando e os primeiros guerreiros.
+      { depth: [0, 0], budget: 320, table: [["orcScout", 4], ["orcGrunt", 2], ["orcArcher", 1]] },
+      // Desfiladeiro e pontes.
+      { depth: [1, 1], budget: 440, table: [["orcGrunt", 3], ["orcScout", 2], ["orcSpearman", 2], ["orcArcher", 2], ["orcBerserker", 1]] },
+      // Acampamento do pátio externo.
+      {
+        depth: [2, 2], budget: 580,
+        table: [["orcGrunt", 3], ["orcSpearman", 2], ["orcBerserker", 2], ["orcArcher", 1], ["orcShaman", 1], ["orcCaptain", 1], ["ogreYoung", 1]],
+      },
+      {
+        depth: [3, 3], budget: 720,
+        table: [["orcBerserker", 3], ["ogreYoung", 2], ["orcSpearman", 2], ["orcShaman", 1], ["orcArcher", 1], ["orcCaptain", 1]],
+      },
+      // Pátio do esporão e a torre de menagem.
+      {
+        depth: [4, 4], budget: 860,
+        table: [["ogreYoung", 3], ["orcBerserker", 3], ["orcShaman", 1], ["orcArcher", 1], ["orcCaptain", 1]],
+      },
+      {
+        depth: [5, 99], budget: 1000,
+        table: [["ogreYoung", 4], ["orcBerserker", 2], ["orcShaman", 1], ["orcArcher", 1], ["orcCaptain", 1]],
+      },
+    ],
+    minibosses: [["ogreBruiser", 2], ["orcWarlord", 2], ["ogreShaman", 1]],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["ogreKing", 1]],
   },
   oldwood: {
     id: "oldwood", name: "Bosque Velho", icon: "🌳", difficulty: 5, durationSeconds: 8 * 60,
@@ -346,7 +382,7 @@ export function mapIdOf(value: unknown): MapId {
 }
 
 /** Maior dificuldade da escala (as Mesas de Solária). */
-export const MAX_DIFFICULTY = 6;
+export const MAX_DIFFICULTY = 8;
 
 export function difficultyStars(difficulty: MapDifficulty) {
   return "★".repeat(difficulty) + "☆".repeat(MAX_DIFFICULTY - difficulty);
