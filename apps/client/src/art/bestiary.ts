@@ -1,4 +1,4 @@
-import type { MonsterKind } from "@kusa/shared";
+import { MONSTERS, type MonsterKind } from "@kusa/shared";
 import { BLACK_SHELL, mummyCanvas, sandElementalCanvas, scorpionCanvas, vultureCanvas } from "./desertMonsters.ts";
 import { sandWormCanvas } from "./sandWorm.ts";
 import { basiliskCanvas, beholderCanvas } from "./cavernBosses.ts";
@@ -261,12 +261,15 @@ if (protoBullywugKing) {
 }
 // O clã do Pântano do Kosaradius que já tem folha gerada por IA (PNG) troca a arte por código: parado, andar, frente e
 // costas da folha de giro; golpe e especial saem do perfil até chegar a folha de ação. Orcs e ogros entram 20% maiores
-// que os outros monstros da arte nova (só o desenho: a colisão e o alcance são do servidor).
+// que os outros monstros da arte nova (só o desenho: a colisão e o alcance são do servidor); o chefe e os semi-chefes
+// (`boss` e `miniboss`), que já vêm grandes na folha, ficam 10% abaixo disso.
 const CLAN_SCALE = 1.2;
+const CLAN_CHIEF_SCALE = 0.9;
 if (protoClan) {
   for (const [kind, clan] of Object.entries(protoClan) as [MonsterKind, NonNullable<(typeof protoClan)[MonsterKind]>][]) {
+    const chief = MONSTERS[kind].rank !== "common";
     BESTIARY_ART[kind] = {
-      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * CLAN_SCALE,
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * CLAN_SCALE * (chief ? CLAN_CHIEF_SCALE : 1),
       anim: {
         size: clan.size, sheet: () => clan.sheet(), portrait: () => clan.portrait(), outline: "",
         fps: { idle: 4, walk: 6, attack: 10, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
