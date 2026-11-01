@@ -11,7 +11,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  CLASS_IDS, MSG, SPELLS, SPELL_LEVEL_XP, SPELL_MAX_LEVEL, SYNERGY_PER_LEVEL, spellAtRank, spellBonus, spellBonuses,
+  CLASS_IDS, MSG, allSpellsRanks, SPELLS, SPELL_LEVEL_XP, SPELL_MAX_LEVEL, SYNERGY_PER_LEVEL, spellAtRank, spellBonus, spellBonuses,
   spellNeighbors, spellRanks, talentTree, type ClassId, type SpellId, type SpellXp, type TalentRanks,
 } from "@kusa/shared";
 import { enter, wait } from "./hunt.ts";
@@ -28,7 +28,7 @@ process.exit(0);
 function everything(classId: ClassId): { ranks: TalentRanks; xp: SpellXp } {
   const tree = talentTree(classId);
   return {
-    ranks: Object.fromEntries(tree.map((t) => [t.id, t.maxRank])),
+    ranks: allSpellsRanks(classId),
     xp: Object.fromEntries(tree.filter((t) => t.spellId).map((t) => [t.id, SPELL_LEVEL_XP[SPELL_LEVEL_XP.length - 1]])),
   };
 }
