@@ -126,6 +126,22 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Xamã Orc | Totens | 🪵 Casca de Ferro | +0,6 de armadura | +15 |
   | Xamã Orc | Brasa | 🔥 Brasa Viva | +1,2% de dano do ataque básico | +30% |
 
+  **Marcos** (`milestones` em `gifts.ts`): a cada 5 níveis (5, 10, 15, 20 e 25) o Dom ganha um comportamento novo,
+  como a Maestria das magias; a ficha lista os 5 e acende os alcançados. Entram por classe (fase 4a-2); por enquanto,
+  os do Cavaleiro:
+  - 🗡️ Fio Temperado: o 4º golpe seguido sangra 3 s · esse golpe vira corte em leque de 60° · a cada 3º golpe · o leque
+    sangra · o leque abre a 90°.
+  - 🛡️ Couro Curtido: escudos +10% · imune às lentidões dos monstros · +5% de vida · escudos +20% no total · escudo
+    quebrado dá 2 s com 30% menos dano.
+  - 🎖️ Voz de Comando: alcance 5 · magias de área que provocam +1 tile · quem está na voz anda +5% · alcance 6 · aliado
+    abaixo de 20% ganha escudo de 15% (uma vez a cada 60 s por cavaleiro).
+  - ⚔️ Último Duelo: com a vida baixa, 10% de roubo de vida · vale abaixo de 35% · ataca 15% mais rápido · roubo de 15% ·
+    o slot 3 recarrega na metade do tempo.
+  - 🏯 Pedra Fundamental: parado, regenera 1% da vida por s · provoca os colados a cada 3 s · +5 de armadura · conta como
+    parado depois de 0,5 s · o básico corta todos os colados.
+  - 👑 Estandarte Vivo: aura de 4 tiles · +3 de armadura na aura · quem mata na aura cura 2% · aura de 5 · depois do slot 3
+    do cavaleiro, a aura corta 10% do dano por 3 s.
+
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
 

@@ -23,6 +23,7 @@ import {
   auraBonuses,
   giftEffects,
   GIFTS,
+  GIFT_MILESTONE_EVERY,
   auraText,
   knownSpells,
   MASTERIES,
@@ -1078,6 +1079,16 @@ export class Hub {
     }
     if (def.giftId) {
       sheet.append(el("p", "", GIFTS[def.giftId].description));
+      // Marcos: um comportamento novo a cada 5 níveis; os já alcançados ficam acesos.
+      const milestones = GIFTS[def.giftId].milestones;
+      if (milestones) {
+        const marks = el("ul", "grim-marks");
+        milestones.forEach((text, i) => {
+          const at = (i + 1) * GIFT_MILESTONE_EVERY;
+          marks.append(el("li", rank >= at ? "on" : "", `${rank >= at ? "★" : "☆"} Nível ${at}: ${text}`));
+        });
+        sheet.append(el("strong", "", "Marcos"), marks);
+      }
       sheet.append(el("p", "muted", "Dom: passiva comprada só com gold, sem XP. Vale em toda hunt e não cai na morte."));
     }
     if (spell) {
