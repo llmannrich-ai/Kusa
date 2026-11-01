@@ -383,12 +383,25 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["morgrana", 1]],
   },
   badlands: {
-    id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60,
-    description: "Vales largos de barro vermelho rachado entre platôs de rocha. Do desfiladeiro, o caminho se divide entre o pátio da mina de ferro e o campo das torres de pedra, cruza a Ravina Grande pela ponte, passa dentro das costelas de um bicho gigante e atravessa a segunda ravina pela ponte de cordas ou pelo arco de pedra até a cratera do crânio. Mapa fixo. Terreno pronto; os monstros ainda vêm.",
-    encounters: [],
-    minibosses: [],
+    id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60, meadowMonsters: 4, meadowMinibosses: 0.25, lootScale: 0.78,
+    description: "Vales largos de barro vermelho rachado entre platôs de rocha, onde ficava a mina de ferro do império. Do desfiladeiro, o caminho se divide entre o pátio da mina e o campo das torres de pedra, cruza a Ravina Grande pela ponte, passa dentro das costelas de um bicho gigante e atravessa a segunda ravina pela ponte de cordas ou pelo arco de pedra. Os mineiros que ficaram lá embaixo voltaram, as hienas seguem quem desce e os saqueadores atiram dos platôs. Na cratera do crânio, Kragmor, o Gigante da Cratera. Mapa fixo.",
+    encounters: [
+      // Desfiladeiro: escaravelhos e hienas (todo mundo começa no nível 1 da hunt).
+      { depth: [0, 0], budget: 400, table: [["rustBeetle", 4], ["badlandsHyena", 2]] },
+      // A divisão do caminho: os primeiros mineiros.
+      { depth: [1, 1], budget: 590, table: [["rustBeetle", 3], ["badlandsHyena", 3], ["lostMiner", 2]] },
+      // Pátio da Mina e Campo das Torres.
+      { depth: [2, 2], budget: 680, table: [["lostMiner", 3], ["redRaider", 2], ["badlandsHyena", 2], ["plateLizard", 1]] },
+      { depth: [3, 3], budget: 850, table: [["lostMiner", 3], ["redRaider", 2], ["rustDevil", 2], ["plateLizard", 2]] },
+      // Ravina Grande e as Ossadas.
+      { depth: [4, 4], budget: 815, table: [["rustDevil", 3], ["lostMiner", 2], ["redRaider", 2], ["plateLizard", 2], ["badlandsHyena", 1]] },
+      { depth: [5, 5], budget: 875, table: [["lostMiner", 3], ["rustDevil", 2], ["redRaider", 2], ["plateLizard", 2]] },
+      // A segunda ravina e a borda da cratera.
+      { depth: [6, 99], budget: 815, table: [["lostMiner", 3], ["redRaider", 3], ["rustDevil", 2], ["plateLizard", 1]] },
+    ],
+    minibosses: [["deadForeman", 1], ["oreGolem", 1], ["hyenaMatriarch", 1]],
     mimicChance: 0,
-    bosses: [],
+    bosses: [["kragmor", 1]],
   },
 };
 

@@ -30,7 +30,10 @@ export type MonsterKind =
   | "myconid" | "thornBoar" | "corruptedStag" | "elvenShade" | "stranglerVine" | "awakenedTree" | "fallenWarden" | "erlking"
   // Charco Cinzento (dificuldade 8): os afogados do incêndio da turfeira e a dona do lago negro
   | "giantLeech" | "carrionCrow" | "peatDrowned" | "lanternBearer" | "ashOoze" | "poolLurker"
-  | "ashHag" | "ashHagIllusion" | "bogMonolith" | "drownedKnight" | "morgrana";
+  | "ashHag" | "ashHagIllusion" | "bogMonolith" | "drownedKnight" | "morgrana"
+  // Ermos Rubros (dificuldade 8): a mina de ferro desabada, os mortos dela e o gigante da cratera
+  | "rustBeetle" | "badlandsHyena" | "redRaider" | "lostMiner" | "plateLizard" | "rustDevil"
+  | "deadForeman" | "oreGolem" | "hyenaMatriarch" | "kragmor";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -1330,6 +1333,145 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
     ],
     lore: "Era a senhora da vila dos turfeiros quando o fogo veio; fugiu para o lago e o lago a guardou. Agora é dele: sai da água negra em volta da ilha, empurra tudo com a maré, puxa quem foge e chama os afogados; ferida, mergulha e volta colada, e quase vencida solta o lamento que cega e a cura. A água a protege do fogo.",
+  }),
+  // --- Ermos Rubros (8 estrelas): a mina de ferro do império, abandonada quando a cratera desabou. A ferrugem tomou o
+  // vale, os mineiros que ficaram lá embaixo voltaram e o gigante que cavava com eles ainda guarda a cratera. No degrau
+  // do Charco Cinzento (os dois lados da etapa 9 valem o mesmo).
+  rustBeetle: monster({
+    kind: "rustBeetle", name: "Escaravelho de Ferrugem", rank: "common", type: "beast", role: "swarm", cr: 6, group: [3, 4],
+    hp: 100, damage: 11, xp: 72, loot: [7, 11], speed: 2.8, aggroRange: 5, attackRange: 1, attackCooldownMs: 1300, attackFx: "bite",
+    elements: { physical: 0.9 },
+    traits: { onHit: { chance: 0.35, corrode: 5000 } },
+    lore: "Besouro do tamanho de um gato, que vive de comer o ferro largado na mina. Sai do barro em enxame, e a mordida deixa a armadura enferrujada (corrói).",
+  }),
+  badlandsHyena: monster({
+    kind: "badlandsHyena", name: "Hiena dos Ermos", rank: "common", type: "beast", role: "skirmisher", cr: 6, group: [2, 3],
+    hp: 120, damage: 13, xp: 92, loot: [9, 14], speed: 3.8, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "bite",
+    traits: { packTactics: 0.35, hitAndRun: { cooldownMs: 3800 } },
+    lore: "Hiena magra de pelo vermelho do barro, que segue as caravanas até alguém cair. Caça em matilha: morde mais forte quando outra já está mordendo o mesmo (Táticas de Bando) e pula para trás antes do troco.",
+  }),
+  redRaider: monster({
+    kind: "redRaider", name: "Saqueador Rubro", rank: "common", type: "humanoid", role: "artillery", cr: 8,
+    hp: 175, damage: 19, xp: 165, loot: [13, 21], speed: 3, aggroRange: 8, attackRange: 5, attackCooldownMs: 1800, attackFx: "arrow",
+    traits: { keepDistance: 3 },
+    abilities: [
+      {
+        id: "barbedArrow", name: "Flecha Farpada", shape: "bolt", range: 6, radius: 0, cooldownMs: 7000, power: 1.4,
+        dot: { kind: "bleed", power: 0.3, durationMs: 3000 }, color: 0xb0452a, fx: "bolt",
+      },
+    ],
+    lore: "Bandido montado que vive de assaltar quem desce para a mina. Fica longe, atira a flecha farpada (sangra) e recua a galope se alguém chega perto.",
+  }),
+  lostMiner: monster({
+    kind: "lostMiner", name: "Mineiro Perdido", rank: "common", type: "undead", role: "brute", cr: 8,
+    hp: 310, damage: 21, xp: 175, loot: [14, 22], speed: 2.1, aggroRange: 6, attackRange: 1, attackCooldownMs: 1700, attackFx: "smash",
+    elements: { radiant: 1.3 },
+    traits: { onHit: { chance: 0.2, effect: { kind: "stun", ms: 600 } } },
+    lore: "Um dos mineiros que ficaram lá embaixo quando a cratera desabou. Voltou de picareta na mão e o capacete amassado: anda devagar, aguenta muito e a picaretada às vezes atordoa. A luz o desfaz.",
+  }),
+  plateLizard: monster({
+    kind: "plateLizard", name: "Lagarto-Couraça", rank: "common", type: "beast", role: "sentinel", cr: 8,
+    hp: 270, damage: 19, xp: 180, loot: [14, 22], speed: 2.4, aggroRange: 5, attackRange: 1, attackCooldownMs: 1600, attackFx: "bite",
+    // As placas de pedra seguram o corte; o sangue frio sofre com o gelo.
+    elements: { physical: 0.7, ice: 1.4 },
+    abilities: [
+      { id: "plateRoll", name: "Rolada", shape: "leap", range: 5, minRange: 2, radius: 1, cooldownMs: 9000, power: 1.4, push: 1, color: 0x9a5a3a, fx: "leap" },
+    ],
+    lore: "Lagarto grande e baixo, coberto de placas da cor da rocha, que toma sol nos platôs. Enrola-se e rola em cima de quem chega (Rolada). A couraça segura o corte; o frio o deixa lento e fraco.",
+  }),
+  rustDevil: monster({
+    kind: "rustDevil", name: "Redemoinho de Ferrugem", rank: "common", type: "elemental", role: "controller", cr: 8,
+    hp: 230, damage: 17, xp: 180, loot: [14, 22], speed: 3, aggroRange: 6, attackRange: 1, attackCooldownMs: 1600, attackFx: "energy",
+    elements: { physical: 0.8, ice: 1.3 },
+    traits: { onHit: { chance: 0.4, corrode: 5000 } },
+    abilities: [
+      {
+        id: "rustGust", name: "Poeira de Ferrugem", shape: "self", range: 2, radius: 2, cooldownMs: 10000, power: 0.9,
+        effect: { kind: "blind", ms: 1300 }, color: 0xb0582a, fx: "quake",
+      },
+    ],
+    lore: "Redemoinho de pó de ferro que o vento da cratera levanta e não deixa assentar. Gira em volta de quem passa, cega com a poeira e enferruja a armadura (corrói).",
+  }),
+  // Mini-bosses (os terreiros guardam o baú; nas emboscadas, 25% trazem um solto).
+  deadForeman: monster({
+    kind: "deadForeman", name: "Capataz Morto", rank: "miniboss", type: "undead", role: "leader", cr: 10,
+    hp: 690, damage: 30, xp: 540, loot: [46, 66], speed: 2.7, aggroRange: 8, attackRange: 2, attackCooldownMs: 1500, attackFx: "slash",
+    elements: { radiant: 1.3 },
+    traits: { leader: { radius: 4, damage: 0.2, haste: 0.2 } },
+    abilities: [
+      {
+        id: "foremanWhip", name: "Chicote", shape: "pull", range: 6, minRange: 2, radius: 0, cooldownMs: 8000, power: 0.9,
+        dot: { kind: "bleed", power: 0.25, durationMs: 3000 }, color: 0x6e3e22, fx: "tongue",
+      },
+      {
+        id: "foremanLash", name: "Chicotada em Roda", shape: "self", range: 2, radius: 2, cooldownMs: 7000, power: 1.5,
+        dot: { kind: "bleed", power: 0.25, durationMs: 3000 }, color: 0x8a4a2a, fx: "rend",
+      },
+      {
+        id: "minersCall", name: "Turno da Mina", shape: "summon", range: 7, radius: 0, cooldownMs: 22000, power: 0,
+        summon: { kind: "lostMiner", count: 2 }, belowHp: 0.5, phase: true, color: 0x7a5a40, fx: "summon",
+      },
+    ],
+    lore: "O capataz da mina, que desceu com a última turma e não deixou ninguém subir. Puxa com o chicote quem foge, estala em roda (sangra), faz os mineiros baterem mais forte e mais rápido (Comando) e, ferido, chama o turno.",
+  }),
+  oreGolem: monster({
+    kind: "oreGolem", name: "Golem de Minério", rank: "miniboss", type: "construct", role: "sentinel", cr: 10,
+    hp: 780, damage: 30, xp: 540, loot: [46, 66], speed: 1.8, aggroRange: 5, attackRange: 2, attackCooldownMs: 2000, attackFx: "smash",
+    elements: { physical: 0.8, ice: 1.4 },
+    traits: { absorb: ["fire"] },
+    abilities: [
+      {
+        id: "seismicPunch", name: "Soco Sísmico", shape: "self", range: 2, radius: 2, cooldownMs: 10000, power: 1.3,
+        effect: { kind: "stun", ms: 900 }, color: 0xb0582a, fx: "quake",
+      },
+      { id: "oreSlam", name: "Marretada de Minério", shape: "target", range: 2, radius: 1, cooldownMs: 7000, power: 1.7, push: 2, color: 0x8a5a44, fx: "slam" },
+    ],
+    lore: "Minério de ferro que a forja da mina juntou e pôs de pé para carregar o que os homens não aguentavam. O fogo o alimenta (absorve e cura); o gelo racha. O soco no chão atordoa em volta e a marretada joga longe.",
+  }),
+  hyenaMatriarch: monster({
+    kind: "hyenaMatriarch", name: "Mãe-Hiena", rank: "miniboss", type: "beast", role: "leader", cr: 10,
+    hp: 760, damage: 29, xp: 520, loot: [46, 66], speed: 3.6, aggroRange: 8, attackRange: 1, attackCooldownMs: 1400, attackFx: "bite",
+    traits: { leader: { radius: 4, damage: 0.2, haste: 0.2 }, packTactics: 0.3 },
+    abilities: [
+      { id: "matriarchPounce", name: "Bote", shape: "leap", range: 6, minRange: 2, radius: 1, cooldownMs: 8000, power: 1.5, push: 1, color: 0x9a4a2a, fx: "leap" },
+      {
+        id: "matriarchMaul", name: "Dilacerar", shape: "self", range: 1, radius: 1, cooldownMs: 7000, power: 1.6,
+        dot: { kind: "bleed", power: 0.25, durationMs: 3000 }, color: 0x8a2a1a, fx: "rend",
+      },
+      {
+        id: "hyenaHowl", name: "Uivo", shape: "summon", range: 7, radius: 0, cooldownMs: 22000, power: 0,
+        summon: { kind: "badlandsHyena", count: 2 }, belowHp: 0.6, phase: true, color: 0xb0582a, fx: "summon",
+      },
+    ],
+    lore: "A hiena velha que manda nas matilhas do vale, do tamanho de um pônei e cheia de cicatrizes. Dá o bote em quem foge, dilacera quem fica (sangra), faz a matilha morder mais forte e mais rápido (Comando) e, ferida, uiva e chama mais duas.",
+  }),
+  // Boss: Kragmor, na cratera do crânio. O último boss do lado dos ermos.
+  kragmor: monster({
+    kind: "kragmor", name: "Kragmor, o Gigante da Cratera", rank: "boss", type: "giant", role: "brute", cr: 13,
+    hp: 5200, damage: 50, xp: 5800, loot: [460, 680], speed: 2.3, aggroRange: 9, attackRange: 2, attackCooldownMs: 1800, attackFx: "smash",
+    // A pele de pedra da cratera aguenta o fogo da forja; o gelo a racha.
+    elements: { fire: 0.6, physical: 0.9, ice: 1.3 },
+    traits: { frenzy: { belowHp: 0.3, haste: 0.3 } },
+    abilities: [
+      { id: "oreThrow", name: "Arremesso de Minério", shape: "target", range: 7, minRange: 3, radius: 1, cooldownMs: 9000, power: 1.5, color: 0x8a5a44, fx: "boulder" },
+      {
+        id: "caveIn", name: "Desabamento", shape: "self", range: 3, radius: 3, cooldownMs: 12000, power: 1.4,
+        effect: { kind: "stun", ms: 900 }, color: 0x9a6a4a, fx: "quake",
+      },
+      {
+        id: "mineCall", name: "Chamado da Mina", shape: "summon", range: 8, radius: 0, cooldownMs: 22000, power: 0,
+        summon: { kind: "lostMiner", count: 2 }, belowHp: 0.7, phase: true, color: 0x7a5a40, fx: "summon",
+      },
+      {
+        id: "craterLeap", name: "Salto da Cratera", shape: "leap", range: 7, minRange: 3, radius: 2, cooldownMs: 14000, power: 1.5,
+        push: 1, belowHp: 0.5, color: 0xb0582a, fx: "leap",
+      },
+      {
+        id: "forgeFury", name: "Fúria da Forja", shape: "self", range: 3, radius: 3, cooldownMs: 30000, power: 1.6, push: 2,
+        dot: { kind: "burn", power: 0.3, durationMs: 3000 }, selfHeal: 0.12, belowHp: 0.3, phase: true, once: true, color: 0xff6a1a, fx: "emberRift",
+      },
+    ],
+    lore: "O gigante que o império acorrentou para cavar a cratera e que ficou lá dentro quando ela desabou, com o martelo de forja e as correntes quebradas nos pulsos. Joga pedaços de minério em quem fica longe, faz o teto cair em volta (atordoa) e chama os mineiros; ferido, salta sobre quem foge, e quase vencido a forja dentro dele explode (queima, empurra e o cura).",
   }),
   // --- Pântano do Kosaradius: o clã do Rei-Ogro. Mais fracos que os da Cripta na base (o mapa tem 9 zonas e o ganho por
   // profundidade dobra os do fim), em bandos maiores: muito XP para quem joga sozinho. -----------------------

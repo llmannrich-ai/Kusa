@@ -583,7 +583,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Onde vale:** o banco recusa a hunt solo e a sala no aparelho de cenário fechado para quem cria
   (`start_solo_run`; quem entra na sala de outro usa `start_guest_run`); o servidor recusa criar sala na nuvem. O crédito é
   gravado por `record_map_clear` e `record_boss_clear` (servidor) e por `record_solo_map_clear` e `record_solo_boss_clear` (hunt solo e sala no aparelho, cada um o seu).
-- **Etapa 9:** o Charco Cinzento e os Ermos Rubros (só o terreno) abrem com Vorgak; a Fortaleza Orc virou a segunda
+- **Etapa 9:** o Charco Cinzento e os Ermos Rubros abrem com Vorgak; a Fortaleza Orc virou a segunda
   bifurcação, e o herói troca de ramo voltando pela trilha até o último ponto comum (`worldMap.ts`).
 - **Ainda não:** os outros 6 cenários da campanha não existem (medalhões numerados).
 
@@ -612,7 +612,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
 | 🌫️ Charco Cinzento | 8 ★★★★★★★★ | 8 min | 64×120, mapa fixo, em pé: a estrada afundada com 2 laços (passarelas da Lagoa ou Mata Queimada; Torre de Vigia ou Palafitas) até a ilha do lago negro | Sanguessuga Gigante, Corvo Carniceiro, Turfeiro Afogado, Lanterneiro, Lodo de Cinza, Espreitador da Poça → Bruxa Cinzenta, Monólito Desperto, Cavaleiro Afogado → Morgrana, a Rainha Afogada (~120 monstros por hunt) |
-| 🦴 Ermos Rubros | 8 ★★★★★★★★ (provisório) | 8 min | 64×120, mapa fixo, em pé: desfiladeiro, a bifurcação da mina e do campo das torres, 2 ravinas com pontes, as ossadas e a cratera do crânio | ainda sem monstros (só o terreno) |
+| 🦴 Ermos Rubros | 8 ★★★★★★★★ | 8 min | 64×120, mapa fixo, em pé: desfiladeiro, a bifurcação da mina e do campo das torres, 2 ravinas com pontes, as ossadas e a cratera do crânio | Escaravelho de Ferrugem, Hiena dos Ermos, Saqueador Rubro, Mineiro Perdido, Lagarto-Couraça, Redemoinho de Ferrugem → Capataz Morto, Golem de Minério, Mãe-Hiena → Kragmor, o Gigante da Cratera (~105 monstros por hunt) |
 | ⚔️ Fortaleza Orc | 8 ★★★★★★★★ | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | o clã do Pântano do Kosaradius bem mais forte (×2,4 os comuns, ×2,5 os mini-bosses; ~130 monstros por hunt, 40% a mais que nas Mesas) e em bandos que lotam as salas: Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Chefe de Guerra Orc, Ogro Xamã → Vorgak, o Senhor da Brasa |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
@@ -829,12 +829,11 @@ luta (Dunas 52%, Mesas 55%; a Cripta, 8%) e havia pontos a até 55 s de andada d
 - **Sensação de mapa aberto:** caminhos largos (8–10 tiles) e de beira ondulada, áreas que emendam umas nas outras e
   bordas que deixam ver longe (água e ravina bloqueiam o passo, não a visão); parede só onde o desenho pede.
 
-### Charco Cinzento e Ermos Rubros (terreno)
+### Charco Cinzento e Ermos Rubros
 
 A etapa 9 da campanha, a segunda bifurcação: os dois lados abrem com **Vorgak**, o boss da Fortaleza Orc (`unlockedBy`,
-no banco `map_unlocked_by`). ★★★★★★★★, 8 min, até 4 jogadores. O **Charco Cinzento** já tem os monstros (ver
-"Bestiário"; teto da hunt solo 4.600, cheio em 240 s); os **Ermos Rubros** ainda são só o terreno (teto 100, cheio em
-180 s). Os dois são **mapas fixos**
+no banco `map_unlocked_by`). ★★★★★★★★, 8 min, até 4 jogadores. Os dois têm os monstros (ver "Bestiário"; teto da
+hunt solo 4.600, cheio em 240 s). Os dois são **mapas fixos**
 (`BOG_SEED`, `BADLANDS_SEED`), em pé, 64×120, com 7 zonas, as emboscadas e 4 salas laterais; plantas em
 `docs/arte/planta-fixa-*.png`. Ritmo medido: ~1% do chão a mais de 6 tiles de luta, ponto mais isolado a 13 tiles.
 
@@ -1347,7 +1346,7 @@ degrau. ~120 monstros por hunt (11% menos que a Fortaleza, porque a planta fixa 
 emboscada e 25% delas com um mini-boss solto; loot máximo ~4.060 (`lootScale` 0,78; teto da hunt solo 4.600). Arte
 **esculpida por código** (`apps/client/src/art/proto/charcoArt.ts`), a única deles (vale com a arte nova ligada ou não):
 os modelos que já existem com a **pele** do charco (`Skin` em `sculpt.ts`: recolore as rampas mantendo luz e volume) e
-um modelo novo, o Lodo (`ooze.ts`). Prévia: `npx tsx apps/client/scripts/charcoPrevia.ts saida.png`.
+um modelo novo, o Lodo (`ooze.ts`). Prévia: `npx tsx apps/client/scripts/inimigosPrevia.ts saida.png charco`.
 
 | Monstro | Papel | Assinatura |
 |---|---|---|
@@ -1366,6 +1365,35 @@ um modelo novo, o Lodo (`ooze.ts`). Prévia: `npx tsx apps/client/scripts/charco
 Sanguessuga e Corvo mais fáceis que o Orc batedor (zonas de entrada); Turfeiro e Lodo perto do Ogro jovem; Lanterneiro e
 Espreitador perto do Orc berserker; mini-bosses perto do Ogro do Brejo e do Chefe de Guerra (o Monólito aguenta mais
 contra físico: é para magia); Morgrana ~10% acima de Vorgak (o fim do ramo).
+
+### Ermos Rubros (★8)
+
+A mina de ferro do império, abandonada quando a cratera desabou: a ferrugem tomou o vale, os mineiros que ficaram lá
+embaixo voltaram e o gigante que cavava com eles ainda guarda a cratera. O outro lado da etapa 9, no mesmo degrau do
+Charco (as mesmas verbas por zona: ~105 monstros por hunt, menos que os ~120 do Charco porque o Mineiro e o Lagarto
+custam mais; 4 por emboscada e 25% delas com um mini-boss solto; loot máximo ~3.750, `lootScale` 0,78; teto da hunt
+solo 4.600). Arte **esculpida por código**
+(`apps/client/src/art/proto/ermosArt.ts`), com a pele dos ermos (a luz rebatida vermelha do barro no lugar da verde da
+mata) e dois modelos novos: o Escaravelho (`beetle.ts`) e o Lagarto-Couraça (o quadrúpede baixo de `forestBeasts.ts`).
+Kragmor é o Vorgak na variante gigante (`shootWarlord(..., "giant")`: sem estandarte nem elmo, a cabeça de pedra e o
+martelo de forja). Prévia: `npx tsx apps/client/scripts/inimigosPrevia.ts saida.png ermos`.
+
+| Monstro | Papel | Assinatura |
+|---|---|---|
+| Escaravelho de Ferrugem | enxame (bando de 3–4) | a mordida corrói · resiste um pouco a físico · zonas 1 e 2 · besouro de ferro com placas de ferrugem |
+| Hiena dos Ermos | escaramuçador (bando de 2–3) | Táticas de Bando (+35% com outro no mesmo alvo) · bate e recua · o lobo de pelo ocre |
+| Saqueador Rubro | artilheiro | atira de 5 tiles e recua · Flecha Farpada (projétil que sangra) · o centauro de couro vermelho |
+| Mineiro Perdido | bruto (morto-vivo) | a picaretada às vezes atordoa (0,6 s) · luz 1,3× · a múmia de pó de ferro com os olhos em brasa |
+| Lagarto-Couraça | sentinela | couraça: físico 0,7×, gelo 1,4× · Rolada (salta e empurra) · espinhos e placas no dorso |
+| Redemoinho de Ferrugem | controlador (elemental) | Poeira de Ferrugem (cega em volta) · o golpe corrói · resiste a físico, gelo 1,3× |
+| **Capataz Morto** (mini-boss) | líder (morto-vivo) | Comando (+20% de dano e velocidade) · Chicote (puxa e sangra) · Chicotada em Roda · ferido, Turno da Mina (2 Mineiros) |
+| **Golem de Minério** (mini-boss) | sentinela (constructo) | absorve fogo (cura) · gelo 1,4×, físico 0,8× · Soco Sísmico (atordoa em volta) · Marretada (empurra) |
+| **Mãe-Hiena** (mini-boss) | líder (besta) | Comando · Táticas de Bando · Bote · Dilacerar (em volta, sangra) · ferida, Uivo (2 Hienas) |
+| **Kragmor, o Gigante da Cratera** (boss) | bruto (gigante) | alcance 2 · resiste a fogo e um pouco a físico, gelo 1,3× · Arremesso de Minério (de 3 a 7 tiles) · Desabamento (atordoa em volta) · abaixo de 70%, Chamado da Mina · abaixo de 50%, Salto da Cratera · abaixo de 30%, Fúria da Forja (queima, empurra e cura 12%, uma vez) e Frenesi |
+
+**Balanceamento** (mesmo duelo do Charco): os comuns se equivalem um a um com os do Charco (o Lagarto aguenta mais
+contra o Cavaleiro e o Paladino, é para magia); Capataz e Mãe-Hiena perto do Cavaleiro Afogado, Golem perto do
+Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os totens e as magias de outro elemento); Kragmor ~8% acima de Morgrana.
 
 ## Ataques e magias (protótipo)
 

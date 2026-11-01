@@ -17,6 +17,7 @@ Teste de até onde a arte de monstro feita **só por código** chega, como alter
 | Dragão Verde Jovem, chefe do Bosque Velho (asas de membrana em leque, pescoço e cauda em gomos, o sopro de gás) | `proto/greenDragon.ts` | idem |
 
 | Charco Cinzento: os 10 inimigos (pele do charco nos modelos do verme, abutre, múmia, sacerdote, pantera, dríade, menir, guardião e Rei Galhado; o Lodo de Cinza é modelo novo) | `proto/charcoArt.ts`, `proto/ooze.ts` | `docs/arte/charco-cinzento-escultura.png` |
+| Ermos Rubros: os 10 inimigos (pele dos ermos nos modelos do lobo, centauro, múmia, sacerdote, elemental, menir e Vorgak; o Escaravelho e o Lagarto-Couraça são modelos novos; Kragmor é o Vorgak na variante gigante) | `proto/ermosArt.ts`, `proto/beetle.ts`, `proto/forestBeasts.ts` (`lizard`), `proto/warlord.ts` (`"giant"`) | `docs/arte/ermos-rubros-escultura.png` |
 
 Com isso o Mar de Areia inteiro está esculpido, menos os quatro que vêm da arte de IA da Cripta (esqueleto, arqueiro,
 aranha e gnoll).
@@ -172,3 +173,9 @@ Três modelos cobrem o elenco inteiro, cada um com as medidas e materiais por bi
 dela, então volume, luz e contorno ficam iguais; o que brilha (`emit`/`glow`) tem tom próprio e `ramps` troca a rampa
 de um material pelo índice. Todo `shoot*` reaproveitado aceita a pele. Com isso o Charco ganhou 9 inimigos sem modelo
 novo (só o Lodo é novo) e 0 KB baixados.
+
+Nos Ermos Rubros, cada pele troca também a luz rebatida (`bounce`) e o contorno de luz (`rim`): os modelos da mata
+vinham com a luz verde que sobe do chão; no barro vermelho ela é vermelha. Cuidado com o matiz: a pele leva cada cor
+pelo caminho mais curto do círculo, então um modelo azulado (o centauro) com `amount` menor que 1 passa pelo roxo a
+caminho do vermelho; use `amount: 1`. Os materiais com cor própria que não combinam (o líquen e o musgo do menir no
+Golem de Minério) trocam de rampa inteira por `ramps`.
