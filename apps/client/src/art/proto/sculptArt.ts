@@ -2,6 +2,7 @@ import { makeCanvas } from "../pixels.ts";
 import { SCORPION_POSES, SHELLS, shootScorpion, type Shell } from "./scorpion.ts";
 import { SCULPT_FEET, SCULPT_SIZE, type Frame, type View } from "./sculpt.ts";
 import { VULTURE_POSES, shootVulture } from "./vulture.ts";
+import { MUMMY_FEET, MUMMY_POSES, shootMummy } from "./mummy.ts";
 
 export { SHELLS };
 
@@ -39,10 +40,11 @@ function toCanvas(f: Frame) {
 }
 
 /**
- * Folha de um monstro esculpido: `shoot` fotografa uma pose numa vista. De frente e de costas, parado usa o 1º e o
+ * Folha de um monstro esculpido: `shoot` fotografa uma pose numa vista; `feet` é a linha do chão que ele usa no quadro
+ * (o padrão deixa espaço para as partes de cá, como as pinças do escorpião; um humanoide usa o quadro quase todo). De frente e de costas, parado usa o 1º e o
  * 3º quadro do parado (o fôlego) e andando o mesmo ciclo do perfil.
  */
-export function sculptArt<P>(poses: ClipPoses<P>, shoot: (pose: P, view: View) => Frame): SculptArt {
+export function sculptArt<P>(poses: ClipPoses<P>, shoot: (pose: P, view: View) => Frame, feet = SCULPT_FEET): SculptArt {
   const S = SCULPT_SIZE;
   // Cada pose é uma função só (o jogo guarda cada figura uma vez na memória do celular).
   const made = new Map<string, () => HTMLCanvasElement>();
@@ -65,7 +67,7 @@ export function sculptArt<P>(poses: ClipPoses<P>, shoot: (pose: P, view: View) =
       Object.defineProperty(art, "fill", { value: (S - top) / S });
       return art.fill;
     },
-    origin: (SCULPT_FEET + 10) / S,
+    origin: Math.min(1, (feet + 10) / S),
     extra: EXTRA,
     frames: () => [
       ...poses.idle.map((p) => at(p)),
@@ -91,3 +93,4 @@ export function sculptArt<P>(poses: ClipPoses<P>, shoot: (pose: P, view: View) =
 
 export const scorpionArt = (shell: Shell = SHELLS.amber) => sculptArt(SCORPION_POSES, (p, v) => shootScorpion(p, v, shell));
 export const vultureArt = () => sculptArt(VULTURE_POSES, shootVulture);
+export const mummyArt = () => sculptArt(MUMMY_POSES, shootMummy, MUMMY_FEET);

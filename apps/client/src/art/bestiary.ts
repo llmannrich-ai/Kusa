@@ -308,12 +308,14 @@ if (protoCrypt) {
   }
 }
 
-// Monstros do Mar de Areia esculpidos por código (`proto/sculptArt.ts`): o Abutre Gigante e os escorpiões (o comum
+// Monstros do Mar de Areia esculpidos por código (`proto/sculptArt.ts`): a Múmia (o Olhar Pavoroso sai do especial),
+// o Abutre Gigante e os escorpiões (o comum
 // âmbar e o Negro Gigante, o mesmo modelo com a casca negra e maior). No Negro, as Pinças saem do golpe e o Ferrão
 // Letal do especial.
 if (protoSculpt) {
   const sculpted: [MonsterKind, ReturnType<typeof protoSculpt.scorpionArt>, number, MonsterAnim["strike"]][] = [
     ["giantVulture", protoSculpt.vultureArt(), 1.6, "cast"],
+    ["mummy", protoSculpt.mummyArt(), 1.4, { dreadfulGlare: "cast" }],
     ["sandScorpion", protoSculpt.scorpionArt(), 1.2, "cast"],
     ["blackScorpion", protoSculpt.scorpionArt(protoSculpt.SHELLS.black), 1.6, { pincers: "attack", deathSting: "cast" }],
   ];

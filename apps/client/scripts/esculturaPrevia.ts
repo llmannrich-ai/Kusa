@@ -2,13 +2,14 @@
  * Pré-visualização da arte esculpida por código (`src/art/proto/sculpt.ts`), sem navegador: gera a folha do Escorpião
  * da Areia em PNG, ampliada, e mede quanto cada quadro leva para sair.
  *
- *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre]
+ *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { SCORPION_POSES, SHELLS, shootScorpion } from "../src/art/proto/scorpion.ts";
 import { SCULPT_SIZE, type Frame, type View } from "../src/art/proto/sculpt.ts";
 import { VULTURE_POSES, shootVulture } from "../src/art/proto/vulture.ts";
+import { MUMMY_POSES, shootMummy } from "../src/art/proto/mummy.ts";
 
 const out = process.argv[2] ?? "/tmp/escorpiao.png";
 const zoom = Number(process.argv[3] ?? 3);
@@ -16,6 +17,7 @@ const BICHOS = {
   escorpiao: { poses: SCORPION_POSES, shoot: (p: object, v: View) => shootScorpion(p, v, SHELLS.amber) },
   negro: { poses: SCORPION_POSES, shoot: (p: object, v: View) => shootScorpion(p, v, SHELLS.black) },
   abutre: { poses: VULTURE_POSES, shoot: (p: object, v: View) => shootVulture(p, v) },
+  mumia: { poses: MUMMY_POSES, shoot: (p: object, v: View) => shootMummy(p, v) },
 };
 const bicho = BICHOS[(process.argv[4] ?? "escorpiao") as keyof typeof BICHOS];
 
