@@ -41,6 +41,8 @@ export interface ProtoLook {
   skin: string;
   /** Contraste da rampa da pele (padrão 0,75, macio; os monstros sombrios pedem mais). */
   skinContrast?: number;
+  /** Desvio de matiz da rampa da pele (padrão 4; os heróis usam menos para a sombra não ficar vermelha, de pele corada). */
+  skinShift?: number;
   head: string;
   primary: string;
   secondary: string;
@@ -101,13 +103,20 @@ interface Build {
   arms: number;
   /** Largura da figura inteira (cabeça, tronco, membros, roupa e arma), em volta do meio. */
   slim: number;
+  /**
+   * Tamanho da cabeça (com cabelo, chapéu e elmo), em volta do pescoço. Menor que 1 tira o ar de boneco: a cabeça
+   * grande e redonda é o que deixava os heróis com cara de brinquedo.
+   */
+  head?: number;
 }
 
 /**
  * Corpo dos heróis: um pouco mais alto e magro que o atarracado dos monstros humanoides (a mudança é de propósito
  * sutil: 3 unidades a mais de perna, ≈ 4% de altura, e 8% mais estreito; a cabeça fica do mesmo tamanho na altura).
  */
-const HERO_BUILD: Build = { legs: 3, arms: 1, slim: 0.92 };
+const HERO_BUILD: Build = { legs: 3, arms: 1, slim: 0.92, head: 0.88 };
+/** Tom heroico e sério dos heróis: pele com mais contraste e luz dura (sombra mais funda no lado de lá). */
+const HERO_SKIN = 0.95, HERO_GRIM = 1.12;
 
 /** Aperta a forma na horizontal em volta do meio do corpo (tórax e abdome mais estreitos, `Kit.chest`). */
 const squeeze = (pts: Pt[], w = 1): Pt[] => (w === 1 ? pts : pts.map(([x, y]) => [CX + (x - CX) * w, y]));
@@ -163,34 +172,34 @@ const tierOf = (id: string) => Number(/(\d)(?:-magic)?$/.exec(id)?.[1] ?? 0);
 
 const KITS: Record<ProtoClass, Kit> = {
   base: {
-    build: HERO_BUILD,
-    look: { skin: "#e6b48e", head: "#5a3a22", primary: "#8a7a62", secondary: "#8a7a62", detail: "#6a5040", trim: "#a08a60" },
+    build: HERO_BUILD, grim: HERO_GRIM,
+    look: { skin: "#d4ae92", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#5a3a22", primary: "#8a7a62", secondary: "#8a7a62", detail: "#6a5040", trim: "#a08a60" },
     hair: "none", beard: "none", top: "none", sleeves: "none", pants: "none", feet: "bare", waist: "loincloth", weapon: "none",
   },
   knight: {
-    build: HERO_BUILD,
-    look: { skin: "#ecbc96", head: "#7a4a24", primary: "#a8302a", secondary: "#6c7078", detail: "#5e3e26", trim: "#c09030" },
+    build: HERO_BUILD, grim: HERO_GRIM,
+    look: { skin: "#d8b49a", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#7a4a24", primary: "#a8302a", secondary: "#6c7078", detail: "#5e3e26", trim: "#c09030" },
     hair: "short", beard: "stubble", scar: true, top: "gambeson", sleeves: "quilt", pants: "full", feet: "boots", waist: "belt", weapon: "sword",
   },
   paladin: {
-    build: HERO_BUILD,
-    look: { skin: "#dca47c", head: "#d8ac48", primary: "#c08c34", secondary: "#5e5838", detail: "#8a6038", trim: "#8a3a26" },
+    build: HERO_BUILD, grim: HERO_GRIM,
+    look: { skin: "#c9a084", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#d8ac48", primary: "#c08c34", secondary: "#5e5838", detail: "#8a6038", trim: "#8a3a26" },
     hair: "medium", beard: "none", headband: true, top: "tunic", sleeves: "short", pants: "full", feet: "tall", waist: "strap", weapon: "bow", quiver: true,
   },
   sorcerer: {
-    build: HERO_BUILD,
-    look: { skin: "#e8c0a4", head: "#d2cdc4", primary: "#4a2c6e", secondary: "#4e566a", detail: "#5a4434", trim: "#c8a040" },
+    build: HERO_BUILD, grim: HERO_GRIM,
+    look: { skin: "#d8bcaa", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#d2cdc4", primary: "#4a2c6e", secondary: "#4e566a", detail: "#5a4434", trim: "#c8a040" },
     hair: "long", beard: "long", top: "robe", sleeves: "bell", pants: "full", feet: "shoes", waist: "sash", weapon: "staff",
   },
   druid: {
-    build: HERO_BUILD,
-    look: { skin: "#c88d62", head: "#6a4426", primary: "#4e6a34", secondary: "#6a5034", detail: "#5a3e26", trim: "#b06a3a" },
+    build: HERO_BUILD, grim: HERO_GRIM,
+    look: { skin: "#bc9476", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#6a4426", primary: "#4e6a34", secondary: "#6a5034", detail: "#5a3e26", trim: "#b06a3a" },
     hair: "flowing", beard: "none", wild: true, top: "leaf", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "branch",
   },
   // Xamã Orc: por enquanto o kit do druida com pele verde-cinza, couro e cinzas (a arte própria vem com a horda).
   shaman: {
-    build: HERO_BUILD,
-    look: { skin: "#7d9256", head: "#2e2624", primary: "#6b4a2e", secondary: "#4e4a46", detail: "#3e2a1a", trim: "#d8561c" },
+    build: HERO_BUILD, grim: HERO_GRIM,
+    look: { skin: "#7d9256", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#2e2624", primary: "#6b4a2e", secondary: "#4e4a46", detail: "#3e2a1a", trim: "#d8561c" },
     hair: "flowing", beard: "none", orc: true, top: "tunic", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "skull",
   },
 };
@@ -215,7 +224,7 @@ const OUTLINE: Rgb = rgb("#1a1210");
 function ramps(look: ProtoLook): Rgb[][] {
   const r = (base: string, contrast = 1, shift = 6, shine = false) => ramp(base, { contrast, shift, shine }).map(rgb);
   return [
-    r(look.skin, look.skinContrast ?? 0.75, 4),
+    r(look.skin, look.skinContrast ?? 0.75, look.skinShift ?? 4),
     r(look.head, 1.1, 8),
     r(look.primary, 0.95, 7),
     r(look.secondary, 0.95, 6),
@@ -452,8 +461,26 @@ export class Canvas {
     return id;
   }
 
+  /**
+   * Detalhe à mão em bloco: dentro de uma escala local maior que 1, cada pixel desenhado à mão (`px`, `on`, `nudge`,
+   * `clear`) cobre o quadradinho inteiro para onde ele vai, em vez de um ponto solto (o retrato ampliado do menu).
+   * Desligado, a escala só muda o lugar do pixel, como sempre (cabeça do cajado, escudo e varinha ampliados).
+   */
+  blocks = false;
+
+  /** Pixels finais para onde vai o pixel `X`, `Y` (um só, ou o bloco inteiro com `blocks`). */
+  private spots(X: number, Y: number): [number, number][] {
+    const [x0, y0] = this.tx(X, Y);
+    if (!this.blocks || !this.xf || this.xf.m || this.xf.k <= 1) return [[Math.round(x0), Math.round(y0)]];
+    const [x1, y1] = this.tx(X + 1, Y + 1);
+    const out: [number, number][] = [];
+    for (let y = Math.round(y0); y < Math.max(Math.round(y0) + 1, Math.round(y1)); y++) for (let x = Math.round(x0); x < Math.max(Math.round(x0) + 1, Math.round(x1)); x++) out.push([x, y]);
+    return out;
+  }
+
   /** Um pixel final num tom fixo (detalhe desenhado à mão: olho, brilho, costura). */
   px(X: number, Y: number, mat: Mat, tone: number) {
+    if (this.blocks) { for (const [x, y] of this.spots(X, Y)) this.rawPx(x, y, mat, tone); return; }
     [X, Y] = this.tx(X, Y);
     this.rawPx(Math.round(X), Math.round(Y), mat, tone);
   }
@@ -468,6 +495,14 @@ export class Canvas {
 
   /** Pixel fixo só onde já estão pintadas as peças `ids` (cinto e barra não saem do tronco). */
   on(ids: number | readonly number[], X: number, Y: number, mat: Mat, tone: number): void {
+    if (this.blocks) {
+      for (const [x, y] of this.spots(X, Y)) {
+        if (x < 0 || y < 0 || x >= this.w || y >= this.h || this.mat[y * this.w + x] < 0) continue;
+        const p = this.part[y * this.w + x];
+        if (typeof ids === "number" ? p === ids : ids.includes(p)) this.rawPx(x, y, mat, tone);
+      }
+      return;
+    }
     [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
     if (X < 0 || Y < 0 || X >= this.w || Y >= this.h || this.mat[Y * this.w + X] < 0) return;
@@ -491,6 +526,10 @@ export class Canvas {
 
   /** Muda o tom de quem já está pintado, sem mudar a peça (dobra, costura). */
   nudge(X: number, Y: number, delta: number) {
+    if (this.blocks) {
+      for (const [x, y] of this.spots(X, Y)) if (x >= 0 && y >= 0 && x < this.w && y < this.h && this.mat[y * this.w + x] >= 0) this.off[y * this.w + x] += delta;
+      return;
+    }
     [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
     if (X < 0 || Y < 0 || X >= this.w || Y >= this.h) return;
@@ -500,6 +539,10 @@ export class Canvas {
 
   /** Apaga um pixel (furo de lâmina, recorte). */
   clear(X: number, Y: number) {
+    if (this.blocks) {
+      for (const [x, y] of this.spots(X, Y)) if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.mat[y * this.w + x] = -1;
+      return;
+    }
     [X, Y] = this.tx(X, Y);
     X = Math.round(X); Y = Math.round(Y);
     if (X < 0 || Y < 0 || X >= this.w || Y >= this.h) return;
@@ -572,6 +615,39 @@ export const sphere = (cx: number, cy: number, rx: number, ry: number): Shade =>
 export const inEllipse = (cx: number, cy: number, rx: number, ry: number) => (x: number, y: number) =>
   ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1;
 export const ebox = (cx: number, cy: number, rx: number, ry: number): Box => [cx - rx, cy - ry, cx + rx, cy + ry];
+
+/**
+ * Rosto de herói: crânio redondo em cima e, abaixo dos olhos, a mandíbula que afina até um queixo largo e reto (o
+ * rosto oval/redondo deixava os heróis com cara de boneco). A face lateral do rosto, abaixo da maçã, fica funda.
+ * No perfil (`side`, olhando para a esquerda) a frente desce reta até o queixo e só a mandíbula corta para trás.
+ */
+function faceShape(c: Canvas, cx: number, cy: number, rx: number, ry: number, chin = 0.52, side = false) {
+  const top = cy - ry, bottom = cy + ry;
+  const round = (y: number) => rx * Math.sqrt(Math.max(0, 1 - ((y - cy) / ry) ** 2));
+  /** Quanto o lado afina do meio do rosto até o queixo (0 = nada, 1 = até `chin`). */
+  const taper = (y: number) => {
+    const t = (y - cy) / ry;
+    if (t <= 0.1) return round(y);
+    const w = rx * 0.995 * (1 - (1 - chin) * ((t - 0.1) / 0.9) ** 1.4);
+    return t > 0.88 ? w * Math.sqrt(Math.max(0, 1 - ((t - 0.88) / 0.12) ** 2 * 0.55)) : w;
+  };
+  // Perfil: a frente fica no crânio até a altura da boca e depois arredonda pouco (queixo marcado).
+  const left = (y: number) => (!side || y <= cy ? taper(y) : rx * 0.96 * Math.sqrt(Math.max(0, 1 - Math.max(0, (y - cy) / ry - 0.7) ** 2 / 0.09 * 0.6)));
+  const right = (y: number) => (!side || y <= cy ? taper(y) : rx * (1 - 1.05 * ((y - cy) / ry) ** 1.6));
+  const ball = sphere(cx, cy, rx, ry);
+  return c.fill([cx - rx - 1, top, cx + rx + 1, bottom], (x, y) => {
+    const X = x + 0.5 - cx, Y = y + 0.5;
+    return Y >= top && Y <= bottom && (X < 0 ? -X <= left(Y) : X <= right(Y));
+  }, Mat.Skin, (x, y) => {
+    const X = x + 0.5 - cx, Y = y + 0.5, t = (Y - cy) / ry;
+    const d = X / Math.max(0.1, X < 0 ? left(Y) : right(Y));
+    // Face funda abaixo da maçã e a linha da mandíbula (no perfil, só o lado de trás).
+    const far = side ? d > 0.3 : Math.abs(d) > 0.62;
+    const hollow = t > 0.2 && t < 0.85 && far ? 0.14 : 0;
+    const jaw = t > 0.78 && (side ? d > 0 : Math.abs(d) > 0.45) ? 0.1 : 0;
+    return Math.max(0, ball(x, y) - hollow - jaw);
+  });
+}
 
 /** Esfera achatada. */
 export function ellipse(c: Canvas, cx: number, cy: number, rx: number, ry: number, mat: Mat, offset?: Offset) {
@@ -903,8 +979,11 @@ function leg(c: Canvas, kit: Kit, hip: Pt, knee: Pt, ankle: Pt, toe: Pt, far: bo
 
 // --- Braços e mãos -------------------------------------------------------------------
 
-function hand(c: Canvas, at: Pt, far: boolean) {
-  const id = ellipse(c, at[0], at[1], 3.1, 3.3, Mat.Skin, darker(undefined, far));
+function hand(c: Canvas, at: Pt, far: boolean, hero = false) {
+  // Herói: mão menor e mais quadrada (o punho fechado), sem a luva redonda maior que o antebraço.
+  const id = hero
+    ? c.fill([at[0] - 2.8, at[1] - 3, at[0] + 2.8, at[1] + 3], (x, y) => (Math.abs(x + 0.5 - at[0]) / 2.5) ** 3 + (Math.abs(y + 0.5 - at[1]) / 2.9) ** 3 <= 1, Mat.Skin, sphere(at[0], at[1], 2.8, 3.2), darker(undefined, far))
+    : ellipse(c, at[0], at[1], 3.1, 3.3, Mat.Skin, darker(undefined, far));
   // Dedos: três vincos embaixo e o nó do polegar claro.
   const X = F(at[0]), Y = F(at[1]);
   for (const dx of [-3, -1, 1, 3]) { c.on(id, X + dx, Y + 4, Mat.Skin, 1); c.on(id, X + dx, Y + 5, Mat.Skin, 1); }
@@ -987,7 +1066,7 @@ function arm(c: Canvas, kit: Kit, shoulder: Pt, elbow: Pt, at: Pt, far: boolean,
   }
   if (kit.armor) armorArm(c, kit.armor, shoulder, elbow, at, far);
   grip?.();
-  hand(c, at, far);
+  hand(c, at, far, !!kit.build);
   if (kit.claws) {
     // Unhas compridas e escuras, curvas para baixo, saindo dos nós dos dedos.
     const X = F(at[0]), Y = F(at[1]);
@@ -1603,15 +1682,19 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: MonsterPo
   const top = 47 - tall + b;
   // Pernas: no passo, a de trás tira o calcanhar do chão (pé 2 unidades acima).
   const legs: [number, number][] = [[CX - 4.5, s < 0 ? -2 : 0], [CX + 4.5, s > 0 ? -2 : 0]];
+  // Heróis: pés afastados (postura firme, não de boneco com os pés juntos).
+  const spread = kit.build ? 1.6 : 0;
   legs.forEach(([x, lift], i) => {
     const far = back ? i === 0 : i === 1;
-    const knee: Pt = [x + (i ? 0.5 : -0.5), 77 - tall / 2 + b + lift / 2];
-    const ankle: Pt = [x + (i ? 0.5 : -0.5), FEET - 3 + lift];
+    const out = i ? 1 : -1;
+    const knee: Pt = [x + out * (0.5 + spread * 0.5), 77 - tall / 2 + b + lift / 2];
+    const ankle: Pt = [x + out * (0.5 + spread), FEET - 3 + lift];
     leg(c, kit, [x, hipY], knee, ankle, [ankle[0], ankle[1] + 1.5], far, !back);
   });
 
   // Atrás do corpo: cabelo comprido (de frente) e a aljava (de frente só aparece acima do ombro).
-  if (!back) hairBehind(c, kit, b, top);
+  const head = headScale(c, kit, [CX, top + 1]);
+  if (!back) head(() => hairBehind(c, kit, b, top));
   if (kit.quiver && !back) quiver(c, [CX + 9.5, top - 3], [CX + 2, top + 14], 6.5);
 
   const ids = torsoFront(c, kit, top, back, s * 0.8);
@@ -1652,8 +1735,13 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: MonsterPo
     if (mp?.spark) sparks(holds && grip === "staff" && lift ? [ha[0], top - 19 + lift] : ha, 1);
   }
   if (kit.armor) armorShoulders(c, kit.armor, top, back ? "up" : "down", [[CX - 12.8, top + 2], [CX + 12.8, top + 2]]);
-  if (back) headBack(c, kit, b, top);
-  else headFront(c, kit, b, top);
+  head(() => (back ? headBack(c, kit, b, top) : headFront(c, kit, b, top)));
+}
+
+/** Desenha a cabeça (cabelo, chapéu e elmo juntos) no tamanho do corpo (`Build.head`), em volta do pescoço. */
+function headScale(c: Canvas, kit: Kit, neck: Pt) {
+  const k = kit.build?.head ?? 1;
+  return (draw: () => void) => (k === 1 ? draw() : c.scaled(neck, k, draw));
 }
 
 function side(c: Canvas, kit: Kit, frame: number, mp?: MonsterPose) {
@@ -1718,7 +1806,8 @@ function weaponAngle(kit: Kit, ha: Pt, top: number): number {
 function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: MonsterPose) {
   const at = (o: Pt | undefined, fallback: Pt): Pt => (o ? [CX + o[0], top + o[1]] : fallback);
   // Cabelo comprido e aljava nas costas (atrás do tronco).
-  hairBehindSide(c, kit, b, top);
+  const head = headScale(c, kit, [CX + 1, top + 1]);
+  head(() => hairBehindSide(c, kit, b, top));
   if (kit.quiver) quiver(c, [CX + 9.5, top - 4], [CX + 6, top + 14], 6.5);
   const ids = torsoSide(c, kit, top, -s * 1.2);
   dressSide(c, kit, ids, top);
@@ -1767,7 +1856,7 @@ function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: 
     sparks(style === "staff" && lift ? [ha[0], top - 19 + lift] : ha, 1);
     if (mp.back) sparks([CX + mp.back[0], top + mp.back[1]], 0.8);
   }
-  headSide(c, kit, b, top);
+  head(() => headSide(c, kit, b, top));
 }
 
 // --- Cabeça (detalhes em pixel final) -------------------------------------------------
@@ -1834,11 +1923,12 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   const cy = 37 + b;
   collar(c, kit, cy, "down");
   ellipse(c, CX, cy + 9, 3.5, 2.5, Mat.Skin); // pescoço
-  const face = ellipse(c, CX, cy, 8.6, 9, Mat.Skin);
+  const face = kit.build ? faceShape(c, CX, cy, 7.9, 9.4) : ellipse(c, CX, cy, 8.6, 9, Mat.Skin);
   // Orelhas com a curva de dentro.
   for (const sx of [-1, 1]) {
-    const ear = ellipse(c, CX + sx * 8.4, cy + 2, 1.3, 2.1, Mat.Skin);
-    for (const [dx, dy] of [[0, -2], [1, -1], [1, 0], [1, 1], [0, 2]]) c.on(ear, F(CX + sx * 8.4) + sx * dx, F(cy + 2) + dy, Mat.Skin, 1);
+    const ex = CX + sx * (kit.build ? 7.8 : 8.4);
+    const ear = ellipse(c, ex, cy + 2, 1.3, 2.1, Mat.Skin);
+    for (const [dx, dy] of [[0, -2], [1, -1], [1, 0], [1, 1], [0, 2]]) c.on(ear, F(ex) + sx * dx, F(cy + 2) + dy, Mat.Skin, 1);
   }
   const hx = CX, hy = cy - 0.8, rx = 9.4, ry = 9.4;
   const inHair = inEllipse(hx, hy, rx, ry);
@@ -1908,7 +1998,27 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
 
   const Yc = F(cy);
   const old = kit.beard === "long";
+  const hero = !!kit.build;
   for (const sx of [-1, 1]) {
+    if (hero) {
+      // Sobrancelha grossa e baixa, descendo para o nariz (olhar firme), com a sombra funda da órbita embaixo.
+      for (let dx = 2; dx <= 10; dx++) {
+        const Y = Yc + 1 + (dx < 5 ? 1 : 0) + (old && dx > 8 ? 1 : 0);
+        c.px(mx(sx, dx), Y, Mat.Hair, dx > 8 ? 2 : 1);
+        c.px(mx(sx, dx), Y + 1, Mat.Hair, dx > 8 ? 1 : 0);
+        if (dx >= 4 && dx <= 9 && Y + 2 < Yc + 4) c.px(mx(sx, dx), Y + 2, Mat.Skin, 1);
+      }
+      if (old) for (let dx = 4; dx <= 10; dx++) c.px(mx(sx, dx), Yc + (dx < 5 ? 1 : 0) - 1, Mat.Hair, noise(dx, sx) < 0.5 ? 3 : 2);
+      // Olho aberto e atento sob a pálpebra pesada: íris escura de 2 linhas, pouco branco e um brilho pequeno.
+      for (let dx = 4; dx <= 9; dx++) c.px(mx(sx, dx), Yc + 4, Mat.Eye, 0);
+      const row = [[4, Mat.Skin, 1], [5, Mat.White, 3], [6, Mat.Iris, 2], [7, Mat.Eye, 0], [8, Mat.Iris, 2], [9, Mat.Eye, 0]] as const;
+      for (const [dx, m, t] of row) c.px(mx(sx, dx), Yc + 5, m, t);
+      for (const [dx, m, t] of [[5, Mat.White, 1], [6, Mat.Iris, 1], [7, Mat.Iris, 0], [8, Mat.Iris, 1], [9, Mat.Skin, 1]] as const) c.px(mx(sx, dx), Yc + 6, m, t);
+      c.px(mx(sx, sx < 0 ? 8 : 6), Yc + 5, Mat.White, 4);
+      for (let dx = 5; dx <= 8; dx++) c.px(mx(sx, dx), Yc + 7, Mat.Skin, 2);
+      // Maçã do rosto: o osso pega luz e faz sombra embaixo.
+      for (let dx = 8; dx <= 11; dx++) c.px(mx(sx, dx), Yc + 9 + (dx > 9 ? 1 : 0), Mat.Skin, sx < 0 ? 4 : 2);
+    } else {
     // Sobrancelha: grossa perto do nariz, afinando para fora (mais cheia e caída no velho).
     for (let dx = 3; dx <= 10; dx++) c.px(mx(sx, dx), Yc + 1 + (dx < 5 ? 1 : 0) + (old && dx > 8 ? 1 : 0), Mat.Hair, dx > 8 ? 2 : 1);
     for (let dx = 4; dx <= 7; dx++) c.px(mx(sx, dx), Yc + 2 + (dx < 5 ? 1 : 0), Mat.Hair, 1);
@@ -1920,6 +2030,7 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
     for (const [dx, m, t] of [[4, Mat.White, 2], [5, Mat.Iris, 2], [6, Mat.Iris, 1], [7, Mat.Iris, 1], [8, Mat.White, 1]] as const) c.px(mx(sx, dx), Yc + 6, m, t);
     c.px(mx(sx, sx < 0 ? 7 : 5), Yc + 5, Mat.White, 5);
     for (let dx = 5; dx <= 8; dx++) c.px(mx(sx, dx), Yc + 7, Mat.Skin, 2);
+    }
     if (old) {
       // Pés de galinha e bolsa embaixo do olho.
       for (const [dx, dy] of [[10, 3], [11, 4], [10, 5], [11, 6]]) c.px(mx(sx, dx), Yc + dy, Mat.Skin, 2);
@@ -1929,9 +2040,9 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
       // Pintura verde: duas listras descendo pela bochecha.
       for (let k = 0; k < 5; k++) { c.px(mx(sx, 7 + Math.floor(k / 2)), Yc + 9 + k, Mat.Leaf, 2); c.px(mx(sx, 10 + Math.floor(k / 2)), Yc + 8 + k, Mat.Leaf, 3); }
     } else if (kit.orc) {
-      // Pintura de brasa: três riscos curtos descendo pela bochecha.
-      for (const dx of [7, 9, 11]) for (let k = 0; k < 3; k++) c.px(mx(sx, dx), Yc + 9 + k, Mat.Ember, k === 0 ? 4 : 2);
-    } else {
+      // Pintura de brasa: riscos finos e escuros cruzando o olho de cima a baixo (não lembram bochecha corada).
+      for (const dx of [6, 9]) for (let k = -3; k < 6; k++) if (k < 3 || k > 4) c.px(mx(sx, dx + (k > 3 ? 1 : 0)), Yc + 3 + k + (k >= 3 ? 4 : 0), Mat.Ember, k < 0 ? 1 : 0);
+    } else if (!hero) {
       // Maçã do rosto: um toque de cor quente.
       for (const [dx, dy] of [[10, 9], [10, 10]]) c.px(mx(sx, dx), Yc + dy, Mat.Lip, 4);
     }
@@ -1942,6 +2053,7 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   }
   // Nariz: sombra do lado direito, ponta clara, narinas.
   for (let dy = 6; dy <= 10; dy++) c.px(mx(1, 1), Yc + dy, Mat.Skin, 2);
+  if (hero) { for (let dy = 8; dy <= 11; dy++) c.px(mx(1, 2), Yc + dy, Mat.Skin, dy > 9 ? 1 : 2); c.px(mx(-1, 1), Yc + 7, Mat.Skin, 4); }
   c.px(mx(-1, 0), Yc + 10, Mat.Skin, 4); c.px(mx(1, 0), Yc + 11, Mat.Skin, 2);
   c.px(mx(-1, 1), Yc + 12, Mat.Skin, 1); c.px(mx(1, 1), Yc + 12, Mat.Skin, 1); c.px(mx(1, 0), Yc + 12, Mat.Skin, 2);
   if (kit.beard === "long") {
@@ -1949,9 +2061,15 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
     beardFront(c, cy, top);
     return;
   }
+  if (hero) {
+    // Boca firme: uma linha reta e fina, os cantos um pouco para baixo e a sombra do lábio de baixo.
+    for (let dx = 0; dx <= 3; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 15 + (dx === 3 ? 1 : 0), Mat.Lip, 0);
+    for (let dx = 0; dx <= 1; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 17, Mat.Skin, 1);
+  } else {
   // Boca: linha dos lábios, cantinhos e lábio de baixo claro.
   for (let dx = 0; dx <= 3; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 15, Mat.Lip, dx === 3 ? 2 : 0);
   for (let dx = 0; dx <= 2; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 16, Mat.Lip, sx < 0 && dx < 2 ? 4 : 3);
+  }
   c.px(mx(-1, 0), Yc + 13, Mat.Skin, 2);
   if (kit.beard === "stubble") {
     stubble(c, face, mx(-1, 13), mx(1, 13), Yc + 11, Yc + 19, (X, Y) => {
@@ -2059,7 +2177,7 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   const cx = CX + 1;
   collar(c, kit, cy, "side");
   ellipse(c, CX - 0.5, cy + 9, 3, 2.5, Mat.Skin); // pescoço
-  const face = ellipse(c, cx, cy, 8.2, 9, Mat.Skin);
+  const face = kit.build ? faceShape(c, cx, cy, 8, 9.4, 0.62, true) : ellipse(c, cx, cy, 8.2, 9, Mat.Skin);
   const X0 = F(cx), Yc = F(cy);
   // Perfil: testa, nariz que sai do rosto, lábios e queixo, pixel a pixel (olhando para a esquerda).
   const nose = [[-17, 3, 3], [-18, 4, 3], [-18, 5, 4], [-19, 6, 3], [-19, 7, 3], [-19, 8, 2], [-18, 9, 2], [-17, 9, 1], [-18, 8, 3]] as const;
@@ -2129,7 +2247,8 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   c.px(X0 - 13, Yc + 5, Mat.White, 5);
   c.px(X0 - 14, Yc + 4, Mat.Eye, 0);
   if (kit.wild) for (let k = 0; k < 4; k++) { c.px(X0 - 11 + k, Yc + 9 + k, Mat.Leaf, 2); c.px(X0 - 8 + k, Yc + 8 + k, Mat.Leaf, 3); }
-  else if (kit.orc) for (const dx of [-11, -9]) for (let k = 0; k < 3; k++) c.px(X0 + dx, Yc + 9 + k, Mat.Ember, k === 0 ? 4 : 2);
+  else if (kit.orc) for (const dx of [-11, -8]) for (let k = -3; k < 6; k++) if (k < 3 || k > 4) c.px(X0 + dx, Yc + 3 + k + (k >= 3 ? 4 : 0), Mat.Ember, k < 0 ? 1 : 0);
+  else if (kit.build) for (let dx = -10; dx <= -6; dx++) c.px(X0 + dx, Yc + 9 + (dx > -8 ? 1 : 0), Mat.Skin, 2);
   else c.px(X0 - 8, Yc + 9, Mat.Lip, 4);
   if (kit.orc) { c.px(X0 - 12, Yc + 14, Mat.Bone, 5); c.px(X0 - 12, Yc + 13, Mat.Bone, 4); }
   if (old) for (const [dx, dy] of [[-8, 3], [-7, 4], [-8, 5]]) c.px(X0 + dx, Yc + dy, Mat.Skin, 2);
@@ -5895,7 +6014,41 @@ function protoFrameData(dir: ProtoDir, frame: number, kit: Kit, colors: ProtoLoo
   const draw = () => (dir === "side" ? side(c, kit, frame) : front(c, kit, frame, dir === "up"));
   if (kit.build) c.slimmed(CX + 0.5, kit.build.slim, draw);
   else draw();
-  return c.render(colors);
+  return c.render(colors, true, kit.grim);
+}
+
+// --- Retrato do menu ----------------------------------------------------------------------
+
+/** Lado do retrato do menu, em pixels. */
+export const PORTRAIT_SIZE = 128;
+/** Ampliação do retrato: o busto é a mesma figura do jogo, redesenhada 1,7× maior em volta do rosto. */
+const PORTRAIT_ZOOM = 1.7;
+
+/**
+ * Retrato de busto do herói para o menu (medalhões, sala de espera): a figura parada de frente, vestida, redesenhada
+ * `PORTRAIT_ZOOM` vezes maior em volta do rosto. As formas e a luz são amostradas na resolução nova (o contorno e o
+ * volume ficam finos); os detalhes à mão (olhos, sobrancelha, costuras) viram blocos do tamanho certo. Quadrado de
+ * `PORTRAIT_SIZE`, rosto no meio e um pouco acima, o peito cortado embaixo.
+ */
+export function protoPortraitData(cls: ProtoClass = "knight", gear: ProtoGear = {}, look?: Partial<ProtoLook>): Uint8ClampedArray {
+  const kit = protoKit(cls, gear);
+  const colors = { ...kit.look, ...look };
+  const c = new Canvas();
+  c.blocks = true;
+  // Rosto (cabeça menor, `Build.head`, em volta do pescoço) ≈ unidade 38; vai para o pixel (96, 76) do quadro.
+  const face: Pt = [CX, 38];
+  const draw = () => c.scaled(face, PORTRAIT_ZOOM, () => front(c, kit, 1, false));
+  if (kit.build) c.slimmed(CX + 0.5, kit.build.slim, draw);
+  else draw();
+  const full = c.render(colors, true, kit.grim);
+  const out = new Uint8ClampedArray(PORTRAIT_SIZE * PORTRAIT_SIZE * 4);
+  const x0 = F(face[0]) - PORTRAIT_SIZE / 2, y0 = F(face[1]) - Math.round(PORTRAIT_SIZE * 0.47);
+  for (let y = 0; y < PORTRAIT_SIZE; y++) {
+    const sy = y0 + y;
+    if (sy < 0 || sy >= S) continue;
+    out.set(full.subarray((sy * S + x0) * 4, (sy * S + x0 + PORTRAIT_SIZE) * 4), y * PORTRAIT_SIZE * 4);
+  }
+  return out;
 }
 
 // --- Movimentos de ação (golpe, tiro, cajado e magia) ---------------------------------------
@@ -5995,7 +6148,7 @@ export function protoActionData(dir: ProtoDir, action: HeroAction, k: number, cl
     const slim = kit.build?.slim ?? 1;
     fx.slimmed(CX + 0.5, slim, () => c.slimmed(CX + 0.5, slim, draw));
   } finally { fxLayer = null; }
-  const body = c.render(colors);
+  const body = c.render(colors, true, kit.grim);
   const glow = fx.render(colors, false);
   for (let i = 0; i < body.length; i += 4) {
     if (body[i + 3]) continue;

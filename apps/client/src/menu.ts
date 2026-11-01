@@ -72,7 +72,7 @@ import {
   type SpellId,
   type TalentDef,
 } from "@kusa/shared";
-import { HERO_DIRS, HERO_FRAMES, heroPoses, heroSheet, type HeroDir } from "./art/heroes.ts";
+import { HERO_DIRS, HERO_FRAMES, heroPortrait, heroPoses, heroSheet, type HeroDir } from "./art/heroes.ts";
 import { branchIcon } from "./branchIcons.ts";
 import {
   NEEDS, PLAN_SLOTS, ROLE_INFO, coverage, slotExists, slotSpells, spellRoles, suggestSlot, type PlanSpell,
@@ -195,9 +195,12 @@ const BODY_SVG = `<svg class="loadout-body" viewBox="0 0 100 110" aria-hidden="t
 </svg>`;
 
 /** Retrato da classe vestindo `outfit`: quadro parado, de frente. */
+/** O retrato de busto do herói vestido (medalhões de Heróis e do Grimório). */
 function portrait(classId: ClassId, outfit: Outfit = NO_OUTFIT) {
-  const img = el("img", "hero-img");
-  img.src = heroUrl(classId, outfit, "down");
+  const img = el("img", "hero-img hero-bust");
+  const key = `portrait:${classId}:${outfitKey(outfit)}`;
+  if (!iconCache.has(key)) iconCache.set(key, heroPortrait(classId, outfit).toDataURL());
+  img.src = iconCache.get(key)!;
   img.alt = CLASSES[classId].name;
   return img;
 }
