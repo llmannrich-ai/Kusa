@@ -20,6 +20,7 @@ export const BASIC_ATTACKS: Record<ClassId, BasicAttackDef> = {
   paladin: { name: "Flecha", projectileSpeed: 16 },
   sorcerer: { name: "Luz negra", projectileSpeed: 10 },
   druid: { name: "Luz verde", projectileSpeed: 11 },
+  shaman: { name: "Brasa do cajado", projectileSpeed: 10 },
 };
 
 /** Intervalo entre ataques básicos, igual para todas as classes. */
@@ -39,6 +40,7 @@ export type SpellId =
   | "holy_arrow" | "arrow_rain"
   | "shadow_orb" | "void_storm"
   | "forest_blessing" | "thorn_roots"
+  | "ember_totem" | "war_drum"
   // Compradas no Grimório da classe (menu).
   | "crushing_blow" | "holy_shield" | "vampiric_blade" | "iron_skin" | "earthquake" | "steel_wall" | "commander_shout" | "execution"
   | "piercing_shot" | "stun_arrow" | "blessed_ward" | "healing_light" | "deadly_shot" | "divine_judgment" | "explosive_volley"
@@ -114,8 +116,13 @@ export interface SpellDef {
     rootMs?: number;
     /** Parede: quantos tiles, de lado para a direção do herói até o ponto mirado. */
     length?: number;
-    /** Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus), em vez da estaca. */
-    look?: "storm";
+    /**
+     * Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus); "totem" = totem do Xamã Orc, que lança brasa
+     * (fogo). Sem isto, a estaca de flechas.
+     */
+    look?: "storm" | "totem";
+    /** Quantos campos desta magia cabem ao mesmo tempo (o mais antigo sai); sem isto, 1 (ou o do Engenhoso). */
+    max?: number;
   };
   /** Elemento (só do Feiticeiro): Estática vale para energia. */
   element?: Element;
@@ -221,6 +228,11 @@ export interface SpellDef {
   summon?: { kind: SummonKind; count: number; durationMs: number };
   /** Tiles por segundo até o alvo; sem isso o efeito é imediato. */
   projectileSpeed?: number;
+  /**
+   * Tambor de Guerra: por `ms`, quem conjura, os aliados e as criaturas (de qualquer herói) a até `radius` tiles atacam
+   * `haste` mais rápido (fração da recarga cortada) e causam +`damage` de dano; `heal` cura essa fração da vida deles.
+   */
+  rally?: { radius: number; ms: number; haste: number; damage: number; heal?: number };
 }
 
 const spell = (def: SpellDef) => def;
@@ -892,6 +904,20 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 55, cooldownMs: 14000, aim: "self", range: 0, radius: 2, damage: 1.6, rootMs: 1500,
     dot: { perSec: 0.3, ms: 4000, kind: "bleed" },
   }),
+
+  // --- Xamã Orc: totens no chão e o tambor que acelera a equipe (docs/CLASSE_XAMA_ORC.md). ---
+  ember_totem: spell({
+    id: "ember_totem", classId: "shaman", slot: 0, name: "Totem da Brasa", icon: "🔥", color: 0xff7a1a,
+    description: "Finca um totem no chão que lança brasa sozinho no monstro mais perto.",
+    manaCost: 22, cooldownMs: 8000, aim: "target", range: 4, radius: 0,
+    field: { kind: "turret", ms: 10000, tickMs: 1000, damage: 0.6, reach: 3, shots: 10, look: "totem", max: 2 },
+  }),
+  war_drum: spell({
+    id: "war_drum", classId: "shaman", slot: 1, name: "Tambor de Guerra", icon: "🥁", color: 0xe67e22,
+    description: "O tambor acelera você, os aliados e as criaturas por perto e deixa lentos os monstros colados.",
+    manaCost: 35, cooldownMs: 14000, aim: "self", range: 0, radius: 2, slow: { pct: 0.3, ms: 3000 },
+    rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15 },
+  }),
 };
 
 /**
@@ -1042,6 +1068,9 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   vine_lash: { text: "O cipó também envenena por 3 s.", changes: { dot: { perSec: 0.25, ms: 3000, kind: "poison" } } },
   spore_burst: { text: "Os esporos cobrem raio 3.", changes: { radius: 3 } },
   bramble_burst: { text: "Os espinhos brotam em raio 3.", changes: { radius: 3 } },
+  // Xamã Orc
+  ember_totem: { text: "A brasa queima o monstro por 3 s.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "burn" } } },
+  war_drum: { text: "A batida também cura 10% da vida de quem está no raio do tambor.", changes: { rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15, heal: 0.1 } } },
 };
 
 /**
@@ -1081,6 +1110,7 @@ export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
     summon: def.summon && { ...def.summon, durationMs: Math.round(def.summon.durationMs * t) },
+    rally: def.rally && { ...def.rally, ms: Math.round(def.rally.ms * t), damage: def.rally.damage * k, heal: def.rally.heal && def.rally.heal * k },
   };
 }
 
@@ -1123,8 +1153,10 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   }
   if (s.field?.kind === "trap") facts.push(`Armadilha por ${sec(s.field.ms)}: dispara no primeiro monstro que pisar${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
   if (s.field?.kind === "turret") {
-    const what = s.field.look === "storm" ? "Nuvem" : "Estaca";
-    facts.push(`${what} por ${sec(s.field.ms)}: ${s.field.shots} ${s.field.look === "storm" ? "raios" : "tiros"} de ${num(s.field.damage ?? 0)}× a até ${s.field.reach} tiles`);
+    const what = s.field.look === "storm" ? "Nuvem" : s.field.look === "totem" ? "Totem" : "Estaca";
+    const shots = s.field.look === "storm" ? "raios" : s.field.look === "totem" ? "brasas" : "tiros";
+    facts.push(`${what} por ${sec(s.field.ms)}: ${s.field.shots} ${shots} de ${num(s.field.damage ?? 0)}× a até ${s.field.reach} tiles`);
+    if ((s.field.max ?? 1) > 1) facts.push(`Até ${s.field.max} ao mesmo tempo (o mais antigo sai)`);
   }
   if (s.field?.kind === "wall") facts.push(`Parede de ${s.field.length} tiles por ${sec(s.field.ms)}`);
   if (s.field?.kind === "zone" && s.field.rootMs) facts.push(`Prende quem está dentro (${sec(s.field.rootMs)} a cada pulso)`);
@@ -1135,6 +1167,10 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
     facts.push(`O próximo ataque salta no alvo: ${num(s.form.pounce ?? 1)}×${s.form.pounceStunMs ? `, atordoa por ${sec(s.form.pounceStunMs)}` : ""}`);
   }
   if (s.form?.kind === "bear") facts.push(`Urso por ${sec(s.form.ms)}: +${pct(s.form.hp ?? 0)} de vida; o ataque fere e provoca todos os monstros colados`);
+  if (s.rally) {
+    facts.push(`Você, os aliados e as criaturas a até ${s.rally.radius} tiles: atacam ${pct(s.rally.haste)} mais rápido e causam +${pct(s.rally.damage)} de dano por ${sec(s.rally.ms)}`);
+    if (s.rally.heal) facts.push(`Cura ${pct(s.rally.heal)} da vida deles`);
+  }
   if (s.packCall) facts.push(`Suas criaturas atacam ${pct(s.packCall.haste)} mais rápido por ${sec(s.packCall.ms)} e recuperam ${pct(s.packCall.heal)} da vida`);
   if (s.seed) facts.push(`Semente por ${sec(s.seed.ms)}: se o aliado morrer, renasce com ${pct(s.seed.hp)} da vida, sem perder nada`);
   if (s.cleanse) facts.push("Tira veneno, queimadura e lentidão");
@@ -1183,6 +1219,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
 /** Magias que toda classe já tem de graça (uma por slot). As outras se compram no Grimório. */
 export const STARTER_SPELLS: readonly SpellId[] = [
   "blade_spin", "war_cry", "holy_arrow", "arrow_rain", "shadow_orb", "void_storm", "forest_blessing", "thorn_roots",
+  "ember_totem", "war_drum",
 ];
 
 /**

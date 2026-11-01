@@ -1,6 +1,7 @@
 # Xamã Orc — desenho da 5ª classe
 
-Status: **desenho fechado** (decisões na seção 12), nada implementado. Números são de partida (nível 0) e vão para o
+Status: **Fase 1 implementada** (classe jogável, totem, Tambor de Guerra, desbloqueio); Fases 2 a 4 por fazer.
+Id da classe no código e no banco: `shaman`. Números são de partida (nível 0) e vão para o
 `/balanceamento` depois da Fase 1.
 
 ## 1. Conceito em uma frase
@@ -85,9 +86,9 @@ entalhada com o crânio e a chama da magia.
 - **Mira:** igual à magia de área com alvo (arrastar e soltar; toque rápido planta na frente). Só em tile livre.
 - **Pulso:** cada totem age no seu ritmo (ex.: a cada 1 s) sobre o raio dele. O dano conta para o dono (XP, loot,
   telemetria), como a estaca.
-- **Força perto dos totens:** cada totem do xamã a até 4 tiles dá **+5% de força** às magias dele (máx. +10%, ou
+- **Força perto dos totens** (Fase 2, ainda não implementada): cada totem do xamã a até 4 tiles dá **+5% de força** às magias dele (máx. +10%, ou
   +15% com 3 totens). Sem barra nova no HUD: um anel em volta do herói, mais forte com mais totens.
-- **Totem + horda:** orc ou ogro invocado a até 3 tiles de um totem do xamã causa **+15% de dano**. É o que amarra os
+- **Totem + horda** (Fase 2): orc ou ogro invocado a até 3 tiles de um totem do xamã causa **+15% de dano**. É o que amarra os
   dois pilares.
 
 ## 6. Pilar 2: Horda
@@ -131,7 +132,8 @@ custo de arte baixo para muitas criaturas.
 | 1 (nível 3) | 🔥 **Totem da Brasa** | planta um totem a até 4 tiles por 10 s; a cada 1 s, lança brasa (0,6×) no monstro mais perto a até 3 tiles | 22 · 8 s |
 | 2 (nível 6) | 🥁 **Tambor de Guerra** | raio 4 em volta de si: você, os aliados e as criaturas atacam 25% mais rápido e causam +15% de dano por 6 s; monstros a até 2 tiles ficam 30% mais lentos por 3 s | 35 · 14 s |
 
-- Maestria do Totem da Brasa: a brasa salta para mais um monstro.
+- Maestria do Totem da Brasa: a brasa queima o monstro por 3 s (na Fase 1; o salto para outro monstro fica para a
+  Fase 2, junto com os totens novos).
 - Maestria do Tambor de Guerra: cura 10% da vida de quem está no raio (criaturas incluídas).
 - O slot 1 já mostra o primeiro pilar no primeiro minuto. A horda vem do Grimório: a **primeira compra** do ramo Horda
   (Chamar Batedores, 150 de gold) já abre a primeira invocação.

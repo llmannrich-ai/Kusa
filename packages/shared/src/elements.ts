@@ -8,6 +8,7 @@ export const BASIC_ELEMENT: Record<ClassId, DamageElement> = {
   paladin: "physical",
   sorcerer: "energy",
   druid: "nature",
+  shaman: "fire",
 };
 
 /** Elemento do dano contínuo. */
@@ -28,6 +29,7 @@ export function spellElement(id: SpellId): DamageElement {
   const spell = SPELLS[id];
   if (spell.element) return SORCERER_ELEMENT[spell.element];
   if (SPELL_ELEMENT[id]) return SPELL_ELEMENT[id]!;
+  if (spell.classId === "shaman") return "fire";
   return spell.classId === "druid" ? "nature" : "physical";
 }
 

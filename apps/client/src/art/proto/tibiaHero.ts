@@ -34,7 +34,7 @@ export const PROTO_FRAMES = 4;
 export type ProtoDir = "down" | "up" | "side";
 /** O corpo base e as 4 classes. */
 export type ProtoClass = "base" | ClassId;
-export const PROTO_CLASSES: ProtoClass[] = ["base", "knight", "paladin", "sorcerer", "druid"];
+export const PROTO_CLASSES: ProtoClass[] = ["base", "knight", "paladin", "sorcerer", "druid", "shaman"];
 
 /** Cor base de cada zona e da pele; a rampa de tons sai dela com desvio de matiz (`hero/color.ts`). */
 export interface ProtoLook {
@@ -58,13 +58,15 @@ interface Kit {
   headband?: boolean;
   /** Pintura verde no rosto e folhas no cabelo (druida). */
   wild?: boolean;
+  /** Presas saindo da boca e pintura de brasa no rosto (Xamã Orc). */
+  orc?: boolean;
   top: "none" | "gambeson" | "tunic" | "robe" | "leaf";
   sleeves: "none" | "quilt" | "short" | "bell";
   /** Calça inteira, só até o joelho (bermuda) ou nenhuma. */
   pants: "none" | "full" | "knee";
   feet: "bare" | "boots" | "tall" | "shoes" | "wraps";
   waist: "loincloth" | "belt" | "strap" | "sash" | "rope";
-  weapon: "none" | "sword" | "bow" | "staff" | "branch" | ProtoWeapon;
+  weapon: "none" | "sword" | "bow" | "staff" | "branch" | "skull" | ProtoWeapon;
   quiver?: boolean;
   /** Itens vestidos por cima do kit (protótipo dos itens). */
   helmet?: ProtoHelmet;
@@ -184,6 +186,12 @@ const KITS: Record<ProtoClass, Kit> = {
     build: HERO_BUILD,
     look: { skin: "#c88d62", head: "#6a4426", primary: "#4e6a34", secondary: "#6a5034", detail: "#5a3e26", trim: "#b06a3a" },
     hair: "flowing", beard: "none", wild: true, top: "leaf", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "branch",
+  },
+  // Xamã Orc: por enquanto o kit do druida com pele verde-cinza, couro e cinzas (a arte própria vem com a horda).
+  shaman: {
+    build: HERO_BUILD,
+    look: { skin: "#7d9256", head: "#2e2624", primary: "#6b4a2e", secondary: "#4e4a46", detail: "#3e2a1a", trim: "#d8561c" },
+    hair: "flowing", beard: "none", orc: true, top: "tunic", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "skull",
   },
 };
 
@@ -1049,6 +1057,22 @@ function staff(c: Canvas, at: Pt, top: number, bottom: number) {
   for (const [dx, dy, t] of [[-2, -2, 5], [-1, -2, 5], [-2, -1, 5], [1, 1, 4], [2, 0, 4], [1, -1, 3], [0, 2, 3], [-1, 1, 2]] as const) c.on(g, X + dx, Y + dy, Mat.Gem, t);
 }
 
+/** Cajado do Xamã Orc: haste de madeira com faixas de couro, um crânio com chifres no alto e a brasa entre eles. */
+function skullStaff(c: Canvas, at: Pt, top: number, bottom: number) {
+  const x = at[0];
+  limb(c, [x, top + 2], [x, bottom], 1.15, 1.15, Mat.Wood, (X, Y) => -1 + grain(X, Y));
+  for (const y of [top + 5, at[1] - 3.6]) limb(c, [x - 0.1, y], [x + 0.1, y + 1.2], 1.5, 1.5, Mat.Leather);
+  // Chifres curvos para os lados e o crânio.
+  for (const sx of [-1, 1]) chain(c, [[x + sx * 1.6, top - 0.4], [x + sx * 3.4, top - 1.6], [x + sx * 3.8, top - 4.2]], 0.6, Mat.Bone);
+  const skull = ellipse(c, x, top + 0.2, 2.4, 2.2, Mat.Bone);
+  const X = F(x), Y = F(top + 0.2);
+  for (const sx of [-1, 1]) c.on(skull, X + sx, Y, Mat.Eye, 0);
+  c.on(skull, X, Y + 1, Mat.Eye, 1);
+  // A brasa acesa em cima do crânio.
+  const ember = ellipse(c, x, top - 3, 1.3, 1.6, Mat.Ember);
+  for (const [dx, dy, t] of [[0, -1, 5], [0, 0, 4], [-1, 0, 3]] as const) c.on(ember, F(x) + dx, F(top - 3) + dy, Mat.Ember, t);
+}
+
 /** Galho do druida: madeira torta com nós, um broto bifurcado em cima e folhas. */
 function branch(c: Canvas, at: Pt, top: number, bottom: number, turn = 0) {
   const x = at[0];
@@ -1468,6 +1492,7 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
   switch (kit.weapon) {
     case "bow": return () => bow(c, at, out);
     case "staff": return () => staff(c, at, top - 19, FEET - 0.5);
+    case "skull": return () => skullStaff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
     default:
       if (kit.weapon.startsWith("wand-")) { const id = kit.weapon; return () => c.scaled(at, 1.5, () => wandArt(c, id, at, [at[0] + out * 4.2, at[1] - 7.4 - tierOf(id) * 0.4])); }
@@ -1498,7 +1523,7 @@ export type HeroGrip = "melee" | "bow" | "staff";
 function gripOf(kit: Kit): HeroGrip {
   const w = kit.weapon;
   if (w === "bow" || /^x?bow-/.test(w)) return "bow";
-  if (w === "staff" || w === "branch" || /^(staff|wand)-/.test(w)) return "staff";
+  if (w === "staff" || w === "skull" || w === "branch" || /^(staff|wand)-/.test(w)) return "staff";
   return "melee";
 }
 
@@ -1716,6 +1741,7 @@ function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: 
   const wield = (draw: () => void) => () => c.rotated(ha, spin, () => (lift ? c.placed(1, [0, lift], draw) : draw()));
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? wield(() => staff(c, ha, top - 19, FEET - 0.5))
+    : kit.weapon === "skull" ? wield(() => skullStaff(c, ha, top - 19, FEET - 0.5))
     : kit.weapon === "branch" ? () => (lift ? c.placed(1, [0, lift], () => branch(c, ha, top + 2, FEET - 1, a)) : branch(c, ha, top + 2, FEET - 1, a))
     : kit.weapon.startsWith("wand-") ? wield(() => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4])))
     : kit.weapon.startsWith("staff-") ? wield(() => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5))
@@ -1902,6 +1928,9 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
     if (kit.wild) {
       // Pintura verde: duas listras descendo pela bochecha.
       for (let k = 0; k < 5; k++) { c.px(mx(sx, 7 + Math.floor(k / 2)), Yc + 9 + k, Mat.Leaf, 2); c.px(mx(sx, 10 + Math.floor(k / 2)), Yc + 8 + k, Mat.Leaf, 3); }
+    } else if (kit.orc) {
+      // Pintura de brasa: três riscos curtos descendo pela bochecha.
+      for (const dx of [7, 9, 11]) for (let k = 0; k < 3; k++) c.px(mx(sx, dx), Yc + 9 + k, Mat.Ember, k === 0 ? 4 : 2);
     } else {
       // Maçã do rosto: um toque de cor quente.
       for (const [dx, dy] of [[10, 9], [10, 10]]) c.px(mx(sx, dx), Yc + dy, Mat.Lip, 4);
@@ -1930,6 +1959,8 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
       return (d > 8 || Y > Yc + 16) && !(Y >= Yc + 14 && Y <= Yc + 16 && d < 5);
     });
   }
+  // Presas do orc: sobem dos cantos da boca.
+  if (kit.orc) for (const sx of [-1, 1]) { c.px(mx(sx, 3), Yc + 15, Mat.Bone, 4); c.px(mx(sx, 3), Yc + 14, Mat.Bone, 5); c.px(mx(sx, 4), Yc + 13, Mat.Bone, 4); }
   // Cicatriz do cavaleiro na bochecha direita.
   if (kit.scar) for (let k = 0; k < 5; k++) { c.px(mx(1, 9 + k), Yc + 6 + k, Mat.Lip, 1); c.px(mx(1, 8 + k), Yc + 6 + k, Mat.Skin, 4); }
   headwear(c, kit, "down", CX, cy, top);
@@ -2098,7 +2129,9 @@ function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   c.px(X0 - 13, Yc + 5, Mat.White, 5);
   c.px(X0 - 14, Yc + 4, Mat.Eye, 0);
   if (kit.wild) for (let k = 0; k < 4; k++) { c.px(X0 - 11 + k, Yc + 9 + k, Mat.Leaf, 2); c.px(X0 - 8 + k, Yc + 8 + k, Mat.Leaf, 3); }
+  else if (kit.orc) for (const dx of [-11, -9]) for (let k = 0; k < 3; k++) c.px(X0 + dx, Yc + 9 + k, Mat.Ember, k === 0 ? 4 : 2);
   else c.px(X0 - 8, Yc + 9, Mat.Lip, 4);
+  if (kit.orc) { c.px(X0 - 12, Yc + 14, Mat.Bone, 5); c.px(X0 - 12, Yc + 13, Mat.Bone, 4); }
   if (old) for (const [dx, dy] of [[-8, 3], [-7, 4], [-8, 5]]) c.px(X0 + dx, Yc + dy, Mat.Skin, 2);
   if (kit.beard === "stubble") stubble(c, face, X0 - 14, X0 - 2, Yc + 11, Yc + 18, (X, Y) => X > X0 - 12 || Y > Yc + 15);
   headwear(c, kit, "side", cx, cy, top);

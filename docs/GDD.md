@@ -50,6 +50,12 @@ O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi
 Código em `apps/client/src/menu.ts`.
 
 - **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas).
+  - **Classe trancada:** o **Xamã Orc** só abre quando qualquer personagem da conta vence **Vorgak** na Fortaleza Orc
+    (`CLASS_UNLOCK` em `packages/shared/src/classes.ts`, repetido no banco em `class_unlocked`). Antes disso, o
+    medalhão aparece em silhueta escura com 🔒 e dá para ver o herói, o papel, os atributos e o Grimório, mas o
+    Batalhas recusa ("vença Vorgak..."). O servidor de jogo recusa a sala (e o bot) com a classe trancada e o banco
+    recusa a hunt solo (`start_solo_run`). Na tela de resultado da hunt em que Vorgak cai, uma carta avisa:
+    "⛓️ Os xamãs da forja estão livres — Xamã Orc liberado". Desenho completo em `docs/CLASSE_XAMA_ORC.md`.
 - **Grimório:** a árvore de magias de cada classe (ver abaixo).
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
@@ -134,8 +140,10 @@ comprar **e usar** as anteriores do mesmo ramo.
     Flecha Relâmpago salta 5 vezes; Barragem faz sangrar; Armadilha prende quem está colado; Cordão atira 7 vezes.
   - **Mortos-vivos:** Esqueleto, Esqueleto arqueiro e Zumbi (Cripta); Afogado, Carniçal e Fogo-fátuo (Pântano) (tipo `undead` em `monsters.ts`).
   - **Campos no chão** (`state.fields`): a zona brilha nos tiles do raio (laranja no chão em chamas), a armadilha aparece
-    como mandíbulas de ferro e a estaca como um poste com o alcance em volta. Conjurar de novo troca o campo mais antigo
-    da mesma magia. A estaca e a armadilha atiram e disparam sozinhas; o dano conta para quem as pôs.
+    como mandíbulas de ferro, a estaca como um poste com o alcance em volta e o totem do Xamã Orc como um poste
+    entalhado com um crânio de chifres e a chama acesa no alto. Conjurar de novo troca o campo mais antigo da mesma
+    magia (o totem deixa 2 de cada vez, `field.max`). A estaca, o totem e a armadilha atiram e disparam sozinhos; o
+    dano conta para quem os pôs. Os monstros não atacam campos.
   - **Mira em aliado** (Escudo da Luz): arrastando, o herói a até 1 tile do ponto (círculo azul nos pés); parado no
     botão, o mais ferido ao alcance. **Mira em leque** (Barragem): a mira acende os tiles do leque.
   - **Feiticeiro** (os 3 ramos especializados). As magias do Feiticeiro têm elemento (energia, fogo, gelo ou trevas):
@@ -225,6 +233,7 @@ Regras em `packages/shared/src/spellxp.ts`, repetidas no banco (`spell_level`, `
 | Cavaleiro (raiz: Giro da Lâmina) | **Lâmina:** Áurea de Fúria → Golpe Esmagador → Lâmina Sedenta → Terremoto → Execução → ✦ Berserker **ou** Duelista | **Bastião:** Áurea do Bastião → **Escudo da Fé** → Pele de Ferro → Muralha de Aço → ✦ Guardião **ou** Inabalável | **Comando:** Grito de Guerra → Áurea da Disciplina → Áurea da Investida → Brado do Comandante → ✦ Senhor da Guerra **ou** Desafiante |
 | Paladino (raiz: Flecha Sagrada) | **Mira:** Áurea da Mira → Disparo Perfurante → Flecha Atordoante → Disparo Certeiro → ✦ Atirador de Elite **ou** Caçador Ágil | **Luz:** Áurea da Fé → Luz Curativa → Bênção Protetora → Julgamento Divino → ✦ Cruzado **ou** Guardião da Luz | **Batedor:** Chuva de Flechas → Áurea Sagrada → Áurea do Batedor → Saraivada Explosiva → ✦ Artilheiro **ou** Armadilheiro |
 | Feiticeiro (raiz: Esfera Sombria) | **Raio:** Áurea do Caos → Relâmpago → Raio em Cadeia → Meteoro → ✦ Tempestuoso **ou** Piromante | **Gelo:** Áurea Arcana → Nova de Gelo → Lança de Gelo → Nevasca → ✦ Criomante **ou** Arcanista | **Trevas:** Tempestade do Vazio → Áurea da Égide → Drenar Vida → Áurea do Vento → Pacto Sombrio → ✦ Necromante **ou** Bruxo |
+| Xamã Orc (raiz: Totem da Brasa) | **Horda:** Áurea da Forja (Fase 2: as invocações do clã) | **Totens:** Áurea do Entalhe (Fase 2) | **Brasa:** Tambor de Guerra → Áurea do Couro Curtido (com o Tomo da Brasa; Fase 2: o resto do ramo) |
 | Druida (raiz: Bênção da Floresta) | **Matilha:** Áurea dos Espinhos → Lobo Espiritual → Chamado da Matilha → Urso Ancestral → Áurea do Cervo → ✦ Mestre das Feras **ou** Metamorfo | **Bosque:** Áurea da Seiva → Mariposa Curandeira → Áurea do Carvalho → Guardião do Bosque → Coração da Floresta → ✦ Círculo da Vida **ou** Guardião da Natureza | **Espinhos:** Raízes Espinhosas → Espinho Venenoso → Enxame de Vespas → Fúria da Natureza → ✦ Peste **ou** Tempestade |
 
 #### Costelas
@@ -1187,7 +1196,7 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
 
 ## Ataques e magias (protótipo)
 
-- Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra. Os projéteis voam até o alvo e o dano só entra quando chegam.
+- Ataque básico de cada classe: Cavaleiro golpeia com a espada (corpo a corpo); Paladino atira flechas; Druida lança uma luz verde; Feiticeiro lança uma luz negra; Xamã Orc lança uma brasa do cajado (fogo, alcance 3: curto de propósito, o xamã luta junto dos totens). Os projéteis voam até o alvo e o dano só entra quando chegam.
 - **Tiro que pode errar** (o básico à distância e as magias de alvo único com projétil: Flecha Sagrada, Relâmpago,
   Espinho Venenoso, Lâmina Arremessada, Corrente de Ferro...): é mirado numa **direção**, não num ponto. O projétil voa
   reto nessa direção até o alcance inteiro (ou a primeira parede), **sem seguir o monstro**, passando por um tile de cada
@@ -1235,6 +1244,7 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
 | Paladino | ✴️ Flecha Sagrada: flecha dourada num alvo (2,6× dano) | 🏹 Chuva de Flechas: área de raio 2 no alvo (1,4× dano) |
 | Feiticeiro | 🔮 Esfera Sombria: explode no alvo, raio 1 (1,9× dano) | 🌑 Tempestade do Vazio: raio 3 em volta de si (2,3× dano) |
 | Druida | 🌿 Bênção da Floresta: cura 35% da vida de quem está a até 4 tiles | 🌱 Raízes Espinhosas: raio 2 no alvo, fere (1,2×) e prende por 3,5 s |
+| Xamã Orc | 🔥 Totem da Brasa: finca um totem a até 4 tiles por 10 s, que lança brasa (0,6×, fogo) no monstro mais perto a até 3 tiles a cada 1 s; cabem 2 ao mesmo tempo · Maestria: a brasa queima 3 s | 🥁 Tambor de Guerra: você, os aliados e as criaturas (de qualquer herói) a até 4 tiles atacam 25% mais rápido e causam +15% de dano por 6 s; os monstros a até 2 tiles ficam 30% mais lentos por 3 s · Maestria: cura 10% de quem está no raio |
 
 As compradas no Grimório, por slot (números do nível 0):
 
@@ -1390,7 +1400,7 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
 
 - Duração exata de cada mapa (`durationSeconds` em `packages/shared/src/maps.ts`).
 - Se a morte regride os upgrades permanentes, e quanto.
-- Lista de classes (o protótipo usa Cavaleiro, Paladino, Feiticeiro e Druida); preços do Grimório e do mercado, e a força das magias e criaturas novas, ainda precisam de balanceamento.
+- Lista de classes (Cavaleiro, Paladino, Feiticeiro e Druida, mais o Xamã Orc, liberado por Vorgak: Fase 1 jogável, o resto em `docs/CLASSE_XAMA_ORC.md`); preços do Grimório e do mercado, e a força das magias e criaturas novas, ainda precisam de balanceamento.
 - Balanceamento do Pântano (dificuldade 2) e próximos mapas e bosses.
 - Os jogadores de uma equipe se reanimam?
 - Arte: os sprites do Tibia são da CipSoft e **não podem ser usados**. Usaremos assets com licença aberta (OpenGameArt, itch.io) ou arte própria, no mesmo estilo.
