@@ -77,6 +77,7 @@ import type { Clip } from "./art/rig.ts";
 import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
 import { CREATURE_SPRITE_SCALE } from "./art/refine.ts";
 import { heroSpriteScale } from "./art/heroes.ts";
+import { damageFont, fitsDamageFont } from "./damageFont.ts";
 import {
   CHEST_TEXTURE,
   PORTAL_TEXTURE,
@@ -122,6 +123,8 @@ const FOLLOW_LIFT = 0.12;
 const TARGET_CYCLE_RANGE = 8;
 /** Quanto tempo o número de dano fica na tela (ms); os demais avisos flutuantes usam 900. */
 const DAMAGE_TEXT_MS = 1080;
+/** Tamanho (px de mundo) dos números de dano e avisos que sobem. */
+const FLOAT_TEXT_PX = 11;
 
 /**
  * Ordem de desenho: o chão fica embaixo; paredes, baús e personagens são ordenados pela linha
@@ -463,14 +466,14 @@ export class DungeonScene extends Phaser.Scene {
         && unit.body.y > view.y - margin && unit.body.y < view.bottom + margin;
       if (near !== unit.body.visible) {
         unit.body.setVisible(near);
+        // A barra e o nome também saem: desenhar a barra de cada monstro do mapa custava quase metade do quadro.
+        unit.overlay.setVisible(near && !unit.hidden);
         if (unit.anim) {
           if (near) unit.sprite.anims.resume();
           else unit.sprite.anims.pause();
         }
       }
-      // A barra e o nome seguem mesmo fora da tela (senão ficavam parados na borda).
       if (near) this.animateUnit(unit, time);
-      else unit.overlay.setPosition(unit.body.x, unit.body.y);
     });
     this.summons.forEach((unit) => this.animateUnit(unit, time));
     this.hits.update(view);
@@ -1337,7 +1340,7 @@ export class DungeonScene extends Phaser.Scene {
     const alpha = hidden ? (art.disguise ? 1 : 0.18) : art.alpha ?? 1;
     this.tweens.killTweensOf(unit.body);
     this.tweens.add({ targets: unit.body, alpha, duration: 220 });
-    unit.overlay.setVisible(!hidden);
+    unit.overlay.setVisible(!hidden && unit.body.visible);
   }
 
   /**
@@ -1533,20 +1536,31 @@ export class DungeonScene extends Phaser.Scene {
     return { ...TEXT_STYLE, resolution: this.textResolution };
   }
 
-  /** Número ou aviso que sobe e some sobre um tile. */
+  /**
+   * Número ou aviso que sobe e some sobre um tile. Número de dano, cura e XP sai da fonte bitmap (`damageFont`): numa
+   * sala cheia são dezenas por segundo, e um `Text` novo por número (canvas e textura na GPU) pesava no quadro.
+   */
   private floatText(tileX: number, tileY: number, text: string, color: number, duration = 900) {
-    const label = this.add.text(this.toPx(tileX), this.toPx(tileY) - 8, text, {
-      ...this.textStyle(),
-      fontSize: "11px",
-      color: `#${color.toString(16).padStart(6, "0")}`,
-    }).setOrigin(0.5).setDepth(DEPTH.ui + 1);
+    const x = this.toPx(tileX);
+    const y = this.toPx(tileY) - 8;
+    let labels: (Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text)[];
+    if (fitsDamageFont(text)) {
+      const font = damageFont(this, TEXT_STYLE, FLOAT_TEXT_PX, this.textResolution);
+      labels = [
+        this.add.bitmapText(x, y, font.stroke, text, FLOAT_TEXT_PX),
+        this.add.bitmapText(x, y, font.fill, text, FLOAT_TEXT_PX).setTint(color),
+      ];
+    } else {
+      labels = [this.add.text(x, y, text, { ...this.textStyle(), fontSize: `${FLOAT_TEXT_PX}px`, color: `#${color.toString(16).padStart(6, "0")}` })];
+    }
+    for (const label of labels) label.setOrigin(0.5).setDepth(DEPTH.ui + 1);
     this.tweens.add({
-      targets: label,
-      y: label.y - 24,
+      targets: labels,
+      y: y - 24,
       alpha: 0,
       duration,
       ease: "Cubic.Out",
-      onComplete: () => label.destroy(),
+      onComplete: () => labels.forEach((label) => label.destroy()),
     });
   }
 

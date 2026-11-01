@@ -19,6 +19,7 @@ import { canopyTile, waterTile } from "./art/forestArt.ts";
 import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, CHAO_LAJES, CHAO_SALAO, CHAO_TABUAS, CHAO_TERRA, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
 import { GLOW, MIST, SpriteSheet, createGlowArt, single } from "./gatesMap.ts";
 import { ChunkCuller, focusTile, patchTint, type MapAmbience } from "./mapShared.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /** Fundo além das bordas: o vale na sombra, lá embaixo. */
 export const FORTRESS_VOID = 0x222b33;
@@ -335,7 +336,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       }
   }
   if (scene.textures.exists(ATLAS)) scene.textures.remove(ATLAS);
-  scene.textures.addCanvas(ATLAS, atlas.build());
+  addCanvasTexture(scene.textures, ATLAS, atlas.build());
   const map = scene.make.tilemap({ width: W, height: H, tileWidth: HD, tileHeight: HD });
   const set = map.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
   const layer = (name: string, data: Int32Array, depth: number, tint?: (x: number, y: number) => number) => {
@@ -404,7 +405,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     if (g === FULL) { maskCanvas.ctx.fillStyle = "#fff"; maskCanvas.ctx.fillRect((k % maskCols) * MT, Math.floor(k / maskCols) * MT, MT, MT); }
     else maskCanvas.ctx.drawImage(toCanvas(grassMask(g), HD, HD), (k % maskCols) * MT, Math.floor(k / maskCols) * MT, MT, MT);
   });
-  scene.textures.addCanvas(MASK_ATLAS, maskCanvas.canvas);
+  addCanvasTexture(scene.textures, MASK_ATLAS, maskCanvas.canvas);
   const maskMap = scene.make.tilemap({ data: maskData, tileWidth: MT, tileHeight: MT });
   const maskSet = maskMap.addTilesetImage(MASK_ATLAS, MASK_ATLAS, MT, MT, 0, 0, 0)!;
   const edgeMask = maskMap.createLayer(0, maskSet, 0, 0, true)!.setScale(TILE_SIZE / MT).setDepth(floorDepth - 10);
@@ -530,7 +531,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         const a = v > 1.2 ? 0.34 : v > 0.45 ? 0.2 : 0;
         if (a) { ctx.fillStyle = `rgba(20, 14, 8, ${a})`; ctx.fillRect(x, y, 1, 1); }
       }
-    scene.textures.addCanvas(TENT_SHADOW, canvas);
+    addCanvasTexture(scene.textures, TENT_SHADOW, canvas);
   }
   for (const t of f.tents) {
     const sh = scene.add.image((t.x + 1.15) * TILE_SIZE, (t.y + 1.75) * TILE_SIZE, TENT_SHADOW).setScale(t.y < f.walls[1].y ? 1 : 0.72).setDepth(floorDepth + 0.003);
@@ -603,7 +604,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   /** Monta o atlas de longe e as camadas dele: o vale, o terraço da torre de menagem e os telhados das casernas. */
   const buildFar = () => {
     if (scene.textures.exists(FAR_ATLAS)) scene.textures.remove(FAR_ATLAS);
-    scene.textures.addCanvas(FAR_ATLAS, far.build());
+    addCanvasTexture(scene.textures, FAR_ATLAS, far.build());
     const farLayer = (w: number, h: number, data: Int32Array, x: number, y: number, depth: number, tint?: (x: number, y: number) => number) => {
       const m = scene.make.tilemap({ width: w, height: h, tileWidth: HD, tileHeight: HD });
       const ts = m.addTilesetImage(FAR_ATLAS, FAR_ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
@@ -644,7 +645,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   if (!scene.textures.exists(FLAME_KEY)) {
     const { canvas, ctx } = makeCanvas(FLAME.w * 4, FLAME.h);
     for (let k = 0; k < 4; k++) ctx.drawImage(toCanvas(flameFrame(k), FLAME.w, FLAME.h), k * FLAME.w, 0);
-    const tex = scene.textures.addCanvas(FLAME_KEY, canvas)!;
+    const tex = addCanvasTexture(scene.textures, FLAME_KEY, canvas)!;
     for (let k = 0; k < 4; k++) tex.add(k, 0, k * FLAME.w, 0, FLAME.w, FLAME.h);
   }
   createGlowArt(scene);

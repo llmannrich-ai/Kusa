@@ -13,6 +13,7 @@ import {
   tombSprite, towerSprite, wallSprite, type ColumnKind, type SmallDecor,
 } from "./art/empireMonuments.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /** Fundo além das bordas: a mata na sombra. */
 export const GATES_VOID = 0x2c3a1e;
@@ -48,14 +49,14 @@ export class SpriteSheet {
     const rows = Math.max(1, Math.ceil(this.frames.length / cols));
     const { canvas, ctx } = makeCanvas(cols * this.w, rows * this.h);
     this.frames.forEach((draw, i) => ctx.drawImage(toCanvas(draw(), this.w, this.h), (i % cols) * this.w, Math.floor(i / cols) * this.h));
-    const texture = scene.textures.addCanvas(this.key, canvas)!;
+    const texture = addCanvasTexture(scene.textures, this.key, canvas)!;
     this.frames.forEach((_, i) => texture.add(i, 0, (i % cols) * this.w, Math.floor(i / cols) * this.h, this.w, this.h));
   }
 }
 
 /** Textura de uma imagem só (fachada, arco, torres, mosaico), feita uma vez por jogo. */
 export function single(scene: Phaser.Scene, key: string, w: number, h: number, draw: () => Uint8ClampedArray) {
-  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, toCanvas(draw(), w, h));
+  if (!scene.textures.exists(key)) addCanvasTexture(scene.textures, key, toCanvas(draw(), w, h));
   return key;
 }
 
@@ -206,7 +207,7 @@ export function drawGates(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
     }
 
   if (scene.textures.exists(ATLAS)) scene.textures.remove(ATLAS);
-  scene.textures.addCanvas(ATLAS, atlas.build());
+  addCanvasTexture(scene.textures, ATLAS, atlas.build());
   const map = scene.make.tilemap({ width: W, height: H, tileWidth: HD, tileHeight: HD });
   const set = map.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
   const layer = (name: string, data: Int32Array, tint = false) => {
@@ -385,7 +386,7 @@ export function drawGates(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
   if (!scene.textures.exists(flameKey)) {
     const { canvas, ctx } = makeCanvas(FLAME.w * 4, FLAME.h);
     for (let k = 0; k < 4; k++) ctx.drawImage(toCanvas(flameFrame(k), FLAME.w, FLAME.h), k * FLAME.w, 0);
-    const tex = scene.textures.addCanvas(flameKey, canvas)!;
+    const tex = addCanvasTexture(scene.textures, flameKey, canvas)!;
     for (let k = 0; k < 4; k++) tex.add(k, 0, k * FLAME.w, 0, FLAME.w, FLAME.h);
   }
   createGlowArt(scene);
@@ -436,7 +437,7 @@ export function createGlowArt(scene: Phaser.Scene) {
     if (scene.textures.exists(key)) return;
     const { canvas, ctx } = makeCanvas(w, h);
     paint(ctx);
-    scene.textures.addCanvas(key, canvas);
+    addCanvasTexture(scene.textures, key, canvas);
   };
   add(GLOW, 96, 96, (ctx) => {
     // Luz em anéis (pixel art: 4 faixas, sem degradê liso).

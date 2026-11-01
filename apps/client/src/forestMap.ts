@@ -5,6 +5,7 @@ import { HD, TileAtlas, toCanvas } from "./art/paint.ts";
 import { isWetland, type ForestVariant } from "./art/forestArt.ts";
 import { LAYERS, planForest, standingSheets, type Standing } from "./forestPlan.ts";
 import { ChunkCuller, type MapAmbience } from "./mapShared.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /** Fundo além das bordas: o escuro do sub-bosque de cada variante. */
 export const OLDWOOD_VOID = 0x1c2814;
@@ -30,7 +31,7 @@ export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
   const W = d.width;
   const H = d.height;
   if (scene.textures.exists(ATLAS)) scene.textures.remove(ATLAS);
-  scene.textures.addCanvas(ATLAS, atlas.build());
+  addCanvasTexture(scene.textures, ATLAS, atlas.build());
   (window as unknown as { forestFrames?: number }).forestFrames = atlas.count;
   const map = scene.make.tilemap({ width: W, height: H, tileWidth: HD, tileHeight: HD });
   const set = map.addTilesetImage(ATLAS, ATLAS, HD, HD, TileAtlas.PAD, TileAtlas.PAD * 2, 0)!;
@@ -56,7 +57,7 @@ export function drawForest(scene: Phaser.Scene, d: Dungeon, floorDepth: number, 
     const spec = sheets[sheet];
     const { canvas, ctx } = makeCanvas(spec.w * spec.frames.length, spec.h);
     for (const i of frames) ctx.drawImage(toCanvas(spec.frames[i](), spec.w, spec.h), i * spec.w, 0);
-    const texture = scene.textures.addCanvas(key, canvas)!;
+    const texture = addCanvasTexture(scene.textures, key, canvas)!;
     for (let i = 0; i < spec.frames.length; i++) texture.add(i, 0, i * spec.w, 0, spec.w, spec.h);
   }
 
@@ -92,7 +93,7 @@ function createAmbienceArt(scene: Phaser.Scene, variant: ForestVariant) {
     if (scene.textures.exists(key)) scene.textures.remove(key);
     const { canvas, ctx } = makeCanvas(w, h);
     paint(ctx);
-    scene.textures.addCanvas(key, canvas);
+    addCanvasTexture(scene.textures, key, canvas);
   };
   const heart = variant === "heartwood";
   const marsh = isWetland(variant);
