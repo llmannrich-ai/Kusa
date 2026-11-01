@@ -34,9 +34,8 @@ export const NODES: Record<string, CampaignNode> = {
   n7a: { step: 7, x: 425, y: 1365, name: "Coração da Mata", area: "Floresta do Kosaradius", map: "heartwood" },
   n6b: { step: 6, x: 1155, y: 1440, name: "Dunas Cantantes", area: "Solária", map: "dunes" },
   n7b: { step: 7, x: 1170, y: 1225, name: "Mesas de Solária", area: "Solária", map: "mesas" },
-  n8: { step: 8, x: 800, y: 1135, name: "Portões do Império", area: "Ruínas do Império", map: "gates", fork: "charco ou ermos" },
-  // A Fortaleza Orc fica ao lado dos Portões, nas mesmas Ruínas do Império, e abre com o mesmo boss (o Faraó Eterno).
-  n8f: { step: 8, x: 640, y: 1085, name: "Fortaleza Orc", area: "Ruínas do Império", map: "fortress" },
+  // A Fortaleza Orc ocupa o ponto que era dos Portões do Império (que saíram da campanha).
+  n8: { step: 8, x: 800, y: 1135, name: "Fortaleza Orc", area: "Ruínas do Império", map: "fortress", fork: "charco ou ermos" },
   n9a: { step: 9, x: 440, y: 960, name: "Charco Cinzento", area: "Charco Cinzento" },
   n9b: { step: 9, x: 1120, y: 905, name: "Ermos Rubros", area: "Ermos Rubros" },
   n10: { step: 10, x: 785, y: 800, name: "Sopé da Serra", area: "Serra do Norte", fork: "passo ou garganta" },
@@ -49,11 +48,11 @@ export const NODES: Record<string, CampaignNode> = {
 
 /**
  * Os cenários de hoje: o herói anda por estas trilhas. Elas são iguais até a Caverna da Travessia (`FORK`) e lá se
- * dividem: o lado do deserto (Dunas Cantantes, Mesas de Solária, os Portões do Império e, ao lado, a Fortaleza Orc) e o
- * da floresta (Bosque Velho, Coração da Mata).
+ * dividem: o lado do deserto (Dunas Cantantes, Mesas de Solária, até a Fortaleza Orc) e o da floresta (Bosque Velho,
+ * Coração da Mata).
  */
 export const OPEN_CHAINS = [
-  ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n8f"],
+  ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8"],
   ["n1", "n2", "n3", "n4", "n5", "n6a", "n7a"],
 ] as const;
 export const FORK = "n5";
@@ -64,8 +63,6 @@ export const EDGES: [string, string][] = [
   ["n5", "n6a"], ["n6a", "n7a"], ["n7a", "n8"], ["n5", "n6b"], ["n6b", "n7b"], ["n7b", "n8"],
   ["n8", "n9a"], ["n9a", "n10"], ["n8", "n9b"], ["n9b", "n10"],
   ["n10", "n11a"], ["n11a", "n12a"], ["n12a", "n13"], ["n10", "n11b"], ["n11b", "n12b"], ["n12b", "n13"],
-  // Por último, para não mudar a curva sorteada das outras trilhas.
-  ["n8", "n8f"],
 ];
 
 /** Curva de cada trilha (Bézier cúbica), com as curvas sorteadas por semente: igual no jogo e na arte. */
