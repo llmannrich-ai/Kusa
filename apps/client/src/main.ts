@@ -54,9 +54,10 @@ const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
 
 // --- Menu ---------------------------------------------------------------
 
-// Batalhas com o mapa já aberto: abre a ficha do cenário onde o herói está, em vez de recarregar o mapa.
+// Batalhas com o mapa já aberto: leva a câmera ao herói e abre a ficha do cenário onde ele está, em vez de recarregar
+// o mapa (tocar num ponto não mexe na câmera; aqui o jogador pediu para voltar ao herói).
 const hub = new Hub(() => {
-  if (!$("rooms").hidden) return pickPoint(createMapId());
+  if (!$("rooms").hidden) { pickPoint(createMapId()); world?.focus(createMapId(), 0.4, true); return; }
   void openRooms();
 });
 let account: Account | null = null;

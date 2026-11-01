@@ -451,7 +451,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   `profile_boss_clears` (bosses vencidos por personagem); a trilha fica vermelha entre dois cenários abertos, como no
   resto da campanha.
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
-  pela trilha, passando pelos pontos do meio, em ~1 s; a câmera vai junto. O boneco vira para o lado da caminhada e
+  pela trilha, passando pelos pontos do meio, em ~1 s; a câmera fica onde o jogador deixou (zoom e posição; 📍 leva
+  até o herói). O boneco vira para o lado da caminhada e
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
