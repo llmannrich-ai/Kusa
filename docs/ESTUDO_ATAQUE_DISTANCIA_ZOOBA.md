@@ -143,3 +143,35 @@ Se esses contadores ainda não existem em `RunStats` (`apps/server/src/runStats.
 2. Adicionar à telemetria os contadores da seção 5 e coletar 1 a 2 semanas.
 3. Prototipar o item B (leque com queda e arremesso por cima de parede) numa magia nova e testar na arena.
 4. Com os dados, decidir sobre o item A.
+
+---
+
+## 7. Decisão (01/11/2026)
+
+O objetivo é balancear: o básico à distância acerta sempre e rende mais que o do Cavaleiro, que precisa chegar colado.
+O jogador perder tiros por desvio é desejado.
+
+**Dados que sustentam** (telemetria dos últimos 30 dias, amostra pequena: 2 a 4 jogadores por classe):
+
+| Classe | Básico, dano/s, nível < 10 | Básico, dano/s, nível 10+ |
+|---|---|---|
+| Cavaleiro | 3 | 12 |
+| Feiticeiro | 5 | 14 |
+| Paladino | 7 | 13 |
+| Druida | 8 | 9 |
+
+No papel (`balanco.ts`, nível 20) os quatro básicos estão empatados (~110 de dano/s, Druida 71). A diferença real vem
+do tempo atacando: quem atira começa antes e não precisa correr atrás.
+
+**Implementado:**
+- O básico à distância e as magias de alvo único com projétil voam reto até o tile mirado, sem seguir o monstro. Na
+  chegada, acertam o primeiro monstro no caminho; quem andou de lado escapa.
+- No ⚔️: toque e segurar miram onde o alvo está; arrastar mira à mão.
+- As magias de projétil não grudam mais no monstro (dá para mirar à frente dele).
+- Telemetria `RunStats.shots`: disparados, errados e mirados, por fonte.
+
+**Fora deste ajuste (continua aberto):** a vantagem maior do Feiticeiro e do Druida vem das criaturas invocadas
+(Erguer Esqueletos, Chamado da Matilha, Enxame de Vespas: 4 a 7× a mediana do slot no `balanco.ts`), que não são
+tiros e não mudam aqui.
+
+**Medir em 1 a 2 semanas:** taxa de erro por classe (`stats.shots`), dano/s do básico por classe e vitórias por classe.

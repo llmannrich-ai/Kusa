@@ -26,6 +26,11 @@ export interface RunStats {
   castFails: { noMana: number; noTarget: number; noRoom: number };
   /** Golpes básicos que foram no monstro mais próximo porque o alvo travado estava fora do alcance. */
   basicRetargets: number;
+  /**
+   * Tiros que podem errar (básico à distância e magias `isShot`), por fonte ("basic" ou id da magia): disparados,
+   * errados (ninguém no caminho na chegada) e mirados à mão (arrastando o botão).
+   */
+  shots: Record<string, { fired: number; missed: number; aimed: number }>;
   /** Dano efetivo causado (sem contar o que passa da vida do monstro), por fonte: "basic", id da magia ou "summon:<tipo>" (criaturas invocadas). */
   damageDealt: Record<string, number>;
   /** Dano recebido por tipo de monstro, depois da armadura e do Grito de Guerra. */
@@ -98,7 +103,7 @@ export interface RunStats {
 
 export function newRunStats(): RunStats {
   return {
-    levelAt: {}, depthAt: {}, specs: [], spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
+    levelAt: {}, depthAt: {}, specs: [], spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0, shots: {},
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], bossClear: false, bossKills: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0, drops: { common: 0, miniboss: 0, boss: 0, chest: 0 } },
     minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {},

@@ -4,14 +4,15 @@ import {
   TILE_SIZE,
   clampToRange,
   hasLineOfSight,
+  isShot,
   isSingleTarget,
   lineEnd,
   lineTiles,
   coneTiles,
   tileDistance,
   type CastAim,
+  type AimDef,
   type Dungeon,
-  type SpellDef,
 } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
 
@@ -32,11 +33,12 @@ export type BodyAt = (id: string) => { x: number; y: number } | undefined;
  * do slot: linha pontilhada do herói até o ponto, o alcance em volta dele e a área da magia.
  * Parado no botão, a mira mostra o alvo automático (o que o toque rápido acerta); arrastando,
  * o tamanho do arrasto vira distância até o alcance máximo. Magia de alvo único gruda no monstro
- * a até 1 tile do ponto; a de área cai no ponto. O servidor confere tudo de novo ao conjurar.
+ * a até 1 tile do ponto; a de área cai no ponto. Tiro (`isShot`, e o básico à distância pelo ⚔️) não gruda: vai no
+ * tile mirado, e a mira fica dourada se tem monstro nele agora. O servidor confere tudo de novo ao conjurar.
  */
 export class SpellAim {
   private g: Phaser.GameObjects.Graphics;
-  private spell: SpellDef | null = null;
+  private spell: AimDef | null = null;
   /** Arrasto atual (px da tela) a partir de onde o dedo encostou. */
   private drag = { x: 0, y: 0 };
   /** Já saiu da zona morta uma vez: agora é mira manual (voltar ao centro cancela). */
@@ -50,7 +52,7 @@ export class SpellAim {
     return this.spell !== null;
   }
 
-  start(spell: SpellDef) {
+  start(spell: AimDef) {
     this.spell = spell;
     this.drag = { x: 0, y: 0 };
     this.manual = false;
@@ -59,6 +61,11 @@ export class SpellAim {
   move(dx: number, dy: number) {
     this.drag = { x: dx, y: dy };
     if (Math.hypot(dx, dy) > DEADZONE_PX) this.manual = true;
+  }
+
+  /** Já saiu da zona morta: é mira à mão (soltar vai no ponto, não no alvo automático). */
+  get aimed() {
+    return this.manual;
   }
 
   /** Voltou para perto do botão depois de mirar: soltar agora não lança nada. */
@@ -152,6 +159,12 @@ export class SpellAim {
     const raw = clampToRange(me.x, me.y, me.x + Math.round((ux / edge) * t), me.y + Math.round((uy / edge) * t), spell.range);
     const point = lineEnd(this.dungeon, me.x, me.y, raw.x, raw.y);
     if (!isSingleTarget(spell)) return point;
+    // Tiro: vai no tile mirado (dá para mirar à frente do monstro); dourado só com monstro no tile.
+    if (isShot(spell)) {
+      let on: string | undefined;
+      this.room.state.monsters.forEach((m, id) => { if (m.x === point.x && m.y === point.y) on = id; });
+      return on ? { ...point, targetId: on } : point;
+    }
 
     // Alvo único: gruda no monstro mais perto do ponto, se estiver a até 1 tile e ao alcance.
     let best: string | undefined;
