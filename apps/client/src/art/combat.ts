@@ -1,5 +1,6 @@
 import type * as Phaser from "phaser";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
+import { addCanvasTexture } from "./canvasTexture.ts";
 
 /**
  * Arte de combate: projéteis dos ataques básicos e peças dos efeitos das magias.
@@ -111,7 +112,7 @@ const HOLY_PALETTE: Palette = { ...PALETTE, W: "#f7d774", m: "#fff6c8", f: "#ffe
 
 export function createCombatArt(scene: Phaser.Scene) {
   const add = (key: string, draw: () => HTMLCanvasElement) => {
-    if (!scene.textures.exists(key)) scene.textures.addCanvas(key, draw());
+    if (!scene.textures.exists(key)) addCanvasTexture(scene.textures, key, draw());
   };
   add(FX.arrow, () => grid(ARROW, PALETTE));
   add(FX.holyArrow, () => grid(ARROW, HOLY_PALETTE));
