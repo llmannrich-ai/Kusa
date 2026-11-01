@@ -54,7 +54,7 @@ export class SpellAim {
    * que o toque rápido faz: sair reto na frente do herói.
    */
   private auto = false;
-  /** Desenho em linha contínua do herói até onde o tiro para (o ⚔️), em vez dos tiles da reta. */
+  /** Desenho em linha pontilhada do herói até onde o tiro para (o ⚔️), em vez dos tiles da reta. */
   private line = false;
 
   constructor(scene: Phaser.Scene, private room: DungeonRoom, private dungeon: Dungeon, private bodyAt: BodyAt, depth: number) {
@@ -137,7 +137,8 @@ export class SpellAim {
       return;
     }
     if (isShot(spell) && this.line) {
-      // Básico: uma linha reta do herói até onde o tiro para (o primeiro monstro da reta, em dourado, ou o alcance).
+      // Básico: uma linha reta pontilhada do herói até onde o tiro para (o primeiro monstro da reta, em dourado, ou o
+      // alcance).
       const path = shotPath(this.dungeon, me.x, me.y, aim.x, aim.y, spell.range);
       const hit = path.find((t) => this.monsterAt(t.x, t.y));
       const end = hit ?? path[path.length - 1];
@@ -147,12 +148,8 @@ export class SpellAim {
       const tipX = from.x + Math.cos(angle) * len;
       const tipY = from.y + Math.sin(angle) * len;
       const c = hit ? COLORS.locked : COLORS.free;
-      // Começa um pouco fora do herói, para não cobrir o sprite; contorno escuro para ler em qualquer chão.
-      const startX = from.x + Math.cos(angle) * 12;
-      const startY = from.y + Math.sin(angle) * 12;
-      g.lineStyle(5, 0x000000, 0.35).lineBetween(startX, startY, tipX, tipY);
-      g.lineStyle(2, c, 0.9).lineBetween(startX, startY, tipX, tipY);
-      g.fillStyle(c, 0.9).fillCircle(tipX, tipY, 3.5);
+      // Pontilhada e tênue, como a linha das magias de área (`dottedLine` já começa fora do herói).
+      dottedLine(g, from.x, from.y, tipX, tipY, c);
       return;
     }
     if (isShot(spell)) {

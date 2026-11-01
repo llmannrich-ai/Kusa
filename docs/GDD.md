@@ -1199,7 +1199,7 @@ Galhado um pouco abaixo do Faraó Eterno no Cavaleiro e igual nos outros. Loot m
   segundo no básico do Cavaleiro contra 5 a 8 nas outras classes). Corpo a corpo, Investida e magias sem projétil não mudam.
   - **No ⚔️:** toque e segurar atiram sozinhos (alvo automático, ao contrário das magias) na direção de onde o alvo está na hora do disparo (sem prever o
     movimento). Arrastar a partir do botão mira a direção à mão (só a direção do arrasto conta, não o tamanho): a mira
-    é uma linha reta contínua do herói até onde o tiro para (o primeiro monstro da reta, em dourado, ou o alcance do
+    é uma linha reta pontilhada e tênue (como a das magias de área) do herói até onde o tiro para (o primeiro monstro da reta, em dourado, ou o alcance do
     básico); soltar atira, mesmo sem
     monstro à vista; voltar ao botão cancela. O dedo parado vira "segurar" depois de 150 ms.
   - Telemetria: `RunStats.shots` (disparados, errados e mirados à mão, por fonte).
