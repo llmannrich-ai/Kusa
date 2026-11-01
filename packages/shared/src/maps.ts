@@ -94,6 +94,20 @@ export const LOOT_SCALE = 0.8;
 export const ITEM_DROP_SCALE = 0.6;
 
 /**
+ * Morte no começo da hunt: quem morre (ou fica soterrado) abaixo deste nível de herói não perde equipamento do
+ * corpo, só a bag, as poções e o loot. Morrer no nível 1 a 3 apagava o melhor item da conta a cada tentativa.
+ * Fica aqui (arquivo de regras) para o cliente de versão antiga, que roda a hunt solo, recarregar; o banco repete o
+ * número em `finish_solo_run` (resultado atrasado).
+ */
+export const DEATH_SAFE_LEVEL = 5;
+
+/**
+ * Peso de cada raridade no sorteio do equipamento perdido na morte: o mágico sai 4× menos que o comum. O banco
+ * repete os pesos em `drop_random_item`.
+ */
+export const DEATH_LOSS_WEIGHT: Record<"common" | "rare" | "magic", number> = { common: 1, rare: 0.5, magic: 0.25 };
+
+/**
  * Quantidade a mais de monstros por sala de profundidade (+12% por sala): o orçamento de ameaça de cada encontro e os
  * monstros das campinas crescem assim. O monstro em si não fica mais forte no fundo (`monsterStats`); a dificuldade
  * sobe com espécies mais fortes nas tabelas e com mais monstros.

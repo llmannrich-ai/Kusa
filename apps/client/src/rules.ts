@@ -101,7 +101,7 @@ export function renderRules(root: HTMLElement) {
       "Polegar esquerdo, na parte de baixo da tela: o joystick aparece onde você toca e move o herói.",
       "⚔️ ataque básico: um toque dá um golpe, segurar repete. Vai no alvo travado ou no monstro mais próximo ao alcance.",
       "Tocar num monstro trava o alvo nele (anel vermelho).",
-      "Flechas, luzes e magias de alvo único com projétil voam reto até onde o alvo estava e podem errar: quem anda de lado escapa, quem vem na sua direção leva. Arraste o ⚔️ para mirar à frente do monstro.",
+      "Flechas, luzes e magias de alvo único com projétil são atiradas numa direção e voam reto até o alcance: acertam o primeiro monstro no caminho. Quem anda de lado escapa, quem vem na sua direção leva. Arraste o ⚔️ (ou a magia) para escolher a direção.",
       "Magias de alvo: segure o botão, arraste para mirar e solte para lançar. Voltar o dedo para o botão cancela. Um toque rápido lança no alvo automático.",
       "Poções: botões ❤️ e 💧 ao lado das magias.",
       "Bag: toque na fileira embaixo do loot para ver, equipar ou largar itens sem pausar a hunt.",
@@ -139,7 +139,7 @@ export function renderRules(root: HTMLElement) {
       table(["Fim", "O que acontece"], [
         ["🚪 Fuga", "Volte à sala inicial e entre no portal: leva todo o loot e os itens."],
         ["🐉 Boss derrotado", `Matar o boss abre um portal na sala final: leva tudo e +${pct(BOSS_LOOT_BONUS)} de loot.`],
-        ["💀 Morte", "Perde o loot, a bag inteira, as poções e 1 equipamento sorteado. Tudo cai no chão para os outros pegarem."],
+        ["💀 Morte", "Perde o loot, a bag inteira, as poções e, a partir do nível 5, 1 equipamento sorteado (o mágico sai menos). Tudo cai no chão para os outros pegarem."],
         ["🪨 Soterrado", "O tempo acabou: igual à morte."],
       ]),
     ),

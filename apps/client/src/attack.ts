@@ -16,7 +16,7 @@ const HOLD_DELAY_MS = 150;
  * quando o botão é apertado e solto. No desktop, a barra de espaço faz o mesmo.
  *
  * Básico à distância (Paladino, Feiticeiro, Druida): o tiro pode errar. Arrastar a partir do botão mira à mão,
- * com a mesma mira das magias (`SpellAim`): soltar atira no tile mirado, voltar ao botão cancela.
+ * com a mesma mira das magias (`SpellAim`): soltar atira na direção mirada, voltar ao botão cancela.
  */
 export class AttackButton {
   readonly button: HTMLButtonElement;
