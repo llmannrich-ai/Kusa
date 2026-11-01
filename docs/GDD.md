@@ -50,7 +50,7 @@ O **Batalhas** abre o **mapa mundi** (ver "Salas e sala de espera" e "Mapa mundi
 Código em `apps/client/src/menu.ts`.
 
 - **Heróis:** um medalhão por classe (tocar escolhe o herói da próxima hunt) e o palco do escolhido: o herói vestido andando e girando (tocar faz ele pular), as especializações escolhidas, o papel, os atributos em barras (vida, mana, dano, armadura, alcance e velocidade já com as áureas, as runas e os itens vestidos por ele, na mesma conta da hunt; a barra compara com os outros heróis e o trecho listrado é o bônus) e o **Arsenal**: atalhos para o Grimório (os 3 ramos e as magias que vão para a hunt) e para o equipamento (6 slots e 3 runas).
-- **Grimório:** a árvore de magias de cada classe (ver abaixo).
+- **Grimório:** a árvore de magias de cada classe (ver abaixo). Os medalhões do alto são os mesmos da página Heróis: trocar de herói numa página troca na outra e no herói da próxima hunt.
 - **Itens:** o equipamento que vai para a próxima hunt (um item por slot, **separado por classe**: trocar de classe troca o que está no corpo), logo abaixo os **3 slots de runa** da classe (ver "Runas"), o **cofre** (20 espaços) e a **bag** (8 espaços). O cofre só é acessado aqui.
 - **Mercado:** compra itens comuns até Mithral (entregues no cofre), filtrados por slot e pela classe escolhida, e vende qualquer item da conta. Itens de Dragão, raros e mágicos só saem das hunts.
 - Configurações e "Sair da conta" ficam no ⚙️ do topo.
