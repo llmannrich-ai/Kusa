@@ -4,14 +4,14 @@
 --   - `map_bosses('oldwood')` repete `MAPS.oldwood.bosses`.
 --   - Hunt solo e sala no aparelho: o teto de loot do Bosque Velho sobe de 100 para 3200, cheio em 240 s
 --     (`SOLO_LIMITS` no packages/shared; mude os dois juntos).
--- As funções partem da versão em produção (`record_boss_runes` de 20261031120000_rei_bullywug.sql e `finish_solo_run`
--- de 20261031210000_fortaleza_orc.sql).
+-- As funções partem da versão em produção (`record_boss_runes`, `map_bosses` e a lista do `check` de
+-- 20261101130000_vorgak_senhor_da_brasa.sql; `finish_solo_run` também, com a Fortaleza Orc em 4600).
 
 alter table public.profile_boss_runes drop constraint profile_boss_runes_boss_kind_check;
 alter table public.profile_boss_runes add constraint profile_boss_runes_boss_kind_check
   check (boss_kind in (
     'dragon', 'blackDragon', 'hydra', 'sandWorm', 'ogreKing', 'basilisk', 'beholder', 'singingColossus', 'eternalPharaoh', 'bullywugKing',
-    'greenDragon'
+    'emberWarlord', 'greenDragon'
   ));
 
 create or replace function public.map_bosses(p_map_id text)
@@ -28,6 +28,7 @@ as $$
     when 'cavern' then array['basilisk', 'beholder']
     when 'dunes' then array['singingColossus']
     when 'mesas' then array['eternalPharaoh']
+    when 'fortress' then array['emberWarlord', 'ogreKing']
     when 'oldwood' then array['greenDragon']
     else '{}'::text[]
   end;
@@ -37,8 +38,8 @@ do $$
 declare
   v_record text := pg_get_functiondef('public.record_boss_runes(uuid, text, text[])'::regprocedure);
   v_finish text := pg_get_functiondef('public.finish_solo_run(uuid, text, int, int, text[], text[], jsonb)'::regprocedure);
-  v_bosses_old constant text := $q$b in ('dragon', 'blackDragon', 'hydra', 'sandWorm', 'ogreKing', 'basilisk', 'beholder', 'singingColossus', 'eternalPharaoh', 'bullywugKing')$q$;
-  v_bosses_new constant text := $q$b in ('dragon', 'blackDragon', 'hydra', 'sandWorm', 'ogreKing', 'basilisk', 'beholder', 'singingColossus', 'eternalPharaoh', 'bullywugKing', 'greenDragon')$q$;
+  v_bosses_old constant text := $q$b in ('dragon', 'blackDragon', 'hydra', 'sandWorm', 'ogreKing', 'basilisk', 'beholder', 'singingColossus', 'eternalPharaoh', 'bullywugKing', 'emberWarlord')$q$;
+  v_bosses_new constant text := $q$b in ('dragon', 'blackDragon', 'hydra', 'sandWorm', 'ogreKing', 'basilisk', 'beholder', 'singingColossus', 'eternalPharaoh', 'bullywugKing', 'emberWarlord', 'greenDragon')$q$;
   v_finish_pairs constant text[][] := array[
     array[$q$when 'oldwood' then 100 when 'heartwood'$q$, $q$when 'oldwood' then 3200 when 'heartwood'$q$],
     array[$q$when 'oldwood' then 180 when 'heartwood'$q$, $q$when 'oldwood' then 240 when 'heartwood'$q$]

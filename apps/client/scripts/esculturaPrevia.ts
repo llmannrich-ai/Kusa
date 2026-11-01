@@ -3,7 +3,7 @@
  * da Areia em PNG, ampliada, e mede quanto cada quadro leva para sair.
  *
  *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre|mumia|sacerdote|elemental|verme|
- *     lobo|pantera|centauro|satiro|driade|galhudo|espinheiro|menir|urso|dragao]
+ *     lobo|pantera|centauro|satiro|driade|galhudo|espinheiro|menir|urso|dragao|senhor]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -16,6 +16,7 @@ import { MUMMY_POSES, PRIEST_POSES, shootMummy } from "../src/art/proto/mummy.ts
 import { BEAST_POSES, shootBeast, type BeastKind } from "../src/art/proto/forestBeasts.ts";
 import { FOLK_POSES, shootFolk, type FolkKind } from "../src/art/proto/forestFolk.ts";
 import { DRAGON_POSES, DRAGON_SIZE, shootDragon } from "../src/art/proto/greenDragon.ts";
+import { WARLORD_POSES, WARLORD_SIZE, shootWarlord } from "../src/art/proto/warlord.ts";
 
 const out = process.argv[2] ?? "/tmp/escorpiao.png";
 const zoom = Number(process.argv[3] ?? 3);
@@ -31,6 +32,7 @@ const BICHOS = {
   ...Object.fromEntries((Object.entries({ lobo: "wolf", pantera: "panther", centauro: "centaur" }) as [string, BeastKind][]).map(([k, kind]) => [k, { poses: BEAST_POSES[kind], shoot: (p: object, v: View) => shootBeast(kind, p, v) }])),
   ...Object.fromEntries((Object.entries({ satiro: "satyr", driade: "dryad", galhudo: "twigling", espinheiro: "thorn", menir: "menhir", urso: "owlbear" }) as [string, FolkKind][]).map(([k, kind]) => [k, { poses: FOLK_POSES[kind], shoot: (p: object, v: View) => shootFolk(kind, p, v) }])),
   dragao: { poses: DRAGON_POSES, shoot: (p: object, v: View) => shootDragon(p, v), size: DRAGON_SIZE },
+  senhor: { poses: WARLORD_POSES, shoot: (p: object, v: View) => shootWarlord(p, v), size: WARLORD_SIZE },
 };
 const bicho = BICHOS[(process.argv[4] ?? "escorpiao") as keyof typeof BICHOS];
 

@@ -439,7 +439,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
   **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
-  Solária → ⚔️ Fortaleza Orc, a etapa 8, por enquanto só o terreno) e a floresta (🌳 Bosque Velho → 🍄 Coração da
+  Solária → ⚔️ Fortaleza Orc, a etapa 8) e a floresta (🌳 Bosque Velho → 🍄 Coração da
   Mata, por enquanto só o terreno). O herói anda pelos dois ramos: para ir de um lado ao outro, volta pela trilha até a
   Travessia (`OPEN_CHAINS` em `verdemar.ts`).
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
@@ -459,7 +459,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
   vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
-  Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc; Basilisco → Bosque Velho, Dragão Verde Jovem →
+  Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
@@ -483,9 +483,9 @@ Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram n
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
 recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
-Escala de dificuldade de 1 a 6 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
-Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes e 6 para Mesas de Solária, o mapa mais difícil (a 3 fica
-livre). A Fortaleza Orc, ainda sem monstros, fica com 6 provisório (os Portões do Império também, fora da campanha).
+Escala de dificuldade de 1 a 8 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
+Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes, 6 para Mesas de Solária e 8 para a Fortaleza Orc, o mapa
+mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e fora da campanha, ficam com 6 provisório.
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
@@ -498,7 +498,7 @@ livre). A Fortaleza Orc, ainda sem monstros, fica com 6 provisório (os Portões
 | 🍄 Coração da Mata | 6 ★★★★★★ (provisório) | 8 min | 96×128, em pé: a mesma mata, mais fechada, com lagoas escuras, santuários élficos e a árvore do coração | só o terreno (os monstros ainda vêm) |
 | 🪨 Mesas de Solária | 6 ★★★★★★ | 8 min | 96×128, em pé: 4 cânions entre platôs de arenito, 7 zonas, 5 campinas, casas escavadas na rocha e o anfiteatro dos platôs | os mesmos comuns e mini-bosses das Dunas, mais fundos e em bandos maiores → Faraó Eterno |
 | 🏛️ Portões do Império | 6 ★★★★★★ (provisório) | 8 min | 84×124 de superfície, em pé: via dos túmulos, muralha com o portão e 2 brechas, cidade em ruínas com 6 zonas, 5 campinas e até 4 casas + ruína subterrânea (vestíbulo, galeria, santuário e tesouro) | ainda sem monstros (só o terreno) |
-| ⚔️ Fortaleza Orc | 6 ★★★★★★ (provisório) | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | ainda sem monstros (só o terreno) |
+| ⚔️ Fortaleza Orc | 8 ★★★★★★★★ | 8 min | 84×128, mapa fixo, em pé: vila baixa, desfiladeiro com 2 pontes, pátio externo com acampamentos, muralha interna, esporão e torre de menagem | o clã do Pântano do Kosaradius bem mais forte (×2,4 os comuns, ×2,5 os mini-bosses; ~130 monstros por hunt, 40% a mais que nas Mesas) e em bandos que lotam as salas: Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Chefe de Guerra Orc, Ogro Xamã → Vorgak, o Senhor da Brasa |
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
@@ -754,12 +754,12 @@ o desenho lê.
   e cantos da tela escuros. A fachada e o mosaico, as pinturas maiores, saem nos primeiros quadros da hunt (ficam longe
   da entrada). Ambiente: ciscos dourados na luz, chamas e tochas tremendo, brilho do sol nos tanques.
 
-### Fortaleza Orc (terreno)
+### Fortaleza Orc
 
 Nas Ruínas do Império, a etapa 8 da campanha, no ponto que era dos Portões do Império (abre com o Faraó Eterno; daqui a
 trilha se divide para o Charco Cinzento e os Ermos Rubros). Um castelo
-do império tomado pelos orcs, no alto de um esporão de rocha. Por enquanto só o terreno e a arte: sem monstros nem boss,
-★★★★★★ provisório, 8 min, até 4 jogadores. **Mapa fixo:** é sempre a mesma planta, qualquer que seja a seed da sala
+do império tomado pelos orcs, no alto de um esporão de rocha. **Dificuldade 8 (★★★★★★★★), o mapa mais difícil do
+jogo**, 8 min, até 4 jogadores. **Mapa fixo:** é sempre a mesma planta, qualquer que seja a seed da sala
 (`generateFortress` em `dungeon.ts`, sempre com `FORTRESS_SEED`); a planta vai em `Dungeon.fortress`, que só o desenho
 lê.
 
@@ -771,6 +771,13 @@ lê.
   **esporão**: o pátio de lajes com colunata, o parapeito caído na beira do precipício, a guarda do chefe e, no norte, a
   **torre de menagem** (19×15, com torreões nos cantos do terraço), cujo salão
   do trono é a sala do boss. Dos dois lados do esporão e atrás da torre, o precipício.
+- **Monstros:** o quartel do clã do Rei-Ogro. São as espécies do Pântano do Kosaradius (mesma arte), com força fixa
+  do mapa bem maior (`commonPower` 2,4 e `minibossPower` 2,5: vida, dano, XP e loot), em quantidade
+  massiva: orçamento de 320 a 1000 por zona (as salas chegam ao teto de `MAX_ROOM_MONSTERS`), 8 monstros por campina e
+  60% das campinas com um mini-boss solto: cerca de 130 monstros por hunt (40% a mais que nas Mesas de Solária). A vila tem batedores e guerreiros; o desfiladeiro, lanceiros, arqueiros
+  e os primeiros berserkers; o acampamento, capitães, xamãs e ogros jovens; o esporão e o pé da torre são de ogros e
+  berserkers. Mini-bosses: Ogro do Brejo, Chefe de Guerra Orc e Ogro Xamã (casernas e casa da vila, com baú). Boss:
+  **Vorgak, o Senhor da Brasa**, no salão do trono (ficha no Bestiário, seção da Fortaleza). O gold de cada monstro cresce com a força; com tanto monstro, os drops de item e poção saem menos (`dropScale` 0,8).
 - **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
   uma brecha da muralha.
 - **Abismo:** nesse mapa toda `Tile.Water` é abismo: bloqueia o passo e deixa passar a visão (flechas e magias passam
@@ -948,8 +955,9 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   sala. A dificuldade sobe para o fundo de dois jeitos: as tabelas de encontro trocam por espécies mais fortes e o
   orçamento de ameaça de cada sala (e os monstros das campinas) cresce 12% por sala (`CROWD_PER_DEPTH`): mais
   monstros, e a XP e o gold totais crescem junto. Os bosses já trazem na ficha a força que tinham no fim do caminho;
-  os mini-bosses e o Mímico usam um multiplicador fixo do mapa (`minibossPower`, de 1,24 na Cripta a 1,54 na Caverna),
-  que não muda na partida. Os monstros que um boss chama são os comuns normais. Só os baús pagam mais no fundo (+12%
+  os mini-bosses e o Mímico usam um multiplicador fixo do mapa (`minibossPower`, de 1,24 na Cripta a 1,54 na Caverna,
+  2,5 na Fortaleza), que não muda na partida. Um mapa também pode multiplicar os comuns (`commonPower`, só na
+  Fortaleza Orc: o clã do brejo levado à dificuldade 8). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
   de gold por sala, `CHEST_DEPTH_SCALING`), e a faixa dos itens largados ainda sobe com a profundidade. Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold
@@ -1067,6 +1075,21 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 No simulador de duelo (herói sozinho, só ataque básico), os orcs comuns ficam entre o Goblin e o Esqueleto da
 Cripta, o Ogro jovem perto do Orc guerreiro, os mini-bosses abaixo do Ogro da Cripta, e o Rei-Ogro (herói nível
 12) dura de 10 a 15 s contra o herói, contra 4 a 7 s do Dragão jovem (herói nível 6).
+
+### Fortaleza Orc (★8): Vorgak, o Senhor da Brasa
+
+O clã do Pântano do Kosaradius (as mesmas fichas acima, com `commonPower` 2,4 e `minibossPower` 2,5) e o boss
+próprio, o mais forte do jogo. Arte **esculpida por código** (`apps/client/src/art/proto/warlord.ts`, ver
+`docs/ARTE_ESCULTURA.md`): nada é baixado.
+
+| Monstro | Papel | Destaques |
+|---|---|---|
+| **Vorgak, o Senhor da Brasa** (boss) | líder | orc enorme de armadura negra com friso de latão, elmo de chifres com os olhos acesos na viseira, três garras em brasa no peitoral, manto de lobo, o estandarte do clã nas costas e o Cutelo de Brasa (alcance 2) · resiste a fogo, fraco contra gelo · golpe básico queima (40%) · Comando (orcs a até 4 tiles batem 20% mais forte e 15% mais rápido) · **Fenda de Brasa** (o cutelo racha o chão numa linha de 6, 1,7×, e queima; a fenda fica incandescente e esfria no chão) · Salto do Senhor da Guerra (de 3 a 7 tiles, cai colado, área de 2, atordoa 0,9 s) · Gancho de Ferro (puxa quem foge) · abaixo de 70%: Chamado da Fortaleza (2 Orcs berserkers) · abaixo de 35%: Guarda de Ogros (2 Ogros jovens) e Fúria de Brasa (rachaduras em volta, raio 3, empurra, queima e cura 12%), cada um uma vez · abaixo de 35%, frenesi |
+
+Animação: parado e andar em 8 quadros (respira, o estandarte ondula, o manto, a corrente e o rabo de cabelo seguem
+com atraso, a brasa pulsa), golpe em 8 (o cutelo de cima para baixo até o chão), especial em 8 (crava o cutelo e ruge
+com o punho erguido: os chamados e a Fúria), salto em 8 (a Fenda e o Gancho saem do golpe) e morte em 5 (cai de
+joelhos sobre o cutelo cravado, e a brasa dos olhos, das garras e da lâmina se apaga).
 
 ### Necrópole de Solária: Dunas Cantantes (★5) e Mesas de Solária (★6)
 

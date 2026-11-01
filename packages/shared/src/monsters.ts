@@ -23,7 +23,9 @@ export type MonsterKind =
   | "boneCenturion" | "royalMummy" | "sandScribe" | "singingColossus" | "eternalPharaoh"
   // Bosque Velho (dificuldade 5): as feras e os espíritos da floresta antiga do Kosaradius
   | "twigling" | "direWolf" | "satyr" | "thornSpitter" | "shadowPanther" | "owlbear"
-  | "corruptedDryad" | "renegadeCentaur" | "menhirGuardian" | "greenDragon";
+  | "corruptedDryad" | "renegadeCentaur" | "menhirGuardian" | "greenDragon"
+  // Fortaleza Orc (dificuldade 8): o senhor do castelo (o resto é o clã do Pântano do Kosaradius, mais forte)
+  | "emberWarlord";
 
 export type MonsterRank = "common" | "miniboss" | "boss";
 
@@ -91,7 +93,7 @@ export type AbilityShape = "target" | "self" | "line" | "cone" | "bolt" | "leap"
 /** Desenho da habilidade no cliente (`fx.ts`). */
 export type AbilityFx =
   | "quake" | "breath" | "acidRain" | "boulder" | "leap" | "tongue" | "constrict" | "rend" | "dive" | "web" | "bolt"
-  | "engulf" | "summon" | "vanish" | "slam" | "spit" | "lightning";
+  | "engulf" | "summon" | "vanish" | "slam" | "spit" | "lightning" | "emberRift";
 
 /**
  * Habilidade de monstro. Sai **na hora, sem aviso** (princípio do jogo: difícil e injusto como a vida), sempre que a
@@ -1144,6 +1146,45 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     ],
     lore: "Montanha de músculo com armadura de placas e cutelo de duas mãos. Investe, gira a lâmina em volta e comanda os orcs perto.",
   }),
+  // --- Fortaleza Orc: o senhor do castelo tomado. O mais forte do jogo; o clã em volta bate mais perto dele (Comando).
+  emberWarlord: monster({
+    kind: "emberWarlord", name: "Vorgak, o Senhor da Brasa", rank: "boss", type: "humanoid", role: "leader", cr: 12,
+    hp: 4400, damage: 46, xp: 5200, loot: [430, 640], speed: 2.4, aggroRange: 9, attackRange: 2, attackCooldownMs: 1700, attackFx: "smash",
+    elements: { fire: 0.5, ice: 1.25 },
+    traits: {
+      leader: { radius: 4, damage: 0.2, haste: 0.15 },
+      frenzy: { belowHp: 0.35, haste: 0.3 },
+      onHit: { chance: 0.4, dot: { kind: "burn", power: 0.3, durationMs: 3000 } },
+    },
+    abilities: [
+      {
+        id: "fortressCall", name: "Chamado da Fortaleza", shape: "summon", range: 9, radius: 0, cooldownMs: 30000, power: 0,
+        summon: { kind: "orcBerserker", count: 2 }, belowHp: 0.7, phase: true, once: true, color: 0xc0392b, fx: "summon",
+      },
+      // A guarda vem antes da Fúria: a Fúria cura e tiraria a vida de baixo dos 35% antes de os ogros saírem.
+      {
+        id: "ogreGuard", name: "Guarda de Ogros", shape: "summon", range: 9, radius: 0, cooldownMs: 30000, power: 0,
+        summon: { kind: "ogreYoung", count: 2 }, belowHp: 0.35, phase: true, once: true, color: 0xa0522d, fx: "summon",
+      },
+      {
+        id: "emberFury", name: "Fúria de Brasa", shape: "self", range: 3, radius: 3, cooldownMs: 30000, power: 1.8, push: 2,
+        dot: { kind: "burn", power: 0.3, durationMs: 3000 }, selfHeal: 0.12, belowHp: 0.35, phase: true, once: true, color: 0xff5a14, fx: "emberRift",
+      },
+      {
+        id: "warlordLeap", name: "Salto do Senhor da Guerra", shape: "leap", range: 7, minRange: 3, radius: 2, cooldownMs: 12000, power: 1.4,
+        effect: { kind: "stun", ms: 900 }, color: 0xe67e22, fx: "leap",
+      },
+      {
+        id: "emberRift", name: "Fenda de Brasa", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 9000, power: 1.7,
+        dot: { kind: "burn", power: 0.35, durationMs: 4000 }, color: 0xff6a1a, fx: "emberRift",
+      },
+      {
+        id: "ironHook", name: "Gancho de Ferro", shape: "pull", range: 6, minRange: 3, radius: 0, cooldownMs: 11000, power: 0.5,
+        color: 0x9aa0a8, fx: "tongue",
+      },
+    ],
+    lore: "Tomou o castelo do Império e fez do salão do trono a forja do clã. Racha o chão com o Cutelo de Brasa (Fenda de Brasa), salta sobre quem foge, puxa com o gancho da corrente, e perto dele os orcs batem mais forte (Comando). Ferido, chama a guarda e explode em brasa.",
+  }),
   ogreKing: monster({
     kind: "ogreKing", name: "Grumak, o Rei-Ogro", rank: "boss", type: "giant", role: "brute", cr: 6,
     hp: 894, damage: 21, xp: 707, loot: [62, 104], speed: 2.4, aggroRange: 7, attackRange: 2, attackCooldownMs: 1700, attackFx: "smash",
@@ -1296,7 +1337,7 @@ export interface MonsterStats {
 /**
  * Atributos de um monstro. São sempre os mesmos durante a partida, em qualquer sala: a dificuldade cresce para o fundo
  * do mapa com espécies mais fortes e mais monstros por sala (`CROWD_PER_DEPTH`), nunca com o mesmo monstro mais forte.
- * `power` é o multiplicador fixo do mapa para mini-bosses e o Mímico (`MapDef.minibossPower`); o resto usa 1.
+ * `power` é o multiplicador fixo do mapa (`monsterPower`: `MapDef.minibossPower` e `commonPower`; padrão 1).
  */
 export function monsterStats(kind: MonsterKind, power = 1): MonsterStats {
   const m = MONSTERS[kind];
