@@ -11,9 +11,9 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  DROP, HANG, KEEP_RISE, ROOM_WALL, STAKE, THRONE, bridgeTile,
+  DROP, HANG, KEEP_RISE, ROOM_WALL, THRONE, bridgeTile,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
-  stakeSprite, throneSprite,
+  throneSprite,
 } from "./art/fortressArt.ts";
 import { canopyTile, waterTile } from "./art/forestArt.ts";
 import { ACAMPAMENTO, CHAO_BASALTO, CHAO_CAPIM, CHAO_LAJES, CHAO_SALAO, CHAO_TABUAS, CHAO_TERRA, type AcampamentoFrame, type GroundTexture } from "./art/proto/fortalezaArt.ts";
@@ -28,6 +28,8 @@ const ZOOM = HD / TILE_SIZE;
 const ATLAS = "fortress-atlas";
 /** Atlas do que fica longe da entrada (o vale, o terraço da torre de menagem, os telhados): montado depois. */
 const FAR_ATLAS = "fortress-atlas-longe";
+/** Escala do vale lá embaixo em relação ao castelo (mais longe, menor). */
+const VALLEY_SCALE = 0.5;
 /** Resolução da máscara da borda do capim em relação à tela. */
 const MASK_SCALE = 0.5;
 const FLAME_KEY = "fortress-flame";
@@ -157,24 +159,28 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   /** O vale: capim, rios serpenteando (as curvas de nível de um ruído suave) e manchas de mata. */
   const valleyWater = (x: number, y: number) => Math.abs(field(x, y, 8, 201) - 0.5) < 0.05 || field(x, y, 13, 203) < 0.07;
   const valleyWood = (x: number, y: number) => !valleyWater(x, y) && field(x, y, 6, 202) > 0.56;
-  const lower = new Int32Array(W * H).fill(-1);
-  const lowerDecor = new Int32Array(W * H).fill(-1);
+  // O vale é desenhado em meia escala (`VALLEY_SCALE`): o que está longe parece menor, e os tiles dele deixam de
+  // aparecer como blocos grandes pelo abismo. A grade dele tem o dobro de tiles de cada lado.
+  const LW = Math.ceil(W / VALLEY_SCALE), LH = Math.ceil(H / VALLEY_SCALE);
+  const lower = new Int32Array(LW * LH).fill(-1);
+  const lowerDecor = new Int32Array(LW * LH).fill(-1);
   // Só o pedaço do vale que pode aparecer pelo abismo (com a paralaxe, ele anda um décimo do que a câmera anda): o
-  // resto ficaria desenhado embaixo do chão do castelo à toa. A câmera fica a até ~10 tiles do abismo que aparece.
-  const needed = new Uint8Array(W * H);
+  // resto ficaria desenhado embaixo do chão do castelo à toa. A câmera fica a até ~20 tiles do abismo que aparece.
+  const needed = new Uint8Array(LW * LH);
+  const k = 1 - PARALLAX;
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       if (!abyss(x, y)) continue;
-      const ox0 = Math.floor((1 - PARALLAX) * (x - 14)) - 1, ox1 = Math.ceil((1 - PARALLAX) * (x + 14)) + 1;
-      const oy0 = Math.floor((1 - PARALLAX) * (y - 20)) - 1, oy1 = Math.ceil((1 - PARALLAX) * (y + 20)) + 1;
-      for (let ly = y - DROP - oy1; ly <= y - DROP - oy0; ly++)
-        for (let lx = x - ox1; lx <= x - ox0; lx++) if (inGrid(lx, ly)) needed[ly * W + lx] = 1;
+      const lx0 = Math.floor((x - 14 - k * (x + 20)) / VALLEY_SCALE) - 1, lx1 = Math.ceil((x + 14 - k * (x - 20)) / VALLEY_SCALE) + 1;
+      const ly0 = Math.floor((y - 20 - DROP - k * (y + 25)) / VALLEY_SCALE) - 1, ly1 = Math.ceil((y + 20 - DROP - k * (y - 25)) / VALLEY_SCALE) + 1;
+      for (let ly = Math.max(0, ly0); ly <= Math.min(LH - 1, ly1); ly++)
+        for (let lx = Math.max(0, lx0); lx <= Math.min(LW - 1, lx1); lx++) needed[ly * LW + lx] = 1;
     }
   // O vale é escuro e coberto de névoa: as bordas só pelos 4 lados (sem os cantos) e uma variação só bastam.
   const side4 = (x: number, y: number, test: (x: number, y: number) => boolean) => mask(x, y, test) & (OPEN.n | OPEN.e | OPEN.s | OPEN.w);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const i = y * W + x;
+  for (let y = 0; y < LH; y++)
+    for (let x = 0; x < LW; x++) {
+      const i = y * LW + x;
       if (!needed[i]) continue;
       if (valleyWater(x, y)) {
         const land = side4(x, y, (a, b) => !valleyWater(a, b));
@@ -258,7 +264,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       // Beirada do abismo (menos nas pontes, que seguem por cima dele).
       const edge = bridge(x, y) ? 0 : mask(x, y, abyss);
       if (edge) fringe[i] = atlas.frame(`ledge${edge}`, () => ledgeEdge(edge));
-      else if ((road(x, y) || plaza(x, y) || yard(x, y) || camp(x, y)) && !hall(x, y)) {
+      else if ((road(x, y) || plaza(x, y) || yard(x, y) || camp(x, y)) && !hall(x, y) && !roomInside(x, y)) {
         const g = mask(x, y, (a, b) => solid(a, b) && !paved(a, b) && !camp(a, b) && !inKeep(a, b) && !inTower(a, b) && !(battlement(a, b) && ruin(a, b)) && !roomInside(a, b));
         if (g) {
           let k = maskFrames.indexOf(g);
@@ -384,7 +390,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
-      if (grassEdge[i] >= 0 || at(x, y) !== Tile.Floor || paved(x, y) || camp(x, y) || !near(x, y, 1, (a, b) => inGrid(a, b) && grassEdge[b * W + a] >= 0 && maskFrames[grassEdge[b * W + a]] !== FULL)) continue;
+      if (grassEdge[i] >= 0 || at(x, y) !== Tile.Floor || paved(x, y) || camp(x, y) || roomInside(x, y) || hall(x, y) || inKeep(x, y) || !near(x, y, 1, (a, b) => inGrid(a, b) && grassEdge[b * W + a] >= 0 && maskFrames[grassEdge[b * W + a]] !== FULL)) continue;
       let k = maskFrames.indexOf(FULL);
       if (k < 0) k = maskFrames.push(FULL) - 1;
       grassEdge[i] = k;
@@ -423,7 +429,6 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const blocks = new SpriteSheet("fortress-blocks", BLOCK.w, BLOCK.h);
   const cypress = new SpriteSheet("fortress-cypress", CYPRESS.w, CYPRESS.h);
   const pines = new SpriteSheet("fortress-pines", PINE.w, PINE.h);
-  const stakes = new SpriteSheet("fortress-stakes", STAKE.w, STAKE.h);
   type Placed = { sheet: SpriteSheet; frame: number; x: number; y: number; px: number; py: number; depth: number; flip?: boolean; crown?: boolean };
   const placed: Placed[] = [];
   const put = (sheet: SpriteSheet, frame: number, x: number, y: number, flip = false, px = x * TILE_SIZE + TILE_SIZE / 2, py = (y + 1) * TILE_SIZE) =>
@@ -441,7 +446,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     const tex = scene.textures.addImage(CAMP_KEY, ACAMPAMENTO.image)!;
     for (const [name, r] of Object.entries(ACAMPAMENTO.frames)) tex.add(name, 0, r.x, r.y, r.w, r.h);
   }
-  type CampPlaced = { frame: AcampamentoFrame; x: number; y: number; px: number; py: number; flip: boolean };
+  type CampPlaced = { frame: AcampamentoFrame; x: number; y: number; px: number; py: number; flip: boolean; sx?: number };
   const campPlaced: CampPlaced[] = [];
   const putCamp = (frame: AcampamentoFrame, x: number, y: number, flip = false, px = x * TILE_SIZE + TILE_SIZE / 2, py = (y + 1) * TILE_SIZE) =>
     campPlaced.push({ frame, x, y, px, py, flip });
@@ -478,17 +483,15 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       if (palisade(x, y)) {
         const across = f.palisades.find((r) => inR(r, x, y))!.h === 1;
         // A folha traz a paliçada de frente (a cerca de leste a oeste); a de norte a sul continua por código.
-        if (across) putCamp("palicada", x, y, flip);
-        else {
-          const v = Math.floor(hash(x, y, 56) * 3);
-          put(stakes, stakes.frame(`${across}${v}`, () => stakeSprite(across, v)), x, y, flip);
-        }
+        // A folha traz a paliçada de frente: na cerca de norte a sul, a mesma estacada estreitada (vista de lado).
+        putCamp("palicada", x, y, flip);
+        if (!across) campPlaced[campPlaced.length - 1].sx = 0.5;
         continue;
       }
       if (special(x, y)) continue;
       if (lone(x, y, ruin)) {
         const m = hash(x, y, 57);
-        if (columns.has(y * W + x)) {
+        if (columns.has(y * W + x) && (hall(x, y) || near(x, y, 1, plaza))) {
           // Colunatas do pátio e pilares do salão: inteiras quase todas.
           const kind: ColumnKind = hall(x, y) ? (m < 0.8 ? "corinthian" : "broken") : m < 0.65 ? "corinthian" : m < 0.9 ? "broken" : "stump";
           const v = Math.floor(hash(x, y, 58) * 3);
@@ -546,10 +549,10 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     putCamp("estandarte", x, y);
   }
 
-  for (const sheet of [walls, cols, blocks, cypress, pines, stakes]) sheet.build(scene);
+  for (const sheet of [walls, cols, blocks, cypress, pines]) sheet.build(scene);
   const crowns: Phaser.GameObjects.Image[] = [];
   for (const c of campPlaced)
-    culler.add(scene.add.image(c.px, c.py, CAMP_KEY, c.frame).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth((c.y + 1) * TILE_SIZE - 0.25).setFlipX(c.flip), c.x, c.y);
+    culler.add(scene.add.image(c.px, c.py, CAMP_KEY, c.frame).setOrigin(0.5, 1).setScale((c.sx ?? 1) / ZOOM, 1 / ZOOM).setDepth((c.y + 1) * TILE_SIZE - 0.25).setFlipX(c.flip), c.x, c.y);
   for (const s of placed) {
     const img = culler.add(scene.add.image(s.px, s.py, s.sheet.key, s.frame).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(s.depth).setFlipX(!!s.flip), s.x, s.y);
     if (s.crown) crowns.push(img);
@@ -620,7 +623,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     };
     // O vale fica atrás de tudo, escurecido e azulado pela distância; a névoa e a sombra do castelo vêm por cima dele.
     const valleyTint = (x: number, y: number) => patchTint(x, y, 0.3, [0.55, 0.68, 0.92], 5, 97);
-    valley.push(farLayer(W, H, lower, 0, 0, floorDepth - 3, valleyTint), farLayer(W, H, lowerDecor, 0, 0, floorDepth - 3, valleyTint));
+    for (const data of [lower, lowerDecor]) valley.push(farLayer(LW, LH, data, 0, 0, floorDepth - 3, valleyTint).setScale(VALLEY_SCALE / ZOOM));
     // Torre de menagem: o terraço e a fachada, deslocados `KEEP_RISE` tiles para o norte, por cima de quem está atrás
     // dela (a profundidade é a da linha de baixo, como um sprite).
     const kx = K.x * TILE_SIZE, ky = (K.y - KEEP_RISE) * TILE_SIZE;

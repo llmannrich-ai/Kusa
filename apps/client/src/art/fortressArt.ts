@@ -440,36 +440,6 @@ export function roofRow(y: number, h: number): RoofRow {
 
 // --- Acampamento (de pé) --------------------------------------------------------------------
 
-export const STAKE = { w: HD, h: HD + 170 } as const;
-
-/**
- * Paliçada de 1 tile: estacas de tronco apontadas, amarradas com corda. `across`: a cerca corre de leste a oeste (4
- * estacas lado a lado); senão corre de norte a sul (as estacas uma atrás da outra, vistas de frente). Caveiras em
- * algumas pontas.
- */
-export function stakeSprite(across: boolean, v: number): Uint8ClampedArray {
-  const p = paper(STAKE.w, STAKE.h);
-  const foot = STAKE.h - 8;
-  const stake = (x: number, y: number, r: number, h: number, k: number) => {
-    const top = y - h;
-    p.together(() => {
-      p.fill([x - r, top, x + r, y], (xx, yy) => Math.abs(xx - x) <= r * Math.min(1, (yy - top) / (r * 2.4)), k % 3 ? E.Bark : E.Dirt,
-        (xx) => lit((xx - x) / r, -0.2, Math.sqrt(Math.max(0, 1 - ((xx - x) / r) ** 2))), (xx, yy) => (noise(xx, yy >> 2, 830 + k) < 0.1 ? -1 : 0));
-    });
-    // A ponta lascada clara e a amarra.
-    for (let yy = top; yy < top + r * 2; yy++) for (let xx = x - r; xx <= x + r; xx++) if (p.has(xx, yy) && xx < x) p.on(xx, yy, E.Dry, 4);
-    hline(p, x - r, x + r, y - 52, E.Dry, 3);
-    hline(p, x - r, x + r, y - 49, E.Dry, 2);
-    if (noise(k, v, 831) < 0.16) {
-      ellipse(p, x, top + 6, r * 0.9, r * 0.8, E.Bone);
-      p.on(x - 3, top + 6, E.Void, 1); p.on(x + 3, top + 6, E.Void, 1);
-    }
-  };
-  if (across) for (let k = 0; k < 4; k++) stake(18 + k * 31 + (noise(k, v, 832) - 0.5) * 4, foot - 40 - noise(k, v, 833) * 6, 14, 128 + noise(v, k, 834) * 30, k + v);
-  else for (let k = 0; k < 4; k++) stake(64 + (noise(k, v, 835) - 0.5) * 10, foot - 100 + k * 30, 15, 120 + noise(v, k, 836) * 30, k + v);
-  return p.render(true);
-}
-
 export const HANG = { w: 96, h: 300 } as const;
 
 /** Pano de guerra pendurado (nas torres, na muralha e na fachada da torre de menagem): preto, rasgado, com o sinal do clã. */
