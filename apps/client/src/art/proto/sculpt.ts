@@ -19,6 +19,12 @@
 
 export type V3 = readonly [number, number, number];
 
+/** Lado do quadro e linha do chão (o centro do bicho no chão): as partes de cá descem abaixo dela (vista de cima). */
+export const SCULPT_SIZE = 144;
+export const SCULPT_FEET = SCULPT_SIZE - 56;
+/** Vistas da folha: perfil (olhando para a esquerda), frente e costas. */
+export type View = "side" | "front" | "back";
+
 /** Material: rampa de cores do escuro ao claro (hex) e como a superfície reage à luz. */
 export interface Material {
   ramp: readonly string[];
@@ -40,6 +46,11 @@ export interface Material {
   bumpSize?: number;
   /** Pintas escuras soltas (cerdas, poros): fração dos pixels (0..1). */
   speck?: number;
+  /**
+   * Diferença de profundidade (unidades) a partir da qual uma parte na frente desenha a linha sobre esta (padrão 2.2).
+   * Penas finas umas sobre as outras pedem menos.
+   */
+  lineDepth?: number;
 }
 
 /** Forma da escultura, já no espaço da câmera na hora de desenhar. */
@@ -446,7 +457,7 @@ export function render(sculpt: Sculpt, shot: Shot, look: Look): Frame {
       if (qx < 0 || qy < 0 || qx >= S || qy >= S) continue;
       const j = qy * S + qx;
       if (owner[j] < 0) continue;
-      if (partOf[j] !== partOf[i] && zbuf[j] - zbuf[i] > 2.2 * scale) { line = true; break; }
+      if (partOf[j] !== partOf[i] && zbuf[j] - zbuf[i] > (look.materials[shapes[owner[i]].s.mat].lineDepth ?? 2.2) * scale) { line = true; break; }
     }
     if (line) { r = r * 0.42 + outline[0] * 0.58; g = g * 0.42 + outline[1] * 0.58; b = b * 0.42 + outline[2] * 0.58; }
     out[i * 4] = r; out[i * 4 + 1] = g; out[i * 4 + 2] = b; out[i * 4 + 3] = 255;

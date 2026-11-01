@@ -2,16 +2,22 @@
  * Pré-visualização da arte esculpida por código (`src/art/proto/sculpt.ts`), sem navegador: gera a folha do Escorpião
  * da Areia em PNG, ampliada, e mede quanto cada quadro leva para sair.
  *
- *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom]
+ *   npx tsx apps/client/scripts/esculturaPrevia.ts [saida.png] [zoom] [escorpiao|negro|abutre]
  */
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
-import { CLIP_POSES, SCORPION_SIZE, SHELLS, shoot, type View } from "../src/art/proto/scorpion.ts";
-import type { Frame } from "../src/art/proto/sculpt.ts";
+import { SCORPION_POSES, SHELLS, shootScorpion } from "../src/art/proto/scorpion.ts";
+import { SCULPT_SIZE, type Frame, type View } from "../src/art/proto/sculpt.ts";
+import { VULTURE_POSES, shootVulture } from "../src/art/proto/vulture.ts";
 
 const out = process.argv[2] ?? "/tmp/escorpiao.png";
 const zoom = Number(process.argv[3] ?? 3);
-const shellName = (process.argv[4] ?? "amber") as keyof typeof SHELLS;
+const BICHOS = {
+  escorpiao: { poses: SCORPION_POSES, shoot: (p: object, v: View) => shootScorpion(p, v, SHELLS.amber) },
+  negro: { poses: SCORPION_POSES, shoot: (p: object, v: View) => shootScorpion(p, v, SHELLS.black) },
+  abutre: { poses: VULTURE_POSES, shoot: (p: object, v: View) => shootVulture(p, v) },
+};
+const bicho = BICHOS[(process.argv[4] ?? "escorpiao") as keyof typeof BICHOS];
 
 function png(w: number, h: number, rgba: Uint8Array) {
   const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
@@ -27,18 +33,19 @@ function png(w: number, h: number, rgba: Uint8Array) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
 
-const S = SCORPION_SIZE;
+const S = SCULPT_SIZE;
 const rows: { name: string; frames: Frame[] }[] = [];
 const times: number[] = [];
-const take = (pose: Parameters<typeof shoot>[0], view: View) => {
+const take = (pose: object, view: View) => {
   const t0 = performance.now();
-  const f = shoot(pose, view, SHELLS[shellName]);
+  const f = bicho.shoot(pose, view);
   times.push(performance.now() - t0);
   return f;
 };
-for (const [clip, poses] of Object.entries(CLIP_POSES)) rows.push({ name: clip, frames: poses.map((p) => take(p, "side")) });
-rows.push({ name: "front", frames: [CLIP_POSES.idle[0], ...CLIP_POSES.walk].map((p) => take(p, "front")) });
-rows.push({ name: "back", frames: [CLIP_POSES.idle[0], ...CLIP_POSES.walk].map((p) => take(p, "back")) });
+const P = bicho.poses as Record<string, readonly object[]>;
+for (const [clip, poses] of Object.entries(P)) rows.push({ name: clip, frames: poses.map((p) => take(p, "side")) });
+rows.push({ name: "front", frames: [P.idle[0], ...P.walk].map((p) => take(p, "front")) });
+rows.push({ name: "back", frames: [P.idle[0], ...P.walk].map((p) => take(p, "back")) });
 
 const cols = Math.max(...rows.map((r) => r.frames.length));
 const W = cols * S * zoom, H = rows.length * S * zoom;
