@@ -2,6 +2,7 @@ import {
   MSG,
   SPELLS,
   SPELL_SLOT_LEVELS,
+  SPELL_SLOTS,
   spellChoices,
   heroBonuses,
   runeSpells,
@@ -19,7 +20,7 @@ import { ChoiceCards, type Anchor } from "./choicecards.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 import { stacksOf } from "./perkchoice.ts";
 
-const SLOTS: SpellSlot[] = [0, 1];
+const SLOTS: readonly SpellSlot[] = SPELL_SLOTS;
 
 /**
  * A magia como o herói a conjura: no nível ganho com o uso, com a Maestria no último (alcance e área podem mudar) e a
@@ -75,9 +76,10 @@ export class SpellBar {
     private aim: SpellAim,
     private anchor: Anchor,
   ) {
-    // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
+    // Os slots ficam em leque em cima do ⚔️ (posições no CSS, `#actions > [data-slot]`): o 1, mais usado, mais perto do
+    // polegar; o 3 (supremo) no lugar que estava reservado.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
-    actions.prepend(this.slots[1].button, this.slots[0].button);
+    actions.prepend(this.slots[2].button, this.slots[1].button, this.slots[0].button);
   }
 
   /**
@@ -89,6 +91,8 @@ export class SpellBar {
     if (!p || p.status !== "playing") return;
     if (p.level < SPELL_SLOT_LEVELS[slot]) return;
     const spell = rankedSpell(p, spellIn(p, slot));
+    // Sem nenhuma magia para escolher (slot 3 sem compra no Grimório): o botão só avisa, pelo rótulo.
+    if (!spell && spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).length === 0) return;
     if (!spell) return this.openChooser(slot);
     this.room.send(MSG.cast, { slot });
   }
@@ -209,8 +213,10 @@ export class SpellBar {
 
     // Magia de runa de outra classe pode custar menos (ver `spellManaCost`).
     const manaCost = spell ? spellManaCost(spell, p.classId, p.maxMana) : 0;
-    let state: "locked" | "empty" | "ready" | "cooldown" | "nomana";
+    let state: "locked" | "none" | "empty" | "ready" | "cooldown" | "nomana";
     if (p.level < unlockAt) state = "locked";
+    // Slot aberto sem nenhuma magia para escolher (o slot 3 só tem magias compradas no Grimório): não abre a escolha.
+    else if (!spell && spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).length === 0) state = "none";
     else if (!spell) state = "empty";
     else if (left > 0) state = "cooldown";
     else if (p.mana < manaCost) state = "nomana";
@@ -232,6 +238,10 @@ export class SpellBar {
       view.icon.textContent = "🔒";
       view.label.textContent = `Nv ${unlockAt}`;
       view.button.setAttribute("aria-label", `Slot de magia ${slot + 1}: abre no nível ${unlockAt}`);
+    } else if (state === "none") {
+      view.icon.textContent = "📖";
+      view.label.textContent = "Grimório";
+      view.button.setAttribute("aria-label", `Slot de magia ${slot + 1}: compre uma magia dele no Grimório`);
     } else if (!spell) {
       view.icon.textContent = "✨";
       view.label.textContent = "Escolher";
@@ -283,5 +293,5 @@ export class SpellBar {
 }
 
 function spellIn(p: PlayerView, slot: SpellSlot) {
-  return slot === 0 ? p.spell1 : p.spell2;
+  return slot === 0 ? p.spell1 : slot === 1 ? p.spell2 : p.spell3;
 }

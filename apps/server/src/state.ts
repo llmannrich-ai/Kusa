@@ -46,6 +46,8 @@ export class Player extends Schema {
   /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
   @type("string") spell1 = "";
   @type("string") spell2 = "";
+  /** Slot 3 (magias supremas, nível 12). */
+  @type("string") spell3 = "";
   /** Magias que o jogador pode escolher quando um slot libera: as iniciais e as compradas no Grimório. */
   @type(["string"]) knownSpells = new ArraySchema<string>();
   /** Nível de uso de cada magia conhecida (0 a 5). */

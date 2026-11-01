@@ -425,6 +425,18 @@ export class CombatFx {
       case "lightning_fan":
         this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.9 });
         return this.later(ms, () => this.sparks(to, 0xffffff, 5));
+      // Slot 3: a Fúria do Titã cai onde o cavaleiro pousou (ele já está lá); a Flecha Celeste sobe e cai como raio de
+      // luz depois do atraso; o Vórtice é um orbe lento pela reta; a Revoada é um leque (desenhado pela cena).
+      case "titan_fury":
+        this.ring(to, radius, 0xd35400, 500, 8);
+        return this.debris(to, radius, 0x6b4426);
+      case "sky_arrow":
+        this.projectile(FX.holyArrow, from, { x: from.x, y: from.y - TILE_SIZE * 4 }, 250, { trail: 0xffe9a3, glow: 0xf7d774, scale: 1.4 });
+        return this.later(ms, () => { this.beam(to, 0xfff3a0); this.ring(to, radius, 0xf7d774, 450, 6); this.holyFlash(to); });
+      case "arcane_vortex":
+        return this.projectile(FX.shadowOrb, from, to, Math.max(ms, 300), { trail: 0x7c4dff, glow: 0xb388ff, impact: 0xe1d5ff, scale: 1.8 });
+      case "butterfly_swarm":
+        return;
       case "thorn_spray": return this.projectile(FX.leaf, from, to, ms, { trail: 0x8bc34a, glow: 0x6b8e23, impact: 0x9cff7a, scale: 0.8 });
     }
   }

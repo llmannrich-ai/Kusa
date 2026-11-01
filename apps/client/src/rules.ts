@@ -48,7 +48,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const minutes = (s: number) => `${s / 60} min`;
-const [SLOT1, SLOT2] = SPELL_SLOT_LEVELS;
+const [SLOT1, SLOT2, SLOT3] = SPELL_SLOT_LEVELS;
 
 /** Uma seção que abre e fecha com um toque (a página é longa para uma tela de celular). */
 function section(title: string, open: boolean, ...content: (HTMLElement | string)[]) {
@@ -147,7 +147,7 @@ export function renderRules(root: HTMLElement) {
     section("⭐ Níveis, magias e melhorias", false, list([
       "Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo.",
       "A XP de um monstro é dividida em partes iguais por toda a equipe na dungeon (100 XP com 4 heróis dão 25 a cada um). O gold do monstro e do baú se divide do mesmo jeito.",
-      `No nível ${SLOT1} abre o 1º slot de magia e no nível ${SLOT2} o 2º: você escolhe uma magia, que fica até o fim da hunt.`,
+      `No nível ${SLOT1} abre o 1º slot de magia, no nível ${SLOT2} o 2º e no ${SLOT3} o 3º (magias supremas, que se compram no Grimório): você escolhe uma magia, que fica até o fim da hunt.`,
       "Nos outros níveis aparecem duas melhorias e você toca numa. Elas valem até o fim da hunt e somam com as áureas do Grimório.",
     ]),
     table(["Melhoria", "Cada escolha", "Máx."], PERK_IDS.map((id) => {
@@ -174,7 +174,7 @@ export function renderRules(root: HTMLElement) {
         `Morrer tira ${Math.round(DEATH_SPELL_XP_LOSS * 100)}% do XP de uso das magias, mas nunca abaixo do nível 1.`,
         "Sinergia: cada nível de uma magia vizinha (ligada por galho) dá força a esta. O Tomo 📕📗📘 fortalece o ramo todo.",
         `Só as magias ativas (✔, até ${ACTIVE_SPELLS_PER_SLOT} por slot) aparecem na escolha da hunt. Ative na ficha da magia.`,
-        `Magias novas viram opção quando o slot abre na hunt (nível ${SLOT1} e ${SLOT2}).`,
+        `Magias novas viram opção quando o slot abre na hunt (nível ${SLOT1}, ${SLOT2} e ${SLOT3}).`,
         "Ramos com ✦ terminam em duas especializações, e a escolha é permanente.",
         "Áureas (dano, vida, mana e velocidade) valem sempre, desde o nível 1 da hunt. Vão até o nível 20 (a de velocidade, até o 6); do 4º nível em diante, cada um vale menos.",
         "Dons ⬢ (um no topo de cada ramo): passivas compradas só com gold, sem XP, com 25 níveis. Valem em toda hunt e não caem na morte.",

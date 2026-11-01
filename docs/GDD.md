@@ -29,7 +29,7 @@ teclado e mouse no desktop são um extra.
     direita (slot 1, 2 e 3), sem encostar no joystick fixo (a tela é estreita: ao lado do ⚔️ não cabe).
   - **Deitado:** o mesmo ⚔️ afastado da beirada, com as magias em arco à esquerda e em cima dele (slot 1 à esquerda,
     slot 2 na diagonal, slot 3 em cima).
-  - **Slot 3:** ainda não existe; o lugar dele no leque já está reservado (`#actions > [data-slot="2"]` em `style.css`).
+  - **Slot 3** (magias supremas): abre no **nível 12**, no lugar que estava reservado em cima do ⚔️ (`#actions > [data-slot="2"]`; tecla 3 no desktop). Todas as magias do slot 3 se compram no Grimório; sem nenhuma, o botão mostra 📖 "Grimório" e não abre a escolha (é o caso do Xamã Orc por enquanto).
   - Cada botão se posiciona em volta do centro do ⚔️ (`--dx`, `--dy`); conferido em 360×780, 390×844, 412×915 e 915×412.
 - **Alvo:** o ataque básico vai no alvo travado ou, sem ele, no monstro mais próximo ao alcance (o anel vermelho mostra qual). Tocar num monstro (em qualquer parte da tela) trava o alvo nele; tocar nele de novo destrava. Se o alvo travado sair do alcance, o golpe vai no monstro mais próximo ao alcance (o alvo continua travado).
 - **Tiro que pode errar:** o básico à distância (Paladino, Feiticeiro, Druida) e as magias de alvo único com projétil são mirados numa **direção** e voam reto até o alcance inteiro (ver "Ataques e magias"). Arrastar o ⚔️ mira à mão.
@@ -57,7 +57,7 @@ Código em `apps/client/src/menu.ts`.
     recusa a hunt solo (`start_solo_run`). Na tela de resultado da hunt em que Vorgak cai, uma carta avisa:
     "⛓️ Os xamãs da forja estão livres — Xamã Orc liberado". Desenho completo em `docs/CLASSE_XAMA_ORC.md`.
 - **Magias da hunt** (subpágina de Heróis, `renderLoadout` em `menu.ts`, leitura em `apps/client/src/spellPlan.ts`): onde o jogador escolhe as até 3 magias ativas de cada slot sem abrir ficha por ficha na árvore.
-  - No alto, os **3 slots** lado a lado, cada um com o nível em que abre na hunt e 3 encaixes com as magias ativas; tocar abre a lista do slot. O **slot 3** aparece trancado, "em breve", até existir no jogo (`SPELL_SLOT_LEVELS`).
+  - No alto, os **3 slots** lado a lado, cada um com o nível em que abre na hunt e 3 encaixes com as magias ativas; tocar abre a lista do slot. O **slot 3** abre no nível 12 (`SPELL_SLOT_LEVELS`).
   - **O que você leva para a hunt:** 4 necessidades (dano em área, dano no alvo, controle, sobrevivência) com as magias ativas dos dois slots que atendem cada uma; a primeira que falta vira uma dica com a solução (ativar uma magia conhecida que está fora, ou aprender uma da árvore).
   - **Lista do slot:** as magias conhecidas da mais forte para a mais fraca (+10% por nível de uso vezes a sinergia e o Tomo), com nível, Maestria, papéis (área, alvo único, controle, defesa, cura, mobilidade, invocação, reforço, tirados dos efeitos), mana, recarga e força extra. A chave ao lado liga e desliga na hunt e grava na hora (`set_active_spells`); com 3 magias ou menos no slot, todas ficam ligadas e a chave trava. Tocar na magia abre a ficha da árvore.
   - **Sugestão:** começa pela mais forte e, a cada vaga, pesa a força contra o papel novo que a magia traz ao slot e a necessidade que o outro slot não cobre, para a escolha na hunt ter opções diferentes. Cada magia sugerida diz o motivo; "Aplicar" troca o slot inteiro e o "Desfazer" volta a escolha anterior.
@@ -292,6 +292,22 @@ Magias das costelas (números do nível 0). Todas combinam efeitos que o servido
 | Druida | Bosque | Mariposa Curandeira → Seiva Purificadora → Florada | 🫧 **Seiva Purificadora** (S1): cura 20% de um aliado e tira veneno, queimadura e lentidão · Maestria: escudo de 10% · 🌺 **Florada** (S2): cura 25% e escudo de 10% em raio 3 · Maestria: raio 4 |
 | Druida | Espinhos | Raízes Espinhosas → Chicote de Cipó | 🪢 **Chicote de Cipó** (S1): linha de 4 tiles, 1,3× e prende 1 s · Maestria: envenena |
 | Druida | Espinhos | Espinho Venenoso → Esporos → Explosão de Espinhos (+ Enxame de Vespas) | 🍄 **Esporos** (S2): raio 2, 0,6×, veneno e 30% de lentidão · Maestria: raio 3 · 🌵 **Explosão de Espinhos** (S2): raio 2 em volta de si, 1,6×, sangra e prende 1,5 s · Maestria: raio 3 |
+
+#### Slot 3: magias supremas (Grimório 4.0)
+
+O 3º slot abre no **nível 12** da hunt. Todas as magias dele se compram (nenhuma vem de graça); a mais barata é a
+**magia de entrada** de cada classe, ao lado da raiz do Grimório (aparece em todas as abas), por 1.000 de gold, pedindo
+só a raiz. Recarga longa (30 s), efeito que muda a luta. O XP de uso segue a regra dos outros slots, e o banco guarda o
+XP de até 3 magias por hunt (`record_spell_xp`). O nível 12 não dá melhoria (é nível de slot).
+
+| Classe | Magia de entrada | O que faz (nível 0) | Maestria |
+|---|---|---|---|
+| Cavaleiro | 🌋 **Fúria do Titã** | salta até 3 tiles no ponto mirado e cai: raio 2, 2,5× e atordoa 1 s | raio 3 |
+| Paladino | 🏹 **Flecha Celeste** | atira para o céu; 1 s depois cai no ponto mirado: raio 2, 3× e ofusca 1 s (`delayMs`) | raio 3 |
+| Feiticeiro | 🌀 **Vórtice Arcano** | orbe lento que atravessa a reta (6 tiles, em onda), 2,6× em tudo que pega | alcance 8 |
+| Druida | 🦋 **Revoada** | borboletas em leque de 120° e 4 tiles (onda): 1,2×, curam 15% dos aliados no caminho e 20% do dano volta como vida | cura 25% |
+
+Os Ápices (um por ramo) e as magias de slot 3 das especializações vêm nas próximas fases (`docs/GRIMORIO_4_PLANO.md`).
 
 #### Magias em leque (Grimório 4.0)
 

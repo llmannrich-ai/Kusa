@@ -7,7 +7,7 @@
  *   - na hunt, cada magia das costelas sai, colada num monstro, e, se tem dano, fere o monstro.
  * Uso: npx tsx scripts/costelas.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { CLASS_IDS, SPELL_LEVEL_XP, SPELLS, TALENTS, talentBlocker, talentTree, type ClassId } from "@kusa/shared";
+import { CLASS_IDS, SPELL_LEVEL_XP, SPELL_SLOT_LEVELS, SPELLS, TALENTS, talentBlocker, talentTree, type ClassId } from "@kusa/shared";
 import { HERO, arena } from "./arena.ts";
 
 rules();
@@ -44,8 +44,9 @@ function rules() {
 function castRibs(classId: ClassId) {
   for (const id of ribs(classId).map((t) => t.spellId!)) {
     const def = SPELLS[id];
-    // Monstros com 20× a vida: a magia anterior não mata o alvo e o dano aparece.
-    const a = arena({ classId, monsterHp: 20 });
+    // Monstros com 20× a vida: a magia anterior não mata o alvo e o dano aparece. O herói começa no nível em que o
+    // slot da magia abre (o slot 3, das magias supremas, só no 12).
+    const a = arena({ classId, monsterHp: 20, startLevel: Math.max(8, SPELL_SLOT_LEVELS[def.slot]) });
     a.hunt.chooseSpell(HERO, { slot: def.slot, spellId: id });
     a.place("lizardfolk", 1, 0);
     const casts = () => a.spells.filter((s) => s.from === HERO && s.spellId === id).length;

@@ -34,6 +34,7 @@ import {
   POTION_MAX,
   SPELLS,
   SPELL_SLOT_LEVELS,
+  SPELL_SLOTS,
   SUMMONS,
   Tile,
   attackCooldownMs,
@@ -214,7 +215,7 @@ interface Seat {
   /** true quando o jogador escolheu o alvo (toque no monstro); false quando a mira automática escolheu. */
   targetLocked: boolean;
   /** Momento (ms) em que cada slot de magia volta a poder ser usado. */
-  spellReadyAt: [number, number];
+  spellReadyAt: [number, number, number];
   /** Momento (ms) em que pode beber a próxima poção (recarga compartilhada). */
   potionReadyAt: number;
   /** Grito de Guerra: fração do dano evitada e até quando. */
@@ -617,7 +618,7 @@ export class Hunt {
     this.state.players.set(sessionId, player);
     this.seats.set(sessionId, {
       nextMoveAt: 0, heading: null, nextAttackAt: 0, portalSince: null, attacking: false, attackUntil: 0, basicAim: null, targetLocked: false,
-      spellReadyAt: [0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
+      spellReadyAt: [0, 0, 0], potionReadyAt: 0, guard: 0, guardUntil: 0, barrierUntil: 0, barrierPush: 0, armorBonus: 0, armorUntil: 0,
       traits: activeTraits(classId, talents).map((id) => TRAITS[id]), gifts, channel: null, buff: null, hasteUntil: 0, nextBasicStunMs: 0,
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
@@ -1420,11 +1421,11 @@ export class Hunt {
     const p = this.state.players.get(sessionId);
     if (!p || p.status !== "playing") return;
     const slot = msg?.slot;
-    if (slot !== 0 && slot !== 1) return;
+    if (!SPELL_SLOTS.includes(slot)) return;
     if (p.level < SPELL_SLOT_LEVELS[slot] || spellIn(p, slot)) return;
     const spell = spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).find((s) => s.id === msg.spellId);
     if (!spell) return;
-    if (slot === 0) p.spell1 = spell.id; else p.spell2 = spell.id;
+    setSpellIn(p, slot, spell.id);
     const seat = this.seats.get(sessionId);
     if (seat) {
       seat.stats.spellsChosen[slot + 1] = {
@@ -1439,7 +1440,7 @@ export class Hunt {
     const seat = this.seats.get(sessionId);
     if (!p || !seat || p.status !== "playing" || this.state.phase !== "running") return;
     const slot = msg?.slot;
-    if (slot !== 0 && slot !== 1) return;
+    if (!SPELL_SLOTS.includes(slot)) return;
     const base = SPELLS[spellIn(p, slot) as SpellId];
     if (!base) return;
     // O nível de uso, as sinergias e o Tomo do ramo deixam a magia mais forte.
@@ -1624,7 +1625,9 @@ export class Hunt {
       target = undefined;
     }
     const shot = path ? ++this.shotSeq : undefined;
-    const ms = flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty);
+    // Flecha Celeste: cai no ponto depois de um tempo fixo, em vez de voar até lá.
+    // Linha em onda (Vórtice Arcano): o desenho dura o caminho inteiro da onda.
+    const ms = spell.delayMs ?? (spell.wave && spell.shape === "line" ? spell.range * spell.wave.stepMs : flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty));
     this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms, shot } satisfies SpellMessage);
     // Disparo Certeiro: mais forte quanto mais longe estava o alvo (no tiro, onde o projétil acertou).
     const far = (x: number, y: number) => spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, x, y) : 1;
@@ -3995,7 +3998,13 @@ export class Hunt {
 }
 
 function spellIn(p: Player, slot: SpellSlot) {
-  return slot === 0 ? p.spell1 : p.spell2;
+  return slot === 0 ? p.spell1 : slot === 1 ? p.spell2 : p.spell3;
+}
+
+function setSpellIn(p: Player, slot: SpellSlot, id: string) {
+  if (slot === 0) p.spell1 = id;
+  else if (slot === 1) p.spell2 = id;
+  else p.spell3 = id;
 }
 
 function equipment(p: Player) {
