@@ -6,6 +6,10 @@ import {
   boneArcherCanvas, boneCenturionCanvas, boneJackalCanvas, boneLegionaryCanvas, buriedDeadCanvas, eternalPharaohCanvas, mournerCanvas,
   royalMummyCanvas, sandScribeCanvas, scarabSwarmCanvas, singingColossusCanvas, wrappedMummyCanvas,
 } from "./necropolisMonsters.ts";
+import {
+  corruptedDryadCanvas, direWolfCanvas, greenDragonCanvas, menhirGuardianCanvas, owlbearCanvas, renegadeCentaurCanvas, satyrCanvas,
+  shadowPantherCanvas, thornSpitterCanvas, twiglingCanvas,
+} from "./forestMonsters.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
@@ -96,6 +100,16 @@ export const OWN_MONSTER_DRAW: Record<string, () => HTMLCanvasElement> = {
   "monster-sand-scribe": sandScribeCanvas,
   "monster-singing-colossus": singingColossusCanvas,
   "monster-eternal-pharaoh": eternalPharaohCanvas,
+  "monster-twigling": twiglingCanvas,
+  "monster-dire-wolf": direWolfCanvas,
+  "monster-satyr": satyrCanvas,
+  "monster-thorn-spitter": thornSpitterCanvas,
+  "monster-shadow-panther": shadowPantherCanvas,
+  "monster-owlbear": owlbearCanvas,
+  "monster-corrupted-dryad": corruptedDryadCanvas,
+  "monster-renegade-centaur": renegadeCentaurCanvas,
+  "monster-menhir-guardian": menhirGuardianCanvas,
+  "monster-green-dragon": greenDragonCanvas,
 };
 
 export interface MonsterArt {
@@ -194,6 +208,17 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   sandScribe: { texture: "monster-sand-scribe", facesLeft: true, blood: "none", scale: 1.2 },
   singingColossus: { texture: "monster-singing-colossus", facesLeft: true, blood: "none" },
   eternalPharaoh: { texture: "monster-eternal-pharaoh", facesLeft: true, blood: "none", flies: true },
+  // Bosque Velho (arte própria, `forestMonsters.ts`). O Galhudo é pequeno; o Urso-coruja, o único comum maior que 1 tile.
+  twigling: { texture: "monster-twigling", facesLeft: true, blood: "none", scale: 0.8 },
+  direWolf: { texture: "monster-dire-wolf", facesLeft: true, blood: "red" },
+  satyr: { texture: "monster-satyr", facesLeft: true, blood: "red" },
+  thornSpitter: { texture: "monster-thorn-spitter", facesLeft: true, blood: "green" },
+  shadowPanther: { texture: "monster-shadow-panther", facesLeft: true, blood: "black" },
+  owlbear: { texture: "monster-owlbear", facesLeft: true, blood: "red", scale: 1.4 },
+  corruptedDryad: { texture: "monster-corrupted-dryad", facesLeft: true, blood: "green", scale: 1.25 },
+  renegadeCentaur: { texture: "monster-renegade-centaur", facesLeft: true, blood: "red", scale: 1.5 },
+  menhirGuardian: { texture: "monster-menhir-guardian", facesLeft: true, blood: "none", scale: 1.6 },
+  greenDragon: { texture: "monster-green-dragon", facesLeft: true, blood: "green" },
   // Pântano (arte própria animada, `marshMonsters.ts` e `ogreKing.ts`).
   orcScout: { texture: "monster-orc-scout", facesLeft: true, blood: "red", anim: marshAnim("orcScout") },
   orcGrunt: { texture: "monster-orc-grunt", facesLeft: true, blood: "red", anim: marshAnim("orcGrunt") },
@@ -315,7 +340,7 @@ if (protoCrypt) {
   }
 }
 
-// Monstros do Mar de Areia esculpidos por código (`proto/sculptArt.ts`): o Verme da Areia (chefe: Emboscada no especial,
+// Monstros do Mar de Areia e do Bosque Velho esculpidos por código (`proto/sculptArt.ts`): o Verme da Areia (chefe: Emboscada no especial,
 // Engolir na 2ª habilidade, Tremor no golpe), o Elemental (Redemoinho no especial, Rajada na 2ª), o Sacerdote e a
 // Múmia (as habilidades saem do especial), o Abutre Gigante e os escorpiões (o comum âmbar e o Negro Gigante, o mesmo
 // modelo com a casca negra e maior). No Negro, as Pinças saem do golpe e o Ferrão Letal do especial.
@@ -328,6 +353,17 @@ if (protoSculpt) {
     ["sandWorm", protoSculpt.wormArt(), 2.5, { burrow: "cast", swallow: "skill", quake: "attack" }],
     ["sandScorpion", protoSculpt.scorpionArt(), 1.2, "cast"],
     ["blackScorpion", protoSculpt.scorpionArt(protoSculpt.SHELLS.black), 1.6, { pincers: "attack", deathSting: "cast" }],
+    // Bosque Velho: o golpe e o especial de cada um; a 2ª habilidade desenhada é o Coice do centauro e o Voo do dragão.
+    ["direWolf", protoSculpt.beastArt("wolf"), 1.5, { trip: "cast" }],
+    ["shadowPanther", protoSculpt.beastArt("panther"), 1.45, { pounce: "cast" }],
+    ["renegadeCentaur", protoSculpt.beastArt("centaur"), 1.85, { arrowRain: "cast", kick: "skill" }],
+    ["satyr", protoSculpt.folkArt("satyr"), 1.3, { enchantingTune: "cast" }],
+    ["twigling", protoSculpt.folkArt("twigling"), 1, "cast"],
+    ["thornSpitter", protoSculpt.folkArt("thorn"), 1.4, { thornBurst: "cast", thornVolley: "attack" }],
+    ["owlbear", protoSculpt.folkArt("owlbear"), 1.65, { crushingHug: "cast" }],
+    ["corruptedDryad", protoSculpt.folkArt("dryad"), 1.5, "cast"],
+    ["menhirGuardian", protoSculpt.folkArt("menhir"), 1.75, { runeStomp: "cast", stoneFist: "attack" }],
+    ["greenDragon", protoSculpt.greenDragonArt(), 2.3, { poisonBreath: "cast", menhirGas: "cast", flight: "skill", tailSweep: "attack" }],
   ];
   for (const [kind, art, size, strike] of sculpted) {
     BESTIARY_ART[kind] = {
