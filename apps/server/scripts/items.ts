@@ -38,6 +38,8 @@ console.log("regras da bag: ok");
 const expectClasses: Record<string, ClassId[]> = {
   "weapon-sword": ["knight"], "weapon-axe": ["knight"], "weapon-bow": ["paladin"], "weapon-crossbow": ["paladin"],
   "weapon-wand": ["sorcerer", "druid"], "weapon-staff": ["sorcerer", "druid"],
+  // O paladino (arco e besta, as duas mãos) não usa escudo.
+  "shield-shield": ["knight", "sorcerer", "druid"],
 };
 for (const [family, classes] of Object.entries(expectClasses)) {
   const id = `${family}-3-common`;
