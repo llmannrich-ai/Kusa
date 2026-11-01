@@ -1213,7 +1213,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   | Elmo, armadura e perneiras de guerra | Cavaleiro e Paladino | armadura |
   | Chapéu, manto e calças arcanos | Feiticeiro e Druida | menos armadura, + dano nas magias (chapéu) e + mana (manto e calças) |
   | Botas | Todas | armadura e velocidade |
-  | Escudo | Todas | armadura |
+  | Escudo | Todas menos o paladino (arco e besta pedem as duas mãos) | armadura |
 
 - **Só varinhas, cajados e alguns itens mágicos aumentam as magias** (e os campos no chão). As criaturas invocadas
   levam só **metade** desse bônus (`SUMMON_SPELL_POWER_SHARE`): elas batem o tempo todo, e com o bônus inteiro uma
