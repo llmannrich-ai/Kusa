@@ -587,6 +587,37 @@ Ciclo cura na hora em volta do druida (raio 1), sem a semente no básico, que é
 Ossuário levanta esqueletos que contam como criaturas do Buraco Negro (força pelo nível dele). Telemetria nova:
 `stats.giftProcs`. Os marcos continuam para a fase 4.
 
+**Fase 4a-1, como foi entregue:** a fase 4 saiu em partes: 4a-1 (reações e estado congelado), 4a-2 (marcos dos Dons que
+já existem) e 4b (básico transformado e os 24 Dons da costela de passivas). Entraram as 8 reações da seção 6.2 em
+`packages/shared/src/reactions.ts`, conferidas em `Hunt.damageMonster` a cada golpe direto (o pulso do dano contínuo e a
+explosão de outra reação não reagem: sem cadeia), e dois estados novos no monstro: **congelado** (preso por magia de
+gelo, desenhado como bloco de gelo) e **ofuscado** (atordoado por magia de luz, sem desenho próprio). A magia que prende
+e fere passa os estados de antes dela, para não reagir consigo mesma. Diferenças: Espinheiro sangra na hora (3 pulsos
+do veneno) em vez de 3 s, porque o monstro só guarda um dano contínuo e o sangramento apagaria o veneno; a Brasa Tóxica
+queima os vizinhos (0,25× do golpe por segundo, 2 s) em vez de uma nuvem no chão; Hemorragia dispara em todo empurrão
+e atordoamento de herói ou criatura. As explosões usam o golpe que disparou como base (0,8× ou 1×), não o dano do
+herói: assim vale igual para magia, básico, criatura e campo. Telemetria: `stats.reactions`. Regras em Configurações ›
+Regras › Reações.
+
+**Fase 4a-2 (Cavaleiro), como foi entregue:** os marcos saem por classe, um PR por classe. Os 30 do Cavaleiro seguem a
+tabela da seção 7.5, com estas diferenças: Voz de Comando, marco 2, "provocar dura +1 s" virou "magias de área que
+provocam alcançam +1 tile" (a provocação não tem duração no motor: o monstro segue quem provocou até outro provocar);
+o 4º golpe do Fio Temperado conta golpes corpo a corpo dados, acertando ou não o mesmo alvo; o leque do Fio Temperado tem
+1 tile de alcance (o corte em volta do alvo); os escudos +10% do Couro Curtido valem como absorção (cada ponto de escudo
+segura 1,1), para valer em todo escudo do jogo sem mexer em cada magia. Os Dons do Xamã Orc (iguais aos do Cavaleiro no
+efeito) ainda não têm marcos.
+
+**Fase 4a-2 (Paladino), como foi entregue:** os 30 marcos seguem a tabela, com estas diferenças: Olhar Paciente usa
+alcance inteiro (+1 tile no marco 1, em vez de +0,5 nos marcos 1 e 3) e o marco 3 encurta a recarga do atordoar (10 s →
+6 s); a explosão da Mão Rápida dá 0,5× do básico (o plano não dava o número) e o chão em chamas queima 0,2× por segundo;
+o tiro calmo do Passo de Rastreador sai uma vez a cada 3 s sem apanhar; "rolar devolve 10% da recarga do slot 1" tira
+10% da recarga inteira da magia do slot 1 (o Rolamento, quando ele está lá).
+
+**Fase 4a-2 (Feiticeiro), como foi entregue:** os 30 marcos seguem a tabela, com estas diferenças: "Estática/Combustão
++5%" soma 5 pontos na chance da Estática e 5% no dano da Combustão; a marca dos esqueletos do Ossuário é de +10% por
+3 s (o plano não dava o número) e a explosão ao sumir conta como a reação Condenação (1× do dano do esqueleto, raio 1);
+"a próxima dura +30%" do Circuito vale para raiz, atordoar, lentidão, dano contínuo, marca e campo da magia carregada.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
