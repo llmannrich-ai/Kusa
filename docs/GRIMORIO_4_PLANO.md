@@ -20,7 +20,7 @@ continuam valendo. Quando uma fase for entregue, o `GDD.md` passa a descrever o 
 | Nós por classe | 40–44 | **~70** (+27 por classe) |
 | Magias por classe | 27–31 (115 no jogo) | **43–47** (+16 por classe, 179 no jogo) |
 | Magias em leque | 3, desenhadas como tiles acesos | **30** (+27), com 5 formas de leque e o desenho de sopro |
-| Slot 3 | botão reservado | abre no **nível 12**: 1 magia inicial + 3 Ápices + 6 de especialização por classe |
+| Slot 3 | botão reservado | abre no **nível 12**: 1 magia de entrada + 3 Ápices + 6 de especialização por classe, **todas compradas** |
 | Passivas sem slot | Áureas (2–3 níveis), Tomos (3), Traços (1) | + **12 Dons por classe (48), 25 níveis cada**; Áureas e Tomos vão a **20 níveis** |
 | Mecânicas novas | — | **Reações** (estados que se combinam), **gatilhos** e **ataque básico transformado** |
 | Ouro que cabe no Grimório de uma classe | ~30 mil, quase tudo de compra única | **~250 mil**, a maior parte em níveis de passiva |
@@ -43,12 +43,19 @@ slot** continua vindo só do uso (XP, `spellxp.ts`). Gastar ouro nunca substitui
 | 7 | Dons (passivas novas) | **12 por classe** (4 por ramo), **25 níveis**, um marco a cada 5 |
 | 8 | Criatividade | **combos de estados**, **gatilhos de momento** e **ataque básico/forma transformados** (magias que usam o terreno ficam de fora) |
 | 9 | Direção geral (comentário) | o eixo é ramificação e profundidade, com mais passivas e mais níveis nelas, e magias mais criativas |
+| 10 | Teto de força das passivas de ouro | **até ~3× ou mais** a força de uma conta nova da mesma classe (progressão estilo Tibia) |
+| 11 | Mapas iniciais triviais para o veterano | **aceito**: o desafio dele são os mapas ★ altos e os mapas longos que vêm aí; nada muda nos mapas |
+| 12 | Reações | **para todos, fracas na base**, inclusive golpes de aliados; Dons e magias de combo deixam forte |
+| 13 | Canalizar no celular | **segurar o botão e arrastar** gira o sopro, soltar encerra; toque rápido solta o sopro inteiro para a frente |
+| 14 | Como as fases chegam | **por sistema, nas 4 classes juntas** |
+| 15 | Magia de slot 3 grátis | **não**: todas as magias do slot 3 se compram; o slot fica vazio até a primeira compra |
+| 16 | Ordem das 3 primeiras fases | **passivas → leque → slot 3** |
+| 17 | Áurea de velocidade | **para no nível 6** (+12%) |
 
-Padrões assumidos sem pergunta (podem mudar na seção 14):
+Padrões assumidos sem pergunta:
 - Dons são **por classe** e comprados **só com ouro** (não pedem XP).
-- Cada classe ganha **1 magia de slot 3 inicial, grátis**, como as iniciais dos slots 1 e 2, para o slot nunca abrir vazio.
 - As magias em leque ficam **cedo** na árvore (linhas III–V), para o jogador novo vê-las.
-- Toque rápido numa magia em leque sai **na frente do herói** (regra do #218); arrastar gira o leque.
+- Toque rápido numa magia em leque sai **na frente do herói** (regra do #218).
 
 ---
 
@@ -75,7 +82,7 @@ baratas no começo (nível 1 de um Dom custa 60) servem de progressão visível 
 
 ```
  linha
-   0          [raiz S1]   ★ magia inicial do slot 3 (grátis)
+   0          [raiz S1]   ★ magia de entrada do slot 3 (1.000)
    I     ◇ Dom do ramo ── tronco ── (Áurea)
    II                     tronco ── 📕 Tomo
    III   ● leque ──┐      tronco      costela de hoje
@@ -98,7 +105,7 @@ baratas no começo (nível 1 de um Dom custa 60) servem de progressão visível 
 | ★ **S3 de cada lado** | IX | lane ±1 | a S2 do lado, nível 1 | 2.500 |
 | ◇ **Dom do fundo** | X | lane ±2 | o Ápice (comprado) | curva dos Dons |
 
-- **Por ramo:** +9 nós (2 magias de costela, 1 Ápice, 2 S3 de lado, 4 Dons). **Por classe:** +27 nós e a inicial do S3.
+- **Por ramo:** +9 nós (2 magias de costela, 1 Ápice, 2 S3 de lado, 4 Dons). **Por classe:** +27 nós e a magia de entrada do S3.
 - **Os Dons só pedem compra, nunca XP:** o ouro sempre tem para onde ir, desde a primeira hunt.
 - **O Ápice fica fora da especialização:** quem ainda não escolheu o lado já tem magia de slot 3 para comprar.
 - **Layout:** hoje as costelas usam as linhas II–V e as especializações usam lane ±1 nas linhas V–VIII; as lanes ±2
@@ -117,13 +124,15 @@ baratas no começo (nível 1 de um Dom custa 60) servem de progressão visível 
   em cima do ⚔️ (`--dx: 0; --dy: 86px`). A posição já foi conferida em 360×780, 390×844, 412×915 e 915×412.
 - Magias do slot 3: recarga de 25–45 s, mana alta, efeito que **muda a luta** (não só "mais dano").
 - Até 3 ativas por slot (`ACTIVE_SPELLS_PER_SLOT`), como os outros slots.
-- **Magia inicial grátis por classe** (linha 0, ao lado da raiz), para o slot nunca abrir vazio.
+- **Todas as magias do slot 3 se compram** (decisão do Leonardo). A mais barata é a **magia de entrada** da classe
+  (linha 0, ao lado da raiz, 1.000 de ouro, pede só a raiz). Até a primeira compra, o botão do slot 3 aparece apagado
+  com "Compre uma magia suprema no Grimório" ao chegar no 12.
 
 ### 5.2 O que muda no código para abrir
 
 | Onde | Mudança |
 |---|---|
-| `packages/shared/src/spells.ts` | `SpellSlot = 0 \| 1 \| 2`; `SPELL_SLOT_LEVELS` com o 12; `STARTER_SPELLS` com as 4 iniciais do S3 |
+| `packages/shared/src/spells.ts` | `SpellSlot = 0 \| 1 \| 2`; `SPELL_SLOT_LEVELS` com o 12; as 4 magias de entrada do S3 (compradas, não iniciais) |
 | `packages/shared/src/talents.ts` | `activeSlotSpells` para o slot 2; nós novos |
 | `apps/server/src/state.ts` | `Player.spell3` |
 | `apps/server/src/hunt.ts` | `spellIn`, escolha, lançamento, XP e telemetria do slot 2; aviso "Nova magia!" no 12 |
@@ -231,12 +240,20 @@ Ficaram de fora por decisão: magias que usam o terreno e o Tornado (campo que a
 
 ### 7.2 Teto de poder
 
-- Um Dom no nível 25 vale perto de um Traço (**~+12–15% num eixo**), com efeito **condicional** (em monstro sangrando,
-  depois de rolar, abaixo de 30% da vida...), não dano cru.
+Decisão do Leonardo: o veterano pode chegar a **~3× ou mais** a força de uma conta nova da mesma classe (progressão
+estilo Tibia). Os mapas iniciais ficam fáceis para ele, e isso é aceito: o desafio do veterano são os mapas ★ altos e os
+mapas longos que vêm aí.
+
+- Um Dom no nível 25 vale **~+25–30% num eixo** (o dobro de um Traço); as Áureas e os Tomos no 20 somam o resto.
+- O efeito por nível continua **condicional** (em monstro sangrando, depois de rolar, abaixo de 30% da vida...): o
+  veterano fica muito mais forte jogando com a build dele, não só com mais números.
 - Os 12 Dons de uma classe mexem em eixos diferentes; nenhum soma dano bruto em todas as magias.
-- Marcos 20 e 25 são de conforto ou de efeito extra, não de multiplicador.
-- Os mapas de ★ alto (Fortaleza ★8) são o lugar natural do veterano; conferir com `/balanceamento` quando houver 50
-  hunts com algum Dom acima do nível 10.
+- Conta aproximada no máximo: Áurea de dano +29%, Tomo +35% nas magias do ramo, vida +44%, mana +58%, e os Dons
+  multiplicam isso nas situações deles. Com o nível de uso das magias (+50%) e as sinergias, dá ~3× num combate em que a
+  build encaixa.
+- Exceção: a **velocidade** tem teto (Áurea até o 6, Passo de Rastreador até +10%), porque velocidade alta deixa o
+  herói fugir de tudo.
+- Conferir com `/balanceamento` quando houver 50 hunts com algum Dom acima do nível 10.
 
 ### 7.3 Preço
 
@@ -256,107 +273,107 @@ níveis numa transação, mesmas regras do `buy_talent`) para o botão +5.
 
 ### 7.4 Áureas e Tomos até o nível 20
 
-Os níveis de hoje não mudam (ninguém perde nada); do 4 em diante o ganho por nível é menor.
+Os níveis de hoje não mudam (ninguém perde nada); do 4 em diante cada nível dá um ganho menor, mas são 17 níveis.
 
 | Passiva | Níveis 1–3 (hoje) | Níveis 4–20 | No nível 20 | Preço novo |
 |---|---|---|---|---|
-| Áurea de dano | +4%/nível | +0,5%/nível | +20,5% | base 120, ×1,15 (~12 mil no total) |
-| Áurea de vida | +6%/nível | +0,75%/nível | +30,8% | base 120, ×1,15 (~12 mil) |
-| Áurea de mana | +8%/nível | +1%/nível | +41% | base 150, ×1,15 (~15 mil) |
+| Áurea de dano | +4%/nível | +1%/nível | +29% | base 120, ×1,15 (~12 mil no total) |
+| Áurea de vida | +6%/nível | +1,5%/nível | +43,5% | base 120, ×1,15 (~12 mil) |
+| Áurea de mana | +8%/nível | +2%/nível | +58% | base 150, ×1,15 (~15 mil) |
 | Áurea de velocidade | +4%/nível (2 níveis) | +1%/nível, **só até o 6** | +12% | base 300, ×1,3 (~3,8 mil) |
-| Tomo (por ramo) | +5%/nível | +0,6%/nível | +25,2% | base 300, ×1,12 (~21,6 mil) |
+| Tomo (por ramo) | +5%/nível | +1,2%/nível | +35,4% | base 300, ×1,12 (~21,6 mil) |
 
-- A velocidade para no nível 6: velocidade alta muda a sensação do jogo e a do monstro (fugir de tudo).
+- A velocidade para no nível 6 (decisão do Leonardo): velocidade alta muda a sensação do jogo e a do monstro (fugir de tudo).
 - O crescimento do preço cai de ×1,8 para ×1,15/×1,12. Os níveis 2 e 3 ficam **mais baratos** do que hoje para quem
   ainda não comprou. É o efeito colateral aceitável de usar a fórmula que já existe.
-- O teto de força extra das magias (sinergia + Tomo) sobe de +45% para ~+55%: conferir em `spellsChosen.bonus`.
+- O teto de força extra das magias (sinergia + Tomo) sobe de +45% para ~+65%: conferir em `spellsChosen.bonus`.
 
 ### 7.5 Catálogo dos Dons
 
 Formato: **efeito por nível** · marcos **5 / 10 / 15 / 20 / 25**. Posição: **T** = topo do ramo (linha I), **P1/P2** =
-costela de passivas (VI–VII), **F** = fundo (X). Números de partida para o balanceamento.
+costela de passivas (VI–VII), **F** = fundo (X). Números de partida para o balanceamento, já no teto de ~3× (7.2).
 
 #### Cavaleiro
 
 | Ramo | Pos. | Dom | Tema | Por nível | Marcos |
 |---|---|---|---|---|---|
-| Lâmina | T | 🗡️ **Fio Temperado** | B | +0,6% de dano do básico | o 4º golpe seguido sangra 3 s · o 4º golpe vira corte em leque de 60° · a cada 3º golpe · o leque sangra · o leque abre a 90° |
-| Lâmina | P1 | 🩸 **Sangue no Aço** | C | +1,5% de dano da Hemorragia | Hemorragia cura 2% · empurrar faz sangrar 2 s · Hemorragia pega também quem está colado · +1 s de sangramento em tudo · Hemorragia devolve 1 s de recarga do slot 1 |
-| Lâmina | P2 | 💢 **Fúria Crescente** | G | matar dá +0,1% de dano por acúmulo (até 10, por 6 s) | até 12 acúmulos · com o máximo, básico 15% mais rápido · acúmulos duram 8 s · até 15 · com o máximo, a próxima magia do slot 1 não gasta mana |
-| Lâmina | F | ⚔️ **Último Duelo** | G | abaixo de 30% da vida: +0,8% de dano | e 10% de roubo de vida · abaixo de 35% · e 15% mais rápido · roubo 15% · abaixo de 30%, a recarga do slot 3 corre 2× |
-| Bastião | T | 🛡️ **Couro Curtido** | — | +0,4 de armadura | escudos +10% · imune a lentidão · +5% de vida · escudos +10% · ao quebrar um escudo, 2 s com 30% menos dano |
-| Bastião | P1 | 🧱 **Bigorna** | C | monstro empurrado contra parede ou monstro fica atordoado +0,04 s (até 1 s) | e leva 0,5× · empurra também o de trás · +1 tile em todos os empurrões · o impacto conta como atordoar para a Hemorragia · o impacto deixa 30% lento por 3 s |
-| Bastião | P2 | 🔔 **Repique** | G | golpe recebido com escudo ativo devolve +1% do absorvido em raio 1 | raio 2 · o repique provoca · devolve também em mana (1%) · raio 3 · o repique atordoa 0,3 s |
-| Bastião | F | 🏯 **Pedra Fundamental** | G | parado há 1 s: +0,6% de corte de dano | parado regenera 1% da vida por s · parado provoca os colados a cada 3 s · +5 de armadura parado · parado há 0,5 s · parado, o básico corta todos os colados |
-| Comando | T | 🎖️ **Voz de Comando** | — | +0,5% de dano para você e aliados a até 4 tiles (bots e criaturas incluídos) | alcance 5 · provocar dura +1 s · aliados +5% de velocidade · alcance 6 · aliado abaixo de 20% ganha escudo de 15% (1 vez a cada 60 s) |
-| Comando | P1 | 📢 **Eco de Guerra** | G | ao provocar, escudo de 0,2% da vida por monstro provocado (até 8) | dura 6 s · provocados andam 15% mais devagar · até 10 monstros · provocar cura 1% por monstro · o eco se repete 2 s depois com 50% |
-| Comando | P2 | 🎯 **Ordem de Execução** | C | +1,2% de dano na reação **Exposto** | Exposto dura +1 s · marcar atordoa 0,3 s · Exposto também em quem está colado · +1 s · matar um Exposto marca o mais perto |
-| Comando | F | 👑 **Estandarte Vivo** | G | aura (A3) de raio 3: aliados com +0,3% de velocidade de ataque | raio 4 · +3 de armadura na aura · aliado que mata na aura cura 2% · raio 5 · a aura dá 10% de corte de dano por 3 s depois do slot 3 |
+| Lâmina | T | 🗡️ **Fio Temperado** | B | +1,2% de dano do básico | o 4º golpe seguido sangra 3 s · o 4º golpe vira corte em leque de 60° · a cada 3º golpe · o leque sangra · o leque abre a 90° |
+| Lâmina | P1 | 🩸 **Sangue no Aço** | C | +3% de dano da Hemorragia | Hemorragia cura 2% · empurrar faz sangrar 2 s · Hemorragia pega também quem está colado · +1 s de sangramento em tudo · Hemorragia devolve 1 s de recarga do slot 1 |
+| Lâmina | P2 | 💢 **Fúria Crescente** | G | matar dá +0,2% de dano por acúmulo (até 10, por 6 s) | até 12 acúmulos · com o máximo, básico 15% mais rápido · acúmulos duram 8 s · até 15 · com o máximo, a próxima magia do slot 1 não gasta mana |
+| Lâmina | F | ⚔️ **Último Duelo** | G | abaixo de 30% da vida: +1,6% de dano | e 10% de roubo de vida · abaixo de 35% · e 15% mais rápido · roubo 15% · abaixo de 30%, a recarga do slot 3 corre 2× |
+| Bastião | T | 🛡️ **Couro Curtido** | — | +0,8 de armadura | escudos +10% · imune a lentidão · +5% de vida · escudos +10% · ao quebrar um escudo, 2 s com 30% menos dano |
+| Bastião | P1 | 🧱 **Bigorna** | C | monstro empurrado contra parede ou monstro fica atordoado +0,08 s (até 2 s) | e leva 0,5× · empurra também o de trás · +1 tile em todos os empurrões · o impacto conta como atordoar para a Hemorragia · o impacto deixa 30% lento por 3 s |
+| Bastião | P2 | 🔔 **Repique** | G | golpe recebido com escudo ativo devolve +2% do absorvido em raio 1 | raio 2 · o repique provoca · devolve também em mana (1%) · raio 3 · o repique atordoa 0,3 s |
+| Bastião | F | 🏯 **Pedra Fundamental** | G | parado há 1 s: +1,2% de corte de dano | parado regenera 1% da vida por s · parado provoca os colados a cada 3 s · +5 de armadura parado · parado há 0,5 s · parado, o básico corta todos os colados |
+| Comando | T | 🎖️ **Voz de Comando** | — | +1% de dano para você e aliados a até 4 tiles (bots e criaturas incluídos) | alcance 5 · provocar dura +1 s · aliados +5% de velocidade · alcance 6 · aliado abaixo de 20% ganha escudo de 15% (1 vez a cada 60 s) |
+| Comando | P1 | 📢 **Eco de Guerra** | G | ao provocar, escudo de 0,4% da vida por monstro provocado (até 8) | dura 6 s · provocados andam 15% mais devagar · até 10 monstros · provocar cura 1% por monstro · o eco se repete 2 s depois com 50% |
+| Comando | P2 | 🎯 **Ordem de Execução** | C | +2,4% de dano na reação **Exposto** | Exposto dura +1 s · marcar atordoa 0,3 s · Exposto também em quem está colado · +1 s · matar um Exposto marca o mais perto |
+| Comando | F | 👑 **Estandarte Vivo** | G | aura (A3) de raio 3: aliados com +0,6% de velocidade de ataque | raio 4 · +3 de armadura na aura · aliado que mata na aura cura 2% · raio 5 · a aura dá 10% de corte de dano por 3 s depois do slot 3 |
 
 #### Paladino
 
 | Ramo | Pos. | Dom | Tema | Por nível | Marcos |
 |---|---|---|---|---|---|
-| Mira | T | 🦅 **Olhar Paciente** | — | +0,6% de dano a 4 tiles ou mais | +0,5 tile no básico · tiro no alcance máximo atordoa 0,3 s (a cada 10 s) · +0,5 tile · 5% de chance de flecha dupla · 10% |
-| Mira | P1 | 🪶 **Aljava Larga** | B | o 5º básico seguido solta um leque de 3 flechas com 30% +1%/nível | a cada 4º · 4 flechas · a cada 3º · 5 flechas · as flechas do leque atravessam 1 monstro |
-| Mira | P2 | 🎯 **Ponto Fraco** | C | +1,2% de dano na reação **Exposto** e em monstro marcado e sangrando | marcar faz sangrar 2 s · Exposto +1 s · sangramento em marcado +20% · +1 s · matar um marcado marca o mais perto |
-| Mira | F | 🌬️ **Fôlego do Caçador** | G | depois de rolar ou saltar, o próximo tiro dá +2% | e atravessa · rolar devolve 10% da recarga do slot 1 · os 2 próximos tiros · e atordoa 0,3 s · rolar dá escudo de 5% |
-| Luz | T | ✝️ **Fé Ardente** | — | +0,8% de dano em mortos-vivos | queimar +1 s · ofuscar +0,2 s · morto-vivo morto cura 1% · +0,2 s · a luz atravessa o 1º monstro |
-| Luz | P1 | 🔆 **Aurora** | C | +1,5% de dano do **Incandescer** | Incandescer em raio 2 · ofuscado que queima fica ofuscado +0,3 s · +1 s de queimadura · Incandescer cura 1% dos aliados perto · Incandescer ofusca quem pega |
-| Luz | P2 | 🕯️ **Vela Votiva** | G | monstro morto por luz deixa uma vela por 3 s que fere em raio 1 (0,1×/s +1%/nível) | 4 s · a vela ofusca quem passa · 2 velas por morte em mortos-vivos · 5 s · a vela dá +3 de armadura aos aliados perto |
-| Luz | F | ⛪ **Graça** | G | a cada 10 magias, a próxima não gasta mana e sai +1% mais forte | a cada 9 · e cura 5% · a cada 8 · e ofusca em raio 2 · a cada 7 |
-| Batedor | T | 🧭 **Passo de Rastreador** | — | +0,4% de velocidade de movimento (até +10%) | armadilhas +10% de duração · +1 armadilha ao mesmo tempo · 3 s sem levar dano: +10% no próximo tiro · +10% · +1 armadilha |
-| Batedor | P1 | 🪤 **Estrepes Afiados** | — | +0,6% de dano dos campos no chão | +5% de lentidão nos campos · campos +1 s · os campos fazem sangrar · +1 s · monstro que morre num campo deixa estrepes no tile |
-| Batedor | P2 | 🧨 **Pavio Curto** | C | armadilha que dispara em monstro queimando explode em raio 1 (1× +2%/nível) | raio 2 · a explosão queima · armadilha queima quem prende · a explosão empurra 1 tile · a explosão dispara a armadilha mais perto |
-| Batedor | F | 🎇 **Mão Rápida** | B | 0,4% de chance por nível de o básico sair incendiário (queima 3 s) | a flecha incendiária explode em raio 1 · +2% de chance · a explosão deixa chão em chamas 2 s · +2% · a cada 6º básico, sai sempre |
+| Mira | T | 🦅 **Olhar Paciente** | — | +1,2% de dano a 4 tiles ou mais | +0,5 tile no básico · tiro no alcance máximo atordoa 0,3 s (a cada 10 s) · +0,5 tile · 5% de chance de flecha dupla · 10% |
+| Mira | P1 | 🪶 **Aljava Larga** | B | o 5º básico seguido solta um leque de 3 flechas com 30% +2%/nível | a cada 4º · 4 flechas · a cada 3º · 5 flechas · as flechas do leque atravessam 1 monstro |
+| Mira | P2 | 🎯 **Ponto Fraco** | C | +2,4% de dano na reação **Exposto** e em monstro marcado e sangrando | marcar faz sangrar 2 s · Exposto +1 s · sangramento em marcado +20% · +1 s · matar um marcado marca o mais perto |
+| Mira | F | 🌬️ **Fôlego do Caçador** | G | depois de rolar ou saltar, o próximo tiro dá +4% | e atravessa · rolar devolve 10% da recarga do slot 1 · os 2 próximos tiros · e atordoa 0,3 s · rolar dá escudo de 5% |
+| Luz | T | ✝️ **Fé Ardente** | — | +1,6% de dano em mortos-vivos | queimar +1 s · ofuscar +0,2 s · morto-vivo morto cura 1% · +0,2 s · a luz atravessa o 1º monstro |
+| Luz | P1 | 🔆 **Aurora** | C | +3% de dano do **Incandescer** | Incandescer em raio 2 · ofuscado que queima fica ofuscado +0,3 s · +1 s de queimadura · Incandescer cura 1% dos aliados perto · Incandescer ofusca quem pega |
+| Luz | P2 | 🕯️ **Vela Votiva** | G | monstro morto por luz deixa uma vela por 3 s que fere em raio 1 (0,1×/s +2%/nível) | 4 s · a vela ofusca quem passa · 2 velas por morte em mortos-vivos · 5 s · a vela dá +3 de armadura aos aliados perto |
+| Luz | F | ⛪ **Graça** | G | a cada 10 magias, a próxima não gasta mana e sai +2% mais forte | a cada 9 · e cura 5% · a cada 8 · e ofusca em raio 2 · a cada 7 |
+| Batedor | T | 🧭 **Passo de Rastreador** | — | +0,4% de velocidade de movimento (até +10%; a velocidade tem teto, ver 7.4) | armadilhas +10% de duração · +1 armadilha ao mesmo tempo · 3 s sem levar dano: +10% no próximo tiro · +10% · +1 armadilha |
+| Batedor | P1 | 🪤 **Estrepes Afiados** | — | +1,2% de dano dos campos no chão | +5% de lentidão nos campos · campos +1 s · os campos fazem sangrar · +1 s · monstro que morre num campo deixa estrepes no tile |
+| Batedor | P2 | 🧨 **Pavio Curto** | C | armadilha que dispara em monstro queimando explode em raio 1 (1× +4%/nível) | raio 2 · a explosão queima · armadilha queima quem prende · a explosão empurra 1 tile · a explosão dispara a armadilha mais perto |
+| Batedor | F | 🎇 **Mão Rápida** | B | 0,8% de chance por nível de o básico sair incendiário (queima 3 s) | a flecha incendiária explode em raio 1 · +2% de chance · a explosão deixa chão em chamas 2 s · +2% · a cada 6º básico, sai sempre |
 
 #### Feiticeiro
 
 | Ramo | Pos. | Dom | Tema | Por nível | Marcos |
 |---|---|---|---|---|---|
-| Raio | T | ⚡ **Condutor** | — | +0,6% de dano de energia e fogo | cadeias +1 salto · queimar +1 s · Estática/Combustão (se tiver) +5% · +1 salto · o 1º salto não perde dano |
-| Raio | P1 | 🔥 **Garganta de Brasa** | B | +0,8% de dano dos sopros (canalizar e onda) | sopros +10° · deixam chão em chamas por 1 s · +0,5 s de canalização · +10° · a última onda do sopro explode em raio 1 |
-| Raio | P2 | 💨 **Panela de Pressão** | C | +1,5% de dano do **Vapor** | Vapor em raio 2 · Vapor ofusca 1 s · Vapor deixa névoa por 2 s (30% de lentidão) · +1 tile · Vapor devolve 3% da mana |
-| Raio | F | 🔁 **Circuito** | G | 3 magias de elementos diferentes em 8 s: a próxima dá +1% e não gasta mana | em 10 s · a próxima também salta 1 vez · 2 elementos bastam · a próxima dura +30% · a próxima recarrega 50% mais rápido |
-| Gelo | T | ❄️ **Coração Frio** | — | +0,5% de duração das lentidões e prisões | lentidão +5% · monstro lento recebe +5% de dano · +5% · prender dá 5% de escudo a você · monstro que morre congelado congela os colados por 1 s |
-| Gelo | P1 | 🌨️ **Sopro Glacial** | B | +0,6% de lentidão por segundo de canalização | +1 tile no sopro · 1,5 s seguidos no sopro congelam · +10° · ao congelar, o próximo golpe Estilhaça · o sopro não deixa você lento |
-| Gelo | P2 | 💎 **Cristalizar** | C | +1,5% de dano do **Estilhaço** | Estilhaço em raio 1 · Estilhaço devolve 2% de mana · +0,5 s de congelado · raio 2 · Estilhaço congela de novo por 0,5 s (cadeia) |
-| Gelo | F | 🔷 **Reserva Gélida** | G | abaixo de 15% da mana, escudo de gelo de 0,6% da vida (a cada 30 s) | o escudo congela quem bate · a cada 25 s · abaixo de 20% · o escudo devolve 10% da mana ao quebrar · a cada 20 s |
-| Trevas | T | 🌑 **Fome Sombria** | — | +0,4% de roubo de vida das magias de trevas | marcas +1 s · matar com magia devolve 1% de mana · +1 s · +1% · as magias de trevas roubam também 2% em mana |
-| Trevas | P1 | 👁️ **Lamento Profundo** | — | +0,6% de força dos enfraquecimentos | leques sombrios +10° · enfraquecido recebe +5% de dano · +1 tile · +1 s · o leque sombrio rouba 1% de mana por monstro |
-| Trevas | P2 | ☠️ **Sentença Lenta** | C | +1,5% de dano da **Condenação** | Condenação em raio 2 · Condenação marca quem pega · +1 s de marca · a explosão rouba 3% de vida · Condenação em cadeia (1 vez) |
-| Trevas | F | 🦴 **Ossuário** | G | monstro morto por trevas: 0,8% de chance por nível de levantar um esqueleto por 8 s (até 2) | 10 s · até 3 · os esqueletos marcam quem atacam · 12 s · o esqueleto explode em Condenação ao sumir |
+| Raio | T | ⚡ **Condutor** | — | +1,2% de dano de energia e fogo | cadeias +1 salto · queimar +1 s · Estática/Combustão (se tiver) +5% · +1 salto · o 1º salto não perde dano |
+| Raio | P1 | 🔥 **Garganta de Brasa** | B | +1,6% de dano dos sopros (canalizar e onda) | sopros +10° · deixam chão em chamas por 1 s · +0,5 s de canalização · +10° · a última onda do sopro explode em raio 1 |
+| Raio | P2 | 💨 **Panela de Pressão** | C | +3% de dano do **Vapor** | Vapor em raio 2 · Vapor ofusca 1 s · Vapor deixa névoa por 2 s (30% de lentidão) · +1 tile · Vapor devolve 3% da mana |
+| Raio | F | 🔁 **Circuito** | G | 3 magias de elementos diferentes em 8 s: a próxima dá +2% e não gasta mana | em 10 s · a próxima também salta 1 vez · 2 elementos bastam · a próxima dura +30% · a próxima recarrega 50% mais rápido |
+| Gelo | T | ❄️ **Coração Frio** | — | +1% de duração das lentidões e prisões | lentidão +5% · monstro lento recebe +5% de dano · +5% · prender dá 5% de escudo a você · monstro que morre congelado congela os colados por 1 s |
+| Gelo | P1 | 🌨️ **Sopro Glacial** | B | +1,2% de lentidão por segundo de canalização | +1 tile no sopro · 1,5 s seguidos no sopro congelam · +10° · ao congelar, o próximo golpe Estilhaça · o sopro não deixa você lento |
+| Gelo | P2 | 💎 **Cristalizar** | C | +3% de dano do **Estilhaço** | Estilhaço em raio 1 · Estilhaço devolve 2% de mana · +0,5 s de congelado · raio 2 · Estilhaço congela de novo por 0,5 s (cadeia) |
+| Gelo | F | 🔷 **Reserva Gélida** | G | abaixo de 15% da mana, escudo de gelo de 1,2% da vida (a cada 30 s) | o escudo congela quem bate · a cada 25 s · abaixo de 20% · o escudo devolve 10% da mana ao quebrar · a cada 20 s |
+| Trevas | T | 🌑 **Fome Sombria** | — | +0,8% de roubo de vida das magias de trevas | marcas +1 s · matar com magia devolve 1% de mana · +1 s · +1% · as magias de trevas roubam também 2% em mana |
+| Trevas | P1 | 👁️ **Lamento Profundo** | — | +1,2% de força dos enfraquecimentos | leques sombrios +10° · enfraquecido recebe +5% de dano · +1 tile · +1 s · o leque sombrio rouba 1% de mana por monstro |
+| Trevas | P2 | ☠️ **Sentença Lenta** | C | +3% de dano da **Condenação** | Condenação em raio 2 · Condenação marca quem pega · +1 s de marca · a explosão rouba 3% de vida · Condenação em cadeia (1 vez) |
+| Trevas | F | 🦴 **Ossuário** | G | monstro morto por trevas: 1,6% de chance por nível de levantar um esqueleto por 8 s (até 2) | 10 s · até 3 · os esqueletos marcam quem atacam · 12 s · o esqueleto explode em Condenação ao sumir |
 
 #### Druida
 
 | Ramo | Pos. | Dom | Tema | Por nível | Marcos |
 |---|---|---|---|---|---|
-| Matilha | T | 🐺 **Laço da Matilha** | — | +0,6% de vida e dano das criaturas | criaturas +10% de duração · +1 lobo no Chamado da Matilha · criaturas roubam 3% de vida · +10% · a criatura que morre volta uma vez com 30% |
-| Matilha | P1 | 📣 **Eco do Rugido** | — | +0,6% do bônus de ataque que os rugidos dão às criaturas | rugidos +10° · o rugido cura as criaturas em 5% · +1 tile · +5% · o rugido chama 1 lobo por 6 s |
-| Matilha | P2 | 🦷 **Presa Venenosa** | C | criaturas envenenam; +1,5% de dano do **Espinheiro** feito por elas | o veneno das criaturas acumula 2 vezes · criaturas prendem 0,5 s no 1º golpe · Espinheiro em raio 1 · +1 s de veneno · criatura que mata pula no mais perto |
-| Matilha | F | 🐾 **Instinto** | B | a cada 4º básico, um lobo espectral morde o alvo (0,5× +1%/nível) | e atordoa 0,3 s · a cada 3º · em forma animal, a cada 2º · a mordida envenena · morde 2 vezes |
-| Bosque | T | 🌿 **Seiva Antiga** | — | +0,5% de cura | cura além da vida vira escudo de até 3% · curar tira lentidão · escudo até 6% · +1 tile nas curas em área · curar alguém abaixo de 30% cura 50% a mais |
-| Bosque | P1 | 🌸 **Pólen Dourado** | — | +0,6% de cura dos leques de cura | +10° · o leque devolve 1% de mana aos aliados · +1 tile · tira veneno · +3 de armadura nos aliados por 4 s |
-| Bosque | P2 | 🍯 **Néctar** | G | curar alguém abaixo de 50% devolve 0,1% de mana por nível | abaixo de 60% · e dá 5% de velocidade por 3 s · abaixo de 70% · e 2% de escudo · a cura também tira o atordoamento |
-| Bosque | F | 🌀 **Ciclo** | B | a cada 300 de cura feita, o próximo básico vira uma semente que cura em raio 1 (5% +0,2%/nível) | a cada 250 · raio 2 · a semente prende 1 s quem pisa · a cada 200 · a semente vira escudo de 5% |
-| Espinhos | T | 🌵 **Seiva Venenosa** | — | +0,6% de dano dos venenos e sangramentos | veneno +1 s · Toxina (se tiver) +1 acúmulo · envenenado anda 10% mais devagar · +1 s · veneno que mata pula para o mais perto |
-| Espinhos | P1 | 🍃 **Rajada de Cardos** | B | +0,6% de dano dos espinhos em leque | +1 espinho · espinhos prendem 0,3 s · +1 espinho · atravessam o 1º monstro · cada espinho que acerta envenena |
-| Espinhos | P2 | 🌿 **Espinheiro Antigo** | C | +1,5% de dano do **Espinheiro** | Espinheiro em raio 1 · +1 s de raiz · o Espinheiro envenena de novo · +1 s de sangramento · o Espinheiro prende quem está colado |
-| Espinhos | F | ⛈️ **Céu Fechado** | G | monstro que morre envenenado: 0,6% de chance por nível de um raio cair no mais perto (1,5×) | o raio envenena · +5% de chance · o raio prende 0,5 s · +5% · 2 raios |
+| Matilha | T | 🐺 **Laço da Matilha** | — | +1,2% de vida e dano das criaturas | criaturas +10% de duração · +1 lobo no Chamado da Matilha · criaturas roubam 3% de vida · +10% · a criatura que morre volta uma vez com 30% |
+| Matilha | P1 | 📣 **Eco do Rugido** | — | +1,2% do bônus de ataque que os rugidos dão às criaturas | rugidos +10° · o rugido cura as criaturas em 5% · +1 tile · +5% · o rugido chama 1 lobo por 6 s |
+| Matilha | P2 | 🦷 **Presa Venenosa** | C | criaturas envenenam; +3% de dano do **Espinheiro** feito por elas | o veneno das criaturas acumula 2 vezes · criaturas prendem 0,5 s no 1º golpe · Espinheiro em raio 1 · +1 s de veneno · criatura que mata pula no mais perto |
+| Matilha | F | 🐾 **Instinto** | B | a cada 4º básico, um lobo espectral morde o alvo (0,5× +2%/nível) | e atordoa 0,3 s · a cada 3º · em forma animal, a cada 2º · a mordida envenena · morde 2 vezes |
+| Bosque | T | 🌿 **Seiva Antiga** | — | +1% de cura | cura além da vida vira escudo de até 3% · curar tira lentidão · escudo até 6% · +1 tile nas curas em área · curar alguém abaixo de 30% cura 50% a mais |
+| Bosque | P1 | 🌸 **Pólen Dourado** | — | +1,2% de cura dos leques de cura | +10° · o leque devolve 1% de mana aos aliados · +1 tile · tira veneno · +3 de armadura nos aliados por 4 s |
+| Bosque | P2 | 🍯 **Néctar** | G | curar alguém abaixo de 50% devolve 0,2% de mana por nível | abaixo de 60% · e dá 5% de velocidade por 3 s · abaixo de 70% · e 2% de escudo · a cura também tira o atordoamento |
+| Bosque | F | 🌀 **Ciclo** | B | a cada 300 de cura feita, o próximo básico vira uma semente que cura em raio 1 (5% +0,4%/nível) | a cada 250 · raio 2 · a semente prende 1 s quem pisa · a cada 200 · a semente vira escudo de 5% |
+| Espinhos | T | 🌵 **Seiva Venenosa** | — | +1,2% de dano dos venenos e sangramentos | veneno +1 s · Toxina (se tiver) +1 acúmulo · envenenado anda 10% mais devagar · +1 s · veneno que mata pula para o mais perto |
+| Espinhos | P1 | 🍃 **Rajada de Cardos** | B | +1,2% de dano dos espinhos em leque | +1 espinho · espinhos prendem 0,3 s · +1 espinho · atravessam o 1º monstro · cada espinho que acerta envenena |
+| Espinhos | P2 | 🌿 **Espinheiro Antigo** | C | +3% de dano do **Espinheiro** | Espinheiro em raio 1 · +1 s de raiz · o Espinheiro envenena de novo · +1 s de sangramento · o Espinheiro prende quem está colado |
+| Espinhos | F | ⛈️ **Céu Fechado** | G | monstro que morre envenenado: 1,2% de chance por nível de um raio cair no mais perto (1,5×) | o raio envenena · +5% de chance · o raio prende 0,5 s · +5% · 2 raios |
 
 ---
 
 ## 8. Magias novas de slot
 
 Legenda: **S1/S2/S3** = slot; ⌒ = leque; números do nível 0; toda magia nasce com a Maestria do nível 5. Por classe:
-2 magias na costela nova de cada ramo (um leque e um combo), 3 Ápices, 6 de especialização e 1 inicial do slot 3.
-Preço: costela 300–800 (pela linha), Ápice 2.000, S3 de lado 2.500, inicial grátis.
+2 magias na costela nova de cada ramo (um leque e um combo), 3 Ápices, 6 de especialização e 1 magia de entrada do
+slot 3. Preço: costela 300–800 (pela linha), entrada do S3 1.000, Ápice 2.000, S3 de lado 2.500. Nenhuma é grátis.
 
 ### 8.1 Cavaleiro — leques curtos e largos, de perto
 
 | Nó | Magia | Slot | O que faz | Maestria |
 |---|---|---|---|---|
-| Raiz | 🌋 **Fúria do Titã** | S3 inicial | salta até 3 tiles no ponto mirado (A8) e cai: raio 2, 2,5×, atordoa 1 s | raio 3 |
+| Raiz | 🌋 **Fúria do Titã** | S3 de entrada | salta até 3 tiles no ponto mirado (A8) e cai: raio 2, 2,5×, atordoa 1 s | raio 3 |
 | Lâmina, costela | 🌬️ **Lâmina do Vendaval** ⌒ | S1 | corte que solta uma onda (L2) de 60°, 3 tiles: 1,4× e empurra 1 | duas ondas (a 2ª com 60%) |
 | Lâmina, costela | 🩸 **Corte Hemorrágico** | S2 | 2× no monstro colado e sangra 4 s; em quem já sangrava, a **Hemorragia** sai dobrada | sangra também os colados |
 | Bastião, costela | 🔰 **Muro de Escudos** ⌒ | S2 | avança o escudo num leque de 120°, 2 tiles: 1×, empurra 2 e atordoa 0,8 s | escudo de 5% por monstro atingido (até 25%) |
@@ -377,7 +394,7 @@ Preço: costela 300–800 (pela linha), Ápice 2.000, S3 de lado 2.500, inicial 
 
 | Nó | Magia | Slot | O que faz | Maestria |
 |---|---|---|---|---|
-| Raiz | 🏹 **Flecha Celeste** | S3 inicial | atira para o alto; 1 s depois (A7) cai no ponto mirado: raio 2, 3× e ofusca 1 s | raio 3 |
+| Raiz | 🏹 **Flecha Celeste** | S3 de entrada | atira para o alto; 1 s depois (A7) cai no ponto mirado: raio 2, 3× e ofusca 1 s | raio 3 |
 | Mira, costela | 🪶 **Leque de Flechas** ⌒ | S1 | 5 flechas (L3) em 45°, 0,9× cada; colado no alvo, todas acertam | 7 flechas |
 | Mira, costela | 🎯 **Flecha do Ponto Fraco** | S2 | 2,4× num alvo; em monstro marcado e sangrando, o dano dobra | marca o alvo |
 | Luz, costela | ☀️ **Clarão Sagrado** ⌒ | S2 | onda de luz (L2) de 120°, 4 tiles: 1,2×, ofusca 1 s, dobro em mortos-vivos | marca os ofuscados (+15% por 4 s) |
@@ -398,7 +415,7 @@ Preço: costela 300–800 (pela linha), Ápice 2.000, S3 de lado 2.500, inicial 
 
 | Nó | Magia | Slot | O que faz | Maestria |
 |---|---|---|---|---|
-| Raiz | 🌀 **Vórtice Arcano** | S3 inicial | um orbe lento (A11) anda 6 tiles na direção mirada e fere tudo pelo caminho (0,5× a cada 0,25 s) | puxa 1 tile quem toca |
+| Raiz | 🌀 **Vórtice Arcano** | S3 de entrada | um orbe lento (A11) anda 6 tiles na direção mirada e fere tudo pelo caminho (0,5× a cada 0,25 s) | puxa 1 tile quem toca |
 | Raio, costela | 🔥 **Cusparada de Fogo** ⌒ | S1 (fogo) | onda de fogo (L2) de 60°, 3 tiles: 1,3× e queima 3 s | 90° |
 | Raio, costela | ⚡ **Leque de Raios** ⌒ | S2 (energia) | 3 raios (L3) em 60°, 1,4× cada; cada um salta 1 vez | 5 raios |
 | Gelo, costela | 🌨️ **Sopro Gélido** ⌒ | S2 (gelo) | canaliza (L4) 2 s: leque de 60°, 4 tiles, 0,4× a cada 0,25 s, lentidão que cresce; 1,5 s seguidos congelam | no fim, Estilhaça os congelados |
@@ -419,7 +436,7 @@ Preço: costela 300–800 (pela linha), Ápice 2.000, S3 de lado 2.500, inicial 
 
 | Nó | Magia | Slot | O que faz | Maestria |
 |---|---|---|---|---|
-| Raiz | 🦋 **Revoada** ⌒ | S3 inicial | 12 borboletas saem num leque de 120° e voltam (A10): na ida ferem 0,4×, na volta curam 2% cada aliado que tocam | 18 borboletas |
+| Raiz | 🦋 **Revoada** ⌒ | S3 de entrada | 12 borboletas saem num leque de 120° e voltam (A10): na ida ferem 0,4×, na volta curam 2% cada aliado que tocam | 18 borboletas |
 | Matilha, costela | 🐺 **Rugido da Alcateia** ⌒ | S1 | leque de 90°, 3 tiles: 0,8× e empurra 1; suas criaturas atacam 30% mais rápido por 4 s | as criaturas curam 10% |
 | Matilha, costela | 🦴 **Caça em Bando** | S2 | marca um monstro: suas criaturas correm até ele com +50% de dano nele; se ele estiver preso, vira **Espinheiro** | dura o dobro |
 | Bosque, costela | 🌸 **Brisa de Pólen** ⌒ | S2 | onda (L2) de 120°, 5 tiles: cura 20% os **aliados** no leque e tira veneno; os monstros ficam 30% lentos | +10% de escudo nos aliados |
@@ -441,7 +458,7 @@ Preço: costela 300–800 (pela linha), Ápice 2.000, S3 de lado 2.500, inicial 
 | | Cavaleiro | Paladino | Feiticeiro | Druida | Total |
 |---|---|---|---|---|---|
 | Magias de costela nova (S1/S2) | 6 | 6 | 6 | 6 | 24 |
-| Magias do slot 3 (inicial + Ápices + lados) | 10 | 10 | 10 | 10 | 40 |
+| Magias do slot 3 (entrada + Ápices + lados) | 10 | 10 | 10 | 10 | 40 |
 | **Magias novas** | **16** | **16** | **16** | **16** | **64** |
 | … das quais em leque | 6 | 7 | 7 | 7 | 27 |
 | Dons | 12 | 12 | 12 | 12 | 48 |
@@ -454,8 +471,8 @@ Preço: costela 300–800 (pela linha), Ápice 2.000, S3 de lado 2.500, inicial 
 | 12 Dons até o 25 | ~96 mil |
 | Áureas até o 20 (velocidade até o 6) | ~43 mil |
 | 3 Tomos até o 20 | ~65 mil |
-| Magias novas (6 de costela, 3 Ápices, 3 S3 do lado escolhido) | ~17 mil |
-| **Total novo por classe** | **~220 mil** (as 4 classes: ~880 mil) |
+| Magias novas (6 de costela, entrada do S3, 3 Ápices, 3 S3 do lado escolhido) | ~18 mil |
+| **Total novo por classe** | **~220 mil** (as 4 classes: ~890 mil) |
 
 O total é propositalmente inalcançável: o ouro de qualquer jogador sempre tem destino. O que importa para a validação
 é o começo: nas primeiras 20 hunts (~2.200 de ouro), o jogador novo compra ~10 níveis de Dom e 2–3 magias, ou seja,
@@ -490,10 +507,10 @@ jogador em cada passo e não deixar código sem uso.
 |---|---|---|---|---|
 | **1. Passivas de ouro** | `kind: "gift"`, os 48 Dons **com o efeito por nível** (sem marcos), Áureas e Tomos até 20, `buy_talent_levels`, menu, migration, teste `dons` | — | M–G | resolve o ouro parado já; não depende de nada |
 | **2. Motor de leque** | L1–L5, família sopro, mira com ângulo, refazer o desenho das 3 magias de leque atuais | — | G | é o pedido mais visível e destrava metade das magias novas |
-| **3. Slot 3** | abrir o slot (5.2), as 4 magias iniciais e os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
+| **3. Slot 3** | abrir o slot (5.2), as 4 magias de entrada e os 12 Ápices (peças A1, A3, A4, A7, A8, A9, A11 que eles usam) | 2 | G | o botão já está reservado; os Ápices de leque precisam da fase 2 |
 | **4. Reações e gatilhos** | reações, estado congelado, gatilhos, básico transformado e os **marcos** dos 48 Dons | 1 | G | os marcos e as magias de combo dependem disso |
 | **5. Costelas novas** | as 24 magias de costela (leque + combo), peças A6, A10, A12 | 2, 4 | M | combos precisam das reações |
-| **6a–6d. S3 de especialização** | 6 por classe, os dois lados juntos (escolha permanente): Feiticeiro → Paladino → Druida → Cavaleiro | 3 | M cada | a classe mais jogada primeiro (43% das hunts) |
+| **6. S3 de especialização** | as 24 (6 por classe), nas 4 classes juntas e com os dois lados de cada ramo juntos (escolha permanente) | 3 | G | por sistema, como as outras fases |
 | **7. Balanceamento** | `/balanceamento` com a telemetria nova: preço dos Dons e números das magias | 1, 3 | contínuo | — |
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
@@ -511,7 +528,7 @@ e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `
 | Uso do slot 3 em quem chega ao 12 | ≥ 2 lançamentos por hunt |
 | Leque | `coneHits` médio ≥ 2 monstros por lançamento (senão o leque não vale a forma) |
 | Reações | ≥ 1 reação por hunt em quem tem um Dom de combo no nível 5+ |
-| Diferença de dano entre conta nova e veterana na mesma classe e mapa | registrar a partir da fase 1; não passar de 2× |
+| Diferença de dano entre conta nova e veterana na mesma classe e mapa | registrar a partir da fase 1; alvo de ~3× no máximo (7.2) |
 
 ---
 
@@ -520,7 +537,7 @@ e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `
 | Risco | Mitigação |
 |---|---|
 | **Escopo** (64 magias, 48 Dons, 3 sistemas novos) | 7 fases independentes; a fase 1 sozinha já resolve o ouro; cortes em ordem: Coroa Solar (órbita), Vórtice Arcano (projétil lento), Barril de Pólvora |
-| **Veterano muito mais forte que novato** | teto da 7.2; efeitos condicionais; mapas ★ altos para o veterano; métrica de diferença (seção 11) |
+| **Veterano 3× mais forte que novato** (decidido) | é a progressão desejada; o risco é o grupo misto: efeitos condicionais, mapas ★ altos para o veterano, métrica de diferença (seção 11) |
 | **Reações confusas** | só 8, com ícone curto sobre o monstro quando acontecem; descritas em Configurações › Regras e no Catálogo |
 | **Canalizar no celular** | toque rápido sai para a frente; segurar e arrastar gira; canalização curta (2–3 s); testar em 412×915 e 915×412 |
 | **Tela poluída e desempenho** | um sopro por herói; rastro de 0,5 s; tique de 250 ms; medir o tick com 4 jogadores (lembrar do #219, lag na Fortaleza) |
@@ -539,11 +556,7 @@ e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `
 
 ---
 
-## 14. Decisões em aberto
+## 14. Decisões
 
-| # | Pergunta | Recomendação (vale se ninguém mudar) |
-|---|---|---|
-| 1 | Reações valem para golpes de aliados (co-op)? | **sim**: dá um motivo a mais para jogar junto sem obrigar o grupo |
-| 2 | A magia inicial do slot 3 é grátis? | **sim**, como as iniciais dos slots 1 e 2 |
-| 3 | Ordem das fases 1 a 3 | Dons → leque → slot 3; se o slot 3 precisar sair antes, a fase 3 vem logo depois da 2 |
-| 4 | Áurea de velocidade até o nível 6 (não 20) | **sim**: velocidade alta quebra a sensação do jogo |
+Todas as decisões em aberto foram respondidas pelo Leonardo em 01/11/2026 (seção 2, itens 10 a 17). Não há decisão
+pendente para começar a fase 1.
