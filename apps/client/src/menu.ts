@@ -299,6 +299,8 @@ export class Hub {
   private loadoutSlot = 0;
   /** A escolha antes da última sugestão aplicada, para o "Desfazer" (some na próxima mudança). */
   private loadoutUndo: { slot: number; chosen: string[] } | null = null;
+  /** De onde Magias da hunt foi aberta (Heróis ou Grimório): o "‹" volta para lá. */
+  private loadoutFrom: "heroes" | "spells" = "heroes";
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
@@ -337,8 +339,8 @@ export class Hub {
   private render() {
     $("account-gold").textContent = gold(this.profile.gold);
     $("play").setAttribute("aria-label", `Batalhas · ${CLASSES[this.classId].name}`);
-    // Magias da hunt é uma subpágina de Heróis: a aba de Heróis segue marcada.
-    const shownTab = this.tab === "loadout" ? "heroes" : this.tab;
+    // Magias da hunt é subpágina de Heróis ou do Grimório: a aba de onde veio segue marcada.
+    const shownTab = this.tab === "loadout" ? this.loadoutFrom : this.tab;
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => {
       b.setAttribute("aria-selected", String(b.dataset.tab === shownTab));
     });
@@ -478,6 +480,7 @@ export class Hub {
     const openLoadout = () => {
       this.loadoutSlot = 0;
       this.loadoutUndo = null;
+      this.loadoutFrom = "heroes";
       this.setTab("loadout");
     };
     card.append(this.linkHead("📖", "Grimório", `${known}/${total} magias · escolher`, openLoadout));
@@ -607,8 +610,8 @@ export class Hub {
 
     const top = el("header", "lo-top");
     const back = el("button", "icon-button page-back", "‹");
-    back.setAttribute("aria-label", "Voltar para Heróis");
-    back.onclick = () => this.setTab("heroes");
+    back.setAttribute("aria-label", this.loadoutFrom === "spells" ? "Voltar para o Grimório" : "Voltar para Heróis");
+    back.onclick = () => this.setTab(this.loadoutFrom);
     const title = el("div", "lo-title");
     title.append(el("h2", "", "Magias da hunt"), el("small", "muted", `Grimório · ${c.name}`));
     const tree = el("button", "lo-tree", "Árvore ›");
@@ -622,14 +625,15 @@ export class Hub {
       `Quando um slot abre na hunt, você escolhe 1 entre as magias ativas dele. Deixe até ${ACTIVE_SPELLS_PER_SLOT} por slot, de preferência com papéis diferentes.`));
 
     // Os 3 slots: o que está ativo em cada um. Tocar abre a lista do slot.
-    const active = [0, 1].map((slot) => activeSlotSpells(id, slot, talents, spellXp, chosen));
+    // Uma lista por slot que existe na hunt (`SPELL_SLOT_LEVELS`): hoje 3, mas a página segue o número do jogo.
+    const active = SPELL_SLOT_LEVELS.map((_, slot) => activeSlotSpells(id, slot, talents, spellXp, chosen));
     if (!slotExists(this.loadoutSlot)) this.loadoutSlot = 0;
     const slots = el("div", "lo-slots");
     slots.setAttribute("role", "tablist");
     slots.setAttribute("aria-label", "Slots de magia");
     for (let slot = 0; slot < PLAN_SLOTS; slot++) {
       const exists = slotExists(slot);
-      const on = exists ? active[slot] : [];
+      const on = exists ? active[slot] ?? [] : [];
       const tab = el("button", "lo-slot");
       tab.setAttribute("role", "tab");
       tab.setAttribute("aria-selected", String(slot === this.loadoutSlot));
@@ -656,14 +660,14 @@ export class Hub {
     }
     page.append(slots);
 
-    // Cobertura: o que as magias ativas dos dois slots garantem na hunt, e a dica para a primeira falta.
+    // Cobertura: o que as magias ativas de todos os slots garantem na hunt, e a dica para a primeira falta.
     page.append(this.loadoutCoverage(id, active));
 
     // A lista do slot aberto.
     const slot = this.loadoutSlot;
     const spells = slotSpells(id, slot, talents, spellXp);
     const auto = spells.length <= ACTIVE_SPELLS_PER_SLOT;
-    const suggestion = suggestSlot(spells, active[1 - slot] ?? []);
+    const suggestion = suggestSlot(spells, active.filter((_, other) => other !== slot).flat());
     const differs = !auto && suggestion.picks.some((s) => !active[slot].includes(s));
 
     const listHead = el("div", "lo-list-head");
@@ -751,7 +755,7 @@ export class Hub {
     if (gap) {
       // Quem resolveria: uma magia conhecida fora da hunt, ou uma da árvore ainda por aprender.
       const fits = (s: SpellId) => coverage([s])[gap.id].length > 0;
-      const idle = [0, 1].flatMap((slot) => slotSpells(id, slot, talents, spellXp)).find((s) => !all.includes(s.id) && fits(s.id));
+      const idle = SPELL_SLOT_LEVELS.flatMap((_, slot) => slotSpells(id, slot, talents, spellXp)).find((s) => !all.includes(s.id) && fits(s.id));
       const learn = talentTree(id).find((t) => t.spellId && talentRank(t, talents) === 0 && fits(t.spellId));
       const fix = idle
         ? `Ative ${SPELLS[idle.id].icon} ${SPELLS[idle.id].name} (slot ${SPELLS[idle.id].slot + 1}).`
@@ -833,6 +837,16 @@ export class Hub {
 
     // Um botão por personagem, com o retrato vestido e a cor da classe.
     page.append(this.heroPicks(this.classId, (id) => this.pickClass(id)));
+
+    // Atalho para Magias da hunt: escolher as magias de cada slot sem abrir ficha por ficha.
+    const { talents: owned, spellXp: used, activeSpells: picked } = this.profile;
+    const going = activeSpells(this.classId, owned, used, picked).length;
+    const loadout = el("button", "grim-loadout");
+    loadout.append(el("span", "", "⚔️"), el("strong", "", "Magias da hunt"),
+      el("small", "muted", `${going} ativas · escolher`), el("b", "", "›"));
+    loadout.setAttribute("aria-label", `Magias da hunt: escolher as magias de cada slot (${going} ativas)`);
+    loadout.onclick = () => { this.loadoutSlot = 0; this.loadoutUndo = null; this.loadoutFrom = "spells"; this.setTab("loadout"); };
+    page.append(loadout);
 
     const tree = talentTree(this.classId);
     const ranks = this.profile.talents;
