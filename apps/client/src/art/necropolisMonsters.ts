@@ -8,10 +8,10 @@ import { hash, makeCanvas, px } from "./pixels.ts";
  * luz de cima à esquerda. Com a Arte nova (beta), os humanoides vêm do protótipo (`MONSTER_KITS` em `tibiaHero.ts`).
  */
 
-type Pt = readonly [number, number];
+export type Pt = readonly [number, number];
 
 /** Grade de 32×32 com ajudantes de forma; no fim vira canvas. */
-class Grid {
+export class Grid {
   readonly cells: (string | null)[] = new Array(TILE_SIZE * TILE_SIZE).fill(null);
   set(x: number, y: number, c: string) {
     x = Math.round(x);
