@@ -187,6 +187,12 @@ import {
   CORRODE_PER_STACK,
   BLIND_RANGE,
   damageElement,
+  spellElement,
+  hitReaction,
+  REACTIONS,
+  DOOM, EXPOSED_BONUS, INCANDESCE, SHATTER_BONUS, THORNBUSH, TOXIC_EMBER, VAPOR,
+  type MonsterStates,
+  type ReactionId,
   immuneToDot,
   type DotKind,
   type SummonDef,
@@ -1288,6 +1294,7 @@ export class Hunt {
         brain.stunnedUntil = Math.max(brain.stunnedUntil, this.host.now() + stunMs);
         alive.stunned = true;
         seat.stats.ccMs.stun += stunMs;
+        this.hemorrhage(alive, brain, sessionId);
       }
       if (holy && brain) this.applyDot(alive, brain, sessionId, "basic", base * holy.perSec, holy.ms, "burn", this.host.now());
       // Armas mágicas: chamas ou veneno no alvo.
@@ -1408,6 +1415,7 @@ export class Hunt {
       brain.stunnedUntil = Math.max(brain.stunnedUntil, now + form.pounceStunMs);
       m.stunned = true;
       seat.stats.ccMs.stun += form.pounceStunMs;
+      this.hemorrhage(m, brain, sessionId);
     }
     const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "bite" };
     this.damageMonster(m, rollDamage(this.random, this.baseDamage(sessionId, p, "basic") * power), hit, "panther_form");
@@ -1891,7 +1899,7 @@ export class Hunt {
         const brain = this.brains.get(m.id);
         if (def.freezeTicks && def.freezeMs && brain && streak[m.id] >= def.freezeTicks) {
           const ms = Math.round(def.freezeMs * (1 + seat.gifts.ccDuration));
-          this.root(m, brain, now + ms);
+          this.root(m, brain, now + ms, true);
           seat.stats.ccMs.root += ms;
           streak[m.id] = 0;
         }
@@ -1996,9 +2004,12 @@ export class Hunt {
     const cc = 1 + seat.gifts.ccDuration;
     // Picada da Mamba: o veneno leva a explosão junto, para o caso de o monstro morrer com ele.
     const burst = spell.burst && { radius: spell.burst.radius, amount: this.baseDamage(sessionId, p, "spell") * spell.burst.damage, source: spell.id };
+    const radiant = spellElement(spell.id) === "radiant";
     hit.forEach((m, i) => {
       const brain = this.brains.get(m.id);
       if (!brain) return;
+      // Estados de antes desta magia: as reações não disparam com o que ela mesma acabou de pôr.
+      const before = this.statesOf(brain, now);
       // Estilhaçar vale para quem já estava preso antes desta magia (a Prisão de Gelo não se quebra sozinha).
       const wasRooted = m.rooted;
       if (spell.taunt) {
@@ -2011,13 +2022,16 @@ export class Hunt {
       // Coração Frio (Dom): as prisões e lentidões das magias do herói duram mais.
       if (spell.rootMs) {
         const ms = Math.round(spell.rootMs * cc);
-        this.root(m, brain, now + ms);
+        this.root(m, brain, now + ms, spell.element === "ice");
         seat.stats.ccMs.root += ms;
       }
       if (spell.stunMs) {
         brain.stunnedUntil = Math.max(brain.stunnedUntil, now + spell.stunMs);
+        // Atordoado por luz fica ofuscado (Incandescer).
+        if (radiant) brain.dazzledUntil = Math.max(brain.dazzledUntil, now + spell.stunMs);
         m.stunned = true;
         seat.stats.ccMs.stun += spell.stunMs;
+        this.hemorrhage(m, brain, sessionId);
       }
       if (spell.slow) {
         // Lentidão nova não soma com a antiga: fica a mais forte enquanto as duas valem.
@@ -2036,6 +2050,7 @@ export class Hunt {
         brain.stunnedUntil = Math.max(brain.stunnedUntil, now + stunChance.ms);
         m.stunned = true;
         seat.stats.ccMs.stun += stunChance.ms;
+        this.hemorrhage(m, brain, sessionId);
       }
       // Maldição (Traço): magia de alvo único marca o alvo para toda a equipe.
       if (hex && m === anchor && spell.radius === 0 && !line) {
@@ -2046,6 +2061,14 @@ export class Hunt {
       if (spell.dot) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spell.dot.perSec, spell.dot.ms, spell.dot.kind, now, burst);
       // Toxina (Traço): magia com dano envenena (e o veneno acumula, ver `applyDot`).
       else if (toxin && spell.damage) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * toxin.perSec, toxin.ms, "poison", now);
+      // Espinheiro: veneno em quem já estava preso por raiz (antes desta magia) vira espinhos.
+      const poisoned = spell.dot?.kind === "poison" || (toxin && spell.damage && !spell.dot);
+      if (poisoned && before.rooted && brain.dot?.kind === "poison" && this.state.monsters.has(m.id)) {
+        brain.rootedUntil = now;
+        m.rooted = false;
+        this.reacted("thornbush", sessionId, m.x, m.y);
+        this.damageMonster(m, Math.max(1, Math.round(brain.dot.amount * THORNBUSH.seconds)), { attacker: sessionId, fromX: m.x, fromY: m.y, fx: "nature", dot: "bleed" }, "reaction:thornbush");
+      }
       if (spellBurn && spell.damage && !spell.dot) {
         this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spellBurn.perSec, spellBurn.ms, "burn", now);
       }
@@ -2057,19 +2080,22 @@ export class Hunt {
         if (shattered > 1) {
           brain.rootedUntil = now;
           m.rooted = false;
+          // O Traço já quebrou o gelo: a reação Estilhaço não soma em cima.
+          before.frozen = false;
+          this.thaw(m, brain, now);
         }
         // Condutor (Dom): mais dano nas magias de energia e de fogo.
         const element = spell.element ? 1 + (seat.gifts.elementDamage[spell.element] ?? 0) : 1;
         const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * element * this.farBonus(seat, p, m)));
         dealt += value;
-        this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id);
+        this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id, sessionId, before);
         if (m.hp === 0) {
           killed = true;
           // Colheita (Traço): matar com magia devolve mana.
           if (harvest && p.status === "playing") this.giveMana(p, Math.max(1, Math.round(p.maxMana * harvest.pct)), sessionId);
         }
       }
-      if (spell.push && m.hp > 0) this.push(m, p, spell.push);
+      if (spell.push && m.hp > 0) this.push(m, p, spell.push, sessionId);
     });
 
     // Pólvora (Traço): magia de área deixa o chão em chamas onde caiu.
@@ -2387,7 +2413,7 @@ export class Hunt {
     for (const m of [...this.state.monsters.values()]) {
       if (tileDistance(p.x, p.y, m.x, m.y) > 1) continue;
       this.damageMonster(m, rollDamage(this.random, damage), { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "slash" }, "rune:vengeance");
-      if (this.state.monsters.has(m.id)) this.push(m, p, v.push);
+      if (this.state.monsters.has(m.id)) this.push(m, p, v.push, sessionId);
     }
     bump(seat.stats.runeProcs, "vengeance");
     this.notice(p.x, p.y - 1, "Vingança!", 0xff3f34);
@@ -2581,9 +2607,107 @@ export class Hunt {
     if (stats) stats.manaGiven += given;
   }
 
-  private root(m: Monster, brain: Brain, until: number) {
+  /** Prende o monstro até `until`; preso por magia de gelo (`frozen`), fica congelado (Vapor e Estilhaço). */
+  private root(m: Monster, brain: Brain, until: number, frozen = false) {
     brain.rootedUntil = Math.max(brain.rootedUntil, until);
     m.rooted = true;
+    if (frozen) {
+      brain.frozenUntil = Math.max(brain.frozenUntil, until);
+      m.frozen = true;
+    }
+  }
+
+  /** Estados do monstro agora, para as reações (`reactions.ts`). */
+  private statesOf(brain: Brain, now: number): MonsterStates {
+    const dot = brain.dot && now < brain.dot.until ? brain.dot.kind : null;
+    const held = now < brain.rootedUntil;
+    const frozen = held && now < brain.frozenUntil;
+    const stunned = now < brain.stunnedUntil;
+    return {
+      burning: dot === "burn", poisoned: dot === "poison", bleeding: dot === "bleed", rooted: held && !frozen, frozen,
+      dazzled: stunned && now < brain.dazzledUntil, stunned, marked: now < brain.markUntil,
+    };
+  }
+
+  /** Conta a reação para quem a disparou e mostra o nome sobre o monstro. */
+  private reacted(id: ReactionId, creditId: string, x: number, y: number, notice = true) {
+    const seat = this.seats.get(creditId);
+    if (seat) bump(seat.stats.reactions, id);
+    if (notice) this.notice(x, y - 1, `${REACTIONS[id].icon} ${REACTIONS[id].name}!`, REACTIONS[id].color);
+  }
+
+  /** Explosão de reação: fere quem está a até `radius` do ponto (o monstro que reagiu incluído, se ainda vivo). */
+  private reactionBurst(id: ReactionId, x: number, y: number, radius: number, amount: number, creditId: string, fx: Hit["fx"], each?: (m: Monster, brain: Brain) => number) {
+    for (const m of [...this.state.monsters.values()]) {
+      if (tileDistance(x, y, m.x, m.y) > radius || m.hidden) continue;
+      const brain = this.brains.get(m.id);
+      if (!brain) continue;
+      const power = each ? each(m, brain) : 1;
+      this.damageMonster(m, Math.max(1, Math.round(amount * power)), { attacker: creditId, fromX: x, fromY: y, fx }, `reaction:${id}`, creditId);
+    }
+  }
+
+  /**
+   * Reação que o golpe disparou, depois do dano: Vapor, Incandescer e Condenação explodem; a Brasa Tóxica queima em volta.
+   * Cada uma gasta o estado que a preparou. O Estilhaço já entrou no dano do golpe (`damageMonster`).
+   */
+  private afterReaction(id: ReactionId, m: Monster, brain: Brain, raw: number, creditId: string) {
+    const now = this.host.now();
+    const { x, y } = m;
+    this.reacted(id, creditId, x, y);
+    if (id === "vapor") {
+      if (brain.dot?.kind === "burn") {
+        brain.dot = null;
+        m.dot = "";
+      }
+      this.thaw(m, brain, now);
+      this.reactionBurst(id, x, y, VAPOR.radius, raw * VAPOR.power, creditId, "energy", (other, b) => {
+        b.stunnedUntil = Math.max(b.stunnedUntil, now + VAPOR.dazzleMs);
+        b.dazzledUntil = Math.max(b.dazzledUntil, now + VAPOR.dazzleMs);
+        other.stunned = true;
+        return 1;
+      });
+    } else if (id === "incandesce") {
+      brain.dazzledUntil = now;
+      this.reactionBurst(id, x, y, INCANDESCE.radius, raw * INCANDESCE.power, creditId, "fire",
+        (other) => (MONSTERS[other.kind as MonsterKind]?.undead ? INCANDESCE.undead : 1));
+    } else if (id === "doom") {
+      brain.markUntil = now;
+      m.marked = false;
+      this.reactionBurst(id, x, y, DOOM.radius, raw * DOOM.power, creditId, "energy");
+    } else if (id === "toxic_ember") {
+      if (brain.dot?.kind === "poison") {
+        brain.dot = null;
+        m.dot = "";
+      }
+      for (const other of [...this.state.monsters.values()]) {
+        const b = this.brains.get(other.id);
+        if (b && other !== m && tileDistance(x, y, other.x, other.y) <= TOXIC_EMBER.radius) {
+          this.applyDot(other, b, creditId, "reaction:toxic_ember", raw * TOXIC_EMBER.perSec, TOXIC_EMBER.ms, "burn", now);
+        }
+      }
+    }
+  }
+
+  /** O gelo quebra ou derrete: sai o congelado e a prisão que vinha com ele. */
+  private thaw(m: Monster, brain: Brain, now: number) {
+    if (now >= brain.frozenUntil) return;
+    brain.frozenUntil = now;
+    brain.rootedUntil = now;
+    m.frozen = false;
+    m.rooted = false;
+  }
+
+  /** Hemorragia: empurrado ou atordoado sangrando, o resto do sangramento entra todo de uma vez. */
+  private hemorrhage(m: Monster, brain: Brain, creditId: string) {
+    const dot = brain.dot;
+    const now = this.host.now();
+    if (!dot || dot.kind !== "bleed" || now >= dot.until || !this.state.monsters.has(m.id)) return;
+    const pulses = Math.max(1, Math.ceil((dot.until - now) / 1000));
+    brain.dot = null;
+    m.dot = "";
+    this.reacted("hemorrhage", creditId, m.x, m.y);
+    this.damageMonster(m, Math.max(1, Math.round(dot.amount * pulses)), { attacker: dot.attacker, fromX: m.x, fromY: m.y, fx: "slash", dot: "bleed" }, "reaction:hemorrhage", dot.attacker);
   }
 
   /** Fim do Grito de Guerra, dos escudos, da armadura extra, das raízes, do atordoamento e da lentidão; pulsos do dano contínuo. */
@@ -2620,6 +2744,7 @@ export class Hunt {
       const brain = this.brains.get(m.id);
       if (!brain) continue;
       if (m.rooted && now >= brain.rootedUntil) m.rooted = false;
+      if (m.frozen && (now >= brain.frozenUntil || !m.rooted)) m.frozen = false;
       if (m.stunned && now >= brain.stunnedUntil) m.stunned = false;
       if (m.slowed && now >= brain.slowUntil) m.slowed = false;
       if (m.marked && now >= brain.markUntil) m.marked = false;
@@ -2754,6 +2879,7 @@ export class Hunt {
         if (def.stunMs) {
           brainM.stunnedUntil = Math.max(brainM.stunnedUntil, this.host.now() + def.stunMs);
           alive.stunned = true;
+          this.hemorrhage(alive, brainM, s.owner);
           const ownerStats = this.seats.get(s.owner)?.stats;
           if (ownerStats) ownerStats.ccMs.stun += def.stunMs;
         }
@@ -2842,9 +2968,33 @@ export class Hunt {
    * `source` é "basic", o id da magia ou "summon:<tipo>", para a telemetria.
    * `creditId` é o jogador que leva XP e loot (o dono, quando quem bate é uma criatura invocada).
    */
-  private damageMonster(m: Monster, raw: number, hit: Hit, source: string, creditId = hit.attacker): number {
+  /**
+   * Dano num monstro. `before`: os estados do monstro antes do golpe (a magia que prende e fere ao mesmo tempo passa o
+   * que valia antes dela, para não reagir consigo mesma); sem isso, valem os de agora.
+   */
+  private damageMonster(m: Monster, raw: number, hit: Hit, source: string, creditId = hit.attacker, before?: MonsterStates): number {
     const brain = this.brains.get(m.id);
     if (!brain) return 0;
+    // Reações (`reactions.ts`): só golpe direto (não o pulso do dano contínuo nem a própria explosão de uma reação).
+    let reaction: ReactionId | null = null;
+    if (!hit.dot && !source.startsWith("reaction:")) {
+      const now = this.host.now();
+      const states = before ?? this.statesOf(brain, now);
+      // Exposto: marcado e atordoado, recebe mais de tudo.
+      if (states.marked && states.stunned) {
+        raw *= 1 + EXPOSED_BONUS;
+        this.reacted("exposed", creditId, m.x, m.y, false);
+      }
+      const hitElement = damageElement(source, this.state.players.get(creditId)?.classId as ClassId | undefined);
+      reaction = hitReaction(states, hitElement, source in SPELLS);
+      // Estilhaço: o golpe quebra o gelo e entra mais forte.
+      if (reaction === "shatter") {
+        raw *= 1 + SHATTER_BONUS;
+        this.thaw(m, brain, now);
+        this.reacted("shatter", creditId, m.x, m.y);
+        reaction = null;
+      }
+    }
     // Regicida e Ceifador (Runas Mestras): mais ou menos dano em mini-boss e boss.
     const elite = this.eliteFactor(creditId, brain);
     if (elite !== 1) raw = Math.max(1, Math.round(raw * elite));
@@ -2878,6 +3028,8 @@ export class Hunt {
       this.killMonster(m, brain, creditId);
       if (raise) this.raiseBones(creditId, m.x, m.y);
     } else this.ai.afterDamage(m, brain, dealt, element);
+    // Depois do golpe (e da morte): a explosão da reação pega quem está em volta.
+    if (reaction) this.afterReaction(reaction, m, brain, raw, creditId);
     return dealt;
   }
 
@@ -3280,7 +3432,7 @@ export class Hunt {
       if (p.barrier === 0 && seat?.barrierPush) {
         const tiles = seat.barrierPush;
         seat.barrierPush = 0;
-        this.state.monsters.forEach((m) => { if (tileDistance(p.x, p.y, m.x, m.y) <= 1) this.push(m, p, tiles); });
+        this.state.monsters.forEach((m) => { if (tileDistance(p.x, p.y, m.x, m.y) <= 1) this.push(m, p, tiles, sessionId); });
         this.notice(p.x, p.y - 1, "Escudo quebrou!", 0x7fc8ff);
       }
     }
@@ -4017,7 +4169,10 @@ export class Hunt {
   }
 
   /** Empurra o monstro até `tiles` tiles para longe de quem bateu, parando em parede, água, alguém ou Muralha. */
-  private push(m: Monster, from: { x: number; y: number }, tiles: number) {
+  /** Empurra o monstro para longe de `from`; empurrado por um herói (`creditId`), sangrando sofre a Hemorragia. */
+  private push(m: Monster, from: { x: number; y: number }, tiles: number, creditId?: string) {
+    const brain = creditId ? this.brains.get(m.id) : undefined;
+    if (brain && creditId) this.hemorrhage(m, brain, creditId);
     const dx = Math.sign(m.x - from.x);
     const dy = Math.sign(m.y - from.y);
     if (dx === 0 && dy === 0) return;
@@ -4090,7 +4245,7 @@ export class Hunt {
           if (!sees(m.x, m.y, f.radius)) continue;
           const mBrain = this.brains.get(m.id);
           if (brain.rootMs > 0 && mBrain) {
-            this.root(m, mBrain, now + brain.rootMs);
+            this.root(m, mBrain, now + brain.rootMs, brain.spell.element === "ice");
             seat.stats.ccMs.root += brain.rootMs;
           }
           // Era do Gelo: cada pulso deixa lento.
@@ -4152,6 +4307,7 @@ export class Hunt {
             aliveBrain.stunnedUntil = Math.max(aliveBrain.stunnedUntil, this.host.now() + stun.ms);
             alive.stunned = true;
             seat.stats.ccMs.stun += stun.ms;
+            this.hemorrhage(alive, aliveBrain, f.owner);
           }
           if (burn) this.applyDot(alive, aliveBrain, f.owner, brain.spell.id, this.baseDamage(f.owner, owner, "spell") * burn.perSec, burn.ms, burn.kind, this.host.now());
           this.damageMonster(alive, amount, hit, brain.spell.id);

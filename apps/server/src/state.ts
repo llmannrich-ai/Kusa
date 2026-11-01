@@ -99,6 +99,8 @@ export class Monster extends Schema {
   @type("number") maxHp = 0;
   /** Preso por Raízes Espinhosas: não anda. */
   @type("boolean") rooted = false;
+  /** Congelado: preso por magia de gelo (desenhado como bloco de gelo no lugar das raízes). */
+  @type("boolean") frozen = false;
   /** Atordoado: não anda nem ataca. */
   @type("boolean") stunned = false;
   /** Lento (Nevasca): anda mais devagar. */
