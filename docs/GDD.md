@@ -272,6 +272,8 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 - Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
   **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
 - Quem morre perde **1 equipamento do corpo, sorteado**, **a bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para a conta.
+  - **Morte no começo não custa equipamento:** abaixo do nível 5 do herói (`DEATH_SAFE_LEVEL`) o corpo não perde nada; só a bag, as poções e o loot. Morrer no nível 1 a 3 num mapa difícil apagava o melhor item da conta a cada tentativa.
+  - **O item raro pesa menos no sorteio** (`DEATH_LOSS_WEIGHT`): comum 1, raro 0,5, mágico 0,25. Com 4 peças comuns e 1 mágica, o mágico sai em 6% das mortes (antes, 20%).
 - Cada classe tem os próprios 6 slots. A aba Itens mostra o equipamento da classe escolhida, e só a classe que usa o item pode vesti-lo. O mesmo item fica num corpo por vez: equipar no Druida um item vestido pelo Feiticeiro tira dele. O equipamento das outras classes não ocupa o cofre e fica em casa na hunt; quem volta vivo devolve o vestido à classe com que jogou.
 - Na aba Itens: equipar um item do cofre devolve o do slot ao cofre; tirar do equipamento e guardar da bag precisam de espaço no cofre.
 - Funções no banco: `buy_item`, `equip_item`, `store_item` e `sell_item` (jogador); `take_loadout`, `take_bag`, `finish_run` e `store_bag` (servidor de jogo).
@@ -944,7 +946,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 | Fim | Loot | Observação |
 |---|---|---|
-| **Morte** | Perde o loot, 1 equipamento sorteado e a bag | O item perdido cai no chão para os outros. As runas equipadas ficam. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
+| **Morte** | Perde o loot, 1 equipamento sorteado (a partir do nível 5; o mágico sai menos) e a bag | O item perdido cai no chão para os outros. As runas equipadas ficam. Pode também regredir os upgrades permanentes, para dar o peso da morte do Tibia raiz. |
 | **Fuga** | Leva tudo | Basta voltar à sala inicial e ficar 1,5 s em cima do portal (um anel enche em volta do herói; sair antes zera a contagem). |
 | **Dungeon concluída** | Leva tudo + bônus | Matar o boss abre um portal na sala final; como na fuga, leva quem fica 1,5 s em cima dele. |
 | **Soterrado** (o tempo acabou) | Igual à morte | Conta como morte. |
@@ -1301,7 +1303,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   **O drop não olha a classe de ninguém:** cai qualquer item, mesmo jogando sozinho (um cavaleiro acha cajado; vai para a bag e se vende).
 - O item cai no chão onde o monstro morreu (o do baú, aos pés de quem abriu, que já pega) e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
-- Quem morre larga 1 equipamento sorteado e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
+- Quem morre larga 1 equipamento sorteado (a partir do nível 5) e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
 - Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro e ×4 se mágico.
 
 ### Arte dos itens e equipamento visível

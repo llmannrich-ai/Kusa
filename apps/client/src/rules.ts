@@ -139,7 +139,7 @@ export function renderRules(root: HTMLElement) {
       table(["Fim", "O que acontece"], [
         ["🚪 Fuga", "Volte à sala inicial e entre no portal: leva todo o loot e os itens."],
         ["🐉 Boss derrotado", `Matar o boss abre um portal na sala final: leva tudo e +${pct(BOSS_LOOT_BONUS)} de loot.`],
-        ["💀 Morte", "Perde o loot, a bag inteira, as poções e 1 equipamento sorteado. Tudo cai no chão para os outros pegarem."],
+        ["💀 Morte", "Perde o loot, a bag inteira, as poções e, a partir do nível 5, 1 equipamento sorteado (o mágico sai menos). Tudo cai no chão para os outros pegarem."],
         ["🪨 Soterrado", "O tempo acabou: igual à morte."],
       ]),
     ),
