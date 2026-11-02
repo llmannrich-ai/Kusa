@@ -479,6 +479,9 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 |---|---|---|---|---|---|
 | Cavaleiro | Lâmina (Lâmina do Vendaval) | 🩸 **Corte Hemorrágico** | 2 | 2× no monstro colado e sangra 4 s; em quem já sangrava, a **Hemorragia** sai dobrada | sangra também os colados no alvo |
 | Cavaleiro | Bastião (Muro de Escudos) | 🥏 **Arremesso** | 1 | 0,8× e joga o monstro colado 4 tiles; se ele bater em parede ou monstro, os dois ficam atordoados 1,5 s | o impacto fere os dois (1,5×) |
+| Paladino | Mira (Leque de Flechas) | 🎯 **Flecha do Ponto Fraco** | 2 | 2,4× num alvo; em monstro marcado **e** sangrando, o dano dobra | marca o alvo (+15% por 4 s) |
+| Paladino | Luz (Clarão Sagrado) | 🌅 **Flecha da Aurora** | 1 | 1,4× de fogo e queima 3 s; em ofuscado, dispara o **Incandescer** na hora | Incandescer em raio 2 |
+| Paladino | Batedor (Abrolhos) | 🛢️ **Barril de Pólvora** | 2 | um barril no ponto mirado (30 s); explode quando leva flecha ou fogo (fogo num monstro colado nele também): raio 2, 2,5× e queima; o tempo acaba e ele some sem explodir; um barril acende o vizinho | 2 barris |
 | Cavaleiro | Comando (Brado Cortante) | ⚡ **Golpe Exposto** | 2 | 2,2× no monstro colado e atordoa 1 s; se ele estiver marcado, o golpe já sai **Exposto** | os marcados colados no alvo também ficam atordoados |
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.
