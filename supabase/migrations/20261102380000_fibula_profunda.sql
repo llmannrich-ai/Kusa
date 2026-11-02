@@ -1,7 +1,7 @@
 -- A Fíbula volta a ser o mapa de três salões com um boss (o Rei Ossudo), e a caverna grande com os três covis vira um
 -- mapa à parte, a Fíbula Profunda ('fibula2'), logo depois dela na campanha (abre com a Fíbula vencida; a Cripta
 -- continua abrindo só com o Rei Ossudo). O mapa descoberto (`profile_map_memory`) vale para as duas.
--- Parte do estado depois de 20261102350000_fibula_tres_covis_e_mapa_descoberto.sql: `map_unlocked`, `record_map_clear`,
+-- Parte do estado depois de 20261102360000_fortaleza_pelos_dois_lados.sql: `map_unlocked`, `record_map_clear`,
 -- `start_solo_run` e `finish_solo_run` são remendadas no texto atual do banco.
 
 alter table public.solo_runs drop constraint solo_runs_map_id_check;
