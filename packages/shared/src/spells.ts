@@ -368,6 +368,8 @@ export interface SpellDef {
   taunt?: boolean;
   /** Criaturas aliadas que aparecem em volta de quem conjura (ver summons.ts). */
   summon?: { kind: SummonKind; count: number; durationMs: number };
+  /** Níveis da magia em que `summon` ganha mais uma criatura (antes da Maestria, que troca `summon` inteiro). */
+  summonGrowth?: readonly number[];
   /** Tiles por segundo até o alvo; sem isso o efeito é imediato. */
   projectileSpeed?: number;
   /** O efeito cai no ponto mirado depois deste tempo, em vez de voar até lá (Flecha Celeste: atira para o alto). */
@@ -825,8 +827,9 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   wolf_pack: spell({
     id: "wolf_pack", classId: "druid", slot: 1, name: "Chamado da Matilha", icon: "🌕", color: 0x9ec5ff,
-    description: "Uiva para a lua e invoca uma matilha de três lobos.",
-    manaCost: 60, cooldownMs: 22000, aim: "self", range: 0, radius: 0, summon: { kind: "wolf", count: 3, durationMs: 18000 },
+    description: "Uiva para a lua e invoca uma matilha de dois lobos (três a partir do nível 3).",
+    manaCost: 60, cooldownMs: 22000, aim: "self", range: 0, radius: 0, summon: { kind: "wolf", count: 2, durationMs: 18000 },
+    summonGrowth: [3],
   }),
   ancient_bear: spell({
     id: "ancient_bear", classId: "druid", slot: 1, name: "Urso Ancestral", icon: "🐻", color: 0x8d6e4a,
@@ -1931,7 +1934,9 @@ export const MASTERIES: Record<SpellId, Mastery> = {
  * `bonus` é a força extra das sinergias e do Tomo (`spellBonus` em talents.ts), em fração: multiplica a força do nível.
  */
 export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
-  const def = rank >= MASTERY_RANK ? { ...base, ...MASTERIES[base.id].changes } : base;
+  const extra = base.summon && base.summonGrowth ? base.summonGrowth.filter((r) => rank >= r).length : 0;
+  const grown = extra ? { ...base, summon: { ...base.summon!, count: base.summon!.count + extra } } : base;
+  const def = rank >= MASTERY_RANK ? { ...grown, ...MASTERIES[base.id].changes } : grown;
   const k = rankPower(rank) * (1 + bonus);
   const t = rankDuration(rank);
   const ms = (v?: number) => (v === undefined ? undefined : Math.round(v * t));
