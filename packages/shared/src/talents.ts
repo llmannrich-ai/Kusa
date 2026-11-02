@@ -301,6 +301,10 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["arrow_fan", 0, 3, "piercing_shot", 1], ["holy_flash", 1, 3, "healing_light", -1], ["caltrops", 2, 3, "mana", 1],
     // Fase 5: a magia de combo, embaixo da de leque (o Barril sai na faixa ao lado: a Flecha Incendiária ocupa a dos Abrolhos).
     ["weak_point_arrow", 0, 4, "arrow_fan", 1], ["dawn_arrow", 1, 4, "holy_flash", -1], ["powder_keg", 2, 4, "caltrops", 2],
+    // Fase 6: o slot 3 de cada lado, embaixo da última magia do lado (pede ela no nível 1).
+    ["phantom_shot", 0, 8, "sniper_stance", -1], ["wind_dance", 0, 8, "swift_quiver", 1],
+    ["flaming_cross", 1, 8, "divine_caldera", -1], ["sanctuary", 1, 8, "consecrated_ground", 1],
+    ["bombardment", 2, 8, "barrage", -1], ["minefield", 2, 8, "arrow_cordon", 1],
   ],
   sorcerer: [
     ["spark", 0, 3, "lightning_bolt", -1], ["ember_rain", 0, 4, "spark", -2],

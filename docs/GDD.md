@@ -444,6 +444,12 @@ lado (mesma faixa, ±1), pedindo ela no nível 1 de uso; como o lado é escolha 
 | Cavaleiro | Inabalável | 🗿 **Montanha** | 6 s sem ser atordoado, preso nem engolido (o que já prendia sai), metade do dano e devolve 100% do golpe corpo a corpo | Terremoto grátis em raio 2 no fim |
 | Cavaleiro | Senhor da Guerra | 🎺 **Grito de Reunião** | cura 30%, escudo de 20% e +30% de velocidade por 5 s nos aliados a até 6 tiles | alcance 8 |
 | Cavaleiro | Desafiante | ⛓️ **Correntes do Desafio** | leque de 90°, 5 tiles: 0,5×, provoca, puxa todos para perto e prende 2 s | os puxados sangram 4 s |
+| Paladino | Atirador de Elite | 🦅 **Disparo Fantasma** | marca os 3 monstros mais perto (até 7 tiles); 1,5 s depois cada um leva 3× | 5 monstros |
+| Paladino | Caçador Ágil | 🍃 **Dança do Vento** | rola 3 tiles para trás e solta 5 flechas (0,9×) para a frente; 3 cargas seguidas em 6 s, depois a recarga | 4 cargas |
+| Paladino | Cruzado | ✝️ **Cruz Flamejante** | 4 retas de 5 tiles em volta de você (cima, baixo, lados): 2,5× de fogo e queima | retas de 7 |
+| Paladino | Guardião da Luz | 🕊️ **Santuário** | zona de raio 3 por 8 s: os aliados dentro levam 40% menos dano e os monstros que entram são empurrados para fora | raio 4 |
+| Paladino | Artilheiro | 💣 **Bombardeio** | 5 bombas caem em onda num leque de 60°, da perto para a longe (até 6 tiles): 1,6× de fogo em raio 1 cada | chão em chamas por 3 s |
+| Paladino | Armadilheiro | 🕸️ **Campo Minado** | 5 minas num leque de 120°, 4 tiles: quem pisa fica preso 2 s e a mina explode (1,5× em raio 1) | 7 minas |
 
 #### Magias em leque (Grimório 4.0)
 

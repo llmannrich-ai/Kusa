@@ -703,6 +703,13 @@ no Bastião e no Comando), faixa ±1, 2.500 de gold. Peças: no `selfBuff`, `cle
 Montanha não precisa do "sem ser empurrado" (nenhum monstro empurra herói hoje); o Grito de Reunião usa a marcha do
 Tambor (`rally.move`). Teste novo `s3lados`; migration `20261102230000_s3_cavaleiro.sql`.
 
+**Fase 6 (Paladino), como foi entregue:** as 6 ficam na linha VIII (todas as especializações do Paladino vão até a VII).
+Peças: `phantom` (marca os mais perto e acerta depois), `charges` (a recarga só começa quando acabam as cargas ou a janela
+delas; entre uma carga e outra, 0,4 s), `dash.back` (recua para o lado oposto ao mirado; o leque sai de onde o herói
+parou), `cross` (as 4 retas, a A5), `bombard` (bombas em onda, uma a cada 0,15 s) e, na zona, `allyGuard` e `repel`
+(Santuário: o corte de dano é o do Grito de Guerra, renovado a cada pulso). Cruz Flamejante e Bombardeio são de fogo
+(acendem o Barril de Pólvora); Disparo Fantasma e Santuário, de luz. Migration `20261102240000_s3_paladino.sql`.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
