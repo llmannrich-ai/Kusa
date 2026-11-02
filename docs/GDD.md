@@ -1107,13 +1107,16 @@ lê.
   `docs/arte/fortaleza/planta.txt`): a praça da entrada, as ruas de basalto em grade, quadras de casas do império caídas
   com os pátios de calçamento quebrado, a **praça da fonte seca** (5×5, com colunas nos cantos), duas casernas com
   mini-boss e baú, o acampamento na cabeça da ponte e um **mirante** de pedra sobre o desfiladeiro; no pátio externo,
-  a **estátua derrubada** do imperador. Depois, o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
+  a **estátua derrubada** do imperador. Depois, o **desfiladeiro** (embaixo dele o vale pintado por código, com a
+  cachoeira do esgoto do castelo caindo da face do paredão) de lado a lado (7 linhas), a **muralha externa** na
   beira dele com o portão entre duas torres, o **pátio externo** fechado por muralhas (dos lados e na beira do
   precipício, com uma torre em cada canto; a mata fica do lado de fora) e virado acampamento (tendas, fogueiras, paliçadas,
   totens de caveira, estandartes, 3 casernas com mini-boss e baú), a **muralha interna** com o segundo portão, e o
   **esporão**: o pátio de lajes com colunata, o parapeito caído na beira do precipício, a guarda do chefe e, no norte, a
-  **torre de menagem** (19×15, com torreões nos cantos do terraço), cujo salão
-  do trono é a sala do boss. Dos dois lados do esporão e atrás da torre, o precipício.
+  **torre de menagem** (19×15, fachada de 3 andares em cantaria, torreões com o estandarte de caveira nos cantos do
+  terraço), cujo salão do trono é a sala do boss (tapete vermelho da porta ao trono, braseiros acesos). As muralhas
+  levam escudos, remendos, estacas com caveira e panos de guerra dos orcs; as casernas, telhado de telha e camas de
+  palha. Ambiente de fim de tarde: fumaça e faíscas nas fogueiras, corvos em volta da torre, estandartes ao vento. Dos dois lados do esporão e atrás da torre, o precipício.
 - **Monstros:** o quartel do clã do Rei-Ogro. São as espécies do Pântano do Kosaradius (mesma arte), com força fixa
   do mapa bem maior (`commonPower` 2,4 e `minibossPower` 2,5: vida, dano, XP e loot), em quantidade
   massiva: orçamento de 320 a 1000 por zona (as salas chegam ao teto de `MAX_ROOM_MONSTERS`), 8 monstros por campina e
