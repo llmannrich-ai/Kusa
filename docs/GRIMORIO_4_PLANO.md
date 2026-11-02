@@ -694,6 +694,22 @@ Espinheiro precisa do veneno para ter força); a semente cura quem está no tile
 peças A6 e A10 do plano não foram precisas: a semente é uma armadilha comum). Migration
 `20261102220000_combos_druida.sql`.
 
+**Fase 6 (Cavaleiro), como foi entregue:** a fase 6 sai por classe (um PR por classe), com os dois lados de cada ramo
+juntos; o plano pedia as 4 classes juntas, mas o lado só abre para quem já escolheu e cada classe fica completa no seu
+PR. A magia fica embaixo da última magia do lado (linha IX na Lâmina, que tem a especialização uma linha abaixo, e VIII
+no Bastião e no Comando), faixa ±1, 2.500 de gold. Peças: no `selfBuff`, `cleave`, `lifesteal` e `killExtend`
+(Massacre); `oath` (Juramento do Protetor: o dano de monstro do aliado é dividido antes do Intervir); `steadfastMs` e
+`afterQuake` (Montanha); `pullAll` (Correntes do Desafio, com a Corrente de Ferro em cada atingido). Diferenças: a
+Montanha não precisa do "sem ser empurrado" (nenhum monstro empurra herói hoje); o Grito de Reunião usa a marcha do
+Tambor (`rally.move`). Teste novo `s3lados`; migration `20261102230000_s3_cavaleiro.sql`.
+
+**Fase 6 (Paladino), como foi entregue:** as 6 ficam na linha VIII (todas as especializações do Paladino vão até a VII).
+Peças: `phantom` (marca os mais perto e acerta depois), `charges` (a recarga só começa quando acabam as cargas ou a janela
+delas; entre uma carga e outra, 0,4 s), `dash.back` (recua para o lado oposto ao mirado; o leque sai de onde o herói
+parou), `cross` (as 4 retas, a A5), `bombard` (bombas em onda, uma a cada 0,15 s) e, na zona, `allyGuard` e `repel`
+(Santuário: o corte de dano é o do Grito de Guerra, renovado a cada pulso). Cruz Flamejante e Bombardeio são de fogo
+(acendem o Barril de Pólvora); Disparo Fantasma e Santuário, de luz. Migration `20261102240000_s3_paladino.sql`.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

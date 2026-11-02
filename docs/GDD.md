@@ -431,7 +431,25 @@ dois lados); pedem a última magia do tronco no nível 1 de uso.
 | Druida | Bosque | 🌳 **Árvore da Vida** | campo de raio 3 por 12 s que cura 5% por segundo os aliados dentro | 8% |
 | Druida | Espinhos | 🍂 **Furacão de Folhas** | canaliza 3 s: leque de 90° e 5 tiles, 0,5× a cada 0,3 s e empurra | prende 0,5 s por pulso |
 
-Faltam os Ápices do Xamã (quando o tronco dele existir) e as magias de slot 3 das especializações.
+Faltam os Ápices do Xamã (quando o tronco dele existir).
+
+**Slot 3 de cada lado da especialização** (fase 6, 2.500 de gold): uma magia de slot 3 embaixo da última magia de cada
+lado (mesma faixa, ±1), pedindo ela no nível 1 de uso; como o lado é escolha permanente, só quem fez a escolha alcança.
+
+| Classe | Lado | Magia | O que faz (nível 0) | Maestria |
+|---|---|---|---|---|
+| Cavaleiro | Berserker | 🩸 **Massacre** | 8 s: o básico corta todos os colados e rouba 30% do dano em vida | cada morte pelo básico estende 1 s (até +4 s) |
+| Cavaleiro | Duelista | 🗡️ **Tempestade de Lâminas** | 5 lâminas num leque de 60°, 1,5× cada, que sangram 3 s | 7 lâminas |
+| Cavaleiro | Guardião | 🤝 **Juramento do Protetor** | num aliado mirado por 10 s: 60% do dano de monstro dele vem para você, e você ganha +10 de armadura | ele ganha escudo de 20% |
+| Cavaleiro | Inabalável | 🗿 **Montanha** | 6 s sem ser atordoado, preso nem engolido (o que já prendia sai), metade do dano e devolve 100% do golpe corpo a corpo | Terremoto grátis em raio 2 no fim |
+| Cavaleiro | Senhor da Guerra | 🎺 **Grito de Reunião** | cura 30%, escudo de 20% e +30% de velocidade por 5 s nos aliados a até 6 tiles | alcance 8 |
+| Cavaleiro | Desafiante | ⛓️ **Correntes do Desafio** | leque de 90°, 5 tiles: 0,5×, provoca, puxa todos para perto e prende 2 s | os puxados sangram 4 s |
+| Paladino | Atirador de Elite | 🦅 **Disparo Fantasma** | marca os 3 monstros mais perto (até 7 tiles); 1,5 s depois cada um leva 3× | 5 monstros |
+| Paladino | Caçador Ágil | 🍃 **Dança do Vento** | rola 3 tiles para trás e solta 5 flechas (0,9×) para a frente; 3 cargas seguidas em 6 s, depois a recarga | 4 cargas |
+| Paladino | Cruzado | ✝️ **Cruz Flamejante** | 4 retas de 5 tiles em volta de você (cima, baixo, lados): 2,5× de fogo e queima | retas de 7 |
+| Paladino | Guardião da Luz | 🕊️ **Santuário** | zona de raio 3 por 8 s: os aliados dentro levam 40% menos dano e os monstros que entram são empurrados para fora | raio 4 |
+| Paladino | Artilheiro | 💣 **Bombardeio** | 5 bombas caem em onda num leque de 60°, da perto para a longe (até 6 tiles): 1,6× de fogo em raio 1 cada | chão em chamas por 3 s |
+| Paladino | Armadilheiro | 🕸️ **Campo Minado** | 5 minas num leque de 120°, 4 tiles: quem pisa fica preso 2 s e a mina explode (1,5× em raio 1) | 7 minas |
 
 #### Magias em leque (Grimório 4.0)
 
@@ -1585,7 +1603,8 @@ Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os tote
     básico); soltar atira, mesmo sem
     monstro à vista; voltar ao botão cancela. O dedo parado vira "segurar" depois de 150 ms.
   - Telemetria: `RunStats.shots` (disparados, errados e mirados à mão, por fonte).
-- O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
+- O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`, no ritmo da hunt: ~1,11 s).
+- **Ritmo da hunt (`PACE` em `packages/shared/src/constants.ts`, hoje 0,9):** um número só deixa a hunt inteira mais lenta na mesma proporção. Divide os tempos de turno (recarga do ataque básico e das magias, intervalo de ataque e recarga das habilidades dos monstros e das criaturas, passo das ondas, voo dos projéteis), multiplica a velocidade de movimento de heróis, monstros e criaturas e põe as animações de efeito do cliente no mesmo ritmo (`tweens`/`time` da `DungeonScene`). As tabelas de magias, monstros e classes guardam os valores sem ele; o Grimório mostra a recarga já com ele. Durações de efeitos (queimadura, lentidão, buffs) não mudam.
 - Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível da magia, mana e recarga; sem rolagem: com 3 a 6 magias as cartas viram uma grade de 3 colunas só com o efeito principal e o custo, e com 7 ou mais, 4 colunas com nome e custo); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
 - Toda classe tem uma magia inicial por slot; as compradas no Grimório viram opções extras na escolha, já no nível que a magia tem na conta (ver "Grimório").
 - Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por

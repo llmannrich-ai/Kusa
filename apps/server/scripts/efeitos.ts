@@ -99,7 +99,8 @@ test("Aljava Veloz deixa as flechas mais rápidas", "paladin", (a) => {
     a.hunt.attacking(HERO, { on: true });
     a.advance(4000);
     a.hunt.attacking(HERO, { on: false });
-    return a.hitsFrom(from);
+    // Só as flechas: queimadura e veneno no alvo não contam.
+    return a.damage.slice(from).filter((x) => x.attacker === HERO && !x.toPlayer && !x.dot).length;
   };
   const slow = shots();
   a.cast(1);

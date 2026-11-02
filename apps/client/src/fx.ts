@@ -395,6 +395,40 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 6: slot 3 de cada lado da especialização do Paladino (o Santuário e as minas aparecem pelo estado).
+      case "phantom_shot":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE * 1.5, 0xbdc3c7, 500, 4);
+        return this.projectile(FX.holyArrow, from, to, 200, { trail: 0xecf0f1, glow: 0xbdc3c7, scale: 1.3 });
+      case "wind_dance": return this.projectile(FX.arrow, from, to, ms, { trail: 0x9be15d, glow: 0xf1c40f });
+      case "flaming_cross":
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.zap(from, { x: from.x + dx * TILE_SIZE * 5, y: from.y + dy * TILE_SIZE * 5 }, 0xff7f27);
+        return this.holyFlash(from);
+      case "sanctuary":
+        this.ring(from, radius, 0xfff3a0, 650, 5);
+        return this.holyFlash(from);
+      case "bombardment":
+        if (from.x === to.x && from.y === to.y) return;
+        this.ring(to, TILE_SIZE * 1.5, 0xe67e22, 400, 8);
+        return this.debris(to, TILE_SIZE * 1.5, 0x6b4426);
+      case "minefield": return this.sparks(from, 0x8d6e4a, 6);
+      // Fase 6: slot 3 de cada lado da especialização do Cavaleiro (as Correntes são um leque, desenhado pela cena).
+      case "massacre":
+        this.ring(from, TILE_SIZE * 1.2, 0x922b21, 500, 6);
+        return this.bladeSpin(from);
+      case "blade_storm": return this.projectile(FX.arrow, from, to, ms, { trail: 0xd2d6de, glow: 0xffffff, scale: 1.3 });
+      case "protector_oath":
+        this.zap(from, to, 0x7fc8ff);
+        this.shieldRaise(from);
+        return this.later(120, () => this.shieldRaise(to));
+      case "mountain":
+        this.ring(from, TILE_SIZE, 0x7f8c8d, 600, 8);
+        return this.debris(from, TILE_SIZE, 0x6b4426);
+      case "rally_cry":
+        this.ring(from, radius, 0xf1c40f, 650, 5);
+        this.later(150, () => this.ring(from, radius * 0.6, 0x7fc8ff, 450, 3));
+        return this.heal(from);
+      case "challenge_chains":
+        return;
       // Fase 5: magias de combo do Druida (a semente aparece pelo estado, como armadilha).
       case "pack_hunt":
         this.projectile(FX.greenLight, from, to, ms, { trail: 0xc8a165, glow: 0x8d6e4a, impact: 0xffe0b2 });

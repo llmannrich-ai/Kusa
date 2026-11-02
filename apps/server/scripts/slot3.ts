@@ -92,10 +92,12 @@ test("Revoada: fere em leque e cura o druida", () => {
   const a = arena({ classId: "druid", startLevel: 12, monsterHp: 50 });
   const m = a.place(TARGET, 2, 0);
   a.p.hp = Math.round(a.p.maxHp / 2);
-  const before = a.p.hp;
+  // Mede a cura registrada, não a vida: o monstro revida no mesmo intervalo e pode anular a cura na conta da vida.
+  const before = a.seat().stats.healing;
   castS3(a, "butterfly_swarm", m);
   a.advance(800);
-  check(lostHp(a, m.id) > 0 && a.p.hp > before, `dano ${lostHp(a, m.id)}, vida ${before} → ${a.p.hp}`);
+  const healed = a.seat().stats.healing - before;
+  check(lostHp(a, m.id) > 0 && healed > 0, `dano ${lostHp(a, m.id)}, cura ${healed}`);
 });
 test("o bot escolhe e usa a magia do slot 3", () => {
   const a = arena({ classId: "knight", startLevel: 12, monsterHp: 50, allies: [{ classId: "sorcerer", bot: true }] });
@@ -114,7 +116,8 @@ for (const classId of CLASS_IDS.filter((c) => c in ENTRY)) {
 console.log("Ápices (fase 3b-1):");
 test("cada Ápice fica no fim do tronco do ramo, a 2.000, pedindo a última magia do tronco", () => {
   for (const classId of ["knight", "paladin", "sorcerer", "druid"] as const) {
-    const apices = talentTree(classId).filter((t) => t.spellId && SPELLS[t.spellId].slot === 2 && t.row > 0);
+    // O slot 3 de cada lado da especialização (fase 6, faixa ±1) tem teste próprio (`s3lados`).
+    const apices = talentTree(classId).filter((t) => t.spellId && SPELLS[t.spellId].slot === 2 && t.row > 0 && t.side === undefined);
     for (const t of apices) {
       const parent = TALENTS[t.requires!.id];
       check(t.baseCost === 2000 && parent.col === t.col && parent.lane === 0 && parent.spellId !== undefined, `${t.id}: lugar ou preço`);
