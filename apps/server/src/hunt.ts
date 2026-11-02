@@ -2347,6 +2347,22 @@ export class Hunt {
         brain.weakPct = Math.max(now < brain.weakUntil ? brain.weakPct : 0, Math.min(LAMENT.max, seat.gifts.weakenPower));
         brain.weakUntil = Math.max(brain.weakUntil, now + (this.marks(seat, "deep_lament") >= 4 ? LAMENT.msLater : LAMENT.ms));
       }
+      // Brado Cortante (Maestria): enfraquece quem pega.
+      if (spell.weaken) {
+        brain.weakPct = Math.max(now < brain.weakUntil ? brain.weakPct : 0, spell.weaken.pct);
+        brain.weakUntil = Math.max(brain.weakUntil, now + spell.weaken.ms);
+      }
+      // Golpe Exposto (Maestria): os marcados colados no alvo também ficam atordoados (Exposto).
+      if (spell.exposeRadius && spell.stunMs && m === anchor) {
+        for (const other of [...this.state.monsters.values()]) {
+          const ob = this.brains.get(other.id);
+          if (!ob || other === m || other.hidden || now >= ob.markUntil || tileDistance(m.x, m.y, other.x, other.y) > spell.exposeRadius) continue;
+          ob.stunnedUntil = Math.max(ob.stunnedUntil, now + spell.stunMs);
+          other.stunned = true;
+          seat.stats.ccMs.stun += spell.stunMs;
+          this.hemorrhage(other, ob, sessionId);
+        }
+      }
       if (spell.mark) {
         brain.markPct = Math.max(now < brain.markUntil ? brain.markPct : 0, spell.mark.pct);
         brain.markUntil = Math.max(brain.markUntil, now + spell.mark.ms);
@@ -2366,6 +2382,8 @@ export class Hunt {
         brain.markUntil = Math.max(brain.markUntil, now + hex.ms);
         m.marked = true;
       }
+      // Corte Hemorrágico: em quem já sangrava, a Hemorragia sai mais forte antes do sangramento novo.
+      if (spell.hemorrhage && before.bleeding) this.hemorrhage(m, brain, sessionId, spell.hemorrhage);
       if (spell.dot) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spell.dot.perSec, spell.dot.ms, spell.dot.kind, now, burst);
       // Toxina (Traço): magia com dano envenena (e o veneno acumula, ver `applyDot`).
       else if (toxin && spell.damage) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * toxin.perSec, toxin.ms, "poison", now);
@@ -2391,7 +2409,9 @@ export class Hunt {
         const element = spell.element ? 1 + (seat.gifts.elementDamage[spell.element] ?? 0) : 1;
         const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * element * this.farBonus(seat, p, m)));
         dealt += value;
-        this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id, sessionId, before);
+        // Golpe Exposto: o atordoar do próprio golpe já vale para o Exposto (as outras reações seguem o estado de antes).
+        const states = spell.exposeNow && before.marked && spell.stunMs ? { ...before, stunned: true } : before;
+        this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id, sessionId, states);
         // Fé Ardente (marco 5): a magia de luz de alvo único atravessa e acerta também o monstro logo atrás.
         if (radiant && m === anchor && spell.radius === 0 && !line && this.marks(seat, "burning_faith") >= 5) {
           const behind = this.monsterOn({ x: m.x + Math.sign(m.x - p.x), y: m.y + Math.sign(m.y - p.y) });
@@ -2406,7 +2426,10 @@ export class Hunt {
           if (harvest && p.status === "playing") this.giveMana(p, Math.max(1, Math.round(p.maxMana * harvest.pct)), sessionId);
         }
       }
-      if (spell.push && m.hp > 0) this.push(m, p, spell.push, sessionId);
+      if (spell.push && m.hp > 0) {
+        const into = this.push(m, p, spell.push, sessionId);
+        if (spell.slam && into) this.slam(sessionId, p, seat, m, brain, into, spell.slam);
+      }
       // Corrente da Submissão: o alvo comum que ficou abaixo do limite vira aliado.
       if (spell.convert && m === anchor && m.hp > 0 && m.hp <= m.maxHp * spell.convert.hpPct && p.status === "playing") {
         this.bindMonster(sessionId, p, m, brain, spell.convert.ms);
@@ -3608,7 +3631,7 @@ export class Hunt {
   }
 
   /** Hemorragia: empurrado ou atordoado sangrando, o resto do sangramento entra todo de uma vez. */
-  private hemorrhage(m: Monster, brain: Brain, creditId: string) {
+  private hemorrhage(m: Monster, brain: Brain, creditId: string, power = 1) {
     const dot = brain.dot;
     const now = this.host.now();
     if (!dot || dot.kind !== "bleed" || now >= dot.until || !this.state.monsters.has(m.id)) return;
@@ -3618,7 +3641,7 @@ export class Hunt {
     this.reacted("hemorrhage", creditId, m.x, m.y);
     // Sangue no Aço (Dom): a Hemorragia de quem a disparou fere mais.
     const seat = this.seats.get(creditId);
-    const amount = Math.max(1, Math.round(dot.amount * pulses * (1 + (seat?.gifts.hemorrhageDamage ?? 0))));
+    const amount = Math.max(1, Math.round(dot.amount * pulses * power * (1 + (seat?.gifts.hemorrhageDamage ?? 0))));
     const { x, y } = m;
     this.damageMonster(m, amount, { attacker: dot.attacker, fromX: x, fromY: y, fx: "slash", dot: "bleed" }, "reaction:hemorrhage", dot.attacker);
     const blood = this.marks(seat, "blood_steel");
@@ -5524,6 +5547,26 @@ export class Hunt {
       if (hero) this.applyDot(m, brain, creditId, "blood_steel", this.baseDamage(creditId, hero, "basic") * BLOOD.pushBleedPerSec, BLOOD.pushBleedMs, "bleed", this.host.now());
     }
     if (hit && seat && creditId && brain && seat.gifts.anvilStunMs > 0 && !chained) this.anvilImpact(m, brain, hit, seat, creditId, dx, dy);
+    return hit;
+  }
+
+  /** Arremesso: o monstro jogado bateu em parede ou noutro monstro; os dois ficam atordoados e o impacto fere. */
+  private slam(sessionId: string, p: Player, seat: Seat, m: Monster, brain: Brain, into: "wall" | Monster, slam: NonNullable<SpellDef["slam"]>) {
+    const now = this.host.now();
+    const targets: [Monster, Brain][] = [[m, brain]];
+    const other = into === "wall" ? undefined : into;
+    const otherBrain = other && this.brains.get(other.id);
+    if (other && otherBrain) targets.push([other, otherBrain]);
+    for (const [t, b] of targets) {
+      if (!this.state.monsters.has(t.id)) continue;
+      b.stunnedUntil = Math.max(b.stunnedUntil, now + slam.stunMs);
+      t.stunned = true;
+      seat.stats.ccMs.stun += slam.stunMs;
+      this.hemorrhage(t, b, sessionId);
+      if (slam.power > 0 && this.state.monsters.has(t.id)) {
+        this.damageMonster(t, rollDamage(this.random, this.baseDamage(sessionId, p, "spell") * slam.power), { attacker: sessionId, fromX: t.x, fromY: t.y, fx: "smash" }, "shield_toss", sessionId);
+      }
+    }
   }
 
   /** Bigorna: o monstro empurrado bateu em parede ou monstro e fica atordoado (marcos: dano, empurra o de trás, lentidão). */

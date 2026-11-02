@@ -395,6 +395,17 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 5: magias de combo do Cavaleiro.
+      case "hemorrhagic_cut":
+        this.slash(from, to);
+        this.later(80, () => this.slash(from, to));
+        return this.later(160, () => this.sparks(to, 0xb03a2e, 12));
+      case "shield_toss":
+        this.slash(from, to);
+        return this.later(100, () => this.ring(to, TILE_SIZE / 2, 0x7fa8c9, 300, 5));
+      case "exposed_strike":
+        this.slash(from, to);
+        return this.later(120, () => this.sparks(to, 0xf7d774, 10));
       case "seismic_rift": return this.debris(to, TILE_SIZE, 0x6b4426);
       case "aegis_strike":
         this.slash(from, to);

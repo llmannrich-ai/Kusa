@@ -661,6 +661,15 @@ Mariposa, devolveriam a mana toda); o marco 5 da Rajada de Cardos troca o sangra
 guarda um dano contínuo (com a prisão do marco 2, o espinho seguinte dispara o Espinheiro); o "+1 s de raiz" do
 Espinheiro Antigo deixa a raiz por mais 1 s em vez de soltar, e o "+1 s de sangramento" vira um pulso a mais na hora.
 
+**Fase 5 (Cavaleiro), como foi entregue:** a fase 5 sai por classe, um PR por classe. As 3 magias de combo do Cavaleiro
+ficam embaixo da magia em leque da mesma costela (linha 4, mesma faixa, 800 de gold): Corte Hemorrágico sai da Lâmina do
+Vendaval, Arremesso do Muro de Escudos e Golpe Exposto do Brado Cortante. Peças novas: `hemorrhage` (força da
+Hemorragia em quem já sangrava), `slam` (o empurrão que bate atordoa os dois), `exposeNow` (o atordoar do próprio golpe
+já vale para o Exposto, a exceção à regra de que a magia não reage com o que ela mesma põe), `exposeRadius` e `weaken`
+(A2 nas magias: a Maestria do Brado Cortante agora enfraquece 20% por 4 s, como no plano). Diferenças: o Arremesso fere
+0,8× (sem dano, o botão parecia não fazer nada); a Maestria do Corte Hemorrágico sangra os colados no alvo (raio 1, como
+a Ferida Aberta). Teste novo `combos`; migration `20261102190000_combos_cavaleiro.sql`.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

@@ -457,7 +457,7 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 |---|---|---|---|---|---|
 | Cavaleiro | Lâmina (Golpe Esmagador) | 🌬️ **Lâmina do Vendaval** | 1 | onda de 60°, 3 tiles, 1,4× e empurra 1 | segunda onda com 60% |
 | Cavaleiro | Bastião (Escudo da Fé) | 🔰 **Muro de Escudos** | 2 | leque de 120°, 2 tiles, 1×, empurra 2 e atordoa 0,8 s | escudo de 20% por 5 s |
-| Cavaleiro | Comando (Áurea da Disciplina) | 📢 **Brado Cortante** | 1 | leque de 90°, 4 tiles, 0,6×, provoca e marca (+15% por 5 s) | 30% de lentidão |
+| Cavaleiro | Comando (Áurea da Disciplina) | 📢 **Brado Cortante** | 1 | leque de 90°, 4 tiles, 0,6×, provoca e marca (+15% por 5 s) | enfraquece 20% por 4 s |
 | Paladino | Mira (Disparo Perfurante) | 🪶 **Leque de Flechas** | 1 | 5 flechas em 45°, 0,9× cada | 7 flechas |
 | Paladino | Luz (Luz Curativa) | ☀️ **Clarão Sagrado** | 2 | onda de 120°, 4 tiles, 1,2×, ofusca 1 s, dobro em mortos-vivos | marca os ofuscados (+15% por 4 s) |
 | Feiticeiro | Raio (Relâmpago) | 🔥 **Cusparada de Fogo** | 1 | onda de fogo de 60°, 3 tiles, 1,3× e queima 3 s | leque de 90° |
@@ -471,6 +471,15 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 
 - Preço: 500 (linha 3) e 800 (Leque de Raios, linha 4), como as costelas. Cada uma pede o pai no nível 1 de uso.
 - Telemetria: `stats.fanHits` (monstros pegos por magia em leque).
+
+**Magias de combo das costelas novas** (fase 5 do Grimório 4.0): uma em cada costela nova, embaixo da magia em leque
+(linha 4, 800 de gold, pede a de leque no nível 1 de uso). Cada uma prepara ou dispara uma reação.
+
+| Classe | Ramo (pai) | Magia | Slot | O que faz (nível 0) | Maestria |
+|---|---|---|---|---|---|
+| Cavaleiro | Lâmina (Lâmina do Vendaval) | 🩸 **Corte Hemorrágico** | 2 | 2× no monstro colado e sangra 4 s; em quem já sangrava, a **Hemorragia** sai dobrada | sangra também os colados no alvo |
+| Cavaleiro | Bastião (Muro de Escudos) | 🥏 **Arremesso** | 1 | 0,8× e joga o monstro colado 4 tiles; se ele bater em parede ou monstro, os dois ficam atordoados 1,5 s | o impacto fere os dois (1,5×) |
+| Cavaleiro | Comando (Brado Cortante) | ⚡ **Golpe Exposto** | 2 | 2,2× no monstro colado e atordoa 1 s; se ele estiver marcado, o golpe já sai **Exposto** | os marcados colados no alvo também ficam atordoados |
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.
 - A escolha sorteada da fase 5f deu lugar às magias ativas: o jogador escolhe no Grimório as até 3 por slot.
