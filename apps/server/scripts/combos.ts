@@ -6,7 +6,10 @@
  *   - Paladino: Flecha do Ponto Fraco (dobro em marcado e sangrando), Flecha da Aurora (Incandescer em ofuscado) e Barril
  *     de Pólvora (explode com flecha ou fogo, some sem explodir);
  *   - Feiticeiro: Choque Térmico (Vapor em quem já estava queimando ou lento) e Sentença (Condenação dobrada); a Maestria
- *     do Lamento Sombrio enfraquece.
+ *     do Lamento Sombrio enfraquece;
+ *   - Druida: Caça em Bando (as criaturas vão na presa e ferem mais nela; o veneno vira Espinheiro em quem está preso),
+ *     Broto Duplo (semente que cura o aliado e prende o monstro) e Abraço do Espinheiro (prende; o envenenado vira
+ *     Espinheiro).
  * Uso: npx tsx scripts/combos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { EXPOSED_BONUS, MASTERIES, SPELLS, talentTree, type ClassId, type SpellDef, type SpellId } from "@kusa/shared";
@@ -44,6 +47,7 @@ test("as magias de combo ficam embaixo da de leque da mesma costela", () => {
     ["knight", "hemorrhagic_cut", "gale_blade"], ["knight", "shield_toss", "shield_wall"], ["knight", "exposed_strike", "cutting_shout"],
     ["paladin", "weak_point_arrow", "arrow_fan"], ["paladin", "dawn_arrow", "holy_flash"], ["paladin", "powder_keg", "caltrops"],
     ["sorcerer", "thermal_shock", "frost_breath"], ["sorcerer", "sentence", "dark_wail"],
+    ["druid", "pack_hunt", "pack_roar"], ["druid", "twin_sprout", "pollen_breeze"], ["druid", "bramble_embrace", "thorn_spray"],
   ];
   for (const [classId, combo, fan] of pairs) {
     const tree = talentTree(classId);
@@ -234,6 +238,62 @@ test("Lamento Sombrio (Maestria): enfraquece 20% por 3 s", () => {
   const m = a.place("lizardfolk", 2, 0);
   a.any.applySpell(HERO, mastered("dark_wail"), 0, m.id, m.x, m.y, 10, undefined, 0);
   check(a.brain(m).weakPct === 0.2 && a.brain(m).weakUntil === a.now() + 3000, `enfraquecido ${a.brain(m).weakPct}`);
+});
+
+console.log("Druida:");
+test("Caça em Bando: as criaturas vão na presa e ferem +50% nela; presa presa vira Espinheiro", () => {
+  const bite = (hunted: boolean) => {
+    const a = comboArena("druid", 4000);
+    const near = a.place("lizardfolk", 1, 1);
+    const prey = a.place("lizardfolk", 4, 0);
+    for (const m of [near, prey]) a.any.root(m, a.brain(m), a.now() + 600000);
+    a.choose("spirit_wolf");
+    a.ready();
+    a.cast(0);
+    if (hunted) a.any.applySpell(HERO, { ...SPELLS.pack_hunt, dot: undefined }, 0, prey.id, prey.x, prey.y, 0, undefined, 1);
+    a.advance(4000);
+    return { a, prey, wolf: a.seat().stats.damageDealt["summon:wolf"] ?? 0, preyHit: 4000 * 150 - prey.hp };
+  };
+  const hunted = bite(true);
+  check(hunted.preyHit > 0, `os lobos foram na presa (${hunted.preyHit} de dano nela)`);
+  const plain = bite(false);
+  check(hunted.wolf > plain.wolf * 1.2, `dano dos lobos ${plain.wolf} → ${hunted.wolf}`);
+  const b = comboArena("druid");
+  const m = b.place("lizardfolk", 2, 0);
+  b.any.root(m, b.brain(m), b.now() + 5000);
+  hitWith(b, SPELLS.pack_hunt, m);
+  check(b.seat().stats.reactions.thornbush === 1 && b.brain(m).huntUntil === b.now() + 6000, `presa presa vira Espinheiro: ${JSON.stringify(b.seat().stats.reactions)}`);
+  check(mastered("pack_hunt").hunt!.ms === 12000, "Maestria: o dobro");
+});
+test("Broto Duplo: o aliado que pisa cura 15%; o monstro que pisa fica preso 1,5 s; Maestria: 2 sementes", () => {
+  const a = comboArena("druid");
+  a.any.applySpell(HERO, SPELLS.twin_sprout, 0, undefined, a.p.x + 2, a.p.y, 0, undefined, 0);
+  const seeds = () => [...a.state.fields.values()].filter((f) => f.style === "sprout");
+  check(seeds().length === 1, "semente no chão");
+  a.p.hp = Math.round(a.p.maxHp / 2);
+  const hp = a.p.hp;
+  a.p.x += 2;
+  a.advance(500);
+  check(seeds().length === 0 && a.p.hp >= hp + Math.round(a.p.maxHp * 0.15) - 1, `curou ${hp} → ${a.p.hp}`);
+  a.any.applySpell(HERO, SPELLS.twin_sprout, 0, undefined, a.p.x + 2, a.p.y, 0, undefined, 0);
+  const m = a.place("lizardfolk", 2, 0);
+  // Preso um instante, para não sair do tile antes do pulso da armadilha (a semente prende por 1,5 s).
+  a.any.root(m, a.brain(m), a.now() + 400);
+  a.advance(300);
+  check(seeds().length === 0 && m.rooted && a.brain(m).rootedUntil > a.now() + 1000, "o monstro que pisa fica preso");
+  const b = comboArena("druid");
+  b.any.applySpell(HERO, mastered("twin_sprout"), 0, undefined, b.p.x + 2, b.p.y, 0, undefined, 0);
+  b.any.applySpell(HERO, mastered("twin_sprout"), 0, undefined, b.p.x, b.p.y + 2, 0, undefined, 0);
+  check([...b.state.fields.values()].filter((f) => f.style === "sprout").length === 2, "Maestria: 2 sementes");
+});
+test("Abraço do Espinheiro: prende em raio 2; o envenenado vira Espinheiro (Maestria: raio 3)", () => {
+  const a = comboArena("druid");
+  const poisoned = a.place("lizardfolk", 2, 0);
+  const clean = a.place("lizardfolk", 0, 2);
+  a.any.applyDot(poisoned, a.brain(poisoned), HERO, "teste", 10, 5000, "poison", a.now());
+  a.any.applySpell(HERO, SPELLS.bramble_embrace, 0, undefined, a.p.x, a.p.y, 10, undefined, 1);
+  check(clean.rooted && a.seat().stats.reactions.thornbush === 1, `preso ${clean.rooted}, ${JSON.stringify(a.seat().stats.reactions)}`);
+  check(mastered("bramble_embrace").radius === 3, "Maestria: raio 3");
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);

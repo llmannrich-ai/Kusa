@@ -80,7 +80,7 @@ export type SpellId =
   | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
   // Grimório 4.0, fase 5: magias de combo das costelas novas (usam as reações).
   | "hemorrhagic_cut" | "shield_toss" | "exposed_strike" | "weak_point_arrow" | "dawn_arrow" | "powder_keg"
-  | "thermal_shock" | "sentence"
+  | "thermal_shock" | "sentence" | "pack_hunt" | "twin_sprout" | "bramble_embrace"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -163,9 +163,10 @@ export interface SpellDef {
     /**
      * Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus); "totem" = totem do Xamã Orc, que lança brasa
      * (fogo); "keg" = Barril de Pólvora (não pulsa: explode o `burst` quando leva flecha ou fogo, e some sem explodir
-     * quando o tempo acaba). Sem isto, a estaca de flechas.
+     * quando o tempo acaba); "sprout" = Broto Duplo (armadilha que um aliado também dispara: cura quem pisa e prende o
+     * monstro). Sem isto, a estaca de flechas.
      */
-    look?: "storm" | "totem" | "keg";
+    look?: "storm" | "totem" | "keg" | "sprout";
     /** Quantos campos desta magia cabem ao mesmo tempo (o mais antigo sai); sem isto, 1 (ou o do Engenhoso). */
     max?: number;
     /**
@@ -238,6 +239,10 @@ export interface SpellDef {
   vaporOn?: boolean;
   /** Os monstros a até `radius` do alvo ficam marcados (+`pct` por `ms`) (Sentença, Maestria). */
   markAround?: { radius: number; pct: number; ms: number };
+  /** Caça em Bando: o alvo fica caçado por `ms`; as criaturas de quem conjura correm até ele e ferem +`damage` nele. */
+  hunt?: { ms: number; damage: number };
+  /** Abraço do Espinheiro: quem já estava envenenado antes da magia vira Espinheiro (a raiz vira espinhos). */
+  thornbushOn?: boolean;
   /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
@@ -1084,6 +1089,24 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Uma sentença de trevas num alvo; em monstro marcado, a Condenação sai dobrada.",
     manaCost: 35, cooldownMs: 8000, aim: "target", range: 6, radius: 0, damage: 1.8, projectileSpeed: 16, reactionPower: 2,
   }),
+  // Fase 5: magias de combo do Druida.
+  pack_hunt: spell({
+    id: "pack_hunt", classId: "druid", slot: 1, name: "Caça em Bando", icon: "🦴", color: 0xc8a165,
+    description: "Marca a presa: suas criaturas correm até ela e ferem 50% mais nela por 6 s; o veneno do faro vira Espinheiro em quem está preso.",
+    manaCost: 30, cooldownMs: 9000, aim: "target", range: 6, radius: 0, damage: 0.5, projectileSpeed: 16,
+    dot: { perSec: 0.3, ms: 3000, kind: "poison" }, hunt: { ms: 6000, damage: 0.5 },
+  }),
+  twin_sprout: spell({
+    id: "twin_sprout", classId: "druid", slot: 0, name: "Broto Duplo", icon: "🌱", color: 0x7bed9f,
+    description: "Uma semente no chão: o aliado que pisa cura 15% da vida; o monstro que pisa fica preso 1,5 s.",
+    manaCost: 25, cooldownMs: 6000, aim: "target", range: 5, radius: 0, heal: 0.15, rootMs: 1500,
+    field: { kind: "trap", ms: 20000, look: "sprout" },
+  }),
+  bramble_embrace: spell({
+    id: "bramble_embrace", classId: "druid", slot: 1, name: "Abraço do Espinheiro", icon: "🌿", color: 0x556b2f,
+    description: "Espinheiros brotam em volta e prendem por 2 s quem está a até 2 tiles; quem já estava envenenado vira Espinheiro.",
+    manaCost: 40, cooldownMs: 12000, aim: "self", range: 0, radius: 2, damage: 0.6, rootMs: 2000, thornbushOn: true,
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1604,6 +1627,9 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   shield_toss: { text: "O impacto fere o monstro arremessado e o que ele acertou (1,5×).", changes: { slam: { stunMs: 1500, power: 1.5 } } },
   weak_point_arrow: { text: "A flecha também marca o alvo (+15% de dano da equipe por 4 s).", changes: { mark: { pct: 0.15, ms: 4000 } } },
   dawn_arrow: { text: "O Incandescer que ela dispara pega em raio 2.", changes: { reactionRadius: 2 } },
+  pack_hunt: { text: "A caça dura o dobro (12 s).", changes: { hunt: { ms: 12000, damage: 0.5 } } },
+  twin_sprout: { text: "Cabem 2 sementes no chão ao mesmo tempo.", changes: { field: { kind: "trap", ms: 20000, look: "sprout", max: 2 } } },
+  bramble_embrace: { text: "Os espinheiros pegam a até 3 tiles.", changes: { radius: 3 } },
   thermal_shock: { text: "O Vapor que ele dispara pega em raio 2.", changes: { reactionRadius: 2 } },
   sentence: { text: "Marca também os monstros colados no alvo (+15% por 4 s).", changes: { markAround: { radius: 1, pct: 0.15, ms: 4000 } } },
   powder_keg: { text: "Cabem 2 barris no chão ao mesmo tempo.", changes: { field: { kind: "zone", ms: 30000, tickMs: 1000, look: "keg", max: 2, burst: { radius: 2, damage: 2.5, burn: { perSec: 0.3, ms: 3000 } } } } },

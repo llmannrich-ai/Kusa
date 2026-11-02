@@ -484,6 +484,9 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 | Paladino | Batedor (Abrolhos) | 🛢️ **Barril de Pólvora** | 2 | um barril no ponto mirado (30 s); explode quando leva flecha ou fogo (fogo num monstro colado nele também): raio 2, 2,5× e queima; o tempo acaba e ele some sem explodir; um barril acende o vizinho | 2 barris |
 | Feiticeiro | Gelo (Sopro Gélido) | 💨 **Choque Térmico** | 1 | 1,2× de fogo num alvo: queima 3 s **e** deixa 30% lento; em quem já estava queimando ou lento, dispara o **Vapor** | Vapor em raio 2 |
 | Feiticeiro | Trevas (Lamento Sombrio) | 💀 **Sentença** | 2 | 1,8× de trevas num alvo; em marcado, a **Condenação** sai dobrada | marca os colados no alvo (+15% por 4 s) |
+| Druida | Matilha (Rugido da Alcateia) | 🦴 **Caça em Bando** | 2 | 0,5× e envenena 3 s; o alvo vira a presa por 6 s: suas criaturas correm até ele e ferem +50% nele; preso, vira **Espinheiro** | caça por 12 s |
+| Druida | Bosque (Brisa de Pólen) | 🌱 **Broto Duplo** | 1 | semente no chão (20 s): o aliado que pisa cura 15%; o monstro que pisa fica preso 1,5 s | 2 sementes |
+| Druida | Espinhos (Rajada de Espinhos) | 🌿 **Abraço do Espinheiro** | 2 | 0,6× e prende 2 s quem está a até 2 tiles; quem já estava envenenado vira **Espinheiro** | raio 3 |
 | Cavaleiro | Comando (Brado Cortante) | ⚡ **Golpe Exposto** | 2 | 2,2× no monstro colado e atordoa 1 s; se ele estiver marcado, o golpe já sai **Exposto** | os marcados colados no alvo também ficam atordoados |
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.

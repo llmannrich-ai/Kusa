@@ -316,6 +316,8 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["butterfly_swarm", 1, 0, "forest_blessing", 1],
     ["wild_hunt", 0, 6, "ancient_bear", 2], ["tree_of_life", 1, 6, "forest_heart", 2], ["leaf_hurricane", 2, 6, "nature_wrath", 2],
     ["pack_roar", 0, 3, "spirit_wolf", -1], ["pollen_breeze", 1, 3, "healing_moth", 1], ["thorn_spray", 2, 3, "venom_thorn", 1],
+    // Fase 5: a magia de combo, embaixo da de leque.
+    ["pack_hunt", 0, 4, "pack_roar", -1], ["twin_sprout", 1, 4, "pollen_breeze", 1], ["bramble_embrace", 2, 4, "thorn_spray", 1],
   ],
   shaman: [
     // Slot 3: a magia de entrada, ao lado da raiz (o tronco do Xamã é de docs/CLASSE_XAMA_ORC.md).

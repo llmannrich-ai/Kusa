@@ -395,6 +395,16 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 5: magias de combo do Druida (a semente aparece pelo estado, como armadilha).
+      case "pack_hunt":
+        this.projectile(FX.greenLight, from, to, ms, { trail: 0xc8a165, glow: 0x8d6e4a, impact: 0xffe0b2 });
+        return this.later(ms, () => this.ring(to, TILE_SIZE / 2, 0xc8a165, 400, 4));
+      case "twin_sprout":
+        if (from.x === to.x && from.y === to.y) return this.heal(to);
+        return this.sparks(to, 0x7bed9f, 6);
+      case "bramble_embrace":
+        this.ring(from, radius, 0x556b2f, 500, 7);
+        return this.debris(from, radius, 0x3d5a1e);
       // Fase 5: magias de combo do Feiticeiro.
       case "thermal_shock":
         this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xffa07a, glow: 0x9be7ff, impact: 0xffffff });
