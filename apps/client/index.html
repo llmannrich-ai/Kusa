@@ -8,8 +8,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Kusa" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="icon.svg" />
+    <!-- O iOS não aceita SVG aqui: PNG 180×180 gerado por `npm run icones -w @kusa/client`. -->
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <title>Kusa</title>
   </head>
   <body>
@@ -33,6 +35,8 @@
         <button id="sign-up" type="button">Criar conta</button>
       </div>
       <p id="login-error" class="error" role="alert" hidden></p>
+      <!-- Instale no iPhone (instalar.ts): só no iOS, quando ainda está no navegador. -->
+      <p class="instalar" hidden></p>
     </form>
 
     <!-- Menu da conta (menu.ts): heróis, árvore de magias, itens e mercado. Abas embaixo, para o polegar. -->
@@ -69,6 +73,7 @@
       <h2>Configurações</h2>
       <!-- Preenchido por main.ts a partir de SETTING_DEFS. -->
       <div id="settings-list"></div>
+      <p class="instalar" hidden></p>
       <!-- Subpáginas: abrem por cima das configurações e o "‹" volta para cá. -->
       <nav id="settings-pages">
         <button data-page="telemetry" class="setting-link"><span>📊 Telemetria<small>Números de todas as hunts: sobrevivência, mortes, magias e as suas.</small></span><b aria-hidden="true">›</b></button>

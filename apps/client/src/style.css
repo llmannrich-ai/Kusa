@@ -1706,3 +1706,16 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .grim-loadout strong { color: var(--accent); font-size: 15px; }
 .grim-loadout small { margin-left: auto; font-size: 12px; }
 .grim-loadout b { font-size: 22px; line-height: 1; color: var(--accent); }
+
+/* Instale no iPhone (instalar.ts): aviso no login e nas configurações. */
+.instalar {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.instalar b:first-child { display: block; margin-bottom: 2px; color: var(--accent); }
+.instalar-icone { width: 1.15em; height: 1.15em; vertical-align: -0.2em; color: var(--text); }
