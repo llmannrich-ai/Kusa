@@ -81,6 +81,8 @@ export type SpellId =
   // Grimório 4.0, fase 5: magias de combo das costelas novas (usam as reações).
   | "hemorrhagic_cut" | "shield_toss" | "exposed_strike" | "weak_point_arrow" | "dawn_arrow" | "powder_keg"
   | "thermal_shock" | "sentence" | "pack_hunt" | "twin_sprout" | "bramble_embrace"
+  // Grimório 4.0, fase 6: magias do slot 3 de cada lado da especialização.
+  | "massacre" | "blade_storm" | "protector_oath" | "mountain" | "rally_cry" | "challenge_chains"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -244,6 +246,17 @@ export interface SpellDef {
   /** Abraço do Espinheiro: quem já estava envenenado antes da magia vira Espinheiro (a raiz vira espinhos). */
   thornbushOn?: boolean;
   /**
+   * Juramento do Protetor (mira aliado): por `ms`, `share` do dano que o aliado leva de monstro vem para quem conjura,
+   * que ganha +`armor` de armadura enquanto dura.
+   */
+  oath?: { ms: number; share: number; armor: number };
+  /** Montanha: por este tempo, quem conjura não fica atordoado, preso nem engolido (e o que já prendia sai). */
+  steadfastMs?: number;
+  /** Montanha (Maestria): ao acabar o `steadfastMs`, um Terremoto grátis em volta (`radius`, `damage` × dano base). */
+  afterQuake?: { radius: number; damage: number };
+  /** Correntes do Desafio: puxa todos os monstros atingidos para perto de quem conjura (não só o alvo). */
+  pullAll?: boolean;
+  /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
    */
@@ -255,6 +268,12 @@ export interface SpellDef {
     rooted?: boolean;
     /** Monstro que bate em quem conjura (corpo a corpo) fica `pct` mais lento por `ms`. */
     slowAttackers?: { pct: number; ms: number };
+    /** Massacre: o básico corpo a corpo corta todos os monstros colados. */
+    cleave?: boolean;
+    /** Massacre: o básico rouba esta fração do dano em vida. */
+    lifesteal?: number;
+    /** Massacre (Maestria): cada monstro morto pelo básico estende o bônus `ms`, até `max` a mais no total. */
+    killExtend?: { ms: number; max: number };
   };
   /** Espinhos de Ferro: por `ms`, `pct` do golpe corpo a corpo recebido volta para o monstro. */
   thorns?: { pct: number; ms: number };
@@ -1107,6 +1126,43 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Espinheiros brotam em volta e prendem por 2 s quem está a até 2 tiles; quem já estava envenenado vira Espinheiro.",
     manaCost: 40, cooldownMs: 12000, aim: "self", range: 0, radius: 2, damage: 0.6, rootMs: 2000, thornbushOn: true,
   }),
+  // Fase 6: slot 3 de cada lado da especialização do Cavaleiro.
+  massacre: spell({
+    id: "massacre", classId: "knight", slot: 2, name: "Massacre", icon: "🩸", color: 0x922b21,
+    description: "Por 8 s, seu ataque básico corta todos os monstros colados em você e rouba 30% do dano em vida.",
+    manaCost: 50, cooldownMs: 32000, aim: "self", range: 0, radius: 0,
+    selfBuff: { ms: 8000, cleave: true, lifesteal: 0.3 },
+  }),
+  blade_storm: spell({
+    id: "blade_storm", classId: "knight", slot: 2, name: "Tempestade de Lâminas", icon: "🗡️", color: 0xd2d6de,
+    description: "Arremessa 5 lâminas abertas em leque: cada uma fere forte e faz sangrar.",
+    manaCost: 50, cooldownMs: 26000, aim: "target", range: 5, radius: 0, damage: 1.5, projectileSpeed: 16,
+    spread: { count: 5, angle: 60 }, dot: { perSec: 0.4, ms: 3000, kind: "bleed" },
+  }),
+  protector_oath: spell({
+    id: "protector_oath", classId: "knight", slot: 2, name: "Juramento do Protetor", icon: "🤝", color: 0x7fc8ff,
+    description: "Jura proteger um aliado por 10 s: 60% do dano que ele leva vem para você, e você ganha +10 de armadura.",
+    manaCost: 45, cooldownMs: 30000, aim: "ally", range: 6, radius: 0, oath: { ms: 10000, share: 0.6, armor: 10 },
+  }),
+  mountain: spell({
+    id: "mountain", classId: "knight", slot: 2, name: "Montanha", icon: "🗿", color: 0x7f8c8d,
+    description: "Vira montanha por 6 s: nada te atordoa nem prende, você leva metade do dano e devolve todo golpe corpo a corpo.",
+    manaCost: 50, cooldownMs: 36000, aim: "self", range: 0, radius: 0,
+    guard: 0.5, guardMs: 6000, thorns: { pct: 1, ms: 6000 }, steadfastMs: 6000,
+  }),
+  rally_cry: spell({
+    id: "rally_cry", classId: "knight", slot: 2, name: "Grito de Reunião", icon: "🎺", color: 0xf1c40f,
+    description: "Reúne a equipe: cura 30% da vida, dá um escudo de 20% e faz os aliados a até 6 tiles andarem 30% mais rápido por 5 s.",
+    manaCost: 60, cooldownMs: 38000, aim: "self", range: 0, radius: 6,
+    barrier: 0.2, barrierMs: 5000, barrierAllies: true,
+    rally: { radius: 6, ms: 5000, haste: 0, damage: 0, heal: 0.3, move: 0.3 },
+  }),
+  challenge_chains: spell({
+    id: "challenge_chains", classId: "knight", slot: 2, name: "Correntes do Desafio", icon: "⛓️", color: 0x95a5a6,
+    description: "Correntes em leque: puxam todos os monstros até 5 tiles para perto de você e os prendem por 2 s.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.5, taunt: true, rootMs: 2000, pullAll: true,
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1630,6 +1686,12 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   pack_hunt: { text: "A caça dura o dobro (12 s).", changes: { hunt: { ms: 12000, damage: 0.5 } } },
   twin_sprout: { text: "Cabem 2 sementes no chão ao mesmo tempo.", changes: { field: { kind: "trap", ms: 20000, look: "sprout", max: 2 } } },
   bramble_embrace: { text: "Os espinheiros pegam a até 3 tiles.", changes: { radius: 3 } },
+  massacre: { text: "Cada monstro que o básico mata estende o Massacre 1 s (até +4 s).", changes: { selfBuff: { ms: 8000, cleave: true, lifesteal: 0.3, killExtend: { ms: 1000, max: 4000 } } } },
+  blade_storm: { text: "Sete lâminas no leque.", changes: { spread: { count: 7, angle: 70 } } },
+  protector_oath: { text: "O aliado também ganha um escudo de 20% da vida.", changes: { barrier: 0.2, barrierMs: 10000 } },
+  mountain: { text: "Ao acabar, um Terremoto grátis em volta (raio 2).", changes: { afterQuake: { radius: 2, damage: 2 } } },
+  rally_cry: { text: "O grito alcança 8 tiles.", changes: { radius: 8, rally: { radius: 8, ms: 5000, haste: 0, damage: 0, heal: 0.3, move: 0.3 } } },
+  challenge_chains: { text: "Os puxados também sangram por 4 s.", changes: { dot: { perSec: 0.4, ms: 4000, kind: "bleed" } } },
   thermal_shock: { text: "O Vapor que ele dispara pega em raio 2.", changes: { reactionRadius: 2 } },
   sentence: { text: "Marca também os monstros colados no alvo (+15% por 4 s).", changes: { markAround: { radius: 1, pct: 0.15, ms: 4000 } } },
   powder_keg: { text: "Cabem 2 barris no chão ao mesmo tempo.", changes: { field: { kind: "zone", ms: 30000, tickMs: 1000, look: "keg", max: 2, burst: { radius: 2, damage: 2.5, burn: { perSec: 0.3, ms: 3000 } } } } },

@@ -263,6 +263,8 @@ interface Seat {
   buff: {
     until: number; basicDamage: number; attackRange: number; moveSpeed: number; attackHaste: number;
     damageTaken: number; rooted: boolean; slowAttackers: { pct: number; ms: number } | null;
+    /** Massacre: o básico corta os colados e rouba vida; cada morte estende (`extended` já somado). */
+    cleave: boolean; lifesteal: number; killExtend: { ms: number; max: number } | null; extended: number;
   } | null;
   /** Passo Leve: velocidade extra até este momento. */
   hasteUntil: number;
@@ -362,6 +364,10 @@ interface Seat {
   /** Néctar: a próxima devolução de mana sai a partir deste momento; velocidade de quem foi curado até `nectarSpeedUntil`. */
   nectarAt: number;
   nectarSpeedUntil: number;
+  /** Juramento do Protetor: o cavaleiro `oathBy` leva `oathShare` do dano deste herói até `oathUntil`. */
+  oathBy: string;
+  oathUntil: number;
+  oathShare: number;
   // Dons da costela de passivas do Cavaleiro.
   /** Fúria Crescente: acúmulos e até quando valem; `furyFree` = a próxima magia do slot 1 sai sem mana. */
   furyStacks: number;
@@ -719,7 +725,7 @@ export class Hunt {
       circuit: {}, circuitReady: false, castBoost: 0, castReactRadius: 0, castReactPower: 1, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
       eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false, quiverCount: 0,
-      rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0,
+      rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0, oathBy: "", oathUntil: 0, oathShare: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1428,6 +1434,15 @@ export class Hunt {
       const dealt = this.damageMonster(alive, amount, hit, "basic");
       // Roubo de vida dos itens (Espada do Juramento...): sem aviso a cada golpe, como a Sede de sangue.
       const hero = this.state.players.get(sessionId);
+      // Massacre: o básico rouba vida; cada morte estende o bônus (Maestria).
+      const fury = seat.buff && this.host.now() < seat.buff.until ? seat.buff : null;
+      if (fury?.lifesteal && dealt > 0 && hero?.status === "playing") this.healPlayer(hero, Math.round(dealt * fury.lifesteal), sessionId);
+      if (fury?.killExtend && !this.state.monsters.has(alive.id) && fury.extended < fury.killExtend.max) {
+        const add = Math.min(fury.killExtend.ms, fury.killExtend.max - fury.extended);
+        fury.until += add;
+        fury.extended += add;
+        seat.stats.buffMs += add;
+      }
       if (g.lifesteal > 0 && dealt > 0 && hero?.status === "playing") {
         const healed = Math.min(hero.maxHp - hero.hp, Math.round(dealt * g.lifesteal));
         if (healed > 0) {
@@ -1460,8 +1475,9 @@ export class Hunt {
           }
         }
       }
-      // Pedra Fundamental (marco 5): parado, o golpe corta todos os colados.
-      if (this.marks(seat, "bedrock") >= 5 && this.standingStill(seat, now)) {
+      // Pedra Fundamental (marco 5): parado, o golpe corta todos os colados. Massacre: sempre.
+      const massacre = !!seat.buff?.cleave && now < seat.buff.until;
+      if (massacre || (this.marks(seat, "bedrock") >= 5 && this.standingStill(seat, now))) {
         this.state.monsters.forEach((other) => { if (other !== m && !other.hidden && tileDistance(ox, oy, other.x, other.y) <= 1) others.add(other); });
       }
       for (const other of others) {
@@ -2268,7 +2284,8 @@ export class Hunt {
         taunted++;
       }
       // Corrente de Ferro: o alvo vem parar colado em quem conjura.
-      if (spell.pull && m === anchor && p.status === "playing") this.pullTo(m, p);
+      // Correntes do Desafio: todos os atingidos vêm.
+      if ((spell.pullAll || (spell.pull && m === anchor)) && p.status === "playing") this.pullTo(m, p);
       // Coração Frio (Dom): as prisões e lentidões das magias do herói duram mais.
       if (spell.rootMs) {
         // Abraço do Espinheiro: quem já estava envenenado vira Espinheiro (a raiz vira espinhos na hora).
@@ -2560,6 +2577,36 @@ export class Hunt {
       allySeat.slow = null;
       ally.slowed = false;
     }
+    // Juramento do Protetor: o cavaleiro ganha armadura e passa a levar parte do dano do aliado.
+    if (spell.oath && p.status === "playing") {
+      seat.armorBonus = Math.max(now < seat.armorUntil ? seat.armorBonus : 0, spell.oath.armor);
+      seat.armorUntil = Math.max(seat.armorUntil, now + spell.oath.ms);
+      if (ally && allySeat && allyId !== sessionId && ally.status === "playing") {
+        allySeat.oathBy = sessionId;
+        allySeat.oathUntil = now + spell.oath.ms;
+        allySeat.oathShare = spell.oath.share;
+        seat.stats.buffMs += spell.oath.ms;
+      }
+    }
+    // Montanha: nada prende nem atordoa enquanto dura (o que já prendia sai); Maestria: Terremoto no fim.
+    if (spell.steadfastMs && p.status === "playing") {
+      for (const kind of ["stun", "root", "engulf"] as const) seat.effectImmuneUntil[kind] = Math.max(seat.effectImmuneUntil[kind] ?? 0, now + spell.steadfastMs);
+      if (seat.effects.engulf) this.releaseEngulf(sessionId);
+      delete seat.effects.stun;
+      delete seat.effects.root;
+      this.syncEffects(p, seat);
+      seat.stats.buffMs += spell.steadfastMs;
+      const quake = spell.afterQuake;
+      if (quake) {
+        this.after(spell.steadfastMs, () => {
+          const hero = this.state.players.get(sessionId);
+          if (hero?.status !== "playing") return;
+          this.host.broadcast(MSG.spell, { from: sessionId, spellId: "earthquake", x: hero.x, y: hero.y, tx: hero.x, ty: hero.y, ms: 0, echo: true } satisfies SpellMessage);
+          const blast: SpellDef = { ...SPELLS.earthquake, id: spell.id, slot: spell.slot, radius: quake.radius, damage: quake.damage };
+          this.applySpell(sessionId, blast, rank, undefined, hero.x, hero.y, this.baseDamage(sessionId, hero, "spell") * quake.damage, undefined, slot);
+        });
+      }
+    }
     if (spell.seed && allyId && ally?.status === "playing" && allySeat) this.plantSeed(sessionId, seat, allyId, ally, allySeat, spell.seed, now);
 
     // Caçada Selvagem: a segunda leva (o urso) vem junto, sem tirar a primeira.
@@ -2594,6 +2641,7 @@ export class Hunt {
       until: now + b.ms, basicDamage: b.basicDamage ?? 0, attackRange: b.attackRange ?? 0,
       moveSpeed: b.moveSpeed ?? 0, attackHaste: b.attackHaste ?? 0,
       damageTaken: b.damageTaken ?? 0, rooted: b.rooted ?? false, slowAttackers: b.slowAttackers ?? null,
+      cleave: b.cleave ?? false, lifesteal: b.lifesteal ?? 0, killExtend: b.killExtend ?? null, extended: 0,
     };
     p.buff = spell.id;
     seat.stats.buffMs += b.ms;
@@ -4619,6 +4667,14 @@ export class Hunt {
     // Intimidar (Traço): o monstro que este herói provocou (e ainda o persegue) bate mais fraco nele.
     const intimidate = seat?.traits.find((t) => t.intimidate)?.intimidate;
     if (intimidate && attackerBrain?.tauntedBy === sessionId && attackerBrain.targetId === sessionId) raw *= 1 - intimidate.pct;
+    // Juramento do Protetor: o cavaleiro que jurou leva parte do golpe de monstro deste herói.
+    if (!redirected && attacker && seat && seat.oathBy && now < seat.oathUntil && seat.oathBy !== sessionId && this.state.players.get(seat.oathBy)?.status === "playing") {
+      const taken = raw * seat.oathShare;
+      raw -= taken;
+      const oathStats = this.seats.get(seat.oathBy)?.stats;
+      if (oathStats) oathStats.intercepted += Math.round(taken);
+      this.damagePlayer(seat.oathBy, taken, hit, true);
+    }
     // Intervir (Traço): um Guardião perto puxa parte do golpe de monstro para si.
     if (!redirected && attacker) {
       const guardian = this.guardianFor(sessionId, p);
