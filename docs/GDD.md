@@ -1407,6 +1407,7 @@ lê.
 
 - Equipes de 1 a 4 jogadores: single, dupla, trio ou quarteto (o Pântano do Kosaradius é só para 1).
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
+- **Carregando:** da largada até o primeiro quadro da dungeon (arte chegando e mapa sendo desenhado), um modal cobre a tela preta com o mapa e uma dica que troca a cada 4,5 s (`apps/client/src/carregando.ts`; as dicas repetem regras deste documento: mudou a regra, mude a dica). Fecha com fade curto; não segura a hunt, que já corre no servidor.
 - **Entrada tranquila:** a até 12 tiles do portal de fuga nascem no máximo 3 monstros (mini-boss e Mímico de sala
   lateral contam), para a hunt não começar com uma sala cheia em cima da equipe.
 - O limite de tempo depende do mapa (6 min na Cripta, 8 min no Pântano das Ruínas, no Mar de Areia, em Dunas Cantantes, nas Mesas de Solária, nos Portões do Império e na Fortaleza Orc, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
