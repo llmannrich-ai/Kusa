@@ -154,6 +154,10 @@ export interface FortressLayout {
   statues: Rect[];
   /** A forca dos orcs (ruína de 1 tile). */
   gallows: { x: number; y: number }[];
+  /** Braseiros de ferro do salão do trono, dos dois lados do tapete (ruína de 1 tile: bloqueiam e queimam quem encosta). */
+  braziers: { x: number; y: number }[];
+  /** Objetos do acampamento que bloqueiam a passagem (ruína de 1 tile): armas, caldeirão, lenha e barris. */
+  campProps: { x: number; y: number; kind: FortCampProp }[];
 }
 
 export interface EmpireLayout {
@@ -2289,6 +2293,9 @@ const FORT_LOOKOUTS: { x: number; y: number; rows: string[] }[] = [
   { x: 17, y: 27, rows: ["####.", "#c;;.", "#;;;;", "####."] },
   { x: 55, y: 27, rows: [".;####", ".;;;c#", ".;;;;#", ".;####"] },
 ];
+/** Objetos do acampamento orc que ocupam o tile (os ossos e a cinza ficam no chão, só no desenho). */
+export type FortCampProp = "armas" | "caldeirao" | "lenha" | "barris";
+const FORT_CAMP_PROPS: FortCampProp[] = ["armas", "caldeirao", "lenha", "barris"];
 /** A forca dos orcs no pátio externo (coordenadas do mapa). */
 const FORT_GALLOWS = { x: 29, y: 49 };
 /** A estátua derrubada do imperador, no pátio externo (fora da vila: coordenadas do mapa). */
@@ -2765,6 +2772,41 @@ function buildFortress(seed: number): Dungeon {
   const statues: Rect[] = [];
   if ([0, 1].every((k) => get(FORT_STATUE.x + k, FORT_STATUE.y) === Tile.Floor)) { rect(FORT_STATUE, Tile.Ruin); statues.push(FORT_STATUE); }
 
+  // Os braseiros do salão do trono, dos dois lados do tapete (da porta até o trono), a cada 4 linhas.
+  const braziers: { x: number; y: number }[] = [];
+  for (let y = throne.y + 3; y < door.y - 1; y += 4)
+    for (const x of [kc - 3, kc + 3]) if (get(x, y) === Tile.Floor) { set(x, y, Tile.Ruin); braziers.push({ x, y }); }
+  // Os objetos do acampamento (armas, caldeirão, lenha, barris) ocupam o tile: só onde há chão em volta toda, longe
+  // das fogueiras, dos totens e das tendas, e sem separar nenhum ponto importante (desfaz se separar).
+  const campProps: { x: number; y: number; kind: FortCampProp }[] = [];
+  const propRng = createRng(seed ^ 0x5eed_c0de);
+  const goalsNow = () => [
+    s, centerOf(hall), ...path.map(centerOf), ...meadows.map(centerOf), ...side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
+  const roadAt = (x: number, y: number) => roads.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const near = (x: number, y: number, list: { x: number; y: number }[], d: number) => list.some((q) => Math.abs(q.x - x) <= d && Math.abs(q.y - y) <= d);
+  for (const c of camps)
+    for (let y = c.y; y < c.y + c.h; y++)
+      for (let x = c.x; x < c.x + c.w; x++) {
+        if (propRng.next() >= 0.07 || get(x, y) !== Tile.Floor || roadAt(x, y)) continue;
+        if (near(x, y, fires, 1) || near(x, y, totems, 1) || near(x, y, campProps, 1) || near(x, y, [s], 3)) continue;
+        if (tents.some((t) => x >= t.x - 1 && y >= t.y - 1 && x <= t.x + t.w && y <= t.y + t.h)) continue;
+        let open = true;
+        for (let dy = -1; dy <= 1 && open; dy++) for (let dx = -1; dx <= 1 && open; dx++) if (get(x + dx, y + dy) !== Tile.Floor) open = false;
+        if (!open) continue;
+        set(x, y, Tile.Ruin);
+        if (!connected(tiles, W, goalsNow())) { set(x, y, Tile.Floor); continue; }
+        campProps.push({ x, y, kind: FORT_CAMP_PROPS[Math.floor(propRng.next() * FORT_CAMP_PROPS.length)] });
+      }
+  // Nas casernas, as armas encostadas na parede norte, no canto oposto ao do baú.
+  for (const r of side) {
+    const x = r.x + r.w - 2, y = r.y + 1;
+    if (get(x, y) !== Tile.Floor) continue;
+    set(x, y, Tile.Ruin);
+    if (connected(tiles, W, goalsNow())) campProps.push({ x, y, kind: "armas" });
+    else set(x, y, Tile.Floor);
+  }
+
   // Mata solta que não foi posta de propósito volta a ser chão.
   for (let y = 1; y < H - 1; y++)
     for (let x = 1; x < W - 1; x++) {
@@ -2789,7 +2831,7 @@ function buildFortress(seed: number): Dungeon {
       roads, plazas, camps,
       walls: [{ y: outerY, x0: 1, x1: W - 2 }, { y: innerY, x0: left[innerY], x1: right[innerY] }],
       gates: [outerGate, innerGate], towers, keep, door, throne, bridges: [bridge], chasm, tents, palisades, totems, fires, columns,
-      ramparts, yards: [{ x: 6, y: bailey.y0 + 2, w: W - 12, h: outerY - bailey.y0 - 2 }, court, ...vilaYards], fountain, statues, gallows,
+      ramparts, yards: [{ x: 6, y: bailey.y0 + 2, w: W - 12, h: outerY - bailey.y0 - 2 }, court, ...vilaYards], fountain, statues, gallows, braziers, campProps,
     },
   };
 }

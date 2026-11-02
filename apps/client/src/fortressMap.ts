@@ -109,8 +109,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const fountain = (x: number, y: number) => inR(f.fountain, x, y);
   const statue = (x: number, y: number) => f.statues.some((r) => inR(r, x, y));
   const gallows = (x: number, y: number) => f.gallows.some((g) => g.x === x && g.y === y);
+  const prop = (x: number, y: number) => f.campProps.some((o) => o.x === x && o.y === y) || f.braziers.some((b) => b.x === x && b.y === y);
   const special = (x: number, y: number) =>
-    inTower(x, y) || inTent(x, y) || totems.has(y * W + x) || throne(x, y) || palisade(x, y) || fountain(x, y) || statue(x, y) || gallows(x, y);
+    inTower(x, y) || inTent(x, y) || totems.has(y * W + x) || throne(x, y) || palisade(x, y) || fountain(x, y) || statue(x, y) || gallows(x, y) || prop(x, y);
   /** Ruína desenhada como muro (o resto: colunas, blocos, totens e as peças grandes). */
   const masonry = (x: number, y: number) => ruin(x, y) && !special(x, y) && !lone(x, y, ruin);
   const camp = (x: number, y: number) => f.camps.some((r) => inR(r, x, y));
@@ -459,7 +460,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const campPlaced: CampPlaced[] = [];
   const putCamp = (frame: AcampamentoFrame, x: number, y: number, flip = false, px = x * TILE_SIZE + TILE_SIZE / 2, py = (y + 1) * TILE_SIZE) =>
     campPlaced.push({ frame, x, y, px, py, flip });
-  const CAMP_ITEMS: AcampamentoFrame[] = ["armas", "caldeirao", "lenha", "ossos", "barris"];
+  // Os objetos do acampamento que ocupam o tile vêm do mapa (`campProps`, bloqueiam); no chão, só os ossos soltos.
 
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
@@ -487,8 +488,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       }
       if (!ruin(x, y)) {
         if (at(x, y) !== Tile.Floor || reserved(x, y) || decor[y * W + x] >= 0 || road(x, y) || bridge(x, y) || rope(x, y)) continue;
-        if (camp(x, y) && hash(x, y, 52) < 0.07) {
-          putCamp(CAMP_ITEMS[Math.floor(hash(x, y, 53) * CAMP_ITEMS.length)], x, y, flip);
+        if (camp(x, y) && hash(x, y, 52) < 0.03) {
+          putCamp("ossos", x, y, flip);
           campSpots.push({ x, y });
         }
         continue;
@@ -566,10 +567,10 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     // A tenda do chefe é a da guarda, no pátio do esporão (acima da muralha interna).
     putCamp(t.y < f.walls[1].y ? "tendaChefe" : "tenda", t.x, t.y + 1, hash(t.x, t.y, 63) < 0.5, (t.x + 1) * TILE_SIZE, (t.y + 2) * TILE_SIZE);
   }
-  // Nas casernas, as armas encostadas na parede norte, no canto oposto ao do baú.
-  for (const r of d.side) {
-    const x = r.x + r.w - 2, y = r.y + 1;
-    if (at(x, y) === Tile.Floor && !beds.some((b) => b.x === x && b.y === y)) putCamp("armas", x, y, true);
+  // Os objetos do acampamento e as armas das casernas (ocupam o tile: o mapa já os pôs como ruína).
+  for (const o of f.campProps) {
+    putCamp(o.kind, o.x, o.y, hash(o.x, o.y, 54) < 0.5);
+    campSpots.push({ x: o.x, y: o.y });
   }
   // Estandartes de guerra ao lado das fogueiras.
   for (const fire of f.fires) {
@@ -754,13 +755,20 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   }
   // Os braseiros do salão do trono, dos dois lados do tapete, acesos (o fogo e a luz por cima da boca).
   const brazierKey = single(scene, "fortress-braseiro", BRAZIER.w, BRAZIER.h, brazierSprite);
-  for (let y = f.throne.y + 3; y < f.door.y - 1; y += 4)
-    for (const x of [kc - 3, kc + 3]) {
-      if (at(x, y) !== Tile.Floor) continue;
-      const px = (x + 0.5) * TILE_SIZE, py = (y + 1) * TILE_SIZE;
-      culler.add(scene.add.image(px, py + 10 / ZOOM, brazierKey).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(py - 0.3), x, y);
-      fire(px, py + 10 / ZOOM - BRAZIER_MOUTH / ZOOM, py - 0.29, 0.9, x, y, 1.2);
-    }
+  for (const { x, y } of f.braziers) {
+    const px = (x + 0.5) * TILE_SIZE, py = (y + 1) * TILE_SIZE;
+    culler.add(scene.add.image(px, py + 10 / ZOOM, brazierKey).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(py - 0.3), x, y);
+    fire(px, py + 10 / ZOOM - BRAZIER_MOUTH / ZOOM, py - 0.29, 0.9, x, y, 1.2);
+  }
+  // A aura dos totens no chão (os orcs dentro dela batem mais forte, `SCENE_TOTEM` no servidor): um brilho vermelho
+  // pulsando, do tamanho do alcance (3 tiles).
+  for (const t of f.totems) {
+    const gl = scene.add.image((t.x + 0.5) * TILE_SIZE, (t.y + 0.6) * TILE_SIZE, GLOW).setScale((7 * TILE_SIZE) / 96, (5.5 * TILE_SIZE) / 96)
+      .setTint(0xff2a10).setAlpha(0.32).setDepth(floorDepth + 0.003).setBlendMode(Phaser.BlendModes.ADD);
+    gl.setData("phase", hash(t.x, t.y, 69) * 10).setData("alpha", 0.32);
+    culler.add(gl, t.x, t.y);
+    glows.push(gl);
+  }
   // A cachoeira: o esgoto do castelo sai pela face do paredão embaixo da muralha externa, a oeste da ponte, e a água
   // cai no abismo até sumir na névoa (uma textura que rola para baixo, por cima do paredão e do vale).
   const falls: Phaser.GameObjects.TileSprite[] = [];

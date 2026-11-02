@@ -1143,6 +1143,13 @@ lê.
 - **XP** (`xpScale` 0,5): a força ×2,4 multiplicava a XP junto e o caminho rendia ~21 mil (o nível 20 pede ~10 mil); o
   herói sozinho chegava no nível 20 no meio da hunt. Com o corte, ~10.800: limpando 75%, chega em Vorgak no nível 18,
   e o 20 vem de Vorgak (2.600 de XP) ou do mapa inteiro.
+- **Cenário vivo** (`tickScenery` em `hunt.ts`, números em `SCENE_FIRE`, `SCENE_TENT`, `SCENE_TOTEM`): as
+  **fogueiras** do acampamento e os **braseiros** do salão do trono (que bloqueiam o tile) queimam quem pisa ou encosta,
+  herói ou monstro (3% da vida por segundo, e mais 2 s depois de sair), então dá para atrair orcs para o fogo; cada
+  **tenda** solta um orc (guerreiro; na tenda do chefe, berserker) quando um herói chega a até 10 tiles e outro a cada
+  minuto, no máximo 3 por tenda na hunt (com XP e loot normais, contados no loot máximo do solo); os orcs a até 3 tiles
+  de um **totem** (aura vermelha no chão) batem 20% mais forte. Os objetos do acampamento (armas, caldeirão, lenha,
+  barris) e as armas das casernas ocupam o tile e bloqueiam a passagem; os ossos ficam no chão.
 - **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
   uma brecha da muralha.
 - **Abismo:** nesse mapa toda `Tile.Water` é abismo: bloqueia o passo e deixa passar a visão (flechas e magias passam
