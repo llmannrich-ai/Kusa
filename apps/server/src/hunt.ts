@@ -17,6 +17,8 @@ import {
   GUARANTEED_POTIONS,
   ITEMS,
   ON_HIT_DOT_MS,
+  BASH_STUN_MS,
+  MEND_RADIUS,
   ITEM_SLOTS,
   MAPS,
   MONSTERS,
@@ -1298,7 +1300,8 @@ export class Hunt {
     if (!seat.targetLocked && p.target && !this.canHit(p, this.state.monsters.get(p.target)!, range)) p.target = "";
     if (!p.target) p.target = this.nearestMonsterInRange(p, range) ?? "";
     // Básico à distância (flecha e luzes) é um tiro: voa reto na direção até o alcance e pode errar. Nas formas do druida, não.
-    const speed = form ? 0 : BASIC_ATTACKS[cls.id].projectileSpeed;
+    // Orbe (`ItemStats.shotSpeed`): o tiro voa mais rápido.
+    const speed = form ? 0 : BASIC_ATTACKS[cls.id].projectileSpeed * (1 + seat.gear.shotSpeed);
     const aimed = speed > 0 ? seat.basicAim : null;
     if (!p.target && !aimed) return;
 
@@ -1419,7 +1422,23 @@ export class Hunt {
         // Mão Rápida (marcos 1 e 3): a flecha incendiária explode em volta e deixa o chão em chamas.
         if (hand >= 1) this.handBurst(sessionId, alive.x, alive.y, base, hand >= 3, alive);
       }
+      // Maça (`ItemStats.bash`): às vezes o golpe atordoa.
+      if (g.bash > 0 && brain && this.random() < g.bash) {
+        brain.stunnedUntil = Math.max(brain.stunnedUntil, this.host.now() + BASH_STUN_MS);
+        alive.stunned = true;
+        seat.stats.ccMs.stun += BASH_STUN_MS;
+        bump(seat.stats.weaponTraits, "bash");
+      }
       const dealt = this.damageMonster(alive, amount, hit, "basic");
+      // Foice (`ItemStats.cleave`): o golpe corta em arco os colados no alvo.
+      if (g.cleave > 0) {
+        const near: Monster[] = [];
+        this.state.monsters.forEach((o) => { if (o !== alive && !o.hidden && tileDistance(alive.x, alive.y, o.x, o.y) <= 1) near.push(o); });
+        for (const o of near) this.trailingHit(sessionId, o, base * basicDamage * Math.min(1, g.cleave), hit, "cleave");
+      }
+      // Totem de mão (`ItemStats.mend`): o golpe cura a equipe por perto.
+      const healer = this.state.players.get(sessionId);
+      if (g.mend > 0 && dealt > 0 && healer?.status === "playing") this.mend(sessionId, healer, dealt, g.mend);
       // Roubo de vida dos itens (Espada do Juramento...): sem aviso a cada golpe, como a Sede de sangue.
       const hero = this.state.players.get(sessionId);
       if (g.lifesteal > 0 && dealt > 0 && hero?.status === "playing") {
@@ -1483,6 +1502,11 @@ export class Hunt {
       this.countShot(seat, "basic", !!alive, !!aimed);
       if (!alive) return;
       land(alive);
+      // Lança (`ItemStats.pierce`): atravessa e acerta o monstro de trás, na direção do tiro.
+      if (seat.gear.pierce > 0) {
+        const behind = this.monsterOn({ x: alive.x + Math.sign(alive.x - ox), y: alive.y + Math.sign(alive.y - oy) });
+        if (behind && behind !== alive) this.trailingHit(sessionId, behind, base * basicDamage * Math.min(1, seat.gear.pierce), hit, "pierce");
+      }
       if (double && this.state.monsters.has(alive.id)) {
         bump(seat.stats.giftProcs, "patient_eye_double");
         land(alive);
@@ -1518,6 +1542,39 @@ export class Hunt {
     };
     if (path.length === 0) return done(undefined);
     this.after(arrive(0), step);
+  }
+
+  /** Classes dos humanos na hunt (bots não pegam item): o drop favorece o que eles vestem (`rollItem`). */
+  private teamClasses(): ClassId[] {
+    const out: ClassId[] = [];
+    this.state.players.forEach((p) => { if (!p.bot && p.status === "playing" && !out.includes(p.classId as ClassId)) out.push(p.classId as ClassId); });
+    return out;
+  }
+
+  /**
+   * Golpe secundário das armas de estilo (a lança que atravessa, a foice que corta em arco): só o dano, numa fração
+   * do golpe, sem os efeitos do básico (atordoar, chamas, roubo de vida).
+   */
+  private trailingHit(sessionId: string, m: Monster, amount: number, hit: Hit, source: "pierce" | "cleave") {
+    if (!this.state.monsters.has(m.id) || m.hidden) return;
+    const dealt = this.damageMonster(m, rollDamage(this.random, amount), hit, `item:${source}`);
+    const seat = this.seats.get(sessionId);
+    if (seat && dealt > 0) bump(seat.stats.weaponTraits, source);
+  }
+
+  /** Totem de mão: cura o herói e os aliados a até `MEND_RADIUS` tiles numa fração do dano dado. */
+  private mend(sessionId: string, p: Player, dealt: number, pct: number) {
+    const seat = this.seats.get(sessionId);
+    const amount = Math.round(dealt * pct);
+    if (!seat || amount <= 0) return;
+    this.state.players.forEach((ally) => {
+      if (ally.status !== "playing" || tileDistance(p.x, p.y, ally.x, ally.y) > MEND_RADIUS) return;
+      const healed = Math.min(ally.maxHp - ally.hp, amount);
+      if (healed <= 0) return;
+      ally.hp += healed;
+      seat.stats.healing += healed;
+      bump(seat.stats.weaponTraits, "mend", healed);
+    });
   }
 
   /** Vira a frente do herói para a direção (dx, dy) em tiles (`Player.faceX/faceY`); sem direção, fica como estava. */
@@ -4266,7 +4323,7 @@ export class Hunt {
     for (let i = 0; i < drops; i++) {
       const keep = boss ? this.random() < ITEM_DROP_SCALE : this.keepDrop(LOOT_SCALE * ITEM_DROP_SCALE);
       if (keep && this.keepForHumans()) {
-        this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
+        this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0, this.teamClasses()), at.x, at.y);
         this.countDrop(brain.def.rank);
       }
     }
@@ -4847,7 +4904,7 @@ export class Hunt {
     if (stats) stats.chestsOpened++;
     // O item do baú sai com o corte dos itens (`ITEM_DROP_SCALE`, menos a parte dos bots); as poções, com a chance do mapa.
     if (this.random() < ITEM_DROP_SCALE && this.keepForHumans()) {
-      this.dropItem(rollItem("miniboss", depth, this.random, 1), dropAt.x, dropAt.y);
+      this.dropItem(rollItem("miniboss", depth, this.random, 1, this.teamClasses()), dropAt.x, dropAt.y);
       this.countDrop("chest");
     }
     for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);

@@ -88,6 +88,12 @@ export interface RunStats {
   absorbed: number;
   /** Monstros convertidos em aliado pelo Xamã Orc (Corrente da Submissão, Juramento de Sangue), por espécie. */
   converted: Record<string, number>;
+  /**
+   * Traços das armas de estilo: `bash` atordoamentos da maça, `pierce` monstros de trás acertados pela lança, `cleave`
+   * colados acertados pela foice, `mend` cura dada pelo totem de mão. O dano entra em `damageDealt["item:pierce"]` e
+   * `damageDealt["item:cleave"]`; a cura, em `healing`.
+   */
+  weaponTraits: Record<string, number>;
   /** Magias lançadas com força extra de um item lendário (`ItemStats.spells`), por magia. */
   gearBoostedCasts: Record<string, number>;
   /** Tempo (ms) com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração. */
@@ -125,7 +131,7 @@ export function newRunStats(): RunStats {
     levelAt: {}, depthAt: {}, specs: [], passives: {}, spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, fanHits: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0, shots: {},
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], bossClear: false, bossKills: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0, drops: { common: 0, miniboss: 0, boss: 0, chest: 0 } },
-    minHpPct: 1, abandoned: false, death: null, absorbed: 0, converted: {}, gearBoostedCasts: {}, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, giftProcs: {}, reactions: {},
+    minHpPct: 1, abandoned: false, death: null, absorbed: 0, converted: {}, gearBoostedCasts: {}, weaponTraits: {}, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, giftProcs: {}, reactions: {},
   };
 }
 
