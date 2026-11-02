@@ -14,6 +14,11 @@ teclado e mouse no desktop são um extra.
   direita, afastados da beirada (ver "Ações"), com as poções na beirada ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
   direita, para o meio da tela ficar livre (no iPhone, as barras do Safari deixam só uns 330 px de altura). Os menus continuam na vertical. A telemetria compara as hunts em pé e
   deitado (`stats.landscapeMs`) para decidir se o modo fica.
+- **HUD da hunt:** no alto só o minimapa (à esquerda) e as barras (à direita), para sobrar tela de jogo. O relógio é
+  pequeno e fica embaixo, no meio, encaixado no vão entre o joystick e o ⚔️, sem pegar toque. Os controles medem a
+  altura a partir de `--base-b` (`style.css`): no navegador, rente à borda; no **app instalado** (tela de início,
+  `display-mode: standalone`), eles descem para dentro da faixa da barra de gestos, que antes ficava como área morta
+  embaixo do joystick (o relógio fica logo acima da barrinha do iPhone). Deitado vale o mesmo.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
 - **Movimento:** joystick virtual com 8 direções, fixo no canto de baixo à esquerda por padrão (ver abaixo). Desligando o fixo, vira flutuante: aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura; deitado, 40%).
   Na zona do joystick todo toque vira joystick, até em cima de um monstro; um toque rápido parado (menos de 250 ms) trava o alvo ali.
@@ -918,9 +923,8 @@ comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói)
   lembrados aparecem mais escuros (55% do brilho) até serem vistos de novo; o cliente grava a cada 45 s e ao sair, só
   depois de ter lido (para não apagar a memória de outro aparelho). Sem conta, nada é guardado.
 - **O mapa se explica**: ao começar, três avisos sobre o herói (o acampamento, a fogueira 6× e "sem tempo · Orla ao
-  sul · alas: oeste 3–8, norte 9–14, leste 14–20"); embaixo do relógio, a placa da zona ("🔥 Acampamento", o nome da
-  área com o nível indicado, como "Toca dos Lobos · nível 6–8", ou "☠ Covil: Faraó Eterno"), com a cor subindo com a
-  ala; a fogueira grande, com o quadrado da área de cura marcado no chão e o aviso "🔥 Descansando" ao entrar nele (no
+  sul · alas: oeste 3–8, norte 9–14, leste 14–20"); sem placa fixa da zona no HUD (saiu para a tela de jogo ficar
+  maior: o minimapa e o nível dos monstros já dizem onde se está); a fogueira grande, com o quadrado da área de cura marcado no chão e o aviso "🔥 Descansando" ao entrar nele (no
   máximo a cada 15 s); "A sala encheu de novo" sobre a área que volta. A ficha mostra "🔥 acampamento" e "🔁 salas
   renascem", e as Regras têm a seção da Fíbula.
 - **Mesmo esqueleto de teste** (`terreno`): o teste roda os dois mapas (`fibula(seed, mapId)`).

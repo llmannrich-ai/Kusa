@@ -9,6 +9,15 @@
   /* Coluna do jogo em retrato (9:16). No celular ocupa a tela toda; no desktop vira uma "tela de celular" centralizada. */
   --col-w: min(100vw, 56.25vh);
   --col-x: calc((100vw - var(--col-w)) / 2);
+  /*
+   * Base dos controles da hunt (joystick, ⚔️, magias, poções e relógio), medida da borda de baixo. No navegador a
+   * barra do próprio navegador já afasta a borda; no app instalado (tela de início), a borda é a do aparelho e a
+   * faixa da barra de gestos (safe-area) já é larga: os controles descem para dentro dela, sem deixar área morta
+   * embaixo do joystick. Ver o @media (display-mode) logo abaixo do HUD.
+   */
+  --base-b: max(12px, env(safe-area-inset-bottom));
+  /* Relógio: no navegador, rente à borda; no app instalado, logo acima da barrinha de gestos do iPhone. */
+  --timer-b: calc(var(--base-b) - 6px);
   font-family: "Georgia", serif;
   color: var(--text);
   background: var(--bg);
@@ -386,18 +395,29 @@ button { min-height: 44px; touch-action: manipulation; }
   gap: 8px;
   pointer-events: none;
 }
-#timer, #stats { padding: 6px 10px; background: #000a; border: 1px solid var(--border); }
-#timer { font-size: 22px; font-variant-numeric: tabular-nums; }
+#stats { padding: 6px 10px; background: #000a; border: 1px solid var(--border); }
+/*
+ * Relógio: pequeno, embaixo e no meio, encaixado no vão entre o joystick (à esquerda) e o ⚔️ (à direita), abaixo da
+ * curva dos dois círculos. Assim o alto da tela fica só com o minimapa e as barras. Não pega toque.
+ */
+#timer {
+  position: fixed;
+  left: calc(var(--col-x) + var(--col-w) / 2);
+  bottom: var(--timer-b);
+  translate: -50% 0;
+  padding: 1px 8px;
+  font-size: 14px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  color: #e8dcc8cc;
+  background: #0008;
+  border: 1px solid #5a463299;
+  border-radius: 9px;
+  pointer-events: none;
+}
 #timer.low { color: var(--danger); }
-/* Terreno de caça: a zona do herói, embaixo do relógio (a cor sobe com o perigo do anel). */
-#zone { margin-top: 4px; padding: 3px 8px; font-size: 13px; white-space: nowrap; background: #000a; border: 1px solid var(--border); border-radius: 4px; }
-#zone[data-zone="camp"] { color: #ffc56b; }
-#zone[data-zone="0"] { color: #b8e0a0; }
-#zone[data-zone="1"] { color: #f0d070; }
-#zone[data-zone="2"] { color: #ff9a6a; }
-#zone[data-zone="lair"] { color: #ff6a6a; }
 #hud-left { display: grid; gap: 6px; justify-items: start; }
-/* Minimapa: compacto embaixo do tempo; aberto, o mapa inteiro na parte de cima (longe dos polegares). */
+/* Minimapa: compacto no alto à esquerda; aberto, o mapa inteiro na parte de cima (longe dos polegares). */
 #minimap {
   display: block;
   width: 104px;
@@ -410,7 +430,7 @@ button { min-height: 44px; touch-action: manipulation; }
 }
 #minimap.expanded {
   position: fixed;
-  top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 8px);
   left: 50%;
   transform: translateX(-50%);
   width: min(calc(var(--col-w) - 32px), 360px);
@@ -478,10 +498,10 @@ button { min-height: 44px; touch-action: manipulation; }
  */
 #actions {
   --atk-right: 112px;
-  --atk-bottom: 100px;
+  --atk-bottom: 76px;
   position: fixed;
   right: calc(var(--col-x) + max(8px, env(safe-area-inset-right)) + var(--atk-right));
-  bottom: calc(max(0px, env(safe-area-inset-bottom)) + var(--atk-bottom));
+  bottom: calc(var(--base-b) + var(--atk-bottom));
   width: 0;
   height: 0;
 }
@@ -529,7 +549,7 @@ button { min-height: 44px; touch-action: manipulation; }
 #potions {
   position: fixed;
   right: calc(var(--col-x) + max(8px, env(safe-area-inset-right)));
-  bottom: calc(max(0px, env(safe-area-inset-bottom)) + 60px);
+  bottom: calc(var(--base-b) + 36px);
   display: grid;
   gap: 10px;
 }
@@ -590,7 +610,7 @@ body.deitado #vendor { top: calc(max(0px, env(safe-area-inset-top)) + 96px); }
 /* Joystick fixo (Configurações): sempre à vista no canto de baixo à esquerda, apagado enquanto ninguém toca. */
 .joystick.fixed {
   left: calc(var(--col-x) + max(20px, env(safe-area-inset-left)));
-  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 24px);
+  bottom: calc(var(--base-b) + 20px);
   margin: 0;
 }
 .joystick.fixed.idle { opacity: 0.45; }
@@ -665,19 +685,29 @@ body.deitado #vendor { top: calc(max(0px, env(safe-area-inset-top)) + 96px); }
 }
 
 /*
+ * App instalado (tela de início): sem a barra do navegador, a borda de baixo é a do aparelho. No iPhone a faixa da
+ * barra de gestos tem uns 34 px e antes os controles ficavam todos acima dela, com uma faixa morta embaixo do
+ * joystick: agora entram uns 20 px nela (o gesto de sair do app é deslizar a partir da borda, longe do centro deles).
+ */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  :root { --base-b: max(8px, calc(env(safe-area-inset-bottom) - 20px)); --timer-b: max(4px, calc(env(safe-area-inset-bottom) - 14px)); }
+}
+
+/*
  * Jogar deitado (beta, `body.deitado` da largada ao resultado da hunt): o jogo ocupa a tela toda, joystick no
  * polegar esquerdo e botões no direito. Deitado a tela é baixa (no iPhone, com as barras do Safari, sobram uns
  * 330 px): tudo fica compacto e nos cantos. Tempo e barras no alto à esquerda, minimapa no alto à direita,
  * ataque e magias em arco no canto de baixo à direita e as poções numa fileira ao lado.
  */
 @media (orientation: landscape) and (pointer: coarse) {
-  body.deitado { --col-w: 100vw; --col-x: 0px; --pad-b: max(10px, env(safe-area-inset-bottom)); --pad-r: max(12px, env(safe-area-inset-right)); }
+  body.deitado { --col-w: 100vw; --col-x: 0px; --pad-b: max(6px, env(safe-area-inset-bottom)); --pad-r: max(12px, env(safe-area-inset-right)); }
   body.deitado #rotate { display: none; }
   body.deitado .joystick.fixed { left: max(16px, env(safe-area-inset-left)); bottom: var(--pad-b); }
 
   body.deitado #hud { top: max(6px, env(safe-area-inset-top)); justify-content: flex-start; align-items: flex-start; }
   body.deitado #hud-left { grid-auto-flow: column; }
-  body.deitado #timer { padding: 3px 8px; font-size: 16px; }
+  /* Deitado, o relógio fica embaixo no meio também: entre o joystick e o arco dos botões há muito espaço. */
+  body.deitado #timer { left: 50%; bottom: max(4px, calc(var(--pad-b) - 4px)); }
   body.deitado #stats { width: 150px; gap: 3px; padding: 4px 6px; font-size: 10px; }
   body.deitado .bar { height: 11px; }
   body.deitado .bar span { line-height: 11px; }
@@ -725,6 +755,10 @@ body.deitado #vendor { top: calc(max(0px, env(safe-area-inset-top)) + 96px); }
     max-height: calc(100dvh - 16px);
     transform: translateX(-50%);
   }
+}
+/* Deitado no app instalado: a faixa da barra de gestos (uns 21 px no iPhone) também deixa de ser área morta. */
+@media (orientation: landscape) and (pointer: coarse) and (display-mode: standalone), (orientation: landscape) and (pointer: coarse) and (display-mode: fullscreen) {
+  body.deitado { --pad-b: max(4px, calc(env(safe-area-inset-bottom) - 12px)); }
 }
 
 #help { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(var(--col-w) - 24px); margin: 0; padding: 4px 10px; font-size: 12px; text-align: center; color: var(--muted); background: #000a; border: 1px solid var(--border); pointer-events: none; }

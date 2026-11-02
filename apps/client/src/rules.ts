@@ -151,7 +151,7 @@ export function renderRules(root: HTMLElement) {
       `🔥 Acampamento: a sala onde você nasce, com o portal. No quadrado em volta da fogueira, a vida e a mana voltam ${CAMP_REGEN}× mais rápido. Ao lado, o vendedor: encostado na banca você troca loot por poção (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${CAMP_VENDOR_PRICES[id]}`).join(", ")}).`,
       "🦴 Fíbula: três salões abertos (Orla, Covas e Fundo) com nove áreas de caça em escada, do nível 1 ao 16, e o covil do Rei Ossudo no topo.",
       "💀 Fíbula Profunda: uma caverna só, três vezes maior, com o acampamento no centro. Ao sul, a Orla de iniciante (nível 1–5); a oeste, a ala baixa (3–8) até o Rei Ossudo; ao norte, a média (9–14) até o Colosso Cantante; a leste, a alta (14–20) até o Faraó Eterno. Doze áreas de caça com os seus monstros e o nível indicado, mais emboscadas pelos vazios.",
-      "A placa embaixo do relógio diz onde você está. Vá e volte do acampamento quantas vezes quiser e cace onde der para o seu momento.",
+      "Vá e volte do acampamento quantas vezes quiser e cace onde der para o seu momento.",
       "Nada prende o herói nesses mapas: teia, atordoamento e engolir não pegam (lentidão sim). Se você parou, foi a rede, não uma magia.",
       "O minimapa lembra o que você já descobriu em hunts anteriores (por personagem): o já visto aparece mais escuro até você passar lá de novo.",
       "Fora da fogueira a vida volta devagar: ferido, recue até o acampamento antes de avançar mais.",
