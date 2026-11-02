@@ -6,6 +6,7 @@ import {
   ENRAGE_COOLDOWN,
   ENRAGE_HP,
   MONSTER_SPEED_SCALE,
+  paced,
   MSG,
   SPECIAL_FIRST_DELAY,
   Tile,
@@ -87,6 +88,18 @@ export interface Brain {
   primedUntil: number;
   /** Presa Venenosa (marco 2): já levou o 1º golpe das criaturas (a prisão do 1º golpe só sai uma vez). */
   fangRooted: boolean;
+  /** Caça em Bando: caçado pelas criaturas de `huntBy` até `huntUntil`, que ferem +`huntDamage` nele. */
+  huntBy: string;
+  huntUntil: number;
+  huntDamage: number;
+  /** Pandemia: até `plagueUntil`, o veneno de `plagueBy` pula daqui para os vizinhos a cada tanto (próximo em `plagueNext`). */
+  plagueBy: string;
+  plagueUntil: number;
+  plagueNext: number;
+  plagueEvery: number;
+  plagueRadius: number;
+  plaguePerSec: number;
+  plagueStacks: number;
   /** Cristalizar (marco 5): já congelou de novo depois de um Estilhaço (não congela outra vez em seguida). */
   refrozen: boolean;
   /** Lento até este momento (ms), perdendo `slowPct` da velocidade. */
@@ -174,7 +187,8 @@ export class MonsterAi {
     const heads = traits.heads?.start ?? 0;
     return {
       def, traits, elements: {}, speed: def.speed, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
-      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, frozenUntil: 0, dazzledUntil: 0, weakUntil: 0, weakPct: 0, primedUntil: 0, refrozen: false, fangRooted: false, slowUntil: 0, slowPct: 0,
+      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, frozenUntil: 0, dazzledUntil: 0, weakUntil: 0, weakPct: 0, primedUntil: 0, refrozen: false, fangRooted: false, huntBy: "", huntUntil: 0, huntDamage: 0,
+      plagueBy: "", plagueUntil: 0, plagueNext: 0, plagueEvery: 0, plagueRadius: 0, plaguePerSec: 0, plagueStacks: 0, slowUntil: 0, slowPct: 0,
       markUntil: 0, markPct: 0, dot: null, tauntedBy: null, abilityReadyAt: {}, phased: new Set(), used: new Set(), enraged: false,
       invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
       regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,
@@ -238,7 +252,7 @@ export class MonsterAi {
     // Habilidades: a primeira de cada só sai um pouco depois de notar alguém (não junto com o aggro).
     if (def.abilities && !brain.engulfing) {
       for (const a of def.abilities) {
-        if (brain.abilityReadyAt[a.id] === undefined) brain.abilityReadyAt[a.id] = now + a.cooldownMs * SPECIAL_FIRST_DELAY * jitter(this.w.random);
+        if (brain.abilityReadyAt[a.id] === undefined) brain.abilityReadyAt[a.id] = now + paced(a.cooldownMs) * SPECIAL_FIRST_DELAY * jitter(this.w.random);
         if (now < brain.abilityReadyAt[a.id] || !this.usable(m, brain, a, dist, sees)) continue;
         if (this.useAbility(m, brain, a, targetId, target, now)) return;
       }
@@ -394,7 +408,7 @@ export class MonsterAi {
       }
     }
     // Não emenda o ataque básico logo depois da habilidade.
-    brain.nextAttackAt = Math.max(brain.nextAttackAt, now + brain.def.attackCooldownMs * 0.5);
+    brain.nextAttackAt = Math.max(brain.nextAttackAt, now + paced(brain.def.attackCooldownMs) * 0.5);
 
     if (a.shape === "dive") {
       this.dive(m, brain, a, targetId);
@@ -430,7 +444,7 @@ export class MonsterAi {
   }
 
   private cooldown(brain: Brain, a: MonsterAbility, now: number) {
-    brain.abilityReadyAt[a.id] = now + a.cooldownMs * jitter(this.w.random) * (brain.enraged ? ENRAGE_COOLDOWN : 1);
+    brain.abilityReadyAt[a.id] = now + paced(a.cooldownMs) * jitter(this.w.random) * (brain.enraged ? ENRAGE_COOLDOWN : 1);
   }
 
   private strike(m: Monster, a: MonsterAbility, tx: number, ty: number, tiles: { x: number; y: number }[], rising?: boolean) {
@@ -547,12 +561,12 @@ export class MonsterAi {
     const traits = brain.traits;
     // Ilusão: só finge atacar.
     if (traits.illusion) {
-      brain.nextAttackAt = now + def.attackCooldownMs;
+      brain.nextAttackAt = now + paced(def.attackCooldownMs);
       return;
     }
     const leader = this.leaderAura(m);
     const frenzy = traits.frenzy && m.hp <= m.maxHp * traits.frenzy.belowHp ? traits.frenzy.haste : 0;
-    brain.nextAttackAt = now + def.attackCooldownMs * Math.max(0.4, 1 - frenzy - leader.haste);
+    brain.nextAttackAt = now + paced(def.attackCooldownMs) * Math.max(0.4, 1 - frenzy - leader.haste);
     let damage = brain.damage * (1 + leader.damage);
     // Táticas de Bando: outro monstro colado no mesmo alvo.
     if (traits.packTactics && this.allyBeside(m, target)) damage *= 1 + traits.packTactics;

@@ -14,7 +14,7 @@
  * Uso: npx tsx scripts/grimorio.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CLASS_IDS, MASTERIES, MASTERY_RANK, SPELL_LEVEL_XP, MONSTERS, SPELLS, TALENTS, activeTraits, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
+  CLASS_IDS, MASTERIES, MASTERY_RANK, SPELL_LEVEL_XP, MONSTERS, SPELLS, TALENTS, activeTraits, paced, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
   knownSpells, lineTiles, spellAtRank, spellFacts, talentBlocker, talentTree,
   type SpellId, type SpellXp, type TalentRanks,
 } from "@kusa/shared";
@@ -85,7 +85,10 @@ function rules() {
   if (undead !== "bogBody,boneArcher,boneCenturion,boneJackal,boneLegionary,buriedDead,deadForeman,drownedKnight,elvenShade,eternalPharaoh,fallenWarden,ghoul,lanternBearer,lostMiner,morgrana,mourner,mummy,mummyPriest,peatDrowned,royalMummy,sandScribe,skeleton,skeletonArcher,willOWisp,wrappedMummy,zombie") throw new Error(`mortos-vivos: ${undead}`);
 }
 
-/** Especializações: os dois Traços de um ramo se excluem, cada lado tem 1 magia por slot e elas pedem o Traço. */
+/**
+ * Especializações: os dois Traços de um ramo se excluem, cada lado tem 1 magia nos slots 1 e 2 (e, da fase 6 do
+ * Grimório 4.0, a do slot 3 embaixo delas) e elas pedem o Traço.
+ */
 function specializations() {
   for (const classId of CLASS_IDS) {
     for (const t of talentTree(classId).filter((n) => n.kind === "trait")) {
@@ -93,7 +96,7 @@ function specializations() {
       if (!rival || rival.exclusiveWith !== t.id || rival.side === t.side || rival.col !== t.col) throw new Error(`${t.id}: lado rival errado`);
       const side = talentTree(classId).filter((n) => n.kind === "spell" && n.col === t.col && n.side === t.side);
       const slots = side.map((n) => SPELLS[n.spellId!].slot).sort().join(",");
-      if (slots !== "0,1") throw new Error(`${t.id}: o lado devia ter uma magia de cada slot (tem ${slots})`);
+      if (slots !== "0,1" && slots !== "0,1,2") throw new Error(`${t.id}: o lado devia ter uma magia de cada slot (tem ${slots})`);
     }
   }
   // Conta com o tronco do ramo Mira comprado: os dois lados abertos; comprou um, o outro fecha, com as magias dele.
@@ -199,7 +202,7 @@ function paladinShots() {
     a.cast(1, m);
     a.until(() => !a.state.monsters.has(m.id), 2000, "o Disparo Certeiro não matou o goblin");
     a.until(() => a.cooldowns.length > 0, 1000, "o Disparo Certeiro não devolveu a recarga ao matar");
-    const full = SPELLS.deadly_shot.cooldownMs;
+    const full = paced(SPELLS.deadly_shot.cooldownMs);
     console.log(`paladino: Disparo Certeiro matou, recarga agora ${a.cooldowns[0].ms} ms (cheia ${full})`);
     check(a.cooldowns[0].slot === 1 && a.cooldowns[0].ms <= full / 2, `recarga devolvida errada: ${JSON.stringify(a.cooldowns[0])}`);
   }

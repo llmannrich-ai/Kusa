@@ -1,4 +1,5 @@
 import type { ClassId } from "./classes.ts";
+import { paced } from "./constants.ts";
 import { blocksSight, hasLineOfSight, tileDistance, type Dungeon } from "./dungeon.ts";
 import type { DotKind } from "./monsters.ts";
 import type { Element } from "./traits.ts";
@@ -26,9 +27,9 @@ export const BASIC_ATTACKS: Record<ClassId, BasicAttackDef> = {
 /** Intervalo entre ataques básicos, igual para todas as classes. */
 export const BASIC_ATTACK_COOLDOWN_MS = 1000;
 
-/** Tempo (ms) que um projétil leva entre dois tiles. */
+/** Tempo (ms) que um projétil leva entre dois tiles (no ritmo da hunt, `PACE`). */
 export function flightMs(speed: number, x0: number, y0: number, x1: number, y1: number) {
-  return speed > 0 ? Math.round((Math.hypot(x1 - x0, y1 - y0) / speed) * 1000) : 0;
+  return speed > 0 ? Math.round(paced((Math.hypot(x1 - x0, y1 - y0) / speed) * 1000)) : 0;
 }
 
 /** Nível em que cada slot de magia abre (slot 0 e slot 1). */
@@ -79,7 +80,13 @@ export type SpellId =
   // Grimório 4.0: magias em leque nas costelas novas (docs/GRIMORIO_4_PLANO.md, seção 8).
   | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
   // Grimório 4.0, fase 5: magias de combo das costelas novas (usam as reações).
-  | "hemorrhagic_cut" | "shield_toss" | "exposed_strike"
+  | "hemorrhagic_cut" | "shield_toss" | "exposed_strike" | "weak_point_arrow" | "dawn_arrow" | "powder_keg"
+  | "thermal_shock" | "sentence" | "pack_hunt" | "twin_sprout" | "bramble_embrace"
+  // Grimório 4.0, fase 6: magias do slot 3 de cada lado da especialização.
+  | "massacre" | "blade_storm" | "protector_oath" | "mountain" | "rally_cry" | "challenge_chains"
+  | "phantom_shot" | "wind_dance" | "flaming_cross" | "sanctuary" | "bombardment" | "minefield"
+  | "storm_eye" | "dragon_breath" | "avalanche" | "arcane_rift" | "army_of_dead" | "abyss_gaze"
+  | "jungle_king" | "primal_form" | "eternal_forest" | "oak_wall" | "pandemic" | "fan_storm"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -136,7 +143,9 @@ export interface SpellDef {
    * `freezeTicks`, o monstro pego tantos pulsos seguidos fica preso por `freezeMs` (Sopro Gélido). Mana e recarga saem
    * uma vez, no começo.
    */
-  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number };
+  /** `fireMs`: cada pulso deixa o chão em chamas na ponta do leque por este tempo (Hálito do Dragão). */
+  /** `bolt` (Tempestade em Leque): cada pulso é um raio num monstro só do leque (sorteado), não o leque inteiro. */
+  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number; fireMs?: number; bolt?: boolean };
   /**
    * Campo no chão onde a magia cai, por `ms`:
    * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
@@ -161,11 +170,17 @@ export interface SpellDef {
     length?: number;
     /**
      * Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus); "totem" = totem do Xamã Orc, que lança brasa
-     * (fogo). Sem isto, a estaca de flechas.
+     * (fogo); "keg" = Barril de Pólvora (não pulsa: explode o `burst` quando leva flecha ou fogo, e some sem explodir
+     * quando o tempo acaba); "sprout" = Broto Duplo (armadilha que um aliado também dispara: cura quem pisa e prende o
+     * monstro). Sem isto, a estaca de flechas.
      */
-    look?: "storm" | "totem";
+    look?: "storm" | "totem" | "keg" | "sprout";
     /** Quantos campos desta magia cabem ao mesmo tempo (o mais antigo sai); sem isto, 1 (ou o do Engenhoso). */
     max?: number;
+    /** Zona: aliados dentro levam esta fração a menos de dano (renovado a cada pulso) (Santuário). */
+    allyGuard?: number;
+    /** Zona: a cada pulso, empurra para fora os monstros que entraram (Santuário). */
+    repel?: boolean;
     /**
      * Zona: a cada pulso chama 1 criatura `kind` colada no campo, por `durationMs`, enquanto houver menos de `max`
      * desta magia (Totem do Chamado). Conta no limite de criaturas do dono.
@@ -226,6 +241,60 @@ export interface SpellDef {
   exposeRadius?: number;
   /** O atordoar do próprio golpe já vale para o Exposto (em monstro marcado, o golpe sai Exposto). */
   exposeNow?: boolean;
+  /** Dano vezes `power` em quem tinha todos estes estados antes do golpe (Flecha do Ponto Fraco: marcado e sangrando). */
+  comboBonus?: { needs: ("marked" | "bleeding" | "burning" | "poisoned" | "rooted" | "frozen" | "stunned")[]; power: number };
+  /** O Vapor e o Incandescer que este golpe dispara saem neste raio (Choque Térmico e Flecha da Aurora, Maestria). */
+  reactionRadius?: number;
+  /** A Condenação que este golpe dispara sai com esta força (Sentença: 2 = dobrada). */
+  reactionPower?: number;
+  /** Choque Térmico: em quem já estava queimando ou lento antes do golpe, dispara o Vapor. */
+  vaporOn?: boolean;
+  /** Os monstros a até `radius` do alvo ficam marcados (+`pct` por `ms`) (Sentença, Maestria). */
+  markAround?: { radius: number; pct: number; ms: number };
+  /** Caça em Bando: o alvo fica caçado por `ms`; as criaturas de quem conjura correm até ele e ferem +`damage` nele. */
+  hunt?: { ms: number; damage: number };
+  /** Abraço do Espinheiro: quem já estava envenenado antes da magia vira Espinheiro (a raiz vira espinhos). */
+  thornbushOn?: boolean;
+  /**
+   * Juramento do Protetor (mira aliado): por `ms`, `share` do dano que o aliado leva de monstro vem para quem conjura,
+   * que ganha +`armor` de armadura enquanto dura.
+   */
+  oath?: { ms: number; share: number; armor: number };
+  /** Montanha: por este tempo, quem conjura não fica atordoado, preso nem engolido (e o que já prendia sai). */
+  steadfastMs?: number;
+  /** Montanha (Maestria): ao acabar o `steadfastMs`, um Terremoto grátis em volta (`radius`, `damage` × dano base). */
+  afterQuake?: { radius: number; damage: number };
+  /** Correntes do Desafio: puxa todos os monstros atingidos para perto de quem conjura (não só o alvo). */
+  pullAll?: boolean;
+  /** Disparo Fantasma: marca os `count` monstros mais perto (a até `range`); `delayMs` depois, cada um leva o dano. */
+  phantom?: { count: number; range: number; delayMs: number };
+  /** Dança do Vento: a magia tem `count` cargas: lançada a 1ª, as outras saem logo em seguida, até `windowMs`. */
+  charges?: { count: number; windowMs: number };
+  /** Cruz Flamejante: acerta os monstros nas 4 retas (cima, baixo, lados) de quem conjura, até tantos tiles. */
+  cross?: number;
+  /**
+   * Bombardeio: `count` explosões (no raio da magia) caem uma a cada `stepMs`, espalhadas no leque (`coneAngle`), da
+   * perto para a longe; com `fireMs`, cada uma deixa o chão em chamas.
+   */
+  bombard?: { count: number; stepMs: number; fireMs?: number };
+  /**
+   * Olho da Tempestade: por `ms`, um raio (`damage` × dano base) cai num monstro a até `range` a cada `everyMs`, e as
+   * magias de energia de quem conjura saltam `jumps` vezes a mais.
+   */
+  storm?: { ms: number; everyMs: number; damage: number; range: number; jumps: number };
+  /** Avalanche: em quem já estava congelado antes do golpe, o golpe Estilhaça (dano a mais do Estilhaço). */
+  shatterOn?: boolean;
+  /** Fenda Arcana: o teleporte (`dash.teleport`) explode no ponto de saída e no de chegada (no raio da magia). */
+  blink?: boolean;
+  /** Floresta Eterna: planta a semente (`seed`) em todos os aliados a até o raio da magia, inclusive em quem conjura. */
+  seedAll?: boolean;
+  /** Muralha de Carvalhos: a parede (`field.kind: "wall"`) cura `pct` da vida por segundo dos aliados a até o raio. */
+  wallHeal?: number;
+  /**
+   * Pandemia: o veneno da magia pula do alvo para todos a até `radius` tiles a cada `everyMs`, por `ms` (só quem levou a
+   * magia espalha); `stacks` acumula o veneno (Maestria).
+   */
+  plague?: { ms: number; everyMs: number; radius: number; stacks?: number };
   /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
@@ -238,6 +307,12 @@ export interface SpellDef {
     rooted?: boolean;
     /** Monstro que bate em quem conjura (corpo a corpo) fica `pct` mais lento por `ms`. */
     slowAttackers?: { pct: number; ms: number };
+    /** Massacre: o básico corpo a corpo corta todos os monstros colados. */
+    cleave?: boolean;
+    /** Massacre: o básico rouba esta fração do dano em vida. */
+    lifesteal?: number;
+    /** Massacre (Maestria): cada monstro morto pelo básico estende o bônus `ms`, até `max` a mais no total. */
+    killExtend?: { ms: number; max: number };
   };
   /** Espinhos de Ferro: por `ms`, `pct` do golpe corpo a corpo recebido volta para o monstro. */
   thorns?: { pct: number; ms: number };
@@ -251,7 +326,8 @@ export interface SpellDef {
    * Quem conjura salta até `tiles` tiles na direção mirada (no toque rápido, para longe do alvo), parando em parede ou
    * monstro. `teleport`: some e aparece no ponto mirado (passa por cima de monstros; precisa ver o ponto e ele estar livre).
    */
-  dash?: { tiles: number; teleport?: boolean };
+  /** `back`: rola para o lado oposto ao mirado (Dança do Vento: recua e atira para a frente). */
+  dash?: { tiles: number; teleport?: boolean; back?: boolean };
   /** O próximo ataque básico de quem conjura atordoa o alvo por este tempo. */
   nextBasicStunMs?: number;
   /** Quem conjura recebe só (1 - guard) do dano por `guardMs`. */
@@ -262,7 +338,8 @@ export interface SpellDef {
    * próximo ataque básico salta no alvo com `pounce` × dano (atordoando por `pounceStunMs`). Urso: +`hp` da vida máxima
    * (entra cheia) e o ataque básico vira uma patada em todos os monstros colados, que os provoca (`maul`).
    */
-  form?: { kind: "panther" | "bear"; ms: number; moveSpeed?: number; pounce?: number; pounceStunMs?: number; hp?: number; maul?: boolean };
+  /** `breath` (Forma Primordial): o básico vira um sopro em leque (`angle`, `range` tiles) em todos os monstros nele. */
+  form?: { kind: "panther" | "bear"; ms: number; moveSpeed?: number; pounce?: number; pounceStunMs?: number; hp?: number; maul?: boolean; breath?: { angle: number; range: number } };
   /** Grito da Fera: as criaturas de quem conjura atacam `haste` mais rápido por `ms` e recuperam `heal` da vida. */
   packCall?: { haste: number; ms: number; heal: number };
   /**
@@ -1041,6 +1118,201 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Uma pancada que atordoa o monstro colado por 1 s; se ele estiver marcado, vira Exposto na hora.",
     manaCost: 30, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 2.2, stunMs: 1000, exposeNow: true,
   }),
+  // Fase 5: magias de combo do Paladino.
+  weak_point_arrow: spell({
+    id: "weak_point_arrow", classId: "paladin", slot: 1, name: "Flecha do Ponto Fraco", icon: "🎯", color: 0xe67e22,
+    description: "Uma flecha certeira que causa dano pesado; em monstro marcado e sangrando, o dano dobra.",
+    manaCost: 35, cooldownMs: 8000, aim: "target", range: 6, radius: 0, damage: 2.4, projectileSpeed: 22,
+    comboBonus: { needs: ["marked", "bleeding"], power: 2 },
+  }),
+  dawn_arrow: spell({
+    id: "dawn_arrow", classId: "paladin", slot: 0, name: "Flecha da Aurora", icon: "🌅", color: 0xffb347,
+    description: "Uma flecha em chamas que queima por 3 s; em monstro ofuscado, a luz explode na hora (Incandescer).",
+    manaCost: 25, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 20,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  powder_keg: spell({
+    id: "powder_keg", classId: "paladin", slot: 1, name: "Barril de Pólvora", icon: "🛢️", color: 0x8d5524,
+    description: "Põe um barril no chão; ele explode quando leva uma flecha ou fogo: raio 2, dano pesado e queima.",
+    manaCost: 40, cooldownMs: 10000, aim: "target", range: 5, radius: 0,
+    field: { kind: "zone", ms: 30000, tickMs: 1000, look: "keg", burst: { radius: 2, damage: 2.5, burn: { perSec: 0.3, ms: 3000 } } },
+  }),
+  // Fase 5: magias de combo do Feiticeiro.
+  thermal_shock: spell({
+    id: "thermal_shock", classId: "sorcerer", slot: 0, name: "Choque Térmico", icon: "💨", color: 0xffa07a, element: "fire",
+    description: "Fogo e gelo juntos num alvo: queima e deixa lento; em quem já estava queimando ou lento, dispara o Vapor.",
+    manaCost: 26, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1.2, projectileSpeed: 18,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" }, slow: { pct: 0.3, ms: 3000 }, vaporOn: true,
+  }),
+  sentence: spell({
+    id: "sentence", classId: "sorcerer", slot: 1, name: "Sentença", icon: "💀", color: 0x6c3483, element: "dark",
+    description: "Uma sentença de trevas num alvo; em monstro marcado, a Condenação sai dobrada.",
+    manaCost: 35, cooldownMs: 8000, aim: "target", range: 6, radius: 0, damage: 1.8, projectileSpeed: 16, reactionPower: 2,
+  }),
+  // Fase 5: magias de combo do Druida.
+  pack_hunt: spell({
+    id: "pack_hunt", classId: "druid", slot: 1, name: "Caça em Bando", icon: "🦴", color: 0xc8a165,
+    description: "Marca a presa: suas criaturas correm até ela e ferem 50% mais nela por 6 s; o veneno do faro vira Espinheiro em quem está preso.",
+    manaCost: 30, cooldownMs: 9000, aim: "target", range: 6, radius: 0, damage: 0.5, projectileSpeed: 16,
+    dot: { perSec: 0.3, ms: 3000, kind: "poison" }, hunt: { ms: 6000, damage: 0.5 },
+  }),
+  twin_sprout: spell({
+    id: "twin_sprout", classId: "druid", slot: 0, name: "Broto Duplo", icon: "🌱", color: 0x7bed9f,
+    description: "Uma semente no chão: o aliado que pisa cura 15% da vida; o monstro que pisa fica preso 1,5 s.",
+    manaCost: 25, cooldownMs: 6000, aim: "target", range: 5, radius: 0, heal: 0.15, rootMs: 1500,
+    field: { kind: "trap", ms: 20000, look: "sprout" },
+  }),
+  bramble_embrace: spell({
+    id: "bramble_embrace", classId: "druid", slot: 1, name: "Abraço do Espinheiro", icon: "🌿", color: 0x556b2f,
+    description: "Espinheiros brotam em volta e prendem por 2 s quem está a até 2 tiles; quem já estava envenenado vira Espinheiro.",
+    manaCost: 40, cooldownMs: 12000, aim: "self", range: 0, radius: 2, damage: 0.6, rootMs: 2000, thornbushOn: true,
+  }),
+  // Fase 6: slot 3 de cada lado da especialização do Cavaleiro.
+  massacre: spell({
+    id: "massacre", classId: "knight", slot: 2, name: "Massacre", icon: "🩸", color: 0x922b21,
+    description: "Por 8 s, seu ataque básico corta todos os monstros colados em você e rouba 30% do dano em vida.",
+    manaCost: 50, cooldownMs: 32000, aim: "self", range: 0, radius: 0,
+    selfBuff: { ms: 8000, cleave: true, lifesteal: 0.3 },
+  }),
+  blade_storm: spell({
+    id: "blade_storm", classId: "knight", slot: 2, name: "Tempestade de Lâminas", icon: "🗡️", color: 0xd2d6de,
+    description: "Arremessa 5 lâminas abertas em leque: cada uma fere forte e faz sangrar.",
+    manaCost: 50, cooldownMs: 26000, aim: "target", range: 5, radius: 0, damage: 1.5, projectileSpeed: 16,
+    spread: { count: 5, angle: 60 }, dot: { perSec: 0.4, ms: 3000, kind: "bleed" },
+  }),
+  protector_oath: spell({
+    id: "protector_oath", classId: "knight", slot: 2, name: "Juramento do Protetor", icon: "🤝", color: 0x7fc8ff,
+    description: "Jura proteger um aliado por 10 s: 60% do dano que ele leva vem para você, e você ganha +10 de armadura.",
+    manaCost: 45, cooldownMs: 30000, aim: "ally", range: 6, radius: 0, oath: { ms: 10000, share: 0.6, armor: 10 },
+  }),
+  mountain: spell({
+    id: "mountain", classId: "knight", slot: 2, name: "Montanha", icon: "🗿", color: 0x7f8c8d,
+    description: "Vira montanha por 6 s: nada te atordoa nem prende, você leva metade do dano e devolve todo golpe corpo a corpo.",
+    manaCost: 50, cooldownMs: 36000, aim: "self", range: 0, radius: 0,
+    guard: 0.5, guardMs: 6000, thorns: { pct: 1, ms: 6000 }, steadfastMs: 6000,
+  }),
+  rally_cry: spell({
+    id: "rally_cry", classId: "knight", slot: 2, name: "Grito de Reunião", icon: "🎺", color: 0xf1c40f,
+    description: "Reúne a equipe: cura 30% da vida, dá um escudo de 20% e faz os aliados a até 6 tiles andarem 30% mais rápido por 5 s.",
+    manaCost: 60, cooldownMs: 38000, aim: "self", range: 0, radius: 6,
+    barrier: 0.2, barrierMs: 5000, barrierAllies: true,
+    rally: { radius: 6, ms: 5000, haste: 0, damage: 0, heal: 0.3, move: 0.3 },
+  }),
+  challenge_chains: spell({
+    id: "challenge_chains", classId: "knight", slot: 2, name: "Correntes do Desafio", icon: "⛓️", color: 0x95a5a6,
+    description: "Correntes em leque: puxam todos os monstros até 5 tiles para perto de você e os prendem por 2 s.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.5, taunt: true, rootMs: 2000, pullAll: true,
+  }),
+  // Fase 6: slot 3 de cada lado da especialização do Paladino.
+  phantom_shot: spell({
+    id: "phantom_shot", classId: "paladin", slot: 2, name: "Disparo Fantasma", icon: "🦅", color: 0xbdc3c7,
+    description: "Marca os 3 monstros mais perto; 1,5 s depois, uma flecha fantasma acerta cada um com dano pesado.",
+    manaCost: 55, cooldownMs: 30000, aim: "self", range: 0, radius: 0, damage: 3,
+    mark: { pct: 0.15, ms: 1500 }, phantom: { count: 3, range: 7, delayMs: 1500 },
+  }),
+  wind_dance: spell({
+    id: "wind_dance", classId: "paladin", slot: 2, name: "Dança do Vento", icon: "🍃", color: 0x9be15d,
+    description: "Rola 3 tiles para trás e solta um leque de 5 flechas para a frente; 3 cargas seguidas em 6 s.",
+    manaCost: 20, cooldownMs: 25000, aim: "target", range: 5, radius: 0, damage: 0.9, projectileSpeed: 20,
+    dash: { tiles: 3, back: true }, spread: { count: 5, angle: 45 }, charges: { count: 3, windowMs: 6000 },
+  }),
+  flaming_cross: spell({
+    id: "flaming_cross", classId: "paladin", slot: 2, name: "Cruz Flamejante", icon: "✝️", color: 0xff7f27,
+    description: "Uma cruz de fogo sagrado: 4 retas de 5 tiles saem de você, ferem forte e queimam.",
+    manaCost: 55, cooldownMs: 28000, aim: "self", range: 0, radius: 0, damage: 2.5, cross: 5,
+    dot: { perSec: 0.4, ms: 3000, kind: "burn" },
+  }),
+  sanctuary: spell({
+    id: "sanctuary", classId: "paladin", slot: 2, name: "Santuário", icon: "🕊️", color: 0xfff3a0,
+    description: "Consagra o chão em volta por 8 s: os aliados dentro levam 40% menos dano e os monstros que entram são empurrados.",
+    manaCost: 60, cooldownMs: 36000, aim: "self", range: 0, radius: 3,
+    field: { kind: "zone", ms: 8000, tickMs: 500, allyGuard: 0.4, repel: true },
+  }),
+  bombardment: spell({
+    id: "bombardment", classId: "paladin", slot: 2, name: "Bombardeio", icon: "💣", color: 0xe67e22,
+    description: "Cinco bombas caem em onda num leque à sua frente, da perto para a longe: cada uma explode em raio 1.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 6, radius: 1, coneAngle: 60, damage: 1.6,
+    bombard: { count: 5, stepMs: 150 },
+  }),
+  minefield: spell({
+    id: "minefield", classId: "paladin", slot: 2, name: "Campo Minado", icon: "🕸️", color: 0x8d6e4a,
+    description: "Espalha 5 minas num leque largo à sua frente: quem pisa fica preso 2 s e a mina explode em volta.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 4, radius: 1, coneAngle: 120, damage: 1.5, rootMs: 2000,
+    field: { kind: "trap", ms: 30000, count: 5 },
+  }),
+  // Fase 6: slot 3 de cada lado da especialização do Feiticeiro.
+  storm_eye: spell({
+    id: "storm_eye", classId: "sorcerer", slot: 2, name: "Olho da Tempestade", icon: "⛈️", color: 0x9ec5ff, element: "energy",
+    description: "Por 8 s, um raio cai num monstro perto a cada segundo, e suas magias de energia saltam 2 vezes a mais.",
+    manaCost: 60, cooldownMs: 34000, aim: "self", range: 0, radius: 0,
+    storm: { ms: 8000, everyMs: 1000, damage: 1, range: 5, jumps: 2 },
+  }),
+  dragon_breath: spell({
+    id: "dragon_breath", classId: "sorcerer", slot: 2, name: "Hálito do Dragão", icon: "🐉", color: 0xff7f27, element: "fire",
+    description: "Cospe fogo num leque largo enquanto segura o botão (3 s): queima quem pega e deixa o chão em chamas.",
+    manaCost: 60, cooldownMs: 32000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.6, dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+    channel: { ms: 3000, tickMs: 250, moveSlow: 0.5, fireMs: 3000 },
+  }),
+  avalanche: spell({
+    id: "avalanche", classId: "sorcerer", slot: 2, name: "Avalanche", icon: "🏔️", color: 0xd6f1ff, element: "ice",
+    description: "Uma avalanche em leque, 6 tiles: fere forte e congela 2 s; quem já estava congelado Estilhaça.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 90, wave: { stepMs: 90 },
+    damage: 2, rootMs: 2000, shatterOn: true,
+  }),
+  arcane_rift: spell({
+    id: "arcane_rift", classId: "sorcerer", slot: 2, name: "Fenda Arcana", icon: "🌀", color: 0x7c4dff, element: "energy",
+    description: "Abre uma fenda e aparece até 5 tiles adiante: explode onde você estava e onde chegou. 2 cargas em 8 s.",
+    manaCost: 30, cooldownMs: 26000, aim: "target", range: 5, radius: 1, damage: 1.8,
+    dash: { tiles: 5, teleport: true }, blink: true, charges: { count: 2, windowMs: 8000 },
+  }),
+  army_of_dead: spell({
+    id: "army_of_dead", classId: "sorcerer", slot: 2, name: "Exército dos Mortos", icon: "💀", color: 0xdcdde1, element: "dark",
+    description: "Ergue 4 esqueletos que lutam por você por 12 s.",
+    manaCost: 70, cooldownMs: 40000, aim: "self", range: 0, radius: 0, summon: { kind: "skeleton", count: 4, durationMs: 12000 },
+  }),
+  abyss_gaze: spell({
+    id: "abyss_gaze", classId: "sorcerer", slot: 2, name: "Olhar do Abismo", icon: "👁️", color: 0x4a148c, element: "dark",
+    description: "Um olhar em leque, 6 tiles: marca os monstros (+30% de dano da equipe) e os enfraquece (30% menos dano) por 6 s.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 60, damage: 0.4,
+    mark: { pct: 0.3, ms: 6000 }, weaken: { pct: 0.3, ms: 6000 },
+  }),
+  // Fase 6: slot 3 de cada lado da especialização do Druida.
+  jungle_king: spell({
+    id: "jungle_king", classId: "druid", slot: 2, name: "Rei da Selva", icon: "🦁", color: 0xe6bf6a,
+    description: "Chama um leão por 25 s que provoca os monstros e ruge a cada 6 s, atordoando quem está a até 2 tiles.",
+    manaCost: 65, cooldownMs: 40000, aim: "self", range: 0, radius: 0, summon: { kind: "lion", count: 1, durationMs: 25000 },
+  }),
+  primal_form: spell({
+    id: "primal_form", classId: "druid", slot: 2, name: "Forma Primordial", icon: "🐲", color: 0x2e7d32,
+    description: "Vira uma fera primordial por 10 s: mais vida, e o ataque básico vira um sopro em leque que pega todos à frente.",
+    manaCost: 55, cooldownMs: 36000, aim: "self", range: 0, radius: 0,
+    form: { kind: "bear", ms: 10000, hp: 0.3, breath: { angle: 60, range: 3 } },
+  }),
+  eternal_forest: spell({
+    id: "eternal_forest", classId: "druid", slot: 2, name: "Floresta Eterna", icon: "🌰", color: 0xc8a165,
+    description: "Planta a semente do Renascer em todos os aliados a até 5 tiles (e em você) por 15 s.",
+    manaCost: 70, cooldownMs: 45000, aim: "self", range: 0, radius: 5, seed: { ms: 15000, hp: 0.4, invulnMs: 2000 }, seedAll: true,
+  }),
+  oak_wall: spell({
+    id: "oak_wall", classId: "druid", slot: 2, name: "Muralha de Carvalhos", icon: "🌲", color: 0x6b4426,
+    description: "Ergue uma muralha de 5 carvalhos por 8 s no ponto mirado: ninguém passa, e ela cura 3% da vida por segundo dos aliados perto.",
+    manaCost: 55, cooldownMs: 34000, aim: "target", range: 4, radius: 3, wallHeal: 0.03,
+    field: { kind: "wall", ms: 8000, length: 5 },
+  }),
+  pandemic: spell({
+    id: "pandemic", classId: "druid", slot: 2, name: "Pandemia", icon: "☠️", color: 0x9acd32,
+    description: "Um veneno forte num alvo que pula para todos os monstros a até 3 tiles dele a cada 2 s, por 10 s.",
+    manaCost: 55, cooldownMs: 32000, aim: "target", range: 6, radius: 0, damage: 0.5, projectileSpeed: 14,
+    dot: { perSec: 0.6, ms: 10000, kind: "poison" }, plague: { ms: 10000, everyMs: 2000, radius: 3 },
+  }),
+  fan_storm: spell({
+    id: "fan_storm", classId: "druid", slot: 2, name: "Tempestade em Leque", icon: "⛈️", color: 0x9ec5ff,
+    description: "Enquanto segura o botão (3 s), um raio cai a cada 0,3 s num monstro do leque à frente (90°, 6 tiles).",
+    manaCost: 60, cooldownMs: 32000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 90, damage: 1.4,
+    channel: { ms: 3000, tickMs: 300, moveSlow: 0.5, bolt: true },
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1559,12 +1831,44 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   cutting_shout: { text: "O grito também enfraquece os monstros: causam 20% menos dano por 4 s.", changes: { weaken: { pct: 0.2, ms: 4000 } } },
   hemorrhagic_cut: { text: "Sangram também os monstros colados no alvo.", changes: { radius: 1 } },
   shield_toss: { text: "O impacto fere o monstro arremessado e o que ele acertou (1,5×).", changes: { slam: { stunMs: 1500, power: 1.5 } } },
+  weak_point_arrow: { text: "A flecha também marca o alvo (+15% de dano da equipe por 4 s).", changes: { mark: { pct: 0.15, ms: 4000 } } },
+  dawn_arrow: { text: "O Incandescer que ela dispara pega em raio 2.", changes: { reactionRadius: 2 } },
+  pack_hunt: { text: "A caça dura o dobro (12 s).", changes: { hunt: { ms: 12000, damage: 0.5 } } },
+  twin_sprout: { text: "Cabem 2 sementes no chão ao mesmo tempo.", changes: { field: { kind: "trap", ms: 20000, look: "sprout", max: 2 } } },
+  bramble_embrace: { text: "Os espinheiros pegam a até 3 tiles.", changes: { radius: 3 } },
+  jungle_king: { text: "Chama 2 leões.", changes: { summon: { kind: "lion", count: 2, durationMs: 25000 } } },
+  primal_form: { text: "O sopro abre 90°.", changes: { form: { kind: "bear", ms: 10000, hp: 0.3, breath: { angle: 90, range: 3 } } } },
+  eternal_forest: { text: "A semente dura 25 s.", changes: { seed: { ms: 25000, hp: 0.4, invulnMs: 2000 } } },
+  oak_wall: { text: "A muralha tem 7 carvalhos.", changes: { field: { kind: "wall", ms: 8000, length: 7 }, radius: 4 } },
+  pandemic: { text: "O veneno acumula 2 vezes.", changes: { plague: { ms: 10000, everyMs: 2000, radius: 3, stacks: 2 } } },
+  fan_storm: { text: "Os raios empurram 1 tile.", changes: { push: 1 } },
+  storm_eye: { text: "A tempestade dura 12 s.", changes: { storm: { ms: 12000, everyMs: 1000, damage: 1, range: 5, jumps: 2 } } },
+  dragon_breath: { text: "O leque abre 120°.", changes: { coneAngle: 120 } },
+  avalanche: { text: "Congela 3 s.", changes: { rootMs: 3000 } },
+  arcane_rift: { text: "3 cargas.", changes: { charges: { count: 3, windowMs: 8000 } } },
+  army_of_dead: { text: "Ergue 5 esqueletos.", changes: { summon: { kind: "skeleton", count: 5, durationMs: 12000 } } },
+  abyss_gaze: { text: "O olhar abre 90°.", changes: { coneAngle: 90 } },
+  phantom_shot: { text: "Marca 5 monstros.", changes: { phantom: { count: 5, range: 7, delayMs: 1500 } } },
+  wind_dance: { text: "4 cargas.", changes: { charges: { count: 4, windowMs: 6000 } } },
+  flaming_cross: { text: "Retas de 7 tiles.", changes: { cross: 7 } },
+  sanctuary: { text: "O santuário cobre raio 4.", changes: { radius: 4 } },
+  bombardment: { text: "As bombas deixam o chão em chamas por 3 s.", changes: { bombard: { count: 5, stepMs: 150, fireMs: 3000 } } },
+  minefield: { text: "Sete minas no leque.", changes: { field: { kind: "trap", ms: 30000, count: 7 } } },
+  massacre: { text: "Cada monstro que o básico mata estende o Massacre 1 s (até +4 s).", changes: { selfBuff: { ms: 8000, cleave: true, lifesteal: 0.3, killExtend: { ms: 1000, max: 4000 } } } },
+  blade_storm: { text: "Sete lâminas no leque.", changes: { spread: { count: 7, angle: 70 } } },
+  protector_oath: { text: "O aliado também ganha um escudo de 20% da vida.", changes: { barrier: 0.2, barrierMs: 10000 } },
+  mountain: { text: "Ao acabar, um Terremoto grátis em volta (raio 2).", changes: { afterQuake: { radius: 2, damage: 2 } } },
+  rally_cry: { text: "O grito alcança 8 tiles.", changes: { radius: 8, rally: { radius: 8, ms: 5000, haste: 0, damage: 0, heal: 0.3, move: 0.3 } } },
+  challenge_chains: { text: "Os puxados também sangram por 4 s.", changes: { dot: { perSec: 0.4, ms: 4000, kind: "bleed" } } },
+  thermal_shock: { text: "O Vapor que ele dispara pega em raio 2.", changes: { reactionRadius: 2 } },
+  sentence: { text: "Marca também os monstros colados no alvo (+15% por 4 s).", changes: { markAround: { radius: 1, pct: 0.15, ms: 4000 } } },
+  powder_keg: { text: "Cabem 2 barris no chão ao mesmo tempo.", changes: { field: { kind: "zone", ms: 30000, tickMs: 1000, look: "keg", max: 2, burst: { radius: 2, damage: 2.5, burn: { perSec: 0.3, ms: 3000 } } } } },
   exposed_strike: { text: "Os marcados colados no alvo também ficam atordoados (Exposto em raio 1).", changes: { exposeRadius: 1 } },
   arrow_fan: { text: "Sete flechas no leque.", changes: { spread: { count: 7, angle: 55 } } },
   holy_flash: { text: "A luz marca os ofuscados: +15% de dano da equipe por 4 s.", changes: { mark: { pct: 0.15, ms: 4000 } } },
   fire_spit: { text: "O leque de fogo abre a 90°.", changes: { coneAngle: 90 } },
   lightning_fan: { text: "Cinco raios no leque.", changes: { spread: { count: 5, angle: 80 } } },
-  dark_wail: { text: "O lamento rouba 25% do dano em vida.", changes: { lifesteal: 0.25 } },
+  dark_wail: { text: "O lamento enfraquece os monstros: causam 20% menos dano por 3 s.", changes: { weaken: { pct: 0.2, ms: 3000 } } },
   pack_roar: { text: "O rugido também cura suas criaturas em 10%.", changes: { packCall: { haste: 0.3, ms: 4000, heal: 0.1 } } },
   pollen_breeze: { text: "A brisa cura 30% da vida.", changes: { heal: 0.3 } },
   thorn_spray: { text: "Oito espinhos no leque.", changes: { spread: { count: 8, angle: 70 } } },

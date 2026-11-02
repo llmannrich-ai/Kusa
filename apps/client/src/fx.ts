@@ -395,6 +395,105 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 6: slot 3 de cada lado da especialização do Druida (o leão e a muralha aparecem pelo estado; a Tempestade
+      // em Leque é um leque, da cena).
+      case "jungle_king":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE * 2.5, 0xe6bf6a, 450, 6);
+        this.ring(from, TILE_SIZE * 1.5, 0xe6bf6a, 550, 4);
+        return this.heal(from);
+      case "primal_form":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE * 1.2, 0x2e7d32, 550, 5);
+        this.zap(from, to, 0x7bed9f);
+        return this.sparks(to, 0x2e7d32, 6);
+      case "eternal_forest":
+        this.ring(from, radius, 0xc8a165, 650, 4);
+        return this.heal(from);
+      case "oak_wall": return this.debris(to, TILE_SIZE * 1.5, 0x6b4426);
+      case "pandemic":
+        this.projectile(FX.greenLight, from, to, ms, { trail: 0x9acd32, glow: 0x556b2f, impact: 0x9cff7a });
+        return this.later(ms, () => this.ring(to, TILE_SIZE * 3, 0x9acd32, 500, 3));
+      case "fan_storm":
+        return;
+      // Fase 6: slot 3 de cada lado da especialização do Feiticeiro (o Hálito e a Avalanche são leques, da cena).
+      case "storm_eye":
+        if (from.x === to.x && from.y === to.y && radius === 0) {
+          this.beam(to, 0x9ec5ff);
+          return this.sparks(to, 0xffffff, 6);
+        }
+        return this.ring(from, TILE_SIZE * 2, 0x9ec5ff, 600, 4);
+      case "dragon_breath":
+      case "avalanche":
+        return;
+      case "arcane_rift":
+        this.ring(to, TILE_SIZE * 1.5, 0x7c4dff, 450, 6);
+        return this.ring(from, TILE_SIZE * 1.5, 0xb388ff, 450, 6);
+      case "army_of_dead":
+        this.ring(from, TILE_SIZE * 1.5, 0xdcdde1, 550, 4);
+        return this.debris(from, TILE_SIZE, 0x4a4a4a);
+      case "abyss_gaze":
+        return;
+      // Fase 6: slot 3 de cada lado da especialização do Paladino (o Santuário e as minas aparecem pelo estado).
+      case "phantom_shot":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE * 1.5, 0xbdc3c7, 500, 4);
+        return this.projectile(FX.holyArrow, from, to, 200, { trail: 0xecf0f1, glow: 0xbdc3c7, scale: 1.3 });
+      case "wind_dance": return this.projectile(FX.arrow, from, to, ms, { trail: 0x9be15d, glow: 0xf1c40f });
+      case "flaming_cross":
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.zap(from, { x: from.x + dx * TILE_SIZE * 5, y: from.y + dy * TILE_SIZE * 5 }, 0xff7f27);
+        return this.holyFlash(from);
+      case "sanctuary":
+        this.ring(from, radius, 0xfff3a0, 650, 5);
+        return this.holyFlash(from);
+      case "bombardment":
+        if (from.x === to.x && from.y === to.y) return;
+        this.ring(to, TILE_SIZE * 1.5, 0xe67e22, 400, 8);
+        return this.debris(to, TILE_SIZE * 1.5, 0x6b4426);
+      case "minefield": return this.sparks(from, 0x8d6e4a, 6);
+      // Fase 6: slot 3 de cada lado da especialização do Cavaleiro (as Correntes são um leque, desenhado pela cena).
+      case "massacre":
+        this.ring(from, TILE_SIZE * 1.2, 0x922b21, 500, 6);
+        return this.bladeSpin(from);
+      case "blade_storm": return this.projectile(FX.arrow, from, to, ms, { trail: 0xd2d6de, glow: 0xffffff, scale: 1.3 });
+      case "protector_oath":
+        this.zap(from, to, 0x7fc8ff);
+        this.shieldRaise(from);
+        return this.later(120, () => this.shieldRaise(to));
+      case "mountain":
+        this.ring(from, TILE_SIZE, 0x7f8c8d, 600, 8);
+        return this.debris(from, TILE_SIZE, 0x6b4426);
+      case "rally_cry":
+        this.ring(from, radius, 0xf1c40f, 650, 5);
+        this.later(150, () => this.ring(from, radius * 0.6, 0x7fc8ff, 450, 3));
+        return this.heal(from);
+      case "challenge_chains":
+        return;
+      // Fase 5: magias de combo do Druida (a semente aparece pelo estado, como armadilha).
+      case "pack_hunt":
+        this.projectile(FX.greenLight, from, to, ms, { trail: 0xc8a165, glow: 0x8d6e4a, impact: 0xffe0b2 });
+        return this.later(ms, () => this.ring(to, TILE_SIZE / 2, 0xc8a165, 400, 4));
+      case "twin_sprout":
+        if (from.x === to.x && from.y === to.y) return this.heal(to);
+        return this.sparks(to, 0x7bed9f, 6);
+      case "bramble_embrace":
+        this.ring(from, radius, 0x556b2f, 500, 7);
+        return this.debris(from, radius, 0x3d5a1e);
+      // Fase 5: magias de combo do Feiticeiro.
+      case "thermal_shock":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xffa07a, glow: 0x9be7ff, impact: 0xffffff });
+        return this.later(ms, () => this.sparks(to, 0xdff6ff, 8));
+      case "sentence":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0x2d0a40, glow: 0x6c3483, impact: 0xc77dff, scale: 1.2 });
+        return this.later(ms, () => this.ring(to, TILE_SIZE / 2, 0x6c3483, 350, 6));
+      // Fase 5: magias de combo do Paladino (o Barril aparece pelo estado, como campo; explode como a magia).
+      case "weak_point_arrow": return this.projectile(FX.arrow, from, to, ms, { trail: 0xe67e22, glow: 0xf39c12, scale: 1.2 });
+      case "dawn_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xffb347, glow: 0xff7f27 });
+        return this.later(ms, () => this.sparks(to, 0xffb347, 8));
+      case "powder_keg":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 2.5, 0xff7f27, 450, 8);
+          return this.debris(to, TILE_SIZE * 2.5, 0x6e3b1c);
+        }
+        return this.sparks(to, 0x8d5524, 5);
       // Fase 5: magias de combo do Cavaleiro.
       case "hemorrhagic_cut":
         this.slash(from, to);

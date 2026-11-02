@@ -431,7 +431,37 @@ dois lados); pedem a última magia do tronco no nível 1 de uso.
 | Druida | Bosque | 🌳 **Árvore da Vida** | campo de raio 3 por 12 s que cura 5% por segundo os aliados dentro | 8% |
 | Druida | Espinhos | 🍂 **Furacão de Folhas** | canaliza 3 s: leque de 90° e 5 tiles, 0,5× a cada 0,3 s e empurra | prende 0,5 s por pulso |
 
-Faltam os Ápices do Xamã (quando o tronco dele existir) e as magias de slot 3 das especializações.
+Faltam os Ápices do Xamã (quando o tronco dele existir).
+
+**Slot 3 de cada lado da especialização** (fase 6, 2.500 de gold): uma magia de slot 3 embaixo da última magia de cada
+lado (mesma faixa, ±1), pedindo ela no nível 1 de uso; como o lado é escolha permanente, só quem fez a escolha alcança.
+
+| Classe | Lado | Magia | O que faz (nível 0) | Maestria |
+|---|---|---|---|---|
+| Cavaleiro | Berserker | 🩸 **Massacre** | 8 s: o básico corta todos os colados e rouba 30% do dano em vida | cada morte pelo básico estende 1 s (até +4 s) |
+| Cavaleiro | Duelista | 🗡️ **Tempestade de Lâminas** | 5 lâminas num leque de 60°, 1,5× cada, que sangram 3 s | 7 lâminas |
+| Cavaleiro | Guardião | 🤝 **Juramento do Protetor** | num aliado mirado por 10 s: 60% do dano de monstro dele vem para você, e você ganha +10 de armadura | ele ganha escudo de 20% |
+| Cavaleiro | Inabalável | 🗿 **Montanha** | 6 s sem ser atordoado, preso nem engolido (o que já prendia sai), metade do dano e devolve 100% do golpe corpo a corpo | Terremoto grátis em raio 2 no fim |
+| Cavaleiro | Senhor da Guerra | 🎺 **Grito de Reunião** | cura 30%, escudo de 20% e +30% de velocidade por 5 s nos aliados a até 6 tiles | alcance 8 |
+| Cavaleiro | Desafiante | ⛓️ **Correntes do Desafio** | leque de 90°, 5 tiles: 0,5×, provoca, puxa todos para perto e prende 2 s | os puxados sangram 4 s |
+| Paladino | Atirador de Elite | 🦅 **Disparo Fantasma** | marca os 3 monstros mais perto (até 7 tiles); 1,5 s depois cada um leva 3× | 5 monstros |
+| Paladino | Caçador Ágil | 🍃 **Dança do Vento** | rola 3 tiles para trás e solta 5 flechas (0,9×) para a frente; 3 cargas seguidas em 6 s, depois a recarga | 4 cargas |
+| Paladino | Cruzado | ✝️ **Cruz Flamejante** | 4 retas de 5 tiles em volta de você (cima, baixo, lados): 2,5× de fogo e queima | retas de 7 |
+| Paladino | Guardião da Luz | 🕊️ **Santuário** | zona de raio 3 por 8 s: os aliados dentro levam 40% menos dano e os monstros que entram são empurrados para fora | raio 4 |
+| Paladino | Artilheiro | 💣 **Bombardeio** | 5 bombas caem em onda num leque de 60°, da perto para a longe (até 6 tiles): 1,6× de fogo em raio 1 cada | chão em chamas por 3 s |
+| Paladino | Armadilheiro | 🕸️ **Campo Minado** | 5 minas num leque de 120°, 4 tiles: quem pisa fica preso 2 s e a mina explode (1,5× em raio 1) | 7 minas |
+| Feiticeiro | Tempestuoso | ⛈️ **Olho da Tempestade** | 8 s: um raio (1×) cai no monstro mais perto (até 5 tiles) a cada segundo; suas magias de energia saltam +2 (as de alvo único ganham 2 saltos) | 12 s |
+| Feiticeiro | Piromante | 🐉 **Hálito do Dragão** | canaliza 3 s: leque de 90°, 5 tiles, 0,6× de fogo a cada 0,25 s, queima e deixa o chão em chamas na ponta | 120° |
+| Feiticeiro | Criomante | 🏔️ **Avalanche** | onda de 90°, 6 tiles: 2× de gelo e congela 2 s; quem já estava congelado Estilhaça | congela 3 s |
+| Feiticeiro | Arcanista | 🌀 **Fenda Arcana** | teleporta até 5 tiles e explode (1,8× em raio 1) na saída e na chegada; 2 cargas em 8 s | 3 cargas |
+| Feiticeiro | Necromante | 💀 **Exército dos Mortos** | 4 esqueletos por 12 s | 5 esqueletos |
+| Feiticeiro | Bruxo | 👁️ **Olhar do Abismo** | leque de 60°, 6 tiles: 0,4×, marca (+30%) e enfraquece (30% menos dano) por 6 s | 90° |
+| Druida | Mestre das Feras | 🦁 **Rei da Selva** | um leão por 25 s (o urso dourado, de juba) que provoca e ruge a cada 6 s, atordoando 1 s quem está a até 2 tiles | 2 leões |
+| Druida | Metamorfo | 🐲 **Forma Primordial** | forma animal por 10 s (+30% de vida): o básico vira um sopro em leque de 60°, 3 tiles, em todos os monstros nele | 90° |
+| Druida | Círculo da Vida | 🌰 **Floresta Eterna** | a semente do Renascer em todos os aliados a até 5 tiles (e em você) por 15 s | 25 s |
+| Druida | Guardião da Natureza | 🌲 **Muralha de Carvalhos** | parede de 5 tiles por 8 s (como a Muralha Mágica) que cura 3% por segundo os aliados a até 3 tiles do meio | 7 tiles |
+| Druida | Peste | ☠️ **Pandemia** | 0,5× e veneno forte (0,6× por s, 10 s) no alvo, que pula para os monstros a até 3 tiles dele a cada 2 s | acumula 2 vezes |
+| Druida | Tempestade | ⛈️ **Tempestade em Leque** | canaliza 3 s: a cada 0,3 s, um raio (1,4×) num monstro sorteado do leque de 90°, 6 tiles | os raios empurram 1 tile |
 
 #### Magias em leque (Grimório 4.0)
 
@@ -462,7 +492,7 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 | Paladino | Luz (Luz Curativa) | ☀️ **Clarão Sagrado** | 2 | onda de 120°, 4 tiles, 1,2×, ofusca 1 s, dobro em mortos-vivos | marca os ofuscados (+15% por 4 s) |
 | Feiticeiro | Raio (Relâmpago) | 🔥 **Cusparada de Fogo** | 1 | onda de fogo de 60°, 3 tiles, 1,3× e queima 3 s | leque de 90° |
 | Feiticeiro | Raio (Cusparada de Fogo) | ⚡ **Leque de Raios** | 2 | 3 raios em 60°, 1,4× cada, e cada um salta 1 vez | 5 raios |
-| Feiticeiro | Trevas (Áurea da Égide) | 🌑 **Lamento Sombrio** | 1 | onda de 120°, 3 tiles, 1,1× e rouba 15% de vida | rouba 25% |
+| Feiticeiro | Trevas (Áurea da Égide) | 🌑 **Lamento Sombrio** | 1 | onda de 120°, 3 tiles, 1,1× e rouba 15% de vida | enfraquece 20% por 3 s |
 | Druida | Matilha (Lobo Espiritual) | 🐺 **Rugido da Alcateia** | 1 | leque de 90°, 3 tiles, 0,8×, empurra 1; criaturas 30% mais rápidas por 4 s | as criaturas curam 10% |
 | Druida | Bosque (Mariposa Curandeira) | 🌸 **Brisa de Pólen** | 2 | onda de 120°, 5 tiles: cura 20% dos **aliados** no leque e tira veneno, queimadura e lentidão; monstros 30% lentos | cura 30% |
 | Druida | Espinhos (Espinho Venenoso) | 🌵 **Rajada de Espinhos** | 1 | 6 espinhos em 60°, 0,7× cada, que sangram | 8 espinhos |
@@ -479,6 +509,14 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 |---|---|---|---|---|---|
 | Cavaleiro | Lâmina (Lâmina do Vendaval) | 🩸 **Corte Hemorrágico** | 2 | 2× no monstro colado e sangra 4 s; em quem já sangrava, a **Hemorragia** sai dobrada | sangra também os colados no alvo |
 | Cavaleiro | Bastião (Muro de Escudos) | 🥏 **Arremesso** | 1 | 0,8× e joga o monstro colado 4 tiles; se ele bater em parede ou monstro, os dois ficam atordoados 1,5 s | o impacto fere os dois (1,5×) |
+| Paladino | Mira (Leque de Flechas) | 🎯 **Flecha do Ponto Fraco** | 2 | 2,4× num alvo; em monstro marcado **e** sangrando, o dano dobra | marca o alvo (+15% por 4 s) |
+| Paladino | Luz (Clarão Sagrado) | 🌅 **Flecha da Aurora** | 1 | 1,4× de fogo e queima 3 s; em ofuscado, dispara o **Incandescer** na hora | Incandescer em raio 2 |
+| Paladino | Batedor (Abrolhos) | 🛢️ **Barril de Pólvora** | 2 | um barril no ponto mirado (30 s); explode quando leva flecha ou fogo (fogo num monstro colado nele também): raio 2, 2,5× e queima; o tempo acaba e ele some sem explodir; um barril acende o vizinho | 2 barris |
+| Feiticeiro | Gelo (Sopro Gélido) | 💨 **Choque Térmico** | 1 | 1,2× de fogo num alvo: queima 3 s **e** deixa 30% lento; em quem já estava queimando ou lento, dispara o **Vapor** | Vapor em raio 2 |
+| Feiticeiro | Trevas (Lamento Sombrio) | 💀 **Sentença** | 2 | 1,8× de trevas num alvo; em marcado, a **Condenação** sai dobrada | marca os colados no alvo (+15% por 4 s) |
+| Druida | Matilha (Rugido da Alcateia) | 🦴 **Caça em Bando** | 2 | 0,5× e envenena 3 s; o alvo vira a presa por 6 s: suas criaturas correm até ele e ferem +50% nele; preso, vira **Espinheiro** | caça por 12 s |
+| Druida | Bosque (Brisa de Pólen) | 🌱 **Broto Duplo** | 1 | semente no chão (20 s): o aliado que pisa cura 15%; o monstro que pisa fica preso 1,5 s | 2 sementes |
+| Druida | Espinhos (Rajada de Espinhos) | 🌿 **Abraço do Espinheiro** | 2 | 0,6× e prende 2 s quem está a até 2 tiles; quem já estava envenenado vira **Espinheiro** | raio 3 |
 | Cavaleiro | Comando (Brado Cortante) | ⚡ **Golpe Exposto** | 2 | 2,2× no monstro colado e atordoa 1 s; se ele estiver marcado, o golpe já sai **Exposto** | os marcados colados no alvo também ficam atordoados |
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.
@@ -968,6 +1006,9 @@ no banco `map_unlocked_by`). ★★★★★★★★, 8 min, até 4 jogadores. 
 hunt solo 4.600, cheio em 240 s). Os dois são **mapas fixos**
 (`BOG_SEED`, `BADLANDS_SEED`), em pé, 64×120, com 7 zonas, as emboscadas e 4 salas laterais; plantas em
 `docs/arte/planta-fixa-*.png`. Ritmo medido: ~1% do chão a mais de 6 tiles de luta, ponto mais isolado a 13 tiles.
+- **XP** (`xpScale` 0,5 no Charco e 0,55 nos Ermos): com os monstros fortes da etapa 9, o caminho rendia ~20 mil de XP e o
+  herói sozinho chegava no boss no nível 20 com um terço da hunt pela frente. Com o corte, ~11 mil: limpando 75%, chega
+  no boss no nível 18; o 20 vem do boss (2.900 e 3.190 de XP) ou do mapa inteiro.
 
 - **🌫️ Charco Cinzento** (`generateBog`, a planta em `Dungeon.bog`): uma turfeira sobre o lago negro. Do sul ao norte:
   o Cais, o Aterro (zona 1) e a Vila dos Turfeiros (zona 2) pela **estrada afundada** (aterro largo com as lajes de
@@ -1062,8 +1103,11 @@ jogo**, 8 min, até 4 jogadores. **Mapa fixo:** é sempre a mesma planta, qualqu
 (`generateFortress` em `dungeon.ts`, sempre com `FORTRESS_SEED`); a planta vai em `Dungeon.fortress`, que só o desenho
 lê.
 
-- **Em pé, de baixo para cima:** a **vila baixa** em ruínas (entrada, estrada e travessas de basalto, casas caídas,
-  ciprestes, uma casa com mini-boss e baú), o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
+- **Em pé, de baixo para cima:** a **vila baixa** em ruínas, desenhada à mão (`FORT_VILA` em `dungeon.ts`, de
+  `docs/arte/fortaleza/planta.txt`): a praça da entrada, as ruas de basalto em grade, quadras de casas do império caídas
+  com os pátios de calçamento quebrado, a **praça da fonte seca** (5×5, com colunas nos cantos), duas casernas com
+  mini-boss e baú, o acampamento na cabeça da ponte e um **mirante** de pedra sobre o desfiladeiro; no pátio externo,
+  a **estátua derrubada** do imperador. Depois, o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
   beira dele com o portão entre duas torres, o **pátio externo** fechado por muralhas (dos lados e na beira do
   precipício, com uma torre em cada canto; a mata fica do lado de fora) e virado acampamento (tendas, fogueiras, paliçadas,
   totens de caveira, estandartes, 3 casernas com mini-boss e baú), a **muralha interna** com o segundo portão, e o
@@ -1077,6 +1121,9 @@ lê.
   e os primeiros berserkers; o acampamento, capitães, xamãs e ogros jovens; o esporão e o pé da torre são de ogros e
   berserkers. Mini-bosses: Ogro do Brejo, Chefe de Guerra Orc e Ogro Xamã (casernas e casa da vila, com baú). Boss:
   **Vorgak, o Senhor da Brasa**, no salão do trono (ficha no Bestiário, seção da Fortaleza). O gold de cada monstro cresce com a força; com tanto monstro, os drops de item e poção saem menos (`dropScale` 0,8).
+- **XP** (`xpScale` 0,5): a força ×2,4 multiplicava a XP junto e o caminho rendia ~21 mil (o nível 20 pede ~10 mil); o
+  herói sozinho chegava no nível 20 no meio da hunt. Com o corte, ~10.800: limpando 75%, chega em Vorgak no nível 18,
+  e o 20 vem de Vorgak (2.600 de XP) ou do mapa inteiro.
 - **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
   uma brecha da muralha.
 - **Abismo:** nesse mapa toda `Tile.Water` é abismo: bloqueia o passo e deixa passar a visão (flechas e magias passam
@@ -1114,8 +1161,9 @@ lê.
 - **Crédito:** cada boss dá a runa dele uma vez por personagem, como os outros; é isso que libera o caminho daquele
   lado no mapa mundi. `RunStats.bossKills` anota os bosses mortos com o herói na hunt (telemetria).
 - **Balanceamento** (medido, não estimado; refazer quando a telemetria da Caverna chegar):
-  - **XP:** tronco ~400, oeste ~2.900, leste ~4.100. Matando 75% do caminho, o herói chega no Basilisco no nível
-    10–11; no Observador, no 11–13 indo direto e no 14–17 fazendo o oeste antes (a rota pensada para ele).
+  - **XP** (`xpScale` 0,85 desde 02/11; antes, quem limpava quase tudo chegava no Observador no 19): tronco ~340,
+    oeste ~2.450, leste ~3.500. Matando 75% do caminho, o herói chega no Basilisco no nível 9–10; no Observador, no
+    10–12 indo direto e no 15–16 fazendo o oeste antes (a rota pensada para ele; limpando tudo, 17).
   - **Régua:** duelo só com ataque básico (`bestiary-sim.ts`) medindo quanto da vida do boss o herói tira antes de
     cair, calibrada com a telemetria de produção: o Grumak (vencido com folga) dá ~50% no nível 10–12; o Dragão jovem
     e o Verme (vencidos por ~1 em 3) dão 15–20% no 8–10; a Hidra e o Dragão negro (0 vitórias) dão 6–7% no 10–12.
@@ -1148,8 +1196,8 @@ lê.
   monstros extras cada (e, em 40% delas, um mini-boss solto, sem baú), **clareiras de mini-boss com baú** (até 2 por
   zona, 10 a 15 por mapa) e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**. Os monstros são mais fracos que
   os da Cripta (a quantidade cresce 12% por zona, quase o dobro no fim): o mapa inteiro tem cerca de 145 monstros, 19
-  mini-bosses e 14.700 de XP (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
-  nível 12. Monstro longe da tela não é desenhado nem animado no cliente.
+  mini-bosses e ~9.500 de XP com o corte (14.700 sem ele) (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
+  nível 12 (`xpScale` 0,7: limpando 75%, no 16; tudo, no 19). Monstro longe da tela não é desenhado nem animado no cliente.
 - **Loot por monstro menor:** com tantos monstros, o mapa paga 35% do valor de loot dos monstros e baús e 60% dos
   drops de item e poção dos monstros e das poções dos baús (`MapDef.lootScale` e `dropScale`; o boss fica de fora e
   larga tudo, e o baú sempre dá o item). O loot máximo de uma
@@ -1256,7 +1304,12 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   monstros, e a XP e o gold totais crescem junto. Os bosses já trazem na ficha a força que tinham no fim do caminho;
   os mini-bosses e o Mímico usam um multiplicador fixo do mapa (`minibossPower`, de 1,24 na Cripta a 1,54 na Caverna,
   2,5 na Fortaleza), que não muda na partida. Um mapa também pode multiplicar os comuns (`commonPower`, só na
-  Fortaleza Orc: o clã do brejo levado à dificuldade 8). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
+  Fortaleza Orc: o clã do brejo levado à dificuldade 8). A força multiplica a XP junto; por isso um mapa pode pagar só parte da XP
+  dos monstros (`xpScale`, boss incluído; não muda o orçamento das salas). Meta: **limpando 75% do caminho sozinho, o
+  herói chega no boss abaixo do nível 20**; o nível 20 vem do boss ou de limpar o mapa inteiro (teste `xpmapas`, que
+  mede a XP de cada mapa gerando a hunt). Cortes de 02/11 (antes, o herói sozinho chegava no boss já no 20): Fortaleza
+  Orc e Charco Cinzento 0,5, Ermos Rubros 0,55, Caverna da Travessia 0,85, Pântano do Kosaradius 0,7 (limpando 75%,
+  chega no Grumak no nível 16; na produção, quem o vencia chegava em média no 12, então o começo quase não muda). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
   de gold por sala, `CHEST_DEPTH_SCALING`), e a faixa dos itens largados ainda sobe com a profundidade. Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold
@@ -1565,7 +1618,8 @@ Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os tote
     básico); soltar atira, mesmo sem
     monstro à vista; voltar ao botão cancela. O dedo parado vira "segurar" depois de 150 ms.
   - Telemetria: `RunStats.shots` (disparados, errados e mirados à mão, por fonte).
-- O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
+- O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`, no ritmo da hunt: ~1,11 s).
+- **Ritmo da hunt (`PACE` em `packages/shared/src/constants.ts`, hoje 0,9):** um número só deixa a hunt inteira mais lenta na mesma proporção. Divide os tempos de turno (recarga do ataque básico e das magias, intervalo de ataque e recarga das habilidades dos monstros e das criaturas, passo das ondas, voo dos projéteis), multiplica a velocidade de movimento de heróis, monstros e criaturas e põe as animações de efeito do cliente no mesmo ritmo (`tweens`/`time` da `DungeonScene`). As tabelas de magias, monstros e classes guardam os valores sem ele; o Grimório mostra a recarga já com ele. Durações de efeitos (queimadura, lentidão, buffs) não mudam.
 - Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível da magia, mana e recarga; sem rolagem: com 3 a 6 magias as cartas viram uma grade de 3 colunas só com o efeito principal e o custo, e com 7 ou mais, 4 colunas com nome e custo); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
 - Toda classe tem uma magia inicial por slot; as compradas no Grimório viram opções extras na escolha, já no nível que a magia tem na conta (ver "Grimório").
 - Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por
@@ -1575,7 +1629,7 @@ Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os tote
   - **Cadeia** (Raio em Cadeia): depois do alvo, salta para o monstro mais perto ainda não atingido (a até 3 tiles, com linha de visão), perdendo 15% do dano a cada salto.
   - Bônus condicionais: a Execução causa o dobro em quem tem menos de 30% da vida; o Disparo Certeiro ganha +10% de dano por tile até o alvo.
   - No monstro, a lentidão aparece como gelo nos pés e o veneno como bolhas verdes subindo.
-- **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador, Raio em Cadeia) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo e o alcance em volta dele; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
+- **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador, Raio em Cadeia) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo (sem quadrado nem sombra marcando o alcance); o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
   - **Toque rápido** (sem arrastar): **sem mira automática no monstro**. A magia sai reto na **frente do herói**:
     a direção do último passo, ataque básico ou magia mirada (`Player.faceX/faceY`; começa olhando para baixo).
     Tiro, linha, leque e rolamento seguem essa direção até o alcance; alvo único sem projétil (golpes do Cavaleiro,
@@ -1687,7 +1741,7 @@ As compradas no Grimório, por slot (números do nível 0):
   As formas animais do Druida usam a mesma arte (andam e respiram com o herói).
 
 - Tabela em `packages/shared/src/spells.ts`; arte de combate em `apps/client/src/art/combat.ts` e efeitos em `apps/client/src/fx.ts`.
-- Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça na cor do sangue deles (vermelho, verde, roxo, preto; mortos-vivos viram poeira); o sangue e os corpos ficam no chão até a hunt acabar (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, flecha dos arqueiros, bola de fogo do dragão), e cada habilidade tem o seu desenho (pedra em arco, teia, língua, salto, sopro, chuva ácida, relâmpago, engolir, voo). Os monstros respiram parados (cada um num ritmo), escondidos ficam quase transparentes e sem barra, o Mímico parece um baú e os Campeões têm nome e brilho dourados. Efeitos no herói: teia nos pés (preso), estrelas (atordoado), bolha verde (engolido), nuvem escura (cego) e gotas ácidas (corroído).
+- Ao apanhar, quem leva o golpe pisca e sangra; monstros que morrem tombam e deixam uma poça na cor do sangue deles (vermelho, verde, roxo, preto; mortos-vivos viram poeira); o sangue e os corpos ficam no chão até a hunt acabar (`apps/client/src/CombatFx.ts`). O ataque dos monstros também tem efeito próprio (mordida, corte, pancada, flecha dos arqueiros, bola de fogo do dragão), e cada habilidade tem o seu desenho (pedra em arco, teia, língua, salto, sopro, chuva ácida, relâmpago, engolir, voo). Os monstros respiram parados (cada um num ritmo), escondidos ficam quase transparentes e sem barra, o Mímico parece um baú e todo monstro mostra o nome sobre a barra (o comum em tom apagado, boss e mini-boss em vermelho, os Campeões em dourado, com o brilho nos pés). Efeitos no herói: teia nos pés (preso), estrelas (atordoado), bolha verde (engolido), nuvem escura (cego) e gotas ácidas (corroído).
 
 ## Itens
 

@@ -6,6 +6,7 @@ import {
   lairsOf,
   MONSTERS,
   MSG,
+  PACE,
   MOVE_RESEND_MS,
   PORTAL_HOLD_MS,
   POTIONS,
@@ -218,6 +219,8 @@ interface Unit {
   breath?: number;
   /** Campeão: afixo já desenhado (nome e brilho dourados). */
   champion?: string;
+  /** Monstro: o nome sobre a barra (o Campeão troca o texto e a cor). */
+  nameLabel?: Phaser.GameObjects.Text;
   /** Monstro animado (arte em folha): os clipes e até quando o golpe/especial em curso segura o quadro. */
   anim?: MonsterAnim;
   busyUntil?: number;
@@ -293,6 +296,11 @@ export class DungeonScene extends Phaser.Scene {
 
   /** A arte já foi carregada pela cena `ArtLoader`, desde o lobby. */
   create() {
+    // Efeitos no ritmo da hunt (`PACE`): as animações e os temporizadores da cena andam mais devagar. O que acompanha um
+    // tempo do servidor (voo do tiro, onda, linha) recebe o tempo já multiplicado por `PACE` para chegar junto com ele;
+    // o andar das unidades usa `time.now`, que não muda.
+    this.tweens.timeScale = PACE;
+    this.time.timeScale = PACE;
     this.fx = new CombatFx(this);
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
@@ -594,7 +602,7 @@ export class DungeonScene extends Phaser.Scene {
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, classId === "knight" ? 5 : 2);
     this.heroAction(msg.from, "attack");
     const to = this.tilePoint(msg.tx, msg.ty);
-    const draw = () => this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), to, msg.ms);
+    const draw = () => this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), to, msg.ms * PACE);
     if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
   }
 
@@ -609,7 +617,7 @@ export class DungeonScene extends Phaser.Scene {
       this.heroAction(msg.from, "cast");
     }
     const to = this.tilePoint(msg.tx, msg.ty);
-    const draw = () => this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), to, msg.ms, spell.radius);
+    const draw = () => this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), to, msg.ms * PACE, spell.radius);
     if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
     if (spell.shape === "line") this.showLine(spell, msg);
     else if (spell.shape === "cone") this.showCone(spell, msg);
@@ -643,7 +651,7 @@ export class DungeonScene extends Phaser.Scene {
         tiles.push({ ...this.tilePoint(x, y), ring: tileDistance(cx, cy, x, y) });
       }
     }
-    this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
+    this.fx.area(tiles, spell.color, self ? 0 : msg.ms * PACE);
     return tiles;
   }
 
@@ -682,7 +690,16 @@ export class DungeonScene extends Phaser.Scene {
     const view = this.add.container(this.toPx(field.x), this.toPx(field.y)).setDepth(field.y * TILE_SIZE - 1);
     const g = this.add.graphics();
     const half = TILE_SIZE / 2;
-    if (field.kind === "zone") {
+    if (field.style === "keg") {
+      // Barril de Pólvora: um barril de madeira com aros de ferro e o pavio aceso em cima.
+      g.fillStyle(0x6e3b1c, 1).fillRoundedRect(-9, -12, 18, 20, 4);
+      g.lineStyle(2, 0x3d3d3d, 1).lineBetween(-9, -7, 9, -7).lineBetween(-9, 3, 9, 3);
+      g.lineStyle(1, 0x3d2412, 1).lineBetween(-3, -12, -3, 8).lineBetween(3, -12, 3, 8);
+      g.lineStyle(1, 0x2b2b2b, 1).lineBetween(0, -12, 3, -17);
+      const spark = this.add.graphics().fillStyle(0xffb347, 1).fillCircle(3, -18, 2.5);
+      view.add(spark);
+      this.tweens.add({ targets: spark, alpha: { from: 1, to: 0.3 }, duration: 160, yoyo: true, repeat: -1 });
+    } else if (field.kind === "zone") {
       for (let y = field.y - field.radius; y <= field.y + field.radius; y++) {
         for (let x = field.x - field.radius; x <= field.x + field.radius; x++) {
           if (blocksSight(this.dungeon, x, y) || !hasLineOfSight(this.dungeon, field.x, field.y, x, y)) continue;
@@ -717,6 +734,12 @@ export class DungeonScene extends Phaser.Scene {
       // Totem de tiro (Totem da Brasa): o alcance tracejado e o poste.
       g.lineStyle(1, color, 0.4).strokeCircle(0, 0, (field.radius + 0.5) * TILE_SIZE);
       this.drawTotem(view, g, color);
+    } else if (field.style === "sprout") {
+      // Broto Duplo: duas folhas novas saindo da terra.
+      g.fillStyle(0x6b4426, 1).fillEllipse(0, 6, 16, 6);
+      g.fillStyle(0x7bed9f, 1).fillEllipse(-4, -1, 8, 5).fillEllipse(4, -2, 8, 5);
+      g.lineStyle(1, 0x2e7d32, 1).lineBetween(0, 5, 0, -2);
+      this.tweens.add({ targets: g, scaleY: { from: 1, to: 1.12 }, duration: 600, yoyo: true, repeat: -1 });
     } else if (field.kind === "trap") {
       // Mandíbulas abertas: arco de dentes de ferro.
       g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);
@@ -759,7 +782,7 @@ export class DungeonScene extends Phaser.Scene {
   /** Magia em linha: acende os tiles atravessados (a mesma conta do servidor), do herói para a ponta, no ritmo da flecha. */
   private showLine(spell: SpellDef, msg: SpellMessage) {
     const tiles = lineTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
-    const step = tiles.length > 0 ? msg.ms / tiles.length / 45 : 0;
+    const step = tiles.length > 0 ? (msg.ms * PACE) / tiles.length / 45 : 0;
     // Relâmpago Ramificado: no fim da reta, os galhos acendem logo depois (a mesma conta do servidor).
     const end = tiles[tiles.length - 1];
     const forks = spell.fork && end ? forkTiles(this.dungeon, msg.x, msg.y, end, spell.fork) : [];
@@ -1359,10 +1382,10 @@ export class DungeonScene extends Phaser.Scene {
       unit.busyUntil = 0;
       sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * 4) });
     }
-    if (def.rank !== "common") {
-      const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
-      unit.overlay.add(label);
-    }
+    // Todo monstro mostra o nome; o comum num tom mais apagado, para o boss e o mini-boss continuarem se destacando.
+    const color = def.rank === "common" ? "#c9bfae" : "#ff9f9f";
+    unit.nameLabel = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color }).setOrigin(0.5, 1);
+    unit.overlay.add(unit.nameLabel);
     this.monsters.set(id, unit);
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
     this.syncHidden(unit, kind, monster.hidden);
@@ -1374,7 +1397,8 @@ export class DungeonScene extends Phaser.Scene {
     if (!affix || unit.champion === affix || !(affix in CHAMPION_AFFIXES)) return;
     unit.champion = affix;
     const name = `${MONSTERS[kind].name} ${CHAMPION_AFFIXES[affix as ChampionAffix].name}`;
-    unit.overlay.add(this.add.text(0, unit.barY - 2, name, { ...this.textStyle(), color: "#f7d774" }).setOrigin(0.5, 1));
+    if (unit.nameLabel) unit.nameLabel.setText(name).setColor("#f7d774");
+    else unit.overlay.add(this.add.text(0, unit.barY - 2, name, { ...this.textStyle(), color: "#f7d774" }).setOrigin(0.5, 1));
     const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 26, 9, 0xf7d774, 0.4);
     unit.body.addAt(glow, 0);
     this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });

@@ -11,7 +11,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  MSG, ROOM_NAME, RUNES, SPELLS, heroBonuses, isRune, rollRune, spellChoices, spellCooldownMs, spellManaCost, statsFor,
+  MSG, ROOM_NAME, RUNES, SPELLS, heroBonuses, paced, isRune, rollRune, spellChoices, spellCooldownMs, spellManaCost, statsFor,
   type SpellMessage,
 } from "@kusa/shared";
 import { RULES_VERSION } from "../src/rulesVersion.ts";
@@ -77,7 +77,7 @@ async function knightWithRunes() {
   const cost = spellManaCost(SPELLS.meteor, "knight", me().maxMana);
   if (cost >= SPELLS.meteor.manaCost || cost !== Math.ceil(me().maxMana * 0.4)) throw new Error(`custo ${cost}`);
   const cd = spellCooldownMs(SPELLS.meteor.cooldownMs, heroBonuses({}, runes));
-  if (cd !== Math.round(SPELLS.meteor.cooldownMs * 0.88)) throw new Error(`recarga ${cd}`);
+  if (cd !== Math.round(paced(SPELLS.meteor.cooldownMs) * 0.88)) throw new Error(`recarga ${cd}`);
   console.log(`cavaleiro: runas ${runes.join(", ")}, vida ${me().maxHp}, Meteoro com recarga de ${cd} ms`);
   await room.leave();
 }

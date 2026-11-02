@@ -1,4 +1,4 @@
-import { E, FLAT, HD, OPEN, ellipse, hash01, limb, lit, noise, paper, sn } from "./empireArt.ts";
+import { E, FLAT, HD, OPEN, ellipse, hash01, limb, lit, noise, paper, poly, sn } from "./empireArt.ts";
 import { box, hline, ivy, masonry, rubbleTop, vline } from "./empireMonuments.ts";
 import type { Paper } from "./duneArt.ts";
 
@@ -8,8 +8,8 @@ import type { Paper } from "./duneArt.ts";
  *
  * - **Andares**: o paredão do precipício (a face de rocha que desce do andar do castelo até o vale), a beirada de pedra
  *   em volta do abismo e, no andar de cima, o terraço da torre de menagem (lajes, parapeito com ameias, o buraco do
- *   telhado caído), a fachada sul dela e os telhados das casernas. O vale lá embaixo usa os tiles de capim, água e mata
- *   dos Portões, escurecidos.
+ *   telhado caído), a fachada sul dela e os telhados das casernas. O vale lá embaixo é uma textura só, pintada em
+ *   `valleyArt.ts`.
  * - **Pontes**: o tabuleiro de pedra com parapeitos e a ponte de cordas dos orcs (tábuas com frestas: o vale aparece
  *   por elas).
  * - **Acampamento**: a terra batida, a paliçada de norte a sul, os panos de guerra pendurados e o trono. Tendas, totens,
@@ -32,46 +32,66 @@ export const DROP = 2;
 /**
  * Paredão do precipício, a face de rocha que desce da beirada do castelo (a linha de abismo logo ao sul de chão) até o
  * vale. `row` 0 é o tile de cima (a beirada com o capim pendurado e as raízes), 1 o de baixo, que escurece e se desfaz
- * em pontilhado na névoa: dali para baixo aparece o vale. Estratos horizontais de rocha (cada laje com o seu tom,
- * a quina de cima clara e a sombra embaixo), fraturas, musgo e hera. Emenda com o vizinho do lado (período de 128 px).
+ * em pontilhado na névoa: dali para baixo aparece o vale. Rocha natural, não muro: estratos de altura irregular, cada
+ * um quebrado em blocos por fendas tortas e inclinadas, com a quina de cima clara (a luz vem de cima), a sombra embaixo
+ * e o bojo de cada bloco; musgo e tufos nas saliências, raízes descendo. Emenda com o vizinho do lado (período de
+ * 128 px); `v` muda o desenho.
  */
 export function cliffTile(row: 0 | 1, v: number): Uint8ClampedArray {
   const p = paper();
   const span = HD * DROP;
-  const ledge = (x: number, gy: number) => {
-    const wob = 6 * Math.sin((2 * Math.PI * x) / HD + v) + 3 * Math.sin((4 * Math.PI * x) / HD + v * 2);
-    const band = Math.floor((gy + wob) / 24);
-    return { band, ly: mod(gy + wob, 24) };
+  // Os estratos: alturas de 26 a 56 px, a linha entre eles ondula (sempre com período de 128 px). Não dependem de `v`:
+  // os estratos continuam de um tile para o vizinho, que pode ser de outra variação.
+  const tops: number[] = [-40];
+  while (tops[tops.length - 1] < span + 40) tops.push(tops[tops.length - 1] + 26 + Math.floor(hash01(tops.length * 13, 760) * 30));
+  const wob = (x: number, k: number) => 4 * Math.sin((2 * Math.PI * x) / HD + k * 1.7) + 2 * Math.sin((6 * Math.PI * x) / HD + k * 2.3);
+  const strat = (x: number, gy: number) => {
+    let k = 0;
+    while (k + 1 < tops.length && gy >= tops[k + 1] + wob(x, k + 1)) k++;
+    const y0 = tops[k] + wob(x, k), y1 = tops[k + 1] + wob(x, k + 1);
+    return { k, ly: gy - y0, h: y1 - y0 };
+  };
+  // As fendas de cada estrato: a da emenda dos tiles (igual em todas as variações, perto da borda) e até 2 sorteadas
+  // no meio, inclinadas e tortas. Devolve o bloco e a posição nele.
+  const block = (x: number, k: number, ly: number) => {
+    const n = 1 + Math.floor(hash01(k * 7 + v, 761) * 2.4);
+    const cuts: number[] = [mod((hash01(k * 3, 770) - 0.5) * 24 + 3 * Math.sin(ly / 6 + k), HD)];
+    for (let j = 1; j < n; j++) {
+      const slope = (hash01(k * 11 + j * 3 + v, 762) - 0.5) * 0.6;
+      cuts.push(24 + ((j - 1 + 0.2 + hash01(k * 5 + j + v * 7, 763) * 0.6) * 80) / (n - 1) + (ly - 12) * slope + 2 * Math.sin(ly / 5 + j));
+    }
+    cuts.sort((a, b) => a - b);
+    let j = cuts.findIndex((c) => c > x);
+    if (j < 0) j = 0;
+    const right = j === 0 && x >= cuts[n - 1] ? cuts[0] + HD : cuts[j];
+    const left = j === 0 ? cuts[n - 1] - (x >= cuts[n - 1] ? 0 : HD) : cuts[j - 1];
+    return { id: k * 4 + (j === 0 ? 0 : j), lx: x - left, w: right - left };
   };
   p.fill([0, 0, HD - 1, HD - 1], () => true, E.Slab, (x, y) => {
     const gy = row * HD + y;
-    const { band, ly } = ledge(x, gy);
-    const block = Math.floor(mod(x + band * 13, HD) / 32);
-    let s = 0.56 - (gy / span) * 0.34 + (hash01(band * 7 + block * 31 + v * 3, 720) - 0.5) * 0.16;
-    if (ly < 3) s += 0.2;
-    else if (ly > 20) s -= 0.16;
-    if (mod(x + band * 13, 32) < 2) s -= 0.12;
-    return s;
-  }, (x, y) => (noise(x, y, 721 + v) < 0.04 ? -1 : 0));
-  // Algumas lajes mais quentes (o arenito do império por baixo do castelo).
+    const { k, ly, h } = strat(x, gy);
+    const { id, lx, w } = block(x, k, ly);
+    let s = 0.6 - (gy / span) * 0.36 + (hash01(id * 7 + v * 3, 764) - 0.5) * 0.18;
+    // Bojo do bloco: claro em cima e à esquerda, a sombra embaixo e na fenda da direita.
+    s += 0.1 * Math.sin((Math.PI * Math.min(lx, w)) / w) - 0.05;
+    if (ly < 2) s += 0.26;
+    else if (ly < 5) s += 0.12;
+    else if (h - ly < 3) s -= 0.28;
+    else if (h - ly < 7) s -= 0.12;
+    if (lx < 3) s += 0.08;
+    else if (w - lx < 4) s -= 0.16;
+    return s + (sn(x, y, 8, 765 + v) - 0.5) * 0.16;
+  }, (x, y) => (noise(x, y, 766 + v) < 0.05 ? -1 : 0));
+  // Rocha mais quente em alguns blocos (o arenito do império por baixo do castelo) e as fendas e juntas escuras.
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
-      const { band } = ledge(x, row * HD + y);
-      if (hash01(band * 11 + Math.floor(mod(x + band * 13, HD) / 32) + v, 722) < 0.25) p.mat[y * HD + x] = E.Wall;
-    }
-  // Fraturas descendo.
-  for (let k = 0; k < 3; k++) {
-    let cx = 10 + noise(k, v + row * 5, 723) * 108;
-    for (let y = 0; y < HD; y++) {
-      if (noise(y >> 2, k + v, 724) < 0.35) cx += noise(y, k, 725) < 0.5 ? -1 : 1;
-      if (noise(y >> 3, k, 726 + row) < 0.75) { wrapOn(p, cx, y, E.Line, 1); wrapOn(p, cx + 1, y, null, 4); }
-    }
-  }
-  // Musgo e hera nas quinas dos estratos.
-  for (let y = 0; y < HD; y++)
-    for (let x = 0; x < HD; x++) {
-      const { ly } = ledge(x, row * HD + y);
-      if (ly < 6 && sn(x, y, 16, 727 + v + row) > 0.66) p.on(x, y, E.Moss, noise(x, y, 728) < 0.4 ? 2 : 3);
+      const gy = row * HD + y;
+      const { k, ly, h } = strat(x, gy);
+      const { id, lx, w } = block(x, k, ly);
+      if (hash01(id * 3 + v, 767) < 0.3) p.mat[y * HD + x] = E.Wall;
+      if (ly < 1 || lx < 1 || w - lx < 1) p.on(x, y, E.Line, h - ly < 3 ? 0 : 1);
+      // Musgo e tufos nas saliências (a quina de cima de cada estrato).
+      else if (ly < 5 && sn(x, y, 16, 768 + v + row) > 0.6) p.on(x, y, E.Moss, noise(x, y, 769) < 0.4 ? 2 : 3);
     }
   if (row === 0) {
     // A beirada: capim e terra do castelo pendurados, raízes descendo pela rocha.
@@ -99,30 +119,34 @@ export function cliffTile(row: 0 | 1, v: number): Uint8ClampedArray {
 }
 
 /**
- * Paredão de lado (no tile de abismo com chão a oeste, `side` -1, ou a leste, 1): uma faixa estreita de rocha
- * descendo da beirada, escurecendo para longe dela e se desfazendo no pontilhado (a rocha some na sombra do vale).
+ * Paredão de lado (no tile de abismo com chão a oeste, `side` -1, ou a leste, 1): uma faixa de rocha descendo da
+ * beirada, escurecendo para longe dela e se desfazendo no pontilhado (a rocha some na sombra do vale). O sol do fim
+ * de tarde vem do oeste: a face que olha para o oeste (chão a leste) fica na luz, a outra na sombra.
  * Transparente no resto do tile.
  */
 export function sideCliffTile(side: -1 | 1, v: number): Uint8ClampedArray {
   const p = paper();
-  const reach = (y: number) => 50 + 8 * Math.sin((2 * Math.PI * y) / HD * 2 + v) + 4 * Math.sin((6 * Math.PI * y) / HD + v);
+  const reach = (y: number) => 66 + 8 * Math.sin((2 * Math.PI * y) / HD * 2 + v) + 4 * Math.sin((6 * Math.PI * y) / HD + v);
   const from = (x: number) => (side < 0 ? x : HD - 1 - x);
   p.fill([0, 0, HD - 1, HD - 1], (x, y) => from(x) < reach(y), E.Slab, (x, y) => {
     const t = from(x) / reach(y);
     const band = Math.floor((y + 9 * Math.sin(from(x) / 6 + v)) / 18);
     const ly = mod(y + band * 7 + Math.round(4 * Math.sin(from(x) / 9 + v)), 18);
-    return 0.62 - t * 0.4 + (hash01(band * 5 + v, 735) - 0.5) * 0.16 + (ly < 2 ? 0.16 : ly > 15 ? -0.14 : 0) + (side > 0 ? -0.12 : 0);
+    return 0.62 - t * 0.4 + (hash01(band * 5 + v, 735) - 0.5) * 0.16 + (ly < 2 ? 0.16 : ly > 15 ? -0.14 : 0) + (side > 0 ? 0.04 : -0.1);
   }, (x, y) => (noise(x, y, 736 + v) < 0.05 ? -1 : 0));
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
       if (!p.has(x, y)) continue;
-      if (from(x) < 3) p.on(x, y, E.Line, 1);
-      else if (from(x) < 8 && sn(x, y, 16, 738 + v) > 0.55) p.on(x, y, E.Moss, 2);
+      // A laje da beirada sai um pouco por cima do vão (a borda dela é torta, não a linha do tile), clara em cima,
+      // com musgo em manchas; logo depois dela, a sombra que ela faz na face.
+      const lip = 4 + 7 * sn(0, y, 16, 739 + v) + 3 * noise(0, y >> 2, 744 + v);
+      if (from(x) < lip) p.on(x, y, sn(x, y, 16, 738 + v) > 0.64 ? E.Moss : E.Slab, side > 0 ? 4 : 3);
+      else if (from(x) < lip + 2) p.on(x, y, E.Slab, 1);
     }
   const out = p.render(false);
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
-      const t = from(x) / reach(y) - 0.55 + (sn(x, y, 16, 737) - 0.5) * 0.3;
+      const t = from(x) / reach(y) - 0.7 + (sn(x, y, 16, 737) - 0.5) * 0.3;
       if (t > BAYER4[(y & 3) * 4 + (x & 3)] * 0.5) out[(y * HD + x) * 4 + 3] = 0;
     }
   return out;
@@ -149,13 +173,15 @@ export function ledgeEdge(open: number): Uint8ClampedArray {
   };
   p.fill([0, 0, HD - 1, HD - 1], (x, y) => dist(x, y) < 1, E.Slab, (x, y) => {
     const d = dist(x, y);
-    return FLAT + (d > 0.7 ? 0.08 : d < 0.25 ? -0.3 : 0) + (sn(x, y, 16, 740) - 0.5) * 0.2;
+    return FLAT + (d > 0.7 ? 0.08 : d < 0.25 ? 0.04 : 0) + (sn(x, y, 16, 740) - 0.5) * 0.2;
   }, (x, y) => (noise(x, y, 741) < 0.08 ? -1 : 0));
   for (let y = 0; y < HD; y++)
     for (let x = 0; x < HD; x++) {
       const d = dist(x, y);
-      if (d < 0.14) p.on(x, y, E.Line, 1);
-      else if (d < 0.3) p.on(x, y, E.Slab, 1);
+      // A quina de fora da laje: clara (pega a luz) nos lados e embaixo, onde a laje continua no paredão do tile do
+      // abismo; só a beira do norte (o vão visto de cima) tem o fio escuro.
+      if ((open & OPEN.n) && y / depth(x, 11) < 0.14) p.on(x, y, E.Line, 1);
+      else if (d < 0.25 && noise(x >> 1, y >> 1, 743) < 0.7) p.on(x, y, E.Slab, 3);
       else if (d < 1 && d > 0.82 && noise(x >> 1, y >> 1, 742) < 0.5) p.on(x, y, E.Grass, 2);
     }
   return p.render(false);
@@ -523,4 +549,199 @@ export function grassMask(grass: number): Uint8ClampedArray {
     for (let s = 0; s < len; s++) { on(x + dx * s, y + dy * s); if (s < len - 2) on(x + dx * s + dy, y + dy * s + dx); }
   }
   return out;
+}
+
+// --- A vila baixa ------------------------------------------------------------------------------
+
+/** A fonte seca da praça da vila, pintada para 3×3 tiles de chão (o mapa estica até a bacia); o pedestal sobe além. */
+export const FOUNTAIN = { w: HD * 3 + 32, h: HD * 3 + 96 } as const;
+
+/**
+ * A fonte seca do império no meio da praça da vila: a bacia redonda de travertino com a
+ * borda larga (o topo claro, a face da frente na sombra, juntas das pedras), um trecho da borda quebrado no sudeste com
+ * os blocos caídos para fora, o fundo seco de lama rachada com folhas e uma mancha de limo onde ficava a água, e no
+ * meio o pedestal com a taça de cima rachada (falta um pedaço). Musgo na borda e capim seco no pé. Luz do oeste.
+ */
+export function fountainSprite(): Uint8ClampedArray {
+  const p = paper(FOUNTAIN.w, FOUNTAIN.h);
+  const cx = FOUNTAIN.w / 2, foot = FOUNTAIN.h - 12;
+  const R = 176, RIN = 146, RISE = 30;
+  /** Centro da bacia no chão e o do topo da borda (levantado `RISE` px). */
+  const gy = foot - R, ty = gy - RISE;
+  const ang = (x: number, y: number, oy: number) => Math.atan2(y - oy, x - cx);
+  // A brecha da borda: o trecho do sudeste caiu.
+  const broken = (a: number) => a > 0.35 && a < 0.8;
+  const inC = (x: number, y: number, oy: number, r: number) => Math.hypot(x - cx, y - oy) < r;
+  // 1. Corpo da borda (a face de fora): os círculos do chão até o topo; a face é o que fica abaixo do topo.
+  p.fill([cx - R, ty - R, cx + R, gy + R], (x, y) => {
+    if (inC(x, y, ty, R)) return false;
+    if (broken(ang(x, y, gy)) && y > gy) return false;
+    for (let t = 0; t <= RISE; t += 3) if (inC(x, y, ty + t, R)) return true;
+    return inC(x, y, gy, R);
+  }, E.Travertine, (x, y) => {
+    const a = ang(x, y, gy);
+    const block = Math.floor(((a + Math.PI) / (2 * Math.PI)) * 36);
+    const edge = mod((a + Math.PI) / (2 * Math.PI) * 36, 1);
+    // A face olha para o sul: mais clara do lado oeste (o sol baixo), escura no leste; juntas entre os blocos.
+    let s = 0.42 - Math.cos(a) * 0.12 + (hash01(block, 900) - 0.5) * 0.1;
+    if (edge < 0.08) s -= 0.18;
+    const depth = (y - (ty + Math.sqrt(Math.max(0, R * R - (x - cx) ** 2)))) / RISE;
+    if (depth < 0.15) s += 0.08;
+    return s;
+  }, (x, y) => (noise(x, y, 901) < 0.06 ? -1 : 0));
+  // 2. O topo da borda (anel claro), com juntas radiais e musgo em manchas.
+  p.fill([cx - R, ty - R, cx + R, ty + R], (x, y) => {
+    const d = Math.hypot(x - cx, y - ty);
+    return d < R && d >= RIN && !broken(ang(x, y, ty));
+  }, E.Travertine, (x, y) => {
+    const a = ang(x, y, ty);
+    const d = Math.hypot(x - cx, y - ty);
+    const edge = mod((a + Math.PI) / (2 * Math.PI) * 36, 1);
+    let s = 0.66 - (y - ty) / R * 0.08 + (hash01(Math.floor(((a + Math.PI) / (2 * Math.PI)) * 36), 902) - 0.5) * 0.08;
+    if (edge < 0.06) s -= 0.2;
+    if (d > R - 4) s -= 0.12;
+    else if (d < RIN + 4) s += 0.06;
+    return s;
+  }, (x, y) => (noise(x, y, 903) < 0.05 ? -1 : 0));
+  for (let y = ty - R; y < ty + R; y++)
+    for (let x = cx - R; x < cx + R; x++) {
+      const d = Math.hypot(x - cx, y - ty);
+      if (d < R && d >= RIN && sn(x & 127, y & 127, 8, 904) > 0.74) p.on(x, y, E.Moss, noise(x, y, 905) < 0.5 ? 1 : 2);
+    }
+  // 3. Dentro: a face de dentro da borda do norte (o crescente) e o fundo seco.
+  p.fill([cx - RIN, ty - RIN, cx + RIN, ty + RIN], (x, y) => inC(x, y, ty, RIN) && !inC(x, y, gy, RIN), E.Travertine,
+    (x, y) => 0.5 + (y - ty) / RIN * 0.15 - Math.cos(ang(x, y, ty)) * 0.06);
+  // Lama rachada em placas: as células de Voronoi de uma grade de 28 px sorteada; a fenda é onde as duas sementes mais
+  // perto ficam à mesma distância. Cada placa tem o seu tom e a beira de cima clara (as placas se encurvam ao secar).
+  const CELL = 28;
+  const plate = (x: number, y: number) => {
+    let d1 = 1e9, d2 = 1e9, id = 0;
+    const gx0 = Math.floor(x / CELL), gy0 = Math.floor(y / CELL);
+    for (let j = -1; j <= 1; j++)
+      for (let i = -1; i <= 1; i++) {
+        const sx = (gx0 + i + 0.2 + hash01((gx0 + i) * 31 + (gy0 + j) * 7, 906) * 0.6) * CELL;
+        const sy = (gy0 + j + 0.2 + hash01((gx0 + i) * 13 + (gy0 + j) * 29, 907) * 0.6) * CELL;
+        const d = Math.hypot(x - sx, y - sy);
+        if (d < d1) { d2 = d1; d1 = d; id = (gx0 + i) * 97 + gy0 + j; } else if (d < d2) d2 = d;
+      }
+    return { gap: d2 - d1, id, d1 };
+  };
+  p.fill([cx - RIN, gy - RIN, cx + RIN, ty + RIN], (x, y) => inC(x, y, ty, RIN) && inC(x, y, gy, RIN), E.Dirt, (x, y) => {
+    const { gap, id, d1 } = plate(x, y);
+    let s = 0.52 + (hash01(id, 908) - 0.5) * 0.14 - d1 / CELL * 0.08 - Math.max(0, 1 - (y - (gy - RIN)) / 50) * 0.25;
+    if (gap < 2.2) s -= 0.4;
+    else if (gap < 4) s += 0.1;
+    return s;
+  });
+  for (let y = gy - RIN; y < ty + RIN; y++)
+    for (let x = cx - RIN; x < cx + RIN; x++) {
+      if (!(inC(x, y, ty, RIN) && inC(x, y, gy, RIN))) continue;
+      // A mancha de limo seco onde a água durou mais (o meio) e folhas secas.
+      if (Math.hypot((x - cx) / 80, (y - gy - 10) / 56) < 1 && plate(x, y).gap > 2.2 && sn(x & 127, y & 127, 8, 909) > 0.6) p.on(x, y, E.Dry, 1);
+      if (noise(x >> 2, y >> 2, 910) < 0.035) p.on(x, y, noise(x, y, 911) < 0.5 ? E.Dry : E.Terracotta, 2);
+    }
+  // 4. O pedestal e a taça de cima, rachada (falta o pedaço do leste).
+  const shaftTop = gy - 150;
+  for (let k = 0; k < 3; k++) {
+    // Base em degraus.
+    const w = 46 - k * 10, y0 = gy + 14 - k * 12;
+    box(p, [cx - w, y0 - 12, cx + w, y0], E.Travertine, (x) => 0.58 - ((x - cx) / w) * 0.18);
+    hline(p, cx - w, cx + w, y0 - 12, E.Travertine, 5);
+  }
+  p.fill([cx - 18, shaftTop, cx + 18, gy - 22], () => true, E.Travertine, (x) => lit((x - cx) / 18, 0, 0.45));
+  for (let y = shaftTop + 10; y < gy - 22; y += 16) hline(p, cx - 17, cx + 17, y, E.Travertine, 1);
+  const bowlY = shaftTop - 6;
+  const bowlBroken = (x: number, y: number) => x > cx + 26 && y < bowlY + 4 + (x - cx - 26) * 0.6;
+  // A taça vista de cima: o fundo de fora (a sombra) e a boca.
+  p.fill([cx - 78, bowlY - 26, cx + 78, bowlY + 30], (x, y) => Math.hypot((x - cx) / 78, (y - bowlY) / 28) < 1 && y > bowlY - 2 && !bowlBroken(x, y),
+    E.Marble, (x, y) => 0.45 - (x - cx) / 78 * 0.15 - (y - bowlY) / 28 * 0.1);
+  p.fill([cx - 78, bowlY - 26, cx + 78, bowlY + 26], (x, y) => Math.hypot((x - cx) / 78, (y - bowlY + 2) / 24) < 1 && !bowlBroken(x, y), E.Marble,
+    (x, y) => (Math.hypot((x - cx) / 66, (y - bowlY + 2) / 18) < 1 ? 0.3 + (y - bowlY) / 18 * 0.12 : 0.74 - (x - cx) / 78 * 0.12));
+  // A rachadura descendo da quebra.
+  for (let k = 0; k < 40; k++) p.on(cx + 26 - (k >> 2), bowlY + 2 + k * 0.4 + Math.sin(k) * 1.5, E.Line, 1);
+  // Um toco no meio da taça: os pés da estátua que ficava em cima.
+  box(p, [cx - 10, bowlY - 30, cx + 10, bowlY - 6], E.Marble, (x) => 0.6 - (x - cx) / 10 * 0.2);
+  // 5. Os blocos da borda caídos para fora, na frente da brecha.
+  // Do mais longe para o mais perto (o de baixo cobre o de cima); cada um com o topo, a face da frente e o lado.
+  const blocks = [0, 1, 2, 3, 4].map((k) => {
+    const a = 0.3 + hash01(k, 912) * 0.55, r = R - 6 + hash01(k, 913) * 44;
+    return { k, bx: cx + Math.cos(a) * r, by: Math.min(foot - 2, gy + Math.sin(a) * r), w: 12 + hash01(k, 914) * 12, h: 9 + hash01(k, 915) * 8 };
+  }).sort((a, b) => a.by - b.by);
+  for (const { k, bx, by, w, h } of blocks) {
+    const tilt = (hash01(k, 916) - 0.5) * 8;
+    poly(p, [[bx - w, by - h - 12 + tilt], [bx + w, by - h - 12 - tilt], [bx + w, by - h - tilt], [bx - w, by - h + tilt]], E.Travertine, () => 0.72);
+    poly(p, [[bx - w, by - h + tilt], [bx + w, by - h - tilt], [bx + w, by - tilt], [bx - w, by + tilt]], E.Travertine, (x) => 0.48 - (x - bx) / w * 0.1);
+    hline(p, bx - w + 2, bx + w - 2, by - h, E.Travertine, 5);
+  }
+  // 6. Capim seco no pé da borda.
+  for (let x = cx - R; x < cx + R; x++) {
+    const a = Math.acos(Math.max(-1, Math.min(1, (x - cx) / R)));
+    if (broken(a)) continue;
+    const base = gy + Math.sin(a) * R;
+    if (noise(x >> 2, 0, 916) < 0.45) continue;
+    const len = 4 + noise(x, 1, 917) * 10;
+    for (let k = 0; k < len; k++) p.px(x + (k > len / 2 ? 1 : 0), base - k, k < 3 ? E.Grass : E.Dry, k < len - 2 ? 2 : 4);
+  }
+  return p.render(true);
+}
+
+/** A estátua derrubada: 2 tiles de chão deitada (a cabeça rolou para o leste). */
+export const STATUE = { w: HD * 2 + 48, h: HD + 72 } as const;
+
+/**
+ * Estátua de mármore do império derrubada pelos orcs: o pedestal quebrado no oeste com o pé ainda preso em cima, o
+ * corpo deitado de lado (a toga com as dobras, o braço por cima), a cabeça laureada que rolou para o leste e cacos em
+ * volta; musgo e uma pichação de sangue dos orcs no pedestal. Luz do oeste, sombra no chão para o leste.
+ */
+export function statueSprite(): Uint8ClampedArray {
+  const p = paper(STATUE.w, STATUE.h);
+  const foot = STATUE.h - 14, x0 = 24;
+  // Pedestal quebrado (oeste): o bloco com a face da frente e o topo.
+  box(p, [x0, foot - 96, x0 + 72, foot - 70], E.Marble, 0.72);
+  box(p, [x0, foot - 70, x0 + 72, foot], E.Marble, (x) => 0.5 - (x - x0) / 72 * 0.1);
+  hline(p, x0, x0 + 72, foot - 70, E.Marble, 5);
+  for (const y of [foot - 50, foot - 28]) hline(p, x0 + 2, x0 + 70, y, E.Vein, 1);
+  // A quina de cima lascada e o pé que sobrou.
+  p.fill([x0 + 50, foot - 98, x0 + 74, foot - 80], (x, y) => y < foot - 98 + (x - x0 - 50) * 0.8, E.Marble, () => 0.35);
+  box(p, [x0 + 20, foot - 118, x0 + 40, foot - 96], E.Marble, (x) => 0.66 - (x - x0 - 20) / 20 * 0.2);
+  // A marca de sangue dos orcs no pedestal (um risco em garra).
+  for (let k = 0; k < 3; k++) for (let y = foot - 60; y < foot - 18; y++) p.on(x0 + 22 + k * 10 + (y >> 4), y, E.Cloth, 2);
+  // O corpo deitado: a toga (um tronco comprido), as pernas para o oeste, o braço por cima.
+  const body: [number, number] = [x0 + 92, foot - 30], chest: [number, number] = [x0 + 196, foot - 36];
+  limb(p, body, chest, 26, 32, E.Marble);
+  for (let k = 0; k < 4; k++) {
+    // As dobras da toga: sulcos curvos em diagonal, com o lado de cima claro.
+    const fx = x0 + 106 + k * 22;
+    for (let t = -20; t < 22; t++) {
+      const x = fx + Math.round(t * 0.45 + Math.sin(t / 7) * 3), y = foot - 34 + t;
+      if (!p.has(x, y)) continue;
+      p.on(x, y, E.Marble, 1);
+      p.on(x - 1, y, E.Marble, 5);
+    }
+  }
+  limb(p, [x0 + 120, foot - 58], [x0 + 186, foot - 64], 9, 10, E.Marble);
+  limb(p, [x0 + 72, foot - 22], [x0 + 96, foot - 24], 16, 22, E.Marble);
+  // O pescoço quebrado e a cabeça rolada (de lado, com a coroa de louros).
+  box(p, [x0 + 222, foot - 46, x0 + 232, foot - 24], E.Marble, 0.4);
+  const hx = x0 + 262, hy = foot - 28;
+  ellipse(p, hx, hy, 26, 25, E.Marble);
+  // O nariz e o queixo de perfil (a cabeça caiu virada para o oeste), o olho, a orelha.
+  ellipse(p, hx - 26, hy + 2, 5, 6, E.Marble);
+  ellipse(p, hx - 18, hy + 18, 8, 6, E.Marble);
+  p.on(hx - 14, hy - 4, E.Line, 1); p.on(hx - 13, hy - 4, E.Line, 1); p.on(hx - 12, hy - 5, E.Line, 1);
+  for (let y = hy - 2; y < hy + 8; y++) p.on(hx + 4 + ((y - hy) >> 2), y, E.Vein, 1);
+  // A coroa de louros: folhas de bronze verde em volta do alto da cabeça.
+  for (let a = -2.9; a < -0.1; a += 0.22) {
+    const lx = hx + Math.cos(a) * 24, ly = hy + Math.sin(a) * 23;
+    ellipse(p, lx, ly, 5, 3, E.Bronze);
+  }
+  // Cacos em volta e musgo em cima do corpo.
+  for (let k = 0; k < 9; k++) {
+    const sx = x0 + 60 + hash01(k, 920) * 230, sy = foot - 4 - hash01(k, 921) * 10;
+    box(p, [sx - 4, sy - 4, sx + 4, sy], E.Marble, 0.6);
+  }
+  for (let y = 0; y < STATUE.h; y++)
+    for (let x = 0; x < STATUE.w; x++)
+      if (p.has(x, y) && y < foot - 50 && sn(x & 127, y & 127, 8, 922) > 0.8) p.on(x, y, E.Moss, 1);
+  return p.render(true);
 }

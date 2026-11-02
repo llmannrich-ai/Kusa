@@ -670,6 +670,70 @@ já vale para o Exposto, a exceção à regra de que a magia não reage com o qu
 0,8× (sem dano, o botão parecia não fazer nada); a Maestria do Corte Hemorrágico sangra os colados no alvo (raio 1, como
 a Ferida Aberta). Teste novo `combos`; migration `20261102190000_combos_cavaleiro.sql`.
 
+**Fase 5 (Paladino), como foi entregue:** Flecha do Ponto Fraco sai do Leque de Flechas, Flecha da Aurora do Clarão
+Sagrado e Barril de Pólvora dos Abrolhos (na faixa ao lado, porque a Flecha Incendiária já ocupa a faixa dos Abrolhos na
+linha 4). Peças novas: `comboBonus` (dano vezes N em quem tinha os estados pedidos antes do golpe), `reactionRadius` e a
+A12, o barril: um campo (`look: "keg"`) que não pulsa e explode o `burst` quando um projétil passa pelo tile dele ou
+quando fogo de herói fere um monstro colado nele; o tempo acaba (30 s) e ele some sem explodir, e a explosão de um barril
+acende o barril vizinho. A Flecha da Aurora e o Barril são de fogo. Telemetria: `giftProcs.powder_keg` conta os barris
+que explodiram. Migration `20261102200000_combos_paladino.sql`.
+
+**Fase 5 (Feiticeiro), como foi entregue:** só 2 magias de combo, porque o Raio já tem as duas de leque (Cusparada de Fogo
+e Leque de Raios): Choque Térmico sai do Sopro Gélido e Sentença do Lamento Sombrio. O Choque Térmico é de fogo e deixa
+lento junto; o Vapor dele sai em quem já estava queimando ou lento antes do golpe (no congelado, o fogo já faz o Vapor
+sozinho). Peças: `reactionRadius` vale também para o Vapor, `reactionPower` (força da Condenação do golpe), `vaporOn` e
+`markAround`. A Maestria do Lamento Sombrio agora enfraquece 20% por 3 s, como no plano. Migration
+`20261102210000_combos_feiticeiro.sql`.
+
+**Fase 5 (Druida), como foi entregue:** Caça em Bando sai do Rugido da Alcateia, Broto Duplo da Brisa de Pólen e Abraço
+do Espinheiro da Rajada de Espinhos, o que fecha as 24 magias de costela. Peças: `hunt` (a presa: as criaturas do dono
+correm até ela, a até 8 tiles dele, e ferem +50% nela), `thornbushOn` (prender quem já estava envenenado dispara o
+Espinheiro, o caminho inverso do de sempre) e a semente (`look: "sprout"`, uma armadilha que o aliado também dispara).
+Diferenças: a Caça em Bando fere 0,5× e envenena 3 s, e é esse veneno que vira Espinheiro em quem está preso (o
+Espinheiro precisa do veneno para ter força); a semente cura quem está no tile dela e prende o monstro que pisa (as
+peças A6 e A10 do plano não foram precisas: a semente é uma armadilha comum). Migration
+`20261102220000_combos_druida.sql`.
+
+**Fase 6 (Cavaleiro), como foi entregue:** a fase 6 sai por classe (um PR por classe), com os dois lados de cada ramo
+juntos; o plano pedia as 4 classes juntas, mas o lado só abre para quem já escolheu e cada classe fica completa no seu
+PR. A magia fica embaixo da última magia do lado (linha IX na Lâmina, que tem a especialização uma linha abaixo, e VIII
+no Bastião e no Comando), faixa ±1, 2.500 de gold. Peças: no `selfBuff`, `cleave`, `lifesteal` e `killExtend`
+(Massacre); `oath` (Juramento do Protetor: o dano de monstro do aliado é dividido antes do Intervir); `steadfastMs` e
+`afterQuake` (Montanha); `pullAll` (Correntes do Desafio, com a Corrente de Ferro em cada atingido). Diferenças: a
+Montanha não precisa do "sem ser empurrado" (nenhum monstro empurra herói hoje); o Grito de Reunião usa a marcha do
+Tambor (`rally.move`). Teste novo `s3lados`; migration `20261102230000_s3_cavaleiro.sql`.
+
+**Fase 6 (Paladino), como foi entregue:** as 6 ficam na linha VIII (todas as especializações do Paladino vão até a VII).
+Peças: `phantom` (marca os mais perto e acerta depois), `charges` (a recarga só começa quando acabam as cargas ou a janela
+delas; entre uma carga e outra, 0,4 s), `dash.back` (recua para o lado oposto ao mirado; o leque sai de onde o herói
+parou), `cross` (as 4 retas, a A5), `bombard` (bombas em onda, uma a cada 0,15 s) e, na zona, `allyGuard` e `repel`
+(Santuário: o corte de dano é o do Grito de Guerra, renovado a cada pulso). Cruz Flamejante e Bombardeio são de fogo
+(acendem o Barril de Pólvora); Disparo Fantasma e Santuário, de luz. Migration `20261102240000_s3_paladino.sql`.
+
+**Fase 6 (Feiticeiro), como foi entregue:** linha VIII no Raio e no Gelo, IX nas Trevas. Peças: `storm` (raio a cada
+segundo, saltos a mais nas magias de energia; a de alvo único sem cadeia ganha 2 saltos), `channel.fireMs` (o sopro deixa
+fogo na ponta do leque a cada pulso, até 4 focos), `shatterOn` (o Estilhaço da Avalanche soma o Cristalizar, mas não
+quebra o gelo novo) e `blink` (a Fenda Arcana explode na saída e na chegada, com as cargas da Dança do Vento). O Olhar do
+Abismo é a primeira magia que enfraquece por conta própria (a peça A2 das Maestrias da fase 5). Migration
+`20261102250000_s3_feiticeiro.sql`.
+
+**Fase 6 (Druida), como foi entregue:** linha IX na Matilha e no Bosque, VIII nos Espinhos; fecha as 24 magias da fase
+6. Peças: criatura nova `lion` (o desenho do urso com pelagem dourada e juba, `drawBearlike`) com `roar` (atordoa em volta
+a cada 6 s); `form.breath` (o básico vira sopro em leque); `seedAll` (a semente em todos, fora da regra de uma semente por
+druida); `wallHeal` (o tile do meio da parede cura em volta); `plague` (só quem levou a magia espalha o veneno, para não
+crescer sem fim) e `channel.bolt` (um raio por pulso num monstro sorteado do leque). Diferenças: a Forma Primordial usa a
+forma de urso (com +30% de vida); a Pandemia fere 0,5× além do veneno. Migration `20261102260000_s3_druida.sql`.
+
+**Fase 7 (1ª rodada, 02/11/2026):** com as fases 4 a 6 no ar há poucas horas, a telemetria ainda não mede as peças novas
+(51 hunts desde 01/11, 3 jogadores; 1 conta comprou Dons, nenhuma comprou o slot 3 de lado; só 12% das hunts chegam ao
+nível 12, onde o slot 3 abre). Decisões: o slot 3 continua no nível 12 até haver dados (reavaliar em 1–2 semanas, com a
+alternativa de abrir no 10, que 21% das hunts alcançam); o `balanco.ts` passou a contar canalizar, projéteis em leque,
+cargas, o anel da Coroa Solar e o Olho da Tempestade (antes subestimava as magias novas); o Exército dos Mortos, que dava
+2,7× as outras invocações de slot 3 na conta (227 contra 85 do Rei da Selva e 75 da Caçada Selvagem, no nível 5), passou a
+4 esqueletos por 12 s (Maestria 5, era 6 por 20 s): cerca de 114 na conta. Monitorar: Dança do Vento (37, a mais alta das
+magias de slot 3 que não invocam, mas só com todas as flechas e cargas no mesmo alvo colado) e a Tempestade de Lâminas
+(26). Como medir: `damageDealt` por fonte das magias de slot 3 e as consultas B e D do `/balanceamento`, por build.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

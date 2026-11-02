@@ -1,3 +1,4 @@
+import { paced } from "./constants.ts";
 import { BASIC_ATTACK_COOLDOWN_MS, SPELL_SLOT_LEVELS } from "./spells.ts";
 
 // Melhorias da hunt: a cada nível que não abre slot de magia, o servidor sorteia 2 melhorias e o
@@ -104,11 +105,11 @@ export function rollPerkOffer(stacks: PerkStacks, level: number, roll: () => num
 
 /** Recarga do ataque básico com a Fúria (`bonus`: melhorias e runas somadas, ver `heroBonuses`). */
 export function attackCooldownMs(bonus: PerkBonuses): number {
-  return Math.round(BASIC_ATTACK_COOLDOWN_MS * (1 - bonus.attackHaste));
+  return Math.round(paced(BASIC_ATTACK_COOLDOWN_MS) * (1 - bonus.attackHaste));
 }
 
 /** Recarga de uma magia com o Foco e a Runa do Tempo. */
 /** `gear`: recarga mais curta dos itens (`ItemStats.cooldown`), somada ao Foco; nunca abaixo de 40% da recarga. */
 export function spellCooldownMs(cooldownMs: number, bonus: PerkBonuses, gear = 0): number {
-  return Math.round(cooldownMs * Math.max(0.4, 1 - bonus.castHaste - gear));
+  return Math.round(paced(cooldownMs) * Math.max(0.4, 1 - bonus.castHaste - gear));
 }

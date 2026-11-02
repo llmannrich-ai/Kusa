@@ -26,6 +26,7 @@ export const SUMMON_TEXTURE: Record<SummonKind, string> = {
   hornet: "summon-hornet",
   moth: "summon-moth",
   bear: "summon-bear",
+  lion: "summon-lion",
   wisp: "summon-wisp",
   treant: "summon-treant",
   skeleton: "summon-skeleton",
