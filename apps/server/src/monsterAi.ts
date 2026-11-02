@@ -31,14 +31,25 @@ import {
   type MonsterTraits,
   type ChampionAffix,
 } from "@kusa/shared";
-import { nextStep } from "./pathfinding.ts";
+import {
+  ALARM_COOLDOWN_MS,
+  ALARM_RADIUS,
+  DEAF_ROLES,
+  LEADER_SHOUT_RADIUS,
+  PATROL_GATHER_TILES,
+  PATROL_PACE,
+  PROWLER_SPEED,
+  SWARM_CALL_RADIUS,
+  pursuitTiles,
+} from "@kusa/shared";
+import { distanceField, fieldStep, nextStep } from "./pathfinding.ts";
 import type { DungeonState, Monster, Summon } from "./state.ts";
 
 /** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
 export type Hit = Pick<DamageMessage, "attacker" | "fromX" | "fromY" | "fx" | "special" | "dot" | "ability">;
 
-/** Quantos tiles além do aggro range o monstro ainda persegue antes de desistir. */
-const LEASH_TILES = 4;
+/** O campo de distância até um herói é refeito no máximo a cada tanto (ms), se ele andou. */
+const HERO_FIELD_MS = 400;
 /** Intervalo mínimo entre dois avisos de resistência/imunidade no mesmo monstro. */
 const ELEMENT_NOTICE_MS = 1500;
 /** Engolido: o herói sai se os aliados tirarem esta fração da vida do monstro. */
@@ -153,6 +164,12 @@ export interface Brain {
   lastRegenNotice: number;
   /** Monstro que chamou este (cópias da Bruxa Verde somem quando ela morre). */
   summonedBy: string | null;
+  /** Último alarme que este monstro deu (barulho da luta, Grito de Guerra), para não repetir a cada golpe. */
+  alarmAt: number;
+  /** Patrulha: a rota (ida e volta) e o ponto atual; `lead` é o monstro que o grupo segue (null = ele puxa a fila). */
+  roam: { route: { x: number; y: number }[]; idx: number; lead: string | null } | null;
+  /** O Andarilho: caça o herói vivo mais perto pelo mapa inteiro, sem desistir. */
+  prowler: boolean;
 }
 
 /** O que a IA dos monstros precisa da hunt (a `Hunt` liga cada função aos seus métodos). */
@@ -177,9 +194,16 @@ export interface MonsterWorld {
   releaseEngulf(sessionId: string): void;
   occupiedTiles(): Set<number>;
   spawnMonster(kind: MonsterKind, x: number, y: number, depth: number): Monster;
+  /** Telemetria da dificuldade por comportamento (`RunStats.threat`) do herói `sessionId`. */
+  threatStat(sessionId: string, key: string, amount?: number): void;
 }
 
 export class MonsterAi {
+  /** Campos de distância (`distanceField`) até os pontos das patrulhas: fixos, feitos uma vez. */
+  private fields = new Map<number, Int32Array>();
+  /** Campo até cada herói (Andarilho e perseguição longa), refeito quando ele anda. */
+  private heroFields = new Map<string, { x: number; y: number; at: number; field: Int32Array }>();
+
   constructor(private w: MonsterWorld) {}
 
   newBrain(def: MonsterDef, depth: number, stats: MonsterStats): Brain {
@@ -193,6 +217,7 @@ export class MonsterAi {
       invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
       regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,
       hitAndRunAt: 0, struck: new Set(), engulfing: null, engulfTaken: 0, lastElementNotice: 0, lastRegenNotice: 0, summonedBy: null,
+      alarmAt: 0, roam: null, prowler: false,
     };
   }
 
@@ -226,10 +251,12 @@ export class MonsterAi {
     if (m.stunned) return;
     if (brain.engulfing && !this.w.state.players.has(brain.engulfing)) brain.engulfing = null;
 
-    // Desiste de quem morreu, saiu ou fugiu para longe.
-    if (brain.targetId) {
+    // O Andarilho sempre sabe onde está o herói vivo mais perto.
+    if (brain.prowler) brain.targetId = this.nearestHero(m);
+    // Desiste de quem morreu, saiu ou fugiu para longe (a distância depende do papel: `pursuitTiles`).
+    else if (brain.targetId) {
       const t = this.foe(brain.targetId);
-      if (!t || tileDistance(m.x, m.y, t.x, t.y) > def.aggroRange + LEASH_TILES) brain.targetId = null;
+      if (!t || tileDistance(m.x, m.y, t.x, t.y) > def.aggroRange + pursuitTiles(def)) brain.targetId = null;
     }
     // Mímico disfarçado: parado como um baú até alguém encostar (ou acertá-lo).
     const mimic = brain.traits.mimic;
@@ -239,8 +266,16 @@ export class MonsterAi {
       brain.targetId = near;
       this.w.notice(m.x, m.y - 1, "É um Mímico!", 0xe67e22);
     }
-    if (!brain.targetId) brain.targetId = this.nearestVisibleFoe(m, def.aggroRange);
-    if (!brain.targetId) return;
+    if (!brain.targetId) {
+      // Patrulha: segue quem puxa a fila; se ele achou alguém, o grupo inteiro vai junto.
+      const lead = brain.roam?.lead ? this.w.brains.get(brain.roam.lead) : undefined;
+      brain.targetId = this.nearestVisibleFoe(m, def.aggroRange) ?? (lead?.targetId && this.foe(lead.targetId) ? lead.targetId : null);
+      if (brain.targetId) this.alarm(m, brain, brain.targetId, now);
+    }
+    if (!brain.targetId) {
+      if (brain.roam) this.patrol(m, brain, now);
+      return;
+    }
     // Camuflado: aparece quando nota alguém.
     if (brain.camouflaged) this.reveal(m, brain);
 
@@ -269,13 +304,124 @@ export class MonsterAi {
 
     if (now < brain.nextMoveAt || m.rooted || brain.engulfing) return;
     const blocked = this.w.occupiedTiles();
-    const step = nextStep(this.w.dungeon, m, target, def.attackRange, (x, y) => blocked.has(y * this.w.dungeon.width + x));
+    const isBlocked = (x: number, y: number) => blocked.has(y * this.w.dungeon.width + x);
+    // Longe demais para a busca curta (perseguição longa, Andarilho): desce o campo de distância até o herói.
+    const step = nextStep(this.w.dungeon, m, target, def.attackRange, isBlocked)
+      ?? (this.w.state.players.has(targetId) ? fieldStep(this.w.dungeon, this.heroField(targetId, target, now), m, isBlocked) : null);
     if (!step) {
       // Sem caminho agora (corredor bloqueado): tenta de novo daqui a pouco.
       brain.nextMoveAt = now + 400;
       return;
     }
     this.stepTo(m, brain, step, now);
+  }
+
+  // --- Dificuldade por comportamento (`threat.ts`) -------------------------------------
+
+  /**
+   * Barulho da luta: o monstro que acabou de notar `targetId` (ou levou um golpe) acorda os vizinhos parados, através
+   * de paredes. O líder grita mais longe; o enxame chama os da mesma espécie. Boss não chama ninguém e não é chamado.
+   */
+  alarm(m: Monster, brain: Brain, targetId: string, now: number) {
+    if (brain.def.rank === "boss" || (brain.alarmAt > 0 && now - brain.alarmAt < ALARM_COOLDOWN_MS)) return;
+    brain.alarmAt = now;
+    const leader = !!brain.traits.leader || brain.def.role === "leader";
+    if (leader) this.w.notice(m.x, m.y - 1, "Grito de Guerra!", 0xe74c3c);
+    let woke = 0;
+    for (const o of this.w.state.monsters.values()) {
+      if (o.id === m.id) continue;
+      const ob = this.w.brains.get(o.id);
+      if (!ob || ob.targetId || ob.camouflaged || ob.diving || ob.def.rank === "boss" || DEAF_ROLES.includes(ob.def.role)) continue;
+      const dist = tileDistance(m.x, m.y, o.x, o.y);
+      const kin = brain.def.role === "swarm" && o.kind === m.kind && dist <= SWARM_CALL_RADIUS;
+      if (!kin && dist > (leader ? LEADER_SHOUT_RADIUS : ALARM_RADIUS)) continue;
+      ob.targetId = targetId;
+      ob.alarmAt = now;
+      woke++;
+      this.w.notice(o.x, o.y - 1, "!", 0xf39c12, 600);
+      // O líder chamado também grita (só ele: o alarme não corre o mapa inteiro).
+      if (ob.traits.leader || ob.def.role === "leader") {
+        ob.alarmAt = 0;
+        this.alarm(o, ob, targetId, now);
+      }
+    }
+    if (woke > 0) this.w.threatStat(targetId, "acordados", woke);
+  }
+
+  /** O herói vivo mais perto, em qualquer lugar do mapa (o Andarilho caça pelo faro, sem linha de visão). */
+  private nearestHero(m: Monster): string | null {
+    let best: string | null = null;
+    let bestDist = Infinity;
+    this.w.state.players.forEach((p, id) => {
+      if (p.status !== "playing") return;
+      const dist = tileDistance(m.x, m.y, p.x, p.y);
+      if (dist < bestDist) { best = id; bestDist = dist; }
+    });
+    return best;
+  }
+
+  /** Campo de distância até o herói, refeito quando ele andou (no máximo a cada `HERO_FIELD_MS`). */
+  private heroField(id: string, at: { x: number; y: number }, now: number) {
+    const cached = this.heroFields.get(id);
+    if (cached && ((cached.x === at.x && cached.y === at.y) || now - cached.at < HERO_FIELD_MS)) return cached.field;
+    const field = distanceField(this.w.dungeon, at);
+    this.heroFields.set(id, { x: at.x, y: at.y, at: now, field });
+    return field;
+  }
+
+  /** Campo de distância até um ponto fixo (os pontos das rotas de patrulha). */
+  private pointField(at: { x: number; y: number }) {
+    const key = at.y * this.w.dungeon.width + at.x;
+    let field = this.fields.get(key);
+    if (!field) this.fields.set(key, field = distanceField(this.w.dungeon, at));
+    return field;
+  }
+
+  /** Andar de patrulha: quem puxa a fila vai de ponto em ponto (esperando o grupo); os outros o seguem. */
+  private patrol(m: Monster, brain: Brain, now: number) {
+    const roam = brain.roam!;
+    if (now < brain.nextMoveAt || m.rooted || brain.engulfing || roam.route.length === 0) return;
+    const blocked = this.w.occupiedTiles();
+    const isBlocked = (x: number, y: number) => blocked.has(y * this.w.dungeon.width + x);
+    if (roam.lead) {
+      const lead = this.w.state.monsters.get(roam.lead);
+      // Quem puxava a fila morreu: este assume a rota.
+      if (!lead) roam.lead = null;
+      else {
+        if (tileDistance(m.x, m.y, lead.x, lead.y) <= 2) return;
+        const step = nextStep(this.w.dungeon, m, lead, 1, isBlocked);
+        if (step) this.stepTo(m, brain, step, now, PATROL_PACE);
+        else brain.nextMoveAt = now + 400;
+        return;
+      }
+    }
+    let point = roam.route[roam.idx % roam.route.length];
+    if (tileDistance(m.x, m.y, point.x, point.y) <= 1) {
+      roam.idx = (roam.idx + 1) % roam.route.length;
+      point = roam.route[roam.idx];
+    }
+    // Espera quem ficou para trás.
+    for (const o of this.w.state.monsters.values()) {
+      if (this.w.brains.get(o.id)?.roam?.lead === m.id && tileDistance(m.x, m.y, o.x, o.y) > PATROL_GATHER_TILES) {
+        brain.nextMoveAt = now + 300;
+        return;
+      }
+    }
+    const step = fieldStep(this.w.dungeon, this.pointField(point), m, isBlocked);
+    if (step) this.stepTo(m, brain, step, now, PATROL_PACE);
+    else {
+      // Caminho fechado (alguém no corredor, ponto inalcançável): tenta o próximo ponto daqui a pouco.
+      brain.nextMoveAt = now + 600;
+      if (this.pointField(point)[m.y * this.w.dungeon.width + m.x] < 0) roam.idx = (roam.idx + 1) % roam.route.length;
+    }
+  }
+
+  /** Vira o Andarilho: caça pelo mapa todo, um pouco mais rápido. */
+  makeProwler(brain: Brain, reward: number) {
+    brain.prowler = true;
+    brain.speed *= PROWLER_SPEED;
+    brain.xp = Math.round(brain.xp * reward);
+    brain.loot = [Math.round(brain.loot[0] * reward), Math.round(brain.loot[1] * reward)];
   }
 
   // --- Dano recebido -----------------------------------------------------------
@@ -675,10 +821,10 @@ export class MonsterAi {
 
   // --- Movimento ---------------------------------------------------------------
 
-  private stepTo(m: Monster, brain: Brain, step: { x: number; y: number }, now: number) {
+  private stepTo(m: Monster, brain: Brain, step: { x: number; y: number }, now: number, pace = 1) {
     const diagonal = step.x !== m.x && step.y !== m.y;
-    // Lentidão de magia e areia fofa (Dunas Cantantes, Mesas de Solária) se somam.
-    const slow = (m.slowed ? 1 - brain.slowPct : 1) * (isSand(this.w.dungeon, step.x, step.y) ? SAND_SPEED : 1);
+    // Lentidão de magia e areia fofa (Dunas Cantantes, Mesas de Solária) se somam; `pace` é o passo de patrulha.
+    const slow = (m.slowed ? 1 - brain.slowPct : 1) * (isSand(this.w.dungeon, step.x, step.y) ? SAND_SPEED : 1) * pace;
     const stepMs = 1000 / (brain.speed * MONSTER_SPEED_SCALE * slow);
     brain.nextMoveAt = now + stepMs * (diagonal ? Math.SQRT2 : 1);
     m.stepMs = Math.round(stepMs);

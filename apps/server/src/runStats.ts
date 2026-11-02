@@ -130,6 +130,13 @@ export interface RunStats {
    * amplificado). O dano das explosões entra em `damageDealt["reaction:<id>"]`.
    */
   reactions: Record<string, number>;
+  /**
+   * Dificuldade por comportamento (`threat.ts`): `acordados` (monstros que o barulho da luta chamou para cima deste
+   * herói), `andarilho` (o Andarilho acordou com ele na hunt), `andarilho_morto`, `despertos` (grupos que a dungeon
+   * despertou), `dano_andarilho`/`dano_patrulha` e `morte_andarilho`/`morte_patrulha` (já somados em `damageTaken`),
+   * `dano_cercado` (dano a mais por estar cercado) e `evitado_formacao` (dano que a Formação tirou).
+   */
+  threat: Record<string, number>;
 }
 
 export function newRunStats(): RunStats {
@@ -137,7 +144,7 @@ export function newRunStats(): RunStats {
     levelAt: {}, depthAt: {}, specs: [], passives: {}, spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, fanHits: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0, shots: {},
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], bossClear: false, bossKills: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0, drops: { common: 0, miniboss: 0, boss: 0, chest: 0 } },
-    minHpPct: 1, abandoned: false, death: null, absorbed: 0, converted: {}, gearBoostedCasts: {}, weaponTraits: {}, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, scenery: {}, giftProcs: {}, reactions: {},
+    minHpPct: 1, abandoned: false, death: null, absorbed: 0, converted: {}, gearBoostedCasts: {}, weaponTraits: {}, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, scenery: {}, giftProcs: {}, reactions: {}, threat: {},
   };
 }
 

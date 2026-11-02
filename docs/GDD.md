@@ -645,7 +645,8 @@ Código em `apps/client/src/lobby.ts` e `main.ts`.
 
 O líder completa a equipe com bots: cada vaga livre mostra os retratos das 4 classes, e tocar num põe um bot daquela
 classe ("Bot Paladino", com 🤖 na vaga); o ✕ tira. O bot ocupa a vaga (a sala aceita um humano a menos) e nunca vira líder.
-Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espera, então não tem bot.
+Funciona nas salas da nuvem e nas do aparelho. A hunt solo não tem sala de espera: os bots dela são escolhidos na
+ficha do cenário (ver "Jogar sozinho").
 
 - **Força:** o bot leva a configuração da classe dele na conta de quem o pôs: o Grimório inteiro (magias compradas e o
   nível delas, magias ativas, auras, traços e tomos) e o equipamento e as runas equipados naquela classe, no mesmo nível
@@ -670,6 +671,11 @@ Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espe
 O botão **"Jogar sozinho"** da ficha do cenário começa uma hunt solo na hora, sem sala de espera e sem
 servidor de jogo: a mesma simulação do servidor (`apps/server/src/hunt.ts`) roda no aparelho
 (`apps/client/src/solo.ts`). Não há espera para o servidor acordar nem atraso de rede.
+
+**Levar bots:** abaixo dos botões, a ficha mostra o retrato de cada classe aberta; tocar põe ou tira um bot daquela
+classe (até as vagas do mapa menos a do jogador) e o botão vira "Jogar com N bots". A escolha fica lembrada no
+aparelho. Os bots seguem as regras de "Bots na equipe" (Grimório e cópia do equipamento da classe na conta, sem loot,
+corte de itens); mapa só para 1 não mostra a escolha.
 
 Como o aparelho pode ser adulterado, o banco não confia no resultado (`start_solo_run` / `finish_solo_run`,
 limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
@@ -1321,7 +1327,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 ## Combate (protótipo)
 
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado (ou com ele fora do alcance), o servidor escolhe o monstro mais próximo ao alcance. À distância, o golpe é um tiro que pode errar (ver "Ataques e magias").
-- Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
+- Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais (a distância depende do papel; ver "Dificuldade por comportamento").
 - **Curva de XP** (`xpForLevel`, `packages/shared/src/progression.ts`): a forma do Tibia, cúbica, num terço do valor:
   XP total = ⅓ × 50/3 × (L³ − 6L² + 17L − 12). Nível 2 = 33, 3 = 67, 5 = 267, 6 = 500, 10 = 3.100, 12 = 5.867,
   15 = 12.600, 20 = 32.933. Os primeiros níveis saem quase de graça e o custo de cada nível cresce com o quadrado do
@@ -1353,6 +1359,31 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   de chance, por cima dos outros cortes: comum 12% → 7,2%, mini-boss 60% (vezes o `dropScale` do mapa e o corte
   geral), cada um dos 2 itens do boss 60% e o item do baú (e do Mímico) 60%. Poções, runas e gold não mudam.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
+- **Princípio: dificuldade por comportamento.** O perigo vem do que os monstros **fazem**, nunca de números maiores:
+  eles ouvem a luta, chamam ajuda, patrulham, perseguem e caçam. O jogador perde o controle de *quando* e *com quantos*
+  luta, e a decisão central passa a ser "fico ou corro?". A ficha de cada monstro não muda (vale "monstros de força
+  fixa"). Avisar que um monstro **existe** (o grito, o "!", o aviso do Andarilho) não fere o princípio abaixo: o
+  golpe continua sem aviso. Regras em `packages/shared/src/threat.ts`, teste `comportamento`:
+  - **Barulho da luta:** o monstro que nota um herói ou leva um golpe acorda os monstros parados a até 5 tiles,
+    através de paredes (um "!" sobe em cada um). O **líder** dá o **Grito de Guerra** e chama até 9 tiles (um líder
+    chamado também grita); o **enxame** chama os da mesma espécie até 8 tiles. Sentinelas e emboscadores não ouvem;
+    bosses não chamam nem são chamados. Lutar no corredor, longe da sala vizinha, e matar o líder primeiro viram
+    decisões.
+  - **Perseguição pelo papel:** além do aggro range, o escaramuçador persegue mais 12 tiles, o enxame 10, bruto,
+    controlador, líder e artilheiro 8, o emboscador 6 e a sentinela 3; mini-boss 6 e boss 4. Longe demais para a busca
+    curta, o monstro segue o caminho a pé até o herói (campo de distância), virando os corredores atrás dele.
+  - **Patrulhas:** uma a cada 4 salas do caminho (1 a 4 por mapa), pela seed: o grupo comum de uma sala anda de sala em
+    sala, ida e volta pelas vizinhas (até 2 de cada lado), a 70% da velocidade, o primeiro esperando quem ficou para trás.
+    Nunca na zona da entrada (vale a "Entrada tranquila") nem na sala do boss. Achou alguém, o grupo inteiro vai junto;
+    perdeu, volta a patrulhar. Rendem XP e loot normais.
+  - **O Andarilho:** com 40% do tempo da hunt, um mini-boss do mapa acorda na sala do caminho mais longe da equipe
+    ("☠ <nome> desperta e caça vocês!") e caça o herói vivo mais perto pelo mapa inteiro, sem desistir, 15% mais rápido
+    que a ficha (ainda mais lento que o herói: fugir é possível). Rende 1,5× a XP e o gold; morto, a equipe é avisada.
+  - **A dungeon desperta:** com 60% do tempo, até 2 grupos parados (os mais perto da equipe) saem atrás dela.
+- **Jogo em equipe** (bots contam): os monstros são os mesmos com 1 ou 4 heróis, mas a equipe se protege:
+  - **Formação:** com outro herói vivo a até 4 tiles, o golpe de monstro pesa 15% menos.
+  - **Cercado:** cada monstro visível colado no herói além do primeiro deixa o golpe 12% mais forte (até 3 a mais, +36%).
+  Sozinho, o herói é cercado e não tem Formação; por isso o "Jogar sozinho" deixa levar bots (ver "Jogar sozinho").
 - **Princípio: difícil e injusto como a vida.** Nenhum golpe de monstro tem aviso antes (área marcada no chão, brilho de carga, contagem); o jogador se defende pela posição e pela escolha de quem matar primeiro, não reagindo a um sinal.
 - Monstros, habilidades e regras dos inimigos: ver "Bestiário".
 

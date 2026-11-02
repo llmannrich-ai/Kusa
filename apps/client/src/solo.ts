@@ -29,7 +29,7 @@ const SESSION_ID = "solo";
  * sincronizado por encoder/decoder, `send`, `onMessage`), então a cena e o HUD não sabem a diferença.
  * O banco sorteia a seed e corta recompensas impossíveis (`start_solo_run`/`finish_solo_run`).
  */
-export async function createSoloHunt(name: string, classId: ClassId, mapId: MapId): Promise<DungeonRoom> {
+export async function createSoloHunt(name: string, classId: ClassId, mapId: MapId, botClasses: ClassId[] = []): Promise<DungeonRoom> {
   // A hunt anterior que não chegou ao banco vai antes: abrir outra fecharia aquela como morte.
   if (await flushPendingSolo()) throw new Error("sem conexão para salvar a hunt anterior; tente de novo com internet");
   // A simulação só é baixada por quem joga solo. Vem antes de abrir a hunt no banco: se o download falhar
@@ -69,6 +69,11 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     name, classId, talents: run.talents ?? {}, spellXp: run.spell_xp ?? {}, activeSpells: profile?.active_spells ?? [],
   });
   hunt.knownBossRunes(SESSION_ID, run.boss_runes ?? []);
+  // Bots escolhidos na ficha: levam o Grimório da conta e, no início, uma cópia do equipamento da classe deles.
+  for (const botClass of botClasses) hunt.addBot(SESSION_ID, { classId: botClass });
+  const bots = hunt.botsOf(SESSION_ID);
+  // Lido antes de a hunt começar (como na sala no aparelho): nada sai da conta.
+  const botItems = bots.length > 0 ? botLoadouts(bots) : Promise.resolve([]);
 
   // Mesmo caminho do servidor: o cliente decodifica um estado refletido, com callbacks.
   const encoder = new Encoder(state);
@@ -103,6 +108,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
       last = performance.now();
       hunt.equip(SESSION_ID, run.items ?? []);
       hunt.fillBag(SESSION_ID, run.bag ?? []);
+      void botItems.then((loadouts) => loadouts.forEach((bot) => hunt.equip(bot.id, bot.items)));
     },
     [MSG.move]: (msg) => hunt.move(SESSION_ID, msg),
     [MSG.target]: (msg) => hunt.target(SESSION_ID, msg),
@@ -335,4 +341,14 @@ export async function finishSolo(runId: string | null, classId: ClassId, result:
       ? `Limite da hunt solo: ${saved.gold} de ${result.loot} de loot${left.length ? `; não guardado: ${names(left)}` : ""}.`
       : undefined,
   };
+}
+
+/** Equipamento e runas equipados na classe de cada bot, sem tirar da conta (o bot veste uma cópia). */
+export async function botLoadouts(bots: { id: string; classId: ClassId }[]): Promise<{ id: string; items: string[] }[]> {
+  if (bots.length === 0) return [];
+  const { data, error } = await supabase.from("profile_items").select("item_id, class_id")
+    .eq("equipped", true).in("class_id", [...new Set(bots.map((b) => b.classId))]);
+  if (error) console.error("Falha ao ler o equipamento dos bots", error);
+  const rows = (data ?? []) as { item_id: string; class_id: string }[];
+  return bots.map((b) => ({ id: b.id, items: rows.filter((r) => r.class_id === b.classId).map((r) => r.item_id) }));
 }

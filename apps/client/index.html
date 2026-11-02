@@ -145,6 +145,11 @@
           <button id="solo" class="primary">Jogar sozinho</button>
           <button id="create">Criar sala</button>
         </div>
+        <!-- Bots do Jogar sozinho (lobby.ts, renderSoloBots): sozinho é mais perigoso; com bots, a Formação protege. -->
+        <div id="sheet-bots" class="sheet-server sheet-bots">
+          <span class="sheet-server-label">Levar bots</span>
+          <div id="solo-bots" class="solo-bots" role="group" aria-label="Bots que vão com você ao jogar sozinho"></div>
+        </div>
         <div id="sheet-create" class="sheet-server">
           <span class="sheet-server-label">Sala em</span>
           <!-- Preenchido por lobby.ts (renderServerPicker). -->

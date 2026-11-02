@@ -462,6 +462,25 @@ function portrait(classId: ClassId) {
  * O líder põe um bot numa vaga livre tocando na classe, e tira no ✕.
  */
 /**
+ * Bots do "Jogar sozinho" (ficha do cenário): um retrato por classe aberta; tocar põe ou tira o bot daquela classe,
+ * até `max` (as vagas do mapa menos a do jogador). A hunt solo roda com eles no aparelho, como a sala no aparelho.
+ */
+export function renderSoloBots(list: HTMLElement, picked: ClassId[], max: number, classOpen: (id: ClassId) => boolean, onChange: (bots: ClassId[]) => void) {
+  const classes = CLASS_IDS.filter(classOpen);
+  list.replaceChildren(...classes.map((classId) => {
+    const on = picked.includes(classId);
+    const pick = el("button", `bot-pick bot-toggle${on ? " on" : ""}`);
+    pick.type = "button";
+    pick.setAttribute("aria-pressed", String(on));
+    pick.setAttribute("aria-label", `${on ? "Tirar" : "Levar"} um bot ${CLASSES[classId].name}`);
+    pick.disabled = !on && picked.length >= max;
+    pick.append(portrait(classId), el("small", "", CLASSES[classId].name));
+    pick.onclick = () => onChange(on ? picked.filter((c) => c !== classId) : [...picked, classId]);
+    return pick;
+  }));
+}
+
+/**
  * Sala de espera. `classOpen`: a classe está aberta na conta de quem vê (o bot de uma classe trancada não aparece; o
  * servidor também recusa).
  */

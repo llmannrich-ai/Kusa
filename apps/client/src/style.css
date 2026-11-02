@@ -1618,6 +1618,12 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .sheet-server .server-list { flex: 1; gap: 6px; }
 .sheet-server .server-card { padding: 4px 8px; place-items: center; text-align: center; font-size: 14px; }
 .sheet-server .server-card small { display: none; }
+/* Bots do Jogar sozinho: retratos que ligam e desligam (o ligado ganha borda e fundo). */
+.solo-bots { display: flex; flex: 1; gap: 6px; min-width: 0; }
+.solo-bots .bot-toggle { flex: 1; min-width: 0; min-height: 52px; padding: 2px; color: #2b1d10; background: #e6d6ae; border: 2px solid transparent; border-radius: 10px; opacity: 0.7; }
+.solo-bots .bot-toggle .slot-portrait { width: 30px; height: 30px; }
+.solo-bots .bot-toggle.on { background: #f3e5bf; border-color: var(--accent); opacity: 1; }
+.solo-bots .bot-toggle:disabled { opacity: 0.35; }
 #map-sheet { max-height: 50%; }
 #map-sheet .sheet-label { margin: 10px 0 6px; }
 #map-sheet .room { min-height: 44px; padding: 6px 12px; }

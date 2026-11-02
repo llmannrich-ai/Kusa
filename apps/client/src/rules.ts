@@ -1,5 +1,13 @@
 import {
   ACTIVE_SPELLS_PER_SLOT,
+  ALARM_RADIUS,
+  AWAKEN_AT,
+  FORMATION_GUARD,
+  FORMATION_RADIUS,
+  LEADER_SHOUT_RADIUS,
+  PROWLER_AT,
+  SURROUND_MAX,
+  SURROUND_STEP,
   BAG_SIZE,
   DEATH_SPELL_XP_LOSS,
   BOSS_LOOT_BONUS,
@@ -137,6 +145,16 @@ export function renderRules(root: HTMLElement) {
       }),
       "Controle num herói (preso, atordoado, engolido, cego) dura no máximo 2 s, e depois ele fica 4 s imune ao mesmo efeito.",
     ),
+
+    section("⚠️ Perigo e equipe", false, list([
+      `Barulho: lutar acorda os monstros parados a até ${ALARM_RADIUS} tiles, mesmo atrás da parede. O líder grita e chama de até ${LEADER_SHOUT_RADIUS} tiles: mate-o primeiro.`,
+      "Perseguição: goblins, lobos e enxames seguem você longe; brutos lentos desistem antes. Fuja para a equipe, para o portal ou por um corredor.",
+      "Patrulhas: alguns grupos andam de sala em sala. Uma sala limpa não fica segura para sempre.",
+      `O Andarilho: com ${pct(PROWLER_AT)} do tempo, um mini-boss acorda no fundo e caça o herói mais perto pelo mapa inteiro. É mais lento que você: dá para fugir. Matar rende mais.`,
+      `Com ${pct(AWAKEN_AT)} do tempo, a dungeon desperta e mais grupos saem atrás da equipe.`,
+      `Formação: com um aliado (ou bot) a até ${FORMATION_RADIUS} tiles, o golpe de monstro pesa ${pct(FORMATION_GUARD)} menos.`,
+      `Cercado: cada monstro colado em você além do primeiro deixa o golpe ${pct(SURROUND_STEP)} mais forte (até ${SURROUND_MAX} a mais). Sozinho é perigoso: no "Jogar sozinho" dá para levar bots.`,
+    ])),
 
     section("🏁 Como a hunt termina", false,
       table(["Fim", "O que acontece"], [
