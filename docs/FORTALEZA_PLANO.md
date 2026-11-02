@@ -234,3 +234,22 @@ ficou borrada e destoou; o vale continua por código. |
 Depois disso, o atlas dos formatos da máscara passou a ser guardado em 64 px por tile (a máscara já é desenhada em meia
 resolução: na tela é o mesmo, com um quarto da memória desse atlas).
 
+
+## 8. Segunda etapa: terminar o cenário com arte pintada por código (02/11)
+
+Os chãos e a folha do acampamento vieram do ChatGPT. O resto (vale, paredão, telhados, muralhas, interiores, pontes,
+vida e luz) é pintado por código, no padrão de `docs/ARTE_TIBIA.md`: sem `Math.random`, emendando nas bordas, na luz
+do fim de tarde (sol baixo do oeste). Pintura pesada (mais de ~50 ms) é gravada pronta por um script, como os chãos,
+para não travar o começo da hunt no celular. Cada fase é um PR com prints de antes e depois (412×915 e 915×412) e sai
+pela fila de deploy.
+
+| Fase | O que entra | Situação |
+|---|---|---|
+| 1. Abismo | O vale numa textura só (`art/valleyArt.ts`, gravada por `npm run vale -w @kusa/client`): campina, matas copa a copa, rio e córrego, trilhas, pedras, alicerces e colunas do império. O paredão em rocha natural (estratos e fendas, não tijolo), a sombra contínua no pé dele, a beirada sem a linha preta reta. | Feito |
+| 2. Vila baixa | Aplicar a planta (`docs/arte/fortaleza/planta.txt`); fonte seca e estátua derrubada na praça. | A fazer |
+| 3. Torre de menagem e telhados | Fachada própria, torreões orcs, o buraco do telhado, telhados novos das casernas. | A fazer |
+| 4. Muralhas orcizadas | Remendos de madeira e ferro, estacas, crânios e panos nas muralhas do império. | A fazer |
+| 5. Interiores | Salão do trono e casernas: tapetes, braseiros, camas de palha, armas na parede. | A fazer |
+| 6. Pontes e cachoeira | Ponte de pedra quebrada, ponte de cordas balançando, a cachoeira caindo no abismo. | A fazer |
+| 7. Vida e luz | Fumaça das fogueiras, faíscas, corvos, estandartes ao vento, a luz do fim de tarde. | A fazer |
+| 8. Fechamento | Medição no iPhone (até 80 MB de texturas, 60 quadros/s), jogar deitado, GDD. | A fazer |
