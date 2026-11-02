@@ -323,6 +323,8 @@ interface Seat {
   circuitReady: boolean;
   /** Dano extra da magia que está sendo lançada agora (Circuito e Graça): só vale dentro de `cast`. */
   castBoost: number;
+  /** Raio do Incandescer do golpe que está sendo dado agora (Flecha da Aurora, Maestria): só vale dentro do golpe. */
+  castIncandesce: number;
   /** Reserva Gélida (Dom): o escudo volta a poder sair a partir deste momento. */
   frostReadyAt: number;
   /** Instinto (Dom): básicos dados nesta hunt. */
@@ -710,7 +712,7 @@ export class Hunt {
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0, movedAt: 0, dashBasicReady: false, graceCount: 0, graceReady: false,
-      circuit: {}, circuitReady: false, castBoost: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
+      circuit: {}, circuitReady: false, castBoost: 0, castIncandesce: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
       eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false, quiverCount: 0,
       rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0,
@@ -1507,6 +1509,12 @@ export class Hunt {
     const step = () => {
       const elapsed = this.host.now() - start;
       for (; i < path.length && arrive(i) <= elapsed; i++) {
+        // Barril de Pólvora no caminho: a flecha (ou o fogo) o acerta e ele explode.
+        if (this.kegAt(path[i])) {
+          this.host.broadcast(MSG.shotEnd, { shot, x: path[i].x, y: path[i].y } satisfies ShotEndMessage);
+          this.detonateKegs(path[i].x, path[i].y, 0);
+          return done(undefined);
+        }
         const m = this.monsterOn(path[i]) ?? (i > 0 ? this.monsterOn(path[i - 1]) : undefined);
         if (m) {
           this.host.broadcast(MSG.shotEnd, { shot, x: m.x, y: m.y } satisfies ShotEndMessage);
@@ -2347,11 +2355,15 @@ export class Hunt {
         }
         // Condutor (Dom): mais dano nas magias de energia e de fogo.
         const element = spell.element ? 1 + (seat.gifts.elementDamage[spell.element] ?? 0) : 1;
-        const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * element * this.farBonus(seat, p, m)));
+        // Flecha do Ponto Fraco: mais forte em quem já tinha todos os estados pedidos antes do golpe.
+        const combo = spell.comboBonus && spell.comboBonus.needs.every((k) => before[k]) ? spell.comboBonus.power : 1;
+        const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * element * combo * this.farBonus(seat, p, m)));
         dealt += value;
         // Golpe Exposto: o atordoar do próprio golpe já vale para o Exposto (as outras reações seguem o estado de antes).
         const states = spell.exposeNow && before.marked && spell.stunMs ? { ...before, stunned: true } : before;
+        seat.castIncandesce = spell.incandesceRadius ?? 0;
         this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id, sessionId, states);
+        seat.castIncandesce = 0;
         // Fé Ardente (marco 5): a magia de luz de alvo único atravessa e acerta também o monstro logo atrás.
         if (radiant && m === anchor && spell.radius === 0 && !line && this.marks(seat, "burning_faith") >= 5) {
           const behind = this.monsterOn({ x: m.x + Math.sign(m.x - p.x), y: m.y + Math.sign(m.y - p.y) });
@@ -3377,7 +3389,8 @@ export class Hunt {
       const seat = this.seats.get(creditId);
       const dawn = this.marks(seat, "dawn");
       const power = INCANDESCE.power * (1 + (seat?.gifts.incandesceDamage ?? 0));
-      this.reactionBurst(id, x, y, dawn >= 1 ? DAWN.radius : INCANDESCE.radius, raw * power, creditId, "fire", (other, b) => {
+      const radius = Math.max(dawn >= 1 ? DAWN.radius : INCANDESCE.radius, seat?.castIncandesce ?? 0);
+      this.reactionBurst(id, x, y, radius, raw * power, creditId, "fire", (other, b) => {
         if (dawn >= 5) {
           b.stunnedUntil = Math.max(b.stunnedUntil, now + DAWN.stunMs);
           b.dazzledUntil = Math.max(b.dazzledUntil, now + DAWN.stunMs);
@@ -4089,6 +4102,8 @@ export class Hunt {
     const dealt = Math.min(amount, m.hp);
     if (seat) bump(seat.stats.damageDealt, source, dealt);
     m.hp = Math.max(0, m.hp - amount);
+    // Barril de Pólvora: fogo de herói num monstro colado no barril o acende.
+    if (seat && element === "fire") this.detonateKegs(m.x, m.y, 1);
     // Sede de sangue (melhoria): o golpe do próprio herói cura uma parte do dano, sem aviso a cada golpe.
     const hero = this.state.players.get(creditId);
     if (seat && hero?.status === "playing" && seat.perkBonus.lifesteal > 0 && !source.startsWith("summon:")) {
@@ -5569,6 +5584,26 @@ export class Hunt {
     return best;
   }
 
+  /** Barril de Pólvora no tile. */
+  private kegAt(t: { x: number; y: number }) {
+    for (const f of this.state.fields.values()) if (f.style === "keg" && f.x === t.x && f.y === t.y) return f;
+    return undefined;
+  }
+
+  /** Barril de Pólvora: os barris a até `reach` tiles explodem (um barril que explode pode acender o vizinho). */
+  private detonateKegs(x: number, y: number, reach: number) {
+    for (const f of [...this.state.fields.values()]) {
+      if (f.style !== "keg" || tileDistance(f.x, f.y, x, y) > reach) continue;
+      const brain = this.fieldBrains.get(f.id);
+      const owner = this.state.players.get(f.owner);
+      this.removeField(f.id);
+      if (!brain || owner?.status !== "playing") continue;
+      const stats = this.seats.get(f.owner)?.stats;
+      if (stats) bump(stats.giftProcs, "powder_keg");
+      this.fieldBurst(f, brain);
+    }
+  }
+
   private removeField(id: string) {
     this.state.fields.delete(id);
     this.fieldBrains.delete(id);
@@ -5582,7 +5617,8 @@ export class Hunt {
       const seat = this.seats.get(f.owner);
       if (!brain || !owner || !seat || owner.status !== "playing" || now >= brain.until) {
         // Totem Vulcânico: o tempo acabou (com o dono ainda na hunt), explode antes de sumir.
-        if (brain?.burst && owner?.status === "playing" && now >= brain.until) this.fieldBurst(f, brain);
+        // O Barril de Pólvora não explode sozinho: some quando o tempo acaba.
+        if (brain?.burst && owner?.status === "playing" && now >= brain.until && f.style !== "keg") this.fieldBurst(f, brain);
         this.removeField(f.id);
         continue;
       }
@@ -5593,6 +5629,7 @@ export class Hunt {
       }
       if (now < brain.nextTickAt) continue;
       brain.nextTickAt += brain.tickMs;
+      if (f.style === "keg") continue;
       const sees = (x: number, y: number, reach: number) =>
         tileDistance(f.x, f.y, x, y) <= reach && hasLineOfSight(this.dungeon, f.x, f.y, x, y);
 

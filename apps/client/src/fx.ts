@@ -395,6 +395,17 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 5: magias de combo do Paladino (o Barril aparece pelo estado, como campo; explode como a magia).
+      case "weak_point_arrow": return this.projectile(FX.arrow, from, to, ms, { trail: 0xe67e22, glow: 0xf39c12, scale: 1.2 });
+      case "dawn_arrow":
+        this.projectile(FX.arrow, from, to, ms, { trail: 0xffb347, glow: 0xff7f27 });
+        return this.later(ms, () => this.sparks(to, 0xffb347, 8));
+      case "powder_keg":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 2.5, 0xff7f27, 450, 8);
+          return this.debris(to, TILE_SIZE * 2.5, 0x6e3b1c);
+        }
+        return this.sparks(to, 0x8d5524, 5);
       // Fase 5: magias de combo do Cavaleiro.
       case "hemorrhagic_cut":
         this.slash(from, to);
