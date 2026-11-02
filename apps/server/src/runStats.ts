@@ -114,6 +114,12 @@ export interface RunStats {
    */
   runeProcs: Record<string, number>;
   /**
+   * Cenário vivo da Fortaleza Orc: `orcs_da_tenda` (orcs que as tendas soltaram com o herói perto) e `dano_do_totem`
+   * (dano a mais que o herói levou de orcs perto de um totem). O dano das fogueiras e braseiros entra em `damageTaken`
+   * como `cenario:fogo`.
+   */
+  scenery: Record<string, number>;
+  /**
    * Dons do fundo: quantas vezes cada gatilho disparou (id do Dom). O dano extra entra em `damageDealt` (o raio do Céu
    * Fechado como "closed_sky", a queimadura da Mão Rápida como "quick_hand", os esqueletos do Ossuário como "summon:skeleton"); a cura do Ciclo, em `healing`; o
    * escudo da Reserva Gélida, em `absorbed`.
@@ -131,7 +137,7 @@ export function newRunStats(): RunStats {
     levelAt: {}, depthAt: {}, specs: [], passives: {}, spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, fanHits: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0, shots: {},
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], bossClear: false, bossKills: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0, drops: { common: 0, miniboss: 0, boss: 0, chest: 0 } },
-    minHpPct: 1, abandoned: false, death: null, absorbed: 0, converted: {}, gearBoostedCasts: {}, weaponTraits: {}, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, giftProcs: {}, reactions: {},
+    minHpPct: 1, abandoned: false, death: null, absorbed: 0, converted: {}, gearBoostedCasts: {}, weaponTraits: {}, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, scenery: {}, giftProcs: {}, reactions: {},
   };
 }
 
