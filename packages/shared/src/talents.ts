@@ -282,6 +282,8 @@ const RIBS: Record<ClassId, Rib[]> = {
     // Ápices (slot 3): no fim do tronco, na ponta do lado direito, fora da especialização.
     ["champion_reap", 0, 6, "execution", 2], ["bulwark", 1, 6, "steel_wall", 2], ["legion_charge", 2, 6, "commander_shout", 2],
     ["gale_blade", 0, 3, "crushing_blow", 2], ["shield_wall", 1, 3, "holy_shield", -1], ["cutting_shout", 2, 3, "mana", -2],
+    // Fase 5: a magia de combo, embaixo da de leque da mesma costela.
+    ["hemorrhagic_cut", 0, 4, "gale_blade", 2], ["shield_toss", 1, 4, "shield_wall", -1], ["exposed_strike", 2, 4, "cutting_shout", -2],
   ],
   paladin: [
     ["double_shot", 0, 3, "piercing_shot", -1], ["barbed_arrow", 0, 4, "double_shot", -2],
