@@ -11,7 +11,7 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  DROP, FOUNTAIN, HANG, KEEP_RISE, ORC_DRESS, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
+  BRAZIER, BRAZIER_MOUTH, DROP, FOUNTAIN, HANG, KEEP_RISE, ORC_DRESS, brazierSprite, carpetTile, strawBed, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   throneSprite,
 } from "./art/fortressArt.ts";
@@ -253,6 +253,24 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       if (kind === "puddle" && !road(x, y) && !yard(x, y)) kind = "shards";
       const v = Math.floor(hash(x, y, 6) * 3);
       decor[i] = atlas.frame(`flat-${kind}-${v}`, () => flatDecor(kind, v).render(kind !== "puddle" && kind !== "dust"));
+    }
+
+  // Interiores. O tapete vermelho do salão do trono, da porta até o trono (3 tiles de largura), por cima das lajes.
+  const kc = f.door.x + 1;
+  for (let y = f.throne.y + 1; y <= f.door.y; y++)
+    for (const part of [-1, 0, 1] as const) {
+      const x = kc + part, end: 0 | 1 | 2 = y === f.throne.y + 1 ? 1 : y === f.door.y ? 2 : 0, v = Math.floor(hash(x, y, 79) * 2);
+      decor[y * W + x] = atlas.frame(`tapete${part}-${end}-${v}`, () => carpetTile(part, end, v));
+    }
+  // As camas de palha dos orcs na parede norte das casernas (o canto do baú fica livre).
+  const beds: { x: number; y: number }[] = [];
+  for (const r of d.side)
+    for (let x = r.x + 3; x < r.x + r.w - 2; x += 2) {
+      const y = r.y + 1;
+      if (at(x, y) !== Tile.Floor || !roomInside(x, y) || hash(x, y, 80) < 0.25) continue;
+      const v = Math.floor(hash(x, y, 81) * 2);
+      decor[y * W + x] = atlas.frame(`cama${v}`, () => strawBed(v));
+      beds.push({ x, y });
     }
 
   // O andar de cima da torre de menagem: o terraço (com o parapeito e o buraco do telhado) e a fachada sul.
@@ -519,6 +537,11 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     // A tenda do chefe é a da guarda, no pátio do esporão (acima da muralha interna).
     putCamp(t.y < f.walls[1].y ? "tendaChefe" : "tenda", t.x, t.y + 1, hash(t.x, t.y, 63) < 0.5, (t.x + 1) * TILE_SIZE, (t.y + 2) * TILE_SIZE);
   }
+  // Nas casernas, as armas encostadas na parede norte, no canto oposto ao do baú.
+  for (const r of d.side) {
+    const x = r.x + r.w - 2, y = r.y + 1;
+    if (at(x, y) === Tile.Floor && !beds.some((b) => b.x === x && b.y === y)) putCamp("armas", x, y, true);
+  }
   // Estandartes de guerra ao lado das fogueiras.
   for (const fire of f.fires) {
     const x = fire.x + (hash(fire.x, fire.y, 64) < 0.5 ? -2 : 2), y = fire.y - 1;
@@ -669,6 +692,15 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     culler.add(gl, c.x, c.y);
     glows.push(gl);
   }
+  // Os braseiros do salão do trono, dos dois lados do tapete, acesos (o fogo e a luz por cima da boca).
+  const brazierKey = single(scene, "fortress-braseiro", BRAZIER.w, BRAZIER.h, brazierSprite);
+  for (let y = f.throne.y + 3; y < f.door.y - 1; y += 4)
+    for (const x of [kc - 3, kc + 3]) {
+      if (at(x, y) !== Tile.Floor) continue;
+      const px = (x + 0.5) * TILE_SIZE, py = (y + 1) * TILE_SIZE;
+      culler.add(scene.add.image(px, py + 10 / ZOOM, brazierKey).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(py - 0.3), x, y);
+      fire(px, py + 10 / ZOOM - BRAZIER_MOUTH / ZOOM, py - 0.29, 0.9, x, y, 1.2);
+    }
   // A fogueira do terraço some junto com o andar de cima.
   const roofFire = top(holeAt.x < KW / 2 ? KW - 5 : 4, K.h - 5);
   for (const o of fire(roofFire.px, roofFire.py - 6, keepDepth + 0.03, 1.6, K.x, K.y, 1.8, false)) keepObjs.push(o);

@@ -887,3 +887,90 @@ export function orcDressing(kind: number, v: number): Uint8ClampedArray {
   }
   return p.render(true);
 }
+
+// --- Interiores --------------------------------------------------------------------------------
+
+/**
+ * Um tile do tapete do salão do trono (3 tiles de largura, da porta até o trono), por cima das lajes: lã vermelha
+ * gasta com a barra dourada e a grega nas beiras (`part` -1 e 1, as colunas da beira; 0 o meio), puído e manchado,
+ * rasgado na ponta da porta (`end` 2) e com a franja na ponta do trono (`end` 1). Transparente fora do tapete.
+ */
+export function carpetTile(part: -1 | 0 | 1, end: 0 | 1 | 2, v: number): Uint8ClampedArray {
+  const p = paper();
+  const inset = 14;
+  const inside = (x: number, y: number) => {
+    if (part < 0 && x < inset) return false;
+    if (part > 0 && x > HD - 1 - inset) return false;
+    if (end === 1 && y < 20) return false;
+    if (end === 2 && y > HD - 18 - noise(x >> 3, v, 950) * 30) return false;
+    return true;
+  };
+  p.fill([0, 0, HD - 1, HD - 1], inside, E.Cloth, (x, y) => {
+    let s = 0.46 + (sn(x, y, 32, 951 + v) - 0.5) * 0.14;
+    // Puído no meio (o caminho de quem anda até o trono) e as manchas escuras.
+    if (part === 0) s += Math.max(0, 0.12 - Math.abs(x - 64) / 400);
+    if (sn(x, y, 16, 952 + v) > 0.74) s -= 0.16;
+    return s;
+  });
+  // A barra dourada e a grega na beira de cada lado.
+  for (let y = 0; y < HD; y++)
+    for (let x = 0; x < HD; x++) {
+      if (!inside(x, y)) continue;
+      const fromEdge = part < 0 ? x - inset : part > 0 ? HD - 1 - inset - x : 99;
+      if (fromEdge < 4) p.on(x, y, E.Gold, fromEdge < 1 ? 1 : 3);
+      else if (fromEdge < 14 && fromEdge > 6) {
+        // Grega (o meandro do império): um degrau a cada 8 px.
+        const t = mod(y, 16), u = fromEdge - 7;
+        if ((t < 8 && u === 0) || (t === 8 && u < 6) || (t >= 8 && u === 5) || (t === 0 && u < 6)) p.on(x, y, E.Gold, 2);
+      }
+      if (end === 1 && y < 26) p.on(x, y, E.Gold, 2);
+    }
+  // Franja na ponta do trono.
+  if (end === 1) for (let x = part < 0 ? inset : 0; x < (part > 0 ? HD - inset : HD); x += 3) for (let y = 12; y < 20; y++) p.px(x, y, E.Gold, 3);
+  // Rasgos e furos.
+  for (let y = 0; y < HD; y++) for (let x = 0; x < HD; x++) if (inside(x, y) && noise(x >> 2, y >> 2, 953 + v) < 0.012) p.on(x, y, E.Void, 1);
+  return p.render(false);
+}
+
+/** O braseiro do salão (de pé): o fogo é desenhado à parte, por cima, pelo mapa. */
+export const BRAZIER = { w: HD, h: HD + 40 } as const;
+/** Altura (px de arte, a partir do pé do sprite) da boca do braseiro, onde o mapa põe as chamas. */
+export const BRAZIER_MOUTH = 104;
+
+/** Braseiro de ferro do império em três pés de garra, a bacia cheia de brasa e um anel de caveiras dos orcs no aro. */
+export function brazierSprite(): Uint8ClampedArray {
+  const p = paper(BRAZIER.w, BRAZIER.h);
+  const cx = BRAZIER.w / 2, foot = BRAZIER.h - 10, mouth = foot - BRAZIER_MOUTH;
+  // Os três pés (o do meio atrás) e o fuste.
+  for (const [dx, back] of [[-30, 0], [30, 0], [0, 1]] as const) limb(p, [cx + dx, foot - (back ? 10 : 0)], [cx + dx * 0.25, mouth + 34], 4, 3, E.Iron);
+  limb(p, [cx, mouth + 40], [cx, mouth + 16], 6, 6, E.Iron);
+  // A bacia: a boca vista um pouco de cima, cheia de brasa, e o bojo embaixo.
+  p.fill([cx - 40, mouth - 4, cx + 40, mouth + 24], (x, y) => Math.hypot((x - cx) / 40, (y - mouth) / 22) < 1 && y >= mouth, E.Iron, (x, y) => 0.5 - (x - cx) / 40 * 0.2 - (y - mouth) / 22 * 0.15);
+  p.fill([cx - 40, mouth - 12, cx + 40, mouth + 12], (x, y) => Math.hypot((x - cx) / 40, (y - mouth) / 11) < 1, E.Iron, (x) => 0.66 - (x - cx) / 40 * 0.15);
+  p.fill([cx - 34, mouth - 9, cx + 34, mouth + 9], (x, y) => Math.hypot((x - cx) / 34, (y - mouth) / 8) < 1, E.Fire, (x, y) => 0.3 + sn(x & 127, y & 127, 8, 960) * 0.5);
+  // Caveirinhas no aro.
+  for (const dx of [-26, 0, 26]) {
+    ellipse(p, cx + dx, mouth + 14, 6, 6, E.Bone);
+    p.on(cx + dx - 2, mouth + 14, E.Void, 1); p.on(cx + dx + 2, mouth + 14, E.Void, 1);
+  }
+  return p.render(true);
+}
+
+/** Cama de palha dos orcs na caserna (no chão, 1 tile): o monte de palha, a pele por cima e um osso roído. */
+export function strawBed(v: number): Uint8ClampedArray {
+  const p = paper();
+  const cx = 64 + (v - 0.5) * 10, cy = 66;
+  p.fill([8, 20, 120, 112], (x, y) => Math.hypot((x - cx) / 54, (y - cy) / 40) < 1 - noise(x >> 2, y >> 2, 961 + v) * 0.18, E.Dry,
+    (x, y) => 0.55 + (noise(x, y >> 1, 962) - 0.5) * 0.3 - (y - cy) / 40 * 0.12);
+  // Palhas soltas riscando.
+  for (let k = 0; k < 40; k++) {
+    const x = 12 + noise(k, v, 963) * 104, y = 24 + noise(v, k, 964) * 84, a = noise(k, k, 965) * Math.PI;
+    for (let t = 0; t < 9; t++) p.on(x + Math.cos(a) * t, y + Math.sin(a) * t * 0.5, E.Dry, noise(k, t, 966) < 0.5 ? 4 : 2);
+  }
+  // A pele por cima (a cabeça do bicho para o lado).
+  p.fill([30, 34, 104, 96], (x, y) => Math.hypot((x - cx - 4) / 32, (y - cy + 2) / 24) < 1 - noise(x >> 2, y >> 2, 967 + v) * 0.2, E.Dirt,
+    (x, y) => 0.5 + (sn(x, y, 8, 968) - 0.5) * 0.2 - (x - cx) / 32 * 0.1);
+  ellipse(p, cx + 34, cy - 6, 9, 7, E.Dirt);
+  limb(p, [cx - 40, cy + 30], [cx - 22, cy + 36], 3, 3, E.Bone);
+  return p.render(true);
+}
