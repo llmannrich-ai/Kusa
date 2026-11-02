@@ -11,7 +11,7 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  DROP, FOUNTAIN, HANG, KEEP_RISE, ROOM_WALL, STATUE, THRONE, bridgeTile, fountainSprite, statueSprite,
+  DROP, FOUNTAIN, HANG, KEEP_RISE, ORC_DRESS, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   throneSprite,
 } from "./art/fortressArt.ts";
@@ -394,6 +394,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   // --- De pé -------------------------------------------------------------------------------------
   const culler = new ChunkCuller();
   const walls = new SpriteSheet("fortress-walls", WALL_SPRITE.w, WALL_SPRITE.h);
+  const dress = new SpriteSheet("fortress-orcs-muralha", ORC_DRESS.w, ORC_DRESS.h);
   const cols = new SpriteSheet("fortress-columns", COLUMN.w, COLUMN.h);
   const blocks = new SpriteSheet("fortress-blocks", BLOCK.w, BLOCK.h);
   const cypress = new SpriteSheet("fortress-cypress", CYPRESS.w, CYPRESS.h);
@@ -488,6 +489,13 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       const vn = hash(Math.floor(x / 3), Math.floor(y / 3), 61);
       const v = vn < 0.5 ? 0 : 1;
       put(walls, walls.frame(`w${links}-${h}-${step}-${v}-${city}`, () => wallSprite(links, h, step, v, city)), x, y);
+      // Os orcs penduram e pregam coisas na face sul da muralha: escudos, remendos de tábua, estacas com caveira,
+      // sangue e correntes, panos de guerra (num tile a cada 3 ou 4, nunca dois vizinhos).
+      if (city && !(links & L.s) && !inTower(x, y) && x % 2 === 0 && hash(x, y, 62) < 0.42) {
+        const kind = Math.floor(hash(x, y, 65) * 5), dv = Math.floor(hash(x, y, 66) * 2);
+        put(dress, dress.frame(`o${kind}-${dv}`, () => orcDressing(kind, dv)), x, y);
+        placed[placed.length - 1].depth += 0.01;
+      }
     }
 
   // Tendas (2×2), pela linha de baixo, cada uma com a sombra oval no pé (puxada para o sudeste: o sol vem do noroeste).
@@ -518,7 +526,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     putCamp("estandarte", x, y);
   }
 
-  for (const sheet of [walls, cols, blocks, cypress, pines]) sheet.build(scene);
+  for (const sheet of [walls, dress, cols, blocks, cypress, pines]) sheet.build(scene);
   const crowns: Phaser.GameObjects.Image[] = [];
   for (const c of campPlaced)
     culler.add(scene.add.image(c.px, c.py, CAMP_KEY, c.frame).setOrigin(0.5, 1).setScale((c.sx ?? 1) / ZOOM, 1 / ZOOM).setDepth((c.y + 1) * TILE_SIZE - 0.25).setFlipX(c.flip), c.x, c.y);
@@ -582,6 +590,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   for (const [k, [tx, ty]] of ([[1.5, 3], [KW - 1.5, 3], [1.5, K.h], [KW - 1.5, K.h]] as const).entries()) {
     const p = { px: (K.x + tx) * TILE_SIZE, py: (K.y - KEEP_RISE + ty) * TILE_SIZE };
     keepObjs.push(scene.add.image(p.px, p.py, turretKey).setOrigin(0.5, 1).setScale(0.8 / ZOOM).setFlipX(k % 2 === 1).setDepth(keepDepth + (ty > 3 ? 0.04 : 0.015)));
+    // O estandarte de caveira dos orcs no alto de cada torreão.
+    keepObjs.push(scene.add.image(p.px + (k % 2 ? -8 : 8), p.py - (TOWER.h * 0.8) / ZOOM + 34 / ZOOM, CAMP_KEY, "estandarte").setOrigin(0.5, 1)
+      .setScale(0.9 / ZOOM).setFlipX(k % 2 === 1).setDepth(keepDepth + (ty > 3 ? 0.041 : 0.016)));
   }
   const keepUpper: Upper = { objs: keepObjs, area: K, alpha: 1, hidden: 0 };
   uppers.push(keepUpper);

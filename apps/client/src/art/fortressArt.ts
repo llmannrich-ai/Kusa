@@ -808,3 +808,82 @@ export function statueSprite(): Uint8ClampedArray {
       if (p.has(x, y) && y < foot - 50 && sn(x & 127, y & 127, 8, 922) > 0.8) p.on(x, y, E.Moss, 1);
   return p.render(true);
 }
+
+// --- Muralhas orcizadas ------------------------------------------------------------------------
+
+/** O que os orcs penduram e pregam na frente da muralha do império: por cima do sprite do muro, no mesmo tamanho. */
+export const ORC_DRESS = { w: HD, h: HD + 144 } as const;
+/** Altura da muralha (px acima do chão) e onde começa a face dela no sprite (`wallSprite` com `city`). */
+const DRESS_WALL = 120, DRESS_FACE = ORC_DRESS.h - DRESS_WALL;
+
+/**
+ * Enfeite orc na face sul de um tile de muralha (transparente no resto): `kind` 0 escudo redondo de tábuas pregado,
+ * com a lança atravessada atrás e a marca de mão vermelha; 1 remendo de tábuas pregadas tapando uma brecha (o escuro
+ * aparece pelas frestas); 2 estacas afiadas saindo da beira do tampo, inclinadas para fora, uma com caveira espetada;
+ * 3 sangue escorrendo da ameia e uma corrente pendurada com argola; 4 o pano de guerra vermelho pendurado da ameia,
+ * rasgado embaixo, com a caveira de chifres pintada em preto.
+ */
+export function orcDressing(kind: number, v: number): Uint8ClampedArray {
+  const p = paper(ORC_DRESS.w, ORC_DRESS.h);
+  const face = DRESS_FACE, cx = 40 + Math.floor(hash01(v * 7 + kind, 930) * 48);
+  if (kind === 0) {
+    const cy = face + 56, r = 36;
+    limb(p, [cx - 40, cy + 30], [cx + 42, cy - 34], 2.5, 2.5, E.Bark);
+    poly(p, [[cx + 42, cy - 34], [cx + 52, cy - 50], [cx + 36, cy - 40]], E.Iron, () => 0.6);
+    p.fill([cx - r, cy - r, cx + r, cy + r], (x, y) => Math.hypot(x - cx, y - cy) < r, E.Bark, (x, y) => {
+      const plank = Math.floor((x - cx + r) / 13);
+      return 0.5 + (hash01(plank + v, 931) - 0.5) * 0.16 - (x - cx) / r * 0.1 - (y - cy) / r * 0.08 + (mod(x - cx + r, 13) < 1 ? -0.2 : 0);
+    });
+    for (let a = 0; a < Math.PI * 2; a += 0.01) for (let k = 0; k < 3; k++) p.on(cx + Math.cos(a) * (r - 1 - k), cy + Math.sin(a) * (r - 1 - k), E.Iron, k === 0 ? 1 : 3);
+    ellipse(p, cx, cy, 7, 7, E.Iron);
+    // A mão vermelha dos orcs pintada no escudo.
+    p.fill([cx - 14, cy - 18, cx + 2, cy + 4], (x, y) => Math.hypot((x - cx + 6) / 7, (y - cy + 2) / 8) < 1
+      || (y < cy - 6 && [-12, -8, -4, 0].some((f) => Math.abs(x - (cx + f)) < 1.6 && y > cy - 17 + Math.abs(f + 6) * 0.4)), E.Cloth, () => 0.5);
+  } else if (kind === 1) {
+    // Brecha tapada com tábuas pregadas na diagonal e na vertical.
+    const x0 = cx - 30, x1 = cx + 30, y0 = face + 16, y1 = face + DRESS_WALL - 14;
+    p.fill([x0 - 4, y0 - 4, x1 + 4, y1 + 4], (x, y) => Math.hypot((x - cx) / 36, (y - (y0 + y1) / 2) / 48) < 1 - noise(x >> 2, y >> 2, 932) * 0.15, E.Void, () => 0.1);
+    for (let k = 0; k < 4; k++) {
+      const px = x0 + 2 + k * 15 + Math.floor(hash01(k + v, 933) * 4);
+      box(p, [px, y0 + hash01(k, 934) * 8, px + 12, y1 - hash01(k, 935) * 8], E.Bark, (x) => 0.52 + (hash01(k * 3 + v, 936) - 0.5) * 0.2 - (x - px) * 0.012);
+      for (const ny of [y0 + 10, y1 - 12]) { p.on(px + 6, ny, E.Iron, 5); p.on(px + 6, ny + 1, E.Iron, 2); }
+    }
+    limb(p, [x0 - 6, y0 + 20], [x1 + 6, y1 - 24], 4, 4, E.Bark);
+  } else if (kind === 2) {
+    // Estacas afiadas na beira do tampo (a beira fica logo acima da face), inclinadas para o sul.
+    for (let k = 0; k < 5; k++) {
+      const bx = 14 + k * 24 + (hash01(k + v * 5, 937) - 0.5) * 10, by = face + 6;
+      const tx = bx + (hash01(k, 938) - 0.5) * 16, ty = face - 46 - hash01(k + v, 939) * 18;
+      limb(p, [bx, by], [tx, ty + 8], 4, 3, E.Bark);
+      poly(p, [[tx - 3, ty + 9], [tx + 3, ty + 9], [tx, ty]], E.Dry, () => 0.7);
+      if (k === 2) {
+        ellipse(p, tx, ty + 18, 9, 8, E.Bone);
+        p.on(tx - 3, ty + 18, E.Void, 1); p.on(tx + 3, ty + 18, E.Void, 1); p.on(tx - 3, ty + 19, E.Void, 1); p.on(tx + 3, ty + 19, E.Void, 1);
+        for (let x = tx - 4; x <= tx + 4; x += 2) p.on(x, ty + 24, E.Void, 1);
+      }
+    }
+  } else if (kind === 4) {
+    const x0 = cx - 24, x1 = cx + 24, y0 = face - 6, y1 = face + DRESS_WALL - 8;
+    limb(p, [x0 - 6, y0], [x1 + 6, y0], 3, 3, E.Bark);
+    p.fill([x0, y0, x1, y1], (x, y) => y < y1 - 10 - noise(x >> 2, 0, 941 + v) * 22 && Math.abs(x - cx) < 24 - (y - y0) * 0.04, E.Cloth,
+      (x, y) => 0.5 + Math.sin((x - x0) / 7) * 0.12 - (y - y0) / (y1 - y0) * 0.12);
+    // A caveira de chifres em preto no meio do pano.
+    const sy = y0 + 40;
+    p.fill([cx - 12, sy - 12, cx + 12, sy + 14], (x, y) => Math.hypot((x - cx) / 11, (y - sy) / 12) < 1 || (y > sy + 6 && y < sy + 14 && Math.abs(x - cx) < 7), E.Line, () => 0.4);
+    for (const sx of [-1, 1]) limb(p, [cx + sx * 9, sy - 6], [cx + sx * 20, sy - 20], 3, 1.5, E.Line);
+    for (const sx of [-1, 1]) ellipse(p, cx + sx * 5, sy, 3, 3, E.Cloth);
+  } else {
+    // Sangue escorrendo da beira e uma corrente com argola.
+    for (let k = 0; k < 4; k++) {
+      const x = cx - 18 + k * 11, len = 20 + hash01(k + v, 940) * 50;
+      for (let y = face; y < face + len; y++) { p.px(x, y, E.Cloth, y > face + len - 3 ? 1 : 2); if (y < face + 8) p.px(x + 1, y, E.Cloth, 2); }
+    }
+    for (let k = 0; k < 9; k++) {
+      const y = face - 4 + k * 8, x = cx + 26 + Math.sin(k * 0.6) * 2;
+      p.fill([x - 4, y - 4, x + 4, y + 4], (a, b) => { const d = Math.hypot((a - x) / 3, (b - y) / 4); return d < 1 && d > 0.45; }, E.Iron, () => (k % 2 ? 0.4 : 0.66));
+    }
+    const ry = face + 72;
+    p.fill([cx + 14, ry - 12, cx + 38, ry + 12], (a, b) => { const d = Math.hypot(a - cx - 26, b - ry); return d < 11 && d > 7; }, E.Iron, (a) => 0.6 - (a - cx - 26) / 11 * 0.2);
+  }
+  return p.render(true);
+}
