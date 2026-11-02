@@ -78,6 +78,8 @@ export type SpellId =
   | "howl" | "purifying_sap" | "blossom_burst" | "vine_lash" | "spore_burst" | "bramble_burst"
   // Grimório 4.0: magias em leque nas costelas novas (docs/GRIMORIO_4_PLANO.md, seção 8).
   | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
+  // Grimório 4.0, fase 5: magias de combo das costelas novas (usam as reações).
+  | "hemorrhagic_cut" | "shield_toss" | "exposed_strike"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -211,6 +213,19 @@ export interface SpellDef {
   manaSteal?: number;
   /** Monstros atingidos ficam marcados: recebem +`pct` de dano de toda a equipe por `ms`. */
   mark?: { pct: number; ms: number };
+  /** Monstros atingidos ficam enfraquecidos: causam `pct` a menos de dano por `ms`. */
+  weaken?: { pct: number; ms: number };
+  /** Em quem já sangrava antes do golpe, a Hemorragia sai com esta força (2 = dobrada), antes do sangramento novo. */
+  hemorrhage?: number;
+  /**
+   * Arremesso: o monstro empurrado (`push`) que bate em parede ou noutro monstro fica atordoado `stunMs`, e o outro
+   * monstro também; o impacto fere os dois (`power` × dano base, 0 = não fere).
+   */
+  slam?: { stunMs: number; power: number };
+  /** Os monstros marcados a até este raio do alvo também ficam atordoados pelo golpe (viram Exposto). */
+  exposeRadius?: number;
+  /** O atordoar do próprio golpe já vale para o Exposto (em monstro marcado, o golpe sai Exposto). */
+  exposeNow?: boolean;
   /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
@@ -1008,6 +1023,24 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 20, cooldownMs: 7000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 90,
     damage: 0.6, taunt: true, mark: { pct: 0.15, ms: 5000 },
   }),
+  // Fase 5: magias de combo do Cavaleiro (as reações em docs/GRIMORIO_4_PLANO.md, seção 6.2).
+  hemorrhagic_cut: spell({
+    id: "hemorrhagic_cut", classId: "knight", slot: 1, name: "Corte Hemorrágico", icon: "🩸", color: 0xb03a2e,
+    description: "Um corte fundo no monstro colado que faz sangrar por 4 s; em quem já sangrava, a Hemorragia sai dobrada.",
+    manaCost: 30, cooldownMs: 7000, aim: "target", range: 1, radius: 0, damage: 2,
+    dot: { perSec: 0.4, ms: 4000, kind: "bleed" }, hemorrhage: 2,
+  }),
+  shield_toss: spell({
+    id: "shield_toss", classId: "knight", slot: 0, name: "Arremesso", icon: "🥏", color: 0x7fa8c9,
+    description: "Joga o monstro colado 4 tiles para longe; se ele bater em parede ou noutro monstro, os dois ficam atordoados.",
+    manaCost: 22, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 0.8, push: 4,
+    slam: { stunMs: 1500, power: 0 },
+  }),
+  exposed_strike: spell({
+    id: "exposed_strike", classId: "knight", slot: 1, name: "Golpe Exposto", icon: "⚡", color: 0xf7d774,
+    description: "Uma pancada que atordoa o monstro colado por 1 s; se ele estiver marcado, vira Exposto na hora.",
+    manaCost: 30, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 2.2, stunMs: 1000, exposeNow: true,
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1523,7 +1556,10 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   // Grimório 4.0: magias em leque.
   gale_blade: { text: "Solta uma segunda onda logo depois, com 60% do dano.", changes: { repeat: { delayMs: 400, power: 0.6 } } },
   shield_wall: { text: "O escudo fica com você: escudo de 20% da vida por 5 s.", changes: { barrier: 0.2, barrierMs: 5000 } },
-  cutting_shout: { text: "O grito também deixa os monstros 30% mais lentos.", changes: { slow: { pct: 0.3, ms: 3000 } } },
+  cutting_shout: { text: "O grito também enfraquece os monstros: causam 20% menos dano por 4 s.", changes: { weaken: { pct: 0.2, ms: 4000 } } },
+  hemorrhagic_cut: { text: "Sangram também os monstros colados no alvo.", changes: { radius: 1 } },
+  shield_toss: { text: "O impacto fere o monstro arremessado e o que ele acertou (1,5×).", changes: { slam: { stunMs: 1500, power: 1.5 } } },
+  exposed_strike: { text: "Os marcados colados no alvo também ficam atordoados (Exposto em raio 1).", changes: { exposeRadius: 1 } },
   arrow_fan: { text: "Sete flechas no leque.", changes: { spread: { count: 7, angle: 55 } } },
   holy_flash: { text: "A luz marca os ofuscados: +15% de dano da equipe por 4 s.", changes: { mark: { pct: 0.15, ms: 4000 } } },
   fire_spit: { text: "O leque de fogo abre a 90°.", changes: { coneAngle: 90 } },
@@ -1606,6 +1642,7 @@ export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
     dot: def.dot && { ...def.dot, perSec: def.dot.perSec * k, ms: Math.round(def.dot.ms * t) },
     armor: def.armor && { points: Math.round(def.armor.points * k), ms: Math.round(def.armor.ms * t) },
     mark: def.mark && { pct: def.mark.pct * k, ms: Math.round(def.mark.ms * t) },
+    weaken: def.weaken && { ...def.weaken, ms: Math.round(def.weaken.ms * t) },
     selfBuff: def.selfBuff && { ...def.selfBuff, ms: Math.round(def.selfBuff.ms * t) },
     field: def.field && {
       ...def.field, ms: Math.round(def.field.ms * t), damage: def.field.damage && def.field.damage * k,
