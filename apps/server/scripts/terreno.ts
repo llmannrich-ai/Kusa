@@ -119,13 +119,13 @@ function check(ok: boolean, what: string) {
     h.advance(1000);
     return h.p.hp - 10;
   };
-  // Longe da fogueira (no corredor do meio, ainda sem monstro por perto).
-  const far = regenAt(h.any.dungeon.portal.x + 1, h.any.dungeon.portal.y - 7);
+  // Longe da fogueira, mas ainda no acampamento (sem monstro por perto): a ponta leste da sala.
+  const far = regenAt(h.any.dungeon.portal.x + 6, h.any.dungeon.portal.y);
   check(far === Math.round(base * FLAT_HP_REGEN), `regen fixa no nível 1 devia ser ${Math.round(base * FLAT_HP_REGEN)} (veio ${far})`);
   const fire = regenAt(camp.x + 1, camp.y);
   check(fire === Math.round(base * FLAT_HP_REGEN * CAMP_REGEN), `na fogueira devia ser ${Math.round(base * FLAT_HP_REGEN * CAMP_REGEN)} (veio ${fire})`);
   h.p.level = 15;
-  const lvl15 = regenAt(h.any.dungeon.portal.x + 1, h.any.dungeon.portal.y - 7);
+  const lvl15 = regenAt(h.any.dungeon.portal.x + 6, h.any.dungeon.portal.y);
   const want15 = Math.round(base * FLAT_HP_REGEN * (1 + FLAT_REGEN_PER_LEVEL * 14));
   check(lvl15 === want15, `no nível 15 devia ser ${want15} (veio ${lvl15})`);
   const pct1 = (far / base) * 100;
