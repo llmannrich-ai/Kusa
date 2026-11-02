@@ -37,6 +37,10 @@ const FANG = "#fffdf2";
 
 const BEAR_FUR: Pal = ["#9c7658", "#7b5841", "#5f412f", "#462e21", "#2d1c14"];
 const BEAR_MUZZLE: Pal = ["#dcbd93", "#c09f74", "#9c7b57", "#76593e", "#4e3a28"];
+/** Leão do Rei da Selva: o corpo do urso com pelagem dourada e juba cor de ferrugem. */
+const LION_FUR: Pal = ["#e6bf6a", "#cc9c48", "#a8792f", "#7c5520", "#4f3512"];
+const LION_MUZZLE: Pal = ["#f5e2b8", "#e0c592", "#c2a06a", "#94744a", "#5e4a2e"];
+const LION_MANE: Pal = ["#b5652a", "#934e1f", "#733b16", "#53290f", "#341807"];
 const MOSS: Pal = ["#b6e07a", "#8cc252", "#67993a", "#487029", "#2d4a1a"];
 const RUNE = "#a8ff74";
 const RUNE_CORE = "#efffd8";
@@ -559,9 +563,17 @@ function bearPose(clip: Clip, i: number): BearPose {
 }
 
 function drawBear(s: Sheet, clip: Clip, i: number) {
+  return drawBearlike(s, clip, i, BEAR_FUR, BEAR_MUZZLE);
+}
+
+function drawLion(s: Sheet, clip: Clip, i: number) {
+  return drawBearlike(s, clip, i, LION_FUR, LION_MUZZLE, LION_MANE);
+}
+
+/** Corpo do urso; com `mane`, a juba do leão em volta da cabeça. */
+function drawBearlike(s: Sheet, clip: Clip, i: number, fur: Pal, muzzle: Pal, mane?: Pal) {
   const pen = new Pen(s, s.w / 34.5, { x: -0.6, y: 1.2 });
   const p = bearPose(clip, i);
-  const fur = BEAR_FUR;
   const far = shade(fur);
   const soft = { flat: 0.25 };
   const hip = { x: 8.6, y: 19.6 };
@@ -602,6 +614,7 @@ function drawBear(s: Sheet, clip: Clip, i: number) {
   }
   // Cabeça baixa e larga, focinho claro.
   const H = { x: 25 + p.head.x, y: 17.4 + p.head.y };
+  if (mane) pen.ell({ x: H.x - 1.8, y: H.y - 0.4 }, 4.8, 4.6, 0, mane, soft);
   pen.cap({ x: 21, y: 16.4 }, { x: H.x - 1.2, y: H.y - 0.4 }, 3.6, 3, fur, soft);
   pen.push(H, p.headRot);
   pen.ell({ x: H.x - 1.4, y: H.y - 2.8 }, 1.3, 1.2, 0, far);
@@ -615,9 +628,9 @@ function drawBear(s: Sheet, clip: Clip, i: number) {
     pen.dot(add(jp, { x: Math.cos(ja) * 3.4, y: Math.sin(ja) * 3.4 - 0.8 }), FANG);
   }
   pen.push(jp, ja);
-  pen.cap(jp, { x: H.x + 4.4, y: H.y + 2.4 }, 1.3, 1, BEAR_MUZZLE);
+  pen.cap(jp, { x: H.x + 4.4, y: H.y + 2.4 }, 1.3, 1, muzzle);
   pen.pop();
-  pen.cap({ x: H.x + 1.4, y: H.y + 0.6 }, { x: H.x + 5, y: H.y + 1.2 }, 2, 1.55, BEAR_MUZZLE, soft);
+  pen.cap({ x: H.x + 1.4, y: H.y + 0.6 }, { x: H.x + 5, y: H.y + 1.2 }, 2, 1.55, muzzle, soft);
   pen.ell({ x: H.x + 5.6, y: H.y + 0.8 }, 1, 0.8, 0, ["#4a3a3a", "#2e2424", "#1d1717", "#120e0e", "#0a0808"]);
   pen.dot({ x: H.x + 5.8, y: H.y + 0.4 }, "#8a7a7a");
   // Orelha redonda de perto, olho pequeno aceso de musgo, testa franzida.
@@ -1349,6 +1362,7 @@ export interface SummonArt {
 export const SUMMON_ART: Record<SummonKind, SummonArt> = {
   wolf: { size: 36, draw: drawWolf, fps: { idle: 5, walk: 12, attack: 13, cast: 7 }, stride: 4 },
   bear: { size: 40, draw: drawBear, fps: { idle: 4, walk: 9, attack: 10, cast: 6 }, stride: 4 },
+  lion: { size: 40, draw: drawLion, fps: { idle: 4, walk: 10, attack: 11, cast: 6 }, stride: 4 },
   treant: { size: 40, draw: drawTreant, fps: { idle: 4, walk: 8, attack: 8, cast: 6 }, stride: 4 },
   skeleton: { size: 36, draw: drawSkeleton, fps: { idle: 5, walk: 11, attack: 12, cast: 7 }, stride: 4 },
   eagle: { size: 40, draw: drawEagle, fps: { idle: 7, walk: 11, attack: 12, cast: 8 }, stride: 4 },

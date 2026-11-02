@@ -279,7 +279,7 @@ interface Seat {
    * Forma animal do Druida até `until`: velocidade extra, salto da pantera (gasto no próximo básico), patada do urso e a
    * vida que o urso somou à máxima (sai quando a forma acaba).
    */
-  form: { kind: "panther" | "bear"; until: number; moveSpeed: number; pounce: number; pounceStunMs: number; maul: boolean; hpBonus: number } | null;
+  form: { kind: "panther" | "bear"; until: number; moveSpeed: number; pounce: number; pounceStunMs: number; maul: boolean; hpBonus: number; breath: { angle: number; range: number } | null } | null;
   /** Semente do Renascer recebida: até quando vale, de quem, vida ao renascer e tempo de invulnerabilidade. */
   seed: { until: number; by: string; hp: number; invulnMs: number } | null;
   /** Druida: em quem está a semente que ele plantou (só uma de cada vez). */
@@ -419,6 +419,8 @@ interface Seat {
 /** Dados da criatura invocada que só o servidor precisa. */
 interface SummonBrain {
   def: SummonDef;
+  /** Rei da Selva: o próximo rugido do leão sai a partir deste momento. */
+  roarAt?: number;
   /** Laço da Matilha (marco 5): já voltou uma vez depois de cair. */
   revived?: boolean;
   /** Magia que invocou: conjurar de novo substitui as criaturas dela. */
@@ -1245,6 +1247,7 @@ export class Hunt {
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
     this.tickFields(now);
+    this.tickPlague(now);
     this.openChests();
     this.pickUpItems();
     this.expireItems(now);
@@ -1311,7 +1314,7 @@ export class Hunt {
     const buff = seat.buff && now < seat.buff.until ? seat.buff : null;
     const form = seat.form && now < seat.form.until ? seat.form : null;
     // Na Forma de Urso, o básico é uma patada: só alcança quem está colado.
-    const reach = form?.maul ? 1 : cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0)
+    const reach = form?.maul ? 1 : form?.breath ? form.breath.range : cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0)
       + (cls.attackRange > 1 ? seat.gear.range : 0) + (this.marks(seat, "patient_eye") >= 1 ? EYE.range : 0);
     // Cego: não mira nada além de perto.
     const range = this.held(seat, "blind") ? Math.min(reach, BLIND_RANGE) : reach;
@@ -1373,6 +1376,8 @@ export class Hunt {
       this.after(0, () => this.formBite(sessionId, m.id));
     }
     if (m && form?.maul) return this.maul(sessionId, p, m);
+    // Forma Primordial: o básico vira um sopro em leque.
+    if (form?.breath) return this.formBreath(sessionId, p, tx, ty, form.breath);
     if (m && form && form.pounce > 0) return this.pounce(sessionId, p, seat, m, form, now);
     const ox = p.x;
     const oy = p.y;
@@ -1584,6 +1589,20 @@ export class Hunt {
   }
 
   /** Forma de Urso: o básico vira uma patada em todos os monstros colados no druida, que passam a persegui-lo. */
+  /** Forma Primordial: o básico sopra num leque à frente e pega todos os monstros nele. */
+  private formBreath(sessionId: string, p: Player, tx: number, ty: number, breath: { angle: number; range: number }) {
+    const tiles = coneTiles(this.dungeon, p.x, p.y, tx, ty, breath.range, breath.angle);
+    const end = tiles[tiles.length - 1] ?? { x: tx, y: ty };
+    this.host.broadcast(MSG.spell, { from: sessionId, spellId: "primal_form", x: p.x, y: p.y, tx: end.x, ty: end.y, ms: 0, echo: true } satisfies SpellMessage);
+    const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "nature" };
+    const base = this.baseDamage(sessionId, p, "basic");
+    const on = new Set(tiles.map((t) => t.y * this.dungeon.width + t.x));
+    for (const m of [...this.state.monsters.values()]) {
+      if (m.hidden || !on.has(m.y * this.dungeon.width + m.x)) continue;
+      this.damageMonster(m, rollDamage(this.random, base), hit, "basic");
+    }
+  }
+
   private maul(sessionId: string, p: Player, target: Monster) {
     this.host.broadcast(MSG.spell, { from: sessionId, spellId: "bear_form", x: p.x, y: p.y, tx: target.x, ty: target.y, ms: 0, echo: true } satisfies SpellMessage);
     const hit: Hit = { attacker: sessionId, fromX: p.x, fromY: p.y, fx: "smash" };
@@ -2260,6 +2279,15 @@ export class Hunt {
         }
       }
       c.streak = streak;
+      // Tempestade em Leque: cada pulso é um raio num monstro só do leque.
+      if (def.bolt) {
+        const pick = inside.filter((m) => !m.hidden);
+        if (pick.length > 0) {
+          const t = pick[Math.floor(this.random() * pick.length)];
+          this.applySpell(sessionId, c.spell, c.rank, t.id, t.x, t.y, c.amount, [{ x: t.x, y: t.y }], c.slot);
+        }
+        continue;
+      }
       this.applySpell(sessionId, c.spell, c.rank, undefined, end.x, end.y, c.amount, tiles, c.slot);
       // Hálito do Dragão: o fogo fica no chão, na ponta do leque.
       if (def.fireMs && (end.x !== p.x || end.y !== p.y)) {
@@ -2421,6 +2449,16 @@ export class Hunt {
       if (spell.element === "dark" && seat.gifts.weakenPower > 0) {
         brain.weakPct = Math.max(now < brain.weakUntil ? brain.weakPct : 0, Math.min(LAMENT.max, seat.gifts.weakenPower));
         brain.weakUntil = Math.max(brain.weakUntil, now + (this.marks(seat, "deep_lament") >= 4 ? LAMENT.msLater : LAMENT.ms));
+      }
+      // Pandemia: o alvo passa a espalhar o veneno para os vizinhos.
+      if (spell.plague && spell.dot && m === anchor) {
+        brain.plagueBy = sessionId;
+        brain.plagueUntil = now + spell.plague.ms;
+        brain.plagueNext = now + spell.plague.everyMs;
+        brain.plagueEvery = spell.plague.everyMs;
+        brain.plagueRadius = spell.plague.radius;
+        brain.plaguePerSec = this.baseDamage(sessionId, p, "spell") * spell.dot.perSec;
+        brain.plagueStacks = spell.plague.stacks ?? 0;
       }
       // Caça em Bando: o alvo vira a presa das criaturas de quem conjura.
       if (spell.hunt && m === anchor) {
@@ -2719,7 +2757,17 @@ export class Hunt {
         });
       }
     }
-    if (spell.seed && allyId && ally?.status === "playing" && allySeat) this.plantSeed(sessionId, seat, allyId, ally, allySeat, spell.seed, now);
+    // Floresta Eterna: a semente em todos os aliados por perto (e em quem conjura).
+    if (spell.seedAll && spell.seed && p.status === "playing") {
+      const seed = spell.seed;
+      this.state.players.forEach((other, id) => {
+        const otherSeat = this.seats.get(id);
+        if (other.status !== "playing" || !otherSeat || tileDistance(p.x, p.y, other.x, other.y) > spell.radius) return;
+        otherSeat.seed = { until: now + seed.ms, by: sessionId, hp: seed.hp, invulnMs: seed.invulnMs };
+        other.seeded = true;
+      });
+    }
+    if (spell.seed && !spell.seedAll && allyId && ally?.status === "playing" && allySeat) this.plantSeed(sessionId, seat, allyId, ally, allySeat, spell.seed, now);
 
     // Caçada Selvagem: a segunda leva (o urso) vem junto, sem tirar a primeira.
     if (spell.alsoSummon && p.status === "playing") this.summon(sessionId, p, { ...spell, summon: spell.alsoSummon }, rank, true);
@@ -2858,7 +2906,7 @@ export class Hunt {
     const hpBonus = form.hp ? Math.round(p.maxHp * form.hp) : 0;
     seat.form = {
       kind: form.kind, until: now + form.ms, moveSpeed: form.moveSpeed ?? 0, pounce: form.pounce ?? 0,
-      pounceStunMs: form.pounceStunMs ?? 0, maul: form.maul ?? false, hpBonus,
+      pounceStunMs: form.pounceStunMs ?? 0, maul: form.maul ?? false, hpBonus, breath: form.breath ?? null,
     };
     p.maxHp += hpBonus;
     p.hp += hpBonus;
@@ -3921,7 +3969,7 @@ export class Hunt {
       this.summonBrains.set(s.id, {
         def: SUMMONS[kind], spellId: spell.id, damage: stats.damage, heal: stats.heal, mana: stats.mana,
         expiresAt: now + durationMs, nextMoveAt: now + 300, nextAttackAt: now + 300, targetId: null, haste: 0, hasteUntil: 0, rallyDamage: 0, rallyUntil: 0,
-        deathHeal: spell.summonDeathHeal ?? null,
+        deathHeal: spell.summonDeathHeal ?? null, roarAt: now + 1000,
       });
     }
   }
@@ -4036,6 +4084,23 @@ export class Hunt {
       return this.summonFollow(s, brain, owner, now);
     }
 
+    // Rei da Selva: o leão ruge e atordoa quem está perto.
+    if (def.roar && now >= (brain.roarAt ?? 0)) {
+      brain.roarAt = now + def.roar.everyMs;
+      const near = [...this.state.monsters.values()].filter((m) => !m.hidden && tileDistance(s.x, s.y, m.x, m.y) <= def.roar!.radius);
+      if (near.length > 0) {
+        this.host.broadcast(MSG.spell, { from: s.owner, spellId: "jungle_king", x: s.x, y: s.y, tx: s.x, ty: s.y, ms: 0, echo: true } satisfies SpellMessage);
+        const ownerStats = this.seats.get(s.owner)?.stats;
+        for (const m of near) {
+          const mb = this.brains.get(m.id);
+          if (!mb) continue;
+          mb.stunnedUntil = Math.max(mb.stunnedUntil, now + def.roar.stunMs);
+          m.stunned = true;
+          if (ownerStats) ownerStats.ccMs.stun += def.roar.stunMs;
+          this.hemorrhage(m, mb, s.owner);
+        }
+      }
+    }
     // Alvo: a presa da Caça em Bando, senão o que já caçava, senão o alvo do dono, senão o monstro mais próximo (sem se
     // afastar demais do dono).
     const prey = [...this.state.monsters.values()].find((m) => {
@@ -5687,8 +5752,10 @@ export class Hunt {
       f.x = tx;
       f.y = ty;
       this.state.fields.set(f.id, f);
+      f.radius = spell.radius;
       this.fieldBrains.set(f.id, {
-        spell: { ...spell, field: undefined }, rank: 0, kind: "wall", amount: 0, allyArmor: 0, allyDamage: 0, allyHeal: 0, allyMana: 0, rootMs: 0,
+        // Muralha de Carvalhos: o tile do meio cura os aliados perto da muralha a cada segundo.
+        spell: { ...spell, field: undefined }, rank: 0, kind: "wall", amount: 0, allyArmor: 0, allyDamage: 0, allyHeal: k === 0 ? spell.wallHeal ?? 0 : 0, allyMana: 0, rootMs: 0,
         tickMs: 1000, nextTickAt: now + 1000, until: now + def.ms, shotsLeft: 0,
       });
     }
@@ -5838,6 +5905,23 @@ export class Hunt {
   }
 
   /** Pulsos dos campos: a zona fere e protege, a armadilha espera um monstro pisar, a estaca atira. */
+  /** Pandemia: quem levou a magia espalha o veneno para os monstros em volta a cada tanto, enquanto dura. */
+  private tickPlague(now: number) {
+    for (const m of [...this.state.monsters.values()]) {
+      const b = this.brains.get(m.id);
+      if (!b || !b.plagueBy || now >= b.plagueUntil || now < b.plagueNext) continue;
+      b.plagueNext = now + b.plagueEvery;
+      if (this.state.players.get(b.plagueBy)?.status !== "playing") continue;
+      for (const other of [...this.state.monsters.values()]) {
+        const ob = this.brains.get(other.id);
+        if (!ob || other === m || other.hidden || tileDistance(m.x, m.y, other.x, other.y) > b.plagueRadius) continue;
+        this.applyDot(other, ob, b.plagueBy, "pandemic", b.plaguePerSec, b.plagueUntil - now, "poison", now, undefined, b.plagueStacks);
+      }
+      // A própria vítima também acumula (Maestria).
+      if (b.plagueStacks > 0) this.applyDot(m, b, b.plagueBy, "pandemic", b.plaguePerSec, b.plagueUntil - now, "poison", now, undefined, b.plagueStacks);
+    }
+  }
+
   private tickFields(now: number) {
     for (const f of [...this.state.fields.values()]) {
       const brain = this.fieldBrains.get(f.id);
@@ -5861,7 +5945,14 @@ export class Hunt {
       const sees = (x: number, y: number, reach: number) =>
         tileDistance(f.x, f.y, x, y) <= reach && hasLineOfSight(this.dungeon, f.x, f.y, x, y);
 
-      if (brain.kind === "wall") continue;
+      if (brain.kind === "wall") {
+        if (brain.allyHeal > 0) {
+          this.state.players.forEach((ally) => {
+            if (ally.status === "playing" && sees(ally.x, ally.y, f.radius)) this.healPlayer(ally, Math.max(1, Math.round(ally.maxHp * brain.allyHeal)), f.owner);
+          });
+        }
+        continue;
+      }
       if (brain.kind === "zone") {
         const hit: Hit = { attacker: f.owner, fromX: f.x, fromY: f.y, fx: f.style === "fire" ? "fire" : CLASSES[owner.classId as ClassId].attackFx };
         for (const m of [...this.state.monsters.values()]) {

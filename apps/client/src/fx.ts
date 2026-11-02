@@ -395,6 +395,25 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 6: slot 3 de cada lado da especialização do Druida (o leão e a muralha aparecem pelo estado; a Tempestade
+      // em Leque é um leque, da cena).
+      case "jungle_king":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE * 2.5, 0xe6bf6a, 450, 6);
+        this.ring(from, TILE_SIZE * 1.5, 0xe6bf6a, 550, 4);
+        return this.heal(from);
+      case "primal_form":
+        if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE * 1.2, 0x2e7d32, 550, 5);
+        this.zap(from, to, 0x7bed9f);
+        return this.sparks(to, 0x2e7d32, 6);
+      case "eternal_forest":
+        this.ring(from, radius, 0xc8a165, 650, 4);
+        return this.heal(from);
+      case "oak_wall": return this.debris(to, TILE_SIZE * 1.5, 0x6b4426);
+      case "pandemic":
+        this.projectile(FX.greenLight, from, to, ms, { trail: 0x9acd32, glow: 0x556b2f, impact: 0x9cff7a });
+        return this.later(ms, () => this.ring(to, TILE_SIZE * 3, 0x9acd32, 500, 3));
+      case "fan_storm":
+        return;
       // Fase 6: slot 3 de cada lado da especialização do Feiticeiro (o Hálito e a Avalanche são leques, da cena).
       case "storm_eye":
         if (from.x === to.x && from.y === to.y && radius === 0) {
