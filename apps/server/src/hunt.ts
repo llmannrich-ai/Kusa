@@ -430,6 +430,9 @@ interface Seat {
   bossRunes: Set<string>;
   /** Terreno de caça: o herói estava perto da fogueira no último segundo (conta o recuo ao chegar ferido). */
   atCamp?: boolean;
+  /** Terreno de caça: dentro do círculo da fogueira no último segundo, e quando (em `elapsedMs`) pode avisar de novo. */
+  resting?: boolean;
+  restNoticeAt?: number;
   /** A tela do jogador está deitada (`MSG.screen`): o tempo assim soma em `stats.landscapeMs`. */
   landscape: boolean;
 }
@@ -628,6 +631,8 @@ interface Pack {
   respawnAt: number;
   /** Mini-boss de sala lateral: volta sem o baú. */
   miniboss: boolean;
+  /** Índice da sala do caminho (a área de caça), para a telemetria; ausente nas salas laterais. */
+  area?: number;
 }
 
 /**
@@ -1100,8 +1105,11 @@ export class Hunt {
     const champions = createRng(this.state.seed ^ 0x9e3779b9);
     d.path.forEach((room, i) => {
       const ring = d.rings?.[i] ?? 0;
-      const depth = ground.ringDepth[ring] ?? ring;
-      const kinds = this.rollEncounter(encounterAt(this.map, depth), depth, fixed.next);
+      // A área de caça da sala (nome, nível, monstros próprios) ou, sem ela, o encontro do anel.
+      const area = ground.areas?.[i];
+      const depth = area?.depth ?? ground.ringDepth[ring] ?? ring;
+      const encounter = area ? { depth: [depth, depth] as [number, number], budget: area.budget, table: area.table } : encounterAt(this.map, depth);
+      const kinds = this.rollEncounter(encounter, depth, fixed.next);
       const spots: { x: number; y: number }[] = [];
       // Os lugares da sala saem antes dos monstros: cada um fica reservado para o próximo não cair em cima.
       const taken = new Set<number>();
@@ -1111,7 +1119,7 @@ export class Hunt {
         spots.push(spot);
         taken.add(spot.y * d.width + spot.x);
       }
-      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false };
+      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false, area: i };
       this.fillPack(pack, champions.next);
       this.packs.push(pack);
     });
@@ -1164,6 +1172,8 @@ export class Hunt {
       if (near) continue;
       this.fillPack(pack, () => this.random());
       this.seats.forEach((seat) => bump(seat.stats.ground, pack.miniboss ? "minibosses_renascidos" : "salas_renascidas"));
+      const c = centerOf(pack.room);
+      this.notice(c.x, c.y - 1, pack.miniboss ? "O guardião voltou" : "A sala encheu de novo", 0xb9b0a0, 2200);
     }
   }
 
@@ -1171,12 +1181,19 @@ export class Hunt {
    * Telemetria do terreno de caça, a cada segundo: em que anel o herói está (a sala do caminho mais perto; perto da
    * fogueira conta como acampamento) e os recuos (chegar à fogueira com menos de metade da vida).
    */
-  private tallyGround(p: Player, seat: Seat | undefined) {
+  private tallyGround(sessionId: string, p: Player, seat: Seat | undefined) {
     const camp = this.dungeon.camp;
     if (!this.map.huntingGround || !camp || !seat) return;
     const atCamp = tileDistance(p.x, p.y, camp.x, camp.y) <= CAMP_RADIUS + 2;
     if (atCamp && !seat.atCamp && p.hp < p.maxHp / 2) bump(seat.stats.ground, "recuos");
     seat.atCamp = atCamp;
+    // Entrou no círculo da fogueira (onde a regen vale 4×): avisa, no máximo a cada 15 s.
+    const resting = tileDistance(p.x, p.y, camp.x, camp.y) <= CAMP_RADIUS;
+    if (resting && !seat.resting && !p.bot && this.elapsedMs >= (seat.restNoticeAt ?? 0)) {
+      seat.restNoticeAt = this.elapsedMs + 15_000;
+      this.noticeTo(sessionId, p.x, p.y - 1, `🔥 Descansando: vida e mana ${CAMP_REGEN}×`, 0xffc56b, 1800);
+    }
+    seat.resting = resting;
     if (atCamp || this.nearRoom(this.dungeon.spawn, p, 0)) return bump(seat.stats.ground, "camp_s");
     let best = 0;
     let bestDist = Infinity;
@@ -1186,6 +1203,26 @@ export class Hunt {
       if (dist < bestDist) { bestDist = dist; best = i; }
     });
     bump(seat.stats.ground, `ring_${this.dungeon.rings?.[best] ?? 0}_s`);
+    if (this.map.huntingGround.areas) bump(seat.stats.ground, `area_${best}_s`);
+  }
+
+  /**
+   * Terreno de caça: ao começar, três avisos sobre o herói explicam o mapa (o acampamento, a fogueira e o "sem tempo"),
+   * um de cada vez, para quem nunca viu o modelo entender onde está.
+   */
+  private welcomeToGround() {
+    const lines: [string, number][] = [
+      ["🔥 Acampamento: aqui é seguro", 0xffc56b],
+      [`Perto da fogueira a vida volta ${CAMP_REGEN}× mais rápido`, 0x7ee08a],
+      ["Sem tempo · mais perigoso para o norte · saia pelo portal", 0xe8dcc0],
+    ];
+    // O "Descansando" da fogueira (o herói nasce dentro dela) espera os três avisos acabarem.
+    this.seats.forEach((seat) => { seat.restNoticeAt = 600 + lines.length * 2800; });
+    lines.forEach(([text, color], i) => this.after(600 + i * 2800, () => {
+      this.state.players.forEach((p, id) => {
+        if (p.status === "playing" && !p.bot) this.noticeTo(id, p.x, p.y - 2, text, color, 2600);
+      });
+    }));
   }
 
   /** O ponto está dentro da sala ou a até `tiles` dela. */
@@ -1226,6 +1263,7 @@ export class Hunt {
     if (this.testRunes.length > 0) {
       this.state.players.forEach((p, id) => this.equipRunes(p, this.seats.get(id)!, this.testRunes));
     }
+    if (this.map.huntingGround) this.welcomeToGround();
     return true;
   }
 
@@ -1535,7 +1573,7 @@ export class Hunt {
     this.regenMs -= 1000;
     this.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing") return;
-      this.tallyGround(p, this.seats.get(sessionId));
+      this.tallyGround(sessionId, p, this.seats.get(sessionId));
       // Regeneração e Clareza (melhorias) somam à regeneração base.
       const perk = this.seats.get(sessionId)?.perkBonus;
       // Runa do Pacto: a mana volta mais devagar.
@@ -4798,10 +4836,13 @@ export class Hunt {
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
-    // Terreno de caça: abates por anel (onde o herói caça de verdade).
-    const ground = this.map.huntingGround;
+    // Terreno de caça: abates por anel e por área (onde o herói caça de verdade).
     const killerSeat = this.seats.get(killerId);
-    if (ground && killerSeat && brain.def.rank === "common") bump(killerSeat.stats.ground, `ring_${Math.max(0, ground.ringDepth.indexOf(brain.depth))}_kills`);
+    const pack = this.packs.length > 0 && brain.def.rank === "common" ? this.packs.find((x) => x.members.includes(m.id)) : undefined;
+    if (pack && killerSeat) {
+      bump(killerSeat.stats.ground, `ring_${pack.ring}_kills`);
+      if (pack.area !== undefined) bump(killerSeat.stats.ground, `area_${pack.area}_kills`);
+    }
     // Fúria Crescente (Dom): matar soma um acúmulo.
     const furySeat = this.seats.get(killerId);
     if (furySeat && furySeat.gifts.furyStack > 0) {

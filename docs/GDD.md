@@ -785,7 +785,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
-| 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo, em pé: acampamento com fogueira, 3 anéis de 3 salas (Orla, Covas, Fundo), 4 salas laterais e o covil | Ratazana, Kobold, Goblin, Estirge (Orla); Goblin, Goblin arqueiro, Aranha gigante, Lobo Atroz, Esqueleto, Hobgoblin capitão (Covas); Gnoll, Orc guerreiro, Esqueleto, Esqueleto arqueiro, Zumbi, Hobgoblin (Fundo) → Bugbear chefe, Ogro, Cubo Gelatinoso → Rei Ossudo |
+| 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo, em pé: acampamento com fogueira, 9 áreas de caça em 3 anéis (Orla, Covas, Fundo), 4 salas laterais e o covil | 9 áreas com monstros próprios (×1,4 de força): Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Hobgoblin capitão, Aranha gigante, Lobo Atroz, Esqueleto, Esqueleto arqueiro, Zumbi, Gnoll, Orc guerreiro → Bugbear chefe, Ogro, Cubo Gelatinoso (×1,8) → Rei Ossudo |
 | 🏚️ Cripta | 3 ★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×1,6 de força) → Dragão jovem (×1,6) |
 | 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
 | 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
@@ -813,22 +813,40 @@ escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) fa
   do meio de 1 tile: onde não se é cercado), 4 salas laterais (mini-boss e baú) e o covil do **Rei Ossudo** no topo.
   Pilares nas Covas, no Fundo e no covil quebram a visão dos arqueiros. Desenho da Cripta (`drawCrypt`), com a
   fogueira dos Ermos e a chama do Charco no acampamento.
-- **Monstros em lugares fixos:** cada sala recebe o encontro do anel dela, com os mesmos tipos nos mesmos lugares em
-  toda hunt (sorteio de seed fixa do mapa; só os Campeões saem da seed da hunt). Aprender o mapa é progressão.
+- **Mapa aberto, áreas de caça:** o jogador vai e volta do acampamento quantas vezes quiser e escolhe onde caçar pelo
+  momento dele. Cada sala do caminho é uma área com nome, nível indicado e monstros próprios (`HuntingGround.areas`),
+  numa escada: Ninho dos Ratos (nível 1–3), Covas dos Kobolds (2–4), Acampamento Goblin (3–6) na Orla; Salão do Capitão
+  (5–8), Teias (6–9), Toca dos Lobos (7–10) nas Covas; Ossário (9–12), Covil dos Gnolls (10–13), Quartel Orc (11–14) no
+  Fundo; o covil do Rei Ossudo para o 14 ou mais. Cada área pede a sua resposta (não deixar cercar, fechar no arqueiro,
+  matar o capitão rápido, não fugir dos lobos, fogo e luz nos mortos-vivos...).
+- **Monstros em lugares fixos:** os mesmos tipos nos mesmos lugares em toda hunt (sorteio de seed fixa do mapa; só os
+  Campeões saem da seed da hunt). Aprender o mapa é progressão.
+- **Força** (`commonPower` 1,4, `minibossPower` 1,8): o primeiro teste mostrou o mapa fácil demais (um Cavaleiro de
+  nível 1 com 6 peças do Mercado, 59% de corte de armadura, não morria para nenhum comum e quase matava o boss). Com o
+  ajuste, no nível 1 com esse equipamento: o rato sozinho mata em ~5 min, o lobo em ~40 s, a Toca dos Lobos inteira em
+  ~8 s e o Rei Ossudo em ~18 s.
 - **Salas que enchem de novo** (`MapDef.huntingGround`): quando o último monstro de uma sala morre, ela volta com os
   mesmos monstros em 60 s (Orla), 90 s (Covas) ou 120 s (Fundo); o mini-boss da sala lateral volta em 240 s, sem o baú;
   o boss não volta. Nenhuma sala enche com herói a até 8 tiles dela.
-- **Regen fixa** (como no Tibia): pontos por segundo, 1,5% da vida e 2% da mana do **nível 1** da classe, crescendo 4%
-  por nível. Como a vida máxima cresce mais rápido, vale um pouco mais no começo (Cavaleiro: 2/s no nível 1, 1,3%; 4/s
-  no 15, 1,2%). Regeneração, Clareza e a Pedra Fundamental somam na mesma conta. **A fogueira** (3 tiles) multiplica
-  por 4: recuar até ela cura, mas custa a caminhada.
+- **Regen fixa** (como no Tibia): pontos por segundo, 0,8% da vida e 2% da mana do **nível 1** da classe, crescendo 4%
+  por nível. Fica abaixo do dano de um monstro comum: ignorar um monstro custa vida. Como a vida máxima cresce mais
+  rápido, vale um pouco mais no começo (Cavaleiro: 1/s no nível 1, 0,7%; 2/s no 15, 0,6%). Regeneração, Clareza e a
+  Pedra Fundamental somam na mesma conta. **A fogueira** (3 tiles para cada lado) multiplica por 6 (7/s no nível 1):
+  recuar até ela cura, mas custa a caminhada.
 - **Sem tempo:** a hunt só acaba quando o jogador sai pelo portal, vence o boss ou morre. O relógio mostra o tempo
   decorrido. Teto técnico de 2 h (`OPEN_HUNT_MAX_SECONDS`, depois disso vale como soterrado); o teto do loot da hunt
-  solo cresce em linha reta até 24.000 em 2 h (200 por minuto).
-- **Rei Ossudo** (`boneKing`, 1.150 de vida, 26 de dano): Corte do Tutano (sangra), Investida do Rei, Tempestade de
+  solo cresce em linha reta até 48.000 em 2 h (400 por minuto; uma passada completa no mapa paga ~1.130).
+- **Rei Ossudo** (`boneKing`, 1.600 de vida, 38 de dano, para o nível 14 ou mais): Corte do Tutano (sangra), Investida do Rei, Tempestade de
   Ossos (em volta, lentidão) e, com metade da vida, Os Ossos se Erguem (3 esqueletos, uma vez); Comando nos mortos
   perto dele; a luz o fere 1,5×. Arte do Centurião Ossudo, maior.
-- **Telemetria** (`stats.ground`): tempo e abates por anel, recuos, salas que encheram de novo (ver `docs/TELEMETRIA.md`).
+- **O mapa se explica** (o primeiro teste mostrou que, sem isso, ninguém achava o acampamento): ao começar, três avisos
+  sobre o herói (o acampamento, a fogueira 6× e "sem tempo, mais perigoso para o norte"); embaixo do relógio, a placa
+  da zona ("🔥 Acampamento", o nome da área com o nível indicado, como "Toca dos Lobos · nível 7–10", ou "☠ Covil"),
+  com a cor subindo com o anel; a fogueira grande, com o quadrado da área de cura marcado no chão e o aviso "🔥 Descansando" ao entrar nele
+  (no máximo a cada 15 s); "A sala encheu de novo" sobre a sala que volta. A ficha mostra "🔥 acampamento" e
+  "🔁 salas renascem", e as Regras têm a seção da Fíbula.
+- **Telemetria** (`stats.ground`): tempo e abates por anel e por área, recuos, salas que encheram de novo (ver
+  `docs/TELEMETRIA.md`).
 
 ### Cripta
 

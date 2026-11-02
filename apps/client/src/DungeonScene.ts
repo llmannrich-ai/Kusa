@@ -18,6 +18,8 @@ import {
   forkTiles,
   SUMMONS,
   itemColor,
+  CAMP_RADIUS,
+  MAPS,
   TILE_SIZE,
   blocksSight,
   centerOf,
@@ -34,6 +36,8 @@ import {
   type MonsterStrikeMessage,
   type DrankMessage,
   type Dungeon,
+  type Rect,
+  type HuntingArea,
   type MonsterKind,
   type ChampionAffix,
   type NoticeMessage,
@@ -245,6 +249,11 @@ interface BarrierFx {
 }
 
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
+/** Placa de zona do terreno de caça (Fíbula), do mais seguro ao mais perigoso. */
+const ZONE_LABEL: Record<string, string> = {
+  camp: "🔥 Acampamento · seguro", "0": "Anel 1 · Orla · fácil", "1": "Anel 2 · Covas · médio", "2": "Anel 3 · Fundo · perigoso", lair: "☠ Covil do Rei Ossudo",
+};
+
 export class DungeonScene extends Phaser.Scene {
   private room!: DungeonRoom;
   private dungeon!: Dungeon;
@@ -514,6 +523,7 @@ export class DungeonScene extends Phaser.Scene {
     this.drawTargetRing();
     this.drawPortalRing(time);
     this.minimap?.update(time);
+    this.updateZone(time);
     this.ambience?.update(time);
     this.spellBar.update();
     this.perkChoice.update();
@@ -522,6 +532,42 @@ export class DungeonScene extends Phaser.Scene {
     this.attack.update();
     this.potionBar.update();
     this.bagBar.update();
+  }
+
+  // --- Terreno de caça -------------------------------------------------------
+
+  private nextZoneAt = 0;
+  private zoneShown = "";
+
+  /** Placa embaixo do relógio: acampamento, anel (a sala do caminho mais perto) ou covil. Só nos mapas com anéis. */
+  private updateZone(time: number) {
+    const d = this.dungeon;
+    const el = document.getElementById("zone");
+    if (!el || !d.rings || time < this.nextZoneAt) return;
+    this.nextZoneAt = time + 250;
+    const p = this.me();
+    if (!p) return;
+    const inside = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+    let zone: string;
+    let area: HuntingArea | undefined;
+    if (inside(d.spawn) || (d.camp && tileDistance(p.x, p.y, d.camp.x, d.camp.y) <= CAMP_RADIUS + 2)) zone = "camp";
+    else if (inside(d.boss)) zone = "lair";
+    else {
+      let best = 0;
+      let bestDist = Infinity;
+      d.path.forEach((r, i) => {
+        const dist = tileDistance(p.x, p.y, r.x + r.w / 2, r.y + r.h / 2);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      });
+      zone = String(d.rings[best] ?? 0);
+      area = MAPS[d.mapId].huntingGround?.areas?.[best];
+    }
+    const label = area ? `${area.name} · nível ${area.levels[0]}–${area.levels[1]}` : ZONE_LABEL[zone] ?? "";
+    if (label === this.zoneShown) return;
+    this.zoneShown = label;
+    el.dataset.zone = zone;
+    el.textContent = label;
+    el.hidden = false;
   }
 
   // --- Alvo ---------------------------------------------------------------

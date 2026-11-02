@@ -389,6 +389,13 @@ button { min-height: 44px; touch-action: manipulation; }
 #timer, #stats { padding: 6px 10px; background: #000a; border: 1px solid var(--border); }
 #timer { font-size: 22px; font-variant-numeric: tabular-nums; }
 #timer.low { color: var(--danger); }
+/* Terreno de caça: a zona do herói, embaixo do relógio (a cor sobe com o perigo do anel). */
+#zone { margin-top: 4px; padding: 3px 8px; font-size: 13px; white-space: nowrap; background: #000a; border: 1px solid var(--border); border-radius: 4px; }
+#zone[data-zone="camp"] { color: #ffc56b; }
+#zone[data-zone="0"] { color: #b8e0a0; }
+#zone[data-zone="1"] { color: #f0d070; }
+#zone[data-zone="2"] { color: #ff9a6a; }
+#zone[data-zone="lair"] { color: #ff6a6a; }
 #hud-left { display: grid; gap: 6px; justify-items: start; }
 /* Minimapa: compacto embaixo do tempo; aberto, o mapa inteiro na parte de cima (longe dos polegares). */
 #minimap {

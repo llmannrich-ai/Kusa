@@ -24,20 +24,37 @@ export interface HuntingGround {
   respawnMs: readonly number[];
   /** Tempo (ms) para o mini-boss de uma sala lateral voltar (o baú não volta). O boss não renasce. */
   minibossRespawnMs: number;
+  /**
+   * Áreas de caça, uma por sala do caminho (na ordem de `Dungeon.path`): cada sala tem nome, faixa de nível indicada e
+   * monstros próprios, numa escada do mais fácil ao mais difícil. O jogador escolhe onde caçar conforme o momento dele
+   * (a placa do HUD mostra o nome e o nível). Sem isto, cada sala usa o encontro do anel dela.
+   */
+  areas?: readonly HuntingArea[];
+}
+
+export interface HuntingArea {
+  name: string;
+  /** Nível do herói para quem a área é indicada (mostrado na placa). */
+  levels: readonly [number, number];
+  /** Profundidade da área: a faixa dos itens largados. */
+  depth: number;
+  budget: number;
+  table: [MonsterKind, number][];
 }
 
 /**
  * Regeneração fixa do terreno de caça (como no Tibia): pontos por segundo, não fração da vida atual. O valor é esta
  * fração da vida (e da mana) do **nível 1** da classe, crescendo `FLAT_REGEN_PER_LEVEL` por nível: como a vida máxima
- * cresce mais rápido, a regen vale um pouco mais no começo da hunt que no fim (Cavaleiro: 1,5%/s no nível 1, ~1,1%/s no
- * 15). As melhorias Regeneração e Clareza e a Pedra Fundamental somam na mesma conta.
+ * cresce mais rápido, a regen vale um pouco mais no começo da hunt que no fim (Cavaleiro: ~0,8%/s no nível 1, ~0,6%/s no
+ * 15). Fica abaixo do dano de um monstro comum: ignorar um monstro custa vida. As melhorias Regeneração e Clareza e a
+ * Pedra Fundamental somam na mesma conta.
  */
-export const FLAT_HP_REGEN = 0.015;
+export const FLAT_HP_REGEN = 0.008;
 export const FLAT_MANA_REGEN = 0.02;
 export const FLAT_REGEN_PER_LEVEL = 0.04;
 /** Fogueira do acampamento: a até `CAMP_RADIUS` tiles dela, a regen fixa vale `CAMP_REGEN` vezes mais. */
 export const CAMP_RADIUS = 3;
-export const CAMP_REGEN = 4;
+export const CAMP_REGEN = 6;
 /** Uma sala só enche de novo sem herói a até estes tiles dela (ninguém leva monstro nascendo em cima). */
 export const RESPAWN_CLEAR_TILES = 8;
 
@@ -233,8 +250,27 @@ export const MAPS: Record<MapId, MapDef> = {
     // Terreno de caça: o ossuário não acaba. Do acampamento (com a fogueira) saem três anéis de salas, cada um mais
     // fundo e mais perigoso, ligados por mais de uma passagem; as salas enchem de novo depois de um tempo. O jogador
     // escolhe até onde vai, quando recua para a fogueira e quando sai pelo portal.
-    huntingGround: { ringDepth: [0, 2, 3], respawnMs: [60_000, 90_000, 120_000], minibossRespawnMs: 240_000 },
-    minibossPower: 1.3,
+    huntingGround: {
+      ringDepth: [0, 2, 3], respawnMs: [60_000, 90_000, 120_000], minibossRespawnMs: 240_000,
+      // Uma escada de áreas, do acampamento ao covil (a ordem é a de `generateFibula`: Orla meio, esquerda, direita; Covas
+      // e Fundo idem). Cada uma tem a sua resposta certa: enxame (não deixar cercar), estirge (matar antes de sangrar),
+      // arqueiros (fechar pela quina), capitão (matar rápido), aranhas (a teia prende), lobos (não fugir), mortos-vivos
+      // (fogo e luz), gnolls (não deixar pela metade), orcs (não ficar a 3–5 tiles).
+      areas: [
+        { name: "Ninho dos Ratos", levels: [1, 3], depth: 0, budget: 60, table: [["rat", 4], ["kobold", 2]] },
+        { name: "Covas dos Kobolds", levels: [2, 4], depth: 0, budget: 90, table: [["kobold", 4], ["stirge", 2], ["rat", 1]] },
+        { name: "Acampamento Goblin", levels: [3, 6], depth: 1, budget: 120, table: [["goblin", 4], ["goblinArcher", 2]] },
+        { name: "Salão do Capitão", levels: [5, 8], depth: 2, budget: 170, table: [["goblin", 3], ["goblinArcher", 2], ["hobgoblin", 1]] },
+        { name: "Teias", levels: [6, 9], depth: 2, budget: 170, table: [["giantSpider", 4], ["stirge", 2]] },
+        { name: "Toca dos Lobos", levels: [7, 10], depth: 2, budget: 190, table: [["direWolf", 4]] },
+        { name: "Ossário", levels: [9, 12], depth: 3, budget: 260, table: [["skeleton", 3], ["skeletonArcher", 2], ["zombie", 2]] },
+        { name: "Covil dos Gnolls", levels: [10, 13], depth: 3, budget: 290, table: [["gnoll", 4], ["hobgoblin", 1]] },
+        { name: "Quartel Orc", levels: [11, 14], depth: 4, budget: 330, table: [["orc", 4], ["skeletonArcher", 1]] },
+      ],
+    },
+    // A Fíbula pede leitura do monstro: os comuns batem 40% mais e os guardas das salas laterais 80% (mais XP junto).
+    commonPower: 1.4,
+    minibossPower: 1.8,
     description: "Ossuário sem fim: três anéis de salas a partir da fogueira do acampamento, cada um mais fundo e mais perigoso. Sem tempo: as salas enchem de novo, a vida volta devagar e quem vai longe demais precisa saber a hora de recuar. No fundo, o Rei Ossudo guarda o covil.",
     encounters: [
       // Anel 1, a Orla: enxames e goblins (nível 1 a 5).

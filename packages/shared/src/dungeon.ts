@@ -315,7 +315,7 @@ function generateFibula(): Dungeon {
   return {
     mapId: "fibula", width: W, height: H, tiles, spawn: camp, boss, bossPortal: centerOf(boss),
     path: [...ring1, ...ring2, ...ring3], rings: [0, 0, 0, 1, 1, 1, 2, 2, 2], side, meadows: [], portal,
-    camp: { x: portal.x - 4, y: portal.y - 2 },
+    camp: { x: portal.x - 3, y: portal.y - 1 },
   };
 }
 

@@ -340,6 +340,7 @@ function openSheet() {
     ...(before ? [`🔒 ${beforeBoss ? MONSTERS[beforeBoss].name.split(" ")[0] : MAPS[before].name}`] : []),
     difficultyStars(map.difficulty),
     `⏱ ${durationLabel(map)}`,
+    ...(map.huntingGround ? ["🔥 acampamento", "🔁 salas renascem"] : []),
     partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
     ...bosses,
     ...(clearsNow().includes(map.id) ? ["★ boss vencido"] : []),

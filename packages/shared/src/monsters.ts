@@ -1592,11 +1592,11 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     ],
     lore: "Rei do clã do brejo, coroa de ferro torta e um tronco inteiro de porrete. Esmaga e atordoa, pisa o chão em volta, investe e arremessa troncos; com metade da vida, ruge e chama a guarda, e quase morto bate em frenesi.",
   }),
-  // Fíbula (terreno de caça, ★★½): o boss do covil, entre Grumak e o Dragão jovem da Cripta. A arte é a do Centurião
+  // Fíbula (terreno de caça, ★★½): o boss do covil, para quem chegou ao Fundo (nível 14 ou mais). A arte é a do Centurião
   // Ossudo, maior. A resposta: guardar o dano forte para quando ele chama os ossos (metade da vida) e usar luz.
   boneKing: monster({
     kind: "boneKing", name: "Rei Ossudo", rank: "boss", type: "undead", role: "leader", cr: 6,
-    hp: 1150, damage: 26, xp: 900, loot: [72, 118], speed: 2.4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "slash",
+    hp: 1600, damage: 38, xp: 1150, loot: [80, 130], speed: 2.4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "slash",
     elements: { physical: 0.9, radiant: 1.5 },
     traits: { leader: { radius: 4, damage: 0.2, haste: 0.15 } },
     abilities: [

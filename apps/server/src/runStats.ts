@@ -139,7 +139,8 @@ export interface RunStats {
   /**
    * Terreno de caça (`MapDef.huntingGround`, Fíbula): `salas_renascidas` e `minibosses_renascidos` (salas que encheram
    * de novo com o herói na hunt), `recuos` (voltas à fogueira com menos de metade da vida), `ring_<n>_s` e `camp_s`
-   * (segundos em cada anel e no acampamento) e `ring_<n>_kills` (monstros comuns que o herói matou em cada anel).
+   * (segundos em cada anel e no acampamento), `ring_<n>_kills` (monstros comuns que o herói matou em cada anel) e, por
+   * área de caça (`HuntingGround.areas`, índice da sala do caminho), `area_<i>_s` e `area_<i>_kills`.
    */
   ground: Record<string, number>;
 }
