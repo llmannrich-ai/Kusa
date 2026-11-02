@@ -253,25 +253,29 @@ export const MAPS: Record<MapId, MapDef> = {
     huntingGround: {
       ringDepth: [0, 2, 3], respawnMs: [60_000, 90_000, 120_000], minibossRespawnMs: 240_000,
       // Uma escada de áreas, do acampamento ao covil (a ordem é a de `generateFibula`: Orla meio, esquerda, direita; Covas
-      // e Fundo idem). Cada uma tem a sua resposta certa: enxame (não deixar cercar), estirge (matar antes de sangrar),
-      // arqueiros (fechar pela quina), capitão (matar rápido), aranhas (a teia prende), lobos (não fugir), mortos-vivos
-      // (fogo e luz), gnolls (não deixar pela metade), orcs (não ficar a 3–5 tiles).
+      // e Fundo idem). Só criaturas com arte desenhada por código (deserto, Necrópole, bosque). Cada uma tem a sua
+      // resposta certa: escorpião (matar antes de envenenar), chacal (bate e recua: não correr atrás), galhudo e abutre
+      // (camuflado, voa), escaravelho (não deixar cercar), lobo (não fugir), legionário e sagitário (fechar pela quina,
+      // o escudo empurra), carpideira e múmia enfaixada (prendem de longe: fogo nelas), soterrado (emboscada, Fortitude:
+      // luz e fogo), pantera (some e salta) e múmia (o olhar paralisa).
       areas: [
-        { name: "Ninho dos Ratos", levels: [1, 3], depth: 0, budget: 60, table: [["rat", 4], ["kobold", 2]] },
-        { name: "Covas dos Kobolds", levels: [2, 4], depth: 0, budget: 90, table: [["kobold", 4], ["stirge", 2], ["rat", 1]] },
-        { name: "Acampamento Goblin", levels: [3, 6], depth: 1, budget: 120, table: [["goblin", 4], ["goblinArcher", 2]] },
-        { name: "Salão do Capitão", levels: [5, 8], depth: 2, budget: 170, table: [["goblin", 3], ["goblinArcher", 2], ["hobgoblin", 1]] },
-        { name: "Teias", levels: [6, 9], depth: 2, budget: 170, table: [["giantSpider", 4], ["stirge", 2]] },
-        { name: "Toca dos Lobos", levels: [7, 10], depth: 2, budget: 190, table: [["direWolf", 4]] },
-        { name: "Ossário", levels: [9, 12], depth: 3, budget: 260, table: [["skeleton", 3], ["skeletonArcher", 2], ["zombie", 2]] },
-        { name: "Covil dos Gnolls", levels: [10, 13], depth: 3, budget: 290, table: [["gnoll", 4], ["hobgoblin", 1]] },
-        { name: "Quartel Orc", levels: [11, 14], depth: 4, budget: 330, table: [["orc", 4], ["skeletonArcher", 1]] },
+        { name: "Ninho dos Escorpiões", levels: [1, 3], depth: 0, budget: 70, table: [["sandScorpion", 4], ["giantVulture", 1]] },
+        { name: "Covas dos Chacais", levels: [2, 5], depth: 0, budget: 110, table: [["boneJackal", 4], ["sandScorpion", 1]] },
+        { name: "Galharia", levels: [4, 7], depth: 1, budget: 140, table: [["twigling", 4], ["giantVulture", 2]] },
+        { name: "Enxame dos Escaravelhos", levels: [6, 9], depth: 2, budget: 130, table: [["scarabSwarm", 4], ["boneJackal", 1]] },
+        { name: "Toca dos Lobos", levels: [7, 10], depth: 2, budget: 160, table: [["direWolf", 4]] },
+        { name: "Posto dos Legionários", levels: [9, 12], depth: 2, budget: 260, table: [["boneLegionary", 3], ["boneArcher", 2]] },
+        { name: "Carpideiras", levels: [11, 14], depth: 3, budget: 320, table: [["mourner", 3], ["wrappedMummy", 2]] },
+        { name: "Soterrados", levels: [12, 15], depth: 3, budget: 340, table: [["buriedDead", 4], ["boneArcher", 1]] },
+        { name: "Cripta das Múmias", levels: [13, 16], depth: 4, budget: 380, table: [["mummy", 3], ["shadowPanther", 2]] },
       ],
     },
-    // A Fíbula pede leitura do monstro: os comuns batem 40% mais e os guardas das salas laterais 80% (mais XP junto).
-    commonPower: 1.4,
-    minibossPower: 1.8,
-    description: "Ossuário sem fim: três anéis de salas a partir da fogueira do acampamento, cada um mais fundo e mais perigoso. Sem tempo: as salas enchem de novo, a vida volta devagar e quem vai longe demais precisa saber a hora de recuar. No fundo, o Rei Ossudo guarda o covil.",
+    // Terreno de caça para ir e voltar até o nível alto: comuns da Necrópole (★5) já fortes, 20% a mais; guardas ×1,5;
+    // a XP paga 60% para o nível vir do tempo nas áreas certas, não de uma passada.
+    commonPower: 1.2,
+    minibossPower: 1.5,
+    xpScale: 0.6,
+    description: "Ossuário aberto, sem fim: do acampamento com a fogueira, três salões cada vez mais fundos e perigosos, com escorpiões, chacais de ossos, escaravelhos, lobos, legionários e múmias. Sem tempo: as áreas enchem de novo, a vida volta devagar e quem vai longe demais precisa saber a hora de recuar. No topo, o Rei Ossudo guarda o covil.",
     encounters: [
       // Anel 1, a Orla: enxames e goblins (nível 1 a 5).
       { depth: [0, 1], budget: 70, table: [["rat", 4], ["kobold", 4], ["goblin", 3], ["stirge", 2]] },
@@ -283,7 +287,7 @@ export const MAPS: Record<MapId, MapDef> = {
       // Anel 3, o Fundo: gnolls, orcs e mortos-vivos (nível 10 a 15).
       { depth: [3, 9], budget: 330, table: [["gnoll", 3], ["orc", 3], ["skeleton", 2], ["skeletonArcher", 2], ["zombie", 1], ["hobgoblin", 1]] },
     ],
-    minibosses: [["bugbear", 2], ["ogre", 2], ["gelatinousCube", 1]],
+    minibosses: [["boneCenturion", 2], ["royalMummy", 1], ["sandScribe", 1]],
     mimicChance: 0,
     bosses: [["boneKing", 1]],
   },

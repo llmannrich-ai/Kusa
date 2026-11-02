@@ -1111,13 +1111,15 @@ export class Hunt {
       const encounter = area ? { depth: [depth, depth] as [number, number], budget: area.budget, table: area.table } : encounterAt(this.map, depth);
       const kinds = this.rollEncounter(encounter, depth, fixed.next);
       const spots: { x: number; y: number }[] = [];
-      // Os lugares da sala saem antes dos monstros: cada um fica reservado para o próximo não cair em cima.
+      // Os lugares da sala saem antes dos monstros: cada um fica reservado para o próximo não cair em cima, e os que
+      // caem na zona da entrada contam no teto dela (`MAX_START_MONSTERS`) como se o monstro já estivesse lá.
       const taken = new Set<number>();
       for (let k = 0; k < kinds.length; k++) {
         const spot = this.freeSpotIn(room, roll, taken);
         if (!spot) break;
         spots.push(spot);
         taken.add(spot.y * d.width + spot.x);
+        if (tileDistance(spot.x, spot.y, d.portal.x, d.portal.y) <= START_ZONE_RADIUS) this.startZoneReserved++;
       }
       const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false, area: i };
       this.fillPack(pack, champions.next);
@@ -1141,6 +1143,7 @@ export class Hunt {
     });
     const c = centerOf(d.boss);
     this.addMonster(pickWeighted(this.map.bosses, fixed.next()), c.x, c.y, d.path.length);
+    this.startZoneReserved = 0;
   }
 
   /** Enche a sala: um monstro em cada lugar (o mais perto livre, se alguém estiver em cima). */
