@@ -682,7 +682,16 @@ export class DungeonScene extends Phaser.Scene {
     const view = this.add.container(this.toPx(field.x), this.toPx(field.y)).setDepth(field.y * TILE_SIZE - 1);
     const g = this.add.graphics();
     const half = TILE_SIZE / 2;
-    if (field.kind === "zone") {
+    if (field.style === "keg") {
+      // Barril de Pólvora: um barril de madeira com aros de ferro e o pavio aceso em cima.
+      g.fillStyle(0x6e3b1c, 1).fillRoundedRect(-9, -12, 18, 20, 4);
+      g.lineStyle(2, 0x3d3d3d, 1).lineBetween(-9, -7, 9, -7).lineBetween(-9, 3, 9, 3);
+      g.lineStyle(1, 0x3d2412, 1).lineBetween(-3, -12, -3, 8).lineBetween(3, -12, 3, 8);
+      g.lineStyle(1, 0x2b2b2b, 1).lineBetween(0, -12, 3, -17);
+      const spark = this.add.graphics().fillStyle(0xffb347, 1).fillCircle(3, -18, 2.5);
+      view.add(spark);
+      this.tweens.add({ targets: spark, alpha: { from: 1, to: 0.3 }, duration: 160, yoyo: true, repeat: -1 });
+    } else if (field.kind === "zone") {
       for (let y = field.y - field.radius; y <= field.y + field.radius; y++) {
         for (let x = field.x - field.radius; x <= field.x + field.radius; x++) {
           if (blocksSight(this.dungeon, x, y) || !hasLineOfSight(this.dungeon, field.x, field.y, x, y)) continue;
