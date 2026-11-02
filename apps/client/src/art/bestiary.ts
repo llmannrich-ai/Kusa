@@ -207,7 +207,7 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   buriedDead: { texture: "monster-buried-dead", facesLeft: true, blood: "none" },
   boneCenturion: { texture: "monster-bone-centurion", facesLeft: true, blood: "none", scale: 1.35 },
   // Fíbula: o Rei Ossudo é o Centurião maior (o boss do terreno de caça, sem arte própria por enquanto).
-  boneKing: { texture: "monster-bone-centurion", facesLeft: true, blood: "none", scale: 2 },
+  boneKing: { texture: "monster-bone-centurion", facesLeft: true, blood: "none", scale: 1.6 },
   royalMummy: { texture: "monster-royal-mummy", facesLeft: true, blood: "none", scale: 1.25 },
   sandScribe: { texture: "monster-sand-scribe", facesLeft: true, blood: "none", scale: 1.2 },
   singingColossus: { texture: "monster-singing-colossus", facesLeft: true, blood: "none" },

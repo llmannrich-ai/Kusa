@@ -4,7 +4,7 @@ import { hash } from "./art/pixels.ts";
 import { CRYPT_DECOR, createCryptArt, floorVariants, wallCapTexture, wallFaceTexture } from "./art/textures.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
 import { CRYPT_FLOOR, CRYPT_TALL, CRYPT_TILE, CRYPT_WALL, RIM, WALL_RISE, WALL_VARIANTS } from "./art/cryptArt.ts";
-import { CAMPFIRE, campfire } from "./art/badlandsArt.ts";
+import { CAMPFIRE, VENDOR, campfire, vendorStall } from "./art/badlandsArt.ts";
 import { FLAME, flameFrame } from "./art/bogArt.ts";
 import { toCanvas } from "./art/paint.ts";
 import { makeCanvas } from "./art/pixels.ts";
@@ -159,6 +159,7 @@ export function drawCrypt(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
   }
 
   if (d.camp) drawCampfire(scene, d.camp, light);
+  if (d.vendor) drawVendor(scene, d.vendor);
   return createAmbience(scene, culler, lights, uiDepth);
 }
 
@@ -189,6 +190,15 @@ function drawCampfire(scene: Phaser.Scene, at: { x: number; y: number }, light: 
   let frame = 0;
   scene.time.addEvent({ delay: 110, loop: true, callback: () => { frame = (frame + 1) % 4; flame.setFrame(frame); } });
   light(px, py - TILE_SIZE / 2, 3.2, at.x, at.y);
+}
+
+const VENDOR_KEY = "fibula-vendor";
+
+/** Banca do vendedor do acampamento (terreno de caça): perto dela o painel de compra aparece (`VendorPanel`). */
+function drawVendor(scene: Phaser.Scene, at: { x: number; y: number }) {
+  if (!scene.textures.exists(VENDOR_KEY)) addCanvasTexture(scene.textures, VENDOR_KEY, toCanvas(vendorStall(), VENDOR.w, VENDOR.h));
+  const px = (at.x + 0.5) * TILE_SIZE, py = (at.y + 1) * TILE_SIZE;
+  scene.add.image(px, py, VENDOR_KEY).setOrigin(0.5, 1).setScale(1.5 / ART_ZOOM).setDepth(py - 1);
 }
 
 /** Móvel de pé encostado na parede de uma sala. Na entrada, só suprimentos; nas laterais, mais caixões. */

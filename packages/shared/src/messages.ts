@@ -125,6 +125,12 @@ export interface DrinkMessage { potion: PotionId }
 /** Servidor → quem bebeu: a poção foi bebida e a recarga começou. */
 export interface DrankMessage { potion: PotionId; cooldownMs: number }
 
+/**
+ * Cliente → servidor: compra uma poção do vendedor do acampamento (terreno de caça), pagando com o loot carregado
+ * (`CAMP_VENDOR_PRICES`). Só vale encostado no vendedor (`CAMP_VENDOR_RADIUS`) e com vaga (`POTION_MAX`).
+ */
+export interface BuyPotionMessage { potion: PotionId }
+
 /** Cliente → servidor: veste o item da posição `index` da bag (o que estava no slot volta para a bag). */
 export interface BagEquipMessage { index: number }
 
@@ -215,6 +221,8 @@ export interface RunEndedMessage {
   lostBag?: string[];
   /** Progresso das magias escolhidas na hunt; o nível novo vale da próxima hunt em diante. */
   spells: SpellProgress[];
+  /** Poções que sobraram e voltam para a conta (só para quem sai vivo; as de quem morre ficam no chão). */
+  potions?: Record<PotionId, number>;
   /** Aviso extra na tela de resultado (hunt solo: limite de recompensa ou falha ao salvar). */
   note?: string;
   /** Hunt solo/hospedada: resultado provisório, mostrado enquanto o banco grava (a versão gravada vem em seguida). */
@@ -256,6 +264,7 @@ export const MSG = {
   cooldown: "cooldown",
   drink: "drink",
   drank: "drank",
+  buyPotion: "buyPotion",
   bagEquip: "bagEquip",
   unequip: "unequip",
   bagDrop: "bagDrop",

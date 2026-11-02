@@ -146,7 +146,7 @@ html, body {
   background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 30%, rgba(10, 5, 2, 0.78) 100%);
 }
 /* Cripta e Fíbula: mais escuras nos cantos, como corredor iluminado só por tochas. */
-#game.crypt::after, #game.fibula::after {
+#game.crypt::after, #game.fibula::after, #game.fibula2::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -567,6 +567,33 @@ button { min-height: 44px; touch-action: manipulation; }
 .potion-count { position: absolute; bottom: 5px; left: 0; right: 0; font-size: 12px; font-weight: bold; color: var(--text); text-shadow: 0 0 2px #000, 0 0 2px #000; z-index: 1; }
 .action.potion[data-state="empty"] { opacity: 0.45; }
 .action.potion[data-state="empty"] .potion-icon { filter: grayscale(1); }
+
+/* Vendedor do acampamento: painel curto embaixo do HUD (longe dos polegares), só enquanto o herói está encostado na banca. */
+#vendor {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(max(0px, env(safe-area-inset-top)) + 150px);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #1c1714ee;
+  font-size: 13px;
+  z-index: 3;
+}
+#vendor .vendor-title { color: var(--muted); white-space: nowrap; }
+#vendor .vendor-buy {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 10px; border: 1px solid var(--border);
+  background: #2a211b; color: var(--text); font: inherit;
+}
+#vendor .vendor-buy:disabled { opacity: 0.45; }
+#vendor .vendor-buy img { width: 22px; height: 22px; image-rendering: pixelated; }
+#vendor .vendor-loot { color: var(--accent); white-space: nowrap; }
+body.deitado #vendor { top: calc(max(0px, env(safe-area-inset-top)) + 96px); }
 
 /* Do tamanho do curso do pino (RADIUS em input.ts). */
 .joystick {

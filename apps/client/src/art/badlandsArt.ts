@@ -518,6 +518,44 @@ export function campfire(): Uint8ClampedArray {
   return p.render(true);
 }
 
+export const VENDOR = { w: 176, h: 190 } as const;
+
+/**
+ * Banca do vendedor do acampamento (terreno de caça): toldo de pano em dois paus, a mesa de tábuas com as poções
+ * (vida e mana) e um barril ao lado. Marca onde o herói troca loot por poção (`Hunt.buyPotion`).
+ */
+export function vendorStall(): Uint8ClampedArray {
+  const p = new Paper(VENDOR.w, VENDOR.h);
+  const X = 88, Bt = VENDOR.h - 14;
+  // Sombra no chão e os dois paus do toldo.
+  ellipse(p, X, Bt - 2, 60, 12, E.Shadow);
+  limb(p, [X - 56, Bt - 6], [X - 54, Bt - 150], 3.5, 3, E.Wood);
+  limb(p, [X + 56, Bt - 6], [X + 54, Bt - 150], 3.5, 3, E.Wood);
+  // Toldo listrado, com a aba caída na frente.
+  poly(p, [[X - 72, Bt - 150], [X + 72, Bt - 150], [X + 64, Bt - 128], [X - 64, Bt - 128]], E.Cloth, (x) => (Math.floor(x / 12) % 2 ? HI : MID));
+  for (let k = 0; k < 8; k++) {
+    const x0 = X - 64 + k * 16;
+    poly(p, [[x0, Bt - 128], [x0 + 16, Bt - 128], [x0 + 8, Bt - 116]], k % 2 ? E.Cloth : E.Rope, () => MID);
+  }
+  // Barril à esquerda e a mesa de tábuas.
+  p.together(() => { ellipse(p, X - 44, Bt - 30, 13, 22, E.Wood); for (const y of [-42, -30, -18]) limb(p, [X - 56, Bt + y], [X - 32, Bt + y], 1.5, 1.5, E.Iron); });
+  poly(p, [[X - 30, Bt - 58], [X + 50, Bt - 58], [X + 56, Bt - 48], [X - 36, Bt - 48]], E.Wood, (_, y) => (y < Bt - 54 ? HI : MID));
+  limb(p, [X - 30, Bt - 48], [X - 28, Bt - 8], 3, 3, E.Wood);
+  limb(p, [X + 48, Bt - 48], [X + 46, Bt - 8], 3, 3, E.Wood);
+  limb(p, [X - 16, Bt - 44], [X + 36, Bt - 44], 2, 2, E.Wood);
+  // Poções em cima da mesa: duas de vida (vermelhas) e duas de mana (azuis), com rolha e brilho.
+  const bottle = (x: number, mat: E) => {
+    p.together(() => { ellipse(p, x, Bt - 68, 7, 9, mat); limb(p, [x, Bt - 76], [x, Bt - 84], 3, 2.5, E.Bone); });
+    p.px(x - 3, Bt - 71, mat, 5); p.px(x - 2, Bt - 71, mat, 5);
+    limb(p, [x - 2, Bt - 86], [x + 2, Bt - 86], 2.5, 2.5, E.Rope);
+  };
+  bottle(X - 14, E.Ember); bottle(X + 2, E.Ember); bottle(X + 20, E.Cloth); bottle(X + 36, E.Cloth);
+  // Tabuleta pendurada no pau da direita.
+  poly(p, [[X + 40, Bt - 120], [X + 72, Bt - 120], [X + 72, Bt - 100], [X + 40, Bt - 100]], E.Wood, () => MID);
+  for (let k = 0; k < 5; k++) p.px(X + 46 + k * 5, Bt - 110, E.Line, 3);
+  return p.render(true);
+}
+
 export const TALL = { w: 128, h: 200 } as const;
 export const TALL_DECOR = ["sage", "thorn", "agave", "snag", "rocks", "totem", "flag"] as const;
 export type TallDecor = (typeof TALL_DECOR)[number];
@@ -624,4 +662,4 @@ export function flatDecor(kind: FlatDecor, v: number): Uint8ClampedArray {
   return p.render(true);
 }
 
-export const draw = { groundTile, patchTile, trackTile, railTile, rockTile, chasmTile, bridgeTile, hoodoo, rib, giantSkull, adobeWall, mineMouth, oreCart, campfire, tallDecor, flatDecor };
+export const draw = { groundTile, patchTile, trackTile, railTile, rockTile, chasmTile, bridgeTile, hoodoo, rib, giantSkull, adobeWall, mineMouth, oreCart, campfire, vendorStall, tallDecor, flatDecor };

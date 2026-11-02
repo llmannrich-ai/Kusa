@@ -26,7 +26,9 @@ import {
   type ChoosePerkMessage,
   type ChooseRuneMessage,
   type ChooseSpellMessage,
+  type BuyPotionMessage,
   type DrinkMessage,
+  potionStock,
   type HuntMetadata,
   type JoinOptions,
   type MoveMessage,
@@ -37,7 +39,7 @@ import {
 import { RULES_VERSION } from "./rulesVersion.ts";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
-import { mapClears, readLoadout, recordMapClear, recordRun, resolveAccount, storeBag, supabase, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
+import { mapClears, readLoadout, recordMapClear, recordRun, resolveAccount, storeBag, storePotions, supabase, takeBag, takenBossRunes, takeLoadout, takePotions, type Account } from "./supabase.ts";
 import { recordTelemetry } from "./telemetry.ts";
 
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
@@ -71,6 +73,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
         this.clients.getById(sessionId)?.send(MSG.runEnded, result);
         const userId = this.users.get(sessionId) ?? null;
         if (userId) void recordRun(this.matchId, { userId, ...result, classId: report.classId, spellXp: spellXpGains(report.classId as ClassId, result.spells), bossRunes: report.stats.bossRunes });
+        if (userId && result.potions) void storePotions(userId, report.classId, potionStock(result.potions));
         void recordTelemetry({ matchId: this.matchId, userId, ...report });
       },
       ended: () => void this.clock.setTimeout(() => this.disconnect(), 10_000),
@@ -114,6 +117,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.onMessage(MSG.cast, (client, msg: CastMessage) => this.hunt.cast(client.sessionId, msg));
     this.onMessage(MSG.channel, (client, msg: ChannelMessage) => this.hunt.channel(client.sessionId, msg));
     this.onMessage(MSG.drink, (client, msg: DrinkMessage) => this.hunt.drink(client.sessionId, msg));
+    this.onMessage(MSG.buyPotion, (client, msg: BuyPotionMessage) => this.hunt.buyPotion(client.sessionId, msg));
     this.onMessage(MSG.bagEquip, (client, msg: BagEquipMessage) => this.hunt.bagEquip(client.sessionId, msg));
     this.onMessage(MSG.unequip, (client, msg: UnequipMessage) => this.hunt.unequip(client.sessionId, msg));
     this.onMessage(MSG.bagDrop, (client, msg: BagDropMessage) => this.hunt.bagDrop(client.sessionId, msg));
@@ -197,6 +201,10 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       });
       void takeBag(userId).then((items) => {
         if (!this.hunt.fillBag(sessionId, items)) void storeBag(userId, items);
+      });
+      // As poções compradas no Mercado entram com ele; se ele já saiu, voltam para a conta.
+      void takePotions(userId, classId).then((potions) => {
+        if (!this.hunt.givePotions(sessionId, potions)) void storePotions(userId, classId, potions);
       });
       // Cada boss dá a runa uma vez por personagem: os que já deram não dão outra.
       void takenBossRunes(userId, classId).then((bosses) => this.hunt.knownBossRunes(sessionId, bosses));

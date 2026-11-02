@@ -21,6 +21,8 @@ import {
   MAP_IDS,
   MAX_TIER,
   MONSTERS,
+  CAMP_VENDOR_PRICES,
+  MARKET_POTION_PRICES,
   POTIONS,
   POTION_IDS,
   RARITY_COLORS,
@@ -159,12 +161,12 @@ function runes() {
 
 function potions() {
   return section("🧪 Poções",
-    note("Só caem dos monstros e baús e valem só na hunt."),
+    note(`Não caem de monstro nem de baú: compre no Mercado (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${MARKET_POTION_PRICES[id]} gold`).join(", ")}) ou com o vendedor do acampamento da Fíbula (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${CAMP_VENDOR_PRICES[id]} de loot`).join(", ")}). Quem sai vivo leva as que sobraram.`),
     ...POTION_IDS.map((id) => {
       const p = POTIONS[id];
       return entry({
         icon: itemIcon(id), name: `${p.icon} ${p.name}`, color: hex(p.color),
-        meta: "Consumível · só na hunt",
+        meta: "Consumível",
         lines: [`Devolve ${pct(p.restore)} da ${p.stat === "hp" ? "vida" : "mana"} máxima.`],
       });
     }),
@@ -183,16 +185,19 @@ function dropLines(map: MapDef, kind: MonsterKind) {
   const items = odds.itemChance >= 1
     ? `${odds.items} ${odds.items === 1 ? "item garantido" : "itens garantidos"}`
     : odds.items === 1 ? `item ${pct(odds.itemChance)}` : `${odds.items} itens, ${pct(odds.itemChance)} cada`;
-  const potions = odds.potionChance >= 1
-    ? `${odds.potions} ${odds.potions === 1 ? "poção garantida" : "poções garantidas"}`
-    : odds.potions === 1 ? `poção ${pct(odds.potionChance)}` : `${odds.potions} poções, ${pct(odds.potionChance)} cada`;
+  const potions = odds.potionChance <= 0 ? ""
+    : odds.potionChance >= 1 ? ` · ${odds.potions} ${odds.potions === 1 ? "poção garantida" : "poções garantidas"}`
+    : odds.potions === 1 ? ` · poção ${pct(odds.potionChance)}` : ` · ${odds.potions} poções, ${pct(odds.potionChance)} cada`;
   const lines = [
     `Gold: ${odds.gold[0]}–${odds.gold[1]} na 1ª sala.`,
-    `Drops: ${items} (${TIER_NAMES[odds.tier]}; ${rarity}) · ${potions}.`,
+    `Drops: ${items} (${TIER_NAMES[odds.tier]}; ${rarity})${potions}.`,
   ];
   if (odds.runes) lines.push(`Runa: ${odds.runes} por herói, direto na bag (uma vez por personagem).`);
   if (map.rewardRunes && MONSTERS[kind].rank === "boss") lines.push("Runa: atrás dele, um baú de runa por herói, à escolha.");
-  if (odds.chest) lines.push(`Guarda o baú: mais gold, ${pct(chestItemChance())} de 1 item (${TIER_NAMES[chestItemOdds().tier]}) e ${pct(chestPotionChance(map))} de cada poção.`);
+  if (odds.chest) {
+    const chestPotions = chestPotionChance(map) > 0 ? ` e ${pct(chestPotionChance(map))} de cada poção` : "";
+    lines.push(`Guarda o baú: mais gold, ${pct(chestItemChance())} de 1 item (${TIER_NAMES[chestItemOdds().tier]})${chestPotions}.`);
+  }
   return lines;
 }
 

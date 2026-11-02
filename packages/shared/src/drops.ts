@@ -1,7 +1,7 @@
 import { COMMON_DROP_CHANCE, GUARANTEED_DROPS, challengeTier, rarityChances, type ItemTier } from "./items.ts";
 import { CHEST_ITEM_CR, ITEM_DROP_SCALE, LOOT_SCALE, monsterPower, type MapDef } from "./maps.ts";
 import { MONSTERS, monsterStats, type MonsterKind } from "./monsters.ts";
-import { COMMON_POTION_CHANCE, GUARANTEED_POTIONS } from "./potions.ts";
+import { COMMON_POTION_CHANCE, GUARANTEED_POTIONS, POTIONS_DROP } from "./potions.ts";
 import { RUNE_DROPS } from "./runes.ts";
 
 // O que cada monstro larga ao morrer, em números, para o Catálogo (Configurações > Catálogo).
@@ -57,8 +57,8 @@ export function dropOdds(map: MapDef, kind: MonsterKind): DropOdds {
     itemChance: (guaranteed ? 1 : COMMON_DROP_CHANCE) * (boss ? ITEM_DROP_SCALE : keep(map, LOOT_SCALE * ITEM_DROP_SCALE)),
     tier: challengeTier(def.cr),
     rarity: rarityChances(def.cr),
-    potions: nothing ? 0 : potions || 1,
-    potionChance: (potions ? 1 : COMMON_POTION_CHANCE) * (boss ? 1 : keep(map)),
+    potions: nothing || !POTIONS_DROP ? 0 : potions || 1,
+    potionChance: !POTIONS_DROP ? 0 : (potions ? 1 : COMMON_POTION_CHANCE) * (boss ? 1 : keep(map)),
     runes: nothing || map.rewardRunes ? 0 : RUNE_DROPS[def.rank],
     chest: !nothing && kind === "mimic",
     nothing,
@@ -77,5 +77,5 @@ export function chestItemChance() {
 
 /** Chance de cada poção do baú (uma de vida e uma de mana) sair no mapa. */
 export function chestPotionChance(map: MapDef) {
-  return keep(map);
+  return POTIONS_DROP ? keep(map) : 0;
 }

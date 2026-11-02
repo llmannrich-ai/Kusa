@@ -165,6 +165,7 @@ const SCENERY: Record<string, Piece[]> = {
     { name: "boca da mina", draw: bad.mineMouth },
     { name: "vagoneta", draw: bad.oreCart },
     { name: "fogueira", draw: bad.campfire },
+    { name: "banca do vendedor", draw: bad.vendorStall },
     ...BAD_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => bad.flatDecor(k, 0) })),
     ...BAD_TALL.map((k) => ({ name: `enfeite de pé ${k}`, draw: () => bad.tallDecor(k, 0) })),
   ],

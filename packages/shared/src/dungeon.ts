@@ -68,6 +68,8 @@ export interface Dungeon {
   sideRings?: number[];
   /** Terreno de caça: a fogueira do acampamento (chão; perto dela a vida e a mana voltam mais rápido). */
   camp?: { x: number; y: number };
+  /** Terreno de caça: o vendedor do acampamento (chão; encostado nele o herói compra poções com o loot, `Hunt.buyPotion`). */
+  vendor?: { x: number; y: number };
 }
 
 /**
@@ -263,6 +265,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "bog") return generateBog(BOG_SEED);
   if (mapId === "badlands") return generateBadlands(BADLANDS_SEED);
   if (mapId === "fibula") return generateFibula();
+  if (mapId === "fibula2") return generateFibulaDeep();
   return generateCrypt(seed);
 }
 
@@ -270,7 +273,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
 export const FIBULA_SEED = 93;
 
 /**
- * Fíbula (terreno de caça, `docs/TERRENO_DE_CACA_PLANO.md`): uma caverna só, de 160×140, toda aberta. O acampamento é
+ * Fíbula Profunda (terreno de caça, `docs/TERRENO_DE_CACA_PLANO.md`): uma caverna só, de 160×140, toda aberta. O acampamento é
  * uma ilha no centro; as áreas de caça são regiões espalhadas pelo chão contínuo, sem parede entre elas, e o perigo
  * cresce com a distância do acampamento e pela direção: ao sul, colada ao acampamento, a Orla de iniciante; a oeste a
  * ala baixa (Rei Ossudo), ao norte a média (Colosso Cantante), a leste a alta (Faraó Eterno). Os três covis são câmaras
@@ -278,11 +281,75 @@ export const FIBULA_SEED = 93;
  * pilares quebram a visão sem fechar caminho nenhum. `rings` é a ala de cada área (0 sul, 1 oeste, 2 norte, 3 leste) e
  * `sideRings` a de cada alcova.
  */
-/** Fíbula: emboscadas nos bolsões da beira da caverna (centros), achados pelo teste `ritmo`. */
-const RIM_AMBUSHES: readonly (readonly [number, number])[] = [[111, 8], [101, 9], [8, 57], [151, 57], [131, 9], [41, 131], [119, 131], [30, 8], [8, 100]];
-
+/**
+ * Fíbula (terreno de caça, `docs/TERRENO_DE_CACA_PLANO.md`): ossuário fixo de 64×100, em pé, **aberto**: o jogador vai e
+ * volta do acampamento e escolhe onde caçar. Em vez de salas ligadas por túneis, três salões contínuos (a Orla, as
+ * Covas e o Fundo), cada um com três áreas de caça lado a lado que se abrem umas nas outras, e passagens largas (5 a 8
+ * tiles) e diagonais entre os salões: de quase todo ponto há mais de um caminho de volta. Pilares e ossadas soltas no
+ * meio dos salões quebram a visão dos arqueiros e dão quina para lutar. O acampamento (portal e fogueira) fica
+ * embaixo; o covil do Rei Ossudo, no topo; 4 alcovas na borda guardam mini-boss e baú.
+ */
 function generateFibula(): Dungeon {
-  const c = fixedCanvas(FIBULA_SEED, Tile.Floor, 140, 160);
+  const c = fixedCanvas(FIBULA_SEED, Tile.Wall, 100);
+  const { W, H, tiles, get, set, blob, stroke, border } = c;
+  const L = Tile.Floor;
+  const carve = (r: Rect) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) set(x, y, L); };
+
+  // Acampamento e os três salões (três manchas que se cobrem: um salão só).
+  blob(32, 90, 9.5, 5.5, L, 0.08);
+  blob(14, 74, 9.5, 6.5, L); blob(32, 74, 10.5, 6, L); blob(50, 74, 9.5, 6.5, L);
+  blob(13, 52, 10, 7, L); blob(32, 51, 11, 7, L); blob(51, 52, 10, 7, L);
+  blob(15, 30, 10, 6.5, L); blob(32, 29, 11, 6.5, L); blob(49, 30, 10, 6.5, L);
+  blob(32, 10, 12.5, 7.5, L, 0.06);
+  // Passagens largas entre os salões (três por salão) e diagonais, para sempre haver outro caminho.
+  stroke([P(32, 86), P(32, 78)], 3.5, L);
+  stroke([P(14, 68), P(13, 58)], 3, L); stroke([P(32, 68), P(32, 58)], 3.5, L); stroke([P(50, 68), P(51, 58)], 3, L);
+  stroke([P(13, 46), P(15, 36)], 3, L); stroke([P(32, 45), P(32, 35)], 3.5, L); stroke([P(51, 46), P(49, 36)], 3, L);
+  stroke([P(32, 23), P(32, 17)], 4, L); stroke([P(22, 25), P(25, 16)], 2.5, L); stroke([P(42, 25), P(39, 16)], 2.5, L);
+  stroke([P(22, 70), P(20, 56)], 2.5, L); stroke([P(42, 70), P(44, 56)], 2.5, L);
+  stroke([P(22, 48), P(22, 34)], 2.5, L); stroke([P(42, 48), P(42, 34)], 2.5, L);
+  // Alcovas (mini-boss e baú) na borda, abertas para o salão vizinho.
+  const side: Rect[] = [{ x: 2, y: 58, w: 9, h: 9 }, { x: 53, y: 58, w: 9, h: 9 }, { x: 2, y: 36, w: 9, h: 9 }, { x: 53, y: 36, w: 9, h: 9 }];
+  for (const r of side) carve(r);
+  stroke([P(8, 66), P(12, 70)], 2, L); stroke([P(56, 66), P(52, 70)], 2, L);
+  stroke([P(8, 44), P(12, 48)], 2, L); stroke([P(56, 44), P(52, 48)], 2, L);
+  border(Tile.Wall, 3);
+
+  // Pilares e ossadas soltas: 1 tile (às vezes 2) no meio do chão aberto, longe do acampamento, do covil e das alcovas.
+  const spawn: Rect = { x: 23, y: 85, w: 19, h: 11 };
+  const boss: Rect = { x: 19, y: 2, w: 27, h: 16 };
+  const portal = centerOf(spawn);
+  let pillars = 0;
+  for (let k = 0; k < 400 && pillars < 42; k++) {
+    const x = 4 + Math.floor(c.rng.next() * (W - 8)), y = 20 + Math.floor(c.rng.next() * 62);
+    if (tileDistance(x, y, portal.x, portal.y) < 16 || side.some((r) => x >= r.x - 1 && x < r.x + r.w + 1 && y >= r.y - 1 && y < r.y + r.h + 1)) continue;
+    if (!openAround(get, x, y, 3)) continue;
+    set(x, y, Tile.Wall);
+    if (c.rng.next() < 0.4) set(x + 1, y, Tile.Wall);
+    pillars++;
+  }
+
+  // Áreas de caça, na ordem de `MapDef.huntingGround.areas`: meio, esquerda, direita de cada salão, da Orla ao Fundo.
+  const path: Rect[] = [
+    { x: 22, y: 68, w: 21, h: 13 }, { x: 4, y: 67, w: 19, h: 14 }, { x: 41, y: 67, w: 19, h: 14 },
+    { x: 21, y: 44, w: 23, h: 15 }, { x: 3, y: 45, w: 20, h: 15 }, { x: 41, y: 45, w: 20, h: 15 },
+    { x: 21, y: 22, w: 23, h: 14 }, { x: 5, y: 23, w: 20, h: 14 }, { x: 39, y: 23, w: 20, h: 14 },
+  ];
+  return finishFixed("fibula", tiles, W, H, spawn, boss, path, side, [], (p) => ({
+    rings: [0, 0, 0, 1, 1, 1, 2, 2, 2],
+    camp: { x: p.x - 3, y: p.y - 1 },
+    vendor: { x: p.x + 3, y: p.y - 1 },
+  }));
+}
+
+/** Fíbula Profunda: planta fixa (seed do pincel). */
+export const FIBULA_DEEP_SEED = 94;
+
+/** Fíbula Profunda: emboscadas nos bolsões da beira da caverna (centros), achados pelo teste `ritmo`. */
+const RIM_AMBUSHES: readonly (readonly [number, number])[] = [[111, 8], [101, 9], [8, 57], [151, 57], [131, 9], [41, 131], [119, 131], [30, 8], [8, 100], [48, 8]];
+
+function generateFibulaDeep(): Dungeon {
+  const c = fixedCanvas(FIBULA_DEEP_SEED, Tile.Floor, 140, 160);
   const { W, H, tiles, get, set, blob, border } = c;
   const L = Tile.Floor;
   const rect = (cx: number, cy: number, rx: number, ry: number): Rect => ({ x: cx - rx, y: cy - ry, w: 2 * rx + 1, h: 2 * ry + 1 });
@@ -362,10 +429,11 @@ function generateFibula(): Dungeon {
   }
 
   const path = [...south, ...west, ...north, ...east];
-  return finishFixed("fibula", tiles, W, H, spawn, lairs[0], path, side, meadows, () => ({
+  return finishFixed("fibula2", tiles, W, H, spawn, lairs[0], path, side, meadows, () => ({
     rings: [0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3],
     sideRings: alcoveWing,
     camp: { x: portal.x - 3, y: portal.y - 1 },
+    vendor: { x: portal.x + 3, y: portal.y - 1 },
     lairs: lairs.map((room) => ({ room, portal: centerOf(room) })),
   }));
 }
