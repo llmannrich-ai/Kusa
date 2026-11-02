@@ -1,8 +1,42 @@
-import { CLASSES, Tile, hasLineOfSight, isUnderground, lairsOf, type ClassId, type Dungeon, type MapId, type Rect } from "@kusa/shared";
+import { CLASSES, MAPS, Tile, hasLineOfSight, isUnderground, lairsOf, type ClassId, type Dungeon, type MapId, type Rect } from "@kusa/shared";
 import type { DungeonRoom } from "./net.ts";
+import { loadMapMemory, saveMapMemory } from "./profile.ts";
 
 /** Quanto cada jogador revela ao redor (tiles): o mesmo que cabe na tela, 9 de largura e 13+ de altura. */
 const REVEAL = { x: 5, y: 7 };
+/** Terreno de caça: o tile lembrado de outra hunt aparece com esta fração do brilho até ser visto de novo. */
+const MEMORY_SHADE = 0.55;
+/** De quanto em quanto tempo (ms) o mapa descoberto vai para a conta. */
+const MEMORY_SAVE_MS = 45_000;
+
+/** Hash da planta (tiles e tamanho): a memória do mapa só vale para a mesma planta. */
+export function layoutHash(d: Dungeon): string {
+  let h = 0x811c9dc5;
+  const mix = (v: number) => { h ^= v; h = Math.imul(h, 0x01000193) >>> 0; };
+  mix(d.width); mix(d.height);
+  for (let i = 0; i < d.tiles.length; i++) mix(d.tiles[i]);
+  return h.toString(16).padStart(8, "0");
+}
+
+/** Bitset → base64 (1 bit por tile). */
+function encodeBits(bits: Uint8Array): string {
+  const bytes = new Uint8Array(Math.ceil(bits.length / 8));
+  for (let i = 0; i < bits.length; i++) if (bits[i]) bytes[i >> 3] |= 1 << (i & 7);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x2000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x2000));
+  return btoa(bin);
+}
+
+/** base64 → bitset com `length` tiles (null se não for da planta: tamanho diferente). */
+function decodeBits(text: string, length: number): Uint8Array | null {
+  let bin: string;
+  try { bin = atob(text); } catch { return null; }
+  if (bin.length !== Math.ceil(length / 8)) return null;
+  const bits = new Uint8Array(length);
+  for (let i = 0; i < length; i++) if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) bits[i] = 1;
+  return bits;
+}
+
 /** Tiles mostrados no minimapa compacto, centrado no jogador. */
 const COMPACT_TILES = 25;
 /** Intervalo entre redesenhos (ms): o minimapa não precisa de 60 quadros por segundo. */
@@ -57,6 +91,13 @@ export class Minimap {
   private explored: Uint8Array;
   /** Último tile onde cada jogador revelou o entorno (só revela de novo quando ele anda). */
   private lastReveal = new Map<string, number>();
+  /**
+   * Terreno de caça: tiles lembrados de hunts anteriores (`profile_map_memory`), pintados mais escuros até serem vistos
+   * de novo. `memoryKey` identifica a planta; `memoryLoaded` evita gravar por cima de uma memória que não foi lida.
+   */
+  private remembered: Uint8Array | null = null;
+  private memoryLoaded = false;
+  private nextSaveAt = 0;
   private nextDrawAt = 0;
   private expanded = false;
 
@@ -71,9 +112,11 @@ export class Minimap {
     this.explored = new Uint8Array(dungeon.width * dungeon.height);
     this.canvas.addEventListener("pointerdown", this.onPress);
     window.addEventListener("keydown", this.onKey);
+    if (MAPS[dungeon.mapId].huntingGround) void this.loadMemory();
   }
 
   destroy() {
+    void this.saveMemory();
     this.setExpanded(false);
     this.canvas.hidden = true;
     this.canvas.removeEventListener("pointerdown", this.onPress);
@@ -85,6 +128,48 @@ export class Minimap {
     this.nextDrawAt = time + REDRAW_MS;
     this.revealAroundPlayers();
     this.draw();
+    // Terreno de caça: grava o descoberto de tempos em tempos (o app pode fechar sem o fim da hunt).
+    if (this.memoryLoaded && time >= this.nextSaveAt) {
+      this.nextSaveAt = time + MEMORY_SAVE_MS;
+      void this.saveMemory();
+    }
+  }
+
+  // --- Memória do mapa (terreno de caça) ------------------------------------------
+
+  private memoryClass(): ClassId | null {
+    const me = this.room.state.players.get(this.room.sessionId);
+    return me && me.classId in CLASSES ? (me.classId as ClassId) : null;
+  }
+
+  /** Lê o mapa descoberto do personagem nesta planta e pinta os tiles lembrados, mais escuros. */
+  private async loadMemory() {
+    const d = this.dungeon;
+    const classId = this.memoryClass();
+    if (!classId) return;
+    const saved = await loadMapMemory(classId, d.mapId, layoutHash(d));
+    this.memoryLoaded = true;
+    if (!saved) return;
+    const bits = decodeBits(saved, d.width * d.height);
+    if (!bits) return;
+    this.remembered = bits;
+    for (let i = 0; i < bits.length; i++) {
+      if (!bits[i] || this.explored[i]) continue;
+      this.paintTile(i % d.width, Math.floor(i / d.width), MEMORY_SHADE);
+    }
+    this.fog.getContext("2d")!.putImageData(this.fogPixels, 0, 0);
+    this.nextDrawAt = 0;
+    this.nextSaveAt = performance.now() + MEMORY_SAVE_MS;
+  }
+
+  /** Grava o descoberto (lembrado + visto nesta hunt). Só depois de ler, para não apagar a memória de outro aparelho. */
+  private async saveMemory() {
+    const d = this.dungeon;
+    const classId = this.memoryClass();
+    if (!this.memoryLoaded || !classId || !MAPS[d.mapId].huntingGround) return;
+    const merged = new Uint8Array(this.explored);
+    if (this.remembered) for (let i = 0; i < merged.length; i++) if (this.remembered[i]) merged[i] = 1;
+    await saveMapMemory(classId, d.mapId, layoutHash(d), encodeBits(merged));
   }
 
   private onPress = (e: PointerEvent) => {
@@ -128,7 +213,7 @@ export class Minimap {
     if (changed) this.fog.getContext("2d")!.putImageData(this.fogPixels, 0, 0);
   }
 
-  private paintTile(x: number, y: number) {
+  private paintTile(x: number, y: number, shade = 1) {
     const d = this.dungeon;
     const tile = d.tiles[y * d.width + x];
     const colors = TILE_COLORS[d.mapId];
@@ -143,7 +228,7 @@ export class Minimap {
       : paved ?? (tile === Tile.Wall ? colors.wall : tile === Tile.Water ? colors.water : tile === Tile.Ruin ? colors.ruin
       : inBoss ? colors.bossFloor : tile === Tile.Sand ? ("sand" in colors ? colors.sand : colors.floor) : colors.floor);
     const i = (y * d.width + x) * 4;
-    this.fogPixels.data.set([r, g, bl, 255], i);
+    this.fogPixels.data.set([Math.round(r * shade), Math.round(g * shade), Math.round(bl * shade), 255], i);
   }
 
   // --- Desenho ---------------------------------------------------------------

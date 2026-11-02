@@ -29,7 +29,7 @@ const UNLOCKED_BY: Partial<Record<MapId, MapId>> = {
  * Caverna da Travessia, o Observador (covil leste) abre o deserto e o Basilisco (covil oeste) a floresta. O banco
  * repete em `public.map_unlocked_by_boss`.
  */
-export const UNLOCK_BOSS: Partial<Record<MapId, MonsterKind>> = { dunes: "beholder", oldwood: "basilisk" };
+export const UNLOCK_BOSS: Partial<Record<MapId, MonsterKind>> = { dunes: "beholder", oldwood: "basilisk", crypt: "boneKing" };
 
 /** Cenário cujo boss abre este (`undefined` para o primeiro). */
 export function unlockedBy(mapId: MapId): MapId | undefined {

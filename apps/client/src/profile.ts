@@ -54,6 +54,22 @@ export async function loadMapClears(): Promise<Partial<Record<ClassId, string[]>
   return out;
 }
 
+/**
+ * Mapa descoberto do personagem num terreno de caça (`profile_map_memory`): o bitset dos tiles vistos em hunts
+ * anteriores, em base64, preso ao hash da planta. Sem conta, sem linha ou planta diferente: null.
+ */
+export async function loadMapMemory(classId: ClassId, mapId: MapId, layout: string): Promise<string | null> {
+  const { data, error } = await supabase.from("profile_map_memory").select("layout, explored").eq("class_id", classId).eq("map_id", mapId).maybeSingle();
+  if (error || !data || data.layout !== layout) return null;
+  return typeof data.explored === "string" ? data.explored : null;
+}
+
+/** Grava o mapa descoberto (já mesclado com o que o jogador viu nesta hunt). Sem conta, o banco recusa e nada acontece. */
+export async function saveMapMemory(classId: ClassId, mapId: MapId, layout: string, explored: string): Promise<void> {
+  const { error } = await supabase.rpc("save_map_memory", { p_class_id: classId, p_map_id: mapId, p_layout: layout, p_explored: explored });
+  if (error) console.error("Falha ao guardar o mapa descoberto", error);
+}
+
 /** Bosses vencidos por qualquer personagem da conta (abrem as classes trancadas). Sem conexão, nenhum. */
 export async function loadBossClears(): Promise<string[]> {
   const { data } = await supabase.from("profile_boss_clears").select("boss_kind");

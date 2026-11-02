@@ -64,6 +64,8 @@ export interface Dungeon {
    * mais longe do acampamento e mais perigoso.
    */
   rings?: number[];
+  /** Terreno de caça: o anel (ala) de cada sala lateral, na ordem de `side`. */
+  sideRings?: number[];
   /** Terreno de caça: a fogueira do acampamento (chão; perto dela a vida e a mana voltam mais rápido). */
   camp?: { x: number; y: number };
 }
@@ -264,59 +266,108 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   return generateCrypt(seed);
 }
 
+/** Fíbula: planta fixa (seed do pincel), como o Charco e os Ermos. */
+export const FIBULA_SEED = 93;
+
 /**
- * Fíbula (terreno de caça, `docs/TERRENO_DE_CACA_PLANO.md`): ossuário fixo de 64×100, em pé, desenhado como a Cripta.
- * O acampamento (portal e fogueira) fica embaixo; acima dele, três anéis de três salas cada (a Orla, as Covas e o Fundo),
- * cada anel ligado ao seguinte por três passagens (as dos lados largas, a do meio de 1 tile: a passagem onde não se é
- * cercado), e o covil do Rei Ossudo no topo. Quatro salas laterais (mini-boss e baú) pendem das passagens do meio do
- * mapa e dos cantos do Fundo. Pilares nas salas do fundo quebram a linha de visão dos arqueiros.
+ * Fíbula (terreno de caça, `docs/TERRENO_DE_CACA_PLANO.md`): uma caverna só, de 160×140, toda aberta. O acampamento é
+ * uma ilha no centro; as áreas de caça são regiões espalhadas pelo chão contínuo, sem parede entre elas, e o perigo
+ * cresce com a distância do acampamento e pela direção: ao sul, colada ao acampamento, a Orla de iniciante; a oeste a
+ * ala baixa (Rei Ossudo), ao norte a média (Colosso Cantante), a leste a alta (Faraó Eterno). Os três covis são câmaras
+ * muradas nas bordas com uma boca larga virada para o acampamento; as alcovas de guarda ficam na beira. Rochas soltas e
+ * pilares quebram a visão sem fechar caminho nenhum. `rings` é a ala de cada área (0 sul, 1 oeste, 2 norte, 3 leste) e
+ * `sideRings` a de cada alcova.
  */
+/** Fíbula: emboscadas nos bolsões da beira da caverna (centros), achados pelo teste `ritmo`. */
+const RIM_AMBUSHES: readonly (readonly [number, number])[] = [[111, 8], [101, 9], [8, 57], [151, 57], [131, 9], [41, 131], [119, 131], [30, 8], [8, 100]];
+
 function generateFibula(): Dungeon {
-  const W = 64, H = 100;
-  const tiles = new Uint8Array(W * H).fill(Tile.Wall);
-  const floor = (x: number, y: number) => { if (x > 0 && y > 0 && x < W - 1 && y < H - 1) tiles[y * W + x] = Tile.Floor; };
-  const carve = (r: Rect) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) floor(x, y); };
-  /** Corredor horizontal na linha `y`, de `x1` a `x2`, com `w` tiles de largura (para baixo). */
-  const hall = (y: number, x1: number, x2: number, w: number) => carve({ x: Math.min(x1, x2), y, w: Math.abs(x2 - x1) + 1, h: w });
-  /** Corredor vertical na coluna `x`, de `y1` a `y2`, com `w` tiles de largura (para a direita). */
-  const shaft = (x: number, y1: number, y2: number, w: number) => carve({ x, y: Math.min(y1, y2), w, h: Math.abs(y2 - y1) + 1 });
-  const pillar = (x: number, y: number) => { for (let yy = y; yy < y + 2; yy++) for (let xx = x; xx < x + 2; xx++) tiles[yy * W + xx] = Tile.Wall; };
+  const c = fixedCanvas(FIBULA_SEED, Tile.Floor, 140, 160);
+  const { W, H, tiles, get, set, blob, border } = c;
+  const L = Tile.Floor;
+  const rect = (cx: number, cy: number, rx: number, ry: number): Rect => ({ x: cx - rx, y: cy - ry, w: 2 * rx + 1, h: 2 * ry + 1 });
+  const inRect = (r: Rect, x: number, y: number, pad = 0) => x >= r.x - pad && x < r.x + r.w + pad && y >= r.y - pad && y < r.y + r.h + pad;
 
-  const camp: Rect = { x: 25, y: 86, w: 14, h: 9 };
-  const ring1 = [{ x: 26, y: 70, w: 12, h: 9 }, { x: 5, y: 68, w: 12, h: 10 }, { x: 47, y: 68, w: 12, h: 10 }];
-  const ring2 = [{ x: 25, y: 46, w: 14, h: 10 }, { x: 4, y: 44, w: 13, h: 11 }, { x: 47, y: 44, w: 13, h: 11 }];
-  const ring3 = [{ x: 26, y: 24, w: 12, h: 9 }, { x: 6, y: 22, w: 12, h: 10 }, { x: 46, y: 22, w: 12, h: 10 }];
-  const boss: Rect = { x: 22, y: 3, w: 20, h: 14 };
-  const side: Rect[] = [{ x: 19, y: 35, w: 7, h: 7 }, { x: 39, y: 35, w: 7, h: 7 }, { x: 4, y: 5, w: 9, h: 9 }, { x: 52, y: 5, w: 9, h: 9 }];
-  for (const r of [camp, ...ring1, ...ring2, ...ring3, boss, ...side]) carve(r);
-
-  // Acampamento → Orla: o meio largo (3), a direita média (2) e a esquerda estreita (1).
-  shaft(31, 79, 85, 3);
-  hall(90, 39, 53, 2); shaft(52, 78, 91, 2);
-  hall(90, 11, 24, 1); shaft(11, 78, 90, 1);
-  // Orla, Covas e Fundo: cada anel ligado por dentro, e ao seguinte pelos dois lados (2) e pelo meio (1).
-  hall(73, 17, 25, 2); hall(73, 38, 46, 2);
-  shaft(10, 55, 67, 2); shaft(53, 55, 67, 2); shaft(32, 56, 69, 1);
-  hall(50, 17, 24, 2); hall(50, 39, 46, 2);
-  shaft(11, 32, 43, 2); shaft(52, 32, 43, 2); shaft(31, 33, 45, 1);
-  hall(27, 18, 25, 2); hall(27, 38, 45, 2);
-  // Fundo → covil, largo; salas laterais pelas passagens dos lados e pelos cantos do Fundo.
-  shaft(31, 17, 23, 3);
-  hall(38, 13, 18, 1); hall(38, 45, 51, 1);
-  shaft(8, 14, 21, 1); shaft(56, 14, 21, 1);
-
-  // Pilares: quinas para quebrar a visão dos arqueiros no meio das Covas, no Fundo e no covil.
-  pillar(28, 49); pillar(34, 51); pillar(9, 47); pillar(53, 47);
-  pillar(29, 27); pillar(34, 28);
-  pillar(26, 6); pillar(36, 6); pillar(26, 12); pillar(36, 12);
-
-  const portal = centerOf(camp);
-  tiles[portal.y * W + portal.x] = Tile.Portal;
-  return {
-    mapId: "fibula", width: W, height: H, tiles, spawn: camp, boss, bossPortal: centerOf(boss),
-    path: [...ring1, ...ring2, ...ring3], rings: [0, 0, 0, 1, 1, 1, 2, 2, 2], side, meadows: [], portal,
-    camp: { x: portal.x - 3, y: portal.y - 1 },
+  const spawn: Rect = { x: 70, y: 64, w: 21, h: 15 };
+  const portal = centerOf(spawn);
+  // Áreas: regiões do chão aberto (só o retângulo onde os monstros nascem; não há parede em volta).
+  const south = [rect(80, 98, 12, 7), rect(80, 122, 12, 7)];
+  const west = [rect(54, 90, 10, 8), rect(46, 50, 10, 8), rect(28, 104, 10, 8), rect(26, 40, 10, 8)];
+  const north = [rect(80, 42, 12, 7), rect(62, 24, 11, 7)];
+  const east = [rect(106, 90, 10, 8), rect(114, 50, 10, 8), rect(132, 104, 10, 8), rect(134, 40, 10, 8)];
+  // Covis: câmaras muradas nas bordas, com a boca (12 tiles) virada para o acampamento.
+  const lairs: Rect[] = [{ x: 4, y: 60, w: 22, h: 20 }, { x: 68, y: 3, w: 25, h: 16 }, { x: 134, y: 60, w: 22, h: 20 }];
+  const mouths: Rect[] = [{ x: 25, y: 64, w: 3, h: 12 }, { x: 74, y: 18, w: 12, h: 3 }, { x: 132, y: 64, w: 3, h: 12 }];
+  // Alcovas de guarda na beira, com boca de 3 tiles para dentro da caverna.
+  const side: Rect[] = [
+    { x: 4, y: 24, w: 9, h: 9 }, { x: 4, y: 108, w: 9, h: 9 },
+    { x: 36, y: 4, w: 9, h: 9 }, { x: 116, y: 4, w: 9, h: 9 },
+    { x: 147, y: 24, w: 9, h: 9 }, { x: 147, y: 108, w: 9, h: 9 },
+  ];
+  const alcoveWing = [1, 1, 2, 2, 3, 3];
+  const sideMouths: Rect[] = [
+    { x: 13, y: 27, w: 2, h: 3 }, { x: 13, y: 111, w: 2, h: 3 },
+    { x: 39, y: 13, w: 3, h: 2 }, { x: 119, y: 13, w: 3, h: 2 },
+    { x: 145, y: 27, w: 2, h: 3 }, { x: 145, y: 111, w: 2, h: 3 },
+  ];
+  const wallRing = (r: Rect) => {
+    for (let y = r.y - 1; y <= r.y + r.h; y++) for (let x = r.x - 1; x <= r.x + r.w; x++) {
+      const inside = inRect(r, x, y);
+      if (!inside) set(x, y, Tile.Wall);
+    }
+    // Paredes de 2 de espessura: a segunda camada.
+    for (let y = r.y - 2; y <= r.y + r.h + 1; y++) for (let x = r.x - 2; x <= r.x + r.w + 1; x++) if (!inRect(r, x, y)) set(x, y, Tile.Wall);
   };
+  for (const r of [...lairs, ...side]) wallRing(r);
+  for (const m of [...mouths, ...sideMouths]) for (let y = m.y; y < m.y + m.h; y++) for (let x = m.x; x < m.x + m.w; x++) set(x, y, L);
+  // Dentro dos covis, o chão em mancha (as quinas ficam de rocha).
+  for (const r of lairs) { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) set(x, y, Tile.Wall); blob(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 + 0.5, r.h / 2 + 0.5, L, 0.05); }
+  for (const m of mouths) for (let y = m.y; y < m.y + m.h; y++) for (let x = m.x; x < m.x + m.w; x++) set(x, y, L);
+  // Borda maciça de 4 tiles e a rocha dos cantos e das beiras: a caverna fica arredondada, sem bolsões vazios ao
+  // longo da parede (longe de qualquer luta).
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x < 4 || y < 4 || x >= W - 4 || y >= H - 4) tiles[y * W + x] = Tile.Wall;
+  for (const [x, y, rx, ry] of [[6, 6, 24, 14], [154, 6, 24, 14], [6, 134, 24, 14], [154, 134, 24, 14], [56, 3, 8, 5], [104, 3, 8, 5], [58, 137, 11, 5], [102, 137, 11, 5], [3, 90, 6, 9], [157, 90, 6, 9]] as const) {
+    blob(x, y, rx, ry, Tile.Wall, 0.18);
+  }
+  // Os bolsões da beira ganham chão garantido em volta da emboscada (a rocha dos cantos pode cobri-los).
+  for (const [x, y] of RIM_AMBUSHES) blob(x, y, 4, 3, L, 0.1);
+
+  // Rochas soltas (manchas de rocha de 3 a 7 tiles) e pilares, fora das áreas, do acampamento, dos covis e das alcovas.
+  // Emboscadas: grupos pequenos nos vazios entre as áreas (a caverna inteira é viva; também renascem). A ala é a da
+  // área mais perta.
+  const meadows: Rect[] = [
+    rect(80, 134, 7, 4), rect(52, 118, 6, 5), rect(108, 118, 6, 5), rect(30, 116, 6, 5), rect(130, 116, 6, 5),
+    rect(42, 72, 6, 5), rect(118, 72, 6, 5), rect(30, 24, 6, 5), rect(130, 24, 6, 5), rect(56, 50, 5, 5), rect(104, 50, 5, 5),
+    rect(16, 84, 5, 5), rect(144, 84, 5, 5), rect(98, 28, 6, 5), rect(62, 96, 5, 5), rect(98, 96, 5, 5),
+    // Os bolsões da beira (achados pelo teste `ritmo`): pequenas, perto da parede.
+    ...RIM_AMBUSHES.map(([x, y]) => rect(x, y, 5, 4)),
+  ];
+  const keep = [...south, ...west, ...north, ...east, ...lairs, ...side, ...meadows, spawn];
+  const free = (x: number, y: number, pad: number) => tileDistance(x, y, portal.x, portal.y) > 16 && !keep.some((r) => inRect(r, x, y, pad));
+  let rocks = 0;
+  for (let k = 0; k < 600 && rocks < 26; k++) {
+    const x = 8 + Math.floor(c.rng.next() * (W - 16)), y = 8 + Math.floor(c.rng.next() * (H - 16));
+    const rx = 3 + c.rng.next() * 4, ry = 2.5 + c.rng.next() * 3.5;
+    if (!free(x, y, Math.ceil(Math.max(rx, ry)) + 3)) continue;
+    blob(x, y, rx, ry, Tile.Wall, 0.2);
+    rocks++;
+  }
+  let pillars = 0;
+  for (let k = 0; k < 2000 && pillars < 140; k++) {
+    const x = 6 + Math.floor(c.rng.next() * (W - 12)), y = 6 + Math.floor(c.rng.next() * (H - 12));
+    if (!free(x, y, 1) || !openAround(get, x, y, 3)) continue;
+    set(x, y, Tile.Wall);
+    if (c.rng.next() < 0.4) set(x + 1, y, Tile.Wall);
+    pillars++;
+  }
+
+  const path = [...south, ...west, ...north, ...east];
+  return finishFixed("fibula", tiles, W, H, spawn, lairs[0], path, side, meadows, () => ({
+    rings: [0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3],
+    sideRings: alcoveWing,
+    camp: { x: portal.x - 3, y: portal.y - 1 },
+    lairs: lairs.map((room) => ({ room, portal: centerOf(room) })),
+  }));
 }
 
 /**
@@ -3326,9 +3377,9 @@ type Pt2 = { x: number; y: number };
  * pinceladas grossas que serpenteiam um pouco (os caminhos largos) e as salas laterais, com o sorteio de seed fixa
  * (o desenho é sempre o mesmo). Marca à parte o que o cliente desenha diferente (estrada, passarela, trilha).
  */
-function fixedCanvas(seed: number, base: number) {
+function fixedCanvas(seed: number, base: number, height = FIXED_H, width = FIXED_W) {
   const rng = createRng(seed);
-  const W = FIXED_W, H = FIXED_H;
+  const W = width, H = height;
   const tiles = new Uint8Array(W * H).fill(base);
   const inside = (x: number, y: number) => x >= 2 && y >= 2 && x < W - 2 && y < H - 2;
   const inGrid = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;

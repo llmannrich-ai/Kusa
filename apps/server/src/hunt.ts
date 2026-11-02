@@ -633,6 +633,8 @@ interface Pack {
   miniboss: boolean;
   /** Índice da sala do caminho (a área de caça), para a telemetria; ausente nas salas laterais. */
   area?: number;
+  /** Emboscada: grupo pequeno num vazio entre as áreas (conta na área mais perta). */
+  ambush?: boolean;
 }
 
 /**
@@ -1111,7 +1113,32 @@ export class Hunt {
       const encounter = area ? { depth: [depth, depth] as [number, number], budget: area.budget, table: area.table } : encounterAt(this.map, depth);
       const kinds = this.rollEncounter(encounter, depth, fixed.next);
       const spots: { x: number; y: number }[] = [];
-      // Os lugares da sala saem antes dos monstros: cada um fica reservado para o próximo não cair em cima.
+      // Os lugares da sala saem antes dos monstros: cada um fica reservado para o próximo não cair em cima, e os que
+      // caem na zona da entrada contam no teto dela (`MAX_START_MONSTERS`) como se o monstro já estivesse lá.
+      const taken = new Set<number>();
+      for (let k = 0; k < kinds.length; k++) {
+        const spot = this.freeSpotIn(room, roll, taken);
+        if (!spot) break;
+        spots.push(spot);
+        taken.add(spot.y * d.width + spot.x);
+        if (tileDistance(spot.x, spot.y, d.portal.x, d.portal.y) <= START_ZONE_RADIUS) this.startZoneReserved++;
+      }
+      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false, area: i };
+      this.fillPack(pack, champions.next);
+      this.packs.push(pack);
+    });
+    // Emboscadas: grupos pequenos nos vazios (metade do orçamento da área mais perta, com a tabela dela).
+    d.meadows.forEach((room) => {
+      const c = centerOf(room);
+      let near = 0;
+      let nearDist = Infinity;
+      d.path.forEach((r, i) => { const rc = centerOf(r); const dist = Math.hypot(rc.x - c.x, rc.y - c.y); if (dist < nearDist) { nearDist = dist; near = i; } });
+      const area = ground.areas?.[near];
+      const ring = d.rings?.[near] ?? 0;
+      const depth = area?.depth ?? ground.ringDepth[ring] ?? ring;
+      const encounter = area ? { depth: [depth, depth] as [number, number], budget: Math.round(area.budget / 2), table: area.table } : encounterAt(this.map, depth);
+      const kinds = this.rollEncounter(encounter, depth, fixed.next);
+      const spots: { x: number; y: number }[] = [];
       const taken = new Set<number>();
       for (let k = 0; k < kinds.length; k++) {
         const spot = this.freeSpotIn(room, roll, taken);
@@ -1119,15 +1146,16 @@ export class Hunt {
         spots.push(spot);
         taken.add(spot.y * d.width + spot.x);
       }
-      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false, area: i };
+      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false, area: near, ambush: true };
       this.fillPack(pack, champions.next);
       this.packs.push(pack);
     });
     d.side.forEach((room, i) => {
-      const depth = ground.ringDepth[ground.ringDepth.length - 1];
+      const ring = d.sideRings?.[i] ?? ground.ringDepth.length - 1;
+      const depth = ground.ringDepth[ring] ?? ring;
       const c = centerOf(room);
       const pack: Pack = {
-        room, ring: ground.ringDepth.length - 1, depth, kinds: [pickWeighted(this.map.minibosses, fixed.next())], spots: [c], members: [], respawnAt: 0, miniboss: true,
+        room, ring, depth, kinds: [pickWeighted(this.map.minibosses, fixed.next())], spots: [c], members: [], respawnAt: 0, miniboss: true,
       };
       this.fillPack(pack, champions.next);
       this.packs.push(pack);
@@ -1139,8 +1167,20 @@ export class Hunt {
       this.chestDepth.set(chest.id, depth);
       this.brains.get(pack.members[0])!.chestId = chest.id;
     });
-    const c = centerOf(d.boss);
-    this.addMonster(pickWeighted(this.map.bosses, fixed.next()), c.x, c.y, d.path.length);
+    if (this.map.lairs) {
+      // Um boss fixo em cada covil (a Fíbula tem três, um por ala).
+      this.map.lairs.forEach((lair, i) => {
+        const room = d.lairs?.[i]?.room;
+        if (!room) return;
+        const at = centerOf(room);
+        const boss = this.addMonster(lair.boss, at.x, at.y, lair.depth);
+        this.brains.get(boss.id)!.lair = i;
+      });
+    } else {
+      const c = centerOf(d.boss);
+      this.addMonster(pickWeighted(this.map.bosses, fixed.next()), c.x, c.y, d.path.length);
+    }
+    this.startZoneReserved = 0;
   }
 
   /** Enche a sala: um monstro em cada lugar (o mais perto livre, se alguém estiver em cima). */
@@ -1214,7 +1254,7 @@ export class Hunt {
     const lines: [string, number][] = [
       ["🔥 Acampamento: aqui é seguro", 0xffc56b],
       [`Perto da fogueira a vida volta ${CAMP_REGEN}× mais rápido`, 0x7ee08a],
-      ["Sem tempo · mais perigoso para o norte · saia pelo portal", 0xe8dcc0],
+      ["Sem tempo · Orla ao sul · alas: oeste 3–8, norte 9–14, leste 14–20", 0xe8dcc0],
     ];
     // O "Descansando" da fogueira (o herói nasce dentro dela) espera os três avisos acabarem.
     this.seats.forEach((seat) => { seat.restNoticeAt = 600 + lines.length * 2800; });
