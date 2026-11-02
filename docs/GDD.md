@@ -765,7 +765,8 @@ O jogador escolhe o mapa (cenário) tocando no ponto dele no mapa mundi. O últi
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
-recarrega sozinho; se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
+recarrega sozinho (e o app instalado na tela de início, que guarda a página antiga na memória, confere o `index.html`
+publicado ao voltar à tela e a cada 10 min, `update.ts`, e recarrega fora de sala quando o build mudou); se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
 Escala de dificuldade de 1 a 8 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
 Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes, 6 para Mesas de Solária e 8 para a Fortaleza Orc, o mapa
