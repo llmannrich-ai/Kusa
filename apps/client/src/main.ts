@@ -37,6 +37,7 @@ import { renderCatalog } from "./catalog.ts";
 import { renderHistory } from "./history.ts";
 import { loadBossClears, loadMapClears } from "./profile.ts";
 import { Hub } from "./menu.ts";
+import { watchUpdates } from "./update.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { watchHostedRooms, type HostedListing } from "./p2p.ts";
 import { renderRules } from "./rules.ts";
@@ -122,6 +123,10 @@ $("sign-out").onclick = async () => {
 };
 
 currentAccount().then((acc) => (acc ? showMenu(acc) : showLogin()), showLogin);
+
+// Versão nova publicada (o app instalado no iPhone não recarrega sozinho): ao voltar ao app, recarrega se o jogador
+// não está numa sala nem entrando em uma (o Phaser nasce na sala de espera e só some ao recarregar).
+watchUpdates(() => game === null && !entering, () => showError("Versão nova do jogo: atualizando…"));
 
 function showError(message: string) {
   $("rooms-error").textContent = message;
