@@ -971,6 +971,9 @@ no banco `map_unlocked_by`). ★★★★★★★★, 8 min, até 4 jogadores. 
 hunt solo 4.600, cheio em 240 s). Os dois são **mapas fixos**
 (`BOG_SEED`, `BADLANDS_SEED`), em pé, 64×120, com 7 zonas, as emboscadas e 4 salas laterais; plantas em
 `docs/arte/planta-fixa-*.png`. Ritmo medido: ~1% do chão a mais de 6 tiles de luta, ponto mais isolado a 13 tiles.
+- **XP** (`xpScale` 0,5 no Charco e 0,55 nos Ermos): com os monstros fortes da etapa 9, o caminho rendia ~20 mil de XP e o
+  herói sozinho chegava no boss no nível 20 com um terço da hunt pela frente. Com o corte, ~11 mil: limpando 75%, chega
+  no boss no nível 18; o 20 vem do boss (2.900 e 3.190 de XP) ou do mapa inteiro.
 
 - **🌫️ Charco Cinzento** (`generateBog`, a planta em `Dungeon.bog`): uma turfeira sobre o lago negro. Do sul ao norte:
   o Cais, o Aterro (zona 1) e a Vila dos Turfeiros (zona 2) pela **estrada afundada** (aterro largo com as lajes de
@@ -1080,6 +1083,9 @@ lê.
   e os primeiros berserkers; o acampamento, capitães, xamãs e ogros jovens; o esporão e o pé da torre são de ogros e
   berserkers. Mini-bosses: Ogro do Brejo, Chefe de Guerra Orc e Ogro Xamã (casernas e casa da vila, com baú). Boss:
   **Vorgak, o Senhor da Brasa**, no salão do trono (ficha no Bestiário, seção da Fortaleza). O gold de cada monstro cresce com a força; com tanto monstro, os drops de item e poção saem menos (`dropScale` 0,8).
+- **XP** (`xpScale` 0,5): a força ×2,4 multiplicava a XP junto e o caminho rendia ~21 mil (o nível 20 pede ~10 mil); o
+  herói sozinho chegava no nível 20 no meio da hunt. Com o corte, ~10.800: limpando 75%, chega em Vorgak no nível 18,
+  e o 20 vem de Vorgak (2.600 de XP) ou do mapa inteiro.
 - **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
   uma brecha da muralha.
 - **Abismo:** nesse mapa toda `Tile.Water` é abismo: bloqueia o passo e deixa passar a visão (flechas e magias passam
@@ -1117,8 +1123,9 @@ lê.
 - **Crédito:** cada boss dá a runa dele uma vez por personagem, como os outros; é isso que libera o caminho daquele
   lado no mapa mundi. `RunStats.bossKills` anota os bosses mortos com o herói na hunt (telemetria).
 - **Balanceamento** (medido, não estimado; refazer quando a telemetria da Caverna chegar):
-  - **XP:** tronco ~400, oeste ~2.900, leste ~4.100. Matando 75% do caminho, o herói chega no Basilisco no nível
-    10–11; no Observador, no 11–13 indo direto e no 14–17 fazendo o oeste antes (a rota pensada para ele).
+  - **XP** (`xpScale` 0,85 desde 02/11; antes, quem limpava quase tudo chegava no Observador no 19): tronco ~340,
+    oeste ~2.450, leste ~3.500. Matando 75% do caminho, o herói chega no Basilisco no nível 9–10; no Observador, no
+    10–12 indo direto e no 15–16 fazendo o oeste antes (a rota pensada para ele; limpando tudo, 17).
   - **Régua:** duelo só com ataque básico (`bestiary-sim.ts`) medindo quanto da vida do boss o herói tira antes de
     cair, calibrada com a telemetria de produção: o Grumak (vencido com folga) dá ~50% no nível 10–12; o Dragão jovem
     e o Verme (vencidos por ~1 em 3) dão 15–20% no 8–10; a Hidra e o Dragão negro (0 vitórias) dão 6–7% no 10–12.
@@ -1259,7 +1266,12 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   monstros, e a XP e o gold totais crescem junto. Os bosses já trazem na ficha a força que tinham no fim do caminho;
   os mini-bosses e o Mímico usam um multiplicador fixo do mapa (`minibossPower`, de 1,24 na Cripta a 1,54 na Caverna,
   2,5 na Fortaleza), que não muda na partida. Um mapa também pode multiplicar os comuns (`commonPower`, só na
-  Fortaleza Orc: o clã do brejo levado à dificuldade 8). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
+  Fortaleza Orc: o clã do brejo levado à dificuldade 8). A força multiplica a XP junto; por isso um mapa pode pagar só parte da XP
+  dos monstros (`xpScale`, boss incluído; não muda o orçamento das salas). Meta: **limpando 75% do caminho sozinho, o
+  herói chega no boss abaixo do nível 20**; o nível 20 vem do boss ou de limpar o mapa inteiro (teste `xpmapas`, que
+  mede a XP de cada mapa gerando a hunt). Cortes de 02/11 (antes, o herói sozinho chegava no boss já no 20): Fortaleza
+  Orc e Charco Cinzento 0,5, Ermos Rubros 0,55, Caverna da Travessia 0,85. Pendente: o Pântano do Kosaradius (limpando
+  75% também chega no 20, mas na produção quem vence o Grumak chega em média no 12). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
   de gold por sala, `CHEST_DEPTH_SCALING`), e a faixa dos itens largados ainda sobe com a profundidade. Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold
