@@ -182,6 +182,12 @@ export interface PaintOptions {
 export class Canvas {
   /** Troca de materiais ativa (itens mágicos repintam o desenho do nível com outros materiais). */
   remap: ReadonlyMap<number, number> | null = null;
+  /** Segunda troca, depois da `remap`: os lendários repintam o desenho do mágico (`legend.ts`). */
+  legend: ReadonlyMap<number, number> | null = null;
+  private swap(mat: number) {
+    const m = this.remap?.get(mat) ?? mat;
+    return this.legend?.get(m) ?? m;
+  }
   readonly mat = new Uint8Array(N);
   readonly tone = new Int8Array(N);
   readonly grp = new Uint16Array(N);
@@ -204,7 +210,7 @@ export class Canvas {
 
   /** Pinta a forma no material, com luz calculada pela própria forma. Devolve o grupo usado. */
   paint(m: Mask, mat: number, o: PaintOptions = {}): number {
-    mat = this.remap?.get(mat) ?? mat;
+    mat = this.swap(mat);
     const keep = o.group === "keep";
     const group = typeof o.group === "number" ? o.group : keep ? 0 : this.group(o.line ?? "hard");
     let fresh = 0;
@@ -262,7 +268,7 @@ export class Canvas {
   /** Um pixel de detalhe (sem linha nova). */
   dot(x: number, y: number, mat: number, t = 3) {
     if (!inside(x, y)) return;
-    mat = this.remap?.get(mat) ?? mat;
+    mat = this.swap(mat);
     const i = idx(x, y);
     this.mat[i] = mat;
     this.tone[i] = t;
@@ -284,7 +290,7 @@ export class Canvas {
       const y = y0 + gy;
       if (!inside(x, y)) return;
       const i = idx(x, y);
-      this.mat[i] = this.remap?.get(paint[0]) ?? paint[0];
+      this.mat[i] = this.swap(paint[0]);
       this.tone[i] = paint[1];
       if (keep) { if (!this.grp[i]) this.grp[i] = this.group("none"); } else this.grp[i] = group;
     }));
