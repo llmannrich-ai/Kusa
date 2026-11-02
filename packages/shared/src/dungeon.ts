@@ -240,6 +240,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "gates") return generateGates(seed);
   if (mapId === "fortress") return generateFortress(FORTRESS_SEED);
   if (mapId === "oldwood" || mapId === "heartwood") return generateForest(seed, mapId);
+  if (mapId === "grove") return generateForest(GROVE_SEED, "grove");
   if (mapId === "bog") return generateBog(BOG_SEED);
   if (mapId === "badlands") return generateBadlands(BADLANDS_SEED);
   return generateCrypt(seed);
@@ -2662,6 +2663,9 @@ const FOREST_STEPS = 7;
 const FOREST_MEADOWS = 5;
 /** Clareirinhas só de passagem (sem monstros), para a mata não virar um labirinto de corredores. */
 const FOREST_GLADES = 9;
+/** Orla do Bosque: emboscadas e clareirinhas (`GROVE_SEED`). */
+const GROVE_MEADOWS = 12;
+const GROVE_GLADES = 3;
 
 /**
  * Bosque Velho e Coração da Mata: o mesmo terreno, em pé (o celular na vertical). O mapa nasce todo de mata fechada
@@ -2671,16 +2675,26 @@ const FOREST_GLADES = 9;
  * clareira e a trilha onde se está. No Bosque Velho um riacho corta o mapa de oeste a leste e as trilhas o cruzam por
  * pontes de madeira; no Coração da Mata, mais fechado (trilhas mais estreitas, mais árvores anciãs), lagoas escuras.
  */
-function generateForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
+/**
+ * Orla do Bosque: o mapa inicial é fixo (a mesma planta em toda hunt), o terreno do Bosque Velho sorteado sempre com
+ * esta seed (riacho, pontes, troncos e menires; o cliente o desenha como o Bosque Velho).
+ */
+export const GROVE_SEED = 13;
+
+function generateForest(seed: number, mapId: "oldwood" | "heartwood" | "grove"): Dungeon {
   for (let attempt = 0; ; attempt++) {
     const d = buildForest(seed + attempt, mapId);
     if (attempt >= 20 || connected(d.tiles, d.width, dunesGoals(d))) return d;
   }
 }
 
-function buildForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
+function buildForest(seed: number, mapId: "oldwood" | "heartwood" | "grove"): Dungeon {
   const rng = createRng(seed);
   const heart = mapId === "heartwood";
+  // A Orla do Bosque (mapa fixo) troca clareirinhas vazias por emboscadas: luta a cada poucos passos (regra dos 6 tiles).
+  const grove = mapId === "grove";
+  const meadowCount = grove ? GROVE_MEADOWS : FOREST_MEADOWS;
+  const gladeCount = grove ? GROVE_GLADES : FOREST_GLADES;
   const W = FOREST_W;
   const H = FOREST_H;
   const tiles = new Uint8Array(W * H).fill(Tile.Wall);
@@ -2782,16 +2796,17 @@ function buildForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
   // Campinas: pontos de monstros extras, longe da entrada, das zonas, da arena e umas das outras.
   const meadows: Rect[] = [];
   const far = (p: { x: number; y: number }, q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
-  for (let tries = 0; tries < 120 && meadows.length < FOREST_MEADOWS; tries++) {
+  const gap = grove ? 12 : 15;
+  for (let tries = 0; tries < (grove ? 400 : 120) && meadows.length < meadowCount; tries++) {
     const p = { x: rng.int(12, W - 13), y: rng.int(arenaBottom + 6, H - 24) };
-    if (!far(p, s, 22) || !anchors.every((a) => far(p, a, 15)) || !meadows.every((m) => far(p, centerOf(m), 15)) || !far(p, ac, 18) || nearRiver(p.x, p.y, 8)) continue;
+    if (!far(p, s, 22) || !anchors.every((a) => far(p, a, gap)) || !meadows.every((m) => far(p, centerOf(m), gap)) || !far(p, ac, 18) || nearRiver(p.x, p.y, 8)) continue;
     meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
     glade(p.x, p.y, 5 + rng.next() * 1.5, 4.5 + rng.next() * 1.5);
   }
   // Clareirinhas de passagem.
   const glades: { x: number; y: number }[] = [];
   const nodes = () => [s, ...anchors, ...meadows.map(centerOf), ...glades];
-  for (let tries = 0; tries < 120 && glades.length < FOREST_GLADES; tries++) {
+  for (let tries = 0; tries < 120 && glades.length < gladeCount; tries++) {
     const p = { x: rng.int(10, W - 11), y: rng.int(arenaBottom + 4, H - 14) };
     if (!nodes().every((q) => far(p, q, 12)) || !far(p, ac, 14) || nearRiver(p.x, p.y, 5)) continue;
     glades.push(p);

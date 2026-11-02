@@ -717,8 +717,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Heróis, Grimório, Batalhas,
   Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba. Tocar de novo
   em Batalhas, já no mapa, leva a câmera ao herói e abre a ficha do cenário onde ele está.
-- **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
-  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
+- **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**, mais o prólogo (etapa 0). O começo, na ponta sul:
+  🌱 Orla do Bosque (prólogo) → 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
   **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
   Solária → ⚔️ Fortaleza Orc, a etapa 8) e a floresta (🌳 Bosque Velho → 🍄 Coração da
@@ -738,15 +738,15 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
-- **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
-  vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+- **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só a 🌱 Orla do Bosque começa aberta, e
+  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
   Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
   `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
-  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
+  e os bots, não). Os personagens que já existiam quando a Orla entrou (já tinham jogado, item ou cenário vencido) a herdaram vencida. Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
   inteira fica no title), e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
@@ -761,7 +761,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 ## Mapas
 
 O jogador escolhe o mapa (cenário) tocando no ponto dele no mapa mundi. O último escolhido fica salvo no aparelho
-(na primeira vez, o Pântano do Kosaradius). O mapa vale para as salas que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
+(na primeira vez, a Orla do Bosque). O mapa vale para as salas que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
@@ -773,6 +773,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
+| 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Rei Bullywug |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
@@ -935,6 +936,21 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
   barro rachado). Ambiente: grãos levados pelo vento norte, fitas de areia soprando das cristas, brilho do sol na água.
   Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
 - **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
+
+### Orla do Bosque
+
+O prólogo da campanha (etapa 0), antes do Pântano do Kosaradius: o primeiro mapa de todo personagem, feito para o
+herói ainda sem itens. ★, 8 min, até 4 jogadores. **Mapa fixo**: o gerador do Bosque Velho (`generateForest`) sempre
+com `GROVE_SEED`, e o cliente o desenha como o Bosque Velho (mesma arte). Para passar na regra dos 6 tiles (teste
+`ritmo`: ~5% do chão a mais de 6 tiles de luta, ponto mais isolado a 12 tiles), a Orla troca as clareirinhas vazias por
+emboscadas (12 campinas e 3 clareirinhas, contra 5 e 9 no Bosque Velho).
+
+- **Monstros** (os mais fracos de tema de floresta): na entrada, Ratazanas, Estirges e Galhudos; no meio, Aranhas
+  gigantes e Lobos Atrozes; no fim, o Sátiro Flautista e o Espinheiro. Mini-bosses: a Dríade Corrompida e o Centauro
+  Renegado com `minibossPower` 0,6. Boss: o **Dragão jovem** (o mesmo da Cripta), no círculo de menires; vencê-lo abre o
+  Pântano do Kosaradius.
+- **XP** (`xpScale` 0,9): limpando 75% do caminho, o herói chega no Dragão no nível ~10 (na Cripta, ~7).
+- **Loot:** teto da hunt solo de 1.400, cheio em 240 s.
 
 ### Bosque Velho e Coração da Mata
 

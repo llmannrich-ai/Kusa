@@ -10,7 +10,7 @@
  */
 import { MAPS, generateDungeon, isWalkable, type MapId } from "@kusa/shared";
 
-const FIXED: MapId[] = ["bog", "badlands"];
+const FIXED: MapId[] = ["grove", "bog", "badlands"];
 const NEAR = 6;
 const FAR_SHARE = 0.1;
 const MAX_GAP = 15;
