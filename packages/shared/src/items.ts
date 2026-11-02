@@ -12,8 +12,9 @@ import { SPELLS, type SpellId } from "./spells.ts";
  * - Lendário: peça única, sempre de Dragão, com nome, história e atributos 90% mais fortes, várias propriedades e,
  *   nas peças de classe, magias específicas mais fortes (`LEGENDARIES`). Só cai na hunt, e raramente.
  *
- * As armas são da classe (espada e machado do cavaleiro, arco e besta do paladino, varinha e cajado do
- * feiticeiro, do druida e do xamã); armaduras de guerra são do cavaleiro e do paladino, vestes arcanas do
+ * As armas são da classe (espada, machado e maça do cavaleiro, arco, besta e lança do paladino, varinha e cajado do
+ * feiticeiro, do druida e do xamã, mais o orbe do feiticeiro, a foice do druida e o totem de mão do xamã; as 5 armas
+ * de estilo têm um traço no ataque básico: `bash`, `pierce`, `shotSpeed`, `cleave` e `mend`); armaduras de guerra são do cavaleiro e do paladino, vestes arcanas do
  * feiticeiro, do druida e do xamã; botas servem a todos, e escudos a todos menos o paladino (arqueiro, usa as duas mãos). Só varinhas e cajados (e alguns itens mágicos)
  * aumentam o dano das magias.
  *

@@ -1719,11 +1719,40 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
 - Armadura corta dano recebido: `armadura / (armadura + 25)`; o conjunto comum de Dragão (33) corta 57%.
 - **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
   Raridade: monstro comum 18% raro, 4% mágico e 0,5% lendário; mini-boss e baú 35%, 12% e 3%; boss 40%, 25% e 6%.
-  **O drop não olha a classe de ninguém:** cai qualquer item, mesmo jogando sozinho (um cavaleiro acha cajado; vai para a bag e se vende).
+  **Metade do drop favorece a equipe** (ver "Drop pela equipe"): a outra metade cai livre, então um cavaleiro sozinho ainda acha cajado (vai para a bag e se vende).
 - O item cai no chão onde o monstro morreu (o do baú, aos pés de quem abriu, que já pega) e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
 - Quem morre larga 1 equipamento sorteado (a partir do nível 5) e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
 - Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro, ×4 se mágico e ×8 se lendário (2.400).
+
+### Armas de estilo
+
+Uma arma nova por classe (`ITEM_FAMILIES` em `packages/shared/src/items.ts`), com os 5 materiais e as 3 raridades das
+outras (75 itens). Cada uma tem um **traço no ataque básico**, que cresce com o material e a raridade; o dano fica um
+pouco abaixo da arma de sempre da classe, em troca do traço:
+
+| Arma | Classe | Traço (comum de Rústico → de Dragão) |
+|---|---|---|
+| Maça | Cavaleiro | 7% → 11% de chance de atordoar o alvo por 0,6 s (`bash`) |
+| Lança | Paladino | o tiro atravessa: o monstro logo atrás do alvo leva 30% → 44% do dano (`pierce`) |
+| Orbe | Feiticeiro | +1 tile de alcance e tiro 35% mais rápido; poder mágico um pouco menor que a varinha (`shotSpeed`) |
+| Foice | Druida | corta em arco: os monstros colados no alvo levam 25% → 38% do dano (`cleave`) |
+| Totem de mão | Xamã Orc | cada golpe cura o xamã e os aliados a até 3 tiles em 5% → 9% do dano dado (`mend`) |
+
+- O golpe secundário da lança e da foice é só dano (sem atordoar, chamas nem roubo de vida). O raro multiplica o traço
+  como os outros atributos; vários mágicos reforçam o traço (Martelo do Trovão Anão, Tridente da Maré Rubra, Foice da
+  Lua Cheia, Totem dos Ancestrais).
+- Teste: `apps/server/scripts/armasnovas.ts` (cada traço na arena). Telemetria: `stats.weaponTraits`.
+- **Arte:** a maça vai pela pose da espada, o orbe pela da varinha, e lança, foice e totem pela do cajado. Cada nível
+  tem cabeça própria (clava cravejada, bola de bronze, aletas, crânio de dragão; ponta em folha, pique com gancho,
+  tridente; meia-lua que cresce; cara entalhada, chifres, penas, dois rostos, crânio). Prévia sem navegador:
+  `npx tsx apps/client/scripts/armasPrevia.ts saida.png`.
+
+### Drop pela equipe
+
+Metade dos itens sorteados (`CLASS_DROP_FAVOR`) sai de uma família, ou de um lendário, que algum humano da hunt veste;
+a outra metade continua livre (item que ninguém usa vai para a bag e se vende). Os bots não contam. A chance de cada
+item cair e a raridade não mudam (`dropOdds`).
 
 ### Itens lendários
 
@@ -1759,8 +1788,8 @@ Peças únicas acima do mágico (`LEGENDARIES` em `packages/shared/src/items.ts`
   | Calças do Vagante Astral | Calça arcana | Feiticeiro, Druida e Xamã | mana, recarga 6%, velocidade |
 
 - **Drop:** caem de qualquer monstro, raramente: 0,5% dos itens de monstro comum (1 a cada ~1.300 monstros), 3% dos
-  de mini-boss e baú, 6% dos de boss (`RARITY_CHANCES.legendary`). Qual peça sai é sorteado entre todas, sem olhar a
-  classe (como as famílias). Não se compram.
+  de mini-boss e baú, 6% dos de boss (`RARITY_CHANCES.legendary`). Qual peça sai segue o "Drop pela equipe": metade das
+  vezes, uma que algum humano da hunt veste; na outra metade, qualquer uma. Não se compram.
 - **Comparação:** vale um nível de material inteiro acima do mágico (`itemScore`), então troca na hora por qualquer
   peça de Dragão do slot.
 - **Morte:** pesa 0,12 no sorteio do equipamento perdido (`DEATH_LOSS_WEIGHT`; o mágico pesa 0,25).

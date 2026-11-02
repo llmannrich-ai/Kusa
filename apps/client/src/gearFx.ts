@@ -25,8 +25,8 @@ const SIGN_OF: [Sign, Exclude<keyof ItemStats, "spells">[]][] = [
   ["poison", ["poison"]],
   ["lifesteal", ["lifesteal"]],
   ["arcane", ["spellPower", "mana", "cooldown"]],
-  ["speed", ["speed", "haste"]],
-  ["holy", ["hp", "armor", "thorns", "damage", "range"]],
+  ["speed", ["speed", "haste", "shotSpeed"]],
+  ["holy", ["hp", "armor", "thorns", "damage", "range", "bash", "pierce", "cleave", "mend"]],
 ];
 
 const COLORS: Record<Sign, number> = {
