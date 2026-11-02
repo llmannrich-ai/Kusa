@@ -246,8 +246,8 @@ pela fila de deploy.
 | Fase | O que entra | Situação |
 |---|---|---|
 | 1. Abismo | O vale numa textura só (`art/valleyArt.ts`, gravada por `npm run vale -w @kusa/client`): campina, matas copa a copa, rio e córrego, trilhas, pedras, alicerces e colunas do império. O paredão em rocha natural (estratos e fendas, não tijolo), a sombra contínua no pé dele, a beirada sem a linha preta reta. | Feito |
-| 2. Vila baixa | Aplicar a planta (`docs/arte/fortaleza/planta.txt`); fonte seca e estátua derrubada na praça. | A fazer |
-| 3. Torre de menagem e telhados | Fachada própria, torreões orcs, o buraco do telhado, telhados novos das casernas. | A fazer |
+| 2. Vila baixa | A vila da planta à mão (`FORT_VILA` em `dungeon.ts`): ruas em grade, quadras de casas, praça da fonte, casernas, acampamento da ponte e o mirante sobre o desfiladeiro. A fonte seca (5×5) e a estátua derrubada pintadas por código (`fountainSprite`, `statueSprite`). O resto do castelo segue do gerador (a planta das linhas 0 a 90 ainda não entrou: mirantes do esporão, a forca). | Feito |
+| 3. Torre de menagem e telhados | Fachada de 3 andares (`KEEP_RISE` 3) em cantaria de blocos grandes, com a grade levadiça erguida no arco, quinas em amarração e escorridos; o terraço nas lajes escuras do salão (separado do pátio claro); os telhados das casernas em telha romana de terracota (tégulas e ímbrices, cumeeira, telhas faltando, couro pregado, buraco, caveira). Os torreões ainda são as torres dos portões. | Feito |
 | 4. Muralhas orcizadas | Remendos de madeira e ferro, estacas, crânios e panos nas muralhas do império. | A fazer |
 | 5. Interiores | Salão do trono e casernas: tapetes, braseiros, camas de palha, armas na parede. | A fazer |
 | 6. Pontes e cachoeira | Ponte de pedra quebrada, ponte de cordas balançando, a cachoeira caindo no abismo. | A fazer |
