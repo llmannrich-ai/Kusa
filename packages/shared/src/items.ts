@@ -555,7 +555,7 @@ export const LEGENDARIES: LegendaryDef[] = [
   {
     key: "lastray", slot: "weapon", family: "spear", name: "Lança do Último Raio",
     lore: "Forjada no raio que caiu no último dia da tempestade. A ponta ainda estala quando chove.",
-    stats: { pierce: 0.15, haste: 0.08, spells: { lightning_arrow: 0.35, holy_spear: 0.35, piercing_shot: 0.3 } },
+    stats: { pierce: 0.02, haste: 0.08, spells: { lightning_arrow: 0.35, holy_spear: 0.35, piercing_shot: 0.3 } },
   },
   {
     key: "voidmaw", slot: "weapon", family: "orb", name: "Orbe do Vazio Faminto",

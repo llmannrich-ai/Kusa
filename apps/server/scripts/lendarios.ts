@@ -146,7 +146,8 @@ test("Coroa do Olho Tempestuoso encurta a recarga", () => {
   a.cast(0, m);
   const left = a.seat().spellReadyAt[0] - a.now();
   const expected = spellCooldownMs(SPELLS.lightning_bolt.cooldownMs, heroBonuses({}), 0.1);
-  check(left === expected && expected < SPELLS.lightning_bolt.cooldownMs, `recarga ${left} ms, esperado ${expected} (sem a coroa: ${SPELLS.lightning_bolt.cooldownMs})`);
+  const without = spellCooldownMs(SPELLS.lightning_bolt.cooldownMs, heroBonuses({}));
+  check(left === expected && expected < without, `recarga ${left} ms, esperado ${expected} (sem a coroa: ${without})`);
 });
 
 if (failures.length) {
