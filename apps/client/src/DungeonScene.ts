@@ -6,6 +6,7 @@ import {
   lairsOf,
   MONSTERS,
   MSG,
+  PACE,
   MOVE_RESEND_MS,
   PORTAL_HOLD_MS,
   POTIONS,
@@ -293,6 +294,11 @@ export class DungeonScene extends Phaser.Scene {
 
   /** A arte já foi carregada pela cena `ArtLoader`, desde o lobby. */
   create() {
+    // Efeitos no ritmo da hunt (`PACE`): as animações e os temporizadores da cena andam mais devagar. O que acompanha um
+    // tempo do servidor (voo do tiro, onda, linha) recebe o tempo já multiplicado por `PACE` para chegar junto com ele;
+    // o andar das unidades usa `time.now`, que não muda.
+    this.tweens.timeScale = PACE;
+    this.time.timeScale = PACE;
     this.fx = new CombatFx(this);
     this.hits = new HitFx(this, DEPTH.ui - 2, DEPTH.floor + 1);
     this.dungeon = generateDungeon(this.room.state.seed, mapIdOf(this.room.state.mapId));
@@ -594,7 +600,7 @@ export class DungeonScene extends Phaser.Scene {
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, classId === "knight" ? 5 : 2);
     this.heroAction(msg.from, "attack");
     const to = this.tilePoint(msg.tx, msg.ty);
-    const draw = () => this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), to, msg.ms);
+    const draw = () => this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), to, msg.ms * PACE);
     if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
   }
 
@@ -609,7 +615,7 @@ export class DungeonScene extends Phaser.Scene {
       this.heroAction(msg.from, "cast");
     }
     const to = this.tilePoint(msg.tx, msg.ty);
-    const draw = () => this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), to, msg.ms, spell.radius);
+    const draw = () => this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), to, msg.ms * PACE, spell.radius);
     if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
     if (spell.shape === "line") this.showLine(spell, msg);
     else if (spell.shape === "cone") this.showCone(spell, msg);
@@ -643,7 +649,7 @@ export class DungeonScene extends Phaser.Scene {
         tiles.push({ ...this.tilePoint(x, y), ring: tileDistance(cx, cy, x, y) });
       }
     }
-    this.fx.area(tiles, spell.color, self ? 0 : msg.ms);
+    this.fx.area(tiles, spell.color, self ? 0 : msg.ms * PACE);
     return tiles;
   }
 
@@ -774,7 +780,7 @@ export class DungeonScene extends Phaser.Scene {
   /** Magia em linha: acende os tiles atravessados (a mesma conta do servidor), do herói para a ponta, no ritmo da flecha. */
   private showLine(spell: SpellDef, msg: SpellMessage) {
     const tiles = lineTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
-    const step = tiles.length > 0 ? msg.ms / tiles.length / 45 : 0;
+    const step = tiles.length > 0 ? (msg.ms * PACE) / tiles.length / 45 : 0;
     // Relâmpago Ramificado: no fim da reta, os galhos acendem logo depois (a mesma conta do servidor).
     const end = tiles[tiles.length - 1];
     const forks = spell.fork && end ? forkTiles(this.dungeon, msg.x, msg.y, end, spell.fork) : [];

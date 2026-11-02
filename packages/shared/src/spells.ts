@@ -1,4 +1,5 @@
 import type { ClassId } from "./classes.ts";
+import { paced } from "./constants.ts";
 import { blocksSight, hasLineOfSight, tileDistance, type Dungeon } from "./dungeon.ts";
 import type { DotKind } from "./monsters.ts";
 import type { Element } from "./traits.ts";
@@ -26,9 +27,9 @@ export const BASIC_ATTACKS: Record<ClassId, BasicAttackDef> = {
 /** Intervalo entre ataques básicos, igual para todas as classes. */
 export const BASIC_ATTACK_COOLDOWN_MS = 1000;
 
-/** Tempo (ms) que um projétil leva entre dois tiles. */
+/** Tempo (ms) que um projétil leva entre dois tiles (no ritmo da hunt, `PACE`). */
 export function flightMs(speed: number, x0: number, y0: number, x1: number, y1: number) {
-  return speed > 0 ? Math.round((Math.hypot(x1 - x0, y1 - y0) / speed) * 1000) : 0;
+  return speed > 0 ? Math.round(paced((Math.hypot(x1 - x0, y1 - y0) / speed) * 1000)) : 0;
 }
 
 /** Nível em que cada slot de magia abre (slot 0 e slot 1). */
