@@ -1774,7 +1774,7 @@ Peças únicas acima do mágico (`LEGENDARIES` em `packages/shared/src/items.ts`
     (`spellAtRank`), então vale para dano, cura, escudo, dano contínuo e criaturas. Ex.: o Cajado da Geada Eterna dá
     +35% na Lança de Gelo.
   - **Recarga das magias** (`ItemStats.cooldown`): soma com o Foco; a recarga nunca cai abaixo de 40% (`spellCooldownMs`).
-- **17 peças**, com peças de classe que fortalecem magias de cada classe:
+- **22 peças**, com peças de classe que fortalecem magias de cada classe:
 
   | Peça | Slot | Quem veste | Destaque |
   |---|---|---|---|
@@ -1792,6 +1792,11 @@ Peças únicas acima do mágico (`LEGENDARIES` em `packages/shared/src/items.ts`
   | Manto de Mil Asas | Manto | Druida | Mariposa Curandeira +40%, Enxame de Vespas +35%, Coração da Floresta +25% |
   | Cajado do Totem Rubro | Cajado | Xamã Orc | Totem da Brasa +35%, Totem Vulcânico e do Trovão +30% |
   | Máscara do Grande Chefe | Chapéu | Xamã Orc | Berserkers e Chefe de Guerra +30%, Capitão do Clã +25% |
+  | Sino do Juízo Final | Maça | Cavaleiro | Bater com Escudo +35%, Desafio Supremo +30%, Grito de Guerra +25%, atordoa mais |
+  | Lança do Último Raio | Lança | Paladino | Flecha Relâmpago e Lança Etérea +35%, Disparo Perfurante +30%, atravessa mais |
+  | Orbe do Vazio Faminto | Orbe | Feiticeiro | Esfera Sombria +35%, Tempestade do Vazio e Rajada Mística +30%, Morte Súbita +25% |
+  | Foice da Colheita Venenosa | Foice | Druida | Espinho Venenoso +35%, Raízes Espinhosas e Fúria da Natureza +30%, veneno |
+  | Totem da Mãe-Fera | Totem de mão | Xamã Orc | Lanceiros, Arqueiros e Tambor de Guerra +30%, Tambor de Sangue +25%, cura mais |
   | Passos de Ninguém | Botas | Todos | velocidade 23%, ataque mais rápido, recarga 5% |
   | Escudo Espelho da Lua | Escudo | Todos menos Paladino | espinhos 25%, vida, mana |
   | Calças do Vagante Astral | Calça arcana | Feiticeiro, Druida e Xamã | mana, recarga 6%, velocidade |

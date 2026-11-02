@@ -40,6 +40,11 @@ Nada é baixado: as duas artes pintam o lendário a partir do desenho do mágico
   | Passos de Ninguém | sombra, violeta | borda violeta |
   | Escudo Espelho da Lua | prata do luar | lua crescente no meio |
   | Calças do Vagante Astral | azul-noite | estrelas brancas e arcanas |
+  | Sino do Juízo Final | bronze, ouro | rachadura e as ondas do toque saindo para os lados |
+  | Lança do Último Raio | prata do luar, safira | raio estalando na borda (base: o tridente) |
+  | Orbe do Vazio Faminto | obsidiana, sombra, violeta | halo escuro em volta da esfera |
+  | Foice da Colheita Venenosa | escama verde, musgo | seiva venenosa pingando da lâmina |
+  | Totem da Mãe-Fera | osso, pelo, âmbar | orelhas de javalina e presas |
 
 - **Arte antiga** (`apps/client/src/art/hero/legend.ts`): o mesmo mágico de Dragão com uma segunda troca de
   materiais (`Canvas.legend`, depois da troca do mágico). O ícone 16×16 usa a paleta da peça (`LEGEND_ICON` em

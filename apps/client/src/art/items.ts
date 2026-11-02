@@ -651,6 +651,11 @@ const LEGEND_ICON: Record<string, { m: string; M: string; a: string }> = {
   nobody: { m: "#4a4460", M: "#1e1a2a", a: "#9a5ae0" },
   moonmirror: { m: "#e4ecf7", M: "#8a98b0", a: "#4c7bd9" },
   astral: { m: "#2a3070", M: "#10142e", a: "#f4f7fb" },
+  doombell: { m: "#d09a48", M: "#6a4418", a: "#ffcf6a" },
+  lastray: { m: "#e4ecf7", M: "#3c4c8c", a: "#8fdcf2" },
+  voidmaw: { m: "#3a2e52", M: "#120c1c", a: "#b04ae0" },
+  venomharvest: { m: "#6a9a3c", M: "#2e4a1c", a: "#9ad23a" },
+  motherbeast: { m: "#d6caa8", M: "#6e665c", a: "#d8962a" },
 };
 
 /** Frasco das poções: "c" = rolha, "g" = brilho do vidro, "l"/"L" = líquido claro/escuro. */

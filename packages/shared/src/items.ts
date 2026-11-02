@@ -546,6 +546,32 @@ export const LEGENDARIES: LegendaryDef[] = [
     classes: ["shaman"],
     stats: { hp: 0.1, spellPower: 0.06, spells: { clan_berserkers: 0.3, warlord_call: 0.3, clan_captain: 0.25 } },
   },
+  // --- Armas de estilo ---
+  {
+    key: "doombell", slot: "weapon", family: "mace", name: "Sino do Juízo Final",
+    lore: "Um sino de bronze rachado preso num cabo de ferro. Cada golpe toca, e o monstro esquece onde está.",
+    stats: { bash: 0.08, armor: 2, spells: { shield_bash: 0.35, supreme_challenge: 0.3, war_cry: 0.25 } },
+  },
+  {
+    key: "lastray", slot: "weapon", family: "spear", name: "Lança do Último Raio",
+    lore: "Forjada no raio que caiu no último dia da tempestade. A ponta ainda estala quando chove.",
+    stats: { pierce: 0.15, haste: 0.08, spells: { lightning_arrow: 0.35, holy_spear: 0.35, piercing_shot: 0.3 } },
+  },
+  {
+    key: "voidmaw", slot: "weapon", family: "orb", name: "Orbe do Vazio Faminto",
+    lore: "Uma esfera onde a luz entra e não sai. De noite, dá para ouvir ela mastigando.",
+    stats: { spellPower: 0.08, lifesteal: 0.04, spells: { shadow_orb: 0.35, void_storm: 0.3, eldritch_blast: 0.3, sudden_death: 0.25 } },
+  },
+  {
+    key: "venomharvest", slot: "weapon", family: "scythe", name: "Foice da Colheita Venenosa",
+    lore: "Colhe o que a floresta plantou de pior. A lâmina pinga uma seiva verde que nunca seca.",
+    stats: { poison: 0.3, cleave: 0.1, spells: { venom_thorn: 0.35, thorn_roots: 0.3, nature_wrath: 0.3 } },
+  },
+  {
+    key: "motherbeast", slot: "weapon", family: "totem", name: "Totem da Mãe-Fera",
+    lore: "Entalhado no osso da javalina que criou o primeiro clã. Os orcs baixam a cabeça quando ele passa.",
+    stats: { mend: 0.04, hp: 0.1, spells: { clan_spearmen: 0.3, clan_archers: 0.3, war_drum: 0.3, blood_drum: 0.25 } },
+  },
   // --- Para todos ---
   {
     key: "nobody", slot: "boots", family: "boots", name: "Passos de Ninguém",

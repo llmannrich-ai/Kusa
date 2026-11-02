@@ -29,6 +29,7 @@ function png(w: number, h: number, rgba: Uint8Array) {
 /** Mesmo mapa de `newArt.ts` (sem o navegador). */
 const PROTO_FAMILY: Record<string, string> = {
   "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",
+  "weapon-mace": "mace", "weapon-spear": "spear", "weapon-orb": "orb", "weapon-scythe": "scythe", "weapon-totem": "totem",
   "helmet-war": "war", "helmet-arcane": "arc", "armor-war": "armor", "armor-arcane": "robe", "legs-war": "greave", "legs-arcane": "pants",
   "boots-boots": "boots", "shield-shield": "shield",
 };

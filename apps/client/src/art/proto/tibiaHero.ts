@@ -6592,6 +6592,47 @@ const LEGEND_LOOKS: Record<string, LegendLook> = {
       blob(c, cx + u * 0.9, cy - u * 0.4, u * 1.6, u * 1.6, Mat.Moon);
     },
   },
+  // Sino do Juízo Final: bronze rachado, com ondas do toque em volta da cabeça.
+  doombell: {
+    metal: Mat.Bronze, cloth: Mat.Bronze, glow: Mat.Amber, accent: Mat.Gold,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2, cy = (p.y0 + p.y1) / 2;
+      // Rachadura escura e dois arcos do som saindo para os lados.
+      for (let k = -2; k <= 2; k++) lightPx(c, Math.round(cx + (k % 2) * 0.6), Math.round(cy + k * u * 0.6), Mat.Soot, 0);
+      for (const s of [-1, 1]) for (let k = -2; k <= 2; k++) lightPx(c, Math.round(cx + s * (u * 3.4 - Math.abs(k) * 0.6)), Math.round(cy + k * u * 0.7), Mat.Amber, 5);
+    },
+  },
+  // Lança do Último Raio: prata e azul, com o raio estalando na borda.
+  lastray: { metal: Mat.Moon, cloth: Mat.Sapphire, glow: Mat.Arcane, accent: Mat.Arcane, extra: (c, p) => { rim(c, p, Mat.Arcane, 5, 3); speckle(c, p, [Mat.White], 10, 1); } },
+  // Orbe do Vazio Faminto: obsidiana e violeta, com o halo escuro que engole a luz.
+  voidmaw: {
+    metal: Mat.Obsidian, cloth: Mat.Shadow, glow: Mat.Violet, accent: Mat.Violet,
+    extra: (c, p) => {
+      const u = unit(p), cx = p.x1 - u * 1.5, cy = p.y0 + u * 1.5;
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2;
+        lightPx(c, Math.round(cx + Math.cos(a) * u * 2.6), Math.round(cy + Math.sin(a) * u * 2.6), k % 3 ? Mat.Violet : Mat.Night, 5);
+      }
+    },
+  },
+  // Foice da Colheita Venenosa: lâmina verde que pinga seiva.
+  venomharvest: {
+    metal: Mat.GreenDragon, cloth: Mat.Moss, glow: Mat.Venom, accent: Mat.Venom,
+    extra: (c, p) => {
+      speckle(c, p, [Mat.Venom], 7, 2);
+      const u = unit(p);
+      for (const [dx, dy] of [[0.25, 1.2], [0.45, 2.2], [0.65, 1.6]]) blob(c, p.x0 + (p.x1 - p.x0) * dx, p.y0 + u * (2 + dy), u * 0.4, u * 0.6, Mat.Venom);
+    },
+  },
+  // Totem da Mãe-Fera: osso e pelo, com as orelhas da javalina e olhos de âmbar.
+  motherbeast: {
+    metal: Mat.Fur, cloth: Mat.Bone, glow: Mat.Amber, accent: Mat.Amber,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2;
+      for (const s of [-1, 1]) shard(c, [[cx + s * u * 0.8, p.y0 + u * 1.2], [cx + s * u * 2.4, p.y0 + u * 0.8], [cx + s * u * 2, p.y0 - u * 1.4]], Mat.Fur);
+      for (const s of [-1, 1]) shard(c, [[cx + s * u * 0.6, p.y0 + u * 3.2], [cx + s * u * 1.2, p.y0 + u * 3.2], [cx + s * u * 1.6, p.y0 + u * 1.8]], Mat.White);
+    },
+  },
   // Calças do Vagante Astral: azul-noite com estrelas.
   astral: { metal: Mat.Night, cloth: Mat.Night, glow: Mat.Arcane, extra: (c, p) => speckle(c, p, [Mat.White, Mat.Arcane], 9, 2) },
 };

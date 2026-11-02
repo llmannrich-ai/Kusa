@@ -29,6 +29,11 @@ const LOOKS: Record<string, [number, number, number]> = {
   nobody: [M.obsidian, M.shadow, M.amethyst],
   moonmirror: [M.silverWhite, M.silk, M.sapphire],
   astral: [M.night, M.night, M.star],
+  doombell: [M.bronze, M.darkIron, M.amber],
+  lastray: [M.silverWhite, M.plumeBlue, M.frost],
+  voidmaw: [M.obsidian, M.night, M.amethyst],
+  venomharvest: [M.greenLeather, M.darkWood, M.poison],
+  motherbeast: [M.bone, M.fur, M.amber],
 };
 
 /** Chaves com desenho na arte antiga. */
