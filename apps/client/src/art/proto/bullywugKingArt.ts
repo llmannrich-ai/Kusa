@@ -1,5 +1,6 @@
 import sheetUrl from "./bullywugKing.png";
 import { makeCanvas } from "../pixels.ts";
+import { SheetSource } from "./sheetSource.ts";
 
 /**
  * Rei Bullywug (boss do Pântano das Ruínas) da arte nova, a partir das folhas geradas no Runway
@@ -23,13 +24,15 @@ export interface BullywugKingArt {
   frames(): (() => HTMLCanvasElement)[];
   portrait(): HTMLCanvasElement;
   sheet(): HTMLCanvasElement;
+  /** A folha em PNG: `frames`, `portrait` e `sheet` só desenham com ela carregada. */
+  source: SheetSource;
 }
 
 /** Clipes a mais do Rei (quadros), depois dos 4 de sempre, na ordem de `EXTRA_CLIPS` (`bestiary.ts`). */
 const KING_EXTRA = { death: 4, idleDown: 4, walkDown: 4, idleUp: 4, walkUp: 4 } as const;
 
 /** Uma figura da folha, deslocada (`dy` negativo = para cima) e com o fôlego (encolhe na vertical). */
-function figure(img: HTMLImageElement, i: number, o: { dy?: number; breathe?: number } = {}) {
+function figure(img: CanvasImageSource, i: number, o: { dy?: number; breathe?: number } = {}) {
   const { canvas, ctx } = makeCanvas(S, S);
   ctx.imageSmoothingEnabled = false;
   const h = S * (1 - (o.breathe ?? 0));
@@ -38,10 +41,8 @@ function figure(img: HTMLImageElement, i: number, o: { dy?: number; breathe?: nu
 }
 
 export async function loadBullywugKing(): Promise<BullywugKingArt> {
-  const img = new Image();
-  img.src = sheetUrl;
-  await img.decode();
-  const at = (i: number, o: Parameters<typeof figure>[2] = {}) => () => figure(img, i, o);
+  const source = new SheetSource(sheetUrl);
+  const at = (i: number, o: Parameters<typeof figure>[2] = {}) => () => figure(source.img, i, o);
   const run = (first: number, n: number) => Array.from({ length: n }, (_, k) => at(first + k));
   const breathing = (i: number) => [0, 0.012, 0.024, 0.012].map((b) => at(i, { breathe: b }));
   const art: BullywugKingArt = {
@@ -62,7 +63,8 @@ export async function loadBullywugKing(): Promise<BullywugKingArt> {
       ...breathing(A.back),
       at(A.backWalk), at(A.back, { dy: -3 }), at(A.backWalk + 1), at(A.back + 1, { dy: -3 }),
     ],
-    portrait: () => figure(img, A.side),
+    portrait: () => figure(source.img, A.side),
+    source,
     sheet() {
       const all = art.frames();
       const { canvas, ctx } = makeCanvas(S * all.length, S);

@@ -12,6 +12,7 @@ import {
 } from "./forestMonsters.ts";
 import { MARSH_MONSTER_OUTLINE, MARSH_SPECIES, speciesPortrait, speciesSheet, type MarshSpecies } from "./marshMonsters.ts";
 import type { Clip } from "./rig.ts";
+import type { SheetSource } from "./proto/sheetSource.ts";
 import { KING_OUTLINE, KING_SIZE, ogreKingPortrait, ogreKingSheet } from "./ogreKing.ts";
 import { warlordArt } from "./proto/warlordArt.ts";
 import { charcoArt } from "./proto/charcoArt.ts";
@@ -54,6 +55,11 @@ export interface MonsterAnim {
    * 2ª habilidade desenhada (folha C do clã do Kosaradius) é o clipe a mais `skill`.
    */
   strike?: Clip | Record<string, Clip | "skill">;
+  /**
+   * Folha em PNG de onde saem os quadros (arte desenhada por IA): `hd`, `sheet` e `portrait` só desenham com ela
+   * carregada (`loadMapSheets` em `textures.ts`, quando a hunt começa).
+   */
+  source?: SheetSource;
 }
 
 /** Clipes a mais dos monstros da arte nova (`MonsterAnim.extra`), na ordem da folha. */
@@ -299,7 +305,7 @@ if (protoFrog) {
     anim: {
       size: frog.size, sheet: () => frog.sheet(), portrait: () => frog.portrait(), outline: "",
       fps: { idle: 4, walk: 8, attack: 10, cast: 8 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
-      hd: () => frog.frames(), fill: frog.fill, extra: { ...frog.extra }, strike: "cast",
+      hd: () => frog.frames(), fill: frog.fill, extra: { ...frog.extra }, strike: "cast", source: frog.source,
     },
   };
 }
@@ -313,6 +319,7 @@ if (protoBullywugKing) {
       size: king.size, sheet: () => king.sheet(), portrait: () => king.portrait(), outline: "",
       fps: { idle: 4, walk: 7, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
       hd: () => king.frames(), fill: king.fill, extra: { ...king.extra }, strike: { spearThrust: "attack", swampCall: "attack" },
+      source: king.source,
     },
   };
   OWN_MONSTER_DRAW["monster-bullywug-king"] = () => king.portrait();
@@ -331,7 +338,7 @@ if (protoClan) {
       anim: {
         size: clan.size, sheet: () => clan.sheet(), portrait: () => clan.portrait(), outline: "",
         fps: { idle: 4, walk: 6, attack: 10, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
-        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra }, strike: clan.strike,
+        hd: () => clan.frames(), fill: clan.fill, extra: { ...clan.extra }, strike: clan.strike, source: clan.source,
       },
     };
   }

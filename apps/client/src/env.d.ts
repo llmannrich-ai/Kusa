@@ -11,3 +11,8 @@ interface ImportMetaEnv {
 declare module "virtual:rules-version" {
   export const RULES_VERSION: string;
 }
+
+/** Commit do cliente (`GITHUB_SHA` no deploy; `dev` fora dele), calculado no build pelo `vite.config.ts`. */
+declare module "virtual:client-build" {
+  export const CLIENT_BUILD: string;
+}

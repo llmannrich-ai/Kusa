@@ -27,6 +27,8 @@ import {
 } from "@kusa/shared";
 import { RULES_VERSION } from "virtual:rules-version";
 import { ArtLoader, artReady } from "./ArtLoader.ts";
+import { loadMapSheets } from "./art/textures.ts";
+import { watchNewBuild } from "./update.ts";
 import { itemIcon } from "./art/items.ts";
 import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
@@ -626,8 +628,11 @@ function startGame(room: DungeonRoom) {
   show("potions", true);
   show("help", true);
   const g = createGame();
-  // Se a hunt começou antes de a arte terminar de chegar, a dungeon entra assim que ela chegar.
-  void artReady.then(() => g.scene.add("dungeon", DungeonScene, true, { room }));
+  // Se a hunt começou antes de a arte terminar de chegar, a dungeon entra assim que ela chegar, com as folhas da arte
+  // nova dos monstros do mapa já abertas (só as do mapa: todas juntas fechavam o jogo no celular).
+  void artReady
+    .then(() => loadMapSheets(g.textures, mapIdOf(room.state.mapId)))
+    .then(() => g.scene.add("dungeon", DungeonScene, true, { room }));
 
   const me = () => room.state.players.get(room.sessionId);
   const renderStats = () => {
@@ -781,6 +786,9 @@ async function lockOrientation(orientation: "portrait" | "landscape") {
  * (`body.deitado` em style.css) e o Android vira sozinho. Em pé, o mesmo jogo continua valendo.
  */
 let inHunt = false;
+
+// Deploy novo com o jogo aberto: recarrega no lobby, fora de hunt e de sala (`update.ts`).
+watchNewBuild(() => !inHunt && !entering && !joined);
 
 /**
  * Aviso de celular deitado (`#rotate`): antes só pedia para voltar à vertical, e quem testava deitado achava que o

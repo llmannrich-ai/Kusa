@@ -25,8 +25,26 @@ function rulesVersion(): Plugin {
   };
 }
 
+/**
+ * `virtual:client-build`: o commit do cliente (`GITHUB_SHA` no deploy do Pages; `dev` fora dele). O build grava o mesmo
+ * em `version.json`, que o jogo aberto consulta para se recarregar quando sai um deploy novo (`update.ts`), e a hunt
+ * solo manda para a telemetria (`start_solo_run`).
+ */
+function clientBuild(): Plugin {
+  const id = "virtual:client-build";
+  const build = process.env.GITHUB_SHA?.slice(0, 7) ?? "dev";
+  return {
+    name: "kusa-client-build",
+    resolveId: (source) => (source === id ? `\0${id}` : undefined),
+    load: (resolved) => (resolved === `\0${id}` ? `export const CLIENT_BUILD = ${JSON.stringify(build)};` : undefined),
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ build }) });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [rulesVersion()],
+  plugins: [rulesVersion(), clientBuild()],
   // No GitHub Pages o jogo fica em /Kusa/ (definido pelo workflow de deploy).
   base: process.env.BASE_PATH ?? "/",
   server: {

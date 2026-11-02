@@ -307,6 +307,8 @@ const loadImage = (key: string) => new Promise<HTMLImageElement>((resolve) => {
 });
 // O chão é o da Cripta (128 px por tile), reduzido ao tile da mini-cena.
 const floor = cryptFloorTiles();
+// As folhas em PNG da arte nova só abrem quando pedidas (no jogo, quando a hunt no mapa começa): a galeria abre todas.
+await Promise.all(Object.values(MONSTER_ANIMS).map((anim) => anim.source?.load()));
 const monsters = await Promise.all([
   // Arte própria de monstro não tem PNG: entra o desenho direto.
   ...monsterTextures().map((key): Promise<HTMLCanvasElement | HTMLImageElement> =>

@@ -204,6 +204,12 @@ const hdColumns = (size: number, frames: number) => Math.max(1, Math.min(frames,
 /** Desenha a próxima figura de um monstro da arte nova; com a folha completa, vira textura. Devolve se está pronta. */
 function hdStep(scene: Phaser.Scene, key: string, anim: MonsterAnim): boolean {
   if (scene.textures.exists(key)) return true;
+  // Folha em PNG ainda fechada (não deveria: `loadMapSheets` abre antes da hunt): abre e o monstro fica sem desenho
+  // até ela chegar, em vez de travar o jogo.
+  if (anim.source && !anim.source.ready) {
+    void anim.source.load();
+    return true;
+  }
   let b = hdBuilds.get(key);
   if (!b) {
     const frames = anim.hd!();
@@ -222,6 +228,8 @@ function hdStep(scene: Phaser.Scene, key: string, anim: MonsterAnim): boolean {
   b.slot.forEach((slot, i) => texture.add(i, 0, ...cell(slot), anim.size, anim.size));
   addClips(scene, key, anim);
   hdBuilds.delete(key);
+  // Com a textura pronta, a folha em PNG não é mais preciso: sai da memória.
+  anim.source?.release();
   return true;
 }
 
@@ -231,17 +239,42 @@ export function ensureMonsterArt(scene: Phaser.Scene, key: string) {
   if (anim?.hd) while (!hdStep(scene, key, anim));
 }
 
+/** Texturas da arte nova (`MonsterAnim.hd`) dos monstros do mapa, dos menores para os maiores. */
+function mapHdKeys(mapId: MapId) {
+  return [...new Set(mapMonsters(MAPS[mapId]).flatMap((kind) => {
+    const art = BESTIARY_ART[kind];
+    return [art.texture, ...Object.values(art.variants ?? {})];
+  }))].filter((k) => MONSTER_ANIMS[k]?.hd).sort((a, b) => MONSTER_ANIMS[a].size - MONSTER_ANIMS[b].size);
+}
+
+/**
+ * Abre as folhas em PNG dos monstros do mapa que ainda não viraram textura, antes da hunt começar, uma de cada vez
+ * (`SheetSource`); as dos outros mapas ficam fechadas. Cada folha sai da memória quando a textura do monstro fica pronta.
+ */
+export async function loadMapSheets(textures: Phaser.Textures.TextureManager, mapId: MapId) {
+  const keys = new Set(mapHdKeys(mapId));
+  for (const [key, anim] of Object.entries(MONSTER_ANIMS)) if (!keys.has(key)) anim.source?.release();
+  for (const key of keys) {
+    const source = MONSTER_ANIMS[key].source;
+    if (!source || textures.exists(key)) continue;
+    try {
+      await source.load();
+    } catch (err) {
+      console.warn("folha da arte nova não abriu", key, err);
+    }
+  }
+}
+
 /**
  * Arte nova: os monstros do mapa da hunt são desenhados aos poucos, uma figura a cada intervalo, para não travar a
  * hunt (os maiores ficam por último; o que aparecer antes de ficar pronto termina na hora, `ensureMonsterArt`). Só os
  * do mapa: a folha de cada monstro fica na memória do celular, e a de todos os mapas juntos passava do que o celular
- * aguenta (o jogo fechava sozinho). Folha pronta fica para as próximas hunts.
+ * aguenta (o jogo fechava sozinho). Folha pronta fica para as próximas hunts no mesmo mapa; as dos outros mapas saem da
+ * memória quando a hunt começa.
  */
 export function warmMapMonsters(scene: Phaser.Scene, mapId: MapId) {
-  const keys = [...new Set(mapMonsters(MAPS[mapId]).flatMap((kind) => {
-    const art = BESTIARY_ART[kind];
-    return [art.texture, ...Object.values(art.variants ?? {})];
-  }))].filter((k) => MONSTER_ANIMS[k]?.hd).sort((a, b) => MONSTER_ANIMS[a].size - MONSTER_ANIMS[b].size);
+  const keys = mapHdKeys(mapId);
+  for (const [key, anim] of Object.entries(MONSTER_ANIMS)) if (anim.hd && !keys.includes(key)) removeMonsterArt(scene, key, anim);
   const tick = () => {
     const key = keys.find((k) => !scene.textures.exists(k));
     if (!key) return;
@@ -249,6 +282,15 @@ export function warmMapMonsters(scene: Phaser.Scene, mapId: MapId) {
     window.setTimeout(tick, 30);
   };
   window.setTimeout(tick, 200);
+}
+
+/** Tira da memória a folha pronta de um monstro da arte nova (textura e animações); é refeita se ele voltar. */
+function removeMonsterArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {
+  hdBuilds.delete(key);
+  if (!scene.textures.exists(key)) return;
+  for (const clip of [...CLIP_ORDER, ...EXTRA_CLIPS]) scene.anims.remove(monsterAnimKey(key, clip));
+  scene.textures.remove(key);
+  anim.source?.release();
 }
 
 function addAnimatedArt(scene: Phaser.Scene, key: string, anim: MonsterAnim) {

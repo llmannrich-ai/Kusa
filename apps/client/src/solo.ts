@@ -17,6 +17,7 @@ import {
   spellXpGains,
 } from "@kusa/shared";
 import type { HuntReport } from "../../server/src/hunt.ts";
+import { CLIENT_BUILD } from "virtual:client-build";
 import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
 import { recordSoloMapClear } from "./profile.ts";
@@ -40,7 +41,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   ]);
   const { data: session } = await supabase.auth.getSession();
   const [{ data, error }, { data: profile }] = await Promise.all([
-    supabase.rpc("start_solo_run", { p_class_id: classId, p_map_id: mapId }),
+    supabase.rpc("start_solo_run", { p_class_id: classId, p_map_id: mapId, p_client: clientInfo() }),
     // As magias ativas do Grimório (até 3 por slot) são as opções da escolha, como na hunt do servidor.
     supabase.from("profiles").select("active_spells").eq("id", session.session?.user.id ?? "").maybeSingle(),
   ]);
@@ -173,6 +174,7 @@ export function noticeClosed(closed: SoloRunClosed[] | undefined) {
  */
 export function watchCommitted(room: () => DungeonRoom | null, runId: string | null) {
   if (!runId) return;
+  watchAlive(room, runId);
   let spawn: { x: number; y: number; w: number; h: number } | null = null;
   let runningSince = 0;
   let sending = false;
@@ -192,6 +194,35 @@ export function watchCommitted(room: () => DungeonRoom | null, runId: string | n
       if (!error) window.clearInterval(timer);
     });
   }, 1000);
+}
+
+/**
+ * Build do cliente e dados do aparelho, gravados com a hunt solo (`start_solo_run`, `telemetry_solo_fechadas`): quando
+ * o celular fecha o jogo no meio, a hunt não dá resultado e só isso diz em que versão e em que aparelho foi.
+ * `deviceMemory` não existe no iPhone (fica null).
+ */
+export function clientInfo() {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  return {
+    build: CLIENT_BUILD, mem: nav.deviceMemory ?? null, cores: nav.hardwareConcurrency ?? null,
+    dpr: window.devicePixelRatio, w: screen.width, h: screen.height, ua: navigator.userAgent.slice(0, 200),
+  };
+}
+
+/** Intervalo do sinal de vida da hunt solo aberta (`solo_run_alive`). */
+const ALIVE_MS = 20_000;
+
+/**
+ * Sinal de vida da hunt solo enquanto ela roda: se o jogo fechar sozinho, `last_seen_at` diz até quando ele estava
+ * aberto (`telemetry_solo_fechadas`). Para quando a hunt acaba para este jogador.
+ */
+function watchAlive(room: () => DungeonRoom | null, runId: string) {
+  const timer = window.setInterval(() => {
+    const r = room();
+    const me = r?.state.players.get(r.sessionId);
+    if (!r || (r.state.phase !== "lobby" && me && me.status !== "playing")) return void window.clearInterval(timer);
+    if (r.state.phase === "running") void supabase.rpc("solo_run_alive", { p_run_id: runId }).then(() => {});
+  }, ALIVE_MS);
 }
 
 /** Resultado de hunt que ainda não chegou ao banco: fica no aparelho até `finish_solo_run` responder. */
