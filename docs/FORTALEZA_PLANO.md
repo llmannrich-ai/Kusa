@@ -253,3 +253,8 @@ pela fila de deploy.
 | 6. Pontes e cachoeira | A cachoeira: o esgoto do castelo (a boca em arco com a grade quebrada e o limo) na face do paredão, embaixo da muralha externa, e a água caindo no abismo até a névoa (`waterfallTexture`, rolando para baixo a cada quadro). As pontes ficam como estão (a de cordas ainda não balança). | Feito |
 | 7. Vida e luz | Fumaça cinza subindo e indo para o leste e faíscas em cada fogueira do acampamento; três corvos voando em volta da torre de menagem (`ravenFrames`, 2 quadros de asa); os estandartes balançando ao vento; um véu quente de fim de tarde multiplicando a cena (abaixo da interface). | Feito |
 | 8. Fechamento | Medição local (`npm run medicao`, Chromium sem tela em 412×915 @3x): **67 MB** de texturas na Fortaleza (Portões 48), dentro do teto de 80 MB; tempo e quadros só valem no aparelho. Fotos em pé e deitado em cada fase; GDD atualizado. **Falta medir no iPhone.** | Feito (falta o iPhone) |
+
+**Depois das 8 fases (02/11):** as touceiras soltas dentro do castelo e da vila viraram moitas de pé (`shrubSprite`, fora
+da grade, cada uma no seu tamanho); a mata ligada à borda continua em tiles. Entraram da planta os dois mirantes do
+esporão e a forca dos orcs no pátio externo (`gallowsSprite`). A ponte de cordas balança devagar (camada própria).
+Falta a medição no iPhone.

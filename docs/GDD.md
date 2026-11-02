@@ -1123,12 +1123,12 @@ lê.
   `docs/arte/fortaleza/planta.txt`): a praça da entrada, as ruas de basalto em grade, quadras de casas do império caídas
   com os pátios de calçamento quebrado, a **praça da fonte seca** (5×5, com colunas nos cantos), duas casernas com
   mini-boss e baú, o acampamento na cabeça da ponte e um **mirante** de pedra sobre o desfiladeiro; no pátio externo,
-  a **estátua derrubada** do imperador. Depois, o **desfiladeiro** (embaixo dele o vale pintado por código, com a
+  a **estátua derrubada** do imperador e a **forca** dos orcs. Depois, o **desfiladeiro** (embaixo dele o vale pintado por código, com a
   cachoeira do esgoto do castelo caindo da face do paredão) de lado a lado (7 linhas), a **muralha externa** na
   beira dele com o portão entre duas torres, o **pátio externo** fechado por muralhas (dos lados e na beira do
   precipício, com uma torre em cada canto; a mata fica do lado de fora) e virado acampamento (tendas, fogueiras, paliçadas,
   totens de caveira, estandartes, 3 casernas com mini-boss e baú), a **muralha interna** com o segundo portão, e o
-  **esporão**: o pátio de lajes com colunata, o parapeito caído na beira do precipício, a guarda do chefe e, no norte, a
+  **esporão**: o pátio de lajes com colunata, o parapeito caído na beira do precipício (com um **mirante** de cada lado), a guarda do chefe e, no norte, a
   **torre de menagem** (19×15, fachada de 3 andares em cantaria, torreões com o estandarte de caveira nos cantos do
   terraço), cujo salão do trono é a sala do boss (tapete vermelho da porta ao trono, braseiros acesos). As muralhas
   levam escudos, remendos, estacas com caveira e panos de guerra dos orcs; as casernas, telhado de telha e camas de

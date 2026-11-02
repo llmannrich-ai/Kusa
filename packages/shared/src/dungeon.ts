@@ -152,6 +152,8 @@ export interface FortressLayout {
   fountain: Rect;
   /** Estátuas derrubadas do império (ruína deitada, 2×1). */
   statues: Rect[];
+  /** A forca dos orcs (ruína de 1 tile). */
+  gallows: { x: number; y: number }[];
 }
 
 export interface EmpireLayout {
@@ -2279,6 +2281,16 @@ const FORT_VILA_MEADOWS = [{ x: 60, y: 19 }, { x: 13, y: 9 }];
 /** A entrada (a praça do portal) e a zona da praça da fonte. */
 const FORT_VILA_SPAWN: Rect = { x: 40, y: 22, w: 10, h: 9 };
 const FORT_VILA_ZONE = { x: 45, y: 16 };
+/**
+ * Os dois mirantes sobre o precipício, dos lados do esporão (da planta, linhas 27 a 30; coordenadas do mapa): uma
+ * plataforma de lajes cercada de muro, com uma coluna; `~` fica como o gerador fez.
+ */
+const FORT_LOOKOUTS: { x: number; y: number; rows: string[] }[] = [
+  { x: 17, y: 27, rows: ["####.", "#c;;.", "#;;;;", "####."] },
+  { x: 55, y: 27, rows: [".;####", ".;;;c#", ".;;;;#", ".;####"] },
+];
+/** A forca dos orcs no pátio externo (coordenadas do mapa). */
+const FORT_GALLOWS = { x: 29, y: 49 };
 /** A estátua derrubada do imperador, no pátio externo (fora da vila: coordenadas do mapa). */
 const FORT_STATUE: Rect = { x: 52, y: 66, w: 2, h: 1 };
 
@@ -2736,6 +2748,19 @@ function buildFortress(seed: number): Dungeon {
   Object.assign(spawn, { ...FORT_VILA_SPAWN, x: FORT_VILA_SPAWN.x + vx, y: FORT_VILA_SPAWN.y + vy });
   Object.assign(s, centerOf(spawn));
   path[0] = zone({ x: FORT_VILA_ZONE.x + vx, y: FORT_VILA_ZONE.y + vy });
+  // Os mirantes do esporão (por cima do abismo e da beira) e a forca no pátio externo.
+  for (const m of FORT_LOOKOUTS)
+    for (const [k, row] of m.rows.entries())
+      for (let px = 0; px < row.length; px++) {
+        const ch = row[px], x = m.x + px, y = m.y + k;
+        if (ch === "~") continue;
+        set(x, y, ch === "#" || ch === "c" ? Tile.Ruin : Tile.Floor);
+        props.delete(y * W + x);
+        if (ch === "c") props.add(y * W + x);
+        if (ch === ";") vilaYards.push({ x, y, w: 1, h: 1 });
+      }
+  const gallows: { x: number; y: number }[] = [];
+  if (get(FORT_GALLOWS.x, FORT_GALLOWS.y) === Tile.Floor) { set(FORT_GALLOWS.x, FORT_GALLOWS.y, Tile.Ruin); gallows.push(FORT_GALLOWS); }
   // A estátua derrubada do imperador no pátio externo (2 tiles deitada), se ali for chão.
   const statues: Rect[] = [];
   if ([0, 1].every((k) => get(FORT_STATUE.x + k, FORT_STATUE.y) === Tile.Floor)) { rect(FORT_STATUE, Tile.Ruin); statues.push(FORT_STATUE); }
@@ -2764,7 +2789,7 @@ function buildFortress(seed: number): Dungeon {
       roads, plazas, camps,
       walls: [{ y: outerY, x0: 1, x1: W - 2 }, { y: innerY, x0: left[innerY], x1: right[innerY] }],
       gates: [outerGate, innerGate], towers, keep, door, throne, bridges: [bridge], chasm, tents, palisades, totems, fires, columns,
-      ramparts, yards: [{ x: 6, y: bailey.y0 + 2, w: W - 12, h: outerY - bailey.y0 - 2 }, court, ...vilaYards], fountain, statues,
+      ramparts, yards: [{ x: 6, y: bailey.y0 + 2, w: W - 12, h: outerY - bailey.y0 - 2 }, court, ...vilaYards], fountain, statues, gallows,
     },
   };
 }
