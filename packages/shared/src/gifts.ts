@@ -106,6 +106,18 @@ export interface GiftEffects {
   weakenPower: number;
   /** Dano a mais da Condenação (Sentença Lenta). */
   doomDamage: number;
+  /** Bônus de ataque a mais que os rugidos dão às criaturas, vezes o da magia (Eco do Rugido). */
+  roarHaste: number;
+  /** Força a mais do Espinheiro disparado pelas criaturas; com o Dom, as criaturas envenenam (Presa Venenosa). */
+  fangThorn: number;
+  /** Cura a mais dos leques de cura (Pólen Dourado). */
+  fanHeal: number;
+  /** Mana devolvida (fração da máxima) ao curar alguém ferido (Néctar). */
+  nectarMana: number;
+  /** Dano a mais dos espinhos em leque (Rajada de Cardos). */
+  spreadDamage: number;
+  /** Dano a mais do Espinheiro (Espinheiro Antigo). */
+  thornbushDamage: number;
   /** Marcos de cada Dom (0 a `GIFT_MILESTONES`): nível ÷ `GIFT_MILESTONE_EVERY`. Só os Dons que já têm marcos. */
   marks: Partial<Record<GiftId, number>>;
 }
@@ -117,7 +129,8 @@ export const NO_GIFTS: GiftEffects = {
   frostBarrier: 0, raiseChance: 0, fourthBite: 0, cycleHeal: 0, skyStrike: 0,
   hemorrhageDamage: 0, furyStack: 0, anvilStunMs: 0, chimeReflect: 0, echoShield: 0, exposedDamage: 0,
   quiverPower: 0, weakSpot: 0, incandesceDamage: 0, candlePower: 0, fieldDamage: 0, fusePower: 0,
-  breathDamage: 0, breathSlow: 0, shatterDamage: 0, vaporDamage: 0, weakenPower: 0, doomDamage: 0, marks: {},
+  breathDamage: 0, breathSlow: 0, shatterDamage: 0, vaporDamage: 0, weakenPower: 0, doomDamage: 0,
+  roarHaste: 0, fangThorn: 0, fanHeal: 0, nectarMana: 0, spreadDamage: 0, thornbushDamage: 0, marks: {},
 };
 
 /** Raio da Voz de Comando. */
@@ -185,6 +198,20 @@ export const PRESSURE = { radius: 2, radiusLater: 3, dazzleMs: 1000, mistMs: 200
 export const LAMENT = { ms: 3000, msLater: 4000, max: 0.5, angle: 10, range: 1, weakenedDamage: 0.05, mana: 0.01 } as const;
 /** Sentença Lenta: raio, marca de quem pega, marca mais longa, roubo de vida e a Condenação seguinte. */
 export const SENTENCE = { radius: 2, mark: { pct: 0.15, ms: 4000 }, markMs: 1000, lifesteal: 0.03, chainTiles: 3 } as const;
+
+// Dons da costela de passivas do Druida.
+/** Eco do Rugido: abertura, cura das criaturas, alcance, bônus fixo e o lobo que o rugido chama. */
+export const ROAR = { angle: 10, heal: 0.05, range: 1, haste: 0.05, wolfMs: 6000 } as const;
+/** Presa Venenosa: veneno das criaturas (vezes o dano delas), acúmulos, prisão no 1º golpe, raio do Espinheiro e o salto. */
+export const FANG = { perSec: 0.2, ms: 3000, stacks: 2, rootMs: 500, radius: 1, poisonMs: 1000, jumpTiles: 4 } as const;
+/** Pólen Dourado: abertura, mana aos aliados, alcance e a armadura nos aliados. */
+export const POLLEN = { angle: 10, mana: 0.01, range: 1, armor: 3, armorMs: 4000 } as const;
+/** Néctar: limiar da vida (e os maiores), velocidade, escudo e a espera entre duas devoluções de mana. */
+export const NECTAR = { below: 0.5, belowLater: 0.6, belowLast: 0.7, speed: 0.05, speedMs: 3000, shield: 0.02, shieldMs: 4000, everyMs: 1000 } as const;
+/** Rajada de Cardos: espinhos a mais, prisão e o veneno de cada espinho (vezes o dano mágico). */
+export const THISTLE = { count: 1, rootMs: 300, poisonPerSec: 0.3, poisonMs: 3000 } as const;
+/** Espinheiro Antigo: raio, raiz a mais, veneno renovado, pulso a mais e a prisão de quem está colado. */
+export const BRAMBLE = { radius: 1, rootMs: 1000, poisonMs: 3000, seconds: 1, holdMs: 1000 } as const;
 
 // Números dos marcos do Paladino.
 /** Olhar Paciente: alcance do básico, o atordoar no alcance máximo (com recarga) e a flecha dupla. */
@@ -274,6 +301,7 @@ export type GiftId =
   | "blood_steel" | "rising_fury" | "anvil" | "chime" | "war_echo" | "execution_order"
   | "wide_quiver" | "weak_spot" | "dawn" | "votive_candle" | "sharp_caltrops" | "short_fuse"
   | "ember_throat" | "pressure_cooker" | "glacial_breath" | "crystallize" | "deep_lament" | "slow_sentence"
+  | "roar_echo" | "venom_fang" | "golden_pollen" | "nectar" | "thistle_burst" | "ancient_bramble"
   | "horde_bond" | "ancestor_stance" | "forge_spark";
 
 export interface GiftDef {
@@ -832,6 +860,78 @@ export const GIFTS: Record<GiftId, GiftDef> = {
       `suas marcas duram +${SENTENCE.markMs / 1000}s`,
       `a explosão cura ${pct(SENTENCE.lifesteal)} da sua vida`,
       "a Condenação passa para o marcado mais perto (uma vez)",
+    ],
+  }),
+  roar_echo: gift({
+    id: "roar_echo", classId: "druid", col: 0, rib: 1, name: "Eco do Rugido", icon: "📣",
+    description: "Seus rugidos (Rugido da Alcateia, Grito da Fera) deixam as criaturas atacando ainda mais rápido.",
+    perRank: 0.012, apply: (fx, v) => { fx.roarHaste += v; }, text: (v) => `+${pct(v)} do bônus de ataque dos rugidos`,
+    milestones: [
+      `rugidos em leque +${ROAR.angle}° de abertura`,
+      `o rugido cura as criaturas em ${pct(ROAR.heal)}`,
+      `rugidos em leque +${ROAR.range} tile`,
+      `+${pct(ROAR.haste)} de ataque das criaturas no rugido`,
+      `o rugido chama 1 lobo por ${ROAR.wolfMs / 1000}s`,
+    ],
+  }),
+  venom_fang: gift({
+    id: "venom_fang", classId: "druid", col: 0, rib: 2, name: "Presa Venenosa", icon: "🦷",
+    description: "Suas criaturas envenenam quem mordem, e o Espinheiro (preso por raiz + veneno) que elas disparam fere mais.",
+    perRank: 0.03, apply: (fx, v) => { fx.fangThorn += v; }, text: (v) => `criaturas envenenam; +${pct(v)} de dano do Espinheiro delas`,
+    milestones: [
+      `o veneno das criaturas acumula ${FANG.stacks} vezes`,
+      `criaturas prendem ${FANG.rootMs / 1000}s no 1º golpe em cada monstro`.replace(".", ","),
+      `o Espinheiro das criaturas fere em raio ${FANG.radius}`,
+      `veneno das criaturas +${FANG.poisonMs / 1000}s`,
+      "criatura que mata pula no monstro mais perto",
+    ],
+  }),
+  golden_pollen: gift({
+    id: "golden_pollen", classId: "druid", col: 1, rib: 1, name: "Pólen Dourado", icon: "🌸",
+    description: "Seus leques de cura (Brisa de Pólen) curam mais.",
+    perRank: 0.012, apply: (fx, v) => { fx.fanHeal += v; }, text: (v) => `+${pct(v)} de cura dos leques de cura`,
+    milestones: [
+      `leques de cura +${POLLEN.angle}° de abertura`,
+      `o leque devolve ${pct(POLLEN.mana)} da mana aos aliados`,
+      `leques de cura +${POLLEN.range} tile`,
+      "o leque também tira o atordoamento dos aliados",
+      `+${POLLEN.armor} de armadura nos aliados por ${POLLEN.armorMs / 1000}s`,
+    ],
+  }),
+  nectar: gift({
+    id: "nectar", classId: "druid", col: 1, rib: 2, name: "Néctar", icon: "🍯",
+    description: `Curar alguém abaixo de ${pct(NECTAR.below)} da vida devolve mana a você (no máximo uma vez por segundo).`,
+    perRank: 0.002, apply: (fx, v) => { fx.nectarMana += v; }, text: (v) => `${pct(v)} da mana ao curar quem está abaixo de ${pct(NECTAR.below)}`,
+    milestones: [
+      `vale abaixo de ${pct(NECTAR.belowLater)}`,
+      `e dá ${pct(NECTAR.speed)} de velocidade por ${NECTAR.speedMs / 1000}s a quem você cura`,
+      `vale abaixo de ${pct(NECTAR.belowLast)}`,
+      `e dá um escudo de ${pct(NECTAR.shield)} da vida`,
+      "a cura também tira o atordoamento",
+    ],
+  }),
+  thistle_burst: gift({
+    id: "thistle_burst", classId: "druid", col: 2, rib: 1, name: "Rajada de Cardos", icon: "🍃",
+    description: "Seus espinhos em leque (Rajada de Espinhos) ferem mais.",
+    perRank: 0.012, apply: (fx, v) => { fx.spreadDamage += v; }, text: (v) => `+${pct(v)} de dano dos espinhos em leque`,
+    milestones: [
+      `+${THISTLE.count} espinho no leque`,
+      `os espinhos prendem ${THISTLE.rootMs / 1000}s`.replace(".", ","),
+      `+${THISTLE.count} espinho`,
+      "os espinhos atravessam o 1º monstro",
+      "cada espinho que acerta envenena (no lugar do sangramento)",
+    ],
+  }),
+  ancient_bramble: gift({
+    id: "ancient_bramble", classId: "druid", col: 2, rib: 2, name: "Espinheiro Antigo", icon: "🌿",
+    description: "O Espinheiro (preso por raiz + veneno) fere mais.",
+    perRank: 0.03, apply: (fx, v) => { fx.thornbushDamage += v; }, text: (v) => `+${pct(v)} de dano do Espinheiro`,
+    milestones: [
+      `o Espinheiro fere em raio ${BRAMBLE.radius}`,
+      `a raiz fica +${BRAMBLE.rootMs / 1000}s em vez de soltar`,
+      "o Espinheiro renova o veneno",
+      `+${BRAMBLE.seconds} pulso de sangramento`,
+      `o Espinheiro prende ${BRAMBLE.holdMs / 1000}s quem está colado`,
     ],
   }),
   // Xamã Orc: Dons do fundo, embaixo dos Ápices (com os efeitos que já existem nos outros Dons).

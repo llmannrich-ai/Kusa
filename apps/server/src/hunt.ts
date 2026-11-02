@@ -47,7 +47,7 @@ import {
   FAR_DAMAGE_TILES,
   BANNER_RADIUS, BITE_BASE, BITE_EVERY, BURN_MS, BURN_PER_SEC, CIRCUIT_ELEMENTS, CIRCUIT_MS, CYCLE_BASE, CYCLE_HEAL, CYCLE_RADIUS,
   FROST_COOLDOWN_MS, FROST_MANA_PCT, FROST_MS,
-  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, ANVIL, BLOOD, CHIME, FURY, ORDER, WAR_ECHO, CANDLE, DAWN, FUSE, QUIVER, SPIKES, WEAK, CRYSTAL, EMBER, GLACIAL, LAMENT, PRESSURE, SENTENCE, type GiftId,
+  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, ANVIL, BLOOD, CHIME, FURY, ORDER, WAR_ECHO, CANDLE, DAWN, FUSE, QUIVER, SPIKES, WEAK, CRYSTAL, EMBER, GLACIAL, LAMENT, PRESSURE, SENTENCE, BRAMBLE, FANG, NECTAR, POLLEN, ROAR, THISTLE, type GiftId,
   GRACE_EVERY, LOW_HP_PCT, OSSUARY_MAX, OSSUARY_MS, SKY_STRIKE_DAMAGE, SKY_STRIKE_TILES, STILL_MS,
   type GiftEffects,
   bestPerSlot,
@@ -352,6 +352,10 @@ interface Seat {
   handCount: number;
   /** Reserva Gélida: o escudo de gelo vale até este momento (quem bate nele congela; ao quebrar, devolve mana). */
   frostShellUntil: number;
+  // Dons da costela de passivas do Druida.
+  /** Néctar: a próxima devolução de mana sai a partir deste momento; velocidade de quem foi curado até `nectarSpeedUntil`. */
+  nectarAt: number;
+  nectarSpeedUntil: number;
   // Dons da costela de passivas do Cavaleiro.
   /** Fúria Crescente: acúmulos e até quando valem; `furyFree` = a próxima magia do slot 1 sai sem mana. */
   furyStacks: number;
@@ -709,7 +713,7 @@ export class Hunt {
       circuit: {}, circuitReady: false, castBoost: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
       eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false, quiverCount: 0,
-      rallyMove: 0, freeUntil: 0,
+      rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -2055,7 +2059,15 @@ export class Hunt {
       } satisfies SpellMessage);
       this.fly(shot, ox, oy, path, speed, (m) => {
         this.countShot(seat, spell.id, !!m, aimed);
-        if (m) this.applySpell(sessionId, spell, rank, m.id, m.x, m.y, amount, undefined, slot);
+        if (!m) return;
+        // Rajada de Cardos (marco 4): o espinho atravessa o 1º monstro e pega o seguinte no caminho.
+        // (Com o monstro colado, o caminho é o do centro do leque.)
+        const route = close ? center : path;
+        const at = route.findIndex((t) => t.x === m.x && t.y === m.y);
+        const next = this.marks(seat, "thistle_burst") >= 4 && seat.gifts.spreadDamage > 0 && at >= 0
+          ? route.slice(at + 1).map((t) => this.monsterOn(t)).find((o) => o && o.id !== m.id) : undefined;
+        this.applySpell(sessionId, spell, rank, m.id, m.x, m.y, amount, undefined, slot);
+        if (next && this.state.monsters.has(next.id)) this.applySpell(sessionId, spell, rank, next.id, next.x, next.y, amount, undefined, slot);
       });
     }
   }
@@ -2299,12 +2311,7 @@ export class Hunt {
       else if (toxin && spell.damage) this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * toxin.perSec, toxin.ms, "poison", now);
       // Espinheiro: veneno em quem já estava preso por raiz (antes desta magia) vira espinhos.
       const poisoned = spell.dot?.kind === "poison" || (toxin && spell.damage && !spell.dot);
-      if (poisoned && before.rooted && brain.dot?.kind === "poison" && this.state.monsters.has(m.id)) {
-        brain.rootedUntil = now;
-        m.rooted = false;
-        this.reacted("thornbush", sessionId, m.x, m.y);
-        this.damageMonster(m, Math.max(1, Math.round(brain.dot.amount * THORNBUSH.seconds)), { attacker: sessionId, fromX: m.x, fromY: m.y, fx: "nature", dot: "bleed" }, "reaction:thornbush");
-      }
+      if (poisoned && before.rooted && brain.dot?.kind === "poison" && this.state.monsters.has(m.id)) this.thornbush(m, brain, sessionId, now, false);
       if (spellBurn && spell.damage && !spell.dot) {
         this.applyDot(m, brain, sessionId, spell.id, this.baseDamage(sessionId, p, "spell") * spellBurn.perSec, spellBurn.ms, "burn", now);
       }
@@ -2400,6 +2407,7 @@ export class Hunt {
         if (ally.status !== "playing" || !healed(ally, id)) return;
         struck?.add(`heal:${id}`);
         this.healPlayer(ally, Math.round(ally.maxHp * spell.heal!), sessionId);
+        if (spell.shape === "cone" && seat.gifts.fanHeal > 0) this.pollenFan(sessionId, seat, ally, id);
         // Brisa de Pólen: a cura em leque também tira veneno, queimadura e lentidão.
         const allySeat = spell.cleanse && spell.shape === "cone" ? this.seats.get(id) : undefined;
         if (allySeat) {
@@ -2462,6 +2470,11 @@ export class Hunt {
 
     // As criaturas novas aparecem antes do Grito da Fera e da Fúria da Horda, para receberem o reforço junto.
     if (spell.summon && p.status === "playing") this.summon(sessionId, p, spell, rank);
+    // Eco do Rugido (marco 5): o rugido chama um lobo (o do rugido seguinte troca este).
+    else if (spell.packCall && p.status === "playing" && this.marks(seat, "roar_echo") >= 5) {
+      this.summon(sessionId, p, { ...spell, summon: { kind: "wolf", count: 1, durationMs: ROAR.wolfMs } }, rank);
+      bump(seat.stats.giftProcs, "roar_echo");
+    }
     // Grito da Fera: as criaturas do druida atacam mais rápido e recuperam vida.
     if (spell.packCall && p.status === "playing") {
       const call = spell.packCall;
@@ -2750,6 +2763,8 @@ export class Hunt {
   /** `healerId` é quem leva o crédito da cura na telemetria. */
   private healPlayer(p: Player, amount: number, healerId: string) {
     const healer = this.seats.get(healerId);
+    // Néctar (Dom): curar quem está ferido devolve mana a quem cura.
+    if (healer && healer.gifts.nectarMana > 0 && p.status === "playing") this.nectar(healer, healerId, p);
     // Seiva Antiga (Dom): as curas de quem tem o Dom curam mais.
     if (healer && healer.gifts.healPower > 0) amount = Math.round(amount * (1 + healer.gifts.healPower));
     // Seiva Antiga (marco 5): quem está mal recebe mais.
@@ -2925,6 +2940,28 @@ export class Hunt {
     if (spell.mark && this.marks(seat, "slow_sentence") >= 3) spell = { ...spell, mark: { ...spell.mark, ms: spell.mark.ms + SENTENCE.markMs } };
     // Ordem de Execução (marco 2): as marcas também atordoam.
     if (spell.mark && this.marks(seat, "execution_order") >= 2) spell = { ...spell, stunMs: Math.max(spell.stunMs ?? 0, ORDER.markStunMs) };
+    // Eco do Rugido (Dom): os rugidos dão mais ataque às criaturas; marcos: abertura, cura, alcance e bônus fixo.
+    const roar = this.marks(seat, "roar_echo");
+    if (spell.packCall && seat.gifts.roarHaste > 0) {
+      const call = spell.packCall;
+      spell = { ...spell, packCall: { ...call, haste: call.haste * (1 + seat.gifts.roarHaste) + (roar >= 4 ? ROAR.haste : 0), heal: call.heal + (roar >= 2 ? ROAR.heal : 0) } };
+      if (spell.shape === "cone") spell = { ...spell, coneAngle: (spell.coneAngle ?? 90) + (roar >= 1 ? ROAR.angle : 0), range: spell.range + (roar >= 3 ? ROAR.range : 0) };
+    }
+    // Pólen Dourado (Dom): os leques de cura curam mais; marcos 1 e 3: abertura e alcance.
+    const pollen = this.marks(seat, "golden_pollen");
+    if (spell.heal && spell.shape === "cone" && seat.gifts.fanHeal > 0) {
+      spell = { ...spell, heal: spell.heal * (1 + seat.gifts.fanHeal), coneAngle: (spell.coneAngle ?? 90) + (pollen >= 1 ? POLLEN.angle : 0), range: spell.range + (pollen >= 3 ? POLLEN.range : 0) };
+    }
+    // Rajada de Cardos (Dom): os espinhos em leque ferem mais; marcos: espinhos a mais, prisão e veneno.
+    const thistle = this.marks(seat, "thistle_burst");
+    if (spell.spread && seat.gifts.spreadDamage > 0) {
+      spell = {
+        ...spell, damage: spell.damage && spell.damage * (1 + seat.gifts.spreadDamage),
+        spread: { ...spell.spread, count: spell.spread.count + (thistle >= 1 ? THISTLE.count : 0) + (thistle >= 3 ? THISTLE.count : 0) },
+      };
+      if (thistle >= 2) spell = { ...spell, rootMs: Math.max(spell.rootMs ?? 0, THISTLE.rootMs) };
+      if (thistle >= 5) spell = { ...spell, dot: { perSec: THISTLE.poisonPerSec, ms: THISTLE.poisonMs, kind: "poison" } };
+    }
     // Seiva Antiga (marco 4): curas em área alcançam mais longe.
     if (spell.heal && spell.radius > 0 && this.marks(seat, "ancient_sap") >= 4) spell = { ...spell, radius: spell.radius + 1 };
     return spell;
@@ -3349,6 +3386,112 @@ export class Hunt {
   }
 
   /** Garganta de Brasa: o fim do sopro deixa o chão em chamas (marco 2) e explode em volta (marco 5). */
+  /**
+   * Espinheiro (preso por raiz + veneno): as raízes viram espinhos e o monstro sangra na hora alguns pulsos do veneno.
+   * `creature`: disparado pela mordida de uma criatura (Presa Venenosa). Espinheiro Antigo (Dom): mais forte; marcos:
+   * raio, a raiz fica, o veneno renova, pulso a mais e prende quem está colado.
+   */
+  private thornbush(m: Monster, brain: Brain, creditId: string, now: number, creature: boolean) {
+    const seat = this.seats.get(creditId);
+    const bramble = seat && seat.gifts.thornbushDamage > 0 ? this.marks(seat, "ancient_bramble") : -1;
+    const fang = creature && seat && seat.gifts.fangThorn > 0 ? this.marks(seat, "venom_fang") : -1;
+    const dot = brain.dot!;
+    if (bramble >= 2) brain.rootedUntil = Math.max(brain.rootedUntil, now + BRAMBLE.rootMs);
+    else {
+      brain.rootedUntil = now;
+      m.rooted = false;
+    }
+    if (bramble >= 3) dot.until = Math.max(dot.until, now + BRAMBLE.poisonMs);
+    const power = 1 + (seat?.gifts.thornbushDamage ?? 0) + (creature ? seat?.gifts.fangThorn ?? 0 : 0);
+    const amount = Math.max(1, Math.round(dot.amount * (THORNBUSH.seconds + (bramble >= 4 ? BRAMBLE.seconds : 0)) * power));
+    const { x, y } = m;
+    this.reacted("thornbush", creditId, x, y);
+    this.damageMonster(m, amount, { attacker: creditId, fromX: x, fromY: y, fx: "nature", dot: "bleed" }, "reaction:thornbush", creditId);
+    const radius = bramble >= 1 ? BRAMBLE.radius : fang >= 3 ? FANG.radius : 0;
+    if (radius > 0 || bramble >= 5) {
+      this.reactionBurst("thornbush", x, y, Math.max(radius, 1), amount, creditId, "nature", (o, b) => {
+        if (o.id === m.id) return 0;
+        if (bramble >= 5) this.root(o, b, now + BRAMBLE.holdMs);
+        return radius > 0 ? 1 : 0;
+      });
+    }
+  }
+
+  /**
+   * Presa Venenosa: a mordida da criatura envenena; em quem já estava preso por raiz, dispara o Espinheiro. Marcos:
+   * acúmulos, prisão no 1º golpe, veneno mais longo e a criatura que mata pula no monstro mais perto.
+   */
+  private venomFang(s: Summon, brain: SummonBrain, m: Monster, mBrain: Brain, fang: number, wasRooted: boolean) {
+    const now = this.host.now();
+    if (this.state.monsters.has(m.id)) {
+      const ms = FANG.ms + (fang >= 4 ? FANG.poisonMs : 0);
+      this.applyDot(m, mBrain, s.owner, `summon:${s.kind}`, brain.damage * FANG.perSec, ms, "poison", now, undefined, fang >= 1 ? FANG.stacks : 0);
+      if (wasRooted && mBrain.dot?.kind === "poison") this.thornbush(m, mBrain, s.owner, now, true);
+      if (fang >= 2 && !mBrain.fangRooted && this.state.monsters.has(m.id)) {
+        mBrain.fangRooted = true;
+        this.root(m, mBrain, now + FANG.rootMs);
+      }
+      return;
+    }
+    if (fang < 5) return;
+    const next = this.nearestMonsterTo(s.x, s.y, FANG.jumpTiles);
+    const spot = next && this.freeSpotNear(next.x, next.y);
+    if (!next || !spot) return;
+    s.x = spot.x;
+    s.y = spot.y;
+    brain.targetId = next.id;
+    brain.nextAttackAt = now;
+    const stats = this.seats.get(s.owner)?.stats;
+    if (stats) bump(stats.giftProcs, "venom_fang");
+  }
+
+  /** Pólen Dourado (marcos 2, 4 e 5): o leque de cura devolve mana, tira o atordoamento e dá armadura ao aliado. */
+  private pollenFan(sessionId: string, seat: Seat, ally: Player, allyId: string) {
+    const pollen = this.marks(seat, "golden_pollen");
+    const allySeat = this.seats.get(allyId);
+    if (!allySeat) return;
+    const now = this.host.now();
+    if (pollen >= 2) this.giveMana(ally, Math.max(1, Math.round(ally.maxMana * POLLEN.mana)), sessionId);
+    if (pollen >= 4 && allySeat.effects.stun) {
+      delete allySeat.effects.stun;
+      this.syncEffects(ally, allySeat);
+    }
+    if (pollen >= 5) {
+      allySeat.sapArmor = Math.max(now < allySeat.sapUntil ? allySeat.sapArmor : 0, POLLEN.armor);
+      allySeat.sapUntil = Math.max(allySeat.sapUntil, now + POLLEN.armorMs);
+    }
+  }
+
+  /**
+   * Néctar: curar alguém abaixo do limiar da vida devolve mana a quem cura (uma vez por segundo). Marcos: limiares
+   * maiores, velocidade, escudo e tira o atordoamento de quem foi curado.
+   */
+  private nectar(healer: Seat, healerId: string, p: Player) {
+    const nectar = this.marks(healer, "nectar");
+    const below = nectar >= 3 ? NECTAR.belowLast : nectar >= 1 ? NECTAR.belowLater : NECTAR.below;
+    const now = this.host.now();
+    if (p.hp >= p.maxHp * below || now < healer.nectarAt) return;
+    healer.nectarAt = now + NECTAR.everyMs;
+    const me = this.state.players.get(healerId);
+    if (me?.status === "playing") me.mana = Math.min(me.maxMana, me.mana + Math.max(1, Math.round(me.maxMana * healer.gifts.nectarMana)));
+    bump(healer.stats.giftProcs, "nectar");
+    const target = this.seatOf(p);
+    if (!target) return;
+    if (nectar >= 2) target.nectarSpeedUntil = Math.max(target.nectarSpeedUntil, now + NECTAR.speedMs);
+    if (nectar >= 4) {
+      const shield = Math.round(p.maxHp * NECTAR.shield);
+      if (shield > p.barrier) {
+        p.maxBarrier = Math.max(p.maxBarrier, shield);
+        p.barrier = shield;
+      }
+      target.barrierUntil = Math.max(target.barrierUntil, now + NECTAR.shieldMs);
+    }
+    if (nectar >= 5 && target.effects.stun) {
+      delete target.effects.stun;
+      this.syncEffects(p, target);
+    }
+  }
+
   private breathEnd(sessionId: string, x: number, y: number, amount: number, ember: number) {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
@@ -3674,6 +3817,10 @@ export class Hunt {
         const alive = this.state.monsters.get(m.id);
         const brainM = this.brains.get(m.id);
         if (!alive || !brainM || !this.state.summons.has(s.id)) return;
+        // Presa Venenosa: preso por raiz antes desta mordida (o Espinheiro das criaturas lê).
+        const fangSeat = this.seats.get(s.owner);
+        const fang = fangSeat && fangSeat.gifts.fangThorn > 0 ? this.marks(fangSeat, "venom_fang") : -1;
+        const wasRooted = fang >= 0 && this.statesOf(brainM, this.host.now()).rooted;
         if (def.taunt) brainM.targetId = s.id;
         if (def.rootMs) this.root(alive, brainM, this.host.now() + def.rootMs);
         // Ossuário (marco 3): os esqueletos marcam quem atacam.
@@ -3697,6 +3844,7 @@ export class Hunt {
         // Laço da Matilha (marco 3): as criaturas se curam com o dano que causam.
         if (dealt > 0 && this.marks(this.seats.get(s.owner), "pack_bond") >= 3) s.hp = Math.min(s.maxHp, s.hp + Math.max(1, Math.round(dealt * PACK.lifesteal)));
         if (def.push && alive.hp > 0) this.push(alive, s, def.push);
+        if (fang >= 0) this.venomFang(s, brain, alive, brainM, fang, wasRooted);
       });
       return;
     }
@@ -5126,7 +5274,7 @@ export class Hunt {
    */
   private applyDot(
     m: Monster, brain: Brain, attacker: string, source: string, perTick: number, ms: number, kind: DotKind, now: number,
-    burst?: { radius: number; amount: number; source: string },
+    burst?: { radius: number; amount: number; source: string }, stacks = 0,
   ) {
     // Morto-vivo não envenena nem sangra (tipo de criatura).
     if (immuneToDot(m.kind as MonsterKind, kind)) return;
@@ -5153,15 +5301,16 @@ export class Hunt {
     const old = brain.dot;
     const toxinTrait = kind === "poison" ? this.seats.get(attacker)?.traits.find((t) => t.toxin)?.toxin : undefined;
     // Seiva Venenosa (marco 2): a Toxina acumula uma vez a mais.
-    const toxin = toxinTrait && { ...toxinTrait, maxStacks: toxinTrait.maxStacks + (venomMarks >= 2 ? 1 : 0) };
+    // Presa Venenosa (marco 1): o veneno das criaturas acumula (`stacks`), mesmo sem a Toxina.
+    const maxStacks = Math.max(toxinTrait ? toxinTrait.maxStacks + (venomMarks >= 2 ? 1 : 0) : 0, kind === "poison" ? stacks : 0);
     // Seiva Venenosa (marco 3): o envenenado anda mais devagar.
     if (venomMarks >= 3) {
       brain.slowPct = Math.max(now < brain.slowUntil ? brain.slowPct : 0, VENOM.slow);
       brain.slowUntil = Math.max(brain.slowUntil, now + ms);
       m.slowed = true;
     }
-    if (toxin && old?.kind === "poison" && old.attacker === attacker && now < old.until) {
-      const stacks = Math.min(toxin.maxStacks, old.stacks + 1);
+    if (maxStacks > 0 && old?.kind === "poison" && old.attacker === attacker && now < old.until) {
+      const stacks = Math.min(maxStacks, old.stacks + 1);
       const perStack = Math.max(old.perStack, perTick);
       brain.dot = { ...old, stacks, perStack, amount: perStack * stacks, until: Math.max(old.until, until), source, burst: burst ?? old.burst };
       m.dot = kind;
@@ -5522,7 +5671,9 @@ export class Hunt {
     const march = now < seat.rallyUntil ? seat.rallyMove : 0;
     // Voz de Comando (marco 3): quem está na voz anda mais rápido.
     const voice = this.voicesOver(p).some((s) => this.marks(s, "command_voice") >= 3) ? VOICE.speed : 0;
-    return base * Math.max(0.2, 1 + haste + buff + form + voice + march - channel);
+    // Néctar (marco 2): quem o druida curou ferido anda mais rápido por um tempo.
+    const nectar = now < seat.nectarSpeedUntil ? NECTAR.speed : 0;
+    return base * Math.max(0.2, 1 + haste + buff + form + voice + march + nectar - channel);
   }
 
   /** Olho de Águia (Traço) e Olhar Paciente (Dom): mais dano em monstro longe de quem bate. */

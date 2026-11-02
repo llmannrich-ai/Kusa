@@ -204,6 +204,12 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Feiticeiro | Gelo | 💎 Cristalizar | +3% de dano do Estilhaço | fere em raio 1 (50%) · devolve 2% da mana · congelado +0,5 s · raio 2 · congela de novo 0,5 s (uma vez) |
   | Feiticeiro | Trevas | 👁️ Lamento Profundo | as magias de trevas enfraquecem: o monstro causa 1,2% menos dano por 3 s (até 50%) | leques de trevas +10° · o enfraquecido recebe +5% · +1 tile · 4 s · o leque devolve 1% da mana por monstro |
   | Feiticeiro | Trevas | ☠️ Sentença Lenta | +3% de dano da Condenação | raio 2 · marca quem pega · marcas +1 s · cura 3% · passa para o marcado mais perto (uma vez) |
+  | Druida | Matilha | 📣 Eco do Rugido | +1,2% do bônus de ataque que os rugidos dão às criaturas | leque +10° · cura as criaturas 5% · +1 tile · +5% de ataque · chama 1 lobo por 6 s |
+  | Druida | Matilha | 🦷 Presa Venenosa | criaturas envenenam; +3% do Espinheiro que elas disparam | o veneno acumula 2 · prendem 0,5 s no 1º golpe · Espinheiro em raio 1 · veneno +1 s · quem mata pula no mais perto |
+  | Druida | Bosque | 🌸 Pólen Dourado | +1,2% de cura dos leques de cura | +10° · devolve 1% da mana aos aliados · +1 tile · tira o atordoamento · +3 de armadura por 4 s |
+  | Druida | Bosque | 🍯 Néctar | curar alguém abaixo de 50% devolve 0,2% da mana (1 vez por s) | abaixo de 60% · +5% de velocidade por 3 s · abaixo de 70% · escudo de 2% · tira o atordoamento |
+  | Druida | Espinhos | 🍃 Rajada de Cardos | +1,2% de dano dos espinhos em leque | +1 espinho · prendem 0,3 s · +1 espinho · atravessam o 1º monstro · envenenam (no lugar do sangramento) |
+  | Druida | Espinhos | 🌿 Espinheiro Antigo | +3% de dano do Espinheiro | raio 1 · a raiz fica +1 s · renova o veneno · +1 pulso · prende 1 s quem está colado |
 
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
