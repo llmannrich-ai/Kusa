@@ -44,10 +44,12 @@ import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import { travarZoom } from "./semZoom.ts";
+import { mostrarAvisoInstalar } from "./instalar.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
 
 travarZoom();
+mostrarAvisoInstalar();
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
@@ -232,8 +234,19 @@ function stopWatching() {
 
 let world: WorldMapView | null = null;
 let toastTimer = 0;
-/** Cenários de boss vencido por classe (campanha); recarregados a cada vez que o mapa abre. */
-let mapClears: Partial<Record<(typeof hub)["classId"], string[]>> = {};
+/**
+ * Cenários de boss vencido por classe (campanha); recarregados a cada vez que o mapa abre. A última lista fica salva no
+ * aparelho para o mapa já abrir com os cadeados certos (e o herói no cenário da última partida) antes de o banco responder.
+ */
+let mapClears: Partial<Record<(typeof hub)["classId"], string[]>> = readSavedClears();
+/** A campanha já veio do banco nesta sessão? Antes disso o cenário salvo não é trocado (a lista pode estar velha). */
+let clearsLoaded = false;
+function readSavedClears(): typeof mapClears {
+  try {
+    const saved = JSON.parse(localStorageGet("kusa:clears") ?? "{}");
+    return saved && typeof saved === "object" ? saved : {};
+  } catch { return {}; }
+}
 const clearsNow = () => mapClears[hub.classId] ?? [];
 /** O cenário está aberto para a classe escolhida (para criar sala ou jogar sozinho)? */
 const isOpen = (id: MapId) => mapUnlocked(clearsNow(), id);
@@ -244,7 +257,8 @@ function applyProgress() {
   const unlocked = WORLD_ORDER.filter((id) => mapUnlocked(cleared, id));
   world?.setProgress(unlocked, WORLD_ORDER.filter((id) => cleared.includes(id)));
   $("world-progress").textContent = `Verdemar · ${unlocked.length} de 18 cenários`;
-  if (!isOpen(createMapId())) chooseMap(lastUnlocked(cleared));
+  // Só com a campanha do banco: antes dela, o cenário da última partida pode parecer fechado e se perderia.
+  if (clearsLoaded && !isOpen(createMapId())) chooseMap(lastUnlocked(cleared));
 }
 
 /** Aviso curto sobre o mapa (toque numa terra em névoa). */
@@ -336,9 +350,11 @@ async function openRooms() {
   renderHunts();
   // A campanha da conta: chega depois de abrir o mapa (o herói vai para o último cenário aberto, se mudou).
   void loadMapClears().then((clears) => {
-    if ($("rooms").hidden) return;
+    if (!clears || $("rooms").hidden) return;
     const before = createMapId();
     mapClears = clears;
+    clearsLoaded = true;
+    localStorageSet("kusa:clears", JSON.stringify(clears));
     applyProgress();
     if (createMapId() !== before) { world?.select(createMapId(), { instant: true }); world?.focus(createMapId()); }
     setEntering(entering);

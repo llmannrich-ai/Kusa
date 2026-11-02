@@ -835,8 +835,115 @@ const MAGIC_STAFFS: Record<ItemTier, Partial<StaffDef>> = {
 // --- Escolha da arma ------------------------------------------------------------------------
 
 /** Arma vestida pela família ("weapon-sword"...) e nível; `magic` usa os materiais do item mágico. */
+// --- Armas de estilo (maça, lança, orbe, foice e totem de mão) ------------------------------
+// Maça e orbe são grades na mão (como espada e varinha); lança, foice e totem são hastes até o chão (como o cajado).
+
+const MACES: Record<ItemTier, GridArt> = {
+  // Clava cravejada: tora de madeira com cravos de ferro.
+  1: { grip: [2, 9], rows: [".h.h.", "hedch", ".edc.", "hedch", ".edc.", "..o..", "..p..", "..o..", "..p..", "..o..", "..n.."] },
+  // Maça de bronze: bola de bronze com um âmbar no topo.
+  2: { grip: [2, 9], rows: ["..v..", ".edc.", "eddcc", ".edc.", "..j..", "..p..", "..o..", "..p..", "..o..", "..o..", "..v.."] },
+  // Maça de ferro: cabeça de aletas.
+  3: { grip: [2, 10], rows: ["e.d.c", "eedcc", "edddc", "eedcc", "e.d.c", "..j..", "..p..", "..o..", "..p..", "..o..", "..o..", "..v.."] },
+  // Maça de mithral: aletas com uma safira no meio e guarda de ouro.
+  4: { grip: [2, 10], rows: [".e.c.", "eewcc", "ewvuc", "eeucc", ".e.c.", ".ijh.", "..p..", "..o..", "..p..", "..o..", "..o..", ".uvu."] },
+  // Maça de osso de dragão: crânio com espinhos e o olho de rubi.
+  5: { grip: [2, 11], rows: ["f...c", ".edc.", "edwdc", ".edc.", "f...c", "..j..", "..p..", "..o..", "..p..", "..o..", "..p..", "..o..", ".uvu."] },
+};
+const MACE_MATS: Record<ItemTier, number[]> = {
+  1: [M.wood, M.iron, M.darkWood, M.iron],
+  2: [M.bronze, M.bronze, M.wood, M.amber],
+  3: [M.iron, M.darkIron, M.darkLeather, M.iron],
+  4: [M.mithral, M.gold, M.darkLeather, M.sapphire],
+  5: [M.ivory, M.gold, M.dragonDark, M.ruby],
+};
+const MAGIC_MACES: Record<ItemTier, number[]> = {
+  1: [M.silverWhite, M.gold, M.wool, M.holy], // Maça do Capelão
+  2: [M.ember, M.darkIron, M.darkLeather, M.fire], // Estrela-d'Alva
+  3: [M.stormSteel, M.bronze, M.darkLeather, M.frost], // Martelo do Trovão Anão
+  4: [M.bloodSteel, M.darkIron, M.darkLeather, M.blood], // Maça da Ruptura
+  5: [M.bone, M.darkIron, M.fur, M.ember], // Quebra-Crânios do Rei Ogro
+};
+
+const ORBS: Record<ItemTier, GridArt> = {
+  // Orbe de quartzo num cabo curto.
+  1: { grip: [1, 6], rows: [".wv.", "wvut", ".ut.", ".jh.", ".pn.", ".pn.", ".pn.", ".dc."] },
+  // Orbe de âmbar preso em garras de bronze.
+  2: { grip: [1, 7], rows: ["j..h", "jwvh", "wvut", ".ut.", ".ih.", ".pn.", ".pn.", ".pn.", ".jh."] },
+  // Orbe rúnico dentro de um aro.
+  3: { grip: [2, 8], rows: [".jih.", "jwvuh", "iwvti", "jvuth", ".jih.", "..k..", "..o..", "..p..", "..o..", "..p..", "..j.."] },
+  // Orbe de mithral com a coroa de pontas.
+  4: { grip: [2, 8], rows: ["..l..", ".wvu.", "jwvuh", ".vut.", ".jkh.", "..k..", "..o..", "..p..", "..o..", "..p..", ".jkh."] },
+  // Orbe de olho de dragão entre garras.
+  5: { grip: [2, 8], rows: ["e...c", ".wvu.", "ewxuc", ".vut.", "e.d.c", "..d..", "..o..", "..p..", "..o..", "..p..", "..d.."] },
+};
+const ORB_MATS: Record<ItemTier, number[]> = {
+  1: [M.wood, M.iron, M.leather, M.frost],
+  2: [M.wood, M.bronze, M.darkLeather, M.amber],
+  3: [M.darkWood, M.rune, M.leather, M.amethyst],
+  4: [M.mithral, M.mithral, M.darkLeather, M.sapphire],
+  5: [M.dragonDark, M.gold, M.dragonDark, M.ruby],
+};
+const MAGIC_ORBS: Record<ItemTier, number[]> = {
+  1: [M.wood, M.gold, M.leather, M.emerald], // Orbe do Aprendiz
+  2: [M.darkIron, M.darkIron, M.darkLeather, M.fire], // Orbe da Brasa Presa
+  3: [M.night, M.gold, M.darkLeather, M.rune], // Orbe do Vidente
+  4: [M.stormSteel, M.silverWhite, M.darkLeather, M.frost], // Orbe da Tempestade Contida
+  5: [M.bone, M.obsidian, M.night, M.poison], // Olho do Lich
+};
+
+const SPEARS: Record<ItemTier, StaffDef> = {
+  1: { shaft: M.wood, topY: 5, col: 3, mats: [M.iron, M.leather, M.wood, M.iron], top: ["...d...", "..edc..", "..edc..", "...d...", "..ppp.."] },
+  2: { shaft: M.wood, topY: 4, col: 3, mats: [M.bronze, M.bronze, M.wood, M.amber], bands: [[-8, M.bronze]], top: ["...e...", "..edc..", ".eedcc.", "..edc..", "...d...", "..jih.."] },
+  3: { shaft: M.darkWood, topY: 4, col: 3, mats: [M.steel, M.iron, M.darkWood, M.iron], top: ["...e...", "..edc..", "..edc.c", "..edcc.", "...d...", "..jih.."] },
+  4: { shaft: M.mithral, topY: 3, col: 3, mats: [M.mithral, M.gold, M.darkLeather, M.sapphire], bands: [[-10, M.gold]], top: ["...f...", "..edc..", "..edc..", "e.edc.c", ".eedcc.", "..jkh..", "...x..."] },
+  5: { shaft: M.dragonDark, topY: 2, col: 3, mats: [M.ivory, M.gold, M.dragonDark, M.ruby], bands: [[-11, M.gold], [-5, M.gold]], top: ["...f...", "...e...", "..edc..", "..edc..", ".eedcc.", "e.edc.c", "..jwh..", "...k..."] },
+};
+const MAGIC_SPEARS: Record<ItemTier, Partial<StaffDef>> = {
+  1: { shaft: M.greenLeather, mats: [M.elfSilver, M.greenLeather, M.wood, M.emerald] }, // Lança do Batedor
+  2: { shaft: M.darkWood, mats: [M.gold, M.ember, M.darkWood, M.fire] }, // Lança Solar
+  3: { shaft: M.darkIron, mats: [M.silverWhite, M.gold, M.darkIron, M.holy] }, // Pique do Guardião
+  4: { shaft: M.wood, mats: [M.gold, M.feather, M.wood, M.amber] }, // Lança do Grifo
+  5: { shaft: M.bloodSteel, mats: [M.bloodSteel, M.obsidian, M.bloodSteel, M.blood] }, // Tridente da Maré Rubra
+};
+
+const SCYTHES: Record<ItemTier, StaffDef> = {
+  1: { shaft: M.wood, topY: 7, col: 4, mats: [M.iron, M.leather, M.wood, M.iron], top: ["..eed..", ".e..d..", "e...d..", "....d.."] },
+  2: { shaft: M.wood, topY: 6, col: 5, mats: [M.bronze, M.bronze, M.wood, M.amber], top: [".eeedd.", "e....d.", "e....d.", "....jh."] },
+  3: { shaft: M.darkWood, topY: 5, col: 6, mats: [M.steel, M.iron, M.darkWood, M.iron], top: ["..eeedd", ".ee...d", "e.....d", "e.....d", ".....jh"] },
+  4: { shaft: M.mithral, topY: 5, col: 6, mats: [M.mithral, M.gold, M.darkLeather, M.sapphire], top: ["..eeewd", ".ee..vd", "e.....d", "e.....d", ".....jh"] },
+  5: { shaft: M.dragonDark, topY: 4, col: 6, mats: [M.ivory, M.gold, M.dragonDark, M.ruby], top: [".feeexd", "ee...wd", "e.....d", "ef....d", ".e...jh"] },
+};
+const MAGIC_SCYTHES: Record<ItemTier, Partial<StaffDef>> = {
+  1: { mats: [M.iron, M.leaf, M.wood, M.emerald], leaves: true }, // Foice do Colhedor
+  2: { shaft: M.darkWood, mats: [M.greenLeather, M.greenLeather, M.darkWood, M.poison] }, // Foice da Mandrágora
+  3: { shaft: M.night, mats: [M.silverWhite, M.silverWhite, M.night, M.star] }, // Foice da Lua Cheia
+  4: { shaft: M.darkWood, mats: [M.amber, M.plumeRed, M.darkWood, M.ember], leaves: true }, // Foice do Outono Eterno
+  5: { shaft: M.wood, mats: [M.bone, M.leaf, M.wood, M.poison], leaves: true }, // Ceifadora do Bosque Antigo
+};
+
+const TOTEMS: Record<ItemTier, StaffDef> = {
+  1: { shaft: M.wood, topY: 6, col: 3, mats: [M.wood, M.feather, M.darkWood, M.amber], gnarled: true, top: ["..edc..", ".ewdwc.", ".edddc.", ".ed.dc.", "..edc..", "...d..."] },
+  2: { shaft: M.wood, topY: 5, col: 3, mats: [M.bronze, M.bone, M.wood, M.amber], top: ["j.....h", "jeddcch", ".ewdwc.", ".edddc.", ".ed.dc.", "..edc..", "...k..."] },
+  3: { shaft: M.darkWood, topY: 5, col: 3, mats: [M.iron, M.plumeRed, M.darkWood, M.ember], top: ["g..d..g", ".hedch.", ".ewdwc.", ".edddc.", ".ed.dc.", "..edc..", "..jkh.."] },
+  4: { shaft: M.mithral, topY: 4, col: 3, mats: [M.mithral, M.gold, M.darkLeather, M.sapphire], top: ["..edc..", ".ewdwc.", ".ed.dc.", "..jkh..", ".ewdwc.", ".edddc.", "..edc.."] },
+  5: { shaft: M.dragonDark, topY: 3, col: 3, mats: [M.ivory, M.gold, M.dragonDark, M.ruby], top: ["f.....f", ".e...c.", ".eedcc.", "ewdddwc", "edd.ddc", ".e.d.c.", "..ddd.."] },
+};
+const MAGIC_TOTEMS: Record<ItemTier, Partial<StaffDef>> = {
+  1: { mats: [M.night, M.feather, M.darkWood, M.amber] }, // Totem do Corvo
+  2: { mats: [M.ember, M.darkIron, M.darkWood, M.fire] }, // Totem da Brasa
+  3: { shaft: M.wood, mats: [M.fur, M.ivory, M.wood, M.blood] }, // Totem do Javali
+  4: { shaft: M.darkWood, mats: [M.bone, M.rune, M.darkWood, M.rune], runes: true }, // Totem dos Ancestrais
+  5: { shaft: M.obsidian, mats: [M.bone, M.obsidian, M.obsidian, M.poison] }, // Totem do Grande Chefe Morto
+};
+
 export function weaponArt(family: string, tier: ItemTier, magic = false): WeaponArt {
   switch (family) {
+    case "weapon-mace": return gridWeapon(MACES[tier], (magic ? MAGIC_MACES : MACE_MATS)[tier]);
+    case "weapon-orb": return gridWeapon(ORBS[tier], (magic ? MAGIC_ORBS : ORB_MATS)[tier], false);
+    case "weapon-spear": return staffWeapon(magic ? { ...SPEARS[tier], ...MAGIC_SPEARS[tier] } : SPEARS[tier]);
+    case "weapon-scythe": return staffWeapon(magic ? { ...SCYTHES[tier], ...MAGIC_SCYTHES[tier] } : SCYTHES[tier]);
+    case "weapon-totem": return staffWeapon(magic ? { ...TOTEMS[tier], ...MAGIC_TOTEMS[tier] } : TOTEMS[tier]);
     case "weapon-sword": return gridWeapon(SWORDS[tier], (magic ? MAGIC_SWORDS : SWORD_MATS)[tier]);
     case "weapon-axe": return gridWeapon(AXES[tier], (magic ? MAGIC_AXES : AXE_MATS)[tier]);
     case "weapon-wand": return gridWeapon(WANDS[tier], (magic ? MAGIC_WANDS : WAND_MATS)[tier], false);

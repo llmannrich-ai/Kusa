@@ -1,6 +1,6 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
 import {
-  CLASS_IDS, CLASSES, ITEMS, MONSTERS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
+  CLASS_IDS, CLASSES, ITEMS, LEGENDARY_IDS, MONSTERS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
   type ClassId, type ItemSlot, type ItemTier,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
@@ -60,7 +60,7 @@ const WALK = [1, 0, 2, 0];
     return el;
   };
   const classSel = select("Classe", CLASS_IDS.map((id) => [id, CLASSES[id].name]));
-  const RARITY_TAG = { common: "", rare: " (raro)", magic: " ✦" };
+  const RARITY_TAG = { common: "", rare: " (raro)", magic: " ✦", legendary: " ★" };
   const slotSel = Object.fromEntries(ITEM_SLOTS.map((slot) => [slot, select(SLOT_NAMES[slot], [
     ["", "—"],
     ...Object.values(ITEMS)
@@ -256,6 +256,9 @@ for (const family of Object.values(ITEM_FAMILIES)) {
   }
 }
 
+const legendRow = section("Itens lendários (peças únicas)");
+for (const id of LEGENDARY_IDS) show(legendRow, itemIcon(id), ITEMS[id].name);
+
 const runeRow = section("Runas (caem dos bosses)");
 for (const id of RUNE_IDS) show(runeRow, itemIcon(id), RUNES[id].name);
 
@@ -265,13 +268,14 @@ const fullSet = (classId: ClassId, tier: ItemTier, pick = 0): Outfit => {
   for (const slot of ITEM_SLOTS) {
     const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot && (!f.classes || f.classes.includes(classId)));
     const family = families[Math.min(pick, families.length - 1)];
-    outfit[slot] = itemId(slot, family.key, tier);
+    // O paladino não usa escudo: o slot fica vazio.
+    if (family) outfit[slot] = itemId(slot, family.key, tier);
   }
   return outfit;
 };
 /** O mesmo conjunto com todos os itens numa raridade. */
 const withRarity = (outfit: Outfit, rarity: "rare" | "magic"): Outfit =>
-  Object.fromEntries(ITEM_SLOTS.map((slot) => [slot, outfit[slot].replace(/-common$/, `-${rarity}`)])) as Outfit;
+  Object.fromEntries(ITEM_SLOTS.map((slot) => [slot, outfit[slot] && outfit[slot].replace(/-common$/, `-${rarity}`)])) as Outfit;
 for (const id of CLASS_IDS) {
   const row = section(`Vestimenta: ${CLASSES[id].name}`);
   show(row, heroPoses(id, NO_OUTFIT), "sem equipamento", 3 / ART_SCALE);
