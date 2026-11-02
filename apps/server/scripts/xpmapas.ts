@@ -51,6 +51,15 @@ for (const r of rows) {
 }
 
 if (!process.argv.includes("--tabela")) {
+  // Curva de XP (forma do Tibia, num terço): marcos fixos e cada nível mais caro que o anterior, com degrau crescente.
+  const marks: [number, number][] = [[1, 0], [2, 33], [3, 67], [6, 500], [10, 3100], [12, 5867], [20, 32933]];
+  for (const [level, xp] of marks) check(xpForLevel(level) === xp, `nível ${level}: ${xpForLevel(level)} de XP (esperava ${xp})`);
+  for (let l = 3; l <= MAX_LEVEL; l++) {
+    const step = xpForLevel(l) - xpForLevel(l - 1);
+    const before = xpForLevel(l - 1) - xpForLevel(l - 2);
+    check(step > before, `o nível ${l} (${step} de XP) devia custar mais que o ${l - 1} (${before})`);
+    check(levelForXp(xpForLevel(l)) === l && levelForXp(xpForLevel(l) - 1) === l - 1, `levelForXp não bate com xpForLevel no nível ${l}`);
+  }
   for (const r of rows) check(r.at75 < MAX_LEVEL, `${r.id}: limpando 75% sozinho, chega no boss no nível ${r.at75} (abaixo do ${MAX_LEVEL})`);
   console.log("xpmapas OK");
 }

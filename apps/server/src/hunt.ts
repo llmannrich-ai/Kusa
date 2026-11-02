@@ -4957,7 +4957,7 @@ export class Hunt {
     const bedrockArmor = seat && still > 0 && this.marks(seat, "bedrock") >= 3 ? BEDROCK.armor : 0;
     const banners = this.bannersOver(p);
     const bannerArmor = banners.some((s) => this.marks(s, "living_banner") >= 2) ? BANNER.armor : 0;
-    const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor + (seat?.gifts.armor ?? 0)
+    const armor = CLASSES[p.classId as ClassId].armor + (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor + (seat?.gifts.armor ?? 0)
       + bedrockArmor + bannerArmor; // Couro Curtido (Dom): armadura fixa, somada ao equipamento.
     // Corroído: a armadura derrete e cada acúmulo deixa o golpe mais forte.
     const corrode = seat?.effects.corrode && now < seat.effects.corrode.until ? 1 + CORRODE_PER_STACK * seat.effects.corrode.stacks : 1;

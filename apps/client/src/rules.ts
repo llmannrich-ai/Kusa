@@ -24,7 +24,9 @@ import {
   POTION_IDS,
   POTION_MAX,
   SPELLS,
+  MAX_LEVEL,
   SPELL_SLOT_LEVELS,
+  xpForLevel,
   STARTER_SPELLS,
   TIER_NAMES,
   VAULT_SIZE,
@@ -146,7 +148,7 @@ export function renderRules(root: HTMLElement) {
     ),
 
     section("⭐ Níveis, magias e melhorias", false, list([
-      "Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo.",
+      `Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo. Os primeiros níveis saem rápido; depois cada nível pede bem mais XP que o anterior (nível 10: ${xpForLevel(10).toLocaleString("pt-BR")} de XP; nível ${MAX_LEVEL}: ${xpForLevel(MAX_LEVEL).toLocaleString("pt-BR")}).`,
       "A XP de um monstro é dividida em partes iguais por toda a equipe na dungeon (100 XP com 4 heróis dão 25 a cada um). O gold do monstro e do baú se divide do mesmo jeito.",
       `No nível ${SLOT1} abre o 1º slot de magia, no nível ${SLOT2} o 2º e no ${SLOT3} o 3º (magias supremas, que se compram no Grimório): você escolhe uma magia, que fica até o fim da hunt.`,
       "Nos outros níveis aparecem duas melhorias e você toca numa. Elas valem até o fim da hunt e somam com as áureas do Grimório.",
