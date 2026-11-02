@@ -44,10 +44,10 @@ export function spellRoles(s: SpellDef): SpellRole[] {
   if ((hits && wide) || s.selfBuff?.cleave) roles.add("area");
   if (hits && !wide) roles.add("alvo");
   if (s.execute || s.distanceBonus || s.mark) roles.add("alvo");
-  if (s.rootMs || s.stunMs || s.slow || s.taunt || s.push || s.pull || s.nextBasicStunMs || f?.rootMs || f?.kind === "wall" || f?.kind === "trap") {
+  if (s.rootMs || s.stunMs || s.slow || s.taunt || s.push || s.pull || f?.repel || s.nextBasicStunMs || f?.rootMs || f?.kind === "wall" || f?.kind === "trap") {
     roles.add("controle");
   }
-  if (s.barrier || s.guard || s.armor || s.thorns || s.lifesteal || s.form?.kind === "bear" || f?.allyArmor || s.selfBuff?.slowAttackers || s.selfBuff?.lifesteal || s.oath) {
+  if (s.barrier || s.guard || s.armor || s.thorns || s.lifesteal || s.form?.kind === "bear" || f?.allyArmor || s.selfBuff?.slowAttackers || s.selfBuff?.lifesteal || s.oath || f?.allyGuard) {
     roles.add("defesa");
   }
   if (s.heal || f?.allyHeal || s.seed || s.cleanse || s.tauntHeal || s.summonDeathHeal || s.rally?.heal) roles.add("cura");

@@ -370,6 +370,8 @@ interface Seat {
   oathBy: string;
   oathUntil: number;
   oathShare: number;
+  /** Dança do Vento: cargas que sobram da magia `spellId` até `until`. */
+  charges: { spellId: string; left: number; until: number } | null;
   // Dons da costela de passivas do Cavaleiro.
   /** Fúria Crescente: acúmulos e até quando valem; `furyFree` = a próxima magia do slot 1 sai sem mana. */
   furyStacks: number;
@@ -465,8 +467,13 @@ interface FieldBrain {
   burst?: { radius: number; amount: number; burn?: { perSec: number; ms: number } } | null;
   /** Totem nas Costas (Traço): este totem anda com o dono. */
   follows?: boolean;
+  /** Santuário: corte de dano dos aliados dentro e empurrar os monstros que entram. */
+  allyGuard?: number;
+  repel?: boolean;
 }
 
+/** Dança do Vento: espera entre uma carga e a seguinte. */
+const CHARGE_GAP_MS = 400;
 /** Regeneração por segundo, em fração do máximo. */
 const HP_REGEN = 0.02;
 const MANA_REGEN = 0.02;
@@ -727,7 +734,7 @@ export class Hunt {
       circuit: {}, circuitReady: false, castBoost: 0, castReactRadius: 0, castReactPower: 1, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
       eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false, quiverCount: 0,
-      rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0, oathBy: "", oathUntil: 0, oathShare: 0,
+      rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0, oathBy: "", oathUntil: 0, oathShare: 0, charges: null,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1794,6 +1801,8 @@ export class Hunt {
     let line: { x: number; y: number }[] | undefined;
     // Cone: o leque fica fixo na direção mirada na hora do tiro.
     if (spell.shape === "cone") line = coneTiles(this.dungeon, ox, oy, tx, ty, spell.range, spell.coneAngle);
+    // Cruz Flamejante: as 4 retas de quem conjura, cada uma parando na parede.
+    if (spell.cross) line = ([[1, 0], [-1, 0], [0, 1], [0, -1]] as const).flatMap(([dx, dy]) => lineTiles(this.dungeon, ox, oy, ox + dx * spell.cross!, oy + dy * spell.cross!, spell.cross!));
     if (spell.shape === "line") {
       line = lineTiles(this.dungeon, ox, oy, tx, ty, spell.range);
       const end = line[line.length - 1] ?? { x: ox, y: oy };
@@ -1807,8 +1816,9 @@ export class Hunt {
     // Rolamento: o herói salta na hora, antes do resto do efeito. Toque rápido foge do alvo; mirado, vai para o ponto.
     if (spell.dash) {
       const threat = !aim ? target : undefined;
-      const toX = threat ? 2 * p.x - threat.x : tx;
-      const toY = threat ? 2 * p.y - threat.y : ty;
+      // Dança do Vento (`back`): recua para o lado oposto ao mirado.
+      const toX = threat ? 2 * p.x - threat.x : spell.dash.back ? 2 * p.x - tx : tx;
+      const toY = threat ? 2 * p.y - threat.y : spell.dash.back ? 2 * p.y - ty : ty;
       const landing = spell.dash.teleport
         ? this.teleportLanding(p, toX, toY, spell.dash.tiles, threat)
         : this.dashLanding(p, toX, toY, spell.dash.tiles, threat);
@@ -1885,6 +1895,17 @@ export class Hunt {
     // Último Duelo (marco 5): com a vida baixa, a magia do slot 3 recarrega na metade do tempo.
     const duelSlot3 = slot === 2 && this.marks(seat, "last_duel") >= 5 && this.duelLow(seat, p) ? DUEL.slot3Cooldown : 1;
     seat.spellReadyAt[slot] = echo ? now : now + Math.round(spellCooldownMs(spell.cooldownMs, seat.perkBonus) * duelSlot3);
+    // Dança do Vento: com cargas, a recarga só começa quando acabam as cargas (ou a janela delas).
+    if (spell.charges && !echo) {
+      const c = seat.charges;
+      const fresh = !c || c.spellId !== spell.id || now >= c.until || c.left <= 0;
+      const left = fresh ? spell.charges.count - 1 : c.left - 1;
+      seat.charges = { spellId: spell.id, left, until: fresh ? now + spell.charges.windowMs : c.until };
+      if (left > 0 && now + CHARGE_GAP_MS < seat.charges.until) {
+        seat.spellReadyAt[slot] = now + CHARGE_GAP_MS;
+        this.host.send(sessionId, MSG.cooldown, { slot, ms: CHARGE_GAP_MS } satisfies CooldownMessage);
+      }
+    }
     // Fôlego do Caçador (marco 2): o salto devolve parte da recarga da magia do slot 1.
     if (spell.dash && seat.gifts.dashBasic > 0 && this.marks(seat, "hunter_breath") >= 2) {
       const first = SPELLS[spellIn(p, 0) as SpellId];
@@ -1933,7 +1954,10 @@ export class Hunt {
       spell = { ...spell, selfBuff: undefined };
     }
     // Projéteis em leque (Leque de Flechas, Leque de Raios, Rajada de Espinhos): cada tiro voa na sua direção e pode errar.
-    if (spell.spread) return this.castSpread(sessionId, p, seat, spell, base.id, slot, ox, oy, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, !!aim);
+    // (Saem de onde o herói está: a Dança do Vento já recuou.)
+    if (spell.spread) return this.castSpread(sessionId, p, seat, spell, base.id, slot, p.x, p.y, aim ? Math.round(aim.x) : tx, aim ? Math.round(aim.y) : ty, !!aim);
+    // Bombardeio: as bombas caem em onda no leque.
+    if (spell.bombard) return this.castBombard(sessionId, p, seat, spell, base.id, slot, ox, oy, tx, ty);
     // Canalizar (Sopro Gélido): o leque se repete a cada pulso, na direção que o jogador arrastar, até soltar ou acabar.
     if (spell.channel && spell.shape === "cone") {
       const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0);
@@ -2069,6 +2093,56 @@ export class Hunt {
     });
   }
 
+  /** Disparo Fantasma: marca os monstros mais perto agora e, depois do atraso, a flecha fantasma acerta cada um. */
+  private phantomShot(sessionId: string, p: Player, spell: SpellDef, rank: number, amount: number, slot: SpellSlot) {
+    const ph = spell.phantom!;
+    const now = this.host.now();
+    const prey = [...this.state.monsters.values()]
+      .filter((m) => !m.hidden && tileDistance(p.x, p.y, m.x, m.y) <= ph.range && hasLineOfSight(this.dungeon, p.x, p.y, m.x, m.y))
+      .sort((a, b) => tileDistance(p.x, p.y, a.x, a.y) - tileDistance(p.x, p.y, b.x, b.y))
+      .slice(0, ph.count);
+    const shot: SpellDef = { ...spell, phantom: undefined, mark: undefined, radius: 0 };
+    for (const m of prey) {
+      const b = this.brains.get(m.id);
+      if (b && spell.mark) {
+        b.markPct = Math.max(now < b.markUntil ? b.markPct : 0, spell.mark.pct);
+        b.markUntil = Math.max(b.markUntil, now + spell.mark.ms);
+        m.marked = true;
+      }
+      this.after(ph.delayMs, () => {
+        const alive = this.state.monsters.get(m.id);
+        const hero = this.state.players.get(sessionId);
+        if (!alive || hero?.status !== "playing") return;
+        this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: hero.x, y: hero.y, tx: alive.x, ty: alive.y, ms: 0, echo: true } satisfies SpellMessage);
+        this.applySpell(sessionId, shot, rank, alive.id, alive.x, alive.y, amount, undefined, slot);
+      });
+    }
+  }
+
+  /** Bombardeio: as bombas caem uma a uma no leque, da perto para a longe, cada uma em área (e o chão em chamas, na Maestria). */
+  private castBombard(sessionId: string, p: Player, seat: Seat, spell: SpellDef, baseId: SpellId, slot: SpellSlot, ox: number, oy: number, tx: number, ty: number) {
+    const bomb = spell.bombard!;
+    const amount = this.baseDamage(sessionId, p, "spell") * (spell.damage ?? 0);
+    const rank = p.spellRanks.get(baseId) ?? 0;
+    const blast: SpellDef = { ...spell, bombard: undefined, coneAngle: undefined };
+    const points = spreadAimPoints(ox, oy, tx, ty, bomb.count, spell.coneAngle ?? 60);
+    points.forEach((point, i) => {
+      const reach = Math.max(2, Math.round(2 + (i * (spell.range - 2)) / Math.max(1, bomb.count - 1)));
+      const path = lineTiles(this.dungeon, ox, oy, point.x, point.y, reach);
+      const at = path[path.length - 1] ?? { x: ox, y: oy };
+      this.after(i * bomb.stepMs, () => {
+        const hero = this.state.players.get(sessionId);
+        if (hero?.status !== "playing") return;
+        this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx: at.x, ty: at.y, ms: 0, echo: true } satisfies SpellMessage);
+        this.applySpell(sessionId, blast, rank, undefined, at.x, at.y, amount, undefined, slot);
+        if (bomb.fireMs) {
+          const fire: SpellDef = { ...SPELLS.explosive_volley, radius: spell.radius, field: { kind: "zone", ms: bomb.fireMs, tickMs: 1000, max: bomb.count } };
+          this.placeField(sessionId, hero, seat, fire, 0, at.x, at.y, this.baseDamage(sessionId, hero, "spell") * HAND.firePerSec, "fire");
+        }
+      });
+    });
+  }
+
   /**
    * Projéteis em leque: `spread.count` tiros espalhados em volta da direção mirada, cada um com o caminho dele (pode
    * errar). Com um monstro colado na direção mirada, todos acertam nele.
@@ -2197,6 +2271,7 @@ export class Hunt {
     const p = this.state.players.get(sessionId);
     const seat = this.seats.get(sessionId);
     if (!p || !seat) return;
+    if (spell.phantom) return this.phantomShot(sessionId, p, spell, rank, amount, slot);
     // Campo no chão (Solo Consagrado, armadilha, estaca): os efeitos saem depois, pelos pulsos do campo.
     if (spell.field) {
       if (p.status !== "playing") return;
@@ -5507,7 +5582,7 @@ export class Hunt {
       until: now + def.ms * (traps?.durationScale ?? 1) * trapScale * (craft?.durationScale ?? 1) * (follow?.durationScale ?? 1) + extraMs,
       shotsLeft: def.shots ?? 0, spawn: def.spawn ?? null,
       burst: def.burst ? { radius: def.burst.radius, amount: this.baseDamage(sessionId, p, "spell") * def.burst.damage, burn: def.burst.burn } : null,
-      follows: !!follow,
+      follows: !!follow, allyGuard: def.allyGuard ?? 0, repel: !!def.repel,
     });
     // Totem nas Costas: só o último totem anda com o xamã; os anteriores ficam onde estão.
     if (follow) {
@@ -5781,6 +5856,22 @@ export class Hunt {
           if (alive < brain.spawn.max) {
             const call = { ...brain.spell, summon: { kind: brain.spawn.kind, count: 1, durationMs: brain.spawn.durationMs } };
             this.summon(f.owner, owner, call, brain.rank, true, { x: f.x, y: f.y });
+          }
+        }
+        // Santuário: os aliados dentro levam menos dano; os monstros que entram são empurrados para fora.
+        if (brain.allyGuard) {
+          this.state.players.forEach((ally, id) => {
+            const allySeat = this.seats.get(id);
+            if (ally.status !== "playing" || !allySeat || !sees(ally.x, ally.y, f.radius)) return;
+            allySeat.guard = Math.max(now < allySeat.guardUntil ? allySeat.guard : 0, brain.allyGuard!);
+            allySeat.guardUntil = Math.max(allySeat.guardUntil, now + brain.tickMs + 100);
+          });
+        }
+        if (brain.repel) {
+          for (const m of [...this.state.monsters.values()]) {
+            const dist = tileDistance(f.x, f.y, m.x, m.y);
+            if (m.hidden || dist > f.radius) continue;
+            this.push(m, { x: f.x, y: f.y }, f.radius + 1 - dist, f.owner);
           }
         }
         if (brain.allyArmor > 0 || brain.allyDamage > 0) {

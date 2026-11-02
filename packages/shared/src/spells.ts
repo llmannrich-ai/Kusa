@@ -84,6 +84,7 @@ export type SpellId =
   | "thermal_shock" | "sentence" | "pack_hunt" | "twin_sprout" | "bramble_embrace"
   // Grimório 4.0, fase 6: magias do slot 3 de cada lado da especialização.
   | "massacre" | "blade_storm" | "protector_oath" | "mountain" | "rally_cry" | "challenge_chains"
+  | "phantom_shot" | "wind_dance" | "flaming_cross" | "sanctuary" | "bombardment" | "minefield"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -172,6 +173,10 @@ export interface SpellDef {
     look?: "storm" | "totem" | "keg" | "sprout";
     /** Quantos campos desta magia cabem ao mesmo tempo (o mais antigo sai); sem isto, 1 (ou o do Engenhoso). */
     max?: number;
+    /** Zona: aliados dentro levam esta fração a menos de dano (renovado a cada pulso) (Santuário). */
+    allyGuard?: number;
+    /** Zona: a cada pulso, empurra para fora os monstros que entraram (Santuário). */
+    repel?: boolean;
     /**
      * Zona: a cada pulso chama 1 criatura `kind` colada no campo, por `durationMs`, enquanto houver menos de `max`
      * desta magia (Totem do Chamado). Conta no limite de criaturas do dono.
@@ -257,6 +262,17 @@ export interface SpellDef {
   afterQuake?: { radius: number; damage: number };
   /** Correntes do Desafio: puxa todos os monstros atingidos para perto de quem conjura (não só o alvo). */
   pullAll?: boolean;
+  /** Disparo Fantasma: marca os `count` monstros mais perto (a até `range`); `delayMs` depois, cada um leva o dano. */
+  phantom?: { count: number; range: number; delayMs: number };
+  /** Dança do Vento: a magia tem `count` cargas: lançada a 1ª, as outras saem logo em seguida, até `windowMs`. */
+  charges?: { count: number; windowMs: number };
+  /** Cruz Flamejante: acerta os monstros nas 4 retas (cima, baixo, lados) de quem conjura, até tantos tiles. */
+  cross?: number;
+  /**
+   * Bombardeio: `count` explosões (no raio da magia) caem uma a cada `stepMs`, espalhadas no leque (`coneAngle`), da
+   * perto para a longe; com `fireMs`, cada uma deixa o chão em chamas.
+   */
+  bombard?: { count: number; stepMs: number; fireMs?: number };
   /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
@@ -288,7 +304,8 @@ export interface SpellDef {
    * Quem conjura salta até `tiles` tiles na direção mirada (no toque rápido, para longe do alvo), parando em parede ou
    * monstro. `teleport`: some e aparece no ponto mirado (passa por cima de monstros; precisa ver o ponto e ele estar livre).
    */
-  dash?: { tiles: number; teleport?: boolean };
+  /** `back`: rola para o lado oposto ao mirado (Dança do Vento: recua e atira para a frente). */
+  dash?: { tiles: number; teleport?: boolean; back?: boolean };
   /** O próximo ataque básico de quem conjura atordoa o alvo por este tempo. */
   nextBasicStunMs?: number;
   /** Quem conjura recebe só (1 - guard) do dano por `guardMs`. */
@@ -1164,6 +1181,43 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 50, cooldownMs: 30000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90,
     damage: 0.5, taunt: true, rootMs: 2000, pullAll: true,
   }),
+  // Fase 6: slot 3 de cada lado da especialização do Paladino.
+  phantom_shot: spell({
+    id: "phantom_shot", classId: "paladin", slot: 2, name: "Disparo Fantasma", icon: "🦅", color: 0xbdc3c7,
+    description: "Marca os 3 monstros mais perto; 1,5 s depois, uma flecha fantasma acerta cada um com dano pesado.",
+    manaCost: 55, cooldownMs: 30000, aim: "self", range: 0, radius: 0, damage: 3,
+    mark: { pct: 0.15, ms: 1500 }, phantom: { count: 3, range: 7, delayMs: 1500 },
+  }),
+  wind_dance: spell({
+    id: "wind_dance", classId: "paladin", slot: 2, name: "Dança do Vento", icon: "🍃", color: 0x9be15d,
+    description: "Rola 3 tiles para trás e solta um leque de 5 flechas para a frente; 3 cargas seguidas em 6 s.",
+    manaCost: 20, cooldownMs: 25000, aim: "target", range: 5, radius: 0, damage: 0.9, projectileSpeed: 20,
+    dash: { tiles: 3, back: true }, spread: { count: 5, angle: 45 }, charges: { count: 3, windowMs: 6000 },
+  }),
+  flaming_cross: spell({
+    id: "flaming_cross", classId: "paladin", slot: 2, name: "Cruz Flamejante", icon: "✝️", color: 0xff7f27,
+    description: "Uma cruz de fogo sagrado: 4 retas de 5 tiles saem de você, ferem forte e queimam.",
+    manaCost: 55, cooldownMs: 28000, aim: "self", range: 0, radius: 0, damage: 2.5, cross: 5,
+    dot: { perSec: 0.4, ms: 3000, kind: "burn" },
+  }),
+  sanctuary: spell({
+    id: "sanctuary", classId: "paladin", slot: 2, name: "Santuário", icon: "🕊️", color: 0xfff3a0,
+    description: "Consagra o chão em volta por 8 s: os aliados dentro levam 40% menos dano e os monstros que entram são empurrados.",
+    manaCost: 60, cooldownMs: 36000, aim: "self", range: 0, radius: 3,
+    field: { kind: "zone", ms: 8000, tickMs: 500, allyGuard: 0.4, repel: true },
+  }),
+  bombardment: spell({
+    id: "bombardment", classId: "paladin", slot: 2, name: "Bombardeio", icon: "💣", color: 0xe67e22,
+    description: "Cinco bombas caem em onda num leque à sua frente, da perto para a longe: cada uma explode em raio 1.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 6, radius: 1, coneAngle: 60, damage: 1.6,
+    bombard: { count: 5, stepMs: 150 },
+  }),
+  minefield: spell({
+    id: "minefield", classId: "paladin", slot: 2, name: "Campo Minado", icon: "🕸️", color: 0x8d6e4a,
+    description: "Espalha 5 minas num leque largo à sua frente: quem pisa fica preso 2 s e a mina explode em volta.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 4, radius: 1, coneAngle: 120, damage: 1.5, rootMs: 2000,
+    field: { kind: "trap", ms: 30000, count: 5 },
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1687,6 +1741,12 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   pack_hunt: { text: "A caça dura o dobro (12 s).", changes: { hunt: { ms: 12000, damage: 0.5 } } },
   twin_sprout: { text: "Cabem 2 sementes no chão ao mesmo tempo.", changes: { field: { kind: "trap", ms: 20000, look: "sprout", max: 2 } } },
   bramble_embrace: { text: "Os espinheiros pegam a até 3 tiles.", changes: { radius: 3 } },
+  phantom_shot: { text: "Marca 5 monstros.", changes: { phantom: { count: 5, range: 7, delayMs: 1500 } } },
+  wind_dance: { text: "4 cargas.", changes: { charges: { count: 4, windowMs: 6000 } } },
+  flaming_cross: { text: "Retas de 7 tiles.", changes: { cross: 7 } },
+  sanctuary: { text: "O santuário cobre raio 4.", changes: { radius: 4 } },
+  bombardment: { text: "As bombas deixam o chão em chamas por 3 s.", changes: { bombard: { count: 5, stepMs: 150, fireMs: 3000 } } },
+  minefield: { text: "Sete minas no leque.", changes: { field: { kind: "trap", ms: 30000, count: 7 } } },
   massacre: { text: "Cada monstro que o básico mata estende o Massacre 1 s (até +4 s).", changes: { selfBuff: { ms: 8000, cleave: true, lifesteal: 0.3, killExtend: { ms: 1000, max: 4000 } } } },
   blade_storm: { text: "Sete lâminas no leque.", changes: { spread: { count: 7, angle: 70 } } },
   protector_oath: { text: "O aliado também ganha um escudo de 20% da vida.", changes: { barrier: 0.2, barrierMs: 10000 } },
