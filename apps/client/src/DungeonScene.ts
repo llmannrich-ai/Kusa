@@ -726,6 +726,12 @@ export class DungeonScene extends Phaser.Scene {
       // Totem de tiro (Totem da Brasa): o alcance tracejado e o poste.
       g.lineStyle(1, color, 0.4).strokeCircle(0, 0, (field.radius + 0.5) * TILE_SIZE);
       this.drawTotem(view, g, color);
+    } else if (field.style === "sprout") {
+      // Broto Duplo: duas folhas novas saindo da terra.
+      g.fillStyle(0x6b4426, 1).fillEllipse(0, 6, 16, 6);
+      g.fillStyle(0x7bed9f, 1).fillEllipse(-4, -1, 8, 5).fillEllipse(4, -2, 8, 5);
+      g.lineStyle(1, 0x2e7d32, 1).lineBetween(0, 5, 0, -2);
+      this.tweens.add({ targets: g, scaleY: { from: 1, to: 1.12 }, duration: 600, yoyo: true, repeat: -1 });
     } else if (field.kind === "trap") {
       // Mandíbulas abertas: arco de dentes de ferro.
       g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);

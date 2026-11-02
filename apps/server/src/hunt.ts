@@ -2271,10 +2271,13 @@ export class Hunt {
       if (spell.pull && m === anchor && p.status === "playing") this.pullTo(m, p);
       // Coração Frio (Dom): as prisões e lentidões das magias do herói duram mais.
       if (spell.rootMs) {
+        // Abraço do Espinheiro: quem já estava envenenado vira Espinheiro (a raiz vira espinhos na hora).
+        const thorns = spell.thornbushOn && before.poisoned && brain.dot?.kind === "poison";
         // Cristalizar (marco 3): o congelado do feiticeiro dura mais.
         const ms = Math.round(spell.rootMs * cc) + (spell.element === "ice" && this.marks(seat, "crystallize") >= 3 ? CRYSTAL.frozenMs : 0);
         this.root(m, brain, now + ms, spell.element === "ice");
         seat.stats.ccMs.root += ms;
+        if (thorns) this.thornbush(m, brain, sessionId, now, false);
       }
       if (spell.stunMs) {
         // Fé Ardente (marcos 2 e 4): as magias de luz ofuscam por mais tempo.
@@ -2299,6 +2302,12 @@ export class Hunt {
       if (spell.element === "dark" && seat.gifts.weakenPower > 0) {
         brain.weakPct = Math.max(now < brain.weakUntil ? brain.weakPct : 0, Math.min(LAMENT.max, seat.gifts.weakenPower));
         brain.weakUntil = Math.max(brain.weakUntil, now + (this.marks(seat, "deep_lament") >= 4 ? LAMENT.msLater : LAMENT.ms));
+      }
+      // Caça em Bando: o alvo vira a presa das criaturas de quem conjura.
+      if (spell.hunt && m === anchor) {
+        brain.huntBy = sessionId;
+        brain.huntUntil = now + spell.hunt.ms;
+        brain.huntDamage = spell.hunt.damage;
       }
       // Brado Cortante (Maestria): enfraquece quem pega.
       if (spell.weaken) {
@@ -3844,7 +3853,13 @@ export class Hunt {
       return this.summonFollow(s, brain, owner, now);
     }
 
-    // Alvo: o que já caçava, senão o alvo do dono, senão o monstro mais próximo (sem se afastar demais do dono).
+    // Alvo: a presa da Caça em Bando, senão o que já caçava, senão o alvo do dono, senão o monstro mais próximo (sem se
+    // afastar demais do dono).
+    const prey = [...this.state.monsters.values()].find((m) => {
+      const b = this.brains.get(m.id);
+      return b && b.huntBy === s.owner && now < b.huntUntil && !m.hidden && tileDistance(m.x, m.y, owner.x, owner.y) <= 8;
+    });
+    if (prey) brain.targetId = prey.id;
     let target = brain.targetId ? this.state.monsters.get(brain.targetId) : undefined;
     if (target && (target.hidden || tileDistance(target.x, target.y, owner.x, owner.y) > 8)) target = undefined;
     if (!target) {
@@ -3896,7 +3911,9 @@ export class Hunt {
         }
         // Ogro da Forja: o malho em brasa queima e empurra.
         if (def.burn) this.applyDot(alive, brainM, s.owner, `summon:${s.kind}`, brain.damage * def.burn.perSec, def.burn.ms, "burn", this.host.now());
-        const dealt = this.damageMonster(alive, amount, hit, `summon:${s.kind}`, s.owner);
+        // Caça em Bando: na presa, a criatura fere mais.
+        const hunted = brainM.huntBy === s.owner && this.host.now() < brainM.huntUntil ? 1 + brainM.huntDamage : 1;
+        const dealt = this.damageMonster(alive, Math.round(amount * hunted), hit, `summon:${s.kind}`, s.owner);
         // Laço da Matilha (marco 3): as criaturas se curam com o dano que causam.
         if (dealt > 0 && this.marks(this.seats.get(s.owner), "pack_bond") >= 3) s.hp = Math.min(s.maxHp, s.hp + Math.max(1, Math.round(dealt * PACK.lifesteal)));
         if (def.push && alive.hp > 0) this.push(alive, s, def.push);
@@ -5718,14 +5735,16 @@ export class Hunt {
         }
       } else if (brain.kind === "trap") {
         // Dispara no primeiro monstro que pisar no tile da armadilha; os efeitos valem no raio da magia.
+        // Broto Duplo: a semente também brota quando um aliado pisa nela (e cura quem está no tile).
         const prey = [...this.state.monsters.values()].find((m) => m.x === f.x && m.y === f.y);
-        if (!prey) continue;
+        const ally = f.style === "sprout" && [...this.state.players.values()].some((a) => a.status === "playing" && a.x === f.x && a.y === f.y);
+        if (!prey && !ally) continue;
         this.removeField(f.id);
         this.host.broadcast(MSG.spell, { from: f.owner, spellId: brain.spell.id, x: f.x, y: f.y, tx: f.x, ty: f.y, ms: 0, echo: true } satisfies SpellMessage);
         // Pavio Curto (Dom; marco 3: a armadilha queima quem prende): monstro queimando faz a armadilha explodir.
         const fuse = seat.gifts.fusePower > 0 ? this.marks(seat, "short_fuse") : -1;
-        const preyBrain = this.brains.get(prey.id);
-        if (fuse >= 3 && preyBrain) this.applyDot(prey, preyBrain, f.owner, "short_fuse", this.baseDamage(f.owner, owner, "spell") * FUSE.burnPerSec, FUSE.burnMs, "burn", now);
+        const preyBrain = prey && this.brains.get(prey.id);
+        if (fuse >= 3 && prey && preyBrain) this.applyDot(prey, preyBrain, f.owner, "short_fuse", this.baseDamage(f.owner, owner, "spell") * FUSE.burnPerSec, FUSE.burnMs, "burn", now);
         const burning = preyBrain?.dot?.kind === "burn" && now < preyBrain.dot.until;
         this.applySpell(f.owner, brain.spell, brain.rank, undefined, f.x, f.y, brain.amount, undefined, 0);
         if (fuse >= 0 && burning) this.shortFuse(f.owner, f.x, f.y);
