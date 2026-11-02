@@ -1706,12 +1706,54 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   + velocidade, + armadura e + dano nas magias.
 - Armadura corta dano recebido: `armadura / (armadura + 25)`; o conjunto comum de Dragão (33) corta 57%.
 - **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
-  Raridade: monstro comum 18% raro e 4% mágico; mini-boss e baú 35% e 12%; boss 40% e 25%.
+  Raridade: monstro comum 18% raro, 4% mágico e 0,5% lendário; mini-boss e baú 35%, 12% e 3%; boss 40%, 25% e 6%.
   **O drop não olha a classe de ninguém:** cai qualquer item, mesmo jogando sozinho (um cavaleiro acha cajado; vai para a bag e se vende).
 - O item cai no chão onde o monstro morreu (o do baú, aos pés de quem abriu, que já pega) e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
 - Quem morre larga 1 equipamento sorteado (a partir do nível 5) e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
-- Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro e ×4 se mágico.
+- Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro, ×4 se mágico e ×8 se lendário (2.400).
+
+### Itens lendários
+
+Peças únicas acima do mágico (`LEGENDARIES` em `packages/shared/src/items.ts`; desenho e conceito em `docs/ITENS_LENDARIOS.md`).
+
+- **Força:** a base de Dragão da família ×1,9 (o mágico de Dragão é ×1,6 mais uma propriedade) e de 3 a 5 propriedades
+  próprias. Toda peça passa o mágico de Dragão da família em cada atributo da família (o teste `lendarios` confere).
+- **Propriedades novas:**
+  - **Força de magias específicas** (`ItemStats.spells`): soma com as sinergias e o Tomo na força do nível da magia
+    (`spellAtRank`), então vale para dano, cura, escudo, dano contínuo e criaturas. Ex.: o Cajado da Geada Eterna dá
+    +35% na Lança de Gelo.
+  - **Recarga das magias** (`ItemStats.cooldown`): soma com o Foco; a recarga nunca cai abaixo de 40% (`spellCooldownMs`).
+- **17 peças**, com peças de classe que fortalecem magias de cada classe:
+
+  | Peça | Slot | Quem veste | Destaque |
+  |---|---|---|---|
+  | Lâmina do Eclipse | Espada | Cavaleiro | Giro da Lâmina +30%, Redemoinho de Aço +30%, Mil Cortes +25%, roubo de vida |
+  | Machado do Último Inverno | Machado | Cavaleiro | Terremoto +35%, Golpe Esmagador +30% |
+  | Couraça do Coração de Ferro | Armadura | Cavaleiro e Paladino | armadura, vida, espinhos e roubo de vida |
+  | Elmo da Vigília Eterna | Capacete | Cavaleiro e Paladino | vida, roubo de vida, recarga 6% |
+  | Perneiras do Gigante de Pedra | Calça | Cavaleiro e Paladino | armadura, vida, espinhos |
+  | Arco do Amanhecer Partido | Arco | Paladino | Flecha Sagrada +35%, Julgamento Divino +30%, Caldeira Divina +25% |
+  | Besta Relojoeira | Besta | Paladino | Barragem +35%, Saraivada Explosiva +30%, sem a lentidão da besta, recarga 8% |
+  | Varinha da Fênix Cinzenta | Varinha | Feiticeiro | Bola de Fogo +35%, Meteoro +30%, Núcleo Infernal +25% |
+  | Cajado da Geada Eterna | Cajado | Feiticeiro | Lança de Gelo +35%, Nevasca +30%, Nova de Gelo e Cone de Frio +25% |
+  | Coroa do Olho Tempestuoso | Chapéu | Feiticeiro | Raio em Cadeia e Relâmpago +30%, Fúria dos Céus +25%, recarga 10% |
+  | Cajado do Carvalho que Sonha | Cajado | Druida | Lobo Espiritual +35%, Chamado da Matilha +30%, Urso Ancestral +25% |
+  | Manto de Mil Asas | Manto | Druida | Mariposa Curandeira +40%, Enxame de Vespas +35%, Coração da Floresta +25% |
+  | Cajado do Totem Rubro | Cajado | Xamã Orc | Totem da Brasa +35%, Totem Vulcânico e do Trovão +30% |
+  | Máscara do Grande Chefe | Chapéu | Xamã Orc | Berserkers e Chefe de Guerra +30%, Capitão do Clã +25% |
+  | Passos de Ninguém | Botas | Todos | velocidade 23%, ataque mais rápido, recarga 5% |
+  | Escudo Espelho da Lua | Escudo | Todos menos Paladino | espinhos 25%, vida, mana |
+  | Calças do Vagante Astral | Calça arcana | Feiticeiro, Druida e Xamã | mana, recarga 6%, velocidade |
+
+- **Drop:** caem de qualquer monstro, raramente: 0,5% dos itens de monstro comum (1 a cada ~1.300 monstros), 3% dos
+  de mini-boss e baú, 6% dos de boss (`RARITY_CHANCES.legendary`). Qual peça sai é sorteado entre todas, sem olhar a
+  classe (como as famílias). Não se compram.
+- **Comparação:** vale um nível de material inteiro acima do mágico (`itemScore`), então troca na hora por qualquer
+  peça de Dragão do slot.
+- **Morte:** pesa 0,12 no sorteio do equipamento perdido (`DEATH_LOSS_WEIGHT`; o mágico pesa 0,25).
+- **No jogo:** facho de luz mais alto no chão, aura dourada nos pés e faíscas de ouro subindo em volta do herói
+  (`gearFx.ts`), e a história da peça em itálico na ficha. No ícone, uma estrela de ouro no canto.
 
 ### Arte dos itens e equipamento visível
 

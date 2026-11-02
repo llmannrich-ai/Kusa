@@ -1668,7 +1668,9 @@ export class Hunt {
     const base = SPELLS[spellIn(p, slot) as SpellId];
     if (!base) return;
     // O nível de uso, as sinergias e o Tomo do ramo deixam a magia mais forte.
-    let spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0, p.spellBonus.get(base.id) ?? 0);
+    // Lendários de classe (`ItemStats.spells`) somam com as sinergias e o Tomo.
+    const gearBoost = seat.gear.spells[base.id] ?? 0;
+    let spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0, (p.spellBonus.get(base.id) ?? 0) + gearBoost);
     // Voz de Comando (marco 2): as magias de área que provocam alcançam mais longe.
     if (spell.taunt && spell.radius > 0 && this.marks(seat, "command_voice") >= 2) spell = { ...spell, radius: spell.radius + VOICE.tauntRadius };
     spell = this.markedSpell(seat, spell);
@@ -1840,6 +1842,7 @@ export class Hunt {
       if (echo) bump(seat.stats.runeProcs, "echo");
     }
     bump(seat.stats.casts, spell.id);
+    if (gearBoost > 0) bump(seat.stats.gearBoostedCasts, spell.id);
     if (furyFree) seat.furyFree = false;
     // Nível pelo uso: só conta em combate (algum monstro à vista por perto), para não render XP em sala vazia.
     if (this.nearestMonsterInRange(p, SPELL_XP_COMBAT_TILES)) bump(seat.stats.spellXp, base.id, castXp(base));
@@ -1848,12 +1851,12 @@ export class Hunt {
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
     // Último Duelo (marco 5): com a vida baixa, a magia do slot 3 recarrega na metade do tempo.
     const duelSlot3 = slot === 2 && this.marks(seat, "last_duel") >= 5 && this.duelLow(seat, p) ? DUEL.slot3Cooldown : 1;
-    seat.spellReadyAt[slot] = echo ? now : now + Math.round(spellCooldownMs(spell.cooldownMs, seat.perkBonus) * duelSlot3);
+    seat.spellReadyAt[slot] = echo ? now : now + Math.round(spellCooldownMs(spell.cooldownMs, seat.perkBonus, seat.gear.cooldown) * duelSlot3);
     // Fôlego do Caçador (marco 2): o salto devolve parte da recarga da magia do slot 1.
     if (spell.dash && seat.gifts.dashBasic > 0 && this.marks(seat, "hunter_breath") >= 2) {
       const first = SPELLS[spellIn(p, 0) as SpellId];
       if (first && seat.spellReadyAt[0] > now) {
-        seat.spellReadyAt[0] = Math.max(now, seat.spellReadyAt[0] - Math.round(spellCooldownMs(first.cooldownMs, seat.perkBonus) * BREATH.refund));
+        seat.spellReadyAt[0] = Math.max(now, seat.spellReadyAt[0] - Math.round(spellCooldownMs(first.cooldownMs, seat.perkBonus, seat.gear.cooldown) * BREATH.refund));
         this.host.send(sessionId, MSG.cooldown, { slot: 0, ms: seat.spellReadyAt[0] - now } satisfies CooldownMessage);
       }
     }
@@ -3386,7 +3389,7 @@ export class Hunt {
       });
     }
     const now = this.host.now();
-    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "summon"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0)));
+    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "summon"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0) + (this.seats.get(sessionId)?.gear.spells[spell.id] ?? 0)));
     // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
     // Laço da Matilha (Dom) soma com o Vínculo Selvagem.
     const summoner = this.seats.get(sessionId);

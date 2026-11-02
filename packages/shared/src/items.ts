@@ -1,5 +1,6 @@
 import type { ClassId } from "./classes.ts";
 import type { MonsterRank } from "./monsters.ts";
+import { SPELLS, type SpellId } from "./spells.ts";
 
 /**
  * Itens no espírito de Dungeons & Dragons. Cada item é uma **família** (Espada, Cajado, Vestes arcanas...)
@@ -7,7 +8,9 @@ import type { MonsterRank } from "./monsters.ts";
  * - Comum: só os atributos da família;
  * - Raro: o item "+1" do D&D, com os atributos 30% mais fortes;
  * - Mágico: um item com nome próprio (Espada Vorpal, Manto das Estrelas...), atributos 60% mais fortes e
- *   uma propriedade mágica a mais (roubo de vida, chamas, espinhos, velocidade...).
+ *   uma propriedade mágica a mais (roubo de vida, chamas, espinhos, velocidade...);
+ * - Lendário: peça única, sempre de Dragão, com nome, história e atributos 90% mais fortes, várias propriedades e,
+ *   nas peças de classe, magias específicas mais fortes (`LEGENDARIES`). Só cai na hunt, e raramente.
  *
  * As armas são da classe (espada e machado do cavaleiro, arco e besta do paladino, varinha e cajado do
  * feiticeiro, do druida e do xamã); armaduras de guerra são do cavaleiro e do paladino, vestes arcanas do
@@ -44,20 +47,22 @@ export const TIER_NAMES: Record<ItemTier, string> = {
   5: "Dragão",
 };
 
-export type ItemRarity = "common" | "rare" | "magic";
+export type ItemRarity = "common" | "rare" | "magic" | "legendary";
+/** Raridades de toda família (comum, raro e mágico existem em todo nível; o lendário é peça única, ver `LEGENDARIES`). */
 export const ITEM_RARITIES: ItemRarity[] = ["common", "rare", "magic"];
 
-export const RARITY_NAMES: Record<ItemRarity, string> = { common: "Comum", rare: "Raro", magic: "Mágico" };
+export const RARITY_NAMES: Record<ItemRarity, string> = { common: "Comum", rare: "Raro", magic: "Mágico", legendary: "Lendário" };
 
 /** Cor de cada raridade (nome, borda, brilho no chão e avisos). */
 export const RARITY_COLORS: Record<ItemRarity, number> = {
   common: 0xdcdde1,
   rare: 0x4aa3ff,
   magic: 0xc56cf0,
+  legendary: 0xffa62b,
 };
 
 /** Quanto a raridade multiplica os atributos da família. */
-export const RARITY_POWER: Record<ItemRarity, number> = { common: 1, rare: 1.3, magic: 1.6 };
+export const RARITY_POWER: Record<ItemRarity, number> = { common: 1, rare: 1.3, magic: 1.6, legendary: 1.9 };
 
 /**
  * Atributos de um item. Frações (0,35 = +35%), menos `armor` e `range`, que são pontos e tiles.
@@ -88,7 +93,14 @@ export interface ItemStats {
   poison?: number;
   /** Espinhos: parte do dano de um golpe corpo a corpo recebido volta para o monstro. */
   thorns?: number;
+  /** Recarga das magias mais curta (soma com Foco; ver `spellCooldownMs`). */
+  cooldown?: number;
+  /** Força extra de magias específicas (soma com sinergias e Tomo em `spellAtRank`). Só nos lendários de classe. */
+  spells?: Partial<Record<SpellId, number>>;
 }
+
+/** Atributos numéricos de `ItemStats` (tudo menos `spells`). */
+type NumericStat = Exclude<keyof ItemStats, "spells">;
 
 /** Quanto dura a queimadura ou o veneno de uma arma mágica. */
 export const ON_HIT_DOT_MS = 3000;
@@ -104,6 +116,9 @@ export interface ItemDef {
   /** Classes que podem usar; sem a lista, todas. */
   classes?: ClassId[];
   stats: ItemStats;
+  /** Lendário: chave do desenho próprio (`LEGENDARIES`) e a história de uma linha. */
+  legend?: string;
+  lore?: string;
 }
 
 export interface ItemFamily {
@@ -322,22 +337,158 @@ export function itemId(slot: ItemSlot, family: string, tier: ItemTier, rarity: I
 /** Multiplica os atributos pela raridade: armadura e alcance em pontos inteiros, o resto em centésimos. */
 function scale(stats: ItemStats, factor: number): ItemStats {
   const out: ItemStats = {};
-  for (const [key, value] of Object.entries(stats) as [keyof ItemStats, number][]) {
+  for (const [key, value] of Object.entries(stats) as [NumericStat, number][]) {
     out[key] = key === "armor" || key === "range" ? Math.round(value * factor) : Math.round(value * factor * 100) / 100;
   }
   return out;
 }
 
-/** Soma atributos (`into` muda). */
+/** Soma atributos (`into` muda); a força por magia soma magia a magia. */
 function addStats(into: ItemStats, more: ItemStats) {
-  for (const [key, value] of Object.entries(more) as [keyof ItemStats, number][]) {
-    into[key] = Math.round(((into[key] ?? 0) + value) * 100) / 100;
+  for (const [key, value] of Object.entries(more) as [keyof ItemStats, number | ItemStats["spells"]][]) {
+    if (key === "spells") {
+      const spells = (into.spells ??= {});
+      for (const [id, v] of Object.entries(value as Record<SpellId, number>) as [SpellId, number][]) {
+        spells[id] = Math.round(((spells[id] ?? 0) + v) * 100) / 100;
+      }
+    } else into[key] = Math.round(((into[key] ?? 0) + (value as number)) * 100) / 100;
   }
   return into;
 }
 
-export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
-  Object.values(ITEM_FAMILIES).flatMap((f) => ITEM_TIERS.flatMap((tier) => ITEM_RARITIES.map((rarity) => {
+// --- Lendários ------------------------------------------------------------------
+
+export interface LegendaryDef {
+  /** Chave curta (sem hífen): vai no id e escolhe o desenho. */
+  key: string;
+  slot: ItemSlot;
+  /** Família da base (`ITEM_FAMILIES`, ex.: "staff"): dá a forma, os atributos de Dragão e quem pode usar. */
+  family: string;
+  name: string;
+  /** Uma linha de história (ficha, catálogo e mercado). */
+  lore: string;
+  /** Restringe a classe além da família (ex.: só o Feiticeiro). */
+  classes?: ClassId[];
+  /** Propriedades próprias, somadas à base de Dragão ×`RARITY_POWER.legendary`. */
+  stats: ItemStats;
+}
+
+/**
+ * As peças lendárias. Cada uma é a base de Dragão da família ×1,9 (o mágico de Dragão é ×1,6 mais uma propriedade)
+ * e soma de 2 a 4 propriedades próprias; as de classe deixam magias específicas mais fortes (`spells`, em fração da
+ * força do nível, como o Tomo). Para mudar: o banco repete o catálogo (`catalog-sql.ts`), e cada uma tem desenho
+ * próprio (ícone, herói antigo e arte nova, `docs/ITENS_LENDARIOS.md`).
+ */
+export const LEGENDARIES: LegendaryDef[] = [
+  // --- Cavaleiro ---
+  {
+    key: "eclipse", slot: "weapon", family: "sword", name: "Lâmina do Eclipse",
+    lore: "Forjada na única noite em que o sol não voltou. O fio é um pedaço de céu apagado com borda de fogo.",
+    stats: { lifesteal: 0.06, haste: 0.1, spells: { blade_spin: 0.3, steel_whirlwind: 0.3, thousand_cuts: 0.25 } },
+  },
+  {
+    key: "lastwinter", slot: "weapon", family: "axe", name: "Machado do Último Inverno",
+    lore: "Um bloco de gelo que nunca derreteu, preso a um cabo de osso de mamute. Quando bate no chão, a terra racha.",
+    stats: { armor: 3, hp: 0.1, spells: { earthquake: 0.35, crushing_blow: 0.3 } },
+  },
+  {
+    key: "ironheart", slot: "armor", family: "war", name: "Couraça do Coração de Ferro",
+    lore: "Dentro do peitoral bate um coração de ferro fundido. Cada golpe dado faz ele bater mais forte.",
+    stats: { armor: 3, hp: 0.15, thorns: 0.15, lifesteal: 0.03 },
+  },
+  {
+    key: "vigil", slot: "helmet", family: "war", name: "Elmo da Vigília Eterna",
+    lore: "Um olho de âmbar na testa que nunca fecha. Vê o golpe antes de ele sair.",
+    stats: { hp: 0.12, lifesteal: 0.03, cooldown: 0.06 },
+  },
+  {
+    key: "stonegiant", slot: "legs", family: "war", name: "Perneiras do Gigante de Pedra",
+    lore: "Lascas da perna de um gigante que dormiu mil anos. Ainda tem musgo nas juntas.",
+    stats: { armor: 4, hp: 0.1, thorns: 0.08 },
+  },
+  // --- Paladino ---
+  {
+    key: "dawn", slot: "weapon", family: "bow", name: "Arco do Amanhecer Partido",
+    lore: "Feito do primeiro raio de sol, que se partiu ao meio. A corda é luz; a flecha sai em brasa.",
+    stats: { range: 1, burn: 0.3, spells: { holy_arrow: 0.35, divine_judgment: 0.3, divine_caldera: 0.25 } },
+  },
+  {
+    key: "clockwork", slot: "weapon", family: "crossbow", name: "Besta Relojoeira",
+    lore: "Engrenagens gnomas de latão que dão corda sozinhas. Tique, taque, saraivada.",
+    stats: { haste: 0.3, cooldown: 0.08, spells: { barrage: 0.35, explosive_volley: 0.3 } },
+  },
+  // --- Feiticeiro ---
+  {
+    key: "phoenix", slot: "weapon", family: "wand", name: "Varinha da Fênix Cinzenta",
+    lore: "Uma pena de fênix que se recusou a renascer. Guarda as cinzas de todas as vidas que não viveu.",
+    classes: ["sorcerer"],
+    stats: { burn: 0.3, spells: { fireball: 0.35, meteor: 0.3, infernal_core: 0.25 } },
+  },
+  {
+    key: "frost", slot: "weapon", family: "staff", name: "Cajado da Geada Eterna",
+    lore: "Um cristal de gelo do tamanho de um punho, flutuando sobre um galho prateado. Faz nevar dentro da caverna.",
+    classes: ["sorcerer"],
+    stats: { mana: 0.15, spells: { ice_lance: 0.35, blizzard: 0.3, frost_nova: 0.25, cone_of_cold: 0.25 } },
+  },
+  {
+    key: "stormeye", slot: "helmet", family: "arcane", name: "Coroa do Olho Tempestuoso",
+    lore: "Um olho de tempestade preso numa coroa de cobre. Os raios obedecem a quem olha por ele.",
+    classes: ["sorcerer"],
+    stats: { cooldown: 0.1, spellPower: 0.06, spells: { chain_lightning: 0.3, lightning_bolt: 0.3, sky_fury: 0.25 } },
+  },
+  // --- Druida ---
+  {
+    key: "dreamoak", slot: "weapon", family: "staff", name: "Cajado do Carvalho que Sonha",
+    lore: "Um carvalho jovem arrancado ainda dormindo. Na copa, os lobos que ele sonha andam em volta.",
+    classes: ["druid"],
+    stats: { hp: 0.12, spells: { spirit_wolf: 0.35, wolf_pack: 0.3, ancient_bear: 0.25 } },
+  },
+  {
+    key: "thousandwings", slot: "armor", family: "arcane", name: "Manto de Mil Asas",
+    lore: "Tecido de asas de mariposa e vespa que caíram sozinhas. De perto, o manto ainda bate.",
+    classes: ["druid"],
+    stats: { speed: 0.05, mana: 0.06, spells: { healing_moth: 0.4, hornet_swarm: 0.35, forest_heart: 0.25 } },
+  },
+  // --- Xamã Orc ---
+  {
+    key: "redtotem", slot: "weapon", family: "staff", name: "Cajado do Totem Rubro",
+    lore: "Um totem pequeno, entalhado com as caras de três chefes mortos. Os olhos ainda ardem.",
+    classes: ["shaman"],
+    stats: { burn: 0.25, spells: { ember_totem: 0.35, volcanic_totem: 0.3, thunder_totem: 0.3 } },
+  },
+  {
+    key: "warchief", slot: "helmet", family: "arcane", name: "Máscara do Grande Chefe",
+    lore: "Crânio de javali com presas de ferro e penas de corvo. O clã inteiro reconhece quem a usa.",
+    classes: ["shaman"],
+    stats: { hp: 0.1, spellPower: 0.06, spells: { clan_berserkers: 0.3, warlord_call: 0.3, clan_captain: 0.25 } },
+  },
+  // --- Para todos ---
+  {
+    key: "nobody", slot: "boots", family: "boots", name: "Passos de Ninguém",
+    lore: "Botas de sombra costurada. Não deixam pegada, não fazem barulho e chegam antes de quem as calça.",
+    stats: { speed: 0.12, haste: 0.08, cooldown: 0.05 },
+  },
+  {
+    key: "moonmirror", slot: "shield", family: "shield", name: "Escudo Espelho da Lua",
+    lore: "Prata polida que só reflete a lua. O monstro que bate nele vê a própria cara e se fere.",
+    stats: { thorns: 0.25, hp: 0.12, mana: 0.08 },
+  },
+  {
+    key: "astral", slot: "legs", family: "arcane", name: "Calças do Vagante Astral",
+    lore: "Tecidas com o fio entre duas estrelas. Pesam menos que o ar e cheiram a chuva de outro mundo.",
+    stats: { mana: 0.15, cooldown: 0.06, speed: 0.04, armor: 2 },
+  },
+];
+
+export function legendaryId(l: Pick<LegendaryDef, "slot" | "family" | "key">) {
+  return `${l.slot}-${l.family}-${MAX_TIER}-legendary-${l.key}`;
+}
+
+/** Ids de todos os lendários, na ordem de `LEGENDARIES`. */
+export const LEGENDARY_IDS: string[] = LEGENDARIES.map(legendaryId);
+
+export const ITEMS: Record<string, ItemDef> = Object.fromEntries([
+  ...Object.values(ITEM_FAMILIES).flatMap((f) => ITEM_TIERS.flatMap((tier) => ITEM_RARITIES.map((rarity) => {
     const id = itemId(f.slot, f.key, tier, rarity);
     const stats = addStats(scale(f.base(tier), RARITY_POWER[rarity]), f.fixed ?? {});
     const [magicName, magicStats] = f.magic[tier - 1];
@@ -345,9 +496,21 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
     const name = rarity === "magic" ? magicName : rarity === "rare" ? `${f.names[tier - 1]} +1` : f.names[tier - 1];
     const def: ItemDef = { id, name, slot: f.slot, tier, rarity, family: familyId(f.slot, f.key), stats };
     if (f.classes) def.classes = f.classes;
-    return [id, def];
+    return [id, def] as const;
   }))),
-);
+  ...LEGENDARIES.map((l) => {
+    const family = familyId(l.slot, l.family);
+    const f = ITEM_FAMILIES[family];
+    const stats = addStats(addStats(scale(f.base(MAX_TIER), RARITY_POWER.legendary), f.fixed ?? {}), l.stats);
+    // A Besta Relojoeira dá corda sozinha: a lentidão da besta já vem descontada no `haste` dela.
+    const def: ItemDef = {
+      id: legendaryId(l), name: l.name, slot: l.slot, tier: MAX_TIER, rarity: "legendary", family, stats, legend: l.key, lore: l.lore,
+    };
+    const classes = l.classes ?? f.classes;
+    if (classes) def.classes = classes;
+    return [def.id, def] as const;
+  }),
+]);
 
 /** Família do item (`undefined` se o id não existe). */
 export function familyOf(id: string): ItemFamily | undefined {
@@ -367,11 +530,14 @@ export function itemColor(id: string) {
   return def ? RARITY_COLORS[def.rarity] : RARITY_COLORS.common;
 }
 
+/** Degrau de cada raridade em `itemScore` (meio nível cada; o lendário vale um nível inteiro acima do mágico). */
+const RARITY_STEP: Record<ItemRarity, number> = { common: 0, rare: 1, magic: 2, legendary: 4 };
+
 /** Força do item para comparar dentro do slot: o material pesa mais, e a raridade vale meio nível por degrau. */
 export function itemScore(id: string) {
   const def = ITEMS[id];
   if (!def) return 0;
-  return def.tier + ITEM_RARITIES.indexOf(def.rarity) * 0.5;
+  return def.tier + RARITY_STEP[def.rarity] * 0.5;
 }
 
 /** true quando `candidate` é melhor que o item equipado (`""` = slot vazio) e a classe pode usá-lo. */
@@ -381,9 +547,10 @@ export function isUpgrade(candidate: string, equipped: string, classId: ClassId)
 }
 
 /** Atributos somados dos itens vestidos. */
-export function gearStats(equipped: readonly string[]): Required<ItemStats> {
-  const total: Required<ItemStats> = {
+export function gearStats(equipped: readonly string[]): Required<ItemStats> & { spells: Partial<Record<SpellId, number>> } {
+  const total: Required<ItemStats> & { spells: Partial<Record<SpellId, number>> } = {
     damage: 0, spellPower: 0, armor: 0, hp: 0, mana: 0, speed: 0, haste: 0, lifesteal: 0, range: 0, burn: 0, poison: 0, thorns: 0,
+    cooldown: 0, spells: {},
   };
   for (const id of equipped) {
     const def = ITEMS[id];
@@ -428,6 +595,10 @@ export function describeStats(stats: ItemStats): string[] {
   if (s.burn) lines.push(`Ataque básico queima: ${pct(s.burn)} do dano por segundo, por ${ON_HIT_DOT_MS / 1000} s`);
   if (s.poison) lines.push(`Ataque básico envenena: ${pct(s.poison)} do dano por segundo, por ${ON_HIT_DOT_MS / 1000} s`);
   if (s.thorns) lines.push(`Espinhos: devolve ${pct(s.thorns)} do dano corpo a corpo recebido`);
+  if (s.cooldown) lines.push(`Magias recarregam ${pct(s.cooldown)} mais rápido`);
+  for (const [id, v] of Object.entries(s.spells ?? {}) as [SpellId, number][]) {
+    lines.push(`${SPELLS[id]?.name ?? id}: +${pct(v)} de força`);
+  }
   return lines;
 }
 
@@ -443,7 +614,7 @@ export function itemSummary(def: ItemDef) {
 export const ITEM_BUY_PRICES: Record<ItemTier, number | null> = { 1: 60, 2: 150, 3: 350, 4: 800, 5: null };
 /** Quanto o mercado paga por um item comum, por nível; a raridade multiplica (`RARITY_SELL`). */
 export const ITEM_SELL_PRICES: Record<ItemTier, number> = { 1: 10, 2: 25, 3: 60, 4: 130, 5: 300 };
-export const RARITY_SELL: Record<ItemRarity, number> = { common: 1, rare: 2, magic: 4 };
+export const RARITY_SELL: Record<ItemRarity, number> = { common: 1, rare: 2, magic: 4, legendary: 8 };
 
 export function buyPrice(id: string): number | null {
   const def = ITEMS[id];
@@ -511,11 +682,15 @@ export const GUARANTEED_DROPS: Record<MonsterRank, number> = { common: 0, minibo
 export const RANK_TIER_BONUS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
 /** Chance de o drop vir um nível acima do esperado. */
 export const LUCKY_TIER_CHANCE = 0.2;
-/** Chance de o drop ser raro ou mágico, por rank (o resto é comum). O baú usa a do mini-boss. */
-export const RARITY_CHANCES: Record<MonsterRank, { rare: number; magic: number }> = {
-  common: { rare: 0.18, magic: 0.04 },
-  miniboss: { rare: 0.35, magic: 0.12 },
-  boss: { rare: 0.4, magic: 0.25 },
+/**
+ * Chance de o drop ser lendário, mágico ou raro, por rank (o resto é comum). O baú usa a do mini-boss. O lendário
+ * sai de qualquer sala, mas é raro: ~1 a cada 1.300 monstros comuns, 1 a cada 33 mini-bosses e baús, 1 a cada 8 bosses
+ * (que largam 2 itens).
+ */
+export const RARITY_CHANCES: Record<MonsterRank, { rare: number; magic: number; legendary: number }> = {
+  common: { rare: 0.18, magic: 0.04, legendary: 0.005 },
+  miniboss: { rare: 0.35, magic: 0.12, legendary: 0.03 },
+  boss: { rare: 0.4, magic: 0.25, legendary: 0.06 },
 };
 
 /**
@@ -532,6 +707,9 @@ export function rollItem(rank: MonsterRank, depth: number, random: () => number,
   const family = families[Math.floor(random() * families.length)];
   const roll = random();
   const chance = RARITY_CHANCES[rank];
-  const rarity: ItemRarity = roll < chance.magic ? "magic" : roll < chance.magic + chance.rare ? "rare" : "common";
+  // Lendário: uma das peças únicas, qualquer uma (como as famílias, sem olhar a classe).
+  if (roll < chance.legendary) return LEGENDARY_IDS[Math.floor(random() * LEGENDARY_IDS.length)];
+  const magicUntil = chance.legendary + chance.magic;
+  const rarity: ItemRarity = roll < magicUntil ? "magic" : roll < magicUntil + chance.rare ? "rare" : "common";
   return itemId(slot, family.key, tier, rarity);
 }

@@ -534,6 +534,28 @@ const ICONS: Record<string, Record<ItemTier, Grid>> = {
 const RARITY_GEM: Partial<Record<ItemRarity, { grid: Grid; palette: Palette }>> = {
   rare: { grid: [".o.", "oro", ".o."], palette: { o: "#0b1a33", r: "#4aa3ff" } },
   magic: { grid: [".o.", "oro", ".o."], palette: { o: "#2a0b33", r: "#c56cf0" } },
+  legendary: { grid: [".o.", "oro", "ooo", "oro", ".o."], palette: { o: "#3a1d04", r: "#ffa62b" } },
+};
+
+/** Lendário na arte antiga: o ícone de Dragão da família nos materiais da peça (claro, escuro, detalhe). */
+const LEGEND_ICON: Record<string, { m: string; M: string; a: string }> = {
+  eclipse: { m: "#3a2e52", M: "#16101f", a: "#ff6a2a" },
+  lastwinter: { m: "#bfeaf6", M: "#5aa8c8", a: "#efe3c8" },
+  ironheart: { m: "#4a4652", M: "#1e1c24", a: "#ff4a2a" },
+  vigil: { m: "#f0c24a", M: "#9a6a12", a: "#ffb02a" },
+  stonegiant: { m: "#8a8478", M: "#4a463e", a: "#6a9a3c" },
+  dawn: { m: "#f0c24a", M: "#b04a1a", a: "#fff2b0" },
+  clockwork: { m: "#d0a040", M: "#7a5418", a: "#c0683a" },
+  phoenix: { m: "#5a5450", M: "#2a2624", a: "#ff6a2a" },
+  frost: { m: "#e0e8f4", M: "#8a98b0", a: "#8fdcf2" },
+  stormeye: { m: "#c0683a", M: "#5a2e14", a: "#5ad2e6" },
+  dreamoak: { m: "#6a8a3c", M: "#3a4a1c", a: "#9cff7a" },
+  thousandwings: { m: "#8ac0b0", M: "#3a6a60", a: "#f0b030" },
+  redtotem: { m: "#9a2a22", M: "#4a0e0a", a: "#ff6a2a" },
+  warchief: { m: "#e0d4b0", M: "#7a6a4a", a: "#c0283a" },
+  nobody: { m: "#4a4460", M: "#1e1a2a", a: "#9a5ae0" },
+  moonmirror: { m: "#e4ecf7", M: "#8a98b0", a: "#4c7bd9" },
+  astral: { m: "#2a3070", M: "#10142e", a: "#f4f7fb" },
 };
 
 /** Frasco das poções: "c" = rolha, "g" = brilho do vidro, "l"/"L" = líquido claro/escuro. */
@@ -636,9 +658,10 @@ export function itemIcon(itemId: string) {
   const item = ITEMS[itemId];
   if (!item) return canvas;
   const proto = protoHero && protoItemOf(itemId);
-  if (proto) return protoHero!.protoItemIcon(proto, item.rarity);
+  if (proto) return protoHero!.protoItemIcon(proto, item.rarity, item.legend);
   const gem = item.slot === "weapon" && (item.family === "weapon-wand" || item.family === "weapon-staff") ? { a: GEMS[item.tier] } : {};
-  paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem }, 0, 0);
+  const legend = item.legend ? LEGEND_ICON[item.legend] : undefined;
+  paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem, ...legend }, 0, 0);
   const mark = RARITY_GEM[item.rarity];
   if (mark) paintGrid(ctx, mark.grid, mark.palette, 0, 0);
   return canvas;

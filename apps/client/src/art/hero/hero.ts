@@ -5,6 +5,7 @@ import { armorWear, bootsWear, gauntletOf, legsWear } from "./gear.ts";
 import { headCover, helmetWear } from "./headgear.ts";
 import { classSkin, classWear } from "./look.ts";
 import { pose, type HeroDir } from "./rig.ts";
+import { legendMap, legendWear } from "./legend.ts";
 import { magicRemap, magicWear } from "./magic.ts";
 import { shieldHeld } from "./shields.ts";
 import { classWeapon, weaponArt } from "./weapons.ts";
@@ -27,17 +28,22 @@ export function heroFigure(classId: ClassId, outfit: Outfit): Figure {
   const boots = worn(outfit, "boots");
   const shield = worn(outfit, "shield");
   const { base, extras } = classWear(classId);
-  // Item mágico: o mesmo desenho do nível com os materiais e o enfeite dele.
-  const dress = <T extends Wear | Held>(item: ItemDef, art: T) => (item.rarity === "magic" ? magicWear(item.family, item.tier, art) : art);
+  // Item mágico: o mesmo desenho do nível com os materiais e o enfeite dele. Lendário: o mágico repintado.
+  const legend = <T extends Wear | Held>(item: ItemDef, art: T) => (item.legend ? legendWear(item.legend, art) : art);
+  const dress = <T extends Wear | Held>(item: ItemDef, art: T) =>
+    (item.rarity === "magic" || item.rarity === "legendary" ? legend(item, magicWear(item.family, item.tier, art)) : art);
   const wears: Wear[] = [base];
   if (legs) wears.push(dress(legs, legsWear(legs.family, legs.tier)));
   if (boots) wears.push(dress(boots, bootsWear(boots.tier)));
   if (armor) wears.push(dress(armor, armorWear(armor.family, armor.tier)));
   if (helmet) wears.push(dress(helmet, helmetWear(helmet.family, helmet.tier)));
   if (extras) wears.push(extras);
-  const weapon = weaponItem ? weaponArt(weaponItem.family, weaponItem.tier, weaponItem.rarity === "magic") : classWeapon(classId);
+  const weapon = weaponItem
+    ? legend(weaponItem, weaponArt(weaponItem.family, weaponItem.tier, weaponItem.rarity !== "common" && weaponItem.rarity !== "rare"))
+    : classWeapon(classId);
   const gauntlet = armor && gauntletOf(armor.family, armor.tier);
-  const gauntletMat = gauntlet && armor.rarity === "magic" ? magicRemap(armor.family, armor.tier)?.get(gauntlet) ?? gauntlet : gauntlet;
+  const magicMat = gauntlet && armor && armor.rarity !== "common" && armor.rarity !== "rare" ? magicRemap(armor.family, armor.tier)?.get(gauntlet) ?? gauntlet : gauntlet;
+  const gauntletMat = magicMat && armor?.legend ? legendMap(armor.legend).get(magicMat) ?? magicMat : magicMat;
   return {
     wears,
     weapon,

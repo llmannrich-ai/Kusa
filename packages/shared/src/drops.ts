@@ -14,8 +14,8 @@ export interface DropOdds {
   /** Sorteios de item de equipamento e a chance de cada um sair. */
   items: number;
   itemChance: number;
-  /** Chance de cada item sair raro ou mágico (o resto é comum). */
-  rarity: { rare: number; magic: number };
+  /** Chance de cada item sair raro, mágico ou lendário (o resto é comum). */
+  rarity: { rare: number; magic: number; legendary: number };
   /** Sorteios de poção e a chance de cada um sair. */
   potions: number;
   potionChance: number;

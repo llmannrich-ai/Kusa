@@ -108,6 +108,7 @@ export function attackCooldownMs(bonus: PerkBonuses): number {
 }
 
 /** Recarga de uma magia com o Foco e a Runa do Tempo. */
-export function spellCooldownMs(cooldownMs: number, bonus: PerkBonuses): number {
-  return Math.round(cooldownMs * (1 - bonus.castHaste));
+/** `gear`: recarga mais curta dos itens (`ItemStats.cooldown`), somada ao Foco; nunca abaixo de 40% da recarga. */
+export function spellCooldownMs(cooldownMs: number, bonus: PerkBonuses, gear = 0): number {
+  return Math.round(cooldownMs * Math.max(0.4, 1 - bonus.castHaste - gear));
 }

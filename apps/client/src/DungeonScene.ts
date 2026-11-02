@@ -1184,8 +1184,8 @@ export class DungeonScene extends Phaser.Scene {
       : isRune(item.itemId) ? RUNES[item.itemId].color : ITEMS[item.itemId] && itemColor(item.itemId);
     if (color === undefined) return;
     const rarity = ITEMS[item.itemId]?.rarity;
-    // 0 = comum ou poção, 1 = raro ou runa, 2 = mágico.
-    const tier = rarity === "magic" ? 2 : rarity === "rare" || isRune(item.itemId) ? 1 : 0;
+    // 0 = comum ou poção, 1 = raro ou runa, 2 = mágico, 3 = lendário (o facho mais alto do chão).
+    const tier = rarity === "legendary" ? 3 : rarity === "magic" ? 2 : rarity === "rare" || isRune(item.itemId) ? 1 : 0;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-7, -5], [7, -5], [-7, 6], [7, 6]][stacked % 5];
     const shadow = this.add.ellipse(0, 7, 26, 10, 0x000000, 0.45);
@@ -1200,7 +1200,7 @@ export class DungeonScene extends Phaser.Scene {
     const y = this.toPx(item.y) + offset[1] + 2;
     const container = this.add.container(x, y, [shadow, glow, outline, ring, icon])
       .setDepth((item.y + 1) * TILE_SIZE - 0.1);
-    const beamHeight = [34, 50, 68][tier];
+    const beamHeight = [34, 50, 68, 96][tier];
     const beam = this.add.image(x, y + 7, this.lootBeamTexture()).setOrigin(0.5, 1)
       .setDisplaySize(10 + tier * 2, beamHeight).setTint(color)
       .setAlpha(0.5 + tier * 0.15).setDepth(FX_DEPTH_BELOW_UI);

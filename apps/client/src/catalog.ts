@@ -13,6 +13,8 @@ import {
   ITEM_RARITIES,
   ITEM_SLOTS,
   ITEM_TIERS,
+  LEGENDARIES,
+  LEGENDARY_IDS,
   LUCKY_TIER_CHANCE,
   MAPS,
   MAP_IDS,
@@ -104,7 +106,16 @@ function note(text: string) {
 function equipment() {
   return section("⚔️ Equipamentos",
     note(`Cada família tem ${ITEM_TIERS.length} materiais (${ITEM_TIERS.map((t) => TIER_NAMES[t]).join(", ")}) e 3 raridades. `
-      + "O raro (+1) é mais forte; o mágico tem nome próprio e uma propriedade a mais."),
+      + "O raro (+1) é mais forte; o mágico tem nome próprio e uma propriedade a mais. "
+      + `Os ${LEGENDARIES.length} lendários são peças únicas de Dragão, bem mais fortes, e os de classe fortalecem magias específicas.`),
+    section("★ Lendários", ...LEGENDARY_IDS.map((id) => {
+      const def = ITEMS[id];
+      return entry({
+        icon: itemIcon(id), name: def.name, color: hex(RARITY_COLORS.legendary),
+        meta: `${SLOT_NAMES[def.slot]} · ${classesText(def, CLASS_NAMES)} · só na hunt · venda ${lootSellPrice(id)} gold`,
+        lines: [def.lore!, ...describeStats(def.stats)],
+      });
+    })),
     ...ITEM_SLOTS.map((slot) => section(SLOT_NAMES[slot],
       ...Object.entries(ITEM_FAMILIES).filter(([, f]) => f.slot === slot).map(([, f]) => {
         const first = ITEMS[itemId(f.slot, f.key, 1)];
@@ -165,7 +176,7 @@ function dropLines(map: MapDef, kind: MonsterKind) {
   if (odds.nothing) {
     return [MONSTERS[kind].traits?.illusion ? "Drops: nenhum (é uma ilusão)." : "Drops: nenhum (só aparece chamado por outro monstro)."];
   }
-  const rarity = `raro ${pct(odds.rarity.rare)}, mágico ${pct(odds.rarity.magic)}`;
+  const rarity = `raro ${pct(odds.rarity.rare)}, mágico ${pct(odds.rarity.magic)}, lendário ${pct(odds.rarity.legendary)}`;
   const items = odds.itemChance >= 1
     ? `${odds.items} ${odds.items === 1 ? "item garantido" : "itens garantidos"}`
     : odds.items === 1 ? `item ${pct(odds.itemChance)}` : `${odds.items} itens, ${pct(odds.itemChance)} cada`;

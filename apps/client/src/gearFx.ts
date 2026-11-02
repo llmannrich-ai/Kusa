@@ -8,22 +8,23 @@ import type { Outfit } from "./art/outfit.ts";
  * - item raro: uma estrelinha azul pisca de vez em quando sobre o herói;
  * - item mágico: aura roxa nos pés, estrelinhas roxas e partículas das propriedades mágicas que ele veste
  *   (brasas para queimadura, gotas para veneno, fiapos para roubo de vida, faíscas arcanas para poder
- *   mágico e mana, poeira para velocidade, luz dourada para vida, armadura e espinhos), no máximo duas.
+ *   mágico e mana, poeira para velocidade, luz dourada para vida, armadura e espinhos), no máximo duas;
+ * - item lendário: como o mágico, com a aura dourada e faíscas de ouro subindo do chão em volta do herói.
  */
 
 type Sign = "burn" | "poison" | "lifesteal" | "arcane" | "speed" | "holy";
 
 export interface GearSigns {
-  rarity: "rare" | "magic" | null;
+  rarity: "rare" | "magic" | "legendary" | null;
   signs: Sign[];
 }
 
 /** Ordem de prioridade (as duas primeiras que o herói tiver aparecem). */
-const SIGN_OF: [Sign, (keyof ItemStats)[]][] = [
+const SIGN_OF: [Sign, Exclude<keyof ItemStats, "spells">[]][] = [
   ["burn", ["burn"]],
   ["poison", ["poison"]],
   ["lifesteal", ["lifesteal"]],
-  ["arcane", ["spellPower", "mana"]],
+  ["arcane", ["spellPower", "mana", "cooldown"]],
   ["speed", ["speed", "haste"]],
   ["holy", ["hp", "armor", "thorns", "damage", "range"]],
 ];
@@ -35,8 +36,9 @@ const COLORS: Record<Sign, number> = {
 /** O que o equipamento vestido mostra. As propriedades vêm só dos itens mágicos (a propriedade "a mais" deles). */
 export function gearSigns(outfit: Outfit): GearSigns {
   const items = Object.values(outfit).map((id) => ITEMS[id]).filter((item) => !!item);
-  const magic = items.filter((item) => item.rarity === "magic");
-  const rarity = magic.length ? "magic" : items.some((item) => item.rarity === "rare") ? "rare" : null;
+  const magic = items.filter((item) => item.rarity === "magic" || item.rarity === "legendary");
+  const rarity = items.some((item) => item.rarity === "legendary") ? "legendary"
+    : magic.length ? "magic" : items.some((item) => item.rarity === "rare") ? "rare" : null;
   const signs = SIGN_OF
     .filter(([, keys]) => magic.some((item) => keys.some((k) => (item.stats[k] ?? 0) > 0)))
     .map(([sign]) => sign)
@@ -57,17 +59,27 @@ export function gearFx(scene: Phaser.Scene, g: GearSigns, height: number): Phase
   const events: Phaser.Time.TimerEvent[] = [];
   const every = (delay: number, fn: () => void) => events.push(scene.time.addEvent({ delay, loop: true, callback: () => root.visible && fn() }));
 
-  if (g.rarity === "magic") {
+  if (g.rarity === "magic" || g.rarity === "legendary") {
+    const tint = RARITY_COLORS[g.rarity];
     const aura = scene.add.graphics();
-    aura.fillStyle(RARITY_COLORS.magic, 0.16).fillEllipse(0, FEET - 3, TILE_SIZE - 4, 9);
-    aura.lineStyle(1, RARITY_COLORS.magic, 0.4).strokeEllipse(0, FEET - 3, TILE_SIZE - 4, 9);
+    aura.fillStyle(tint, 0.16).fillEllipse(0, FEET - 3, TILE_SIZE - 4, 9);
+    aura.lineStyle(1, tint, 0.4).strokeEllipse(0, FEET - 3, TILE_SIZE - 4, 9);
     root.add(aura);
     scene.tweens.add({ targets: aura, alpha: { from: 1, to: 0.35 }, duration: 900, yoyo: true, repeat: -1 });
+  }
+  if (g.rarity === "legendary") {
+    // Faíscas de ouro sobem do chão em volta do herói e somem na altura do peito.
+    every(420, () => {
+      const x = Phaser.Math.Between(-12, 12);
+      const spark = scene.add.circle(x, FEET - 4, Phaser.Math.FloatBetween(0.8, 1.4), RARITY_COLORS.legendary, 0.9).setBlendMode(Phaser.BlendModes.ADD);
+      root.add(spark);
+      scene.tweens.add({ targets: spark, y: FEET - Phaser.Math.Between(14, 22), alpha: 0, duration: 1100, onComplete: () => spark.destroy() });
+    });
   }
 
   // Estrelinha que pisca num ponto do corpo.
   const color = RARITY_COLORS[g.rarity];
-  every(g.rarity === "magic" ? 1000 : 1600, () => {
+  every(g.rarity === "rare" ? 1600 : 1000, () => {
     const star = scene.add.image(Phaser.Math.Between(-9, 9), Phaser.Math.Between(top + 6, FEET - 10), FX.star)
       .setTint(color).setScale(0).setBlendMode(Phaser.BlendModes.ADD);
     root.add(star);

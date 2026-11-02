@@ -105,7 +105,7 @@ export const DEATH_SAFE_LEVEL = 5;
  * Peso de cada raridade no sorteio do equipamento perdido na morte: o mágico sai 4× menos que o comum. O banco
  * repete os pesos em `drop_random_item`.
  */
-export const DEATH_LOSS_WEIGHT: Record<"common" | "rare" | "magic", number> = { common: 1, rare: 0.5, magic: 0.25 };
+export const DEATH_LOSS_WEIGHT: Record<"common" | "rare" | "magic" | "legendary", number> = { common: 1, rare: 0.5, magic: 0.25, legendary: 0.12 };
 
 /**
  * Quantidade a mais de monstros por sala de profundidade (+12% por sala): o orçamento de ameaça de cada encontro e os

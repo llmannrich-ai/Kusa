@@ -36,7 +36,14 @@ const PROTO_FAMILY: Record<string, string> = {
 export function protoItemOf(itemId: string): string | undefined {
   const def = ITEMS[itemId];
   const family = def && PROTO_FAMILY[def.family];
-  return family && `${family}-${def.tier}${def.rarity === "magic" ? "-magic" : ""}`;
+  // O lendário usa o desenho do mágico de Dragão da família (ou o de `LEGEND_BASE`), repintado (`ProtoGear.legend`).
+  if (def?.legend && protoHero?.LEGEND_BASE[def.legend]) return protoHero.LEGEND_BASE[def.legend];
+  return family && `${family}-${def.tier}${def.rarity === "magic" || def.rarity === "legendary" ? "-magic" : ""}`;
+}
+
+/** Chave do lendário (`ItemDef.legend`), para repintar o desenho do mágico. */
+export function protoLegendOf(itemId: string): string | undefined {
+  return ITEMS[itemId]?.legend;
 }
 
 /**

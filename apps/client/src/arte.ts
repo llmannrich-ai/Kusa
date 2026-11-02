@@ -1,6 +1,6 @@
 // Galeria de desenvolvimento (arte.html): mostra a arte própria ampliada para conferir pixel a pixel.
 import {
-  CLASS_IDS, CLASSES, ITEMS, MONSTERS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
+  CLASS_IDS, CLASSES, ITEMS, LEGENDARY_IDS, MONSTERS, ITEM_FAMILIES, ITEM_SLOTS, ITEM_TIERS, RUNES, RUNE_IDS, SLOT_NAMES, TIER_NAMES, TILE_SIZE, itemId,
   type ClassId, type ItemSlot, type ItemTier,
 } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
@@ -60,7 +60,7 @@ const WALK = [1, 0, 2, 0];
     return el;
   };
   const classSel = select("Classe", CLASS_IDS.map((id) => [id, CLASSES[id].name]));
-  const RARITY_TAG = { common: "", rare: " (raro)", magic: " ✦" };
+  const RARITY_TAG = { common: "", rare: " (raro)", magic: " ✦", legendary: " ★" };
   const slotSel = Object.fromEntries(ITEM_SLOTS.map((slot) => [slot, select(SLOT_NAMES[slot], [
     ["", "—"],
     ...Object.values(ITEMS)
@@ -255,6 +255,9 @@ for (const family of Object.values(ITEM_FAMILIES)) {
     show(row, itemIcon(id), ITEMS[id].name);
   }
 }
+
+const legendRow = section("Itens lendários (peças únicas)");
+for (const id of LEGENDARY_IDS) show(legendRow, itemIcon(id), ITEMS[id].name);
 
 const runeRow = section("Runas (caem dos bosses)");
 for (const id of RUNE_IDS) show(runeRow, itemIcon(id), RUNES[id].name);
