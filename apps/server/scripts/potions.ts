@@ -112,12 +112,18 @@ async function run() {
   const hp = me().hp;
   let pickedBefore = pickedHealth;
   room.send(MSG.drink, { potion: potion.id });
-  await wait(300);
-  await settle(() => me()[field] === carried - 1 + pickedHealth - pickedBefore);
+  // O herói continua no meio da luta: os golpes podem levar a vida de volta ao que era antes do gole (no CI isso
+  // acontecia: "131 → 131"). Vale o pico de vida visto depois do gole, não a vida no fim da espera.
+  let peak = hp;
+  for (let i = 0; i < 15; i++) {
+    await wait(100);
+    peak = Math.max(peak, me().hp);
+    if (peak > hp && me()[field] === carried - 1 + pickedHealth - pickedBefore) break;
+  }
   if (me()[field] !== carried - 1 + pickedHealth - pickedBefore) throw new Error("a poção não saiu da mochila");
-  if (me().hp <= hp) throw new Error(`a vida não subiu: ${hp} → ${me().hp}`);
+  if (peak <= hp) throw new Error(`a vida não subiu: ${hp} → ${peak}`);
   if (drank.length !== 1) throw new Error("o servidor não confirmou a poção");
-  console.log(`bebeu: vida ${hp} → ${me().hp}, recarga ${drank[0].cooldownMs} ms`);
+  console.log(`bebeu: vida ${hp} → ${peak}, recarga ${drank[0].cooldownMs} ms`);
 
   // Fase 4: em recarga, beber de novo não gasta poção (só dá para testar com outra na mochila).
   if (me()[field] > 0) {
