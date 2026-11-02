@@ -1020,3 +1020,25 @@ export function drainSprite(): Uint8ClampedArray {
   for (let y = 20; y < base; y++) for (let x = cx - 30; x < cx + 30; x++) if (p.has(x, y) && sn(x, y, 8, 971) > 0.62 && Math.abs(x - cx) > 24) p.on(x, y, E.Moss, 1);
   return p.render(true);
 }
+
+// --- Vida ---------------------------------------------------------------------------------------
+
+/** O corvo voando (2 quadros: asas em cima e embaixo), visto de cima, lado a lado na textura. */
+export const RAVEN = { w: 48, h: 32 } as const;
+export function ravenFrames(): Uint8ClampedArray {
+  const p = paper(RAVEN.w * 2, RAVEN.h);
+  for (const k of [0, 1]) {
+    const ox = k * RAVEN.w, cx = ox + 24, cy = 17;
+    // O corpo e a cabeça com o bico, a cauda em leque.
+    ellipse(p, cx, cy, 5, 9, E.Void);
+    ellipse(p, cx, cy - 10, 4, 4, E.Void);
+    poly(p, [[cx - 1.5, cy - 13], [cx + 1.5, cy - 13], [cx, cy - 18]], E.Iron, () => 0.4);
+    poly(p, [[cx - 4, cy + 7], [cx + 4, cy + 7], [cx + 6, cy + 14], [cx - 6, cy + 14]], E.Void, () => 0.3);
+    // As asas: abertas para cima (penas das pontas separadas) ou fechadas para baixo.
+    for (const s of [-1, 1]) {
+      const tip: [number, number] = k === 0 ? [cx + s * 22, cy - 8] : [cx + s * 16, cy + 8];
+      poly(p, [[cx + s * 3, cy - 4], [tip[0], tip[1]], [tip[0] - s * 3, tip[1] + 5], [cx + s * 4, cy + 4]], E.Void, () => 0.35);
+    }
+  }
+  return p.render(false);
+}
