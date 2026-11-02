@@ -36,13 +36,15 @@ export class ProfileError extends Error {}
 
 /**
  * Cenários vencidos (boss morto) e bosses vencidos, por classe: abrem o seguinte da campanha (`mapUnlocked`; os bosses
- * contam nos lados das bifurcações). Sem conexão, nenhum.
+ * contam nos lados das bifurcações). Sem conexão, `null`.
  */
-export async function loadMapClears(): Promise<Partial<Record<ClassId, string[]>>> {
+export async function loadMapClears(): Promise<Partial<Record<ClassId, string[]>> | null> {
   const [maps, bosses] = await Promise.all([
     supabase.from("profile_map_clears").select("class_id, map_id"),
     supabase.from("profile_boss_clears").select("class_id, boss_kind"),
   ]);
+  // Sem resposta do banco: `null`, para quem chama manter a campanha que já tinha (e o cenário salvo).
+  if (maps.error || bosses.error) return null;
   const out: Partial<Record<ClassId, string[]>> = {};
   for (const row of maps.data ?? []) {
     if (!MAP_IDS.includes(row.map_id as MapId)) continue;
