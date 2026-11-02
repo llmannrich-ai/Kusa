@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "@kusa/shared";
+import { CAMP_RADIUS, TILE_SIZE, Tile, tileAt, tileDistance, type Dungeon, type Rect } from "@kusa/shared";
 import { hash } from "./art/pixels.ts";
 import { CRYPT_DECOR, createCryptArt, floorVariants, wallCapTexture, wallFaceTexture } from "./art/textures.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
@@ -178,8 +178,13 @@ function drawCampfire(scene: Phaser.Scene, at: { x: number; y: number }, light: 
     for (let k = 0; k < 4; k++) texture.add(k, 0, k * FLAME.w, 0, FLAME.w, FLAME.h);
   }
   const px = (at.x + 0.5) * TILE_SIZE, py = (at.y + 1) * TILE_SIZE;
-  scene.add.image(px, py, CAMPFIRE_KEY).setOrigin(0.5, 1).setScale(1 / ART_ZOOM).setDepth(py - 1);
-  const flame = scene.add.image(px, py - 30 / ART_ZOOM, CAMPFIRE_FLAME, 0).setOrigin(0.5, 1).setScale(1.2 / ART_ZOOM).setDepth(py)
+  // A área onde a regen vale 4× (`CAMP_RADIUS` tiles para cada lado: um quadrado): chão aquecido com a borda marcada.
+  const r = CAMP_RADIUS;
+  scene.add.graphics().setDepth(1.5)
+    .fillStyle(0xff9a40, 0.1).fillRoundedRect((at.x - r) * TILE_SIZE, (at.y - r) * TILE_SIZE, (2 * r + 1) * TILE_SIZE, (2 * r + 1) * TILE_SIZE, 10)
+    .lineStyle(2, 0xffb347, 0.45).strokeRoundedRect((at.x - r) * TILE_SIZE, (at.y - r) * TILE_SIZE, (2 * r + 1) * TILE_SIZE, (2 * r + 1) * TILE_SIZE, 10);
+  scene.add.image(px, py, CAMPFIRE_KEY).setOrigin(0.5, 1).setScale(1.7 / ART_ZOOM).setDepth(py - 1);
+  const flame = scene.add.image(px, py - 52 / ART_ZOOM, CAMPFIRE_FLAME, 0).setOrigin(0.5, 1).setScale(2 / ART_ZOOM).setDepth(py)
     .setBlendMode(Phaser.BlendModes.ADD);
   let frame = 0;
   scene.time.addEvent({ delay: 110, loop: true, callback: () => { frame = (frame + 1) % 4; flame.setFrame(frame); } });

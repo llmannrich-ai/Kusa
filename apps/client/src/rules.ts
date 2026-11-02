@@ -143,6 +143,14 @@ export function renderRules(root: HTMLElement) {
       "Controle num herói (preso, atordoado, engolido, cego) dura no máximo 2 s, e depois ele fica 4 s imune ao mesmo efeito.",
     ),
 
+    section("🦴 Fíbula: terreno de caça", false, list([
+      "Sem tempo: a hunt só acaba quando você sai pelo portal, vence o Rei Ossudo ou morre. O relógio mostra há quanto tempo você está lá dentro.",
+      "🔥 Acampamento: a sala onde você nasce, com o portal. No quadrado em volta da fogueira, a vida e a mana voltam 4× mais rápido.",
+      "Três anéis de salas, do sul ao norte: Orla (fácil), Covas (médio) e Fundo (perigoso). A placa embaixo do relógio diz onde você está.",
+      "Fora da fogueira a vida volta devagar: ferido, recue até o acampamento antes de avançar mais.",
+      "Os monstros ficam sempre nos mesmos lugares, e a sala limpa enche de novo em 1 a 2 min (nunca com você perto).",
+    ])),
+
     section("⚠️ Perigo e equipe", false, list([
       `Grito de Guerra: o líder que sobrevive ao primeiro golpe chama os monstros a até ${LEADER_SHOUT_RADIUS} tiles. Mate-o num golpe, ou antes de ele perceber.`,
       "Perseguição: goblins, lobos e enxames seguem você longe; brutos lentos desistem antes. Não fuja de quem é mais rápido: fuja para a equipe, para o portal ou por um corredor.",

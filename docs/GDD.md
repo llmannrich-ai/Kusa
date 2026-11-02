@@ -828,6 +828,12 @@ escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) fa
 - **Rei Ossudo** (`boneKing`, 1.150 de vida, 26 de dano): Corte do Tutano (sangra), Investida do Rei, Tempestade de
   Ossos (em volta, lentidão) e, com metade da vida, Os Ossos se Erguem (3 esqueletos, uma vez); Comando nos mortos
   perto dele; a luz o fere 1,5×. Arte do Centurião Ossudo, maior.
+- **O mapa se explica** (o primeiro teste mostrou que, sem isso, ninguém achava o acampamento): ao começar, três avisos
+  sobre o herói (o acampamento, a fogueira 4× e "sem tempo, mais perigoso para o norte"); embaixo do relógio, a placa
+  da zona ("🔥 Acampamento", "Anel 1 · Orla", "Anel 2 · Covas", "Anel 3 · Fundo", "☠ Covil"), com a cor subindo com o
+  perigo; a fogueira grande, com o quadrado da área de cura marcado no chão e o aviso "🔥 Descansando" ao entrar nele
+  (no máximo a cada 15 s); "A sala encheu de novo" sobre a sala que volta. A ficha mostra "🔥 acampamento" e
+  "🔁 salas renascem", e as Regras têm a seção da Fíbula.
 - **Telemetria** (`stats.ground`): tempo e abates por anel, recuos, salas que encheram de novo (ver `docs/TELEMETRIA.md`).
 
 ### Cripta

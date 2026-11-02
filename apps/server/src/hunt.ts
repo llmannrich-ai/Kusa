@@ -430,6 +430,9 @@ interface Seat {
   bossRunes: Set<string>;
   /** Terreno de caça: o herói estava perto da fogueira no último segundo (conta o recuo ao chegar ferido). */
   atCamp?: boolean;
+  /** Terreno de caça: dentro do círculo da fogueira no último segundo, e quando (em `elapsedMs`) pode avisar de novo. */
+  resting?: boolean;
+  restNoticeAt?: number;
   /** A tela do jogador está deitada (`MSG.screen`): o tempo assim soma em `stats.landscapeMs`. */
   landscape: boolean;
 }
@@ -1164,6 +1167,8 @@ export class Hunt {
       if (near) continue;
       this.fillPack(pack, () => this.random());
       this.seats.forEach((seat) => bump(seat.stats.ground, pack.miniboss ? "minibosses_renascidos" : "salas_renascidas"));
+      const c = centerOf(pack.room);
+      this.notice(c.x, c.y - 1, pack.miniboss ? "O guardião voltou" : "A sala encheu de novo", 0xb9b0a0, 2200);
     }
   }
 
@@ -1171,12 +1176,19 @@ export class Hunt {
    * Telemetria do terreno de caça, a cada segundo: em que anel o herói está (a sala do caminho mais perto; perto da
    * fogueira conta como acampamento) e os recuos (chegar à fogueira com menos de metade da vida).
    */
-  private tallyGround(p: Player, seat: Seat | undefined) {
+  private tallyGround(sessionId: string, p: Player, seat: Seat | undefined) {
     const camp = this.dungeon.camp;
     if (!this.map.huntingGround || !camp || !seat) return;
     const atCamp = tileDistance(p.x, p.y, camp.x, camp.y) <= CAMP_RADIUS + 2;
     if (atCamp && !seat.atCamp && p.hp < p.maxHp / 2) bump(seat.stats.ground, "recuos");
     seat.atCamp = atCamp;
+    // Entrou no círculo da fogueira (onde a regen vale 4×): avisa, no máximo a cada 15 s.
+    const resting = tileDistance(p.x, p.y, camp.x, camp.y) <= CAMP_RADIUS;
+    if (resting && !seat.resting && !p.bot && this.elapsedMs >= (seat.restNoticeAt ?? 0)) {
+      seat.restNoticeAt = this.elapsedMs + 15_000;
+      this.noticeTo(sessionId, p.x, p.y - 1, "🔥 Descansando: vida e mana 4×", 0xffc56b, 1800);
+    }
+    seat.resting = resting;
     if (atCamp || this.nearRoom(this.dungeon.spawn, p, 0)) return bump(seat.stats.ground, "camp_s");
     let best = 0;
     let bestDist = Infinity;
@@ -1186,6 +1198,25 @@ export class Hunt {
       if (dist < bestDist) { bestDist = dist; best = i; }
     });
     bump(seat.stats.ground, `ring_${this.dungeon.rings?.[best] ?? 0}_s`);
+  }
+
+  /**
+   * Terreno de caça: ao começar, três avisos sobre o herói explicam o mapa (o acampamento, a fogueira e o "sem tempo"),
+   * um de cada vez, para quem nunca viu o modelo entender onde está.
+   */
+  private welcomeToGround() {
+    const lines: [string, number][] = [
+      ["🔥 Acampamento: aqui é seguro", 0xffc56b],
+      ["Perto da fogueira a vida volta 4× mais rápido", 0x7ee08a],
+      ["Sem tempo · mais perigoso para o norte · saia pelo portal", 0xe8dcc0],
+    ];
+    // O "Descansando" da fogueira (o herói nasce dentro dela) espera os três avisos acabarem.
+    this.seats.forEach((seat) => { seat.restNoticeAt = 600 + lines.length * 2800; });
+    lines.forEach(([text, color], i) => this.after(600 + i * 2800, () => {
+      this.state.players.forEach((p, id) => {
+        if (p.status === "playing" && !p.bot) this.noticeTo(id, p.x, p.y - 2, text, color, 2600);
+      });
+    }));
   }
 
   /** O ponto está dentro da sala ou a até `tiles` dela. */
@@ -1226,6 +1257,7 @@ export class Hunt {
     if (this.testRunes.length > 0) {
       this.state.players.forEach((p, id) => this.equipRunes(p, this.seats.get(id)!, this.testRunes));
     }
+    if (this.map.huntingGround) this.welcomeToGround();
     return true;
   }
 
@@ -1535,7 +1567,7 @@ export class Hunt {
     this.regenMs -= 1000;
     this.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing") return;
-      this.tallyGround(p, this.seats.get(sessionId));
+      this.tallyGround(sessionId, p, this.seats.get(sessionId));
       // Regeneração e Clareza (melhorias) somam à regeneração base.
       const perk = this.seats.get(sessionId)?.perkBonus;
       // Runa do Pacto: a mana volta mais devagar.

@@ -7,7 +7,7 @@
  * Uso: npx tsx apps/server/scripts/terreno.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CAMP_REGEN, FLAT_HP_REGEN, FLAT_REGEN_PER_LEVEL, MAPS, MONSTERS, OPEN_HUNT_MAX_SECONDS, SERVER_TICK_MS, createRng, statsFor, tileDistance,
+  CAMP_REGEN, FLAT_HP_REGEN, MSG, FLAT_REGEN_PER_LEVEL, MAPS, MONSTERS, OPEN_HUNT_MAX_SECONDS, SERVER_TICK_MS, createRng, statsFor, tileDistance,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { DungeonState, type Player } from "../src/state.ts";
@@ -16,17 +16,30 @@ const HERO = "h";
 
 function fibula(seed: number) {
   let clock = 0;
-  const host: HuntHost = { now: () => clock, setTimeout: () => {}, send: () => {}, broadcast: () => {}, runEnded: () => {}, ended: () => {} };
+  const timers: { at: number; fn: () => void }[] = [];
+  /** Avisos que sobem na tela (para o herói ou para todos). */
+  const notices: string[] = [];
+  const collect = (type: string, msg: any) => { if (type === MSG.notice) notices.push(msg.text); };
+  const host: HuntHost = {
+    now: () => clock, setTimeout: (fn, ms) => void timers.push({ at: clock + ms, fn }),
+    send: (_id, type, msg) => collect(type, msg), broadcast: collect, runEnded: () => {}, ended: () => {},
+  };
   const state = new DungeonState();
   const hunt = new Hunt(state, host, { mapId: "fibula", seed, random: createRng(seed).next });
   hunt.join(HERO, { name: "Teste", classId: "knight", talents: {}, spellXp: {} });
   hunt.start(HERO);
   const any = hunt as any;
   const p = state.players.get(HERO)! as Player;
-  const advance = (ms: number) => { for (let t = 0; t < ms; t += SERVER_TICK_MS) { clock += SERVER_TICK_MS; hunt.tick(SERVER_TICK_MS); } };
+  const advance = (ms: number) => {
+    for (let t = 0; t < ms; t += SERVER_TICK_MS) {
+      clock += SERVER_TICK_MS;
+      for (const timer of timers.filter((x) => x.at <= clock)) { timers.splice(timers.indexOf(timer), 1); timer.fn(); }
+      hunt.tick(SERVER_TICK_MS);
+    }
+  };
   /** Herói no acampamento, longe de tudo, sem tomar dano. */
   const safe = () => { p.x = any.dungeon.portal.x + 1; p.y = any.dungeon.portal.y; };
-  return { hunt, state, any, p, advance, safe };
+  return { hunt, state, any, p, advance, safe, notices };
 }
 
 function check(ok: boolean, what: string) {
@@ -130,6 +143,28 @@ function check(ok: boolean, what: string) {
   h.advance(2000);
   check(stats.recuos === 1, "ficar na fogueira não conta outro recuo");
   console.log(`  ✔ telemetria: ${stats.ring_0_s}s no anel 1, ${stats.recuos} recuo`);
+}
+
+// --- O mapa se explica: boas-vindas, fogueira e sala que enche -------------------------------
+{
+  const h = fibula(21);
+  h.p.hp = h.p.maxHp = 1_000_000;
+  h.advance(9500);
+  const welcome = h.notices.filter((n) => n.startsWith("🔥 Acampamento") || n.startsWith("Perto da fogueira") || n.startsWith("Sem tempo"));
+  check(welcome.length === 3, `devia mostrar os 3 avisos de boas-vindas (veio ${JSON.stringify(h.notices)})`);
+  // Sai do círculo da fogueira e volta: avisa que está descansando.
+  h.safe();
+  h.advance(1100);
+  const camp = h.any.dungeon.camp;
+  h.p.x = camp.x + 1; h.p.y = camp.y;
+  h.advance(1100);
+  check(h.notices.some((n) => n.startsWith("🔥 Descansando")), `devia avisar o descanso na fogueira (veio ${JSON.stringify(h.notices)})`);
+  const pack = (h.any.packs as any[]).find((x) => !x.miniboss && x.ring === 0);
+  pack.members.forEach((id: string) => { const m = h.state.monsters.get(id); if (m) h.any.killMonster(m, h.any.brains.get(id), HERO); });
+  h.safe();
+  h.advance(MAPS.fibula.huntingGround!.respawnMs[0] + 1500);
+  check(h.notices.includes("A sala encheu de novo"), "devia avisar a sala que encheu de novo");
+  console.log("  ✔ o mapa se explica: boas-vindas, descanso na fogueira e sala que enche");
 }
 
 // --- Sem tempo ---------------------------------------------------------------------------
