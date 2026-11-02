@@ -5,7 +5,6 @@ import { BASIC_ATTACK_COOLDOWN_MS, SPELL_SLOT_LEVELS } from "./spells.ts";
 // jogador escolhe uma. Valem só até o fim da hunt e somam por cima das áureas do Grimório.
 // Balanceamento: cada escolha vale perto de +10% de poder num eixo. Numa hunt de 4 min o jogador
 // chega a ~5 escolhas (níveis 2, 4, 5, 7, 8); o limite de cada uma impede empilhar um eixo só.
-// Do nível `PERK_EVEN_FROM` em diante só os níveis pares dão melhoria (11 no máximo por hunt, não 16).
 
 export type PerkId =
   | "vigor" | "arcana" | "regen" | "clarity" | "might"
@@ -47,13 +46,9 @@ export function isPerk(id: unknown): id is PerkId {
   return typeof id === "string" && id in PERKS;
 }
 
-/** A partir deste nível, só os níveis pares dão melhoria. */
-export const PERK_EVEN_FROM = 10;
-
-/** Níveis que dão uma melhoria: do 2 ao 9, e depois só os pares; nunca os que abrem um slot de magia. */
+/** Níveis que dão uma melhoria: todos a partir do 2, menos os que abrem um slot de magia. */
 export function grantsPerk(level: number): boolean {
-  if (level < 2 || (SPELL_SLOT_LEVELS as readonly number[]).includes(level)) return false;
-  return level < PERK_EVEN_FROM || level % 2 === 0;
+  return level >= 2 && !(SPELL_SLOT_LEVELS as readonly number[]).includes(level);
 }
 
 /** Melhorias escolhidas na hunt (id → quantas vezes). */

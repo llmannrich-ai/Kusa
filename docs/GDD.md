@@ -1242,9 +1242,7 @@ lê.
 - O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes, nas Mesas de Solária, nos Portões do Império e na Fortaleza Orc, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
-- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Do nível 11 em diante, vida, mana e dano
-  crescem só metade por nível (`STAT_TAPER`, `packages/shared/src/progression.ts`), para frear a bola de neve do fim da
-  hunt (pela telemetria, quem passava do nível 10 quase não morria). O Cavaleiro tem 10 de armadura própria
+- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. O Cavaleiro tem 10 de armadura própria
   (`ClassDef.armor`, soma com o equipamento), única classe com armadura de nascença. Os slots de magia abrem nos níveis 3, 6 e 12;
   os outros níveis dão uma melhoria à escolha (ver "Melhorias de nível").
 - A dungeon é semi-linear: poucos monstros fracos na entrada e, conforme a equipe se aprofunda, espécies mais fortes e
@@ -1258,8 +1256,7 @@ lê.
 
 ### Melhorias de nível
 
-Todo nível que não abre slot de magia mostra **duas cartas** (do 2 ao 9: 2, 4, 5, 7, 8, 9; do 10 em diante, só os
-pares: 10, 14, 16, 18, 20, no máximo 11 por hunt, `PERK_EVEN_FROM`) logo acima do
+Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **duas cartas** logo acima do
 personagem (acompanhando ele) e o jogador toca numa. Cada carta mostra ícone, nome, efeito, um selo ("Nova" ou "2ª vez")
 e bolinhas de quantas vezes a melhoria já foi escolhida até o limite. Depois da escolha, o nome sobe sobre o personagem
 por 1,17 s (30% a mais que os outros avisos). O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
@@ -1300,6 +1297,13 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado (ou com ele fora do alcance), o servidor escolhe o monstro mais próximo ao alcance. À distância, o golpe é um tiro que pode errar (ver "Ataques e magias").
 - Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
+- **Curva de XP** (`xpForLevel`, `packages/shared/src/progression.ts`): a forma do Tibia, cúbica, num terço do valor:
+  XP total = ⅓ × 50/3 × (L³ − 6L² + 17L − 12). Nível 2 = 33, 3 = 67, 5 = 267, 6 = 500, 10 = 3.100, 12 = 5.867,
+  15 = 12.600, 20 = 32.933. Os primeiros níveis saem quase de graça e o custo de cada nível cresce com o quadrado do
+  nível (o último custa ~156× o primeiro). Substituiu a reta de 02/11 (50n + 25n², nível 20 = 9.975), com a qual o
+  herói subia um nível a cada ~20 s até o 20 e quem passava do 10 quase não morria. Limpando 75% de um mapa grande,
+  o herói chega no boss no 12–13 (antes, 15–18); os números de nível por mapa citados abaixo, de antes dessa troca,
+  estão desatualizados (o teste `xpmapas` mostra os atuais).
 - A XP da morte é dividida em partes iguais por toda a equipe que está jogando na dungeon (bots incluídos; quem morreu ou saiu fica de fora), tenha batido no monstro ou não: 100 XP com 4 heróis dão 25 a cada um. O gold (loot) do monstro, do baú e do Mímico se divide do mesmo jeito.
 - **A dificuldade não depende do tamanho da equipe:** os monstros são os mesmos com 1 ou 4 heróis. Jogar em equipe é mais fácil de propósito, para estimular a equipe; nenhuma regra escala vida, dano ou quantidade de monstros pelo número de jogadores.
 - **Monstros de força fixa:** vida, dano, XP e loot de cada monstro são os da ficha (`monsterStats`), em qualquer

@@ -17,7 +17,6 @@ import {
   MAX_PARTY_SIZE,
   MONSTERS,
   PERKS,
-  PERK_EVEN_FROM,
   PERK_IDS,
   REACTIONS,
   POTIONS,
@@ -25,9 +24,9 @@ import {
   POTION_IDS,
   POTION_MAX,
   SPELLS,
+  MAX_LEVEL,
   SPELL_SLOT_LEVELS,
-  STAT_TAPER,
-  STAT_TAPER_LEVEL,
+  xpForLevel,
   STARTER_SPELLS,
   TIER_NAMES,
   VAULT_SIZE,
@@ -149,10 +148,10 @@ export function renderRules(root: HTMLElement) {
     ),
 
     section("⭐ Níveis, magias e melhorias", false, list([
-      `Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo. Do nível ${STAT_TAPER_LEVEL} em diante, vida, mana e dano crescem só ${Math.round(STAT_TAPER * 100)}% do que cresciam.`,
+      `Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo. Os primeiros níveis saem rápido; depois cada nível pede bem mais XP que o anterior (nível 10: ${xpForLevel(10).toLocaleString("pt-BR")} de XP; nível ${MAX_LEVEL}: ${xpForLevel(MAX_LEVEL).toLocaleString("pt-BR")}).`,
       "A XP de um monstro é dividida em partes iguais por toda a equipe na dungeon (100 XP com 4 heróis dão 25 a cada um). O gold do monstro e do baú se divide do mesmo jeito.",
       `No nível ${SLOT1} abre o 1º slot de magia, no nível ${SLOT2} o 2º e no ${SLOT3} o 3º (magias supremas, que se compram no Grimório): você escolhe uma magia, que fica até o fim da hunt.`,
-      `Nos outros níveis aparecem duas melhorias e você toca numa (do nível ${PERK_EVEN_FROM} em diante, só nos níveis pares). Elas valem até o fim da hunt e somam com as áureas do Grimório.`,
+      "Nos outros níveis aparecem duas melhorias e você toca numa. Elas valem até o fim da hunt e somam com as áureas do Grimório.",
     ]),
     table(["Melhoria", "Cada escolha", "Máx."], PERK_IDS.map((id) => {
       const p = PERKS[id];
