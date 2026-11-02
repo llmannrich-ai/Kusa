@@ -649,7 +649,8 @@ Código em `apps/client/src/lobby.ts` e `main.ts`.
 
 O líder completa a equipe com bots: cada vaga livre mostra os retratos das 4 classes, e tocar num põe um bot daquela
 classe ("Bot Paladino", com 🤖 na vaga); o ✕ tira. O bot ocupa a vaga (a sala aceita um humano a menos) e nunca vira líder.
-Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espera, então não tem bot.
+Funciona nas salas da nuvem e nas do aparelho. A hunt solo não tem sala de espera: os bots dela são escolhidos na
+ficha do cenário (ver "Jogar sozinho").
 
 - **Força:** o bot leva a configuração da classe dele na conta de quem o pôs: o Grimório inteiro (magias compradas e o
   nível delas, magias ativas, auras, traços e tomos) e o equipamento e as runas equipados naquela classe, no mesmo nível
@@ -674,6 +675,11 @@ Funciona nas salas da nuvem e nas do aparelho; a hunt solo não tem sala de espe
 O botão **"Jogar sozinho"** da ficha do cenário começa uma hunt solo na hora, sem sala de espera e sem
 servidor de jogo: a mesma simulação do servidor (`apps/server/src/hunt.ts`) roda no aparelho
 (`apps/client/src/solo.ts`). Não há espera para o servidor acordar nem atraso de rede.
+
+**Levar bots:** abaixo dos botões, a ficha mostra o retrato de cada classe aberta; tocar põe ou tira um bot daquela
+classe (até as vagas do mapa menos a do jogador) e o botão vira "Jogar com N bots". A escolha fica lembrada no
+aparelho. Os bots seguem as regras de "Bots na equipe" (Grimório e cópia do equipamento da classe na conta, sem loot,
+corte de itens); mapa só para 1 não mostra a escolha.
 
 Como o aparelho pode ser adulterado, o banco não confia no resultado (`start_solo_run` / `finish_solo_run`,
 limites em `SOLO_LIMITS` de `packages/shared/src/solo.ts`):
@@ -722,7 +728,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba. Tocar de novo
   em Batalhas, já no mapa, leva a câmera ao herói e abre a ficha do cenário onde ele está.
 - **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**, mais o prólogo (etapa 0). O começo, na ponta sul:
-  🌱 Orla do Bosque (prólogo) → 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
+  🌱 Orla do Bosque (prólogo) → 🐸 Pântano do Kosaradius → 🦴 Fíbula → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
   **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
   Solária → ⚔️ Fortaleza Orc, a etapa 8) e a floresta (🌳 Bosque Velho → 🍄 Coração da
@@ -743,7 +749,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só a 🌱 Orla do Bosque começa aberta, e
-  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Fíbula, Rei Ossudo → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
   Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
@@ -779,6 +785,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
+| 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo, em pé: acampamento com fogueira, 3 anéis de 3 salas (Orla, Covas, Fundo), 4 salas laterais e o covil | Ratazana, Kobold, Goblin, Estirge (Orla); Goblin, Goblin arqueiro, Aranha gigante, Lobo Atroz, Esqueleto, Hobgoblin capitão (Covas); Gnoll, Orc guerreiro, Esqueleto, Esqueleto arqueiro, Zumbi, Hobgoblin (Fundo) → Bugbear chefe, Ogro, Cubo Gelatinoso → Rei Ossudo |
 | 🏚️ Cripta | 3 ★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×1,6 de força) → Dragão jovem (×1,6) |
 | 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
 | 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
@@ -794,6 +801,34 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🐸 Pântano do Kosaradius | 1 ★☆ | 10 min, só 1 jogador | 128×128, o maior: floresta alagada com 9 zonas, 14 campinas, 10–15 clareiras de mini-boss e a clareira do boss | Orc batedor, Orc do Brejo, Orc lanceiro, Orc arqueiro, Orc xamã, Orc berserker, Orc capitão, Ogro jovem → Ogro do Brejo, Ogro Xamã, Chefe de Guerra Orc → Grumak, o Rei-Ogro |
 
 Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos) estão em "Bestiário".
+
+### Fíbula (terreno de caça)
+
+Mapa de teste do modelo **terreno de caça** (`docs/TERRENO_DE_CACA_PLANO.md`), entre o Pântano do Kosaradius e a
+Cripta, dificuldade 2,5 (★★½). Em vez de uma dungeon de uma passada contra o relógio, um ossuário onde o jogador
+escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) faz parte do jogo.
+
+- **Planta fixa** (`generateFibula`, 64×100, em pé): o acampamento embaixo (portal e fogueira), três anéis de três
+  salas (a **Orla**, as **Covas** e o **Fundo**), cada um ligado ao seguinte por três passagens (as dos lados largas, a
+  do meio de 1 tile: onde não se é cercado), 4 salas laterais (mini-boss e baú) e o covil do **Rei Ossudo** no topo.
+  Pilares nas Covas, no Fundo e no covil quebram a visão dos arqueiros. Desenho da Cripta (`drawCrypt`), com a
+  fogueira dos Ermos e a chama do Charco no acampamento.
+- **Monstros em lugares fixos:** cada sala recebe o encontro do anel dela, com os mesmos tipos nos mesmos lugares em
+  toda hunt (sorteio de seed fixa do mapa; só os Campeões saem da seed da hunt). Aprender o mapa é progressão.
+- **Salas que enchem de novo** (`MapDef.huntingGround`): quando o último monstro de uma sala morre, ela volta com os
+  mesmos monstros em 60 s (Orla), 90 s (Covas) ou 120 s (Fundo); o mini-boss da sala lateral volta em 240 s, sem o baú;
+  o boss não volta. Nenhuma sala enche com herói a até 8 tiles dela.
+- **Regen fixa** (como no Tibia): pontos por segundo, 1,5% da vida e 2% da mana do **nível 1** da classe, crescendo 4%
+  por nível. Como a vida máxima cresce mais rápido, vale um pouco mais no começo (Cavaleiro: 2/s no nível 1, 1,3%; 4/s
+  no 15, 1,2%). Regeneração, Clareza e a Pedra Fundamental somam na mesma conta. **A fogueira** (3 tiles) multiplica
+  por 4: recuar até ela cura, mas custa a caminhada.
+- **Sem tempo:** a hunt só acaba quando o jogador sai pelo portal, vence o boss ou morre. O relógio mostra o tempo
+  decorrido. Teto técnico de 2 h (`OPEN_HUNT_MAX_SECONDS`, depois disso vale como soterrado); o teto do loot da hunt
+  solo cresce em linha reta até 24.000 em 2 h (200 por minuto).
+- **Rei Ossudo** (`boneKing`, 1.150 de vida, 26 de dano): Corte do Tutano (sangra), Investida do Rei, Tempestade de
+  Ossos (em volta, lentidão) e, com metade da vida, Os Ossos se Erguem (3 esqueletos, uma vez); Comando nos mortos
+  perto dele; a luz o fere 1,5×. Arte do Centurião Ossudo, maior.
+- **Telemetria** (`stats.ground`): tempo e abates por anel, recuos, salas que encheram de novo (ver `docs/TELEMETRIA.md`).
 
 ### Cripta
 
@@ -1334,7 +1369,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
 ## Combate (protótipo)
 
 - O ataque básico sai enquanto o jogador segura o ⚔️ (um toque dá um golpe), no alvo que estiver no alcance da classe e com linha de visão; sem alvo travado (ou com ele fora do alcance), o servidor escolhe o monstro mais próximo ao alcance. À distância, o golpe é um tiro que pode errar (ver "Ataques e magias").
-- Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais.
+- Monstros perseguem o jogador vivo mais próximo dentro do aggro range (ou quem bateu neles) e desistem se ele se afastar demais (a distância depende do papel; ver "Dificuldade por comportamento").
 - **Curva de XP** (`xpForLevel`, `packages/shared/src/progression.ts`): a forma do Tibia, cúbica, num terço do valor:
   XP total = ⅓ × 50/3 × (L³ − 6L² + 17L − 12). Nível 2 = 33, 3 = 67, 5 = 267, 6 = 500, 10 = 3.100, 12 = 5.867,
   15 = 12.600, 20 = 32.933. Os primeiros níveis saem quase de graça e o custo de cada nível cresce com o quadrado do
@@ -1357,7 +1392,7 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   Orc e Charco Cinzento 0,5, Ermos Rubros 0,55, Caverna da Travessia 0,85, Pântano do Kosaradius 0,7) saíram com a curva
   do Tibia, que já segura o nível: hoje só a Orla do Bosque paga menos (0,9). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
   de gold por sala, `CHEST_DEPTH_SCALING`), e a faixa dos itens largados ainda sobe com a profundidade. Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
-- Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
+- Vida regenera 2% por segundo e mana 2% (no terreno de caça, a regen é fixa em pontos: ver "Fíbula"); subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold
   dos monstros (boss incluído) e dos baús, e a chance de item dos comuns e mini-bosses cai para 80% da base (comum:
   15% → 12%). Vale por cima do corte próprio do mapa (`lootScale`, `dropScale`). Poções, os itens do boss e o item
@@ -1366,6 +1401,22 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   de chance, por cima dos outros cortes: comum 12% → 7,2%, mini-boss 60% (vezes o `dropScale` do mapa e o corte
   geral), cada um dos 2 itens do boss 60% e o item do baú (e do Mímico) 60%. Poções, runas e gold não mudam.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
+- **Princípio: dificuldade por comportamento.** Cada perigo tem uma **resposta certa** que o jogador escolhe: quem
+  acerta passa fácil, quem ignora é punido forte. Todo monstro tem **ameaça** (o que faz de perigoso), **fraqueza**
+  legível (por onde se resolve) e **punição** real (o que acontece se ignorar). Ex.: o escorpião tem veneno forte e pouca
+  vida, então matar rápido vale muito. Recuar (na hunt ou na escolha do mapa) e voltar para treinar em outro cenário
+  precisam ser necessários de vez em quando: é o que torna o jogo provocativo (ver `docs/TERRENO_DE_CACA_PLANO.md`).
+  O golpe continua sem aviso. Regras em `packages/shared/src/threat.ts`, teste `comportamento`:
+  - **Grito de Guerra:** o líder que **sobrevive ao primeiro golpe** chama os monstros parados a até 9 tiles, através
+    de paredes, uma vez só (um "!" sobe em cada um). Morto num golpe, ou antes de perceber o herói, não grita.
+    Sentinelas e emboscadores não ouvem; bosses não são chamados. Golpe em monstro comum não chama ninguém.
+  - **Perseguição pelo papel:** além do aggro range, o escaramuçador persegue mais 12 tiles, o enxame 10, bruto,
+    controlador, líder e artilheiro 8, o emboscador 6 e a sentinela 3; mini-boss 6 e boss 4. Longe demais para a busca
+    curta, o monstro segue o caminho a pé até o herói (campo de distância). Fugir do lobo não resolve; do zumbi, sim.
+- **Jogo em equipe** (bots contam): os monstros são os mesmos com 1 ou 4 heróis, mas a equipe se protege:
+  - **Formação:** com outro herói vivo a até 4 tiles, o golpe de monstro pesa 15% menos.
+  - **Cercado:** cada monstro visível colado no herói além do primeiro deixa o golpe 12% mais forte (até 3 a mais, +36%).
+  Sozinho, o herói é cercado e não tem Formação; por isso o "Jogar sozinho" deixa levar bots (ver "Jogar sozinho").
 - **Princípio: difícil e injusto como a vida.** Nenhum golpe de monstro tem aviso antes (área marcada no chão, brilho de carga, contagem); o jogador se defende pela posição e pela escolha de quem matar primeiro, não reagindo a um sinal.
 - Monstros, habilidades e regras dos inimigos: ver "Bestiário".
 

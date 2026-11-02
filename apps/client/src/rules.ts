@@ -1,5 +1,10 @@
 import {
   ACTIVE_SPELLS_PER_SLOT,
+  FORMATION_GUARD,
+  FORMATION_RADIUS,
+  LEADER_SHOUT_RADIUS,
+  SURROUND_MAX,
+  SURROUND_STEP,
   BAG_SIZE,
   DEATH_SPELL_XP_LOSS,
   BOSS_LOOT_BONUS,
@@ -50,7 +55,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-const minutes = (s: number) => `${s / 60} min`;
+const minutes = (s: number) => (s > 0 ? `${s / 60} min` : "sem tempo");
 const [SLOT1, SLOT2, SLOT3] = SPELL_SLOT_LEVELS;
 
 /** Uma seção que abre e fecha com um toque (a página é longa para uma tela de celular). */
@@ -137,6 +142,13 @@ export function renderRules(root: HTMLElement) {
       }),
       "Controle num herói (preso, atordoado, engolido, cego) dura no máximo 2 s, e depois ele fica 4 s imune ao mesmo efeito.",
     ),
+
+    section("⚠️ Perigo e equipe", false, list([
+      `Grito de Guerra: o líder que sobrevive ao primeiro golpe chama os monstros a até ${LEADER_SHOUT_RADIUS} tiles. Mate-o num golpe, ou antes de ele perceber.`,
+      "Perseguição: goblins, lobos e enxames seguem você longe; brutos lentos desistem antes. Não fuja de quem é mais rápido: fuja para a equipe, para o portal ou por um corredor.",
+      `Formação: com um aliado (ou bot) a até ${FORMATION_RADIUS} tiles, o golpe de monstro pesa ${pct(FORMATION_GUARD)} menos.`,
+      `Cercado: cada monstro colado em você além do primeiro deixa o golpe ${pct(SURROUND_STEP)} mais forte (até ${SURROUND_MAX} a mais). Lute no corredor; no "Jogar sozinho" dá para levar bots.`,
+    ])),
 
     section("🏁 Como a hunt termina", false,
       table(["Fim", "O que acontece"], [

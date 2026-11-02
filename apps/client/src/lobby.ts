@@ -1,4 +1,4 @@
-import { CLASSES, CLASS_IDS, MAPS, MSG, difficultyStars, mapIdOf, partySize, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
+import { CLASSES, CLASS_IDS, MAPS, MSG, difficultyLabel, difficultyStars, durationLabel, mapIdOf, partySize, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
 import { heroPortrait } from "./art/heroes.ts";
 import type { DungeonRoom } from "./net.ts";
 
@@ -16,7 +16,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
 
 export const mapLine = (id: MapId) => {
   const map = MAPS[id];
-  return `${map.icon} ${map.name} · dificuldade ${map.difficulty} ${difficultyStars(map.difficulty)} · ${map.durationSeconds / 60} min`;
+  return `${map.icon} ${map.name} · dificuldade ${difficultyLabel(map.difficulty)} ${difficultyStars(map.difficulty)} · ${durationLabel(map)}`;
 };
 
 // --- Servidor da sala criada ----------------------------------------------
@@ -309,6 +309,29 @@ export const MAP_ART: Record<MapId, string> = {
     <circle cx="24" cy="24" r="22" fill="none" stroke="#e0805a" stroke-width="1.5"/>
   </svg>`,
   // Orla do Bosque: a beira da mata em copas claras, um broto na frente da trilha e o céu aberto atrás.
+  // Fíbula: o arco do ossuário com as costelas na parede, uma fíbula atravessada e a fogueira do acampamento embaixo.
+  fibula: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <radialGradient id="fb-fundo" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="#3a3530"/><stop offset="1" stop-color="#0e0c0b"/></radialGradient>
+      <radialGradient id="fb-fogo" cx="0.5" cy="0.85" r="0.6"><stop offset="0" stop-color="#ff9a3c" stop-opacity="0.7"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient>
+      <clipPath id="fb-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#fb-roda)">
+      <rect width="48" height="48" fill="url(#fb-fundo)"/>
+      <path d="M8 44V22A16 16 0 0 1 40 22V44Z" fill="#5f5850"/>
+      <path d="M14 44V24A10 10 0 0 1 34 24V44Z" fill="#070605"/>
+      <path d="M10 26q2-1 4 0M10 31q2-1 4 0M10 36q2-1 4 0M34 26q2-1 4 0M34 31q2-1 4 0M34 36q2-1 4 0" stroke="#d9cfb8" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <rect x="0" y="30" width="48" height="18" fill="url(#fb-fogo)"/>
+      <g transform="rotate(-38 24 24)">
+        <rect x="11" y="22.3" width="26" height="3.4" rx="1.7" fill="#efe6cf"/>
+        <circle cx="11" cy="21.6" r="2.5" fill="#efe6cf"/><circle cx="11" cy="26.4" r="2.5" fill="#efe6cf"/>
+        <circle cx="37" cy="21.6" r="2.5" fill="#efe6cf"/><circle cx="37" cy="26.4" r="2.5" fill="#efe6cf"/>
+        <path d="M14 24H34" stroke="#c9bd9f" stroke-width="0.8"/>
+      </g>
+      <path d="M19 44l5-8 5 8Z" fill="#ffb347"/><path d="M21.5 44l2.5-5 2.5 5Z" fill="#fff0b0"/>
+      <path d="M16 44.5H32" stroke="#4a3a2c" stroke-width="2" stroke-linecap="round"/>
+    </g>
+  </svg>`,
   grove: `<svg viewBox="0 0 48 48" aria-hidden="true">
     <defs>
       <linearGradient id="gr-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe9a0"/><stop offset="1" stop-color="#7fae4a"/></linearGradient>
@@ -461,6 +484,25 @@ function portrait(classId: ClassId) {
  * Desenha as vagas do mapa (`partySize`): quem já entrou (o líder primeiro, os bots por último) e as vagas livres.
  * O líder põe um bot numa vaga livre tocando na classe, e tira no ✕.
  */
+/**
+ * Bots do "Jogar sozinho" (ficha do cenário): um retrato por classe aberta; tocar põe ou tira o bot daquela classe,
+ * até `max` (as vagas do mapa menos a do jogador). A hunt solo roda com eles no aparelho, como a sala no aparelho.
+ */
+export function renderSoloBots(list: HTMLElement, picked: ClassId[], max: number, classOpen: (id: ClassId) => boolean, onChange: (bots: ClassId[]) => void) {
+  const classes = CLASS_IDS.filter(classOpen);
+  list.replaceChildren(...classes.map((classId) => {
+    const on = picked.includes(classId);
+    const pick = el("button", `bot-pick bot-toggle${on ? " on" : ""}`);
+    pick.type = "button";
+    pick.setAttribute("aria-pressed", String(on));
+    pick.setAttribute("aria-label", `${on ? "Tirar" : "Levar"} um bot ${CLASSES[classId].name}`);
+    pick.disabled = !on && picked.length >= max;
+    pick.append(portrait(classId), el("small", "", CLASSES[classId].name));
+    pick.onclick = () => onChange(on ? picked.filter((c) => c !== classId) : [...picked, classId]);
+    return pick;
+  }));
+}
+
 /**
  * Sala de espera. `classOpen`: a classe está aberta na conta de quem vê (o bot de uma classe trancada não aparece; o
  * servidor também recusa).

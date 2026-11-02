@@ -15,7 +15,7 @@ export type MonsterKind =
   | "sandScorpion" | "giantVulture" | "mummy" | "blackScorpion" | "mummyPriest" | "sandElemental" | "sandWorm"
   // Pântano (dificuldade 1, só para 1 jogador): o clã de orcs e ogros do brejo
   | "orcScout" | "orcGrunt" | "orcSpearman" | "orcArcher" | "orcShaman" | "orcBerserker" | "orcCaptain" | "ogreYoung"
-  | "ogreBruiser" | "ogreShaman" | "orcWarlord" | "ogreKing"
+  | "ogreBruiser" | "ogreShaman" | "orcWarlord" | "ogreKing" | "boneKing"
   // Caverna da Travessia (dificuldade 2): os dois bosses dos covis
   | "basilisk" | "beholder"
   // Necrópole de Solária (Dunas Cantantes e Mesas de Solária, dificuldades 5 e 6): a legião soterrada e as múmias
@@ -1591,6 +1591,27 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       { id: "logThrow", name: "Tronco Arremessado", shape: "target", range: 6, minRange: 3, radius: 1, cooldownMs: 10000, power: 1.5, push: 1, color: 0x6d4c41, fx: "boulder" },
     ],
     lore: "Rei do clã do brejo, coroa de ferro torta e um tronco inteiro de porrete. Esmaga e atordoa, pisa o chão em volta, investe e arremessa troncos; com metade da vida, ruge e chama a guarda, e quase morto bate em frenesi.",
+  }),
+  // Fíbula (terreno de caça, ★★½): o boss do covil, entre Grumak e o Dragão jovem da Cripta. A arte é a do Centurião
+  // Ossudo, maior. A resposta: guardar o dano forte para quando ele chama os ossos (metade da vida) e usar luz.
+  boneKing: monster({
+    kind: "boneKing", name: "Rei Ossudo", rank: "boss", type: "undead", role: "leader", cr: 6,
+    hp: 1150, damage: 26, xp: 900, loot: [72, 118], speed: 2.4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1600, attackFx: "slash",
+    elements: { physical: 0.9, radiant: 1.5 },
+    traits: { leader: { radius: 4, damage: 0.2, haste: 0.15 } },
+    abilities: [
+      {
+        id: "bonesRise", name: "Os Ossos se Erguem", shape: "summon", range: 8, radius: 0, cooldownMs: 30000, power: 0,
+        summon: { kind: "skeleton", count: 3 }, belowHp: 0.5, phase: true, once: true, color: 0xd0d4dc, fx: "summon",
+      },
+      {
+        id: "marrowCleave", name: "Corte do Tutano", shape: "target", range: 1, radius: 0, cooldownMs: 8000, power: 1.8,
+        dot: { kind: "bleed", power: 0.35, durationMs: 3000 }, color: 0xb03a2e, fx: "rend",
+      },
+      { id: "kingsCharge", name: "Investida do Rei", shape: "leap", range: 6, minRange: 3, radius: 1, cooldownMs: 9000, power: 1.3, push: 1, color: 0xc0392b, fx: "leap" },
+      { id: "boneStorm", name: "Tempestade de Ossos", shape: "self", range: 2, radius: 2, cooldownMs: 10000, power: 1.4, slow: { factor: 0.5, durationMs: 2000 }, color: 0xe8e2d0, fx: "quake" },
+    ],
+    lore: "Rei dos ossos da Fíbula, com a coroa presa no crânio. Abre um corte fundo que sangra, investe sobre quem se afasta e gira os ossos em volta de si; perto dele, os mortos batem mais forte (Comando). Com metade da vida, os ossos da sala se erguem. A luz o fere em dobro.",
   }),
 };
 

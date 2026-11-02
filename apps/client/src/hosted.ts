@@ -17,7 +17,7 @@ import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
 import { Listing, Signaling, answerCalls, dial, randomId, type Link } from "./p2p.ts";
 import { recordSoloMapClear } from "./profile.ts";
-import { flushPendingSolo, noticeClosed, reportSolo, watchCommitted } from "./solo.ts";
+import { botLoadouts, flushPendingSolo, noticeClosed, reportSolo, watchCommitted } from "./solo.ts";
 
 // Sala hospedada por um jogador: o aparelho dele roda a `Hunt` (a mesma do servidor) e os outros recebem o
 // estado por conexão direta. Se o anfitrião sai, o próximo da lista assume a partir do último retrato.
@@ -560,15 +560,6 @@ async function loadSimulation() {
   return { Hunt, DungeonState, stateFromJSON };
 }
 
-/** Equipamento e runas equipados na classe de cada bot, sem tirar da conta (o bot veste uma cópia). */
-async function botLoadouts(bots: { id: string; classId: ClassId }[]): Promise<{ id: string; items: string[] }[]> {
-  if (bots.length === 0) return [];
-  const { data, error } = await supabase.from("profile_items").select("item_id, class_id")
-    .eq("equipped", true).in("class_id", [...new Set(bots.map((b) => b.classId))]);
-  if (error) console.error("Falha ao ler o equipamento dos bots", error);
-  const rows = (data ?? []) as { item_id: string; class_id: string }[];
-  return bots.map((b) => ({ id: b.id, items: rows.filter((r) => r.class_id === b.classId).map((r) => r.item_id) }));
-}
 
 /** Talentos, XP e magias ativas da conta (precisam entrar na hunt antes do início, como no servidor). */
 export async function myRecruit(name: string, classId: ClassId): Promise<Me> {

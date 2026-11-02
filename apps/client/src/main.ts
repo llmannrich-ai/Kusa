@@ -16,11 +16,14 @@ import {
   VERSION_MISMATCH_CODE,
   MONSTERS,
   difficultyStars,
+  durationLabel,
+  huntSeconds,
   itemColor,
   mainBoss,
   mapIdOf,
   partySize,
   xpForLevel,
+  type ClassId,
   type JoinOptions,
   type MapId,
   type RunEndedMessage,
@@ -32,7 +35,7 @@ import { DungeonScene } from "./DungeonScene.ts";
 import { AuthError, accessToken, currentAccount, signIn, signOut, signUp, type Account } from "./auth.ts";
 import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./hosted.ts";
 import { heroSheet } from "./art/heroes.ts";
-import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
+import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderSoloBots, renderWaitingRoom } from "./lobby.ts";
 import { renderCatalog } from "./catalog.ts";
 import { renderHistory } from "./history.ts";
 import { loadBossClears, loadMapClears } from "./profile.ts";
@@ -172,7 +175,9 @@ function setEntering(on: boolean) {
   show("create", !soloOnly);
   create.disabled = on || soloOnly;
   const solo = $<HTMLButtonElement>("solo");
-  solo.textContent = on && !soloOnly ? "Conectando…" : "Jogar sozinho";
+  const bots = soloOnly ? 0 : soloBots().length;
+  solo.textContent = on && !soloOnly ? "Conectando…" : bots > 0 ? `Jogar com ${bots} ${bots === 1 ? "bot" : "bots"}` : "Jogar sozinho";
+  show("sheet-bots", !soloOnly);
   // Campanha: cenário fechado não cria sala nem joga sozinho (entrar na sala de outro jogador, sim).
   const locked = !isOpen(createMapId());
   solo.disabled = on || locked;
@@ -286,6 +291,34 @@ function pickPoint(id: MapId) {
   openSheet();
 }
 
+const SOLO_BOTS_KEY = "kusa:bots-solo";
+
+/** Classes dos bots que vão no "Jogar sozinho" (lembradas no aparelho). */
+let pickedBots: ClassId[] = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SOLO_BOTS_KEY) ?? "[]");
+    return Array.isArray(saved) ? saved.filter((c): c is ClassId => typeof c === "string" && c in CLASSES) : [];
+  } catch {
+    return [];
+  }
+})();
+
+function soloBots(): ClassId[] {
+  return pickedBots;
+}
+
+/** Retratos dos bots na ficha (até as vagas do mapa menos a do jogador). */
+function renderBots() {
+  const max = partySize(MAPS[createMapId()]) - 1;
+  const picked = soloBots().filter((c) => !hub.locked(c)).slice(0, Math.max(0, max));
+  renderSoloBots($("solo-bots"), picked, max, (id) => !hub.locked(id), (bots) => {
+    pickedBots = bots;
+    try { localStorage.setItem(SOLO_BOTS_KEY, JSON.stringify(bots)); } catch { /* sem armazenamento: vale só nesta visita */ }
+    renderBots();
+    setEntering(entering);
+  });
+}
+
 /** Ficha do cenário escolhido: dados do mapa, jogar sozinho, criar sala e as salas abertas dele. */
 function openSheet() {
   const map = MAPS[createMapId()];
@@ -306,7 +339,7 @@ function openSheet() {
   const chips = [
     ...(before ? [`🔒 ${beforeBoss ? MONSTERS[beforeBoss].name.split(" ")[0] : MAPS[before].name}`] : []),
     difficultyStars(map.difficulty),
-    `⏱ ${map.durationSeconds / 60} min`,
+    `⏱ ${durationLabel(map)}`,
     partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
     ...bosses,
     ...(clearsNow().includes(map.id) ? ["★ boss vencido"] : []),
@@ -317,6 +350,7 @@ function openSheet() {
     if (lock && i === 0) { li.title = lock; li.setAttribute("aria-label", lock); li.className = "sheet-lock"; }
     return li;
   }));
+  renderBots();
   show("rooms-sheet", false);
   show("map-sheet", true);
   $("map-sheet").scrollTop = 0;
@@ -527,7 +561,9 @@ $("create").onclick = () => enter(async () => {
 });
 // Solo roda no aparelho, sem sala de espera: a hunt começa na hora.
 $("solo").onclick = () => enter(async () => {
-  const room = await createSoloHunt(account?.username ?? "Aventureiro", hub.classId, createMapId());
+  const mapId = createMapId();
+  const bots = partySize(MAPS[mapId]) === 1 ? [] : soloBots().filter((c) => !hub.locked(c));
+  const room = await createSoloHunt(account?.username ?? "Aventureiro", hub.classId, mapId, bots);
   window.setTimeout(() => room.send(MSG.start));
   return room;
 });
@@ -583,10 +619,16 @@ function bindRoom(room: DungeonRoom) {
     }
   });
 
-  callbacks.listen("timeLeft", (t: number) => {
+  // Mapa sem tempo (terreno de caça): o relógio mostra o tempo decorrido, não o que falta.
+  const open = MAPS[mapIdOf(room.state.mapId)]?.durationSeconds === 0;
+  callbacks.listen("timeLeft", (left: number) => {
     const timer = $("timer");
-    timer.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-    timer.classList.toggle("low", t <= 30);
+    const t = open ? Math.max(0, huntSeconds(MAPS[mapIdOf(room.state.mapId)]) - left) : left;
+    const h = Math.floor(t / 3600);
+    const mm = Math.floor((t % 3600) / 60);
+    timer.textContent = `${h > 0 ? `${h}:${String(mm).padStart(2, "0")}` : mm}:${String(t % 60).padStart(2, "0")}`;
+    timer.classList.toggle("low", !open && t <= 30);
+    timer.classList.toggle("elapsed", open);
   });
 
   room.onMessage(MSG.runEnded, (msg: RunEndedMessage) => showResult(msg));

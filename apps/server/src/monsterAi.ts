@@ -31,14 +31,15 @@ import {
   type MonsterTraits,
   type ChampionAffix,
 } from "@kusa/shared";
-import { nextStep } from "./pathfinding.ts";
+import { DEAF_ROLES, LEADER_SHOUT_RADIUS, pursuitTiles } from "@kusa/shared";
+import { distanceField, fieldStep, nextStep } from "./pathfinding.ts";
 import type { DungeonState, Monster, Summon } from "./state.ts";
 
 /** Quem deu o golpe e como, repassado ao cliente para desenhar o ataque. */
 export type Hit = Pick<DamageMessage, "attacker" | "fromX" | "fromY" | "fx" | "special" | "dot" | "ability">;
 
-/** Quantos tiles além do aggro range o monstro ainda persegue antes de desistir. */
-const LEASH_TILES = 4;
+/** O campo de distância até um herói é refeito no máximo a cada tanto (ms), se ele andou. */
+const HERO_FIELD_MS = 400;
 /** Intervalo mínimo entre dois avisos de resistência/imunidade no mesmo monstro. */
 const ELEMENT_NOTICE_MS = 1500;
 /** Engolido: o herói sai se os aliados tirarem esta fração da vida do monstro. */
@@ -153,6 +154,8 @@ export interface Brain {
   lastRegenNotice: number;
   /** Monstro que chamou este (cópias da Bruxa Verde somem quando ela morre). */
   summonedBy: string | null;
+  /** O líder já deu o Grito de Guerra (só uma vez: ao sobreviver ao primeiro golpe). */
+  shouted: boolean;
 }
 
 /** O que a IA dos monstros precisa da hunt (a `Hunt` liga cada função aos seus métodos). */
@@ -177,9 +180,14 @@ export interface MonsterWorld {
   releaseEngulf(sessionId: string): void;
   occupiedTiles(): Set<number>;
   spawnMonster(kind: MonsterKind, x: number, y: number, depth: number): Monster;
+  /** Telemetria da dificuldade por comportamento (`RunStats.threat`) do herói `sessionId`. */
+  threatStat(sessionId: string, key: string, amount?: number): void;
 }
 
 export class MonsterAi {
+  /** Campo até cada herói (perseguição longa), refeito quando ele anda. */
+  private heroFields = new Map<string, { x: number; y: number; at: number; field: Int32Array }>();
+
   constructor(private w: MonsterWorld) {}
 
   newBrain(def: MonsterDef, depth: number, stats: MonsterStats): Brain {
@@ -193,6 +201,7 @@ export class MonsterAi {
       invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
       regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,
       hitAndRunAt: 0, struck: new Set(), engulfing: null, engulfTaken: 0, lastElementNotice: 0, lastRegenNotice: 0, summonedBy: null,
+      shouted: false,
     };
   }
 
@@ -226,10 +235,10 @@ export class MonsterAi {
     if (m.stunned) return;
     if (brain.engulfing && !this.w.state.players.has(brain.engulfing)) brain.engulfing = null;
 
-    // Desiste de quem morreu, saiu ou fugiu para longe.
+    // Desiste de quem morreu, saiu ou fugiu para longe (a distância depende do papel: `pursuitTiles`).
     if (brain.targetId) {
       const t = this.foe(brain.targetId);
-      if (!t || tileDistance(m.x, m.y, t.x, t.y) > def.aggroRange + LEASH_TILES) brain.targetId = null;
+      if (!t || tileDistance(m.x, m.y, t.x, t.y) > def.aggroRange + pursuitTiles(def)) brain.targetId = null;
     }
     // Mímico disfarçado: parado como um baú até alguém encostar (ou acertá-lo).
     const mimic = brain.traits.mimic;
@@ -269,13 +278,48 @@ export class MonsterAi {
 
     if (now < brain.nextMoveAt || m.rooted || brain.engulfing) return;
     const blocked = this.w.occupiedTiles();
-    const step = nextStep(this.w.dungeon, m, target, def.attackRange, (x, y) => blocked.has(y * this.w.dungeon.width + x));
+    const isBlocked = (x: number, y: number) => blocked.has(y * this.w.dungeon.width + x);
+    // Longe demais para a busca curta (perseguição longa): desce o campo de distância até o herói.
+    const step = nextStep(this.w.dungeon, m, target, def.attackRange, isBlocked)
+      ?? (this.w.state.players.has(targetId) ? fieldStep(this.w.dungeon, this.heroField(targetId, target, now), m, isBlocked) : null);
     if (!step) {
       // Sem caminho agora (corredor bloqueado): tenta de novo daqui a pouco.
       brain.nextMoveAt = now + 400;
       return;
     }
     this.stepTo(m, brain, step, now);
+  }
+
+  // --- Dificuldade por comportamento (`threat.ts`) -------------------------------------
+
+  /**
+   * Grito de Guerra: o líder que sobrevive ao primeiro golpe chama os monstros parados a até `LEADER_SHOUT_RADIUS`
+   * (uma vez só). A resposta é matá-lo rápido (num golpe só, ou antes de ele perceber). Quem não ouve (sentinela,
+   * emboscador camuflado) e os bosses ficam onde estão.
+   */
+  warCry(m: Monster, brain: Brain, targetId: string) {
+    if (brain.shouted || m.hp <= 0 || !(brain.traits.leader || brain.def.role === "leader")) return;
+    brain.shouted = true;
+    this.w.notice(m.x, m.y - 1, "Grito de Guerra!", 0xe74c3c);
+    let woke = 0;
+    for (const o of this.w.state.monsters.values()) {
+      const ob = o.id !== m.id ? this.w.brains.get(o.id) : undefined;
+      if (!ob || ob.targetId || ob.camouflaged || ob.diving || ob.def.rank === "boss" || DEAF_ROLES.includes(ob.def.role)) continue;
+      if (tileDistance(m.x, m.y, o.x, o.y) > LEADER_SHOUT_RADIUS) continue;
+      ob.targetId = targetId;
+      woke++;
+      this.w.notice(o.x, o.y - 1, "!", 0xf39c12, 600);
+    }
+    if (woke > 0) this.w.threatStat(targetId, "chamados_pelo_grito", woke);
+  }
+
+  /** Campo de distância até o herói, refeito quando ele andou (no máximo a cada `HERO_FIELD_MS`). */
+  private heroField(id: string, at: { x: number; y: number }, now: number) {
+    const cached = this.heroFields.get(id);
+    if (cached && ((cached.x === at.x && cached.y === at.y) || now - cached.at < HERO_FIELD_MS)) return cached.field;
+    const field = distanceField(this.w.dungeon, at);
+    this.heroFields.set(id, { x: at.x, y: at.y, at: now, field });
+    return field;
   }
 
   // --- Dano recebido -----------------------------------------------------------

@@ -53,3 +53,56 @@ export function nextStep(
   }
   return null;
 }
+
+/**
+ * Distância a pé (em passos de 8 direções) de cada tile até `to`, no mapa inteiro: -1 onde não dá para chegar.
+ * O `nextStep` corta a busca em `MAX_VISITED` tiles (aggro curto); quem persegue longe desce este
+ * campo, que custa uma busca no mapa todo e serve a todos os monstros que vão atrás do mesmo herói.
+ */
+export function distanceField(d: Dungeon, to: Point, walkable: (x: number, y: number) => boolean = (x, y) => isWalkable(d, x, y)): Int32Array {
+  const field = new Int32Array(d.width * d.height).fill(-1);
+  if (to.x < 0 || to.y < 0 || to.x >= d.width || to.y >= d.height) return field;
+  const start = to.y * d.width + to.x;
+  field[start] = 0;
+  const queue: number[] = [start];
+  for (let head = 0; head < queue.length; head++) {
+    const cur = queue[head];
+    const cx = cur % d.width;
+    const cy = Math.floor(cur / d.width);
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= d.width || ny >= d.height) continue;
+      const k = ny * d.width + nx;
+      if (field[k] !== -1 || !walkable(nx, ny)) continue;
+      if (dx !== 0 && dy !== 0 && (!walkable(nx, cy) || !walkable(cx, ny))) continue;
+      field[k] = field[cur] + 1;
+      queue.push(k);
+    }
+  }
+  return field;
+}
+
+/** Próximo passo descendo o campo de `distanceField` (o vizinho livre mais perto do destino), ou null se não há. */
+export function fieldStep(
+  d: Dungeon,
+  field: Int32Array,
+  from: Point,
+  occupied: (x: number, y: number) => boolean,
+  walkable: (x: number, y: number) => boolean = (x, y) => isWalkable(d, x, y),
+): Point | null {
+  const here = field[from.y * d.width + from.x];
+  let best: Point | null = null;
+  let bestValue = here < 0 ? Infinity : here;
+  for (const [dx, dy] of DIRS) {
+    const nx = from.x + dx;
+    const ny = from.y + dy;
+    if (nx < 0 || ny < 0 || nx >= d.width || ny >= d.height) continue;
+    const value = field[ny * d.width + nx];
+    if (value < 0 || value >= bestValue || !walkable(nx, ny) || occupied(nx, ny)) continue;
+    if (dx !== 0 && dy !== 0 && (!walkable(nx, from.y) || !walkable(from.x, ny))) continue;
+    best = { x: nx, y: ny };
+    bestValue = value;
+  }
+  return best;
+}
