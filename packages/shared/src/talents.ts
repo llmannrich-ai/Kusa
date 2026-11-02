@@ -317,6 +317,10 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["frost_breath", 1, 3, "frost_nova", -1],
     // Fase 5: a magia de combo, embaixo da de leque (o Raio já tem as duas de leque).
     ["thermal_shock", 1, 4, "frost_breath", -1], ["sentence", 2, 4, "dark_wail", -1],
+    // Fase 6: o slot 3 de cada lado, embaixo da última magia do lado (pede ela no nível 1).
+    ["storm_eye", 0, 8, "sky_fury", -1], ["dragon_breath", 0, 8, "infernal_core", 1],
+    ["avalanche", 1, 8, "ice_prison", -1], ["arcane_rift", 1, 8, "magic_wall", 1],
+    ["army_of_dead", 2, 9, "raise_skeletons", -1], ["abyss_gaze", 2, 9, "black_tentacles", 1],
   ],
   druid: [
     ["howl", 0, 3, "spirit_wolf", 1],

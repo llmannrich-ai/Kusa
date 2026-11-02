@@ -450,6 +450,12 @@ lado (mesma faixa, ±1), pedindo ela no nível 1 de uso; como o lado é escolha 
 | Paladino | Guardião da Luz | 🕊️ **Santuário** | zona de raio 3 por 8 s: os aliados dentro levam 40% menos dano e os monstros que entram são empurrados para fora | raio 4 |
 | Paladino | Artilheiro | 💣 **Bombardeio** | 5 bombas caem em onda num leque de 60°, da perto para a longe (até 6 tiles): 1,6× de fogo em raio 1 cada | chão em chamas por 3 s |
 | Paladino | Armadilheiro | 🕸️ **Campo Minado** | 5 minas num leque de 120°, 4 tiles: quem pisa fica preso 2 s e a mina explode (1,5× em raio 1) | 7 minas |
+| Feiticeiro | Tempestuoso | ⛈️ **Olho da Tempestade** | 8 s: um raio (1×) cai no monstro mais perto (até 5 tiles) a cada segundo; suas magias de energia saltam +2 (as de alvo único ganham 2 saltos) | 12 s |
+| Feiticeiro | Piromante | 🐉 **Hálito do Dragão** | canaliza 3 s: leque de 90°, 5 tiles, 0,6× de fogo a cada 0,25 s, queima e deixa o chão em chamas na ponta | 120° |
+| Feiticeiro | Criomante | 🏔️ **Avalanche** | onda de 90°, 6 tiles: 2× de gelo e congela 2 s; quem já estava congelado Estilhaça | congela 3 s |
+| Feiticeiro | Arcanista | 🌀 **Fenda Arcana** | teleporta até 5 tiles e explode (1,8× em raio 1) na saída e na chegada; 2 cargas em 8 s | 3 cargas |
+| Feiticeiro | Necromante | 💀 **Exército dos Mortos** | 4 esqueletos por 20 s | 6 esqueletos |
+| Feiticeiro | Bruxo | 👁️ **Olhar do Abismo** | leque de 60°, 6 tiles: 0,4×, marca (+30%) e enfraquece (30% menos dano) por 6 s | 90° |
 
 #### Magias em leque (Grimório 4.0)
 

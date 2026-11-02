@@ -8,7 +8,10 @@
  *     aliados) e Correntes do Desafio (puxa todos do leque e prende);
  *   - Paladino: Disparo Fantasma (marca e acerta os mais perto depois), Dança do Vento (recua, leque de flechas, 3
  *     cargas), Cruz Flamejante (4 retas), Santuário (corte de dano e empurrão), Bombardeio (bombas em onda) e Campo
- *     Minado (minas em leque que prendem e explodem).
+ *     Minado (minas em leque que prendem e explodem);
+ *   - Feiticeiro: Olho da Tempestade (raios e saltos a mais), Hálito do Dragão (sopro de fogo que deixa o chão em
+ *     chamas), Avalanche (congela; o congelado Estilhaça), Fenda Arcana (teleporte que explode na saída e na chegada,
+ *     com cargas), Exército dos Mortos (4 esqueletos) e Olhar do Abismo (marca e enfraquece em leque).
  * Uso: npx tsx scripts/s3lados.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { MASTERIES, SPELLS, talentTree, type ClassId, type SpellDef, type SpellId } from "@kusa/shared";
@@ -55,6 +58,9 @@ test("o slot 3 de cada lado fica embaixo da última magia do lado (faixa ±1, 2.
     ["paladin", "phantom_shot", "sniper_stance", 0], ["paladin", "wind_dance", "swift_quiver", 1],
     ["paladin", "flaming_cross", "divine_caldera", 0], ["paladin", "sanctuary", "consecrated_ground", 1],
     ["paladin", "bombardment", "barrage", 0], ["paladin", "minefield", "arrow_cordon", 1],
+    ["sorcerer", "storm_eye", "sky_fury", 0], ["sorcerer", "dragon_breath", "infernal_core", 1],
+    ["sorcerer", "avalanche", "ice_prison", 0], ["sorcerer", "arcane_rift", "magic_wall", 1],
+    ["sorcerer", "army_of_dead", "raise_skeletons", 0], ["sorcerer", "abyss_gaze", "black_tentacles", 1],
   ];
   for (const [classId, s3, last, side] of sides) {
     const tree = talentTree(classId);
@@ -233,6 +239,68 @@ test("Campo Minado: minas no leque (7 na Maestria); quem pisa fica preso e a min
   check(m.rooted && a.brain(m).rootedUntil > a.now() + 1500, "preso 2 s");
   if (side && hp !== undefined) check(side.hp < hp, "a explosão pega o vizinho");
   check(mastered("minefield").field!.count === 7, "Maestria: 7 minas");
+});
+
+console.log("Feiticeiro:");
+test("Olho da Tempestade: um raio por segundo num monstro perto e +2 saltos nas magias de energia", () => {
+  const a = s3Arena("sorcerer");
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.root(m, a.brain(m), a.now() + 60000);
+  const hp = m.hp;
+  self(a, SPELLS.storm_eye);
+  a.advance(3100);
+  check(hp - m.hp > 0 && (a.seat().stats.damageDealt.storm_eye ?? 0) > 0, `raios: ${a.seat().stats.damageDealt.storm_eye}`);
+  const bolt = a.any.markedSpell(a.seat(), SPELLS.lightning_bolt);
+  check((bolt.chain?.jumps ?? 0) >= 2, `saltos ${JSON.stringify(bolt.chain)}`);
+  a.advance(6000);
+  check(!a.seat().stormFx, "acaba em 8 s");
+});
+test("Hálito do Dragão: sopro de fogo canalizado que queima e deixa o chão em chamas", () => {
+  const a = s3Arena("sorcerer");
+  const m = a.place("lizardfolk", 3, 0);
+  a.any.root(m, a.brain(m), a.now() + 60000);
+  castS3(a, "dragon_breath", { x: m.x, y: m.y, targetId: m.id });
+  a.advance(1000);
+  check(a.brain(m).dot?.kind === "burn" && [...a.state.fields.values()].some((f) => f.style === "fire"), "queima e o chão pega fogo");
+});
+test("Avalanche: congela 2 s; quem já estava congelado Estilhaça", () => {
+  const hit = (frozen: boolean) => {
+    const a = s3Arena("sorcerer");
+    const m = a.place("lizardfolk", 2, 0);
+    if (frozen) a.any.root(m, a.brain(m), a.now() + 5000, true);
+    const hp = m.hp;
+    a.any.applySpell(HERO, { ...SPELLS.avalanche, wave: undefined }, 0, m.id, m.x, m.y, 100, [{ x: m.x, y: m.y }], 2);
+    return { a, m, dealt: hp - m.hp };
+  };
+  const plain = hit(false);
+  const frozen = hit(true);
+  check(plain.m.frozen && !plain.a.seat().stats.reactions.shatter, "congela");
+  check(frozen.dealt > plain.dealt * 1.25 && frozen.a.seat().stats.reactions.shatter === 1, `Estilhaço ${plain.dealt} → ${frozen.dealt}`);
+});
+test("Fenda Arcana: teleporta e explode na saída e na chegada; 2 cargas (3 na Maestria)", () => {
+  const a = s3Arena("sorcerer");
+  const x0 = a.p.x;
+  const behind = a.place("lizardfolk", -1, 0);
+  a.any.root(behind, a.brain(behind), a.now() + 60000);
+  const hp = behind.hp;
+  castS3(a, "arcane_rift", { x: a.p.x + 4, y: a.p.y });
+  a.advance(100);
+  check(a.p.x > x0 && behind.hp < hp, `foi para ${a.p.x - x0}, a saída explodiu (${hp} → ${behind.hp})`);
+  check(a.seat().charges?.left === mastered("arcane_rift").charges!.count - 1, `cargas ${a.seat().charges?.left}`);
+});
+test("Exército dos Mortos: 4 esqueletos por 20 s (6 na Maestria)", () => {
+  const a = s3Arena("sorcerer");
+  self(a, SPELLS.army_of_dead);
+  const skeletons = [...a.state.summons.values()].filter((s) => s.owner === HERO && s.kind === "skeleton");
+  check(skeletons.length === 4, `esqueletos ${skeletons.length}`);
+  check(mastered("army_of_dead").summon!.count === 6, "Maestria: 6");
+});
+test("Olhar do Abismo: marca +30% e enfraquece 30% por 6 s no leque", () => {
+  const a = s3Arena("sorcerer");
+  const m = a.place("lizardfolk", 3, 0);
+  castS3(a, "abyss_gaze", { x: m.x, y: m.y, targetId: m.id });
+  a.advance(50);
+  check(m.marked && a.brain(m).weakPct === 0.3 && a.brain(m).markPct >= 0.3, `marca ${a.brain(m).markPct}, enfraquece ${a.brain(m).weakPct}`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);

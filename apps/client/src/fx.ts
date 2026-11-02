@@ -395,6 +395,24 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 6: slot 3 de cada lado da especialização do Feiticeiro (o Hálito e a Avalanche são leques, da cena).
+      case "storm_eye":
+        if (from.x === to.x && from.y === to.y && radius === 0) {
+          this.beam(to, 0x9ec5ff);
+          return this.sparks(to, 0xffffff, 6);
+        }
+        return this.ring(from, TILE_SIZE * 2, 0x9ec5ff, 600, 4);
+      case "dragon_breath":
+      case "avalanche":
+        return;
+      case "arcane_rift":
+        this.ring(to, TILE_SIZE * 1.5, 0x7c4dff, 450, 6);
+        return this.ring(from, TILE_SIZE * 1.5, 0xb388ff, 450, 6);
+      case "army_of_dead":
+        this.ring(from, TILE_SIZE * 1.5, 0xdcdde1, 550, 4);
+        return this.debris(from, TILE_SIZE, 0x4a4a4a);
+      case "abyss_gaze":
+        return;
       // Fase 6: slot 3 de cada lado da especialização do Paladino (o Santuário e as minas aparecem pelo estado).
       case "phantom_shot":
         if (from.x === to.x && from.y === to.y) return this.ring(from, TILE_SIZE * 1.5, 0xbdc3c7, 500, 4);
