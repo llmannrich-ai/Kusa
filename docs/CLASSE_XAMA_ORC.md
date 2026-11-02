@@ -233,6 +233,9 @@ loot nem XP ao morrer e não volta a ser inimigo; monstro chamado por boss ou mi
 
 - Herói: o corpo dos orcs do Kosaradius (`apps/client/src/art/proto/orc.ts`, `orcArt.ts`), adaptado ao sistema de
   heróis vestidos (`art/hero/look.ts`): pele verde-cinza, presas, ombros largos. O tambor nas costas é fixo da classe.
+  Hoje (arte nova, `tibiaHero.ts`): cabeça de orc do D&D própria (`orcHeadFront`, `orcHeadSide`, `orcHeadBack`), careca
+  com cicatriz, crista da testa pesada sobre olhos de brasa, nariz achatado de focinho, queixo projetado, presas grandes
+  subindo da mandíbula de baixo, orelhas pontudas com argola de osso e a pintura de guerra da testa ao queixo.
 - Horda: a arte dos monstros do clã com a marca de aliado (pintura de brasa, grilhão quebrado, anel nos pés).
 - Totens: poste entalhado com crânio de animal, chama da cor da magia no topo, fumaça. O raio aparece como no campo
   atual (tiles acesos). Sem tremor de câmera: a batida do tambor é uma onda no chão.

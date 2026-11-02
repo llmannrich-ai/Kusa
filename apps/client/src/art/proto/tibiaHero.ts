@@ -198,11 +198,11 @@ const KITS: Record<ProtoClass, Kit> = {
     look: { skin: "#bc9476", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#6a4426", primary: "#4e6a34", secondary: "#6a5034", detail: "#5a3e26", trim: "#b06a3a" },
     hair: "flowing", beard: "none", wild: true, top: "leaf", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "branch",
   },
-  // Xamã Orc: por enquanto o kit do druida com pele verde-cinza, couro e cinzas (a arte própria vem com a horda).
+  // Xamã Orc: careca, com a cabeça de orc do D&D (`orcHeadFront`/`orcHeadSide`/`orcHeadBack`); pele verde-cinza, couro e cinzas.
   shaman: {
     build: HERO_BUILD, grim: HERO_GRIM,
     look: { skin: "#7d9256", skinContrast: HERO_SKIN, skinShift: 1.5, head: "#2e2624", primary: "#6b4a2e", secondary: "#4e4a46", detail: "#3e2a1a", trim: "#d8561c" },
-    hair: "flowing", beard: "none", orc: true, top: "tunic", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "skull",
+    hair: "none", beard: "none", orc: true, top: "tunic", sleeves: "none", pants: "knee", feet: "wraps", waist: "rope", weapon: "skull",
   },
 };
 
@@ -1971,6 +1971,7 @@ function collar(c: Canvas, kit: Kit, cy: number, view: ProtoDir) {
 
 function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   if (kit.species) { monsterHeadFront(c, kit, b, false); return; }
+  if (kit.orc && kit.build) { orcHeadFront(c, kit, b, top); return; }
   const cy = 37 + b;
   collar(c, kit, cy, "down");
   ellipse(c, CX, cy + 9, 3.5, 2.5, Mat.Skin); // pescoço
@@ -2151,8 +2152,157 @@ function beardFront(c: Canvas, cy: number, top: number) {
   for (let Y = F(cy + 9); Y < F(top + 6); Y++) if (noise(Y, 1) < 0.6) c.on(beard, F(CX - 4.6) + Math.floor((Y - F(cy + 9)) / 6), Y, Mat.Hair, 5);
 }
 
+// --- Cabeça de orc (Xamã Orc) -----------------------------------------------------------
+
+/**
+ * Orelha pontuda de orc, de frente: sai do lado da cabeça para cima e para fora, com a dobra de dentro escura.
+ * `sx` = −1 (esquerda da tela) ou 1.
+ */
+function orcEar(c: Canvas, cx: number, cy: number, sx: number) {
+  const pts: Pt[] = [[cx + sx * 7.2, cy - 1.4], [cx + sx * 12.6, cy - 6.2], [cx + sx * 10.6, cy + 0.6], [cx + sx * 8, cy + 4.6]];
+  const ear = poly(c, pts, Mat.Skin, Math.min(cx + sx * 7.2, cx + sx * 12.6), Math.max(cx + sx * 7.2, cx + sx * 12.6));
+  thread(c, [cx + sx * 8.4, cy + 1.6], [cx + sx * 11.2, cy - 4], Mat.Skin, 1, [ear]);
+  thread(c, [cx + sx * 8.6, cy + 2.4], [cx + sx * 10.4, cy - 1.4], Mat.Skin, 2, [ear]);
+  // Argola de osso no lóbulo.
+  c.px(F(cx + sx * 8.6), F(cy + 4.4), Mat.Bone, 4); c.px(F(cx + sx * 8.6) + sx, F(cy + 4.4) + 1, Mat.Bone, 2);
+}
+
+/** Cabeça raspada: brilho no alto e uma cicatriz funda descendo em diagonal pelo couro (frente e costas). */
+function orcScalp(c: Canvas, id: number, cx: number, cy: number, flip = 1) {
+  gloss(c, [id], cx - 6, cx + 1, cy - 7.6, cx - 3);
+  for (let k = 0; k < 9; k++) {
+    const X = F(cx + flip * 3) + flip * Math.floor(k * 0.8), Y = F(cy - 9) + k;
+    c.on(id, X, Y, Mat.Lip, 1);
+    c.on(id, X - flip, Y, Mat.Skin, 4);
+    if (k % 3 === 1) { c.on(id, X - flip, Y - 1, Mat.Skin, 1); c.on(id, X + flip, Y + 1, Mat.Skin, 1); }
+  }
+}
+
+/**
+ * Cabeça do Xamã Orc de frente, no molde do orc do D&D: crânio raspado com cicatrizes, crista da testa pesada sobre
+ * olhos pequenos e fundos (brasa), nariz achatado de focinho com as narinas à mostra, mandíbula larga projetada para
+ * a frente e as duas presas grandes saindo do maxilar de baixo por cima do lábio. Orelhas pontudas e a pintura de
+ * guerra (brasa) descendo da testa ao queixo.
+ */
+function orcHeadFront(c: Canvas, kit: Kit, b: number, top: number) {
+  const cy = 37 + b;
+  collar(c, kit, cy, "down");
+  ellipse(c, CX, cy + 9, 4.8, 3, Mat.Skin); // pescoço grosso
+  for (const sx of [-1, 1]) orcEar(c, CX, cy, sx);
+  const face = faceShape(c, CX, cy, 8.4, 9.6, 0.84);
+  const Yc = F(cy);
+  orcScalp(c, face, CX, cy);
+  // Pintura de guerra: faixa de brasa no meio da testa e no queixo.
+  for (let Y = Yc - 14; Y <= Yc - 1; Y++) for (const sx of [-1, 1]) c.on(face, mx(sx, 0), Y, Mat.Ember, Y < Yc - 11 ? 1 : 0);
+  for (let Y = Yc + 17; Y <= Yc + 18; Y++) for (const sx of [-1, 1]) for (let dx = 0; dx <= 1; dx++) c.on(face, mx(sx, dx), Y, Mat.Ember, 0);
+  for (const sx of [-1, 1]) {
+    // Crista da testa: luz em cima, osso saliente e a sombra funda embaixo, descendo para o nariz (cara fechada).
+    for (let dx = 1; dx <= 11; dx++) {
+      const Y = Yc + 1 + (dx < 4 ? 1 : 0);
+      c.px(mx(sx, dx), Y - 1, Mat.Skin, dx > 9 ? 3 : 4);
+      c.px(mx(sx, dx), Y, Mat.Skin, 3);
+      c.px(mx(sx, dx), Y + 1, Mat.Skin, dx > 9 ? 1 : 0);
+      if (dx >= 3 && dx <= 9) c.px(mx(sx, dx), Y + 2, Mat.Skin, 1);
+    }
+    // Olho pequeno e fundo, aceso como brasa dentro da sombra da crista (sem branco): é o que se vê de longe.
+    for (const [dx, m, t] of [[4, Mat.Skin, 0], [5, Mat.Eye, 0], [6, Mat.Ember, 5], [7, Mat.Ember, 5], [8, Mat.Ember, 3], [9, Mat.Eye, 0]] as const) c.px(mx(sx, dx), Yc + 5, m, t);
+    for (const [dx, m, t] of [[5, Mat.Eye, 0], [6, Mat.Ember, 3], [7, Mat.Ember, 2], [8, Mat.Eye, 0]] as const) c.px(mx(sx, dx), Yc + 6, m, t);
+    c.px(mx(sx, 7), Yc + 5, Mat.Eye, 0);
+    for (let dx = 6; dx <= 9; dx++) c.px(mx(sx, dx), Yc + 7, Mat.Skin, 2);
+    // Pintura de guerra: dois riscos curtos sob cada olho.
+    for (const dx of [7, 10]) for (let k = 0; k < 3; k++) c.px(mx(sx, dx + (k > 1 ? 1 : 0)), Yc + 8 + k, Mat.Ember, 0);
+    // Maçã larga: luz no osso e o sulco que desce até o canto da boca.
+    for (let dx = 9; dx <= 12; dx++) c.on(face, mx(sx, dx), Yc + 7, Mat.Skin, sx < 0 ? 4 : 3);
+    for (let k = 0; k < 5; k++) c.px(mx(sx, 6 + Math.floor(k / 2)), Yc + 10 + k, Mat.Skin, 1);
+  }
+  // Rugas do cenho entre as cristas.
+  for (let Y = Yc; Y <= Yc + 3; Y++) { c.px(mx(-1, 1), Y, Mat.Skin, 1); c.px(mx(1, 1), Y, Mat.Skin, 1); }
+  // Nariz achatado de focinho: ponte curta, ponta larga com luz e as narinas viradas para a frente.
+  for (let Y = Yc + 5; Y <= Yc + 8; Y++) { c.px(mx(-1, 0), Y, Mat.Skin, 4); c.px(mx(1, 0), Y, Mat.Skin, 3); c.px(mx(1, 1), Y, Mat.Skin, 2); }
+  for (let dx = 0; dx <= 4; dx++) for (const sx of [-1, 1]) {
+    c.px(mx(sx, dx), Yc + 9, Mat.Skin, sx < 0 && dx < 3 ? 5 : 3);
+    c.px(mx(sx, dx), Yc + 10, Mat.Skin, dx === 4 ? 1 : 3);
+    c.px(mx(sx, dx), Yc + 11, Mat.Skin, dx === 4 ? 1 : 2);
+  }
+  for (const sx of [-1, 1]) { c.px(mx(sx, 2), Yc + 11, Mat.Eye, 0); c.px(mx(sx, 3), Yc + 11, Mat.Eye, 0); c.px(mx(sx, 2), Yc + 10, Mat.Eye, 1); }
+  for (let dx = 0; dx <= 4; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 12, Mat.Skin, 1);
+  // Boca larga com o queixo projetado (prognata): lábio de cima recolhido, linha escura e o lábio de baixo saliente.
+  for (let dx = 0; dx <= 6; dx++) for (const sx of [-1, 1]) {
+    c.px(mx(sx, dx), Yc + 14 + (dx > 4 ? 1 : 0), Mat.Lip, 0);
+    if (dx <= 4) { c.px(mx(sx, dx), Yc + 15, Mat.Skin, sx < 0 ? 4 : 3); c.px(mx(sx, dx), Yc + 16, Mat.Skin, 2); }
+  }
+  // Presas: saem da mandíbula de baixo, no canto da boca, e sobem por fora do lábio até a altura do nariz; largas na
+  // base, curvas para fora e com a ponta clara. O contorno escuro do lado de fora separa do verde.
+  for (const sx of [-1, 1]) for (let k = 0; k <= 8; k++) {
+    const Y = Yc + 17 - k, dx = 6 + (k > 5 ? 1 : 0);
+    c.px(mx(sx, dx), Y, Mat.Bone, k > 6 ? 5 : sx < 0 ? 4 : 3);
+    if (k < 7) c.px(mx(sx, dx + 1), Y, Mat.Bone, k < 3 ? 1 : 2);
+    c.px(mx(sx, dx + (k < 7 ? 2 : 1)), Y, Mat.Eye, 0);
+    if (k < 6) c.px(mx(sx, dx - 1), Y, k < 3 ? Mat.Lip : Mat.Skin, 0);
+  }
+  // Cicatriz funda cortando a maçã do lado de lá.
+  for (let k = 0; k < 6; k++) { c.px(mx(1, 9 + Math.floor(k * 0.6)), Yc + 4 + k, Mat.Lip, 0); c.px(mx(1, 10 + Math.floor(k * 0.6)), Yc + 4 + k, Mat.Skin, 4); }
+  headwear(c, kit, "down", CX, cy, top);
+}
+
+/** Cabeça do Xamã Orc de perfil (olhando para a esquerda): testa saliente, focinho, queixo para a frente e a presa. */
+function orcHeadSide(c: Canvas, kit: Kit, b: number, top: number) {
+  const cy = 37 + b;
+  const cx = CX + 1;
+  collar(c, kit, cy, "side");
+  ellipse(c, CX - 0.5, cy + 9, 4, 3, Mat.Skin);
+  const face = faceShape(c, cx, cy, 8.6, 9.6, 0.8, true);
+  // Queixo projetado: a mandíbula de baixo passa da linha do rosto.
+  const jaw = ellipse(c, cx - 7.4, cy + 7.6, 2.4, 2, Mat.Skin);
+  // Orelha pontuda para trás e para cima.
+  const ear = poly(c, [[cx + 1, cy - 0.4], [cx + 7.2, cy - 5.6], [cx + 5.4, cy + 0.6], [cx + 2.6, cy + 4.6]], Mat.Skin, cx + 1, cx + 7.2);
+  thread(c, [cx + 2.6, cy + 2], [cx + 6.2, cy - 3.6], Mat.Skin, 1, [ear]);
+  c.px(F(cx + 2.8), F(cy + 4.6), Mat.Bone, 4);
+  const X0 = F(cx), Yc = F(cy);
+  orcScalp(c, face, cx + 1, cy, -1);
+  // Pintura de guerra descendo da testa.
+  for (let Y = Yc - 14; Y <= Yc - 1; Y++) for (const dx of [-12, -11]) c.on(face, X0 + dx, Y, Mat.Ember, Y < Yc - 11 ? 1 : 0);
+  // Crista da testa saliente (passa 1 px da linha do rosto) com a sombra embaixo.
+  for (let dx = -18; dx <= -6; dx++) { c.px(X0 + dx, Yc + 1, Mat.Skin, dx < -16 ? 3 : 4); c.px(X0 + dx, Yc + 2, Mat.Skin, 3); c.px(X0 + dx, Yc + 3, Mat.Skin, dx < -16 ? 0 : 1); }
+  for (let dx = -15; dx <= -9; dx++) c.px(X0 + dx, Yc + 4, Mat.Skin, 1);
+  // Olho fundo de brasa.
+  for (const [dx, m, t] of [[-15, Mat.Eye, 0], [-14, Mat.Ember, 5], [-13, Mat.Ember, 4], [-12, Mat.Eye, 0], [-11, Mat.Skin, 1]] as const) c.px(X0 + dx, Yc + 5, m, t);
+  for (const [dx, m, t] of [[-14, Mat.Ember, 3], [-13, Mat.Eye, 0], [-12, Mat.Skin, 1]] as const) c.px(X0 + dx, Yc + 6, m, t);
+  for (let k = 0; k < 3; k++) c.px(X0 - 11 + (k > 1 ? 1 : 0), Yc + 8 + k, Mat.Ember, 0);
+  // Focinho: ponte curta e ponta larga virada para cima, com a narina.
+  for (const [dx, dy, t] of [[-17, 6, 3], [-18, 7, 3], [-18, 8, 4], [-19, 9, 4], [-19, 10, 3], [-18, 10, 3], [-18, 11, 2], [-17, 11, 2], [-17, 9, 3], [-16, 10, 2]] as const) c.px(X0 + dx, Yc + dy, Mat.Skin, t);
+  c.px(X0 - 18, Yc + 11, Mat.Eye, 0); c.px(X0 - 17, Yc + 10, Mat.Eye, 1);
+  for (let dx = -16; dx <= -14; dx++) c.px(X0 + dx, Yc + 12, Mat.Skin, 1);
+  // Boca: lábio de cima recolhido, o de baixo projetado e a presa subindo por fora.
+  for (let dx = -17; dx <= -11; dx++) c.px(X0 + dx, Yc + 14 + (dx > -13 ? 1 : 0), Mat.Lip, 0);
+  for (let dx = -19; dx <= -14; dx++) { c.on([face, jaw], X0 + dx, Yc + 15, Mat.Skin, 4); c.on([face, jaw], X0 + dx, Yc + 16, Mat.Skin, 3); }
+  for (let k = 0; k <= 8; k++) {
+    const Y = Yc + 17 - k, X = X0 - 16 - (k > 5 ? 1 : 0);
+    c.px(X, Y, Mat.Bone, k > 6 ? 5 : 4);
+    if (k < 7) c.px(X + 1, Y, Mat.Bone, k < 3 ? 1 : 2);
+    c.px(X - 1, Y, Mat.Eye, 0);
+  }
+  headwear(c, kit, "side", cx, cy, top);
+}
+
+/** Cabeça do Xamã Orc de costas: nuca raspada e larga, orelhas pontudas e a faixa de pintura descendo pela nuca. */
+function orcHeadBack(c: Canvas, kit: Kit, b: number, top: number) {
+  const cy = 37 + b;
+  collar(c, kit, cy - 0.5, "up");
+  ellipse(c, CX, cy + 9, 4.8, 3, Mat.Skin);
+  for (const sx of [-1, 1]) orcEar(c, CX, cy, sx);
+  const skull = faceShape(c, CX, cy, 8.4, 9.6, 0.84);
+  orcScalp(c, skull, CX, cy, -1);
+  const Yc = F(cy);
+  for (let Y = Yc - 16; Y <= Yc + 14; Y++) for (const sx of [-1, 1]) c.on(skull, mx(sx, 0), Y, Mat.Ember, Y < Yc - 13 ? 1 : 0);
+  // Dobras da nuca grossa.
+  for (const dy of [12, 15]) for (let dx = 1; dx <= 6; dx++) for (const sx of [-1, 1]) c.on(skull, mx(sx, dx), Yc + dy + (dx > 4 ? -1 : 0), Mat.Skin, 1);
+  headwear(c, kit, "up", CX, cy, top);
+}
+
 function headBack(c: Canvas, kit: Kit, b: number, top: number) {
   if (kit.species) { monsterHeadFront(c, kit, b, true); return; }
+  if (kit.orc && kit.build) { orcHeadBack(c, kit, b, top); return; }
   const cy = 37 + b;
   collar(c, kit, cy - 0.5, "up");
   ellipse(c, CX, cy + 9, 3.5, 2.5, Mat.Skin);
@@ -2224,6 +2374,7 @@ function headBack(c: Canvas, kit: Kit, b: number, top: number) {
 
 function headSide(c: Canvas, kit: Kit, b: number, top: number) {
   if (kit.species) { monsterHead(c, kit, b, top); return; }
+  if (kit.orc && kit.build) { orcHeadSide(c, kit, b, top); return; }
   const cy = 37 + b;
   const cx = CX + 1;
   collar(c, kit, cy, "side");
