@@ -94,6 +94,18 @@ export interface GiftEffects {
   fieldDamage: number;
   /** Força da explosão da armadilha em monstro queimando, somada a 1 (Pavio Curto). */
   fusePower: number;
+  /** Dano a mais dos sopros: magias em leque que canalizam ou avançam em onda (Garganta de Brasa). */
+  breathDamage: number;
+  /** Lentidão a mais por segundo de canalização (Sopro Glacial). */
+  breathSlow: number;
+  /** Dano a mais do Estilhaço (Cristalizar). */
+  shatterDamage: number;
+  /** Dano a mais do Vapor (Panela de Pressão). */
+  vaporDamage: number;
+  /** Quanto as magias de trevas enfraquecem o monstro (dano que ele causa a menos) (Lamento Profundo). */
+  weakenPower: number;
+  /** Dano a mais da Condenação (Sentença Lenta). */
+  doomDamage: number;
   /** Marcos de cada Dom (0 a `GIFT_MILESTONES`): nível ÷ `GIFT_MILESTONE_EVERY`. Só os Dons que já têm marcos. */
   marks: Partial<Record<GiftId, number>>;
 }
@@ -104,7 +116,8 @@ export const NO_GIFTS: GiftEffects = {
   lowHpDamage: 0, stillGuard: 0, bannerHaste: 0, dashBasic: 0, graceDamage: 0, burnChance: 0, circuitDamage: 0,
   frostBarrier: 0, raiseChance: 0, fourthBite: 0, cycleHeal: 0, skyStrike: 0,
   hemorrhageDamage: 0, furyStack: 0, anvilStunMs: 0, chimeReflect: 0, echoShield: 0, exposedDamage: 0,
-  quiverPower: 0, weakSpot: 0, incandesceDamage: 0, candlePower: 0, fieldDamage: 0, fusePower: 0, marks: {},
+  quiverPower: 0, weakSpot: 0, incandesceDamage: 0, candlePower: 0, fieldDamage: 0, fusePower: 0,
+  breathDamage: 0, breathSlow: 0, shatterDamage: 0, vaporDamage: 0, weakenPower: 0, doomDamage: 0, marks: {},
 };
 
 /** Raio da Voz de Comando. */
@@ -158,6 +171,20 @@ export const CANDLE = { base: 0.1, ms: 3000, msMid: 4000, msLater: 5000, radius:
 export const SPIKES = { slow: 0.05, slowMs: 1500, ms: 1000, bleedPerSec: 0.3, bleedMs: 2000 } as const;
 /** Pavio Curto: raio, queimadura da explosão, empurrão e a armadilha seguinte. */
 export const FUSE = { radius: 1, radiusLater: 2, burnPerSec: 0.3, burnMs: 3000, push: 1, chainTiles: 4 } as const;
+
+// Dons da costela de passivas do Feiticeiro.
+/** Garganta de Brasa: abertura a mais, chão em chamas, canalização mais longa e a explosão no fim da onda. */
+export const EMBER = { angle: 10, fireMs: 1000, firePerSec: 0.3, channelMs: 500, burst: 1, burstRadius: 1 } as const;
+/** Sopro Glacial: teto da lentidão, tile a mais, congelar em 1,5 s, abertura a mais, gelo que quebra com tudo. */
+export const GLACIAL = { maxSlow: 0.8, range: 1, freezeMs: 1500, freezeHoldMs: 1000, angle: 10, primeMs: 3000 } as const;
+/** Cristalizar: o Estilhaço em volta, mana, congelado mais longo e o gelo que volta. */
+export const CRYSTAL = { splash: 0.5, radius: 1, radiusLater: 2, mana: 0.02, frozenMs: 500, refreezeMs: 500 } as const;
+/** Panela de Pressão: raio, ofuscar, névoa, mana. */
+export const PRESSURE = { radius: 2, radiusLater: 3, dazzleMs: 1000, mistMs: 2000, mistSlow: 0.3, mana: 0.03 } as const;
+/** Lamento Profundo: duração do enfraquecer (teto da força), abertura e alcance a mais, dano a mais e mana. */
+export const LAMENT = { ms: 3000, msLater: 4000, max: 0.5, angle: 10, range: 1, weakenedDamage: 0.05, mana: 0.01 } as const;
+/** Sentença Lenta: raio, marca de quem pega, marca mais longa, roubo de vida e a Condenação seguinte. */
+export const SENTENCE = { radius: 2, mark: { pct: 0.15, ms: 4000 }, markMs: 1000, lifesteal: 0.03, chainTiles: 3 } as const;
 
 // Números dos marcos do Paladino.
 /** Olhar Paciente: alcance do básico, o atordoar no alcance máximo (com recarga) e a flecha dupla. */
@@ -246,6 +273,7 @@ export type GiftId =
   | "instinct" | "cycle" | "closed_sky"
   | "blood_steel" | "rising_fury" | "anvil" | "chime" | "war_echo" | "execution_order"
   | "wide_quiver" | "weak_spot" | "dawn" | "votive_candle" | "sharp_caltrops" | "short_fuse"
+  | "ember_throat" | "pressure_cooker" | "glacial_breath" | "crystallize" | "deep_lament" | "slow_sentence"
   | "horde_bond" | "ancestor_stance" | "forge_spark";
 
 export interface GiftDef {
@@ -732,6 +760,78 @@ export const GIFTS: Record<GiftId, GiftDef> = {
       "a armadilha queima quem ela prende (e a explosão sai sempre)",
       `a explosão empurra ${FUSE.push} tile`,
       "a explosão dispara a sua armadilha mais perto",
+    ],
+  }),
+  ember_throat: gift({
+    id: "ember_throat", classId: "sorcerer", col: 0, rib: 1, name: "Garganta de Brasa", icon: "🔥",
+    description: "Seus sopros (leques que canalizam ou avançam em onda) ferem mais.",
+    perRank: 0.016, apply: (fx, v) => { fx.breathDamage += v; }, text: (v) => `+${pct(v)} de dano dos sopros`,
+    milestones: [
+      `sopros +${EMBER.angle}° de abertura`,
+      `o sopro deixa o chão em chamas por ${EMBER.fireMs / 1000}s no fim`,
+      `canalização +${EMBER.channelMs / 1000}s`.replace(".", ","),
+      `+${EMBER.angle * 2}° de abertura`,
+      `a última onda do sopro explode em raio ${EMBER.burstRadius}`,
+    ],
+  }),
+  pressure_cooker: gift({
+    id: "pressure_cooker", classId: "sorcerer", col: 0, rib: 2, name: "Panela de Pressão", icon: "💨",
+    description: "O Vapor (queimando + gelo, ou congelado + fogo) explode mais forte.",
+    perRank: 0.03, apply: (fx, v) => { fx.vaporDamage += v; }, text: (v) => `+${pct(v)} de dano do Vapor`,
+    milestones: [
+      `Vapor em raio ${PRESSURE.radius}`,
+      `o Vapor ofusca ${PRESSURE.dazzleMs / 1000}s`,
+      `o Vapor deixa névoa por ${PRESSURE.mistMs / 1000}s (${pct(PRESSURE.mistSlow)} de lentidão)`,
+      `Vapor em raio ${PRESSURE.radiusLater}`,
+      `o Vapor devolve ${pct(PRESSURE.mana)} da mana`,
+    ],
+  }),
+  glacial_breath: gift({
+    id: "glacial_breath", classId: "sorcerer", col: 1, rib: 1, name: "Sopro Glacial", icon: "🌨️",
+    description: "Quanto mais tempo você canaliza um sopro, mais lento fica quem está nele.",
+    perRank: 0.012, apply: (fx, v) => { fx.breathSlow += v; }, text: (v) => `+${pct(v)} de lentidão por segundo de canalização`,
+    milestones: [
+      `+${GLACIAL.range} tile no sopro canalizado`,
+      `${GLACIAL.freezeMs / 1000}s seguidos no sopro congelam`.replace(".", ","),
+      `+${GLACIAL.angle}° de abertura`,
+      "quem o sopro congela Estilhaça com o próximo golpe de qualquer elemento (menos gelo)",
+      "canalizar não deixa você lento",
+    ],
+  }),
+  crystallize: gift({
+    id: "crystallize", classId: "sorcerer", col: 1, rib: 2, name: "Cristalizar", icon: "💎",
+    description: "O Estilhaço (congelado + golpe de energia ou físico) fere mais.",
+    perRank: 0.03, apply: (fx, v) => { fx.shatterDamage += v; }, text: (v) => `+${pct(v)} de dano do Estilhaço`,
+    milestones: [
+      `o Estilhaço fere quem está em raio ${CRYSTAL.radius} (${pct(CRYSTAL.splash)})`,
+      `o Estilhaço devolve ${pct(CRYSTAL.mana)} da mana`,
+      `seu congelado dura +${CRYSTAL.frozenMs / 1000}s`.replace(".", ","),
+      `raio ${CRYSTAL.radiusLater}`,
+      `o Estilhaço congela de novo por ${CRYSTAL.refreezeMs / 1000}s (uma vez)`.replace(".", ","),
+    ],
+  }),
+  deep_lament: gift({
+    id: "deep_lament", classId: "sorcerer", col: 2, rib: 1, name: "Lamento Profundo", icon: "👁️",
+    description: `Suas magias de trevas enfraquecem quem pegam: o monstro causa menos dano por ${LAMENT.ms / 1000}s.`,
+    perRank: 0.012, apply: (fx, v) => { fx.weakenPower += v; }, text: (v) => `${pct(Math.min(LAMENT.max, v))} de dano a menos no monstro enfraquecido`,
+    milestones: [
+      `leques de trevas +${LAMENT.angle}° de abertura`,
+      `o enfraquecido recebe +${pct(LAMENT.weakenedDamage)} do seu dano`,
+      `leques de trevas +${LAMENT.range} tile`,
+      `o enfraquecer dura ${LAMENT.msLater / 1000}s`,
+      `o leque de trevas devolve ${pct(LAMENT.mana)} da mana por monstro que pega`,
+    ],
+  }),
+  slow_sentence: gift({
+    id: "slow_sentence", classId: "sorcerer", col: 2, rib: 2, name: "Sentença Lenta", icon: "☠️",
+    description: "A Condenação (marcado + magia de trevas) explode mais forte.",
+    perRank: 0.03, apply: (fx, v) => { fx.doomDamage += v; }, text: (v) => `+${pct(v)} de dano da Condenação`,
+    milestones: [
+      `Condenação em raio ${SENTENCE.radius}`,
+      `a Condenação marca quem pega (+${pct(SENTENCE.mark.pct)} por ${SENTENCE.mark.ms / 1000}s)`,
+      `suas marcas duram +${SENTENCE.markMs / 1000}s`,
+      `a explosão cura ${pct(SENTENCE.lifesteal)} da sua vida`,
+      "a Condenação passa para o marcado mais perto (uma vez)",
     ],
   }),
   // Xamã Orc: Dons do fundo, embaixo dos Ápices (com os efeitos que já existem nos outros Dons).
