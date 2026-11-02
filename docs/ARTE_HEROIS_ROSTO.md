@@ -6,7 +6,7 @@ mudança para um tom **heroico e sério** (estilo Baldur's Gate, sem chegar ao g
 menu. Tudo é cliente: sem regra de jogo, sem `RULES_VERSION`, sem migration.
 
 Antes (em cima) e depois (embaixo), sem equipamento: `docs/arte/herois-rosto-antes-depois.png`.
-Retratos do menu (sem equipamento e com 4 conjuntos): `docs/arte/herois-retratos.png`.
+Retratos do menu (sem equipamento e com 4 conjuntos): `docs/arte/herois-retratos.png`. Xamã Orc de perto (retratos e as 3 direções): `docs/arte/xama-orc-rosto.png`.
 
 ## Duas imagens por herói
 
@@ -35,7 +35,7 @@ porque o `pixelated` serrilha ao diminuir.
 | Mão redonda maior que o antebraço | punho menor e mais quadrado | `hand(…, hero)` |
 | Pés juntos | pés afastados 1,6 unidade de cada lado | `front` (`spread`) |
 | Ombros da largura do quadril (corpo reto de boneco) | ombros e peito 12% mais largos, em V (de frente e de costas) | `HERO_SHOULDERS`, `Canvas.flared` |
-| Pintura do Xamã Orc parecia blush | riscos finos e escuros cruzando o olho | `headFront`, `headSide` |
+| Xamã Orc: rosto humano pintado de verde, com cabelo comprido | cabeça de orc do D&D própria: careca com cicatriz, crista da testa pesada, olhos de brasa sem branco, nariz achatado de focinho, queixo projetado, presas subindo da mandíbula de baixo, orelhas pontudas com argola de osso, pintura de guerra da testa ao queixo | `orcHeadFront`, `orcHeadSide`, `orcHeadBack` |
 
 Os ombros largos não redesenham nada: `Canvas.flared` alarga na horizontal só a faixa dos ombros e do peito (com
 transição suave para o pescoço e para a cintura), por cima de tudo o que é desenhado ali, então tronco, armadura,
