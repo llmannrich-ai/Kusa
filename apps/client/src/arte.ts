@@ -268,13 +268,14 @@ const fullSet = (classId: ClassId, tier: ItemTier, pick = 0): Outfit => {
   for (const slot of ITEM_SLOTS) {
     const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot && (!f.classes || f.classes.includes(classId)));
     const family = families[Math.min(pick, families.length - 1)];
-    outfit[slot] = itemId(slot, family.key, tier);
+    // O paladino não usa escudo: o slot fica vazio.
+    if (family) outfit[slot] = itemId(slot, family.key, tier);
   }
   return outfit;
 };
 /** O mesmo conjunto com todos os itens numa raridade. */
 const withRarity = (outfit: Outfit, rarity: "rare" | "magic"): Outfit =>
-  Object.fromEntries(ITEM_SLOTS.map((slot) => [slot, outfit[slot].replace(/-common$/, `-${rarity}`)])) as Outfit;
+  Object.fromEntries(ITEM_SLOTS.map((slot) => [slot, outfit[slot] && outfit[slot].replace(/-common$/, `-${rarity}`)])) as Outfit;
 for (const id of CLASS_IDS) {
   const row = section(`Vestimenta: ${CLASSES[id].name}`);
   show(row, heroPoses(id, NO_OUTFIT), "sem equipamento", 3 / ART_SCALE);
