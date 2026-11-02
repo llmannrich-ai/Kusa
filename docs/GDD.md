@@ -1141,6 +1141,13 @@ lê.
   **Vorgak, o Senhor da Brasa**, no salão do trono (ficha no Bestiário, seção da Fortaleza). O gold de cada monstro cresce com a força; com tanto monstro, os drops de item e poção saem menos (`dropScale` 0,8).
 - **XP** (cheia desde a curva do Tibia; antes, `xpScale` 0,5): o caminho rende ~23 mil de XP (o nível 20 pede ~33 mil);
   limpando 75%, o herói chega em Vorgak no nível 16 e termina no 17–18.
+- **Cenário vivo** (`tickScenery` em `hunt.ts`, números em `SCENE_FIRE`, `SCENE_TENT`, `SCENE_TOTEM`): as
+  **fogueiras** do acampamento e os **braseiros** do salão do trono (que bloqueiam o tile) queimam quem pisa ou encosta,
+  herói ou monstro (3% da vida por segundo, e mais 2 s depois de sair), então dá para atrair orcs para o fogo; cada
+  **tenda** solta um orc (guerreiro; na tenda do chefe, berserker) quando um herói chega a até 10 tiles e outro a cada
+  minuto, no máximo 3 por tenda na hunt (com XP e loot normais, contados no loot máximo do solo); os orcs a até 3 tiles
+  de um **totem** (aura vermelha no chão) batem 20% mais forte. Os objetos do acampamento (armas, caldeirão, lenha,
+  barris) e as armas das casernas ocupam o tile e bloqueiam a passagem; os ossos ficam no chão.
 - **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
   uma brecha da muralha.
 - **Abismo:** nesse mapa toda `Tile.Water` é abismo: bloqueia o passo e deixa passar a visão (flechas e magias passam

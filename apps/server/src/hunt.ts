@@ -487,6 +487,17 @@ const MANA_REGEN = 0.02;
 /** Monstros não nascem tão perto do portal de entrada. */
 const SAFE_RADIUS = 6;
 /**
+ * Cenário vivo da Fortaleza Orc (`Dungeon.fortress`): quem pisa numa fogueira ou encosta num braseiro do salão queima
+ * (`pct` da vida máxima por segundo, por `ms` depois de sair; heróis e monstros); cada tenda solta um orc a cada
+ * `everyMs` enquanto há herói a até `wake` tiles, no máximo `max` na hunt; os orcs a até `radius` tiles de um totem
+ * batem `damage` a mais.
+ */
+export const SCENE_FIRE = { pct: 0.03, ms: 2000 } as const;
+export const SCENE_TENT = { everyMs: 60_000, max: 3, wake: 10 } as const;
+export const SCENE_TOTEM = { radius: 3, damage: 0.2 } as const;
+/** Quem causa o dano do cenário (na telemetria, no lugar do tipo de monstro). */
+export const SCENE_FIRE_ID = "cenario:fogo";
+/**
  * Zona da entrada: a esta distância do portal (o raio seguro mais o alcance de aggro dos comuns), nascem no máximo
  * `MAX_START_MONSTERS` monstros, para a hunt não começar com uma sala cheia em cima do herói (a Cripta põe a
  * primeira sala do caminho colada na inicial).
@@ -583,6 +594,7 @@ const AURA_PULSE_MS = 500;
 const INTERNALS = [
   "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
   "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked", "nextBotId",
+  "sceneBurns", "tentLeft", "tentNextAt",
 ] as const;
 
 /**
@@ -628,6 +640,11 @@ export class Hunt {
   private ai: MonsterAi;
   /** Número do próximo bot posto na sala de espera (o id é `bot<n>`). */
   private nextBotId = 1;
+  /** Queimadura do cenário em cada herói (fogueira, braseiro): o próximo pulso e o fim. */
+  private sceneBurns = new Map<string, { nextAt: number; until: number }>();
+  /** Orcs que cada tenda da Fortaleza ainda solta e quando (em `elapsedMs`) sai o próximo. */
+  private tentLeft: number[] = [];
+  private tentNextAt: number[] = [];
   /** IA dos bots que completam a equipe (`botAi.ts`): manda as mesmas intenções de um jogador. */
   private bots: BotAi;
 
@@ -838,6 +855,12 @@ export class Hunt {
     this.brains.forEach((b) => { total += b.loot[1]; });
     this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + CHEST_DEPTH_SCALING * depth) * this.lootScale()); });
     this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + CHEST_DEPTH_SCALING * depth) * this.lootScale()); });
+    // Os orcs que as tendas da Fortaleza soltam durante a hunt.
+    for (const t of this.dungeon.fortress?.tents ?? []) {
+      const kind = this.tentKind(t);
+      const stats = monsterStats(kind, monsterPower(this.map, kind));
+      total += this.scaleLoot(stats.loot[0], stats.loot[1], false)[1] * SCENE_TENT.max;
+    }
     return Math.round(total * (1 + this.portalBonus()));
   }
 
@@ -1248,12 +1271,89 @@ export class Hunt {
     this.state.players.forEach((p, sessionId) => this.orbitTick(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.stormTick(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
+    this.tickScenery(now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
     this.tickFields(now);
     this.tickPlague(now);
     this.openChests();
     this.pickUpItems();
     this.expireItems(now);
+  }
+
+  // --- Cenário vivo (Fortaleza Orc) ---------------------------------------------------------
+
+  /** A tenda do chefe (no pátio do esporão, acima da muralha interna) solta berserkers; as outras, guerreiros. */
+  private tentKind(t: Rect): MonsterKind {
+    const f = this.dungeon.fortress!;
+    return t.y < f.walls[1].y ? "orcBerserker" : "orcGrunt";
+  }
+
+  /** Orc (monstro do clã) a até `SCENE_TOTEM.radius` tiles de um totem da Fortaleza. */
+  private nearTotem(m: Monster) {
+    const totems = this.dungeon.fortress?.totems;
+    if (!totems || !(m.kind as string).startsWith("orc")) return false;
+    return totems.some((t) => tileDistance(t.x, t.y, m.x, m.y) <= SCENE_TOTEM.radius);
+  }
+
+  /** Fogueira debaixo, ou braseiro encostado (os braseiros bloqueiam o tile deles). */
+  private onFire(x: number, y: number) {
+    const f = this.dungeon.fortress!;
+    return f.fires.some((c) => c.x === x && c.y === y) || f.braziers.some((b) => Math.abs(b.x - x) <= 1 && Math.abs(b.y - y) <= 1);
+  }
+
+  /** As fogueiras e os braseiros queimam quem está neles; as tendas soltam orcs quando um herói chega perto. */
+  private tickScenery(now: number) {
+    const f = this.dungeon.fortress;
+    if (!f) return;
+    this.state.players.forEach((p, sessionId) => {
+      const seat = this.seats.get(sessionId);
+      if (p.status !== "playing" || !seat) return this.sceneBurns.delete(sessionId);
+      let burn = this.sceneBurns.get(sessionId);
+      if (this.onFire(p.x, p.y)) {
+        if (!burn) this.sceneBurns.set(sessionId, (burn = { nextAt: now, until: 0 }));
+        burn.until = now + SCENE_FIRE.ms;
+      }
+      if (!burn) return;
+      if (now >= burn.until) {
+        this.sceneBurns.delete(sessionId);
+        if (!seat.dot && p.dot === "burn") p.dot = "";
+        return;
+      }
+      if (!seat.dot) p.dot = "burn";
+      if (now < burn.nextAt) return;
+      burn.nextAt = now + 1000;
+      this.damagePlayer(sessionId, p.maxHp * SCENE_FIRE.pct, { attacker: SCENE_FIRE_ID, fromX: p.x, fromY: p.y, fx: "fire", special: true, dot: "burn" });
+    });
+    for (const m of [...this.state.monsters.values()]) {
+      const brain = this.brains.get(m.id);
+      if (!brain || !this.onFire(m.x, m.y)) continue;
+      this.applyDot(m, brain, SCENE_FIRE_ID, SCENE_FIRE_ID, m.maxHp * SCENE_FIRE.pct, SCENE_FIRE.ms, "burn", now);
+    }
+    // Mapa só de cenário (sem monstros): as tendas não soltam ninguém.
+    if (this.map.bosses.length === 0) return;
+    if (this.tentLeft.length !== f.tents.length) {
+      this.tentLeft = f.tents.map(() => SCENE_TENT.max);
+      this.tentNextAt = f.tents.map(() => 0);
+    }
+    f.tents.forEach((t, i) => {
+      if (this.tentLeft[i] <= 0 || this.elapsedMs < this.tentNextAt[i]) return;
+      const c = centerOf(t);
+      let near = false;
+      this.state.players.forEach((p) => { if (p.status === "playing" && tileDistance(p.x, p.y, c.x, c.y) <= SCENE_TENT.wake) near = true; });
+      if (!near) return;
+      // Sai pela frente da tenda (o tile logo abaixo dela) ou o mais perto dali.
+      const door = { x: t.x + (t.w >> 1), y: t.y + t.h };
+      const spot = isWalkable(this.dungeon, door.x, door.y) && !this.occupiedTiles().has(door.y * this.dungeon.width + door.x) ? door : this.freeSpotNear(door.x, door.y);
+      if (!spot) return;
+      this.addMonster(this.tentKind(t), spot.x, spot.y, this.nearestPathDepth(t));
+      this.tentLeft[i]--;
+      this.tentNextAt[i] = this.elapsedMs + SCENE_TENT.everyMs;
+      this.notice(spot.x, spot.y - 1, "Um orc sai da tenda!", 0xff8a50);
+      this.state.players.forEach((p, id) => {
+        const st = this.seats.get(id)?.stats;
+        if (st && p.status === "playing" && tileDistance(p.x, p.y, c.x, c.y) <= SCENE_TENT.wake) bump(st.scenery, "orcs_da_tenda");
+      });
+    });
   }
 
   // --- Combate -----------------------------------------------------------
@@ -4920,6 +5020,11 @@ export class Hunt {
     if (seat && now < seat.invulnUntil) return;
     const attacker = this.state.monsters.get(hit.attacker);
     const attackerBrain = attacker && this.brains.get(attacker.id);
+    // Totem da Fortaleza: o orc perto dele bate mais forte.
+    if (attacker && this.nearTotem(attacker)) {
+      if (seat) bump(seat.stats.scenery, "dano_do_totem", Math.round(raw * SCENE_TOTEM.damage));
+      raw *= 1 + SCENE_TOTEM.damage;
+    }
     // Lamento Profundo (Dom): o monstro enfraquecido bate mais fraco.
     if (attackerBrain && now < attackerBrain.weakUntil) raw *= 1 - attackerBrain.weakPct;
     // Fúria Berserker: mais frágil enquanto dura.
@@ -5005,7 +5110,7 @@ export class Hunt {
       }
     }
     if (seat) {
-      const kind = this.state.monsters.get(hit.attacker)?.kind ?? seat.dot?.kind ?? "?";
+      const kind = this.state.monsters.get(hit.attacker)?.kind ?? (hit.attacker === SCENE_FIRE_ID ? SCENE_FIRE_ID : undefined) ?? seat.dot?.kind ?? "?";
       bump(seat.stats.damageTaken, kind, Math.min(amount, p.hp));
       if (hit.special) bump(seat.stats.specialDamage, kind, Math.min(amount, p.hp));
       if (hit.ability) bump(seat.stats.abilityDamage, `${kind}:${hit.ability}`, Math.min(amount, p.hp));
