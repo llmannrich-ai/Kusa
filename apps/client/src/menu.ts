@@ -78,6 +78,7 @@ import {
   type ClassId,
   type ItemDef,
   type ItemSlot,
+  type PotionId,
   type RuneDef,
   type SpellDef,
   type SpellId,
@@ -1273,6 +1274,16 @@ export class Hub {
     row.append(panel, hero);
     page.append(el("h3", "", "Para a próxima hunt"), row);
 
+    // Poções da classe: entram em toda hunt junto com o equipamento; dá para completar o estoque sem ir ao Mercado.
+    const stock = this.profile.potions[this.classId] ?? potionStock(null);
+    const total = POTION_IDS.reduce((n, id) => n + stock[id], 0);
+    page.append(el("h3", "", `Poções (${total}/${POTION_MAX * POTION_IDS.length})`));
+    page.append(el("p", "muted hub-hint",
+      `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada. Quem sai vivo traz as que sobraram; quem morre as deixa no chão. Não caem de monstro: compre aqui, no Mercado ou com o vendedor do acampamento.`));
+    const potions = el("div", "market-list");
+    for (const id of POTION_IDS) potions.append(this.potionRow(id));
+    page.append(potions);
+
     const vault = this.vaultItems();
     page.append(el("h3", "", `Cofre (${vault.length}/${VAULT_SIZE})`));
     page.append(el("p", "muted hub-hint", vault.length >= VAULT_SIZE
@@ -1523,26 +1534,7 @@ export class Hub {
       // Poções: não caem na hunt; compram-se aqui (ficam na conta do personagem e entram em toda hunt) ou com o vendedor do acampamento.
       list.append(el("h3", "", "Poções"));
       list.append(el("p", "muted hub-hint", `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada. Quem sai vivo traz as que sobraram; quem morre as deixa no chão.`));
-      const stock = this.profile.potions[this.classId] ?? potionStock(null);
-      for (const id of POTION_IDS) {
-        const price = MARKET_POTION_PRICES[id];
-        const have = stock[id];
-        const buy = el("button", "buy", gold(price));
-        buy.disabled = have >= POTION_MAX || this.profile.gold < price;
-        buy.onclick = () => this.run(async () => {
-          this.profile.gold = await buyPotion(this.classId, id);
-          const mine = (this.profile.potions[this.classId] ??= potionStock(null));
-          mine[id] = Math.min(POTION_MAX, mine[id] + 1);
-          this.toast(`${POTIONS[id].name}: ${mine[id]} de ${POTION_MAX} na conta.`);
-        });
-        const row = el("div", "market-row");
-        const text = el("div");
-        const name = el("strong", "", POTIONS[id].name);
-        name.style.color = hex(POTIONS[id].color);
-        text.append(name, el("small", "muted", `Devolve ${Math.round(POTIONS[id].restore * 100)}% da ${POTIONS[id].stat === "hp" ? "vida" : "mana"} · ${have} de ${POTION_MAX} na conta`));
-        row.append(itemImg(id), text, buy);
-        list.append(row);
-      }
+      for (const id of POTION_IDS) list.append(this.potionRow(id));
       list.append(el("h3", "", SLOT_NAMES[this.marketSlot]));
       const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === this.marketSlot && (!f.classes || f.classes.includes(this.classId)));
       for (const family of families) {
@@ -1579,6 +1571,28 @@ export class Hub {
     }
     page.append(list);
     return page;
+  }
+
+  /** Linha de uma poção: o estoque da classe na conta e o botão de comprar mais uma (Mercado e aba Itens). */
+  private potionRow(id: PotionId) {
+    const price = MARKET_POTION_PRICES[id];
+    const have = (this.profile.potions[this.classId] ?? potionStock(null))[id];
+    const buy = el("button", "buy", have >= POTION_MAX ? "Cheio" : gold(price));
+    buy.disabled = have >= POTION_MAX || this.profile.gold < price;
+    buy.setAttribute("aria-label", `Comprar ${POTIONS[id].name} por ${price} de gold`);
+    buy.onclick = () => this.run(async () => {
+      this.profile.gold = await buyPotion(this.classId, id);
+      const mine = (this.profile.potions[this.classId] ??= potionStock(null));
+      mine[id] = Math.min(POTION_MAX, mine[id] + 1);
+      this.toast(`${POTIONS[id].name}: ${mine[id]} de ${POTION_MAX} na conta.`);
+    });
+    const row = el("div", "market-row");
+    const text = el("div");
+    const name = el("strong", "", `${POTIONS[id].name} · ${have}/${POTION_MAX}`);
+    name.style.color = hex(POTIONS[id].color);
+    text.append(name, el("small", "muted", `Devolve ${Math.round(POTIONS[id].restore * 100)}% da ${POTIONS[id].stat === "hp" ? "vida" : "mana"}`));
+    row.append(itemImg(id), text, buy);
+    return row;
   }
 
   private marketRow(def: ItemDef, action: HTMLButtonElement, note = "") {
