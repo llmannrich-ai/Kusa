@@ -55,7 +55,7 @@ contra um servidor já aberto, passando a URL:
 - `npx tsx apps/server/scripts/smoke.ts`: dois jogadores entram, o líder inicia e ambos fogem pelo portal.
 - `npx tsx apps/server/scripts/combat.ts`: um cavaleiro anda até o monstro mais próximo, segura o ataque básico, mata e ganha XP e loot.
 - `npx tsx apps/server/scripts/items.ts`: confere as regras da bag e um cavaleiro mata monstros até cair um item e o equipa ao passar por cima.
-- `npx tsx apps/server/scripts/potions.ts`: um cavaleiro caça até cair uma poção de vida, guarda, apanha e bebe.
+- `npx tsx apps/server/scripts/potions.ts`: um cavaleiro caça até guardar uma poção de vida (pega sozinha a até 1 tile), apanha e bebe.
 - `npx tsx apps/server/scripts/bag.ts`: um cavaleiro veste um item, guarda na bag, veste de novo, larga, pega de volta e foge levando o item na bag.
 - `npx tsx apps/server/scripts/perks.ts`: um cavaleiro caça até o nível 2, recebe 2 melhorias, uma fora da oferta é recusada e a escolhida é aplicada.
 - `npx tsx scripts/spells.ts` (de dentro de `apps/server`; sem servidor): numa arena, um feiticeiro no nível 8 conjura no toque rápido e com a mira.

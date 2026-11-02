@@ -8,7 +8,7 @@
  */
 import {
   MSG, SERVER_TICK_MS, Tile, createRng, generateDungeon, hasLineOfSight, isWalkable, tileAt, tileDistance,
-  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type RunEndedMessage, type SpellId, type SpellMessage, type TalentRanks,
+  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type PickupMessage, type RunEndedMessage, type SpellId, type SpellMessage, type TalentRanks,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { nextStep } from "../src/pathfinding.ts";
@@ -52,6 +52,7 @@ export function arena(options: ArenaOptions = {}) {
   const strikes: MonsterStrikeMessage[] = [];
   const attacks: AttackMessage[] = [];
   const notices: string[] = [];
+  const pickups: PickupMessage[] = [];
   let ended: unknown = null;
   const collect = (type: string, msg: any) => {
     if (type === MSG.damage) damage.push(msg);
@@ -61,6 +62,7 @@ export function arena(options: ArenaOptions = {}) {
     else if (type === MSG.monsterStrike) strikes.push(msg);
     else if (type === MSG.attack) attacks.push(msg);
     else if (type === MSG.notice) notices.push(msg.text);
+    else if (type === MSG.pickup) pickups.push(msg);
   };
   const host: HuntHost = {
     now: () => clock,
@@ -246,7 +248,7 @@ export function arena(options: ArenaOptions = {}) {
   const seat = (id = HERO) => any.seats.get(id);
   const now = () => clock;
   return {
-    hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices,
+    hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices, pickups,
     advance, until, place, spawn, choose, cast, face, ready, kill, walkTo, end, hitsFrom, where, brain, seat, now, free,
   };
 }

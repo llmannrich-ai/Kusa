@@ -37,6 +37,7 @@ import {
   type MonsterKind,
   type ChampionAffix,
   type NoticeMessage,
+  type PickupMessage,
   type ChainMessage,
   type CooldownMessage,
   type DotKind,
@@ -254,6 +255,8 @@ export class DungeonScene extends Phaser.Scene {
   private fields = new Map<string, Phaser.GameObjects.Container>();
   private chests = new Map<string, Phaser.GameObjects.Image>();
   private items = new Map<string, Phaser.GameObjects.Container>();
+  /** Item pego (id → sessionId de quem pegou), entre a mensagem `pickup` e a saída do item do estado. */
+  private pickedBy = new Map<string, string>();
   private targetRing!: Phaser.GameObjects.Graphics;
   /** Anel que enche enquanto o herói fica em cima de um portal (o servidor o leva depois de `PORTAL_HOLD_MS`). */
   private portalRing!: Phaser.GameObjects.Graphics;
@@ -382,8 +385,12 @@ export class DungeonScene extends Phaser.Scene {
 
     callbacks.onAdd("items", (item: GroundItemView, id: string) => this.addGroundItem(id, item));
     callbacks.onRemove("items", (_item: GroundItemView, id: string) => {
-      this.items.get(id)?.destroy();
+      const container = this.items.get(id);
       this.items.delete(id);
+      const taker = this.pickedBy.get(id);
+      this.pickedBy.delete(id);
+      if (container && taker) this.flyToHero(container, taker);
+      else container?.destroy();
     });
 
     // Cada covil com o boss morto abre o portal dele (nos mapas de um boss, só o bit 0).
@@ -397,6 +404,8 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.room.onMessage(MSG.damage, (msg: DamageMessage) => this.onDamage(msg));
+    // Chega antes do patch que tira o item do chão: guarda quem pegou para o item voar até ele.
+    this.room.onMessage(MSG.pickup, (msg: PickupMessage) => this.pickedBy.set(msg.id, msg.sessionId));
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
@@ -1227,6 +1236,7 @@ export class DungeonScene extends Phaser.Scene {
     const beam = this.add.image(x, y + 7, this.lootBeamTexture()).setOrigin(0.5, 1)
       .setDisplaySize(10 + tier * 2, beamHeight).setTint(color)
       .setAlpha(0.5 + tier * 0.15).setDepth(FX_DEPTH_BELOW_UI);
+    container.setData("beam", beam);
     container.once(Phaser.GameObjects.Events.DESTROY, () => beam.destroy());
     this.tweens.add({ targets: glow, alpha: { from: 0.55, to: 0.2 }, duration: 700, yoyo: true, repeat: -1 });
     this.tweens.add({ targets: beam, scaleX: beam.scaleX * 0.7, alpha: beam.alpha * 0.6, duration: 900, yoyo: true, repeat: -1, ease: "Sine.InOut" });
@@ -1238,6 +1248,47 @@ export class DungeonScene extends Phaser.Scene {
       },
     });
     this.items.set(id, container);
+  }
+
+  /**
+   * Item pego voa até o herói: o feixe apaga, o item sobe num arco, encolhe e entra no peito do herói (seguindo
+   * ele, se estiver andando), com um brilho na cor do anel no fim. Só desenho: o servidor já guardou o item.
+   */
+  private flyToHero(container: Phaser.GameObjects.Container, sessionId: string) {
+    const hero = this.avatars.get(sessionId)?.body;
+    if (!hero) {
+      container.destroy();
+      return;
+    }
+    this.tweens.killTweensOf(container.list);
+    const beam = container.getData("beam") as Phaser.GameObjects.Image | undefined;
+    if (beam) {
+      this.tweens.killTweensOf(beam);
+      this.tweens.add({ targets: beam, alpha: 0, duration: 120 });
+    }
+    // Some o anel e a sombra do chão: o que voa é o ícone.
+    container.list.slice(0, 4).forEach((part) => (part as Phaser.GameObjects.Ellipse).setVisible(false));
+    container.setDepth(FX_DEPTH_BELOW_UI);
+    const from = { x: container.x, y: container.y };
+    const ring = container.list[3] as Phaser.GameObjects.Ellipse;
+    const color = ring.strokeColor;
+    this.tweens.addCounter({
+      from: 0, to: 1, duration: 280, ease: "Quad.In",
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        const toX = hero.x;
+        const toY = hero.y - 14;
+        container.setPosition(from.x + (toX - from.x) * t, from.y + (toY - from.y) * t - Math.sin(Math.PI * t) * 18);
+        container.setScale(1 - 0.5 * t);
+      },
+      onComplete: () => {
+        container.destroy();
+        if (!hero.active) return;
+        const flash = this.add.circle(hero.x, hero.y - 14, 6, color, 0.8).setBlendMode(Phaser.BlendModes.ADD)
+          .setDepth(FX_DEPTH_BELOW_UI);
+        this.tweens.add({ targets: flash, scale: 2.4, alpha: 0, duration: 220, onComplete: () => flash.destroy() });
+      },
+    });
   }
 
   /** Textura do feixe de loot: faixa vertical suave que some no topo (gerada uma vez, branca, tingida por item). */

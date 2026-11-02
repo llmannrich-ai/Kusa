@@ -172,6 +172,7 @@ import {
   type MonsterKind,
   type MoveMessage,
   type NoticeMessage,
+  type PickupMessage,
   type PerkBonuses,
   type PerkStacks,
   type Rect,
@@ -517,6 +518,8 @@ export const START_ZONE_RADIUS = 12;
 export const MAX_START_MONSTERS = 3;
 /** Item no chão que ninguém pegou some depois deste tempo. */
 const ITEM_LIFETIME_MS = 120_000;
+/** O herói pega o que estiver a até esta distância (em tiles, contando a diagonal): o item voa até ele. */
+export const PICKUP_RANGE = 1;
 /** Intervalo mínimo entre dois avisos de bag cheia para o mesmo jogador. */
 const BAG_FULL_NOTICE_MS = 3000;
 /** Nome da melhoria escolhida no nível: fica 30% mais que os outros avisos (900 ms) para dar tempo de ler. */
@@ -5656,6 +5659,12 @@ export class Hunt {
     this.pickupBlocked.delete(id);
   }
 
+  /** Item pego do chão: avisa quem pegou (o cliente faz o item voar até o herói) e tira do chão. */
+  private takeGroundItem(id: string, sessionId: string) {
+    this.host.broadcast(MSG.pickup, { id, sessionId } satisfies PickupMessage);
+    this.removeGroundItem(id);
+  }
+
   // Menu da bag na hunt: o cliente só manda a intenção; aqui se valida e se troca.
 
   bagEquip(sessionId: string, msg: BagEquipMessage) {
@@ -5694,22 +5703,36 @@ export class Hunt {
   }
 
   /**
-   * Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag.
-   * Os outros itens vão para a bag. Com a bag cheia, nada sai do chão (o item trocado também fica
-   * no chão) e qualquer jogador pode pegar, não há dono. Poções vão para a mochila até o limite de cada tipo.
+   * Passar por cima de um item (ou a `PICKUP_RANGE` tile dele, contando a diagonal) pega o item, que voa até o herói.
+   * Item melhor que o equipado troca na hora e o antigo vai para a bag; os outros itens vão para a bag. Com a bag
+   * cheia, nada sai do chão (o item trocado também fica no chão) e qualquer jogador pode pegar, não há dono. Poções
+   * vão para a mochila até o limite de cada tipo. Com dois heróis perto do mesmo item, quem está em cima dele pega
+   * primeiro.
    */
   private pickUpItems() {
-    // Quem largou um item já saiu de cima dele: volta a poder pegar.
+    // Quem largou um item já se afastou dele: volta a poder pegar.
     this.pickupBlocked.forEach((sessionId, id) => {
       const p = this.state.players.get(sessionId);
       const it = this.state.items.get(id);
-      if (!p || !it || p.x !== it.x || p.y !== it.y) this.pickupBlocked.delete(id);
+      if (!p || !it || tileDistance(p.x, p.y, it.x, it.y) > PICKUP_RANGE) this.pickupBlocked.delete(id);
     });
+    for (let range = 0; range <= PICKUP_RANGE; range++) this.pickUpAt(range);
+  }
+
+  /** Item ao alcance de pegar: na distância dada e sem quina de parede entre os dois (na diagonal). */
+  private canReach(p: Player, it: GroundItem, range: number) {
+    if (tileDistance(p.x, p.y, it.x, it.y) !== range) return false;
+    if (p.x === it.x || p.y === it.y) return true;
+    return isWalkable(this.dungeon, it.x, p.y) || isWalkable(this.dungeon, p.x, it.y);
+  }
+
+  /** Pega os itens a exatamente `range` tiles de cada herói. */
+  private pickUpAt(range: number) {
     this.state.players.forEach((p, sessionId) => {
       // Bot não pega nada do chão: itens e poções ficam para os humanos.
       if (p.status !== "playing" || p.bot) return;
       const here = [...this.state.items.values()]
-        .filter((it) => it.x === p.x && it.y === p.y && this.pickupBlocked.get(it.id) !== sessionId)
+        .filter((it) => this.canReach(p, it, range) && this.pickupBlocked.get(it.id) !== sessionId)
         .sort((a, b) => itemScore(b.itemId) - itemScore(a.itemId));
       for (const ground of here) {
         if (isPotion(ground.itemId)) {
@@ -5719,7 +5742,7 @@ export class Hunt {
           p[field] += 1;
           const picked = this.seats.get(sessionId)?.stats.potions.picked;
           if (picked) picked[ground.itemId] = (picked[ground.itemId] ?? 0) + 1;
-          this.removeGroundItem(ground.id);
+          this.takeGroundItem(ground.id, sessionId);
           this.notice(p.x, p.y - 1, POTIONS[ground.itemId].name, POTIONS[ground.itemId].color);
           continue;
         }
@@ -5733,7 +5756,7 @@ export class Hunt {
           }
           p.bag.push(ground.itemId);
           seat?.stats.items.picked.push(ground.itemId);
-          this.removeGroundItem(ground.id);
+          this.takeGroundItem(ground.id, sessionId);
           this.notice(p.x, p.y - 1, `${RUNES[ground.itemId].name} 🎒${p.bag.length}/${BAG_SIZE}`, RUNES[ground.itemId].color);
           continue;
         }
@@ -5751,7 +5774,7 @@ export class Hunt {
           this.refreshGear(sessionId);
         }
         seat?.stats.items.picked.push(def.id);
-        this.removeGroundItem(ground.id);
+        this.takeGroundItem(ground.id, sessionId);
         // Vestido direto (slot vazio ou melhor que o vestido) não aparece na fileira da bag: o aviso diz que vestiu.
         const text = action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}`
           : action === "swap" ? `Vestiu ${def.name} · antigo 🎒${p.bag.length}/${BAG_SIZE}`
