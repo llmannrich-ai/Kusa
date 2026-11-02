@@ -370,6 +370,8 @@ interface Seat {
   oathBy: string;
   oathUntil: number;
   oathShare: number;
+  /** Olho da Tempestade: até `until`, um raio a cada `everyMs` (próximo em `nextAt`) e saltos a mais nas magias de energia. */
+  stormFx: { until: number; nextAt: number; everyMs: number; amount: number; range: number; jumps: number } | null;
   /** Dança do Vento: cargas que sobram da magia `spellId` até `until`. */
   charges: { spellId: string; left: number; until: number } | null;
   // Dons da costela de passivas do Cavaleiro.
@@ -734,7 +736,7 @@ export class Hunt {
       circuit: {}, circuitReady: false, castBoost: 0, castReactRadius: 0, castReactPower: 1, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
       eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false, quiverCount: 0,
-      rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0, oathBy: "", oathUntil: 0, oathShare: 0, charges: null,
+      rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0, oathBy: "", oathUntil: 0, oathShare: 0, charges: null, stormFx: null,
       aura: bonus, perks: {}, perkBonus: heroBonuses({}), perkLevels: [], bonus, gear: gearStats([]), bagFullNoticeUntil: 0, dot: null, slow: null, effects: {}, effectImmuneUntil: {}, stats: newRunStats(), bossRunes: new Set(),
       landscape: false, recruit: { talents: recruit.talents, spellXp: recruit.spellXp, activeSpells: [...(recruit.activeSpells ?? [])], name: "", classId },
       botOwner: "",
@@ -1239,6 +1241,7 @@ export class Hunt {
     this.state.players.forEach((p, sessionId) => this.channelTick(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.auraTick(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.orbitTick(sessionId, p, now));
+    this.state.players.forEach((p, sessionId) => this.stormTick(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
     this.tickFields(now);
@@ -1813,6 +1816,8 @@ export class Hunt {
       // O alvo do toque rápido continua valendo: a flecha o segue mesmo se ele sair da reta durante o voo.
     }
 
+    // Fenda Arcana: de onde o herói saiu (explode lá também).
+    let blinkFrom: { x: number; y: number } | null = null;
     // Rolamento: o herói salta na hora, antes do resto do efeito. Toque rápido foge do alvo; mirado, vai para o ponto.
     if (spell.dash) {
       const threat = !aim ? target : undefined;
@@ -1827,6 +1832,13 @@ export class Hunt {
         seat.stats.castFails.noRoom++;
         this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Sem espaço para rolar", color: 0xbdc3c7 } satisfies NoticeMessage);
         return;
+      }
+      if (spell.blink) {
+        // A explosão é no ponto de chegada, não no monstro do toque rápido.
+        target = undefined;
+        blinkFrom = { x: p.x, y: p.y };
+        tx = landing.x;
+        ty = landing.y;
       }
       p.x = landing.x;
       p.y = landing.y;
@@ -2003,6 +2015,12 @@ export class Hunt {
       this.castSweep(sessionId, spell, rank, tx, ty, amount, line, slot, ox, oy);
     } else {
       this.after(ms, () => this.applySpell(sessionId, spell, rank, target?.id, tx, ty, amount * hitFar, line, slot, ally));
+      // Fenda Arcana: a explosão também sai de onde o herói estava.
+      if (blinkFrom) {
+        const from = blinkFrom;
+        this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: from.x, y: from.y, tx: from.x, ty: from.y, ms: 0, echo: true } satisfies SpellMessage);
+        this.applySpell(sessionId, spell, rank, undefined, from.x, from.y, amount, undefined, slot);
+      }
     }
     // Maestria que repete (Giro da Lâmina, Terremoto, Esfera Sombria): o efeito volta mais fraco, sem gastar mana.
     // Em volta de si, segue o herói; com alvo, segue o monstro se ele ainda estiver vivo.
@@ -2243,6 +2261,11 @@ export class Hunt {
       }
       c.streak = streak;
       this.applySpell(sessionId, c.spell, c.rank, undefined, end.x, end.y, c.amount, tiles, c.slot);
+      // Hálito do Dragão: o fogo fica no chão, na ponta do leque.
+      if (def.fireMs && (end.x !== p.x || end.y !== p.y)) {
+        const fire: SpellDef = { ...SPELLS.explosive_volley, radius: 1, field: { kind: "zone", ms: def.fireMs, tickMs: 1000, max: 4 } };
+        this.placeField(sessionId, p, seat, fire, 0, end.x, end.y, this.baseDamage(sessionId, p, "spell") * HAND.firePerSec, "fire");
+      }
     }
     if (now >= c.until) seat.channel = null;
   }
@@ -2467,7 +2490,10 @@ export class Hunt {
         const element = spell.element ? 1 + (seat.gifts.elementDamage[spell.element] ?? 0) : 1;
         // Flecha do Ponto Fraco: mais forte em quem já tinha todos os estados pedidos antes do golpe.
         const combo = spell.comboBonus && spell.comboBonus.needs.every((k) => before[k]) ? spell.comboBonus.power : 1;
-        const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * element * combo * this.farBonus(seat, p, m)));
+        // Avalanche: quem já estava congelado Estilhaça (o Cristalizar soma).
+        const avalanche = spell.shatterOn && before.frozen ? 1 + SHATTER_BONUS + seat.gifts.shatterDamage : 1;
+        if (avalanche > 1) this.reacted("shatter", sessionId, m.x, m.y);
+        const value = Math.min(m.hp, rollDamage(this.random, amount * power[i] * execute * undead * shattered * element * combo * avalanche * this.farBonus(seat, p, m)));
         dealt += value;
         // Golpe Exposto: o atordoar do próprio golpe já vale para o Exposto (as outras reações seguem o estado de antes).
         const states = spell.exposeNow && before.marked && spell.stunMs ? { ...before, stunned: true } : before;
@@ -2601,6 +2627,13 @@ export class Hunt {
       p.guarded = true;
     }
 
+    // Olho da Tempestade: os raios começam agora (`stormTick`).
+    if (spell.storm && p.status === "playing") {
+      const st = spell.storm;
+      seat.stormFx = { until: now + st.ms, nextAt: now, everyMs: st.everyMs, amount: this.baseDamage(sessionId, p, "spell") * st.damage, range: st.range, jumps: st.jumps };
+      seat.stats.buffMs += st.ms;
+      this.stormTick(sessionId, p, now);
+    }
     // Coroa Solar: o anel começa agora e gira em volta do herói (`orbitTick`).
     if (spell.orbit && p.status === "playing") {
       seat.orbitFx = { spell: { ...spell, orbit: undefined }, rank, slot, amount, until: now + spell.orbit.ms, nextAt: now };
@@ -2724,6 +2757,23 @@ export class Hunt {
     };
     p.buff = spell.id;
     seat.stats.buffMs += b.ms;
+  }
+
+  /** Olho da Tempestade: a cada tanto, um raio cai no monstro mais perto do feiticeiro. */
+  private stormTick(sessionId: string, p: Player, now: number) {
+    const seat = this.seats.get(sessionId);
+    const st = seat?.stormFx;
+    if (!seat || !st) return;
+    if (p.status !== "playing" || now >= st.until) {
+      seat.stormFx = null;
+      return;
+    }
+    if (now < st.nextAt) return;
+    st.nextAt = now + st.everyMs;
+    const target = this.nearestMonsterTo(p.x, p.y, st.range);
+    if (!target) return;
+    this.host.broadcast(MSG.spell, { from: sessionId, spellId: "storm_eye", x: target.x, y: target.y, tx: target.x, ty: target.y, ms: 0, echo: true } satisfies SpellMessage);
+    this.damageMonster(target, rollDamage(this.random, st.amount), { attacker: sessionId, fromX: target.x, fromY: target.y, fx: "energy" }, "storm_eye");
   }
 
   /** Coroa Solar: a cada pulso, o anel acerta quem está na faixa dele em volta do herói (onde ele estiver agora). */
@@ -3093,6 +3143,12 @@ export class Hunt {
    * (marca mais longa e roubo de mana nas magias de trevas).
    */
   private markedSpell(seat: Seat, spell: SpellDef): SpellDef {
+    // Olho da Tempestade: as magias de energia saltam mais (as de alvo único sem cadeia ganham uma).
+    const storm = seat.stormFx && this.host.now() < seat.stormFx.until ? seat.stormFx : null;
+    if (storm && spell.element === "energy" && !spell.storm) {
+      if (spell.chain) spell = { ...spell, chain: { ...spell.chain, jumps: spell.chain.jumps + storm.jumps } };
+      else if (spell.radius === 0 && !spell.shape && !spell.spread) spell = { ...spell, chain: { jumps: storm.jumps, range: 3, falloff: 0.3 } };
+    }
     const conductor = this.marks(seat, "conductor");
     if (spell.chain && conductor >= 1) spell = { ...spell, chain: { ...spell.chain, jumps: spell.chain.jumps + CONDUCTOR.jumps * (conductor >= 4 ? 2 : 1) } };
     const cold = this.marks(seat, "cold_heart");

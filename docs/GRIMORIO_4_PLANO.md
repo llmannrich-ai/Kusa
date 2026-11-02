@@ -710,6 +710,13 @@ parou), `cross` (as 4 retas, a A5), `bombard` (bombas em onda, uma a cada 0,15 s
 (Santuário: o corte de dano é o do Grito de Guerra, renovado a cada pulso). Cruz Flamejante e Bombardeio são de fogo
 (acendem o Barril de Pólvora); Disparo Fantasma e Santuário, de luz. Migration `20261102240000_s3_paladino.sql`.
 
+**Fase 6 (Feiticeiro), como foi entregue:** linha VIII no Raio e no Gelo, IX nas Trevas. Peças: `storm` (raio a cada
+segundo, saltos a mais nas magias de energia; a de alvo único sem cadeia ganha 2 saltos), `channel.fireMs` (o sopro deixa
+fogo na ponta do leque a cada pulso, até 4 focos), `shatterOn` (o Estilhaço da Avalanche soma o Cristalizar, mas não
+quebra o gelo novo) e `blink` (a Fenda Arcana explode na saída e na chegada, com as cargas da Dança do Vento). O Olhar do
+Abismo é a primeira magia que enfraquece por conta própria (a peça A2 das Maestrias da fase 5). Migration
+`20261102250000_s3_feiticeiro.sql`.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

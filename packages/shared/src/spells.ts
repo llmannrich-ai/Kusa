@@ -85,6 +85,7 @@ export type SpellId =
   // Grimório 4.0, fase 6: magias do slot 3 de cada lado da especialização.
   | "massacre" | "blade_storm" | "protector_oath" | "mountain" | "rally_cry" | "challenge_chains"
   | "phantom_shot" | "wind_dance" | "flaming_cross" | "sanctuary" | "bombardment" | "minefield"
+  | "storm_eye" | "dragon_breath" | "avalanche" | "arcane_rift" | "army_of_dead" | "abyss_gaze"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -141,7 +142,8 @@ export interface SpellDef {
    * `freezeTicks`, o monstro pego tantos pulsos seguidos fica preso por `freezeMs` (Sopro Gélido). Mana e recarga saem
    * uma vez, no começo.
    */
-  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number };
+  /** `fireMs`: cada pulso deixa o chão em chamas na ponta do leque por este tempo (Hálito do Dragão). */
+  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number; fireMs?: number };
   /**
    * Campo no chão onde a magia cai, por `ms`:
    * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
@@ -273,6 +275,15 @@ export interface SpellDef {
    * perto para a longe; com `fireMs`, cada uma deixa o chão em chamas.
    */
   bombard?: { count: number; stepMs: number; fireMs?: number };
+  /**
+   * Olho da Tempestade: por `ms`, um raio (`damage` × dano base) cai num monstro a até `range` a cada `everyMs`, e as
+   * magias de energia de quem conjura saltam `jumps` vezes a mais.
+   */
+  storm?: { ms: number; everyMs: number; damage: number; range: number; jumps: number };
+  /** Avalanche: em quem já estava congelado antes do golpe, o golpe Estilhaça (dano a mais do Estilhaço). */
+  shatterOn?: boolean;
+  /** Fenda Arcana: o teleporte (`dash.teleport`) explode no ponto de saída e no de chegada (no raio da magia). */
+  blink?: boolean;
   /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
@@ -1218,6 +1229,43 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 50, cooldownMs: 30000, aim: "target", range: 4, radius: 1, coneAngle: 120, damage: 1.5, rootMs: 2000,
     field: { kind: "trap", ms: 30000, count: 5 },
   }),
+  // Fase 6: slot 3 de cada lado da especialização do Feiticeiro.
+  storm_eye: spell({
+    id: "storm_eye", classId: "sorcerer", slot: 2, name: "Olho da Tempestade", icon: "⛈️", color: 0x9ec5ff, element: "energy",
+    description: "Por 8 s, um raio cai num monstro perto a cada segundo, e suas magias de energia saltam 2 vezes a mais.",
+    manaCost: 60, cooldownMs: 34000, aim: "self", range: 0, radius: 0,
+    storm: { ms: 8000, everyMs: 1000, damage: 1, range: 5, jumps: 2 },
+  }),
+  dragon_breath: spell({
+    id: "dragon_breath", classId: "sorcerer", slot: 2, name: "Hálito do Dragão", icon: "🐉", color: 0xff7f27, element: "fire",
+    description: "Cospe fogo num leque largo enquanto segura o botão (3 s): queima quem pega e deixa o chão em chamas.",
+    manaCost: 60, cooldownMs: 32000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.6, dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+    channel: { ms: 3000, tickMs: 250, moveSlow: 0.5, fireMs: 3000 },
+  }),
+  avalanche: spell({
+    id: "avalanche", classId: "sorcerer", slot: 2, name: "Avalanche", icon: "🏔️", color: 0xd6f1ff, element: "ice",
+    description: "Uma avalanche em leque, 6 tiles: fere forte e congela 2 s; quem já estava congelado Estilhaça.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 90, wave: { stepMs: 90 },
+    damage: 2, rootMs: 2000, shatterOn: true,
+  }),
+  arcane_rift: spell({
+    id: "arcane_rift", classId: "sorcerer", slot: 2, name: "Fenda Arcana", icon: "🌀", color: 0x7c4dff, element: "energy",
+    description: "Abre uma fenda e aparece até 5 tiles adiante: explode onde você estava e onde chegou. 2 cargas em 8 s.",
+    manaCost: 30, cooldownMs: 26000, aim: "target", range: 5, radius: 1, damage: 1.8,
+    dash: { tiles: 5, teleport: true }, blink: true, charges: { count: 2, windowMs: 8000 },
+  }),
+  army_of_dead: spell({
+    id: "army_of_dead", classId: "sorcerer", slot: 2, name: "Exército dos Mortos", icon: "💀", color: 0xdcdde1, element: "dark",
+    description: "Ergue 4 esqueletos que lutam por você por 20 s.",
+    manaCost: 70, cooldownMs: 40000, aim: "self", range: 0, radius: 0, summon: { kind: "skeleton", count: 4, durationMs: 20000 },
+  }),
+  abyss_gaze: spell({
+    id: "abyss_gaze", classId: "sorcerer", slot: 2, name: "Olhar do Abismo", icon: "👁️", color: 0x4a148c, element: "dark",
+    description: "Um olhar em leque, 6 tiles: marca os monstros (+30% de dano da equipe) e os enfraquece (30% menos dano) por 6 s.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 60, damage: 0.4,
+    mark: { pct: 0.3, ms: 6000 }, weaken: { pct: 0.3, ms: 6000 },
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1741,6 +1789,12 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   pack_hunt: { text: "A caça dura o dobro (12 s).", changes: { hunt: { ms: 12000, damage: 0.5 } } },
   twin_sprout: { text: "Cabem 2 sementes no chão ao mesmo tempo.", changes: { field: { kind: "trap", ms: 20000, look: "sprout", max: 2 } } },
   bramble_embrace: { text: "Os espinheiros pegam a até 3 tiles.", changes: { radius: 3 } },
+  storm_eye: { text: "A tempestade dura 12 s.", changes: { storm: { ms: 12000, everyMs: 1000, damage: 1, range: 5, jumps: 2 } } },
+  dragon_breath: { text: "O leque abre 120°.", changes: { coneAngle: 120 } },
+  avalanche: { text: "Congela 3 s.", changes: { rootMs: 3000 } },
+  arcane_rift: { text: "3 cargas.", changes: { charges: { count: 3, windowMs: 8000 } } },
+  army_of_dead: { text: "Ergue 6 esqueletos.", changes: { summon: { kind: "skeleton", count: 6, durationMs: 20000 } } },
+  abyss_gaze: { text: "O olhar abre 90°.", changes: { coneAngle: 90 } },
   phantom_shot: { text: "Marca 5 monstros.", changes: { phantom: { count: 5, range: 7, delayMs: 1500 } } },
   wind_dance: { text: "4 cargas.", changes: { charges: { count: 4, windowMs: 6000 } } },
   flaming_cross: { text: "Retas de 7 tiles.", changes: { cross: 7 } },
