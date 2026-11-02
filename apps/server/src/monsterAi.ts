@@ -6,6 +6,7 @@ import {
   ENRAGE_COOLDOWN,
   ENRAGE_HP,
   MONSTER_SPEED_SCALE,
+  paced,
   MSG,
   SPECIAL_FIRST_DELAY,
   Tile,
@@ -238,7 +239,7 @@ export class MonsterAi {
     // Habilidades: a primeira de cada só sai um pouco depois de notar alguém (não junto com o aggro).
     if (def.abilities && !brain.engulfing) {
       for (const a of def.abilities) {
-        if (brain.abilityReadyAt[a.id] === undefined) brain.abilityReadyAt[a.id] = now + a.cooldownMs * SPECIAL_FIRST_DELAY * jitter(this.w.random);
+        if (brain.abilityReadyAt[a.id] === undefined) brain.abilityReadyAt[a.id] = now + paced(a.cooldownMs) * SPECIAL_FIRST_DELAY * jitter(this.w.random);
         if (now < brain.abilityReadyAt[a.id] || !this.usable(m, brain, a, dist, sees)) continue;
         if (this.useAbility(m, brain, a, targetId, target, now)) return;
       }
@@ -394,7 +395,7 @@ export class MonsterAi {
       }
     }
     // Não emenda o ataque básico logo depois da habilidade.
-    brain.nextAttackAt = Math.max(brain.nextAttackAt, now + brain.def.attackCooldownMs * 0.5);
+    brain.nextAttackAt = Math.max(brain.nextAttackAt, now + paced(brain.def.attackCooldownMs) * 0.5);
 
     if (a.shape === "dive") {
       this.dive(m, brain, a, targetId);
@@ -430,7 +431,7 @@ export class MonsterAi {
   }
 
   private cooldown(brain: Brain, a: MonsterAbility, now: number) {
-    brain.abilityReadyAt[a.id] = now + a.cooldownMs * jitter(this.w.random) * (brain.enraged ? ENRAGE_COOLDOWN : 1);
+    brain.abilityReadyAt[a.id] = now + paced(a.cooldownMs) * jitter(this.w.random) * (brain.enraged ? ENRAGE_COOLDOWN : 1);
   }
 
   private strike(m: Monster, a: MonsterAbility, tx: number, ty: number, tiles: { x: number; y: number }[], rising?: boolean) {
@@ -547,12 +548,12 @@ export class MonsterAi {
     const traits = brain.traits;
     // Ilusão: só finge atacar.
     if (traits.illusion) {
-      brain.nextAttackAt = now + def.attackCooldownMs;
+      brain.nextAttackAt = now + paced(def.attackCooldownMs);
       return;
     }
     const leader = this.leaderAura(m);
     const frenzy = traits.frenzy && m.hp <= m.maxHp * traits.frenzy.belowHp ? traits.frenzy.haste : 0;
-    brain.nextAttackAt = now + def.attackCooldownMs * Math.max(0.4, 1 - frenzy - leader.haste);
+    brain.nextAttackAt = now + paced(def.attackCooldownMs) * Math.max(0.4, 1 - frenzy - leader.haste);
     let damage = brain.damage * (1 + leader.damage);
     // Táticas de Bando: outro monstro colado no mesmo alvo.
     if (traits.packTactics && this.allyBeside(m, target)) damage *= 1 + traits.packTactics;
