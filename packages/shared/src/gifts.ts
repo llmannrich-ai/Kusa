@@ -82,6 +82,18 @@ export interface GiftEffects {
   echoShield: number;
   /** Dano a mais na reação Exposto (Ordem de Execução). */
   exposedDamage: number;
+  /** Força das flechas do leque do básico, somada a `QUIVER.base` (Aljava Larga). */
+  quiverPower: number;
+  /** Dano a mais no Exposto e em monstro marcado e sangrando (Ponto Fraco). */
+  weakSpot: number;
+  /** Dano a mais do Incandescer (Aurora). */
+  incandesceDamage: number;
+  /** Dano por segundo da vela (vezes o dano mágico), somado a `CANDLE.base` (Vela Votiva). */
+  candlePower: number;
+  /** Dano a mais dos campos no chão (Estrepes Afiados). */
+  fieldDamage: number;
+  /** Força da explosão da armadilha em monstro queimando, somada a 1 (Pavio Curto). */
+  fusePower: number;
   /** Marcos de cada Dom (0 a `GIFT_MILESTONES`): nível ÷ `GIFT_MILESTONE_EVERY`. Só os Dons que já têm marcos. */
   marks: Partial<Record<GiftId, number>>;
 }
@@ -91,7 +103,8 @@ export const NO_GIFTS: GiftEffects = {
   ccDuration: 0, darkLifesteal: 0, summonBoost: 0, healPower: 0, dotDamage: 0,
   lowHpDamage: 0, stillGuard: 0, bannerHaste: 0, dashBasic: 0, graceDamage: 0, burnChance: 0, circuitDamage: 0,
   frostBarrier: 0, raiseChance: 0, fourthBite: 0, cycleHeal: 0, skyStrike: 0,
-  hemorrhageDamage: 0, furyStack: 0, anvilStunMs: 0, chimeReflect: 0, echoShield: 0, exposedDamage: 0, marks: {},
+  hemorrhageDamage: 0, furyStack: 0, anvilStunMs: 0, chimeReflect: 0, echoShield: 0, exposedDamage: 0,
+  quiverPower: 0, weakSpot: 0, incandesceDamage: 0, candlePower: 0, fieldDamage: 0, fusePower: 0, marks: {},
 };
 
 /** Raio da Voz de Comando. */
@@ -131,6 +144,20 @@ export const CHIME = { radius: 1, mana: 0.01, stunMs: 300 } as const;
 export const WAR_ECHO = { max: 8, maxLater: 10, ms: 4000, msLater: 6000, slow: 0.15, slowMs: 4000, heal: 0.01, echoMs: 2000, echo: 0.5 } as const;
 /** Ordem de Execução: o Exposto que dura depois do atordoar, o atordoar da marca e a marca ao matar. */
 export const ORDER = { graceMs: 1000, markStunMs: 300, killMark: { pct: 0.15, ms: 5000 } } as const;
+
+// Dons da costela de passivas do Paladino.
+/** Aljava Larga: a cada tantos básicos, um leque de flechas (força base, flechas, abertura). */
+export const QUIVER = { base: 0.3, every: 5, everyMid: 4, everyLater: 3, arrows: 3, arrowsMid: 4, arrowsLater: 5, angle: 50 } as const;
+/** Ponto Fraco: o sangramento da marca, o tempo de graça do Exposto, sangramento em marcado e a marca ao matar. */
+export const WEAK = { markBleedMs: 2000, markBleedPerSec: 0.3, graceMs: 1000, markedBleed: 0.2, killMark: { pct: 0.15, ms: 5000 } } as const;
+/** Aurora: raio do Incandescer, ofuscar a mais em quem queima, queimadura mais longa, cura e ofuscar da explosão. */
+export const DAWN = { radius: 2, dazzleMs: 300, burnMs: 1000, heal: 0.01, healRadius: 3, stunMs: 500 } as const;
+/** Vela Votiva: força base, duração, ofuscar, velas por morto-vivo e armadura. */
+export const CANDLE = { base: 0.1, ms: 3000, msMid: 4000, msLater: 5000, radius: 1, dazzleMs: 300, armor: 3 } as const;
+/** Estrepes Afiados: lentidão nos campos, duração a mais, sangramento e os estrepes de quem morre num campo. */
+export const SPIKES = { slow: 0.05, slowMs: 1500, ms: 1000, bleedPerSec: 0.3, bleedMs: 2000 } as const;
+/** Pavio Curto: raio, queimadura da explosão, empurrão e a armadilha seguinte. */
+export const FUSE = { radius: 1, radiusLater: 2, burnPerSec: 0.3, burnMs: 3000, push: 1, chainTiles: 4 } as const;
 
 // Números dos marcos do Paladino.
 /** Olhar Paciente: alcance do básico, o atordoar no alcance máximo (com recarga) e a flecha dupla. */
@@ -218,6 +245,7 @@ export type GiftId =
   | "circuit" | "frost_reserve" | "ossuary"
   | "instinct" | "cycle" | "closed_sky"
   | "blood_steel" | "rising_fury" | "anvil" | "chime" | "war_echo" | "execution_order"
+  | "wide_quiver" | "weak_spot" | "dawn" | "votive_candle" | "sharp_caltrops" | "short_fuse"
   | "horde_bond" | "ancestor_stance" | "forge_spark";
 
 export interface GiftDef {
@@ -632,6 +660,78 @@ export const GIFTS: Record<GiftId, GiftDef> = {
       "monstro colado num Exposto também conta como Exposto",
       `+${(ORDER.graceMs * 2) / 1000}s depois do atordoar`,
       "matar um Exposto marca o monstro mais perto",
+    ],
+  }),
+  wide_quiver: gift({
+    id: "wide_quiver", classId: "paladin", col: 0, rib: 1, name: "Aljava Larga", icon: "🪶",
+    description: `A cada ${QUIVER.every} ataques básicos, o último solta junto um leque de ${QUIVER.arrows} flechas.`,
+    perRank: 0.02, apply: (fx, v) => { fx.quiverPower += v; }, text: (v) => `flechas do leque com ${pct(QUIVER.base + v)} do básico`,
+    milestones: [
+      `a cada ${QUIVER.everyMid}º básico`,
+      `${QUIVER.arrowsMid} flechas`,
+      `a cada ${QUIVER.everyLater}º básico`,
+      `${QUIVER.arrowsLater} flechas`,
+      "as flechas do leque atravessam 1 monstro",
+    ],
+  }),
+  weak_spot: gift({
+    id: "weak_spot", classId: "paladin", col: 0, rib: 2, name: "Ponto Fraco", icon: "🎯",
+    description: "Mais dano no Exposto (marcado e atordoado) e em monstro marcado e sangrando.",
+    perRank: 0.024, apply: (fx, v) => { fx.weakSpot += v; }, text: (v) => `+${pct(v)} de dano no Exposto e em marcado sangrando`,
+    milestones: [
+      `suas marcas fazem sangrar por ${WEAK.markBleedMs / 1000}s`,
+      `o Exposto vale ${WEAK.graceMs / 1000}s depois do atordoar`,
+      `sangramento em monstro marcado fere +${pct(WEAK.markedBleed)}`,
+      `${(WEAK.graceMs * 2) / 1000}s depois do atordoar`,
+      "matar um monstro marcado marca o mais perto",
+    ],
+  }),
+  dawn: gift({
+    id: "dawn", classId: "paladin", col: 1, rib: 1, name: "Aurora", icon: "🔆",
+    description: "O Incandescer (ofuscado + fogo) explode mais forte.",
+    perRank: 0.03, apply: (fx, v) => { fx.incandesceDamage += v; }, text: (v) => `+${pct(v)} de dano do Incandescer`,
+    milestones: [
+      `o Incandescer explode em raio ${DAWN.radius}`,
+      `monstro ofuscado que começa a queimar fica ofuscado +${DAWN.dazzleMs / 1000}s`.replace(".", ","),
+      `suas queimaduras duram +${DAWN.burnMs / 1000}s`,
+      `o Incandescer cura ${pct(DAWN.heal)} dos aliados perto`,
+      `o Incandescer ofusca quem pega por ${DAWN.stunMs / 1000}s`.replace(".", ","),
+    ],
+  }),
+  votive_candle: gift({
+    id: "votive_candle", classId: "paladin", col: 1, rib: 2, name: "Vela Votiva", icon: "🕯️",
+    description: `Monstro morto por luz deixa uma vela por ${CANDLE.ms / 1000}s que fere em raio ${CANDLE.radius}.`,
+    perRank: 0.02, apply: (fx, v) => { fx.candlePower += v; }, text: (v) => `vela com ${pct(CANDLE.base + v)} do dano mágico por segundo`,
+    milestones: [
+      `a vela dura ${CANDLE.msMid / 1000}s`,
+      `a vela ofusca quem passa por ${CANDLE.dazzleMs / 1000}s`.replace(".", ","),
+      "2 velas quando morre um morto-vivo",
+      `a vela dura ${CANDLE.msLater / 1000}s`,
+      `a vela dá +${CANDLE.armor} de armadura aos aliados perto`,
+    ],
+  }),
+  sharp_caltrops: gift({
+    id: "sharp_caltrops", classId: "paladin", col: 2, rib: 1, name: "Estrepes Afiados", icon: "🪤",
+    description: "Seus campos no chão (armadilhas, chão em chamas, zonas) ferem mais.",
+    perRank: 0.012, apply: (fx, v) => { fx.fieldDamage += v; }, text: (v) => `+${pct(v)} de dano dos seus campos`,
+    milestones: [
+      `seus campos deixam ${pct(SPIKES.slow)} lento`,
+      `campos +${SPIKES.ms / 1000}s`,
+      `seus campos fazem sangrar por ${SPIKES.bleedMs / 1000}s`,
+      `campos +${(SPIKES.ms * 2) / 1000}s`,
+      "monstro que morre num campo seu deixa estrepes no tile",
+    ],
+  }),
+  short_fuse: gift({
+    id: "short_fuse", classId: "paladin", col: 2, rib: 2, name: "Pavio Curto", icon: "🧨",
+    description: `Armadilha que dispara em monstro queimando explode em raio ${FUSE.radius}.`,
+    perRank: 0.04, apply: (fx, v) => { fx.fusePower += v; }, text: (v) => `explosão de ${pct(1 + v)} do dano mágico`,
+    milestones: [
+      `raio ${FUSE.radiusLater}`,
+      `a explosão queima por ${FUSE.burnMs / 1000}s`,
+      "a armadilha queima quem ela prende (e a explosão sai sempre)",
+      `a explosão empurra ${FUSE.push} tile`,
+      "a explosão dispara a sua armadilha mais perto",
     ],
   }),
   // Xamã Orc: Dons do fundo, embaixo dos Ápices (com os efeitos que já existem nos outros Dons).

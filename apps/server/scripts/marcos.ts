@@ -15,11 +15,13 @@
  *     Seiva Venenosa (duração, lentidão, veneno que pula), Instinto (série, atordoar), Ciclo (onda maior, raiz, escudo)
  *     e Céu Fechado (o raio envenena, prende e cai 2 vezes);
  *   - Dons da costela de passivas do Cavaleiro (fase 4b): lugar na árvore, Sangue no Aço, Fúria Crescente, Bigorna,
- *     Repique, Eco de Guerra e Ordem de Execução, com o efeito por nível e os marcos.
+ *     Repique, Eco de Guerra e Ordem de Execução, com o efeito por nível e os marcos;
+ *   - Dons da costela do Paladino: Aljava Larga (leque de flechas no básico), Ponto Fraco, Aurora, Vela Votiva,
+ *     Estrepes Afiados e Pavio Curto.
  * Uso: npx tsx scripts/marcos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  ALLY_DAMAGE_RADIUS, ANVIL, BLOOD, EXPOSED_BONUS, FURY, talentTree, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
+  ALLY_DAMAGE_RADIUS, CANDLE, QUIVER, WEAK, ANVIL, BLOOD, EXPOSED_BONUS, FURY, talentTree, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
   type ClassId, type GiftId, type TalentRanks,
 } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
@@ -543,6 +545,8 @@ test("Eco de Guerra: provocar dá escudo por monstro provocado", () => {
 test("Ordem de Execução: o Exposto recebe +60% e vale 2 s depois do atordoar", () => {
   const exposedHit = (rank: number, afterStun: boolean) => {
     const a = markArena("knight", rank ? { execution_order: rank } : {}, { monsterHp: 400 });
+    // Relógio adiantado: o atordoar "1,5 s atrás" precisa de uma hora positiva.
+    a.advance(3000);
     const m = a.place("lizardfolk", 2, 0);
     const b = a.brain(m);
     b.markUntil = a.now() + 10000;
@@ -555,6 +559,92 @@ test("Ordem de Execução: o Exposto recebe +60% e vale 2 s depois do atordoar",
   const order = exposedHit(25, false);
   check(Math.abs(order / plainExposed - (1 + EXPOSED_BONUS + 0.6) / (1 + EXPOSED_BONUS)) < 0.03, `${plainExposed} → ${order}`);
   check(exposedHit(25, true) > exposedHit(0, true), "1,5 s depois do atordoar ainda devia contar");
+});
+
+console.log("Costela de passivas (Paladino):");
+test("dois Dons por ramo nas linhas VI e VII do Paladino", () => {
+  const ribs = talentTree("paladin").filter((t) => t.kind === "gift" && t.lane === -2 && t.row >= 6);
+  check(ribs.length === 6, `${ribs.length} Dons na costela`);
+});
+test("Aljava Larga: no marco 5, a cada 3 básicos sai um leque de 5 flechas", () => {
+  const a = markArena("paladin", { wide_quiver: 25 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 3, 0);
+  const side = a.place("lizardfolk", 3, 1);
+  a.any.root(side, a.brain(side), a.now() + 60000);
+  a.any.root(m, a.brain(m), a.now() + 60000);
+  const shots = a.attacks.length;
+  a.p.target = m.id;
+  a.seat().attacking = true;
+  a.seat().targetLocked = true;
+  a.until(() => a.seat().quiverCount >= QUIVER.everyLater, 8000, "não deu 3 básicos");
+  a.advance(800);
+  check(a.seat().stats.giftProcs.wide_quiver === 1 && a.attacks.length - shots >= QUIVER.everyLater + QUIVER.arrowsLater, `flechas ${a.attacks.length - shots}`);
+});
+test("Ponto Fraco: marcado e sangrando leva +60%, e a marca faz sangrar", () => {
+  const hitMarked = (rank: number) => {
+    const a = markArena("paladin", rank ? { weak_spot: rank } : {}, { monsterHp: 400 });
+    const m = a.place("lizardfolk", 2, 0);
+    a.brain(m).markUntil = a.now() + 10000;
+    a.any.applyDot(m, a.brain(m), "outro", "teste", 1, 5000, "bleed", a.now());
+    const hp = m.hp;
+    a.any.damageMonster(m, 100, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "arrow" }, "basic");
+    return hp - m.hp;
+  };
+  check(Math.abs(hitMarked(25) / hitMarked(0) - 1.6) < 0.05, `${hitMarked(0)} → ${hitMarked(25)}`);
+  const a = markArena("paladin", { weak_spot: 5 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.applySpell(HERO, { ...SPELLS.holy_arrow, mark: { pct: 0.1, ms: 3000 } }, 0, m.id, m.x, m.y, 10, undefined, 0);
+  check(a.brain(m).dot?.kind === "bleed" && a.brain(m).dot.until - a.now() >= WEAK.markBleedMs - 1, `dot ${a.brain(m).dot?.kind}`);
+});
+test("Aurora: Incandescer +75% e em raio 2", () => {
+  const burst = (rank: number) => {
+    const a = markArena("paladin", rank ? { dawn: rank } : {}, { monsterHp: 400 });
+    const m = a.place("lizardfolk", 2, 0);
+    const far = a.place("lizardfolk", 4, 0);
+    a.brain(m).stunnedUntil = a.now() + 2000;
+    a.brain(m).dazzledUntil = a.now() + 2000;
+    const hp = far.hp;
+    a.any.damageMonster(m, 100, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "fire" }, "fireball");
+    return hp - far.hp;
+  };
+  check(burst(0) === 0 && burst(25) > 0, `raio 2: ${burst(0)} / ${burst(25)}`);
+});
+test("Vela Votiva: morto por luz deixa vela (2 em morto-vivo) que fere e dá armadura", () => {
+  const a = markArena("paladin", { votive_candle: 25 }, { monsterHp: 1 });
+  const undead = a.place("skeleton", 2, 0);
+  a.any.damageMonster(undead, 99999, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "arrow" }, "holy_arrow");
+  const candles = [...a.state.fields.values()].filter((f) => f.owner === HERO && f.style === "candle");
+  check(candles.length === 2, `${candles.length} velas`);
+  const brain = a.any.fieldBrains.get(candles[0].id);
+  check(Math.abs(brain.until - a.now() - CANDLE.msLater) < 2 && brain.allyArmor === CANDLE.armor, `vela ${brain.until - a.now()} ms, armadura ${brain.allyArmor}`);
+});
+test("Estrepes Afiados: campos +30% e mais longos", () => {
+  const field = (rank: number) => {
+    const a = markArena("paladin", rank ? { sharp_caltrops: rank } : {});
+    a.choose("bear_trap");
+    a.ready();
+    a.cast(0, { x: a.p.x + 2, y: a.p.y });
+    const f = [...a.state.fields.values()].find((x) => x.owner === HERO)!;
+    const b = a.any.fieldBrains.get(f.id);
+    return { amount: b.amount, ms: b.until - a.now() };
+  };
+  const plain = field(0);
+  const full = field(25);
+  check(Math.abs(full.amount / plain.amount - 1.3) < 0.01 && full.ms > plain.ms, `força ${plain.amount} → ${full.amount}, ${plain.ms} → ${full.ms} ms`);
+});
+test("Pavio Curto: a armadilha queima quem prende e explode em volta", () => {
+  const a = markArena("paladin", { short_fuse: 25 }, { monsterHp: 400 });
+  a.choose("bear_trap");
+  a.ready();
+  a.cast(0, { x: a.p.x + 3, y: a.p.y });
+  const trap = [...a.state.fields.values()].find((x) => x.owner === HERO)!;
+  const near = a.place("lizardfolk", 4, 1);
+  a.any.root(near, a.brain(near), a.now() + 60000);
+  const hp = near.hp;
+  const prey = a.place("lizardfolk", trap.x - a.p.x, trap.y - a.p.y);
+  a.any.root(prey, a.brain(prey), a.now() + 60000);
+  a.advance(500);
+  check(near.hp < hp && a.seat().stats.giftProcs.short_fuse >= 1, `vizinho ${hp} → ${near.hp}`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);
