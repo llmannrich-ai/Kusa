@@ -267,8 +267,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     for (let x = 0; x < KW; x++) {
       const i = y * KW + x;
       if (y >= K.h) {
-        // Fachada: as 2 linhas de baixo (os 2 andares vistos de frente), com a porta em cima da do salão.
-        const row = (y - K.h) as 0 | 1;
+        // Fachada: as `KEEP_RISE` linhas de baixo (os andares vistos de frente), com a porta em cima da do salão.
+        const row = y - K.h;
         const gx = K.x + x;
         const doorPart = gx >= f.door.x && gx < f.door.x + f.door.w ? ((gx - f.door.x - 1) as -1 | 0 | 1) : null;
         const kind: 0 | 1 | 2 = doorPart !== null ? 2 : x % 4 === 2 && x > 1 && x < KW - 2 ? 1 : 0;
@@ -282,8 +282,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         const v = Math.floor(hash(x, y, 74) * 2);
         roof[i] = far.frame(`hole${rim}-${v}`, () => roofHoleTile(rim, v).render(false));
       } else {
-        // O terraço usa as mesmas lajes do pátio (no atlas de longe).
-        roof[i] = groundFrame("lajes", CHAO_LAJES, x, y, far);
+        // O terraço: as lajes escuras do salão (no atlas de longe), não as claras do pátio lá embaixo.
+        roof[i] = groundFrame("salao", CHAO_SALAO, x, y, far);
       }
       let out = 0;
       if (y === 0) out |= OPEN.n;
@@ -304,7 +304,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       for (let x = 0; x < r.w; x++) {
         const row = roofRow(y, r.h);
         const col: -1 | 0 | 1 = x === 0 ? -1 : x === r.w - 1 ? 1 : 0;
-        const v = row === "south" && x === holeX && y === r.h - 2 ? 2 : row === "ridge" && x === skullX ? 3 : hash(r.x + x, r.y + y, 78) < 0.2 && row !== "ridge" ? 1 : 0;
+        const m = hash(r.x + x, r.y + y, 78);
+        const v = row === "south" && x === holeX && y === r.h - 2 ? 2 : row === "ridge" && x === skullX ? 3
+          : row !== "ridge" && row !== "bottom" && col === 0 ? (m < 0.08 ? 1 : m < 0.13 ? 4 : 0) : 0;
         roofFrames[(r.y + y) * W + r.x + x] = far.frame(`roof-${row}${col}-${v}`, () => roofTile(row, col, v).render(false));
       }
   }
@@ -612,7 +614,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     const kx = K.x * TILE_SIZE, ky = (K.y - KEEP_RISE) * TILE_SIZE;
     // O terraço é das mesmas lajes do pátio: um tom mais frio e escuro (a pedra mais velha, sem o sol do pátio) separa o
     // andar de cima do de baixo.
-    const terraceTint = (_x: number, y: number) => (y < K.h ? 0xb8b0a6 : 0xffffff);
+    const terraceTint = (_x: number, y: number) => (y < K.h ? 0xd8ccbc : 0xffffff);
     for (const l of [farLayer(KW, KH, roof, kx, ky, keepDepth, terraceTint), farLayer(KW, KH, parapet, kx, ky, keepDepth + 0.01)]) {
       l.setAlpha(keepUpper.alpha);
       keepObjs.push(l);
