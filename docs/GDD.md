@@ -542,7 +542,11 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 | **Bag** | 8 | aba Itens (guardar no cofre ou vender) | entra com o jogador e recebe o que ele pega no chão |
 
 - O equipamento e a bag **saem da conta quando a hunt começa** e entram no personagem.
-- Na hunt, todo item que o jogador pisa vai para a bag (ou direto para o equipamento, se for melhor; o trocado vai para a bag).
+- Na hunt, todo item (ou poção) a até **1 tile** do herói, contando a diagonal, é pego sozinho: não precisa pisar em
+  cima. O item **voa até o herói** num arco curto e entra nele com um brilho na cor da raridade, para ficar claro que
+  pegou (o servidor manda `MSG.pickup` com quem pegou; o voo é só desenho, `flyToHero` em `DungeonScene.ts`). Na
+  diagonal, uma quina de parede entre os dois bloqueia. Com dois heróis perto, quem está em cima do item pega primeiro.
+  Vai para a bag (ou direto para o equipamento, se for melhor; o trocado vai para a bag).
   **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra o botão da bag com a lotação (vermelho quando cheia; ver "Bag na hunt").
 - Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
   **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
@@ -560,7 +564,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 - No menu, tocar num item mostra o que ele faz (e o vestido no mesmo slot, para comparar):
   - item da bag: **Equipar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
   - item vestido: **Guardar na bag**, se couber.
-- O que o jogador larga não volta para a bag enquanto ele estiver em cima do item: precisa sair do tile e voltar.
+- O que o jogador larga não volta para a bag enquanto ele estiver em cima ou colado no item: precisa se afastar 2 tiles e voltar.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 10, 25, 60, 130 e Dragão 300.
 
 ### Runas

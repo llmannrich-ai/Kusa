@@ -1,14 +1,14 @@
 /**
  * Teste de fumaça das poções contra um servidor rodando (npm run dev:server):
- * um cavaleiro mata monstros comuns até algum dropar uma poção de vida, anda por cima dela e confere
- * que foi guardada. Depois de apanhar um pouco, bebe: a poção sai da mochila, a vida sobe e a
+ * um cavaleiro mata monstros comuns até guardar uma poção de vida (a até 1 tile ela é pega sozinha, mesmo no meio da
+ * luta; mais longe, ele vai buscar) e confere que saiu do chão. Depois de apanhar um pouco, bebe: a poção sai da mochila, a vida sobe e a
  * recarga compartilhada começa (beber de novo logo em seguida não gasta outra).
  * Uso: npx tsx apps/server/scripts/potions.ts [url]
  */
 import { Client } from "@colyseus/sdk";
 import {
   MONSTERS, MSG, POTIONS, POTION_FIELD, ROOM_NAME, generateDungeon, tileDistance,
-  type DrankMessage, type MonsterKind,
+  type DrankMessage, type MonsterKind, type PickupMessage,
 } from "@kusa/shared";
 import { RULES_VERSION } from "../src/rulesVersion.ts";
 import { nextStep } from "../src/pathfinding.ts";
@@ -29,6 +29,8 @@ let died = false;
 let kills = 0;
 let targetId: string | null = null;
 let deadline = 0;
+/** Ids dos itens que o servidor avisou que este herói pegou (`MSG.pickup`). */
+let picked: string[] = [];
 const me = () => room.state.players.get(room.sessionId);
 // O cavaleiro sem magias não gasta mana: o teste usa a poção de vida (o código das duas é o mesmo).
 const groundPotions = () => ([...room.state.items.values()] as any[]).filter((it) => it.itemId === "potion-health");
@@ -50,12 +52,15 @@ process.exit(0);
 async function run() {
   room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
   drank = [];
+  picked = [];
   died = false;
   kills = 0;
   targetId = null;
   room.onMessage(MSG.damage, () => {});
   room.onMessage(MSG.notice, () => {});
   room.onMessage(MSG.attack, () => {});
+  room.onMessage(MSG.monsterStrike, () => {});
+  room.onMessage(MSG.pickup, (msg: PickupMessage) => { if (msg.sessionId === room.sessionId) picked.push(msg.id); });
   room.onMessage(MSG.drank, (msg: DrankMessage) => drank.push(msg));
   room.onMessage(MSG.runEnded, (msg: any) => {
     if (msg.outcome === "died") died = true;
@@ -71,25 +76,27 @@ async function run() {
   dungeon = generateDungeon(room.state.seed);
   deadline = Date.now() + 180_000;
 
-  // Fase 1: matar comuns até aparecer uma poção de vida no chão.
-  while (groundPotions().length === 0) await fightCommons("nenhuma poção caiu");
-
-  const [ground] = groundPotions();
+  // Fase 1: caça até guardar uma poção de vida. Lutando colado no monstro, a que cai a 1 tile já é pega sozinha;
+  // a que cair mais longe, o cavaleiro vai buscar.
   const potion = POTIONS["potion-health"];
   const field = POTION_FIELD[potion.id];
   const before = me()[field];
-  console.log(`${kills + 1} mortes; caiu ${potion.name} em ${ground.x},${ground.y}`);
-
-  // Fase 2: andar até a poção e conferir que foi para a mochila.
-  room.send(MSG.target, { id: null });
-  targetId = null;
   while (me()[field] === before) {
-    if (Date.now() > deadline) throw new Error("timeout: não conseguiu pegar a poção");
+    const ground = groundPotions().sort((x, y) => tileDistance(me().x, me().y, x.x, x.y) - tileDistance(me().x, me().y, y.x, y.y))[0];
+    if (!ground) {
+      await fightCommons("nenhuma poção caiu");
+      continue;
+    }
+    if (Date.now() > deadline) throw new Error(`timeout: não conseguiu pegar a poção em ${ground.x},${ground.y}`);
+    room.send(MSG.target, { id: null });
+    targetId = null;
     walkToward(ground, 0);
     await wait(100);
   }
-  if (room.state.items.has(ground.id)) throw new Error("a poção continua no chão depois de guardada");
-  console.log(`guardada: ${me()[field]} ${potion.name}`);
+  // Fase 2: a poção guardada saiu do chão e o servidor avisou quem pegou.
+  if (picked.length === 0) throw new Error("guardou a poção sem a mensagem pickup");
+  if (picked.some((id) => room.state.items.has(id))) throw new Error("a poção continua no chão depois de guardada");
+  console.log(`${kills} mortes; guardada: ${me()[field]} ${potion.name}`);
 
   // Fase 3: segue lutando com comuns até perder 10% da vida (bem mais que a regeneração) e bebe.
   while (me().maxHp - me().hp < me().maxHp * 0.1) await fightCommons("não apanhou o bastante");
