@@ -793,44 +793,53 @@ export function pickupAction(itemId: string, equipped: string, bagCount: number,
 export const COMMON_DROP_CHANCE = 0.15;
 /** Quantos itens cada rank dropa com certeza (comuns usam a chance acima). */
 export const GUARANTEED_DROPS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
-/** Níveis de material a mais do drop, por rank. */
-export const RANK_TIER_BONUS: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 2 };
-/** Chance de o drop vir um nível acima do esperado. */
+/** Chance de o drop vir um nível de material acima do da criatura. */
 export const LUCKY_TIER_CHANCE = 0.2;
+
 /**
- * Chance de o drop ser lendário, mágico ou raro, por rank (o resto é comum). O baú usa a do mini-boss. O lendário
- * sai de qualquer sala, mas é raro: ~1 a cada 1.300 monstros comuns, 1 a cada 33 mini-bosses e baús, 1 a cada 8 bosses
- * (que largam 2 itens).
+ * Material do drop pelo Nível de Desafio (`MonsterDef.cr`) da criatura, sem olhar mapa nem sala: ND 1–2 Rústico,
+ * 3–4 Bronze, 5–6 Ferro, 7–8 Mithral e 9+ Dragão (mais `LUCKY_TIER_CHANCE` de vir um acima).
  */
-export const RARITY_CHANCES: Record<MonsterRank, { rare: number; magic: number; legendary: number }> = {
-  common: { rare: 0.18, magic: 0.04, legendary: 0.005 },
-  miniboss: { rare: 0.35, magic: 0.12, legendary: 0.03 },
-  boss: { rare: 0.4, magic: 0.25, legendary: 0.06 },
-};
+export function challengeTier(cr: number): ItemTier {
+  return Math.max(1, Math.min(MAX_TIER, 1 + Math.floor((Math.max(1, cr) - 1) / 2))) as ItemTier;
+}
+
+/**
+ * Chance de o drop ser raro, mágico ou lendário (o resto é comum), pelo Nível de Desafio da criatura: quanto mais
+ * difícil, melhor, em qualquer mapa. O lendário não sai abaixo de ND 3 e cresce com o quadrado do ND (ND 5 0,7%,
+ * ND 8 2,9%, ND 10 5,1%, ND 13 9,7%); o rank só muda quantos itens caem (`GUARANTEED_DROPS`). O baú usa
+ * `CHEST_ITEM_CR`.
+ */
+export function rarityChances(cr: number): { rare: number; magic: number; legendary: number } {
+  const c = Math.max(1, cr);
+  return {
+    rare: Math.min(0.45, 0.1 + 0.03 * c),
+    magic: Math.min(0.3, 0.02 * c),
+    legendary: c < 3 ? 0 : Math.min(0.12, 0.0008 * (c - 2) ** 2),
+  };
+}
 
 /** Fração dos drops que sai do que alguém da equipe veste (`rollItem` com `classes`); o resto é livre. */
 export const CLASS_DROP_FAVOR = 0.5;
 
 /**
- * Sorteia o item de um drop. Salas mais fundas e monstros mais fortes dão material melhor e mais raro.
- * O baú usa o rank de mini-boss com um nível a mais. `classes` = classes dos humanos na hunt: com elas, metade dos
- * drops (`CLASS_DROP_FAVOR`) sai de uma família (ou lendário) que alguém da equipe veste; a outra metade continua
- * livre (item que ninguém usa vai para a bag e se vende). `random` devolve [0, 1).
+ * Sorteia o item de um drop de uma criatura de Nível de Desafio `cr`: material e raridade sobem com o ND
+ * (`challengeTier`, `rarityChances`). O baú usa `CHEST_ITEM_CR`. `classes` = classes dos humanos na hunt: com elas,
+ * metade dos drops (`CLASS_DROP_FAVOR`) sai de uma família (ou lendário) que alguém da equipe veste; a outra metade
+ * continua livre (item que ninguém usa vai para a bag e se vende). `random` devolve [0, 1).
  */
-export function rollItem(rank: MonsterRank, depth: number, random: () => number, extraTier = 0, classes: readonly ClassId[] = []): string {
+export function rollItem(cr: number, random: () => number, classes: readonly ClassId[] = []): string {
   // O sorteio do favor só existe com equipe: sem ela, a ordem dos sorteios é a de sempre.
   const favor = classes.length > 0 && random() < CLASS_DROP_FAVOR;
   const wears = (c?: readonly ClassId[]) => !favor || !c || c.some((x) => classes.includes(x));
-  const raw = 1 + Math.floor(Math.max(0, depth) / 2) + RANK_TIER_BONUS[rank] + extraTier
-    + (random() < LUCKY_TIER_CHANCE ? 1 : 0);
-  const tier = Math.max(1, Math.min(MAX_TIER, raw)) as ItemTier;
+  const tier = Math.min(MAX_TIER, challengeTier(cr) + (random() < LUCKY_TIER_CHANCE ? 1 : 0)) as ItemTier;
   const slot = ITEM_SLOTS[Math.floor(random() * ITEM_SLOTS.length)];
   const all = Object.values(ITEM_FAMILIES).filter((f) => f.slot === slot);
   const usable = all.filter((f) => wears(f.classes));
   const families = usable.length ? usable : all;
   const family = families[Math.floor(random() * families.length)];
   const roll = random();
-  const chance = RARITY_CHANCES[rank];
+  const chance = rarityChances(cr);
   // Lendário: uma das peças únicas (no favor, uma que alguém da equipe veste).
   if (roll < chance.legendary) {
     const pool = LEGENDARY_IDS.filter((id) => wears(ITEMS[id].classes));

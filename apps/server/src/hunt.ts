@@ -9,6 +9,7 @@ import {
   COMMON_DROP_CHANCE,
   COMMON_POTION_CHANCE,
   CHEST_DEPTH_SCALING,
+  CHEST_ITEM_CR,
   ITEM_DROP_SCALE,
   DEATH_LOSS_WEIGHT,
   DEATH_SAFE_LEVEL,
@@ -4746,7 +4747,7 @@ export class Hunt {
     for (let i = 0; i < drops; i++) {
       const keep = boss ? this.random() < ITEM_DROP_SCALE : this.keepDrop(LOOT_SCALE * ITEM_DROP_SCALE);
       if (keep && this.keepForHumans()) {
-        this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0, this.teamClasses()), at.x, at.y);
+        this.dropItem(rollItem(brain.def.cr, this.random, this.teamClasses()), at.x, at.y);
         this.countDrop(brain.def.rank);
       }
     }
@@ -5330,7 +5331,7 @@ export class Hunt {
   }
 
   /**
-   * O que um baú dá (aberto ou o Mímico morto): um item melhor que o do mini-boss e poções, que caem em `dropAt`
+   * O que um baú dá (aberto ou o Mímico morto): um item de ND `CHEST_ITEM_CR` e poções, que caem em `dropAt`
    * (padrão: o próprio tile). O gold se divide pela equipe; `openerId` conta o baú na telemetria.
    */
   private chestReward(openerId: string, x: number, y: number, depth: number, dropAt = { x, y }) {
@@ -5340,7 +5341,7 @@ export class Hunt {
     if (stats) stats.chestsOpened++;
     // O item do baú sai com o corte dos itens (`ITEM_DROP_SCALE`, menos a parte dos bots); as poções, com a chance do mapa.
     if (this.random() < ITEM_DROP_SCALE && this.keepForHumans()) {
-      this.dropItem(rollItem("miniboss", depth, this.random, 1, this.teamClasses()), dropAt.x, dropAt.y);
+      this.dropItem(rollItem(CHEST_ITEM_CR, this.random, this.teamClasses()), dropAt.x, dropAt.y);
       this.countDrop("chest");
     }
     for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);
