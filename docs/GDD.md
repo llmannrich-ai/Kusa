@@ -988,6 +988,9 @@ no banco `map_unlocked_by`). ★★★★★★★★, 8 min, até 4 jogadores. 
 hunt solo 4.600, cheio em 240 s). Os dois são **mapas fixos**
 (`BOG_SEED`, `BADLANDS_SEED`), em pé, 64×120, com 7 zonas, as emboscadas e 4 salas laterais; plantas em
 `docs/arte/planta-fixa-*.png`. Ritmo medido: ~1% do chão a mais de 6 tiles de luta, ponto mais isolado a 13 tiles.
+- **XP** (`xpScale` 0,5 no Charco e 0,55 nos Ermos): com os monstros fortes da etapa 9, o caminho rendia ~20 mil de XP e o
+  herói sozinho chegava no boss no nível 20 com um terço da hunt pela frente. Com o corte, ~11 mil: limpando 75%, chega
+  no boss no nível 18; o 20 vem do boss (2.900 e 3.190 de XP) ou do mapa inteiro.
 
 - **🌫️ Charco Cinzento** (`generateBog`, a planta em `Dungeon.bog`): uma turfeira sobre o lago negro. Do sul ao norte:
   o Cais, o Aterro (zona 1) e a Vila dos Turfeiros (zona 2) pela **estrada afundada** (aterro largo com as lajes de
@@ -1097,6 +1100,9 @@ lê.
   e os primeiros berserkers; o acampamento, capitães, xamãs e ogros jovens; o esporão e o pé da torre são de ogros e
   berserkers. Mini-bosses: Ogro do Brejo, Chefe de Guerra Orc e Ogro Xamã (casernas e casa da vila, com baú). Boss:
   **Vorgak, o Senhor da Brasa**, no salão do trono (ficha no Bestiário, seção da Fortaleza). O gold de cada monstro cresce com a força; com tanto monstro, os drops de item e poção saem menos (`dropScale` 0,8).
+- **XP** (`xpScale` 0,5): a força ×2,4 multiplicava a XP junto e o caminho rendia ~21 mil (o nível 20 pede ~10 mil); o
+  herói sozinho chegava no nível 20 no meio da hunt. Com o corte, ~10.800: limpando 75%, chega em Vorgak no nível 18,
+  e o 20 vem de Vorgak (2.600 de XP) ou do mapa inteiro.
 - **Duas travessias:** a ponte de pedra (3 de largura) até o portão, ou a ponte de cordas dos orcs (2 de largura) até
   uma brecha da muralha.
 - **Abismo:** nesse mapa toda `Tile.Water` é abismo: bloqueia o passo e deixa passar a visão (flechas e magias passam
@@ -1134,8 +1140,9 @@ lê.
 - **Crédito:** cada boss dá a runa dele uma vez por personagem, como os outros; é isso que libera o caminho daquele
   lado no mapa mundi. `RunStats.bossKills` anota os bosses mortos com o herói na hunt (telemetria).
 - **Balanceamento** (medido, não estimado; refazer quando a telemetria da Caverna chegar):
-  - **XP:** tronco ~400, oeste ~2.900, leste ~4.100. Matando 75% do caminho, o herói chega no Basilisco no nível
-    10–11; no Observador, no 11–13 indo direto e no 14–17 fazendo o oeste antes (a rota pensada para ele).
+  - **XP** (`xpScale` 0,85 desde 02/11; antes, quem limpava quase tudo chegava no Observador no 19): tronco ~340,
+    oeste ~2.450, leste ~3.500. Matando 75% do caminho, o herói chega no Basilisco no nível 9–10; no Observador, no
+    10–12 indo direto e no 15–16 fazendo o oeste antes (a rota pensada para ele; limpando tudo, 17).
   - **Régua:** duelo só com ataque básico (`bestiary-sim.ts`) medindo quanto da vida do boss o herói tira antes de
     cair, calibrada com a telemetria de produção: o Grumak (vencido com folga) dá ~50% no nível 10–12; o Dragão jovem
     e o Verme (vencidos por ~1 em 3) dão 15–20% no 8–10; a Hidra e o Dragão negro (0 vitórias) dão 6–7% no 10–12.
@@ -1168,8 +1175,8 @@ lê.
   monstros extras cada (e, em 40% delas, um mini-boss solto, sem baú), **clareiras de mini-boss com baú** (até 2 por
   zona, 10 a 15 por mapa) e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**. Os monstros são mais fracos que
   os da Cripta (a quantidade cresce 12% por zona, quase o dobro no fim): o mapa inteiro tem cerca de 145 monstros, 19
-  mini-bosses e 14.700 de XP (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
-  nível 12. Monstro longe da tela não é desenhado nem animado no cliente.
+  mini-bosses e ~9.500 de XP com o corte (14.700 sem ele) (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
+  nível 12 (`xpScale` 0,7: limpando 75%, no 16; tudo, no 19). Monstro longe da tela não é desenhado nem animado no cliente.
 - **Loot por monstro menor:** com tantos monstros, o mapa paga 35% do valor de loot dos monstros e baús e 60% dos
   drops de item e poção dos monstros e das poções dos baús (`MapDef.lootScale` e `dropScale`; o boss fica de fora e
   larga tudo, e o baú sempre dá o item). O loot máximo de uma
@@ -1276,7 +1283,12 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   monstros, e a XP e o gold totais crescem junto. Os bosses já trazem na ficha a força que tinham no fim do caminho;
   os mini-bosses e o Mímico usam um multiplicador fixo do mapa (`minibossPower`, de 1,24 na Cripta a 1,54 na Caverna,
   2,5 na Fortaleza), que não muda na partida. Um mapa também pode multiplicar os comuns (`commonPower`, só na
-  Fortaleza Orc: o clã do brejo levado à dificuldade 8). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
+  Fortaleza Orc: o clã do brejo levado à dificuldade 8). A força multiplica a XP junto; por isso um mapa pode pagar só parte da XP
+  dos monstros (`xpScale`, boss incluído; não muda o orçamento das salas). Meta: **limpando 75% do caminho sozinho, o
+  herói chega no boss abaixo do nível 20**; o nível 20 vem do boss ou de limpar o mapa inteiro (teste `xpmapas`, que
+  mede a XP de cada mapa gerando a hunt). Cortes de 02/11 (antes, o herói sozinho chegava no boss já no 20): Fortaleza
+  Orc e Charco Cinzento 0,5, Ermos Rubros 0,55, Caverna da Travessia 0,85, Pântano do Kosaradius 0,7 (limpando 75%,
+  chega no Grumak no nível 16; na produção, quem o vencia chegava em média no 12, então o começo quase não muda). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
   de gold por sala, `CHEST_DEPTH_SCALING`), e a faixa dos itens largados ainda sobe com a profundidade. Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold
@@ -1585,7 +1597,8 @@ Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os tote
     básico); soltar atira, mesmo sem
     monstro à vista; voltar ao botão cancela. O dedo parado vira "segurar" depois de 150 ms.
   - Telemetria: `RunStats.shots` (disparados, errados e mirados à mão, por fonte).
-- O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`).
+- O ataque básico é manual: um toque no ⚔️ dá um golpe e segurar repete. A recarga é igual para todas as classes (1 s, `BASIC_ATTACK_COOLDOWN_MS`, no ritmo da hunt: ~1,11 s).
+- **Ritmo da hunt (`PACE` em `packages/shared/src/constants.ts`, hoje 0,9):** um número só deixa a hunt inteira mais lenta na mesma proporção. Divide os tempos de turno (recarga do ataque básico e das magias, intervalo de ataque e recarga das habilidades dos monstros e das criaturas, passo das ondas, voo dos projéteis), multiplica a velocidade de movimento de heróis, monstros e criaturas e põe as animações de efeito do cliente no mesmo ritmo (`tweens`/`time` da `DungeonScene`). As tabelas de magias, monstros e classes guardam os valores sem ele; o Grimório mostra a recarga já com ele. Durações de efeitos (queimadura, lentidão, buffs) não mudam.
 - Além do básico, 2 slots de magia: o 1º abre no nível 3 e o 2º no nível 6. Ao alcançar o nível, aparece a escolha da magia do slot, nas mesmas cartas acima do personagem da melhoria de nível (roxas, com descrição, efeitos no nível da magia, mana e recarga; sem rolagem: com 3 a 6 magias as cartas viram uma grade de 3 colunas só com o efeito principal e o custo, e com 7 ou mais, 4 colunas com nome e custo); depois de escolhida, ela fica até o fim da hunt. Fechar a escolha (✕) deixa o botão do slot com ✨ para escolher depois.
 - Toda classe tem uma magia inicial por slot; as compradas no Grimório viram opções extras na escolha, já no nível que a magia tem na conta (ver "Grimório").
 - Efeitos que as magias combinam: dano (em área, num alvo, **em linha** ou **em cadeia**), **dano contínuo** (veneno: um pulso por

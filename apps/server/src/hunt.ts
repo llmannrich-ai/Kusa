@@ -40,6 +40,7 @@ import {
   SUMMONS,
   Tile,
   attackCooldownMs,
+  paced,
   allSpellsRanks,
   auraBonuses,
   giftEffects,
@@ -98,6 +99,7 @@ import {
   levelForXp,
   lineEnd,
   mapIdOf,
+  mapXp,
   monsterPower,
   monsterStats,
   heroBonuses,
@@ -958,6 +960,8 @@ export class Hunt {
     const stats = monsterStats(kind, monsterPower(this.map, kind));
     // Corte geral do loot (`LOOT_SCALE`) e o do mapa que paga menos por monstro (muitos monstros), que deixa o boss de fora.
     stats.loot = this.scaleLoot(stats.loot[0], stats.loot[1], def.rank === "boss");
+    // Corte de XP do mapa (`MapDef.xpScale`), boss incluído.
+    stats.xp = mapXp(this.map, stats.xp);
     const m = new Monster();
     m.id = `m${this.nextMonsterId++}`;
     m.kind = kind;
@@ -1953,7 +1957,7 @@ export class Hunt {
     const shot = path ? ++this.shotSeq : undefined;
     // Flecha Celeste: cai no ponto depois de um tempo fixo, em vez de voar até lá.
     // Linha em onda (Vórtice Arcano): o desenho dura o caminho inteiro da onda.
-    const ms = spell.delayMs ?? (spell.wave && spell.shape === "line" ? spell.range * spell.wave.stepMs : flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty));
+    const ms = spell.delayMs ?? (spell.wave && spell.shape === "line" ? spell.range * paced(spell.wave.stepMs) : flightMs(spell.projectileSpeed ?? 0, ox, oy, tx, ty));
     this.host.broadcast(MSG.spell, { from: sessionId, spellId: spell.id, x: ox, y: oy, tx, ty, ms, shot } satisfies SpellMessage);
     // Disparo Certeiro: mais forte quanto mais longe estava o alvo (no tiro, onde o projétil acertou).
     const far = (x: number, y: number) => spell.distanceBonus ? 1 + spell.distanceBonus * tileDistance(ox, oy, x, y) : 1;
@@ -2024,7 +2028,7 @@ export class Hunt {
     const order = [...rings.keys()].sort((a, b) => a - b);
     order.forEach((ring, i) => {
       const passed = order.slice(0, i + 1).flatMap((r) => rings.get(r)!);
-      this.after((ring - 1) * spell.wave!.stepMs, () =>
+      this.after((ring - 1) * paced(spell.wave!.stepMs), () =>
         this.applySpell(sessionId, i === 0 ? spell : rest, rank, undefined, tx, ty, amount, passed, slot, undefined, struck));
     });
     // Garganta de Brasa (marcos 2 e 5): no fim da onda, o chão pega fogo e a última onda explode.
@@ -2034,7 +2038,7 @@ export class Hunt {
     if (ember >= 2 && last !== undefined) {
       const far = rings.get(last)!;
       const end = far[Math.floor(far.length / 2)];
-      this.after(last * spell.wave!.stepMs, () => this.breathEnd(sessionId, end.x, end.y, amount, ember));
+      this.after(last * paced(spell.wave!.stepMs), () => this.breathEnd(sessionId, end.x, end.y, amount, ember));
     }
   }
 
@@ -3890,7 +3894,7 @@ export class Hunt {
 
     if (brain.heal > 0) {
       if (now >= brain.nextAttackAt) {
-        brain.nextAttackAt = now + def.attackCooldownMs;
+        brain.nextAttackAt = now + paced(def.attackCooldownMs);
         this.state.players.forEach((ally) => {
           if (ally.status !== "playing") return;
           if (tileDistance(s.x, s.y, ally.x, ally.y) > (def.healRadius ?? 0)) return;
@@ -3927,7 +3931,7 @@ export class Hunt {
       // Rompante (berserker do clã): ferido, ataca mais rápido.
       const frenzy = def.frenzy && s.hp < s.maxHp * def.frenzy.belowHp ? def.frenzy.haste : 0;
       const haste = Math.min(0.7, Math.max(now < brain.hasteUntil ? brain.haste : 0, clan.haste) + frenzy);
-      brain.nextAttackAt = now + def.attackCooldownMs * (1 - haste);
+      brain.nextAttackAt = now + paced(def.attackCooldownMs) * (1 - haste);
       const m = target;
       const amount = rollDamage(this.random, brain.damage * (now < brain.rallyUntil ? 1 + brain.rallyDamage : 1) * (1 + clan.damage));
       const hit: Hit = { attacker: s.id, fromX: s.x, fromY: s.y, fx: def.attackFx };
@@ -4011,8 +4015,8 @@ export class Hunt {
     // Encurralado: luta de onde está.
     if (!best) return false;
     const diagonal = best.x !== s.x && best.y !== s.y;
-    brain.nextMoveAt = now + (1000 / brain.def.speed) * (diagonal ? Math.SQRT2 : 1);
-    s.stepMs = Math.round(1000 / brain.def.speed);
+    brain.nextMoveAt = now + paced(1000 / brain.def.speed) * (diagonal ? Math.SQRT2 : 1);
+    s.stepMs = Math.round(paced(1000 / brain.def.speed));
     s.x = best.x;
     s.y = best.y;
     return true;
@@ -4037,8 +4041,8 @@ export class Hunt {
     const diagonal = step.x !== s.x && step.y !== s.y;
     // Quem voa passa por cima da areia fofa.
     const speed = brain.def.speed * (!brain.def.flies && isSand(this.dungeon, step.x, step.y) ? SAND_SPEED : 1);
-    brain.nextMoveAt = now + (1000 / speed) * (diagonal ? Math.SQRT2 : 1);
-    s.stepMs = Math.round(1000 / speed);
+    brain.nextMoveAt = now + paced(1000 / speed) * (diagonal ? Math.SQRT2 : 1);
+    s.stepMs = Math.round(paced(1000 / speed));
     s.x = step.x;
     s.y = step.y;
   }

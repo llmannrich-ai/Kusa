@@ -14,7 +14,7 @@
  * Uso: npx tsx scripts/grimorio.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CLASS_IDS, MASTERIES, MASTERY_RANK, SPELL_LEVEL_XP, MONSTERS, SPELLS, TALENTS, activeTraits, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
+  CLASS_IDS, MASTERIES, MASTERY_RANK, SPELL_LEVEL_XP, MONSTERS, SPELLS, TALENTS, activeTraits, paced, blocksSight, coneTiles, generateDungeon, hasLineOfSight,
   knownSpells, lineTiles, spellAtRank, spellFacts, talentBlocker, talentTree,
   type SpellId, type SpellXp, type TalentRanks,
 } from "@kusa/shared";
@@ -202,7 +202,7 @@ function paladinShots() {
     a.cast(1, m);
     a.until(() => !a.state.monsters.has(m.id), 2000, "o Disparo Certeiro não matou o goblin");
     a.until(() => a.cooldowns.length > 0, 1000, "o Disparo Certeiro não devolveu a recarga ao matar");
-    const full = SPELLS.deadly_shot.cooldownMs;
+    const full = paced(SPELLS.deadly_shot.cooldownMs);
     console.log(`paladino: Disparo Certeiro matou, recarga agora ${a.cooldowns[0].ms} ms (cheia ${full})`);
     check(a.cooldowns[0].slot === 1 && a.cooldowns[0].ms <= full / 2, `recarga devolvida errada: ${JSON.stringify(a.cooldowns[0])}`);
   }
