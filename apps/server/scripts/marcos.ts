@@ -19,11 +19,13 @@
  *   - Dons da costela do Paladino: Aljava Larga (leque de flechas no básico), Ponto Fraco, Aurora, Vela Votiva,
  *     Estrepes Afiados e Pavio Curto;
  *   - Dons da costela do Feiticeiro: Garganta de Brasa, Panela de Pressão, Sopro Glacial, Cristalizar, Lamento Profundo
- *     (com o enfraquecer) e Sentença Lenta.
+ *     (com o enfraquecer) e Sentença Lenta;
+ *   - Dons da costela do Druida: Eco do Rugido, Presa Venenosa (criaturas envenenam e disparam o Espinheiro), Pólen
+ *     Dourado, Néctar, Rajada de Cardos e Espinheiro Antigo.
  * Uso: npx tsx scripts/marcos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  ALLY_DAMAGE_RADIUS, EMBER, GLACIAL, LAMENT, PRESSURE, SENTENCE, SHATTER_BONUS, VAPOR, CANDLE, QUIVER, WEAK, ANVIL, BLOOD, EXPOSED_BONUS, FURY, talentTree, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
+  ALLY_DAMAGE_RADIUS, BRAMBLE, FANG, NECTAR, POLLEN, ROAR, THISTLE, THORNBUSH, EMBER, GLACIAL, LAMENT, PRESSURE, SENTENCE, SHATTER_BONUS, VAPOR, CANDLE, QUIVER, WEAK, ANVIL, BLOOD, EXPOSED_BONUS, FURY, talentTree, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
   type ClassId, type GiftId, type TalentRanks,
 } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
@@ -752,6 +754,128 @@ test("Sentença Lenta: Condenação +75% em raio 2, marca quem pega e passa para
   // O vizinho (a 2 tiles) leva a explosão e fica marcado; a Condenação em cadeia passa para o marcado mais perto (ele).
   check(near.hp < hp && a.seat().stats.reactions.doom === 2, `vizinho ${hp} → ${near.hp}, ${JSON.stringify(a.seat().stats.reactions)}`);
   check(SENTENCE.radius === 2, "raio");
+});
+
+console.log("Dons da costela do Druida:");
+test("lugar na árvore: linha VI pede a ponta do tronco, a VII pede a da VI", () => {
+  const tree = talentTree("druid");
+  const at = (id: string) => tree.find((t) => t.id === `druid_${id}`)!;
+  for (const [six, seven, tip] of [["roar_echo", "venom_fang", "ancient_bear"], ["golden_pollen", "nectar", "forest_heart"], ["thistle_burst", "ancient_bramble", "nature_wrath"]]) {
+    check(at(six).row === 6 && at(six).lane === -2 && at(six).requires?.id === `druid_${tip}`, `${six}: ${JSON.stringify(at(six))}`);
+    check(at(seven).row === 7 && at(seven).lane === -2 && at(seven).requires?.id === `druid_${six}`, `${seven}`);
+  }
+});
+test("Eco do Rugido: rugido +30% de ataque (+5%), cura, leque maior e o lobo do rugido", () => {
+  const a = markArena("druid", { roar_echo: 25 });
+  const roar = a.any.markedSpell(a.seat(), SPELLS.pack_roar);
+  check(Math.abs(roar.packCall.haste - (0.3 * 1.3 + ROAR.haste)) < 1e-6 && roar.packCall.heal === ROAR.heal, `rugido ${JSON.stringify(roar.packCall)}`);
+  check(roar.coneAngle === 90 + ROAR.angle && roar.range === SPELLS.pack_roar.range + ROAR.range, `leque ${roar.coneAngle}° ${roar.range}`);
+  a.any.applySpell(HERO, a.any.markedSpell(a.seat(), SPELLS.beast_cry), 0, undefined, a.p.x, a.p.y, 0, undefined, 0);
+  const wolves = [...a.state.summons.values()].filter((s) => s.owner === HERO && s.kind === "wolf");
+  check(wolves.length === 1 && a.any.summonBrains.get(wolves[0].id).expiresAt - a.now() === ROAR.wolfMs, `lobos ${wolves.length}`);
+  check(a.any.summonBrains.get(wolves[0].id).haste > 0.5, "o lobo do rugido já sai enfurecido");
+  check(a.seat().stats.giftProcs.roar_echo === 1, "telemetria");
+});
+test("Presa Venenosa: criaturas envenenam (acumula 2), disparam o Espinheiro em quem está preso e pulam ao matar", () => {
+  const a = markArena("druid", { venom_fang: 25 }, { monsterHp: 2000 });
+  a.seat().traits = [];
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.root(m, a.brain(m), a.now() + 600000);
+  a.choose("spirit_wolf");
+  a.ready();
+  a.cast(0);
+  a.any.root(m, a.brain(m), a.now() + 600000);
+  a.advance(1500);
+  check((a.seat().stats.reactions.thornbush ?? 0) >= 1, `Espinheiro das criaturas: ${JSON.stringify(a.seat().stats.reactions)}`);
+  a.advance(3000);
+  check(a.brain(m).dot?.kind === "poison" && a.brain(m).dot.stacks === FANG.stacks && a.brain(m).fangRooted, `veneno ${JSON.stringify(a.brain(m).dot)}`);
+  // O 1º marco: veneno de 4 s (3 + 1).
+  check(a.brain(m).dot.until - a.now() <= FANG.ms + FANG.poisonMs, "duração");
+  const wolf = [...a.state.summons.values()].find((s) => s.owner === HERO && s.kind === "wolf")!;
+  a.state.monsters.delete(m.id);
+  const dead = a.place("lizardfolk", -2, 0);
+  const deadBrain = a.brain(dead);
+  a.state.monsters.delete(dead.id);
+  const next = a.place("lizardfolk", 0, 3);
+  a.any.venomFang(wolf, a.any.summonBrains.get(wolf.id), dead, deadBrain, 5, false);
+  check(Math.max(Math.abs(wolf.x - next.x), Math.abs(wolf.y - next.y)) <= 1 || a.any.summonBrains.get(wolf.id).targetId === next.id, `pulou para ${wolf.x},${wolf.y}`);
+  check(a.seat().stats.giftProcs.venom_fang === 1, "telemetria do pulo");
+});
+test("Pólen Dourado: leque de cura +30%, maior, devolve mana, tira atordoar e dá armadura ao aliado", () => {
+  const a = markArena("druid", { golden_pollen: 25 }, { allies: [{ classId: "knight" }] });
+  const breeze = a.any.markedSpell(a.seat(), SPELLS.pollen_breeze);
+  check(Math.abs(breeze.heal - 0.2 * 1.3) < 1e-6 && breeze.coneAngle === 120 + POLLEN.angle && breeze.range === SPELLS.pollen_breeze.range + POLLEN.range, `leque ${JSON.stringify({ h: breeze.heal, a: breeze.coneAngle, r: breeze.range })}`);
+  const ally = a.state.players.get("h2")!;
+  const allySeat = a.seat("h2");
+  ally.hp = Math.round(ally.maxHp / 2);
+  ally.mana = 0;
+  allySeat.effects.stun = { until: a.now() + 5000, stacks: 1 };
+  a.choose("pack_roar", "pollen_breeze");
+  a.p.spell2 = "pollen_breeze";
+  a.ready();
+  a.cast(1, { x: ally.x + 2, y: ally.y });
+  a.advance(1000);
+  check(ally.hp > Math.round(ally.maxHp / 2), `aliado curado ${ally.hp}`);
+  check(ally.mana >= Math.max(1, Math.round(ally.maxMana * POLLEN.mana)), `mana ${ally.mana}`);
+  check(!allySeat.effects.stun && allySeat.sapArmor === POLLEN.armor && allySeat.sapUntil > a.now(), `atordoar ${JSON.stringify(allySeat.effects)} armadura ${allySeat.sapArmor}`);
+});
+test("Néctar: curar quem está abaixo de 70% devolve 5% da mana (1 vez por s), dá velocidade, escudo e tira o atordoar", () => {
+  const a = markArena("druid", { nectar: 25 });
+  a.seat().traits = [];
+  a.p.mana = 0;
+  a.p.hp = Math.round(a.p.maxHp * 0.65);
+  a.seat().effects.stun = { until: a.now() + 5000, stacks: 1 };
+  a.any.healPlayer(a.p, 1, HERO);
+  check(a.p.mana === Math.round(a.p.maxMana * 0.05), `mana ${a.p.mana}`);
+  check(a.seat().nectarSpeedUntil === a.now() + NECTAR.speedMs && a.p.barrier === Math.round(a.p.maxHp * NECTAR.shield) && !a.seat().effects.stun, "velocidade, escudo e atordoar");
+  a.any.healPlayer(a.p, 1, HERO);
+  check(a.p.mana === Math.round(a.p.maxMana * 0.05), "uma vez por segundo");
+  a.advance(NECTAR.everyMs);
+  a.p.hp = Math.round(a.p.maxHp * 0.8);
+  const mana = a.p.mana;
+  a.any.healPlayer(a.p, 1, HERO);
+  check(a.p.mana === mana && a.seat().stats.giftProcs.nectar === 1, "acima de 70% não devolve");
+});
+test("Rajada de Cardos: +30% de dano, 8 espinhos, prendem, envenenam e atravessam o 1º monstro", () => {
+  const a = markArena("druid", { thistle_burst: 25 }, { monsterHp: 400 });
+  a.seat().traits = [];
+  const spray = a.any.markedSpell(a.seat(), SPELLS.thorn_spray);
+  check(spray.spread.count === SPELLS.thorn_spray.spread!.count + 2 * THISTLE.count && Math.abs(spray.damage - SPELLS.thorn_spray.damage! * 1.3) < 1e-6, `leque ${JSON.stringify(spray.spread)}`);
+  check(spray.rootMs === THISTLE.rootMs && spray.dot.kind === "poison", "prende e envenena");
+  const first = a.place("lizardfolk", 1, 0);
+  const second = a.place("lizardfolk", 2, 0);
+  a.any.root(first, a.brain(first), a.now() + 60000);
+  a.any.root(second, a.brain(second), a.now() + 60000);
+  const hp = second.hp;
+  a.choose("thorn_spray");
+  a.ready();
+  a.cast(0, { x: second.x + 2, y: second.y });
+  a.advance(1000);
+  check(second.hp < hp && a.brain(second).dot?.kind === "poison", `o espinho atravessou: ${hp} → ${second.hp}`);
+});
+test("Espinheiro Antigo: +75% e +1 pulso, raio 1, a raiz fica, o veneno renova e prende quem está colado", () => {
+  const thorn = (gift: boolean) => {
+    const a = markArena("druid", gift ? { ancient_bramble: 25 } : {}, { monsterHp: 2000 });
+    a.seat().traits = [];
+    const m = a.place("lizardfolk", 2, 0);
+    const side = a.place("lizardfolk", 2, 1);
+    const b = a.brain(m);
+    a.any.root(m, b, a.now() + 5000);
+    b.dot = { amount: 10, nextAt: a.now() + 1000, until: a.now() + 500, attacker: HERO, source: "venom_thorn", kind: "poison", stacks: 1, perStack: 10 };
+    const hp = m.hp;
+    const sideHp = side.hp;
+    a.any.thornbush(m, b, HERO, a.now(), false);
+    return { a, m, b, side, dealt: hp - m.hp, sideDealt: sideHp - side.hp };
+  };
+  const plain = thorn(false);
+  const { a, m, b, side, dealt, sideDealt } = thorn(true);
+  const ratio = dealt / plain.dealt;
+  const want = ((THORNBUSH.seconds + BRAMBLE.seconds) / THORNBUSH.seconds) * 1.75;
+  check(Math.abs(ratio - want) < 0.1, `dano ${plain.dealt} → ${dealt} (${ratio.toFixed(2)}, esperado ${want.toFixed(2)})`);
+  check(plain.sideDealt === 0 && sideDealt > 0, `vizinho ${sideDealt}`);
+  check(m.rooted && b.rootedUntil >= a.now() + BRAMBLE.rootMs && !plain.m.rooted, "a raiz fica");
+  check(b.dot.until >= a.now() + BRAMBLE.poisonMs, "veneno renovado");
+  check(a.brain(side).rootedUntil >= a.now() + BRAMBLE.holdMs, "o colado fica preso");
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);

@@ -85,6 +85,8 @@ export interface Brain {
   weakPct: number;
   /** Sopro Glacial (marco 4): congelado pelo sopro, Estilhaça com golpe de qualquer elemento até este momento. */
   primedUntil: number;
+  /** Presa Venenosa (marco 2): já levou o 1º golpe das criaturas (a prisão do 1º golpe só sai uma vez). */
+  fangRooted: boolean;
   /** Cristalizar (marco 5): já congelou de novo depois de um Estilhaço (não congela outra vez em seguida). */
   refrozen: boolean;
   /** Lento até este momento (ms), perdendo `slowPct` da velocidade. */
@@ -172,7 +174,7 @@ export class MonsterAi {
     const heads = traits.heads?.start ?? 0;
     return {
       def, traits, elements: {}, speed: def.speed, depth, damage: stats.damage, xp: stats.xp, loot: stats.loot,
-      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, frozenUntil: 0, dazzledUntil: 0, weakUntil: 0, weakPct: 0, primedUntil: 0, refrozen: false, slowUntil: 0, slowPct: 0,
+      nextMoveAt: 0, nextAttackAt: 0, targetId: null, rootedUntil: 0, stunnedUntil: 0, frozenUntil: 0, dazzledUntil: 0, weakUntil: 0, weakPct: 0, primedUntil: 0, refrozen: false, fangRooted: false, slowUntil: 0, slowPct: 0,
       markUntil: 0, markPct: 0, dot: null, tauntedBy: null, abilityReadyAt: {}, phased: new Set(), used: new Set(), enraged: false,
       invulnerableUntil: 0, hiddenUntil: 0, camouflaged: !!traits.camouflage || !!traits.mimic, diving: false, nextBlinkAt: 0, nextRegenAt: 0,
       regenBlockedUntil: 0, fortitudeUsed: false, family: traits.split ? { count: 1 } : null, heads, headCuts: 0, regrowAt: 0,
