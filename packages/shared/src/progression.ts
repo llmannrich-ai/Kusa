@@ -4,10 +4,18 @@ import { NO_BONUSES, type Bonuses } from "./talents.ts";
 
 export const MAX_LEVEL = 20;
 
+/**
+ * Escala da curva de XP: a forma é a do Tibia (cúbica, 50/3 × (L³ − 6L² + 17L − 12)), num terço do valor, porque a XP
+ * dos monstros foi calibrada para a curva antiga (reta: 50n + 25n²). Os primeiros níveis saem quase de graça e o custo
+ * de cada nível cresce com o quadrado do nível: limpando 75% de um mapa, o herói chega no boss entre o 7 (Cripta) e o
+ * 16 (Fortaleza), sem corte de XP por mapa, e o nível 20 (~33 mil de XP) virou conquista rara.
+ */
+export const XP_CURVE_SCALE = 1 / 3;
+
 /** XP total necessária para alcançar `level` (nível 1 = 0 XP). */
 export function xpForLevel(level: number): number {
-  const n = level - 1;
-  return Math.round(50 * n + 25 * n * n);
+  const l = level;
+  return Math.round(XP_CURVE_SCALE * (50 / 3) * (l * l * l - 6 * l * l + 17 * l - 12));
 }
 
 export function levelForXp(xp: number): number {

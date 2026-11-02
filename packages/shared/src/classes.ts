@@ -15,6 +15,8 @@ export interface ClassDef {
   hpPerLevel: number;
   manaPerLevel: number;
   damagePerLevel: number;
+  /** Armadura própria da classe, somada à do equipamento (corta dano recebido, ver `damageReduction`). */
+  armor: number;
   /** Alcance do ataque básico em tiles (1 = corpo a corpo). */
   attackRange: number;
   /** Efeito visual do ataque básico. */
@@ -26,29 +28,30 @@ export interface ClassDef {
 export const CLASSES: Record<ClassId, ClassDef> = {
   knight: {
     id: "knight", name: "Cavaleiro", color: 0xc0392b, attackFx: "slash",
-    baseHp: 150, baseMana: 20, baseDamage: 12, baseSpeed: 4,
-    hpPerLevel: 14, manaPerLevel: 4, damagePerLevel: 1.5, attackRange: 1,
+    // Era a classe mais fraca (kit 0,52× a mediana no nível 20): dano 12 → 16 (+2,5 por nível) e 10 de armadura própria.
+    baseHp: 150, baseMana: 20, baseDamage: 16, baseSpeed: 4, armor: 10,
+    hpPerLevel: 14, manaPerLevel: 4, damagePerLevel: 2.5, attackRange: 1,
   },
   paladin: {
     id: "paladin", name: "Paladino", color: 0xf1c40f, attackFx: "arrow",
-    baseHp: 120, baseMana: 50, baseDamage: 10, baseSpeed: 4.2,
+    baseHp: 120, baseMana: 50, baseDamage: 10, baseSpeed: 4.2, armor: 0,
     hpPerLevel: 11, manaPerLevel: 14, damagePerLevel: 1.5, attackRange: 5,
   },
   sorcerer: {
     id: "sorcerer", name: "Feiticeiro", color: 0x8e44ad, attackFx: "energy",
-    baseHp: 100, baseMana: 100, baseDamage: 14, baseSpeed: 4,
+    baseHp: 100, baseMana: 100, baseDamage: 14, baseSpeed: 4, armor: 0,
     hpPerLevel: 7, manaPerLevel: 29, damagePerLevel: 2.25, attackRange: 4,
   },
   druid: {
     id: "druid", name: "Druida", color: 0x27ae60, attackFx: "nature",
-    baseHp: 100, baseMana: 95, baseDamage: 9, baseSpeed: 4,
+    baseHp: 100, baseMana: 95, baseDamage: 9, baseSpeed: 4, armor: 0,
     hpPerLevel: 7, manaPerLevel: 29, damagePerLevel: 1.5, attackRange: 4,
   },
   // Xamã Orc: liberado ao vencer Vorgak na Fortaleza Orc (`CLASS_UNLOCK`). Fica no meio da briga, junto dos totens:
   // alcance curto e mais vida que os conjuradores (docs/CLASSE_XAMA_ORC.md).
   shaman: {
     id: "shaman", name: "Xamã Orc", color: 0xd35400, attackFx: "fire",
-    baseHp: 135, baseMana: 70, baseDamage: 11, baseSpeed: 3.8,
+    baseHp: 135, baseMana: 70, baseDamage: 11, baseSpeed: 3.8, armor: 0,
     hpPerLevel: 11, manaPerLevel: 19, damagePerLevel: 1.5, attackRange: 3,
   },
 };
