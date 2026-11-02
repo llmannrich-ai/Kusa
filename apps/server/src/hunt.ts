@@ -98,6 +98,7 @@ import {
   levelForXp,
   lineEnd,
   mapIdOf,
+  mapXp,
   monsterPower,
   monsterStats,
   heroBonuses,
@@ -952,6 +953,8 @@ export class Hunt {
     const stats = monsterStats(kind, monsterPower(this.map, kind));
     // Corte geral do loot (`LOOT_SCALE`) e o do mapa que paga menos por monstro (muitos monstros), que deixa o boss de fora.
     stats.loot = this.scaleLoot(stats.loot[0], stats.loot[1], def.rank === "boss");
+    // Corte de XP do mapa (`MapDef.xpScale`), boss incluído.
+    stats.xp = mapXp(this.map, stats.xp);
     const m = new Monster();
     m.id = `m${this.nextMonsterId++}`;
     m.kind = kind;
