@@ -38,6 +38,7 @@ import {
   itemId,
   lootSellPrice,
   mapMonsters,
+  mapXp,
   monsterPower,
   monsterStats,
   runeEffect,
@@ -209,7 +210,7 @@ function monsterEntry(map: MapDef, kind: MonsterKind) {
   return entry({
     name: def.name,
     color: def.rank === "boss" ? "#e74c3c" : def.rank === "miniboss" ? "#f39c12" : undefined,
-    meta: `${RANK_LABELS[def.rank]} · ${CREATURE_TYPES[def.type].name} · Vida ${stats.maxHp} · Dano ${stats.damage} · XP ${stats.xp}`,
+    meta: `${RANK_LABELS[def.rank]} · ${CREATURE_TYPES[def.type].name} · Vida ${stats.maxHp} · Dano ${stats.damage} · XP ${mapXp(map, stats.xp)}`,
     lines: [
       def.lore,
       ...(abilities.length ? [`Habilidades: ${abilities.join(", ")}.`] : []),

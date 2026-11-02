@@ -685,6 +685,15 @@ sozinho). Peças: `reactionRadius` vale também para o Vapor, `reactionPower` (f
 `markAround`. A Maestria do Lamento Sombrio agora enfraquece 20% por 3 s, como no plano. Migration
 `20261102210000_combos_feiticeiro.sql`.
 
+**Fase 5 (Druida), como foi entregue:** Caça em Bando sai do Rugido da Alcateia, Broto Duplo da Brisa de Pólen e Abraço
+do Espinheiro da Rajada de Espinhos, o que fecha as 24 magias de costela. Peças: `hunt` (a presa: as criaturas do dono
+correm até ela, a até 8 tiles dele, e ferem +50% nela), `thornbushOn` (prender quem já estava envenenado dispara o
+Espinheiro, o caminho inverso do de sempre) e a semente (`look: "sprout"`, uma armadilha que o aliado também dispara).
+Diferenças: a Caça em Bando fere 0,5× e envenena 3 s, e é esse veneno que vira Espinheiro em quem está preso (o
+Espinheiro precisa do veneno para ter força); a semente cura quem está no tile dela e prende o monstro que pisa (as
+peças A6 e A10 do plano não foram precisas: a semente é uma armadilha comum). Migration
+`20261102220000_combos_druida.sql`.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
