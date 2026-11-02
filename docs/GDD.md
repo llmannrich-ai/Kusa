@@ -1158,8 +1158,8 @@ lê.
   monstros extras cada (e, em 40% delas, um mini-boss solto, sem baú), **clareiras de mini-boss com baú** (até 2 por
   zona, 10 a 15 por mapa) e **Grumak, o Rei-Ogro**, na **clareira dos ciprestes**. Os monstros são mais fracos que
   os da Cripta (a quantidade cresce 12% por zona, quase o dobro no fim): o mapa inteiro tem cerca de 145 monstros, 19
-  mini-bosses e 14.700 de XP (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
-  nível 12. Monstro longe da tela não é desenhado nem animado no cliente.
+  mini-bosses e ~9.500 de XP com o corte (14.700 sem ele) (a Cripta, 23 monstros e 2.800), então quem limpa boa parte chega no Rei bem acima do
+  nível 12 (`xpScale` 0,7: limpando 75%, no 16; tudo, no 19). Monstro longe da tela não é desenhado nem animado no cliente.
 - **Loot por monstro menor:** com tantos monstros, o mapa paga 35% do valor de loot dos monstros e baús e 60% dos
   drops de item e poção dos monstros e das poções dos baús (`MapDef.lootScale` e `dropScale`; o boss fica de fora e
   larga tudo, e o baú sempre dá o item). O loot máximo de uma
@@ -1270,8 +1270,8 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   dos monstros (`xpScale`, boss incluído; não muda o orçamento das salas). Meta: **limpando 75% do caminho sozinho, o
   herói chega no boss abaixo do nível 20**; o nível 20 vem do boss ou de limpar o mapa inteiro (teste `xpmapas`, que
   mede a XP de cada mapa gerando a hunt). Cortes de 02/11 (antes, o herói sozinho chegava no boss já no 20): Fortaleza
-  Orc e Charco Cinzento 0,5, Ermos Rubros 0,55, Caverna da Travessia 0,85. Pendente: o Pântano do Kosaradius (limpando
-  75% também chega no 20, mas na produção quem vence o Grumak chega em média no 12). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
+  Orc e Charco Cinzento 0,5, Ermos Rubros 0,55, Caverna da Travessia 0,85, Pântano do Kosaradius 0,7 (limpando 75%,
+  chega no Grumak no nível 16; na produção, quem o vencia chegava em média no 12, então o começo quase não muda). Os monstros que um boss chama são os comuns do mapa (com o `commonPower` dele). Só os baús pagam mais no fundo (+12%
   de gold por sala, `CHEST_DEPTH_SCALING`), e a faixa dos itens largados ainda sobe com a profundidade. Os monstros comuns batem 20% mais forte e têm 25% mais vida que o valor da tabela; mini-bosses e bosses não. Salas laterais têm um mini-boss sorteado (ou, na Cripta, um Mímico no lugar do baú) que destranca um baú; o boss do mapa fica no centro.
 - Vida regenera 2% por segundo e mana 2%; subir de nível cura tudo. Concluir pelo portal do boss dá +50% de loot.
 - **Corte geral do loot** (`LOOT_SCALE`, 80%, em `packages/shared/src/maps.ts`): todos os mapas pagam 80% do gold

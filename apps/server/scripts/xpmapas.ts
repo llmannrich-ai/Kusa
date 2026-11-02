@@ -16,12 +16,6 @@ import { check } from "./arena.ts";
 const SEEDS = [11, 4242, 90210];
 /** Fração do mapa que a régua do GDD supõe limpa ("matando 75% do caminho"). */
 const CLEAR = 0.75;
-/**
- * Mapas fora da conta, de propósito: o Pântano do Kosaradius é o mapa de entrada (só 1 jogador, ~145 monstros fracos
- * e 10 min): limpando 75% chega no nível 20, mas na produção quem vence o Grumak chega em média no 12. Decidir o corte
- * dele com a telemetria de jogadores novos.
- */
-const PENDING: MapId[] = ["marsh"];
 
 function measure(mapId: MapId, seed: number) {
   const host: HuntHost = {
@@ -57,7 +51,7 @@ for (const r of rows) {
 }
 
 if (!process.argv.includes("--tabela")) {
-  for (const r of rows.filter((r) => !PENDING.includes(r.id))) check(r.at75 < MAX_LEVEL, `${r.id}: limpando 75% sozinho, chega no boss no nível ${r.at75} (abaixo do ${MAX_LEVEL})`);
+  for (const r of rows) check(r.at75 < MAX_LEVEL, `${r.id}: limpando 75% sozinho, chega no boss no nível ${r.at75} (abaixo do ${MAX_LEVEL})`);
   console.log("xpmapas OK");
 }
 process.exit(0);

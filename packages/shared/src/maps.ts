@@ -206,6 +206,8 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   marsh: {
     id: "marsh", name: "Pântano do Kosaradius", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
+    // ~145 monstros: com toda a XP, limpando 75% o herói chegava no Grumak no nível 20.
+    xpScale: 0.7,
     minibossPower: 1.52,
     meadowMonsters: 3, meadowMinibosses: 0.4, lootScale: 0.35, dropScale: 0.6,
     description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando, e ogros e chefes de guerra em cada clareira: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
