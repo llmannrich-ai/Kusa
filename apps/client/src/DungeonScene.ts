@@ -219,6 +219,8 @@ interface Unit {
   breath?: number;
   /** Campeão: afixo já desenhado (nome e brilho dourados). */
   champion?: string;
+  /** Monstro: o nome sobre a barra (o Campeão troca o texto e a cor). */
+  nameLabel?: Phaser.GameObjects.Text;
   /** Monstro animado (arte em folha): os clipes e até quando o golpe/especial em curso segura o quadro. */
   anim?: MonsterAnim;
   busyUntil?: number;
@@ -1380,10 +1382,10 @@ export class DungeonScene extends Phaser.Scene {
       unit.busyUntil = 0;
       sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * 4) });
     }
-    if (def.rank !== "common") {
-      const label = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color: "#ff9f9f" }).setOrigin(0.5, 1);
-      unit.overlay.add(label);
-    }
+    // Todo monstro mostra o nome; o comum num tom mais apagado, para o boss e o mini-boss continuarem se destacando.
+    const color = def.rank === "common" ? "#c9bfae" : "#ff9f9f";
+    unit.nameLabel = this.add.text(0, unit.barY - 2, def.name, { ...this.textStyle(), color }).setOrigin(0.5, 1);
+    unit.overlay.add(unit.nameLabel);
     this.monsters.set(id, unit);
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
     this.syncHidden(unit, kind, monster.hidden);
@@ -1395,7 +1397,8 @@ export class DungeonScene extends Phaser.Scene {
     if (!affix || unit.champion === affix || !(affix in CHAMPION_AFFIXES)) return;
     unit.champion = affix;
     const name = `${MONSTERS[kind].name} ${CHAMPION_AFFIXES[affix as ChampionAffix].name}`;
-    unit.overlay.add(this.add.text(0, unit.barY - 2, name, { ...this.textStyle(), color: "#f7d774" }).setOrigin(0.5, 1));
+    if (unit.nameLabel) unit.nameLabel.setText(name).setColor("#f7d774");
+    else unit.overlay.add(this.add.text(0, unit.barY - 2, name, { ...this.textStyle(), color: "#f7d774" }).setOrigin(0.5, 1));
     const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 26, 9, 0xf7d774, 0.4);
     unit.body.addAt(glow, 0);
     this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 });
