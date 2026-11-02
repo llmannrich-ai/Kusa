@@ -1,8 +1,9 @@
 import {
-  BAG_SIZE, CLASSES, ITEMS, ITEM_SLOTS, MSG, RUNES, RUNE_SLOTS, SLOT_NAMES, canUse, lootColor, lootName, runeEffect, type ClassId, type ItemSlot,
+  BAG_SIZE, CLASSES, ITEMS, ITEM_SLOTS, MSG, RUNES, RUNE_SLOTS, SLOT_NAMES, canUse, describeStats, isUpgrade, itemScore, lootColor, lootName,
+  runeEffect, type ClassId, type ItemSlot,
 } from "@kusa/shared";
-import { itemIcon } from "./art/items.ts";
-import { itemEffect, itemLabel, statList } from "./menu.ts";
+import { itemIcon, slotGhost } from "./art/items.ts";
+import { itemEffect, itemLabel } from "./menu.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
 /** Item escolhido no menu: uma posição da bag, um slot do corpo ou uma runa equipada. */
@@ -15,14 +16,23 @@ function iconUrl(id: string) {
   return iconUrls.get(id)!;
 }
 
+/** Silhueta apagada de cada slot vazio do corpo (mostra o que vai ali sem ocupar espaço com texto). */
+const ghostUrls = new Map<ItemSlot, string>();
+function ghostUrl(slot: ItemSlot) {
+  if (!ghostUrls.has(slot)) ghostUrls.set(slot, slotGhost(slot).toDataURL());
+  return ghostUrls.get(slot)!;
+}
+
 function rarityColor(id: string) {
   return ITEMS[id] || RUNES[id] ? `#${lootColor(id).toString(16).padStart(6, "0")}` : "";
 }
 
 /**
  * Bag da hunt (até `BAG_SIZE` itens). No HUD fica só um botão de bag com a lotação; tocar nele abre
- * o menu com os itens da bag e o equipamento vestido (o único lugar onde ele aparece). No menu, tocar num item mostra o que ele faz e
- * as ações (equipar, guardar, largar). O servidor valida tudo; aqui só mandamos a intenção.
+ * o menu com os itens da bag e o equipamento vestido (o único lugar onde ele aparece). O menu é compacto para não
+ * cobrir a hunt: título com as runas, uma fileira com o vestido, uma com a bag (as melhorias marcadas com ▲) e,
+ * logo embaixo, o item tocado comparado com o vestido e as ações (equipar, guardar, largar), sem rolagem.
+ * O servidor valida tudo; aqui só mandamos a intenção.
  */
 export class BagBar {
   private selected: Selection = null;
@@ -122,53 +132,73 @@ export class BagBar {
   }
 
   private renderMenu(p: PlayerView, bag: string[]) {
+    const classId = p.classId as ClassId;
+    // Título: lotação, as runas equipadas (pequenas: valem a hunt inteira e não se trocam aqui) e fechar.
     const head = el("div", "bag-head");
-    head.append(el("strong", "", `🎒 Bag ${bag.length}/${BAG_SIZE}`));
-    const close = el("button", "icon-button", "✕");
+    const title = el("strong", "bag-title", `🎒 ${bag.length}/${BAG_SIZE}`);
+    title.classList.toggle("cheia", bag.length >= BAG_SIZE);
+    const runes = el("div", "bag-runes");
+    runes.setAttribute("aria-label", "Runas equipadas");
+    for (let i = 0; i < RUNE_SLOTS; i++) {
+      const cell = this.cell(p.runes[i], "bag-cell bag-rune");
+      if (p.runes[i]) cell.dataset.rune = String(i);
+      else cell.disabled = true;
+      cell.setAttribute("aria-label", p.runes[i] ? lootName(p.runes[i]) : "Runa vazia");
+      if (this.isSelected({ rune: i })) cell.classList.add("selected");
+      runes.append(cell);
+    }
+    const close = el("button", "icon-button bag-close", "✕");
     close.dataset.action = "close";
     close.setAttribute("aria-label", "Fechar");
-    head.append(close);
+    head.append(title, runes, close);
 
-    const gear = el("div", "bag-gear");
+    const gear = el("div", "bag-row bag-gear");
+    gear.setAttribute("aria-label", "Vestido");
     for (const slot of ITEM_SLOTS) {
-      const cell = this.cell(p[slot], "bag-cell", SLOT_NAMES[slot]);
+      const cell = this.cell(p[slot], "bag-cell");
       cell.dataset.slot = slot;
+      if (!p[slot]) {
+        const ghost = el("img", "item-img ghost");
+        ghost.src = ghostUrl(slot);
+        ghost.alt = "";
+        cell.append(ghost);
+      }
+      cell.setAttribute("aria-label", p[slot] ? `${SLOT_NAMES[slot]}: ${lootName(p[slot])}` : `${SLOT_NAMES[slot]}: vazio`);
       if (this.isSelected({ slot })) cell.classList.add("selected");
       gear.append(cell);
     }
 
-    // Runas equipadas no menu: valem a hunt inteira e não se trocam aqui.
-    const runes = el("div", "bag-gear bag-runes");
-    for (let i = 0; i < RUNE_SLOTS; i++) {
-      const cell = this.cell(p.runes[i], "bag-cell", "Runa");
-      if (p.runes[i]) cell.dataset.rune = String(i);
-      if (this.isSelected({ rune: i })) cell.classList.add("selected");
-      runes.append(cell);
-    }
-
-    const grid = el("div", "bag-grid");
+    const grid = el("div", "bag-row bag-grid");
+    grid.setAttribute("aria-label", "Bag");
     for (let i = 0; i < Math.max(BAG_SIZE, bag.length); i++) {
-      const cell = this.cell(bag[i], "bag-cell");
-      // A classe não usa (arma de outra classe, armadura de guerra num feiticeiro): só serve para vender.
-      if (bag[i] && !canUse(bag[i], p.classId as ClassId)) cell.classList.add("unusable");
-      if (bag[i]) cell.dataset.bag = String(i);
+      const id = bag[i];
+      const cell = this.cell(id, "bag-cell");
+      if (id) {
+        cell.dataset.bag = String(i);
+        // A classe não usa (arma de outra classe, armadura de guerra num feiticeiro): só serve para vender.
+        if (ITEMS[id] && !canUse(id, classId)) cell.classList.add("unusable");
+        // Melhor que o vestido no mesmo slot: a setinha verde mostra o que vale equipar sem abrir item por item.
+        else if (ITEMS[id] && isUpgrade(id, p[ITEMS[id].slot], classId)) {
+          cell.classList.add("upgrade");
+          cell.append(el("span", "bag-badge", "▲"));
+        }
+        cell.setAttribute("aria-label", lootName(id));
+      } else cell.disabled = true;
       if (this.isSelected({ bag: i })) cell.classList.add("selected");
       grid.append(cell);
     }
 
-    this.menu.replaceChildren(head, el("h3", "", "Equipado"), gear, el("h3", "", "Runas"), runes, el("h3", "", "Bag"), grid, this.details(p, bag));
+    this.menu.replaceChildren(head, el("span", "bag-label", "Vestido"), gear, el("span", "bag-label", "Bag"), grid, this.details(p, bag));
   }
 
-  /** O que o item selecionado faz, comparado com o vestido, e as ações. */
+  /** O que o item selecionado faz, comparado com o vestido, e as ações. Fica logo abaixo das fileiras, sempre à vista. */
   private details(p: PlayerView, bag: string[]) {
     const box = el("div", "bag-details");
     const sel = this.selected;
     const id = sel ? ("bag" in sel ? bag[sel.bag] : "rune" in sel ? p.runes[sel.rune] ?? "" : p[sel.slot]) : "";
     const rune = RUNES[id];
     if (sel && rune) {
-      const name = el("strong", "", rune.name);
-      name.style.color = rarityColor(id);
-      box.append(name, el("small", "muted", `${rune.icon} ${rune.master ? "Runa Mestra" : "Runa"} · ${runeEffect(rune)}`));
+      box.append(nameLine(id, rune.name), el("small", "muted", `${rune.icon} ${rune.master ? "Runa Mestra" : "Runa"} · ${runeEffect(rune)}`));
       if ("bag" in sel) {
         box.append(el("small", "muted", "Runas se equipam no menu Itens, fora da hunt."));
         const actions = el("div", "bag-actions");
@@ -181,21 +211,26 @@ export class BagBar {
     }
     const def = ITEMS[id];
     if (!sel || !def) {
+      box.classList.add("vazio");
       box.append(el("p", "muted", bag.length > 0 || ITEM_SLOTS.some((s) => p[s])
-        ? "Toque num item para ver e trocar."
+        ? "Toque num item para comparar e trocar."
         : "Itens pegos na dungeon aparecem aqui. Quem sai vivo leva tudo para o inventário."));
       return box;
     }
-    const name = el("strong", "", def.name);
-    name.style.color = rarityColor(id);
-    box.append(name, el("small", "muted", itemLabel(def)), statList(def));
+    const classId = p.classId as ClassId;
+    const head = nameLine(id, def.name);
+    box.append(head, el("small", "muted", itemLabel(def)), el("small", "bag-stats", describeStats(def.stats).join(" · ") || "Sem atributos"));
     const actions = el("div", "bag-actions");
     if ("bag" in sel) {
+      const usable = canUse(def.id, classId);
       const worn = ITEMS[p[def.slot]];
-      if (worn) box.append(el("small", "muted", `Vestido: ${worn.name} (${itemEffect(worn)})`));
-      const usable = canUse(def.id, p.classId as ClassId);
-      if (!usable) box.append(el("small", "warn", `${CLASSES[p.classId as ClassId].name} não usa: leve para vender ou para outra classe.`));
-      actions.append(button("Equipar", "equip", true, !usable), button("Largar", "drop"));
+      if (!usable) head.append(el("span", "bag-verdict pior", "Não usa"));
+      else if (!worn || isUpgrade(def.id, worn.id, classId)) head.append(el("span", "bag-verdict melhor", "▲ Melhor"));
+      else if (itemScore(def.id) < itemScore(worn.id)) head.append(el("span", "bag-verdict pior", "▼ Pior"));
+      else head.append(el("span", "bag-verdict", "= Igual"));
+      box.append(el("small", "muted", worn ? `Vestido: ${worn.name} (${itemEffect(worn) || "sem atributos"})` : `${SLOT_NAMES[def.slot]} vazio: equipe para usar.`));
+      if (!usable) box.append(el("small", "warn", `${CLASSES[classId].name} não usa: leve para vender ou para outra classe.`));
+      actions.append(button(worn ? "Trocar" : "Equipar", "equip", true, !usable), button("Largar", "drop"));
     } else {
       const full = bag.length >= BAG_SIZE;
       actions.append(button(full ? "Bag cheia" : "Guardar na bag", "unequip", !full, full));
@@ -209,7 +244,7 @@ export class BagBar {
     return JSON.stringify(s) === JSON.stringify(this.selected);
   }
 
-  private cell(id: string | undefined, className: string, emptyLabel = "") {
+  private cell(id: string | undefined, className: string) {
     const cell = el("button", className);
     if (id && (ITEMS[id] || RUNES[id])) {
       const img = el("img", "item-img");
@@ -220,7 +255,6 @@ export class BagBar {
       cell.title = lootName(id);
     } else {
       cell.classList.add("vazio");
-      if (emptyLabel) cell.append(el("small", "muted", emptyLabel));
     }
     return cell;
   }
@@ -254,6 +288,15 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
   if (className) node.className = className;
   if (text) node.textContent = text;
   return node;
+}
+
+/** Nome na cor da raridade, com espaço à direita para o veredito (melhor/pior que o vestido). */
+function nameLine(id: string, name: string) {
+  const line = el("div", "bag-name");
+  const strong = el("strong", "", name);
+  strong.style.color = rarityColor(id);
+  line.append(strong);
+  return line;
 }
 
 function button(text: string, action: string, primary = false, disabled = false) {
