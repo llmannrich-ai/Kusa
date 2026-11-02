@@ -529,7 +529,7 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 | Cavaleiro | Giro da Lâmina: gira de novo (50%) · Grito de Guerra: cura 15% · Golpe Esmagador: atordoa 1 s · Escudo da Fé: cobre aliados a até 2 tiles e, ao quebrar, empurra os monstros colados · Lâmina Sedenta: corta todos os colados no alvo · Pele de Ferro: provoca e cura aliados a até 3 tiles · Terremoto: réplica (50%) · Muralha de Aço: corta 30% do dano · Brado do Comandante: alcança 6 tiles · Execução: dobro abaixo de 50% da vida |
 | Paladino | Flecha Sagrada: salta para mais um · Chuva de Flechas: 30% de lentidão · Disparo Perfurante: alcance 9 e sangra · Flecha Atordoante: atordoa os colados no alvo · Bênção Protetora: ofusca 0,7 s · Luz Curativa: ofusca 1 s · Disparo Certeiro: matar corta metade da recarga · Julgamento Divino: queima · Saraivada Explosiva: queima |
 | Feiticeiro | Esfera Sombria: explode duas vezes (50%) · Tempestade do Vazio: rouba 20% de vida · Relâmpago: atordoa 0,5 s · Raio em Cadeia: salta 5 vezes · Lança de Gelo: lentidão depois do gelo · Drenar Vida: rouba 30% em mana · Nova de Gelo: lentidão depois do gelo · Meteoro: queima e deixa uma cratera em chamas · Nevasca: raio 4 · Pacto Sombrio: rouba 50% de vida |
-| Druida | Bênção da Floresta: brota uma mariposa · Raízes Espinhosas: envenenam · Espinho Venenoso: o veneno pula para mais 2 · Lobo Espiritual: 2 lobos · Mariposa Curandeira: 2 mariposas · Enxame de Vespas: 5 vespas · Fúria da Natureza: prende 1,5 s · Chamado da Matilha: 4 lobos · Urso Ancestral: dobro do tempo e, ao morrer, cura 15% da equipe · Guardião do Bosque: cura 20% da equipe · Coração da Floresta: 2 fogos-fátuos |
+| Druida | Bênção da Floresta: brota uma mariposa · Raízes Espinhosas: envenenam · Espinho Venenoso: o veneno pula para mais 2 · Lobo Espiritual: 2 lobos · Mariposa Curandeira: 2 mariposas · Enxame de Vespas: 5 vespas · Fúria da Natureza: prende 1,5 s · Chamado da Matilha: 4 lobos (começa com 2 e ganha o 3º no nível 3) · Urso Ancestral: dobro do tempo e, ao morrer, cura 15% da equipe · Guardião do Bosque: cura 20% da equipe · Coração da Floresta: 2 fogos-fátuos |
 
 ### Cofre, bag e mercado (extração)
 
@@ -1797,12 +1797,88 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   + velocidade, + armadura e + dano nas magias.
 - Armadura corta dano recebido: `armadura / (armadura + 25)`; o conjunto comum de Dragão (33) corta 57%.
 - **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
-  Raridade: monstro comum 18% raro e 4% mágico; mini-boss e baú 35% e 12%; boss 40% e 25%.
-  **O drop não olha a classe de ninguém:** cai qualquer item, mesmo jogando sozinho (um cavaleiro acha cajado; vai para a bag e se vende).
+  Raridade: monstro comum 18% raro, 4% mágico e 0,5% lendário; mini-boss e baú 35%, 12% e 3%; boss 40%, 25% e 6%.
+  **Metade do drop favorece a equipe** (ver "Drop pela equipe"): a outra metade cai livre, então um cavaleiro sozinho ainda acha cajado (vai para a bag e se vende).
 - O item cai no chão onde o monstro morreu (o do baú, aos pés de quem abriu, que já pega) e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
 - Quem morre larga 1 equipamento sorteado (a partir do nível 5) e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
-- Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro e ×4 se mágico.
+- Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro, ×4 se mágico e ×8 se lendário (2.400).
+
+### Armas de estilo
+
+Uma arma nova por classe (`ITEM_FAMILIES` em `packages/shared/src/items.ts`), com os 5 materiais e as 3 raridades das
+outras (75 itens). Cada uma tem um **traço no ataque básico**, que cresce com o material e a raridade; o dano fica um
+pouco abaixo da arma de sempre da classe, em troca do traço:
+
+| Arma | Classe | Traço (comum de Rústico → de Dragão) |
+|---|---|---|
+| Maça | Cavaleiro | 7% → 11% de chance de atordoar o alvo por 0,6 s (`bash`) |
+| Lança | Paladino | o tiro atravessa: o monstro logo atrás do alvo leva 30% → 44% do dano (`pierce`) |
+| Orbe | Feiticeiro | +1 tile de alcance e tiro 35% mais rápido; poder mágico um pouco menor que a varinha (`shotSpeed`) |
+| Foice | Druida | corta em arco: os monstros colados no alvo levam 25% → 38% do dano (`cleave`) |
+| Totem de mão | Xamã Orc | cada golpe cura o xamã e os aliados a até 3 tiles em 5% → 9% do dano dado (`mend`) |
+
+- O golpe secundário da lança e da foice é só dano (sem atordoar, chamas nem roubo de vida). O raro multiplica o traço
+  como os outros atributos; vários mágicos reforçam o traço (Martelo do Trovão Anão, Tridente da Maré Rubra, Foice da
+  Lua Cheia, Totem dos Ancestrais).
+- Teste: `apps/server/scripts/armasnovas.ts` (cada traço na arena). Telemetria: `stats.weaponTraits`.
+- **Arte:** a maça vai pela pose da espada, o orbe pela da varinha, e lança, foice e totem pela do cajado. Cada nível
+  tem cabeça própria (clava cravejada, bola de bronze, aletas, crânio de dragão; ponta em folha, pique com gancho,
+  tridente; meia-lua que cresce; cara entalhada, chifres, penas, dois rostos, crânio). Prévia sem navegador:
+  `npx tsx apps/client/scripts/armasPrevia.ts saida.png`.
+
+### Drop pela equipe
+
+Metade dos itens sorteados (`CLASS_DROP_FAVOR`) sai de uma família, ou de um lendário, que algum humano da hunt veste;
+a outra metade continua livre (item que ninguém usa vai para a bag e se vende). Os bots não contam. A chance de cada
+item cair e a raridade não mudam (`dropOdds`).
+
+### Itens lendários
+
+Peças únicas acima do mágico (`LEGENDARIES` em `packages/shared/src/items.ts`; desenho e conceito em `docs/ITENS_LENDARIOS.md`).
+
+- **Força:** a base de Dragão da família ×1,9 (o mágico de Dragão é ×1,6 mais uma propriedade) e de 3 a 5 propriedades
+  próprias. Toda peça passa o mágico de Dragão da família em cada atributo da família (o teste `lendarios` confere).
+- **Propriedades novas:**
+  - **Força de magias específicas** (`ItemStats.spells`): soma com as sinergias e o Tomo na força do nível da magia
+    (`spellAtRank`), então vale para dano, cura, escudo, dano contínuo e criaturas. Ex.: o Cajado da Geada Eterna dá
+    +35% na Lança de Gelo.
+  - **Recarga das magias** (`ItemStats.cooldown`): soma com o Foco; a recarga nunca cai abaixo de 40% (`spellCooldownMs`).
+- **22 peças**, com peças de classe que fortalecem magias de cada classe:
+
+  | Peça | Slot | Quem veste | Destaque |
+  |---|---|---|---|
+  | Lâmina do Eclipse | Espada | Cavaleiro | Giro da Lâmina +30%, Redemoinho de Aço +30%, Mil Cortes +25%, roubo de vida |
+  | Machado do Último Inverno | Machado | Cavaleiro | Terremoto +35%, Golpe Esmagador +30% |
+  | Couraça do Coração de Ferro | Armadura | Cavaleiro e Paladino | armadura, vida, espinhos e roubo de vida |
+  | Elmo da Vigília Eterna | Capacete | Cavaleiro e Paladino | vida, roubo de vida, recarga 6% |
+  | Perneiras do Gigante de Pedra | Calça | Cavaleiro e Paladino | armadura, vida, espinhos |
+  | Arco do Amanhecer Partido | Arco | Paladino | Flecha Sagrada +35%, Julgamento Divino +30%, Caldeira Divina +25% |
+  | Besta Relojoeira | Besta | Paladino | Barragem +35%, Saraivada Explosiva +30%, sem a lentidão da besta, recarga 8% |
+  | Varinha da Fênix Cinzenta | Varinha | Feiticeiro | Bola de Fogo +35%, Meteoro +30%, Núcleo Infernal +25% |
+  | Cajado da Geada Eterna | Cajado | Feiticeiro | Lança de Gelo +35%, Nevasca +30%, Nova de Gelo e Cone de Frio +25% |
+  | Coroa do Olho Tempestuoso | Chapéu | Feiticeiro | Raio em Cadeia e Relâmpago +30%, Fúria dos Céus +25%, recarga 10% |
+  | Cajado do Carvalho que Sonha | Cajado | Druida | Lobo Espiritual +35%, Chamado da Matilha +30%, Urso Ancestral +25% |
+  | Manto de Mil Asas | Manto | Druida | Mariposa Curandeira +40%, Enxame de Vespas +35%, Coração da Floresta +25% |
+  | Cajado do Totem Rubro | Cajado | Xamã Orc | Totem da Brasa +35%, Totem Vulcânico e do Trovão +30% |
+  | Máscara do Grande Chefe | Chapéu | Xamã Orc | Berserkers e Chefe de Guerra +30%, Capitão do Clã +25% |
+  | Sino do Juízo Final | Maça | Cavaleiro | Bater com Escudo +35%, Desafio Supremo +30%, Grito de Guerra +25%, atordoa mais |
+  | Lança do Último Raio | Lança | Paladino | Flecha Relâmpago e Lança Etérea +35%, Disparo Perfurante +30%, atravessa mais |
+  | Orbe do Vazio Faminto | Orbe | Feiticeiro | Esfera Sombria +35%, Tempestade do Vazio e Rajada Mística +30%, Morte Súbita +25% |
+  | Foice da Colheita Venenosa | Foice | Druida | Espinho Venenoso +35%, Raízes Espinhosas e Fúria da Natureza +30%, veneno |
+  | Totem da Mãe-Fera | Totem de mão | Xamã Orc | Lanceiros, Arqueiros e Tambor de Guerra +30%, Tambor de Sangue +25%, cura mais |
+  | Passos de Ninguém | Botas | Todos | velocidade 23%, ataque mais rápido, recarga 5% |
+  | Escudo Espelho da Lua | Escudo | Todos menos Paladino | espinhos 25%, vida, mana |
+  | Calças do Vagante Astral | Calça arcana | Feiticeiro, Druida e Xamã | mana, recarga 6%, velocidade |
+
+- **Drop:** caem de qualquer monstro, raramente: 0,5% dos itens de monstro comum (1 a cada ~1.300 monstros), 3% dos
+  de mini-boss e baú, 6% dos de boss (`RARITY_CHANCES.legendary`). Qual peça sai segue o "Drop pela equipe": metade das
+  vezes, uma que algum humano da hunt veste; na outra metade, qualquer uma. Não se compram.
+- **Comparação:** vale um nível de material inteiro acima do mágico (`itemScore`), então troca na hora por qualquer
+  peça de Dragão do slot.
+- **Morte:** pesa 0,12 no sorteio do equipamento perdido (`DEATH_LOSS_WEIGHT`; o mágico pesa 0,25).
+- **No jogo:** facho de luz mais alto no chão, aura dourada nos pés e faíscas de ouro subindo em volta do herói
+  (`gearFx.ts`), e a história da peça em itálico na ficha. No ícone, uma estrela de ouro no canto.
 
 ### Arte dos itens e equipamento visível
 

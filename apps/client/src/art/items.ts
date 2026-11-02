@@ -510,6 +510,96 @@ const ROBE = outlined([
 ]);
 
 /** O mesmo desenho em todos os níveis (o material muda a cor). */
+/** Maça: cabeça com cravos em diagonal. */
+const MACE = outlined([
+  "................",
+  "..........m.m...",
+  ".........mmmmm..",
+  "........mmmMMm..",
+  ".........mMMMm..",
+  "........mmMMm...",
+  ".........m.m....",
+  "........wW......",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....wW..........",
+  "...aa...........",
+  "..WW............",
+]);
+
+/** Lança: ponta larga de metal e haste comprida. */
+const SPEAR = outlined([
+  "..............m.",
+  ".............mm.",
+  "............mmM.",
+  "...........mmM..",
+  "..........aMM...",
+  ".........wa.....",
+  "........wW......",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....wW..........",
+  "...wW...........",
+  "..wW............",
+  ".WW.............",
+]);
+
+/** Orbe: esfera com brilho sobre um cabo curto. */
+const ORB = outlined([
+  "................",
+  "................",
+  ".........aaaa...",
+  "........aiiaaa..",
+  "........aiaaaa..",
+  "........aaaaaa..",
+  ".........aaaa...",
+  "........mMmM....",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....mM..........",
+  "...wW...........",
+  "................",
+]);
+
+/** Foice: lâmina curva no alto da haste. */
+const SCYTHE = outlined([
+  "......mmmmm.....",
+  "....mmMMMMwW....",
+  "...mMM....wW....",
+  "..mM......wW....",
+  "..m......wW.....",
+  ".........wW.....",
+  "........wW......",
+  "........wW......",
+  ".......wW.......",
+  ".......wW.......",
+  "......wW........",
+  "......wW........",
+  ".....wW.........",
+  ".....WW.........",
+]);
+
+/** Totem de mão: rosto entalhado com olhos acesos no alto da haste. */
+const TOTEM = outlined([
+  "........m..m....",
+  ".......mmmmmm...",
+  ".......mamMaM...",
+  ".......mmmMMM...",
+  ".......mMWWMM...",
+  "........mMMM....",
+  ".........wW.....",
+  "........wW......",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....wW..........",
+  "...wW...........",
+  "..WW............",
+]);
+
 const allTiers = (grid: Grid): Record<ItemTier, Grid> => ({ 1: grid, 2: grid, 3: grid, 4: grid, 5: grid });
 
 /** Ícone de cada família (`ITEM_FAMILIES`) por nível. */
@@ -520,6 +610,11 @@ const ICONS: Record<string, Record<ItemTier, Grid>> = {
   "weapon-crossbow": allTiers(CROSSBOW),
   "weapon-wand": allTiers(WAND),
   "weapon-staff": allTiers(STAFF),
+  "weapon-mace": allTiers(MACE),
+  "weapon-spear": allTiers(SPEAR),
+  "weapon-orb": allTiers(ORB),
+  "weapon-scythe": allTiers(SCYTHE),
+  "weapon-totem": allTiers(TOTEM),
   "helmet-war": OLD_ICONS.helmet,
   "helmet-arcane": allTiers(HAT),
   "armor-war": OLD_ICONS.armor,
@@ -534,6 +629,33 @@ const ICONS: Record<string, Record<ItemTier, Grid>> = {
 const RARITY_GEM: Partial<Record<ItemRarity, { grid: Grid; palette: Palette }>> = {
   rare: { grid: [".o.", "oro", ".o."], palette: { o: "#0b1a33", r: "#4aa3ff" } },
   magic: { grid: [".o.", "oro", ".o."], palette: { o: "#2a0b33", r: "#c56cf0" } },
+  legendary: { grid: [".o.", "oro", "ooo", "oro", ".o."], palette: { o: "#3a1d04", r: "#ffa62b" } },
+};
+
+/** Lendário na arte antiga: o ícone de Dragão da família nos materiais da peça (claro, escuro, detalhe). */
+const LEGEND_ICON: Record<string, { m: string; M: string; a: string }> = {
+  eclipse: { m: "#3a2e52", M: "#16101f", a: "#ff6a2a" },
+  lastwinter: { m: "#bfeaf6", M: "#5aa8c8", a: "#efe3c8" },
+  ironheart: { m: "#4a4652", M: "#1e1c24", a: "#ff4a2a" },
+  vigil: { m: "#f0c24a", M: "#9a6a12", a: "#ffb02a" },
+  stonegiant: { m: "#8a8478", M: "#4a463e", a: "#6a9a3c" },
+  dawn: { m: "#f0c24a", M: "#b04a1a", a: "#fff2b0" },
+  clockwork: { m: "#d0a040", M: "#7a5418", a: "#c0683a" },
+  phoenix: { m: "#5a5450", M: "#2a2624", a: "#ff6a2a" },
+  frost: { m: "#e0e8f4", M: "#8a98b0", a: "#8fdcf2" },
+  stormeye: { m: "#c0683a", M: "#5a2e14", a: "#5ad2e6" },
+  dreamoak: { m: "#6a8a3c", M: "#3a4a1c", a: "#9cff7a" },
+  thousandwings: { m: "#8ac0b0", M: "#3a6a60", a: "#f0b030" },
+  redtotem: { m: "#9a2a22", M: "#4a0e0a", a: "#ff6a2a" },
+  warchief: { m: "#e0d4b0", M: "#7a6a4a", a: "#c0283a" },
+  nobody: { m: "#4a4460", M: "#1e1a2a", a: "#9a5ae0" },
+  moonmirror: { m: "#e4ecf7", M: "#8a98b0", a: "#4c7bd9" },
+  astral: { m: "#2a3070", M: "#10142e", a: "#f4f7fb" },
+  doombell: { m: "#d09a48", M: "#6a4418", a: "#ffcf6a" },
+  lastray: { m: "#e4ecf7", M: "#3c4c8c", a: "#8fdcf2" },
+  voidmaw: { m: "#3a2e52", M: "#120c1c", a: "#b04ae0" },
+  venomharvest: { m: "#6a9a3c", M: "#2e4a1c", a: "#9ad23a" },
+  motherbeast: { m: "#d6caa8", M: "#6e665c", a: "#d8962a" },
 };
 
 /** Frasco das poções: "c" = rolha, "g" = brilho do vidro, "l"/"L" = líquido claro/escuro. */
@@ -636,9 +758,10 @@ export function itemIcon(itemId: string) {
   const item = ITEMS[itemId];
   if (!item) return canvas;
   const proto = protoHero && protoItemOf(itemId);
-  if (proto) return protoHero!.protoItemIcon(proto, item.rarity);
-  const gem = item.slot === "weapon" && (item.family === "weapon-wand" || item.family === "weapon-staff") ? { a: GEMS[item.tier] } : {};
-  paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem }, 0, 0);
+  if (proto) return protoHero!.protoItemIcon(proto, item.rarity, item.legend);
+  const gem = item.slot === "weapon" && ["weapon-wand", "weapon-staff", "weapon-orb", "weapon-totem"].includes(item.family) ? { a: GEMS[item.tier] } : {};
+  const legend = item.legend ? LEGEND_ICON[item.legend] : undefined;
+  paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem, ...legend }, 0, 0);
   const mark = RARITY_GEM[item.rarity];
   if (mark) paintGrid(ctx, mark.grid, mark.palette, 0, 0);
   return canvas;
