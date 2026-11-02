@@ -52,7 +52,7 @@ logados), que lê esta tabela; `p_mine` filtra as partidas da conta e `p_before`
 | `stats.damageTaken`, `damageMitigated`, `minHpPct` | Dano recebido por monstro, quanto a armadura/Grito evitou e o maior susto |
 | `stats.specialDamage` | Dano das habilidades dos monstros (golpe + veneno/queimadura/sangramento + engolido), por monstro |
 | `stats.abilityDamage` | O mesmo, por habilidade: `"<monstro>:<habilidade>"` (ex.: `dragon:breath`, `gelatinousCube:engulf`). Meta: nenhuma habilidade sozinha com mais de 20% das mortes do mapa |
-| `stats.ccTaken` | Tempo (ms) sob efeito de monstro: `root`, `stun`, `engulf`, `blind`, `corrode` |
+| `stats.ccTaken` | Tempo (ms) sob efeito de monstro: `root`, `stun`, `engulf`, `corrode` (`blind` só em hunts antigas: a cegueira saiu do jogo) |
 | `stats.resisted` | Dano que o herói deixou de causar por resistência ou imunidade dos monstros (negativo = a vulnerabilidade rendeu a mais) |
 | `stats.healing` | Cura feita (druida), incluindo o roubo de vida da Sede de sangue e dos itens mágicos |
 | `stats.manaGiven` | Mana devolvida aos aliados por magias e criaturas (Fogo-Fátuo), sem as poções |

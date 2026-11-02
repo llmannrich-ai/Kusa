@@ -1156,14 +1156,6 @@ export class DungeonScene extends Phaser.Scene {
     return g;
   }
 
-  /** Cego: nuvem escura sobre os olhos. */
-  private blindAt(top: number) {
-    const g = this.add.graphics();
-    g.fillStyle(0x1e1e2a, 0.75).fillEllipse(-5, top, 14, 7).fillEllipse(5, top - 1, 14, 8).fillEllipse(0, top + 2, 18, 6);
-    this.tweens.add({ targets: g, x: { from: -2, to: 2 }, duration: 600, yoyo: true, repeat: -1 });
-    return g;
-  }
-
   private drawPortal() {
     const { x, y } = this.dungeon.portal;
     const portal = this.add.image(this.toPx(x), this.toPx(y), PORTAL_TEXTURE.escape).setScale(PROP_SCALE).setDepth(y * TILE_SIZE + 1);
@@ -1393,12 +1385,11 @@ export class DungeonScene extends Phaser.Scene {
     this.setStatus(unit, "poison", alive && player.dot === "poison", () => this.dotAura(unit.barY + 2, DOT_COLORS.poison));
     this.setStatus(unit, "burn", alive && player.dot === "burn", () => this.dotAura(unit.barY + 2, DOT_COLORS.burn));
     this.setStatus(unit, "bleed", alive && player.dot === "bleed", () => this.dotAura(unit.barY + 2, DOT_COLORS.bleed));
-    // Efeitos de monstro: preso (teia), atordoado (estrelas), engolido (bolhas), cego (nuvem) e corroído (ácido).
+    // Efeitos de monstro: preso (teia), atordoado (estrelas), engolido (bolhas) e corroído (ácido).
     const effects = alive ? player.effects.split(",") : [];
     this.setStatus(unit, "fx:root", effects.includes("root"), () => this.webAt());
     this.setStatus(unit, "fx:stun", effects.includes("stun"), () => this.stunStars(unit.barY - 6));
     this.setStatus(unit, "fx:engulf", effects.includes("engulf"), () => this.engulfAt());
-    this.setStatus(unit, "fx:blind", effects.includes("blind"), () => this.blindAt(unit.barY + 4));
     this.setStatus(unit, "fx:corrode", effects.includes("corrode"), () => this.dotAura(unit.barY + 2, 0x7cb342));
     // Uma aura por magia de bônus em si, na cor dela.
     for (const id of SELF_BUFFS) this.setStatus(unit, `buff:${id}`, alive && player.buff === id, () => this.buffAura(SPELLS[id].color));
