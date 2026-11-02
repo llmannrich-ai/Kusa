@@ -60,7 +60,7 @@ if (!(gear.armor > 0 && gear.speed > 0 && gear.spellPower > 0)) throw new Error(
 // O drop não olha a classe: em 500 sorteios cai item que o cavaleiro não usa.
 let seed = 1;
 const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-const drops = Array.from({ length: 500 }, () => rollItem("boss", 6, random));
+const drops = Array.from({ length: 500 }, () => rollItem(13, random));
 if (drops.some((id) => !ITEMS[id])) throw new Error(`drop inválido: ${drops.find((id) => !ITEMS[id])}`);
 if (drops.every((id) => canUse(id, "knight"))) throw new Error("o drop filtrou pela classe: só caiu o que o cavaleiro usa");
 console.log("catálogo de itens: ok");
@@ -85,4 +85,23 @@ a.until(() => a.p[def.slot] === def.id, 2000, `não vestiu ${def.id} ao passar p
 check(!a.state.items.has(ground.id), "o item continua no chão depois de equipado");
 check(!a.p.bag.some((id) => canUse(id, "knight")), `a bag só devia ter itens de outra classe: ${[...a.p.bag].join(", ")}`);
 console.log(`equipado: ${a.p[def.slot]}`);
+
+// O loot segue o Nível de Desafio da criatura, não o mapa: na mesma arena, o zumbi (ND 2) só larga Rústico ou Bronze
+// e nunca lendário; o lagarto de placas (ND 8) só larga Mithral ou Dragão.
+function dropsOf(kind: "zombie" | "plateLizard", kills: number) {
+  const b = arena({ classId: "knight", startLevel: 1 });
+  const out: string[] = [];
+  for (let i = 0; i < kills; i++) {
+    const before = new Set(b.state.items.keys());
+    b.kill(b.place(kind, 2, 0));
+    b.state.items.forEach((it, key) => { if (!before.has(key) && ITEMS[it.itemId]) out.push(it.itemId); });
+    b.state.items.clear();
+  }
+  return out;
+}
+const weak = dropsOf("zombie", 400), strong = dropsOf("plateLizard", 400);
+check(weak.length >= 10 && strong.length >= 10, `poucos drops para comparar: ${weak.length} e ${strong.length}`);
+check(weak.every((id) => ITEMS[id].tier <= 2 && ITEMS[id].rarity !== "legendary"), `zumbi largou acima de Bronze: ${weak.filter((id) => ITEMS[id].tier > 2)}`);
+check(strong.every((id) => ITEMS[id].tier >= 4), `lagarto de placas largou abaixo de Mithral: ${strong.filter((id) => ITEMS[id].tier < 4)}`);
+console.log(`loot pelo ND: ${weak.length} drops do zumbi até Bronze, ${strong.length} do lagarto de placas de Mithral para cima`);
 console.log("ITEMS OK");
