@@ -1269,8 +1269,8 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   }),
   army_of_dead: spell({
     id: "army_of_dead", classId: "sorcerer", slot: 2, name: "Exército dos Mortos", icon: "💀", color: 0xdcdde1, element: "dark",
-    description: "Ergue 4 esqueletos que lutam por você por 20 s.",
-    manaCost: 70, cooldownMs: 40000, aim: "self", range: 0, radius: 0, summon: { kind: "skeleton", count: 4, durationMs: 20000 },
+    description: "Ergue 4 esqueletos que lutam por você por 12 s.",
+    manaCost: 70, cooldownMs: 40000, aim: "self", range: 0, radius: 0, summon: { kind: "skeleton", count: 4, durationMs: 12000 },
   }),
   abyss_gaze: spell({
     id: "abyss_gaze", classId: "sorcerer", slot: 2, name: "Olhar do Abismo", icon: "👁️", color: 0x4a148c, element: "dark",
@@ -1846,7 +1846,7 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   dragon_breath: { text: "O leque abre 120°.", changes: { coneAngle: 120 } },
   avalanche: { text: "Congela 3 s.", changes: { rootMs: 3000 } },
   arcane_rift: { text: "3 cargas.", changes: { charges: { count: 3, windowMs: 8000 } } },
-  army_of_dead: { text: "Ergue 6 esqueletos.", changes: { summon: { kind: "skeleton", count: 6, durationMs: 20000 } } },
+  army_of_dead: { text: "Ergue 5 esqueletos.", changes: { summon: { kind: "skeleton", count: 5, durationMs: 12000 } } },
   abyss_gaze: { text: "O olhar abre 90°.", changes: { coneAngle: 90 } },
   phantom_shot: { text: "Marca 5 monstros.", changes: { phantom: { count: 5, range: 7, delayMs: 1500 } } },
   wind_dance: { text: "4 cargas.", changes: { charges: { count: 4, windowMs: 6000 } } },

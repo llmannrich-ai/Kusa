@@ -294,12 +294,12 @@ test("Fenda Arcana: teleporta e explode na saída e na chegada; 2 cargas (3 na M
   check(a.p.x > x0 && behind.hp < hp, `foi para ${a.p.x - x0}, a saída explodiu (${hp} → ${behind.hp})`);
   check(a.seat().charges?.left === mastered("arcane_rift").charges!.count - 1, `cargas ${a.seat().charges?.left}`);
 });
-test("Exército dos Mortos: 4 esqueletos por 20 s (6 na Maestria)", () => {
+test("Exército dos Mortos: 4 esqueletos por 12 s (5 na Maestria)", () => {
   const a = s3Arena("sorcerer");
   self(a, SPELLS.army_of_dead);
   const skeletons = [...a.state.summons.values()].filter((s) => s.owner === HERO && s.kind === "skeleton");
   check(skeletons.length === 4, `esqueletos ${skeletons.length}`);
-  check(mastered("army_of_dead").summon!.count === 6, "Maestria: 6");
+  check(mastered("army_of_dead").summon!.count === 5 && SPELLS.army_of_dead.summon!.durationMs === 12000, "12 s; Maestria: 5");
 });
 test("Olhar do Abismo: marca +30% e enfraquece 30% por 6 s no leque", () => {
   const a = s3Arena("sorcerer");

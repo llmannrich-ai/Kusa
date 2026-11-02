@@ -724,6 +724,16 @@ druida); `wallHeal` (o tile do meio da parede cura em volta); `plague` (só quem
 crescer sem fim) e `channel.bolt` (um raio por pulso num monstro sorteado do leque). Diferenças: a Forma Primordial usa a
 forma de urso (com +30% de vida); a Pandemia fere 0,5× além do veneno. Migration `20261102260000_s3_druida.sql`.
 
+**Fase 7 (1ª rodada, 02/11/2026):** com as fases 4 a 6 no ar há poucas horas, a telemetria ainda não mede as peças novas
+(51 hunts desde 01/11, 3 jogadores; 1 conta comprou Dons, nenhuma comprou o slot 3 de lado; só 12% das hunts chegam ao
+nível 12, onde o slot 3 abre). Decisões: o slot 3 continua no nível 12 até haver dados (reavaliar em 1–2 semanas, com a
+alternativa de abrir no 10, que 21% das hunts alcançam); o `balanco.ts` passou a contar canalizar, projéteis em leque,
+cargas, o anel da Coroa Solar e o Olho da Tempestade (antes subestimava as magias novas); o Exército dos Mortos, que dava
+2,7× as outras invocações de slot 3 na conta (227 contra 85 do Rei da Selva e 75 da Caçada Selvagem, no nível 5), passou a
+4 esqueletos por 12 s (Maestria 5, era 6 por 20 s): cerca de 114 na conta. Monitorar: Dança do Vento (37, a mais alta das
+magias de slot 3 que não invocam, mas só com todas as flechas e cargas no mesmo alvo colado) e a Tempestade de Lâminas
+(26). Como medir: `damageDealt` por fonte das magias de slot 3 e as consultas B e D do `/balanceamento`, por build.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
