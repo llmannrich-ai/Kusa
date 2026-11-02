@@ -55,7 +55,7 @@ import {
 } from "@kusa/shared";
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
-import { PotionBar } from "./potionbar.ts";
+import { PotionBar, VendorPanel } from "./potionbar.ts";
 import { BagBar } from "./bagbar.ts";
 import { SpellBar, rankedSpell } from "./spellbar.ts";
 import { PerkChoice } from "./perkchoice.ts";
@@ -249,6 +249,10 @@ interface BarrierFx {
 }
 
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
+/** Tamanho dos mini-bosses de hoje (sprites estáticos) e do boss: 30% maior que um mini-boss, nunca o dobro. */
+const MINIBOSS_SCALE = 1.25;
+const BOSS_SCALE = 1.6;
+
 /** Placa de zona do terreno de caça (Fíbula), do mais seguro ao mais perigoso. */
 const ZONE_LABEL: Record<string, string> = {
   camp: "🔥 Acampamento · seguro", "0": "Orla · iniciante", "1": "Ala Oeste · baixa", "2": "Ala Norte · média", "3": "Ala Leste · alta", lair: "☠ Covil",
@@ -286,6 +290,7 @@ export class DungeonScene extends Phaser.Scene {
   private perkChoice!: PerkChoice;
   private runeChoice!: RuneChoice;
   private potionBar!: PotionBar;
+  private vendorPanel!: VendorPanel;
   private bagBar!: BagBar;
   private aim!: SpellAim;
   private attack!: AttackButton;
@@ -319,14 +324,14 @@ export class DungeonScene extends Phaser.Scene {
     this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
     warmMapMonsters(this, mapId);
-    const draw = { crypt: drawCrypt, fibula: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest, grove: drawForest, bog: drawBog, badlands: drawBadlands }[mapId];
+    const draw = { crypt: drawCrypt, fibula: drawCrypt, fibula2: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest, grove: drawForest, bog: drawBog, badlands: drawBadlands }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, fibula: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID, grove: OLDWOOD_VOID, bog: BOG_VOID, badlands: BADLANDS_VOID }[mapId];
+    const background = { crypt: COLORS.void, fibula: COLORS.void, fibula2: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID, grove: OLDWOOD_VOID, bog: BOG_VOID, badlands: BADLANDS_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "fibula", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood", "grove", "bog", "badlands"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "fibula", "fibula2", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood", "grove", "bog", "badlands"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -474,6 +479,7 @@ export class DungeonScene extends Phaser.Scene {
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing, () => this.aboveMe());
     this.runeChoice = new RuneChoice(this.room, () => this.spellBar.choosing || this.perkChoice.open, () => this.aboveMe());
     this.potionBar = new PotionBar(this.room, document.getElementById("potions")!);
+    this.vendorPanel = new VendorPanel(this.room, document.getElementById("vendor")!, this.dungeon.vendor);
     this.bagBar = new BagBar(this.room, document.getElementById("bag")!, document.getElementById("bag-menu")!);
     if (loadSettings().minimap) this.minimap = new Minimap(this.room, this.dungeon);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -484,6 +490,7 @@ export class DungeonScene extends Phaser.Scene {
       this.perkChoice.destroy();
       this.runeChoice.destroy();
       this.potionBar.destroy();
+      this.vendorPanel.destroy();
       this.bagBar.destroy();
     });
   }
@@ -531,6 +538,7 @@ export class DungeonScene extends Phaser.Scene {
     this.aim.update();
     this.attack.update();
     this.potionBar.update();
+    this.vendorPanel.update();
     this.bagBar.update();
   }
 
@@ -1460,9 +1468,9 @@ export class DungeonScene extends Phaser.Scene {
     const kind = (monster.kind in MONSTERS ? monster.kind : "rat") as MonsterKind;
     const def = MONSTERS[kind];
     const art = BESTIARY_ART[kind];
-    // Boss com o dobro do tamanho (como as criaturas 64×64 do Tibia); alguns mini-bosses um pouco maiores. O animado já
-    // tem o tamanho no quadro (32 px = 1 tile).
-    const scale = (art.anim ? art.scale ?? 1 : def.rank === "boss" ? 2 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
+    // Boss 30% maior que um mini-boss (nunca o dobro): o tamanho vem da leitura, não de encher a tela. O animado já tem o
+    // tamanho no quadro (32 px = 1 tile).
+    const scale = (art.anim ? art.scale ?? 1 : def.rank === "boss" ? Math.min(art.scale ?? BOSS_SCALE, MINIBOSS_SCALE * 2) : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
     ensureMonsterArt(this, monsterTexture(kind, monster.variant));
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);

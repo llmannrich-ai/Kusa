@@ -7,25 +7,28 @@
  * Uso: npx tsx apps/server/scripts/terreno.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CAMP_REGEN, FLAT_HP_REGEN, MSG, FLAT_REGEN_PER_LEVEL, MAPS, MONSTERS, OPEN_HUNT_MAX_SECONDS, SERVER_TICK_MS, createRng, statsFor, tileDistance,
+  CAMP_REGEN, CAMP_VENDOR_PRICES, CAMP_VENDOR_RADIUS, FLAT_HP_REGEN, MSG, FLAT_REGEN_PER_LEVEL, MAPS, MONSTERS, OPEN_HUNT_MAX_SECONDS, POTION_MAX, SERVER_TICK_MS, Tile, createRng, statsFor, tileDistance,
+  type RunEndedMessage,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { DungeonState, type Player } from "../src/state.ts";
 
 const HERO = "h";
 
-function fibula(seed: number) {
+function fibula(seed: number, mapId: "fibula" | "fibula2" = "fibula2") {
   let clock = 0;
   const timers: { at: number; fn: () => void }[] = [];
   /** Avisos que sobem na tela (para o herói ou para todos). */
   const notices: string[] = [];
+  /** Resultados de fim de hunt (um por jogador que saiu). */
+  const results: RunEndedMessage[] = [];
   const collect = (type: string, msg: any) => { if (type === MSG.notice) notices.push(msg.text); };
   const host: HuntHost = {
     now: () => clock, setTimeout: (fn, ms) => void timers.push({ at: clock + ms, fn }),
-    send: (_id, type, msg) => collect(type, msg), broadcast: collect, runEnded: () => {}, ended: () => {},
+    send: (_id, type, msg) => collect(type, msg), broadcast: collect, runEnded: (_id, result) => void results.push(result), ended: () => {},
   };
   const state = new DungeonState();
-  const hunt = new Hunt(state, host, { mapId: "fibula", seed, random: createRng(seed).next });
+  const hunt = new Hunt(state, host, { mapId, seed, random: createRng(seed).next });
   hunt.join(HERO, { name: "Teste", classId: "knight", talents: {}, spellXp: {} });
   hunt.start(HERO);
   const any = hunt as any;
@@ -39,7 +42,7 @@ function fibula(seed: number) {
   };
   /** Herói no acampamento, longe de tudo, sem tomar dano. */
   const safe = () => { p.x = any.dungeon.portal.x + 1; p.y = any.dungeon.portal.y; };
-  return { hunt, state, any, p, advance, safe, notices };
+  return { hunt, state, any, p, advance, safe, notices, results };
 }
 
 function check(ok: boolean, what: string) {
@@ -48,6 +51,11 @@ function check(ok: boolean, what: string) {
 
 // --- Spawns fixos ------------------------------------------------------------------------
 {
+  // Fíbula (3 salões, 9 áreas, 4 guardas, 1 boss) e Fíbula Profunda (caverna, 12 áreas, 6 guardas, 3 covis).
+  const f1 = fibula(3, "fibula");
+  const p1 = f1.any.packs as { miniboss: boolean; ambush?: boolean }[];
+  check(p1.filter((x) => !x.miniboss && !x.ambush).length === 9 && p1.filter((x) => x.miniboss).length === 4, "a Fíbula devia ter 9 áreas e 4 guardas");
+  check([...f1.state.monsters.values()].filter((m) => MONSTERS[m.kind as never].rank === "boss").map((m) => m.kind).join() === "boneKing", "a Fíbula devia ter só o Rei Ossudo");
   const a = fibula(11);
   const b = fibula(99_999);
   const layout = (h: ReturnType<typeof fibula>) => [...h.state.monsters.values()].map((m) => `${m.kind}@${m.x},${m.y}`).sort().join(" ");
@@ -59,11 +67,11 @@ function check(ok: boolean, what: string) {
   check(packs.every((x) => x.members.length > 0), "toda sala devia ter monstro");
   const bosses = [...a.state.monsters.values()].filter((m) => MONSTERS[m.kind as never].rank === "boss").map((m) => m.kind).sort().join(",");
   check(bosses === "boneKing,eternalPharaoh,singingColossus", `os três bosses deviam estar nos covis (veio ${bosses})`);
-  check(a.any.dungeon.lairs.length === 3, "a Fíbula devia ter 3 covis");
+  check(a.any.dungeon.lairs.length === 3, "a Fíbula Profunda devia ter 3 covis");
   const portal = a.any.dungeon.portal;
   check([...a.state.monsters.values()].every((m) => tileDistance(m.x, m.y, portal.x, portal.y) > 6), "ninguém nasce colado no acampamento");
   // Áreas de caça: cada sala só com os monstros da tabela dela (a Toca dos Lobos só tem lobos).
-  const areas = MAPS.fibula.huntingGround!.areas!;
+  const areas = MAPS.fibula2.huntingGround!.areas!;
   for (const pack of packs as any[]) {
     if (pack.miniboss) continue;
     const allowed = new Set(areas[pack.area].table.map(([k]) => k));
@@ -85,7 +93,7 @@ function check(ok: boolean, what: string) {
   const before = pack.members.map((id: string) => h.state.monsters.get(id)!.kind).sort().join(",");
   kill();
   check(pack.members.every((id: string) => !h.state.monsters.has(id)), "a sala devia estar vazia");
-  const wait = MAPS.fibula.huntingGround!.respawnMs[0];
+  const wait = MAPS.fibula2.huntingGround!.respawnMs[0];
   h.advance(wait - 2000);
   check(pack.members.every((id: string) => !h.state.monsters.has(id)), "a sala não devia encher antes da hora");
   // Herói dentro da sala: espera.
@@ -104,7 +112,7 @@ function check(ok: boolean, what: string) {
   const chestId = h.any.brains.get(m.id).chestId;
   check(!!chestId, "o mini-boss devia guardar o baú");
   h.any.killMonster(m, h.any.brains.get(m.id), HERO);
-  h.advance(MAPS.fibula.huntingGround!.minibossRespawnMs + 1500);
+  h.advance(MAPS.fibula2.huntingGround!.minibossRespawnMs + 1500);
   const back = h.state.monsters.get(mini.members[0]);
   check(!!back, "o mini-boss devia voltar");
   check(!h.any.brains.get(back!.id).chestId, "o mini-boss que volta não guarda baú");
@@ -164,6 +172,14 @@ function check(ok: boolean, what: string) {
   h.advance(9500);
   const welcome = h.notices.filter((n) => n.startsWith("🔥 Acampamento") || n.startsWith("Perto da fogueira") || n.startsWith("Sem tempo"));
   check(welcome.length === 3, `devia mostrar os 3 avisos de boas-vindas (veio ${JSON.stringify(h.notices)})`);
+  // Terreno de caça: nada prende o herói (a teia da aranha não pega).
+  const spider = h.any.addMonster("wrappedMummy", h.p.x + 1, h.p.y, 0);
+  check(!h.any.affectHero(HERO, { kind: "root", ms: 1500 }, spider, 10) && !h.p.rooted, "no terreno de caça o herói não fica preso");
+  check(!h.any.affectHero(HERO, { kind: "stun", ms: 1000 }, spider, 10) && !h.p.stunned, "no terreno de caça o herói não fica atordoado");
+  // A múmia só serviu ao teste: some antes de bater no herói.
+  h.state.monsters.delete(spider.id);
+  h.any.brains.delete(spider.id);
+  h.p.hp = h.p.maxHp = 1_000_000;
   // Sai do círculo da fogueira e volta: avisa que está descansando.
   h.safe();
   h.advance(1100);
@@ -174,9 +190,38 @@ function check(ok: boolean, what: string) {
   const pack = (h.any.packs as any[]).find((x) => !x.miniboss && x.ring === 0);
   pack.members.forEach((id: string) => { const m = h.state.monsters.get(id); if (m) h.any.killMonster(m, h.any.brains.get(id), HERO); });
   h.safe();
-  h.advance(MAPS.fibula.huntingGround!.respawnMs[0] + 1500);
+  h.advance(MAPS.fibula2.huntingGround!.respawnMs[0] + 1500);
   check(h.notices.includes("A sala encheu de novo"), "devia avisar a sala que encheu de novo");
   console.log("  ✔ o mapa se explica: boas-vindas, descanso na fogueira e sala que enche");
+}
+
+// --- Vendedor do acampamento: poção só comprada, com o loot, encostado na banca --------------
+for (const mapId of ["fibula", "fibula2"] as const) {
+  const h = fibula(7, mapId);
+  const vendor = h.any.dungeon.vendor;
+  check(!!vendor && h.any.dungeon.tiles[vendor.y * h.any.dungeon.width + vendor.x] !== Tile.Wall, `${mapId}: devia ter o vendedor no chão do acampamento`);
+  const price = CAMP_VENDOR_PRICES["potion-health"];
+  h.p.loot = price * 2 - 1;
+  h.p.x = vendor!.x + CAMP_VENDOR_RADIUS + 2; h.p.y = vendor!.y;
+  h.any.buyPotion(HERO, { potion: "potion-health" });
+  check(h.p.healthPotions === 0 && h.p.loot === price * 2 - 1, `${mapId}: longe da banca não compra`);
+  h.p.x = vendor!.x + 1;
+  h.any.buyPotion(HERO, { potion: "potion-health" });
+  check(h.p.healthPotions === 1 && h.p.loot === price - 1, `${mapId}: encostado compra uma poção por ${price} de loot (veio ${h.p.healthPotions}, loot ${h.p.loot})`);
+  h.any.buyPotion(HERO, { potion: "potion-health" });
+  check(h.p.healthPotions === 1 && h.p.loot === price - 1, `${mapId}: sem loot que chegue não compra`);
+  h.p.loot = 10_000;
+  for (let k = 0; k < POTION_MAX + 2; k++) h.any.buyPotion(HERO, { potion: "potion-mana" });
+  check(h.p.manaPotions === POTION_MAX && h.p.loot === 10_000 - POTION_MAX * CAMP_VENDOR_PRICES["potion-mana"], `${mapId}: para em ${POTION_MAX} poções de mana`);
+  const stats = h.any.seats.get(HERO).stats.potions;
+  check(stats.bought["potion-health"] === 1 && stats.bought["potion-mana"] === POTION_MAX && stats.lootSpent === price + POTION_MAX * CAMP_VENDOR_PRICES["potion-mana"], `${mapId}: telemetria das compras`);
+  // As poções da conta entram com o herói (até o teto) e as que sobram voltam no resultado de quem sai vivo.
+  h.p.manaPotions = 0;
+  check(h.any.givePotions(HERO, { "potion-health": 9, "potion-mana": 2 }) && h.p.healthPotions === POTION_MAX && h.p.manaPotions === 2, `${mapId}: as poções da conta entram até ${POTION_MAX}`);
+  h.any.endRun(HERO, "escaped");
+  const result = h.results[0];
+  check(!!result && result.potions?.["potion-health"] === POTION_MAX && result.potions?.["potion-mana"] === 2, `${mapId}: quem sai vivo leva as poções que sobraram (veio ${JSON.stringify(result?.potions)})`);
+  console.log(`  ✔ ${mapId}: vendedor vende poção por loot, só encostado e até ${POTION_MAX}; as da conta entram e voltam`);
 }
 
 // --- Sem tempo ---------------------------------------------------------------------------
@@ -187,7 +232,7 @@ function check(ok: boolean, what: string) {
   h.advance(5 * 60_000);
   check(h.p.status === "playing", "a Fíbula não devia acabar nos 4 min da Cripta");
   check(h.state.timeLeft === OPEN_HUNT_MAX_SECONDS - 300, `o relógio devia contar até o teto (veio ${h.state.timeLeft})`);
-  check(MAPS.fibula.durationSeconds === 0 && MONSTERS.boneKing.rank === "boss", "Fíbula sem tempo, com boss");
+  check(MAPS.fibula2.durationSeconds === 0 && MAPS.fibula.durationSeconds === 0 && MONSTERS.boneKing.rank === "boss", "Fíbula sem tempo, com boss");
   console.log("  ✔ sem tempo: 5 min de hunt e o herói segue lá dentro");
 }
 

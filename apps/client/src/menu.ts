@@ -11,6 +11,11 @@ import {
   ITEM_FAMILIES,
   ITEM_SLOTS,
   ITEM_TIERS,
+  MARKET_POTION_PRICES,
+  POTIONS,
+  POTION_IDS,
+  POTION_MAX,
+  potionStock,
   RARITY_NAMES,
   RUNES,
   RUNE_SLOTS,
@@ -88,6 +93,7 @@ import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
 import {
   ProfileError,
   buyItem,
+  buyPotion,
   buyTalent,
   buyTalentLevels,
   setActiveSpells,
@@ -293,7 +299,7 @@ function heroWalker(classId: ClassId, outfit: Outfit) {
 }
 
 export class Hub {
-  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [] };
+  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [], potions: {} };
   private tab: Tab = "heroes";
   private marketMode: "buy" | "sell" = "buy";
   /** Slot mostrado na compra do mercado. */
@@ -328,7 +334,7 @@ export class Hub {
   /** Abre o menu da conta e busca árvore, inventário e gold. */
   async open(username: string, initialGold: number) {
     $("account-name").textContent = username;
-    this.profile = { gold: initialGold, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [] };
+    this.profile = { gold: initialGold, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [], potions: {} };
     this.render();
     try {
       this.profile = await loadProfile();
@@ -1514,6 +1520,30 @@ export class Hub {
         slots.append(chip);
       }
       page.append(slots);
+      // Poções: não caem na hunt; compram-se aqui (ficam na conta do personagem e entram em toda hunt) ou com o vendedor do acampamento.
+      list.append(el("h3", "", "Poções"));
+      list.append(el("p", "muted hub-hint", `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada. Quem sai vivo traz as que sobraram; quem morre as deixa no chão.`));
+      const stock = this.profile.potions[this.classId] ?? potionStock(null);
+      for (const id of POTION_IDS) {
+        const price = MARKET_POTION_PRICES[id];
+        const have = stock[id];
+        const buy = el("button", "buy", gold(price));
+        buy.disabled = have >= POTION_MAX || this.profile.gold < price;
+        buy.onclick = () => this.run(async () => {
+          this.profile.gold = await buyPotion(this.classId, id);
+          const mine = (this.profile.potions[this.classId] ??= potionStock(null));
+          mine[id] = Math.min(POTION_MAX, mine[id] + 1);
+          this.toast(`${POTIONS[id].name}: ${mine[id]} de ${POTION_MAX} na conta.`);
+        });
+        const row = el("div", "market-row");
+        const text = el("div");
+        const name = el("strong", "", POTIONS[id].name);
+        name.style.color = hex(POTIONS[id].color);
+        text.append(name, el("small", "muted", `Devolve ${Math.round(POTIONS[id].restore * 100)}% da ${POTIONS[id].stat === "hp" ? "vida" : "mana"} · ${have} de ${POTION_MAX} na conta`));
+        row.append(itemImg(id), text, buy);
+        list.append(row);
+      }
+      list.append(el("h3", "", SLOT_NAMES[this.marketSlot]));
       const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === this.marketSlot && (!f.classes || f.classes.includes(this.classId)));
       for (const family of families) {
         if (families.length > 1) list.append(el("h3", "", family.name));

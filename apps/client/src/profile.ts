@@ -1,4 +1,4 @@
-import { ITEMS, MAP_IDS, isRune, type ClassId, type MapId, type SpellXp, type TalentRanks } from "@kusa/shared";
+import { ITEMS, MAP_IDS, POTION_MAX, isRune, potionStock, type ClassId, type MapId, type PotionId, type PotionStock, type SpellXp, type TalentRanks } from "@kusa/shared";
 import { supabase } from "./auth.ts";
 
 // Dados do menu: árvore de magias, itens (equipamento, cofre e bag) e gold. O navegador só lê as tabelas;
@@ -29,6 +29,8 @@ export interface Profile {
   items: OwnedItem[];
   /** Bosses vencidos por qualquer personagem da conta: abrem as classes trancadas (`classUnlocked`). */
   bossClears: string[];
+  /** Poções compradas no Mercado, por personagem (classe → contagem de cada poção); entram em toda hunt. */
+  potions: Partial<Record<ClassId, PotionStock>>;
 }
 
 /** Erro com mensagem pronta para mostrar ao jogador. */
@@ -90,12 +92,18 @@ export async function loadProfile(): Promise<Profile> {
   const { data: session } = await supabase.auth.getSession();
   const uid = session.session?.user.id;
   if (!uid) throw new ProfileError("Sessão expirada. Entre de novo.");
-  const [profile, talents, items, bosses] = await Promise.all([
+  const [profile, talents, items, bosses, potions] = await Promise.all([
     supabase.from("profiles").select("gold, active_spells").eq("id", uid).single(),
     supabase.from("profile_talents").select("talent_id, rank, xp"),
     supabase.from("profile_items").select("id, item_id, equipped, class_id, source, location").order("acquired_at", { ascending: false }),
     supabase.from("profile_boss_clears").select("boss_kind"),
+    supabase.from("profile_potions").select("class_id, potion_id, qty"),
   ]);
+  const stock: Partial<Record<ClassId, PotionStock>> = {};
+  for (const row of potions.data ?? []) {
+    const classId = row.class_id as ClassId;
+    (stock[classId] ??= potionStock(null))[row.potion_id as PotionId] = Math.max(0, Math.min(POTION_MAX, Number(row.qty) || 0));
+  }
   if (!profile.data || !talents.data || !items.data) throw new ProfileError("Não foi possível carregar a conta.");
   return {
     gold: profile.data.gold,
@@ -105,6 +113,7 @@ export async function loadProfile(): Promise<Profile> {
     // Id fora do catálogo (banco e cliente em versões diferentes durante uma atualização): não aparece.
     items: items.data.filter((i) => ITEMS[i.item_id] || isRune(i.item_id)).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, classId: i.class_id, source: i.source, location: i.location })),
     bossClears: [...new Set((bosses.data ?? []).map((b) => b.boss_kind as string))],
+    potions: stock,
   };
 }
 
@@ -128,6 +137,29 @@ export function buyItem(itemId: string): Promise<number> {
   return call("buy_item", { p_item_id: itemId });
 }
 
+/** Compra poções no Mercado para o personagem (até `POTION_MAX` de cada na conta); devolve o gold que sobrou. */
+export function buyPotion(classId: ClassId, potionId: PotionId, count = 1): Promise<number> {
+  return call("buy_potion", { p_class_id: classId, p_potion_id: potionId, p_count: count });
+}
+
+/** Hunt solo ou sala no aparelho: leva as poções do personagem para a hunt aberta no banco. Sem conexão, nenhuma. */
+export async function takeMyPotions(runId: string | null): Promise<PotionStock> {
+  if (!runId) return potionStock(null);
+  const { data, error } = await supabase.rpc("take_my_potions", { p_run_id: runId });
+  if (error) {
+    console.error("Falha ao levar as poções para a hunt", error);
+    return potionStock(null);
+  }
+  return potionStock(data);
+}
+
+/** Hunt solo ou sala no aparelho: devolve à conta as poções que sobraram (só depois de o banco fechar a hunt). */
+export async function storeMyPotions(runId: string, potions: PotionStock): Promise<void> {
+  if (!Object.values(potions).some((n) => n > 0)) return;
+  const { error } = await supabase.rpc("store_my_potions", { p_run_id: runId, p_potions: potions });
+  if (error) console.error("Falha ao devolver as poções à conta", error);
+}
+
 /** Vende uma cópia do inventário; devolve o gold novo. */
 export function sellItem(id: string): Promise<number> {
   return call("sell_item", { p_item: id });
@@ -147,7 +179,7 @@ export async function storeItem(id: string): Promise<void> {
 }
 
 /** Mensagens do banco (`raise exception`) que já servem para o jogador. */
-const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "magia já aprendida", "item fora de venda", "item não está no inventário", "cofre cheio", "item está na bag", "item não está na bag", "classe não usa este item", "slot ocupado por outra classe", "magias ativas demais", "runa igual já equipada", "slots de runa cheios"];
+const KNOWN_ERRORS = ["gold insuficiente", "pré-requisito não comprado", "já está no nível máximo", "magia já aprendida", "item fora de venda", "sem lugar para mais", "quantidade inválida", "item não está no inventário", "cofre cheio", "item está na bag", "item não está na bag", "classe não usa este item", "slot ocupado por outra classe", "magias ativas demais", "runa igual já equipada", "slots de runa cheios"];
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);

@@ -1,4 +1,4 @@
-import { MSG, POTIONS, POTION_FIELD, POTION_IDS, POTION_MAX, type PotionId } from "@kusa/shared";
+import { CAMP_VENDOR_PRICES, CAMP_VENDOR_RADIUS, MSG, POTIONS, POTION_FIELD, POTION_IDS, POTION_MAX, tileDistance, type PotionId } from "@kusa/shared";
 import { itemIcon } from "./art/items.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 
@@ -76,5 +76,63 @@ export class PotionBar {
     button.append(icon, count);
     button.addEventListener("pointerdown", (e) => { e.preventDefault(); this.press(id); });
     return { button, count, key: "" };
+  }
+}
+
+/**
+ * Painel do vendedor do acampamento (terreno de caça): aparece quando o herói encosta na banca (`Dungeon.vendor`) e
+ * mostra o preço de cada poção em loot e quanto loot ele carrega. O servidor valida a compra (`Hunt.buyPotion`).
+ */
+export class VendorPanel {
+  private buttons: Record<PotionId, HTMLButtonElement>;
+  private loot: HTMLElement;
+  private key = "";
+
+  constructor(private room: DungeonRoom, private container: HTMLElement, private vendor: { x: number; y: number } | undefined) {
+    const title = document.createElement("span");
+    title.className = "vendor-title";
+    title.textContent = "Vendedor";
+    this.loot = document.createElement("span");
+    this.loot.className = "vendor-loot";
+    this.buttons = Object.fromEntries(POTION_IDS.map((id) => [id, this.makeButton(id)])) as Record<PotionId, HTMLButtonElement>;
+    container.replaceChildren(title, ...POTION_IDS.map((id) => this.buttons[id]), this.loot);
+  }
+
+  update() {
+    const p = this.me();
+    const near = !!p && !!this.vendor && p.status === "playing" && tileDistance(p.x, p.y, this.vendor.x, this.vendor.y) <= CAMP_VENDOR_RADIUS;
+    const key = near ? `${p!.loot}|${p![POTION_FIELD["potion-health"]]}|${p![POTION_FIELD["potion-mana"]]}` : "";
+    if (key === this.key) return;
+    this.key = key;
+    this.container.hidden = !near;
+    if (!near) return;
+    this.loot.textContent = `💰 ${p!.loot}`;
+    for (const id of POTION_IDS) {
+      this.buttons[id].disabled = p!.loot < CAMP_VENDOR_PRICES[id] || p![POTION_FIELD[id]] >= POTION_MAX;
+    }
+  }
+
+  destroy() {
+    this.container.replaceChildren();
+    this.container.hidden = true;
+  }
+
+  private me(): PlayerView | undefined {
+    return this.room.state.players.get(this.room.sessionId);
+  }
+
+  private makeButton(id: PotionId): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.className = "vendor-buy";
+    button.type = "button";
+    const icon = document.createElement("img");
+    icon.src = itemIcon(id).toDataURL();
+    icon.alt = POTIONS[id].name;
+    const price = document.createElement("span");
+    price.textContent = String(CAMP_VENDOR_PRICES[id]);
+    button.append(icon, price);
+    button.title = `${POTIONS[id].name}: ${CAMP_VENDOR_PRICES[id]} de loot`;
+    button.addEventListener("pointerdown", (e) => { e.preventDefault(); this.room.send(MSG.buyPotion, { potion: id }); });
+    return button;
   }
 }

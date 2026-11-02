@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { MapId, RunOutcome, SpellXp, TalentRanks } from "@kusa/shared";
+import { potionStock, type MapId, type PotionStock, type RunOutcome, type SpellXp, type TalentRanks } from "@kusa/shared";
 
 const url = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -124,6 +124,24 @@ export async function takeBag(userId: string): Promise<string[]> {
     return [];
   }
   return (data ?? []) as string[];
+}
+
+/** A hunt começou: as poções do personagem (compradas no Mercado) entram com ele (`take_potions`). */
+export async function takePotions(userId: string, classId: string): Promise<PotionStock> {
+  if (!supabase) return potionStock(null);
+  const { data, error } = await supabase.rpc("take_potions", { p_profile_id: userId, p_class_id: classId });
+  if (error) {
+    console.error("Falha ao retirar as poções da conta", error);
+    return potionStock(null);
+  }
+  return potionStock(data);
+}
+
+/** A hunt acabou: as poções que sobraram voltam para a conta (`store_potions`). */
+export async function storePotions(userId: string, classId: string, potions: PotionStock) {
+  if (!supabase || !Object.values(potions).some((n) => n > 0)) return;
+  const { error } = await supabase.rpc("store_potions", { p_profile_id: userId, p_class_id: classId, p_potions: potions });
+  if (error) console.error("Falha ao devolver as poções à conta", potions, error);
 }
 
 export interface RunResult {

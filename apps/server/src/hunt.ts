@@ -36,6 +36,7 @@ import {
   POTION_COOLDOWN_MS,
   POTION_FIELD,
   POTION_IDS,
+  POTIONS_DROP,
   POTION_MAX,
   SPELLS,
   SPELL_SLOT_LEVELS,
@@ -159,6 +160,7 @@ import {
   type ChooseSpellMessage,
   type ClassId,
   type DamageMessage,
+  type BuyPotionMessage,
   type DrankMessage,
   type DrinkMessage,
   type BagDropMessage,
@@ -178,6 +180,7 @@ import {
   type Rect,
   type RunEndedMessage,
   type ScreenMessage,
+  type PotionId,
   type RunOutcome,
   type SpellDef,
   type ShotEndMessage,
@@ -208,6 +211,8 @@ import {
   type SummonKind,
   type TargetMessage,
   CAMP_RADIUS,
+  CAMP_VENDOR_PRICES,
+  CAMP_VENDOR_RADIUS,
   MAP_IDS,
   CAMP_REGEN,
   FLAT_HP_REGEN,
@@ -3473,6 +3478,46 @@ export class Hunt {
     this.notice(p.x, p.y, `+${restored}`, potion.color);
   }
 
+  /**
+   * As poções da conta (compradas no Mercado) entram na hunt com o jogador, até `POTION_MAX` de cada. Chegam logo depois
+   * do início, como o equipamento; devolve false se ele já não está jogando (elas voltam para a conta).
+   */
+  givePotions(sessionId: string, stock: Record<PotionId, number>): boolean {
+    const p = this.state.players.get(sessionId);
+    if (!p || p.bot || p.status !== "playing") return false;
+    for (const id of POTION_IDS) p[POTION_FIELD[id]] = Math.min(POTION_MAX, p[POTION_FIELD[id]] + Math.max(0, Math.floor(stock[id] || 0)));
+    return true;
+  }
+
+  /**
+   * Compra uma poção do vendedor do acampamento (terreno de caça), pagando com o loot carregado: encostado nele, com vaga
+   * e com loot que chegue. Poção não cai de monstro (`POTIONS_DROP`); só se compra aqui ou no Mercado.
+   */
+  buyPotion(sessionId: string, msg: BuyPotionMessage) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    const vendor = this.dungeon.vendor;
+    if (!p || !seat || p.bot || p.status !== "playing" || this.state.phase !== "running" || !vendor) return;
+    if (!isPotion(msg?.potion)) return;
+    if (tileDistance(p.x, p.y, vendor.x, vendor.y) > CAMP_VENDOR_RADIUS) return;
+    const potion = POTIONS[msg.potion];
+    const field = POTION_FIELD[potion.id];
+    const price = CAMP_VENDOR_PRICES[potion.id];
+    if (p[field] >= POTION_MAX) {
+      this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Sem lugar para mais", color: 0xbdc3c7 } satisfies NoticeMessage);
+      return;
+    }
+    if (p.loot < price) {
+      this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: `Falta loot (${price})`, color: 0xbdc3c7 } satisfies NoticeMessage);
+      return;
+    }
+    p.loot -= price;
+    p[field] += 1;
+    seat.stats.potions.bought[potion.id] = (seat.stats.potions.bought[potion.id] ?? 0) + 1;
+    seat.stats.potions.lootSpent += price;
+    this.notice(p.x, p.y, `${potion.icon} -${price}`, potion.color);
+  }
+
   /** `healerId` é quem leva o crédito da cura na telemetria. */
   private healPlayer(p: Player, amount: number, healerId: string) {
     const healer = this.seats.get(healerId);
@@ -5024,7 +5069,8 @@ export class Hunt {
         this.countDrop(brain.def.rank);
       }
     }
-    const potions = GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0);
+    // Poções só do Mercado ou do vendedor do acampamento (`POTIONS_DROP`).
+    const potions = POTIONS_DROP ? GUARANTEED_POTIONS[brain.def.rank] || (this.random() < COMMON_POTION_CHANCE ? 1 : 0) : 0;
     for (let i = 0; i < potions; i++) if (boss || this.keepDrop()) this.dropItem(rollPotion(this.random), at.x, at.y);
     // Runas só caem dos bosses, uma vez por personagem, e não vão para o chão: cada herói da equipe que ainda não
     // levou a runa deste boss recebe a sua direto na bag, esteja onde estiver (o da caverna, não: a runa sai dos
@@ -5521,6 +5567,9 @@ export class Hunt {
     const now = this.host.now();
     const kind = effect.kind;
     const current = seat.effects[kind];
+    // Terreno de caça: nada prende o herói no lugar (preso, atordoado, engolido). No mapa grande, sem relógio, o
+    // jogador não distinguia o efeito de uma travada da rede; a resposta aos controladores vira matar antes.
+    if (this.map.huntingGround && (kind === "root" || kind === "stun" || kind === "engulf")) return false;
     if (CONTROL_EFFECTS.includes(kind)) {
       if (current && now < current.until) return false;
       // Marcha do Clã: ninguém fica preso enquanto ela dura.
@@ -5629,7 +5678,7 @@ export class Hunt {
       this.dropItem(rollItem(CHEST_ITEM_CR, this.random, this.teamClasses()), dropAt.x, dropAt.y);
       this.countDrop("chest");
     }
-    for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);
+    if (POTIONS_DROP) for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);
   }
 
   /** Quem está jogando na dungeon agora (bots incluídos): divide a XP e o loot. */
@@ -5959,7 +6008,9 @@ export class Hunt {
     }
     const bag = survived ? [...player.bag] : [];
     player.bag.clear();
-    // Poções não saem da dungeon.
+    // Quem sai vivo leva as poções que sobraram de volta para a conta; as de quem morre já caíram no chão.
+    const potions = survived && !player.bot
+      ? Object.fromEntries(POTION_IDS.map((id) => [id, player[POTION_FIELD[id]]])) as Record<PotionId, number> : undefined;
     player.healthPotions = player.manaPotions = 0;
     player.status = outcome;
     player.target = "";
@@ -5984,7 +6035,7 @@ export class Hunt {
     // O equipamento que sobrou no corpo e as runas voltam equipados para a conta; a bag de quem sai vivo vai para o cofre.
     const items = [...equipment(player).filter(Boolean), ...player.runes];
     const spells = seat ? this.spellProgress(player.classId as ClassId, seat, !survived) : [];
-    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost, lostBag, spells };
+    const result: RunEndedMessage = { outcome, loot: player.loot, level: player.level, items, bag, lost, lostBag, spells, potions };
     // O host avisa o jogador e grava o resultado na conta e na telemetria (bot não tem conta nem telemetria).
     if (!player.bot) {
       this.host.runEnded(sessionId, result, {

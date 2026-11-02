@@ -5,8 +5,10 @@ import {
   SERVER_TICK_MS,
   mapIdOf,
   partySize,
+  potionStock,
   type ClassId,
   type MapId,
+  type PotionStock,
   type RunEndedMessage,
   type SoloRunStart,
 } from "@kusa/shared";
@@ -16,7 +18,7 @@ import type { DungeonState } from "../../server/src/state.ts";
 import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
 import { Listing, Signaling, answerCalls, dial, randomId, type Link } from "./p2p.ts";
-import { recordSoloMapClear } from "./profile.ts";
+import { recordSoloMapClear, takeMyPotions } from "./profile.ts";
 import { botLoadouts, flushPendingSolo, noticeClosed, reportSolo, watchCommitted } from "./solo.ts";
 
 // Sala hospedada por um jogador: o aparelho dele roda a `Hunt` (a mesma do servidor) e os outros recebem o
@@ -59,7 +61,7 @@ type Down =
 type Up =
   | { k: "hello"; recruit: Recruit; rulesVersion: string; resume: boolean }
   | { k: "msg"; type: string; msg: unknown }
-  | { k: "loadout"; items: string[]; bag: string[]; bossRunes?: string[]; bots?: { id: string; items: string[] }[] }
+  | { k: "loadout"; items: string[]; bag: string[]; bossRunes?: string[]; potions?: PotionStock; bots?: { id: string; items: string[] }[] }
   | { k: "bye" };
 
 /** Para onde o anfitrião manda as coisas de um jogador (o próprio, direto; os convidados, pelo canal). */
@@ -169,6 +171,7 @@ class HostRuntime {
     if (up.k === "loadout") {
       this.hunt.equip(sessionId, up.items ?? []);
       this.hunt.fillBag(sessionId, up.bag ?? []);
+      this.hunt.givePotions(sessionId, potionStock(up.potions));
       this.hunt.knownBossRunes(sessionId, Array.isArray(up.bossRunes) ? up.bossRunes : []);
       // Só os bots que este jogador pôs na sala vestem o equipamento que ele mandou.
       const mine = new Set(this.hunt.botsOf(sessionId).map((b) => b.id));
@@ -199,6 +202,7 @@ class HostRuntime {
       case MSG.cast: return this.hunt.cast(sessionId, msg);
       case MSG.channel: return this.hunt.channel(sessionId, msg);
       case MSG.drink: return this.hunt.drink(sessionId, msg);
+      case MSG.buyPotion: return this.hunt.buyPotion(sessionId, msg);
       case MSG.bagEquip: return this.hunt.bagEquip(sessionId, msg);
       case MSG.unequip: return this.hunt.unequip(sessionId, msg);
       case MSG.bagDrop: return this.hunt.bagDrop(sessionId, msg);
@@ -476,7 +480,8 @@ class HostedSession {
     this.runId = run.run_id;
     noticeClosed(run.closed);
     watchCommitted(() => (this.left ? null : this.client as unknown as DungeonRoom | null), run.run_id);
-    const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [], bossRunes: run.boss_runes ?? [], bots: botItems };
+    const potions = await takeMyPotions(run.run_id);
+    const up: Up = { k: "loadout", items: run.items ?? [], bag: run.bag ?? [], bossRunes: run.boss_runes ?? [], potions, bots: botItems };
     if (this.runtime) this.runtime.receive(this.myId, up);
     else if (this.link) send(this.link, up);
   }

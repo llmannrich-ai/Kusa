@@ -1,6 +1,8 @@
 import {
   ACTIVE_SPELLS_PER_SLOT,
   CAMP_REGEN,
+  CAMP_VENDOR_PRICES,
+  MARKET_POTION_PRICES,
   FORMATION_GUARD,
   FORMATION_RADIUS,
   LEADER_SHOUT_RADIUS,
@@ -144,11 +146,14 @@ export function renderRules(root: HTMLElement) {
       "Controle num herói (preso, atordoado, engolido, cego) dura no máximo 2 s, e depois ele fica 4 s imune ao mesmo efeito.",
     ),
 
-    section("🦴 Fíbula: terreno de caça", false, list([
-      "Sem tempo: a hunt só acaba quando você sai pelo portal, vence o Rei Ossudo ou morre. O relógio mostra há quanto tempo você está lá dentro.",
-      `🔥 Acampamento: a sala onde você nasce, com o portal. No quadrado em volta da fogueira, a vida e a mana voltam ${CAMP_REGEN}× mais rápido.`,
-      "Uma caverna só, aberta, com o acampamento no centro. Ao sul, a Orla de iniciante (nível 1–5); a oeste, a ala baixa (3–8) até o Rei Ossudo; ao norte, a média (9–14) até o Colosso Cantante; a leste, a alta (14–20) até o Faraó Eterno. Doze áreas de caça com os seus monstros e o nível indicado, mais emboscadas pelos vazios. A placa embaixo do relógio diz onde você está. Vá e volte do acampamento quantas vezes quiser e cace onde der para o seu momento.",
-      "O minimapa lembra o que você já descobriu na Fíbula em hunts anteriores (por personagem): o já visto aparece mais escuro até você passar lá de novo.",
+    section("🦴 Fíbula e Fíbula Profunda: terrenos de caça", false, list([
+      "Sem tempo: a hunt só acaba quando você sai pelo portal, vence um boss ou morre. O relógio mostra há quanto tempo você está lá dentro.",
+      `🔥 Acampamento: a sala onde você nasce, com o portal. No quadrado em volta da fogueira, a vida e a mana voltam ${CAMP_REGEN}× mais rápido. Ao lado, o vendedor: encostado na banca você troca loot por poção (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${CAMP_VENDOR_PRICES[id]}`).join(", ")}).`,
+      "🦴 Fíbula: três salões abertos (Orla, Covas e Fundo) com nove áreas de caça em escada, do nível 1 ao 16, e o covil do Rei Ossudo no topo.",
+      "💀 Fíbula Profunda: uma caverna só, três vezes maior, com o acampamento no centro. Ao sul, a Orla de iniciante (nível 1–5); a oeste, a ala baixa (3–8) até o Rei Ossudo; ao norte, a média (9–14) até o Colosso Cantante; a leste, a alta (14–20) até o Faraó Eterno. Doze áreas de caça com os seus monstros e o nível indicado, mais emboscadas pelos vazios.",
+      "A placa embaixo do relógio diz onde você está. Vá e volte do acampamento quantas vezes quiser e cace onde der para o seu momento.",
+      "Nada prende o herói nesses mapas: teia, atordoamento e engolir não pegam (lentidão sim). Se você parou, foi a rede, não uma magia.",
+      "O minimapa lembra o que você já descobriu em hunts anteriores (por personagem): o já visto aparece mais escuro até você passar lá de novo.",
       "Fora da fogueira a vida volta devagar: ferido, recue até o acampamento antes de avançar mais.",
       "Os monstros ficam sempre nos mesmos lugares, e a sala limpa enche de novo em 1 a 2 min (nunca com você perto).",
     ])),
@@ -244,7 +249,8 @@ export function renderRules(root: HTMLElement) {
         return `${p.icon} ${p.name}: devolve ${pct(p.restore)} da ${p.stat === "hp" ? "vida" : "mana"} máxima.`;
       }),
       `Você carrega até ${POTION_MAX} de cada. A recarga de ${POTION_COOLDOWN_MS / 1000} s é a mesma para as duas.`,
-      "Só caem dos monstros e baús, e valem só na hunt: as que sobram não vão para a conta.",
+      `Não caem de monstro nem de baú: compre no Mercado (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${MARKET_POTION_PRICES[id]} gold`).join(", ")}; ficam na conta do personagem e entram em toda hunt) ou com o vendedor do acampamento da Fíbula (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${CAMP_VENDOR_PRICES[id]} de loot`).join(", ")}).`,
+      "Quem sai vivo leva as que sobraram de volta para a conta; quem morre as deixa no chão.",
       "Com a barra cheia, a poção não é gasta.",
     ])),
   );

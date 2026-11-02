@@ -29,8 +29,12 @@ Fíbula 2 (02/11, aprovada em imagem): uma caverna só de 160×140 com o acampam
 minimapa que lembra o descoberto na conta, por personagem (`profile_map_memory`). A planta em alas ligadas por
 passagens foi recusada ("ainda parece corredores"): o modelo é chão contínuo, sem braços.
 
-Fora deste plano (ficam para depois de medir o mapa de teste): levar o modelo aos outros mapas, poções no Mercado,
-corpo que fica 24 h, ficha com taxa de extração por anel.
+Feito depois (02/11, PR da Fíbula dupla): a Fíbula Profunda virou um cenário à parte (`fibula2`, ponto próprio no
+mapa-múndi), nenhuma magia prende o herói nos terrenos de caça, boss no máximo 2× o mini-boss, e poção só comprada (no
+Mercado, com gold, ou com o vendedor do acampamento, com loot): nada de poção caindo de monstro (ver "Poções" no GDD).
+
+Fora deste plano (ficam para depois de medir o mapa de teste): levar o modelo aos outros mapas, corpo que fica 24 h,
+ficha com taxa de extração por anel.
 
 ---
 

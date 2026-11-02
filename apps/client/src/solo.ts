@@ -8,6 +8,7 @@ import {
   generateDungeon,
   lootName,
   mapIdOf,
+  potionStock,
   type ClassId,
   type MapId,
   type RunEndedMessage,
@@ -19,7 +20,7 @@ import {
 import type { HuntReport } from "../../server/src/hunt.ts";
 import { supabase } from "./auth.ts";
 import type { DungeonRoom } from "./net.ts";
-import { recordSoloMapClear } from "./profile.ts";
+import { recordSoloMapClear, storeMyPotions, takeMyPotions } from "./profile.ts";
 
 const SESSION_ID = "solo";
 
@@ -47,6 +48,8 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
   if (error) throw new Error("não foi possível começar a hunt solo");
   const run = data as SoloRunStart;
   noticeClosed(run.closed);
+  // As poções compradas no Mercado entram com o herói (chegam logo depois do início, como o equipamento).
+  const potions = takeMyPotions(run.run_id);
 
   const listeners = new Map<string, Set<(msg: any) => void>>();
   const leaveListeners = new Set<(code: number) => void>();
@@ -108,6 +111,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
       last = performance.now();
       hunt.equip(SESSION_ID, run.items ?? []);
       hunt.fillBag(SESSION_ID, run.bag ?? []);
+      void potions.then((stock) => { if (!hunt.givePotions(SESSION_ID, stock)) void storeMyPotions(run.run_id, stock); });
       void botItems.then((loadouts) => loadouts.forEach((bot) => hunt.equip(bot.id, bot.items)));
     },
     [MSG.move]: (msg) => hunt.move(SESSION_ID, msg),
@@ -119,6 +123,7 @@ export async function createSoloHunt(name: string, classId: ClassId, mapId: MapI
     [MSG.cast]: (msg) => hunt.cast(SESSION_ID, msg),
     [MSG.channel]: (msg) => hunt.channel(SESSION_ID, msg),
     [MSG.drink]: (msg) => hunt.drink(SESSION_ID, msg),
+    [MSG.buyPotion]: (msg) => hunt.buyPotion(SESSION_ID, msg),
     [MSG.bagEquip]: (msg) => hunt.bagEquip(SESSION_ID, msg),
     [MSG.unequip]: (msg) => hunt.unequip(SESSION_ID, msg),
     [MSG.bagDrop]: (msg) => hunt.bagDrop(SESSION_ID, msg),
@@ -324,6 +329,8 @@ export async function finishSolo(runId: string | null, classId: ClassId, result:
     console.error("Falha ao salvar a hunt solo", error);
     return { ...result, loot: 0, items: [], bag: [], note: "O banco recusou o resultado: a recompensa desta hunt não foi salva." };
   }
+  // A hunt fechou no banco: as poções que sobraram voltam para a conta (o banco só aceita uma vez, para quem saiu vivo).
+  if (result.potions) void storeMyPotions(runId, potionStock(result.potions));
   const saved = data as SoloRunResult;
   const names = (ids: string[]) => ids.map((id) => ITEMS[id]?.name ?? id).join(", ");
   const left = [...result.items, ...result.bag];
