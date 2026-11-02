@@ -1103,8 +1103,11 @@ jogo**, 8 min, até 4 jogadores. **Mapa fixo:** é sempre a mesma planta, qualqu
 (`generateFortress` em `dungeon.ts`, sempre com `FORTRESS_SEED`); a planta vai em `Dungeon.fortress`, que só o desenho
 lê.
 
-- **Em pé, de baixo para cima:** a **vila baixa** em ruínas (entrada, estrada e travessas de basalto, casas caídas,
-  ciprestes, uma casa com mini-boss e baú), o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
+- **Em pé, de baixo para cima:** a **vila baixa** em ruínas, desenhada à mão (`FORT_VILA` em `dungeon.ts`, de
+  `docs/arte/fortaleza/planta.txt`): a praça da entrada, as ruas de basalto em grade, quadras de casas do império caídas
+  com os pátios de calçamento quebrado, a **praça da fonte seca** (5×5, com colunas nos cantos), duas casernas com
+  mini-boss e baú, o acampamento na cabeça da ponte e um **mirante** de pedra sobre o desfiladeiro; no pátio externo,
+  a **estátua derrubada** do imperador. Depois, o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
   beira dele com o portão entre duas torres, o **pátio externo** fechado por muralhas (dos lados e na beira do
   precipício, com uma torre em cada canto; a mata fica do lado de fora) e virado acampamento (tendas, fogueiras, paliçadas,
   totens de caveira, estandartes, 3 casernas com mini-boss e baú), a **muralha interna** com o segundo portão, e o
