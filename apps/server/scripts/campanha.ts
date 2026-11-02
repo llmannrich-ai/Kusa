@@ -2,12 +2,13 @@
  * Campanha (mapa mundi): cada cenário abre ao vencer o boss do anterior, sem servidor (`arena.ts`):
  *   - a ordem do packages/shared: só o primeiro (Orla do Bosque) começa aberto; cada boss abre o seguinte;
  *   - lado de bifurcação abre com um boss só: as Dunas Cantantes com o Observador, o Bosque Velho com o Basilisco;
+ *   - os dois lados se reencontram na Fortaleza Orc: abre com o boss das Mesas ou com o do Coração da Mata;
  *   - o boss principal morto credita o cenário a todo humano na hunt, vivo ou morto (`HuntHost.mapCleared`,
  *     `stats.bossClear`), e não a quem saiu da hunt nem aos bots;
  *   - mini-boss morto não credita nada.
  * Uso: npx tsx scripts/campanha.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { UNLOCK_BOSS, WORLD_ORDER, lastUnlocked, mapUnlocked, unlockedBy, type MapId } from "@kusa/shared";
+import { UNLOCK_BOSS, WORLD_ORDER, lastUnlocked, mapUnlocked, unlockedBy, unlockedByAny, type MapId } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
 
 // --- Ordem da campanha -----------------------------------------------------------------------
@@ -31,6 +32,10 @@ check(open([...travessia, "basilisk", "beholder"]) === [...T, "oldwood", "dunes"
 check(open(["beholder"]) === "grove,dunes", "o Observador vencido como convidado abre as Dunas, mesmo sem a Travessia vencida");
 check(open(["basilisk"]) === "grove,oldwood", "o Basilisco vencido como convidado abre o Bosque Velho, mesmo sem a Travessia vencida");
 check(open([...travessia, "basilisk", "oldwood"]) === [...T, "oldwood", "heartwood"].join(), "o boss do Bosque Velho abre o Coração da Mata");
+check(open([...travessia, "basilisk", "oldwood", "heartwood"]) === [...T, "oldwood", "heartwood", "fortress"].join(), "o boss do Coração da Mata também abre a Fortaleza Orc (os dois lados se reencontram)");
+check(open([...travessia, "basilisk", "oldwood", "heartwood", "fortress"]) === [...T, "oldwood", "heartwood", "fortress", "bog", "badlands"].join(), "Vorgak vencido pela floresta abre os dois lados da etapa 9");
+check(lastUnlocked([...travessia, "basilisk", "oldwood", "heartwood"]) === "fortress", "pela floresta, o herói espera na Fortaleza Orc");
+check(unlockedByAny("fortress").join() === "mesas,heartwood" && unlockedByAny("grove").length === 0 && unlockedByAny("bog").join() === "fortress", "quem abre cada cenário, com os encontros de dois lados");
 check(open([...travessia, "beholder", "dunes"]) === [...T, "dunes", "mesas"].join(), "o boss das Dunas abre as Mesas de Solária");
 check(open([...travessia, "beholder", "dunes", "mesas"]) === [...T, "dunes", "mesas", "fortress"].join(), "o boss das Mesas abre a Fortaleza Orc");
 check(open([...travessia, "beholder", "dunes", "mesas", "fortress"]) === [...T, "dunes", "mesas", "fortress", "bog", "badlands"].join(), "Vorgak abre os dois lados da etapa 9 (Charco Cinzento e Ermos Rubros)");
