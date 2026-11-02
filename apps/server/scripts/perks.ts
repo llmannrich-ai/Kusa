@@ -10,7 +10,7 @@
  * A mensagem `MSG.choosePerk` chega na `Hunt` por uma linha do `DungeonRoom`; a rede é coberta pelos testes de fumaça.
  * Uso: npx tsx apps/server/scripts/perks.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { PERK_CHOICES, PERK_IDS, grantsPerk, isPerk, xpForLevel, type PerkId } from "@kusa/shared";
+import { MAX_LEVEL, PERK_CHOICES, PERK_IDS, grantsPerk, isPerk, statsFor, xpForLevel, type PerkId } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
 
 // --- Nível 2: oferta, recusa, escolha -------------------------------------------------------------
@@ -79,6 +79,16 @@ function level2(seed: number) {
   const total = [...p.perks.values()].reduce((s, v) => s + v, 0);
   check(total === expected && p.perkOffer.length === 0 && p.perksQueued === 0, `escolheu ${total} de ${expected} e a fila não esvaziou`);
   console.log(`nível 1 → ${target} de uma vez: ${expected} melhorias, uma por vez`);
+}
+
+// --- Fim da hunt: melhoria só nos níveis pares do 10 em diante; atributos crescem metade do 11 em diante --------
+{
+  const levels = Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).filter(grantsPerk);
+  check(levels.join(",") === "2,4,5,7,8,9,10,14,16,18,20", `níveis com melhoria: ${levels.join(",")}`);
+  const dmg = (l: number) => statsFor("knight", l).damage;
+  const step = dmg(10) - dmg(9);
+  check(Math.abs(dmg(11) - dmg(10) - step / 2) < 1e-9 && Math.abs(dmg(20) - dmg(19) - step / 2) < 1e-9, `ganho de dano do 11 em diante devia ser a metade de ${step}`);
+  console.log(`melhorias nos níveis ${levels.join(", ")}; dano do cavaleiro no 10/20: ${dmg(10)}/${dmg(20)}`);
 }
 
 console.log("PERKS OK");

@@ -1242,7 +1242,9 @@ lê.
 - O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes, nas Mesas de Solária, nos Portões do Império e na Fortaleza Orc, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
-- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Os slots de magia abrem nos níveis 3 e 6;
+- A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Do nível 11 em diante, vida, mana e dano
+  crescem só metade por nível (`STAT_TAPER`, `packages/shared/src/progression.ts`), para frear a bola de neve do fim da
+  hunt (pela telemetria, quem passava do nível 10 quase não morria). Os slots de magia abrem nos níveis 3, 6 e 12;
   os outros níveis dão uma melhoria à escolha (ver "Melhorias de nível").
 - A dungeon é semi-linear: poucos monstros fracos na entrada e, conforme a equipe se aprofunda, espécies mais fortes e
   salas mais cheias. **O monstro nunca evolui na partida:** um Orc tem a mesma vida e o mesmo dano em qualquer sala.
@@ -1255,7 +1257,8 @@ lê.
 
 ### Melhorias de nível
 
-Todo nível que não abre slot de magia (2, 4, 5, 7 em diante) mostra **duas cartas** logo acima do
+Todo nível que não abre slot de magia mostra **duas cartas** (do 2 ao 9: 2, 4, 5, 7, 8, 9; do 10 em diante, só os
+pares: 10, 14, 16, 18, 20, no máximo 11 por hunt, `PERK_EVEN_FROM`) logo acima do
 personagem (acompanhando ele) e o jogador toca numa. Cada carta mostra ícone, nome, efeito, um selo ("Nova" ou "2ª vez")
 e bolinhas de quantas vezes a melhoria já foi escolhida até o limite. Depois da escolha, o nome sobe sobre o personagem
 por 1,17 s (30% a mais que os outros avisos). O servidor sorteia as duas (diferentes, fora das que já chegaram ao limite) e aplica a escolhida; ela vale
