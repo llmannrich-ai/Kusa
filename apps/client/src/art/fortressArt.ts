@@ -1042,3 +1042,79 @@ export function ravenFrames(): Uint8ClampedArray {
   }
   return p.render(false);
 }
+
+// --- Moitas -------------------------------------------------------------------------------------
+
+/** Moita de pé (as touceiras soltas dentro do castelo e da vila): um pouco maior que o tile, para emendar com as vizinhas. */
+export const SHRUB = { w: HD + 48, h: HD + 56 } as const;
+
+/**
+ * Moita redonda vista de frente: 4 a 6 bolos de folhagem sobrepostos (os de trás mais escuros), cada um com a luz em
+ * cima à esquerda e as folhas em tufos, algumas florzinhas secas e a base escura junto do chão. As vizinhas se
+ * sobrepõem e formam uma touceira de contorno solto, em vez dos blocos quadrados de tile.
+ */
+export function shrubSprite(v: number): Uint8ClampedArray {
+  const p = paper(SHRUB.w, SHRUB.h);
+  const cx = SHRUB.w / 2, foot = SHRUB.h - 12;
+  const n = 4 + (v % 3);
+  const balls = Array.from({ length: n }, (_, k) => {
+    const a = (k / n) * Math.PI * 2 + v;
+    const r = 28 + hash01(k * 7 + v, 980) * 16;
+    return { x: cx + Math.cos(a) * (26 + hash01(k + v, 981) * 14), y: foot - 58 + Math.sin(a) * 22 - hash01(k * 3 + v, 982) * 14, r };
+  }).sort((a, b) => a.y - b.y);
+  // O miolo, para não ficar buraco entre os bolos.
+  balls.unshift({ x: cx, y: foot - 56, r: 44 });
+  for (const [k, b] of balls.entries())
+    p.fill([b.x - b.r - 4, b.y - b.r - 4, b.x + b.r + 4, b.y + b.r + 4], (x, y) => Math.hypot(x - b.x, (y - b.y) * 1.1) < b.r * (1 - noise(x >> 2, y >> 2, 983 + k) * 0.14), E.Bush, (x, y) => {
+      const nx = (x - b.x) / b.r, ny = (y - b.y) / b.r;
+      return 0.5 - nx * 0.22 - ny * 0.3 + (sn(x & 127, y & 127, 8, 984 + v) - 0.5) * 0.3 + (k === 0 ? -0.12 : 0);
+    });
+  // Tufos claros e florzinhas secas.
+  for (let y = 0; y < SHRUB.h; y++)
+    for (let x = 0; x < SHRUB.w; x++) {
+      if (!p.has(x, y)) continue;
+      if (noise(x >> 1, y >> 1, 985 + v) < 0.04) p.on(x, y, E.Bush, 5);
+      else if (noise(x, y, 986 + v) < 0.006) p.on(x, y, E.Daisy, 3);
+      if (y > foot - 14) p.on(x, y, E.Bush, 1);
+    }
+  return p.render(true);
+}
+
+/** A forca dos orcs (de pé, 1 tile de chão; a trave passa para os lados). */
+export const GALLOWS = { w: HD + 96, h: HD + 200 } as const;
+
+/**
+ * A forca dos orcs no pátio externo: dois postes de tronco mal desbastado com a trave por cima e as mãos-francesas, a
+ * corda com o laço balançando num lado e, no outro, a gaiola de ferro pendurada com ossos dentro; caveiras pregadas no
+ * alto dos postes e o pé enterrado num monte de pedras.
+ */
+export function gallowsSprite(): Uint8ClampedArray {
+  const p = paper(GALLOWS.w, GALLOWS.h);
+  const cx = GALLOWS.w / 2, foot = GALLOWS.h - 14, top = 40;
+  const posts = [cx - 78, cx + 78];
+  for (const [k, x] of posts.entries()) {
+    limb(p, [x, foot], [x + (k ? -3 : 3), top + 6], 9, 7, E.Bark);
+    // Pedras no pé.
+    for (let j = 0; j < 4; j++) ellipse(p, x - 14 + j * 9, foot - 2 - (j % 2) * 4, 9, 6, E.Slab);
+    // A caveira pregada no alto do poste.
+    ellipse(p, x, top + 34, 9, 8, E.Bone);
+    p.on(x - 3, top + 34, E.Void, 1); p.on(x + 3, top + 34, E.Void, 1);
+  }
+  // A trave e as mãos-francesas.
+  limb(p, [posts[0] - 20, top], [posts[1] + 20, top + 4], 8, 8, E.Bark);
+  limb(p, [posts[0], top + 50], [posts[0] + 36, top + 4], 4, 4, E.Bark);
+  limb(p, [posts[1], top + 50], [posts[1] - 36, top + 4], 4, 4, E.Bark);
+  // A corda com o laço.
+  const rx = cx - 30;
+  for (let y = top + 8; y < top + 104; y++) p.px(rx + Math.sin((y - top) / 30) * 2, y, E.Dry, y % 6 < 3 ? 2 : 3);
+  p.fill([rx - 12, top + 100, rx + 12, top + 130], (x, y) => { const d = Math.hypot((x - rx) / 10, (y - top - 116) / 13); return d < 1 && d > 0.62; }, E.Dry, () => 0.5);
+  // A gaiola de ferro com ossos.
+  const gx = cx + 34, gy = top + 70;
+  for (let y = top + 8; y < gy; y++) p.px(gx, y, E.Iron, 2);
+  p.fill([gx - 22, gy, gx + 22, gy + 70], (x, y) => Math.abs(x - gx) < 22 - Math.max(0, (gy + 12 - y)) * 0.8, E.Void, () => 0.15);
+  for (let x = gx - 20; x <= gx + 20; x += 8) for (let y = gy + 4; y < gy + 70; y++) p.on(x, y, E.Iron, 3);
+  for (const y of [gy + 6, gy + 36, gy + 68]) for (let x = gx - 22; x <= gx + 22; x++) p.on(x, y, E.Iron, 2);
+  ellipse(p, gx - 4, gy + 54, 7, 6, E.Bone);
+  limb(p, [gx - 14, gy + 62], [gx + 12, gy + 58], 2.5, 2.5, E.Bone);
+  return p.render(true);
+}

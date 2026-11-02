@@ -6,7 +6,7 @@
 
 A vila baixa (linhas 91 a 127: o mirante, a cabeça da ponte e a vila) já está no jogo: `FORT_VILA` em
 `packages/shared/src/dungeon.ts` é a cópia dessas linhas (mude os dois juntos). O resto do castelo ainda vem do gerador
-(`buildFortress`), que já dá quase o mesmo desenho; faltam os mirantes do esporão e a forca.
+(`buildFortress`), que já dá quase o mesmo desenho; os mirantes do esporão e a forca entram por `FORT_LOOKOUTS` e `FORT_GALLOWS`.
 
 ## Folhas de sprites do ChatGPT
 

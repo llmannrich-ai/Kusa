@@ -11,7 +11,7 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  BRAZIER, BRAZIER_MOUTH, DRAIN, DROP, FALL, RAVEN, ravenFrames, FOUNTAIN, drainSprite, waterfallTexture, HANG, KEEP_RISE, ORC_DRESS, brazierSprite, carpetTile, strawBed, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
+  BRAZIER, BRAZIER_MOUTH, DRAIN, GALLOWS, SHRUB, gallowsSprite, shrubSprite, DROP, FALL, RAVEN, ravenFrames, FOUNTAIN, drainSprite, waterfallTexture, HANG, KEEP_RISE, ORC_DRESS, brazierSprite, carpetTile, strawBed, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   throneSprite,
 } from "./art/fortressArt.ts";
@@ -77,6 +77,20 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const lone = (x: number, y: number, test: (x: number, y: number) => boolean) => test(x, y) && DIRS.every(([dx, dy]) => !test(x + dx, y + dy));
   const tree = (x: number, y: number) => x > 0 && y > 0 && lone(x, y, wall);
   const bush = (x: number, y: number) => wall(x, y) && !tree(x, y);
+  // A mata ligada à borda do mapa continua em tiles (a mata fechada); as touceiras soltas lá dentro viram moitas de pé.
+  const outerWood = new Uint8Array(W * H);
+  {
+    const stack: number[] = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if ((x === 0 || y === 0 || x === W - 1 || y === H - 1) && wall(x, y)) { outerWood[y * W + x] = 1; stack.push(y * W + x); }
+    while (stack.length) {
+      const i = stack.pop()!, x = i % W, y = Math.floor(i / W);
+      for (const [dx, dy] of DIRS) {
+        const j = (y + dy) * W + x + dx;
+        if (wall(x + dx, y + dy) && !outerWood[j]) { outerWood[j] = 1; stack.push(j); }
+      }
+    }
+  }
+  const shrub = (x: number, y: number) => bush(x, y) && !outerWood[y * W + x];
   const bridge = (x: number, y: number) => f.bridges.some((r) => inR(r, x, y));
   const rope = (x: number, y: number) => (d.planks ?? []).some((r) => inR(r, x, y));
   const inKeep = (x: number, y: number) => inR(f.keep, x, y);
@@ -94,8 +108,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const roomInside = (x: number, y: number) => d.side.some((r) => x > r.x && y > r.y && x < r.x + r.w - 1 && y < r.y + r.h - 1);
   const fountain = (x: number, y: number) => inR(f.fountain, x, y);
   const statue = (x: number, y: number) => f.statues.some((r) => inR(r, x, y));
+  const gallows = (x: number, y: number) => f.gallows.some((g) => g.x === x && g.y === y);
   const special = (x: number, y: number) =>
-    inTower(x, y) || inTent(x, y) || totems.has(y * W + x) || throne(x, y) || palisade(x, y) || fountain(x, y) || statue(x, y);
+    inTower(x, y) || inTent(x, y) || totems.has(y * W + x) || throne(x, y) || palisade(x, y) || fountain(x, y) || statue(x, y) || gallows(x, y);
   /** Ruína desenhada como muro (o resto: colunas, blocos, totens e as peças grandes). */
   const masonry = (x: number, y: number) => ruin(x, y) && !special(x, y) && !lone(x, y, ruin);
   const camp = (x: number, y: number) => f.camps.some((r) => inR(r, x, y));
@@ -164,6 +179,8 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
 
   // --- Andar do castelo: chão, beiradas, paredão e enfeites rasteiros ------------------------------
   const ground = new Int32Array(W * H).fill(-1);
+  /** A ponte de cordas numa camada própria, que balança. */
+  const ropeTiles = new Int32Array(W * H).fill(-1);
   const fringe = new Int32Array(W * H).fill(-1);
   /** Onde o capim do ChatGPT cobre a beira do calçamento (a máscara da camada de capim de cima): o índice do formato. */
   const grassEdge = new Int32Array(W * H).fill(-1);
@@ -174,7 +191,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const voidShade = new Int32Array(W * H).fill(-1);
   // As tendas ficam fora: a sombra em faixa de tile desenhava um "L" reto em volta do cone. Elas têm a sombra oval
   // própria (`TENT_SHADOW`).
-  const high = (x: number, y: number) => bush(x, y) || inTower(x, y) || masonry(x, y);
+  const high = (x: number, y: number) => (bush(x, y) && !shrub(x, y)) || inTower(x, y) || masonry(x, y);
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
@@ -201,7 +218,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         if (s) voidShade[i] = atlas.frame(`void${s}`, () => valleyShade(s));
         continue;
       }
-      if (t === Tile.Wall && bush(x, y)) {
+      if (t === Tile.Wall && shrub(x, y)) {
+        ground[i] = grassFrame(x, y);
+      } else if (t === Tile.Wall && bush(x, y)) {
         const open = mask(x, y, (a, b) => !bush(a, b) && inGrid(a, b));
         const v = hash(x, y, 2) < 0.6 ? 0 : 1;
         ground[i] = atlas.frame(`bush${open}-${v}`, () => bushTile(open, v).render(false));
@@ -214,7 +233,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
         const r = d.planks!.find((b) => inR(b, x, y))!;
         const side = x === r.x ? -1 : 1;
         const v = Math.floor(hash(x, y, 7) * 3);
-        ground[i] = atlas.frame(`rope${side}-${v}`, () => ropeBridgeTile(side, v).render(false));
+        ropeTiles[i] = atlas.frame(`rope${side}-${v}`, () => ropeBridgeTile(side, v).render(false));
         continue;
       } else if (hall(x, y) || inKeep(x, y)) {
         ground[i] = groundFrame("salao", CHAO_SALAO, x, y);
@@ -356,8 +375,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   layer("sombra-vale", voidShade, floorDepth - 1);
   // As texturas do ChatGPT (capim, basalto) já variam sozinhas: vão sem as manchas de luz, para a camada de capim da
   // borda casar pixel a pixel com o capim de baixo.
-  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || camp(x, y) || plaza(x, y) || hall(x, y) || inKeep(x, y) || roomInside(x, y) || (!paved(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && !bush(x, y));
+  const plainTexture = (x: number, y: number) => abyss(x, y) || road(x, y) || yard(x, y) || camp(x, y) || plaza(x, y) || hall(x, y) || inKeep(x, y) || roomInside(x, y) || (!paved(x, y) && !hall(x, y) && !inKeep(x, y) && !roomInside(x, y) && (!bush(x, y) || shrub(x, y)));
   layer("chao", ground, floorDepth, (x, y) => (plainTexture(x, y) ? 0xffffff : patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67)));
+  const ropeLayer = layer("ponte-de-cordas", ropeTiles, floorDepth + 0.0005);
   // Por cima do chão vem a camada de capim das bordas (`floorDepth + 0.001`), e por cima dela as beiradas, sombras e
   // enfeites (que ela não pode esconder).
   layer("beiradas", fringe, floorDepth + 0.002, (x, y) => patchTint(x, y, 0.84, [0.9, 0.92, 0.7], 7, 67));
@@ -413,11 +433,12 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const culler = new ChunkCuller();
   const walls = new SpriteSheet("fortress-walls", WALL_SPRITE.w, WALL_SPRITE.h);
   const dress = new SpriteSheet("fortress-orcs-muralha", ORC_DRESS.w, ORC_DRESS.h);
+  const shrubs = new SpriteSheet("fortress-moitas", SHRUB.w, SHRUB.h);
   const cols = new SpriteSheet("fortress-columns", COLUMN.w, COLUMN.h);
   const blocks = new SpriteSheet("fortress-blocks", BLOCK.w, BLOCK.h);
   const cypress = new SpriteSheet("fortress-cypress", CYPRESS.w, CYPRESS.h);
   const pines = new SpriteSheet("fortress-pines", PINE.w, PINE.h);
-  type Placed = { sheet: SpriteSheet; frame: number; x: number; y: number; px: number; py: number; depth: number; flip?: boolean; crown?: boolean };
+  type Placed = { sheet: SpriteSheet; frame: number; x: number; y: number; px: number; py: number; depth: number; flip?: boolean; crown?: boolean; scale?: number };
   const placed: Placed[] = [];
   const put = (sheet: SpriteSheet, frame: number, x: number, y: number, flip = false, px = x * TILE_SIZE + TILE_SIZE / 2, py = (y + 1) * TILE_SIZE) =>
     placed.push({ sheet, frame, x, y, px, py, depth: (y + 1) * TILE_SIZE - 0.25, flip });
@@ -443,6 +464,14 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const flip = hash(x, y, 42) < 0.5;
+      if (shrub(x, y)) {
+        const v = Math.floor(hash(x, y, 48) * 3);
+        // Cada moita sai um pouco do lugar e num tamanho próprio: a touceira fica solta, sem a grade dos tiles.
+        put(shrubs, shrubs.frame(`m${v}`, () => shrubSprite(v)), x, y, flip,
+          (x + 0.5 + (hash(x, y, 46) - 0.5) * 0.5) * TILE_SIZE, (y + 1 + (hash(x, y, 47) - 0.5) * 0.4) * TILE_SIZE);
+        placed[placed.length - 1].scale = 1.1 + hash(x, y, 45) * 0.35;
+        continue;
+      }
       if (tree(x, y)) {
         if (hash(x, y, 49) < 0.72) {
           const v = Math.floor(hash(x, y, 50) * 3);
@@ -549,7 +578,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     putCamp("estandarte", x, y);
   }
 
-  for (const sheet of [walls, dress, cols, blocks, cypress, pines]) sheet.build(scene);
+  for (const sheet of [walls, dress, shrubs, cols, blocks, cypress, pines]) sheet.build(scene);
   const crowns: Phaser.GameObjects.Image[] = [];
   const flags: Phaser.GameObjects.Image[] = [];
   for (const c of campPlaced) {
@@ -557,7 +586,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     if (c.frame === "estandarte") flags.push(img as Phaser.GameObjects.Image);
   }
   for (const s of placed) {
-    const img = culler.add(scene.add.image(s.px, s.py, s.sheet.key, s.frame).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(s.depth).setFlipX(!!s.flip), s.x, s.y);
+    const img = culler.add(scene.add.image(s.px, s.py, s.sheet.key, s.frame).setOrigin(0.5, 1).setScale((s.scale ?? 1) / ZOOM).setDepth(s.depth).setFlipX(!!s.flip), s.x, s.y);
     if (s.crown) crowns.push(img);
   }
   // A fonte seca da praça da vila e as estátuas derrubadas (pintadas por código, em `fortressArt.ts`).
@@ -573,6 +602,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     culler.add(scene.add.image(cx, by + 13 / ZOOM, single(scene, "fortress-estatua", STATUE.w, STATUE.h, statueSprite))
       .setOrigin(0.5, 1).setScale(1.3 / ZOOM).setDepth(by - 0.25), r.x, r.y);
   }
+  for (const g of f.gallows)
+    culler.add(scene.add.image((g.x + 0.5) * TILE_SIZE, (g.y + 1) * TILE_SIZE + 12 / ZOOM, single(scene, "fortress-forca", GALLOWS.w, GALLOWS.h, gallowsSprite))
+      .setOrigin(0.5, 1).setScale(1.3 / ZOOM).setDepth((g.y + 1) * TILE_SIZE - 0.25), g.x, g.y);
   const throneKey = single(scene, "fortress-throne", THRONE.w, THRONE.h, throneSprite);
   culler.add(scene.add.image((f.throne.x + 0.5) * TILE_SIZE, (f.throne.y + 1) * TILE_SIZE, throneKey).setOrigin(0.5, 1).setScale(1 / ZOOM)
     .setDepth((f.throne.y + 1) * TILE_SIZE - 0.25), f.throne.x, f.throne.y);
@@ -762,7 +794,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   scene.add.rectangle(0, 0, cam0.width * 4, cam0.height * 4, 0xffe9cf, 1).setOrigin(0.5).setScrollFactor(0).setDepth(uiDepth - 6.5)
     .setBlendMode(Phaser.BlendModes.MULTIPLY).setPosition(cam0.width / 2, cam0.height / 2);
 
-  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar], maskCam, falls, smokes, flags, ravens, ravenCenter });
+  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar], maskCam, falls, smokes, flags, ravens, ravenCenter, ropeLayer });
 }
 
 /** Ruído suave em grade de `cell` tiles (0 a 1), para o desenho do vale. */
@@ -831,6 +863,8 @@ function createAmbience(
     /** Os corvos voando em volta do centro da torre de menagem. */
     ravens: Phaser.GameObjects.Image[];
     ravenCenter: { x: number; y: number };
+    /** A ponte de cordas, que balança devagar com o vento. */
+    ropeLayer: Phaser.Tilemaps.TilemapLayer;
   },
 ): MapAmbience {
   const cam = scene.cameras.main;
@@ -902,6 +936,7 @@ function createAmbience(
         const on = sm.x > vx0 && sm.x < vx1 && sm.y > vy0 && sm.y < vy1;
         for (const e of sm.emitters) e.setVisible(on);
       }
+      art.ropeLayer.setPosition(Math.sin(time / 900) * 1.4, Math.sin(time / 450) * 0.5);
       for (const fl of art.flags) if (fl.visible) fl.setRotation(Math.sin(time / 520 + fl.x * 0.05) * 0.035);
       for (const [k, rv] of art.ravens.entries()) {
         const a = time * rv.getData("speed") * Math.PI * 2 + rv.getData("phase"), r = rv.getData("r") * TILE_SIZE;
