@@ -639,6 +639,28 @@ como o básico). A Vela Votiva é um campo (zona de raio 1) que fere, ofusca e d
 conta para os Estrepes Afiados. O Exposto agora só vale para monstro que foi atordoado de fato (o tempo de graça dos
 marcos não conta para quem nunca foi atordoado).
 
+**Fase 4b (Feiticeiro), como foi entregue:** os 6 Dons da costela do Feiticeiro. Entrou junto uma versão mínima da peça
+A2 (enfraquecer): o monstro guarda `weakPct`/`weakUntil` e bate menos enquanto dura; por ora só o Lamento Profundo a usa
+(as magias de trevas do feiticeiro enfraquecem), e as magias que enfraquecem por conta própria (Olhar do Abismo, Brado
+Cortante) ficam para a fase 5. "Sopro" = magia em leque que canaliza ou avança em onda (Cusparada de Fogo, Sopro Gélido,
+Lamento Sombrio). Diferenças: o "+0,5 s de congelado" do Cristalizar vale para as prisões de gelo das magias e do sopro;
+o "próximo golpe Estilhaça" do Sopro Glacial vale para golpe que não seja de gelo (senão o próprio sopro quebraria o
+gelo que acabou de fazer); a explosão da Garganta de Brasa sai no fim das magias em onda (o sopro canalizado deixa só o
+chão em chamas no fim de cada onda, sem explosão). Com o Traço Estilhaçar, o gelo do sopro quebra no pulso seguinte,
+como já acontecia antes.
+
+**Fase 4b (Druida), como foi entregue:** os 6 Dons da costela do Druida, o que fecha a fase 4b. "Rugido" = magia com
+`packCall` (Rugido da Alcateia, Grito da Fera); o bônus é sobre a pressa que o rugido dá (0,3 vira 0,3 × 1,3 + 5% no
+nível 25), e abertura e alcance só valem para o rugido em leque. O lobo do marco 5 só sai quando a magia não chama
+criatura própria (a Maestria do Grito da Fera já chama um). Presa Venenosa: o veneno das criaturas é 20% do dano delas
+por segundo por 3 s; o Espinheiro das criaturas pede raiz antes da mordida (a prisão do marco 2 sai depois do golpe e
+prepara a mordida seguinte), e o pulo do marco 5 leva a criatura para perto do monstro mais próximo (até 4 tiles).
+Diferenças: o marco 4 do Pólen Dourado era "tira veneno", mas a Brisa de Pólen já tira veneno, queimadura e lentidão,
+então virou "tira o atordoamento"; o Néctar devolve a mana no máximo uma vez por segundo (as curas que pulsam, como a
+Mariposa, devolveriam a mana toda); o marco 5 da Rajada de Cardos troca o sangramento por veneno, porque o monstro só
+guarda um dano contínuo (com a prisão do marco 2, o espinho seguinte dispara o Espinheiro); o "+1 s de raiz" do
+Espinheiro Antigo deixa a raiz por mais 1 s em vez de soltar, e o "+1 s de sangramento" vira um pulso a mais na hora.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
