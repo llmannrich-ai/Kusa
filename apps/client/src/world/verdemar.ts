@@ -55,13 +55,15 @@ export const NODES: Record<string, CampaignNode> = {
 /**
  * Os cenários de hoje: o herói anda por estas trilhas, um ramo inteiro por linha. Os ramos se separam nas bifurcações:
  * na Caverna da Travessia, o deserto (Dunas Cantantes, Mesas de Solária, até a Fortaleza Orc) e a floresta (Bosque Velho,
- * Coração da Mata); na Fortaleza Orc, o Charco Cinzento e os Ermos Rubros. Para trocar de ramo o herói volta pela trilha
+ * Coração da Mata), que se reencontram na Fortaleza Orc; nela, o Charco Cinzento e os Ermos Rubros. Para trocar de ramo o herói volta pela trilha
  * até o último ponto comum aos dois (`worldMap.ts`).
  */
 export const OPEN_CHAINS = [
   ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9a"],
   ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9b"],
-  ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6a", "n7a"],
+  // A floresta também chega na Fortaleza Orc (o Coração da Mata a abre, como as Mesas).
+  ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6a", "n7a", "n8", "n9a"],
+  ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6a", "n7a", "n8", "n9b"],
 ] as const;
 
 /** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */

@@ -305,8 +305,20 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
       r.stops.set(r.chain[i], Math.min(acc, r.total));
     }
   }
-  /** Ramo para chegar no ponto: o de agora, se o ponto está nele; senão, o primeiro que passa por ele. */
-  const branchOf = (node: string) => (route.chain.includes(node) ? routes.indexOf(route) : routes.findIndex((r) => r.chain.includes(node)));
+  /** Cenários abertos (`setProgress`): o herói prefere ramos sem cenário fechado no caminho. */
+  let openMaps: readonly string[] = [];
+  const openUpTo = (r: (typeof routes)[number], node: string) =>
+    r.chain.slice(0, r.chain.indexOf(node) + 1).every((n) => { const m = NODES[n].map; return !m || openMaps.includes(m); });
+  /**
+   * Ramo para chegar no ponto: o de agora, se o ponto está nele; senão, o primeiro que passa por ele só por cenários
+   * abertos (a Fortaleza Orc pela floresta, para quem não abriu o deserto); sem nenhum, o primeiro que passa por ele.
+   */
+  const branchOf = (node: string) => {
+    const here = route.chain.includes(node);
+    if (here && openUpTo(route, node)) return routes.indexOf(route);
+    const open = routes.findIndex((r) => r.chain.includes(node) && openUpTo(r, node));
+    return open >= 0 ? open : here ? routes.indexOf(route) : routes.findIndex((r) => r.chain.includes(node));
+  };
   /** Bifurcação entre dois ramos: o último ponto que eles têm em comum. */
   const forkOf = (a: (typeof routes)[number], b: (typeof routes)[number]) => {
     let k = 0;
@@ -418,6 +430,7 @@ export function createWorldMap(view: HTMLElement, icons: Record<MapId, string>, 
       labelPoints();
     },
     setProgress(unlocked, cleared) {
+      openMaps = unlocked;
       for (const [id, p] of points) {
         p.button.classList.toggle("locked", !unlocked.includes(id));
         p.button.classList.toggle("cleared", cleared.includes(id));

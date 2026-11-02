@@ -8,6 +8,7 @@ import {
   lootName,
   mapUnlocked,
   unlockedBy,
+  unlockedByAny,
   UNLOCK_BOSS,
   MAPS,
   MAX_LEVEL,
@@ -334,11 +335,21 @@ function openSheet() {
   const before = isOpen(map.id) ? null : unlockedBy(map.id);
   // Lado de bifurcação: só um boss do cenário anterior abre este.
   const beforeBoss = before && (UNLOCK_BOSS[map.id] ?? mainBoss(MAPS[before]));
+  // Encontro de dois lados (Fortaleza Orc): qualquer um dos bosses abre.
+  const ways = before && !UNLOCK_BOSS[map.id] ? unlockedByAny(map.id) : before ? [before] : [];
+  const wayText = (id: MapId, i: number) => {
+    const b = i === 0 && beforeBoss ? beforeBoss : mainBoss(MAPS[id]);
+    return `${b ? MONSTERS[b].name : "o boss"} em ${MAPS[id].name}`;
+  };
   const lock = before
-    ? `Derrote ${beforeBoss ? MONSTERS[beforeBoss].name : "o boss"} em ${MAPS[before].name} com o ${CLASSES[hub.classId].name} para abrir. Você ainda pode entrar nas salas de outros jogadores.`
+    ? `Derrote ${ways.map(wayText).join(" ou ")} com o ${CLASSES[hub.classId].name} para abrir. Você ainda pode entrar nas salas de outros jogadores.`
     : "";
+  const lockChip = (id: MapId, i: number) => {
+    const b = i === 0 && beforeBoss ? beforeBoss : mainBoss(MAPS[id]);
+    return b ? MONSTERS[b].name.split(" ")[0] : MAPS[id].name;
+  };
   const chips = [
-    ...(before ? [`🔒 ${beforeBoss ? MONSTERS[beforeBoss].name.split(" ")[0] : MAPS[before].name}`] : []),
+    ...(before ? [`🔒 ${ways.map(lockChip).join(" ou ")}`] : []),
     difficultyStars(map.difficulty),
     `⏱ ${durationLabel(map)}`,
     ...(map.huntingGround ? ["🔥 acampamento", "🔁 salas renascem"] : []),
