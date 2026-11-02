@@ -24,6 +24,11 @@ fogueira grande); (2) salas ligadas por túneis matavam a sensação de mapa abe
 sem corredor com menos de 4 tiles; (3) a hunt era recusada pelo banco por causa da runa do Rei Ossudo (bug, migration
 `runa_do_rei_ossudo`), e sem ela não houve telemetria: o próximo teste é o primeiro com dados.
 
+Fíbula 2 (02/11, aprovada em imagem): uma caverna só de 160×140 com o acampamento no centro, a Orla ao sul e três alas
+(oeste 3–8 → Rei Ossudo, norte 9–14 → Colosso Cantante, leste 14–20 → Faraó Eterno), emboscadas pelos vazios, e o
+minimapa que lembra o descoberto na conta, por personagem (`profile_map_memory`). A planta em alas ligadas por
+passagens foi recusada ("ainda parece corredores"): o modelo é chão contínuo, sem braços.
+
 Fora deste plano (ficam para depois de medir o mapa de teste): levar o modelo aos outros mapas, poções no Mercado,
 corpo que fica 24 h, ficha com taxa de extração por anel.
 

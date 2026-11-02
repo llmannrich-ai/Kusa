@@ -749,7 +749,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só a 🌱 Orla do Bosque começa aberta, e
-  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Fíbula, Rei Ossudo → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Fíbula, Rei Ossudo (um dos 3 bosses da Fíbula) → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
   Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
@@ -785,7 +785,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
-| 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo e aberto, em pé: acampamento com fogueira, 3 salões contínuos com 9 áreas de caça (Orla, Covas, Fundo), 4 alcovas laterais e o covil | 9 áreas com monstros próprios, só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Legionário Ossudo, Sagitário das Dunas, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo |
+| 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 160×140, uma caverna fixa e aberta: acampamento com fogueira no centro, a Orla ao sul e três alas com 12 áreas de caça, emboscadas pelos vazios, 6 alcovas de guarda e 3 covis nas bordas | só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Sagitário das Dunas, Legionário Ossudo, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo (oeste), Colosso Cantante (norte), Faraó Eterno (leste) |
 | 🏚️ Cripta | 3 ★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×1,6 de força) → Dragão jovem (×1,6) |
 | 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
 | 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
@@ -805,55 +805,61 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
 ### Fíbula (terreno de caça)
 
 Mapa de teste do modelo **terreno de caça** (`docs/TERRENO_DE_CACA_PLANO.md`), entre o Pântano do Kosaradius e a
-Cripta, dificuldade 2,5 (★★½). Em vez de uma dungeon de uma passada contra o relógio, um ossuário onde o jogador
-escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) faz parte do jogo.
+Cripta, dificuldade 2,5 (★★½). Em vez de uma dungeon de uma passada contra o relógio, uma caverna aberta onde o jogador
+escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) faz parte do jogo, e o mapa foi feito
+para **ir e voltar ao acampamento até o nível alto**.
 
-- **Planta fixa e aberta** (`generateFibula`, 64×100, em pé, pincel `fixedCanvas` com `FIBULA_SEED`): o acampamento
-  embaixo (portal e fogueira) e três **salões contínuos** (a **Orla**, as **Covas** e o **Fundo**), cada um com três
-  áreas de caça lado a lado que se abrem umas nas outras; entre os salões, três passagens largas (5 a 8 tiles) e
-  diagonais, para de quase todo ponto haver mais de um caminho de volta. O 1º teste mostrou que salas ligadas por
-  túneis de 1 tile matavam a sensação de mapa aberto; a regra agora é **sem túnel**: nenhum corredor com menos de 4
-  tiles de largura. Pilares e ossadas soltas no meio dos salões quebram a visão dos arqueiros e dão quina para lutar
-  sem ser cercado. 4 alcovas na borda guardam mini-boss e baú; o covil do **Rei Ossudo** fica no topo. Desenho da
-  Cripta (`drawCrypt`), com a fogueira dos Ermos e a chama do Charco. O teste `ritmo` cobre a Fíbula.
-- **Mapa aberto, áreas de caça:** o jogador vai e volta do acampamento quantas vezes quiser e escolhe onde caçar pelo
-  momento dele. Cada sala do caminho é uma área com nome, nível indicado e monstros próprios (`HuntingGround.areas`),
-  numa escada, **só com criaturas de arte desenhada por código** (as do deserto, da Necrópole e do bosque; nada do pack
-  de imagens): Ninho dos Escorpiões (nível 1–3), Covas dos Chacais (2–5), Galharia (4–7) na Orla; Enxame dos
-  Escaravelhos (6–9), Toca dos Lobos (7–10), Posto dos Legionários (9–12) nas Covas; Carpideiras (11–14), Soterrados
-  (12–15), Cripta das Múmias (13–16) no Fundo; o covil do Rei Ossudo para o 15 ou mais. Guardas das alcovas: Centurião
-  Ossudo, Múmia Real e Escriba das Areias. Cada área pede a sua resposta (matar o escorpião antes do veneno, não correr
-  atrás do chacal, não deixar os escaravelhos cercarem, não fugir dos lobos, fechar pela quina nos sagitários, fogo
-  nas múmias, luz nos soterrados...).
+- **Planta fixa, uma caverna só** (`generateFibula`, 160×140, pincel `fixedCanvas` com `FIBULA_SEED`, base de chão):
+  o acampamento (portal e fogueira) é uma ilha no centro; as áreas de caça são regiões do chão contínuo, **sem parede
+  entre elas**, e o perigo cresce com a distância e pela direção. Ao sul, colada ao acampamento, a **Orla** de
+  iniciante; a oeste a **ala baixa** (Rei Ossudo), ao norte a **ala média** (Colosso Cantante), a leste a **ala alta**
+  (Faraó Eterno). Os três covis são câmaras muradas nas bordas com uma boca larga virada para o centro; 6 alcovas de
+  guarda (mini-boss e baú) ficam na beira. Rochas soltas e pilares quebram a visão sem fechar caminho nenhum; nenhum
+  corredor com menos de 4 tiles (o 1º teste mostrou que túneis matavam a sensação de mapa aberto). Desenho da Cripta
+  (`drawCrypt`), com a fogueira dos Ermos e a chama do Charco. O teste `ritmo` cobre a Fíbula.
+- **Áreas de caça** (`HuntingGround.areas`, uma por região, com nome, nível indicado e monstros próprios; a placa do
+  HUD mostra o nome e o nível), **só com criaturas de arte desenhada por código** (deserto, Necrópole, bosque; nada do
+  pack de imagens): Orla: Ninho dos Escorpiões (1–3), Covas dos Chacais (2–5). Ala oeste: Galharia (3–5), Enxame dos
+  Escaravelhos (5–7), Toca dos Lobos (6–8), Sagitários (7–8). Ala norte: Posto dos Legionários (9–11), Carpideiras
+  (12–14). Ala leste: Soterrados (14–16), Cripta das Múmias (16–18), Panteras (18–19), Guarda do Faraó (19–20). Guardas
+  das alcovas: Centurião Ossudo, Múmia Real e Escriba das Areias. **Emboscadas** (`meadows`): grupos pequenos nos
+  vazios entre as áreas, com a tabela e metade do orçamento da área mais perta, que também renascem: a caverna inteira
+  é viva. Cada área pede a sua resposta (matar o escorpião antes do veneno, não correr atrás do chacal, não deixar os
+  escaravelhos cercarem, não fugir dos lobos, fechar pela quina nos sagitários, fogo nas múmias, luz nos soterrados...).
+- **Três bosses** (`MapDef.lairs`, como na Caverna da Travessia): Rei Ossudo (oeste, para o nível 8), Colosso Cantante
+  (norte, 14) e Faraó Eterno (leste, 20). Qualquer um vence o cenário (estrela), mas **a Cripta só abre com o Rei
+  Ossudo** (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`). Cada covil abre o próprio portal (bônus de loot 50%, 75% e
+  100%). Boss não renasce na hunt.
 - **Monstros em lugares fixos:** os mesmos tipos nos mesmos lugares em toda hunt (sorteio de seed fixa do mapa; só os
   Campeões saem da seed da hunt). Aprender o mapa é progressão.
 - **Força** (`commonPower` 1,2, `minibossPower` 1,5, `xpScale` 0,6): as criaturas da Necrópole já são de mapa ★5; com
-  20% a mais, um Cavaleiro de nível 1 com 6 peças do Mercado (59% de corte) morre em ~10 s cercado na Toca dos Lobos e
-  em ~20 s no Posto dos Legionários; o escorpião sozinho, com o veneno, tira mais que a regen. A XP paga 60% para o
-  nível vir do tempo nas áreas certas (ir e voltar), não de uma passada. O 1º teste (02/11) mostrou que com o Grimório
-  inteiro, Sede de Sangue ×3 e o Grito de Guerra o herói é quase imortal em qualquer mapa (o Rei Ossudo de 1.600 caía
-  em 8 s sem o herói perder vida): isso é da sustentação global do herói (armadura, roubo de vida), fora deste mapa.
-- **Salas que enchem de novo** (`MapDef.huntingGround`): quando o último monstro de uma sala morre, ela volta com os
-  mesmos monstros em 60 s (Orla), 90 s (Covas) ou 120 s (Fundo); o mini-boss da sala lateral volta em 240 s, sem o baú;
-  o boss não volta. Nenhuma sala enche com herói a até 8 tiles dela.
+  20% a mais, um Cavaleiro de nível 1 com 6 peças do Mercado (59% de corte) morre em ~10 s cercado na Toca dos Lobos.
+  A XP paga 60% para o nível vir do tempo nas áreas certas (ir e voltar), não de uma passada. O 1º teste (02/11)
+  mostrou que com o Grimório inteiro, Sede de Sangue ×3 e o Grito de Guerra o herói é quase imortal em qualquer mapa (o
+  Rei Ossudo de 1.600 caía em 8 s sem o herói perder vida): isso é da sustentação global do herói (armadura, roubo de
+  vida), fora deste mapa.
+- **Áreas que enchem de novo** (`MapDef.huntingGround`): quando o último monstro de uma área morre, ela volta com os
+  mesmos monstros em 60 s (Orla), 75 s (oeste), 90 s (norte) ou 120 s (leste); o guarda da alcova volta em 240 s, sem
+  o baú. Nenhuma área enche com herói a até 8 tiles dela.
 - **Regen fixa** (como no Tibia): pontos por segundo, 0,8% da vida e 2% da mana do **nível 1** da classe, crescendo 4%
   por nível. Fica abaixo do dano de um monstro comum: ignorar um monstro custa vida. Como a vida máxima cresce mais
   rápido, vale um pouco mais no começo (Cavaleiro: 1/s no nível 1, 0,7%; 2/s no 15, 0,6%). Regeneração, Clareza e a
   Pedra Fundamental somam na mesma conta. **A fogueira** (3 tiles para cada lado) multiplica por 6 (7/s no nível 1):
   recuar até ela cura, mas custa a caminhada.
-- **Sem tempo:** a hunt só acaba quando o jogador sai pelo portal, vence o boss ou morre. O relógio mostra o tempo
-  decorrido. Teto técnico de 2 h (`OPEN_HUNT_MAX_SECONDS`, depois disso vale como soterrado); o teto do loot da hunt
-  solo cresce em linha reta até 48.000 em 2 h (400 por minuto; uma passada completa no mapa paga ~1.130).
-- **Rei Ossudo** (`boneKing`, 3.000 de vida, 44 de dano, para o nível 15 ou mais): Corte do Tutano (sangra), Investida do Rei, Tempestade de
-  Ossos (em volta, lentidão) e, com metade da vida, Os Ossos se Erguem (3 Legionários Ossudos, uma vez); Comando nos mortos
-  perto dele; a luz o fere 1,5×. Arte do Centurião Ossudo, maior.
-- **O mapa se explica** (o primeiro teste mostrou que, sem isso, ninguém achava o acampamento): ao começar, três avisos
-  sobre o herói (o acampamento, a fogueira 6× e "sem tempo, mais perigoso para o norte"); embaixo do relógio, a placa
-  da zona ("🔥 Acampamento", o nome da área com o nível indicado, como "Toca dos Lobos · nível 7–10", ou "☠ Covil"),
-  com a cor subindo com o anel; a fogueira grande, com o quadrado da área de cura marcado no chão e o aviso "🔥 Descansando" ao entrar nele
-  (no máximo a cada 15 s); "A sala encheu de novo" sobre a sala que volta. A ficha mostra "🔥 acampamento" e
-  "🔁 salas renascem", e as Regras têm a seção da Fíbula.
-- **Telemetria** (`stats.ground`): tempo e abates por anel e por área, recuos, salas que encheram de novo (ver
+- **Sem tempo:** a hunt só acaba quando o jogador sai pelo portal, vence um boss e sai pelo portal do covil, ou morre. O
+  relógio mostra o tempo decorrido. Teto técnico de 2 h (`OPEN_HUNT_MAX_SECONDS`, depois disso vale como soterrado); o
+  teto do loot da hunt solo cresce em linha reta até 48.000 em 2 h (400 por minuto).
+- **Minimapa com memória** (`profile_map_memory`, `apps/client/src/minimap.ts`): o que o personagem já descobriu na
+  Fíbula fica guardado na conta, por classe, preso ao hash da planta (mudou a planta, zera). Ao entrar, os tiles
+  lembrados aparecem mais escuros (55% do brilho) até serem vistos de novo; o cliente grava a cada 45 s e ao sair, só
+  depois de ter lido (para não apagar a memória de outro aparelho). Sem conta, nada é guardado.
+- **O mapa se explica**: ao começar, três avisos sobre o herói (o acampamento, a fogueira 6× e "sem tempo · Orla ao
+  sul · alas: oeste 3–8, norte 9–14, leste 14–20"); embaixo do relógio, a placa da zona ("🔥 Acampamento", o nome da
+  área com o nível indicado, como "Toca dos Lobos · nível 6–8", ou "☠ Covil: Faraó Eterno"), com a cor subindo com a
+  ala; a fogueira grande, com o quadrado da área de cura marcado no chão e o aviso "🔥 Descansando" ao entrar nele (no
+  máximo a cada 15 s); "A sala encheu de novo" sobre a área que volta. A ficha mostra "🔥 acampamento" e "🔁 salas
+  renascem", e as Regras têm a seção da Fíbula.
+- **Telemetria** (`stats.ground`): tempo e abates por ala e por área, recuos, áreas que encheram de novo (ver
   `docs/TELEMETRIA.md`).
 
 ### Cripta
