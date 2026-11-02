@@ -178,7 +178,7 @@ function drawCampfire(scene: Phaser.Scene, at: { x: number; y: number }, light: 
     for (let k = 0; k < 4; k++) texture.add(k, 0, k * FLAME.w, 0, FLAME.w, FLAME.h);
   }
   const px = (at.x + 0.5) * TILE_SIZE, py = (at.y + 1) * TILE_SIZE;
-  // A área onde a regen vale 4× (`CAMP_RADIUS` tiles para cada lado: um quadrado): chão aquecido com a borda marcada.
+  // A área onde a regen vale `CAMP_REGEN` vezes (`CAMP_RADIUS` tiles para cada lado: um quadrado): chão aquecido com a borda marcada.
   const r = CAMP_RADIUS;
   scene.add.graphics().setDepth(1.5)
     .fillStyle(0xff9a40, 0.1).fillRoundedRect((at.x - r) * TILE_SIZE, (at.y - r) * TILE_SIZE, (2 * r + 1) * TILE_SIZE, (2 * r + 1) * TILE_SIZE, 10)

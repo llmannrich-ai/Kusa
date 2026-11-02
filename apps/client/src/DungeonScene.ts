@@ -19,6 +19,7 @@ import {
   SUMMONS,
   itemColor,
   CAMP_RADIUS,
+  MAPS,
   TILE_SIZE,
   blocksSight,
   centerOf,
@@ -36,6 +37,7 @@ import {
   type DrankMessage,
   type Dungeon,
   type Rect,
+  type HuntingArea,
   type MonsterKind,
   type ChampionAffix,
   type NoticeMessage,
@@ -547,6 +549,7 @@ export class DungeonScene extends Phaser.Scene {
     if (!p) return;
     const inside = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
     let zone: string;
+    let area: HuntingArea | undefined;
     if (inside(d.spawn) || (d.camp && tileDistance(p.x, p.y, d.camp.x, d.camp.y) <= CAMP_RADIUS + 2)) zone = "camp";
     else if (inside(d.boss)) zone = "lair";
     else {
@@ -557,11 +560,13 @@ export class DungeonScene extends Phaser.Scene {
         if (dist < bestDist) { bestDist = dist; best = i; }
       });
       zone = String(d.rings[best] ?? 0);
+      area = MAPS[d.mapId].huntingGround?.areas?.[best];
     }
-    if (zone === this.zoneShown) return;
-    this.zoneShown = zone;
+    const label = area ? `${area.name} · nível ${area.levels[0]}–${area.levels[1]}` : ZONE_LABEL[zone] ?? "";
+    if (label === this.zoneShown) return;
+    this.zoneShown = label;
     el.dataset.zone = zone;
-    el.textContent = ZONE_LABEL[zone] ?? "";
+    el.textContent = label;
     el.hidden = false;
   }
 

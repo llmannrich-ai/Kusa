@@ -59,6 +59,14 @@ function check(ok: boolean, what: string) {
   check([...a.state.monsters.values()].some((m) => m.kind === "boneKing"), "o Rei Ossudo devia estar no covil");
   const portal = a.any.dungeon.portal;
   check([...a.state.monsters.values()].every((m) => tileDistance(m.x, m.y, portal.x, portal.y) > 6), "ninguém nasce colado no acampamento");
+  // Áreas de caça: cada sala só com os monstros da tabela dela (a Toca dos Lobos só tem lobos).
+  const areas = MAPS.fibula.huntingGround!.areas!;
+  for (const pack of packs as any[]) {
+    if (pack.miniboss) continue;
+    const allowed = new Set(areas[pack.area].table.map(([k]) => k));
+    const kinds = pack.members.map((id: string) => a.state.monsters.get(id)!.kind);
+    check(kinds.every((k: string) => allowed.has(k as never)), `${areas[pack.area].name}: monstro fora da tabela (${kinds})`);
+  }
   const perRing = [0, 1, 2].map((r) => packs.filter((x) => !x.miniboss && x.ring === r).reduce((n, x) => n + x.members.length, 0));
   console.log(`  ✔ spawns fixos: ${a.state.monsters.size} monstros, por anel ${perRing.join("/")}`);
 }

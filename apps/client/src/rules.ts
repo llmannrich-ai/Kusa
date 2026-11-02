@@ -1,5 +1,6 @@
 import {
   ACTIVE_SPELLS_PER_SLOT,
+  CAMP_REGEN,
   FORMATION_GUARD,
   FORMATION_RADIUS,
   LEADER_SHOUT_RADIUS,
@@ -145,8 +146,8 @@ export function renderRules(root: HTMLElement) {
 
     section("🦴 Fíbula: terreno de caça", false, list([
       "Sem tempo: a hunt só acaba quando você sai pelo portal, vence o Rei Ossudo ou morre. O relógio mostra há quanto tempo você está lá dentro.",
-      "🔥 Acampamento: a sala onde você nasce, com o portal. No quadrado em volta da fogueira, a vida e a mana voltam 4× mais rápido.",
-      "Três anéis de salas, do sul ao norte: Orla (fácil), Covas (médio) e Fundo (perigoso). A placa embaixo do relógio diz onde você está.",
+      `🔥 Acampamento: a sala onde você nasce, com o portal. No quadrado em volta da fogueira, a vida e a mana voltam ${CAMP_REGEN}× mais rápido.`,
+      "Nove áreas de caça, do sul ao norte, cada uma com os seus monstros e o nível indicado: do Ninho dos Ratos (nível 1–3) ao Quartel Orc (11–14). A placa embaixo do relógio diz onde você está. Vá e volte do acampamento quantas vezes quiser e cace onde der para o seu momento.",
       "Fora da fogueira a vida volta devagar: ferido, recue até o acampamento antes de avançar mais.",
       "Os monstros ficam sempre nos mesmos lugares, e a sala limpa enche de novo em 1 a 2 min (nunca com você perto).",
     ])),

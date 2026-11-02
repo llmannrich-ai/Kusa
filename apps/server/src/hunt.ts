@@ -631,6 +631,8 @@ interface Pack {
   respawnAt: number;
   /** Mini-boss de sala lateral: volta sem o baú. */
   miniboss: boolean;
+  /** Índice da sala do caminho (a área de caça), para a telemetria; ausente nas salas laterais. */
+  area?: number;
 }
 
 /**
@@ -1103,8 +1105,11 @@ export class Hunt {
     const champions = createRng(this.state.seed ^ 0x9e3779b9);
     d.path.forEach((room, i) => {
       const ring = d.rings?.[i] ?? 0;
-      const depth = ground.ringDepth[ring] ?? ring;
-      const kinds = this.rollEncounter(encounterAt(this.map, depth), depth, fixed.next);
+      // A área de caça da sala (nome, nível, monstros próprios) ou, sem ela, o encontro do anel.
+      const area = ground.areas?.[i];
+      const depth = area?.depth ?? ground.ringDepth[ring] ?? ring;
+      const encounter = area ? { depth: [depth, depth] as [number, number], budget: area.budget, table: area.table } : encounterAt(this.map, depth);
+      const kinds = this.rollEncounter(encounter, depth, fixed.next);
       const spots: { x: number; y: number }[] = [];
       // Os lugares da sala saem antes dos monstros: cada um fica reservado para o próximo não cair em cima.
       const taken = new Set<number>();
@@ -1114,7 +1119,7 @@ export class Hunt {
         spots.push(spot);
         taken.add(spot.y * d.width + spot.x);
       }
-      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false };
+      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false, area: i };
       this.fillPack(pack, champions.next);
       this.packs.push(pack);
     });
@@ -1186,7 +1191,7 @@ export class Hunt {
     const resting = tileDistance(p.x, p.y, camp.x, camp.y) <= CAMP_RADIUS;
     if (resting && !seat.resting && !p.bot && this.elapsedMs >= (seat.restNoticeAt ?? 0)) {
       seat.restNoticeAt = this.elapsedMs + 15_000;
-      this.noticeTo(sessionId, p.x, p.y - 1, "🔥 Descansando: vida e mana 4×", 0xffc56b, 1800);
+      this.noticeTo(sessionId, p.x, p.y - 1, `🔥 Descansando: vida e mana ${CAMP_REGEN}×`, 0xffc56b, 1800);
     }
     seat.resting = resting;
     if (atCamp || this.nearRoom(this.dungeon.spawn, p, 0)) return bump(seat.stats.ground, "camp_s");
@@ -1198,6 +1203,7 @@ export class Hunt {
       if (dist < bestDist) { bestDist = dist; best = i; }
     });
     bump(seat.stats.ground, `ring_${this.dungeon.rings?.[best] ?? 0}_s`);
+    if (this.map.huntingGround.areas) bump(seat.stats.ground, `area_${best}_s`);
   }
 
   /**
@@ -1207,7 +1213,7 @@ export class Hunt {
   private welcomeToGround() {
     const lines: [string, number][] = [
       ["🔥 Acampamento: aqui é seguro", 0xffc56b],
-      ["Perto da fogueira a vida volta 4× mais rápido", 0x7ee08a],
+      [`Perto da fogueira a vida volta ${CAMP_REGEN}× mais rápido`, 0x7ee08a],
       ["Sem tempo · mais perigoso para o norte · saia pelo portal", 0xe8dcc0],
     ];
     // O "Descansando" da fogueira (o herói nasce dentro dela) espera os três avisos acabarem.
@@ -4830,10 +4836,13 @@ export class Hunt {
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
-    // Terreno de caça: abates por anel (onde o herói caça de verdade).
-    const ground = this.map.huntingGround;
+    // Terreno de caça: abates por anel e por área (onde o herói caça de verdade).
     const killerSeat = this.seats.get(killerId);
-    if (ground && killerSeat && brain.def.rank === "common") bump(killerSeat.stats.ground, `ring_${Math.max(0, ground.ringDepth.indexOf(brain.depth))}_kills`);
+    const pack = this.packs.length > 0 && brain.def.rank === "common" ? this.packs.find((x) => x.members.includes(m.id)) : undefined;
+    if (pack && killerSeat) {
+      bump(killerSeat.stats.ground, `ring_${pack.ring}_kills`);
+      if (pack.area !== undefined) bump(killerSeat.stats.ground, `area_${pack.area}_kills`);
+    }
     // Fúria Crescente (Dom): matar soma um acúmulo.
     const furySeat = this.seats.get(killerId);
     if (furySeat && furySeat.gifts.furyStack > 0) {
