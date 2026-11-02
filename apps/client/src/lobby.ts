@@ -61,10 +61,10 @@ export function renderServerPicker(onPick: () => void) {
 
 /**
  * Cenário das salas que este jogador criar: o ponto tocado no mapa mundi (fica salvo no aparelho). Na primeira vez,
- * o começo da trilha (Pântano do Kosaradius).
+ * o começo da trilha (Orla do Bosque).
  */
 const savedMap = storageGet("kusa:map");
-let chosenMap: MapId = savedMap ? mapIdOf(savedMap) : "marsh";
+let chosenMap: MapId = savedMap ? mapIdOf(savedMap) : "grove";
 
 export const createMapId = () => chosenMap;
 
@@ -307,6 +307,26 @@ export const MAP_ART: Record<MapId, string> = {
       <path d="M8 45Q14 44 20 45.5M28 46Q34 45 40 46" stroke="#a8643c" stroke-width="0.8" fill="none" stroke-linecap="round"/>
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#e0805a" stroke-width="1.5"/>
+  </svg>`,
+  // Orla do Bosque: a beira da mata em copas claras, um broto na frente da trilha e o céu aberto atrás.
+  grove: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="gr-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe9a0"/><stop offset="1" stop-color="#7fae4a"/></linearGradient>
+      <clipPath id="gr-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#gr-roda)">
+      <rect width="48" height="48" fill="url(#gr-ceu)"/>
+      <circle cx="4" cy="20" r="8" fill="#3e6e2a"/><circle cx="13" cy="15" r="7" fill="#4f8232"/>
+      <circle cx="44" cy="18" r="8" fill="#3e6e2a"/><circle cx="35" cy="13" r="6.5" fill="#4f8232"/>
+      <circle cx="12" cy="13" r="2.4" fill="#9cc85a"/><circle cx="34" cy="11" r="2.2" fill="#9cc85a"/>
+      <path d="M0 33Q24 29 48 33V48H0Z" fill="#7aa846"/>
+      <path d="M20 48Q23 41 27 37Q30 34 33 33" stroke="#b08a5c" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M15 40V33" stroke="#4a7a2a" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M15 35Q10 33 9.5 28Q14 29 15 35Z" fill="#8cc04e"/>
+      <path d="M15 33Q19 30 22 31Q20 35 15 33Z" fill="#a6d462"/>
+      <path d="M6 0L14 26M30 0L36 22" stroke="#fffbe0" stroke-width="2.5" opacity="0.3"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#9ccc5a" stroke-width="1.5"/>
   </svg>`,
   // Bosque Velho: a mata fechada em copas redondas, um carvalho velho na frente com o tronco grosso e as raízes, a
   // trilha de terra entrando na clareira e o sol passando pela copa.
