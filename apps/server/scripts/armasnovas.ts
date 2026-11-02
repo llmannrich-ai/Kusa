@@ -51,7 +51,7 @@ test("com a equipe, metade dos drops sai do que ela veste", () => {
     const random = createRng(77).next;
     let weapons = 0, usable = 0;
     for (let i = 0; i < 6000; i++) {
-      const id = rollItem("common", 4, random, 0, classes);
+      const id = rollItem(4, random, classes);
       if (ITEMS[id].slot !== "weapon") continue;
       weapons++;
       if (canUse(id, "shaman")) usable++;
@@ -68,7 +68,7 @@ test("o lendário do favor é de quem está na equipe", () => {
   for (const pick of [0, 0.5, 0.99]) {
     const v = [0.1, 0.9, 0.1, 0.1, 0.001, pick];
     let i = 0;
-    const id = rollItem("boss", 4, () => v[i++] ?? 0.5, 0, ["druid"]);
+    const id = rollItem(13, () => v[i++] ?? 0.5, ["druid"]);
     check(LEGENDARY_IDS.includes(id) && canUse(id, "druid"), `${id} não é um lendário que o druida veste`);
   }
 });

@@ -12,7 +12,7 @@
  * Uso: npx tsx apps/server/scripts/lendarios.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  CLASS_IDS, ITEMS, ITEM_FAMILIES, LEGENDARIES, LEGENDARY_IDS, MAX_TIER, RARITY_CHANCES, SPELLS, canUse, gearStats,
+  CLASS_IDS, ITEMS, ITEM_FAMILIES, LEGENDARIES, LEGENDARY_IDS, MAX_TIER, MONSTERS, SPELLS, challengeTier, rarityChances, canUse, gearStats,
   heroBonuses, itemId, rollItem, spellCooldownMs, type ItemStats, type SpellId,
 } from "@kusa/shared";
 import { LEGEND_KEYS } from "../../client/src/art/hero/legend.ts";
@@ -79,12 +79,23 @@ test("as duas artes desenham todos", () => {
 
 console.log("drop:");
 test("rollItem dá lendário só na faixa dele", () => {
-  for (const rank of ["common", "miniboss", "boss"] as const) {
-    const chance = RARITY_CHANCES[rank].legendary;
+  for (const cr of [3, 5, 8, 13]) {
+    const chance = rarityChances(cr).legendary;
     // Sorteios: nível de sorte, slot, família, raridade e (no lendário) qual peça.
     const seq = (roll: number) => { const v = [0.9, 0.1, 0.1, roll, 0.5]; let i = 0; return () => v[i++] ?? 0.5; };
-    check(ITEMS[rollItem(rank, 4, seq(chance * 0.5))].rarity === "legendary", `${rank}: dentro da faixa não saiu lendário`);
-    check(ITEMS[rollItem(rank, 4, seq(chance + 0.001))].rarity === "magic", `${rank}: logo depois da faixa devia ser mágico`);
+    check(ITEMS[rollItem(cr, seq(chance * 0.5))].rarity === "legendary", `ND ${cr}: dentro da faixa não saiu lendário`);
+    check(ITEMS[rollItem(cr, seq(chance + 0.001))].rarity === "magic", `ND ${cr}: logo depois da faixa devia ser mágico`);
+  }
+  check(rarityChances(1).legendary === 0 && rarityChances(2).legendary === 0, "criatura de ND 1 ou 2 não larga lendário");
+});
+test("material e raridade sobem com o Nível de Desafio", () => {
+  const top = Math.max(...Object.values(MONSTERS).map((m) => m.cr));
+  check(challengeTier(1) === 1 && challengeTier(top) === MAX_TIER, `ND 1 devia dar Rústico e ND ${top}, Dragão`);
+  for (let cr = 2; cr <= top; cr++) {
+    const a = rarityChances(cr - 1), b = rarityChances(cr);
+    check(challengeTier(cr) >= challengeTier(cr - 1), `ND ${cr} dá material pior que ND ${cr - 1}`);
+    check(b.rare >= a.rare && b.magic >= a.magic && b.legendary >= a.legendary, `ND ${cr} dá raridade pior que ND ${cr - 1}`);
+    check(b.rare + b.magic + b.legendary < 1, `ND ${cr}: as chances passam de 100%`);
   }
 });
 

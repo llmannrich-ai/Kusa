@@ -101,6 +101,13 @@ export const LOOT_SCALE = 0.8;
 export const ITEM_DROP_SCALE = 0.6;
 
 /**
+ * Nível de Desafio que o item do baú usa (aberto ou o Mímico): não tem criatura, então vale o de um mini-boss forte
+ * (Mithral, 20% de Dragão; lendário 2%). O material e a raridade dos drops seguem o ND da criatura (`rollItem`), sem
+ * olhar o mapa nem a sala. Fica aqui (arquivo de regras) para o cliente de versão antiga, que roda a hunt solo, recarregar.
+ */
+export const CHEST_ITEM_CR = 7;
+
+/**
  * Morte no começo da hunt: quem morre (ou fica soterrado) abaixo deste nível de herói não perde equipamento do
  * corpo, só a bag, as poções e o loot. Morrer no nível 1 a 3 apagava o melhor item da conta a cada tentativa.
  * Fica aqui (arquivo de regras) para o cliente de versão antiga, que roda a hunt solo, recarregar; o banco repete o
