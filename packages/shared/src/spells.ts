@@ -80,7 +80,8 @@ export type SpellId =
   // Grimório 4.0: magias em leque nas costelas novas (docs/GRIMORIO_4_PLANO.md, seção 8).
   | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
   // Grimório 4.0, fase 5: magias de combo das costelas novas (usam as reações).
-  | "hemorrhagic_cut" | "shield_toss" | "exposed_strike"
+  | "hemorrhagic_cut" | "shield_toss" | "exposed_strike" | "weak_point_arrow" | "dawn_arrow" | "powder_keg"
+  | "thermal_shock" | "sentence"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -162,9 +163,10 @@ export interface SpellDef {
     length?: number;
     /**
      * Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus); "totem" = totem do Xamã Orc, que lança brasa
-     * (fogo). Sem isto, a estaca de flechas.
+     * (fogo); "keg" = Barril de Pólvora (não pulsa: explode o `burst` quando leva flecha ou fogo, e some sem explodir
+     * quando o tempo acaba). Sem isto, a estaca de flechas.
      */
-    look?: "storm" | "totem";
+    look?: "storm" | "totem" | "keg";
     /** Quantos campos desta magia cabem ao mesmo tempo (o mais antigo sai); sem isto, 1 (ou o do Engenhoso). */
     max?: number;
     /**
@@ -227,6 +229,16 @@ export interface SpellDef {
   exposeRadius?: number;
   /** O atordoar do próprio golpe já vale para o Exposto (em monstro marcado, o golpe sai Exposto). */
   exposeNow?: boolean;
+  /** Dano vezes `power` em quem tinha todos estes estados antes do golpe (Flecha do Ponto Fraco: marcado e sangrando). */
+  comboBonus?: { needs: ("marked" | "bleeding" | "burning" | "poisoned" | "rooted" | "frozen" | "stunned")[]; power: number };
+  /** O Vapor e o Incandescer que este golpe dispara saem neste raio (Choque Térmico e Flecha da Aurora, Maestria). */
+  reactionRadius?: number;
+  /** A Condenação que este golpe dispara sai com esta força (Sentença: 2 = dobrada). */
+  reactionPower?: number;
+  /** Choque Térmico: em quem já estava queimando ou lento antes do golpe, dispara o Vapor. */
+  vaporOn?: boolean;
+  /** Os monstros a até `radius` do alvo ficam marcados (+`pct` por `ms`) (Sentença, Maestria). */
+  markAround?: { radius: number; pct: number; ms: number };
   /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
@@ -1042,6 +1054,37 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Uma pancada que atordoa o monstro colado por 1 s; se ele estiver marcado, vira Exposto na hora.",
     manaCost: 30, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 2.2, stunMs: 1000, exposeNow: true,
   }),
+  // Fase 5: magias de combo do Paladino.
+  weak_point_arrow: spell({
+    id: "weak_point_arrow", classId: "paladin", slot: 1, name: "Flecha do Ponto Fraco", icon: "🎯", color: 0xe67e22,
+    description: "Uma flecha certeira que causa dano pesado; em monstro marcado e sangrando, o dano dobra.",
+    manaCost: 35, cooldownMs: 8000, aim: "target", range: 6, radius: 0, damage: 2.4, projectileSpeed: 22,
+    comboBonus: { needs: ["marked", "bleeding"], power: 2 },
+  }),
+  dawn_arrow: spell({
+    id: "dawn_arrow", classId: "paladin", slot: 0, name: "Flecha da Aurora", icon: "🌅", color: 0xffb347,
+    description: "Uma flecha em chamas que queima por 3 s; em monstro ofuscado, a luz explode na hora (Incandescer).",
+    manaCost: 25, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 20,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  powder_keg: spell({
+    id: "powder_keg", classId: "paladin", slot: 1, name: "Barril de Pólvora", icon: "🛢️", color: 0x8d5524,
+    description: "Põe um barril no chão; ele explode quando leva uma flecha ou fogo: raio 2, dano pesado e queima.",
+    manaCost: 40, cooldownMs: 10000, aim: "target", range: 5, radius: 0,
+    field: { kind: "zone", ms: 30000, tickMs: 1000, look: "keg", burst: { radius: 2, damage: 2.5, burn: { perSec: 0.3, ms: 3000 } } },
+  }),
+  // Fase 5: magias de combo do Feiticeiro.
+  thermal_shock: spell({
+    id: "thermal_shock", classId: "sorcerer", slot: 0, name: "Choque Térmico", icon: "💨", color: 0xffa07a, element: "fire",
+    description: "Fogo e gelo juntos num alvo: queima e deixa lento; em quem já estava queimando ou lento, dispara o Vapor.",
+    manaCost: 26, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1.2, projectileSpeed: 18,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" }, slow: { pct: 0.3, ms: 3000 }, vaporOn: true,
+  }),
+  sentence: spell({
+    id: "sentence", classId: "sorcerer", slot: 1, name: "Sentença", icon: "💀", color: 0x6c3483, element: "dark",
+    description: "Uma sentença de trevas num alvo; em monstro marcado, a Condenação sai dobrada.",
+    manaCost: 35, cooldownMs: 8000, aim: "target", range: 6, radius: 0, damage: 1.8, projectileSpeed: 16, reactionPower: 2,
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1560,12 +1603,17 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   cutting_shout: { text: "O grito também enfraquece os monstros: causam 20% menos dano por 4 s.", changes: { weaken: { pct: 0.2, ms: 4000 } } },
   hemorrhagic_cut: { text: "Sangram também os monstros colados no alvo.", changes: { radius: 1 } },
   shield_toss: { text: "O impacto fere o monstro arremessado e o que ele acertou (1,5×).", changes: { slam: { stunMs: 1500, power: 1.5 } } },
+  weak_point_arrow: { text: "A flecha também marca o alvo (+15% de dano da equipe por 4 s).", changes: { mark: { pct: 0.15, ms: 4000 } } },
+  dawn_arrow: { text: "O Incandescer que ela dispara pega em raio 2.", changes: { reactionRadius: 2 } },
+  thermal_shock: { text: "O Vapor que ele dispara pega em raio 2.", changes: { reactionRadius: 2 } },
+  sentence: { text: "Marca também os monstros colados no alvo (+15% por 4 s).", changes: { markAround: { radius: 1, pct: 0.15, ms: 4000 } } },
+  powder_keg: { text: "Cabem 2 barris no chão ao mesmo tempo.", changes: { field: { kind: "zone", ms: 30000, tickMs: 1000, look: "keg", max: 2, burst: { radius: 2, damage: 2.5, burn: { perSec: 0.3, ms: 3000 } } } } },
   exposed_strike: { text: "Os marcados colados no alvo também ficam atordoados (Exposto em raio 1).", changes: { exposeRadius: 1 } },
   arrow_fan: { text: "Sete flechas no leque.", changes: { spread: { count: 7, angle: 55 } } },
   holy_flash: { text: "A luz marca os ofuscados: +15% de dano da equipe por 4 s.", changes: { mark: { pct: 0.15, ms: 4000 } } },
   fire_spit: { text: "O leque de fogo abre a 90°.", changes: { coneAngle: 90 } },
   lightning_fan: { text: "Cinco raios no leque.", changes: { spread: { count: 5, angle: 80 } } },
-  dark_wail: { text: "O lamento rouba 25% do dano em vida.", changes: { lifesteal: 0.25 } },
+  dark_wail: { text: "O lamento enfraquece os monstros: causam 20% menos dano por 3 s.", changes: { weaken: { pct: 0.2, ms: 3000 } } },
   pack_roar: { text: "O rugido também cura suas criaturas em 10%.", changes: { packCall: { haste: 0.3, ms: 4000, heal: 0.1 } } },
   pollen_breeze: { text: "A brisa cura 30% da vida.", changes: { heal: 0.3 } },
   thorn_spray: { text: "Oito espinhos no leque.", changes: { spread: { count: 8, angle: 70 } } },

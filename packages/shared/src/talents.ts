@@ -293,6 +293,8 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["doomsday_shot", 0, 6, "deadly_shot", 2], ["solar_crown", 1, 6, "divine_judgment", 2],
     ["endless_rain", 2, 6, "explosive_volley", 2],
     ["arrow_fan", 0, 3, "piercing_shot", 1], ["holy_flash", 1, 3, "healing_light", -1], ["caltrops", 2, 3, "mana", 1],
+    // Fase 5: a magia de combo, embaixo da de leque (o Barril sai na faixa ao lado: a Flecha Incendiária ocupa a dos Abrolhos).
+    ["weak_point_arrow", 0, 4, "arrow_fan", 1], ["dawn_arrow", 1, 4, "holy_flash", -1], ["powder_keg", 2, 4, "caltrops", 2],
   ],
   sorcerer: [
     ["spark", 0, 3, "lightning_bolt", -1], ["ember_rain", 0, 4, "spark", -2],
@@ -303,6 +305,8 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["branching_bolt", 0, 6, "meteor", 2], ["ice_age", 1, 6, "blizzard", 2], ["black_hole", 2, 6, "dark_pact", 2],
     ["fire_spit", 0, 3, "lightning_bolt", 1], ["lightning_fan", 0, 4, "fire_spit", 1], ["dark_wail", 2, 3, "hp", -1],
     ["frost_breath", 1, 3, "frost_nova", -1],
+    // Fase 5: a magia de combo, embaixo da de leque (o Raio já tem as duas de leque).
+    ["thermal_shock", 1, 4, "frost_breath", -1], ["sentence", 2, 4, "dark_wail", -1],
   ],
   druid: [
     ["howl", 0, 3, "spirit_wolf", 1],
