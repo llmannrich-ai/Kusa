@@ -1,7 +1,7 @@
 -- A Fíbula volta a ser o mapa de três salões com um boss (o Rei Ossudo), e a caverna grande com os três covis vira um
 -- mapa à parte, a Fíbula Profunda ('fibula2'), logo depois dela na campanha (abre com a Fíbula vencida; a Cripta
 -- continua abrindo só com o Rei Ossudo). O mapa descoberto (`profile_map_memory`) vale para as duas.
--- Parte do estado depois de 20261102350000_fibula_tres_covis_e_mapa_descoberto.sql: `record_map_clear`,
+-- Parte do estado depois de 20261102350000_fibula_tres_covis_e_mapa_descoberto.sql: `map_unlocked`, `record_map_clear`,
 -- `start_solo_run` e `finish_solo_run` são remendadas no texto atual do banco.
 
 alter table public.solo_runs drop constraint solo_runs_map_id_check;
@@ -41,27 +41,8 @@ as $$
   end;
 $$;
 
-create or replace function public.map_unlocked(p_profile_id uuid, p_class_id text, p_map_id text)
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select p_map_id in ('grove', 'fibula', 'fibula2', 'crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands') and (
-    public.map_unlocked_by(p_map_id) is null
-    or case
-      when public.map_unlocked_by_boss(p_map_id) is not null then exists (
-        select 1 from public.profile_boss_clears b
-        where b.profile_id = p_profile_id and b.class_id = p_class_id and b.boss_kind = public.map_unlocked_by_boss(p_map_id)
-      )
-      else exists (
-        select 1 from public.profile_map_clears c
-        where c.profile_id = p_profile_id and c.class_id = p_class_id and c.map_id = public.map_unlocked_by(p_map_id)
-      )
-    end
-  );
-$$;
+-- `map_unlocked` é remendada no texto atual do banco (no bloco do fim): outra sessão (fortaleza_pelos_dois_lados) já a
+-- reescreveu com `map_unlocked_by_also`, e recriá-la daqui apagaria isso.
 
 create or replace function public.map_bosses(p_map_id text)
 returns text[]
@@ -121,6 +102,9 @@ grant execute on function public.save_map_memory(text, text, text, text) to auth
 do $$
 declare
   v_start text := pg_get_functiondef('public.start_solo_run(text, text)'::regprocedure);
+  v_unlocked text := pg_get_functiondef('public.map_unlocked(uuid, text, text)'::regprocedure);
+  v_unlocked_old constant text := $q$p_map_id in ('grove', 'fibula', 'crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands')$q$;
+  v_unlocked_new constant text := $q$p_map_id in ('grove', 'fibula', 'fibula2', 'crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands')$q$;
   v_clear text := pg_get_functiondef('public.record_map_clear(uuid, text, text)'::regprocedure);
   v_clear_old constant text := $q$p_map_id in ('grove', 'fibula', 'crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands')$q$;
   v_clear_new constant text := $q$p_map_id in ('grove', 'fibula', 'fibula2', 'crypt', 'swamp', 'desert', 'marsh', 'cavern', 'dunes', 'mesas', 'gates', 'fortress', 'oldwood', 'heartwood', 'bog', 'badlands')$q$;
@@ -134,6 +118,11 @@ declare
   ];
   i int;
 begin
+  if position(v_unlocked_new in v_unlocked) = 0 then
+    if position(v_unlocked_old in v_unlocked) = 0 then raise exception 'map_unlocked: lista de mapas não encontrada'; end if;
+    execute replace(v_unlocked, v_unlocked_old, v_unlocked_new);
+  end if;
+
   if position(v_maps_new in v_start) = 0 then
     if position(v_maps_old in v_start) = 0 then raise exception 'start_solo_run: lista de mapas não encontrada'; end if;
     execute replace(v_start, v_maps_old, v_maps_new);
