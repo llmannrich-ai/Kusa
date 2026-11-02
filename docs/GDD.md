@@ -1614,7 +1614,7 @@ Monólito (o fogo cura o Golem: o Xamã, de básico de brasa, troca para os tote
   - **Cadeia** (Raio em Cadeia): depois do alvo, salta para o monstro mais perto ainda não atingido (a até 3 tiles, com linha de visão), perdendo 15% do dano a cada salto.
   - Bônus condicionais: a Execução causa o dobro em quem tem menos de 30% da vida; o Disparo Certeiro ganha +10% de dano por tile até o alvo.
   - No monstro, a lentidão aparece como gelo nos pés e o veneno como bolhas verdes subindo.
-- **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador, Raio em Cadeia) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo e o alcance em volta dele; o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
+- **Magias de alvo único** (Flecha Sagrada, Relâmpago, Espinho Venenoso, Golpe Esmagador, Raio em Cadeia) miram arrastando. Encostar no botão mostra uma linha pontilhada do herói até o alvo (sem quadrado nem sombra marcando o alcance); o tamanho do arrasto a partir do botão vira distância, até o alcance máximo. Soltar lança; voltar o dedo para o botão cancela (fica vermelho).
   - **Toque rápido** (sem arrastar): **sem mira automática no monstro**. A magia sai reto na **frente do herói**:
     a direção do último passo, ataque básico ou magia mirada (`Player.faceX/faceY`; começa olhando para baixo).
     Tiro, linha, leque e rolamento seguem essa direção até o alcance; alvo único sem projétil (golpes do Cavaleiro,
