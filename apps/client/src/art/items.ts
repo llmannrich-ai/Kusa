@@ -510,6 +510,96 @@ const ROBE = outlined([
 ]);
 
 /** O mesmo desenho em todos os níveis (o material muda a cor). */
+/** Maça: cabeça com cravos em diagonal. */
+const MACE = outlined([
+  "................",
+  "..........m.m...",
+  ".........mmmmm..",
+  "........mmmMMm..",
+  ".........mMMMm..",
+  "........mmMMm...",
+  ".........m.m....",
+  "........wW......",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....wW..........",
+  "...aa...........",
+  "..WW............",
+]);
+
+/** Lança: ponta larga de metal e haste comprida. */
+const SPEAR = outlined([
+  "..............m.",
+  ".............mm.",
+  "............mmM.",
+  "...........mmM..",
+  "..........aMM...",
+  ".........wa.....",
+  "........wW......",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....wW..........",
+  "...wW...........",
+  "..wW............",
+  ".WW.............",
+]);
+
+/** Orbe: esfera com brilho sobre um cabo curto. */
+const ORB = outlined([
+  "................",
+  "................",
+  ".........aaaa...",
+  "........aiiaaa..",
+  "........aiaaaa..",
+  "........aaaaaa..",
+  ".........aaaa...",
+  "........mMmM....",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....mM..........",
+  "...wW...........",
+  "................",
+]);
+
+/** Foice: lâmina curva no alto da haste. */
+const SCYTHE = outlined([
+  "......mmmmm.....",
+  "....mmMMMMwW....",
+  "...mMM....wW....",
+  "..mM......wW....",
+  "..m......wW.....",
+  ".........wW.....",
+  "........wW......",
+  "........wW......",
+  ".......wW.......",
+  ".......wW.......",
+  "......wW........",
+  "......wW........",
+  ".....wW.........",
+  ".....WW.........",
+]);
+
+/** Totem de mão: rosto entalhado com olhos acesos no alto da haste. */
+const TOTEM = outlined([
+  "........m..m....",
+  ".......mmmmmm...",
+  ".......mamMaM...",
+  ".......mmmMMM...",
+  ".......mMWWMM...",
+  "........mMMM....",
+  ".........wW.....",
+  "........wW......",
+  ".......wW.......",
+  "......wW........",
+  ".....wW.........",
+  "....wW..........",
+  "...wW...........",
+  "..WW............",
+]);
+
 const allTiers = (grid: Grid): Record<ItemTier, Grid> => ({ 1: grid, 2: grid, 3: grid, 4: grid, 5: grid });
 
 /** Ícone de cada família (`ITEM_FAMILIES`) por nível. */
@@ -520,6 +610,11 @@ const ICONS: Record<string, Record<ItemTier, Grid>> = {
   "weapon-crossbow": allTiers(CROSSBOW),
   "weapon-wand": allTiers(WAND),
   "weapon-staff": allTiers(STAFF),
+  "weapon-mace": allTiers(MACE),
+  "weapon-spear": allTiers(SPEAR),
+  "weapon-orb": allTiers(ORB),
+  "weapon-scythe": allTiers(SCYTHE),
+  "weapon-totem": allTiers(TOTEM),
   "helmet-war": OLD_ICONS.helmet,
   "helmet-arcane": allTiers(HAT),
   "armor-war": OLD_ICONS.armor,
@@ -659,7 +754,7 @@ export function itemIcon(itemId: string) {
   if (!item) return canvas;
   const proto = protoHero && protoItemOf(itemId);
   if (proto) return protoHero!.protoItemIcon(proto, item.rarity, item.legend);
-  const gem = item.slot === "weapon" && (item.family === "weapon-wand" || item.family === "weapon-staff") ? { a: GEMS[item.tier] } : {};
+  const gem = item.slot === "weapon" && ["weapon-wand", "weapon-staff", "weapon-orb", "weapon-totem"].includes(item.family) ? { a: GEMS[item.tier] } : {};
   const legend = item.legend ? LEGEND_ICON[item.legend] : undefined;
   paintGrid(ctx, ICONS[item.family][item.tier], { ...BASE, ...itemMaterial(itemId), ...gem, ...legend }, 0, 0);
   const mark = RARITY_GEM[item.rarity];

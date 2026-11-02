@@ -28,6 +28,7 @@ export const protoOrcScout = NEW_ART ? await import("./proto/orcArt.ts") : null;
 /** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */
 const PROTO_FAMILY: Record<string, string> = {
   "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",
+  "weapon-mace": "mace", "weapon-spear": "spear", "weapon-orb": "orb", "weapon-scythe": "scythe", "weapon-totem": "totem",
   "helmet-war": "war", "helmet-arcane": "arc", "armor-war": "armor", "armor-arcane": "robe", "legs-war": "greave", "legs-arcane": "pants",
   "boots-boots": "boots", "shield-shield": "shield",
 };
