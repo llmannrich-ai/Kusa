@@ -974,3 +974,49 @@ export function strawBed(v: number): Uint8ClampedArray {
   limb(p, [cx - 40, cy + 30], [cx - 22, cy + 36], 3, 3, E.Bone);
   return p.render(true);
 }
+
+// --- A cachoeira -------------------------------------------------------------------------------
+
+/** A água caindo da cachoeira: repete na vertical (o mapa a faz descer rolando a textura). */
+export const FALL = { w: 64, h: 256 } as const;
+
+/**
+ * A água da cachoeira que sai do esgoto da muralha e cai no abismo: fios verticais de água (cada coluna com o seu tom
+ * e a sua velocidade de risco), espuma branca em riscos compridos, mais transparente nas beiras. Emenda em cima e
+ * embaixo (período `FALL.h`).
+ */
+export function waterfallTexture(): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(FALL.w * FALL.h * 4);
+  const deep = [58, 98, 116], light = [120, 170, 186], foam = [226, 236, 238];
+  for (let x = 0; x < FALL.w; x++) {
+    const edge = Math.min(x, FALL.w - 1 - x) / 14;
+    const col = noise(x >> 1, 0, 970);
+    for (let y = 0; y < FALL.h; y++) {
+      // Riscos verticais: um ruído que repete na altura da textura (a fase anda com a coluna).
+      const t = (y / FALL.h + col) * Math.PI * 2;
+      const streak = 0.5 + 0.3 * Math.sin(t * 3 + x * 0.7) + 0.2 * Math.sin(t * 7 + x * 1.9);
+      const c = streak > 0.82 ? foam : streak > 0.55 ? light : deep;
+      const o = (y * FALL.w + x) * 4;
+      out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2];
+      const a = Math.min(1, edge) * (streak > 0.82 ? 1 : 0.86);
+      out[o + 3] = a > ((x * 7 + y * 3) % 4) / 4 * 0.6 + 0.2 ? Math.round(a * 255) : 0;
+    }
+  }
+  return out;
+}
+
+/** A boca do esgoto na face do paredão, de onde sai a água: o arco de pedra, o escuro e a grade quebrada. */
+export const DRAIN = { w: 96, h: 80 } as const;
+export function drainSprite(): Uint8ClampedArray {
+  const p = paper(DRAIN.w, DRAIN.h);
+  const cx = DRAIN.w / 2, base = DRAIN.h - 8;
+  p.fill([cx - 40, 8, cx + 40, base], (x, y) => y > 30 ? Math.abs(x - cx) < 40 : Math.hypot((x - cx) / 40, (y - 30) / 22) < 1, E.Travertine,
+    (x, y) => 0.6 - (x - cx) / 40 * 0.15 - (y - 8) / 70 * 0.1);
+  p.fill([cx - 26, 20, cx + 26, base], (x, y) => y > 36 ? Math.abs(x - cx) < 26 : Math.hypot((x - cx) / 26, (y - 36) / 16) < 1, E.Void, () => 0.08);
+  for (let x = cx - 22; x < cx + 22; x += 9) for (let y = 26; y < base - 10 - (x > cx ? 12 : 0); y++) p.on(x, y, E.Iron, 2);
+  for (let y = 10; y < base; y += 14) hline(p, cx - 40, cx - 27, y, E.Travertine, 1);
+  for (let y = 10; y < base; y += 14) hline(p, cx + 27, cx + 40, y, E.Travertine, 1);
+  // O limo verde escorrido em volta da boca.
+  for (let y = 20; y < base; y++) for (let x = cx - 30; x < cx + 30; x++) if (p.has(x, y) && sn(x, y, 8, 971) > 0.62 && Math.abs(x - cx) > 24) p.on(x, y, E.Moss, 1);
+  return p.render(true);
+}

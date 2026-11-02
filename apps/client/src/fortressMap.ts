@@ -11,7 +11,7 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  BRAZIER, BRAZIER_MOUTH, DROP, FOUNTAIN, HANG, KEEP_RISE, ORC_DRESS, brazierSprite, carpetTile, strawBed, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
+  BRAZIER, BRAZIER_MOUTH, DRAIN, DROP, FALL, FOUNTAIN, drainSprite, waterfallTexture, HANG, KEEP_RISE, ORC_DRESS, brazierSprite, carpetTile, strawBed, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   throneSprite,
 } from "./art/fortressArt.ts";
@@ -701,11 +701,26 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       culler.add(scene.add.image(px, py + 10 / ZOOM, brazierKey).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(py - 0.3), x, y);
       fire(px, py + 10 / ZOOM - BRAZIER_MOUTH / ZOOM, py - 0.29, 0.9, x, y, 1.2);
     }
+  // A cachoeira: o esgoto do castelo sai pela face do paredão embaixo da muralha externa, a oeste da ponte, e a água
+  // cai no abismo até sumir na névoa (uma textura que rola para baixo, por cima do paredão e do vale).
+  const falls: Phaser.GameObjects.TileSprite[] = [];
+  const fallX = Math.max(8, Math.min(f.bridges[0].x - 16, W - 9));
+  if (!scene.textures.exists("fortress-cachoeira")) addCanvasTexture(scene.textures, "fortress-cachoeira", toCanvas(waterfallTexture(), FALL.w, FALL.h));
+  {
+    const px = (fallX + 0.5) * TILE_SIZE, top = (f.chasm.y0 + 0.35) * TILE_SIZE, len = 4.6 * TILE_SIZE;
+    const fall = scene.add.tileSprite(px, top, (FALL.w * 1.4) / ZOOM, len, "fortress-cachoeira").setOrigin(0.5, 0).setTileScale(1.4 / ZOOM).setAlpha(0.92).setDepth(floorDepth + 0.0015);
+    falls.push(fall);
+    culler.add(fall, fallX, f.chasm.y0 + 2);
+    culler.add(scene.add.image(px, top + 6, single(scene, "fortress-bueiro", DRAIN.w, DRAIN.h, drainSprite)).setOrigin(0.5, 1).setScale(1.3 / ZOOM).setDepth(floorDepth + 0.0016), fallX, f.chasm.y0);
+    // A névoa onde a água some, e o borrifo no pé dela.
+    for (const [dy, sc, al] of [[len - 10, 2.2, 0.55], [len + 6, 3, 0.4]] as const)
+      culler.add(scene.add.image(px, top + dy, MIST).setScale(sc).setAlpha(al).setTint(0xe8f0f6).setDepth(floorDepth + 0.0017), fallX, f.chasm.y0 + 4);
+  }
   // A fogueira do terraço some junto com o andar de cima.
   const roofFire = top(holeAt.x < KW / 2 ? KW - 5 : 4, K.h - 5);
   for (const o of fire(roofFire.px, roofFire.py - 6, keepDepth + 0.03, 1.6, K.x, K.y, 1.8, false)) keepObjs.push(o);
 
-  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar], maskCam });
+  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar], maskCam, falls });
 }
 
 /** Ruído suave em grade de `cell` tiles (0 a 1), para o desenho do vale. */
@@ -765,6 +780,8 @@ function createAmbience(
     later: (() => void)[];
     /** A câmera da máscara da borda do capim, que acompanha a principal em meia resolução. */
     maskCam: Phaser.Cameras.Scene2D.Camera;
+    /** A água das cachoeiras (a textura rola para baixo). */
+    falls: Phaser.GameObjects.TileSprite[];
   },
 ): MapAmbience {
   const cam = scene.cameras.main;
@@ -829,6 +846,7 @@ function createAmbience(
         const h = b.hide;
         b.img.setAlpha(hero.x >= h.x && hero.y >= h.y && hero.x < h.x + h.w && hero.y < h.y + h.h ? 0.55 : 1);
       }
+      for (const fall of art.falls) if (fall.visible) fall.tilePositionY = -(time * 0.09) % FALL.h;
       // Fogueiras: troca de quadro em ritmo próprio; a luz treme junto.
       for (const f of art.flames) if (f.visible) f.setFrame(Math.floor(time / 110 + f.getData("phase")) % 4);
       for (const l of art.glows) {
