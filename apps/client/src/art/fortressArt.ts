@@ -318,74 +318,106 @@ export function parapetTile(out: number, v: number): Uint8ClampedArray {
 }
 
 /**
- * Fachada sul da torre de menagem, 2 tiles de altura (os 2 andares de cima vistos de frente), um tile de largura por
- * vez: `row` 0 em cima (a cornija e as janelas do 2º andar), 1 embaixo (o 1º andar e o rodapé). `kind`: 0 parede,
- * 1 janela, 2 a porta (`part` -1, 0, 1: esquerda, meio, direita do arco); `end` -1 ou 1 nas quinas.
+ * Fachada sul da torre de menagem, `KEEP_RISE` tiles de altura (os andares de cima vistos de frente), um tile de
+ * largura por vez: `row` 0 em cima (a cornija com dentículos e as janelas do último andar), as do meio com janelas e
+ * a de baixo com o rodapé em talude. Cantaria de blocos grandes de travertino (64×32, desencontrados, cada um com o seu
+ * tom), não o tijolinho dos muros: a torre é a obra mais nobre do castelo. `kind`: 0 parede, 1 janela, 2 a porta
+ * (`part` -1, 0, 1: esquerda, meio, direita do arco, que ocupa os 2 andares de baixo); `end` -1 ou 1 nas quinas.
  */
-export function keepFaceTile(row: 0 | 1, kind: 0 | 1 | 2, part: -1 | 0 | 1, end: -1 | 0 | 1, v: number): Uint8ClampedArray {
+export function keepFaceTile(row: number, kind: 0 | 1 | 2, part: -1 | 0 | 1, end: -1 | 0 | 1, v: number): Uint8ClampedArray {
   const p = paper();
   const top = row * HD;
-  masonry(p, [0, 0, HD - 1, HD - 1], v * 5 + row * 3, { bricks: true, shade: 0.5 - row * 0.06, dark: 0.08 });
+  const last = row === KEEP_RISE - 1;
+  // Os andares de cima no sol do fim de tarde, o de baixo na sombra do pátio.
+  masonry(p, [0, 0, HD - 1, HD - 1], v * 5 + row * 3, { shade: 0.46 - row * 0.05, dark: 0.12, mat: E.Travertine, bw: 64, bh: 32 });
+  // Uma fiada de tufo escuro entre os andares.
+  if (row > 0) { box(p, [0, 0, HD - 1, 7], E.Tuff, 0.4); hline(p, 0, HD - 1, 0, E.Tuff, 4); }
   if (row === 0) {
     // Cornija: a faixa de travertino que separa o terraço da fachada, com dentículos.
-    box(p, [0, 0, HD - 1, 14], E.Travertine, 0.64);
+    box(p, [0, 0, HD - 1, 16], E.Travertine, 0.66);
     hline(p, 0, HD - 1, 0, E.Travertine, 5);
-    hline(p, 0, HD - 1, 14, E.Travertine, 1);
-    for (let x = 2; x < HD; x += 12) box(p, [x, 15, x + 6, 19], E.Travertine, 0.42);
-  } else {
-    // Rodapé em talude.
-    box(p, [0, HD - 18, HD - 1, HD - 1], E.Tuff, 0.42);
-    hline(p, 0, HD - 1, HD - 18, E.Tuff, 5);
+    hline(p, 0, HD - 1, 16, E.Travertine, 1);
+    for (let x = 2; x < HD; x += 12) box(p, [x, 17, x + 6, 22], E.Travertine, 0.4);
   }
-  const cx = 64 + part * 0;
-  if (kind === 1) {
-    // Janela arqueada estreita (seteira larga), escura, com a soleira clara.
-    const y0 = row === 0 ? 34 : 18, y1 = row === 0 ? 104 : 84;
+  if (last) {
+    // Rodapé em talude.
+    box(p, [0, HD - 20, HD - 1, HD - 1], E.Tuff, 0.4);
+    hline(p, 0, HD - 1, HD - 20, E.Tuff, 5);
+  }
+  const cx = 64;
+  if (kind === 1 && !last) {
+    // Janela arqueada estreita, escura, com a soleira clara.
+    const y0 = row === 0 ? 36 : 22, y1 = row === 0 ? 106 : 96;
     p.fill([cx - 14, y0, cx + 14, y1], (x, y) => y > y0 + 14 || Math.hypot(x - cx, y - (y0 + 14)) < 14, E.Void, () => 0.1);
     for (let a = Math.PI; a <= Math.PI * 2; a += 0.05) p.on(cx + Math.cos(a) * 16, y0 + 14 + Math.sin(a) * 16, E.Travertine, 4);
     box(p, [cx - 18, y1 + 1, cx + 18, y1 + 6], E.Travertine, 0.62);
     hline(p, cx - 18, cx + 18, y1 + 1, E.Travertine, 5);
   }
+  if (kind === 1 && last) {
+    // Seteira no andar de baixo.
+    box(p, [cx - 4, 26, cx + 4, 82], E.Void, 0.1);
+    hline(p, cx - 6, cx + 6, 83, E.Travertine, 5);
+  }
   if (kind === 2) {
-    // A porta: um arco de 3 tiles de largura e 1,6 de altura, aduelas de travertino, e o escuro do salão.
-    const W3 = HD * 3, ox = (part + 1) * HD;
-    const ax = W3 / 2, rIn = W3 / 2 - 44, spring = 2 * HD - 18 - 120;
+    // A porta: um arco de 3 tiles de largura nos 2 andares de baixo, aduelas de travertino, e o escuro do salão.
+    const W3 = HD * 3, ox = (part + 1) * HD, full = KEEP_RISE * HD;
+    const ax = W3 / 2, rIn = W3 / 2 - 44, spring = full - 20 - 150;
     const gy = (y: number) => y + top;
     p.fill([0, 0, HD - 1, HD - 1], (x, y) => {
       const X = x + ox, Y = gy(y);
-      return Y >= spring && Y < 2 * HD - 18 ? Math.abs(X - ax) <= rIn : Math.hypot((X - ax) / rIn, (Y - spring) / 70) < 1 && Y < spring;
-    }, E.Void, (x, y) => 0.08 + (gy(y) / (2 * HD)) * 0.06);
+      return Y >= spring && Y < full - 20 ? Math.abs(X - ax) <= rIn : Math.hypot((X - ax) / rIn, (Y - spring) / 80) < 1 && Y < spring;
+    }, E.Void, (x, y) => 0.08 + (gy(y) / full) * 0.06);
     for (let a = Math.PI; a <= Math.PI * 2; a += 0.004) {
-      for (let r = 0; r < 20; r++) {
-        const X = ax + Math.cos(a) * (rIn + 2 + r), Y = spring + Math.sin(a) * (70 + 2 + r);
+      for (let r = 0; r < 22; r++) {
+        const X = ax + Math.cos(a) * (rIn + 2 + r), Y = spring + Math.sin(a) * (80 + 2 + r);
         const x = X - ox, y = Y - top;
         if (x < 0 || x >= HD || y < 0 || y >= HD) continue;
         const seg = Math.floor((a - Math.PI) / (Math.PI / 9));
-        p.on(x, y, E.Travertine, r < 2 ? 5 : r > 17 ? 1 : (seg % 2 ? 3 : 4) - (Math.floor(a * 300) % 23 === 0 ? 2 : 0));
+        p.on(x, y, E.Travertine, r < 2 ? 5 : r > 19 ? 1 : (seg % 2 ? 3 : 4) - (Math.floor(a * 300) % 23 === 0 ? 2 : 0));
       }
     }
     // Ombreiras.
     for (const sx of [ax - rIn - 22, ax + rIn + 2]) {
       const x0 = sx - ox;
       if (x0 + 20 < 0 || x0 >= HD) continue;
-      for (let y = Math.max(0, spring - top); y < Math.min(HD, 2 * HD - 18 - top); y++)
+      for (let y = Math.max(0, spring - top); y < Math.min(HD, full - 20 - top); y++)
         for (let x = Math.max(0, x0); x < Math.min(HD, x0 + 20); x++) p.on(x, y, E.Travertine, mod(y + top, 24) < 2 ? 1 : x - x0 < 3 ? 5 : 3);
     }
+    // A grade levadiça erguida até a metade: as barras de ferro descendo do alto do arco.
+    for (let X = ax - rIn + 10; X < ax + rIn; X += 22) {
+      const x = X - ox;
+      if (x < 0 || x >= HD) continue;
+      for (let Y = spring - 40; Y < spring + 30; Y++) {
+        const y = Y - top;
+        if (y < 0 || y >= HD || Math.hypot((X - ax) / rIn, (Y - spring) / 80) >= 1 && Y < spring) continue;
+        p.on(x, y, E.Iron, 2); p.on(x + 1, y, E.Iron, 3);
+      }
+      for (const Y of [spring - 10, spring + 18]) for (let k = -11; k < 11; k++) { const y = Y - top; if (y >= 0 && y < HD && x + k >= 0 && x + k < HD) p.on(x + k, y, E.Iron, 2); }
+      // As pontas das barras.
+      const yp = spring + 30 - top;
+      if (yp >= 0 && yp < HD - 3) { p.on(x, yp + 1, E.Iron, 1); p.on(x, yp + 2, E.Iron, 1); }
+    }
   }
-  // Quinas da torre: a do oeste na luz, a do leste na sombra.
-  if (end < 0) for (let y = 0; y < HD; y++) for (let x = 0; x < 6; x++) p.on(x, y, null, x < 2 ? 5 : 4);
-  if (end > 0) for (let y = 0; y < HD; y++) for (let x = HD - 6; x < HD; x++) p.on(x, y, null, x > HD - 3 ? 1 : 2);
+  // Quinas da torre: a do oeste na luz, a do leste na sombra, com os blocos de canto em amarração.
+  if (end < 0) for (let y = 0; y < HD; y++) for (let x = 0; x < (mod(y + top, 64) < 32 ? 20 : 12); x++) p.on(x, y, null, x < 3 ? 5 : mod(y + top, 32) < 2 ? 2 : 4);
+  if (end > 0) for (let y = 0; y < HD; y++) for (let x = HD - (mod(y + top, 64) < 32 ? 20 : 12); x < HD; x++) p.on(x, y, null, x > HD - 4 ? 1 : mod(y + top, 32) < 2 ? 1 : 2);
   // Hera subindo do pé, em alguns trechos.
-  if (row === 1 && kind === 0 && v % 3 === 0)
+  if (last && kind === 0 && v % 3 === 0)
     for (let x = 0; x < HD; x++) {
-      const reach = 90 * Math.max(0, sn(x, 0, 32, 796 + v) * 1.6 - 0.6);
+      const reach = 110 * Math.max(0, sn(x, 0, 32, 796 + v) * 1.6 - 0.6);
       for (let d = 0; d < reach; d++) if (noise(x >> 1, (HD - d) >> 1, 797) < 0.6) p.on(x, HD - 1 - d, E.Ivy, noise(x, d, 798) < 0.3 ? 4 : 2);
     }
+  // Escorrido escuro de fuligem e chuva descendo das janelas e da cornija.
+  for (let x = 0; x < HD; x++) {
+    if (noise(x >> 2, row, 799 + v) > 0.12) continue;
+    const len = 20 + noise(x, row, 800) * 60;
+    for (let y = 0; y < len; y++) p.nudge(x, y, -1);
+  }
   return p.render(false);
 }
 
 /** Andar de cima da torre de menagem, em tiles acima do chão (o terraço aparece deslocado isto para o norte). */
-export const KEEP_RISE = 2;
+export const KEEP_RISE = 3;
 
 // --- Telhados das casernas (andar de cima das salas) -------------------------------------------
 
@@ -396,64 +428,95 @@ export type RoofRow = "top" | "north" | "ridge" | "south" | "bottom";
 
 /**
  * Um tile do telhado de uma caserna (o andar de cima da sala), montado como no Tibia: os mesmos tiles servem para
- * todas as casernas. Tábuas em duas águas (a cumeeira de leste a oeste, a água do norte na luz, a do sul na sombra),
- * fiadas de telha a cada 32 px (o tile emenda com o vizinho), `col` -1 e 1 nas pontas (a tábua de beirada), e por
- * variação `v`: 0 liso, 1 remendo de couro dos orcs, 2 buraco (o escuro de dentro e as vigas), 3 caveira com chifres
- * na cumeeira.
+ * todas as casernas. Telha romana de terracota em duas águas (a cumeeira de leste a oeste, a água do norte na luz, a do
+ * sul na sombra): as telhas largas (tégulas) em fiadas de 32 px e, por cima das juntas, as canais redondas (ímbrices)
+ * descendo a água a cada 32 px (o tile emenda com o vizinho); cada telha com o seu tom, a fiada de cima jogando
+ * sombra na de baixo. `col` -1 e 1 nas pontas (a beirada de pedra). Por variação `v`: 0 inteiro, 1 remendo de couro
+ * dos orcs pregado, 2 buraco (as ripas, as vigas e o escuro de dentro), 3 caveira com chifres na cumeeira, 4 telhas
+ * faltando (as ripas à mostra).
  */
 export function roofTile(row: RoofRow, col: -1 | 0 | 1, v: number): Paper {
   const p = paper();
   const north = row === "top" || row === "north";
   const ridgeY = 54;
-  p.fill([0, 0, HD - 1, HD - 1], () => true, E.Bark, (x, y) => {
-    const upper = row === "ridge" ? y < ridgeY : north;
-    const plank = Math.floor(x / 32);
-    let s = (upper ? 0.66 : 0.46) + (hash01(plank * 3 + (upper ? 0 : 7) + (row === "ridge" ? 13 : 0), 804) - 0.5) * 0.12;
-    if (mod(x, 32) < 2) s -= 0.22;
-    if (mod(y, 32) < 2) s -= 0.12;
-    if (row === "ridge" && Math.abs(y - ridgeY) < 4) s += 0.15;
+  const upperAt = (y: number) => (row === "ridge" ? y < ridgeY : north);
+  // A água: as fiadas descem para longe da cumeeira (no norte, de baixo para cima na tela).
+  const course = (y: number) => Math.floor(y / 32);
+  const inCourse = (y: number) => (upperAt(y) ? 31 - mod(y, 32) : mod(y, 32));
+  p.fill([0, 0, HD - 1, HD - 1], () => true, E.Terracotta, (x, y) => {
+    const up = upperAt(y);
+    const lx = mod(x + 16, 32), ly = inCourse(y);
+    const id = Math.floor((x + 16) / 32) * 7 + course(y) * 13 + (up ? 0 : 5);
+    let s = (up ? 0.6 : 0.42) + (hash01(id + v * 31, 804) - 0.5) * 0.14;
+    // A ímbrice: o meio-cilindro por cima da junta, claro no lado do sol (oeste) e escuro do outro.
+    const ix = mod(x, 32);
+    if (ix < 10) s = (up ? 0.62 : 0.46) + (ix < 3 ? 0.2 : ix > 7 ? -0.2 : 0.06);
+    else {
+      // A tégula: a borda levantada dos lados e a sombra da fiada de cima.
+      if (lx < 2 || lx > 29) s -= 0.1;
+      if (ly < 5) s -= 0.2;
+      else if (ly > 28) s += 0.08;
+    }
+    if (ly < 2 && ix >= 10) s -= 0.12;
+    if (row === "ridge" && Math.abs(y - ridgeY) < 7) s = 0.5 + (y < ridgeY ? 0.15 : -0.1);
     return s;
-  }, (x, y) => (noise(x, y, 805 + v) < 0.05 ? -1 : 0));
-  if (v === 1) {
-    const cx = 40 + noise(1, col + 2, 806) * 48, cy = 40 + noise(col + 2, 1, 807) * 48;
-    p.fill([cx - 34, cy - 24, cx + 34, cy + 24], (x, y) => Math.abs(x - cx) / 30 + Math.abs(y - cy) / 20 < 1.1 - noise(x >> 3, y >> 3, 810) * 0.25,
-      E.Terracotta, (x, y) => (north ? 0.66 : 0.48) + (sn(x, y, 16, 811) - 0.5) * 0.12);
-    for (let a = 0; a < Math.PI * 2; a += 0.08) p.on(cx + Math.cos(a) * 26, cy + Math.sin(a) * 17, E.Line, 2);
-  }
-  if (v === 2) {
-    // O telhado caiu aqui: o escuro de dentro, as vigas e a borda lascada.
+  }, (x, y) => (noise(x, y, 805 + v) < 0.04 ? -1 : 0));
+  // Telhas faltando: as ripas de madeira à mostra.
+  if (v === 4 || v === 2) {
+    const cx = 30 + noise(2, col + 2, 818) * 68, cy = 30 + noise(col + 2, 2, 819) * 68;
     for (let y = 0; y < HD; y++)
       for (let x = 0; x < HD; x++) {
-        const d = Math.hypot((x - 64) / 50, (y - 64) / 40) + (noise(x >> 2, y >> 2, 803) - 0.5) * 0.3;
+        const d = Math.hypot((x - cx) / 34, (y - cy) / 26) + (noise(x >> 3, y >> 3, 820) - 0.5) * 0.5;
         if (d >= 1) continue;
-        const i = y * HD + x, beam = mod(x, 44) < 7;
-        p.mat[i] = beam ? E.Bark : E.Void; p.shade[i] = beam ? 0.3 : 0.08; p.off[i] = 0; p.fixed[i] = -1;
+        // As ripas claras e, entre elas, a madeira escura do forro (não o vazio: o buraco de verdade é o `v` 2).
+        const i = y * HD + x, batten = mod(y, 16) < 6;
+        p.mat[i] = E.Bark; p.shade[i] = batten ? 0.5 : 0.2; p.off[i] = 0; p.fixed[i] = -1;
       }
   }
-  // Musgo em manchas.
-  if (hash01(col * 7 + v * 3 + row.length, 812) < 0.5) {
-    const cx = noise(v, row.length, 813) * HD, cy = noise(row.length, v, 814) * HD, r = 14 + noise(v, col + 2, 815) * 14;
-    for (let y = Math.floor(cy - r); y <= cy + r; y++)
-      for (let x = Math.floor(cx - r * 1.4); x <= cx + r * 1.4; x++)
-        if (((x - cx) / (r * 1.4)) ** 2 + ((y - cy) / r) ** 2 < 1 - noise(x >> 1, y >> 1, 816) * 0.5) p.on(x, y, E.Moss, noise(x, y, 817) < 0.4 ? 2 : 3);
+  if (v === 2) {
+    // O telhado caiu aqui: o escuro de dentro e as vigas atravessando.
+    for (let y = 0; y < HD; y++)
+      for (let x = 0; x < HD; x++) {
+        const d = Math.hypot((x - 64) / 52, (y - 64) / 42) + (noise(x >> 2, y >> 2, 803) - 0.5) * 0.3;
+        if (d >= 0.82) continue;
+        const i = y * HD + x, beam = mod(x, 44) < 7;
+        p.mat[i] = beam ? E.Bark : E.Void; p.shade[i] = beam ? 0.3 : 0.06; p.off[i] = 0; p.fixed[i] = -1;
+      }
   }
+  if (v === 1) {
+    // Couro de bicho esticado e pregado por cima das telhas quebradas.
+    const cx = 40 + noise(1, col + 2, 806) * 48, cy = 40 + noise(col + 2, 1, 807) * 48;
+    p.fill([cx - 34, cy - 24, cx + 34, cy + 24], (x, y) => Math.abs(x - cx) / 30 + Math.abs(y - cy) / 20 < 1.1 - noise(x >> 3, y >> 3, 810) * 0.25,
+      E.Dirt, (x, y) => (north ? 0.62 : 0.46) + (sn(x, y, 16, 811) - 0.5) * 0.14);
+    for (let a = 0; a < Math.PI * 2; a += 0.6) p.on(cx + Math.cos(a) * 24, cy + Math.sin(a) * 15, E.Iron, 4);
+  }
+  // Musgo e liquens nas telhas da água do norte (a mais úmida).
+  if (north || row === "ridge")
+    for (let y = 0; y < HD; y++)
+      for (let x = 0; x < HD; x++) if (upperAt(y) && sn(x, y, 16, 812 + v) > 0.8 && noise(x, y, 813) < 0.5) p.on(x, y, E.Moss, 1);
   if (row === "ridge") {
-    limb(p, [0, ridgeY], [HD - 1, ridgeY], 5, 5, E.Bark);
+    // As telhas da cumeeira, meio-cilindros em fila.
+    for (let x = 0; x < HD; x += 24) ellipse(p, x + 12, ridgeY, 13, 7, E.Terracotta);
     if (v === 3) {
       const x = 64;
-      ellipse(p, x, ridgeY - 6, 11, 10, E.Bone);
-      p.on(x - 4, ridgeY - 6, E.Void, 1); p.on(x + 4, ridgeY - 6, E.Void, 1); p.on(x - 3, ridgeY - 5, E.Void, 1); p.on(x + 3, ridgeY - 5, E.Void, 1);
-      limb(p, [x - 9, ridgeY - 10], [x - 22, ridgeY - 26], 3, 1.2, E.Bone);
-      limb(p, [x + 9, ridgeY - 10], [x + 22, ridgeY - 26], 3, 1.2, E.Bone);
+      ellipse(p, x, ridgeY - 8, 11, 10, E.Bone);
+      p.on(x - 4, ridgeY - 8, E.Void, 1); p.on(x + 4, ridgeY - 8, E.Void, 1); p.on(x - 3, ridgeY - 7, E.Void, 1); p.on(x + 3, ridgeY - 7, E.Void, 1);
+      limb(p, [x - 9, ridgeY - 12], [x - 22, ridgeY - 28], 3, 1.2, E.Bone);
+      limb(p, [x + 9, ridgeY - 12], [x + 22, ridgeY - 28], 3, 1.2, E.Bone);
     }
   }
-  if (row === "top") { hline(p, 0, HD - 1, 0, E.Bark, 5); hline(p, 0, HD - 1, 1, E.Bark, 4); }
-  if (row === "bottom") { box(p, [0, HD - 12, HD - 1, HD - 1], E.Bark, 0.32); hline(p, 0, HD - 1, HD - 12, E.Bark, 4); }
-  // Tábua de beirada nas pontas (a da esquerda na luz).
+  if (row === "top") { hline(p, 0, HD - 1, 0, E.Terracotta, 5); hline(p, 0, HD - 1, 1, E.Terracotta, 4); }
+  if (row === "bottom") {
+    // A beira do telhado: as bocas redondas das ímbrices e a sombra embaixo.
+    box(p, [0, HD - 12, HD - 1, HD - 1], E.Terracotta, 0.26);
+    for (let x = 0; x < HD; x += 32) ellipse(p, x + 5, HD - 12, 6, 5, E.Terracotta);
+    for (let x = 0; x < HD; x += 32) { p.on(x + 5, HD - 12, E.Void, 1); p.on(x + 4, HD - 12, E.Void, 1); }
+  }
+  // Beirada de pedra nas pontas (a da esquerda na luz).
   if (col !== 0) {
-    const x0 = col < 0 ? 0 : HD - 10;
-    box(p, [x0, 0, x0 + 9, HD - 1], E.Bark, col < 0 ? 0.7 : 0.3);
-    vline(p, col < 0 ? x0 : x0 + 9, 0, HD - 1, E.Line, 1);
+    const x0 = col < 0 ? 0 : HD - 12;
+    box(p, [x0, 0, x0 + 11, HD - 1], E.Tuff, col < 0 ? 0.68 : 0.32);
+    vline(p, col < 0 ? x0 : x0 + 11, 0, HD - 1, E.Line, 1);
   }
   return p;
 }
