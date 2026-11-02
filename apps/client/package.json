@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "mapa": "tsx scripts/verdemar.ts",
     "medicao": "tsx scripts/medicao.ts",
-    "vale": "tsx scripts/valeFortaleza.ts"
+    "vale": "tsx scripts/valeFortaleza.ts",
+    "icones": "tsx scripts/icones.ts"
   },
   "dependencies": {
     "@colyseus/schema": "^5.0.42",
