@@ -737,8 +737,9 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
   **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
   Solária → ⚔️ Fortaleza Orc, a etapa 8) e a floresta (🌳 Bosque Velho → 🍄 Coração da
-  Mata, por enquanto só o terreno). O herói anda pelos dois ramos: para ir de um lado ao outro, volta pela trilha até a
-  Travessia (`OPEN_CHAINS` em `verdemar.ts`).
+  Mata), que se reencontram na Fortaleza Orc: ela abre por qualquer um dos dois lados. O herói anda pelos ramos (pela
+  floresta ele chega na Fortaleza sem passar pelas Mesas fechadas); para ir de um lado ao outro, volta pela trilha até
+  a Travessia (`OPEN_CHAINS` em `verdemar.ts`).
 - **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
   Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Fortaleza Orc (charco ou ermos) e
   Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
@@ -757,8 +758,9 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Fíbula, Rei Ossudo (um dos 3 bosses da Fíbula) → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
   Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
-  Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
-  (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
+  Coração da Mata, Rei Galhado → Fortaleza Orc). A Fortaleza abre com o boss das Mesas **ou** com o do Coração da Mata:
+  quem escolheu a floresta não fica num beco sem saída. Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`,
+  `unlockedBy` e `ALSO_UNLOCKED_BY`), repetida no banco (`map_unlocked_by` e `map_unlocked_by_also`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
   `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
   e os bots, não). Os personagens que já existiam quando a Orla entrou (já tinham jogado, item ou cenário vencido) a herdaram vencida. Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase

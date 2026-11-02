@@ -14,6 +14,7 @@ import {
   mapUnlocked,
   spellXpGains,
   unlockedBy,
+  unlockedByAny,
   UNLOCK_BOSS,
   type ClassId,
   type AddBotMessage,
@@ -143,7 +144,9 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       if (!mapUnlocked(clears, mapId)) {
         const before = unlockedBy(mapId);
         const boss = UNLOCK_BOSS[mapId];
-        const what = boss && before ? `${MONSTERS[boss].name} em ${MAPS[before].name}` : `o boss de ${before ? MAPS[before].name : "um cenário anterior"}`;
+        const what = boss && before
+          ? `${MONSTERS[boss].name} em ${MAPS[before].name}`
+          : before ? `o boss de ${unlockedByAny(mapId).map((id) => MAPS[id].name).join(" ou de ")}` : "o boss de um cenário anterior";
         throw new ServerError(4403, `${MAPS[mapId].name} ainda está fechado: vença ${what} com esta classe.`);
       }
     }
