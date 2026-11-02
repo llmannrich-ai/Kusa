@@ -431,7 +431,19 @@ dois lados); pedem a última magia do tronco no nível 1 de uso.
 | Druida | Bosque | 🌳 **Árvore da Vida** | campo de raio 3 por 12 s que cura 5% por segundo os aliados dentro | 8% |
 | Druida | Espinhos | 🍂 **Furacão de Folhas** | canaliza 3 s: leque de 90° e 5 tiles, 0,5× a cada 0,3 s e empurra | prende 0,5 s por pulso |
 
-Faltam os Ápices do Xamã (quando o tronco dele existir) e as magias de slot 3 das especializações.
+Faltam os Ápices do Xamã (quando o tronco dele existir).
+
+**Slot 3 de cada lado da especialização** (fase 6, 2.500 de gold): uma magia de slot 3 embaixo da última magia de cada
+lado (mesma faixa, ±1), pedindo ela no nível 1 de uso; como o lado é escolha permanente, só quem fez a escolha alcança.
+
+| Classe | Lado | Magia | O que faz (nível 0) | Maestria |
+|---|---|---|---|---|
+| Cavaleiro | Berserker | 🩸 **Massacre** | 8 s: o básico corta todos os colados e rouba 30% do dano em vida | cada morte pelo básico estende 1 s (até +4 s) |
+| Cavaleiro | Duelista | 🗡️ **Tempestade de Lâminas** | 5 lâminas num leque de 60°, 1,5× cada, que sangram 3 s | 7 lâminas |
+| Cavaleiro | Guardião | 🤝 **Juramento do Protetor** | num aliado mirado por 10 s: 60% do dano de monstro dele vem para você, e você ganha +10 de armadura | ele ganha escudo de 20% |
+| Cavaleiro | Inabalável | 🗿 **Montanha** | 6 s sem ser atordoado, preso nem engolido (o que já prendia sai), metade do dano e devolve 100% do golpe corpo a corpo | Terremoto grátis em raio 2 no fim |
+| Cavaleiro | Senhor da Guerra | 🎺 **Grito de Reunião** | cura 30%, escudo de 20% e +30% de velocidade por 5 s nos aliados a até 6 tiles | alcance 8 |
+| Cavaleiro | Desafiante | ⛓️ **Correntes do Desafio** | leque de 90°, 5 tiles: 0,5×, provoca, puxa todos para perto e prende 2 s | os puxados sangram 4 s |
 
 #### Magias em leque (Grimório 4.0)
 

@@ -395,6 +395,24 @@ export class CombatFx {
       case "open_wound":
         this.slash(from, to);
         return this.later(120, () => this.sparks(to, 0xc0392b, 10));
+      // Fase 6: slot 3 de cada lado da especialização do Cavaleiro (as Correntes são um leque, desenhado pela cena).
+      case "massacre":
+        this.ring(from, TILE_SIZE * 1.2, 0x922b21, 500, 6);
+        return this.bladeSpin(from);
+      case "blade_storm": return this.projectile(FX.arrow, from, to, ms, { trail: 0xd2d6de, glow: 0xffffff, scale: 1.3 });
+      case "protector_oath":
+        this.zap(from, to, 0x7fc8ff);
+        this.shieldRaise(from);
+        return this.later(120, () => this.shieldRaise(to));
+      case "mountain":
+        this.ring(from, TILE_SIZE, 0x7f8c8d, 600, 8);
+        return this.debris(from, TILE_SIZE, 0x6b4426);
+      case "rally_cry":
+        this.ring(from, radius, 0xf1c40f, 650, 5);
+        this.later(150, () => this.ring(from, radius * 0.6, 0x7fc8ff, 450, 3));
+        return this.heal(from);
+      case "challenge_chains":
+        return;
       // Fase 5: magias de combo do Druida (a semente aparece pelo estado, como armadilha).
       case "pack_hunt":
         this.projectile(FX.greenLight, from, to, ms, { trail: 0xc8a165, glow: 0x8d6e4a, impact: 0xffe0b2 });

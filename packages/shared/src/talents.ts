@@ -131,6 +131,8 @@ const SIDE_SPELL_COST = [1200, 1600];
 const S3_ENTRY_COST = 1000;
 /** Preço dos Ápices (slot 3, no fim do tronco de cada ramo). */
 const APEX_COST = 2000;
+/** Preço da magia do slot 3 de cada lado da especialização (linha abaixo da última magia do lado). */
+const SIDE_S3_COST = 2500;
 /** Preço do Traço de uma especialização (nível único). */
 const TRAIT_COST = 1000;
 /** As iniciais já vêm compradas: o preço nunca é cobrado (o banco só pede um valor positivo). */
@@ -284,6 +286,10 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["gale_blade", 0, 3, "crushing_blow", 2], ["shield_wall", 1, 3, "holy_shield", -1], ["cutting_shout", 2, 3, "mana", -2],
     // Fase 5: a magia de combo, embaixo da de leque da mesma costela.
     ["hemorrhagic_cut", 0, 4, "gale_blade", 2], ["shield_toss", 1, 4, "shield_wall", -1], ["exposed_strike", 2, 4, "cutting_shout", -2],
+    // Fase 6: o slot 3 de cada lado, embaixo da última magia do lado (pede ela no nível 1).
+    ["massacre", 0, 9, "berserk_rage", -1], ["blade_storm", 0, 9, "thousand_cuts", 1],
+    ["protector_oath", 1, 8, "shared_aegis", -1], ["mountain", 1, 8, "living_fortress", 1],
+    ["rally_cry", 2, 8, "war_banner", -1], ["challenge_chains", 2, 8, "supreme_challenge", 1],
   ],
   paladin: [
     ["double_shot", 0, 3, "piercing_shot", -1], ["barbed_arrow", 0, 4, "double_shot", -2],
@@ -402,7 +408,10 @@ function classTree(classId: ClassId): TalentDef[] {
     keys.add(key);
     return {
       id: id(key), classId, col, row, lane, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
-      maxRank: 1, freeRank: 0, baseCost: spell.slot === 2 ? (row === 0 ? S3_ENTRY_COST : APEX_COST) : SPELL_COST_BY_ROW[row], costGrowth: 1,
+      // Slot 3: a de entrada (linha 0), o Ápice (faixa ±2) e a do lado da especialização (faixa ±1, que pede a magia do lado).
+      ...(spell.slot === 2 && Math.abs(lane) === 1 && row > 0 ? { side: lane < 0 ? 0 as const : 1 as const } : {}),
+      maxRank: 1, freeRank: 0,
+      baseCost: spell.slot === 2 ? (row === 0 ? S3_ENTRY_COST : Math.abs(lane) === 1 ? SIDE_S3_COST : APEX_COST) : SPELL_COST_BY_ROW[row], costGrowth: 1,
       requires: { id: id(parent), rank: 1 }, alsoRequires: also ? { id: id(also), rank: 1 } : undefined,
     };
   });

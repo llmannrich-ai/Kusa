@@ -41,13 +41,13 @@ export function spellRoles(s: SpellDef): SpellRole[] {
   const hits = !!(s.damage || s.dot || f?.damage || s.burst || s.groundFire || f?.burst);
   const wide = s.shape !== undefined || !!s.chain || (s.radius > 0 && !s.heal) || f?.kind === "zone" || !!s.burst || !!s.groundFire || !!f?.burst;
   const roles = new Set<SpellRole>();
-  if (hits && wide) roles.add("area");
+  if ((hits && wide) || s.selfBuff?.cleave) roles.add("area");
   if (hits && !wide) roles.add("alvo");
   if (s.execute || s.distanceBonus || s.mark) roles.add("alvo");
   if (s.rootMs || s.stunMs || s.slow || s.taunt || s.push || s.pull || s.nextBasicStunMs || f?.rootMs || f?.kind === "wall" || f?.kind === "trap") {
     roles.add("controle");
   }
-  if (s.barrier || s.guard || s.armor || s.thorns || s.lifesteal || s.form?.kind === "bear" || f?.allyArmor || s.selfBuff?.slowAttackers) {
+  if (s.barrier || s.guard || s.armor || s.thorns || s.lifesteal || s.form?.kind === "bear" || f?.allyArmor || s.selfBuff?.slowAttackers || s.selfBuff?.lifesteal || s.oath) {
     roles.add("defesa");
   }
   if (s.heal || f?.allyHeal || s.seed || s.cleanse || s.tauntHeal || s.summonDeathHeal || s.rally?.heal) roles.add("cura");
