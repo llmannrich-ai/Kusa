@@ -833,7 +833,7 @@ Os monstros de cada mapa (encontros, rodízio de mini-bosses e bosses, Mímicos)
     desenhados.
 - Mais difícil: espécies com mais vida e dano que as da cripta, mais salas e salas fundas mais cheias (o orçamento de
   monstros cresce 12% por sala).
-  Em troca, loot maior e itens de material melhor nas salas fundas.
+  Em troca, loot maior nas salas fundas e criaturas mais difíceis, que largam material e raridade melhores.
 
 ### Mar de Areia
 
@@ -1799,7 +1799,7 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   (devolve parte do golpe corpo a corpo recebido), + alcance (arcos e bestas), ataque mais rápido, + vida, + mana,
   + velocidade, + armadura e + dano nas magias.
 - Armadura corta dano recebido: `armadura / (armadura + 25)`; o conjunto comum de Dragão (33) corta 57%.
-- **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
+- **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). O material e a raridade seguem o Nível de Desafio (ND) da criatura, sem olhar o mapa nem a sala: ND 1–2 Rústico, 3–4 Bronze, 5–6 Ferro, 7–8 Mithral, 9+ Dragão, com 20% de chance de vir um nível acima; raro, mágico e lendário ficam mais prováveis quanto maior o ND (`challengeTier`, `rarityChances`). O baú vale como ND 7 (`CHEST_ITEM_CR`).
   Raridade: monstro comum 18% raro, 4% mágico e 0,5% lendário; mini-boss e baú 35%, 12% e 3%; boss 40%, 25% e 6%.
   **Metade do drop favorece a equipe** (ver "Drop pela equipe"): a outra metade cai livre, então um cavaleiro sozinho ainda acha cajado (vai para a bag e se vende).
 - O item cai no chão onde o monstro morreu (o do baú, aos pés de quem abriu, que já pega) e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
@@ -1874,8 +1874,9 @@ Peças únicas acima do mágico (`LEGENDARIES` em `packages/shared/src/items.ts`
   | Escudo Espelho da Lua | Escudo | Todos menos Paladino | espinhos 25%, vida, mana |
   | Calças do Vagante Astral | Calça arcana | Feiticeiro, Druida e Xamã | mana, recarga 6%, velocidade |
 
-- **Drop:** caem de qualquer monstro, raramente: 0,5% dos itens de monstro comum (1 a cada ~1.300 monstros), 3% dos
-  de mini-boss e baú, 6% dos de boss (`RARITY_CHANCES.legendary`). Qual peça sai segue o "Drop pela equipe": metade das
+- **Drop:** a chance cresce com o Nível de Desafio da criatura, em qualquer mapa (`rarityChances`): nenhuma abaixo
+  de ND 3, 0,7% dos itens de ND 5, 2,9% de ND 8, 5,1% de ND 10 e 9,7% de ND 13 (o baú vale como ND 7, 2%). Criatura
+  fácil quase nunca larga lendário; boss difícil larga com frequência. Qual peça sai segue o "Drop pela equipe": metade das
   vezes, uma que algum humano da hunt veste; na outra metade, qualquer uma. Não se compram.
 - **Comparação:** vale um nível de material inteiro acima do mágico (`itemScore`), então troca na hora por qualquer
   peça de Dragão do slot.

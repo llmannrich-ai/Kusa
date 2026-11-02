@@ -195,7 +195,7 @@ export function renderRules(root: HTMLElement) {
         "Armaduras de guerra são do Cavaleiro e do Paladino; vestes arcanas (chapéu, manto e calças), do Feiticeiro e do Druida.",
         `Materiais, do pior ao melhor: ${TIERS.map((t) => TIER_NAMES[t]).join(", ")}.`,
         `Raridades: ${ITEM_RARITIES.map((r) => RARITY_NAMES[r]).join(", ")}. O raro (+1) é 30% mais forte; o mágico tem nome próprio, é 60% mais forte e ganha uma propriedade (roubo de vida, chamas, espinhos, velocidade...).`,
-        `Monstros comuns têm até ${pct(COMMON_DROP_CHANCE)} de chance de dropar item, mini-bosses e bosses largam itens garantidos e todo baú dá um item; cada mapa corta parte dessas chances (tabela abaixo). Salas fundas dão material melhor.`,
+        `Monstros comuns têm até ${pct(COMMON_DROP_CHANCE)} de chance de dropar item, mini-bosses e bosses largam itens garantidos e todo baú dá um item; cada mapa corta parte dessas chances (tabela abaixo). Quanto mais difícil a criatura (o Nível de Desafio, no Catálogo), melhores o material e a raridade, em qualquer mapa: só as mais difíceis largam Dragão e lendário com frequência.`,
         "O item no chão é de quem passar por cima primeiro. Se o slot estiver vazio ou o item for melhor que o seu, você veste na hora (aparece \"Vestiu\" e a bag pisca) e o antigo vai para a bag. O que está vestido só aparece ao tocar na bag.",
         `A bag tem ${BAG_SIZE} espaços e entra com você na hunt. Cheia, você não pega mais nada do chão.`,
         "A runa do boss não cai no chão: vai direto para a bag de cada herói que ainda não levou a daquele boss. Com a bag cheia, o item mais barato cai no chão para ela entrar. Depois, dá para largar e passar a runa a um colega.",

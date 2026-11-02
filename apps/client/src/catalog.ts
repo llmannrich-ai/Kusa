@@ -2,6 +2,7 @@ import {
   CHAMPION_CHANCE,
   CHAMPION_HP,
   CHAMPION_REWARD,
+  CHEST_ITEM_CR,
   CLASSES,
   CREATURE_TYPES,
   DAMAGE_ELEMENTS,
@@ -22,8 +23,6 @@ import {
   MONSTERS,
   POTIONS,
   POTION_IDS,
-  RANK_TIER_BONUS,
-  RARITY_CHANCES,
   RARITY_COLORS,
   RARITY_NAMES,
   RUNES,
@@ -31,11 +30,14 @@ import {
   SLOT_NAMES,
   TIER_NAMES,
   buyPrice,
+  challengeTier,
   chestItemChance,
+  chestItemOdds,
   chestPotionChance,
   classesText,
   describeStats,
   dropOdds,
+  rarityChances,
   elementMultiplier,
   itemId,
   lootSellPrice,
@@ -186,11 +188,11 @@ function dropLines(map: MapDef, kind: MonsterKind) {
     : odds.potions === 1 ? `poção ${pct(odds.potionChance)}` : `${odds.potions} poções, ${pct(odds.potionChance)} cada`;
   const lines = [
     `Gold: ${odds.gold[0]}–${odds.gold[1]} na 1ª sala.`,
-    `Drops: ${items} (${rarity}) · ${potions}.`,
+    `Drops: ${items} (${TIER_NAMES[odds.tier]}; ${rarity}) · ${potions}.`,
   ];
   if (odds.runes) lines.push(`Runa: ${odds.runes} por herói, direto na bag (uma vez por personagem).`);
   if (map.rewardRunes && MONSTERS[kind].rank === "boss") lines.push("Runa: atrás dele, um baú de runa por herói, à escolha.");
-  if (odds.chest) lines.push(`Guarda o baú: mais gold, ${pct(chestItemChance())} de 1 item (material acima do mini-boss) e ${pct(chestPotionChance(map))} de cada poção.`);
+  if (odds.chest) lines.push(`Guarda o baú: mais gold, ${pct(chestItemChance())} de 1 item (${TIER_NAMES[chestItemOdds().tier]}) e ${pct(chestPotionChance(map))} de cada poção.`);
   return lines;
 }
 
@@ -221,7 +223,7 @@ function monsterEntry(map: MapDef, kind: MonsterKind) {
   return entry({
     name: def.name,
     color: def.rank === "boss" ? "#e74c3c" : def.rank === "miniboss" ? "#f39c12" : undefined,
-    meta: `${RANK_LABELS[def.rank]} · ${CREATURE_TYPES[def.type].name} · Vida ${stats.maxHp} · Dano ${stats.damage} · XP ${mapXp(map, stats.xp)}`,
+    meta: `${RANK_LABELS[def.rank]} · ND ${def.cr} · ${CREATURE_TYPES[def.type].name} · Vida ${stats.maxHp} · Dano ${stats.damage} · XP ${mapXp(map, stats.xp)}`,
     lines: [
       def.lore,
       ...(abilities.length ? [`Habilidades: ${abilities.join(", ")}.`] : []),
@@ -252,13 +254,17 @@ function enemies() {
 function dropRules() {
   const t = el("table", "rule-table");
   const head = el("tr");
-  ["Quem", "Material na 1ª sala", "Raro", "Mágico"].forEach((h) => head.append(el("th", "", h)));
+  ["Nível de Desafio", "Material", "Raro", "Mágico", "Lendário"].forEach((h) => head.append(el("th", "", h)));
   t.createTHead().append(head);
   const body = t.createTBody();
-  for (const rank of ["common", "miniboss", "boss"] as MonsterRank[]) {
+  const top = Math.max(...Object.values(MONSTERS).map((m) => m.cr));
+  const range = (lo: number, hi: number, k: "rare" | "magic" | "legendary") => {
+    const a = pct(rarityChances(lo)[k]), b = pct(rarityChances(hi)[k]);
+    return a === b ? a : `${a}–${b}`;
+  };
+  for (const [lo, hi] of [[1, 2], [3, 4], [5, 6], [7, 8], [9, top]]) {
     const row = el("tr");
-    const tier = Math.min(MAX_TIER, 1 + RANK_TIER_BONUS[rank]) as keyof typeof TIER_NAMES;
-    [RANK_LABELS[rank], TIER_NAMES[tier], pct(RARITY_CHANCES[rank].rare), pct(RARITY_CHANCES[rank].magic)]
+    [`${lo}–${hi}`, TIER_NAMES[challengeTier(lo)], range(lo, hi, "rare"), range(lo, hi, "magic"), range(lo, hi, "legendary")]
       .forEach((c) => row.append(el("td", "", c)));
     body.append(row);
   }
@@ -266,8 +272,9 @@ function dropRules() {
   card.dataset.search = "drop material raridade";
   card.append(
     t,
-    note(`O material melhora um nível a cada 2 salas de profundidade e tem ${pct(LUCKY_TIER_CHANCE)} de chance de vir um nível acima. `
-      + "O baú usa a raridade do mini-boss, com um nível de material a mais. Cai item de qualquer classe: o que ninguém usa, se vende."),
+    note("Quanto mais difícil a criatura (o Nível de Desafio, ND, de cada uma está na lista de inimigos), melhores o material e a "
+      + `raridade, em qualquer mapa. O material tem ${pct(LUCKY_TIER_CHANCE)} de chance de vir um nível acima. Mini-bosses e bosses `
+      + `garantem mais itens; o baú vale como ND ${CHEST_ITEM_CR}. Cai item de qualquer classe: o que ninguém usa, se vende.`),
     note(`O mercado só vende itens comuns, até ${TIER_NAMES[ITEM_TIERS.filter((t) => ITEM_BUY_PRICES[t] != null).at(-1)!]}: `
       + "o resto só sai das hunts."),
   );
