@@ -9,6 +9,7 @@ import {
   COMMON_DROP_CHANCE,
   COMMON_POTION_CHANCE,
   CHEST_DEPTH_SCALING,
+  CHEST_ITEM_CR,
   ITEM_DROP_SCALE,
   DEATH_LOSS_WEIGHT,
   DEATH_SAFE_LEVEL,
@@ -17,6 +18,8 @@ import {
   GUARANTEED_POTIONS,
   ITEMS,
   ON_HIT_DOT_MS,
+  BASH_STUN_MS,
+  MEND_RADIUS,
   ITEM_SLOTS,
   MAPS,
   MONSTERS,
@@ -169,6 +172,7 @@ import {
   type MonsterKind,
   type MoveMessage,
   type NoticeMessage,
+  type PickupMessage,
   type PerkBonuses,
   type PerkStacks,
   type Rect,
@@ -484,6 +488,17 @@ const MANA_REGEN = 0.02;
 /** Monstros não nascem tão perto do portal de entrada. */
 const SAFE_RADIUS = 6;
 /**
+ * Cenário vivo da Fortaleza Orc (`Dungeon.fortress`): quem pisa numa fogueira ou encosta num braseiro do salão queima
+ * (`pct` da vida máxima por segundo, por `ms` depois de sair; heróis e monstros); cada tenda solta um orc a cada
+ * `everyMs` enquanto há herói a até `wake` tiles, no máximo `max` na hunt; os orcs a até `radius` tiles de um totem
+ * batem `damage` a mais.
+ */
+export const SCENE_FIRE = { pct: 0.03, ms: 2000 } as const;
+export const SCENE_TENT = { everyMs: 60_000, max: 3, wake: 10 } as const;
+export const SCENE_TOTEM = { radius: 3, damage: 0.2 } as const;
+/** Quem causa o dano do cenário (na telemetria, no lugar do tipo de monstro). */
+export const SCENE_FIRE_ID = "cenario:fogo";
+/**
  * Zona da entrada: a esta distância do portal (o raio seguro mais o alcance de aggro dos comuns), nascem no máximo
  * `MAX_START_MONSTERS` monstros, para a hunt não começar com uma sala cheia em cima do herói (a Cripta põe a
  * primeira sala do caminho colada na inicial).
@@ -492,6 +507,8 @@ export const START_ZONE_RADIUS = 12;
 export const MAX_START_MONSTERS = 3;
 /** Item no chão que ninguém pegou some depois deste tempo. */
 const ITEM_LIFETIME_MS = 120_000;
+/** O herói pega o que estiver a até esta distância (em tiles, contando a diagonal): o item voa até ele. */
+export const PICKUP_RANGE = 1;
 /** Intervalo mínimo entre dois avisos de bag cheia para o mesmo jogador. */
 const BAG_FULL_NOTICE_MS = 3000;
 /** Nome da melhoria escolhida no nível: fica 30% mais que os outros avisos (900 ms) para dar tempo de ler. */
@@ -580,6 +597,7 @@ const AURA_PULSE_MS = 500;
 const INTERNALS = [
   "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
   "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked", "nextBotId",
+  "sceneBurns", "tentLeft", "tentNextAt",
 ] as const;
 
 /**
@@ -625,6 +643,11 @@ export class Hunt {
   private ai: MonsterAi;
   /** Número do próximo bot posto na sala de espera (o id é `bot<n>`). */
   private nextBotId = 1;
+  /** Queimadura do cenário em cada herói (fogueira, braseiro): o próximo pulso e o fim. */
+  private sceneBurns = new Map<string, { nextAt: number; until: number }>();
+  /** Orcs que cada tenda da Fortaleza ainda solta e quando (em `elapsedMs`) sai o próximo. */
+  private tentLeft: number[] = [];
+  private tentNextAt: number[] = [];
   /** IA dos bots que completam a equipe (`botAi.ts`): manda as mesmas intenções de um jogador. */
   private bots: BotAi;
 
@@ -835,6 +858,12 @@ export class Hunt {
     this.brains.forEach((b) => { total += b.loot[1]; });
     this.chestDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + CHEST_DEPTH_SCALING * depth) * this.lootScale()); });
     this.mimicDepth.forEach((depth) => { total += Math.round(CHEST_LOOT[1] * (1 + CHEST_DEPTH_SCALING * depth) * this.lootScale()); });
+    // Os orcs que as tendas da Fortaleza soltam durante a hunt.
+    for (const t of this.dungeon.fortress?.tents ?? []) {
+      const kind = this.tentKind(t);
+      const stats = monsterStats(kind, monsterPower(this.map, kind));
+      total += this.scaleLoot(stats.loot[0], stats.loot[1], false)[1] * SCENE_TENT.max;
+    }
     return Math.round(total * (1 + this.portalBonus()));
   }
 
@@ -1245,12 +1274,89 @@ export class Hunt {
     this.state.players.forEach((p, sessionId) => this.orbitTick(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.stormTick(sessionId, p, now));
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
+    this.tickScenery(now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
     this.tickFields(now);
     this.tickPlague(now);
     this.openChests();
     this.pickUpItems();
     this.expireItems(now);
+  }
+
+  // --- Cenário vivo (Fortaleza Orc) ---------------------------------------------------------
+
+  /** A tenda do chefe (no pátio do esporão, acima da muralha interna) solta berserkers; as outras, guerreiros. */
+  private tentKind(t: Rect): MonsterKind {
+    const f = this.dungeon.fortress!;
+    return t.y < f.walls[1].y ? "orcBerserker" : "orcGrunt";
+  }
+
+  /** Orc (monstro do clã) a até `SCENE_TOTEM.radius` tiles de um totem da Fortaleza. */
+  private nearTotem(m: Monster) {
+    const totems = this.dungeon.fortress?.totems;
+    if (!totems || !(m.kind as string).startsWith("orc")) return false;
+    return totems.some((t) => tileDistance(t.x, t.y, m.x, m.y) <= SCENE_TOTEM.radius);
+  }
+
+  /** Fogueira debaixo, ou braseiro encostado (os braseiros bloqueiam o tile deles). */
+  private onFire(x: number, y: number) {
+    const f = this.dungeon.fortress!;
+    return f.fires.some((c) => c.x === x && c.y === y) || f.braziers.some((b) => Math.abs(b.x - x) <= 1 && Math.abs(b.y - y) <= 1);
+  }
+
+  /** As fogueiras e os braseiros queimam quem está neles; as tendas soltam orcs quando um herói chega perto. */
+  private tickScenery(now: number) {
+    const f = this.dungeon.fortress;
+    if (!f) return;
+    this.state.players.forEach((p, sessionId) => {
+      const seat = this.seats.get(sessionId);
+      if (p.status !== "playing" || !seat) return this.sceneBurns.delete(sessionId);
+      let burn = this.sceneBurns.get(sessionId);
+      if (this.onFire(p.x, p.y)) {
+        if (!burn) this.sceneBurns.set(sessionId, (burn = { nextAt: now, until: 0 }));
+        burn.until = now + SCENE_FIRE.ms;
+      }
+      if (!burn) return;
+      if (now >= burn.until) {
+        this.sceneBurns.delete(sessionId);
+        if (!seat.dot && p.dot === "burn") p.dot = "";
+        return;
+      }
+      if (!seat.dot) p.dot = "burn";
+      if (now < burn.nextAt) return;
+      burn.nextAt = now + 1000;
+      this.damagePlayer(sessionId, p.maxHp * SCENE_FIRE.pct, { attacker: SCENE_FIRE_ID, fromX: p.x, fromY: p.y, fx: "fire", special: true, dot: "burn" });
+    });
+    for (const m of [...this.state.monsters.values()]) {
+      const brain = this.brains.get(m.id);
+      if (!brain || !this.onFire(m.x, m.y)) continue;
+      this.applyDot(m, brain, SCENE_FIRE_ID, SCENE_FIRE_ID, m.maxHp * SCENE_FIRE.pct, SCENE_FIRE.ms, "burn", now);
+    }
+    // Mapa só de cenário (sem monstros): as tendas não soltam ninguém.
+    if (this.map.bosses.length === 0) return;
+    if (this.tentLeft.length !== f.tents.length) {
+      this.tentLeft = f.tents.map(() => SCENE_TENT.max);
+      this.tentNextAt = f.tents.map(() => 0);
+    }
+    f.tents.forEach((t, i) => {
+      if (this.tentLeft[i] <= 0 || this.elapsedMs < this.tentNextAt[i]) return;
+      const c = centerOf(t);
+      let near = false;
+      this.state.players.forEach((p) => { if (p.status === "playing" && tileDistance(p.x, p.y, c.x, c.y) <= SCENE_TENT.wake) near = true; });
+      if (!near) return;
+      // Sai pela frente da tenda (o tile logo abaixo dela) ou o mais perto dali.
+      const door = { x: t.x + (t.w >> 1), y: t.y + t.h };
+      const spot = isWalkable(this.dungeon, door.x, door.y) && !this.occupiedTiles().has(door.y * this.dungeon.width + door.x) ? door : this.freeSpotNear(door.x, door.y);
+      if (!spot) return;
+      this.addMonster(this.tentKind(t), spot.x, spot.y, this.nearestPathDepth(t));
+      this.tentLeft[i]--;
+      this.tentNextAt[i] = this.elapsedMs + SCENE_TENT.everyMs;
+      this.notice(spot.x, spot.y - 1, "Um orc sai da tenda!", 0xff8a50);
+      this.state.players.forEach((p, id) => {
+        const st = this.seats.get(id)?.stats;
+        if (st && p.status === "playing" && tileDistance(p.x, p.y, c.x, c.y) <= SCENE_TENT.wake) bump(st.scenery, "orcs_da_tenda");
+      });
+    });
   }
 
   // --- Combate -----------------------------------------------------------
@@ -1327,7 +1433,8 @@ export class Hunt {
     if (!seat.targetLocked && p.target && !this.canHit(p, this.state.monsters.get(p.target)!, range)) p.target = "";
     if (!p.target) p.target = this.nearestMonsterInRange(p, range) ?? "";
     // Básico à distância (flecha e luzes) é um tiro: voa reto na direção até o alcance e pode errar. Nas formas do druida, não.
-    const speed = form ? 0 : BASIC_ATTACKS[cls.id].projectileSpeed;
+    // Orbe (`ItemStats.shotSpeed`): o tiro voa mais rápido.
+    const speed = form ? 0 : BASIC_ATTACKS[cls.id].projectileSpeed * (1 + seat.gear.shotSpeed);
     const aimed = speed > 0 ? seat.basicAim : null;
     if (!p.target && !aimed) return;
 
@@ -1450,7 +1557,23 @@ export class Hunt {
         // Mão Rápida (marcos 1 e 3): a flecha incendiária explode em volta e deixa o chão em chamas.
         if (hand >= 1) this.handBurst(sessionId, alive.x, alive.y, base, hand >= 3, alive);
       }
+      // Maça (`ItemStats.bash`): às vezes o golpe atordoa.
+      if (g.bash > 0 && brain && this.random() < g.bash) {
+        brain.stunnedUntil = Math.max(brain.stunnedUntil, this.host.now() + BASH_STUN_MS);
+        alive.stunned = true;
+        seat.stats.ccMs.stun += BASH_STUN_MS;
+        bump(seat.stats.weaponTraits, "bash");
+      }
       const dealt = this.damageMonster(alive, amount, hit, "basic");
+      // Foice (`ItemStats.cleave`): o golpe corta em arco os colados no alvo.
+      if (g.cleave > 0) {
+        const near: Monster[] = [];
+        this.state.monsters.forEach((o) => { if (o !== alive && !o.hidden && tileDistance(alive.x, alive.y, o.x, o.y) <= 1) near.push(o); });
+        for (const o of near) this.trailingHit(sessionId, o, base * basicDamage * Math.min(1, g.cleave), hit, "cleave");
+      }
+      // Totem de mão (`ItemStats.mend`): o golpe cura a equipe por perto.
+      const healer = this.state.players.get(sessionId);
+      if (g.mend > 0 && dealt > 0 && healer?.status === "playing") this.mend(sessionId, healer, dealt, g.mend);
       // Roubo de vida dos itens (Espada do Juramento...): sem aviso a cada golpe, como a Sede de sangue.
       const hero = this.state.players.get(sessionId);
       // Massacre: o básico rouba vida; cada morte estende o bônus (Maestria).
@@ -1524,6 +1647,11 @@ export class Hunt {
       this.countShot(seat, "basic", !!alive, !!aimed);
       if (!alive) return;
       land(alive);
+      // Lança (`ItemStats.pierce`): atravessa e acerta o monstro de trás, na direção do tiro.
+      if (seat.gear.pierce > 0) {
+        const behind = this.monsterOn({ x: alive.x + Math.sign(alive.x - ox), y: alive.y + Math.sign(alive.y - oy) });
+        if (behind && behind !== alive) this.trailingHit(sessionId, behind, base * basicDamage * Math.min(1, seat.gear.pierce), hit, "pierce");
+      }
       if (double && this.state.monsters.has(alive.id)) {
         bump(seat.stats.giftProcs, "patient_eye_double");
         land(alive);
@@ -1565,6 +1693,39 @@ export class Hunt {
     };
     if (path.length === 0) return done(undefined);
     this.after(arrive(0), step);
+  }
+
+  /** Classes dos humanos na hunt (bots não pegam item): o drop favorece o que eles vestem (`rollItem`). */
+  private teamClasses(): ClassId[] {
+    const out: ClassId[] = [];
+    this.state.players.forEach((p) => { if (!p.bot && p.status === "playing" && !out.includes(p.classId as ClassId)) out.push(p.classId as ClassId); });
+    return out;
+  }
+
+  /**
+   * Golpe secundário das armas de estilo (a lança que atravessa, a foice que corta em arco): só o dano, numa fração
+   * do golpe, sem os efeitos do básico (atordoar, chamas, roubo de vida).
+   */
+  private trailingHit(sessionId: string, m: Monster, amount: number, hit: Hit, source: "pierce" | "cleave") {
+    if (!this.state.monsters.has(m.id) || m.hidden) return;
+    const dealt = this.damageMonster(m, rollDamage(this.random, amount), hit, `item:${source}`);
+    const seat = this.seats.get(sessionId);
+    if (seat && dealt > 0) bump(seat.stats.weaponTraits, source);
+  }
+
+  /** Totem de mão: cura o herói e os aliados a até `MEND_RADIUS` tiles numa fração do dano dado. */
+  private mend(sessionId: string, p: Player, dealt: number, pct: number) {
+    const seat = this.seats.get(sessionId);
+    const amount = Math.round(dealt * pct);
+    if (!seat || amount <= 0) return;
+    this.state.players.forEach((ally) => {
+      if (ally.status !== "playing" || tileDistance(p.x, p.y, ally.x, ally.y) > MEND_RADIUS) return;
+      const healed = Math.min(ally.maxHp - ally.hp, amount);
+      if (healed <= 0) return;
+      ally.hp += healed;
+      seat.stats.healing += healed;
+      bump(seat.stats.weaponTraits, "mend", healed);
+    });
   }
 
   /** Vira a frente do herói para a direção (dx, dy) em tiles (`Player.faceX/faceY`); sem direção, fica como estava. */
@@ -1733,7 +1894,9 @@ export class Hunt {
     const base = SPELLS[spellIn(p, slot) as SpellId];
     if (!base) return;
     // O nível de uso, as sinergias e o Tomo do ramo deixam a magia mais forte.
-    let spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0, p.spellBonus.get(base.id) ?? 0);
+    // Lendários de classe (`ItemStats.spells`) somam com as sinergias e o Tomo.
+    const gearBoost = seat.gear.spells[base.id] ?? 0;
+    let spell = spellAtRank(base, p.spellRanks.get(base.id) ?? 0, (p.spellBonus.get(base.id) ?? 0) + gearBoost);
     // Voz de Comando (marco 2): as magias de área que provocam alcançam mais longe.
     if (spell.taunt && spell.radius > 0 && this.marks(seat, "command_voice") >= 2) spell = { ...spell, radius: spell.radius + VOICE.tauntRadius };
     spell = this.markedSpell(seat, spell);
@@ -1917,6 +2080,7 @@ export class Hunt {
       if (echo) bump(seat.stats.runeProcs, "echo");
     }
     bump(seat.stats.casts, spell.id);
+    if (gearBoost > 0) bump(seat.stats.gearBoostedCasts, spell.id);
     if (furyFree) seat.furyFree = false;
     // Nível pelo uso: só conta em combate (algum monstro à vista por perto), para não render XP em sala vazia.
     if (this.nearestMonsterInRange(p, SPELL_XP_COMBAT_TILES)) bump(seat.stats.spellXp, base.id, castXp(base));
@@ -1925,7 +2089,7 @@ export class Hunt {
     if (sky && ++seat.castCount % sky.every === 0) this.skyBolt(sessionId, p, sky);
     // Último Duelo (marco 5): com a vida baixa, a magia do slot 3 recarrega na metade do tempo.
     const duelSlot3 = slot === 2 && this.marks(seat, "last_duel") >= 5 && this.duelLow(seat, p) ? DUEL.slot3Cooldown : 1;
-    seat.spellReadyAt[slot] = echo ? now : now + Math.round(spellCooldownMs(spell.cooldownMs, seat.perkBonus) * duelSlot3);
+    seat.spellReadyAt[slot] = echo ? now : now + Math.round(spellCooldownMs(spell.cooldownMs, seat.perkBonus, seat.gear.cooldown) * duelSlot3);
     // Dança do Vento: com cargas, a recarga só começa quando acabam as cargas (ou a janela delas).
     if (spell.charges && !echo) {
       const c = seat.charges;
@@ -1941,7 +2105,7 @@ export class Hunt {
     if (spell.dash && seat.gifts.dashBasic > 0 && this.marks(seat, "hunter_breath") >= 2) {
       const first = SPELLS[spellIn(p, 0) as SpellId];
       if (first && seat.spellReadyAt[0] > now) {
-        seat.spellReadyAt[0] = Math.max(now, seat.spellReadyAt[0] - Math.round(spellCooldownMs(first.cooldownMs, seat.perkBonus) * BREATH.refund));
+        seat.spellReadyAt[0] = Math.max(now, seat.spellReadyAt[0] - Math.round(spellCooldownMs(first.cooldownMs, seat.perkBonus, seat.gear.cooldown) * BREATH.refund));
         this.host.send(sessionId, MSG.cooldown, { slot: 0, ms: seat.spellReadyAt[0] - now } satisfies CooldownMessage);
       }
     }
@@ -3945,7 +4109,7 @@ export class Hunt {
       });
     }
     const now = this.host.now();
-    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "summon"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0)));
+    const stats = summonStats(kind, p.maxHp, this.baseDamage(sessionId, p, "summon"), rankPower(rank) * (1 + (p.spellBonus.get(spell.id) ?? 0) + (this.seats.get(sessionId)?.gear.spells[spell.id] ?? 0)));
     // Vínculo Selvagem (Traço): criaturas com mais vida e mais dano.
     // Laço da Matilha (Dom) soma com o Vínculo Selvagem.
     const summoner = this.seats.get(sessionId);
@@ -4586,7 +4750,7 @@ export class Hunt {
     for (let i = 0; i < drops; i++) {
       const keep = boss ? this.random() < ITEM_DROP_SCALE : this.keepDrop(LOOT_SCALE * ITEM_DROP_SCALE);
       if (keep && this.keepForHumans()) {
-        this.dropItem(rollItem(brain.def.rank, brain.depth, this.random, 0), at.x, at.y);
+        this.dropItem(rollItem(brain.def.cr, this.random, this.teamClasses()), at.x, at.y);
         this.countDrop(brain.def.rank);
       }
     }
@@ -4859,6 +5023,11 @@ export class Hunt {
     if (seat && now < seat.invulnUntil) return;
     const attacker = this.state.monsters.get(hit.attacker);
     const attackerBrain = attacker && this.brains.get(attacker.id);
+    // Totem da Fortaleza: o orc perto dele bate mais forte.
+    if (attacker && this.nearTotem(attacker)) {
+      if (seat) bump(seat.stats.scenery, "dano_do_totem", Math.round(raw * SCENE_TOTEM.damage));
+      raw *= 1 + SCENE_TOTEM.damage;
+    }
     // Lamento Profundo (Dom): o monstro enfraquecido bate mais fraco.
     if (attackerBrain && now < attackerBrain.weakUntil) raw *= 1 - attackerBrain.weakPct;
     // Fúria Berserker: mais frágil enquanto dura.
@@ -4897,7 +5066,7 @@ export class Hunt {
     const bedrockArmor = seat && still > 0 && this.marks(seat, "bedrock") >= 3 ? BEDROCK.armor : 0;
     const banners = this.bannersOver(p);
     const bannerArmor = banners.some((s) => this.marks(s, "living_banner") >= 2) ? BANNER.armor : 0;
-    const armor = (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor + (seat?.gifts.armor ?? 0)
+    const armor = CLASSES[p.classId as ClassId].armor + (seat?.gear.armor ?? 0) + (seat?.perkBonus.armor ?? 0) + (seat?.armorBonus ?? 0) + fieldArmor + formArmor + sapArmor + (seat?.gifts.armor ?? 0)
       + bedrockArmor + bannerArmor; // Couro Curtido (Dom): armadura fixa, somada ao equipamento.
     // Corroído: a armadura derrete e cada acúmulo deixa o golpe mais forte.
     const corrode = seat?.effects.corrode && now < seat.effects.corrode.until ? 1 + CORRODE_PER_STACK * seat.effects.corrode.stacks : 1;
@@ -4944,7 +5113,7 @@ export class Hunt {
       }
     }
     if (seat) {
-      const kind = this.state.monsters.get(hit.attacker)?.kind ?? seat.dot?.kind ?? "?";
+      const kind = this.state.monsters.get(hit.attacker)?.kind ?? (hit.attacker === SCENE_FIRE_ID ? SCENE_FIRE_ID : undefined) ?? seat.dot?.kind ?? "?";
       bump(seat.stats.damageTaken, kind, Math.min(amount, p.hp));
       if (hit.special) bump(seat.stats.specialDamage, kind, Math.min(amount, p.hp));
       if (hit.ability) bump(seat.stats.abilityDamage, `${kind}:${hit.ability}`, Math.min(amount, p.hp));
@@ -5165,7 +5334,7 @@ export class Hunt {
   }
 
   /**
-   * O que um baú dá (aberto ou o Mímico morto): um item melhor que o do mini-boss e poções, que caem em `dropAt`
+   * O que um baú dá (aberto ou o Mímico morto): um item de ND `CHEST_ITEM_CR` e poções, que caem em `dropAt`
    * (padrão: o próprio tile). O gold se divide pela equipe; `openerId` conta o baú na telemetria.
    */
   private chestReward(openerId: string, x: number, y: number, depth: number, dropAt = { x, y }) {
@@ -5175,7 +5344,7 @@ export class Hunt {
     if (stats) stats.chestsOpened++;
     // O item do baú sai com o corte dos itens (`ITEM_DROP_SCALE`, menos a parte dos bots); as poções, com a chance do mapa.
     if (this.random() < ITEM_DROP_SCALE && this.keepForHumans()) {
-      this.dropItem(rollItem("miniboss", depth, this.random, 1), dropAt.x, dropAt.y);
+      this.dropItem(rollItem(CHEST_ITEM_CR, this.random, this.teamClasses()), dropAt.x, dropAt.y);
       this.countDrop("chest");
     }
     for (const potion of POTION_IDS) if (this.keepDrop()) this.dropItem(potion, dropAt.x, dropAt.y);
@@ -5297,6 +5466,12 @@ export class Hunt {
     this.pickupBlocked.delete(id);
   }
 
+  /** Item pego do chão: avisa quem pegou (o cliente faz o item voar até o herói) e tira do chão. */
+  private takeGroundItem(id: string, sessionId: string) {
+    this.host.broadcast(MSG.pickup, { id, sessionId } satisfies PickupMessage);
+    this.removeGroundItem(id);
+  }
+
   // Menu da bag na hunt: o cliente só manda a intenção; aqui se valida e se troca.
 
   bagEquip(sessionId: string, msg: BagEquipMessage) {
@@ -5335,22 +5510,36 @@ export class Hunt {
   }
 
   /**
-   * Passar por cima de um item melhor que o equipado troca na hora e o antigo vai para a bag.
-   * Os outros itens vão para a bag. Com a bag cheia, nada sai do chão (o item trocado também fica
-   * no chão) e qualquer jogador pode pegar, não há dono. Poções vão para a mochila até o limite de cada tipo.
+   * Passar por cima de um item (ou a `PICKUP_RANGE` tile dele, contando a diagonal) pega o item, que voa até o herói.
+   * Item melhor que o equipado troca na hora e o antigo vai para a bag; os outros itens vão para a bag. Com a bag
+   * cheia, nada sai do chão (o item trocado também fica no chão) e qualquer jogador pode pegar, não há dono. Poções
+   * vão para a mochila até o limite de cada tipo. Com dois heróis perto do mesmo item, quem está em cima dele pega
+   * primeiro.
    */
   private pickUpItems() {
-    // Quem largou um item já saiu de cima dele: volta a poder pegar.
+    // Quem largou um item já se afastou dele: volta a poder pegar.
     this.pickupBlocked.forEach((sessionId, id) => {
       const p = this.state.players.get(sessionId);
       const it = this.state.items.get(id);
-      if (!p || !it || p.x !== it.x || p.y !== it.y) this.pickupBlocked.delete(id);
+      if (!p || !it || tileDistance(p.x, p.y, it.x, it.y) > PICKUP_RANGE) this.pickupBlocked.delete(id);
     });
+    for (let range = 0; range <= PICKUP_RANGE; range++) this.pickUpAt(range);
+  }
+
+  /** Item ao alcance de pegar: na distância dada e sem quina de parede entre os dois (na diagonal). */
+  private canReach(p: Player, it: GroundItem, range: number) {
+    if (tileDistance(p.x, p.y, it.x, it.y) !== range) return false;
+    if (p.x === it.x || p.y === it.y) return true;
+    return isWalkable(this.dungeon, it.x, p.y) || isWalkable(this.dungeon, p.x, it.y);
+  }
+
+  /** Pega os itens a exatamente `range` tiles de cada herói. */
+  private pickUpAt(range: number) {
     this.state.players.forEach((p, sessionId) => {
       // Bot não pega nada do chão: itens e poções ficam para os humanos.
       if (p.status !== "playing" || p.bot) return;
       const here = [...this.state.items.values()]
-        .filter((it) => it.x === p.x && it.y === p.y && this.pickupBlocked.get(it.id) !== sessionId)
+        .filter((it) => this.canReach(p, it, range) && this.pickupBlocked.get(it.id) !== sessionId)
         .sort((a, b) => itemScore(b.itemId) - itemScore(a.itemId));
       for (const ground of here) {
         if (isPotion(ground.itemId)) {
@@ -5360,7 +5549,7 @@ export class Hunt {
           p[field] += 1;
           const picked = this.seats.get(sessionId)?.stats.potions.picked;
           if (picked) picked[ground.itemId] = (picked[ground.itemId] ?? 0) + 1;
-          this.removeGroundItem(ground.id);
+          this.takeGroundItem(ground.id, sessionId);
           this.notice(p.x, p.y - 1, POTIONS[ground.itemId].name, POTIONS[ground.itemId].color);
           continue;
         }
@@ -5374,7 +5563,7 @@ export class Hunt {
           }
           p.bag.push(ground.itemId);
           seat?.stats.items.picked.push(ground.itemId);
-          this.removeGroundItem(ground.id);
+          this.takeGroundItem(ground.id, sessionId);
           this.notice(p.x, p.y - 1, `${RUNES[ground.itemId].name} 🎒${p.bag.length}/${BAG_SIZE}`, RUNES[ground.itemId].color);
           continue;
         }
@@ -5392,7 +5581,7 @@ export class Hunt {
           this.refreshGear(sessionId);
         }
         seat?.stats.items.picked.push(def.id);
-        this.removeGroundItem(ground.id);
+        this.takeGroundItem(ground.id, sessionId);
         // Vestido direto (slot vazio ou melhor que o vestido) não aparece na fileira da bag: o aviso diz que vestiu.
         const text = action === "bag" ? `${def.name} 🎒${p.bag.length}/${BAG_SIZE}`
           : action === "swap" ? `Vestiu ${def.name} · antigo 🎒${p.bag.length}/${BAG_SIZE}`

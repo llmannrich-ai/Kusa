@@ -476,13 +476,13 @@ export class Hub {
     const boosted = statsFor(id, 1, bonus);
     const damage = boosted.damage * (1 + gear.damage);
     const range = c.attackRange + (c.attackRange > 1 ? gear.range : 0);
-    const armor = gear.armor + runes.armor;
+    const armor = c.armor + gear.armor + runes.armor;
     const speed = (n: number) => n.toFixed(1).replace(".", ",");
     return {
       hp: { label: "Vida", icon: "❤️", base: base.maxHp, value: boosted.maxHp, text: String(boosted.maxHp) },
       mana: { label: "Mana", icon: "💧", base: base.maxMana, value: boosted.maxMana, text: String(boosted.maxMana) },
       damage: { label: "Dano", icon: "⚔️", base: base.damage, value: damage, text: String(Math.round(damage)) },
-      armor: { label: "Armadura", icon: "🛡️", base: 0, value: armor, text: armor ? `${armor} · −${Math.round(damageReduction(armor) * 100)}%` : "0" },
+      armor: { label: "Armadura", icon: "🛡️", base: c.armor, value: armor, text: armor ? `${armor} · −${Math.round(damageReduction(armor) * 100)}%` : "0" },
       range: { label: "Alcance", icon: "🏹", base: c.attackRange, value: range, text: range === 1 ? "Corpo a corpo" : `${range} tiles` },
       speed: { label: "Velocidade", icon: "👟", base: base.speed, value: boosted.speed, text: `${speed(boosted.speed)}/s` },
     };
@@ -1614,6 +1614,8 @@ export function itemLabel(def: ItemDef) {
 export function statList(def: ItemDef) {
   const list = el("ul", "item-stats");
   for (const line of describeStats(def.stats)) list.append(el("li", "", line));
+  // Lendário: a história da peça em itálico no fim da lista.
+  if (def.lore) list.append(el("li", "item-lore", def.lore));
   return list;
 }
 

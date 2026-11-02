@@ -1,5 +1,5 @@
-import { COMMON_DROP_CHANCE, GUARANTEED_DROPS, RARITY_CHANCES } from "./items.ts";
-import { ITEM_DROP_SCALE, LOOT_SCALE, monsterPower, type MapDef } from "./maps.ts";
+import { COMMON_DROP_CHANCE, GUARANTEED_DROPS, challengeTier, rarityChances, type ItemTier } from "./items.ts";
+import { CHEST_ITEM_CR, ITEM_DROP_SCALE, LOOT_SCALE, monsterPower, type MapDef } from "./maps.ts";
 import { MONSTERS, monsterStats, type MonsterKind } from "./monsters.ts";
 import { COMMON_POTION_CHANCE, GUARANTEED_POTIONS } from "./potions.ts";
 import { RUNE_DROPS } from "./runes.ts";
@@ -14,8 +14,10 @@ export interface DropOdds {
   /** Sorteios de item de equipamento e a chance de cada um sair. */
   items: number;
   itemChance: number;
-  /** Chance de cada item sair raro ou mágico (o resto é comum). */
-  rarity: { rare: number; magic: number };
+  /** Material de cada item pelo Nível de Desafio (com `LUCKY_TIER_CHANCE` de vir um acima). */
+  tier: ItemTier;
+  /** Chance de cada item sair raro, mágico ou lendário (o resto é comum), pelo Nível de Desafio. */
+  rarity: { rare: number; magic: number; legendary: number };
   /** Sorteios de poção e a chance de cada um sair. */
   potions: number;
   potionChance: number;
@@ -53,13 +55,19 @@ export function dropOdds(map: MapDef, kind: MonsterKind): DropOdds {
     gold: nothing ? [0, 0] : [Math.round(min * scale), Math.round(max * scale)],
     items: nothing ? 0 : guaranteed || 1,
     itemChance: (guaranteed ? 1 : COMMON_DROP_CHANCE) * (boss ? ITEM_DROP_SCALE : keep(map, LOOT_SCALE * ITEM_DROP_SCALE)),
-    rarity: RARITY_CHANCES[def.rank],
+    tier: challengeTier(def.cr),
+    rarity: rarityChances(def.cr),
     potions: nothing ? 0 : potions || 1,
     potionChance: (potions ? 1 : COMMON_POTION_CHANCE) * (boss ? 1 : keep(map)),
     runes: nothing || map.rewardRunes ? 0 : RUNE_DROPS[def.rank],
     chest: !nothing && kind === "mimic",
     nothing,
   };
+}
+
+/** Material e raridade do item do baú (aberto ou o Mímico), como `Hunt.chestReward`. */
+export function chestItemOdds() {
+  return { tier: challengeTier(CHEST_ITEM_CR), rarity: rarityChances(CHEST_ITEM_CR) };
 }
 
 /** Chance de o item do baú (aberto ou o Mímico) sair, como `Hunt.chestReward`. */

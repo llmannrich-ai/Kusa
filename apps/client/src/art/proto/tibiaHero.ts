@@ -53,6 +53,8 @@ export interface ProtoLook {
 // --- Kits das classes -----------------------------------------------------------------
 
 interface Kit {
+  /** Lendários vestidos (`ProtoGear.legend`). */
+  legend?: ProtoGear["legend"];
   look: ProtoLook;
   hair: "none" | "short" | "medium" | "long" | "flowing";
   beard: "none" | "stubble" | "long";
@@ -124,7 +126,7 @@ const HERO_SKIN = 0.95, HERO_GRIM = 1.12;
 const squeeze = (pts: Pt[], w = 1): Pt[] => (w === 1 ? pts : pts.map(([x, y]) => [CX + (x - CX) * w, y]));
 
 type Tier = 1 | 2 | 3 | 4 | 5;
-type WeaponFamily = "sword" | "axe" | "bow" | "xbow" | "wand" | "staff";
+type WeaponFamily = "sword" | "axe" | "bow" | "xbow" | "wand" | "staff" | "mace" | "spear" | "orb" | "scythe" | "totem";
 export type ProtoWeapon = `${WeaponFamily}-${Tier}` | `${WeaponFamily}-${Tier}-magic`;
 export type ProtoHelmet = `war-${Tier}` | `war-${Tier}-magic` | `arc-${Tier}` | `arc-${Tier}-magic` | "wolf" | "demon";
 export type ProtoArmor = `armor-${Tier}` | `armor-${Tier}-magic` | `robe-${Tier}` | `robe-${Tier}-magic`;
@@ -168,9 +170,15 @@ export interface ProtoGear {
   boots?: ProtoBoots;
   shield?: ProtoShield;
   weapon?: ProtoWeapon;
+  /** Lendários: a chave da peça única de cada slot (`LEGENDARIES` no shared), desenhada sobre o mágico de Dragão. */
+  legend?: Partial<Record<LegendSlot, string>>;
 }
 
 const tierOf = (id: string) => Number(/(\d)(?:-magic)?$/.exec(id)?.[1] ?? 0);
+/** Armas que vão pela pose da espada (golpe), da varinha (na mão) e do cajado (haste até o chão). */
+const isBladeId = (w: string) => /^(sword|mace)-/.test(w);
+const isWandId = (w: string) => /^(wand|orb)-/.test(w);
+const isPoleId = (w: string) => /^(staff|spear|scythe|totem)-/.test(w);
 
 const KITS: Record<ProtoClass, Kit> = {
   base: {
@@ -219,7 +227,7 @@ export const mergeLook = (extra: Partial<ProtoLook>): ProtoLook => ({ ...KNIGHT_
 
 // --- Materiais ----------------------------------------------------------------------
 
-export enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon, Stone, Wool, Felt, Night, Indigo, Silk, Arcane, Violet, Bone, Moss, Clay, Blood, Slate, Soot, GreenDragon, DragonBelly, Membrane, Venom }
+export enum Mat { Skin, Hair, Primary, Secondary, Detail, Trim, Steel, Eye, White, Lip, Iris, Linen, Wood, Leaf, Gem, Fur, FurLight, Ember, Iron, Horn, Amber, Leather, Bronze, Mithral, Dragon, Crest, Patina, Sapphire, Mane, RedDragon, Stone, Wool, Felt, Night, Indigo, Silk, Arcane, Violet, Bone, Moss, Clay, Blood, Slate, Soot, GreenDragon, DragonBelly, Membrane, Venom, Obsidian, Frost, Gold, Moon, Brass, Copper, Shadow, Wing }
 
 const OUTLINE: Rgb = rgb("#1a1210");
 
@@ -274,6 +282,15 @@ function ramps(look: ProtoLook): Rgb[][] {
     r("#c9bc7a", 0.95, 7), // placas da barriga do dragão
     r("#4e5c2c", 1.05, 8), // membrana da asa
     r("#9ad23a", 1.2, 12, true), // gás venenoso
+    // Lendários (`docs/ITENS_LENDARIOS.md`).
+    r("#2e2440", 1.35, 10, true), // obsidiana
+    r("#8fdcf2", 1.15, 10, true), // gelo eterno
+    r("#e8b432", 1.3, 10, true), // ouro
+    r("#c4cede", 1.3, 6, true), // prata do luar
+    r("#c49432", 1.3, 8, true), // latão gnomo
+    r("#c0683a", 1.25, 8, true), // cobre
+    r("#3c3650", 1, 8), // sombra costurada
+    r("#6aa898", 1.15, 14, true), // asa iridescente
   ];
 }
 
@@ -388,6 +405,13 @@ export class Canvas {
       ? { k: outer.k * k, sx: outer.sx, tx: outer.tx + t[0] * outer.k * outer.sx, ty: outer.ty + t[1] * outer.k, parent: outer }
       : { k, sx: 1, tx: t[0], ty: t[1], parent: null }, outer, [k, 0, t[0], 0, k, t[1]]);
     try { return draw(); } finally { this.xf = outer; }
+  }
+
+  /** Sem escala nem ombros largos: `draw` pinta direto no pixel final (unidade = pixel ÷ `K`; enfeites dos lendários). */
+  bare<T>(draw: () => T): T {
+    const outer = this.xf, flare = this.flare;
+    this.xf = null; this.flare = null;
+    try { return draw(); } finally { this.xf = outer; this.flare = flare; }
   }
 
   /** Volta à escala de fora dentro de um `scaled` (a haste do cajado não cresce com a cabeça). */
@@ -1622,8 +1646,8 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
     case "skull": return () => skullStaff(c, at, top - 19, FEET - 0.5);
     case "branch": return () => branch(c, at, top + 2, FEET - 1);
     default:
-      if (kit.weapon.startsWith("wand-")) { const id = kit.weapon; return () => c.scaled(at, 1.5, () => wandArt(c, id, at, [at[0] + out * 4.2, at[1] - 7.4 - tierOf(id) * 0.4])); }
-      if (kit.weapon.startsWith("staff-")) { const id = kit.weapon; return () => staffArt(c, id, at, top - 19, FEET - 0.5); }
+      if (isWandId(kit.weapon)) { const id = kit.weapon; return () => c.scaled(at, 1.5, () => wandArt(c, id, at, [at[0] + out * 4.2, at[1] - 7.4 - tierOf(id) * 0.4])); }
+      if (isPoleId(kit.weapon)) { const id = kit.weapon; return () => staffArt(c, id, at, top - 19, FEET - 0.5); }
       if (kit.weapon.startsWith("bow-")) { const id = kit.weapon; return () => bowArt(c, id, at, out); }
       if (kit.weapon.startsWith("xbow-")) { const id = kit.weapon; return () => crossbowArt(c, id, at, [0, 1], false); }
       if (kit.weapon.startsWith("axe-")) {
@@ -1632,7 +1656,7 @@ function weaponFront(c: Canvas, kit: Kit, at: Pt, out: number, top: number): (()
           ? () => axeArt(c, id, [at[0], FEET - 0.6], [at[0] + out * 1.6, top - 20], out)
           : () => axeArt(c, id, [at[0], at[1] + 3], [at[0] + out * 1.2, at[1] - AXE_LEN[tierOf(id)]], out);
       }
-      if (kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic") {
+      if (isBladeId(kit.weapon) && kit.weapon !== "sword-4-magic") {
         const t = tierOf(kit.weapon), id = kit.weapon;
         return () => swordById(c, id, at, t === 5 ? [at[0] + out * 3, top - 30] : [at[0] + out * 4, at[1] + SWORD_LEN[t]]);
       }
@@ -1650,7 +1674,7 @@ export type HeroGrip = "melee" | "bow" | "staff";
 function gripOf(kit: Kit): HeroGrip {
   const w = kit.weapon;
   if (w === "bow" || /^x?bow-/.test(w)) return "bow";
-  if (w === "staff" || w === "skull" || w === "branch" || /^(staff|wand)-/.test(w)) return "staff";
+  if (w === "staff" || w === "skull" || w === "branch" || /^(staff|wand|orb|spear|scythe|totem)-/.test(w)) return "staff";
   return "melee";
 }
 
@@ -1658,9 +1682,9 @@ function gripOf(kit: Kit): HeroGrip {
 function frontAngle(kit: Kit, ha: Pt, out: number, top: number): number {
   const w = kit.weapon, t = tierOf(w);
   if (w === "sword") return deg([out * 4, 21]);
-  if (w.startsWith("sword-")) return t === 5 ? deg([out * 3, top - 30 - ha[1]]) : deg([out * 4, SWORD_LEN[t]]);
+  if (isBladeId(w)) return t === 5 ? deg([out * 3, top - 30 - ha[1]]) : deg([out * 4, SWORD_LEN[t]]);
   if (w.startsWith("axe-")) return axeTwoHanded(w) ? deg([out * 1.6, top - 20 - (FEET - 0.6)]) : deg([out * 1.2, -AXE_LEN[t] - 3]);
-  if (w.startsWith("wand-")) return deg([out * 4.2, -7.4 - t * 0.4]);
+  if (isWandId(w)) return deg([out * 4.2, -7.4 - t * 0.4]);
   return -90;
 }
 
@@ -1668,7 +1692,7 @@ function frontAngle(kit: Kit, ha: Pt, out: number, top: number): number {
 function weaponReach(kit: Kit): number {
   const w = kit.weapon, t = tierOf(w);
   if (w === "sword") return 21;
-  if (w.startsWith("sword-")) return t === 5 ? 30 : SWORD_LEN[t];
+  if (isBladeId(w)) return t === 5 ? 30 : SWORD_LEN[t];
   if (w.startsWith("axe-")) return axeTwoHanded(w) ? 26 : AXE_LEN[t] + 2;
   return 12;
 }
@@ -1771,7 +1795,7 @@ function front(c: Canvas, kit: Kit, frame: number, back: boolean, mp?: MonsterPo
     // e desce com a mão.
     const grip = gripOf(kit);
     const spin = holds && mp?.point !== undefined && grip !== "bow" ? (mp.point - frontAngle(kit, ha, side, top)) * RAD : 0;
-    const lift = holds && grip === "staff" && !kit.weapon.startsWith("wand-") ? Math.max(-8, Math.min(3, ha[1] - rest[1])) : 0;
+    const lift = holds && grip === "staff" && !isWandId(kit.weapon) ? Math.max(-8, Math.min(3, ha[1] - rest[1])) : 0;
     const wield = (draw: () => void) => c.rotated(ha, spin, () => (lift ? c.placed(1, [0, lift], draw) : draw()));
     const held = holds ? weaponFront(c, kit, ha, side, top) : undefined;
     arm(c, kit, sh, el, ha, false, held && (() => wield(held)));
@@ -1847,9 +1871,9 @@ function weaponAngle(kit: Kit, ha: Pt, top: number): number {
   const w = kit.weapon;
   if (w === "branch") return deg([0, top + 2 - FEET]);
   if (w.startsWith("axe-")) return axeTwoHanded(w) ? deg([-10, top - 18 - FEET + 1]) : deg([-6.6, -AXE_LEN[tierOf(w)] - 3]);
-  if (w.startsWith("sword-")) return tierOf(w) === 5 ? deg([-22, top - 22 - ha[1]]) : deg([-0.74, 0.68]);
-  if (w.startsWith("wand-")) return deg([-7.4 - tierOf(w) * 0.3, -4.4]);
-  if (w === "staff" || w.startsWith("staff-")) return -90;
+  if (isBladeId(w)) return tierOf(w) === 5 ? deg([-22, top - 22 - ha[1]]) : deg([-0.74, 0.68]);
+  if (isWandId(w)) return deg([-7.4 - tierOf(w) * 0.3, -4.4]);
+  if (w === "staff" || isPoleId(w)) return -90;
   return 0;
 }
 
@@ -1877,20 +1901,20 @@ function sideUpper(c: Canvas, kit: Kit, s: number, b: number, top: number, mp?: 
   const hero = !!kit.build && mp !== undefined;
   const style = gripOf(kit);
   const spin = hero && style === "staff" && kit.weapon !== "branch" ? a : 0;
-  const lift = hero && style === "staff" && !kit.weapon.startsWith("wand-") ? Math.max(-8, Math.min(3, ha[1] - (top + 18 + reach))) : 0;
+  const lift = hero && style === "staff" && !isWandId(kit.weapon) ? Math.max(-8, Math.min(3, ha[1] - (top + 18 + reach))) : 0;
   const wield = (draw: () => void) => () => c.rotated(ha, spin, () => (lift ? c.placed(1, [0, lift], draw) : draw()));
   const grip = kit.weapon === "bow" ? () => bow(c, ha, -1)
     : kit.weapon === "staff" ? wield(() => staff(c, ha, top - 19, FEET - 0.5))
     : kit.weapon === "skull" ? wield(() => skullStaff(c, ha, top - 19, FEET - 0.5))
     : kit.weapon === "branch" ? () => (lift ? c.placed(1, [0, lift], () => branch(c, ha, top + 2, FEET - 1, a)) : branch(c, ha, top + 2, FEET - 1, a))
-    : kit.weapon.startsWith("wand-") ? wield(() => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4])))
-    : kit.weapon.startsWith("staff-") ? wield(() => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5))
+    : isWandId(kit.weapon) ? wield(() => c.scaled(ha, 1.5, () => wandArt(c, kit.weapon, ha, [ha[0] - 7.4 - tierOf(kit.weapon) * 0.3, ha[1] - 4.4])))
+    : isPoleId(kit.weapon) ? wield(() => staffArt(c, kit.weapon, ha, top - 19, FEET - 0.5))
     : kit.weapon.startsWith("bow-") ? () => bowArt(c, kit.weapon, ha, -1)
     : kit.weapon.startsWith("xbow-") ? () => crossbowArt(c, kit.weapon, ha, [-0.97, 0.24], true)
     : kit.weapon.startsWith("axe-") ? () => (axeTwoHanded(kit.weapon)
       ? axeArt(c, kit.weapon, turn([ha[0] + 3, FEET - 1]), turn([ha[0] - 7, top - 18]), -1)
       : axeArt(c, kit.weapon, turn([ha[0] + 1.6, ha[1] + 3]), turn([ha[0] - 5, ha[1] - AXE_LEN[tierOf(kit.weapon)]]), -1))
-    : kit.weapon.startsWith("sword-") && kit.weapon !== "sword-4-magic" ? () => {
+    : isBladeId(kit.weapon) && kit.weapon !== "sword-4-magic" ? () => {
       const t = tierOf(kit.weapon);
       swordById(c, kit.weapon, ha, turn(t === 5 ? [ha[0] - 22, top - 22] : [ha[0] - SWORD_LEN[t] * 0.74, ha[1] + SWORD_LEN[t] * 0.68]));
     }
@@ -3693,16 +3717,16 @@ function armMagic(c: Canvas, tier: number, shoulder: Pt, elbow: Pt, at: Pt, far:
 
 const isMagic = (id: string) => id.endsWith("-magic");
 
-function armorTorso(c: Canvas, id: string, top: number, view: ProtoDir, sway: number): number[] {
+function armorTorsoBase(c: Canvas, id: string, top: number, view: ProtoDir, sway: number): number[] {
   if (id.startsWith("robe-")) return robeTorso(c, id, top, view, sway);
   return isMagic(id) ? armorMagicTorso(c, tierOf(id), top, view, sway) : armorTorsoCommon(c, tierOf(id), top, view, sway);
 }
-function armorShoulders(c: Canvas, id: string, top: number, view: ProtoDir, at: readonly Pt[], far = false) {
+function armorShouldersBase(c: Canvas, id: string, top: number, view: ProtoDir, at: readonly Pt[], far = false) {
   if (id.startsWith("robe-")) robeShoulders(c, id, top, view, at, far);
   else if (isMagic(id)) shouldersMagic(c, tierOf(id), top, view, at, far);
   else shouldersCommon(c, tierOf(id), top, view, at, far);
 }
-function armorArm(c: Canvas, id: string, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) {
+function armorArmBase(c: Canvas, id: string, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) {
   if (id.startsWith("robe-")) robeArm(c, id, shoulder, elbow, at, far);
   else if (isMagic(id)) armMagic(c, tierOf(id), shoulder, elbow, at, far);
   else armorArmCommon(c, tierOf(id), shoulder, elbow, at, far);
@@ -3710,14 +3734,14 @@ function armorArm(c: Canvas, id: string, shoulder: Pt, elbow: Pt, at: Pt, far: b
 /** A armadura deixa o cinto da classe por cima? */
 const keepsBelt = (id: string) => !id.startsWith("robe-") && (isMagic(id) ? [false, true, false, false, false, false] : [false, true, false, true, false, true])[tierOf(id)];
 
-function helmetArt(c: Canvas, id: string, view: ProtoDir, cx: number, cy: number, top: number) {
+function helmetArtBase(c: Canvas, id: string, view: ProtoDir, cx: number, cy: number, top: number) {
   if (id.startsWith("arc-")) arcaneHat(c, id, view, cx, cy, top);
   else if (isMagic(id)) warHelmetMagic(c, tierOf(id), view, cx, cy, top);
   else warHelmet(c, tierOf(id), view, cx, cy, top);
 }
 
 /** A espada do id na mão `at` apontando para `tip` (a Dançarina não vai na mão: ver `dancingSword`). */
-function swordById(c: Canvas, id: string, at: Pt, tip: Pt) {
+function swordByIdBase(c: Canvas, id: string, at: Pt, tip: Pt) {
   if (isMagic(id)) swordMagic(c, at, tip, tierOf(id));
   else swordArt(c, at, tip, tierOf(id));
 }
@@ -3737,7 +3761,7 @@ const axeTwoHanded = (id: string) => tierOf(id) === 5;
  * Machado do id. `bottom` e `topEnd` são as pontas do cabo; `out` (−1/1) é o lado da lâmina, para fora do corpo.
  * A cabeça é desenhada no referencial do cabo: `a` para fora (lâmina), `b` ao longo do cabo (para cima).
  */
-function axeArt(c: Canvas, id: string, bottom: Pt, topEnd: Pt, out: number) {
+function axeArtBase(c: Canvas, id: string, bottom: Pt, topEnd: Pt, out: number) {
   const tier = tierOf(id), magic = isMagic(id);
   const dx = topEnd[0] - bottom[0], dy = topEnd[1] - bottom[1];
   const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
@@ -3897,7 +3921,7 @@ function bowString(c: Canvas, a: Pt, b: Pt, mat: Mat, tone: number | ((k: number
   thread(c, a, b, mat, tone);
 }
 
-function bowArt(c: Canvas, id: string, at: Pt, out: number) {
+function bowArtBase(c: Canvas, id: string, at: Pt, out: number) {
   const [half, belly, recurve] = BOW_SHAPE[id];
   const pts = bowPoints(at, out, half, belly, recurve);
   const top = pts[0], bot = pts[pts.length - 1];
@@ -4007,7 +4031,7 @@ function bowArt(c: Canvas, id: string, at: Pt, out: number) {
  * Besta do id. `s` aponta da coronha para a frente (para onde atira), `p` ao longo do arco. De frente ela pende
  * da mão com a frente para baixo (um T de cabeça para baixo); de lado vai na horizontal, para a frente.
  */
-function crossbowArt(c: Canvas, id: string, at: Pt, s: Pt, side: boolean) {
+function crossbowArtBase(c: Canvas, id: string, at: Pt, s: Pt, side: boolean) {
   const tier = tierOf(id), magic = isMagic(id);
   const len = 9 + tier * 1.2;
   // Tudo em unidades da besta, ampliadas para ela ter o porte de uma arma de nível no corpo de 128 px.
@@ -4146,7 +4170,7 @@ function crossbowArt(c: Canvas, id: string, at: Pt, s: Pt, side: boolean) {
 // --- Lote 5: varinhas e cajados (docs/ARTE_ITENS.md) -----------------------------------
 
 /** Varinha do id, do cabo (`at`, na mão) até a ponta `tip`. */
-function wandArt(c: Canvas, id: string, at: Pt, tip: Pt) {
+function wandArtBase(c: Canvas, id: string, at: Pt, tip: Pt) {
   const tier = tierOf(id), magic = isMagic(id);
   const dx = tip[0] - at[0], dy = tip[1] - at[1];
   const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, gx = -uy, gy = ux;
@@ -4264,7 +4288,7 @@ function coil(c: Canvas, x: number, y0: number, y1: number, turns: number, r: nu
 }
 
 /** Cajado do id, em pé do chão (`bottom`) até `top`, passando pela mão `at`. */
-function staffArt(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
+function staffArtBase(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
   c.scaled([at[0], top + 2], 1.45, () => staffHead(c, id, at, top, bottom));
 }
 
@@ -5000,7 +5024,7 @@ function robeArm(c: Canvas, id: string, shoulder: Pt, elbow: Pt, at: Pt, far: bo
 
 // --- Calças arcanas --------------------------------------------------------------------
 
-function pantsArt(c: Canvas, id: string, hip: Pt, knee: Pt, ankle: Pt, far: boolean, front: boolean) {
+function pantsArtBase(c: Canvas, id: string, hip: Pt, knee: Pt, ankle: Pt, far: boolean, front: boolean) {
   const dk = (o?: Offset): Offset => (X, Y) => (o ? o(X, Y) : 0) + (far ? -1 : 0);
   // Lado de fora da perna (de lado, a costura fica no meio).
   const outer = hip[0] < CX - 1 ? -1 : hip[0] > CX + 2 ? 1 : 0;
@@ -5107,7 +5131,7 @@ function pantsArt(c: Canvas, id: string, hip: Pt, knee: Pt, ankle: Pt, far: bool
 // --- Lote 7: perneiras de guerra, botas e escudos (docs/ARTE_ITENS.md) -------------------
 
 /** Perneiras de guerra (cavaleiro e paladino): trocam a calça do kit; a bota continua por cima. */
-function warLegs(c: Canvas, id: string, hip: Pt, knee: Pt, ankle: Pt, far: boolean, front: boolean) {
+function warLegsBase(c: Canvas, id: string, hip: Pt, knee: Pt, ankle: Pt, far: boolean, front: boolean) {
   const dk = (o?: Offset): Offset => (X, Y) => (o ? o(X, Y) : 0) + (far ? -1 : 0);
   const outer = hip[0] < CX - 1 ? -1 : hip[0] > CX + 2 ? 1 : 0;
   const along = (u: number): Pt => (u < 0.5 ? lerp(hip, knee, u * 2) : lerp(knee, ankle, (u - 0.5) * 2));
@@ -5241,7 +5265,7 @@ function bootBase(c: Canvas, ankle: Pt, toe: Pt, far: boolean, topY: number, mat
 }
 
 /** Botas (todos): trocam o calçado do kit. */
-function bootsArt(c: Canvas, id: string, knee: Pt, ankle: Pt, toe: Pt, far: boolean, front: boolean) {
+function bootsArtBase(c: Canvas, id: string, knee: Pt, ankle: Pt, toe: Pt, far: boolean, front: boolean) {
   const dk = (o?: Offset): Offset => (X, Y) => (o ? o(X, Y) : 0) + (far ? -1 : 0);
   const sideView = Math.abs(toe[0] - ankle[0]) > 1;
   const fwd = sideView ? Math.sign(toe[0] - ankle[0]) : 0;
@@ -5356,7 +5380,7 @@ function bootsArt(c: Canvas, id: string, knee: Pt, ankle: Pt, toe: Pt, far: bool
  * Escudo na mão livre `hand` (lado `side` da tela): de frente mostra a face, de costas o verso de madeira com as alças,
  * de lado a face quase de perfil. O Escudo Animado flutua ao lado, sem a mão.
  */
-function shieldArt(c: Canvas, id: string, hand: Pt, view: ProtoDir, side: number) {
+function shieldArtBase(c: Canvas, id: string, hand: Pt, view: ProtoDir, side: number) {
   const floating = id === "shield-3-magic";
   const at: Pt = floating
     ? (view === "side" ? [hand[0] - 8, hand[1] - 8] : [hand[0] + side * 9.4, hand[1] - 10])
@@ -6069,7 +6093,9 @@ function iconPose(c: Canvas, id: string) {
     case "axe": axeArt(c, id, [CX - 6, 72], [CX + 4, 50], 1); return;
     case "bow": bowArt(c, id, [CX, 55], 1); return;
     case "xbow": crossbowArt(c, id, [CX, 55], [-0.97, 0.24], true); return;
-    case "wand": wandArt(c, id, [CX - 4, 62], [CX + 5, 52]); return;
+    case "wand": case "orb": wandArt(c, id, [CX - 4, 62], [CX + 5, 52]); return;
+    case "mace": swordById(c, id, [CX - 8, 66], [CX + 6, 52]); return;
+    case "spear": case "scythe": case "totem": staffArt(c, id, [CX, 52], 34, 60); return;
     // Haste mais curta que a vestida: a cabeça do cajado é o que se reconhece no quadradinho.
     case "staff": staffArt(c, id, [CX, 52], 34, 60); return;
     case "war": case "arc":
@@ -6129,36 +6155,58 @@ function pantsTop(c: Canvas, cloth: number) {
 /** Desenho do item no ícone, sem a gema (o raro e o comum usam o mesmo), feito uma vez. */
 const iconArt = new Map<string, HTMLCanvasElement>();
 
-function iconDrawing(id: string): HTMLCanvasElement {
-  const cached = iconArt.get(id);
+function iconDrawing(id: string, legend?: string): HTMLCanvasElement {
+  const key = legend ? `${id}~${legend}` : id;
+  const cached = iconArt.get(key);
   if (cached) return cached;
-  // 1ª passada: onde o item cai no quadro do herói.
-  const probe = new Canvas();
-  iconPose(probe, id);
-  let x0 = S, y0 = S, x1 = -1, y1 = -1;
-  for (let i = 0; i < probe.n; i++) {
-    if (probe.mat[i] < 0) continue;
-    const X = i % S, Y = (i / S) | 0;
-    if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
-  }
-  const c = new Canvas(PROTO_ICON, PROTO_ICON);
-  if (x1 >= 0) {
-    const w = (x1 + 1 - x0) / K, h = (y1 + 1 - y0) / K;
-    const k = Math.min((ICON_U - 3) / w, (ICON_U - 3) / h, 1.6);
-    const mx = (x0 + x1 + 1) / 2 / K, my = (y0 + y1 + 1) / 2 / K;
-    c.placed(k, [ICON_U / 2 - mx * k, ICON_U / 2 - my * k], () => iconPose(c, id));
-  }
-  const canvas = toCanvas(c);
-  iconArt.set(id, canvas);
+  const canvas = toCanvas(iconCanvas(id, legend, PROTO_ICON));
+  iconArt.set(key, canvas);
   return canvas;
+}
+
+/** O item enquadrado num quadrado de `size` pixels (o ícone do jogo usa `PROTO_ICON`). */
+function iconCanvas(id: string, legend: string | undefined, size: number): Canvas {
+  const all = legend ? { weapon: legend, helmet: legend, armor: legend, legs: legend, boots: legend, shield: legend } : undefined;
+  return withLegends(all, () => {
+    // 1ª passada: onde o item cai no quadro do herói.
+    const probe = new Canvas();
+    iconPose(probe, id);
+    let x0 = S, y0 = S, x1 = -1, y1 = -1;
+    for (let i = 0; i < probe.n; i++) {
+      if (probe.mat[i] < 0) continue;
+      const X = i % S, Y = (i / S) | 0;
+      if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+    }
+    const U = size / K;
+    const c = new Canvas(size, size);
+    if (x1 >= 0) {
+      const w = (x1 + 1 - x0) / K, h = (y1 + 1 - y0) / K;
+      const k = Math.min((U - 3) / w, (U - 3) / h, 1.6 * (size / PROTO_ICON));
+      const mx = (x0 + x1 + 1) / 2 / K, my = (y0 + y1 + 1) / 2 / K;
+      c.placed(k, [U / 2 - mx * k, U / 2 - my * k], () => iconPose(c, id));
+    }
+    return c;
+  });
+}
+
+/** Pixels RGBA do item enquadrado (sem navegador: as pranchas de itens em PNG, `scripts/itensPrancha.ts`). */
+export function protoItemIconData(id: string, legend?: string, size = PROTO_ICON): Uint8ClampedArray {
+  return iconCanvas(id, legend, size).render(KNIGHT_LOOK);
 }
 
 /** Gema da raridade no canto (azul no raro, roxa no mágico), desenhada uma vez por raridade. */
 const rarityGems = new Map<string, HTMLCanvasElement>();
-function rarityGem(rarity: "rare" | "magic") {
+function rarityGem(rarity: "rare" | "magic" | "legendary") {
   if (!rarityGems.has(rarity)) {
     const c = new Canvas(PROTO_ICON, PROTO_ICON);
-    gem(c, [ICON_U - 3, 2.6], 1.5, rarity === "magic" ? Mat.Gem : Mat.Sapphire);
+    if (rarity === "legendary") {
+      // Lendário: estrela de ouro no canto, maior que as gemas.
+      const [x, y, r] = [ICON_U - 3.4, 3.2, 2.6];
+      plate(c, Array.from({ length: 10 }, (_, k) => {
+        const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? r * 0.45 : r;
+        return [x + Math.cos(a) * d, y + Math.sin(a) * d] as Pt;
+      }), Mat.Gold);
+    } else gem(c, [ICON_U - 3, 2.6], 1.5, rarity === "magic" ? Mat.Gem : Mat.Sapphire);
     rarityGems.set(rarity, toCanvas(c));
   }
   return rarityGems.get(rarity)!;
@@ -6173,9 +6221,9 @@ function toCanvas(c: Canvas) {
 }
 
 /** Ícone do item no padrão novo (`PROTO_ICON` px): enquadrado e ampliado até caber, com a gema da raridade no canto. */
-export function protoItemIcon(id: string, rarity: "common" | "rare" | "magic"): HTMLCanvasElement {
+export function protoItemIcon(id: string, rarity: "common" | "rare" | "magic" | "legendary", legend?: string): HTMLCanvasElement {
   const { canvas, ctx } = makeCanvas(PROTO_ICON, PROTO_ICON);
-  ctx.drawImage(iconDrawing(id), 0, 0);
+  ctx.drawImage(iconDrawing(id, legend), 0, 0);
   if (rarity !== "common") ctx.drawImage(rarityGem(rarity), 0, 0);
   return canvas;
 }
@@ -6202,7 +6250,7 @@ export function protoFrame(dir: ProtoDir, frame: number, cls: ProtoClass = "knig
 
 /** O kit da classe vestindo o equipamento (os itens por cima das roupas da classe). */
 function protoKit(cls: ProtoClass, gear: ProtoGear): Kit {
-  return { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.armor ? { armor: gear.armor } : {}), ...(gear.legs ? { legs: gear.legs } : {}), ...(gear.boots ? { boots: gear.boots } : {}), ...(gear.shield ? { shield: gear.shield } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: /^x?bow-/.test(gear.weapon) && KITS[cls].quiver } : {}) };
+  return { ...KITS[cls], ...(gear.helmet ? { helmet: gear.helmet } : {}), ...(gear.armor ? { armor: gear.armor } : {}), ...(gear.legs ? { legs: gear.legs } : {}), ...(gear.boots ? { boots: gear.boots } : {}), ...(gear.shield ? { shield: gear.shield } : {}), ...(gear.weapon ? { weapon: gear.weapon, quiver: /^x?bow-/.test(gear.weapon) && KITS[cls].quiver } : {}), ...(gear.legend ? { legend: gear.legend } : {}) };
 }
 
 /** Pixels RGBA de um quadro do herói (sem navegador: a prévia em PNG usa direto). */
@@ -6214,8 +6262,7 @@ export function protoHeroData(dir: ProtoDir, frame: number, cls: ProtoClass = "k
 function protoFrameData(dir: ProtoDir, frame: number, kit: Kit, colors: ProtoLook) {
   const c = new Canvas();
   const draw = () => (dir === "side" ? side(c, kit, frame) : front(c, kit, frame, dir === "up"));
-  if (kit.build) c.slimmed(CX + 0.5, kit.build.slim, draw);
-  else draw();
+  withLegends(kit.legend, () => (kit.build ? c.slimmed(CX + 0.5, kit.build.slim, draw) : draw()));
   return c.render(colors, true, kit.grim);
 }
 
@@ -6240,8 +6287,7 @@ export function protoPortraitData(cls: ProtoClass = "knight", gear: ProtoGear = 
   // Rosto (cabeça menor, `Build.head`, em volta do pescoço) ≈ unidade 38; vai para o pixel (96, 76) do quadro.
   const face: Pt = [CX, 38];
   const draw = () => c.scaled(face, PORTRAIT_ZOOM, () => front(c, kit, 1, false));
-  if (kit.build) c.slimmed(CX + 0.5, kit.build.slim, draw);
-  else draw();
+  withLegends(kit.legend, () => (kit.build ? c.slimmed(CX + 0.5, kit.build.slim, draw) : draw()));
   const full = c.render(colors, true, kit.grim);
   const out = new Uint8ClampedArray(PORTRAIT_SIZE * PORTRAIT_SIZE * 4);
   const x0 = F(face[0]) - PORTRAIT_SIZE / 2, y0 = F(face[1]) - Math.round(PORTRAIT_SIZE * 0.47);
@@ -6348,7 +6394,7 @@ export function protoActionData(dir: ProtoDir, action: HeroAction, k: number, cl
   fxLayer = fx;
   try {
     const slim = kit.build?.slim ?? 1;
-    fx.slimmed(CX + 0.5, slim, () => c.slimmed(CX + 0.5, slim, draw));
+    withLegends(kit.legend, () => fx.slimmed(CX + 0.5, slim, () => c.slimmed(CX + 0.5, slim, draw)));
   } finally { fxLayer = null; }
   const body = c.render(colors, true, kit.grim);
   const glow = fx.render(colors, false);
@@ -6357,4 +6403,526 @@ export function protoActionData(dir: ProtoDir, action: HeroAction, k: number, cl
     if (glow[i + 3]) { body.set(glow.subarray(i, i + 3), i); body[i + 3] = 215; }
   }
   return body;
+}
+
+// --- Lendários (docs/ITENS_LENDARIOS.md) ------------------------------------------------------
+//
+// Cada peça lendária é o desenho do mágico de Dragão da família, repintado com os materiais dela (metal, tecido e
+// brilho: obsidiana com fio de brasa, gelo eterno, latão gnomo...) e com um enfeite que só ela tem (cristal que flutua,
+// coração em brasa, engrenagem, olho de tempestade, presas). Os desenhos da família não mudam: cada função de item
+// abaixo chama a `...Base` e, se o slot estiver vestindo um lendário, repinta o que ela acabou de pintar.
+
+export type LegendSlot = "weapon" | "helmet" | "armor" | "legs" | "boots" | "shield";
+
+/** Lendários do quadro que está sendo desenhado (o desenho é síncrono: `withLegends` liga e desliga). */
+let legendNow: ProtoGear["legend"] | null = null;
+function withLegends<T>(legend: ProtoGear["legend"] | undefined, draw: () => T): T {
+  const outer = legendNow;
+  legendNow = legend ?? null;
+  try { return draw(); } finally { legendNow = outer; }
+}
+
+/** O que a peça acabou de pintar: os pixels e o retângulo deles (em pixels finais). */
+interface Painted { px: number[]; x0: number; y0: number; x1: number; y1: number; w: number }
+
+/** Grupos de material das peças: o metal, o tecido/madeira/couro e o que brilha (gemas, runas, brasas). */
+const METAL = new Set<Mat>([Mat.Steel, Mat.Iron, Mat.Mithral, Mat.Bronze, Mat.Dragon, Mat.RedDragon, Mat.GreenDragon, Mat.Patina, Mat.Stone, Mat.Slate]);
+const CLOTH = new Set<Mat>([Mat.Wood, Mat.Leather, Mat.Linen, Mat.Wool, Mat.Felt, Mat.Fur, Mat.FurLight, Mat.Silk, Mat.Night, Mat.Indigo, Mat.Violet, Mat.Mane, Mat.Crest, Mat.Membrane, Mat.DragonBelly, Mat.Clay, Mat.Moss, Mat.Leaf, Mat.Bone, Mat.Horn, Mat.Soot]);
+const GLOW = new Set<Mat>([Mat.Gem, Mat.Sapphire, Mat.Ember, Mat.Arcane, Mat.Amber, Mat.Venom, Mat.Blood]);
+
+interface LegendLook {
+  metal: Mat; cloth: Mat; glow: Mat;
+  /** Detalhes da peça (aro, rebites, brilho branco) num material próprio; sem ele, ficam como estão. */
+  accent?: Mat;
+  /** Enfeite próprio, pintado por cima no pixel final. `main` = a chamada principal da peça (tronco, não o braço). */
+  extra?: (c: Canvas, p: Painted, main: boolean) => void;
+}
+
+/** Pixel aceso por cima (tom fixo), só se estiver no quadro. */
+function lightPx(c: Canvas, X: number, Y: number, mat: Mat, tone: number) {
+  c.bare(() => c.px(X, Y, mat, tone));
+}
+
+/** Borda da peça (pixel da peça com vizinho vazio) acesa num material, um a cada `every`. */
+function rim(c: Canvas, p: Painted, mat: Mat, tone: number, every = 1) {
+  const set = new Set(p.px);
+  let k = 0;
+  for (const i of p.px) {
+    const x = i % p.w, y = (i / p.w) | 0;
+    const edge = [i - 1, i + 1, i - p.w, i + p.w].some((j) => !set.has(j) && c.mat[j] < 0);
+    if (edge && k++ % every === 0) lightPx(c, x, y, mat, tone);
+  }
+}
+
+/** Pontos acesos espalhados na peça (estrelas, flocos, escamas de asa). */
+function speckle(c: Canvas, p: Painted, mats: readonly Mat[], every: number, seed = 0) {
+  for (const i of p.px) {
+    const x = i % p.w, y = (i / p.w) | 0;
+    const h = (x * 7 + y * 13 + seed) % every;
+    if (h === 0) lightPx(c, x, y, mats[(x + y) % mats.length], 5);
+  }
+}
+
+/** Forma cheia no pixel final (unidades = pixel ÷ K), com luz de esfera. */
+function blob(c: Canvas, cx: number, cy: number, rx: number, ry: number, mat: Mat) {
+  c.bare(() => ellipse(c, cx / K, cy / K, rx / K, ry / K, mat));
+}
+function shard(c: Canvas, pts: readonly Pt[], mat: Mat) {
+  c.bare(() => plate(c, pts.map(([x, y]) => [x / K, y / K] as Pt), mat));
+}
+
+/** Tamanho do enfeite: proporcional à peça (o ícone é ampliado; no herói, a peça é pequena). */
+const unit = (p: Painted) => Math.max(1.5, Math.min(p.x1 - p.x0, p.y1 - p.y0) / 9);
+
+const LEGEND_LOOKS: Record<string, LegendLook> = {
+  // Lâmina do Eclipse: céu apagado com borda de fogo.
+  eclipse: { metal: Mat.Obsidian, cloth: Mat.Shadow, glow: Mat.Ember, extra: (c, p) => rim(c, p, Mat.Ember, 4, 2) },
+  // Machado do Último Inverno: gelo que não derrete num cabo de osso, flocos acesos.
+  lastwinter: { metal: Mat.Frost, cloth: Mat.Bone, glow: Mat.Arcane, extra: (c, p) => { rim(c, p, Mat.White, 5, 5); speckle(c, p, [Mat.White], 11); } },
+  // Couraça do Coração de Ferro: ferro negro e um coração em brasa no peito.
+  ironheart: {
+    metal: Mat.Iron, cloth: Mat.Leather, glow: Mat.Ember,
+    extra: (c, p, main) => {
+      if (!main) return;
+      const u = unit(p) * 1.25, cx = (p.x0 + p.x1) / 2, cy = p.y0 + (p.y1 - p.y0) * 0.4;
+      blob(c, cx - u * 0.9, cy, u * 1.1, u * 1.1, Mat.Blood);
+      blob(c, cx + u * 0.9, cy, u * 1.1, u * 1.1, Mat.Blood);
+      shard(c, [[cx - u * 2, cy + u * 0.2], [cx + u * 2, cy + u * 0.2], [cx, cy + u * 2.6]], Mat.Blood);
+      blob(c, cx, cy + u * 0.4, u * 0.7, u * 0.7, Mat.Ember);
+    },
+  },
+  // Elmo da Vigília Eterna: ouro e um olho de âmbar na testa.
+  vigil: {
+    metal: Mat.Gold, cloth: Mat.Indigo, glow: Mat.Amber,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2, cy = p.y0 + (p.y1 - p.y0) * 0.42;
+      blob(c, cx, cy, u * 1.6, u * 1.0, Mat.White);
+      blob(c, cx, cy, u * 0.8, u * 0.8, Mat.Amber);
+      lightPx(c, Math.round(cx), Math.round(cy), Mat.Soot, 0);
+    },
+  },
+  // Perneiras do Gigante de Pedra: pedra com musgo nas juntas.
+  stonegiant: { metal: Mat.Stone, cloth: Mat.Moss, glow: Mat.Moss, extra: (c, p) => speckle(c, p, [Mat.Moss, Mat.Leaf], 7, 3) },
+  // Arco do Amanhecer Partido: ouro, corda de brasa e raios na borda.
+  dawn: {
+    metal: Mat.Gold, cloth: Mat.Ember, glow: Mat.White, accent: Mat.Ember,
+    extra: (c, p) => {
+      rim(c, p, Mat.Gold, 5, 3);
+      // O sol partido no meio do arco: disco de ouro com a rachadura em brasa.
+      const u = unit(p), cx = (p.x0 + p.x1) / 2, cy = (p.y0 + p.y1) / 2;
+      blob(c, cx, cy, u * 1.5, u * 1.5, Mat.Gold);
+      shard(c, [[cx - u * 0.3, cy - u * 1.5], [cx + u * 0.4, cy - u * 0.2], [cx - u * 0.2, cy + u * 0.3], [cx + u * 0.3, cy + u * 1.5], [cx - u * 0.1, cy + u * 0.4], [cx - u * 0.6, cy - u * 0.1]], Mat.Ember);
+    },
+  },
+  // Besta Relojoeira: latão e cobre, com uma engrenagem no meio.
+  clockwork: {
+    metal: Mat.Brass, cloth: Mat.Copper, glow: Mat.Amber,
+    extra: (c, p) => {
+      const u = unit(p) * 0.6, cx = (p.x0 + p.x1) / 2, cy = (p.y0 + p.y1) / 2;
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        blob(c, cx + Math.cos(a) * u * 2, cy + Math.sin(a) * u * 2, u * 0.55, u * 0.55, Mat.Brass);
+      }
+      blob(c, cx, cy, u * 1.9, u * 1.9, Mat.Brass);
+      blob(c, cx, cy, u * 0.7, u * 0.7, Mat.Copper);
+    },
+  },
+  // Varinha da Fênix Cinzenta: cinza com brasas subindo da ponta.
+  phoenix: {
+    metal: Mat.Soot, cloth: Mat.Soot, glow: Mat.Ember, accent: Mat.Ember,
+    extra: (c, p) => {
+      speckle(c, p, [Mat.Ember], 6, 1);
+      // Uma pena de cinza em brasa saindo da ponta.
+      const u = Math.max(2, unit(p)), x = p.x1 - u * 0.8, y = p.y0 + u * 0.6;
+      shard(c, [[x, y], [x + u * 1.2, y - u * 2.8], [x + u * 0.2, y - u * 5], [x - u * 0.9, y - u * 2.4]], Mat.Soot);
+      blob(c, x + u * 0.1, y - u * 2.4, u * 0.6, u * 1.4, Mat.Ember);
+      for (const [dx, dy, r] of [[-1.4, -4.2, 0.5], [1.6, -5.4, 0.4], [-0.4, -6.6, 0.35]]) blob(c, x + dx * u, y + dy * u, r * u, r * u, Mat.Ember);
+    },
+  },
+  // Cajado da Geada Eterna: galho prateado e um cristal de gelo flutuando em cima.
+  frost: {
+    metal: Mat.Moon, cloth: Mat.Moon, glow: Mat.Frost,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2, top = p.y0 - u * 1.2;
+      shard(c, [[cx, top - u * 4], [cx + u * 1.7, top - u * 1.6], [cx, top + u * 0.4], [cx - u * 1.7, top - u * 1.6]], Mat.Frost);
+      lightPx(c, Math.round(cx - u * 0.5), Math.round(top - u * 2.4), Mat.White, 5);
+      speckle(c, p, [Mat.White], 13, 2);
+    },
+  },
+  // Coroa do Olho Tempestuoso: cobre, faíscas e um olho azul no meio.
+  stormeye: {
+    metal: Mat.Copper, cloth: Mat.Indigo, glow: Mat.Arcane, accent: Mat.Copper,
+    extra: (c, p) => {
+      speckle(c, p, [Mat.Arcane], 9, 4);
+      const u = unit(p), cx = (p.x0 + p.x1) / 2, cy = p.y0 + (p.y1 - p.y0) * 0.55;
+      blob(c, cx, cy, u * 1.5, u * 0.9, Mat.White);
+      blob(c, cx, cy, u * 0.75, u * 0.75, Mat.Sapphire);
+    },
+  },
+  // Cajado do Carvalho que Sonha: madeira viva, folhas e uma lua pequena na copa.
+  dreamoak: {
+    metal: Mat.Moss, cloth: Mat.Wood, glow: Mat.Leaf,
+    extra: (c, p) => {
+      speckle(c, p, [Mat.Leaf], 7, 5);
+      const u = unit(p), cx = (p.x0 + p.x1) / 2;
+      blob(c, cx + u * 1.8, p.y0 - u * 0.4, u * 1.1, u * 1.1, Mat.Moon);
+      blob(c, cx + u * 2.3, p.y0 - u * 0.8, u * 0.9, u * 0.9, Mat.Night);
+    },
+  },
+  // Manto de Mil Asas: tecido de asas, escamas de mariposa e vespa.
+  thousandwings: { metal: Mat.Wing, cloth: Mat.Wing, glow: Mat.Amber, extra: (c, p) => speckle(c, p, [Mat.Amber, Mat.Violet, Mat.Venom], 5, 1) },
+  // Cajado do Totem Rubro: madeira tingida de sangue, osso e três olhos em brasa.
+  redtotem: {
+    metal: Mat.Bone, cloth: Mat.Blood, glow: Mat.Ember,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2;
+      for (let k = 0; k < 3; k++) {
+        const y = p.y0 + u * (1.5 + k * 1.8);
+        lightPx(c, Math.round(cx - u * 0.5), Math.round(y), Mat.Ember, 5);
+        lightPx(c, Math.round(cx + u * 0.5), Math.round(y), Mat.Ember, 5);
+      }
+    },
+  },
+  // Máscara do Grande Chefe: crânio de javali, presas e pena de corvo.
+  warchief: {
+    metal: Mat.Bone, cloth: Mat.Horn, glow: Mat.Blood, accent: Mat.Iron,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2, y = p.y1 - u * 0.6;
+      for (const s of [-1, 1]) shard(c, [[cx + s * u * 1.4, y], [cx + s * u * 2.4, y], [cx + s * u * 2.6, y - u * 2.6]], Mat.White);
+      shard(c, [[p.x1 - u * 0.5, p.y0 + u * 2], [p.x1 + u * 1.5, p.y0 - u * 1.5], [p.x1 + u * 0.4, p.y0 + u * 2.4]], Mat.Night);
+    },
+  },
+  // Passos de Ninguém: sombra costurada com borda violeta.
+  nobody: { metal: Mat.Shadow, cloth: Mat.Shadow, glow: Mat.Violet, extra: (c, p) => rim(c, p, Mat.Violet, 4, 2) },
+  // Escudo Espelho da Lua: prata polida e uma lua crescente.
+  moonmirror: {
+    metal: Mat.Moon, cloth: Mat.Moon, glow: Mat.Sapphire,
+    extra: (c, p) => {
+      const u = unit(p) * 1.2, cx = (p.x0 + p.x1) / 2, cy = (p.y0 + p.y1) / 2;
+      blob(c, cx, cy, u * 1.8, u * 1.8, Mat.White);
+      blob(c, cx + u * 0.9, cy - u * 0.4, u * 1.6, u * 1.6, Mat.Moon);
+    },
+  },
+  // Sino do Juízo Final: bronze rachado, com ondas do toque em volta da cabeça.
+  doombell: {
+    metal: Mat.Bronze, cloth: Mat.Bronze, glow: Mat.Amber, accent: Mat.Gold,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2, cy = (p.y0 + p.y1) / 2;
+      // Rachadura escura e dois arcos do som saindo para os lados.
+      for (let k = -2; k <= 2; k++) lightPx(c, Math.round(cx + (k % 2) * 0.6), Math.round(cy + k * u * 0.6), Mat.Soot, 0);
+      for (const s of [-1, 1]) for (let k = -2; k <= 2; k++) lightPx(c, Math.round(cx + s * (u * 3.4 - Math.abs(k) * 0.6)), Math.round(cy + k * u * 0.7), Mat.Amber, 5);
+    },
+  },
+  // Lança do Último Raio: prata e azul, com o raio estalando na borda.
+  lastray: { metal: Mat.Moon, cloth: Mat.Sapphire, glow: Mat.Arcane, accent: Mat.Arcane, extra: (c, p) => { rim(c, p, Mat.Arcane, 5, 3); speckle(c, p, [Mat.White], 10, 1); } },
+  // Orbe do Vazio Faminto: obsidiana e violeta, com o halo escuro que engole a luz.
+  voidmaw: {
+    metal: Mat.Obsidian, cloth: Mat.Shadow, glow: Mat.Violet, accent: Mat.Violet,
+    extra: (c, p) => {
+      const u = unit(p), cx = p.x1 - u * 1.5, cy = p.y0 + u * 1.5;
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2;
+        lightPx(c, Math.round(cx + Math.cos(a) * u * 2.6), Math.round(cy + Math.sin(a) * u * 2.6), k % 3 ? Mat.Violet : Mat.Night, 5);
+      }
+    },
+  },
+  // Foice da Colheita Venenosa: lâmina verde que pinga seiva.
+  venomharvest: {
+    metal: Mat.GreenDragon, cloth: Mat.Moss, glow: Mat.Venom, accent: Mat.Venom,
+    extra: (c, p) => {
+      speckle(c, p, [Mat.Venom], 7, 2);
+      const u = unit(p);
+      for (const [dx, dy] of [[0.25, 1.2], [0.45, 2.2], [0.65, 1.6]]) blob(c, p.x0 + (p.x1 - p.x0) * dx, p.y0 + u * (2 + dy), u * 0.4, u * 0.6, Mat.Venom);
+    },
+  },
+  // Totem da Mãe-Fera: osso e pelo, com as orelhas da javalina e olhos de âmbar.
+  motherbeast: {
+    metal: Mat.Fur, cloth: Mat.Bone, glow: Mat.Amber, accent: Mat.Amber,
+    extra: (c, p) => {
+      const u = unit(p), cx = (p.x0 + p.x1) / 2;
+      for (const s of [-1, 1]) shard(c, [[cx + s * u * 0.8, p.y0 + u * 1.2], [cx + s * u * 2.4, p.y0 + u * 0.8], [cx + s * u * 2, p.y0 - u * 1.4]], Mat.Fur);
+      for (const s of [-1, 1]) shard(c, [[cx + s * u * 0.6, p.y0 + u * 3.2], [cx + s * u * 1.2, p.y0 + u * 3.2], [cx + s * u * 1.6, p.y0 + u * 1.8]], Mat.White);
+    },
+  },
+  // Calças do Vagante Astral: azul-noite com estrelas.
+  astral: { metal: Mat.Night, cloth: Mat.Night, glow: Mat.Arcane, extra: (c, p) => speckle(c, p, [Mat.White, Mat.Arcane], 9, 2) },
+};
+
+/** Chaves dos lendários com desenho na arte nova. */
+export const PROTO_LEGENDS = Object.keys(LEGEND_LOOKS);
+
+/**
+ * Desenho de base de cada lendário, quando não é o mágico de Dragão da família: a coroa e a máscara precisam de
+ * silhueta maior que o diadema.
+ */
+export const LEGEND_BASE: Record<string, string> = { stormeye: "arc-4-magic", warchief: "war-5-magic" };
+
+/**
+ * Desenha a peça do slot e, se for lendária, repinta o que ela pintou (metal, tecido e brilho) e põe o enfeite.
+ * `main` = chamada principal da peça (o enfeite do peito vai só no tronco, não em cada braço).
+ */
+function legendary<T>(c: Canvas, slot: LegendSlot, draw: () => T, main = true): T {
+  const key = legendNow?.[slot];
+  const look = key ? LEGEND_LOOKS[key] : undefined;
+  if (!look) return draw();
+  const mat = c.mat.slice(), shade = c.shade.slice(), order = c.order.slice(), fixed = c.fixed.slice();
+  const out = draw();
+  const p: Painted = { px: [], x0: c.w, y0: c.h, x1: -1, y1: -1, w: c.w };
+  for (let i = 0; i < c.n; i++) {
+    if (c.mat[i] < 0 || (c.mat[i] === mat[i] && c.shade[i] === shade[i] && c.order[i] === order[i] && c.fixed[i] === fixed[i])) continue;
+    const m = c.mat[i] as Mat;
+    if (METAL.has(m)) c.mat[i] = look.metal;
+    else if (CLOTH.has(m)) c.mat[i] = look.cloth;
+    else if (GLOW.has(m)) c.mat[i] = look.glow;
+    else if (look.accent !== undefined && (m === Mat.Trim || m === Mat.White || m === Mat.Gold)) c.mat[i] = look.accent;
+    p.px.push(i);
+    const x = i % c.w, y = (i / c.w) | 0;
+    if (x < p.x0) p.x0 = x; if (x > p.x1) p.x1 = x; if (y < p.y0) p.y0 = y; if (y > p.y1) p.y1 = y;
+  }
+  if (p.px.length && look.extra) look.extra(c, p, main);
+  return out;
+}
+
+function swordById(c: Canvas, id: string, at: Pt, tip: Pt) { legendary(c, "weapon", () => (id.startsWith("mace-") ? maceArt(c, id, at, tip) : swordByIdBase(c, id, at, tip))); }
+function axeArt(c: Canvas, id: string, bottom: Pt, topEnd: Pt, out: number) { legendary(c, "weapon", () => axeArtBase(c, id, bottom, topEnd, out)); }
+function bowArt(c: Canvas, id: string, at: Pt, out: number) { legendary(c, "weapon", () => bowArtBase(c, id, at, out)); }
+function crossbowArt(c: Canvas, id: string, at: Pt, s: Pt, side: boolean) { legendary(c, "weapon", () => crossbowArtBase(c, id, at, s, side)); }
+function wandArt(c: Canvas, id: string, at: Pt, tip: Pt) { legendary(c, "weapon", () => (id.startsWith("orb-") ? orbArt(c, id, at, tip) : wandArtBase(c, id, at, tip))); }
+function staffArt(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
+  const draw = id.startsWith("spear-") ? spearArt : id.startsWith("scythe-") ? scytheArt : id.startsWith("totem-") ? totemArt : staffArtBase;
+  legendary(c, "weapon", () => draw(c, id, at, top, bottom));
+}
+function helmetArt(c: Canvas, id: string, view: ProtoDir, cx: number, cy: number, top: number) { legendary(c, "helmet", () => helmetArtBase(c, id, view, cx, cy, top)); }
+function armorTorso(c: Canvas, id: string, top: number, view: ProtoDir, sway: number): number[] { return legendary(c, "armor", () => armorTorsoBase(c, id, top, view, sway)); }
+function armorShoulders(c: Canvas, id: string, top: number, view: ProtoDir, at: readonly Pt[], far = false) { legendary(c, "armor", () => armorShouldersBase(c, id, top, view, at, far), false); }
+function armorArm(c: Canvas, id: string, shoulder: Pt, elbow: Pt, at: Pt, far: boolean) { legendary(c, "armor", () => armorArmBase(c, id, shoulder, elbow, at, far), false); }
+function pantsArt(c: Canvas, id: string, hip: Pt, knee: Pt, ankle: Pt, far: boolean, front: boolean) { legendary(c, "legs", () => pantsArtBase(c, id, hip, knee, ankle, far, front)); }
+function warLegs(c: Canvas, id: string, hip: Pt, knee: Pt, ankle: Pt, far: boolean, front: boolean) { legendary(c, "legs", () => warLegsBase(c, id, hip, knee, ankle, far, front)); }
+function bootsArt(c: Canvas, id: string, knee: Pt, ankle: Pt, toe: Pt, far: boolean, front: boolean) { legendary(c, "boots", () => bootsArtBase(c, id, knee, ankle, toe, far, front)); }
+function shieldArt(c: Canvas, id: string, hand: Pt, view: ProtoDir, side: number) { legendary(c, "shield", () => shieldArtBase(c, id, hand, view, side)); }
+
+// --- Armas de estilo (maça, lança, orbe, foice e totem de mão) ------------------------------------------
+//
+// Uma arma por classe, cada uma com um traço no ataque básico (`docs/GDD.md`, "Armas de estilo"). Vão pelas poses que
+// já existem: a maça pela da espada, o orbe pela da varinha, e lança, foice e totem pela do cajado (haste até o chão).
+// O nível muda a forma da cabeça e o material; o mágico muda os materiais e põe um enfeite próprio.
+
+/** Materiais de cada nível (comum) e de cada mágico: cabeça, ferragem, cabo e gema. */
+interface StyleMats { head: Mat; trim: Mat; haft: Mat; gem: Mat }
+const sm = (head: Mat, trim: Mat, haft: Mat, gem: Mat): StyleMats => ({ head, trim, haft, gem });
+const STYLE_MATS: Record<"mace" | "spear" | "orb" | "scythe" | "totem", Record<string, StyleMats>> = {
+  mace: {
+    1: sm(Mat.Wood, Mat.Iron, Mat.Wood, Mat.Iron), 2: sm(Mat.Bronze, Mat.Bronze, Mat.Wood, Mat.Amber), 3: sm(Mat.Iron, Mat.Iron, Mat.Leather, Mat.Iron),
+    4: sm(Mat.Mithral, Mat.Gold, Mat.Leather, Mat.Sapphire), 5: sm(Mat.Bone, Mat.Gold, Mat.RedDragon, Mat.Ember),
+    "1m": sm(Mat.Moon, Mat.Gold, Mat.Linen, Mat.White), "2m": sm(Mat.Ember, Mat.Iron, Mat.Soot, Mat.Amber), "3m": sm(Mat.Steel, Mat.Bronze, Mat.Leather, Mat.Arcane),
+    "4m": sm(Mat.Blood, Mat.Iron, Mat.Leather, Mat.Ember), "5m": sm(Mat.Bone, Mat.Iron, Mat.Fur, Mat.Ember),
+  },
+  spear: {
+    1: sm(Mat.Iron, Mat.Leather, Mat.Wood, Mat.Iron), 2: sm(Mat.Bronze, Mat.Bronze, Mat.Wood, Mat.Amber), 3: sm(Mat.Steel, Mat.Iron, Mat.Wood, Mat.Iron),
+    4: sm(Mat.Mithral, Mat.Gold, Mat.Mithral, Mat.Sapphire), 5: sm(Mat.Bone, Mat.Gold, Mat.RedDragon, Mat.Ember),
+    "1m": sm(Mat.Mithral, Mat.Leaf, Mat.Wood, Mat.Leaf), "2m": sm(Mat.Gold, Mat.Ember, Mat.Wood, Mat.Ember), "3m": sm(Mat.Moon, Mat.Gold, Mat.Iron, Mat.White),
+    "4m": sm(Mat.Gold, Mat.Linen, Mat.Wood, Mat.Amber), "5m": sm(Mat.Blood, Mat.Obsidian, Mat.Obsidian, Mat.Ember),
+  },
+  orb: {
+    1: sm(Mat.White, Mat.Iron, Mat.Wood, Mat.White), 2: sm(Mat.Amber, Mat.Bronze, Mat.Wood, Mat.Amber), 3: sm(Mat.Violet, Mat.Arcane, Mat.Wood, Mat.Arcane),
+    4: sm(Mat.Sapphire, Mat.Mithral, Mat.Mithral, Mat.White), 5: sm(Mat.Ember, Mat.Gold, Mat.RedDragon, Mat.Soot),
+    "1m": sm(Mat.Leaf, Mat.Gold, Mat.Wood, Mat.Leaf), "2m": sm(Mat.Ember, Mat.Iron, Mat.Soot, Mat.Amber), "3m": sm(Mat.Night, Mat.Gold, Mat.Wood, Mat.White),
+    "4m": sm(Mat.Frost, Mat.Copper, Mat.Iron, Mat.White), "5m": sm(Mat.Venom, Mat.Bone, Mat.Obsidian, Mat.Soot),
+  },
+  scythe: {
+    1: sm(Mat.Iron, Mat.Leather, Mat.Wood, Mat.Iron), 2: sm(Mat.Bronze, Mat.Bronze, Mat.Wood, Mat.Amber), 3: sm(Mat.Steel, Mat.Iron, Mat.Wood, Mat.Iron),
+    4: sm(Mat.Mithral, Mat.Gold, Mat.Wood, Mat.Sapphire), 5: sm(Mat.Bone, Mat.Gold, Mat.RedDragon, Mat.Ember),
+    "1m": sm(Mat.Iron, Mat.Linen, Mat.Wood, Mat.Amber), "2m": sm(Mat.Leaf, Mat.Moss, Mat.Wood, Mat.Venom), "3m": sm(Mat.Moon, Mat.Mithral, Mat.Night, Mat.White),
+    "4m": sm(Mat.Amber, Mat.Copper, Mat.Wood, Mat.Ember), "5m": sm(Mat.Bone, Mat.Moss, Mat.Wood, Mat.Venom),
+  },
+  totem: {
+    1: sm(Mat.Wood, Mat.Linen, Mat.Wood, Mat.Amber), 2: sm(Mat.Bronze, Mat.Bone, Mat.Wood, Mat.Amber), 3: sm(Mat.Iron, Mat.Crest, Mat.Wood, Mat.Ember),
+    4: sm(Mat.Mithral, Mat.Gold, Mat.Wood, Mat.Sapphire), 5: sm(Mat.Bone, Mat.Gold, Mat.RedDragon, Mat.Ember),
+    "1m": sm(Mat.Night, Mat.Night, Mat.Wood, Mat.Amber), "2m": sm(Mat.Soot, Mat.Iron, Mat.Wood, Mat.Ember), "3m": sm(Mat.Fur, Mat.Bone, Mat.Wood, Mat.Blood),
+    "4m": sm(Mat.Bone, Mat.Arcane, Mat.Wood, Mat.Arcane), "5m": sm(Mat.Bone, Mat.Iron, Mat.Obsidian, Mat.Venom),
+  },
+};
+const styleKey = (id: string) => `${tierOf(id)}${isMagic(id) ? "m" : ""}`;
+
+/** Espinho em triângulo saindo de `base` na direção (dx, dy), com meia largura `w`. */
+function spike(c: Canvas, base: Pt, dx: number, dy: number, len: number, w: number, mat: Mat) {
+  const n = Math.hypot(dx, dy) || 1, ux = dx / n, uy = dy / n;
+  return plate(c, [[base[0] - uy * w, base[1] + ux * w], [base[0] + uy * w, base[1] - ux * w], [base[0] + ux * len, base[1] + uy * len]], mat);
+}
+
+/** Maça na mão `at` apontando para `tip` (a pose da espada). */
+function maceArt(c: Canvas, id: string, at: Pt, tip: Pt) {
+  const t = tierOf(id), magic = isMagic(id), m = STYLE_MATS.mace[styleKey(id)];
+  const dx = tip[0] - at[0], dy = tip[1] - at[1];
+  // A maça é de uma mão: a de Dragão não vira montante como a espada (a pose dela manda a ponta lá no alto).
+  const len = Math.min(Math.hypot(dx, dy), 19), ux = dx / Math.hypot(dx, dy), uy = dy / Math.hypot(dx, dy), gx = -uy, gy = ux;
+  const P = (a: number, g = 0): Pt => [at[0] + ux * a + gx * g, at[1] + uy * a + gy * g];
+  const r = [0, 3, 3.3, 3.5, 3.8, 4.2][t];
+  const H = P(len - r);
+  // Cabo com pomo e empunhadura enrolada.
+  limb(c, P(-3), P(len - r * 1.6), 0.75, 0.7, m.haft, t === 1 ? grain : undefined);
+  ellipse(c, ...P(-3.2), 1, 1, m.trim);
+  for (let k = -1.4; k <= 1.6; k += 1) limb(c, P(k, -0.8), P(k + 0.4, 0.8), 0.3, 0.3, Mat.Leather);
+  if (t === 1) {
+    // Clava cravejada: tora que engrossa, com cravos de ferro.
+    limb(c, P(len - r * 3.4), H, 1, r, m.head, grain);
+    for (const [a, s] of [[-1.2, 1], [0.2, -1], [1.4, 1], [-0.2, -1]] as const) spike(c, P(len - r + a, s * r * 0.8), gx * s + ux * 0.2, gy * s + uy * 0.2, 1.4, 0.45, m.trim);
+  } else {
+    const head = ellipse(c, H[0], H[1], r, r, m.head, t === 5 ? undefined : hammered);
+    if (t >= 3) {
+      // Aletas em volta da cabeça.
+      for (const s of [-1, 1]) for (const a of [-0.9, 0.9]) spike(c, P(len - r + a * r * 0.6, s * r * 0.7), gx * s, gy * s, r * 0.9, r * 0.45, m.head);
+      spike(c, P(len - 0.2), ux, uy, r * 0.8, r * 0.4, m.head);
+    }
+    if (t >= 4) limb(c, P(len - r * 2), P(len - r * 1.7), 1.2, 1.2, m.trim);
+    if (t === 2 || t >= 4) gem(c, H, t === 5 ? 1 : 0.9, m.gem);
+    if (t === 5) {
+      // Osso de dragão: espinhos de chifre e dois olhos em brasa.
+      for (const s of [-1, 1]) spike(c, P(len - r * 0.6, s * r), gx * s + ux * 0.6, gy * s + uy * 0.6, 2.6, 0.6, Mat.Horn);
+      for (const s of [-1, 1]) c.on(head, F(H[0] + gx * s * 1.1), F(H[1] + gy * s * 1.1), m.gem, 5);
+    }
+  }
+  if (!magic) return;
+  switch (t) {
+    case 1: for (const k of [0.3, 0.6]) limb(c, P(len * k - 0.3), P(len * k + 0.3), 1, 1, Mat.Gold); return; // Maça do Capelão: anéis de ouro.
+    case 2: flame(c, P(len + 0.6), 3.4, 1.6, 0.3); return; // Estrela-d'Alva: a cabeça arde.
+    case 3: for (const s of [-1, 1]) c.px(F(H[0] + gx * s * 3.6), F(H[1] + gy * s * 3.6), Mat.Arcane, 5); return; // Martelo do Trovão: faíscas.
+    case 4: for (const s of [-1, 1]) c.px(F(H[0] + gx * s * 1.8 + ux), F(H[1] + gy * s * 1.8 + uy), Mat.Ember, 5); return; // Ruptura: veios em brasa.
+    default: for (const s of [-1, 1]) fang(c, P(len - r * 1.2, s * r * 0.8), 0.45, 1.6, 1); return; // Quebra-Crânios: presas de ogro.
+  }
+}
+
+/** Orbe na mão `at`, com a esfera depois de `tip` (a pose da varinha, ampliada 1,5×). */
+function orbArt(c: Canvas, id: string, at: Pt, tip: Pt) {
+  const t = tierOf(id), magic = isMagic(id), m = STYLE_MATS.orb[styleKey(id)];
+  const dx = tip[0] - at[0], dy = tip[1] - at[1];
+  const len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, gx = -uy, gy = ux;
+  const P = (a: number, g = 0): Pt => [at[0] + ux * a + gx * g, at[1] + uy * a + gy * g];
+  const r = 1.4 + t * 0.18;
+  const O = P(len + r * 0.6);
+  limb(c, P(-2.2), P(len - 0.6), 0.55, 0.45, m.haft, t === 1 ? grain : undefined);
+  ellipse(c, ...P(-2.4), 0.7, 0.7, m.trim);
+  // Garras ou aro segurando a esfera.
+  if (t >= 2) for (const s of [-1, 1]) chain(c, [P(len - 0.8, s * 0.4), P(len + 0.2, s * (r + 0.2)), P(len + r * 0.9, s * (r * 0.8))], 0.28, m.trim, undefined, 0.18);
+  const orb = ellipse(c, O[0], O[1], r, r, m.head);
+  c.on(orb, F(O[0] - r * 0.45), F(O[1] - r * 0.45), m.gem, 5);
+  if (t === 3 || t === 4) c.fill(ebox(O[0], O[1], r + 0.9, r * 0.5 + 0.4), (x, y) => { const d = Math.hypot((x + 0.5 - O[0]) / (r + 0.8), (y + 0.5 - O[1]) / (r * 0.45 + 0.3)); return d < 1 && d > 0.72 && y + 0.5 > O[1] - 0.2; }, m.trim, () => 0.7);
+  if (t === 4) for (const s of [-1, 0, 1]) spike(c, [O[0] + s * r * 0.6, O[1] - r * 0.8], s * 0.4, -1, 1.2, 0.3, m.trim);
+  if (t === 5) {
+    // Olho de dragão: pupila em fenda.
+    for (let k = -1; k <= 1; k++) c.on(orb, F(O[0]), F(O[1] + k * 0.5), m.gem, 0);
+  }
+  if (!magic) return;
+  switch (t) {
+    case 1: leaf(c, P(len + r * 1.6, 0.4), -1, 1.2, 0.5); return; // Aprendiz: brotinho.
+    case 2: for (const s of [-1, 0, 1]) limb(c, [O[0] + s * r * 0.6, O[1] - r], [O[0] + s * r * 0.6, O[1] + r], 0.2, 0.2, Mat.Iron); return; // Brasa Presa: grade.
+    case 3: for (const [a, b] of [[-0.5, -0.2], [0.4, 0.3], [0.1, -0.6]]) c.on(orb, F(O[0] + a * r), F(O[1] + b * r), Mat.White, 5); return; // Vidente: estrelas dentro.
+    case 4: for (const [a, b] of [[1.6, -1], [-1.5, -1.3], [1.2, 1.4]]) c.px(F(O[0] + a * r), F(O[1] + b * r), Mat.Arcane, 5); return; // Tempestade: raios soltos.
+    default: { const sk = ellipse(c, O[0], O[1] - r * 0.1, r * 0.55, r * 0.5, Mat.Bone); for (const s of [-1, 1]) c.on(sk, F(O[0] + s * r * 0.22), F(O[1] - r * 0.15), Mat.Venom, 5); return; } // Olho do Lich: crânio dentro.
+  }
+}
+
+/** Haste de lança, foice e totem: de `top` até o chão, com ponteira; a cabeça vai ampliada 1,45× (como o cajado). */
+function pole(c: Canvas, x: number, top: number, bottom: number, mat: Mat, foot: Mat, head: () => void, k = 1.45) {
+  c.scaled([x, top + 2], k, () => {
+    c.unscaled(() => {
+      limb(c, [x, top + 2], [x, bottom], 1, 1, mat, mat === Mat.Wood ? grain : undefined);
+      limb(c, [x, bottom - 1.6], [x, bottom], 1.25, 1.15, foot);
+    });
+    head();
+  });
+}
+
+/** Lança (a pose do cajado): ponta de metal no alto da haste. */
+function spearArt(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
+  const t = tierOf(id), magic = isMagic(id), m = STYLE_MATS.spear[styleKey(id)], x = at[0];
+  pole(c, x, top, bottom, m.haft, m.trim, () => {
+    const tip = top - 4 - t * 0.6, w = 1 + t * 0.2;
+    if (magic && t === 5) {
+      // Tridente da Maré Rubra: três dentes.
+      for (const s of [-1, 0, 1]) plate(c, [[x + s * 2 - 0.6, top + 1], [x + s * 2 + 0.6, top + 1], [x + s * 2, tip + Math.abs(s) * 1.4]], m.head);
+      limb(c, [x - 2.4, top + 1.2], [x + 2.4, top + 1.2], 0.6, 0.6, m.trim);
+    } else {
+      plate(c, [[x, tip], [x + w, top - 0.6], [x + 0.5, top + 2.4], [x - 0.5, top + 2.4], [x - w, top - 0.6]], m.head);
+      thread(c, [x, tip + 1], [x, top + 1.8], m.head, 5);
+    }
+    if (t === 3) spike(c, [x + 0.6, top + 0.4], 1, -0.3, 2.4, 0.5, m.head); // gancho do pique
+    if (t >= 4) for (const s of [-1, 1]) spike(c, [x + s * 0.6, top + 1.8], s, 0.4, 2.2, 0.5, m.trim); // asas
+    if (t === 1) for (const y of [top + 2.6, top + 3.4]) limb(c, [x - 1.1, y], [x + 1.1, y], 0.3, 0.3, m.trim);
+    else limb(c, [x, top + 2.4], [x, top + 3.6], 1.25, 1.25, m.trim);
+    if (t >= 4) gem(c, [x, top + 3], 0.8, m.gem);
+    if (!magic) return;
+    switch (t) {
+      case 1: for (const s of [-1, 1]) leaf(c, [x + s * 1.6, top + 5], s < 0 ? 2.4 : 0.7, 2, 0.6); return; // Batedor: fita de folhas.
+      case 2: flame(c, [x, tip + 0.5], 2.6, 1.2); return; // Solar: a ponta em chama.
+      case 3: limb(c, [x - 3, top + 3], [x + 3, top + 3], 0.5, 0.5, m.trim); return; // Guardião: travessa.
+      case 4: for (const s of [-1, 1]) leaf(c, [x + s * 2.4, top + 4.6], s < 0 ? 2.2 : 0.9, 2.6, 0.9, Mat.Linen); return; // Grifo: penas.
+      default: return;
+    }
+  }, 1.6);
+}
+
+/** Foice (a pose do cajado): lâmina em meia-lua saindo do alto da haste para fora. */
+function scytheArt(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
+  const t = tierOf(id), magic = isMagic(id), m = STYLE_MATS.scythe[styleKey(id)], x = at[0];
+  pole(c, x, top, bottom, m.haft, m.trim, () => {
+    const R = 3.6 + t * 0.6, cx = x - R * 0.55, cy = top + R * 0.75;
+    // Meia-lua: dentro do círculo de fora e fora do de dentro, só a metade de cima.
+    const blade = c.fill(ebox(cx, cy, R + 1, R + 1), (xx, yy) => {
+      const px = xx + 0.5, py = yy + 0.5;
+      return Math.hypot(px - cx, py - cy) < R && Math.hypot(px - cx + 0.9, py - cy - 1.6) > R - 0.4 - t * 0.1 && py < cy + 0.4 && px < x + 0.4;
+    }, m.head, sphere(cx, cy - R * 0.5, R, R));
+    for (let a = 0.25; a < 0.95; a += 0.12) {
+      const ang = Math.PI + a * Math.PI * 0.5;
+      c.on(blade, F(cx + Math.cos(ang) * (R - 0.6)), F(cy + Math.sin(ang) * (R - 0.6)), m.head, 5);
+    }
+    limb(c, [x, top + 0.6], [x, top + 2.2], 1.3, 1.3, m.trim);
+    if (t >= 4) gem(c, [x, top + 1.4], 0.8, m.gem);
+    if (t === 5) for (const a of [0.35, 0.55, 0.75]) { const ang = Math.PI + a * Math.PI * 0.5; spike(c, [cx + Math.cos(ang) * R, cy + Math.sin(ang) * R], Math.cos(ang), Math.sin(ang), 1.6, 0.5, Mat.Horn); }
+    if (!magic) return;
+    switch (t) {
+      case 1: for (const k of [0, 1, 2]) leaf(c, [x + 1.2, top + 3 + k], 0.3, 1.6, 0.5, Mat.Amber); return; // Colhedor: espigas de trigo.
+      case 2: for (const k of [0, 1]) leaf(c, [x + 1.4, top + 3.5 + k * 1.6], 0.6, 1.8, 0.8); c.px(F(cx - R * 0.6), F(cy - R * 0.5), Mat.Venom, 5); return; // Mandrágora.
+      case 3: ellipse(c, x + 2.6, top - 1.4, 1, 1, Mat.Moon); return; // Lua Cheia: a lua sobre a lâmina.
+      case 4: for (const k of [0, 1, 2]) leaf(c, [x + (k - 1) * 1.6, top + 4 + k], k * 1.2, 1.6, 0.8, k === 1 ? Mat.Amber : Mat.Clay); return; // Outono: folhas secas.
+      default: for (const k of [0, 1, 2, 3]) leaf(c, [x + (k % 2 ? 1.4 : -1.4), top + 3 + k * 1.4], k % 2 ? 0.5 : 2.6, 1.6, 0.7); return; // Bosque Antigo: hera.
+    }
+  }, 1.75);
+}
+
+/** Totem de mão (a pose do cajado): cara entalhada no alto da haste, com olhos acesos. */
+function totemArt(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
+  const t = tierOf(id), magic = isMagic(id), m = STYLE_MATS.totem[styleKey(id)], x = at[0];
+  pole(c, x, top, bottom, m.haft, m.trim, () => {
+    const face = (cy: number, w: number, h: number) => {
+      const id = plate(c, [[x - w, cy - h], [x + w, cy - h], [x + w * 0.85, cy + h], [x - w * 0.85, cy + h]], m.head, t === 1 ? grain : undefined);
+      for (const s of [-1, 1]) { c.on(id, F(x + s * w * 0.45), F(cy - h * 0.3), m.gem, 5); c.on(id, F(x + s * w * 0.45) + s, F(cy - h * 0.3), m.gem, 4); }
+      for (let k = -1; k <= 1; k++) c.on(id, F(x + k * w * 0.3), F(cy + h * 0.45), m.head, 0);
+      return id;
+    };
+    if (t === 5) {
+      // Crânio de dragão: focinho comprido, chifres e dentes.
+      const sk = ellipse(c, x, top - 0.6, 3.2, 2.6, m.head);
+      plate(c, [[x - 2, top + 1], [x + 2, top + 1], [x + 1.2, top + 4], [x - 1.2, top + 4]], m.head);
+      for (const s of [-1, 1]) { c.on(sk, F(x + s * 1.2), F(top - 0.8), m.gem, 5); horn(c, [[x + s * 2.4, top - 2], [x + s * 4.4, top - 4], [x + s * 4, top - 6.6]], 0.8); }
+      for (const k of [-0.8, 0, 0.8]) fang(c, [x + k, top + 3.8], 0.3, 1);
+    } else if (t === 4) {
+      face(top - 1.6, 2.4, 1.8);
+      limb(c, [x - 2.4, top + 0.6], [x + 2.4, top + 0.6], 0.5, 0.5, m.trim);
+      face(top + 3, 2.2, 1.8);
+    } else {
+      face(top, 2 + t * 0.2, 2.4 + t * 0.2);
+      if (t === 2) for (const s of [-1, 1]) horn(c, [[x + s * 2.2, top - 1.6], [x + s * 3.8, top - 2.6], [x + s * 3.8, top - 4.6]], 0.7);
+      if (t === 3) for (const s of [-1, 0, 1]) leaf(c, [x + s * 1.4, top - 3.6], -Math.PI / 2 + s * 0.4, 2.2, 0.8, m.trim);
+    }
+    if (t === 1) for (const s of [-1, 1]) leaf(c, [x + s * 1.8, top + 4], s < 0 ? 2.2 : 0.9, 1.8, 0.6, Mat.Linen);
+    if (!magic) return;
+    switch (t) {
+      case 1: plate(c, [[x - 0.6, top + 0.4], [x + 0.6, top + 0.4], [x, top + 2.2]], Mat.Amber); for (const s of [-1, 1]) leaf(c, [x + s * 2.6, top - 1], s < 0 ? 2.6 : 0.5, 2.4, 0.8, Mat.Night); return; // Corvo.
+      case 2: flame(c, [x, top - 2.6], 2.6, 1.4); return; // Brasa.
+      case 3: for (const s of [-1, 1]) spike(c, [x + s * 1.2, top + 2.4], s * 0.5, -1, 2, 0.4, Mat.White); return; // Javali: presas.
+      case 4: for (const y of [top + 5, top + 7, top + 9]) c.px(F(x), F(y), Mat.Arcane, 5); return; // Ancestrais: runas na haste.
+      default: for (const s of [-1, 0, 1]) spike(c, [x + s * 1.4, top - 2.4], s * 0.3, -1, 1.8, 0.45, Mat.Iron); return; // Chefe Morto: coroa de ferro.
+    }
+  }, 1.75);
 }

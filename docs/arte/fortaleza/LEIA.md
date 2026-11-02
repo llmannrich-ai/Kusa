@@ -1,11 +1,12 @@
-# Planta da Fortaleza Orc (fase 1, rascunho para aprovação)
+# Planta da Fortaleza Orc
 
 - `planta.txt`: o mapa, um caractere por tile (84×128). Legenda na imagem e em `desenhar_imagem.py`.
 - `planta.json`: entrada, zonas de combate (na ordem), campinas, salas com telhado, torre de menagem, portões.
 - `planta.png`: a planta desenhada (`python3 docs/arte/fortaleza/desenhar_imagem.py`).
 
-Depois de aprovada, a planta entra em `packages/shared/src/dungeon.ts` (o gerador da Fortaleza passa a ler o
-desenho) e esta pasta fica só com a imagem.
+A vila baixa (linhas 91 a 127: o mirante, a cabeça da ponte e a vila) já está no jogo: `FORT_VILA` em
+`packages/shared/src/dungeon.ts` é a cópia dessas linhas (mude os dois juntos). O resto do castelo ainda vem do gerador
+(`buildFortress`), que já dá quase o mesmo desenho; os mirantes do esporão e a forca entram por `FORT_LOOKOUTS` e `FORT_GALLOWS`.
 
 ## Folhas de sprites do ChatGPT
 

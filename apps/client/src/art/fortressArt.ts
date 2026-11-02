@@ -1,4 +1,4 @@
-import { E, FLAT, HD, OPEN, ellipse, hash01, limb, lit, noise, paper, sn } from "./empireArt.ts";
+import { E, FLAT, HD, OPEN, ellipse, hash01, limb, lit, noise, paper, poly, sn } from "./empireArt.ts";
 import { box, hline, ivy, masonry, rubbleTop, vline } from "./empireMonuments.ts";
 import type { Paper } from "./duneArt.ts";
 
@@ -318,74 +318,106 @@ export function parapetTile(out: number, v: number): Uint8ClampedArray {
 }
 
 /**
- * Fachada sul da torre de menagem, 2 tiles de altura (os 2 andares de cima vistos de frente), um tile de largura por
- * vez: `row` 0 em cima (a cornija e as janelas do 2º andar), 1 embaixo (o 1º andar e o rodapé). `kind`: 0 parede,
- * 1 janela, 2 a porta (`part` -1, 0, 1: esquerda, meio, direita do arco); `end` -1 ou 1 nas quinas.
+ * Fachada sul da torre de menagem, `KEEP_RISE` tiles de altura (os andares de cima vistos de frente), um tile de
+ * largura por vez: `row` 0 em cima (a cornija com dentículos e as janelas do último andar), as do meio com janelas e
+ * a de baixo com o rodapé em talude. Cantaria de blocos grandes de travertino (64×32, desencontrados, cada um com o seu
+ * tom), não o tijolinho dos muros: a torre é a obra mais nobre do castelo. `kind`: 0 parede, 1 janela, 2 a porta
+ * (`part` -1, 0, 1: esquerda, meio, direita do arco, que ocupa os 2 andares de baixo); `end` -1 ou 1 nas quinas.
  */
-export function keepFaceTile(row: 0 | 1, kind: 0 | 1 | 2, part: -1 | 0 | 1, end: -1 | 0 | 1, v: number): Uint8ClampedArray {
+export function keepFaceTile(row: number, kind: 0 | 1 | 2, part: -1 | 0 | 1, end: -1 | 0 | 1, v: number): Uint8ClampedArray {
   const p = paper();
   const top = row * HD;
-  masonry(p, [0, 0, HD - 1, HD - 1], v * 5 + row * 3, { bricks: true, shade: 0.5 - row * 0.06, dark: 0.08 });
+  const last = row === KEEP_RISE - 1;
+  // Os andares de cima no sol do fim de tarde, o de baixo na sombra do pátio.
+  masonry(p, [0, 0, HD - 1, HD - 1], v * 5 + row * 3, { shade: 0.46 - row * 0.05, dark: 0.12, mat: E.Travertine, bw: 64, bh: 32 });
+  // Uma fiada de tufo escuro entre os andares.
+  if (row > 0) { box(p, [0, 0, HD - 1, 7], E.Tuff, 0.4); hline(p, 0, HD - 1, 0, E.Tuff, 4); }
   if (row === 0) {
     // Cornija: a faixa de travertino que separa o terraço da fachada, com dentículos.
-    box(p, [0, 0, HD - 1, 14], E.Travertine, 0.64);
+    box(p, [0, 0, HD - 1, 16], E.Travertine, 0.66);
     hline(p, 0, HD - 1, 0, E.Travertine, 5);
-    hline(p, 0, HD - 1, 14, E.Travertine, 1);
-    for (let x = 2; x < HD; x += 12) box(p, [x, 15, x + 6, 19], E.Travertine, 0.42);
-  } else {
-    // Rodapé em talude.
-    box(p, [0, HD - 18, HD - 1, HD - 1], E.Tuff, 0.42);
-    hline(p, 0, HD - 1, HD - 18, E.Tuff, 5);
+    hline(p, 0, HD - 1, 16, E.Travertine, 1);
+    for (let x = 2; x < HD; x += 12) box(p, [x, 17, x + 6, 22], E.Travertine, 0.4);
   }
-  const cx = 64 + part * 0;
-  if (kind === 1) {
-    // Janela arqueada estreita (seteira larga), escura, com a soleira clara.
-    const y0 = row === 0 ? 34 : 18, y1 = row === 0 ? 104 : 84;
+  if (last) {
+    // Rodapé em talude.
+    box(p, [0, HD - 20, HD - 1, HD - 1], E.Tuff, 0.4);
+    hline(p, 0, HD - 1, HD - 20, E.Tuff, 5);
+  }
+  const cx = 64;
+  if (kind === 1 && !last) {
+    // Janela arqueada estreita, escura, com a soleira clara.
+    const y0 = row === 0 ? 36 : 22, y1 = row === 0 ? 106 : 96;
     p.fill([cx - 14, y0, cx + 14, y1], (x, y) => y > y0 + 14 || Math.hypot(x - cx, y - (y0 + 14)) < 14, E.Void, () => 0.1);
     for (let a = Math.PI; a <= Math.PI * 2; a += 0.05) p.on(cx + Math.cos(a) * 16, y0 + 14 + Math.sin(a) * 16, E.Travertine, 4);
     box(p, [cx - 18, y1 + 1, cx + 18, y1 + 6], E.Travertine, 0.62);
     hline(p, cx - 18, cx + 18, y1 + 1, E.Travertine, 5);
   }
+  if (kind === 1 && last) {
+    // Seteira no andar de baixo.
+    box(p, [cx - 4, 26, cx + 4, 82], E.Void, 0.1);
+    hline(p, cx - 6, cx + 6, 83, E.Travertine, 5);
+  }
   if (kind === 2) {
-    // A porta: um arco de 3 tiles de largura e 1,6 de altura, aduelas de travertino, e o escuro do salão.
-    const W3 = HD * 3, ox = (part + 1) * HD;
-    const ax = W3 / 2, rIn = W3 / 2 - 44, spring = 2 * HD - 18 - 120;
+    // A porta: um arco de 3 tiles de largura nos 2 andares de baixo, aduelas de travertino, e o escuro do salão.
+    const W3 = HD * 3, ox = (part + 1) * HD, full = KEEP_RISE * HD;
+    const ax = W3 / 2, rIn = W3 / 2 - 44, spring = full - 20 - 150;
     const gy = (y: number) => y + top;
     p.fill([0, 0, HD - 1, HD - 1], (x, y) => {
       const X = x + ox, Y = gy(y);
-      return Y >= spring && Y < 2 * HD - 18 ? Math.abs(X - ax) <= rIn : Math.hypot((X - ax) / rIn, (Y - spring) / 70) < 1 && Y < spring;
-    }, E.Void, (x, y) => 0.08 + (gy(y) / (2 * HD)) * 0.06);
+      return Y >= spring && Y < full - 20 ? Math.abs(X - ax) <= rIn : Math.hypot((X - ax) / rIn, (Y - spring) / 80) < 1 && Y < spring;
+    }, E.Void, (x, y) => 0.08 + (gy(y) / full) * 0.06);
     for (let a = Math.PI; a <= Math.PI * 2; a += 0.004) {
-      for (let r = 0; r < 20; r++) {
-        const X = ax + Math.cos(a) * (rIn + 2 + r), Y = spring + Math.sin(a) * (70 + 2 + r);
+      for (let r = 0; r < 22; r++) {
+        const X = ax + Math.cos(a) * (rIn + 2 + r), Y = spring + Math.sin(a) * (80 + 2 + r);
         const x = X - ox, y = Y - top;
         if (x < 0 || x >= HD || y < 0 || y >= HD) continue;
         const seg = Math.floor((a - Math.PI) / (Math.PI / 9));
-        p.on(x, y, E.Travertine, r < 2 ? 5 : r > 17 ? 1 : (seg % 2 ? 3 : 4) - (Math.floor(a * 300) % 23 === 0 ? 2 : 0));
+        p.on(x, y, E.Travertine, r < 2 ? 5 : r > 19 ? 1 : (seg % 2 ? 3 : 4) - (Math.floor(a * 300) % 23 === 0 ? 2 : 0));
       }
     }
     // Ombreiras.
     for (const sx of [ax - rIn - 22, ax + rIn + 2]) {
       const x0 = sx - ox;
       if (x0 + 20 < 0 || x0 >= HD) continue;
-      for (let y = Math.max(0, spring - top); y < Math.min(HD, 2 * HD - 18 - top); y++)
+      for (let y = Math.max(0, spring - top); y < Math.min(HD, full - 20 - top); y++)
         for (let x = Math.max(0, x0); x < Math.min(HD, x0 + 20); x++) p.on(x, y, E.Travertine, mod(y + top, 24) < 2 ? 1 : x - x0 < 3 ? 5 : 3);
     }
+    // A grade levadiça erguida até a metade: as barras de ferro descendo do alto do arco.
+    for (let X = ax - rIn + 10; X < ax + rIn; X += 22) {
+      const x = X - ox;
+      if (x < 0 || x >= HD) continue;
+      for (let Y = spring - 40; Y < spring + 30; Y++) {
+        const y = Y - top;
+        if (y < 0 || y >= HD || Math.hypot((X - ax) / rIn, (Y - spring) / 80) >= 1 && Y < spring) continue;
+        p.on(x, y, E.Iron, 2); p.on(x + 1, y, E.Iron, 3);
+      }
+      for (const Y of [spring - 10, spring + 18]) for (let k = -11; k < 11; k++) { const y = Y - top; if (y >= 0 && y < HD && x + k >= 0 && x + k < HD) p.on(x + k, y, E.Iron, 2); }
+      // As pontas das barras.
+      const yp = spring + 30 - top;
+      if (yp >= 0 && yp < HD - 3) { p.on(x, yp + 1, E.Iron, 1); p.on(x, yp + 2, E.Iron, 1); }
+    }
   }
-  // Quinas da torre: a do oeste na luz, a do leste na sombra.
-  if (end < 0) for (let y = 0; y < HD; y++) for (let x = 0; x < 6; x++) p.on(x, y, null, x < 2 ? 5 : 4);
-  if (end > 0) for (let y = 0; y < HD; y++) for (let x = HD - 6; x < HD; x++) p.on(x, y, null, x > HD - 3 ? 1 : 2);
+  // Quinas da torre: a do oeste na luz, a do leste na sombra, com os blocos de canto em amarração.
+  if (end < 0) for (let y = 0; y < HD; y++) for (let x = 0; x < (mod(y + top, 64) < 32 ? 20 : 12); x++) p.on(x, y, null, x < 3 ? 5 : mod(y + top, 32) < 2 ? 2 : 4);
+  if (end > 0) for (let y = 0; y < HD; y++) for (let x = HD - (mod(y + top, 64) < 32 ? 20 : 12); x < HD; x++) p.on(x, y, null, x > HD - 4 ? 1 : mod(y + top, 32) < 2 ? 1 : 2);
   // Hera subindo do pé, em alguns trechos.
-  if (row === 1 && kind === 0 && v % 3 === 0)
+  if (last && kind === 0 && v % 3 === 0)
     for (let x = 0; x < HD; x++) {
-      const reach = 90 * Math.max(0, sn(x, 0, 32, 796 + v) * 1.6 - 0.6);
+      const reach = 110 * Math.max(0, sn(x, 0, 32, 796 + v) * 1.6 - 0.6);
       for (let d = 0; d < reach; d++) if (noise(x >> 1, (HD - d) >> 1, 797) < 0.6) p.on(x, HD - 1 - d, E.Ivy, noise(x, d, 798) < 0.3 ? 4 : 2);
     }
+  // Escorrido escuro de fuligem e chuva descendo das janelas e da cornija.
+  for (let x = 0; x < HD; x++) {
+    if (noise(x >> 2, row, 799 + v) > 0.12) continue;
+    const len = 20 + noise(x, row, 800) * 60;
+    for (let y = 0; y < len; y++) p.nudge(x, y, -1);
+  }
   return p.render(false);
 }
 
 /** Andar de cima da torre de menagem, em tiles acima do chão (o terraço aparece deslocado isto para o norte). */
-export const KEEP_RISE = 2;
+export const KEEP_RISE = 3;
 
 // --- Telhados das casernas (andar de cima das salas) -------------------------------------------
 
@@ -396,64 +428,95 @@ export type RoofRow = "top" | "north" | "ridge" | "south" | "bottom";
 
 /**
  * Um tile do telhado de uma caserna (o andar de cima da sala), montado como no Tibia: os mesmos tiles servem para
- * todas as casernas. Tábuas em duas águas (a cumeeira de leste a oeste, a água do norte na luz, a do sul na sombra),
- * fiadas de telha a cada 32 px (o tile emenda com o vizinho), `col` -1 e 1 nas pontas (a tábua de beirada), e por
- * variação `v`: 0 liso, 1 remendo de couro dos orcs, 2 buraco (o escuro de dentro e as vigas), 3 caveira com chifres
- * na cumeeira.
+ * todas as casernas. Telha romana de terracota em duas águas (a cumeeira de leste a oeste, a água do norte na luz, a do
+ * sul na sombra): as telhas largas (tégulas) em fiadas de 32 px e, por cima das juntas, as canais redondas (ímbrices)
+ * descendo a água a cada 32 px (o tile emenda com o vizinho); cada telha com o seu tom, a fiada de cima jogando
+ * sombra na de baixo. `col` -1 e 1 nas pontas (a beirada de pedra). Por variação `v`: 0 inteiro, 1 remendo de couro
+ * dos orcs pregado, 2 buraco (as ripas, as vigas e o escuro de dentro), 3 caveira com chifres na cumeeira, 4 telhas
+ * faltando (as ripas à mostra).
  */
 export function roofTile(row: RoofRow, col: -1 | 0 | 1, v: number): Paper {
   const p = paper();
   const north = row === "top" || row === "north";
   const ridgeY = 54;
-  p.fill([0, 0, HD - 1, HD - 1], () => true, E.Bark, (x, y) => {
-    const upper = row === "ridge" ? y < ridgeY : north;
-    const plank = Math.floor(x / 32);
-    let s = (upper ? 0.66 : 0.46) + (hash01(plank * 3 + (upper ? 0 : 7) + (row === "ridge" ? 13 : 0), 804) - 0.5) * 0.12;
-    if (mod(x, 32) < 2) s -= 0.22;
-    if (mod(y, 32) < 2) s -= 0.12;
-    if (row === "ridge" && Math.abs(y - ridgeY) < 4) s += 0.15;
+  const upperAt = (y: number) => (row === "ridge" ? y < ridgeY : north);
+  // A água: as fiadas descem para longe da cumeeira (no norte, de baixo para cima na tela).
+  const course = (y: number) => Math.floor(y / 32);
+  const inCourse = (y: number) => (upperAt(y) ? 31 - mod(y, 32) : mod(y, 32));
+  p.fill([0, 0, HD - 1, HD - 1], () => true, E.Terracotta, (x, y) => {
+    const up = upperAt(y);
+    const lx = mod(x + 16, 32), ly = inCourse(y);
+    const id = Math.floor((x + 16) / 32) * 7 + course(y) * 13 + (up ? 0 : 5);
+    let s = (up ? 0.6 : 0.42) + (hash01(id + v * 31, 804) - 0.5) * 0.14;
+    // A ímbrice: o meio-cilindro por cima da junta, claro no lado do sol (oeste) e escuro do outro.
+    const ix = mod(x, 32);
+    if (ix < 10) s = (up ? 0.62 : 0.46) + (ix < 3 ? 0.2 : ix > 7 ? -0.2 : 0.06);
+    else {
+      // A tégula: a borda levantada dos lados e a sombra da fiada de cima.
+      if (lx < 2 || lx > 29) s -= 0.1;
+      if (ly < 5) s -= 0.2;
+      else if (ly > 28) s += 0.08;
+    }
+    if (ly < 2 && ix >= 10) s -= 0.12;
+    if (row === "ridge" && Math.abs(y - ridgeY) < 7) s = 0.5 + (y < ridgeY ? 0.15 : -0.1);
     return s;
-  }, (x, y) => (noise(x, y, 805 + v) < 0.05 ? -1 : 0));
-  if (v === 1) {
-    const cx = 40 + noise(1, col + 2, 806) * 48, cy = 40 + noise(col + 2, 1, 807) * 48;
-    p.fill([cx - 34, cy - 24, cx + 34, cy + 24], (x, y) => Math.abs(x - cx) / 30 + Math.abs(y - cy) / 20 < 1.1 - noise(x >> 3, y >> 3, 810) * 0.25,
-      E.Terracotta, (x, y) => (north ? 0.66 : 0.48) + (sn(x, y, 16, 811) - 0.5) * 0.12);
-    for (let a = 0; a < Math.PI * 2; a += 0.08) p.on(cx + Math.cos(a) * 26, cy + Math.sin(a) * 17, E.Line, 2);
-  }
-  if (v === 2) {
-    // O telhado caiu aqui: o escuro de dentro, as vigas e a borda lascada.
+  }, (x, y) => (noise(x, y, 805 + v) < 0.04 ? -1 : 0));
+  // Telhas faltando: as ripas de madeira à mostra.
+  if (v === 4 || v === 2) {
+    const cx = 30 + noise(2, col + 2, 818) * 68, cy = 30 + noise(col + 2, 2, 819) * 68;
     for (let y = 0; y < HD; y++)
       for (let x = 0; x < HD; x++) {
-        const d = Math.hypot((x - 64) / 50, (y - 64) / 40) + (noise(x >> 2, y >> 2, 803) - 0.5) * 0.3;
+        const d = Math.hypot((x - cx) / 34, (y - cy) / 26) + (noise(x >> 3, y >> 3, 820) - 0.5) * 0.5;
         if (d >= 1) continue;
-        const i = y * HD + x, beam = mod(x, 44) < 7;
-        p.mat[i] = beam ? E.Bark : E.Void; p.shade[i] = beam ? 0.3 : 0.08; p.off[i] = 0; p.fixed[i] = -1;
+        // As ripas claras e, entre elas, a madeira escura do forro (não o vazio: o buraco de verdade é o `v` 2).
+        const i = y * HD + x, batten = mod(y, 16) < 6;
+        p.mat[i] = E.Bark; p.shade[i] = batten ? 0.5 : 0.2; p.off[i] = 0; p.fixed[i] = -1;
       }
   }
-  // Musgo em manchas.
-  if (hash01(col * 7 + v * 3 + row.length, 812) < 0.5) {
-    const cx = noise(v, row.length, 813) * HD, cy = noise(row.length, v, 814) * HD, r = 14 + noise(v, col + 2, 815) * 14;
-    for (let y = Math.floor(cy - r); y <= cy + r; y++)
-      for (let x = Math.floor(cx - r * 1.4); x <= cx + r * 1.4; x++)
-        if (((x - cx) / (r * 1.4)) ** 2 + ((y - cy) / r) ** 2 < 1 - noise(x >> 1, y >> 1, 816) * 0.5) p.on(x, y, E.Moss, noise(x, y, 817) < 0.4 ? 2 : 3);
+  if (v === 2) {
+    // O telhado caiu aqui: o escuro de dentro e as vigas atravessando.
+    for (let y = 0; y < HD; y++)
+      for (let x = 0; x < HD; x++) {
+        const d = Math.hypot((x - 64) / 52, (y - 64) / 42) + (noise(x >> 2, y >> 2, 803) - 0.5) * 0.3;
+        if (d >= 0.82) continue;
+        const i = y * HD + x, beam = mod(x, 44) < 7;
+        p.mat[i] = beam ? E.Bark : E.Void; p.shade[i] = beam ? 0.3 : 0.06; p.off[i] = 0; p.fixed[i] = -1;
+      }
   }
+  if (v === 1) {
+    // Couro de bicho esticado e pregado por cima das telhas quebradas.
+    const cx = 40 + noise(1, col + 2, 806) * 48, cy = 40 + noise(col + 2, 1, 807) * 48;
+    p.fill([cx - 34, cy - 24, cx + 34, cy + 24], (x, y) => Math.abs(x - cx) / 30 + Math.abs(y - cy) / 20 < 1.1 - noise(x >> 3, y >> 3, 810) * 0.25,
+      E.Dirt, (x, y) => (north ? 0.62 : 0.46) + (sn(x, y, 16, 811) - 0.5) * 0.14);
+    for (let a = 0; a < Math.PI * 2; a += 0.6) p.on(cx + Math.cos(a) * 24, cy + Math.sin(a) * 15, E.Iron, 4);
+  }
+  // Musgo e liquens nas telhas da água do norte (a mais úmida).
+  if (north || row === "ridge")
+    for (let y = 0; y < HD; y++)
+      for (let x = 0; x < HD; x++) if (upperAt(y) && sn(x, y, 16, 812 + v) > 0.8 && noise(x, y, 813) < 0.5) p.on(x, y, E.Moss, 1);
   if (row === "ridge") {
-    limb(p, [0, ridgeY], [HD - 1, ridgeY], 5, 5, E.Bark);
+    // As telhas da cumeeira, meio-cilindros em fila.
+    for (let x = 0; x < HD; x += 24) ellipse(p, x + 12, ridgeY, 13, 7, E.Terracotta);
     if (v === 3) {
       const x = 64;
-      ellipse(p, x, ridgeY - 6, 11, 10, E.Bone);
-      p.on(x - 4, ridgeY - 6, E.Void, 1); p.on(x + 4, ridgeY - 6, E.Void, 1); p.on(x - 3, ridgeY - 5, E.Void, 1); p.on(x + 3, ridgeY - 5, E.Void, 1);
-      limb(p, [x - 9, ridgeY - 10], [x - 22, ridgeY - 26], 3, 1.2, E.Bone);
-      limb(p, [x + 9, ridgeY - 10], [x + 22, ridgeY - 26], 3, 1.2, E.Bone);
+      ellipse(p, x, ridgeY - 8, 11, 10, E.Bone);
+      p.on(x - 4, ridgeY - 8, E.Void, 1); p.on(x + 4, ridgeY - 8, E.Void, 1); p.on(x - 3, ridgeY - 7, E.Void, 1); p.on(x + 3, ridgeY - 7, E.Void, 1);
+      limb(p, [x - 9, ridgeY - 12], [x - 22, ridgeY - 28], 3, 1.2, E.Bone);
+      limb(p, [x + 9, ridgeY - 12], [x + 22, ridgeY - 28], 3, 1.2, E.Bone);
     }
   }
-  if (row === "top") { hline(p, 0, HD - 1, 0, E.Bark, 5); hline(p, 0, HD - 1, 1, E.Bark, 4); }
-  if (row === "bottom") { box(p, [0, HD - 12, HD - 1, HD - 1], E.Bark, 0.32); hline(p, 0, HD - 1, HD - 12, E.Bark, 4); }
-  // Tábua de beirada nas pontas (a da esquerda na luz).
+  if (row === "top") { hline(p, 0, HD - 1, 0, E.Terracotta, 5); hline(p, 0, HD - 1, 1, E.Terracotta, 4); }
+  if (row === "bottom") {
+    // A beira do telhado: as bocas redondas das ímbrices e a sombra embaixo.
+    box(p, [0, HD - 12, HD - 1, HD - 1], E.Terracotta, 0.26);
+    for (let x = 0; x < HD; x += 32) ellipse(p, x + 5, HD - 12, 6, 5, E.Terracotta);
+    for (let x = 0; x < HD; x += 32) { p.on(x + 5, HD - 12, E.Void, 1); p.on(x + 4, HD - 12, E.Void, 1); }
+  }
+  // Beirada de pedra nas pontas (a da esquerda na luz).
   if (col !== 0) {
-    const x0 = col < 0 ? 0 : HD - 10;
-    box(p, [x0, 0, x0 + 9, HD - 1], E.Bark, col < 0 ? 0.7 : 0.3);
-    vline(p, col < 0 ? x0 : x0 + 9, 0, HD - 1, E.Line, 1);
+    const x0 = col < 0 ? 0 : HD - 12;
+    box(p, [x0, 0, x0 + 11, HD - 1], E.Tuff, col < 0 ? 0.68 : 0.32);
+    vline(p, col < 0 ? x0 : x0 + 11, 0, HD - 1, E.Line, 1);
   }
   return p;
 }
@@ -549,4 +612,509 @@ export function grassMask(grass: number): Uint8ClampedArray {
     for (let s = 0; s < len; s++) { on(x + dx * s, y + dy * s); if (s < len - 2) on(x + dx * s + dy, y + dy * s + dx); }
   }
   return out;
+}
+
+// --- A vila baixa ------------------------------------------------------------------------------
+
+/** A fonte seca da praça da vila, pintada para 3×3 tiles de chão (o mapa estica até a bacia); o pedestal sobe além. */
+export const FOUNTAIN = { w: HD * 3 + 32, h: HD * 3 + 96 } as const;
+
+/**
+ * A fonte seca do império no meio da praça da vila: a bacia redonda de travertino com a
+ * borda larga (o topo claro, a face da frente na sombra, juntas das pedras), um trecho da borda quebrado no sudeste com
+ * os blocos caídos para fora, o fundo seco de lama rachada com folhas e uma mancha de limo onde ficava a água, e no
+ * meio o pedestal com a taça de cima rachada (falta um pedaço). Musgo na borda e capim seco no pé. Luz do oeste.
+ */
+export function fountainSprite(): Uint8ClampedArray {
+  const p = paper(FOUNTAIN.w, FOUNTAIN.h);
+  const cx = FOUNTAIN.w / 2, foot = FOUNTAIN.h - 12;
+  const R = 176, RIN = 146, RISE = 30;
+  /** Centro da bacia no chão e o do topo da borda (levantado `RISE` px). */
+  const gy = foot - R, ty = gy - RISE;
+  const ang = (x: number, y: number, oy: number) => Math.atan2(y - oy, x - cx);
+  // A brecha da borda: o trecho do sudeste caiu.
+  const broken = (a: number) => a > 0.35 && a < 0.8;
+  const inC = (x: number, y: number, oy: number, r: number) => Math.hypot(x - cx, y - oy) < r;
+  // 1. Corpo da borda (a face de fora): os círculos do chão até o topo; a face é o que fica abaixo do topo.
+  p.fill([cx - R, ty - R, cx + R, gy + R], (x, y) => {
+    if (inC(x, y, ty, R)) return false;
+    if (broken(ang(x, y, gy)) && y > gy) return false;
+    for (let t = 0; t <= RISE; t += 3) if (inC(x, y, ty + t, R)) return true;
+    return inC(x, y, gy, R);
+  }, E.Travertine, (x, y) => {
+    const a = ang(x, y, gy);
+    const block = Math.floor(((a + Math.PI) / (2 * Math.PI)) * 36);
+    const edge = mod((a + Math.PI) / (2 * Math.PI) * 36, 1);
+    // A face olha para o sul: mais clara do lado oeste (o sol baixo), escura no leste; juntas entre os blocos.
+    let s = 0.42 - Math.cos(a) * 0.12 + (hash01(block, 900) - 0.5) * 0.1;
+    if (edge < 0.08) s -= 0.18;
+    const depth = (y - (ty + Math.sqrt(Math.max(0, R * R - (x - cx) ** 2)))) / RISE;
+    if (depth < 0.15) s += 0.08;
+    return s;
+  }, (x, y) => (noise(x, y, 901) < 0.06 ? -1 : 0));
+  // 2. O topo da borda (anel claro), com juntas radiais e musgo em manchas.
+  p.fill([cx - R, ty - R, cx + R, ty + R], (x, y) => {
+    const d = Math.hypot(x - cx, y - ty);
+    return d < R && d >= RIN && !broken(ang(x, y, ty));
+  }, E.Travertine, (x, y) => {
+    const a = ang(x, y, ty);
+    const d = Math.hypot(x - cx, y - ty);
+    const edge = mod((a + Math.PI) / (2 * Math.PI) * 36, 1);
+    let s = 0.66 - (y - ty) / R * 0.08 + (hash01(Math.floor(((a + Math.PI) / (2 * Math.PI)) * 36), 902) - 0.5) * 0.08;
+    if (edge < 0.06) s -= 0.2;
+    if (d > R - 4) s -= 0.12;
+    else if (d < RIN + 4) s += 0.06;
+    return s;
+  }, (x, y) => (noise(x, y, 903) < 0.05 ? -1 : 0));
+  for (let y = ty - R; y < ty + R; y++)
+    for (let x = cx - R; x < cx + R; x++) {
+      const d = Math.hypot(x - cx, y - ty);
+      if (d < R && d >= RIN && sn(x & 127, y & 127, 8, 904) > 0.74) p.on(x, y, E.Moss, noise(x, y, 905) < 0.5 ? 1 : 2);
+    }
+  // 3. Dentro: a face de dentro da borda do norte (o crescente) e o fundo seco.
+  p.fill([cx - RIN, ty - RIN, cx + RIN, ty + RIN], (x, y) => inC(x, y, ty, RIN) && !inC(x, y, gy, RIN), E.Travertine,
+    (x, y) => 0.5 + (y - ty) / RIN * 0.15 - Math.cos(ang(x, y, ty)) * 0.06);
+  // Lama rachada em placas: as células de Voronoi de uma grade de 28 px sorteada; a fenda é onde as duas sementes mais
+  // perto ficam à mesma distância. Cada placa tem o seu tom e a beira de cima clara (as placas se encurvam ao secar).
+  const CELL = 28;
+  const plate = (x: number, y: number) => {
+    let d1 = 1e9, d2 = 1e9, id = 0;
+    const gx0 = Math.floor(x / CELL), gy0 = Math.floor(y / CELL);
+    for (let j = -1; j <= 1; j++)
+      for (let i = -1; i <= 1; i++) {
+        const sx = (gx0 + i + 0.2 + hash01((gx0 + i) * 31 + (gy0 + j) * 7, 906) * 0.6) * CELL;
+        const sy = (gy0 + j + 0.2 + hash01((gx0 + i) * 13 + (gy0 + j) * 29, 907) * 0.6) * CELL;
+        const d = Math.hypot(x - sx, y - sy);
+        if (d < d1) { d2 = d1; d1 = d; id = (gx0 + i) * 97 + gy0 + j; } else if (d < d2) d2 = d;
+      }
+    return { gap: d2 - d1, id, d1 };
+  };
+  p.fill([cx - RIN, gy - RIN, cx + RIN, ty + RIN], (x, y) => inC(x, y, ty, RIN) && inC(x, y, gy, RIN), E.Dirt, (x, y) => {
+    const { gap, id, d1 } = plate(x, y);
+    let s = 0.52 + (hash01(id, 908) - 0.5) * 0.14 - d1 / CELL * 0.08 - Math.max(0, 1 - (y - (gy - RIN)) / 50) * 0.25;
+    if (gap < 2.2) s -= 0.4;
+    else if (gap < 4) s += 0.1;
+    return s;
+  });
+  for (let y = gy - RIN; y < ty + RIN; y++)
+    for (let x = cx - RIN; x < cx + RIN; x++) {
+      if (!(inC(x, y, ty, RIN) && inC(x, y, gy, RIN))) continue;
+      // A mancha de limo seco onde a água durou mais (o meio) e folhas secas.
+      if (Math.hypot((x - cx) / 80, (y - gy - 10) / 56) < 1 && plate(x, y).gap > 2.2 && sn(x & 127, y & 127, 8, 909) > 0.6) p.on(x, y, E.Dry, 1);
+      if (noise(x >> 2, y >> 2, 910) < 0.035) p.on(x, y, noise(x, y, 911) < 0.5 ? E.Dry : E.Terracotta, 2);
+    }
+  // 4. O pedestal e a taça de cima, rachada (falta o pedaço do leste).
+  const shaftTop = gy - 150;
+  for (let k = 0; k < 3; k++) {
+    // Base em degraus.
+    const w = 46 - k * 10, y0 = gy + 14 - k * 12;
+    box(p, [cx - w, y0 - 12, cx + w, y0], E.Travertine, (x) => 0.58 - ((x - cx) / w) * 0.18);
+    hline(p, cx - w, cx + w, y0 - 12, E.Travertine, 5);
+  }
+  p.fill([cx - 18, shaftTop, cx + 18, gy - 22], () => true, E.Travertine, (x) => lit((x - cx) / 18, 0, 0.45));
+  for (let y = shaftTop + 10; y < gy - 22; y += 16) hline(p, cx - 17, cx + 17, y, E.Travertine, 1);
+  const bowlY = shaftTop - 6;
+  const bowlBroken = (x: number, y: number) => x > cx + 26 && y < bowlY + 4 + (x - cx - 26) * 0.6;
+  // A taça vista de cima: o fundo de fora (a sombra) e a boca.
+  p.fill([cx - 78, bowlY - 26, cx + 78, bowlY + 30], (x, y) => Math.hypot((x - cx) / 78, (y - bowlY) / 28) < 1 && y > bowlY - 2 && !bowlBroken(x, y),
+    E.Marble, (x, y) => 0.45 - (x - cx) / 78 * 0.15 - (y - bowlY) / 28 * 0.1);
+  p.fill([cx - 78, bowlY - 26, cx + 78, bowlY + 26], (x, y) => Math.hypot((x - cx) / 78, (y - bowlY + 2) / 24) < 1 && !bowlBroken(x, y), E.Marble,
+    (x, y) => (Math.hypot((x - cx) / 66, (y - bowlY + 2) / 18) < 1 ? 0.3 + (y - bowlY) / 18 * 0.12 : 0.74 - (x - cx) / 78 * 0.12));
+  // A rachadura descendo da quebra.
+  for (let k = 0; k < 40; k++) p.on(cx + 26 - (k >> 2), bowlY + 2 + k * 0.4 + Math.sin(k) * 1.5, E.Line, 1);
+  // Um toco no meio da taça: os pés da estátua que ficava em cima.
+  box(p, [cx - 10, bowlY - 30, cx + 10, bowlY - 6], E.Marble, (x) => 0.6 - (x - cx) / 10 * 0.2);
+  // 5. Os blocos da borda caídos para fora, na frente da brecha.
+  // Do mais longe para o mais perto (o de baixo cobre o de cima); cada um com o topo, a face da frente e o lado.
+  const blocks = [0, 1, 2, 3, 4].map((k) => {
+    const a = 0.3 + hash01(k, 912) * 0.55, r = R - 6 + hash01(k, 913) * 44;
+    return { k, bx: cx + Math.cos(a) * r, by: Math.min(foot - 2, gy + Math.sin(a) * r), w: 12 + hash01(k, 914) * 12, h: 9 + hash01(k, 915) * 8 };
+  }).sort((a, b) => a.by - b.by);
+  for (const { k, bx, by, w, h } of blocks) {
+    const tilt = (hash01(k, 916) - 0.5) * 8;
+    poly(p, [[bx - w, by - h - 12 + tilt], [bx + w, by - h - 12 - tilt], [bx + w, by - h - tilt], [bx - w, by - h + tilt]], E.Travertine, () => 0.72);
+    poly(p, [[bx - w, by - h + tilt], [bx + w, by - h - tilt], [bx + w, by - tilt], [bx - w, by + tilt]], E.Travertine, (x) => 0.48 - (x - bx) / w * 0.1);
+    hline(p, bx - w + 2, bx + w - 2, by - h, E.Travertine, 5);
+  }
+  // 6. Capim seco no pé da borda.
+  for (let x = cx - R; x < cx + R; x++) {
+    const a = Math.acos(Math.max(-1, Math.min(1, (x - cx) / R)));
+    if (broken(a)) continue;
+    const base = gy + Math.sin(a) * R;
+    if (noise(x >> 2, 0, 916) < 0.45) continue;
+    const len = 4 + noise(x, 1, 917) * 10;
+    for (let k = 0; k < len; k++) p.px(x + (k > len / 2 ? 1 : 0), base - k, k < 3 ? E.Grass : E.Dry, k < len - 2 ? 2 : 4);
+  }
+  return p.render(true);
+}
+
+/** A estátua derrubada: 2 tiles de chão deitada (a cabeça rolou para o leste). */
+export const STATUE = { w: HD * 2 + 48, h: HD + 72 } as const;
+
+/**
+ * Estátua de mármore do império derrubada pelos orcs: o pedestal quebrado no oeste com o pé ainda preso em cima, o
+ * corpo deitado de lado (a toga com as dobras, o braço por cima), a cabeça laureada que rolou para o leste e cacos em
+ * volta; musgo e uma pichação de sangue dos orcs no pedestal. Luz do oeste, sombra no chão para o leste.
+ */
+export function statueSprite(): Uint8ClampedArray {
+  const p = paper(STATUE.w, STATUE.h);
+  const foot = STATUE.h - 14, x0 = 24;
+  // Pedestal quebrado (oeste): o bloco com a face da frente e o topo.
+  box(p, [x0, foot - 96, x0 + 72, foot - 70], E.Marble, 0.72);
+  box(p, [x0, foot - 70, x0 + 72, foot], E.Marble, (x) => 0.5 - (x - x0) / 72 * 0.1);
+  hline(p, x0, x0 + 72, foot - 70, E.Marble, 5);
+  for (const y of [foot - 50, foot - 28]) hline(p, x0 + 2, x0 + 70, y, E.Vein, 1);
+  // A quina de cima lascada e o pé que sobrou.
+  p.fill([x0 + 50, foot - 98, x0 + 74, foot - 80], (x, y) => y < foot - 98 + (x - x0 - 50) * 0.8, E.Marble, () => 0.35);
+  box(p, [x0 + 20, foot - 118, x0 + 40, foot - 96], E.Marble, (x) => 0.66 - (x - x0 - 20) / 20 * 0.2);
+  // A marca de sangue dos orcs no pedestal (um risco em garra).
+  for (let k = 0; k < 3; k++) for (let y = foot - 60; y < foot - 18; y++) p.on(x0 + 22 + k * 10 + (y >> 4), y, E.Cloth, 2);
+  // O corpo deitado: a toga (um tronco comprido), as pernas para o oeste, o braço por cima.
+  const body: [number, number] = [x0 + 92, foot - 30], chest: [number, number] = [x0 + 196, foot - 36];
+  limb(p, body, chest, 26, 32, E.Marble);
+  for (let k = 0; k < 4; k++) {
+    // As dobras da toga: sulcos curvos em diagonal, com o lado de cima claro.
+    const fx = x0 + 106 + k * 22;
+    for (let t = -20; t < 22; t++) {
+      const x = fx + Math.round(t * 0.45 + Math.sin(t / 7) * 3), y = foot - 34 + t;
+      if (!p.has(x, y)) continue;
+      p.on(x, y, E.Marble, 1);
+      p.on(x - 1, y, E.Marble, 5);
+    }
+  }
+  limb(p, [x0 + 120, foot - 58], [x0 + 186, foot - 64], 9, 10, E.Marble);
+  limb(p, [x0 + 72, foot - 22], [x0 + 96, foot - 24], 16, 22, E.Marble);
+  // O pescoço quebrado e a cabeça rolada (de lado, com a coroa de louros).
+  box(p, [x0 + 222, foot - 46, x0 + 232, foot - 24], E.Marble, 0.4);
+  const hx = x0 + 262, hy = foot - 28;
+  ellipse(p, hx, hy, 26, 25, E.Marble);
+  // O nariz e o queixo de perfil (a cabeça caiu virada para o oeste), o olho, a orelha.
+  ellipse(p, hx - 26, hy + 2, 5, 6, E.Marble);
+  ellipse(p, hx - 18, hy + 18, 8, 6, E.Marble);
+  p.on(hx - 14, hy - 4, E.Line, 1); p.on(hx - 13, hy - 4, E.Line, 1); p.on(hx - 12, hy - 5, E.Line, 1);
+  for (let y = hy - 2; y < hy + 8; y++) p.on(hx + 4 + ((y - hy) >> 2), y, E.Vein, 1);
+  // A coroa de louros: folhas de bronze verde em volta do alto da cabeça.
+  for (let a = -2.9; a < -0.1; a += 0.22) {
+    const lx = hx + Math.cos(a) * 24, ly = hy + Math.sin(a) * 23;
+    ellipse(p, lx, ly, 5, 3, E.Bronze);
+  }
+  // Cacos em volta e musgo em cima do corpo.
+  for (let k = 0; k < 9; k++) {
+    const sx = x0 + 60 + hash01(k, 920) * 230, sy = foot - 4 - hash01(k, 921) * 10;
+    box(p, [sx - 4, sy - 4, sx + 4, sy], E.Marble, 0.6);
+  }
+  for (let y = 0; y < STATUE.h; y++)
+    for (let x = 0; x < STATUE.w; x++)
+      if (p.has(x, y) && y < foot - 50 && sn(x & 127, y & 127, 8, 922) > 0.8) p.on(x, y, E.Moss, 1);
+  return p.render(true);
+}
+
+// --- Muralhas orcizadas ------------------------------------------------------------------------
+
+/** O que os orcs penduram e pregam na frente da muralha do império: por cima do sprite do muro, no mesmo tamanho. */
+export const ORC_DRESS = { w: HD, h: HD + 144 } as const;
+/** Altura da muralha (px acima do chão) e onde começa a face dela no sprite (`wallSprite` com `city`). */
+const DRESS_WALL = 120, DRESS_FACE = ORC_DRESS.h - DRESS_WALL;
+
+/**
+ * Enfeite orc na face sul de um tile de muralha (transparente no resto): `kind` 0 escudo redondo de tábuas pregado,
+ * com a lança atravessada atrás e a marca de mão vermelha; 1 remendo de tábuas pregadas tapando uma brecha (o escuro
+ * aparece pelas frestas); 2 estacas afiadas saindo da beira do tampo, inclinadas para fora, uma com caveira espetada;
+ * 3 sangue escorrendo da ameia e uma corrente pendurada com argola; 4 o pano de guerra vermelho pendurado da ameia,
+ * rasgado embaixo, com a caveira de chifres pintada em preto.
+ */
+export function orcDressing(kind: number, v: number): Uint8ClampedArray {
+  const p = paper(ORC_DRESS.w, ORC_DRESS.h);
+  const face = DRESS_FACE, cx = 40 + Math.floor(hash01(v * 7 + kind, 930) * 48);
+  if (kind === 0) {
+    const cy = face + 56, r = 36;
+    limb(p, [cx - 40, cy + 30], [cx + 42, cy - 34], 2.5, 2.5, E.Bark);
+    poly(p, [[cx + 42, cy - 34], [cx + 52, cy - 50], [cx + 36, cy - 40]], E.Iron, () => 0.6);
+    p.fill([cx - r, cy - r, cx + r, cy + r], (x, y) => Math.hypot(x - cx, y - cy) < r, E.Bark, (x, y) => {
+      const plank = Math.floor((x - cx + r) / 13);
+      return 0.5 + (hash01(plank + v, 931) - 0.5) * 0.16 - (x - cx) / r * 0.1 - (y - cy) / r * 0.08 + (mod(x - cx + r, 13) < 1 ? -0.2 : 0);
+    });
+    for (let a = 0; a < Math.PI * 2; a += 0.01) for (let k = 0; k < 3; k++) p.on(cx + Math.cos(a) * (r - 1 - k), cy + Math.sin(a) * (r - 1 - k), E.Iron, k === 0 ? 1 : 3);
+    ellipse(p, cx, cy, 7, 7, E.Iron);
+    // A mão vermelha dos orcs pintada no escudo.
+    p.fill([cx - 14, cy - 18, cx + 2, cy + 4], (x, y) => Math.hypot((x - cx + 6) / 7, (y - cy + 2) / 8) < 1
+      || (y < cy - 6 && [-12, -8, -4, 0].some((f) => Math.abs(x - (cx + f)) < 1.6 && y > cy - 17 + Math.abs(f + 6) * 0.4)), E.Cloth, () => 0.5);
+  } else if (kind === 1) {
+    // Brecha tapada com tábuas pregadas na diagonal e na vertical.
+    const x0 = cx - 30, x1 = cx + 30, y0 = face + 16, y1 = face + DRESS_WALL - 14;
+    p.fill([x0 - 4, y0 - 4, x1 + 4, y1 + 4], (x, y) => Math.hypot((x - cx) / 36, (y - (y0 + y1) / 2) / 48) < 1 - noise(x >> 2, y >> 2, 932) * 0.15, E.Void, () => 0.1);
+    for (let k = 0; k < 4; k++) {
+      const px = x0 + 2 + k * 15 + Math.floor(hash01(k + v, 933) * 4);
+      box(p, [px, y0 + hash01(k, 934) * 8, px + 12, y1 - hash01(k, 935) * 8], E.Bark, (x) => 0.52 + (hash01(k * 3 + v, 936) - 0.5) * 0.2 - (x - px) * 0.012);
+      for (const ny of [y0 + 10, y1 - 12]) { p.on(px + 6, ny, E.Iron, 5); p.on(px + 6, ny + 1, E.Iron, 2); }
+    }
+    limb(p, [x0 - 6, y0 + 20], [x1 + 6, y1 - 24], 4, 4, E.Bark);
+  } else if (kind === 2) {
+    // Estacas afiadas na beira do tampo (a beira fica logo acima da face), inclinadas para o sul.
+    for (let k = 0; k < 5; k++) {
+      const bx = 14 + k * 24 + (hash01(k + v * 5, 937) - 0.5) * 10, by = face + 6;
+      const tx = bx + (hash01(k, 938) - 0.5) * 16, ty = face - 46 - hash01(k + v, 939) * 18;
+      limb(p, [bx, by], [tx, ty + 8], 4, 3, E.Bark);
+      poly(p, [[tx - 3, ty + 9], [tx + 3, ty + 9], [tx, ty]], E.Dry, () => 0.7);
+      if (k === 2) {
+        ellipse(p, tx, ty + 18, 9, 8, E.Bone);
+        p.on(tx - 3, ty + 18, E.Void, 1); p.on(tx + 3, ty + 18, E.Void, 1); p.on(tx - 3, ty + 19, E.Void, 1); p.on(tx + 3, ty + 19, E.Void, 1);
+        for (let x = tx - 4; x <= tx + 4; x += 2) p.on(x, ty + 24, E.Void, 1);
+      }
+    }
+  } else if (kind === 4) {
+    const x0 = cx - 24, x1 = cx + 24, y0 = face - 6, y1 = face + DRESS_WALL - 8;
+    limb(p, [x0 - 6, y0], [x1 + 6, y0], 3, 3, E.Bark);
+    p.fill([x0, y0, x1, y1], (x, y) => y < y1 - 10 - noise(x >> 2, 0, 941 + v) * 22 && Math.abs(x - cx) < 24 - (y - y0) * 0.04, E.Cloth,
+      (x, y) => 0.5 + Math.sin((x - x0) / 7) * 0.12 - (y - y0) / (y1 - y0) * 0.12);
+    // A caveira de chifres em preto no meio do pano.
+    const sy = y0 + 40;
+    p.fill([cx - 12, sy - 12, cx + 12, sy + 14], (x, y) => Math.hypot((x - cx) / 11, (y - sy) / 12) < 1 || (y > sy + 6 && y < sy + 14 && Math.abs(x - cx) < 7), E.Line, () => 0.4);
+    for (const sx of [-1, 1]) limb(p, [cx + sx * 9, sy - 6], [cx + sx * 20, sy - 20], 3, 1.5, E.Line);
+    for (const sx of [-1, 1]) ellipse(p, cx + sx * 5, sy, 3, 3, E.Cloth);
+  } else {
+    // Sangue escorrendo da beira e uma corrente com argola.
+    for (let k = 0; k < 4; k++) {
+      const x = cx - 18 + k * 11, len = 20 + hash01(k + v, 940) * 50;
+      for (let y = face; y < face + len; y++) { p.px(x, y, E.Cloth, y > face + len - 3 ? 1 : 2); if (y < face + 8) p.px(x + 1, y, E.Cloth, 2); }
+    }
+    for (let k = 0; k < 9; k++) {
+      const y = face - 4 + k * 8, x = cx + 26 + Math.sin(k * 0.6) * 2;
+      p.fill([x - 4, y - 4, x + 4, y + 4], (a, b) => { const d = Math.hypot((a - x) / 3, (b - y) / 4); return d < 1 && d > 0.45; }, E.Iron, () => (k % 2 ? 0.4 : 0.66));
+    }
+    const ry = face + 72;
+    p.fill([cx + 14, ry - 12, cx + 38, ry + 12], (a, b) => { const d = Math.hypot(a - cx - 26, b - ry); return d < 11 && d > 7; }, E.Iron, (a) => 0.6 - (a - cx - 26) / 11 * 0.2);
+  }
+  return p.render(true);
+}
+
+// --- Interiores --------------------------------------------------------------------------------
+
+/**
+ * Um tile do tapete do salão do trono (3 tiles de largura, da porta até o trono), por cima das lajes: lã vermelha
+ * gasta com a barra dourada e a grega nas beiras (`part` -1 e 1, as colunas da beira; 0 o meio), puído e manchado,
+ * rasgado na ponta da porta (`end` 2) e com a franja na ponta do trono (`end` 1). Transparente fora do tapete.
+ */
+export function carpetTile(part: -1 | 0 | 1, end: 0 | 1 | 2, v: number): Uint8ClampedArray {
+  const p = paper();
+  const inset = 14;
+  const inside = (x: number, y: number) => {
+    if (part < 0 && x < inset) return false;
+    if (part > 0 && x > HD - 1 - inset) return false;
+    if (end === 1 && y < 20) return false;
+    if (end === 2 && y > HD - 18 - noise(x >> 3, v, 950) * 30) return false;
+    return true;
+  };
+  p.fill([0, 0, HD - 1, HD - 1], inside, E.Cloth, (x, y) => {
+    let s = 0.46 + (sn(x, y, 32, 951 + v) - 0.5) * 0.14;
+    // Puído no meio (o caminho de quem anda até o trono) e as manchas escuras.
+    if (part === 0) s += Math.max(0, 0.12 - Math.abs(x - 64) / 400);
+    if (sn(x, y, 16, 952 + v) > 0.74) s -= 0.16;
+    return s;
+  });
+  // A barra dourada e a grega na beira de cada lado.
+  for (let y = 0; y < HD; y++)
+    for (let x = 0; x < HD; x++) {
+      if (!inside(x, y)) continue;
+      const fromEdge = part < 0 ? x - inset : part > 0 ? HD - 1 - inset - x : 99;
+      if (fromEdge < 4) p.on(x, y, E.Gold, fromEdge < 1 ? 1 : 3);
+      else if (fromEdge < 14 && fromEdge > 6) {
+        // Grega (o meandro do império): um degrau a cada 8 px.
+        const t = mod(y, 16), u = fromEdge - 7;
+        if ((t < 8 && u === 0) || (t === 8 && u < 6) || (t >= 8 && u === 5) || (t === 0 && u < 6)) p.on(x, y, E.Gold, 2);
+      }
+      if (end === 1 && y < 26) p.on(x, y, E.Gold, 2);
+    }
+  // Franja na ponta do trono.
+  if (end === 1) for (let x = part < 0 ? inset : 0; x < (part > 0 ? HD - inset : HD); x += 3) for (let y = 12; y < 20; y++) p.px(x, y, E.Gold, 3);
+  // Rasgos e furos.
+  for (let y = 0; y < HD; y++) for (let x = 0; x < HD; x++) if (inside(x, y) && noise(x >> 2, y >> 2, 953 + v) < 0.012) p.on(x, y, E.Void, 1);
+  return p.render(false);
+}
+
+/** O braseiro do salão (de pé): o fogo é desenhado à parte, por cima, pelo mapa. */
+export const BRAZIER = { w: HD, h: HD + 40 } as const;
+/** Altura (px de arte, a partir do pé do sprite) da boca do braseiro, onde o mapa põe as chamas. */
+export const BRAZIER_MOUTH = 104;
+
+/** Braseiro de ferro do império em três pés de garra, a bacia cheia de brasa e um anel de caveiras dos orcs no aro. */
+export function brazierSprite(): Uint8ClampedArray {
+  const p = paper(BRAZIER.w, BRAZIER.h);
+  const cx = BRAZIER.w / 2, foot = BRAZIER.h - 10, mouth = foot - BRAZIER_MOUTH;
+  // Os três pés (o do meio atrás) e o fuste.
+  for (const [dx, back] of [[-30, 0], [30, 0], [0, 1]] as const) limb(p, [cx + dx, foot - (back ? 10 : 0)], [cx + dx * 0.25, mouth + 34], 4, 3, E.Iron);
+  limb(p, [cx, mouth + 40], [cx, mouth + 16], 6, 6, E.Iron);
+  // A bacia: a boca vista um pouco de cima, cheia de brasa, e o bojo embaixo.
+  p.fill([cx - 40, mouth - 4, cx + 40, mouth + 24], (x, y) => Math.hypot((x - cx) / 40, (y - mouth) / 22) < 1 && y >= mouth, E.Iron, (x, y) => 0.5 - (x - cx) / 40 * 0.2 - (y - mouth) / 22 * 0.15);
+  p.fill([cx - 40, mouth - 12, cx + 40, mouth + 12], (x, y) => Math.hypot((x - cx) / 40, (y - mouth) / 11) < 1, E.Iron, (x) => 0.66 - (x - cx) / 40 * 0.15);
+  p.fill([cx - 34, mouth - 9, cx + 34, mouth + 9], (x, y) => Math.hypot((x - cx) / 34, (y - mouth) / 8) < 1, E.Fire, (x, y) => 0.3 + sn(x & 127, y & 127, 8, 960) * 0.5);
+  // Caveirinhas no aro.
+  for (const dx of [-26, 0, 26]) {
+    ellipse(p, cx + dx, mouth + 14, 6, 6, E.Bone);
+    p.on(cx + dx - 2, mouth + 14, E.Void, 1); p.on(cx + dx + 2, mouth + 14, E.Void, 1);
+  }
+  return p.render(true);
+}
+
+/** Cama de palha dos orcs na caserna (no chão, 1 tile): o monte de palha, a pele por cima e um osso roído. */
+export function strawBed(v: number): Uint8ClampedArray {
+  const p = paper();
+  const cx = 64 + (v - 0.5) * 10, cy = 66;
+  p.fill([8, 20, 120, 112], (x, y) => Math.hypot((x - cx) / 54, (y - cy) / 40) < 1 - noise(x >> 2, y >> 2, 961 + v) * 0.18, E.Dry,
+    (x, y) => 0.55 + (noise(x, y >> 1, 962) - 0.5) * 0.3 - (y - cy) / 40 * 0.12);
+  // Palhas soltas riscando.
+  for (let k = 0; k < 40; k++) {
+    const x = 12 + noise(k, v, 963) * 104, y = 24 + noise(v, k, 964) * 84, a = noise(k, k, 965) * Math.PI;
+    for (let t = 0; t < 9; t++) p.on(x + Math.cos(a) * t, y + Math.sin(a) * t * 0.5, E.Dry, noise(k, t, 966) < 0.5 ? 4 : 2);
+  }
+  // A pele por cima (a cabeça do bicho para o lado).
+  p.fill([30, 34, 104, 96], (x, y) => Math.hypot((x - cx - 4) / 32, (y - cy + 2) / 24) < 1 - noise(x >> 2, y >> 2, 967 + v) * 0.2, E.Dirt,
+    (x, y) => 0.5 + (sn(x, y, 8, 968) - 0.5) * 0.2 - (x - cx) / 32 * 0.1);
+  ellipse(p, cx + 34, cy - 6, 9, 7, E.Dirt);
+  limb(p, [cx - 40, cy + 30], [cx - 22, cy + 36], 3, 3, E.Bone);
+  return p.render(true);
+}
+
+// --- A cachoeira -------------------------------------------------------------------------------
+
+/** A água caindo da cachoeira: repete na vertical (o mapa a faz descer rolando a textura). */
+export const FALL = { w: 64, h: 256 } as const;
+
+/**
+ * A água da cachoeira que sai do esgoto da muralha e cai no abismo: fios verticais de água (cada coluna com o seu tom
+ * e a sua velocidade de risco), espuma branca em riscos compridos, mais transparente nas beiras. Emenda em cima e
+ * embaixo (período `FALL.h`).
+ */
+export function waterfallTexture(): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(FALL.w * FALL.h * 4);
+  const deep = [58, 98, 116], light = [120, 170, 186], foam = [226, 236, 238];
+  for (let x = 0; x < FALL.w; x++) {
+    const edge = Math.min(x, FALL.w - 1 - x) / 14;
+    const col = noise(x >> 1, 0, 970);
+    for (let y = 0; y < FALL.h; y++) {
+      // Riscos verticais: um ruído que repete na altura da textura (a fase anda com a coluna).
+      const t = (y / FALL.h + col) * Math.PI * 2;
+      const streak = 0.5 + 0.3 * Math.sin(t * 3 + x * 0.7) + 0.2 * Math.sin(t * 7 + x * 1.9);
+      const c = streak > 0.82 ? foam : streak > 0.55 ? light : deep;
+      const o = (y * FALL.w + x) * 4;
+      out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2];
+      const a = Math.min(1, edge) * (streak > 0.82 ? 1 : 0.86);
+      out[o + 3] = a > ((x * 7 + y * 3) % 4) / 4 * 0.6 + 0.2 ? Math.round(a * 255) : 0;
+    }
+  }
+  return out;
+}
+
+/** A boca do esgoto na face do paredão, de onde sai a água: o arco de pedra, o escuro e a grade quebrada. */
+export const DRAIN = { w: 96, h: 80 } as const;
+export function drainSprite(): Uint8ClampedArray {
+  const p = paper(DRAIN.w, DRAIN.h);
+  const cx = DRAIN.w / 2, base = DRAIN.h - 8;
+  p.fill([cx - 40, 8, cx + 40, base], (x, y) => y > 30 ? Math.abs(x - cx) < 40 : Math.hypot((x - cx) / 40, (y - 30) / 22) < 1, E.Travertine,
+    (x, y) => 0.6 - (x - cx) / 40 * 0.15 - (y - 8) / 70 * 0.1);
+  p.fill([cx - 26, 20, cx + 26, base], (x, y) => y > 36 ? Math.abs(x - cx) < 26 : Math.hypot((x - cx) / 26, (y - 36) / 16) < 1, E.Void, () => 0.08);
+  for (let x = cx - 22; x < cx + 22; x += 9) for (let y = 26; y < base - 10 - (x > cx ? 12 : 0); y++) p.on(x, y, E.Iron, 2);
+  for (let y = 10; y < base; y += 14) hline(p, cx - 40, cx - 27, y, E.Travertine, 1);
+  for (let y = 10; y < base; y += 14) hline(p, cx + 27, cx + 40, y, E.Travertine, 1);
+  // O limo verde escorrido em volta da boca.
+  for (let y = 20; y < base; y++) for (let x = cx - 30; x < cx + 30; x++) if (p.has(x, y) && sn(x, y, 8, 971) > 0.62 && Math.abs(x - cx) > 24) p.on(x, y, E.Moss, 1);
+  return p.render(true);
+}
+
+// --- Vida ---------------------------------------------------------------------------------------
+
+/** O corvo voando (2 quadros: asas em cima e embaixo), visto de cima, lado a lado na textura. */
+export const RAVEN = { w: 48, h: 32 } as const;
+export function ravenFrames(): Uint8ClampedArray {
+  const p = paper(RAVEN.w * 2, RAVEN.h);
+  for (const k of [0, 1]) {
+    const ox = k * RAVEN.w, cx = ox + 24, cy = 17;
+    // O corpo e a cabeça com o bico, a cauda em leque.
+    ellipse(p, cx, cy, 5, 9, E.Void);
+    ellipse(p, cx, cy - 10, 4, 4, E.Void);
+    poly(p, [[cx - 1.5, cy - 13], [cx + 1.5, cy - 13], [cx, cy - 18]], E.Iron, () => 0.4);
+    poly(p, [[cx - 4, cy + 7], [cx + 4, cy + 7], [cx + 6, cy + 14], [cx - 6, cy + 14]], E.Void, () => 0.3);
+    // As asas: abertas para cima (penas das pontas separadas) ou fechadas para baixo.
+    for (const s of [-1, 1]) {
+      const tip: [number, number] = k === 0 ? [cx + s * 22, cy - 8] : [cx + s * 16, cy + 8];
+      poly(p, [[cx + s * 3, cy - 4], [tip[0], tip[1]], [tip[0] - s * 3, tip[1] + 5], [cx + s * 4, cy + 4]], E.Void, () => 0.35);
+    }
+  }
+  return p.render(false);
+}
+
+// --- Moitas -------------------------------------------------------------------------------------
+
+/** Moita de pé (as touceiras soltas dentro do castelo e da vila): um pouco maior que o tile, para emendar com as vizinhas. */
+export const SHRUB = { w: HD + 48, h: HD + 56 } as const;
+
+/**
+ * Moita redonda vista de frente: 4 a 6 bolos de folhagem sobrepostos (os de trás mais escuros), cada um com a luz em
+ * cima à esquerda e as folhas em tufos, algumas florzinhas secas e a base escura junto do chão. As vizinhas se
+ * sobrepõem e formam uma touceira de contorno solto, em vez dos blocos quadrados de tile.
+ */
+export function shrubSprite(v: number): Uint8ClampedArray {
+  const p = paper(SHRUB.w, SHRUB.h);
+  const cx = SHRUB.w / 2, foot = SHRUB.h - 12;
+  const n = 4 + (v % 3);
+  const balls = Array.from({ length: n }, (_, k) => {
+    const a = (k / n) * Math.PI * 2 + v;
+    const r = 28 + hash01(k * 7 + v, 980) * 16;
+    return { x: cx + Math.cos(a) * (26 + hash01(k + v, 981) * 14), y: foot - 58 + Math.sin(a) * 22 - hash01(k * 3 + v, 982) * 14, r };
+  }).sort((a, b) => a.y - b.y);
+  // O miolo, para não ficar buraco entre os bolos.
+  balls.unshift({ x: cx, y: foot - 56, r: 44 });
+  for (const [k, b] of balls.entries())
+    p.fill([b.x - b.r - 4, b.y - b.r - 4, b.x + b.r + 4, b.y + b.r + 4], (x, y) => Math.hypot(x - b.x, (y - b.y) * 1.1) < b.r * (1 - noise(x >> 2, y >> 2, 983 + k) * 0.14), E.Bush, (x, y) => {
+      const nx = (x - b.x) / b.r, ny = (y - b.y) / b.r;
+      return 0.5 - nx * 0.22 - ny * 0.3 + (sn(x & 127, y & 127, 8, 984 + v) - 0.5) * 0.3 + (k === 0 ? -0.12 : 0);
+    });
+  // Tufos claros e florzinhas secas.
+  for (let y = 0; y < SHRUB.h; y++)
+    for (let x = 0; x < SHRUB.w; x++) {
+      if (!p.has(x, y)) continue;
+      if (noise(x >> 1, y >> 1, 985 + v) < 0.04) p.on(x, y, E.Bush, 5);
+      else if (noise(x, y, 986 + v) < 0.006) p.on(x, y, E.Daisy, 3);
+      if (y > foot - 14) p.on(x, y, E.Bush, 1);
+    }
+  return p.render(true);
+}
+
+/** A forca dos orcs (de pé, 1 tile de chão; a trave passa para os lados). */
+export const GALLOWS = { w: HD + 96, h: HD + 200 } as const;
+
+/**
+ * A forca dos orcs no pátio externo: dois postes de tronco mal desbastado com a trave por cima e as mãos-francesas, a
+ * corda com o laço balançando num lado e, no outro, a gaiola de ferro pendurada com ossos dentro; caveiras pregadas no
+ * alto dos postes e o pé enterrado num monte de pedras.
+ */
+export function gallowsSprite(): Uint8ClampedArray {
+  const p = paper(GALLOWS.w, GALLOWS.h);
+  const cx = GALLOWS.w / 2, foot = GALLOWS.h - 14, top = 40;
+  const posts = [cx - 78, cx + 78];
+  for (const [k, x] of posts.entries()) {
+    limb(p, [x, foot], [x + (k ? -3 : 3), top + 6], 9, 7, E.Bark);
+    // Pedras no pé.
+    for (let j = 0; j < 4; j++) ellipse(p, x - 14 + j * 9, foot - 2 - (j % 2) * 4, 9, 6, E.Slab);
+    // A caveira pregada no alto do poste.
+    ellipse(p, x, top + 34, 9, 8, E.Bone);
+    p.on(x - 3, top + 34, E.Void, 1); p.on(x + 3, top + 34, E.Void, 1);
+  }
+  // A trave e as mãos-francesas.
+  limb(p, [posts[0] - 20, top], [posts[1] + 20, top + 4], 8, 8, E.Bark);
+  limb(p, [posts[0], top + 50], [posts[0] + 36, top + 4], 4, 4, E.Bark);
+  limb(p, [posts[1], top + 50], [posts[1] - 36, top + 4], 4, 4, E.Bark);
+  // A corda com o laço.
+  const rx = cx - 30;
+  for (let y = top + 8; y < top + 104; y++) p.px(rx + Math.sin((y - top) / 30) * 2, y, E.Dry, y % 6 < 3 ? 2 : 3);
+  p.fill([rx - 12, top + 100, rx + 12, top + 130], (x, y) => { const d = Math.hypot((x - rx) / 10, (y - top - 116) / 13); return d < 1 && d > 0.62; }, E.Dry, () => 0.5);
+  // A gaiola de ferro com ossos.
+  const gx = cx + 34, gy = top + 70;
+  for (let y = top + 8; y < gy; y++) p.px(gx, y, E.Iron, 2);
+  p.fill([gx - 22, gy, gx + 22, gy + 70], (x, y) => Math.abs(x - gx) < 22 - Math.max(0, (gy + 12 - y)) * 0.8, E.Void, () => 0.15);
+  for (let x = gx - 20; x <= gx + 20; x += 8) for (let y = gy + 4; y < gy + 70; y++) p.on(x, y, E.Iron, 3);
+  for (const y of [gy + 6, gy + 36, gy + 68]) for (let x = gx - 22; x <= gx + 22; x++) p.on(x, y, E.Iron, 2);
+  ellipse(p, gx - 4, gy + 54, 7, 6, E.Bone);
+  limb(p, [gx - 14, gy + 62], [gx + 12, gy + 58], 2.5, 2.5, E.Bone);
+  return p.render(true);
 }

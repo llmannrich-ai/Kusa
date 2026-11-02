@@ -22,6 +22,7 @@ const LIMIT_MS = 120_000;
 
 /** Nível típico do herói ao encontrar o monstro (comuns no meio do mapa, mini-boss, boss). */
 const LEVEL: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
+  grove: { common: 2, miniboss: 4, boss: 6 },
   crypt: { common: 3, miniboss: 5, boss: 6 },
   swamp: { common: 6, miniboss: 8, boss: 10 },
   desert: { common: 3, miniboss: 5, boss: 6 },
@@ -38,6 +39,7 @@ const LEVEL: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
 };
 /** Profundidade típica (sala do caminho) de cada rank. */
 const DEPTH: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
+  grove: { common: 2, miniboss: 3, boss: 7 },
   crypt: { common: 1, miniboss: 2, boss: 4 },
   swamp: { common: 3, miniboss: 4, boss: 7 },
   desert: { common: 2, miniboss: 3, boss: 6 },

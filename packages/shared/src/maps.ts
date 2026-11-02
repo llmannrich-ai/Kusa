@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
+export type MapId = "grove" | "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
 export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -101,6 +101,13 @@ export const LOOT_SCALE = 0.8;
 export const ITEM_DROP_SCALE = 0.6;
 
 /**
+ * Nível de Desafio que o item do baú usa (aberto ou o Mímico): não tem criatura, então vale o de um mini-boss forte
+ * (Mithral, 20% de Dragão; lendário 2%). O material e a raridade dos drops seguem o ND da criatura (`rollItem`), sem
+ * olhar o mapa nem a sala. Fica aqui (arquivo de regras) para o cliente de versão antiga, que roda a hunt solo, recarregar.
+ */
+export const CHEST_ITEM_CR = 7;
+
+/**
  * Morte no começo da hunt: quem morre (ou fica soterrado) abaixo deste nível de herói não perde equipamento do
  * corpo, só a bag, as poções e o loot. Morrer no nível 1 a 3 apagava o melhor item da conta a cada tentativa.
  * Fica aqui (arquivo de regras) para o cliente de versão antiga, que roda a hunt solo, recarregar; o banco repete o
@@ -112,7 +119,7 @@ export const DEATH_SAFE_LEVEL = 5;
  * Peso de cada raridade no sorteio do equipamento perdido na morte: o mágico sai 4× menos que o comum. O banco
  * repete os pesos em `drop_random_item`.
  */
-export const DEATH_LOSS_WEIGHT: Record<"common" | "rare" | "magic", number> = { common: 1, rare: 0.5, magic: 0.25 };
+export const DEATH_LOSS_WEIGHT: Record<"common" | "rare" | "magic" | "legendary", number> = { common: 1, rare: 0.5, magic: 0.25, legendary: 0.12 };
 
 /**
  * Quantidade a mais de monstros por sala de profundidade (+12% por sala): o orçamento de ameaça de cada encontro e os
@@ -147,6 +154,25 @@ export const MAX_ROOM_LEADERS = 1;
 export const CHAMPION_CHANCE = 0.05;
 
 export const MAPS: Record<MapId, MapDef> = {
+  grove: {
+    id: "grove", name: "Orla do Bosque", icon: "🌱", difficulty: 1, durationSeconds: 8 * 60,
+    // O primeiro mapa da campanha, para o herói ainda sem itens: os bichos mais fracos da floresta e os mini-bosses
+    // do Bosque Velho bem enfraquecidos. O boss é o Dragão jovem, o mesmo da Cripta.
+    minibossPower: 0.6, xpScale: 0.9,
+    description: "A beira da floresta do Kosaradius, onde tudo começa: clareiras ligadas por trilhas, um riacho com pontes de madeira e mata fechada dos dois lados. Ratazanas, estirges e galhudos na entrada, aranhas e lobos mais para dentro, e o sátiro e o espinheiro perto do fim; nas clareiras de troncos, a dríade e o centauro, ainda fracos. No círculo de menires do norte, o Dragão jovem. Mapa fixo.",
+    encounters: [
+      // Todo mundo começa no nível 1, sem itens: a entrada é de bichos pequenos.
+      { depth: [0, 0], budget: 50, table: [["rat", 3], ["stirge", 2], ["twigling", 1]] },
+      { depth: [1, 1], budget: 85, table: [["rat", 2], ["twigling", 3], ["stirge", 2]] },
+      { depth: [2, 2], budget: 120, table: [["twigling", 3], ["giantSpider", 2], ["rat", 1]] },
+      { depth: [3, 3], budget: 160, table: [["giantSpider", 2], ["direWolf", 2], ["twigling", 2]] },
+      { depth: [4, 4], budget: 200, table: [["direWolf", 3], ["giantSpider", 1], ["twigling", 1], ["satyr", 1]] },
+      { depth: [5, 99], budget: 240, table: [["direWolf", 2], ["satyr", 2], ["thornSpitter", 1], ["giantSpider", 1]] },
+    ],
+    minibosses: [["corruptedDryad", 1], ["renegadeCentaur", 1]],
+    mimicChance: 0,
+    bosses: [["dragon", 1]],
+  },
   crypt: {
     id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 1, durationSeconds: 4 * 60,
     minibossPower: 1.24,
@@ -206,8 +232,6 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   marsh: {
     id: "marsh", name: "Pântano do Kosaradius", icon: "🐸", difficulty: 1, durationSeconds: 10 * 60, maxParty: 1,
-    // ~145 monstros: com toda a XP, limpando 75% o herói chegava no Grumak no nível 20.
-    xpScale: 0.7,
     minibossPower: 1.52,
     meadowMonsters: 3, meadowMinibosses: 0.4, lootScale: 0.35, dropScale: 0.6,
     description: "Floresta alagada, o maior mapa, só para jogar sozinho. O clã de orcs e ogros do brejo, bando atrás de bando, e ogros e chefes de guerra em cada clareira: muito XP. Grumak, o Rei-Ogro, espera na clareira dos ciprestes.",
@@ -241,7 +265,7 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["ogreKing", 1]],
   },
   cavern: {
-    id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 4, durationSeconds: 10 * 60, meadowMonsters: 3, xpScale: 0.85,
+    id: "cavern", name: "Caverna da Travessia", icon: "🕳️", difficulty: 4, durationSeconds: 10 * 60, meadowMonsters: 3,
     minibossPower: 1.54,
     description: "Túneis por baixo dos Campos de Kusa, onde a campanha se divide entre a floresta e o deserto: o mapa mais difícil do jogo. Depois do tronco, a caverna se bifurca: a oeste, o Basilisco; a leste, mais fundo, o Observador das Profundezas, o boss mais forte de Kosaradius. Cada boss morto abre o portal do covil dele.",
     encounters: [
@@ -311,8 +335,6 @@ export const MAPS: Record<MapId, MapDef> = {
     // O clã do Pântano do Kosaradius, bem mais forte (vida, dano, XP e loot) e em bandos que lotam as salas, e o boss
     // próprio, Vorgak: o mapa mais difícil do jogo. O gold é o cheio (cada orc vale mais); os drops saem menos.
     commonPower: 2.4, minibossPower: 2.5,
-    // A força multiplica a XP junto: metade dela deixa o herói sozinho no nível 18 no boss limpando 75% do caminho.
-    xpScale: 0.5,
     meadowMonsters: 8, meadowMinibosses: 0.6, dropScale: 0.8,
     description: "Ruínas do Império: um castelo do império tomado pelos orcs, no alto de um esporão de rocha. Da vila baixa em ruínas, cruze o desfiladeiro pela ponte de pedra ou pela de cordas dos orcs; lá de cima se vê o vale. O pátio externo virou acampamento, com tendas, fogueiras e totens, e a muralha interna guarda o pátio do esporão e a torre de menagem. É o quartel do clã: orcs e ogros aos montes, bem mais fortes que os do brejo, e ogros e chefes de guerra em cada canto. O mapa mais difícil do jogo. No salão do trono, Vorgak, o Senhor da Brasa, racha o chão com o cutelo em brasa.",
     encounters: [
@@ -378,7 +400,7 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["erlking", 1]],
   },
   bog: {
-    id: "bog", name: "Charco Cinzento", icon: "🌫️", difficulty: 8, durationSeconds: 8 * 60, meadowMonsters: 4, meadowMinibosses: 0.25, lootScale: 0.78, xpScale: 0.5,
+    id: "bog", name: "Charco Cinzento", icon: "🌫️", difficulty: 8, durationSeconds: 8 * 60, meadowMonsters: 4, meadowMinibosses: 0.25, lootScale: 0.78,
     description: "Uma turfeira cinzenta e alagada, coberta da cinza de um incêndio antigo. A estrada afundada do império sobe do cais até a ilha do lago negro, com dois laços: as passarelas da Lagoa ou a trilha da Mata Queimada, a estrada da Torre de Vigia ou as passarelas das Palafitas. Os turfeiros que morreram no fogo e na água voltaram da lama, a Bruxa Cinzenta chama a névoa e os monólitos acordaram. Na ilha do lago negro, Morgrana, a Rainha Afogada. Mapa fixo.",
     encounters: [
       // Cais e Aterro: sanguessugas e corvos (todo mundo começa no nível 1 da hunt).
@@ -399,7 +421,7 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["morgrana", 1]],
   },
   badlands: {
-    id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60, meadowMonsters: 4, meadowMinibosses: 0.25, lootScale: 0.78, xpScale: 0.55,
+    id: "badlands", name: "Ermos Rubros", icon: "🦴", difficulty: 8, durationSeconds: 8 * 60, meadowMonsters: 4, meadowMinibosses: 0.25, lootScale: 0.78,
     description: "Vales largos de barro vermelho rachado entre platôs de rocha, onde ficava a mina de ferro do império. Do desfiladeiro, o caminho se divide entre o pátio da mina e o campo das torres de pedra, cruza a Ravina Grande pela ponte, passa dentro das costelas de um bicho gigante e atravessa a segunda ravina pela ponte de cordas ou pelo arco de pedra. Os mineiros que ficaram lá embaixo voltaram, as hienas seguem quem desce e os saqueadores atiram dos platôs. Na cratera do crânio, Kragmor, o Gigante da Cratera. Mapa fixo.",
     encounters: [
       // Desfiladeiro: escaravelhos e hienas (todo mundo começa no nível 1 da hunt).

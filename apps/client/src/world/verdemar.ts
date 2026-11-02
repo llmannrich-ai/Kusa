@@ -24,6 +24,8 @@ export interface CampaignNode {
 
 /** A campanha, do sul ao norte. Os 4 cenários de hoje são o começo. */
 export const NODES: Record<string, CampaignNode> = {
+  // O prólogo: a beira da floresta, onde todo herói começa (o Dragão jovem dela abre o Pântano do Kosaradius).
+  n0: { step: 0, x: 300, y: 1865, name: "Orla do Bosque", area: "Floresta do Kosaradius", map: "grove" },
   n1: { step: 1, x: 390, y: 1990, name: "Pântano do Kosaradius", area: "Floresta do Kosaradius", map: "marsh" },
   n2: { step: 2, x: 700, y: 1925, name: "Cripta", area: "Colinas das Tumbas", map: "crypt" },
   n3: { step: 3, x: 1030, y: 2000, name: "Mar de Areia", area: "Solária", map: "desert" },
@@ -53,14 +55,14 @@ export const NODES: Record<string, CampaignNode> = {
  * até o último ponto comum aos dois (`worldMap.ts`).
  */
 export const OPEN_CHAINS = [
-  ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9a"],
-  ["n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9b"],
-  ["n1", "n2", "n3", "n4", "n5", "n6a", "n7a"],
+  ["n0", "n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9a"],
+  ["n0", "n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9b"],
+  ["n0", "n1", "n2", "n3", "n4", "n5", "n6a", "n7a"],
 ] as const;
 
 /** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
 export const EDGES: [string, string][] = [
-  ["n1", "n2"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"],
+  ["n0", "n1"], ["n1", "n2"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"],
   ["n5", "n6a"], ["n6a", "n7a"], ["n7a", "n8"], ["n5", "n6b"], ["n6b", "n7b"], ["n7b", "n8"],
   ["n8", "n9a"], ["n9a", "n10"], ["n8", "n9b"], ["n9b", "n10"],
   ["n10", "n11a"], ["n11a", "n12a"], ["n12a", "n13"], ["n10", "n11b"], ["n11b", "n12b"], ["n12b", "n13"],

@@ -246,10 +246,15 @@ pela fila de deploy.
 | Fase | O que entra | Situação |
 |---|---|---|
 | 1. Abismo | O vale numa textura só (`art/valleyArt.ts`, gravada por `npm run vale -w @kusa/client`): campina, matas copa a copa, rio e córrego, trilhas, pedras, alicerces e colunas do império. O paredão em rocha natural (estratos e fendas, não tijolo), a sombra contínua no pé dele, a beirada sem a linha preta reta. | Feito |
-| 2. Vila baixa | Aplicar a planta (`docs/arte/fortaleza/planta.txt`); fonte seca e estátua derrubada na praça. | A fazer |
-| 3. Torre de menagem e telhados | Fachada própria, torreões orcs, o buraco do telhado, telhados novos das casernas. | A fazer |
-| 4. Muralhas orcizadas | Remendos de madeira e ferro, estacas, crânios e panos nas muralhas do império. | A fazer |
-| 5. Interiores | Salão do trono e casernas: tapetes, braseiros, camas de palha, armas na parede. | A fazer |
-| 6. Pontes e cachoeira | Ponte de pedra quebrada, ponte de cordas balançando, a cachoeira caindo no abismo. | A fazer |
-| 7. Vida e luz | Fumaça das fogueiras, faíscas, corvos, estandartes ao vento, a luz do fim de tarde. | A fazer |
-| 8. Fechamento | Medição no iPhone (até 80 MB de texturas, 60 quadros/s), jogar deitado, GDD. | A fazer |
+| 2. Vila baixa | A vila da planta à mão (`FORT_VILA` em `dungeon.ts`): ruas em grade, quadras de casas, praça da fonte, casernas, acampamento da ponte e o mirante sobre o desfiladeiro. A fonte seca (5×5) e a estátua derrubada pintadas por código (`fountainSprite`, `statueSprite`). O resto do castelo segue do gerador (a planta das linhas 0 a 90 ainda não entrou: mirantes do esporão, a forca). | Feito |
+| 3. Torre de menagem e telhados | Fachada de 3 andares (`KEEP_RISE` 3) em cantaria de blocos grandes, com a grade levadiça erguida no arco, quinas em amarração e escorridos; o terraço nas lajes escuras do salão (separado do pátio claro); os telhados das casernas em telha romana de terracota (tégulas e ímbrices, cumeeira, telhas faltando, couro pregado, buraco, caveira). Os torreões ainda são as torres dos portões. | Feito |
+| 4. Muralhas orcizadas | Na face sul das muralhas, um tile a cada 3 ou 4 (`orcDressing`): escudo de tábuas com a mão vermelha e a lança, brecha tapada com tábuas pregadas, estacas com caveira no tampo, sangue e corrente, pano de guerra com a caveira de chifres. O estandarte de caveira no alto de cada torreão da torre de menagem. | Feito |
+| 5. Interiores | O tapete vermelho gasto do salão (barra dourada, grega, franja, rasgado na porta) da porta até o trono; braseiros de ferro acesos dos dois lados (`brazierSprite` com o fogo e a luz por cima); camas de palha com pele nas casernas (`strawBed`) e as armas na parede norte. | Feito |
+| 6. Pontes e cachoeira | A cachoeira: o esgoto do castelo (a boca em arco com a grade quebrada e o limo) na face do paredão, embaixo da muralha externa, e a água caindo no abismo até a névoa (`waterfallTexture`, rolando para baixo a cada quadro). As pontes ficam como estão (a de cordas ainda não balança). | Feito |
+| 7. Vida e luz | Fumaça cinza subindo e indo para o leste e faíscas em cada fogueira do acampamento; três corvos voando em volta da torre de menagem (`ravenFrames`, 2 quadros de asa); os estandartes balançando ao vento; um véu quente de fim de tarde multiplicando a cena (abaixo da interface). | Feito |
+| 8. Fechamento | Medição local (`npm run medicao`, Chromium sem tela em 412×915 @3x): **67 MB** de texturas na Fortaleza (Portões 48), dentro do teto de 80 MB; tempo e quadros só valem no aparelho. Fotos em pé e deitado em cada fase; GDD atualizado. **Falta medir no iPhone.** | Feito (falta o iPhone) |
+
+**Depois das 8 fases (02/11):** as touceiras soltas dentro do castelo e da vila viraram moitas de pé (`shrubSprite`, fora
+da grade, cada uma no seu tamanho); a mata ligada à borda continua em tiles. Entraram da planta os dois mirantes do
+esporão e a forca dos orcs no pátio externo (`gallowsSprite`). A ponte de cordas balança devagar (camada própria).
+Falta a medição no iPhone.

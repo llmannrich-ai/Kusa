@@ -144,10 +144,20 @@ export interface FortressLayout {
   /** Muralhas de lado e da beira do precipício (o muro alto, como as muralhas). */
   ramparts: Rect[];
   /**
-   * Calçamento antigo quebrado (o capim nas falhas): o pátio externo, o do esporão e, mais falhado, as ruas da vila baixa
-   * (o último).
+   * Calçamento antigo quebrado (o capim nas falhas): o pátio externo, o do esporão e os pátios das casas da vila baixa
+   * (da planta, uma faixa por trecho de linha).
    */
   yards: Rect[];
+  /** A fonte seca no meio da praça da vila (5×5 de ruína). */
+  fountain: Rect;
+  /** Estátuas derrubadas do império (ruína deitada, 2×1). */
+  statues: Rect[];
+  /** A forca dos orcs (ruína de 1 tile). */
+  gallows: { x: number; y: number }[];
+  /** Braseiros de ferro do salão do trono, dos dois lados do tapete (ruína de 1 tile: bloqueiam e queimam quem encosta). */
+  braziers: { x: number; y: number }[];
+  /** Objetos do acampamento que bloqueiam a passagem (ruína de 1 tile): armas, caldeirão, lenha e barris. */
+  campProps: { x: number; y: number; kind: FortCampProp }[];
 }
 
 export interface EmpireLayout {
@@ -240,6 +250,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "gates") return generateGates(seed);
   if (mapId === "fortress") return generateFortress(FORTRESS_SEED);
   if (mapId === "oldwood" || mapId === "heartwood") return generateForest(seed, mapId);
+  if (mapId === "grove") return generateForest(GROVE_SEED, "grove");
   if (mapId === "bog") return generateBog(BOG_SEED);
   if (mapId === "badlands") return generateBadlands(BADLANDS_SEED);
   return generateCrypt(seed);
@@ -2219,6 +2230,77 @@ const FORT_MEADOWS = 5;
  * Abismo é `Tile.Water` (bloqueia o passo, não a visão). O desenho lê `Dungeon.fortress`; a regra é a dos Portões: mata
  * de 1 tile é árvore, ruína de 1 tile é coluna (as postas), totem ou bloco caído, ruína encostada em ruína é muro.
  */
+/**
+ * A vila baixa da Fortaleza Orc, desenhada à mão (`docs/arte/fortaleza/planta.txt`, linhas 91 a 127): o mirante sobre
+ * o desfiladeiro, a cabeça da ponte com o acampamento, a praça da fonte seca com as colunas, as quadras de casas do
+ * império em ruínas (muro `#`, pátio de calçamento quebrado `;`), as duas casernas com telhado (`-`), as ruas de
+ * basalto (`:`) e a praça da entrada (`P`). A linha 4 daqui é a primeira depois do desfiladeiro.
+ * Legenda: `~` abismo, `M` mata, `Y` árvore, `.` capim, `,` terra do acampamento, `=` lajes, `A` tenda (2×2),
+ * `|` paliçada, `!` totem, `c` coluna, `*` fogueira, `F` fonte seca, `B`/`H` pontes (ficam como o gerador fez).
+ */
+const FORT_VILA = [
+  "~~~~~~~~~~~~#######~~~~~~~~~~~~~~~~~~~~~~~~~BBB~~~~~~~~~~~~~~~~~HH~~~~~~~~~~~~~~~~~~",
+  "~~~~~~~~~~~~#;;c;;#~~~~~~~~~~~~~~~~~~~~~~~~~BBB~~~~~~~~~~~~~~~~~HH~~~~~~~~~~~~~~~~~~",
+  "~~~~~~~~~~~~;;;;;;;~~~~~~~~~~~~~~~~~~~~~~~~~BBB~~~~~~~~~~~~~~~~~HH~~~~~~~~~~~~~~~~~~",
+  "~~~~~~~~~~~~;;;;;;;~~~~~~~~~~~~~~~~~~~~~~~~~BBB~~~~~~~~~~~~~~~~~HH~~~~~~~~~~~~~~~~~~",
+  "MMMMM.............................,,,,,,,,,.:::.,,,,,,,,,,,,,,,,,,,............MMMMM",
+  "MMMMM..###;##;##....::.#####;#;...,AA,,AA,,.:::.,,,AA,,AA,,,,,,,,,,............MMMMM",
+  "MMMMM..#;;;;;;;#....::.;;;;;;;#...,AA,,AA,!.:::.,,,AA,,AA,,,,!,,,,!.::.........MMMMM",
+  "MMMMM..#;;;;;;;#.Y..::.#;;;;;;#...,,,*,,,,,.:::.!,,,,*,,,,MM,MM,,,,.::.###;##..MMMMM",
+  "MMMMM..#;;;;;;;;....::.;;;;;;;#...||||..|||.:::...........MMMMM.....::.#;;;;#..MMMMM",
+  "MMMM...#;;;;;;;#....::.;;;;;;;#.......===============...........Y...::.;;;;;#..MMMMM",
+  "MMMM...#;;;;;;;#.Y..::.#;;;;;;#..Y....=c===========c=......MMMMM....::.#;;;;#..;MMMM",
+  "MMMM...;#;#;####....::.#;#;####.......===============...............::.##;#;#..#MMMM",
+  "MMMM................::................===============...............::.........;MMMM",
+  "MMMM..::::::::::::::::::::::::::::::::=======F=======:::::::::::::::::::::::::.MMMMM",
+  "MMMMM.::::::::::::::::::::::::::::::::===============:::::::::::::::::::::::::.MMMMM",
+  "MMMMM...............::.#;#;###........===============..#;#;;####....::.........MMMMM",
+  "MMMMM..####-####....::.#;;;;;#.##;##;.=c===========c=..#;;;;;;;#....::.#;;###..MMMMM",
+  "MMMMM..#-------#....::.;;;;;;#.#;;;;#.===============..;;;;;;;;#....::.#;;;;#..MMMMM",
+  "MMMMM..#-------#....::.#;;;;;;.#;;;;;.......:::........;;;;;;;;;....::.#;;;;#..MMMMM",
+  "MMMM...#--------....::.#;;;;;#.#;;;;#.....c.:::.c......#;;;;;;;#....::.;;;;;#..MMMMM",
+  "MMMM...#-------#....::.;;;;;;;.;;;;;#.......:::........#;;;;;;;;....::.#;;;;#..MMMMM",
+  "MMMM...#########....::.##;####.######.....c.:::.c......##;#;;###....::.#####;..MMMMM",
+  "MMMM................::..................;;;;;;;;;;;...............Y.::.........MMMMM",
+  "MMMM..::::::::::::::::::::::::::::::::::;;;;;;;;;;;:::::::::::::::::::::::::::.MMMMM",
+  "MMMMM.::::::::::::::::::::::::::::::::::;;;;;;;;;;;:::::::::::::::::::::::::::.MMMMM",
+  "MMMMM...M.M.M.......::.#;#;;###.........;;;;;;;;;;;....####-####....::.#;##;#..MMMMM",
+  "MMMMM.....MMM.......::.;;;;;;;#....Y....;;;;;P;;;;;....#-------#....::.#;;;;#..;MMMM",
+  "MMMMM...MMMM........::.#;;;;;;#.........;;;;;;;;;;;....#-------#....::.;;;;;#..;MMMM",
+  "MMMMM...M.MMMM..Y...::.#;;;;;;#.........;;;;;;;;;;;.Y..--------#....::.#;;;;#..;MMMM",
+  "MMMM....MMMMM.......::.#;;;;;;#......Y..;;;;;;;;;;;....#-------#....::.#;;;;#..MMMMM",
+  "MMMM................::.#######;.........;;;;;;;;;;;....#########....::.#####;..MMMMM",
+  "MMMM...........................................................................MMMMM",
+  "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+];
+/** Coluna da estrada da ponte (o meio do portão externo) na planta da vila. */
+const FORT_VILA_GATE_X = 45;
+/** Salas da vila (casernas com telhado) e campinas, em coordenadas da planta (`y` a partir da linha 91). */
+const FORT_VILA_ROOMS: Rect[] = [{ x: 7, y: 16, w: 9, h: 6 }, { x: 55, y: 25, w: 9, h: 6 }];
+const FORT_VILA_MEADOWS = [{ x: 60, y: 19 }, { x: 13, y: 9 }];
+/** A entrada (a praça do portal) e a zona da praça da fonte. */
+const FORT_VILA_SPAWN: Rect = { x: 40, y: 22, w: 10, h: 9 };
+const FORT_VILA_ZONE = { x: 45, y: 16 };
+/**
+ * Os dois mirantes sobre o precipício, dos lados do esporão (da planta, linhas 27 a 30; coordenadas do mapa): uma
+ * plataforma de lajes cercada de muro, com uma coluna; `~` fica como o gerador fez.
+ */
+const FORT_LOOKOUTS: { x: number; y: number; rows: string[] }[] = [
+  { x: 17, y: 27, rows: ["####.", "#c;;.", "#;;;;", "####."] },
+  { x: 55, y: 27, rows: [".;####", ".;;;c#", ".;;;;#", ".;####"] },
+];
+/** Objetos do acampamento orc que ocupam o tile (os ossos e a cinza ficam no chão, só no desenho). */
+export type FortCampProp = "armas" | "caldeirao" | "lenha" | "barris";
+const FORT_CAMP_PROPS: FortCampProp[] = ["armas", "caldeirao", "lenha", "barris"];
+/** A forca dos orcs no pátio externo (coordenadas do mapa). */
+const FORT_GALLOWS = { x: 29, y: 49 };
+/** A estátua derrubada do imperador, no pátio externo (fora da vila: coordenadas do mapa). */
+const FORT_STATUE: Rect = { x: 52, y: 66, w: 2, h: 1 };
+
 function generateFortress(seed: number): Dungeon {
   for (let attempt = 0; ; attempt++) {
     const d = buildFortress(seed + attempt);
@@ -2626,6 +2708,105 @@ function buildFortress(seed: number): Dungeon {
     obstacle(() => { for (let k = 0; k < count * 2; k++) tree(x + rng.int(-3, 3), y + rng.int(-3, 3)); });
   }
 
+  // A vila baixa e o mirante sobre o desfiladeiro vêm da planta desenhada à mão (`FORT_VILA`), por cima do que o
+  // gerador pôs ali: a linha 4 dela é a primeira depois do desfiladeiro e a estrada dela encontra a ponte. O que o
+  // gerador espalhou na vila (ruas, casas, acampamento, tendas, campinas) sai e entra o da planta.
+  const vy = foot - 4, vx = gx - FORT_VILA_GATE_X;
+  const inVila = (y: number) => y >= foot;
+  const drop = <T extends { y: number }>(list: T[]) => list.splice(0, list.length, ...list.filter((r) => !inVila(r.y)));
+  for (const list of [roads, camps, tents, palisades, totems, fires, meadows, side] as { y: number }[][]) drop(list);
+  for (const i of [...props]) if (inVila(Math.floor(i / W))) props.delete(i);
+  const runs = (ch: string, into: Rect[]) => {
+    for (const [k, row] of FORT_VILA.entries())
+      for (let x = 0; x < row.length; x++) {
+        if (row[x] !== ch || (x > 0 && row[x - 1] === ch)) continue;
+        let w = 1;
+        while (row[x + w] === ch) w++;
+        into.push({ x: x + vx, y: k + vy, w, h: 1 });
+      }
+  };
+  const vilaYards: Rect[] = [];
+  let fountain: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  for (const [k, row] of FORT_VILA.entries())
+    for (let px = 0; px < row.length; px++) {
+      const ch = row[px], x = px + vx, y = k + vy;
+      // O mirante e as pontes: no desfiladeiro só entra o que não é abismo nem ponte.
+      if (!inVila(y) && (ch === "~" || ch === "B" || ch === "H")) continue;
+      if (x <= 0 || x >= W - 1 || y >= H - 1) continue;
+      const i = y * W + x;
+      if (ch === "M" || ch === "Y") { set(x, y, Tile.Wall); props.add(i); }
+      else if ("#|!cAF".includes(ch)) set(x, y, Tile.Ruin);
+      else set(x, y, Tile.Floor);
+      if (ch === "c") props.add(i);
+      else if (ch === "!") totems.push({ x, y });
+      else if (ch === "*") fires.push({ x, y });
+      else if (ch === "A" && row[px - 1] !== "A" && FORT_VILA[k - 1]?.[px] !== "A") tents.push({ x, y, w: 2, h: 2 });
+      else if (ch === "F") fountain = { x: x - 2, y: y - 2, w: 5, h: 5 };
+    }
+  // A fonte seca: a bacia de 5×5 bloqueia o passo (o meio da praça).
+  rect(fountain, Tile.Ruin);
+  runs(":", roads);
+  runs(",", camps);
+  runs("=", plazas);
+  runs(";", vilaYards);
+  runs("|", palisades);
+  for (const r of FORT_VILA_ROOMS) side.push({ x: r.x + vx, y: r.y + vy, w: r.w, h: r.h });
+  for (const m of FORT_VILA_MEADOWS) meadows.push({ x: m.x + vx - 3, y: m.y + vy - 3, w: 7, h: 7 });
+  Object.assign(spawn, { ...FORT_VILA_SPAWN, x: FORT_VILA_SPAWN.x + vx, y: FORT_VILA_SPAWN.y + vy });
+  Object.assign(s, centerOf(spawn));
+  path[0] = zone({ x: FORT_VILA_ZONE.x + vx, y: FORT_VILA_ZONE.y + vy });
+  // Os mirantes do esporão (por cima do abismo e da beira) e a forca no pátio externo.
+  for (const m of FORT_LOOKOUTS)
+    for (const [k, row] of m.rows.entries())
+      for (let px = 0; px < row.length; px++) {
+        const ch = row[px], x = m.x + px, y = m.y + k;
+        if (ch === "~") continue;
+        set(x, y, ch === "#" || ch === "c" ? Tile.Ruin : Tile.Floor);
+        props.delete(y * W + x);
+        if (ch === "c") props.add(y * W + x);
+        if (ch === ";") vilaYards.push({ x, y, w: 1, h: 1 });
+      }
+  const gallows: { x: number; y: number }[] = [];
+  if (get(FORT_GALLOWS.x, FORT_GALLOWS.y) === Tile.Floor) { set(FORT_GALLOWS.x, FORT_GALLOWS.y, Tile.Ruin); gallows.push(FORT_GALLOWS); }
+  // A estátua derrubada do imperador no pátio externo (2 tiles deitada), se ali for chão.
+  const statues: Rect[] = [];
+  if ([0, 1].every((k) => get(FORT_STATUE.x + k, FORT_STATUE.y) === Tile.Floor)) { rect(FORT_STATUE, Tile.Ruin); statues.push(FORT_STATUE); }
+
+  // Os braseiros do salão do trono, dos dois lados do tapete (da porta até o trono), a cada 4 linhas.
+  const braziers: { x: number; y: number }[] = [];
+  for (let y = throne.y + 3; y < door.y - 1; y += 4)
+    for (const x of [kc - 3, kc + 3]) if (get(x, y) === Tile.Floor) { set(x, y, Tile.Ruin); braziers.push({ x, y }); }
+  // Os objetos do acampamento (armas, caldeirão, lenha, barris) ocupam o tile: só onde há chão em volta toda, longe
+  // das fogueiras, dos totens e das tendas, e sem separar nenhum ponto importante (desfaz se separar).
+  const campProps: { x: number; y: number; kind: FortCampProp }[] = [];
+  const propRng = createRng(seed ^ 0x5eed_c0de);
+  const goalsNow = () => [
+    s, centerOf(hall), ...path.map(centerOf), ...meadows.map(centerOf), ...side.flatMap((r) => [centerOf(r), { x: r.x + 1, y: r.y + 1 }]),
+  ];
+  const roadAt = (x: number, y: number) => roads.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+  const near = (x: number, y: number, list: { x: number; y: number }[], d: number) => list.some((q) => Math.abs(q.x - x) <= d && Math.abs(q.y - y) <= d);
+  for (const c of camps)
+    for (let y = c.y; y < c.y + c.h; y++)
+      for (let x = c.x; x < c.x + c.w; x++) {
+        if (propRng.next() >= 0.07 || get(x, y) !== Tile.Floor || roadAt(x, y)) continue;
+        if (near(x, y, fires, 1) || near(x, y, totems, 1) || near(x, y, campProps, 1) || near(x, y, [s], 3)) continue;
+        if (tents.some((t) => x >= t.x - 1 && y >= t.y - 1 && x <= t.x + t.w && y <= t.y + t.h)) continue;
+        let open = true;
+        for (let dy = -1; dy <= 1 && open; dy++) for (let dx = -1; dx <= 1 && open; dx++) if (get(x + dx, y + dy) !== Tile.Floor) open = false;
+        if (!open) continue;
+        set(x, y, Tile.Ruin);
+        if (!connected(tiles, W, goalsNow())) { set(x, y, Tile.Floor); continue; }
+        campProps.push({ x, y, kind: FORT_CAMP_PROPS[Math.floor(propRng.next() * FORT_CAMP_PROPS.length)] });
+      }
+  // Nas casernas, as armas encostadas na parede norte, no canto oposto ao do baú.
+  for (const r of side) {
+    const x = r.x + r.w - 2, y = r.y + 1;
+    if (get(x, y) !== Tile.Floor) continue;
+    set(x, y, Tile.Ruin);
+    if (connected(tiles, W, goalsNow())) campProps.push({ x, y, kind: "armas" });
+    else set(x, y, Tile.Floor);
+  }
+
   // Mata solta que não foi posta de propósito volta a ser chão.
   for (let y = 1; y < H - 1; y++)
     for (let x = 1; x < W - 1; x++) {
@@ -2647,10 +2828,10 @@ function buildFortress(seed: number): Dungeon {
     mapId: "fortress", width: W, height: H, tiles, spawn, boss: hall, bossPortal: centerOf(hall), path, side, meadows, portal,
     planks: [rope],
     fortress: {
-      roads, plazas, camps: [...camps, trail],
+      roads, plazas, camps,
       walls: [{ y: outerY, x0: 1, x1: W - 2 }, { y: innerY, x0: left[innerY], x1: right[innerY] }],
       gates: [outerGate, innerGate], towers, keep, door, throne, bridges: [bridge], chasm, tents, palisades, totems, fires, columns,
-      ramparts, yards: [{ x: 6, y: bailey.y0 + 2, w: W - 12, h: outerY - bailey.y0 - 2 }, court, { x: 4, y: foot, w: W - 8, h: H - foot - 4 }],
+      ramparts, yards: [{ x: 6, y: bailey.y0 + 2, w: W - 12, h: outerY - bailey.y0 - 2 }, court, ...vilaYards], fountain, statues, gallows, braziers, campProps,
     },
   };
 }
@@ -2662,6 +2843,9 @@ const FOREST_STEPS = 7;
 const FOREST_MEADOWS = 5;
 /** Clareirinhas só de passagem (sem monstros), para a mata não virar um labirinto de corredores. */
 const FOREST_GLADES = 9;
+/** Orla do Bosque: emboscadas e clareirinhas (`GROVE_SEED`). */
+const GROVE_MEADOWS = 12;
+const GROVE_GLADES = 3;
 
 /**
  * Bosque Velho e Coração da Mata: o mesmo terreno, em pé (o celular na vertical). O mapa nasce todo de mata fechada
@@ -2671,16 +2855,26 @@ const FOREST_GLADES = 9;
  * clareira e a trilha onde se está. No Bosque Velho um riacho corta o mapa de oeste a leste e as trilhas o cruzam por
  * pontes de madeira; no Coração da Mata, mais fechado (trilhas mais estreitas, mais árvores anciãs), lagoas escuras.
  */
-function generateForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
+/**
+ * Orla do Bosque: o mapa inicial é fixo (a mesma planta em toda hunt), o terreno do Bosque Velho sorteado sempre com
+ * esta seed (riacho, pontes, troncos e menires; o cliente o desenha como o Bosque Velho).
+ */
+export const GROVE_SEED = 13;
+
+function generateForest(seed: number, mapId: "oldwood" | "heartwood" | "grove"): Dungeon {
   for (let attempt = 0; ; attempt++) {
     const d = buildForest(seed + attempt, mapId);
     if (attempt >= 20 || connected(d.tiles, d.width, dunesGoals(d))) return d;
   }
 }
 
-function buildForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
+function buildForest(seed: number, mapId: "oldwood" | "heartwood" | "grove"): Dungeon {
   const rng = createRng(seed);
   const heart = mapId === "heartwood";
+  // A Orla do Bosque (mapa fixo) troca clareirinhas vazias por emboscadas: luta a cada poucos passos (regra dos 6 tiles).
+  const grove = mapId === "grove";
+  const meadowCount = grove ? GROVE_MEADOWS : FOREST_MEADOWS;
+  const gladeCount = grove ? GROVE_GLADES : FOREST_GLADES;
   const W = FOREST_W;
   const H = FOREST_H;
   const tiles = new Uint8Array(W * H).fill(Tile.Wall);
@@ -2782,16 +2976,17 @@ function buildForest(seed: number, mapId: "oldwood" | "heartwood"): Dungeon {
   // Campinas: pontos de monstros extras, longe da entrada, das zonas, da arena e umas das outras.
   const meadows: Rect[] = [];
   const far = (p: { x: number; y: number }, q: { x: number; y: number }, d: number) => Math.hypot(p.x - q.x, p.y - q.y) >= d;
-  for (let tries = 0; tries < 120 && meadows.length < FOREST_MEADOWS; tries++) {
+  const gap = grove ? 12 : 15;
+  for (let tries = 0; tries < (grove ? 400 : 120) && meadows.length < meadowCount; tries++) {
     const p = { x: rng.int(12, W - 13), y: rng.int(arenaBottom + 6, H - 24) };
-    if (!far(p, s, 22) || !anchors.every((a) => far(p, a, 15)) || !meadows.every((m) => far(p, centerOf(m), 15)) || !far(p, ac, 18) || nearRiver(p.x, p.y, 8)) continue;
+    if (!far(p, s, 22) || !anchors.every((a) => far(p, a, gap)) || !meadows.every((m) => far(p, centerOf(m), gap)) || !far(p, ac, 18) || nearRiver(p.x, p.y, 8)) continue;
     meadows.push({ x: p.x - 4, y: p.y - 4, w: 9, h: 9 });
     glade(p.x, p.y, 5 + rng.next() * 1.5, 4.5 + rng.next() * 1.5);
   }
   // Clareirinhas de passagem.
   const glades: { x: number; y: number }[] = [];
   const nodes = () => [s, ...anchors, ...meadows.map(centerOf), ...glades];
-  for (let tries = 0; tries < 120 && glades.length < FOREST_GLADES; tries++) {
+  for (let tries = 0; tries < 120 && glades.length < gladeCount; tries++) {
     const p = { x: rng.int(10, W - 11), y: rng.int(arenaBottom + 4, H - 14) };
     if (!nodes().every((q) => far(p, q, 12)) || !far(p, ac, 14) || nearRiver(p.x, p.y, 5)) continue;
     glades.push(p);
