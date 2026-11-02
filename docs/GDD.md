@@ -717,8 +717,8 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   pequenos somem e os grandes crescem para seguir legíveis. A **barra de abas do menu** (Heróis, Grimório, Batalhas,
   Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba. Tocar de novo
   em Batalhas, já no mapa, leva a câmera ao herói e abre a ficha do cenário onde ele está.
-- **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**. Os 4 de hoje são o começo, na ponta sul:
-  🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
+- **Campanha:** uma trilha do sul ao norte com **18 cenários em 13 etapas**, mais o prólogo (etapa 0). O começo, na ponta sul:
+  🌱 Orla do Bosque (prólogo) → 🐸 Pântano do Kosaradius → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
   vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
   **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
   Solária → ⚔️ Fortaleza Orc, a etapa 8) e a floresta (🌳 Bosque Velho → 🍄 Coração da
@@ -738,15 +738,15 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   anima os passos. Tocar de novo no ponto, ou na ficha, pula a caminhada; com "reduzir movimento" ligado no aparelho
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
-- **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só o 🐸 Pântano do Kosaradius começa aberto, e
-  vencer o boss de um cenário abre o seguinte (Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+- **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só a 🌱 Orla do Bosque começa aberta, e
+  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Cripta, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
   Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
   Coração da Mata). Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER` e `unlockedBy`), repetida no banco
   (`map_unlocked_by`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
   bifurcação abre só com o boss dele (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): os bosses vencidos ficam em
   `profile_boss_clears`, com a mesma regra do cenário vencido. Vence o cenário **todo humano que estava na hunt** quando o boss principal morreu, vivo ou morto (quem saiu da hunt
-  e os bots, não). Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
+  e os bots, não). Os personagens que já existiam quando a Orla entrou (já tinham jogado, item ou cenário vencido) a herdaram vencida. Cenário fechado tem cadeado e desenho apagado; a ficha mostra só a etiqueta 🔒 com o boss a vencer (a frase
   inteira fica no title), e os botões de
   jogar sozinho e criar sala ficam desligados, mas as **salas de outros jogadores** continuam abertas para entrar
   (convidado joga livre). Cenário de boss vencido ganha estrela (e "★ boss vencido" na ficha). A trilha fica vermelha
@@ -761,7 +761,7 @@ em `docs/MAPA_MUNDI_PLANO.md`.
 ## Mapas
 
 O jogador escolhe o mapa (cenário) tocando no ponto dele no mapa mundi. O último escolhido fica salvo no aparelho
-(na primeira vez, o Pântano do Kosaradius). O mapa vale para as salas que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
+(na primeira vez, a Orla do Bosque). O mapa vale para as salas que ele **criar**; quem entra numa sala aberta joga o mapa dela, que aparece na lista de salas e na sala de espera.
 Catálogo em `packages/shared/src/maps.ts`; gerador em `packages/shared/src/dungeon.ts`.
 Cliente e servidor geram o mapa cada um do seu lado pela seed; por isso entram na sala só com a mesma versão das
 regras (`RULES_VERSION`, um hash do gerador, dos mapas e das mensagens calculado sozinho). Cliente desatualizado se
@@ -773,6 +773,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
+| 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
 | 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
 | 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Rei Bullywug |
 | 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
@@ -935,6 +936,21 @@ mapa mais difícil do jogo. 8 min, até 4 jogadores.
   barro rachado). Ambiente: grãos levados pelo vento norte, fitas de areia soprando das cristas, brilho do sol na água.
   Pintar o atlas leva ~1,3 s num computador (mais no celular), na entrada da hunt.
 - **Loot:** teto da hunt solo 3.300 nas Dunas e 3.800 nas Mesas, cheio em 240 s.
+
+### Orla do Bosque
+
+O prólogo da campanha (etapa 0), antes do Pântano do Kosaradius: o primeiro mapa de todo personagem, feito para o
+herói ainda sem itens. ★, 8 min, até 4 jogadores. **Mapa fixo**: o gerador do Bosque Velho (`generateForest`) sempre
+com `GROVE_SEED`, e o cliente o desenha como o Bosque Velho (mesma arte). Para passar na regra dos 6 tiles (teste
+`ritmo`: ~5% do chão a mais de 6 tiles de luta, ponto mais isolado a 12 tiles), a Orla troca as clareirinhas vazias por
+emboscadas (12 campinas e 3 clareirinhas, contra 5 e 9 no Bosque Velho).
+
+- **Monstros** (os mais fracos de tema de floresta): na entrada, Ratazanas, Estirges e Galhudos; no meio, Aranhas
+  gigantes e Lobos Atrozes; no fim, o Sátiro Flautista e o Espinheiro. Mini-bosses: a Dríade Corrompida e o Centauro
+  Renegado com `minibossPower` 0,6. Boss: o **Dragão jovem** (o mesmo da Cripta), no círculo de menires; vencê-lo abre o
+  Pântano do Kosaradius.
+- **XP** (`xpScale` 0,9): limpando 75% do caminho, o herói chega no Dragão no nível ~10 (na Cripta, ~7).
+- **Loot:** teto da hunt solo de 1.400, cheio em 240 s.
 
 ### Bosque Velho e Coração da Mata
 
@@ -1107,13 +1123,16 @@ lê.
   `docs/arte/fortaleza/planta.txt`): a praça da entrada, as ruas de basalto em grade, quadras de casas do império caídas
   com os pátios de calçamento quebrado, a **praça da fonte seca** (5×5, com colunas nos cantos), duas casernas com
   mini-boss e baú, o acampamento na cabeça da ponte e um **mirante** de pedra sobre o desfiladeiro; no pátio externo,
-  a **estátua derrubada** do imperador. Depois, o **desfiladeiro** de lado a lado (7 linhas), a **muralha externa** na
+  a **estátua derrubada** do imperador. Depois, o **desfiladeiro** (embaixo dele o vale pintado por código, com a
+  cachoeira do esgoto do castelo caindo da face do paredão) de lado a lado (7 linhas), a **muralha externa** na
   beira dele com o portão entre duas torres, o **pátio externo** fechado por muralhas (dos lados e na beira do
   precipício, com uma torre em cada canto; a mata fica do lado de fora) e virado acampamento (tendas, fogueiras, paliçadas,
   totens de caveira, estandartes, 3 casernas com mini-boss e baú), a **muralha interna** com o segundo portão, e o
   **esporão**: o pátio de lajes com colunata, o parapeito caído na beira do precipício, a guarda do chefe e, no norte, a
-  **torre de menagem** (19×15, com torreões nos cantos do terraço), cujo salão
-  do trono é a sala do boss. Dos dois lados do esporão e atrás da torre, o precipício.
+  **torre de menagem** (19×15, fachada de 3 andares em cantaria, torreões com o estandarte de caveira nos cantos do
+  terraço), cujo salão do trono é a sala do boss (tapete vermelho da porta ao trono, braseiros acesos). As muralhas
+  levam escudos, remendos, estacas com caveira e panos de guerra dos orcs; as casernas, telhado de telha e camas de
+  palha. Ambiente de fim de tarde: fumaça e faíscas nas fogueiras, corvos em volta da torre, estandartes ao vento. Dos dois lados do esporão e atrás da torre, o precipício.
 - **Monstros:** o quartel do clã do Rei-Ogro. São as espécies do Pântano do Kosaradius (mesma arte), com força fixa
   do mapa bem maior (`commonPower` 2,4 e `minibossPower` 2,5: vida, dano, XP e loot), em quantidade
   massiva: orçamento de 320 a 1000 por zona (as salas chegam ao teto de `MAX_ROOM_MONSTERS`), 8 monstros por campina e
@@ -1789,12 +1808,88 @@ Inspirados em Dungeons & Dragons. Tabela em `packages/shared/src/items.ts` (o ba
   + velocidade, + armadura e + dano nas magias.
 - Armadura corta dano recebido: `armadura / (armadura + 25)`; o conjunto comum de Dragão (33) corta 57%.
 - **Drop:** comuns têm 15% de chance, o Ogro dropa 1 item, o Dragão 2 e o baú 1 (um nível acima). Salas mais fundas dão material melhor, com 20% de chance de vir um nível acima.
-  Raridade: monstro comum 18% raro e 4% mágico; mini-boss e baú 35% e 12%; boss 40% e 25%.
-  **O drop não olha a classe de ninguém:** cai qualquer item, mesmo jogando sozinho (um cavaleiro acha cajado; vai para a bag e se vende).
+  Raridade: monstro comum 18% raro, 4% mágico e 0,5% lendário; mini-boss e baú 35%, 12% e 3%; boss 40%, 25% e 6%.
+  **Metade do drop favorece a equipe** (ver "Drop pela equipe"): a outra metade cai livre, então um cavaleiro sozinho ainda acha cajado (vai para a bag e se vende).
 - O item cai no chão onde o monstro morreu (o do baú, aos pés de quem abriu, que já pega) e é de quem passar por cima primeiro: nada no chão tem dono, então qualquer jogador pega a qualquer momento e os outros podem "roubar" o que ninguém pegou.
 - Passar por cima de um item melhor que o equipado (material, e a raridade vale meio nível) troca na hora e o antigo vai para a bag; item pior, ou de outra classe, vai para a bag. Com a bag cheia, o item fica no chão (`pickupAction` em `items.ts`). Itens no chão somem após 2 minutos.
 - Quem morre larga 1 equipamento sorteado (a partir do nível 5) e a bag no chão e guarda o resto do equipamento. Sem equipar nada no menu, todos começam sem equipamento; quem sai vivo guarda o equipado e esvazia a bag no cofre (ver "Cofre, bag e mercado").
-- Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro e ×4 se mágico.
+- Mercado: compra só comuns até Mithral (60, 150, 350 e 800 gold); vende pelo material (10, 25, 60, 130, 300), ×2 se raro, ×4 se mágico e ×8 se lendário (2.400).
+
+### Armas de estilo
+
+Uma arma nova por classe (`ITEM_FAMILIES` em `packages/shared/src/items.ts`), com os 5 materiais e as 3 raridades das
+outras (75 itens). Cada uma tem um **traço no ataque básico**, que cresce com o material e a raridade; o dano fica um
+pouco abaixo da arma de sempre da classe, em troca do traço:
+
+| Arma | Classe | Traço (comum de Rústico → de Dragão) |
+|---|---|---|
+| Maça | Cavaleiro | 7% → 11% de chance de atordoar o alvo por 0,6 s (`bash`) |
+| Lança | Paladino | o tiro atravessa: o monstro logo atrás do alvo leva 30% → 44% do dano (`pierce`) |
+| Orbe | Feiticeiro | +1 tile de alcance e tiro 35% mais rápido; poder mágico um pouco menor que a varinha (`shotSpeed`) |
+| Foice | Druida | corta em arco: os monstros colados no alvo levam 25% → 38% do dano (`cleave`) |
+| Totem de mão | Xamã Orc | cada golpe cura o xamã e os aliados a até 3 tiles em 5% → 9% do dano dado (`mend`) |
+
+- O golpe secundário da lança e da foice é só dano (sem atordoar, chamas nem roubo de vida). O raro multiplica o traço
+  como os outros atributos; vários mágicos reforçam o traço (Martelo do Trovão Anão, Tridente da Maré Rubra, Foice da
+  Lua Cheia, Totem dos Ancestrais).
+- Teste: `apps/server/scripts/armasnovas.ts` (cada traço na arena). Telemetria: `stats.weaponTraits`.
+- **Arte:** a maça vai pela pose da espada, o orbe pela da varinha, e lança, foice e totem pela do cajado. Cada nível
+  tem cabeça própria (clava cravejada, bola de bronze, aletas, crânio de dragão; ponta em folha, pique com gancho,
+  tridente; meia-lua que cresce; cara entalhada, chifres, penas, dois rostos, crânio). Prévia sem navegador:
+  `npx tsx apps/client/scripts/armasPrevia.ts saida.png`.
+
+### Drop pela equipe
+
+Metade dos itens sorteados (`CLASS_DROP_FAVOR`) sai de uma família, ou de um lendário, que algum humano da hunt veste;
+a outra metade continua livre (item que ninguém usa vai para a bag e se vende). Os bots não contam. A chance de cada
+item cair e a raridade não mudam (`dropOdds`).
+
+### Itens lendários
+
+Peças únicas acima do mágico (`LEGENDARIES` em `packages/shared/src/items.ts`; desenho e conceito em `docs/ITENS_LENDARIOS.md`).
+
+- **Força:** a base de Dragão da família ×1,9 (o mágico de Dragão é ×1,6 mais uma propriedade) e de 3 a 5 propriedades
+  próprias. Toda peça passa o mágico de Dragão da família em cada atributo da família (o teste `lendarios` confere).
+- **Propriedades novas:**
+  - **Força de magias específicas** (`ItemStats.spells`): soma com as sinergias e o Tomo na força do nível da magia
+    (`spellAtRank`), então vale para dano, cura, escudo, dano contínuo e criaturas. Ex.: o Cajado da Geada Eterna dá
+    +35% na Lança de Gelo.
+  - **Recarga das magias** (`ItemStats.cooldown`): soma com o Foco; a recarga nunca cai abaixo de 40% (`spellCooldownMs`).
+- **22 peças**, com peças de classe que fortalecem magias de cada classe:
+
+  | Peça | Slot | Quem veste | Destaque |
+  |---|---|---|---|
+  | Lâmina do Eclipse | Espada | Cavaleiro | Giro da Lâmina +30%, Redemoinho de Aço +30%, Mil Cortes +25%, roubo de vida |
+  | Machado do Último Inverno | Machado | Cavaleiro | Terremoto +35%, Golpe Esmagador +30% |
+  | Couraça do Coração de Ferro | Armadura | Cavaleiro e Paladino | armadura, vida, espinhos e roubo de vida |
+  | Elmo da Vigília Eterna | Capacete | Cavaleiro e Paladino | vida, roubo de vida, recarga 6% |
+  | Perneiras do Gigante de Pedra | Calça | Cavaleiro e Paladino | armadura, vida, espinhos |
+  | Arco do Amanhecer Partido | Arco | Paladino | Flecha Sagrada +35%, Julgamento Divino +30%, Caldeira Divina +25% |
+  | Besta Relojoeira | Besta | Paladino | Barragem +35%, Saraivada Explosiva +30%, sem a lentidão da besta, recarga 8% |
+  | Varinha da Fênix Cinzenta | Varinha | Feiticeiro | Bola de Fogo +35%, Meteoro +30%, Núcleo Infernal +25% |
+  | Cajado da Geada Eterna | Cajado | Feiticeiro | Lança de Gelo +35%, Nevasca +30%, Nova de Gelo e Cone de Frio +25% |
+  | Coroa do Olho Tempestuoso | Chapéu | Feiticeiro | Raio em Cadeia e Relâmpago +30%, Fúria dos Céus +25%, recarga 10% |
+  | Cajado do Carvalho que Sonha | Cajado | Druida | Lobo Espiritual +35%, Chamado da Matilha +30%, Urso Ancestral +25% |
+  | Manto de Mil Asas | Manto | Druida | Mariposa Curandeira +40%, Enxame de Vespas +35%, Coração da Floresta +25% |
+  | Cajado do Totem Rubro | Cajado | Xamã Orc | Totem da Brasa +35%, Totem Vulcânico e do Trovão +30% |
+  | Máscara do Grande Chefe | Chapéu | Xamã Orc | Berserkers e Chefe de Guerra +30%, Capitão do Clã +25% |
+  | Sino do Juízo Final | Maça | Cavaleiro | Bater com Escudo +35%, Desafio Supremo +30%, Grito de Guerra +25%, atordoa mais |
+  | Lança do Último Raio | Lança | Paladino | Flecha Relâmpago e Lança Etérea +35%, Disparo Perfurante +30%, atravessa mais |
+  | Orbe do Vazio Faminto | Orbe | Feiticeiro | Esfera Sombria +35%, Tempestade do Vazio e Rajada Mística +30%, Morte Súbita +25% |
+  | Foice da Colheita Venenosa | Foice | Druida | Espinho Venenoso +35%, Raízes Espinhosas e Fúria da Natureza +30%, veneno |
+  | Totem da Mãe-Fera | Totem de mão | Xamã Orc | Lanceiros, Arqueiros e Tambor de Guerra +30%, Tambor de Sangue +25%, cura mais |
+  | Passos de Ninguém | Botas | Todos | velocidade 23%, ataque mais rápido, recarga 5% |
+  | Escudo Espelho da Lua | Escudo | Todos menos Paladino | espinhos 25%, vida, mana |
+  | Calças do Vagante Astral | Calça arcana | Feiticeiro, Druida e Xamã | mana, recarga 6%, velocidade |
+
+- **Drop:** caem de qualquer monstro, raramente: 0,5% dos itens de monstro comum (1 a cada ~1.300 monstros), 3% dos
+  de mini-boss e baú, 6% dos de boss (`RARITY_CHANCES.legendary`). Qual peça sai segue o "Drop pela equipe": metade das
+  vezes, uma que algum humano da hunt veste; na outra metade, qualquer uma. Não se compram.
+- **Comparação:** vale um nível de material inteiro acima do mágico (`itemScore`), então troca na hora por qualquer
+  peça de Dragão do slot.
+- **Morte:** pesa 0,12 no sorteio do equipamento perdido (`DEATH_LOSS_WEIGHT`; o mágico pesa 0,25).
+- **No jogo:** facho de luz mais alto no chão, aura dourada nos pés e faíscas de ouro subindo em volta do herói
+  (`gearFx.ts`), e a história da peça em itálico na ficha. No ícone, uma estrela de ouro no canto.
 
 ### Arte dos itens e equipamento visível
 

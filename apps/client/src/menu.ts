@@ -1612,6 +1612,8 @@ export function itemLabel(def: ItemDef) {
 export function statList(def: ItemDef) {
   const list = el("ul", "item-stats");
   for (const line of describeStats(def.stats)) list.append(el("li", "", line));
+  // Lendário: a história da peça em itálico no fim da lista.
+  if (def.lore) list.append(el("li", "item-lore", def.lore));
   return list;
 }
 

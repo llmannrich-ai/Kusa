@@ -28,6 +28,7 @@ export const protoOrcScout = NEW_ART ? await import("./proto/orcArt.ts") : null;
 /** Família de cada item do jogo no desenho novo (o id do protótipo é `<família>-<nível>`, `-magic` no mágico). */
 const PROTO_FAMILY: Record<string, string> = {
   "weapon-sword": "sword", "weapon-axe": "axe", "weapon-bow": "bow", "weapon-crossbow": "xbow", "weapon-wand": "wand", "weapon-staff": "staff",
+  "weapon-mace": "mace", "weapon-spear": "spear", "weapon-orb": "orb", "weapon-scythe": "scythe", "weapon-totem": "totem",
   "helmet-war": "war", "helmet-arcane": "arc", "armor-war": "armor", "armor-arcane": "robe", "legs-war": "greave", "legs-arcane": "pants",
   "boots-boots": "boots", "shield-shield": "shield",
 };
@@ -36,7 +37,14 @@ const PROTO_FAMILY: Record<string, string> = {
 export function protoItemOf(itemId: string): string | undefined {
   const def = ITEMS[itemId];
   const family = def && PROTO_FAMILY[def.family];
-  return family && `${family}-${def.tier}${def.rarity === "magic" ? "-magic" : ""}`;
+  // O lendário usa o desenho do mágico de Dragão da família (ou o de `LEGEND_BASE`), repintado (`ProtoGear.legend`).
+  if (def?.legend && protoHero?.LEGEND_BASE[def.legend]) return protoHero.LEGEND_BASE[def.legend];
+  return family && `${family}-${def.tier}${def.rarity === "magic" || def.rarity === "legendary" ? "-magic" : ""}`;
+}
+
+/** Chave do lendário (`ItemDef.legend`), para repintar o desenho do mágico. */
+export function protoLegendOf(itemId: string): string | undefined {
+  return ITEMS[itemId]?.legend;
 }
 
 /**

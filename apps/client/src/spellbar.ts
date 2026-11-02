@@ -1,9 +1,11 @@
 import {
+  ITEM_SLOTS,
   MSG,
   SPELLS,
   SPELL_SLOT_LEVELS,
   SPELL_SLOTS,
   spellChoices,
+  gearStats,
   heroBonuses,
   runeSpells,
   spellCooldownMs,
@@ -24,11 +26,12 @@ const SLOTS: readonly SpellSlot[] = SPELL_SLOTS;
 
 /**
  * A magia como o herói a conjura: no nível ganho com o uso, com a Maestria no último (alcance e área podem mudar) e a
- * força extra das sinergias e do Tomo.
+ * força extra das sinergias, do Tomo e dos itens lendários vestidos.
  */
 export function rankedSpell(p: PlayerView | undefined, id: string): SpellDef | undefined {
   const base = SPELLS[id as SpellId] as SpellDef | undefined;
-  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 0, p?.spellBonus.get(id) ?? 0);
+  const gear = p ? gearStats(ITEM_SLOTS.map((s) => p[s])).spells[id as SpellId] ?? 0 : 0;
+  return base && spellAtRank(base, p?.spellRanks.get(id) ?? 0, (p?.spellBonus.get(id) ?? 0) + gear);
 }
 
 interface SlotView {
@@ -120,7 +123,9 @@ export class SpellBar {
     const spell = SPELLS[spellId];
     const view = this.slots[spell.slot];
     const p = this.me();
-    view.cooldownMs = spellCooldownMs(spell.cooldownMs, heroBonuses(p ? stacksOf(p) : {}, p ? [...p.runes] : []));
+    // A recarga dos lendários (`ItemStats.cooldown`) soma com o Foco, como no servidor.
+    const gear = p ? gearStats(ITEM_SLOTS.map((s) => p[s])).cooldown : 0;
+    view.cooldownMs = spellCooldownMs(spell.cooldownMs, heroBonuses(p ? stacksOf(p) : {}, p ? [...p.runes] : []), gear);
     view.readyAt = performance.now() + view.cooldownMs;
   }
 
