@@ -1,10 +1,10 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "grove" | "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
+export type MapId = "grove" | "fibula" | "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
-export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type MapDifficulty = 1 | 2 | 2.5 | 3 | 4 | 5 | 6 | 7 | 8;
 
 /**
  * Encontro das salas do caminho numa faixa de profundidade, como o orçamento de XP do D&D: a sala recebe monstros
@@ -17,6 +17,46 @@ export interface Encounter {
   table: [MonsterKind, number][];
 }
 
+export interface HuntingGround {
+  /** Profundidade de cada anel (0, 1, 2): escolhe a faixa de encontro (`encounters`) e a faixa dos itens largados. */
+  ringDepth: readonly number[];
+  /** Tempo (ms) para uma sala comum de cada anel encher de novo depois que o último monstro dela morre. */
+  respawnMs: readonly number[];
+  /** Tempo (ms) para o mini-boss de uma sala lateral voltar (o baú não volta). O boss não renasce. */
+  minibossRespawnMs: number;
+}
+
+/**
+ * Regeneração fixa do terreno de caça (como no Tibia): pontos por segundo, não fração da vida atual. O valor é esta
+ * fração da vida (e da mana) do **nível 1** da classe, crescendo `FLAT_REGEN_PER_LEVEL` por nível: como a vida máxima
+ * cresce mais rápido, a regen vale um pouco mais no começo da hunt que no fim (Cavaleiro: 1,5%/s no nível 1, ~1,1%/s no
+ * 15). As melhorias Regeneração e Clareza e a Pedra Fundamental somam na mesma conta.
+ */
+export const FLAT_HP_REGEN = 0.015;
+export const FLAT_MANA_REGEN = 0.02;
+export const FLAT_REGEN_PER_LEVEL = 0.04;
+/** Fogueira do acampamento: a até `CAMP_RADIUS` tiles dela, a regen fixa vale `CAMP_REGEN` vezes mais. */
+export const CAMP_RADIUS = 3;
+export const CAMP_REGEN = 4;
+/** Uma sala só enche de novo sem herói a até estes tiles dela (ninguém leva monstro nascendo em cima). */
+export const RESPAWN_CLEAR_TILES = 8;
+
+/**
+ * Teto técnico de uma hunt sem tempo (`durationSeconds: 0`): depois disto ela acaba como soterrada. Só protege contra a
+ * hunt esquecida aberta; o banco usa o mesmo valor (`finish_solo_run`).
+ */
+export const OPEN_HUNT_MAX_SECONDS = 2 * 60 * 60;
+
+/** Tempo de hunt de verdade do mapa (o teto técnico, no mapa sem tempo). */
+export function huntSeconds(map: MapDef) {
+  return map.durationSeconds > 0 ? map.durationSeconds : OPEN_HUNT_MAX_SECONDS;
+}
+
+/** "4 min" ou "sem tempo", para a ficha, as Regras e a sala de espera. */
+export function durationLabel(map: MapDef) {
+  return map.durationSeconds > 0 ? `${map.durationSeconds / 60} min` : "sem tempo";
+}
+
 export interface MapDef {
   id: MapId;
   name: string;
@@ -24,8 +64,17 @@ export interface MapDef {
   icon: string;
   difficulty: MapDifficulty;
   description: string;
-  /** Duração da hunt em segundos. Ao zerar, o mapa desaba e todos morrem soterrados. */
+  /**
+   * Duração da hunt em segundos. Ao zerar, o mapa desaba e todos morrem soterrados. 0: **sem tempo** (terreno de caça,
+   * `huntingGround`): a hunt só acaba quando o jogador sai ou morre, com o teto técnico de `OPEN_HUNT_MAX_SECONDS`.
+   */
   durationSeconds: number;
+  /**
+   * Terreno de caça (`docs/TERRENO_DE_CACA_PLANO.md`): planta fixa em anéis de perigo a partir do acampamento, monstros
+   * em posições fixas que renascem, regeneração fixa em pontos (`flatRegen` na hunt) e sem tempo. As salas do caminho
+   * (`Dungeon.path`) trazem o anel de cada uma em `Dungeon.rings`.
+   */
+  huntingGround?: HuntingGround;
   /** Encontros por profundidade. Salas além da última faixa usam a última. */
   encounters: Encounter[];
   /** Mini-bosses das salas laterais (destrancam o baú), sorteados pelo peso em cada sala. */
@@ -172,6 +221,29 @@ export const MAPS: Record<MapId, MapDef> = {
     minibosses: [["corruptedDryad", 1], ["renegadeCentaur", 1]],
     mimicChance: 0,
     bosses: [["dragon", 1]],
+  },
+  fibula: {
+    id: "fibula", name: "Fíbula", icon: "🦴", difficulty: 2.5, durationSeconds: 0,
+    // Terreno de caça: o ossuário não acaba. Do acampamento (com a fogueira) saem três anéis de salas, cada um mais
+    // fundo e mais perigoso, ligados por mais de uma passagem; as salas enchem de novo depois de um tempo. O jogador
+    // escolhe até onde vai, quando recua para a fogueira e quando sai pelo portal.
+    huntingGround: { ringDepth: [0, 2, 3], respawnMs: [60_000, 90_000, 120_000], minibossRespawnMs: 240_000 },
+    minibossPower: 1.3,
+    description: "Ossuário sem fim: três anéis de salas a partir da fogueira do acampamento, cada um mais fundo e mais perigoso. Sem tempo: as salas enchem de novo, a vida volta devagar e quem vai longe demais precisa saber a hora de recuar. No fundo, o Rei Ossudo guarda o covil.",
+    encounters: [
+      // Anel 1, a Orla: enxames e goblins (nível 1 a 5).
+      { depth: [0, 1], budget: 70, table: [["rat", 4], ["kobold", 4], ["goblin", 3], ["stirge", 2]] },
+      // Anel 2, as Covas: arqueiros, aranhas, o capitão e os lobos (nível 5 a 10).
+      {
+        depth: [2, 2], budget: 190,
+        table: [["goblin", 3], ["goblinArcher", 2], ["giantSpider", 2], ["direWolf", 2], ["skeleton", 2], ["hobgoblin", 1]],
+      },
+      // Anel 3, o Fundo: gnolls, orcs e mortos-vivos (nível 10 a 15).
+      { depth: [3, 9], budget: 330, table: [["gnoll", 3], ["orc", 3], ["skeleton", 2], ["skeletonArcher", 2], ["zombie", 1], ["hobgoblin", 1]] },
+    ],
+    minibosses: [["bugbear", 2], ["ogre", 2], ["gelatinousCube", 1]],
+    mimicChance: 0,
+    bosses: [["boneKing", 1]],
   },
   crypt: {
     id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 1, durationSeconds: 4 * 60,
@@ -496,5 +568,12 @@ export function mapIdOf(value: unknown): MapId {
 export const MAX_DIFFICULTY = 8;
 
 export function difficultyStars(difficulty: MapDifficulty) {
-  return "★".repeat(difficulty) + "☆".repeat(MAX_DIFFICULTY - difficulty);
+  const full = Math.floor(difficulty);
+  const half = difficulty > full;
+  return "★".repeat(full) + (half ? "½" : "") + "☆".repeat(MAX_DIFFICULTY - full - (half ? 1 : 0));
+}
+
+/** Dificuldade escrita (2,5 com vírgula). */
+export function difficultyLabel(difficulty: MapDifficulty) {
+  return String(difficulty).replace(".", ",");
 }

@@ -16,6 +16,8 @@ import {
   VERSION_MISMATCH_CODE,
   MONSTERS,
   difficultyStars,
+  durationLabel,
+  huntSeconds,
   itemColor,
   mainBoss,
   mapIdOf,
@@ -337,7 +339,7 @@ function openSheet() {
   const chips = [
     ...(before ? [`🔒 ${beforeBoss ? MONSTERS[beforeBoss].name.split(" ")[0] : MAPS[before].name}`] : []),
     difficultyStars(map.difficulty),
-    `⏱ ${map.durationSeconds / 60} min`,
+    `⏱ ${durationLabel(map)}`,
     partySize(map) === 1 ? "👤 só 1" : `👥 até ${partySize(map)}`,
     ...bosses,
     ...(clearsNow().includes(map.id) ? ["★ boss vencido"] : []),
@@ -617,10 +619,16 @@ function bindRoom(room: DungeonRoom) {
     }
   });
 
-  callbacks.listen("timeLeft", (t: number) => {
+  // Mapa sem tempo (terreno de caça): o relógio mostra o tempo decorrido, não o que falta.
+  const open = MAPS[mapIdOf(room.state.mapId)]?.durationSeconds === 0;
+  callbacks.listen("timeLeft", (left: number) => {
     const timer = $("timer");
-    timer.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-    timer.classList.toggle("low", t <= 30);
+    const t = open ? Math.max(0, huntSeconds(MAPS[mapIdOf(room.state.mapId)]) - left) : left;
+    const h = Math.floor(t / 3600);
+    const mm = Math.floor((t % 3600) / 60);
+    timer.textContent = `${h > 0 ? `${h}:${String(mm).padStart(2, "0")}` : mm}:${String(t % 60).padStart(2, "0")}`;
+    timer.classList.toggle("low", !open && t <= 30);
+    timer.classList.toggle("elapsed", open);
   });
 
   room.onMessage(MSG.runEnded, (msg: RunEndedMessage) => showResult(msg));

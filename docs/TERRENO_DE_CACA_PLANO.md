@@ -13,6 +13,12 @@ Decisões já tomadas (02/11):
 - Vale o que já existe: extração pelo portal, morte perde 1 item e a bag, bots na equipe, XP dividida, monstros de
   força fixa, **nenhum golpe com aviso**.
 
+Decisões da 2ª rodada (02/11): nome **Fíbula**, arte 100% por código (o desenho da Cripta, a fogueira e a chama já
+existentes, o boss **Rei Ossudo** com a arte do Centurião Ossudo maior), relógio de tempo decorrido no HUD, **regen de
+mana fixa também**, mini-boss da sala lateral renasce (240 s), valores iniciais ajustados pelo Claude (regen 1,5% da
+vida e 2% da mana do nível 1, +4% por nível; fogueira ×4; salas 60/90/120 s). A implementação está na branch
+`feat/fibula`; o estado de cada bloco está na seção 5.
+
 Fora deste plano (ficam para depois de medir o mapa de teste): levar o modelo aos outros mapas, poções no Mercado,
 corpo que fica 24 h, ficha com taxa de extração por anel.
 
@@ -145,6 +151,9 @@ Metas do teste (comparar com a Cripta, mesma faixa de nível):
 ---
 
 ## 5. Entregas, em ordem (um PR por bloco, cada um com `npm run check` verde)
+
+Estado (branch `feat/fibula`): blocos 0 a 4 feitos; falta o 5 (deploy, com a migration `20261102310000_fibula.sql`,
+e a medição).
 
 | # | Bloco | Onde | Testes |
 |---|---|---|---|

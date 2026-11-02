@@ -55,7 +55,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-const minutes = (s: number) => `${s / 60} min`;
+const minutes = (s: number) => (s > 0 ? `${s / 60} min` : "sem tempo");
 const [SLOT1, SLOT2, SLOT3] = SPELL_SLOT_LEVELS;
 
 /** Uma seção que abre e fecha com um toque (a página é longa para uma tela de celular). */

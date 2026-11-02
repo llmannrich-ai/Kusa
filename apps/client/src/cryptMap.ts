@@ -4,6 +4,11 @@ import { hash } from "./art/pixels.ts";
 import { CRYPT_DECOR, createCryptArt, floorVariants, wallCapTexture, wallFaceTexture } from "./art/textures.ts";
 import { ChunkCuller, patchTint, type MapAmbience } from "./mapShared.ts";
 import { CRYPT_FLOOR, CRYPT_TALL, CRYPT_TILE, CRYPT_WALL, RIM, WALL_RISE, WALL_VARIANTS } from "./art/cryptArt.ts";
+import { CAMPFIRE, campfire } from "./art/badlandsArt.ts";
+import { FLAME, flameFrame } from "./art/bogArt.ts";
+import { toCanvas } from "./art/paint.ts";
+import { makeCanvas } from "./art/pixels.ts";
+import { addCanvasTexture } from "./art/canvasTexture.ts";
 
 /** A Cripta é desenhada em 128 px por tile e entra no mapa em ¼ (`docs/CENARIOS_PLANO.md`, fase 4). */
 const ART_ZOOM = CRYPT_TILE / TILE_SIZE;
@@ -63,6 +68,7 @@ export function drawCrypt(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
   // Tiles onde nada de pé pode ficar: portal e em volta (a equipe nasce ali), baús e o centro da sala do boss.
   const reserved = (x: number, y: number) =>
     tileDistance(x, y, d.portal.x, d.portal.y) <= 1
+    || (!!d.camp && tileDistance(x, y, d.camp.x, d.camp.y) <= 1)
     || d.side.some((r) => x === r.x + 1 && y === r.y + 1)
     || tileDistance(x, y, Math.floor(d.boss.x + d.boss.w / 2), Math.floor(d.boss.y + d.boss.h / 2)) <= 1;
 
@@ -152,7 +158,32 @@ export function drawCrypt(scene: Phaser.Scene, d: Dungeon, floorDepth: number, u
     }
   }
 
+  if (d.camp) drawCampfire(scene, d.camp, light);
   return createAmbience(scene, culler, lights, uiDepth);
+}
+
+const CAMPFIRE_KEY = "fibula-campfire";
+const CAMPFIRE_FLAME = "fibula-flame";
+
+/**
+ * Fogueira do acampamento do terreno de caça (Fíbula): o anel de pedras e as achas (a dos Ermos), a chama animada (a do
+ * Charco) e uma poça de luz larga. Marca onde a vida e a mana voltam mais rápido.
+ */
+function drawCampfire(scene: Phaser.Scene, at: { x: number; y: number }, light: (cx: number, cy: number, scale: number, tx: number, ty: number) => void) {
+  if (!scene.textures.exists(CAMPFIRE_KEY)) addCanvasTexture(scene.textures, CAMPFIRE_KEY, toCanvas(campfire(), CAMPFIRE.w, CAMPFIRE.h));
+  if (!scene.textures.exists(CAMPFIRE_FLAME)) {
+    const { canvas, ctx } = makeCanvas(FLAME.w * 4, FLAME.h);
+    for (let k = 0; k < 4; k++) ctx.drawImage(toCanvas(flameFrame(k), FLAME.w, FLAME.h), k * FLAME.w, 0);
+    const texture = addCanvasTexture(scene.textures, CAMPFIRE_FLAME, canvas)!;
+    for (let k = 0; k < 4; k++) texture.add(k, 0, k * FLAME.w, 0, FLAME.w, FLAME.h);
+  }
+  const px = (at.x + 0.5) * TILE_SIZE, py = (at.y + 1) * TILE_SIZE;
+  scene.add.image(px, py, CAMPFIRE_KEY).setOrigin(0.5, 1).setScale(1 / ART_ZOOM).setDepth(py - 1);
+  const flame = scene.add.image(px, py - 30 / ART_ZOOM, CAMPFIRE_FLAME, 0).setOrigin(0.5, 1).setScale(1.2 / ART_ZOOM).setDepth(py)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  let frame = 0;
+  scene.time.addEvent({ delay: 110, loop: true, callback: () => { frame = (frame + 1) % 4; flame.setFrame(frame); } });
+  light(px, py - TILE_SIZE / 2, 3.2, at.x, at.y);
 }
 
 /** Móvel de pé encostado na parede de uma sala. Na entrada, só suprimentos; nas laterais, mais caixões. */

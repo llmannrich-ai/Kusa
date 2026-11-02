@@ -12,12 +12,12 @@ import type { MonsterKind } from "./monsters.ts";
 
 /** Os cenários na ordem da campanha (cada lado da bifurcação na sua ordem; o deserto, que segue, por último). O primeiro já vem aberto. */
 export const WORLD_ORDER: readonly MapId[] = [
-  "grove", "marsh", "crypt", "desert", "swamp", "cavern", "oldwood", "heartwood", "dunes", "mesas", "fortress", "bog", "badlands",
+  "grove", "marsh", "fibula", "crypt", "desert", "swamp", "cavern", "oldwood", "heartwood", "dunes", "mesas", "fortress", "bog", "badlands",
 ];
 
 /** Cenário cujo boss abre cada um (o primeiro não tem). */
 const UNLOCKED_BY: Partial<Record<MapId, MapId>> = {
-  marsh: "grove", crypt: "marsh", desert: "crypt", swamp: "desert", cavern: "swamp",
+  marsh: "grove", fibula: "marsh", crypt: "fibula", desert: "crypt", swamp: "desert", cavern: "swamp",
   oldwood: "cavern", heartwood: "oldwood",
   dunes: "cavern", mesas: "dunes", fortress: "mesas",
   // A Fortaleza Orc é a segunda bifurcação: Vorgak abre os dois lados (o Charco Cinzento e os Ermos Rubros).

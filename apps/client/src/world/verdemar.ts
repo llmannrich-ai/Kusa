@@ -27,6 +27,8 @@ export const NODES: Record<string, CampaignNode> = {
   // O prólogo: a beira da floresta, onde todo herói começa (o Dragão jovem dela abre o Pântano do Kosaradius).
   n0: { step: 0, x: 300, y: 1865, name: "Orla do Bosque", area: "Floresta do Kosaradius", map: "grove" },
   n1: { step: 1, x: 390, y: 1990, name: "Pântano do Kosaradius", area: "Floresta do Kosaradius", map: "marsh" },
+  // A Fíbula (terreno de caça de teste, sem tempo) fica entre o Kosaradius e a Cripta, no pé das Colinas das Tumbas.
+  n1b: { step: 1, x: 548, y: 2035, name: "Fíbula", area: "Colinas das Tumbas", map: "fibula" },
   n2: { step: 2, x: 700, y: 1925, name: "Cripta", area: "Colinas das Tumbas", map: "crypt" },
   n3: { step: 3, x: 1030, y: 2000, name: "Mar de Areia", area: "Solária", map: "desert" },
   n4: { step: 4, x: 1105, y: 1680, name: "Pântano das Ruínas", area: "Baía Afundada", map: "swamp" },
@@ -55,17 +57,19 @@ export const NODES: Record<string, CampaignNode> = {
  * até o último ponto comum aos dois (`worldMap.ts`).
  */
 export const OPEN_CHAINS = [
-  ["n0", "n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9a"],
-  ["n0", "n1", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9b"],
-  ["n0", "n1", "n2", "n3", "n4", "n5", "n6a", "n7a"],
+  ["n0", "n1", "n1b", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9a"],
+  ["n0", "n1", "n1b", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9b"],
+  ["n0", "n1", "n1b", "n2", "n3", "n4", "n5", "n6a", "n7a"],
 ] as const;
 
 /** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
 export const EDGES: [string, string][] = [
-  ["n0", "n1"], ["n1", "n2"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"],
+  ["n0", "n1"], ["n1", "n1b"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"],
   ["n5", "n6a"], ["n6a", "n7a"], ["n7a", "n8"], ["n5", "n6b"], ["n6b", "n7b"], ["n7b", "n8"],
   ["n8", "n9a"], ["n9a", "n10"], ["n8", "n9b"], ["n9b", "n10"],
   ["n10", "n11a"], ["n11a", "n12a"], ["n12a", "n13"], ["n10", "n11b"], ["n11b", "n12b"], ["n12b", "n13"],
+  // No fim da lista: as curvas sorteadas das outras trilhas não mudam com a Fíbula.
+  ["n1b", "n2"],
 ];
 
 /** Curva de cada trilha (Bézier cúbica), com as curvas sorteadas por semente: igual no jogo e na arte. */

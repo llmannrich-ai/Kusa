@@ -207,8 +207,16 @@ import {
   type SummonDef,
   type SummonKind,
   type TargetMessage,
+  CAMP_RADIUS,
+  MAP_IDS,
+  CAMP_REGEN,
+  FLAT_HP_REGEN,
+  FLAT_MANA_REGEN,
+  FLAT_REGEN_PER_LEVEL,
   FORMATION_GUARD,
   FORMATION_RADIUS,
+  RESPAWN_CLEAR_TILES,
+  huntSeconds,
   SURROUND_MAX,
   SURROUND_STEP,
 } from "@kusa/shared";
@@ -420,6 +428,8 @@ interface Seat {
   stats: RunStats;
   /** Bosses cuja runa este personagem já levou (no banco e nesta hunt): cada boss dá a runa uma vez por personagem. */
   bossRunes: Set<string>;
+  /** Terreno de caça: o herói estava perto da fogueira no último segundo (conta o recuo ao chegar ferido). */
+  atCamp?: boolean;
   /** A tela do jogador está deitada (`MSG.screen`): o tempo assim soma em `stats.landscapeMs`. */
   landscape: boolean;
 }
@@ -601,8 +611,24 @@ const AURA_PULSE_MS = 500;
 const INTERNALS = [
   "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
   "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked", "nextBotId",
-  "sceneBurns", "tentLeft", "tentNextAt",
+  "sceneBurns", "tentLeft", "tentNextAt", "packs",
 ] as const;
+
+/**
+ * Terreno de caça: uma sala de monstros que enche de novo. Os tipos e os lugares são fixos (o jogador aprende o mapa);
+ * quando o último morre, `respawnAt` (em `elapsedMs`) marca a volta, que espera não haver herói perto da sala.
+ */
+interface Pack {
+  room: Rect;
+  ring: number;
+  depth: number;
+  kinds: MonsterKind[];
+  spots: { x: number; y: number }[];
+  members: string[];
+  respawnAt: number;
+  /** Mini-boss de sala lateral: volta sem o baú. */
+  miniboss: boolean;
+}
 
 /**
  * Uma hunt: a equipe (1 a 4 jogadores) entra junta e cada um sai morto, fugindo ou após o boss.
@@ -654,6 +680,8 @@ export class Hunt {
   private tentNextAt: number[] = [];
   /** IA dos bots que completam a equipe (`botAi.ts`): manda as mesmas intenções de um jogador. */
   private bots: BotAi;
+  /** Terreno de caça: as salas que enchem de novo (vazio nos outros mapas). */
+  private packs: Pack[] = [];
 
   constructor(readonly state: DungeonState, private host: HuntHost, options: HuntOptions) {
     this.map = MAPS[mapIdOf(options.mapId)];
@@ -882,6 +910,7 @@ export class Hunt {
     const d = this.dungeon;
     // Mapa ainda em construção (só o cenário): ninguém nasce.
     if (this.map.bosses.length === 0) return;
+    if (this.map.huntingGround) return this.spawnHuntingGround();
     // RNG próprio derivado da seed, separado do gerador do mapa.
     const rng = createRng(this.state.seed ^ 0x9e3779b9);
     const roll = () => rng.int(0, 1_000_000);
@@ -1020,7 +1049,7 @@ export class Hunt {
     return m;
   }
 
-  private freeSpotIn(room: Rect, roll: () => number) {
+  private freeSpotIn(room: Rect, roll: () => number, taken?: Set<number>) {
     const portal = this.dungeon.portal;
     for (let attempt = 0; attempt < 30; attempt++) {
       const x = room.x + (roll() % room.w);
@@ -1029,7 +1058,7 @@ export class Hunt {
       const near = tileDistance(x, y, portal.x, portal.y);
       if (near <= SAFE_RADIUS) continue;
       if (near <= START_ZONE_RADIUS && this.startZoneMonsters() + this.startZoneReserved >= MAX_START_MONSTERS) continue;
-      if (this.monsterAt(x, y)) continue;
+      if (this.monsterAt(x, y) || taken?.has(y * this.dungeon.width + x)) continue;
       return { x, y };
     }
     return null;
@@ -1054,6 +1083,114 @@ export class Hunt {
       if (dist < bestDist) { bestDist = dist; best = i; }
     });
     return best;
+  }
+
+  // --- Terreno de caça (`MapDef.huntingGround`) -----------------------------------------
+
+  /**
+   * As salas do terreno de caça: cada sala do caminho recebe o encontro do anel dela, com tipos e lugares fixos (sorteio
+   * de seed fixa do mapa, igual em toda hunt: o jogador aprende onde está cada coisa). Cada sala lateral tem um
+   * mini-boss e o baú; o boss fica no covil. Os Campeões saem da seed da hunt.
+   */
+  private spawnHuntingGround() {
+    const ground = this.map.huntingGround!;
+    const d = this.dungeon;
+    const fixed = createRng(0xf1b0 ^ MAP_IDS.indexOf(this.map.id));
+    const roll = () => fixed.int(0, 1_000_000);
+    const champions = createRng(this.state.seed ^ 0x9e3779b9);
+    d.path.forEach((room, i) => {
+      const ring = d.rings?.[i] ?? 0;
+      const depth = ground.ringDepth[ring] ?? ring;
+      const kinds = this.rollEncounter(encounterAt(this.map, depth), depth, fixed.next);
+      const spots: { x: number; y: number }[] = [];
+      // Os lugares da sala saem antes dos monstros: cada um fica reservado para o próximo não cair em cima.
+      const taken = new Set<number>();
+      for (let k = 0; k < kinds.length; k++) {
+        const spot = this.freeSpotIn(room, roll, taken);
+        if (!spot) break;
+        spots.push(spot);
+        taken.add(spot.y * d.width + spot.x);
+      }
+      const pack: Pack = { room, ring, depth, kinds: kinds.slice(0, spots.length), spots, members: [], respawnAt: 0, miniboss: false };
+      this.fillPack(pack, champions.next);
+      this.packs.push(pack);
+    });
+    d.side.forEach((room, i) => {
+      const depth = ground.ringDepth[ground.ringDepth.length - 1];
+      const c = centerOf(room);
+      const pack: Pack = {
+        room, ring: ground.ringDepth.length - 1, depth, kinds: [pickWeighted(this.map.minibosses, fixed.next())], spots: [c], members: [], respawnAt: 0, miniboss: true,
+      };
+      this.fillPack(pack, champions.next);
+      this.packs.push(pack);
+      const chest = new Chest();
+      chest.id = `c${i + 1}`;
+      chest.x = room.x + 1;
+      chest.y = room.y + 1;
+      this.state.chests.set(chest.id, chest);
+      this.chestDepth.set(chest.id, depth);
+      this.brains.get(pack.members[0])!.chestId = chest.id;
+    });
+    const c = centerOf(d.boss);
+    this.addMonster(pickWeighted(this.map.bosses, fixed.next()), c.x, c.y, d.path.length);
+  }
+
+  /** Enche a sala: um monstro em cada lugar (o mais perto livre, se alguém estiver em cima). */
+  private fillPack(pack: Pack, next: () => number) {
+    pack.members = [];
+    pack.kinds.forEach((kind, k) => {
+      const want = pack.spots[k];
+      const busy = this.monsterAt(want.x, want.y) || [...this.state.players.values()].some((p) => p.x === want.x && p.y === want.y);
+      const at = busy ? this.freeSpotNear(want.x, want.y) : want;
+      if (!at) return;
+      const m = pack.miniboss ? this.addMonster(kind, at.x, at.y, pack.depth) : this.spawnCommon(kind, at.x, at.y, pack.depth, next);
+      pack.members.push(m.id);
+    });
+    pack.respawnAt = 0;
+  }
+
+  /** A cada tick: sala vazia marca a volta; na hora, enche de novo se nenhum herói estiver perto. */
+  private respawnPacks() {
+    if (this.packs.length === 0) return;
+    const ground = this.map.huntingGround!;
+    for (const pack of this.packs) {
+      if (pack.members.some((id) => this.state.monsters.has(id))) continue;
+      if (pack.respawnAt === 0) {
+        pack.respawnAt = this.elapsedMs + (pack.miniboss ? ground.minibossRespawnMs : ground.respawnMs[pack.ring] ?? ground.respawnMs[0]);
+        continue;
+      }
+      if (this.elapsedMs < pack.respawnAt) continue;
+      const near = [...this.state.players.values()].some((p) => p.status === "playing" && this.nearRoom(pack.room, p, RESPAWN_CLEAR_TILES));
+      if (near) continue;
+      this.fillPack(pack, () => this.random());
+      this.seats.forEach((seat) => bump(seat.stats.ground, pack.miniboss ? "minibosses_renascidos" : "salas_renascidas"));
+    }
+  }
+
+  /**
+   * Telemetria do terreno de caça, a cada segundo: em que anel o herói está (a sala do caminho mais perto; perto da
+   * fogueira conta como acampamento) e os recuos (chegar à fogueira com menos de metade da vida).
+   */
+  private tallyGround(p: Player, seat: Seat | undefined) {
+    const camp = this.dungeon.camp;
+    if (!this.map.huntingGround || !camp || !seat) return;
+    const atCamp = tileDistance(p.x, p.y, camp.x, camp.y) <= CAMP_RADIUS + 2;
+    if (atCamp && !seat.atCamp && p.hp < p.maxHp / 2) bump(seat.stats.ground, "recuos");
+    seat.atCamp = atCamp;
+    if (atCamp || this.nearRoom(this.dungeon.spawn, p, 0)) return bump(seat.stats.ground, "camp_s");
+    let best = 0;
+    let bestDist = Infinity;
+    this.dungeon.path.forEach((r, i) => {
+      const c = centerOf(r);
+      const dist = tileDistance(p.x, p.y, c.x, c.y);
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    });
+    bump(seat.stats.ground, `ring_${this.dungeon.rings?.[best] ?? 0}_s`);
+  }
+
+  /** O ponto está dentro da sala ou a até `tiles` dela. */
+  private nearRoom(r: Rect, p: { x: number; y: number }, tiles: number) {
+    return p.x >= r.x - tiles && p.x < r.x + r.w + tiles && p.y >= r.y - tiles && p.y < r.y + r.h + tiles;
   }
 
   // --- Dificuldade por comportamento (`threat.ts`) -------------------------------------
@@ -1082,7 +1219,7 @@ export class Hunt {
   start(sessionId: string) {
     if (sessionId !== this.state.leaderId || this.state.phase !== "lobby") return false;
     this.state.phase = "running";
-    this.state.timeLeft = this.map.durationSeconds;
+    this.state.timeLeft = huntSeconds(this.map);
     this.state.players.forEach((p, id) => this.trackDepth(id, p));
     const bots = this.botCount();
     this.seats.forEach((seat) => { seat.stats.bots = bots; });
@@ -1272,7 +1409,8 @@ export class Hunt {
     if (this.state.phase !== "running") return;
 
     this.elapsedMs += dt;
-    const left = Math.max(0, this.map.durationSeconds - Math.floor(this.elapsedMs / 1000));
+    // Mapa sem tempo: o relógio conta até o teto técnico (`OPEN_HUNT_MAX_SECONDS`); o cliente mostra o tempo decorrido.
+    const left = Math.max(0, huntSeconds(this.map) - Math.floor(this.elapsedMs / 1000));
     if (left !== this.state.timeLeft) this.state.timeLeft = left;
 
     if (left === 0) {
@@ -1289,6 +1427,7 @@ export class Hunt {
     this.expireEffects(now);
     this.usePortals(now);
     if (this.state.phase !== "running") return;
+    this.respawnPacks();
     this.bots.think(now);
     this.state.players.forEach((p, sessionId) => this.playerAttack(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.channelTick(sessionId, p, now));
@@ -1396,6 +1535,7 @@ export class Hunt {
     this.regenMs -= 1000;
     this.state.players.forEach((p, sessionId) => {
       if (p.status !== "playing") return;
+      this.tallyGround(p, this.seats.get(sessionId));
       // Regeneração e Clareza (melhorias) somam à regeneração base.
       const perk = this.seats.get(sessionId)?.perkBonus;
       // Runa do Pacto: a mana volta mais devagar.
@@ -1406,7 +1546,12 @@ export class Hunt {
       const still = seat ? this.standingStill(seat, now) : false;
       const bedrock = seat && still ? this.marks(seat, "bedrock") : 0;
       const stillRegen = bedrock >= 1 ? BEDROCK.regen : 0;
-      if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * (HP_REGEN + (perk?.hpRegen ?? 0) + stillRegen))));
+      // Terreno de caça: regen fixa em pontos (fração da vida do nível 1, crescendo devagar com o nível), ×4 na fogueira.
+      const flat = this.flatRegenBase(p, seat);
+      if (p.hp < p.maxHp) {
+        const gain = flat ? flat.hp * (FLAT_HP_REGEN + (perk?.hpRegen ?? 0) + stillRegen) : p.maxHp * (HP_REGEN + (perk?.hpRegen ?? 0) + stillRegen);
+        p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(gain)));
+      }
       // Pedra Fundamental (marco 2): parado, provoca os monstros colados de tempos em tempos.
       if (seat && bedrock >= 2 && now >= seat.bedrockTauntAt) {
         let taunted = 0;
@@ -1422,8 +1567,24 @@ export class Hunt {
           bump(seat.stats.giftProcs, "bedrock_taunt", taunted);
         }
       }
-      if (p.mana < p.maxMana) p.mana = Math.min(p.maxMana, p.mana + Math.max(1, Math.round(p.maxMana * manaRegen)));
+      if (p.mana < p.maxMana) {
+        const gain = flat ? flat.mana * (manaRegen - MANA_REGEN + FLAT_MANA_REGEN) : p.maxMana * manaRegen;
+        p.mana = Math.min(p.maxMana, p.mana + Math.max(1, Math.round(gain)));
+      }
     });
+  }
+
+  /**
+   * Terreno de caça: a base da regen fixa do herói (vida e mana do nível 1 da classe, com as áureas, crescendo
+   * `FLAT_REGEN_PER_LEVEL` por nível e vezes `CAMP_REGEN` perto da fogueira). Null nos outros mapas (regen percentual).
+   */
+  private flatRegenBase(p: Player, seat: Seat | undefined) {
+    if (!this.map.huntingGround) return null;
+    const base = statsFor(p.classId as ClassId, 1, seat?.bonus);
+    const camp = this.dungeon.camp;
+    const fire = camp && tileDistance(p.x, p.y, camp.x, camp.y) <= CAMP_RADIUS ? CAMP_REGEN : 1;
+    const grow = (1 + FLAT_REGEN_PER_LEVEL * (p.level - 1)) * fire;
+    return { hp: base.maxHp * grow, mana: base.maxMana * grow };
   }
 
   /**
@@ -4637,6 +4798,10 @@ export class Hunt {
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
+    // Terreno de caça: abates por anel (onde o herói caça de verdade).
+    const ground = this.map.huntingGround;
+    const killerSeat = this.seats.get(killerId);
+    if (ground && killerSeat && brain.def.rank === "common") bump(killerSeat.stats.ground, `ring_${Math.max(0, ground.ringDepth.indexOf(brain.depth))}_kills`);
     // Fúria Crescente (Dom): matar soma um acúmulo.
     const furySeat = this.seats.get(killerId);
     if (furySeat && furySeat.gifts.furyStack > 0) {

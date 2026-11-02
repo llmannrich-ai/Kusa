@@ -59,6 +59,13 @@ export interface Dungeon {
   bog?: BogLayout;
   /** Ermos Rubros: as pontes, as torres de pedra, as ossadas, a mina e os trilhos, as fogueiras e a cratera (só para o desenho). */
   badlands?: BadlandsLayout;
+  /**
+   * Terreno de caça (`MapDef.huntingGround`): o anel (0, 1, 2) de cada sala do caminho, na ordem de `path`. Quanto maior,
+   * mais longe do acampamento e mais perigoso.
+   */
+  rings?: number[];
+  /** Terreno de caça: a fogueira do acampamento (chão; perto dela a vida e a mana voltam mais rápido). */
+  camp?: { x: number; y: number };
 }
 
 /**
@@ -253,7 +260,63 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "grove") return generateForest(GROVE_SEED, "grove");
   if (mapId === "bog") return generateBog(BOG_SEED);
   if (mapId === "badlands") return generateBadlands(BADLANDS_SEED);
+  if (mapId === "fibula") return generateFibula();
   return generateCrypt(seed);
+}
+
+/**
+ * Fíbula (terreno de caça, `docs/TERRENO_DE_CACA_PLANO.md`): ossuário fixo de 64×100, em pé, desenhado como a Cripta.
+ * O acampamento (portal e fogueira) fica embaixo; acima dele, três anéis de três salas cada (a Orla, as Covas e o Fundo),
+ * cada anel ligado ao seguinte por três passagens (as dos lados largas, a do meio de 1 tile: a passagem onde não se é
+ * cercado), e o covil do Rei Ossudo no topo. Quatro salas laterais (mini-boss e baú) pendem das passagens do meio do
+ * mapa e dos cantos do Fundo. Pilares nas salas do fundo quebram a linha de visão dos arqueiros.
+ */
+function generateFibula(): Dungeon {
+  const W = 64, H = 100;
+  const tiles = new Uint8Array(W * H).fill(Tile.Wall);
+  const floor = (x: number, y: number) => { if (x > 0 && y > 0 && x < W - 1 && y < H - 1) tiles[y * W + x] = Tile.Floor; };
+  const carve = (r: Rect) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) floor(x, y); };
+  /** Corredor horizontal na linha `y`, de `x1` a `x2`, com `w` tiles de largura (para baixo). */
+  const hall = (y: number, x1: number, x2: number, w: number) => carve({ x: Math.min(x1, x2), y, w: Math.abs(x2 - x1) + 1, h: w });
+  /** Corredor vertical na coluna `x`, de `y1` a `y2`, com `w` tiles de largura (para a direita). */
+  const shaft = (x: number, y1: number, y2: number, w: number) => carve({ x, y: Math.min(y1, y2), w, h: Math.abs(y2 - y1) + 1 });
+  const pillar = (x: number, y: number) => { for (let yy = y; yy < y + 2; yy++) for (let xx = x; xx < x + 2; xx++) tiles[yy * W + xx] = Tile.Wall; };
+
+  const camp: Rect = { x: 25, y: 86, w: 14, h: 9 };
+  const ring1 = [{ x: 26, y: 70, w: 12, h: 9 }, { x: 5, y: 68, w: 12, h: 10 }, { x: 47, y: 68, w: 12, h: 10 }];
+  const ring2 = [{ x: 25, y: 46, w: 14, h: 10 }, { x: 4, y: 44, w: 13, h: 11 }, { x: 47, y: 44, w: 13, h: 11 }];
+  const ring3 = [{ x: 26, y: 24, w: 12, h: 9 }, { x: 6, y: 22, w: 12, h: 10 }, { x: 46, y: 22, w: 12, h: 10 }];
+  const boss: Rect = { x: 22, y: 3, w: 20, h: 14 };
+  const side: Rect[] = [{ x: 19, y: 35, w: 7, h: 7 }, { x: 39, y: 35, w: 7, h: 7 }, { x: 4, y: 5, w: 9, h: 9 }, { x: 52, y: 5, w: 9, h: 9 }];
+  for (const r of [camp, ...ring1, ...ring2, ...ring3, boss, ...side]) carve(r);
+
+  // Acampamento → Orla: o meio largo (3), a direita média (2) e a esquerda estreita (1).
+  shaft(31, 79, 85, 3);
+  hall(90, 39, 53, 2); shaft(52, 78, 91, 2);
+  hall(90, 11, 24, 1); shaft(11, 78, 90, 1);
+  // Orla, Covas e Fundo: cada anel ligado por dentro, e ao seguinte pelos dois lados (2) e pelo meio (1).
+  hall(73, 17, 25, 2); hall(73, 38, 46, 2);
+  shaft(10, 55, 67, 2); shaft(53, 55, 67, 2); shaft(32, 56, 69, 1);
+  hall(50, 17, 24, 2); hall(50, 39, 46, 2);
+  shaft(11, 32, 43, 2); shaft(52, 32, 43, 2); shaft(31, 33, 45, 1);
+  hall(27, 18, 25, 2); hall(27, 38, 45, 2);
+  // Fundo → covil, largo; salas laterais pelas passagens dos lados e pelos cantos do Fundo.
+  shaft(31, 17, 23, 3);
+  hall(38, 13, 18, 1); hall(38, 45, 51, 1);
+  shaft(8, 14, 21, 1); shaft(56, 14, 21, 1);
+
+  // Pilares: quinas para quebrar a visão dos arqueiros no meio das Covas, no Fundo e no covil.
+  pillar(28, 49); pillar(34, 51); pillar(9, 47); pillar(53, 47);
+  pillar(29, 27); pillar(34, 28);
+  pillar(26, 6); pillar(36, 6); pillar(26, 12); pillar(36, 12);
+
+  const portal = centerOf(camp);
+  tiles[portal.y * W + portal.x] = Tile.Portal;
+  return {
+    mapId: "fibula", width: W, height: H, tiles, spawn: camp, boss, bossPortal: centerOf(boss),
+    path: [...ring1, ...ring2, ...ring3], rings: [0, 0, 0, 1, 1, 1, 2, 2, 2], side, meadows: [], portal,
+    camp: { x: portal.x - 4, y: portal.y - 2 },
+  };
 }
 
 /**

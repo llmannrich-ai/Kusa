@@ -136,8 +136,8 @@ html, body {
 #game.desert.cave::after {
   background: radial-gradient(ellipse 70% 55% at 50% 45%, transparent 30%, rgba(10, 5, 2, 0.78) 100%);
 }
-/* Cripta: mais escura nos cantos, como corredor iluminado só por tochas. */
-#game.crypt::after {
+/* Cripta e Fíbula: mais escuras nos cantos, como corredor iluminado só por tochas. */
+#game.crypt::after, #game.fibula::after {
   content: "";
   position: absolute;
   inset: 0;
