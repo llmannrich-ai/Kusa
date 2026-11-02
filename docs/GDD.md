@@ -785,7 +785,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
 |---|---|---|---|---|
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
-| 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo, em pé: acampamento com fogueira, 9 áreas de caça em 3 anéis (Orla, Covas, Fundo), 4 salas laterais e o covil | 9 áreas com monstros próprios (×1,4 de força): Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Hobgoblin capitão, Aranha gigante, Lobo Atroz, Esqueleto, Esqueleto arqueiro, Zumbi, Gnoll, Orc guerreiro → Bugbear chefe, Ogro, Cubo Gelatinoso (×1,8) → Rei Ossudo |
+| 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo e aberto, em pé: acampamento com fogueira, 3 salões contínuos com 9 áreas de caça (Orla, Covas, Fundo), 4 alcovas laterais e o covil | 9 áreas com monstros próprios (×1,4 de força): Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Hobgoblin capitão, Aranha gigante, Lobo Atroz, Esqueleto, Esqueleto arqueiro, Zumbi, Gnoll, Orc guerreiro → Bugbear chefe, Ogro, Cubo Gelatinoso (×1,8) → Rei Ossudo |
 | 🏚️ Cripta | 3 ★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×1,6 de força) → Dragão jovem (×1,6) |
 | 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
 | 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
@@ -808,11 +808,14 @@ Mapa de teste do modelo **terreno de caça** (`docs/TERRENO_DE_CACA_PLANO.md`), 
 Cripta, dificuldade 2,5 (★★½). Em vez de uma dungeon de uma passada contra o relógio, um ossuário onde o jogador
 escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) faz parte do jogo.
 
-- **Planta fixa** (`generateFibula`, 64×100, em pé): o acampamento embaixo (portal e fogueira), três anéis de três
-  salas (a **Orla**, as **Covas** e o **Fundo**), cada um ligado ao seguinte por três passagens (as dos lados largas, a
-  do meio de 1 tile: onde não se é cercado), 4 salas laterais (mini-boss e baú) e o covil do **Rei Ossudo** no topo.
-  Pilares nas Covas, no Fundo e no covil quebram a visão dos arqueiros. Desenho da Cripta (`drawCrypt`), com a
-  fogueira dos Ermos e a chama do Charco no acampamento.
+- **Planta fixa e aberta** (`generateFibula`, 64×100, em pé, pincel `fixedCanvas` com `FIBULA_SEED`): o acampamento
+  embaixo (portal e fogueira) e três **salões contínuos** (a **Orla**, as **Covas** e o **Fundo**), cada um com três
+  áreas de caça lado a lado que se abrem umas nas outras; entre os salões, três passagens largas (5 a 8 tiles) e
+  diagonais, para de quase todo ponto haver mais de um caminho de volta. O 1º teste mostrou que salas ligadas por
+  túneis de 1 tile matavam a sensação de mapa aberto; a regra agora é **sem túnel**: nenhum corredor com menos de 4
+  tiles de largura. Pilares e ossadas soltas no meio dos salões quebram a visão dos arqueiros e dão quina para lutar
+  sem ser cercado. 4 alcovas na borda guardam mini-boss e baú; o covil do **Rei Ossudo** fica no topo. Desenho da
+  Cripta (`drawCrypt`), com a fogueira dos Ermos e a chama do Charco. O teste `ritmo` cobre a Fíbula.
 - **Mapa aberto, áreas de caça:** o jogador vai e volta do acampamento quantas vezes quiser e escolhe onde caçar pelo
   momento dele. Cada sala do caminho é uma área com nome, nível indicado e monstros próprios (`HuntingGround.areas`),
   numa escada: Ninho dos Ratos (nível 1–3), Covas dos Kobolds (2–4), Acampamento Goblin (3–6) na Orla; Salão do Capitão
