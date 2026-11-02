@@ -307,14 +307,14 @@ export class DungeonScene extends Phaser.Scene {
     this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
     warmMapMonsters(this, mapId);
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest, bog: drawBog, badlands: drawBadlands }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest, grove: drawForest, bog: drawBog, badlands: drawBadlands }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID, bog: BOG_VOID, badlands: BADLANDS_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID, grove: OLDWOOD_VOID, bog: BOG_VOID, badlands: BADLANDS_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood", "bog", "badlands"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood", "grove", "bog", "badlands"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -1207,8 +1207,8 @@ export class DungeonScene extends Phaser.Scene {
       : isRune(item.itemId) ? RUNES[item.itemId].color : ITEMS[item.itemId] && itemColor(item.itemId);
     if (color === undefined) return;
     const rarity = ITEMS[item.itemId]?.rarity;
-    // 0 = comum ou poção, 1 = raro ou runa, 2 = mágico.
-    const tier = rarity === "magic" ? 2 : rarity === "rare" || isRune(item.itemId) ? 1 : 0;
+    // 0 = comum ou poção, 1 = raro ou runa, 2 = mágico, 3 = lendário (o facho mais alto do chão).
+    const tier = rarity === "legendary" ? 3 : rarity === "magic" ? 2 : rarity === "rare" || isRune(item.itemId) ? 1 : 0;
     const stacked = [...this.room.state.items.values()].filter((o) => o.x === item.x && o.y === item.y && o.id !== id).length;
     const offset = [[0, 0], [-7, -5], [7, -5], [-7, 6], [7, 6]][stacked % 5];
     const shadow = this.add.ellipse(0, 7, 26, 10, 0x000000, 0.45);
@@ -1223,7 +1223,7 @@ export class DungeonScene extends Phaser.Scene {
     const y = this.toPx(item.y) + offset[1] + 2;
     const container = this.add.container(x, y, [shadow, glow, outline, ring, icon])
       .setDepth((item.y + 1) * TILE_SIZE - 0.1);
-    const beamHeight = [34, 50, 68][tier];
+    const beamHeight = [34, 50, 68, 96][tier];
     const beam = this.add.image(x, y + 7, this.lootBeamTexture()).setOrigin(0.5, 1)
       .setDisplaySize(10 + tier * 2, beamHeight).setTint(color)
       .setAlpha(0.5 + tier * 0.15).setDepth(FX_DEPTH_BELOW_UI);

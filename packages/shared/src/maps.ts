@@ -1,7 +1,7 @@
 import { MAX_PARTY_SIZE } from "./constants.ts";
 import { MONSTERS, type MonsterKind } from "./monsters.ts";
 
-export type MapId = "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
+export type MapId = "grove" | "crypt" | "swamp" | "desert" | "marsh" | "cavern" | "dunes" | "mesas" | "gates" | "fortress" | "oldwood" | "heartwood" | "bog" | "badlands";
 
 /** Nível de dificuldade mostrado no menu (estrelas, de 1 a `MAX_DIFFICULTY`). */
 export type MapDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -112,7 +112,7 @@ export const DEATH_SAFE_LEVEL = 5;
  * Peso de cada raridade no sorteio do equipamento perdido na morte: o mágico sai 4× menos que o comum. O banco
  * repete os pesos em `drop_random_item`.
  */
-export const DEATH_LOSS_WEIGHT: Record<"common" | "rare" | "magic", number> = { common: 1, rare: 0.5, magic: 0.25 };
+export const DEATH_LOSS_WEIGHT: Record<"common" | "rare" | "magic" | "legendary", number> = { common: 1, rare: 0.5, magic: 0.25, legendary: 0.12 };
 
 /**
  * Quantidade a mais de monstros por sala de profundidade (+12% por sala): o orçamento de ameaça de cada encontro e os
@@ -147,6 +147,25 @@ export const MAX_ROOM_LEADERS = 1;
 export const CHAMPION_CHANCE = 0.05;
 
 export const MAPS: Record<MapId, MapDef> = {
+  grove: {
+    id: "grove", name: "Orla do Bosque", icon: "🌱", difficulty: 1, durationSeconds: 8 * 60,
+    // O primeiro mapa da campanha, para o herói ainda sem itens: os bichos mais fracos da floresta e os mini-bosses
+    // do Bosque Velho bem enfraquecidos. O boss é o Dragão jovem, o mesmo da Cripta.
+    minibossPower: 0.6, xpScale: 0.9,
+    description: "A beira da floresta do Kosaradius, onde tudo começa: clareiras ligadas por trilhas, um riacho com pontes de madeira e mata fechada dos dois lados. Ratazanas, estirges e galhudos na entrada, aranhas e lobos mais para dentro, e o sátiro e o espinheiro perto do fim; nas clareiras de troncos, a dríade e o centauro, ainda fracos. No círculo de menires do norte, o Dragão jovem. Mapa fixo.",
+    encounters: [
+      // Todo mundo começa no nível 1, sem itens: a entrada é de bichos pequenos.
+      { depth: [0, 0], budget: 50, table: [["rat", 3], ["stirge", 2], ["twigling", 1]] },
+      { depth: [1, 1], budget: 85, table: [["rat", 2], ["twigling", 3], ["stirge", 2]] },
+      { depth: [2, 2], budget: 120, table: [["twigling", 3], ["giantSpider", 2], ["rat", 1]] },
+      { depth: [3, 3], budget: 160, table: [["giantSpider", 2], ["direWolf", 2], ["twigling", 2]] },
+      { depth: [4, 4], budget: 200, table: [["direWolf", 3], ["giantSpider", 1], ["twigling", 1], ["satyr", 1]] },
+      { depth: [5, 99], budget: 240, table: [["direWolf", 2], ["satyr", 2], ["thornSpitter", 1], ["giantSpider", 1]] },
+    ],
+    minibosses: [["corruptedDryad", 1], ["renegadeCentaur", 1]],
+    mimicChance: 0,
+    bosses: [["dragon", 1]],
+  },
   crypt: {
     id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 1, durationSeconds: 4 * 60,
     minibossPower: 1.24,
