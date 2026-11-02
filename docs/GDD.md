@@ -786,9 +786,9 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 |---|---|---|---|---|
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
 | 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo, em pé: acampamento com fogueira, 3 anéis de 3 salas (Orla, Covas, Fundo), 4 salas laterais e o covil | Ratazana, Kobold, Goblin, Estirge (Orla); Goblin, Goblin arqueiro, Aranha gigante, Lobo Atroz, Esqueleto, Hobgoblin capitão (Covas); Gnoll, Orc guerreiro, Esqueleto, Esqueleto arqueiro, Zumbi, Hobgoblin (Fundo) → Bugbear chefe, Ogro, Cubo Gelatinoso → Rei Ossudo |
-| 🏚️ Cripta | 1 ★☆ | 4 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Estirge, Goblin, Goblin arqueiro, Zumbi, Hobgoblin capitão, Esqueleto, Esqueleto arqueiro, Aranha gigante, Orc guerreiro, Gnoll → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico → Dragão jovem |
-| 🌿 Pântano das Ruínas | 2 ★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual → Rei Bullywug |
-| 🏜️ Mar de Areia | 1 ★☆ | 6 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia → Verme da Areia (na caverna) |
+| 🏚️ Cripta | 3 ★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×1,6 de força) → Dragão jovem (×1,6) |
+| 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
+| 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
 | 🌬️ Dunas Cantantes | 5 ★★★★★☆ | 8 min | 96×128, em pé: 4 vales entre cordilheiras de duna, 7 zonas, 5 campinas, ruínas soterradas e a bacia das pedras cantantes | Escaravelhos Carniceiros, Chacal de Ossos, Legionário Ossudo, Sagitário das Dunas, Múmia Enfaixada, Carpideira, Soterrado → Centurião Ossudo, Múmia Real, Escriba das Areias → Colosso Cantante |
 | 🌳 Bosque Velho | 5 ★★★★★☆ | 8 min | 96×128, em pé: mata fechada com clareiras ligadas por trilhas, 7 zonas, 5 campinas, um riacho com pontes e o círculo de menires | Galhudo, Lobo Atroz, Espinheiro, Sátiro Flautista, Pantera das Sombras, Urso-coruja → Dríade Corrompida, Centauro Renegado, Guardião do Menir → Dragão Verde Jovem |
@@ -839,6 +839,10 @@ escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) fa
   no chão e nos tampos; ossos, entulho, cacos, poças e teias nos cantos; barris, caixotes e sacos na entrada, urnas,
   pilhas de ossos e caixões nas salas; marcas de queimado, sangue e ossada no covil do dragão; poeira flutuando e
   cantos da tela escurecidos. Como no pântano, só os sprites perto da câmera são desenhados.
+- **3 estrelas:** a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins logo na sala 1; orcs,
+  carniçais, gnolls e o Pudim Negro no fundo). Mini-bosses (`minibossPower` 1,6) e o Dragão jovem (`bossPower` 1,6:
+  ~2.130 de vida e 58 de dano, contra 1.332 e 36 na Orla do Bosque) bem mais fortes, com XP e loot na mesma
+  proporção. 6 minutos de hunt.
 
 ### Pântano das Ruínas
 
@@ -871,6 +875,7 @@ escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) fa
   - **Arena:** no meio, o mosaico do sol do império em tesselas (11×9 tiles), gasto, com tesselas faltando.
   - **Ambiente:** vaga-lumes, névoa baixa e folhas caindo da beira da mata. Só os sprites perto da câmera são
     desenhados.
+- **3 estrelas**, como a Cripta e o Mar de Areia que vêm antes na campanha: mini-bosses ×1,4 e o Rei Bullywug ×1,15.
 - Mais difícil: espécies com mais vida e dano que as da cripta, mais salas e salas fundas mais cheias (o orçamento de
   monstros cresce 12% por sala).
   Em troca, loot maior nas salas fundas e criaturas mais difíceis, que largam material e raridade melhores.
@@ -910,6 +915,10 @@ escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) fa
 - **Portal do boss:** abre no meio do salão dos baús (não no covil), depois da escolha.
 - **Verme da Areia** (boss): engole quem fica colado (Engolir: controle de 1,8 s com dano por segundo) e, abaixo de metade da vida, faz o chão
   tremer em volta (Tremor, deixa lento). Vulnerável a gelo, resiste a fogo.
+- **3 estrelas:** gnolls e múmias desde a zona 2, a legião de osso das Dunas (Chacal, Legionário, Soterrado,
+  Sagitário) nas zonas fundas; mini-bosses (`minibossPower` 1,6) e o Verme (`bossPower` 1,6: ~2.150 de vida e 61 de
+  dano) bem mais fortes, com XP e loot na mesma proporção. 8 minutos de hunt. Os números de balanceamento abaixo são
+  de antes do reforço.
 - **Balanceamento:** o caminho rende um pouco mais de XP que a Cripta (cerca de 36 monstros e 2.700 XP, contra 21 e
   1.700), então a equipe chega na caverna perto do nível 6 a 8. O Verme tem a vida do Dragão jovem (~1.340, já na
   ficha: o boss não cresce com a profundidade) e, no simulador de duelo (herói nível 6 sozinho, só ataque básico),
@@ -1303,7 +1312,7 @@ lê.
 - A equipe nasce junta numa borda aleatória da dungeon, na sala do portal de fuga.
 - **Entrada tranquila:** a até 12 tiles do portal de fuga nascem no máximo 3 monstros (mini-boss e Mímico de sala
   lateral contam), para a hunt não começar com uma sala cheia em cima da equipe.
-- O limite de tempo depende do mapa (4 min na Cripta, 8 min no Pântano das Ruínas, em Dunas Cantantes, nas Mesas de Solária, nos Portões do Império e na Fortaleza Orc, 6 min no Mar de Areia, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
+- O limite de tempo depende do mapa (6 min na Cripta, 8 min no Pântano das Ruínas, no Mar de Areia, em Dunas Cantantes, nas Mesas de Solária, nos Portões do Império e na Fortaleza Orc, 10 min na Caverna da Travessia e no Pântano do Kosaradius). **Se o tempo acaba, o mapa desaba e todos morrem soterrados.**
 - Todo mundo começa no nível 1, sem equipamento, magia ou skill.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. O Cavaleiro tem 10 de armadura própria

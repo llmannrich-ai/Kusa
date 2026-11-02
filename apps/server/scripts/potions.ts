@@ -31,6 +31,8 @@ let targetId: string | null = null;
 let deadline = 0;
 /** Ids dos itens que o servidor avisou que este herói pegou (`MSG.pickup`). */
 let picked: string[] = [];
+/** Poções de vida pegas do chão: lutando colado, uma pode entrar na mochila no meio da conta de beber. */
+let pickedHealth = 0;
 const me = () => room.state.players.get(room.sessionId);
 // O cavaleiro sem magias não gasta mana: o teste usa a poção de vida (o código das duas é o mesmo).
 const groundPotions = () => ([...room.state.items.values()] as any[]).filter((it) => it.itemId === "potion-health");
@@ -53,6 +55,7 @@ async function run() {
   room = await client.create<any>(ROOM_NAME, { name: "Teste", classId: "knight", rulesVersion: RULES_VERSION });
   drank = [];
   picked = [];
+  pickedHealth = 0;
   died = false;
   kills = 0;
   targetId = null;
@@ -60,7 +63,12 @@ async function run() {
   room.onMessage(MSG.notice, () => {});
   room.onMessage(MSG.attack, () => {});
   room.onMessage(MSG.monsterStrike, () => {});
-  room.onMessage(MSG.pickup, (msg: PickupMessage) => { if (msg.sessionId === room.sessionId) picked.push(msg.id); });
+  room.onMessage(MSG.pickup, (msg: PickupMessage) => {
+    if (msg.sessionId !== room.sessionId) return;
+    picked.push(msg.id);
+    // A mensagem chega antes do patch que tira o item do chão: ainda dá para ver o que era.
+    if (room.state.items.get(msg.id)?.itemId === "potion-health") pickedHealth++;
+  });
   room.onMessage(MSG.drank, (msg: DrankMessage) => drank.push(msg));
   room.onMessage(MSG.runEnded, (msg: any) => {
     if (msg.outcome === "died") died = true;
@@ -102,9 +110,11 @@ async function run() {
   while (me().maxHp - me().hp < me().maxHp * 0.1) await fightCommons("não apanhou o bastante");
   const carried = me()[field];
   const hp = me().hp;
+  let pickedBefore = pickedHealth;
   room.send(MSG.drink, { potion: potion.id });
   await wait(300);
-  if (me()[field] !== carried - 1) throw new Error("a poção não saiu da mochila");
+  await settle(() => me()[field] === carried - 1 + pickedHealth - pickedBefore);
+  if (me()[field] !== carried - 1 + pickedHealth - pickedBefore) throw new Error("a poção não saiu da mochila");
   if (me().hp <= hp) throw new Error(`a vida não subiu: ${hp} → ${me().hp}`);
   if (drank.length !== 1) throw new Error("o servidor não confirmou a poção");
   console.log(`bebeu: vida ${hp} → ${me().hp}, recarga ${drank[0].cooldownMs} ms`);
@@ -112,9 +122,11 @@ async function run() {
   // Fase 4: em recarga, beber de novo não gasta poção (só dá para testar com outra na mochila).
   if (me()[field] > 0) {
     const left = me()[field];
+    pickedBefore = pickedHealth;
     room.send(MSG.drink, { potion: potion.id });
     await wait(300);
-    if (me()[field] !== left || drank.length !== 1) throw new Error("bebeu durante a recarga");
+    await settle(() => me()[field] === left + pickedHealth - pickedBefore);
+    if (me()[field] !== left + pickedHealth - pickedBefore || drank.length !== 1) throw new Error("bebeu durante a recarga");
     console.log("recarga respeitada");
   }
 }
@@ -148,6 +160,11 @@ function walkToward(to: { x: number; y: number }, range: number) {
   blocked.add(dungeon.portal.y * dungeon.width + dungeon.portal.x);
   const step = nextStep(dungeon, p, to, range, (x, y) => blocked.has(y * dungeon.width + x));
   if (step) room.send(MSG.move, { dx: step.x - p.x, dy: step.y - p.y });
+}
+
+/** Espera até 1 s o patch do estado alcançar as mensagens (o aviso `pickup` chega antes do patch da mochila). */
+async function settle(done: () => boolean) {
+  for (let i = 0; i < 10 && !done(); i++) await wait(100);
 }
 
 async function wait(ms: number) {

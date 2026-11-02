@@ -7,7 +7,7 @@
 --     (7.200 s, depois disso vale como soterrada) e o teto do loot cresce em linha reta até 24.000 em 7.200 s (200 por
 --     minuto: as salas enchem de novo, não há "todos os monstros" para somar).
 --   - Quem já venceu Grumak herda a Fíbula vencida: a Cripta continua aberta para essas contas.
--- Parte do estado depois de 20261102300000_orla_do_bosque.sql: `record_map_clear`, `start_solo_run` e
+-- Parte do estado depois de 20261102310000_cripta_e_areia_3_estrelas.sql: `record_map_clear`, `start_solo_run` e
 -- `finish_solo_run` são remendadas no texto atual do banco.
 
 alter table public.solo_runs drop constraint solo_runs_map_id_check;

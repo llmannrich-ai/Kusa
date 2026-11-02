@@ -9,7 +9,7 @@ import type { SpellXp, TalentRanks } from "./talents.ts";
  */
 export const SOLO_LIMITS = {
   /** Loot máximo de uma hunt por mapa: pouco acima do máximo teórico (todos os monstros e baús no topo, com o bônus do boss). */
-  maxLoot: { grove: 1400, fibula: 24000, crypt: 1200, swamp: 3000, desert: 1700, marsh: 1900, cavern: 3000, dunes: 3300, mesas: 3800, gates: 100, fortress: 4600, oldwood: 3200, heartwood: 3800, bog: 4600, badlands: 4600 } satisfies Record<MapId, number>,
+  maxLoot: { grove: 1400, fibula: 24000, crypt: 1200, swamp: 3000, desert: 1900, marsh: 1900, cavern: 3000, dunes: 3300, mesas: 3800, gates: 100, fortress: 4600, oldwood: 3200, heartwood: 3800, bog: 4600, badlands: 4600 } satisfies Record<MapId, number>,
   /**
    * O teto do loot cresce proporcional ao tempo de hunt e só chega ao máximo depois disto (segundos). No mapa sem tempo
    * (Fíbula), o teto vale para `OPEN_HUNT_MAX_SECONDS` e cresce em linha reta: é uma taxa (24.000 em 2 h = 200 por
