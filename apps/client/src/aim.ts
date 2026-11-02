@@ -29,14 +29,14 @@ const FULL_DRAG_PX = 72;
 /** Espaço (px do mundo) entre os pontos da linha pontilhada. */
 const DOT_GAP = 7;
 
-const COLORS = { free: 0xd7c8ff, locked: 0xf1c40f, range: 0xd7c8ff, ally: 0x7fc8ff };
+const COLORS = { free: 0xd7c8ff, locked: 0xf1c40f, ally: 0x7fc8ff };
 
 /** Posição desenhada (px do mundo) de um jogador ou monstro, que anda suave entre os tiles. */
 export type BodyAt = (id: string) => { x: number; y: number } | undefined;
 
 /**
  * Mira das magias com alvo (únicas e de área), desenhada no mapa enquanto o polegar segura o botão
- * do slot: linha pontilhada do herói até o ponto, o alcance em volta dele e a área da magia.
+ * do slot: linha pontilhada do herói até o ponto e a área da magia (sem quadrado de alcance em volta do herói).
  * Parado no botão, a mira mostra o alvo automático (o que o toque rápido acerta); arrastando,
  * o tamanho do arrasto vira distância até o alcance máximo. Magia de alvo único gruda no monstro
  * a até 1 tile do ponto; a de área cai no ponto. Tiro (`isShot`, e o básico à distância pelo ⚔️) é mirado numa
@@ -128,11 +128,6 @@ export class SpellAim {
     const me = this.room.state.players.get(this.room.sessionId);
     const from = this.bodyAt(this.room.sessionId);
     if (!spell || !me || !from || this.cancelled) return;
-
-    // Alcance: os tiles a até `range` do herói (a distância do jogo conta a diagonal como 1).
-    const reach = (spell.range * 2 + 1) * TILE_SIZE;
-    g.fillStyle(COLORS.range, 0.06).fillRect(from.x - reach / 2, from.y - reach / 2, reach, reach);
-    dashedRect(g, from.x - reach / 2, from.y - reach / 2, reach, reach, COLORS.range, 0.35);
 
     const aim = this.target();
     if (!aim) return;
