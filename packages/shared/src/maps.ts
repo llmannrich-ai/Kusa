@@ -276,16 +276,11 @@ export const MAPS: Record<MapId, MapDef> = {
     minibossPower: 1.5,
     xpScale: 0.6,
     description: "Ossuário aberto, sem fim: do acampamento com a fogueira, três salões cada vez mais fundos e perigosos, com escorpiões, chacais de ossos, escaravelhos, lobos, legionários e múmias. Sem tempo: as áreas enchem de novo, a vida volta devagar e quem vai longe demais precisa saber a hora de recuar. No topo, o Rei Ossudo guarda o covil.",
+    // As tabelas por anel só servem de reserva (as áreas abaixo mandam) e ao Catálogo: as mesmas criaturas das áreas.
     encounters: [
-      // Anel 1, a Orla: enxames e goblins (nível 1 a 5).
-      { depth: [0, 1], budget: 70, table: [["rat", 4], ["kobold", 4], ["goblin", 3], ["stirge", 2]] },
-      // Anel 2, as Covas: arqueiros, aranhas, o capitão e os lobos (nível 5 a 10).
-      {
-        depth: [2, 2], budget: 190,
-        table: [["goblin", 3], ["goblinArcher", 2], ["giantSpider", 2], ["direWolf", 2], ["skeleton", 2], ["hobgoblin", 1]],
-      },
-      // Anel 3, o Fundo: gnolls, orcs e mortos-vivos (nível 10 a 15).
-      { depth: [3, 9], budget: 330, table: [["gnoll", 3], ["orc", 3], ["skeleton", 2], ["skeletonArcher", 2], ["zombie", 1], ["hobgoblin", 1]] },
+      { depth: [0, 1], budget: 90, table: [["sandScorpion", 4], ["boneJackal", 3], ["twigling", 3], ["giantVulture", 1]] },
+      { depth: [2, 2], budget: 190, table: [["scarabSwarm", 3], ["direWolf", 3], ["boneLegionary", 2], ["boneArcher", 2]] },
+      { depth: [3, 9], budget: 340, table: [["mourner", 2], ["wrappedMummy", 2], ["buriedDead", 3], ["mummy", 2], ["shadowPanther", 1], ["boneArcher", 1]] },
     ],
     minibosses: [["boneCenturion", 2], ["royalMummy", 1], ["sandScribe", 1]],
     mimicChance: 0,
@@ -587,6 +582,8 @@ export function mainBoss(map: MapDef): MonsterKind | undefined {
 export function mapMonsters(map: MapDef): MonsterKind[] {
   const kinds = new Set<MonsterKind>();
   for (const e of map.encounters) for (const [kind] of e.table) kinds.add(kind);
+  // Terreno de caça: as áreas têm tabelas próprias.
+  for (const a of map.huntingGround?.areas ?? []) for (const [kind] of a.table) kinds.add(kind);
   for (const [kind] of map.minibosses) kinds.add(kind);
   for (const [kind] of map.bosses) kinds.add(kind);
   if (map.mimicChance > 0) kinds.add("mimic");
