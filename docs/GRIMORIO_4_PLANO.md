@@ -639,6 +639,16 @@ como o básico). A Vela Votiva é um campo (zona de raio 1) que fere, ofusca e d
 conta para os Estrepes Afiados. O Exposto agora só vale para monstro que foi atordoado de fato (o tempo de graça dos
 marcos não conta para quem nunca foi atordoado).
 
+**Fase 4b (Feiticeiro), como foi entregue:** os 6 Dons da costela do Feiticeiro. Entrou junto uma versão mínima da peça
+A2 (enfraquecer): o monstro guarda `weakPct`/`weakUntil` e bate menos enquanto dura; por ora só o Lamento Profundo a usa
+(as magias de trevas do feiticeiro enfraquecem), e as magias que enfraquecem por conta própria (Olhar do Abismo, Brado
+Cortante) ficam para a fase 5. "Sopro" = magia em leque que canaliza ou avança em onda (Cusparada de Fogo, Sopro Gélido,
+Lamento Sombrio). Diferenças: o "+0,5 s de congelado" do Cristalizar vale para as prisões de gelo das magias e do sopro;
+o "próximo golpe Estilhaça" do Sopro Glacial vale para golpe que não seja de gelo (senão o próprio sopro quebraria o
+gelo que acabou de fazer); a explosão da Garganta de Brasa sai no fim das magias em onda (o sopro canalizado deixa só o
+chão em chamas no fim de cada onda, sem explosão). Com o Traço Estilhaçar, o gelo do sopro quebra no pulso seguinte,
+como já acontecia antes.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 

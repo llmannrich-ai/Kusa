@@ -17,11 +17,13 @@
  *   - Dons da costela de passivas do Cavaleiro (fase 4b): lugar na árvore, Sangue no Aço, Fúria Crescente, Bigorna,
  *     Repique, Eco de Guerra e Ordem de Execução, com o efeito por nível e os marcos;
  *   - Dons da costela do Paladino: Aljava Larga (leque de flechas no básico), Ponto Fraco, Aurora, Vela Votiva,
- *     Estrepes Afiados e Pavio Curto.
+ *     Estrepes Afiados e Pavio Curto;
+ *   - Dons da costela do Feiticeiro: Garganta de Brasa, Panela de Pressão, Sopro Glacial, Cristalizar, Lamento Profundo
+ *     (com o enfraquecer) e Sentença Lenta.
  * Uso: npx tsx scripts/marcos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import {
-  ALLY_DAMAGE_RADIUS, CANDLE, QUIVER, WEAK, ANVIL, BLOOD, EXPOSED_BONUS, FURY, talentTree, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
+  ALLY_DAMAGE_RADIUS, EMBER, GLACIAL, LAMENT, PRESSURE, SENTENCE, SHATTER_BONUS, VAPOR, CANDLE, QUIVER, WEAK, ANVIL, BLOOD, EXPOSED_BONUS, FURY, talentTree, BANNER, BONES, CYCLE_MARKS, INSTINCT, PACK, SAP, VENOM, COLD, CONDUCTOR, FROST_MARKS, HUNGER, SPELLS, BREATH, FAITH, GRACE_EVERY, GRACE_MARKS, HAND, TRACKER, BANNER_RADIUS, CLASS_IDS, GIFTS, GIFT_MILESTONES, HIDE, VOICE, giftMilestones, sumGifts,
   type ClassId, type GiftId, type TalentRanks,
 } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
@@ -645,6 +647,111 @@ test("Pavio Curto: a armadilha queima quem prende e explode em volta", () => {
   a.any.root(prey, a.brain(prey), a.now() + 60000);
   a.advance(500);
   check(near.hp < hp && a.seat().stats.giftProcs.short_fuse >= 1, `vizinho ${hp} → ${near.hp}`);
+});
+
+console.log("Costela de passivas (Feiticeiro):");
+test("dois Dons por ramo nas linhas VI e VII do Feiticeiro", () => {
+  check(talentTree("sorcerer").filter((t) => t.kind === "gift" && t.lane === -2 && t.row >= 6).length === 6, "6 Dons");
+});
+test("Garganta de Brasa: sopros +40% e mais abertos, e a onda acaba em chamas e explosão", () => {
+  const a = markArena("sorcerer", { ember_throat: 25 }, { monsterHp: 400 });
+  const spell = a.any.markedSpell(a.seat(), SPELLS.fire_spit);
+  check(Math.abs(spell.damage / SPELLS.fire_spit.damage! - 1.4) < 1e-6 && spell.coneAngle === (SPELLS.fire_spit.coneAngle ?? 90) + EMBER.angle * 2, `dano ${spell.damage}, ${spell.coneAngle}°`);
+  a.choose("fire_spit");
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.root(m, a.brain(m), a.now() + 60000);
+  a.ready();
+  a.cast(0, m);
+  a.until(() => (a.seat().stats.giftProcs.ember_throat ?? 0) > 0, 3000, "a onda não explodiu no fim");
+  check([...a.state.fields.values()].some((f) => f.owner === HERO && f.style === "fire"), "sem chão em chamas no fim da onda");
+});
+test("Panela de Pressão: Vapor +75%, em raio 3, deixa névoa e devolve mana", () => {
+  const vapor = (rank: number) => {
+    const a = markArena("sorcerer", rank ? { pressure_cooker: rank } : {}, { monsterHp: 400 });
+    const m = a.place("lizardfolk", 2, 0);
+    const far = a.place("lizardfolk", 5, 0);
+    a.any.applyDot(m, a.brain(m), HERO, "teste", 1, 5000, "burn", a.now());
+    a.p.mana = 0;
+    const hp = far.hp;
+    a.any.damageMonster(m, 100, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "energy" }, "ice_lance");
+    return { far: hp - far.hp, mist: [...a.state.fields.values()].some((f) => f.style === "mist"), mana: a.p.mana };
+  };
+  const plain = vapor(0);
+  const full = vapor(25);
+  check(plain.far === 0 && full.far > 0 && full.mist && full.mana > 0, JSON.stringify(full));
+  check(PRESSURE.radiusLater === 3 && VAPOR.radius === 1, "raios");
+});
+test("Sopro Glacial: o sopro canalizado deixa mais lento, congela em 1,5 s e não prende o herói", () => {
+  const a = markArena("sorcerer", { glacial_breath: 25 }, { monsterHp: 400 });
+  const spell = a.any.markedSpell(a.seat(), SPELLS.frost_breath);
+  check(spell.channel.moveSlow === 0 && spell.range === SPELLS.frost_breath.range + GLACIAL.range, `lentidão do herói ${spell.channel.moveSlow}, alcance ${spell.range}`);
+  // Sem o Traço Estilhaçar (que quebra o gelo de quem já estava preso no pulso seguinte).
+  a.seat().traits = [];
+  a.hunt.chooseSpell(HERO, { slot: 1, spellId: "frost_breath" });
+  const m = a.place("lizardfolk", 2, 0);
+  // Parado no leque (atordoado, não preso: a prisão de agora não pode esconder a do sopro).
+  a.brain(m).stunnedUntil = a.now() + 60000;
+  a.ready();
+  a.cast(1 as 0, m);
+  a.until(() => m.frozen, 2500, "o sopro não congelou em 1,5 s");
+  check(a.brain(m).primedUntil > a.now() && a.brain(m).slowPct >= 0.3, `pronto para Estilhaçar ${a.brain(m).primedUntil}, lento ${a.brain(m).slowPct}`);
+});
+test("Cristalizar: Estilhaço +75% e em volta; o gelo do sopro quebra com qualquer elemento", () => {
+  const shatter = (rank: number) => {
+    const a = markArena("sorcerer", rank ? { crystallize: rank } : {}, { monsterHp: 400 });
+    const m = a.place("lizardfolk", 2, 0);
+    const side = a.place("lizardfolk", 2, 1);
+    a.any.root(m, a.brain(m), a.now() + 5000, true);
+    const h0 = m.hp;
+    const s0 = side.hp;
+    a.any.damageMonster(m, 100, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "energy" }, "basic");
+    a.advance(100);
+    return { main: h0 - m.hp, side: s0 - side.hp, refrozen: m.frozen };
+  };
+  const plain = shatter(0);
+  const full = shatter(25);
+  check(Math.abs(full.main / plain.main - (1 + SHATTER_BONUS + 0.75) / (1 + SHATTER_BONUS)) < 0.05, `${plain.main} → ${full.main}`);
+  check(plain.side === 0 && full.side > 0 && full.refrozen, `lado ${full.side}, congelou de novo ${full.refrozen}`);
+  const a = markArena("sorcerer", {}, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.root(m, a.brain(m), a.now() + 5000, true);
+  a.brain(m).primedUntil = a.now() + 3000;
+  // Trevas não reagem com o gelo comum; com o gelo do sopro, Estilhaçam.
+  a.any.damageMonster(m, 100, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "energy" }, "shadow_orb");
+  check(a.seat().stats.reactions.shatter === 1, `reações ${JSON.stringify(a.seat().stats.reactions)}`);
+});
+test("Lamento Profundo: as trevas enfraquecem (−30% de dano do monstro) e o enfraquecido apanha mais", () => {
+  const a = markArena("sorcerer", { deep_lament: 25 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 1, 0);
+  a.any.applySpell(HERO, SPELLS.shadow_orb, 0, m.id, m.x, m.y, 10, undefined, 0);
+  check(Math.abs(a.brain(m).weakPct - 0.3) < 1e-6 && a.brain(m).weakUntil - a.now() === LAMENT.msLater, `enfraquecer ${a.brain(m).weakPct} por ${a.brain(m).weakUntil - a.now()}`);
+  const hit = (weak: boolean) => {
+    const b = markArena("sorcerer", {}, { monsterHp: 400 });
+    b.seat().traits = [];
+    const x = b.place("lizardfolk", 1, 0);
+    if (weak) {
+      b.brain(x).weakPct = 0.3;
+      b.brain(x).weakUntil = b.now() + 5000;
+    }
+    const hp = b.p.hp;
+    b.any.damagePlayer(HERO, 100, { attacker: x.id, fromX: x.x, fromY: x.y, fx: "bite" });
+    return hp - b.p.hp;
+  };
+  check(Math.abs(hit(true) / hit(false) - 0.7) < 0.05, `golpe ${hit(false)} → ${hit(true)}`);
+});
+test("Sentença Lenta: Condenação +75% em raio 2, marca quem pega e passa para o marcado vizinho", () => {
+  const a = markArena("sorcerer", { slow_sentence: 25 }, { monsterHp: 400 });
+  const m = a.place("lizardfolk", 2, 0);
+  const near = a.place("lizardfolk", 4, 0);
+  const marked = a.place("lizardfolk", 2, 3);
+  a.brain(m).markUntil = a.now() + 5000;
+  m.marked = true;
+  a.brain(marked).markUntil = a.now() + 5000;
+  const hp = near.hp;
+  a.any.damageMonster(m, 100, { attacker: HERO, fromX: a.p.x, fromY: a.p.y, fx: "energy" }, "shadow_orb");
+  // O vizinho (a 2 tiles) leva a explosão e fica marcado; a Condenação em cadeia passa para o marcado mais perto (ele).
+  check(near.hp < hp && a.seat().stats.reactions.doom === 2, `vizinho ${hp} → ${near.hp}, ${JSON.stringify(a.seat().stats.reactions)}`);
+  check(SENTENCE.radius === 2, "raio");
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);

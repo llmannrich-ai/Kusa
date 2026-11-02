@@ -47,7 +47,7 @@ import {
   FAR_DAMAGE_TILES,
   BANNER_RADIUS, BITE_BASE, BITE_EVERY, BURN_MS, BURN_PER_SEC, CIRCUIT_ELEMENTS, CIRCUIT_MS, CYCLE_BASE, CYCLE_HEAL, CYCLE_RADIUS,
   FROST_COOLDOWN_MS, FROST_MANA_PCT, FROST_MS,
-  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, ANVIL, BLOOD, CHIME, FURY, ORDER, WAR_ECHO, CANDLE, DAWN, FUSE, QUIVER, SPIKES, WEAK, type GiftId,
+  BANNER, BEDROCK, DUEL, EDGE, HIDE, VOICE, BREATH, EYE, FAITH, GRACE_MARKS, HAND, TRACKER, BONES, CIRCUIT_MARKS, COLD, CONDUCTOR, FROST_MARKS, HUNGER, CYCLE_MARKS, INSTINCT, PACK, SAP, SKY, VENOM, ANVIL, BLOOD, CHIME, FURY, ORDER, WAR_ECHO, CANDLE, DAWN, FUSE, QUIVER, SPIKES, WEAK, CRYSTAL, EMBER, GLACIAL, LAMENT, PRESSURE, SENTENCE, type GiftId,
   GRACE_EVERY, LOW_HP_PCT, OSSUARY_MAX, OSSUARY_MS, SKY_STRIKE_DAMAGE, SKY_STRIKE_TILES, STILL_MS,
   type GiftEffects,
   bestPerSlot,
@@ -1995,6 +1995,15 @@ export class Hunt {
       this.after((ring - 1) * spell.wave!.stepMs, () =>
         this.applySpell(sessionId, i === 0 ? spell : rest, rank, undefined, tx, ty, amount, passed, slot, undefined, struck));
     });
+    // Garganta de Brasa (marcos 2 e 5): no fim da onda, o chão pega fogo e a última onda explode.
+    const seat = this.seats.get(sessionId);
+    const ember = seat && seat.gifts.breathDamage > 0 && spell.shape === "cone" ? this.marks(seat, "ember_throat") : 0;
+    const last = order[order.length - 1];
+    if (ember >= 2 && last !== undefined) {
+      const far = rings.get(last)!;
+      const end = far[Math.floor(far.length / 2)];
+      this.after(last * spell.wave!.stepMs, () => this.breathEnd(sessionId, end.x, end.y, amount, ember));
+    }
   }
 
   /**
@@ -2098,9 +2107,18 @@ export class Hunt {
       for (const m of inside) {
         streak[m.id] = (c.streak[m.id] ?? 0) + 1;
         const brain = this.brains.get(m.id);
+        // Sopro Glacial (Dom): quanto mais tempo canalizando, mais lento fica quem está no sopro.
+        if (brain && seat.gifts.breathSlow > 0) {
+          const secs = (now - (c.until - c.def.ms)) / 1000;
+          brain.slowPct = Math.max(now < brain.slowUntil ? brain.slowPct : 0, Math.min(GLACIAL.maxSlow, seat.gifts.breathSlow * Math.max(1, secs)));
+          brain.slowUntil = Math.max(brain.slowUntil, now + def.tickMs + 500);
+          m.slowed = true;
+        }
         if (def.freezeTicks && def.freezeMs && brain && streak[m.id] >= def.freezeTicks) {
-          const ms = Math.round(def.freezeMs * (1 + seat.gifts.ccDuration));
+          const ms = Math.round(def.freezeMs * (1 + seat.gifts.ccDuration)) + (this.marks(seat, "crystallize") >= 3 ? CRYSTAL.frozenMs : 0);
           this.root(m, brain, now + ms, true);
+          // Sopro Glacial (marco 4): o gelo do sopro quebra com qualquer golpe.
+          if (this.marks(seat, "glacial_breath") >= 4) brain.primedUntil = now + GLACIAL.primeMs;
           seat.stats.ccMs.root += ms;
           streak[m.id] = 0;
         }
@@ -2228,7 +2246,8 @@ export class Hunt {
       if (spell.pull && m === anchor && p.status === "playing") this.pullTo(m, p);
       // Coração Frio (Dom): as prisões e lentidões das magias do herói duram mais.
       if (spell.rootMs) {
-        const ms = Math.round(spell.rootMs * cc);
+        // Cristalizar (marco 3): o congelado do feiticeiro dura mais.
+        const ms = Math.round(spell.rootMs * cc) + (spell.element === "ice" && this.marks(seat, "crystallize") >= 3 ? CRYSTAL.frozenMs : 0);
         this.root(m, brain, now + ms, spell.element === "ice");
         seat.stats.ccMs.root += ms;
       }
@@ -2250,6 +2269,11 @@ export class Hunt {
         brain.slowUntil = Math.max(brain.slowUntil, now + ms);
         m.slowed = true;
         seat.stats.ccMs.slow += ms;
+      }
+      // Lamento Profundo (Dom): as magias de trevas do feiticeiro enfraquecem quem pegam.
+      if (spell.element === "dark" && seat.gifts.weakenPower > 0) {
+        brain.weakPct = Math.max(now < brain.weakUntil ? brain.weakPct : 0, Math.min(LAMENT.max, seat.gifts.weakenPower));
+        brain.weakUntil = Math.max(brain.weakUntil, now + (this.marks(seat, "deep_lament") >= 4 ? LAMENT.msLater : LAMENT.ms));
       }
       if (spell.mark) {
         brain.markPct = Math.max(now < brain.markUntil ? brain.markPct : 0, spell.mark.pct);
@@ -2343,6 +2367,10 @@ export class Hunt {
       this.placeField(sessionId, p, seat, crater, rank, cx, cy, this.baseDamage(sessionId, p, "spell") * spell.groundFire.perSec, "fire");
     }
     // Fome Sombria (Dom): as magias de trevas devolvem parte do dano como vida, além do roubo da própria magia.
+    // Lamento Profundo (marco 5): o leque de trevas devolve mana por monstro que pega.
+    if (spell.element === "dark" && spell.shape === "cone" && hit.length > 0 && p.status === "playing" && this.marks(seat, "deep_lament") >= 5) {
+      this.giveMana(p, Math.round(p.maxMana * LAMENT.mana * hit.length), sessionId);
+    }
     // Coração Frio (marco 4): prender com magia dá um escudo.
     if (spell.rootMs && hit.length > 0 && p.status === "playing" && this.marks(seat, "cold_heart") >= 4) {
       const shield = Math.round(p.maxHp * COLD.rootShield);
@@ -2867,6 +2895,34 @@ export class Hunt {
     const hunger = this.marks(seat, "shadow_hunger");
     if (spell.mark && hunger >= 1) spell = { ...spell, mark: { ...spell.mark, ms: spell.mark.ms + HUNGER.markMs * (hunger >= 3 ? 2 : 1) } };
     if (spell.element === "dark" && hunger >= 5) spell = { ...spell, manaSteal: (spell.manaSteal ?? 0) + HUNGER.manaSteal };
+    // Garganta de Brasa (Dom): os sopros (leque que canaliza ou avança em onda) ferem mais; marcos: abertura e canalização.
+    const breath = spell.shape === "cone" && (!!spell.channel || !!spell.wave);
+    const ember = this.marks(seat, "ember_throat");
+    if (breath && seat.gifts.breathDamage > 0) {
+      spell = { ...spell, damage: spell.damage && spell.damage * (1 + seat.gifts.breathDamage) };
+      if (ember >= 1) spell = { ...spell, coneAngle: (spell.coneAngle ?? 90) + EMBER.angle * (ember >= 4 ? 2 : 1) };
+      if (ember >= 3 && spell.channel) spell = { ...spell, channel: { ...spell.channel, ms: spell.channel.ms + EMBER.channelMs } };
+    }
+    // Sopro Glacial (marcos 1, 2, 3 e 5): o sopro canalizado alcança mais, congela mais cedo, abre mais e não prende o herói.
+    const glacial = this.marks(seat, "glacial_breath");
+    if (spell.channel && spell.shape === "cone" && seat.gifts.breathSlow > 0) {
+      const ticks = Math.ceil(GLACIAL.freezeMs / spell.channel.tickMs);
+      spell = {
+        ...spell, range: spell.range + (glacial >= 1 ? GLACIAL.range : 0), coneAngle: (spell.coneAngle ?? 90) + (glacial >= 3 ? GLACIAL.angle : 0),
+        channel: {
+          ...spell.channel, moveSlow: glacial >= 5 ? 0 : spell.channel.moveSlow,
+          freezeTicks: glacial >= 2 ? Math.min(spell.channel.freezeTicks ?? ticks, ticks) : spell.channel.freezeTicks,
+          freezeMs: glacial >= 2 ? spell.channel.freezeMs ?? GLACIAL.freezeHoldMs : spell.channel.freezeMs,
+        },
+      };
+    }
+    // Lamento Profundo (marcos 1 e 3): leques de trevas maiores.
+    const lament = this.marks(seat, "deep_lament");
+    if (spell.element === "dark" && spell.shape === "cone" && seat.gifts.weakenPower > 0) {
+      spell = { ...spell, coneAngle: (spell.coneAngle ?? 90) + (lament >= 1 ? LAMENT.angle : 0), range: spell.range + (lament >= 3 ? LAMENT.range : 0) };
+    }
+    // Sentença Lenta (marco 3): as marcas duram mais.
+    if (spell.mark && this.marks(seat, "slow_sentence") >= 3) spell = { ...spell, mark: { ...spell.mark, ms: spell.mark.ms + SENTENCE.markMs } };
     // Ordem de Execução (marco 2): as marcas também atordoam.
     if (spell.mark && this.marks(seat, "execution_order") >= 2) spell = { ...spell, stunMs: Math.max(spell.stunMs ?? 0, ORDER.markStunMs) };
     // Seiva Antiga (marco 4): curas em área alcançam mais longe.
@@ -3214,6 +3270,7 @@ export class Hunt {
       const brain = this.brains.get(m.id);
       if (!brain) continue;
       const power = each ? each(m, brain) : 1;
+      if (power <= 0) continue;
       this.damageMonster(m, Math.max(1, Math.round(amount * power)), { attacker: creditId, fromX: x, fromY: y, fx }, `reaction:${id}`, creditId);
     }
   }
@@ -3232,12 +3289,28 @@ export class Hunt {
         m.dot = "";
       }
       this.thaw(m, brain, now);
-      this.reactionBurst(id, x, y, VAPOR.radius, raw * VAPOR.power, creditId, "energy", (other, b) => {
-        b.stunnedUntil = Math.max(b.stunnedUntil, now + VAPOR.dazzleMs);
-        b.dazzledUntil = Math.max(b.dazzledUntil, now + VAPOR.dazzleMs);
+      // Panela de Pressão (Dom): o Vapor fere mais; marcos: raio, ofuscar, névoa e mana.
+      const seat = this.seats.get(creditId);
+      const pressure = this.marks(seat, "pressure_cooker");
+      const radius = pressure >= 4 ? PRESSURE.radiusLater : pressure >= 1 ? PRESSURE.radius : VAPOR.radius;
+      const dazzle = pressure >= 2 ? PRESSURE.dazzleMs : VAPOR.dazzleMs;
+      this.reactionBurst(id, x, y, radius, raw * VAPOR.power * (1 + (seat?.gifts.vaporDamage ?? 0)), creditId, "energy", (other, b) => {
+        b.stunnedUntil = Math.max(b.stunnedUntil, now + dazzle);
+        b.dazzledUntil = Math.max(b.dazzledUntil, now + dazzle);
         other.stunned = true;
         return 1;
       });
+      const hero = this.state.players.get(creditId);
+      if (seat && hero?.status === "playing") {
+        if (pressure >= 3) {
+          const mist: SpellDef = {
+            ...SPELLS.frost_nova, radius, damage: undefined, rootMs: undefined, dot: undefined,
+            slow: { pct: PRESSURE.mistSlow, ms: 1000 }, field: { kind: "zone", ms: PRESSURE.mistMs, tickMs: 500, max: 2 },
+          };
+          this.placeField(creditId, hero, seat, mist, 0, x, y, 0, "mist");
+        }
+        if (pressure >= 5) hero.mana = Math.min(hero.maxMana, hero.mana + Math.round(hero.maxMana * PRESSURE.mana));
+      }
     } else if (id === "incandesce") {
       brain.dazzledUntil = now;
       // Aurora (Dom): o Incandescer fere mais; marcos 1, 4 e 5: raio maior, cura os aliados e ofusca quem pega.
@@ -3260,7 +3333,7 @@ export class Hunt {
     } else if (id === "doom") {
       brain.markUntil = now;
       m.marked = false;
-      this.reactionBurst(id, x, y, DOOM.radius, raw * DOOM.power, creditId, "energy");
+      this.doomBurst(x, y, raw, creditId, m, false);
     } else if (id === "toxic_ember") {
       if (brain.dot?.kind === "poison") {
         brain.dot = null;
@@ -3271,6 +3344,53 @@ export class Hunt {
         if (b && other !== m && tileDistance(x, y, other.x, other.y) <= TOXIC_EMBER.radius) {
           this.applyDot(other, b, creditId, "reaction:toxic_ember", raw * TOXIC_EMBER.perSec, TOXIC_EMBER.ms, "burn", now);
         }
+      }
+    }
+  }
+
+  /** Garganta de Brasa: o fim do sopro deixa o chão em chamas (marco 2) e explode em volta (marco 5). */
+  private breathEnd(sessionId: string, x: number, y: number, amount: number, ember: number) {
+    const p = this.state.players.get(sessionId);
+    const seat = this.seats.get(sessionId);
+    if (!p || !seat || p.status !== "playing") return;
+    const fire: SpellDef = { ...SPELLS.fireball, radius: 1, field: { kind: "zone", ms: EMBER.fireMs, tickMs: 500 } };
+    this.placeField(sessionId, p, seat, fire, 0, x, y, this.baseDamage(sessionId, p, "spell") * EMBER.firePerSec * 0.5, "fire");
+    if (ember >= 5) {
+      bump(seat.stats.giftProcs, "ember_throat");
+      this.host.broadcast(MSG.spell, { from: sessionId, spellId: "fireball", x, y, tx: x, ty: y, ms: 0, echo: true } satisfies SpellMessage);
+      for (const m of [...this.state.monsters.values()]) {
+        if (m.hidden || tileDistance(x, y, m.x, m.y) > EMBER.burstRadius) continue;
+        this.damageMonster(m, rollDamage(this.random, amount * EMBER.burst), { attacker: sessionId, fromX: x, fromY: y, fx: "fire" }, "ember_throat");
+      }
+    }
+  }
+
+  /** Condenação: a marca explode. Sentença Lenta (Dom): mais forte; marcos: raio, marca quem pega, cura e a seguinte. */
+  private doomBurst(x: number, y: number, raw: number, creditId: string, from: Monster, chained: boolean) {
+    const now = this.host.now();
+    const seat = this.seats.get(creditId);
+    const sentence = this.marks(seat, "slow_sentence");
+    const radius = sentence >= 1 ? SENTENCE.radius : DOOM.radius;
+    this.reactionBurst("doom", x, y, radius, raw * DOOM.power * (1 + (seat?.gifts.doomDamage ?? 0)), creditId, "energy", (other, b) => {
+      if (sentence >= 2 && other !== from) {
+        b.markPct = Math.max(now < b.markUntil ? b.markPct : 0, SENTENCE.mark.pct);
+        b.markUntil = Math.max(b.markUntil, now + SENTENCE.mark.ms);
+        other.marked = true;
+      }
+      return 1;
+    });
+    const hero = this.state.players.get(creditId);
+    if (sentence >= 4 && hero?.status === "playing") this.healPlayer(hero, Math.round(hero.maxHp * SENTENCE.lifesteal), creditId);
+    if (sentence >= 5 && !chained) {
+      const next = [...this.state.monsters.values()]
+        .filter((o) => o !== from && tileDistance(x, y, o.x, o.y) <= SENTENCE.chainTiles && now < (this.brains.get(o.id)?.markUntil ?? 0))
+        .sort((a, b) => tileDistance(x, y, a.x, a.y) - tileDistance(x, y, b.x, b.y))[0];
+      const nb = next && this.brains.get(next.id);
+      if (next && nb) {
+        nb.markUntil = now;
+        next.marked = false;
+        this.reacted("doom", creditId, next.x, next.y);
+        this.doomBurst(next.x, next.y, raw, creditId, next, true);
       }
     }
   }
@@ -3725,6 +3845,8 @@ export class Hunt {
     // Reações (`reactions.ts`): só golpe direto (não o pulso do dano contínuo nem a própria explosão de uma reação).
     // Ponto Fraco (marco 3): o sangramento em monstro marcado fere mais.
     if (hit.dot === "bleed" && this.host.now() < brain.markUntil && this.marks(this.seats.get(creditId), "weak_spot") >= 3) raw *= 1 + WEAK.markedBleed;
+    // Lamento Profundo (marco 2): o enfraquecido recebe mais do dano do feiticeiro.
+    if (this.host.now() < brain.weakUntil && this.marks(this.seats.get(creditId), "deep_lament") >= 2) raw *= 1 + LAMENT.weakenedDamage;
     // Coração Frio (marco 2): monstro lento recebe mais do dano do feiticeiro.
     if (this.marks(this.seats.get(creditId), "cold_heart") >= 2 && this.host.now() < brain.slowUntil) raw *= 1 + COLD.slowedDamage;
     let reaction: ReactionId | null = null;
@@ -3753,12 +3875,32 @@ export class Hunt {
       }
       const hitElement = damageElement(source, this.state.players.get(creditId)?.classId as ClassId | undefined);
       reaction = hitReaction(states, hitElement, source in SPELLS);
+      // Sopro Glacial (marco 4): o gelo do sopro quebra com golpe de qualquer outro elemento (o gelo, inclusive o do
+      // próprio sopro, mantém congelado).
+      if (!reaction && states.frozen && now < brain.primedUntil && hitElement !== "ice") reaction = "shatter";
       // Estilhaço: o golpe quebra o gelo e entra mais forte.
       if (reaction === "shatter") {
-        raw *= 1 + SHATTER_BONUS;
+        // Cristalizar (Dom): o Estilhaço do feiticeiro fere mais (marcos: em volta, mana, gelo que volta).
+        const crystalSeat = this.seats.get(creditId);
+        const crystal = this.marks(crystalSeat, "crystallize");
+        raw *= 1 + SHATTER_BONUS + (crystalSeat?.gifts.shatterDamage ?? 0);
         this.thaw(m, brain, now);
+        brain.primedUntil = 0;
         this.reacted("shatter", creditId, m.x, m.y);
         reaction = null;
+        if (crystal >= 1) {
+          const splash = raw * CRYSTAL.splash;
+          const radius = crystal >= 4 ? CRYSTAL.radiusLater : CRYSTAL.radius;
+          const { x, y } = m;
+          this.after(0, () => this.reactionBurst("shatter", x, y, radius, splash, creditId, "energy", (other) => (other === m ? 0 : 1)));
+        }
+        const hero = this.state.players.get(creditId);
+        if (crystal >= 2 && hero?.status === "playing") hero.mana = Math.min(hero.maxMana, hero.mana + Math.round(hero.maxMana * CRYSTAL.mana));
+        if (crystal >= 5 && !brain.refrozen) {
+          brain.refrozen = true;
+          const at = now;
+          this.after(0, () => { if (this.state.monsters.has(m.id)) this.root(m, brain, at + CRYSTAL.refreezeMs, true); });
+        }
       }
     }
     // Regicida e Ceifador (Runas Mestras): mais ou menos dano em mini-boss e boss.
@@ -4246,6 +4388,8 @@ export class Hunt {
     if (seat && now < seat.invulnUntil) return;
     const attacker = this.state.monsters.get(hit.attacker);
     const attackerBrain = attacker && this.brains.get(attacker.id);
+    // Lamento Profundo (Dom): o monstro enfraquecido bate mais fraco.
+    if (attackerBrain && now < attackerBrain.weakUntil) raw *= 1 - attackerBrain.weakPct;
     // Fúria Berserker: mais frágil enquanto dura.
     const buff = seat?.buff && now < seat.buff.until ? seat.buff : null;
     if (buff?.damageTaken) raw *= 1 + buff.damageTaken;
