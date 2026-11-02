@@ -8,7 +8,7 @@
  * A entrada conta como ponto de chegada (sem monstros de propósito, `START_ZONE_RADIUS`: é por onde todos começam).
  * Uso: npx tsx apps/server/scripts/ritmo.ts
  */
-import { MAPS, generateDungeon, isWalkable, type MapId } from "@kusa/shared";
+import { MAPS, generateDungeon, isWalkable, lairsOf, type MapId } from "@kusa/shared";
 
 const FIXED: MapId[] = ["grove", "bog", "badlands", "fibula"];
 const NEAR = 6;
@@ -21,7 +21,8 @@ for (const id of FIXED) {
   const W = d.width, N = d.tiles.length;
   const walk = (i: number) => isWalkable(d, i % W, Math.floor(i / W));
   const spots: number[] = [];
-  for (const r of [...d.path, ...d.meadows, ...d.side, d.boss, d.spawn])
+  // Todos os covis contam como luta (a Fíbula tem três).
+  for (const r of [...d.path, ...d.meadows, ...d.side, ...lairsOf(d).map((l) => l.room), d.spawn])
     for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (x >= 0 && y >= 0 && x < W && walk(y * W + x)) spots.push(y * W + x);
   const bfs = (from: number[]) => {
     const dist = new Int32Array(N).fill(-1);
@@ -42,7 +43,7 @@ for (const id of FIXED) {
     if (near[i] > NEAR) far++;
     worst = Math.max(worst, near[i]);
   }
-  const unreachable = [...d.path, ...d.meadows, ...d.side, d.boss].filter((r) => {
+  const unreachable = [...d.path, ...d.meadows, ...d.side, ...lairsOf(d).map((l) => l.room)].filter((r) => {
     const cx = r.x + Math.floor(r.w / 2), cy = r.y + Math.floor(r.h / 2);
     for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) if (fromPortal[y * W + x] >= 0) return false;
     return true;

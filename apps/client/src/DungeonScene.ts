@@ -251,7 +251,7 @@ interface BarrierFx {
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
 /** Placa de zona do terreno de caça (Fíbula), do mais seguro ao mais perigoso. */
 const ZONE_LABEL: Record<string, string> = {
-  camp: "🔥 Acampamento · seguro", "0": "Anel 1 · Orla · fácil", "1": "Anel 2 · Covas · médio", "2": "Anel 3 · Fundo · perigoso", lair: "☠ Covil do Rei Ossudo",
+  camp: "🔥 Acampamento · seguro", "0": "Orla · iniciante", "1": "Ala Oeste · baixa", "2": "Ala Norte · média", "3": "Ala Leste · alta", lair: "☠ Covil",
 };
 
 export class DungeonScene extends Phaser.Scene {
@@ -550,8 +550,9 @@ export class DungeonScene extends Phaser.Scene {
     const inside = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
     let zone: string;
     let area: HuntingArea | undefined;
+    const lairAt = lairsOf(d).findIndex((l) => inside(l.room));
     if (inside(d.spawn) || (d.camp && tileDistance(p.x, p.y, d.camp.x, d.camp.y) <= CAMP_RADIUS + 2)) zone = "camp";
-    else if (inside(d.boss)) zone = "lair";
+    else if (lairAt >= 0) zone = "lair";
     else {
       let best = 0;
       let bestDist = Infinity;
@@ -562,7 +563,9 @@ export class DungeonScene extends Phaser.Scene {
       zone = String(d.rings[best] ?? 0);
       area = MAPS[d.mapId].huntingGround?.areas?.[best];
     }
-    const label = area ? `${area.name} · nível ${area.levels[0]}–${area.levels[1]}` : ZONE_LABEL[zone] ?? "";
+    const lairBoss = lairAt >= 0 ? MAPS[d.mapId].lairs?.[lairAt]?.boss : undefined;
+    const label = area ? `${area.name} · nível ${area.levels[0]}–${area.levels[1]}`
+      : lairBoss ? `☠ Covil: ${MONSTERS[lairBoss].name}` : ZONE_LABEL[zone] ?? "";
     if (label === this.zoneShown) return;
     this.zoneShown = label;
     el.dataset.zone = zone;
