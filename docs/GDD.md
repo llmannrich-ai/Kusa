@@ -198,6 +198,18 @@ comprar **e usar** as anteriores do mesmo ramo.
   | Paladino | Luz | 🕯️ Vela Votiva | morto por luz deixa vela 3 s (raio 1, 10% +2% do dano mágico por s) | 4 s · a vela ofusca quem passa · 2 velas em morto-vivo · 5 s · +3 de armadura aos aliados perto |
   | Paladino | Batedor | 🪤 Estrepes Afiados | +1,2% de dano dos seus campos | campos deixam 5% lento · +1 s · fazem sangrar · +2 s · quem morre num campo deixa estrepes |
   | Paladino | Batedor | 🧨 Pavio Curto | armadilha em monstro queimando explode em raio 1 (1× +4% do dano mágico) | raio 2 · a explosão queima · a armadilha queima quem prende · empurra 1 tile · dispara a armadilha mais perto |
+  | Feiticeiro | Raio | 🔥 Garganta de Brasa | +1,6% de dano dos sopros (leque que canaliza ou avança em onda) | +10° · chão em chamas no fim · canalização +0,5 s · +20° · a última onda explode em raio 1 |
+  | Feiticeiro | Raio | 💨 Panela de Pressão | +3% de dano do Vapor | raio 2 · ofusca 1 s · névoa de 2 s (30% lenta) · raio 3 · devolve 3% da mana |
+  | Feiticeiro | Gelo | 🌨️ Sopro Glacial | +1,2% de lentidão por segundo de canalização (até 80%) | +1 tile · congela em 1,5 s · +10° · o congelado pelo sopro Estilhaça com qualquer golpe que não seja gelo · canalizar não deixa lento |
+  | Feiticeiro | Gelo | 💎 Cristalizar | +3% de dano do Estilhaço | fere em raio 1 (50%) · devolve 2% da mana · congelado +0,5 s · raio 2 · congela de novo 0,5 s (uma vez) |
+  | Feiticeiro | Trevas | 👁️ Lamento Profundo | as magias de trevas enfraquecem: o monstro causa 1,2% menos dano por 3 s (até 50%) | leques de trevas +10° · o enfraquecido recebe +5% · +1 tile · 4 s · o leque devolve 1% da mana por monstro |
+  | Feiticeiro | Trevas | ☠️ Sentença Lenta | +3% de dano da Condenação | raio 2 · marca quem pega · marcas +1 s · cura 3% · passa para o marcado mais perto (uma vez) |
+  | Druida | Matilha | 📣 Eco do Rugido | +1,2% do bônus de ataque que os rugidos dão às criaturas | leque +10° · cura as criaturas 5% · +1 tile · +5% de ataque · chama 1 lobo por 6 s |
+  | Druida | Matilha | 🦷 Presa Venenosa | criaturas envenenam; +3% do Espinheiro que elas disparam | o veneno acumula 2 · prendem 0,5 s no 1º golpe · Espinheiro em raio 1 · veneno +1 s · quem mata pula no mais perto |
+  | Druida | Bosque | 🌸 Pólen Dourado | +1,2% de cura dos leques de cura | +10° · devolve 1% da mana aos aliados · +1 tile · tira o atordoamento · +3 de armadura por 4 s |
+  | Druida | Bosque | 🍯 Néctar | curar alguém abaixo de 50% devolve 0,2% da mana (1 vez por s) | abaixo de 60% · +5% de velocidade por 3 s · abaixo de 70% · escudo de 2% · tira o atordoamento |
+  | Druida | Espinhos | 🍃 Rajada de Cardos | +1,2% de dano dos espinhos em leque | +1 espinho · prendem 0,3 s · +1 espinho · atravessam o 1º monstro · envenenam (no lugar do sangramento) |
+  | Druida | Espinhos | 🌿 Espinheiro Antigo | +3% de dano do Espinheiro | raio 1 · a raiz fica +1 s · renova o veneno · +1 pulso · prende 1 s quem está colado |
 
   **Dons do fundo** (um embaixo de cada Ápice, na linha VII, pedindo o Ápice no nível 1; mesmo preço e 25 níveis):
   cada um tem um **gatilho de momento**, calculado no servidor. O Xamã Orc ganha os dele quando o tronco tiver Ápices.
