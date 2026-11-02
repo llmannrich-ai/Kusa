@@ -72,6 +72,13 @@ export interface NoticeMessage {
   ms?: number;
 }
 
+/** Servidor → todos: um herói pegou um item do chão (o cliente faz o item voar até ele). */
+export interface PickupMessage {
+  /** Id do item no chão (`GroundItem.id`), que sai do estado logo depois. */
+  id: string;
+  sessionId: string;
+}
+
 /** Cliente → servidor: põe uma magia num slot liberado. */
 export interface ChooseSpellMessage { slot: SpellSlot; spellId: SpellId }
 
@@ -233,6 +240,7 @@ export const MSG = {
   target: "target",
   damage: "damage",
   notice: "notice",
+  pickup: "pickup",
   start: "start",
   runEnded: "runEnded",
   attack: "attack",
