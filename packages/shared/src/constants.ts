@@ -25,6 +25,19 @@ export const VERSION_MISMATCH_CODE = 4409;
 /** Sala que lista as hunts abertas em tempo real (LobbyRoom do Colyseus). */
 export const LOBBY_ROOM_NAME = "lobby";
 
-/** Multiplicadores da velocidade de movimento (1 = valores das tabelas de classes e monstros). */
-export const HERO_SPEED_SCALE = 0.6885;
-export const MONSTER_SPEED_SCALE = 0.6885;
+/**
+ * Ritmo geral da hunt (1 = valores das tabelas). Abaixo de 1, tudo anda mais devagar na mesma proporção: a velocidade de
+ * movimento de heróis, monstros e invocações, os turnos (recarga do ataque básico, das magias e dos ataques e
+ * habilidades dos monstros), o voo dos projéteis e as ondas das magias, e as animações de efeito no cliente
+ * (`DungeonScene`). 0,9 = 10% mais lento.
+ */
+export const PACE = 0.9;
+
+/** Multiplicadores da velocidade de movimento (1 = valores das tabelas de classes e monstros), já com o `PACE`. */
+export const HERO_SPEED_SCALE = 0.6885 * PACE;
+export const MONSTER_SPEED_SCALE = 0.6885 * PACE;
+
+/** Duração de um turno (recarga, intervalo de ataque, passo de onda) no ritmo da hunt. */
+export function paced(ms: number): number {
+  return ms / PACE;
+}

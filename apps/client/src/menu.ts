@@ -68,6 +68,7 @@ import {
   itemId,
   itemScore,
   itemSummary,
+  paced,
   sellPrice,
   type ClassId,
   type ItemDef,
@@ -807,7 +808,7 @@ export class Hub {
     for (let i = 0; i < SPELL_MAX_LEVEL; i++) pips.append(el("i", i < spell.level ? "on" : ""));
     const roles = el("span", "lo-roles");
     for (const r of spell.roles) roles.append(el("span", `lo-role role-${r}`, `${ROLE_INFO[r].icon} ${ROLE_INFO[r].label}`));
-    const facts = [`💧 ${s.manaCost}`, `⏱ ${(s.cooldownMs / 1000).toLocaleString("pt-BR")} s`];
+    const facts = [`💧 ${s.manaCost}`, `⏱ ${(Math.round(paced(s.cooldownMs) / 100) / 10).toLocaleString("pt-BR")} s`];
     if (spell.bonus > 0) facts.push(`+${Math.round(spell.bonus * 100)}% força`);
     const meta = el("small", "lo-meta muted", facts.join(" · "));
     text.append(name, pips, roles, meta);

@@ -19,7 +19,7 @@
  * Uso: npx tsx apps/server/scripts/balanco.ts [--all] [--json] (de dentro de apps/server)
  */
 import {
-  BASIC_ATTACK_COOLDOWN_MS, CLASS_IDS, ITEMS, MASTERY_RANK, MAX_LEVEL, SPELLS, SUMMONS, SUMMON_SPELL_POWER_SHARE,
+  BASIC_ATTACK_COOLDOWN_MS, paced, CLASS_IDS, ITEMS, MASTERY_RANK, MAX_LEVEL, SPELLS, SUMMONS, SUMMON_SPELL_POWER_SHARE,
   bestPerSlot, gearStats, rankPower, spellAtRank, statsFor, type ClassId, type SpellDef,
 } from "@kusa/shared";
 
@@ -51,9 +51,9 @@ const bestGear = (classId: ClassId) => gearStats(Object.values(bestPerSlot(Objec
 function perCast(s: SpellDef, rank: number) {
   const repeat = s.repeat ? 1 + s.repeat.power * (s.repeat.times ?? 1) : 1;
   let spell = (s.damage ?? 0) * repeat;
-  if (s.dot) spell += s.dot.perSec * (Math.min(s.dot.ms, s.cooldownMs) / 1000);
+  if (s.dot) spell += s.dot.perSec * (Math.min(s.dot.ms, paced(s.cooldownMs)) / 1000);
   if (s.burst) spell += s.burst.damage;
-  if (s.groundFire) spell += s.groundFire.perSec * (Math.min(s.groundFire.ms, s.cooldownMs) / 1000);
+  if (s.groundFire) spell += s.groundFire.perSec * (Math.min(s.groundFire.ms, paced(s.cooldownMs)) / 1000);
   const f = s.field;
   if (f?.damage && f.tickMs && (f.kind === "zone" || f.kind === "turret")) {
     spell += f.damage * (f.kind === "turret" && f.shots ? f.shots : f.ms / f.tickMs);
@@ -62,9 +62,9 @@ function perCast(s: SpellDef, rank: number) {
   let uptime: number | undefined;
   if (s.summon) {
     const def = SUMMONS[s.summon.kind];
-    const active = Math.min(s.summon.durationMs, s.cooldownMs);
-    uptime = s.summon.durationMs / s.cooldownMs;
-    summon = s.summon.count * def.damage * rankPower(rank) * (active / def.attackCooldownMs);
+    const active = Math.min(s.summon.durationMs, paced(s.cooldownMs));
+    uptime = s.summon.durationMs / paced(s.cooldownMs);
+    summon = s.summon.count * def.damage * rankPower(rank) * (active / paced(def.attackCooldownMs));
   }
   return { spell, summon, uptime };
 }
@@ -73,7 +73,7 @@ const rows: Row[] = [];
 for (const classId of CLASS_IDS) {
   const base = statsFor(classId, MAX_LEVEL).damage;
   const g = bestGear(classId);
-  const sec = BASIC_ATTACK_COOLDOWN_MS / 1000;
+  const sec = paced(BASIC_ATTACK_COOLDOWN_MS) / 1000;
   rows.push({
     classId, source: "basic", name: "Ataque básico", slot: "básico", rank: 0, area: false,
     bare: base / sec, geared: base * (1 + g.damage) / sec, flags: [],
@@ -83,7 +83,7 @@ for (const classId of CLASS_IDS) {
       const s = spellAtRank(def, rank);
       const { spell, summon, uptime } = perCast(s, rank);
       if (!spell && !summon) continue;
-      const cd = s.cooldownMs / 1000;
+      const cd = paced(s.cooldownMs) / 1000;
       const dps = (spellPower: number) => (base * (1 + spellPower) * spell + base * (1 + spellPower * SUMMON_SPELL_POWER_SHARE) * summon) / cd;
       rows.push({
         classId, source: def.id, name: def.name, slot: def.slot, rank,
