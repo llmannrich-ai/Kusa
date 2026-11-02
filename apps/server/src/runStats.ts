@@ -11,6 +11,8 @@ export interface RunStats {
   depthAt: Record<number, number>;
   /** Traços das especializações escolhidas no Grimório (ids de TRAITS). */
   specs: string[];
+  /** Níveis das passivas compradas com gold que o herói levou (Dons, áureas e Tomos): id do nó → nível. */
+  passives: Record<string, number>;
   /** Magias levadas para a hunt (as ativas no Grimório, até 3 por slot): as opções da escolha de cada slot. */
   spellsActive: string[];
   /**
@@ -21,11 +23,18 @@ export interface RunStats {
   /** Melhorias escolhidas ao subir de nível, com as opções sorteadas, o nível e o segundo. */
   perksChosen: { id: string; offer: string[]; level: number; at: number }[];
   casts: Record<string, number>;
+  /** Monstros atingidos pelas magias em leque, somados por magia (dividir por `casts` dá a média por lançamento). */
+  fanHits: Record<string, number>;
   /** XP de uso ganho por magia (lançamentos em combate × segundos de recarga, antes do teto e da perda na morte). */
   spellXp: Record<string, number>;
   castFails: { noMana: number; noTarget: number; noRoom: number };
   /** Golpes básicos que foram no monstro mais próximo porque o alvo travado estava fora do alcance. */
   basicRetargets: number;
+  /**
+   * Tiros que podem errar (básico à distância e magias `isShot`), por fonte ("basic" ou id da magia): disparados,
+   * errados (ninguém no caminho até o fim do alcance) e mirados à mão (arrastando o botão).
+   */
+  shots: Record<string, { fired: number; missed: number; aimed: number }>;
   /** Dano efetivo causado (sem contar o que passa da vida do monstro), por fonte: "basic", id da magia ou "summon:<tipo>" (criaturas invocadas). */
   damageDealt: Record<string, number>;
   /** Dano recebido por tipo de monstro, depois da armadura e do Grito de Guerra. */
@@ -77,6 +86,8 @@ export interface RunStats {
   death: { by: string; depth: number; x: number; y: number; at: number } | null;
   /** Dano que os escudos (magias e Traços) absorveram neste herói (fora do `damageMitigated` da armadura). */
   absorbed: number;
+  /** Monstros convertidos em aliado pelo Xamã Orc (Corrente da Submissão, Juramento de Sangue), por espécie. */
+  converted: Record<string, number>;
   /** Tempo (ms) com bônus em si ou forma animal ativos (Postura, Fúria, Pantera, Urso...), somado por conjuração. */
   buffMs: number;
   /** Intervir (Traço do Guardião): dano que este herói puxou dos aliados para si. */
@@ -94,14 +105,25 @@ export interface RunStats {
    * gasta no lugar da mana. A cura do Ceifador entra em `healing`; o dano da Vingança, em `damageDealt["rune:vengeance"]`.
    */
   runeProcs: Record<string, number>;
+  /**
+   * Dons do fundo: quantas vezes cada gatilho disparou (id do Dom). O dano extra entra em `damageDealt` (o raio do Céu
+   * Fechado como "closed_sky", a queimadura da Mão Rápida como "quick_hand", os esqueletos do Ossuário como "summon:skeleton"); a cura do Ciclo, em `healing`; o
+   * escudo da Reserva Gélida, em `absorbed`.
+   */
+  giftProcs: Record<string, number>;
+  /**
+   * Reações (`reactions.ts`) que o herói disparou, por id ("vapor", "shatter"...; o Exposto conta cada golpe
+   * amplificado). O dano das explosões entra em `damageDealt["reaction:<id>"]`.
+   */
+  reactions: Record<string, number>;
 }
 
 export function newRunStats(): RunStats {
   return {
-    levelAt: {}, depthAt: {}, specs: [], spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0,
+    levelAt: {}, depthAt: {}, specs: [], passives: {}, spellsActive: [], spellsChosen: {}, perksChosen: [], casts: {}, fanHits: {}, spellXp: {}, castFails: { noMana: 0, noTarget: 0, noRoom: 0 }, basicRetargets: 0, shots: {},
     damageDealt: {}, damageTaken: {}, specialDamage: {}, abilityDamage: {}, ccTaken: {}, resisted: 0, damageMitigated: 0, healing: 0, manaGiven: 0, ccMs: { root: 0, stun: 0, slow: 0 }, potions: { picked: {}, drunk: {}, manaRestored: 0 }, kills: {}, firstKillAt: null, xp: 0,
     loot: { monsters: 0, chests: 0, bossBonus: 0 }, chestsOpened: 0, bossRunes: [], bossClear: false, bossKills: [], items: { loadout: [], bag: [], picked: [], dropped: [], lost: [], bagFull: 0, botCut: 0, drops: { common: 0, miniboss: 0, boss: 0, chest: 0 } },
-    minHpPct: 1, abandoned: false, death: null, absorbed: 0, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {},
+    minHpPct: 1, abandoned: false, death: null, absorbed: 0, converted: {}, buffMs: 0, intercepted: 0, revives: [], revived: null, bots: 0, landscapeMs: 0, runeProcs: {}, giftProcs: {}, reactions: {},
   };
 }
 

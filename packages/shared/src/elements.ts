@@ -8,6 +8,7 @@ export const BASIC_ELEMENT: Record<ClassId, DamageElement> = {
   paladin: "physical",
   sorcerer: "energy",
   druid: "nature",
+  shaman: "fire",
 };
 
 /** Elemento do dano contínuo. */
@@ -28,6 +29,7 @@ export function spellElement(id: SpellId): DamageElement {
   const spell = SPELLS[id];
   if (spell.element) return SORCERER_ELEMENT[spell.element];
   if (SPELL_ELEMENT[id]) return SPELL_ELEMENT[id]!;
+  if (spell.classId === "shaman") return "fire";
   return spell.classId === "druid" ? "nature" : "physical";
 }
 
@@ -40,7 +42,11 @@ export function damageElement(source: string, classId: ClassId | undefined, dot?
   if (source === "basic") return classId ? BASIC_ELEMENT[classId] : "physical";
   if (source === "item:burn") return "fire";
   if (source === "item:poison") return "nature";
-  if (source === "charged_sky") return "energy";
+  if (source === "charged_sky" || source === "closed_sky") return "energy";
+  // Reações (`reactions.ts`): a explosão leva o elemento do que reagiu.
+  if (source === "reaction:vapor") return "ice";
+  if (source === "reaction:doom") return "dark";
+  if (source === "reaction:incandesce") return "radiant";
   if (source.startsWith("summon:")) return source === "summon:hornet" || source === "summon:treant" ? "nature" : "physical";
   if (source in SPELLS) return spellElement(source as SpellId);
   return "physical";

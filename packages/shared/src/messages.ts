@@ -87,8 +87,12 @@ export interface AddBotMessage { classId: ClassId }
 /** Cliente → servidor (só o líder, na sala de espera): tira o bot da vaga. */
 export interface RemoveBotMessage { id: string }
 
-/** Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe. */
-export interface AttackingMessage { on: boolean }
+/**
+ * Cliente → servidor: segurando (true) ou soltando (false) o botão de ataque básico. Um toque dá um golpe.
+ * Com `aim` (arrastou o ⚔️ do básico à distância), é um tiro só, na direção do herói até esse ponto (ver
+ * `shotAimPoint`), mesmo sem monstro à vista.
+ */
+export interface AttackingMessage { on: boolean; aim?: { x: number; y: number } }
 
 /** Ponto escolhido com a mira (tile). `targetId` é o monstro em que a mira de alvo único grudou. */
 export interface CastAim { x: number; y: number; targetId?: string }
@@ -98,6 +102,12 @@ export interface CastAim { x: number; y: number; targetId?: string }
  * ou o monstro mais próximo ao alcance.
  */
 export interface CastMessage { slot: SpellSlot; aim?: CastAim }
+
+/**
+ * Cliente → servidor: magia canalizada (Sopro Gélido...). Com `x`/`y`, o leque vira para o ponto (o arrasto do dedo);
+ * com `stop`, a canalização acaba antes do tempo (soltou o dedo). Sem nada disso, ignora.
+ */
+export interface ChannelMessage { x?: number; y?: number; stop?: boolean }
 
 /** Cliente → servidor: a tela está deitada ou em pé (só telemetria: `RunStats.landscapeMs`). */
 export interface ScreenMessage { landscape: boolean }
@@ -127,6 +137,8 @@ export interface AttackMessage {
   ty: number;
   /** Tempo de voo do projétil; 0 = corpo a corpo. */
   ms: number;
+  /** Tiro que pode errar: `tx, ty` é o fim do caminho; se acertar antes, chega um `MSG.shotEnd` com este id. */
+  shot?: number;
 }
 
 /** Servidor → todos: uma magia foi conjurada. */
@@ -141,7 +153,12 @@ export interface SpellMessage {
   ms: number;
   /** Repetição de uma magia já conjurada (Maestria): só o efeito, sem recarga nem tranco. */
   echo?: boolean;
+  /** Tiro que pode errar: `tx, ty` é o fim do caminho; se acertar antes, chega um `MSG.shotEnd` com este id. */
+  shot?: number;
 }
+
+/** Servidor → todos: o tiro `shot` acertou um monstro no tile (x, y) antes do fim do caminho (o projétil para ali). */
+export interface ShotEndMessage { shot: number; x: number; y: number }
 
 /** Servidor → quem conjurou: a recarga de um slot mudou (Maestria do Disparo Certeiro); falta `ms` agora. */
 export interface CooldownMessage {
@@ -224,8 +241,10 @@ export const MSG = {
   choosePerk: "choosePerk",
   chooseRune: "chooseRune",
   cast: "cast",
+  channel: "channel",
   spell: "spell",
   chain: "chain",
+  shotEnd: "shotEnd",
   cooldown: "cooldown",
   drink: "drink",
   drank: "drank",

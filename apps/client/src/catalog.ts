@@ -5,7 +5,7 @@ import {
   CLASSES,
   CREATURE_TYPES,
   DAMAGE_ELEMENTS,
-  DEPTH_SCALING,
+  CROWD_PER_DEPTH,
   ELEMENT_NAMES,
   ITEMS,
   ITEM_BUY_PRICES,
@@ -38,6 +38,7 @@ import {
   itemId,
   lootSellPrice,
   mapMonsters,
+  monsterPower,
   monsterStats,
   runeEffect,
   type ClassId,
@@ -203,7 +204,7 @@ function elementsLine(kind: MonsterKind) {
 
 function monsterEntry(map: MapDef, kind: MonsterKind) {
   const def = MONSTERS[kind];
-  const stats = monsterStats(kind, 0);
+  const stats = monsterStats(kind, monsterPower(map, kind));
   const abilities = (def.abilities ?? []).map((a) => a.name);
   return entry({
     name: def.name,
@@ -222,7 +223,7 @@ const RANK_ORDER: Record<MonsterRank, number> = { common: 0, miniboss: 1, boss: 
 
 function enemies() {
   return section("👹 Inimigos",
-    note(`Vida, dano, XP e gold na 1ª sala: cada sala mais funda soma ${pct(DEPTH_SCALING)}. `
+    note(`Vida, dano, XP e gold são os mesmos em qualquer sala. Mais fundo, as espécies são mais fortes e cada sala tem ${pct(CROWD_PER_DEPTH)} mais monstros que a anterior. `
       + `${pct(CHAMPION_CHANCE)} dos comuns nascem Campeões: vida ×${CHAMPION_HP} e XP e gold ×${String(CHAMPION_REWARD).replace(".", ",")}. `
       + "O gold se divide pela equipe. As chances de drop valem para uma equipe só de humanos (com bots, os itens caem menos)."),
     ...MAP_IDS.map((id) => MAPS[id]).filter((m) => mapMonsters(m).length > 0).map((map) => section(

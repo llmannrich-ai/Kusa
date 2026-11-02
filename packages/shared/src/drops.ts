@@ -1,5 +1,5 @@
 import { COMMON_DROP_CHANCE, GUARANTEED_DROPS, RARITY_CHANCES } from "./items.ts";
-import { ITEM_DROP_SCALE, LOOT_SCALE, type MapDef } from "./maps.ts";
+import { ITEM_DROP_SCALE, LOOT_SCALE, monsterPower, type MapDef } from "./maps.ts";
 import { MONSTERS, monsterStats, type MonsterKind } from "./monsters.ts";
 import { COMMON_POTION_CHANCE, GUARANTEED_POTIONS } from "./potions.ts";
 import { RUNE_DROPS } from "./runes.ts";
@@ -46,7 +46,7 @@ export function dropOdds(map: MapDef, kind: MonsterKind): DropOdds {
   const boss = def.rank === "boss";
   const nothing = !!def.traits?.illusion || summonedOnly(map, kind);
   const scale = LOOT_SCALE * (boss ? 1 : map.lootScale ?? 1);
-  const [min, max] = monsterStats(kind, 0).loot;
+  const [min, max] = monsterStats(kind, monsterPower(map, kind)).loot;
   const guaranteed = GUARANTEED_DROPS[def.rank];
   const potions = GUARANTEED_POTIONS[def.rank];
   return {

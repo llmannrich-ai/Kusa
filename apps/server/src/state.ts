@@ -24,6 +24,14 @@ export class Player extends Schema {
   @type("string") status: PlayerStatus = "playing";
   /** Id do monstro selecionado para o auto-attack ("" = nenhum). */
   @type("string") target = "";
+  /** Alcance (tiles) do ataque básico agora (classe, Traços, Postura, equipamento, cegueira): a mira do ⚔️ desenha. */
+  @type("number") basicRange = 1;
+  /**
+   * Frente do herói: a direção (em tiles) do último passo, golpe ou magia mirada. O toque rápido numa magia com alvo
+   * sai nesta direção (sem mira automática no monstro). Começa olhando para baixo.
+   */
+  @type("number") faceX = 0;
+  @type("number") faceY = 1;
   /** Itens equipados (ids de `ITEMS` em `@kusa/shared`; "" = slot vazio). */
   @type("string") weapon = "";
   @type("string") helmet = "";
@@ -38,6 +46,8 @@ export class Player extends Schema {
   /** Magias nos slots (ids de `SPELLS`; "" = slot vazio ou ainda trancado). */
   @type("string") spell1 = "";
   @type("string") spell2 = "";
+  /** Slot 3 (magias supremas, nível 12). */
+  @type("string") spell3 = "";
   /** Magias que o jogador pode escolher quando um slot libera: as iniciais e as compradas no Grimório. */
   @type(["string"]) knownSpells = new ArraySchema<string>();
   /** Nível de uso de cada magia conhecida (0 a 5). */
@@ -89,6 +99,8 @@ export class Monster extends Schema {
   @type("number") maxHp = 0;
   /** Preso por Raízes Espinhosas: não anda. */
   @type("boolean") rooted = false;
+  /** Congelado: preso por magia de gelo (desenhado como bloco de gelo no lugar das raízes). */
+  @type("boolean") frozen = false;
   /** Atordoado: não anda nem ataca. */
   @type("boolean") stunned = false;
   /** Lento (Nevasca): anda mais devagar. */
@@ -118,6 +130,8 @@ export class Summon extends Schema {
   @type("number") stepMs = 0;
   @type("number") hp = 0;
   @type("number") maxHp = 0;
+  /** Monstro convertido pelo Xamã Orc: a arte é a deste monstro (`MonsterKind`); vazio = a da criatura. */
+  @type("string") look = "";
 }
 
 /** Baú de uma sala lateral: trancado até o mini-boss da sala morrer. */

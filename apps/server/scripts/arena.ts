@@ -8,7 +8,7 @@
  */
 import {
   MSG, SERVER_TICK_MS, Tile, createRng, generateDungeon, hasLineOfSight, isWalkable, tileAt, tileDistance,
-  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type RunEndedMessage, type SpellId, type SpellMessage,
+  type AttackMessage, type ChainMessage, type ClassId, type CooldownMessage, type DamageMessage, type MapId, type MonsterKind, type MonsterStrikeMessage, type RunEndedMessage, type SpellId, type SpellMessage, type TalentRanks,
 } from "@kusa/shared";
 import { Hunt, type HuntHost } from "../src/hunt.ts";
 import { nextStep } from "../src/pathfinding.ts";
@@ -31,6 +31,8 @@ export interface ArenaOptions {
   allies?: { classId: ClassId; bot?: boolean }[];
   /** Runas equipadas em todos os heróis (como `KUSA_RUNES`). */
   runes?: string[];
+  /** Níveis do Grimório do herói (só com `allSpells: false`): para testar Dons, áureas e Tomos. */
+  talents?: TalentRanks;
 }
 
 /** Id do herói nas arenas. */
@@ -38,7 +40,7 @@ export const HERO = "h";
 
 /** Hunt com um herói e nenhum monstro (os do mapa saem). */
 export function arena(options: ArenaOptions = {}) {
-  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [], runes } = options;
+  const { classId = "knight", mapId = (process.env.KUSA_MAP as MapId) || "crypt", seed = Number(process.env.KUSA_SEED) || 4242, startLevel = 8, allSpells = true, monsterHp = 1, openRoom = true, allies = [], runes, talents = {} } = options;
   let clock = 0;
   const timers: { at: number; fn: () => void }[] = [];
   const damage: DamageMessage[] = [];
@@ -68,7 +70,7 @@ export function arena(options: ArenaOptions = {}) {
   };
   const state = new DungeonState();
   const hunt = new Hunt(state, host, { mapId, seed, startLevel, allSpells, monsterHp, runes, random: createRng(seed).next });
-  hunt.join(HERO, { name: "Teste", classId, talents: {}, spellXp: {} });
+  hunt.join(HERO, { name: "Teste", classId, talents, spellXp: {} });
   allies.forEach((ally, i) => {
     const id = `h${i + 2}`;
     hunt.join(id, { name: `Aliado ${i + 2}`, classId: ally.classId, talents: {}, spellXp: {} });
@@ -172,17 +174,31 @@ export function arena(options: ArenaOptions = {}) {
     if (slot2) hunt.chooseSpell(HERO, { slot: 1, spellId: slot2 });
   }
 
-  /** Conjura a magia do slot, mirando no monstro (ou num tile). */
+  /**
+   * Conjura a magia do slot, mirando no monstro (ou num tile). Sem mira é o toque rápido, que sai na frente do herói:
+   * antes, o herói vira para o monstro mais perto (como o jogador faz antes de tocar), para o teste do efeito não
+   * depender de onde o mapa sorteado pôs o monstro. A regra da frente em si fica no `tiro.ts`.
+   */
   function cast(slot: 0 | 1, aim?: Monster | { x: number; y: number }) {
-    if (!aim) return hunt.cast(HERO, { slot });
+    if (!aim) {
+      const near = [...state.monsters.values()].sort((a, b) => tileDistance(p.x, p.y, a.x, a.y) - tileDistance(p.x, p.y, b.x, b.y))[0];
+      if (near) face(near);
+      return hunt.cast(HERO, { slot });
+    }
     const targetId = "id" in aim ? aim.id : undefined;
     hunt.cast(HERO, { slot, aim: { x: aim.x, y: aim.y, targetId } });
   }
 
-  /** Mana cheia e as duas magias fora da recarga (para testar a magia, não a economia de mana). */
+  /** Vira a frente do herói para o tile (o toque rápido das magias com alvo sai nesta direção). */
+  function face(to: { x: number; y: number }) {
+    p.faceX = to.x - p.x;
+    p.faceY = to.y - p.y;
+  }
+
+    /** Mana cheia e as duas magias fora da recarga (para testar a magia, não a economia de mana). */
   function ready() {
     p.mana = p.maxMana;
-    any.seats.get(HERO).spellReadyAt = [0, 0];
+    any.seats.get(HERO).spellReadyAt = [0, 0, 0];
   }
 
   /** Mata o monstro pelo caminho normal da morte (XP, loot e drops sorteados com a seed da arena), como se o herói o matasse. */
@@ -229,7 +245,7 @@ export function arena(options: ArenaOptions = {}) {
   const now = () => clock;
   return {
     hunt, state, any, p, d, damage, spells, chains, cooldowns, strikes, attacks, notices,
-    advance, until, place, spawn, choose, cast, ready, kill, walkTo, end, hitsFrom, where, brain, seat, now, free,
+    advance, until, place, spawn, choose, cast, face, ready, kill, walkTo, end, hitsFrom, where, brain, seat, now, free,
   };
 }
 

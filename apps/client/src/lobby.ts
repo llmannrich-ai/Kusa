@@ -1,5 +1,5 @@
 import { CLASSES, CLASS_IDS, MAPS, MSG, difficultyStars, mapIdOf, partySize, type AddBotMessage, type ClassId, type MapId, type RemoveBotMessage } from "@kusa/shared";
-import { heroPoses } from "./art/heroes.ts";
+import { heroPortrait } from "./art/heroes.ts";
 import type { DungeonRoom } from "./net.ts";
 
 // Telas antes da hunt: o cenário e o servidor da sala criada e a sala de espera com as vagas da equipe.
@@ -330,6 +330,78 @@ export const MAP_ART: Record<MapId, string> = {
     </g>
     <circle cx="24" cy="24" r="22" fill="none" stroke="#7aa84a" stroke-width="1.5"/>
   </svg>`,
+  // Fortaleza Orc: o castelo no alto do esporão de rocha, com a torre de menagem e o estandarte preto da mão vermelha,
+  // a ponte de pedra cruzando o desfiladeiro e o vale azul de névoa lá embaixo, com o brilho de uma fogueira.
+  fortress: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="fo-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7e9cb8"/><stop offset="1" stop-color="#d9d2c0"/></linearGradient>
+      <linearGradient id="fo-vale" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d7488"/><stop offset="1" stop-color="#2a3644"/></linearGradient>
+      <radialGradient id="fo-fogo" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#f08a26" stop-opacity="0"/></radialGradient>
+      <clipPath id="fo-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#fo-roda)">
+      <rect width="48" height="48" fill="url(#fo-ceu)"/>
+      <rect y="30" width="48" height="18" fill="url(#fo-vale)"/>
+      <path d="M0 40Q10 37 20 41T48 39" stroke="#8fb4c8" stroke-width="1.2" fill="none" opacity="0.7"/>
+      <path d="M11 48L14 30L12 24H36L34 30L38 48Z" fill="#6e665c"/>
+      <path d="M14 30L12 24H24V48H11Z" fill="#8a8074"/>
+      <path d="M13 27h22M14 31h20M15 36h18M16 41h16" stroke="#4e473f" stroke-width="0.6"/>
+      <path d="M12 24h24" stroke="#7d9442" stroke-width="1.6"/>
+      <path d="M14 24V17H34V24Z" fill="#c4a876"/>
+      <path d="M14 17V15H16V17M18 17V15H20V17M22 17V15H24V17M26 17V15H28V17M30 17V15H32V17" fill="#c4a876"/>
+      <path d="M19 24V9H29V24Z" fill="#b39566"/>
+      <path d="M19 9V7H21V9M23 9V7H25V9M27 9V7H29V9" fill="#b39566"/>
+      <path d="M22 24V20Q24 18 26 20V24Z" fill="#1c1614"/>
+      <path d="M21.5 13h1.2v3h-1.2zM25.3 13h1.2v3h-1.2z" fill="#1c1614"/>
+      <path d="M31 17V3" stroke="#5a4030" stroke-width="0.9"/>
+      <path d="M31 3.5H38.5L37 6.5L38.5 9.5H31Z" fill="#2a2420"/>
+      <circle cx="34.6" cy="6.5" r="1.3" fill="#c8402a"/>
+      <circle cx="36" cy="22" r="3" fill="url(#fo-fogo)"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#b7c4cf" stroke-width="1.5"/>
+  </svg>`,
+  // Charco Cinzento: a névoa branca sobre a poça negra, a árvore seca com a barba-de-velho, o monólito com a espiral
+  // que brilha e a passarela de tábuas.
+  bog: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="bg-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4d8d2"/><stop offset="1" stop-color="#8a9286"/></linearGradient>
+      <clipPath id="bg-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#bg-roda)">
+      <rect width="48" height="48" fill="url(#bg-ceu)"/>
+      <path d="M0 30Q24 27 48 30V48H0Z" fill="#6b7360"/>
+      <path d="M4 38Q20 34 36 37Q44 39 48 38V48H0Z" fill="#1c262a"/>
+      <path d="M10 41H30M14 44H26" stroke="#93a9b1" stroke-width="0.7"/>
+      <path d="M28 36L31 12L35 36Z" fill="#87898a"/><path d="M31 12L35 36H32Z" fill="#5f6062"/>
+      <path d="M31.2 22a2 2 0 1 0 1.6 1.4" stroke="#8ef0d8" stroke-width="0.9" fill="none"/>
+      <path d="M14 34V18M14 24L8 16M14 21L19 13M14 27L20 22M8 16L6 12M19 13L22 10" stroke="#423e3a" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      <path d="M8 16v5M19 13v4M20 22v4" stroke="#7e8b77" stroke-width="0.8"/>
+      <path d="M2 36H24" stroke="#7d7367" stroke-width="2.5"/><path d="M6 36v3M20 36v3" stroke="#423e3a" stroke-width="1"/>
+      <path d="M0 26Q12 23 24 26T48 25" stroke="#eef0ec" stroke-width="3" opacity="0.45" fill="none"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#a9b0a6" stroke-width="1.5"/>
+  </svg>`,
+  // Ermos Rubros: as cristas vermelhas em camadas, a torre de pedra com a capa de basalto, o barro rachado e o sol
+  // forte de poeira.
+  badlands: `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <defs>
+      <linearGradient id="br-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0c48a"/><stop offset="1" stop-color="#d88a56"/></linearGradient>
+      <clipPath id="br-roda"><circle cx="24" cy="24" r="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#br-roda)">
+      <rect width="48" height="48" fill="url(#br-ceu)"/>
+      <circle cx="34" cy="12" r="5" fill="#fff0c8" opacity="0.8"/>
+      <path d="M0 24H18V20H30V26H48V32H0Z" fill="#7e3a2c"/>
+      <path d="M0 26H48M0 28.5H48" stroke="#b97c4a" stroke-width="1"/><path d="M0 30.5H48" stroke="#d6ae86" stroke-width="0.8"/>
+      <path d="M0 32H48V48H0Z" fill="#a65a3e"/>
+      <path d="M2 36l6 2 7-3 9 3 8-2 9 3 7-2M4 42l8 1 6-3 10 2 9-1 9 2M10 38l-1 4M24 38l1 4M33 36l-1 5" stroke="#4a2218" stroke-width="0.7" fill="none"/>
+      <path d="M12 34Q10 28 12.5 22Q11 17 13 12H19Q21 17 19.5 22Q22 28 20 34Z" fill="#b97c4a"/>
+      <path d="M12.3 25H19.7M12.6 18H19.4" stroke="#d6ae86" stroke-width="1.4"/>
+      <ellipse cx="16" cy="12" rx="5.5" ry="2" fill="#3f3534"/>
+      <path d="M30 40l3-4 2 3 2-2" stroke="#e6dcc4" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+    </g>
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#e0905a" stroke-width="1.5"/>
+  </svg>`,
   // Coração da Mata: escuro, a árvore do coração com o oco que brilha, cogumelos frios e vaga-lumes.
   heartwood: `<svg viewBox="0 0 48 48" aria-hidden="true">
     <defs>
@@ -358,8 +430,8 @@ export const MAP_ART: Record<MapId, string> = {
 const portraits = new Map<string, string>();
 
 function portrait(classId: ClassId) {
-  if (!portraits.has(classId)) portraits.set(classId, heroPoses(classId, undefined, ["down"]).toDataURL());
-  const img = el("img", "slot-portrait");
+  if (!portraits.has(classId)) portraits.set(classId, heroPortrait(classId).toDataURL());
+  const img = el("img", "slot-portrait hero-bust");
   img.src = portraits.get(classId)!;
   img.alt = "";
   return img;
@@ -369,7 +441,11 @@ function portrait(classId: ClassId) {
  * Desenha as vagas do mapa (`partySize`): quem já entrou (o líder primeiro, os bots por último) e as vagas livres.
  * O líder põe um bot numa vaga livre tocando na classe, e tira no ✕.
  */
-export function renderWaitingRoom(room: DungeonRoom) {
+/**
+ * Sala de espera. `classOpen`: a classe está aberta na conta de quem vê (o bot de uma classe trancada não aparece; o
+ * servidor também recusa).
+ */
+export function renderWaitingRoom(room: DungeonRoom, classOpen: (id: ClassId) => boolean = () => true) {
   const { players, leaderId } = room.state;
   const isLeader = leaderId === room.sessionId;
   const rank = (id: string) => (id === leaderId ? 0 : players.get(id)?.bot ? 2 : 1);
@@ -400,7 +476,7 @@ export function renderWaitingRoom(room: DungeonRoom) {
     } else if (isLeader) {
       slot.classList.add("bot-slot");
       const picks = el("div", "bot-picks");
-      for (const classId of CLASS_IDS) {
+      for (const classId of CLASS_IDS.filter(classOpen)) {
         const pick = el("button", "bot-pick");
         pick.type = "button";
         pick.setAttribute("aria-label", `Pôr um bot ${CLASSES[classId].name}`);

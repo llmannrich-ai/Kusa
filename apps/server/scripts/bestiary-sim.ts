@@ -29,7 +29,12 @@ const LEVEL: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
   cavern: { common: 8, miniboss: 9, boss: 11 },
   dunes: { common: 9, miniboss: 11, boss: 14 },
   mesas: { common: 11, miniboss: 13, boss: 16 },
+  oldwood: { common: 9, miniboss: 11, boss: 14 },
+  heartwood: { common: 11, miniboss: 13, boss: 16 },
   gates: { common: 13, miniboss: 15, boss: 18 },
+  fortress: { common: 15, miniboss: 17, boss: 20 },
+  bog: { common: 15, miniboss: 17, boss: 20 },
+  badlands: { common: 15, miniboss: 17, boss: 20 },
 };
 /** Profundidade típica (sala do caminho) de cada rank. */
 const DEPTH: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
@@ -40,7 +45,12 @@ const DEPTH: Record<MapId, Record<"common" | "miniboss" | "boss", number>> = {
   cavern: { common: 4, miniboss: 4, boss: 5 },
   dunes: { common: 3, miniboss: 4, boss: 7 },
   mesas: { common: 3, miniboss: 4, boss: 7 },
+  oldwood: { common: 3, miniboss: 4, boss: 7 },
+  heartwood: { common: 3, miniboss: 4, boss: 7 },
   gates: { common: 3, miniboss: 4, boss: 8 },
+  fortress: { common: 3, miniboss: 4, boss: 6 },
+  bog: { common: 3, miniboss: 4, boss: 7 },
+  badlands: { common: 3, miniboss: 4, boss: 7 },
 };
 
 interface Result { ttk: number; hpLost: number; died: boolean; timeout: boolean }

@@ -2,6 +2,10 @@ import {
   BAG_SIZE,
   CLASSES,
   CLASS_IDS,
+  CLASS_UNLOCK,
+  MONSTERS,
+  classUnlocked,
+  type MonsterKind,
   ITEMS,
   ITEM_BUY_PRICES,
   ITEM_FAMILIES,
@@ -12,10 +16,14 @@ import {
   RUNE_SLOTS,
   SLOT_NAMES,
   SPELLS,
+  SPELL_SLOT_LEVELS,
   TREE_BRANCHES,
   TIER_NAMES,
   VAULT_SIZE,
   auraBonuses,
+  giftEffects,
+  GIFTS,
+  GIFT_MILESTONE_EVERY,
   auraText,
   knownSpells,
   MASTERIES,
@@ -31,6 +39,7 @@ import {
   spellBonus,
   spellNeighbors,
   spellRanks,
+  spellTalentId,
   spellLevelProgress,
   spellXpOf,
   lootColor,
@@ -39,6 +48,10 @@ import {
   runeEffect,
   spellFacts,
   statsFor,
+  MAX_LEVEL,
+  NO_BONUSES,
+  SUMMON_SPELL_POWER_SHARE,
+  type HeroDamage,
   talentBlocker,
   talentCost,
   talentRank,
@@ -60,16 +73,22 @@ import {
   type ItemDef,
   type ItemSlot,
   type RuneDef,
+  type SpellDef,
+  type SpellId,
   type TalentDef,
 } from "@kusa/shared";
-import { HERO_DIRS, HERO_FRAMES, heroPoses, heroSheet, type HeroDir } from "./art/heroes.ts";
+import { HERO_DIRS, HERO_FRAMES, heroPortrait, heroPoses, heroSheet, type HeroDir } from "./art/heroes.ts";
 import { branchIcon } from "./branchIcons.ts";
+import {
+  NEEDS, PLAN_SLOTS, ROLE_INFO, coverage, slotExists, slotSpells, spellRoles, suggestSlot, type PlanSpell,
+} from "./spellPlan.ts";
 import { itemIcon, slotGhost } from "./art/items.ts";
 import { NO_OUTFIT, outfitKey, type Outfit } from "./art/outfit.ts";
 import {
   ProfileError,
   buyItem,
   buyTalent,
+  buyTalentLevels,
   setActiveSpells,
   equipItem,
   loadProfile,
@@ -82,13 +101,15 @@ import {
 // Menu do jogador depois do login: heróis, Grimório (árvore de magias), itens (equipamento, cofre e bag) e mercado.
 // Abas embaixo (zona do polegar), "Jogar" logo acima delas; tudo funciona só com toque.
 
-type Tab = "heroes" | "spells" | "items" | "market";
+/** `loadout`: Magias da hunt (aberta pelo Grimório da página Heróis), sem aba própria na barra. */
+type Tab = "heroes" | "spells" | "items" | "market" | "loadout";
 
 const ROLES: Record<ClassId, { text: string; tags: string[] }> = {
   knight: { text: "Corpo a corpo. Aguenta a pancada e segura os monstros.", tags: ["Linha de frente", "Tanque"] },
   paladin: { text: "Ataca de longe com flechas fortes.", tags: ["À distância", "Precisão"] },
   sorcerer: { text: "Dano em área enorme, mas frágil.", tags: ["Dano em área", "Frágil"] },
   druid: { text: "Cura a equipe e prende os monstros.", tags: ["Suporte", "Controle"] },
+  shaman: { text: "Finca totens que lutam sozinhos e acelera a equipe com o tambor.", tags: ["Totens", "Reforço"] },
 };
 
 /** Um atributo na página Heróis: o valor do nível 1 sem bônus, o valor com bônus e o texto mostrado. */
@@ -179,9 +200,12 @@ const BODY_SVG = `<svg class="loadout-body" viewBox="0 0 100 110" aria-hidden="t
 </svg>`;
 
 /** Retrato da classe vestindo `outfit`: quadro parado, de frente. */
+/** O retrato de busto do herói vestido (medalhões de Heróis e do Grimório). */
 function portrait(classId: ClassId, outfit: Outfit = NO_OUTFIT) {
-  const img = el("img", "hero-img");
-  img.src = heroUrl(classId, outfit, "down");
+  const img = el("img", "hero-img hero-bust");
+  const key = `portrait:${classId}:${outfitKey(outfit)}`;
+  if (!iconCache.has(key)) iconCache.set(key, heroPortrait(classId, outfit).toDataURL());
+  img.src = iconCache.get(key)!;
   img.alt = CLASSES[classId].name;
   return img;
 }
@@ -268,34 +292,42 @@ function heroWalker(classId: ClassId, outfit: Outfit) {
 }
 
 export class Hub {
-  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [] };
+  private profile: Profile = { gold: 0, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [] };
   private tab: Tab = "heroes";
   private marketMode: "buy" | "sell" = "buy";
   /** Slot mostrado na compra do mercado. */
   private marketSlot: ItemSlot = "weapon";
   private busy = false;
   private toastTimer = 0;
-  /** Classe escolhida para a próxima hunt (e o Grimório aberto na aba). */
+  /** Classe escolhida para a próxima hunt: a mesma nas páginas Heróis e Grimório (trocar numa troca na outra). */
   classId: ClassId;
-  private treeClass: ClassId;
   /** Ramo aberto no Grimório (0 a 2): um por tela. */
   private treeBranch = 0;
+  /** Slot aberto em Magias da hunt (0 a 2). */
+  private loadoutSlot = 0;
+  /** A escolha antes da última sugestão aplicada, para o "Desfazer" (some na próxima mudança). */
+  private loadoutUndo: { slot: number; chosen: string[] } | null = null;
+  /** De onde Magias da hunt foi aberta (Heróis ou Grimório): o "‹" volta para lá. */
+  private loadoutFrom: "heroes" | "spells" = "heroes";
 
   constructor(private onPlay: () => void) {
     const saved = storageGet("kusa:class") as ClassId | null;
     this.classId = saved && saved in CLASSES ? saved : "knight";
-    this.treeClass = this.classId;
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => {
       b.onclick = () => this.setTab(b.dataset.tab as Tab);
     });
-    $("play").onclick = () => this.onPlay();
+    // Classe trancada (Xamã Orc): dá para ver o herói e o Grimório, mas não entrar na hunt com ele.
+    $("play").onclick = () => {
+      if (this.locked(this.classId)) return this.toast(this.lockText(this.classId), true);
+      this.onPlay();
+    };
     $("sheet-backdrop").onclick = () => this.closeSheet();
   }
 
   /** Abre o menu da conta e busca árvore, inventário e gold. */
   async open(username: string, initialGold: number) {
     $("account-name").textContent = username;
-    this.profile = { gold: initialGold, talents: {}, spellXp: {}, activeSpells: [], items: [] };
+    this.profile = { gold: initialGold, talents: {}, spellXp: {}, activeSpells: [], items: [], bossClears: [] };
     this.render();
     try {
       this.profile = await loadProfile();
@@ -315,16 +347,37 @@ export class Hub {
   private render() {
     $("account-gold").textContent = gold(this.profile.gold);
     $("play").setAttribute("aria-label", `Batalhas · ${CLASSES[this.classId].name}`);
+    // Magias da hunt é subpágina de Heróis ou do Grimório: a aba de onde veio segue marcada.
+    const shownTab = this.tab === "loadout" ? this.loadoutFrom : this.tab;
     document.querySelectorAll<HTMLButtonElement>(".hub-tabs button[data-tab]").forEach((b) => {
-      b.setAttribute("aria-selected", String(b.dataset.tab === this.tab));
+      b.setAttribute("aria-selected", String(b.dataset.tab === shownTab));
     });
     const body = $("hub-body");
     body.replaceChildren(
       this.tab === "heroes" ? this.renderHeroes()
+        : this.tab === "loadout" ? this.renderLoadout()
         : this.tab === "spells" ? this.renderTree()
           : this.tab === "items" ? this.renderInventory()
             : this.renderMarket(),
     );
+  }
+
+  /** Bosses vencidos lidos de novo (fim de hunt): devolve as classes que estavam trancadas e abriram agora. */
+  updateBossClears(bossClears: string[]): ClassId[] {
+    const opened = CLASS_IDS.filter((id) => this.locked(id) && classUnlocked(bossClears, id));
+    this.profile.bossClears = bossClears;
+    return opened;
+  }
+
+  /** A classe ainda está trancada na conta (o servidor e o banco conferem de novo)? */
+  locked(id: ClassId) {
+    return !classUnlocked(this.profile.bossClears, id);
+  }
+
+  /** Como abrir uma classe trancada. */
+  private lockText(id: ClassId) {
+    const boss = CLASS_UNLOCK[id] as MonsterKind | undefined;
+    return `🔒 ${CLASSES[id].name}: vença ${boss ? MONSTERS[boss].name : "o boss"} na Fortaleza Orc com qualquer herói para liberar.`;
   }
 
   // --- Heróis ---------------------------------------------------------------
@@ -339,14 +392,8 @@ export class Hub {
     const page = el("div", "hub-page heroes");
     page.style.setProperty("--class-color", hex(c.color));
     page.append(el("h2", "", "Heróis"), el("p", "muted hub-hint", "Toque num herói para entrar com ele na próxima hunt."));
-    page.append(this.heroPicks(id, (pick) => {
-      if (pick === this.classId) return;
-      this.classId = pick;
-      this.treeClass = pick;
-      this.treeBranch = 0;
-      storageSet("kusa:class", pick);
-      this.render();
-    }));
+    page.append(this.heroPicks(id, (pick) => this.pickClass(pick)));
+    if (this.locked(id)) page.append(el("p", "hero-locked", this.lockText(id)));
 
     // Palco: o herói vestido anda e gira; as especializações escolhidas ficam em estandartes embaixo.
     const stage = el("section", "hero-stage");
@@ -399,6 +446,19 @@ export class Hub {
     return page;
   }
 
+  /**
+   * Dano base do herói para as magias no nível 1 e no último nível da hunt, como `baseDamage` em hunt.ts soma: classe,
+   * áureas, runas e o equipamento vestido (poder mágico; só parte dele nas criaturas, e a arma no ataque básico).
+   * Bônus de situação (Traços, auras, Liderança, Circuito) ficam de fora.
+   */
+  private heroDamage(id: ClassId): HeroDamage {
+    const worn = this.wornItems(id).map((i) => i.itemId);
+    const bonus = { ...NO_BONUSES, damage: auraBonuses(id, this.profile.talents).damage + heroBonuses({}, worn).damage };
+    const gear = gearStats(worn);
+    const at = (gearPct: number) => [1, MAX_LEVEL].map((lv) => statsFor(id, lv, bonus).damage * (1 + gearPct)) as [number, number];
+    return { spell: at(gear.spellPower), summon: at(gear.spellPower * SUMMON_SPELL_POWER_SHARE), basic: at(gear.damage) };
+  }
+
   /** Atributos do herói como a hunt soma (`applyBonuses` e `baseDamage` em hunt.ts): áureas, runas e itens vestidos por ele. */
   private heroStats(id: ClassId): HeroStats {
     const c = CLASSES[id];
@@ -408,7 +468,8 @@ export class Hub {
     const gear = gearStats(worn);
     const bonus = {
       hp: aura.hp + runes.hp + gear.hp, mana: aura.mana + runes.mana + gear.mana,
-      damage: aura.damage + runes.damage, speed: aura.speed + runes.speed + gear.speed,
+      // Passo de Rastreador (Dom) soma com a Áurea de velocidade, como na hunt.
+      damage: aura.damage + runes.damage, speed: aura.speed + giftEffects(id, this.profile.talents).speed + runes.speed + gear.speed,
     };
     const base = statsFor(id, 1);
     const boosted = statsFor(id, 1, bonus);
@@ -432,13 +493,18 @@ export class Hub {
     const tree = talentTree(id);
     const card = el("div", "hero-link");
     const open = (branch?: number) => {
-      this.treeClass = id;
       if (branch !== undefined) this.treeBranch = branch;
       this.setTab("spells");
     };
     const known = knownSpells(id, ranks).length;
     const total = Object.values(SPELLS).filter((s) => s.classId === id).length;
-    card.append(this.linkHead("📖", "Grimório", `${known}/${total} magias`, () => open()));
+    const openLoadout = () => {
+      this.loadoutSlot = 0;
+      this.loadoutUndo = null;
+      this.loadoutFrom = "heroes";
+      this.setTab("loadout");
+    };
+    card.append(this.linkHead("📖", "Grimório", `${known}/${total} magias · escolher`, openLoadout));
 
     const branches = el("div", "hero-branches");
     TREE_BRANCHES[id].forEach((name, col) => {
@@ -457,8 +523,10 @@ export class Hub {
     card.append(branches);
 
     const { talents, spellXp, activeSpells: chosen } = this.profile;
-    const going = el("div", "hero-spells");
-    going.append(el("small", "muted", "Vão para a hunt"));
+    const going = el("button", "hero-spells");
+    going.setAttribute("aria-label", "Vão para a hunt: escolher as magias de cada slot");
+    going.onclick = openLoadout;
+    going.append(el("small", "muted", "Vão para a hunt · toque para escolher"));
     const list = el("div", "hero-spell-list");
     for (const spellId of activeSpells(id, talents, spellXp, chosen)) {
       const s = SPELLS[spellId];
@@ -521,11 +589,20 @@ export class Hub {
     return head;
   }
 
+  /** Troca o herói da próxima hunt (medalhões de Heróis e do Grimório): vale nas duas páginas e fica salvo. */
+  private pickClass(pick: ClassId) {
+    if (pick === this.classId) return;
+    this.classId = pick;
+    this.treeBranch = 0;
+    storageSet("kusa:class", pick);
+    this.render();
+  }
+
   /** Um medalhão por herói, com o retrato vestido e a cor da classe (Heróis e Grimório). */
   private heroPicks(selected: ClassId, onPick: (id: ClassId) => void) {
     const heroes = el("div", "grim-heroes");
     for (const id of CLASS_IDS) {
-      const pick = el("button", "grim-hero");
+      const pick = el("button", this.locked(id) ? "grim-hero locked" : "grim-hero");
       pick.style.setProperty("--class-color", hex(CLASSES[id].color));
       pick.setAttribute("aria-pressed", String(id === selected));
       const frame = el("span", "grim-hero-frame");
@@ -535,6 +612,238 @@ export class Hub {
       heroes.append(pick);
     }
     return heroes;
+  }
+
+  // --- Magias da hunt -----------------------------------------------------------
+
+  /**
+   * Magias da hunt (aberta pelo Grimório da página Heróis): as até 3 magias de cada slot que aparecem na escolha quando
+   * o slot abre na hunt. No alto, os 3 slots com o que está ativo em cada um (o 3º ainda não existe: "em breve"); embaixo,
+   * o que o conjunto cobre (área, alvo, controle, sobrevivência) e a lista do slot aberto, da mais forte para a mais
+   * fraca, com o papel de cada magia, uma chave para ativar e a sugestão. Cada toque grava na hora.
+   */
+  private renderLoadout() {
+    const id = this.classId;
+    const c = CLASSES[id];
+    const { talents, spellXp, activeSpells: chosen } = this.profile;
+    const page = el("div", "hub-page loadout-page");
+    page.style.setProperty("--class-color", hex(c.color));
+
+    const top = el("header", "lo-top");
+    const back = el("button", "icon-button page-back", "‹");
+    back.setAttribute("aria-label", this.loadoutFrom === "spells" ? "Voltar para o Grimório" : "Voltar para Heróis");
+    back.onclick = () => this.setTab(this.loadoutFrom);
+    const title = el("div", "lo-title");
+    title.append(el("h2", "", "Magias da hunt"), el("small", "muted", `Grimório · ${c.name}`));
+    const tree = el("button", "lo-tree", "Árvore ›");
+    tree.setAttribute("aria-label", "Abrir a árvore de magias");
+    tree.onclick = () => this.setTab("spells");
+    const face = el("span", "lo-face");
+    face.append(portrait(id, this.loadout(id)));
+    top.append(back, face, title, tree);
+    page.append(top);
+    page.append(el("p", "muted hub-hint lo-hint",
+      `Quando um slot abre na hunt, você escolhe 1 entre as magias ativas dele. Deixe até ${ACTIVE_SPELLS_PER_SLOT} por slot, de preferência com papéis diferentes.`));
+
+    // Os 3 slots: o que está ativo em cada um. Tocar abre a lista do slot.
+    // Uma lista por slot que existe na hunt (`SPELL_SLOT_LEVELS`): hoje 3, mas a página segue o número do jogo.
+    const active = SPELL_SLOT_LEVELS.map((_, slot) => activeSlotSpells(id, slot, talents, spellXp, chosen));
+    if (!slotExists(this.loadoutSlot)) this.loadoutSlot = 0;
+    const slots = el("div", "lo-slots");
+    slots.setAttribute("role", "tablist");
+    slots.setAttribute("aria-label", "Slots de magia");
+    for (let slot = 0; slot < PLAN_SLOTS; slot++) {
+      const exists = slotExists(slot);
+      const on = exists ? active[slot] ?? [] : [];
+      const tab = el("button", "lo-slot");
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-selected", String(slot === this.loadoutSlot));
+      tab.classList.toggle("soon", !exists);
+      const head = el("span", "lo-slot-head");
+      head.append(el("b", "", String(slot + 1)), el("small", "", exists ? `nível ${SPELL_SLOT_LEVELS[slot]}` : "em breve"));
+      const sockets = el("span", "lo-sockets");
+      for (let i = 0; i < ACTIVE_SPELLS_PER_SLOT; i++) {
+        const spell = on[i] ? SPELLS[on[i]] : null;
+        const socket = el("i", spell ? "filled" : "", spell ? spell.icon : exists ? "" : "🔒");
+        if (spell) socket.style.setProperty("--spell-color", hex(spell.color));
+        sockets.append(socket);
+      }
+      tab.append(head, sockets, el("small", "lo-slot-count", exists ? `${on.length}/${ACTIVE_SPELLS_PER_SLOT}` : "—"));
+      tab.setAttribute("aria-label", exists
+        ? `Slot ${slot + 1}, abre no nível ${SPELL_SLOT_LEVELS[slot]}: ${on.map((s) => SPELLS[s].name).join(", ") || "nenhuma"}`
+        : `Slot ${slot + 1}: em breve`);
+      tab.onclick = () => {
+        if (!exists) return this.toast(`O slot ${slot + 1} ainda não existe no jogo. Quando chegar, ele aparece aqui.`);
+        this.loadoutSlot = slot;
+        this.render();
+      };
+      slots.append(tab);
+    }
+    page.append(slots);
+
+    // Cobertura: o que as magias ativas de todos os slots garantem na hunt, e a dica para a primeira falta.
+    page.append(this.loadoutCoverage(id, active));
+
+    // A lista do slot aberto.
+    const slot = this.loadoutSlot;
+    const spells = slotSpells(id, slot, talents, spellXp);
+    const auto = spells.length <= ACTIVE_SPELLS_PER_SLOT;
+    const suggestion = suggestSlot(spells, active.filter((_, other) => other !== slot).flat());
+    const differs = !auto && suggestion.picks.some((s) => !active[slot].includes(s));
+
+    const listHead = el("div", "lo-list-head");
+    listHead.append(el("h3", "", `Slot ${slot + 1} · ${spells.length} ${spells.length === 1 ? "magia" : "magias"}`));
+    if (this.loadoutUndo?.slot === slot) {
+      const undo = el("button", "lo-undo", "↶ Desfazer");
+      const previous = this.loadoutUndo.chosen;
+      undo.onclick = () => this.saveLoadout(previous, "Escolha anterior de volta", null);
+      listHead.append(undo);
+    }
+    page.append(listHead);
+
+    if (auto) {
+      page.append(el("p", "lo-note", spells.length === 0
+        ? "Nenhuma magia neste slot ainda."
+        : `Com ${ACTIVE_SPELLS_PER_SLOT} magias ou menos, todas vão para a hunt. Aprenda mais na árvore para poder escolher.`));
+    } else if (differs) {
+      const box = el("div", "lo-suggest");
+      const text = el("div");
+      text.append(el("strong", "", "✨ Sugestão para este slot"),
+        el("small", "muted", suggestion.picks.map((s) => `${SPELLS[s].icon} ${SPELLS[s].name}`).join(" · ")));
+      const apply = el("button", "primary", "Aplicar");
+      apply.onclick = () => {
+        const others = chosen.filter((t) => {
+          const def = TALENTS[t];
+          return !(def?.classId === id && def.spellId && SPELLS[def.spellId].slot === slot);
+        });
+        const next = [...others, ...suggestion.picks.map((s) => spellTalentId(id, s))];
+        void this.saveLoadout(next, `Sugestão aplicada no slot ${slot + 1}`, { slot, chosen: [...chosen] });
+      };
+      box.append(text, apply);
+      page.append(box);
+    } else {
+      page.append(el("p", "lo-note ok", "✔ Seu slot já está igual à sugestão: as mais fortes, com papéis diferentes."));
+    }
+
+    const list = el("div", "lo-list");
+    for (const spell of spells) {
+      list.append(this.loadoutRow(spell, active[slot].includes(spell.id), auto, suggestion.reasons[spell.id] ?? null,
+        active[slot].length >= ACTIVE_SPELLS_PER_SLOT));
+    }
+    page.append(list);
+
+    // O que ainda dá para aprender neste slot, para planejar a próxima compra.
+    const locked = talentTree(id).filter((t) => t.spellId && SPELLS[t.spellId].slot === slot && talentRank(t, talents) === 0);
+    if (locked.length) {
+      const more = el("details", "lo-more");
+      more.append(el("summary", "", `Para aprender neste slot (${locked.length})`));
+      for (const def of locked) {
+        const s = SPELLS[def.spellId!];
+        const blocker = talentBlocker(def, talents, spellXp);
+        const row = el("button", "lo-locked");
+        const roles = spellRolesText(s);
+        const text = el("span", "lo-locked-text");
+        text.append(el("strong", "", s.name), el("small", "muted", `${TREE_BRANCHES[id][def.col]}${roles ? ` · ${roles}` : ""}`));
+        row.append(el("span", "lo-locked-icon", s.icon), text,
+          el("small", blocker ? "muted" : "lo-cost", blocker ? "🔒" : gold(talentCost(def, 0))));
+        row.setAttribute("aria-label", `${s.name}, não aprendida${blocker ? `, ${blocker}` : `, custa ${talentCost(def, 0)} de gold`}`);
+        row.onclick = () => this.openTalentSheet(def);
+        more.append(row);
+      }
+      page.append(more);
+    }
+    return page;
+  }
+
+  /** Painel de cobertura: as 4 necessidades da hunt, quem atende cada uma e uma dica para a primeira que falta. */
+  private loadoutCoverage(id: ClassId, active: SpellId[][]) {
+    const { talents, spellXp } = this.profile;
+    const all = active.flat();
+    const cov = coverage(all);
+    const box = el("section", "lo-cover");
+    box.append(el("strong", "lo-cover-title", "O que você leva para a hunt"));
+    const grid = el("div", "lo-needs");
+    for (const need of NEEDS) {
+      const by = cov[need.id];
+      const item = el("div", `lo-need${by.length ? " on" : ""}`);
+      item.append(el("b", "", by.length ? "✔" : "✕"), el("span", "", need.label),
+        el("small", "muted", by.length ? by.map((s) => SPELLS[s].icon).join(" ") : "falta"));
+      item.setAttribute("aria-label", `${need.label}: ${by.length ? by.map((s) => SPELLS[s].name).join(", ") : "falta"}`);
+      grid.append(item);
+    }
+    box.append(grid);
+    const gap = NEEDS.find((n) => cov[n.id].length === 0);
+    if (gap) {
+      // Quem resolveria: uma magia conhecida fora da hunt, ou uma da árvore ainda por aprender.
+      const fits = (s: SpellId) => coverage([s])[gap.id].length > 0;
+      const idle = SPELL_SLOT_LEVELS.flatMap((_, slot) => slotSpells(id, slot, talents, spellXp)).find((s) => !all.includes(s.id) && fits(s.id));
+      const learn = talentTree(id).find((t) => t.spellId && talentRank(t, talents) === 0 && fits(t.spellId));
+      const fix = idle
+        ? `Ative ${SPELLS[idle.id].icon} ${SPELLS[idle.id].name} (slot ${SPELLS[idle.id].slot + 1}).`
+        : learn ? `Aprenda ${SPELLS[learn.spellId!].icon} ${SPELLS[learn.spellId!].name} (ramo ${TREE_BRANCHES[id][learn.col]}).`
+          : "Equipamento e áureas ajudam a compensar.";
+      box.append(el("p", "lo-gap", `Sem ${gap.label.toLowerCase()}: ${gap.tip}. ${fix}`));
+    }
+    return box;
+  }
+
+  /** Uma magia conhecida do slot: ícone, nível, papéis, custo, motivo da sugestão e a chave de ativar. */
+  private loadoutRow(spell: PlanSpell, on: boolean, auto: boolean, reason: string | null, full: boolean) {
+    const s = SPELLS[spell.id];
+    const def = TALENTS[spellTalentId(s.classId, spell.id)];
+    const row = el("div", "lo-row");
+    row.classList.toggle("on", on);
+    row.style.setProperty("--spell-color", hex(s.color));
+
+    const info = el("button", "lo-info");
+    info.setAttribute("aria-label", `${s.name}, nível ${spell.level}: ver detalhes`);
+    info.onclick = () => this.openTalentSheet(def);
+    const orb = el("span", "lo-orb", s.icon);
+    const text = el("span", "lo-text");
+    const name = el("span", "lo-name");
+    name.append(el("strong", "", s.name));
+    if (spell.level >= MASTERY_RANK) name.append(el("em", "lo-mastery", "★ Maestria"));
+    const pips = el("span", "gnode-pips lo-pips");
+    for (let i = 0; i < SPELL_MAX_LEVEL; i++) pips.append(el("i", i < spell.level ? "on" : ""));
+    const roles = el("span", "lo-roles");
+    for (const r of spell.roles) roles.append(el("span", `lo-role role-${r}`, `${ROLE_INFO[r].icon} ${ROLE_INFO[r].label}`));
+    const facts = [`💧 ${s.manaCost}`, `⏱ ${(s.cooldownMs / 1000).toLocaleString("pt-BR")} s`];
+    if (spell.bonus > 0) facts.push(`+${Math.round(spell.bonus * 100)}% força`);
+    const meta = el("small", "lo-meta muted", facts.join(" · "));
+    text.append(name, pips, roles, meta);
+    if (reason && !auto) text.append(el("small", "lo-reason", `✨ Sugerida: ${reason}`));
+    info.append(orb, text);
+
+    // Chave: liga e desliga na hunt. Com 3 magias ou menos no slot, todas ficam ligadas sozinhas.
+    const toggle = el("button", "lo-switch");
+    toggle.setAttribute("role", "switch");
+    toggle.setAttribute("aria-checked", String(on));
+    toggle.setAttribute("aria-label", `${s.name} na hunt`);
+    toggle.append(el("i"));
+    if (auto) {
+      toggle.disabled = true;
+      toggle.title = `Com ${ACTIVE_SPELLS_PER_SLOT} magias ou menos no slot, todas vão para a hunt`;
+    } else {
+      toggle.classList.toggle("blocked", !on && full);
+      toggle.onclick = () => {
+        const { talents, spellXp, activeSpells } = this.profile;
+        const result = toggleActiveSpell(s.classId, spell.id, talents, spellXp, activeSpells);
+        if ("error" in result) return this.toast(result.error, true);
+        void this.saveLoadout(result.chosen, on ? `${s.name} fora da hunt` : `${s.name} vai para a hunt`, null);
+      };
+    }
+    row.append(info, toggle);
+    return row;
+  }
+
+  /** Grava a escolha de magias ativas na conta e redesenha; `undo` guarda a anterior para o "Desfazer". */
+  private saveLoadout(next: string[], message: string, undo: { slot: number; chosen: string[] } | null) {
+    return this.run(async () => {
+      await setActiveSpells(next);
+      this.profile.activeSpells = next;
+      this.loadoutUndo = undo;
+      this.toast(message);
+    });
   }
 
   // --- Grimório ---------------------------------------------------------------
@@ -548,9 +857,19 @@ export class Hub {
     page.append(el("h2", "", "Grimório"));
 
     // Um botão por personagem, com o retrato vestido e a cor da classe.
-    page.append(this.heroPicks(this.treeClass, (id) => { this.treeClass = id; this.render(); }));
+    page.append(this.heroPicks(this.classId, (id) => this.pickClass(id)));
 
-    const tree = talentTree(this.treeClass);
+    // Atalho para Magias da hunt: escolher as magias de cada slot sem abrir ficha por ficha.
+    const { talents: owned, spellXp: used, activeSpells: picked } = this.profile;
+    const going = activeSpells(this.classId, owned, used, picked).length;
+    const loadout = el("button", "grim-loadout");
+    loadout.append(el("span", "", "⚔️"), el("strong", "", "Magias da hunt"),
+      el("small", "muted", `${going} ativas · escolher`), el("b", "", "›"));
+    loadout.setAttribute("aria-label", `Magias da hunt: escolher as magias de cada slot (${going} ativas)`);
+    loadout.onclick = () => { this.loadoutSlot = 0; this.loadoutUndo = null; this.loadoutFrom = "spells"; this.setTab("loadout"); };
+    page.append(loadout);
+
+    const tree = talentTree(this.classId);
     const ranks = this.profile.talents;
     const xp = this.profile.spellXp;
 
@@ -559,8 +878,8 @@ export class Hub {
     const col = this.treeBranch;
     const tabs = el("div", "grim-tabs");
     tabs.setAttribute("role", "tablist");
-    tabs.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
-    const branchName = TREE_BRANCHES[this.treeClass];
+    tabs.style.setProperty("--class-color", hex(CLASSES[this.classId].color));
+    const branchName = TREE_BRANCHES[this.classId];
     const counts = branchName.map((_, c) => {
       const branch = tree.filter((t) => t.col === c && t.kind === "spell" && t.row > 0);
       return { owned: branch.filter((t) => talentRank(t, ranks) > 0).length, total: branch.length, spec: tree.some((t) => t.col === c && t.side !== undefined) };
@@ -572,7 +891,7 @@ export class Hub {
       tab.setAttribute("aria-selected", String(c === col));
       tab.setAttribute("aria-label", `${name}${spec ? ", com especialização" : ""}: ${owned} de ${total} magias`);
       const emblem = el("span", "grim-tab-emblem");
-      emblem.append(branchIcon(this.treeClass, c));
+      emblem.append(branchIcon(this.classId, c));
       tab.append(emblem, el("small", "", `${owned}/${total}`));
       tab.onclick = () => { this.treeBranch = c; this.render(); };
       tabs.append(tab);
@@ -586,7 +905,7 @@ export class Hub {
     const rows = Math.max(...shown.map((t) => t.row)) + 1;
     const grim = el("div", "grimoire");
     grim.style.setProperty("--rows", String(rows));
-    grim.style.setProperty("--class-color", hex(CLASSES[this.treeClass].color));
+    grim.style.setProperty("--class-color", hex(CLASSES[this.classId].color));
 
     // Galhos: SVG atrás dos nós, em unidades de 300 na largura × pixels de linha.
     const svgNs = "http://www.w3.org/2000/svg";
@@ -676,8 +995,10 @@ export class Hub {
       node.classList.add("active");
       orb.append(el("b", "gnode-active", "✔"));
     }
+    // Com muitos níveis (Dons, áureas e Tomos), as bolinhas viram o número: "7/25".
     const pips = el("span", "gnode-pips");
-    for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
+    if (pipCount > SPELL_MAX_LEVEL) pips.append(el("b", "gnode-rank", `${pipOn}/${pipCount}`));
+    else for (let i = 0; i < pipCount; i++) pips.append(el("i", i < pipOn ? "on" : ""));
     // O losango do Traço leva o nome da especialização (Criomante, Arcanista...); o do Traço fica na ficha.
     node.append(orb, pips, el("span", "gnode-name", def.traitId ? TRAITS[def.traitId].spec : def.name));
     node.onclick = () => this.openTalentSheet(def);
@@ -764,7 +1085,7 @@ export class Hub {
     const title = el("div");
     title.append(
       el("strong", "", def.name),
-      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
+      el("small", "muted", `${spell ? `Magia · slot ${spell.slot + 1}` : trait ? "Traço" : def.giftId ? "Dom" : def.tome ? "Tomo" : "Áurea"} · ${spec ? `${spec} · ` : ""}ramo ${branch}${trait ? "" : spell ? (rank > 0 ? ` · nível ${progress.level}/${SPELL_MAX_LEVEL}` : " · não aprendida") : ` · nível ${rank}/${def.maxRank}`}`),
     );
     head.append(el("span", "sheet-icon", def.icon), title);
     sheet.append(head);
@@ -776,6 +1097,20 @@ export class Hub {
           `(${TRAITS[rival.traitId!].spec}), com as magias dele.`));
       }
     }
+    if (def.giftId) {
+      sheet.append(el("p", "", GIFTS[def.giftId].description));
+      // Marcos: um comportamento novo a cada 5 níveis; os já alcançados ficam acesos.
+      const milestones = GIFTS[def.giftId].milestones;
+      if (milestones) {
+        const marks = el("ul", "grim-marks");
+        milestones.forEach((text, i) => {
+          const at = (i + 1) * GIFT_MILESTONE_EVERY;
+          marks.append(el("li", rank >= at ? "on" : "", `${rank >= at ? "★" : "☆"} Nível ${at}: ${text}`));
+        });
+        sheet.append(el("strong", "", "Marcos"), marks);
+      }
+      sheet.append(el("p", "muted", "Dom: passiva comprada só com gold, sem XP. Vale em toda hunt e não cai na morte."));
+    }
     if (spell) {
       sheet.append(el("p", "", spell.description));
       if (progress.level < MASTERY_RANK) sheet.append(el("p", "muted", `★ Maestria no nível ${MASTERY_RANK}: ${MASTERIES[spell.id].text}`));
@@ -783,11 +1118,12 @@ export class Hub {
       sheet.append(this.synergyNote(def, bonus.synergy, bonus.tome));
     }
 
+    const hero = spell ? this.heroDamage(def.classId) : undefined;
     const levels = el("div", "grim-levels");
     const level = (n: number, current: boolean) => {
       const box = el("div", `grim-level${current ? " current" : ""}`);
       box.append(el("strong", "", `Nível ${n}${current ? " (atual)" : ""}`));
-      const lines = spell ? spellFacts(spell, n, bonus.total) : [auraText(def, n)];
+      const lines = spell ? spellFacts(spell, n, bonus.total, hero) : [auraText(def, n)];
       const list = el("ul");
       for (const line of lines) list.append(el("li", "", line));
       box.append(list);
@@ -799,6 +1135,12 @@ export class Hub {
       level(progress.level, rank > 0);
       if (rank > 0 && progress.level < SPELL_MAX_LEVEL) level(progress.level + 1, false);
       sheet.append(levels);
+      if (spellFacts(spell, progress.level, bonus.total, hero).some((line) => line.includes("×)"))) {
+        sheet.append(el("p", "muted grim-damage-note",
+          `Dano por golpe com o ${CLASSES[def.classId].name} no nível 1 e no nível ${MAX_LEVEL} da hunt, já com áureas, runas, ` +
+          "equipamento, sinergias e Tomo de hoje. Varia ±15% a cada golpe; a armadura do monstro e bônus da hora " +
+          "(auras, Traços) mudam o valor na hunt."));
+      }
     } else if (!trait) {
       if (rank > 0) level(rank, true);
       if (!maxed) level(rank + 1, false);
@@ -832,6 +1174,19 @@ export class Hub {
         buy.classList.add("danger");
       };
       actions.append(buy);
+      // Muitos níveis (Dons, áureas e Tomos): compra até 5 de uma vez, com o preço somado.
+      const many = Math.min(5, def.maxRank - rank);
+      if (!spell && !trait && def.maxRank > SPELL_MAX_LEVEL && many > 1) {
+        const total = Array.from({ length: many }, (_, i) => talentCost(def, rank + i)).reduce((a, b) => a + b, 0);
+        const bulk = el("button", "", `+${many} níveis · ${gold(total)}`);
+        bulk.disabled = this.profile.gold < total;
+        bulk.onclick = () => void this.run(async () => {
+          this.profile.gold = await buyTalentLevels(def.id, many);
+          this.profile.talents[def.id] = rank + many;
+          this.toast(`${def.name} nível ${rank + many}!`);
+        }).then(() => this.openTalentSheet(def));
+        actions.append(bulk);
+      }
     }
     const close = el("button", "", "Fechar");
     close.onclick = () => this.closeSheet();
@@ -1268,6 +1623,11 @@ function sortItems(items: OwnedItem[]) {
     const x = ITEMS[a.itemId], y = ITEMS[b.itemId];
     return itemScore(y.id) - itemScore(x.id) || ITEM_SLOTS.indexOf(x.slot) - ITEM_SLOTS.indexOf(y.slot);
   });
+}
+
+/** Papéis de uma magia em texto curto ("Área, Controle"). */
+function spellRolesText(s: SpellDef) {
+  return spellRoles(s).map((r) => ROLE_INFO[r].label).join(", ");
 }
 
 function storageGet(key: string) {

@@ -27,6 +27,8 @@ export interface Profile {
   /** Magias ativadas no Grimório (ids de nó, todas as classes): até 3 por slot vão para a hunt. */
   activeSpells: string[];
   items: OwnedItem[];
+  /** Bosses vencidos por qualquer personagem da conta: abrem as classes trancadas (`classUnlocked`). */
+  bossClears: string[];
 }
 
 /** Erro com mensagem pronta para mostrar ao jogador. */
@@ -50,6 +52,12 @@ export async function loadMapClears(): Promise<Partial<Record<ClassId, string[]>
   return out;
 }
 
+/** Bosses vencidos por qualquer personagem da conta (abrem as classes trancadas). Sem conexão, nenhum. */
+export async function loadBossClears(): Promise<string[]> {
+  const { data } = await supabase.from("profile_boss_clears").select("boss_kind");
+  return [...new Set((data ?? []).map((b) => b.boss_kind as string))];
+}
+
 /** Hunt solo ou sala no aparelho: o boss morreu com este jogador na hunt (anota o cenário e o boss pela hunt aberta). */
 export async function recordSoloMapClear(runId: string | null, boss: string) {
   if (!runId) return;
@@ -64,10 +72,11 @@ export async function loadProfile(): Promise<Profile> {
   const { data: session } = await supabase.auth.getSession();
   const uid = session.session?.user.id;
   if (!uid) throw new ProfileError("Sessão expirada. Entre de novo.");
-  const [profile, talents, items] = await Promise.all([
+  const [profile, talents, items, bosses] = await Promise.all([
     supabase.from("profiles").select("gold, active_spells").eq("id", uid).single(),
     supabase.from("profile_talents").select("talent_id, rank, xp"),
     supabase.from("profile_items").select("id, item_id, equipped, class_id, source, location").order("acquired_at", { ascending: false }),
+    supabase.from("profile_boss_clears").select("boss_kind"),
   ]);
   if (!profile.data || !talents.data || !items.data) throw new ProfileError("Não foi possível carregar a conta.");
   return {
@@ -77,12 +86,18 @@ export async function loadProfile(): Promise<Profile> {
     activeSpells: profile.data.active_spells ?? [],
     // Id fora do catálogo (banco e cliente em versões diferentes durante uma atualização): não aparece.
     items: items.data.filter((i) => ITEMS[i.item_id] || isRune(i.item_id)).map((i) => ({ id: i.id, itemId: i.item_id, equipped: i.equipped, classId: i.class_id, source: i.source, location: i.location })),
+    bossClears: [...new Set((bosses.data ?? []).map((b) => b.boss_kind as string))],
   };
 }
 
 /** Compra uma magia, uma áurea (próximo nível) ou um Traço; devolve o gold que sobrou. */
 export function buyTalent(talentId: string): Promise<number> {
   return call("buy_talent", { p_talent_id: talentId });
+}
+
+/** Compra vários níveis de uma vez (Dom, áurea ou Tomo, até 5); devolve o gold que sobrou. */
+export function buyTalentLevels(talentId: string, count: number): Promise<number> {
+  return call("buy_talent_levels", { p_talent_id: talentId, p_count: count });
 }
 
 /** Grava as magias ativadas no Grimório (a lista inteira, de todas as classes; ver `toggleActiveSpell`). */

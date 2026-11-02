@@ -2,6 +2,7 @@ import {
   CLASSES,
   SPELLS,
   SPELL_SLOT_LEVELS,
+  SPELL_SLOTS,
   Tile,
   hasLineOfSight,
   isWalkable,
@@ -9,6 +10,7 @@ import {
   spellChoices,
   tileAt,
   tileDistance,
+  type CastAim,
   type ChoosePerkMessage,
   type CastMessage,
   type ChooseSpellMessage,
@@ -114,10 +116,12 @@ export class BotAi {
   /** Escolhas da subida de nível, alvo, ataque e magias. */
   private decide(id: string, p: Player, anchor: Player, mem: BotMemory) {
     if (p.perkOffer.length > 0) this.w.choosePerk(id, { perk: p.perkOffer[0] as PerkId });
-    for (const slot of [0, 1] as const) {
-      if (p.level < SPELL_SLOT_LEVELS[slot] || (slot === 0 ? p.spell1 : p.spell2)) continue;
+    for (const slot of SPELL_SLOTS) {
+      if (p.level < SPELL_SLOT_LEVELS[slot] || botSpellIn(p, slot)) continue;
       const choices = spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes]));
-      if (choices.length > 0) this.w.chooseSpell(id, { slot, spellId: choices[0].id });
+      // A de maior nível na conta (empate: a primeira da árvore).
+      const best = choices.reduce<SpellDef | undefined>((top, s) => (!top || (p.spellRanks.get(s.id) ?? 0) > (p.spellRanks.get(top.id) ?? 0) ? s : top), undefined);
+      if (best) this.w.chooseSpell(id, { slot, spellId: best.id });
     }
 
     const foe = this.pickFoe(p, anchor);
@@ -150,11 +154,21 @@ export class BotAi {
   /** Magia pronta e com mana sai assim que fizer sentido: cura em quem está ferido, dano em quem está ao alcance. */
   private castSpells(id: string, p: Player, foe: Monster | undefined) {
     const now = this.w.now();
-    for (const slot of [0, 1] as const) {
-      const spell = SPELLS[(slot === 0 ? p.spell1 : p.spell2) as SpellId];
+    for (const slot of SPELL_SLOTS) {
+      const spell = SPELLS[botSpellIn(p, slot) as SpellId];
       if (!spell || now < this.w.spellReadyAt(id, slot) || p.mana < spell.manaCost) continue;
-      if (this.worthCasting(p, spell, foe)) this.w.cast(id, { slot });
+      if (this.worthCasting(p, spell, foe)) this.w.cast(id, { slot, aim: this.aimAt(p, spell, foe) });
     }
+  }
+
+  /**
+   * Para onde o bot mira: o toque rápido das magias com alvo sai na frente do herói (sem mira automática), então o bot
+   * mira de propósito no monstro dele (e o rolamento, para longe dele). Magia em si ou em aliado: sem mira.
+   */
+  private aimAt(p: Player, spell: SpellDef, foe: Monster | undefined): CastAim | undefined {
+    if (spell.aim !== "target" || !foe) return undefined;
+    if (spell.dash) return { x: 2 * p.x - foe.x, y: 2 * p.y - foe.y };
+    return { x: foe.x, y: foe.y, targetId: foe.id };
   }
 
   private worthCasting(p: Player, spell: SpellDef, foe: Monster | undefined) {
@@ -216,4 +230,9 @@ export class BotAi {
     mem.stuckSince = 0;
     this.w.bringBeside(id, anchorId);
   }
+}
+
+/** Magia que o bot tem no slot ("" = vazio). */
+function botSpellIn(p: Player, slot: SpellSlot) {
+  return slot === 0 ? p.spell1 : slot === 1 ? p.spell2 : p.spell3;
 }

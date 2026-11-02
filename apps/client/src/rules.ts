@@ -6,7 +6,7 @@ import {
   CLASSES,
   CLASS_IDS,
   COMMON_DROP_CHANCE,
-  DEPTH_SCALING,
+  CROWD_PER_DEPTH,
   ITEM_BUY_PRICES,
   ITEM_SELL_PRICES,
   ITEM_RARITIES,
@@ -18,6 +18,7 @@ import {
   MONSTERS,
   PERKS,
   PERK_IDS,
+  REACTIONS,
   POTIONS,
   POTION_COOLDOWN_MS,
   POTION_IDS,
@@ -48,7 +49,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const minutes = (s: number) => `${s / 60} min`;
-const [SLOT1, SLOT2] = SPELL_SLOT_LEVELS;
+const [SLOT1, SLOT2, SLOT3] = SPELL_SLOT_LEVELS;
 
 /** Uma seção que abre e fecha com um toque (a página é longa para uma tela de celular). */
 function section(title: string, open: boolean, ...content: (HTMLElement | string)[]) {
@@ -99,9 +100,10 @@ export function renderRules(root: HTMLElement) {
 
     section("👆 Controles", false, list([
       "Polegar esquerdo, na parte de baixo da tela: o joystick aparece onde você toca e move o herói.",
-      "⚔️ ataque básico: um toque dá um golpe, segurar repete. Vai no alvo travado ou no monstro mais próximo ao alcance.",
+      "⚔️ ataque básico: um toque dá um golpe, segurar repete. Mira sozinho no alvo travado ou no monstro mais próximo ao alcance.",
       "Tocar num monstro trava o alvo nele (anel vermelho).",
-      "Magias de alvo: segure o botão, arraste para mirar e solte para lançar. Voltar o dedo para o botão cancela. Um toque rápido lança no alvo automático.",
+      "Flechas, luzes e magias de alvo único com projétil são atiradas numa direção e voam reto até o alcance: acertam o primeiro monstro no caminho. Quem anda de lado escapa, quem vem na sua direção leva. Arraste o ⚔️ (ou a magia) para escolher a direção.",
+      "Magias de alvo: segure o botão, arraste para mirar e solte para lançar. Voltar o dedo para o botão cancela. Um toque rápido lança reto na frente do herói (para onde ele andou ou atacou por último), sem mirar sozinho no monstro.",
       "Poções: botões ❤️ e 💧 ao lado das magias.",
       "Bag: toque na fileira embaixo do loot para ver, equipar ou largar itens sem pausar a hunt.",
       "Minimapa: toque nele para ver o mapa inteiro. A bússola em volta de você aponta para o boss (no deserto, para a caverna dele) e, depois que ele cai, para o portal do boss.",
@@ -112,7 +114,7 @@ export function renderRules(root: HTMLElement) {
         const m = MAPS[id];
         return [`${m.icon} ${m.name}`, difficultyStars(m.difficulty), minutes(m.durationSeconds), m.bosses.map(([k]) => MONSTERS[k].name).join(m.lairs ? " e " : " ou ") || "— (ainda sem monstros)"];
       })),
-      `Quem cria a sala escolhe o mapa. Cada sala mais funda é ${pct(DEPTH_SCALING)} mais forte que a anterior (vida, dano, XP e loot). `
+      `Quem cria a sala escolhe o mapa. Um monstro tem a mesma força em qualquer sala; mais fundo, as espécies são mais fortes e cada sala tem ${pct(CROWD_PER_DEPTH)} mais monstros que a anterior. `
       + "Os monstros de cada sala são sorteados a cada hunt. Salas laterais têm um mini-boss que guarda um baú; o boss fica no centro. "
       + "No Mar de Areia, o boss mora numa caverna escondida em algum lugar do deserto; atrás dele, 4 baús de runa: cada jogador leva uma. "
       + "Na Cripta, alguns baús são Mímicos.",
@@ -138,7 +140,7 @@ export function renderRules(root: HTMLElement) {
       table(["Fim", "O que acontece"], [
         ["🚪 Fuga", "Volte à sala inicial e entre no portal: leva todo o loot e os itens."],
         ["🐉 Boss derrotado", `Matar o boss abre um portal na sala final: leva tudo e +${pct(BOSS_LOOT_BONUS)} de loot.`],
-        ["💀 Morte", "Perde o loot, a bag inteira, as poções e 1 equipamento sorteado. Tudo cai no chão para os outros pegarem."],
+        ["💀 Morte", "Perde o loot, a bag inteira, as poções e, a partir do nível 5, 1 equipamento sorteado (o mágico sai menos). Tudo cai no chão para os outros pegarem."],
         ["🪨 Soterrado", "O tempo acabou: igual à morte."],
       ]),
     ),
@@ -146,7 +148,7 @@ export function renderRules(root: HTMLElement) {
     section("⭐ Níveis, magias e melhorias", false, list([
       "Matar monstros dá XP. Cada nível aumenta vida, mana, dano e velocidade, e cura tudo.",
       "A XP de um monstro é dividida em partes iguais por toda a equipe na dungeon (100 XP com 4 heróis dão 25 a cada um). O gold do monstro e do baú se divide do mesmo jeito.",
-      `No nível ${SLOT1} abre o 1º slot de magia e no nível ${SLOT2} o 2º: você escolhe uma magia, que fica até o fim da hunt.`,
+      `No nível ${SLOT1} abre o 1º slot de magia, no nível ${SLOT2} o 2º e no ${SLOT3} o 3º (magias supremas, que se compram no Grimório): você escolhe uma magia, que fica até o fim da hunt.`,
       "Nos outros níveis aparecem duas melhorias e você toca numa. Elas valem até o fim da hunt e somam com as áureas do Grimório.",
     ]),
     table(["Melhoria", "Cada escolha", "Máx."], PERK_IDS.map((id) => {
@@ -173,10 +175,16 @@ export function renderRules(root: HTMLElement) {
         `Morrer tira ${Math.round(DEATH_SPELL_XP_LOSS * 100)}% do XP de uso das magias, mas nunca abaixo do nível 1.`,
         "Sinergia: cada nível de uma magia vizinha (ligada por galho) dá força a esta. O Tomo 📕📗📘 fortalece o ramo todo.",
         `Só as magias ativas (✔, até ${ACTIVE_SPELLS_PER_SLOT} por slot) aparecem na escolha da hunt. Ative na ficha da magia.`,
-        `Magias novas viram opção quando o slot abre na hunt (nível ${SLOT1} e ${SLOT2}).`,
+        `Magias novas viram opção quando o slot abre na hunt (nível ${SLOT1}, ${SLOT2} e ${SLOT3}).`,
         "Ramos com ✦ terminam em duas especializações, e a escolha é permanente.",
-        "Áureas (dano, vida, mana e velocidade) valem sempre, desde o nível 1 da hunt.",
+        "Áureas (dano, vida, mana e velocidade) valem sempre, desde o nível 1 da hunt. Vão até o nível 20 (a de velocidade, até o 6); do 4º nível em diante, cada um vale menos.",
+        "Dons ⬢ (um no topo e um no fundo de cada ramo): passivas compradas só com gold, sem XP, com 25 níveis. Valem em toda hunt e não caem na morte. Os do fundo pedem a magia suprema do ramo e têm um gatilho (vida baixa, parado, a cada tantas magias...).",
       ]),
+    ),
+
+    section("⚗️ Reações", false,
+      "Um estado no monstro prepara o golpe seguinte. Vale para qualquer herói da equipe: o fogo de um combina com o gelo do outro. Toda reação, menos o Exposto, gasta o estado que a preparou.",
+      list(Object.values(REACTIONS).map((r) => `${r.icon} ${r.name}: ${r.when} → ${r.effect}.`)),
     ),
 
     section("🎒 Itens, bag e cofre", false,

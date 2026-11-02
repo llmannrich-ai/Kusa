@@ -14,6 +14,7 @@ import {
   SPELLS,
   lineTiles,
   coneTiles,
+  forkTiles,
   SUMMONS,
   itemColor,
   TILE_SIZE,
@@ -41,8 +42,10 @@ import {
   type SpellDef,
   type SpellId,
   type ScreenMessage,
+  type ShotEndMessage,
   type SpellMessage,
   type SummonKind,
+  type CreatureSummonKind,
 } from "@kusa/shared";
 import { CombatFx } from "./fx.ts";
 import { CombatFx as HitFx, type Lunge } from "./CombatFx.ts";
@@ -62,10 +65,13 @@ import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
 import { DUNES_VOID, MESAS_VOID, drawDunes } from "./dunesMap.ts";
+import { FORTRESS_VOID, drawFortress } from "./fortressMap.ts";
 import { GATES_VOID, drawGates } from "./gatesMap.ts";
 import { HEARTWOOD_VOID, OLDWOOD_VOID, drawForest } from "./forestMap.ts";
 import { MARSH_VOID, drawMarsh } from "./marshMap.ts";
 import { CAVERN_VOID, drawCavern } from "./cavernMap.ts";
+import { BOG_VOID, drawBog } from "./bogMap.ts";
+import { BADLANDS_VOID, drawBadlands } from "./badlandsMap.ts";
 import { loadSettings } from "./settings.ts";
 import type { ChestView, DungeonRoom, FieldView, GroundItemView, MonsterView, PlayerView, SummonView } from "./net.ts";
 import type { HeroDir } from "./art/heroes.ts";
@@ -75,17 +81,22 @@ import type { Clip } from "./art/rig.ts";
 import { gearFx, gearKey, gearSigns } from "./gearFx.ts";
 import { CREATURE_SPRITE_SCALE } from "./art/refine.ts";
 import { heroSpriteScale } from "./art/heroes.ts";
+import { damageFont, fitsDamageFont } from "./damageFont.ts";
 import {
   CHEST_TEXTURE,
   PORTAL_TEXTURE,
   SUMMON_ANIMS,
   SUMMON_TEXTURE,
+  heroActionAnim,
+  heroActionArt,
+  heroActionMs,
   heroArt,
   heroIdleFrame,
   heroWalkAnim,
   itemTexture,
   ensureMonsterArt,
   warmMapMonsters,
+  type HeroAction,
 } from "./art/textures.ts";
 
 /**
@@ -116,6 +127,8 @@ const FOLLOW_LIFT = 0.12;
 const TARGET_CYCLE_RANGE = 8;
 /** Quanto tempo o número de dano fica na tela (ms); os demais avisos flutuantes usam 900. */
 const DAMAGE_TEXT_MS = 1080;
+/** Tamanho (px de mundo) dos números de dano e avisos que sobem. */
+const FLOAT_TEXT_PX = 11;
 
 /**
  * Ordem de desenho: o chão fica embaixo; paredes, baús e personagens são ordenados pela linha
@@ -286,14 +299,14 @@ export class DungeonScene extends Phaser.Scene {
     this.openPortals = new Set();
     const mapId = this.dungeon.mapId;
     warmMapMonsters(this, mapId);
-    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, oldwood: drawForest, heartwood: drawForest }[mapId];
+    const draw = { crypt: drawCrypt, swamp: drawSwamp, desert: drawDesert, marsh: drawMarsh, cavern: drawCavern, dunes: drawDunes, mesas: drawDunes, gates: drawGates, fortress: drawFortress, oldwood: drawForest, heartwood: drawForest, bog: drawBog, badlands: drawBadlands }[mapId];
     this.ambience = draw(this, this.dungeon, DEPTH.floor, DEPTH.ui);
     this.drawPortal();
 
-    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID }[mapId];
+    const background = { crypt: COLORS.void, swamp: SWAMP_VOID, desert: DESERT_VOID, marsh: MARSH_VOID, cavern: CAVERN_VOID, dunes: DUNES_VOID, mesas: MESAS_VOID, gates: GATES_VOID, fortress: FORTRESS_VOID, oldwood: OLDWOOD_VOID, heartwood: HEARTWOOD_VOID, bog: BOG_VOID, badlands: BADLANDS_VOID }[mapId];
     this.cameras.main.setBackgroundColor(background).setRoundPixels(true);
     // Cantos da tela escurecidos, com o tom de cada mapa (CSS por cima do canvas, abaixo do HUD).
-    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "oldwood", "heartwood"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
+    for (const id of ["crypt", "swamp", "desert", "marsh", "cavern", "dunes", "mesas", "gates", "fortress", "oldwood", "heartwood", "bog", "badlands"] as const) document.getElementById("game")?.classList.toggle(id, id === mapId);
     document.getElementById("game")?.classList.remove("cave");
     this.fitCamera();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCamera, this);
@@ -324,7 +337,19 @@ export class DungeonScene extends Phaser.Scene {
       this.addSummon(id, summon);
       callbacks.onChange(summon, () => this.syncSummon(id, summon));
     });
-    callbacks.onAdd("fields", (field: FieldView, id: string) => this.addField(id, field));
+    callbacks.onAdd("fields", (field: FieldView, id: string) => {
+      this.addField(id, field);
+      // Totem nas Costas (Xamã Orc): o totem anda com o xamã.
+      callbacks.onChange(field, () => {
+        const view = this.fields.get(id);
+        if (!view) return;
+        const x = this.toPx(field.x);
+        const y = this.toPx(field.y);
+        if (view.x === x && view.y === y) return;
+        this.tweens.add({ targets: view, x, y, duration: 180 });
+        view.setDepth(field.y * TILE_SIZE - 1);
+      });
+    });
     callbacks.onRemove("fields", (_field: FieldView, id: string) => {
       const view = this.fields.get(id);
       this.fields.delete(id);
@@ -367,6 +392,8 @@ export class DungeonScene extends Phaser.Scene {
     this.room.onMessage(MSG.notice, (msg: NoticeMessage) => this.floatText(msg.x, msg.y, msg.text, msg.color, msg.ms));
     this.room.onMessage(MSG.attack, (msg: AttackMessage) => this.onAttack(msg));
     this.room.onMessage(MSG.spell, (msg: SpellMessage) => this.onSpell(msg));
+    // Tiro que acertou antes do fim do caminho: o projétil para no monstro.
+    this.room.onMessage(MSG.shotEnd, (msg: ShotEndMessage) => this.fx.endShot(msg.shot, this.tilePoint(msg.x, msg.y)));
     this.room.onMessage(MSG.cooldown, (msg: CooldownMessage) => this.spellBar.setCooldown(msg.slot, msg.ms));
     this.room.onMessage(MSG.chain, (msg: ChainMessage) => {
       const spell = SPELLS[msg.spellId];
@@ -392,6 +419,7 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keyup-SPACE", () => this.attack.release("key"));
     kb?.on("keydown-ONE", () => this.spellBar.press(0));
     kb?.on("keydown-TWO", () => this.spellBar.press(1));
+    kb?.on("keydown-THREE", () => this.spellBar.press(2));
     kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
     kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
     kb?.on("keydown-B", () => this.bagBar.toggle());
@@ -411,11 +439,11 @@ export class DungeonScene extends Phaser.Scene {
     }, loadSettings().fixedStick);
     // O ⚔️ fica embaixo, mais perto do polegar; os slots de magia entram acima dele.
     const actions = document.getElementById("actions")!;
-    this.attack = new AttackButton(this.room, actions);
     this.aim = new SpellAim(this, this.room, this.dungeon, (id) => {
       const unit = this.avatars.get(id) ?? this.monsters.get(id);
       return unit && { x: unit.body.x, y: unit.body.y };
     }, DEPTH.ui - 1);
+    this.attack = new AttackButton(this.room, actions, this.aim);
     this.spellBar = new SpellBar(this.room, actions, this.aim, () => this.aboveMe());
     this.perkChoice = new PerkChoice(this.room, () => this.spellBar.choosing, () => this.aboveMe());
     this.runeChoice = new RuneChoice(this.room, () => this.spellBar.choosing || this.perkChoice.open, () => this.aboveMe());
@@ -455,14 +483,14 @@ export class DungeonScene extends Phaser.Scene {
         && unit.body.y > view.y - margin && unit.body.y < view.bottom + margin;
       if (near !== unit.body.visible) {
         unit.body.setVisible(near);
+        // A barra e o nome também saem: desenhar a barra de cada monstro do mapa custava quase metade do quadro.
+        unit.overlay.setVisible(near && !unit.hidden);
         if (unit.anim) {
           if (near) unit.sprite.anims.resume();
           else unit.sprite.anims.pause();
         }
       }
-      // A barra e o nome seguem mesmo fora da tela (senão ficavam parados na borda).
       if (near) this.animateUnit(unit, time);
-      else unit.overlay.setPosition(unit.body.x, unit.body.y);
     });
     this.summons.forEach((unit) => this.animateUnit(unit, time));
     this.hits.update(view);
@@ -564,7 +592,10 @@ export class DungeonScene extends Phaser.Scene {
     if (!classId) return;
     if (msg.from === this.room.sessionId) this.attack.onAttack();
     this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, classId === "knight" ? 5 : 2);
-    this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms);
+    this.heroAction(msg.from, "attack");
+    const to = this.tilePoint(msg.tx, msg.ty);
+    const draw = () => this.fx.basicAttack(classId, this.tilePoint(msg.x, msg.y), to, msg.ms);
+    if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
   }
 
   private onSpell(msg: SpellMessage) {
@@ -575,8 +606,11 @@ export class DungeonScene extends Phaser.Scene {
     if (!msg.echo) {
       if (msg.from === this.room.sessionId) this.spellBar.onCast(msg.spellId);
       this.lunge(this.avatars.get(msg.from), msg.tx - msg.x, msg.ty - msg.y, 3);
+      this.heroAction(msg.from, "cast");
     }
-    this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), this.tilePoint(msg.tx, msg.ty), msg.ms, spell.radius);
+    const to = this.tilePoint(msg.tx, msg.ty);
+    const draw = () => this.fx.spell(msg.spellId, this.tilePoint(msg.x, msg.y), to, msg.ms, spell.radius);
+    if (msg.shot !== undefined) this.fx.track(msg.shot, to, draw); else draw();
     if (spell.shape === "line") this.showLine(spell, msg);
     else if (spell.shape === "cone") this.showCone(spell, msg);
     else if (spell.radius > 0 && !spell.field) {
@@ -628,10 +662,14 @@ export class DungeonScene extends Phaser.Scene {
     this.fx.volcano(this.tilePoint(msg.x, msg.y), tiles, hits);
   }
 
-  /** Magia em cone: acende o leque (a mesma conta do servidor), do herói para fora. */
+  /**
+   * Magia em leque: um sopro sai do herói e acende o leque (a mesma conta do servidor), anel por anel. Na onda, no
+   * ritmo do servidor (`wave.stepMs`), para o chão acender quando o golpe chega.
+   */
   private showCone(spell: SpellDef, msg: SpellMessage) {
-    const tiles = coneTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
-    this.fx.area(tiles.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: tileDistance(msg.x, msg.y, t.x, t.y) })), spell.color, 0);
+    const tiles = coneTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range, spell.coneAngle);
+    const at = this.tilePoint(msg.x, msg.y);
+    this.fx.fan(at, tiles.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: tileDistance(msg.x, msg.y, t.x, t.y) })), spell.color, spell.wave?.stepMs ?? 45);
   }
 
   /**
@@ -656,6 +694,12 @@ export class DungeonScene extends Phaser.Scene {
         }
       }
       this.tweens.add({ targets: g, alpha: { from: 1, to: 0.55 }, duration: field.style === "fire" ? 180 : 700, yoyo: true, repeat: -1 });
+      // Totem em zona (Lodo, Chamado, Grande Totem): o poste fica no meio da área (com um desenho próprio, para o brilho
+      // da área não piscar o poste junto).
+      if (field.style === "totem") {
+        view.add(g);
+        this.drawTotem(view, this.add.graphics(), color);
+      }
     } else if (field.kind === "wall") {
       // Muralha Mágica: um bloco de energia roxa, com brilho pulsando.
       g.fillStyle(color, 0.55).fillRect(-half + 1, -half - 6, TILE_SIZE - 2, TILE_SIZE + 4);
@@ -669,6 +713,10 @@ export class DungeonScene extends Phaser.Scene {
       for (const [cx, cy, r] of [[-10, -40, 12], [6, -44, 14], [18, -38, 10], [-2, -34, 11]]) g.fillStyle(0x2c3e50, 0.85).fillCircle(cx, cy, r);
       g.fillStyle(0x9ec5ff, 0.5).fillCircle(4, -36, 6);
       this.tweens.add({ targets: g, alpha: { from: 1, to: 0.75 }, duration: 300, yoyo: true, repeat: -1 });
+    } else if (field.style === "totem") {
+      // Totem de tiro (Totem da Brasa): o alcance tracejado e o poste.
+      g.lineStyle(1, color, 0.4).strokeCircle(0, 0, (field.radius + 0.5) * TILE_SIZE);
+      this.drawTotem(view, g, color);
     } else if (field.kind === "trap") {
       // Mandíbulas abertas: arco de dentes de ferro.
       g.lineStyle(2, 0x5d6d7e, 1).strokeEllipse(0, 6, 22, 10);
@@ -688,11 +736,38 @@ export class DungeonScene extends Phaser.Scene {
     this.fields.set(id, view);
   }
 
+  /**
+   * Totem do Xamã Orc: poste entalhado com faixas, um crânio com chifres no alto e a chama da magia acesa em cima. A
+   * chama tremula sozinha (sem mexer a câmera).
+   */
+  private drawTotem(view: Phaser.GameObjects.Container, g: Phaser.GameObjects.Graphics, color: number) {
+    g.fillStyle(0x000000, 0.25).fillEllipse(0, 9, 18, 6);
+    g.fillStyle(0x5a3a1e, 1).fillRect(-4, -16, 8, 25);
+    g.fillStyle(0x3e2712, 1).fillRect(-4, -16, 2, 25);
+    for (const y of [-6, 2]) g.fillStyle(0xd8561c, 1).fillRect(-5, y, 10, 2);
+    g.fillStyle(0xe2d6b4, 1).fillEllipse(0, -20, 12, 10);
+    g.fillStyle(0xe2d6b4, 1).fillTriangle(-6, -22, -11, -30, -4, -25).fillTriangle(6, -22, 11, -30, 4, -25);
+    g.fillStyle(0x2a1a10, 1).fillCircle(-2.5, -20, 1.6).fillCircle(2.5, -20, 1.6);
+    view.add(g);
+    const flame = this.add.graphics();
+    flame.fillStyle(color, 0.9).fillTriangle(-4, -25, 4, -25, 0, -36);
+    flame.fillStyle(0xffd166, 1).fillTriangle(-2, -25, 2, -25, 0, -31);
+    this.tweens.add({ targets: flame, scaleY: { from: 1, to: 1.25 }, alpha: { from: 1, to: 0.75 }, duration: 260, yoyo: true, repeat: -1 });
+    view.add(flame);
+  }
+
   /** Magia em linha: acende os tiles atravessados (a mesma conta do servidor), do herói para a ponta, no ritmo da flecha. */
   private showLine(spell: SpellDef, msg: SpellMessage) {
     const tiles = lineTiles(this.dungeon, msg.x, msg.y, msg.tx, msg.ty, spell.range);
     const step = tiles.length > 0 ? msg.ms / tiles.length / 45 : 0;
-    this.fx.area(tiles.map((t, i) => ({ ...this.tilePoint(t.x, t.y), ring: i * step })), spell.color, 0);
+    // Relâmpago Ramificado: no fim da reta, os galhos acendem logo depois (a mesma conta do servidor).
+    const end = tiles[tiles.length - 1];
+    const forks = spell.fork && end ? forkTiles(this.dungeon, msg.x, msg.y, end, spell.fork) : [];
+    const last = tiles.length * step;
+    this.fx.area([
+      ...tiles.map((t, i) => ({ ...this.tilePoint(t.x, t.y), ring: i * step })),
+      ...forks.map((t) => ({ ...this.tilePoint(t.x, t.y), ring: last + tileDistance(end!.x, end!.y, t.x, t.y) })),
+    ], spell.color, 0);
   }
 
   /**
@@ -727,11 +802,27 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** Monstro animado: toca um clipe que não se repete (golpe, especial) e segura o quadro até ele acabar. */
-  private playClip(unit: Unit, clip: Clip) {
+  private playClip(unit: Unit, clip: Clip | "skill") {
     if (!unit.anim || unit.dead || !unit.texture) return;
+    // A 2ª habilidade desenhada só existe em quem tem folha para ela; sem ela, o especial.
+    if (clip === "skill" && !unit.anim.extra?.skill) clip = "cast";
     unit.sprite.anims.timeScale = 1;
     unit.sprite.play(monsterAnimKey(unit.texture, clip));
-    unit.busyUntil = this.time.now + (unit.sprite.anims.currentAnim?.frames.length ?? 4) / unit.anim.fps[clip] * 1000;
+    const fps = unit.anim.fps[clip === "skill" ? "cast" : clip];
+    unit.busyUntil = this.time.now + (unit.sprite.anims.currentAnim?.frames.length ?? 4) / fps * 1000;
+  }
+
+  /**
+   * Movimento de ação do herói (golpe, tiro ou magia), virado para onde o tranco o deixou. Toca uma vez e segura o
+   * quadro até acabar; sem a folha pronta (ainda sendo desenhada, ou arte antiga), fica só o tranco.
+   */
+  private heroAction(sessionId: string, action: HeroAction) {
+    const unit = this.avatars.get(sessionId), player = this.room.state.players.get(sessionId);
+    if (!unit?.classId || !player || unit.dead || !unit.sprite.visible) return;
+    const key = heroActionArt(this, unit.classId, outfitOf(player));
+    if (!key) return;
+    unit.sprite.play(heroActionAnim(key, action, unit.dir));
+    unit.busyUntil = this.time.now + heroActionMs(action);
   }
 
   /** Tranco curto do sprite na direção do golpe (ida e volta). */
@@ -934,6 +1025,20 @@ export class DungeonScene extends Phaser.Scene {
     g.lineStyle(1, 0xd6f1ff, 0.9).strokeEllipse(0, TILE_SIZE / 2 - 3, TILE_SIZE - 4, 10);
     for (const x of [-9, -2, 6]) g.fillStyle(0xe8f6ff, 0.9).fillTriangle(x, TILE_SIZE / 2 - 2, x + 2, TILE_SIZE / 2 - 9, x + 4, TILE_SIZE / 2 - 2);
     this.tweens.add({ targets: g, alpha: { from: 1, to: 0.5 }, duration: 700, yoyo: true, repeat: -1 });
+    return g;
+  }
+
+  /** Congelado: um bloco de gelo translúcido em volta do corpo, com brilho nas arestas. */
+  private iceAt() {
+    const g = this.add.graphics();
+    const w = TILE_SIZE - 6;
+    const h = TILE_SIZE - 4;
+    const top = TILE_SIZE / 2 - h;
+    g.fillStyle(0xbfe9ff, 0.38).fillRoundedRect(-w / 2, top, w, h, 3);
+    g.lineStyle(1.5, 0xe8f8ff, 0.95).strokeRoundedRect(-w / 2, top, w, h, 3);
+    g.lineStyle(1, 0xffffff, 0.8).lineBetween(-w / 2 + 3, top + 4, -w / 2 + 8, top + 2).lineBetween(w / 2 - 6, top + h - 5, w / 2 - 3, top + h - 9);
+    g.setScale(1, 0.2);
+    this.tweens.add({ targets: g, scaleY: 1, duration: 160, ease: "Back.Out" });
     return g;
   }
 
@@ -1144,6 +1249,9 @@ export class DungeonScene extends Phaser.Scene {
     const unit = this.makeUnit(player.x, player.y, sprite, TILE_SIZE - 8, top + 4, false);
     unit.classId = classId;
     unit.heroKey = heroKey;
+    unit.busyUntil = 0;
+    // Os movimentos de ação começam a ser desenhados aos poucos já (ficam prontos antes do primeiro golpe).
+    heroActionArt(this, classId, outfitOf(player));
     const label = this.add.text(0, unit.barY - 2, player.name, this.textStyle()).setOrigin(0.5, 1);
     unit.overlay.add(label);
     this.avatars.set(sessionId, unit);
@@ -1175,7 +1283,9 @@ export class DungeonScene extends Phaser.Scene {
     const heroKey = heroArt(this, unit.classId!, outfit);
     if (heroKey !== unit.heroKey) {
       unit.heroKey = heroKey;
-      unit.sprite.setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
+      unit.busyUntil = 0;
+      unit.sprite.stop().setTexture(heroKey, unit.dead ? heroIdleFrame("down") : heroIdleFrame(unit.dir));
+      heroActionArt(this, unit.classId!, outfit);
     }
     // Equipamento raro ou mágico brilha no herói.
     const signs = gearSigns(outfit);
@@ -1233,8 +1343,11 @@ export class DungeonScene extends Phaser.Scene {
     const texture = monster.hidden && art.disguise ? art.disguise : monsterTexture(kind, monster.variant);
     ensureMonsterArt(this, monsterTexture(kind, monster.variant));
     const sprite = this.add.sprite(0, 0, texture).setScale(scale);
-    const top = TILE_SIZE / 2 - sprite.displayHeight * (art.anim?.fill ?? 1);
+    // Arte esculpida (`sculpt.ts`): o quadro desce abaixo da base do tile (pinças de frente, vista de cima).
+    const below = 1 - (art.anim?.origin ?? 1);
+    const top = TILE_SIZE / 2 - sprite.displayHeight * ((art.anim?.fill ?? 1) - below);
     const unit = this.makeUnit(monster.x, monster.y, sprite, TILE_SIZE - 8, top - 2, !!art.facesLeft);
+    if (art.anim?.origin) sprite.setOrigin(0.5, art.anim.origin);
     unit.texture = texture;
     unit.baseScale = scale;
     unit.breath = Math.random() * Math.PI * 2;
@@ -1278,7 +1391,9 @@ export class DungeonScene extends Phaser.Scene {
       unit.sprite.setTexture(texture);
     }
     this.drawBar(unit, monster.hp, monster.maxHp, COLORS.hpMonster);
-    this.setStatus(unit, "roots", monster.rooted, () => this.thornsAt());
+    // Congelado (preso por gelo): bloco de gelo no lugar das raízes; o Vapor e o Estilhaço leem este estado.
+    this.setStatus(unit, "roots", monster.rooted && !monster.frozen, () => this.thornsAt());
+    this.setStatus(unit, "frozen", monster.frozen, () => this.iceAt());
     this.setStatus(unit, "stun", monster.stunned, () => this.stunStars(unit.barY - 6));
     this.setStatus(unit, "slow", monster.slowed, () => this.frostAt());
     this.setStatus(unit, "mark", monster.marked, () => this.markAt(unit.barY - 14));
@@ -1299,7 +1414,7 @@ export class DungeonScene extends Phaser.Scene {
     const alpha = hidden ? (art.disguise ? 1 : 0.18) : art.alpha ?? 1;
     this.tweens.killTweensOf(unit.body);
     this.tweens.add({ targets: unit.body, alpha, duration: 220 });
-    unit.overlay.setVisible(!hidden);
+    unit.overlay.setVisible(!hidden && unit.body.visible);
   }
 
   /**
@@ -1308,16 +1423,19 @@ export class DungeonScene extends Phaser.Scene {
    */
   private addSummon(id: string, summon: SummonView) {
     const kind = (summon.kind in SUMMONS ? summon.kind : "wolf") as SummonKind;
-    const texture = SUMMON_TEXTURE[kind];
+    // O monstro convertido (Xamã Orc) usa a arte do monstro dele; o clã, a do monstro do clã.
+    const look = (summon.look && summon.look in MONSTERS ? summon.look as MonsterKind : undefined) ?? SUMMONS[kind].look;
+    if (look) return this.addClanSummon(id, summon, look);
+    const texture = SUMMON_TEXTURE[kind as CreatureSummonKind];
     const sprite = this.add.sprite(0, 0, texture).setScale(CREATURE_SPRITE_SCALE);
     const top = TILE_SIZE / 2 - sprite.displayHeight;
     const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, true);
     unit.bleeds = false;
     unit.flies = FLYERS.has(kind);
     unit.texture = texture;
-    unit.anim = SUMMON_ANIMS[kind];
+    unit.anim = SUMMON_ANIMS[kind as CreatureSummonKind];
     unit.busyUntil = 0;
-    sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * SUMMON_ANIMS[kind].frames!.idle) });
+    sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * SUMMON_ANIMS[kind as CreatureSummonKind].frames!.idle) });
     // Brilho de aliado sob os pés, para não confundir com os monstros.
     const glow = this.add.ellipse(0, TILE_SIZE / 2 - 3, 22, 7, 0x9cff7a, 0.35);
     unit.body.addAt(glow, 0);
@@ -1326,6 +1444,43 @@ export class DungeonScene extends Phaser.Scene {
     this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
     sprite.setScale(0.2 * CREATURE_SPRITE_SCALE);
     this.tweens.add({ targets: sprite, scale: CREATURE_SPRITE_SCALE, duration: 280, ease: "Back.Out" });
+    this.fx.summonBurst({ x: unit.body.x, y: unit.body.y });
+  }
+
+  /**
+   * Orc ou ogro do clã do Xamã Orc: a arte do monstro do clã (a mesma dos inimigos do Kosaradius e da Fortaleza) com a
+   * marca de aliado, para não confundir com o inimigo da mesma espécie: anel cor de brasa nos pés, uma faixa de brasa no
+   * alto e a barra de vida das criaturas.
+   */
+  private addClanSummon(id: string, summon: SummonView, look: MonsterKind) {
+    const art = BESTIARY_ART[look];
+    const texture = monsterTexture(look);
+    ensureMonsterArt(this, texture);
+    const scale = (art.anim ? art.scale ?? 1 : art.scale ?? 1) * CREATURE_SPRITE_SCALE;
+    const sprite = this.add.sprite(0, 0, texture).setScale(scale);
+    const below = 1 - (art.anim?.origin ?? 1);
+    const top = TILE_SIZE / 2 - sprite.displayHeight * ((art.anim?.fill ?? 1) - below);
+    // O clã olha para o mesmo lado que os monstros do clã (a arte vem virada para a esquerda).
+    const unit = this.makeUnit(summon.x, summon.y, sprite, TILE_SIZE - 12, top + 2, !!art.facesLeft);
+    if (art.anim?.origin) sprite.setOrigin(0.5, art.anim.origin);
+    unit.texture = texture;
+    unit.baseScale = scale;
+    unit.bleeds = true;
+    if (art.anim) {
+      unit.anim = art.anim;
+      unit.busyUntil = 0;
+      sprite.play({ key: monsterAnimKey(texture, "idle"), startFrame: Math.floor(Math.random() * 4) });
+    }
+    const ring = this.add.ellipse(0, TILE_SIZE / 2 - 3, 26, 9).setStrokeStyle(2, 0xff8a2a, 0.9).setFillStyle(0xff8a2a, 0.18);
+    unit.body.addAt(ring, 0);
+    this.tweens.add({ targets: ring, alpha: { from: 1, to: 0.5 }, duration: 700, yoyo: true, repeat: -1 });
+    // Faixa de aliado (o pano cor de brasa do clã libertado) sobre a barra de vida.
+    const band = this.add.rectangle(0, unit.barY - 5, 10, 3, 0xff8a2a, 1).setStrokeStyle(1, 0x2a1408, 1);
+    unit.overlay.add(band);
+    this.summons.set(id, unit);
+    this.drawBar(unit, summon.hp, summon.maxHp, COLORS.hpSummon);
+    sprite.setScale(0.2 * scale);
+    this.tweens.add({ targets: sprite, scale, duration: 280, ease: "Back.Out" });
     this.fx.summonBurst({ x: unit.body.x, y: unit.body.y });
   }
 
@@ -1482,10 +1637,11 @@ export class DungeonScene extends Phaser.Scene {
       beast.play(monsterAnimKey(FORMS[kind].texture, walking ? "walk" : "idle"), true);
       beast.anims.timeScale = walking ? Phaser.Math.Clamp(((anim.stride ?? 3) * 1000 / unit.stepMs) / anim.fps.walk, 0.5, 2) : 1;
     }
-    if (unit.heroKey) {
+    // Herói: o movimento de ação segura o quadro até acabar; depois anda ou fica parado (na folha da caminhada).
+    if (unit.heroKey && time >= (unit.busyUntil ?? 0)) {
       if (walking) unit.sprite.play(heroWalkAnim(unit.heroKey, unit.dir), true);
-      else if (unit.sprite.anims.isPlaying || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
-        unit.sprite.stop().setFrame(heroIdleFrame(unit.dir));
+      else if (unit.sprite.anims.isPlaying || unit.sprite.texture.key !== unit.heroKey || unit.sprite.frame.name !== String(heroIdleFrame(unit.dir))) {
+        unit.sprite.stop().setTexture(unit.heroKey, heroIdleFrame(unit.dir));
       }
     }
   }
@@ -1494,20 +1650,31 @@ export class DungeonScene extends Phaser.Scene {
     return { ...TEXT_STYLE, resolution: this.textResolution };
   }
 
-  /** Número ou aviso que sobe e some sobre um tile. */
+  /**
+   * Número ou aviso que sobe e some sobre um tile. Número de dano, cura e XP sai da fonte bitmap (`damageFont`): numa
+   * sala cheia são dezenas por segundo, e um `Text` novo por número (canvas e textura na GPU) pesava no quadro.
+   */
   private floatText(tileX: number, tileY: number, text: string, color: number, duration = 900) {
-    const label = this.add.text(this.toPx(tileX), this.toPx(tileY) - 8, text, {
-      ...this.textStyle(),
-      fontSize: "11px",
-      color: `#${color.toString(16).padStart(6, "0")}`,
-    }).setOrigin(0.5).setDepth(DEPTH.ui + 1);
+    const x = this.toPx(tileX);
+    const y = this.toPx(tileY) - 8;
+    let labels: (Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text)[];
+    if (fitsDamageFont(text)) {
+      const font = damageFont(this, TEXT_STYLE, FLOAT_TEXT_PX, this.textResolution);
+      labels = [
+        this.add.bitmapText(x, y, font.stroke, text, FLOAT_TEXT_PX),
+        this.add.bitmapText(x, y, font.fill, text, FLOAT_TEXT_PX).setTint(color),
+      ];
+    } else {
+      labels = [this.add.text(x, y, text, { ...this.textStyle(), fontSize: `${FLOAT_TEXT_PX}px`, color: `#${color.toString(16).padStart(6, "0")}` })];
+    }
+    for (const label of labels) label.setOrigin(0.5).setDepth(DEPTH.ui + 1);
     this.tweens.add({
-      targets: label,
-      y: label.y - 24,
+      targets: labels,
+      y: y - 24,
       alpha: 0,
       duration,
       ease: "Cubic.Out",
-      onComplete: () => label.destroy(),
+      onComplete: () => labels.forEach((label) => label.destroy()),
     });
   }
 

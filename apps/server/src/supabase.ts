@@ -24,6 +24,8 @@ export interface Account {
   spellXp: SpellXp;
   /** Magias ativadas no Grimório (ids de nó): até 3 por slot vão para a hunt. */
   activeSpells: string[];
+  /** Bosses vencidos por qualquer personagem da conta: abrem as classes trancadas (`classUnlocked`). */
+  bossClears: string[];
 }
 
 /** Valida o JWT do jogador e devolve a conta, ou null se for convidado. */
@@ -31,9 +33,10 @@ export async function resolveAccount(accessToken?: string): Promise<Account | nu
   if (!supabase || !accessToken) return null;
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) throw new Error("Sessão inválida");
-  const [{ data: profile }, { data: talents }] = await Promise.all([
+  const [{ data: profile }, { data: talents }, { data: bosses }] = await Promise.all([
     supabase.from("profiles").select("username, active_spells").eq("id", data.user.id).single(),
     supabase.from("profile_talents").select("talent_id, rank, xp").eq("profile_id", data.user.id),
+    supabase.from("profile_boss_clears").select("boss_kind").eq("profile_id", data.user.id),
   ]);
   return {
     userId: data.user.id,
@@ -41,6 +44,7 @@ export async function resolveAccount(accessToken?: string): Promise<Account | nu
     talents: Object.fromEntries((talents ?? []).map((t) => [t.talent_id, t.rank])),
     spellXp: Object.fromEntries((talents ?? []).filter((t) => t.xp > 0).map((t) => [t.talent_id, t.xp])),
     activeSpells: profile?.active_spells ?? [],
+    bossClears: [...new Set((bosses ?? []).map((b) => b.boss_kind as string))],
   };
 }
 
@@ -56,6 +60,21 @@ export async function takeLoadout(userId: string, classId: string): Promise<stri
     return [];
   }
   return (data ?? []) as string[];
+}
+
+/**
+ * Equipamento e runas equipados na classe, sem tirar da conta: o bot da equipe veste uma cópia (não larga nada e
+ * nada volta para a conta). Precisa ser lido antes do `take_loadout` de um humano da mesma classe.
+ */
+export async function readLoadout(userId: string, classId: string): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("profile_items").select("item_id")
+    .eq("profile_id", userId).eq("class_id", classId).eq("equipped", true);
+  if (error) {
+    console.error("Falha ao ler o equipamento do bot", error);
+    return [];
+  }
+  return (data ?? []).map((r) => r.item_id as string);
 }
 
 /**

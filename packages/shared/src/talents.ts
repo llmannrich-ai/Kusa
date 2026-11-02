@@ -1,6 +1,7 @@
 import { CLASS_IDS, type ClassId } from "./classes.ts";
-import { STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
+import { SPELL_SLOTS, STARTER_SPELLS, SPELLS, type SpellId } from "./spells.ts";
 import { STARTER_SPELL_XP, spellLevelFromXp } from "./spellxp.ts";
+import { GIFTS, GIFT_BASE_COST, GIFT_COST_GROWTH, GIFT_MAX_RANK, sumGifts, type GiftEffects, type GiftId } from "./gifts.ts";
 import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 
 // Grimório: a árvore de magias de cada classe, comprada no menu com o gold das hunts.
@@ -11,7 +12,8 @@ import { TRAITS, isTrait, type TraitId } from "./traits.ts";
 //   áurea: bônus passivo de dano, vida, mana ou velocidade, com vários níveis;
 //   traço: a passiva de uma especialização. No fim de um ramo, a árvore se divide em dois lados (`side`);
 //          comprar o Traço de um lado tranca o outro para sempre (`exclusiveWith`), e as magias do lado
-//          pedem o Traço.
+//          pedem o Traço;
+//   dom:   passiva comprada só com gold, com 25 níveis (`gifts.ts`). Não pede XP: o gold sempre tem para onde ir.
 // Cada ramo é uma espinha de peixe (inspirada no Diablo 2): o tronco desce no meio e as costelas (`RIBS`) saem
 // para os lados em alturas e tamanhos diferentes, então nenhum ramo tem a mesma forma. Um nó de costela pode
 // pedir dois pais (`alsoRequires`), como a Nevasca do Diablo 2 pede duas magias.
@@ -38,15 +40,17 @@ export interface TalentDef {
   row: number;
   /** Posição de lado dentro do ramo: 0 = tronco, −2 a 2 = costelas e lados das especializações. */
   lane: number;
-  kind: "spell" | "aura" | "trait" | "tome";
+  kind: "spell" | "aura" | "trait" | "tome" | "gift";
   name: string;
   icon: string;
   /** Magia liberada (só `kind: "spell"`). */
   spellId?: SpellId;
-  /** Bônus por nível da áurea, em fração (0.05 = +5%). */
-  aura?: { stat: AuraStat; perRank: number };
-  /** Força extra por nível do Tomo nas magias do ramo dele (só `kind: "tome"`), em fração. */
-  tome?: { perRank: number };
+  /** Bônus por nível da áurea, em fração (0.05 = +5%): `perRank` nos `baseRanks` primeiros níveis, `perRankAfter` nos outros. */
+  aura?: { stat: AuraStat } & StackedRule;
+  /** Força extra por nível do Tomo nas magias do ramo dele (só `kind: "tome"`), em fração, com a mesma regra da áurea. */
+  tome?: StackedRule;
+  /** Dom liberado (só `kind: "gift"`). */
+  giftId?: GiftId;
   /** Traço liberado (só `kind: "trait"`). */
   traitId?: TraitId;
   /** Lado da especialização (0 ou 1) no fim do ramo; ausente no tronco. */
@@ -63,6 +67,22 @@ export interface TalentDef {
   requires?: { id: string; rank: number };
   /** Segundo pai (nó de costela que cruza com o tronco): também precisa ter `rank` níveis. */
   alsoRequires?: { id: string; rank: number };
+}
+
+/**
+ * Ganho por nível das áureas e dos Tomos: os `baseRanks` primeiros níveis (os de antes do Grimório 4.0) valem
+ * `perRank` cada; do nível seguinte até o 20, cada nível vale `perRankAfter` (menos, mas são muitos níveis).
+ */
+export interface StackedRule {
+  perRank: number;
+  perRankAfter: number;
+  baseRanks: number;
+}
+
+/** Total de uma áurea ou de um Tomo num nível. */
+export function stackedValue(rule: StackedRule, rank: number): number {
+  const first = Math.min(rank, rule.baseRanks);
+  return first * rule.perRank + Math.max(0, rank - rule.baseRanks) * rule.perRankAfter;
 }
 
 /** Níveis comprados por nó (id → nível). Nó ausente = 0. Uma magia tem no máximo 1: comprada. */
@@ -87,22 +107,30 @@ const AURA_NAMES: Record<ClassId, Record<AuraStat, string>> = {
   paladin: { damage: "Áurea da Mira", hp: "Áurea da Fé", mana: "Áurea Sagrada", speed: "Áurea do Batedor" },
   sorcerer: { damage: "Áurea do Caos", hp: "Áurea da Égide", mana: "Áurea Arcana", speed: "Áurea do Vento" },
   druid: { damage: "Áurea dos Espinhos", hp: "Áurea do Carvalho", mana: "Áurea da Seiva", speed: "Áurea do Cervo" },
+  shaman: { damage: "Áurea da Forja", hp: "Áurea do Couro Curtido", mana: "Áurea do Entalhe", speed: "Áurea do Clã" },
 };
 
 const AURA_ICONS: Record<AuraStat, string> = { damage: "⚔️", hp: "❤️", mana: "💧", speed: "👟" };
 
-/** Bônus, níveis e preço de cada áurea (iguais em todas as classes). */
-const AURA_RULES: Record<AuraStat, { perRank: number; maxRank: number; baseCost: number }> = {
-  damage: { perRank: 0.04, maxRank: 3, baseCost: 120 },
-  hp: { perRank: 0.06, maxRank: 3, baseCost: 120 },
-  mana: { perRank: 0.08, maxRank: 3, baseCost: 150 },
-  speed: { perRank: 0.04, maxRank: 2, baseCost: 300 },
+/**
+ * Bônus, níveis e preço de cada áurea (iguais em todas as classes). Os primeiros níveis são os de antes do Grimório
+ * 4.0; os outros (até o 20) valem menos cada. A velocidade para no 6: velocidade alta deixa o herói fugir de tudo.
+ */
+const AURA_RULES: Record<AuraStat, StackedRule & { maxRank: number; baseCost: number; costGrowth: number }> = {
+  damage: { perRank: 0.04, perRankAfter: 0.01, baseRanks: 3, maxRank: 20, baseCost: 120, costGrowth: 1.15 },
+  hp: { perRank: 0.06, perRankAfter: 0.015, baseRanks: 3, maxRank: 20, baseCost: 120, costGrowth: 1.15 },
+  mana: { perRank: 0.08, perRankAfter: 0.02, baseRanks: 3, maxRank: 20, baseCost: 150, costGrowth: 1.15 },
+  speed: { perRank: 0.04, perRankAfter: 0.01, baseRanks: 2, maxRank: 6, baseCost: 300, costGrowth: 1.3 },
 };
 
 /** Preço do 1º nível de uma magia do tronco ou de uma costela, pela profundidade na árvore (a ponta é mais cara). */
 const SPELL_COST_BY_ROW = [150, 150, 300, 500, 800, 1200];
 /** Preço do 1º nível das magias de uma especialização: a 1ª do lado (logo abaixo do Traço) e a 2ª. */
 const SIDE_SPELL_COST = [1200, 1600];
+/** Preço da magia de entrada do slot 3 (ao lado da raiz): todas as do slot 3 se compram. */
+const S3_ENTRY_COST = 1000;
+/** Preço dos Ápices (slot 3, no fim do tronco de cada ramo). */
+const APEX_COST = 2000;
 /** Preço do Traço de uma especialização (nível único). */
 const TRAIT_COST = 1000;
 /** As iniciais já vêm compradas: o preço nunca é cobrado (o banco só pede um valor positivo). */
@@ -114,6 +142,7 @@ export const TREE_BRANCHES: Record<ClassId, [string, string, string]> = {
   paladin: ["Mira", "Luz", "Batedor"],
   sorcerer: ["Raio", "Gelo", "Trevas"],
   druid: ["Matilha", "Bosque", "Espinhos"],
+  shaman: ["Horda", "Totens", "Brasa"],
 };
 
 /**
@@ -204,6 +233,29 @@ const SHAPES: Record<ClassId, Shape> = {
     ["mamba_bite", 2, 6, "toxin", 0], ["thunderwave", 2, 6, "charged_sky", 1],
     ["poison_cloud", 2, 7, "mamba_bite", 0], ["call_lightning", 2, 7, "thunderwave", 1],
   ],
+  // Xamã Orc (docs/CLASSE_XAMA_ORC.md), Fase 2: o tronco dos 3 ramos. Horda: a escada do clã, do batedor ao
+  // capitão. Totens: lodo, chamado e o Grande Totem. Brasa: o tambor, a lança, a batida e o Ogro da Forja. As
+  // especializações vêm na Fase 3.
+  shaman: [
+    ["ember_totem", 1, 0],
+    ["clan_scouts", 0, 1, "ember_totem"], ["mana", 1, 1, "ember_totem"], ["war_drum", 2, 1, "ember_totem"],
+    ["damage", 0, 2, "clan_scouts"], ["mud_totem", 1, 2, "mana"], ["ember_lance", 2, 2, "war_drum"],
+    ["clan_spearmen", 0, 3, "damage"], ["call_totem", 1, 3, "mud_totem"], ["war_stomp", 2, 3, "ember_lance"],
+    ["clan_archers", 0, 4, "clan_spearmen"], ["speed", 1, 4, "call_totem"], ["hp", 2, 4, "war_stomp"],
+    ["clan_captain", 0, 5, "clan_archers"], ["grand_totem", 1, 5, "speed"], ["forge_ogre", 2, 5, "hp"],
+    // Fase 3. Horda: Senhor da Horda (lado 0) ou Domador de Sangue (lado 1).
+    ["clan_blood", 0, 6, "clan_captain", 0], ["blood_oath", 0, 6, "clan_captain", 1],
+    ["clan_berserkers", 0, 7, "clan_blood", 0], ["submission_chain", 0, 7, "blood_oath", 1],
+    ["warlord_call", 0, 8, "clan_berserkers", 0], ["chained_ogre", 0, 8, "submission_chain", 1],
+    // Totens: Entalhador (lado 0) ou Nômade (lado 1).
+    ["carver_hands", 1, 6, "grand_totem", 0], ["totem_pack", 1, 6, "grand_totem", 1],
+    ["thunder_totem", 1, 7, "carver_hands", 0], ["boar_charge", 1, 7, "totem_pack", 1],
+    ["volcanic_totem", 1, 8, "thunder_totem", 0], ["totem_ring", 1, 8, "boar_charge", 1],
+    // Brasa: Coração de Brasa (lado 0) ou Tamboreiro (lado 1).
+    ["vorgak_legacy", 2, 6, "forge_ogre", 0], ["war_rhythm", 2, 6, "forge_ogre", 1],
+    ["ember_rift", 2, 7, "vorgak_legacy", 0], ["blood_drum", 2, 7, "war_rhythm", 1],
+    ["ember_fury", 2, 8, "ember_rift", 0], ["clan_march", 2, 8, "blood_drum", 1],
+  ],
 };
 
 /**
@@ -224,28 +276,54 @@ const RIBS: Record<ClassId, Rib[]> = {
     // Comando: costela curta à esquerda e outra à direita que cruza com a Áurea da Investida.
     ["stunning_roar", 2, 2, "war_cry", -1],
     ["battle_order", 2, 3, "mana", 1], ["challenge_mark", 2, 4, "battle_order", 1, "speed"],
+    // Grimório 4.0: costelas de leque.
+    // Slot 3: a magia de entrada fica ao lado da raiz (aparece em todas as abas) e pede só a raiz.
+    ["titan_fury", 1, 0, "blade_spin", 1],
+    // Ápices (slot 3): no fim do tronco, na ponta do lado direito, fora da especialização.
+    ["champion_reap", 0, 6, "execution", 2], ["bulwark", 1, 6, "steel_wall", 2], ["legion_charge", 2, 6, "commander_shout", 2],
+    ["gale_blade", 0, 3, "crushing_blow", 2], ["shield_wall", 1, 3, "holy_shield", -1], ["cutting_shout", 2, 3, "mana", -2],
   ],
   paladin: [
     ["double_shot", 0, 3, "piercing_shot", -1], ["barbed_arrow", 0, 4, "double_shot", -2],
     ["sunbeam", 1, 2, "hp", 1], ["holy_hammer", 1, 4, "sunbeam", 1, "blessed_ward"],
     ["net_arrow", 2, 2, "arrow_rain", -1], ["fire_arrows", 2, 4, "speed", 1],
+    ["sky_arrow", 1, 0, "holy_arrow", 1],
+    ["doomsday_shot", 0, 6, "deadly_shot", 2], ["solar_crown", 1, 6, "divine_judgment", 2],
+    ["endless_rain", 2, 6, "explosive_volley", 2],
+    ["arrow_fan", 0, 3, "piercing_shot", 1], ["holy_flash", 1, 3, "healing_light", -1], ["caltrops", 2, 3, "mana", 1],
   ],
   sorcerer: [
     ["spark", 0, 3, "lightning_bolt", -1], ["ember_rain", 0, 4, "spark", -2],
     // Gelo: o Orbe Congelado pede a Geada e a Lança de Gelo (no Diablo 2, pede a Nevasca e a Nova de Gelo).
     ["frostbite", 1, 3, "frost_nova", 1], ["frozen_orb", 1, 4, "frostbite", 1, "ice_lance"],
     ["dark_seal", 2, 2, "void_storm", -1], ["plague", 2, 4, "drain_life", 1],
+    ["arcane_vortex", 1, 0, "shadow_orb", 1],
+    ["branching_bolt", 0, 6, "meteor", 2], ["ice_age", 1, 6, "blizzard", 2], ["black_hole", 2, 6, "dark_pact", 2],
+    ["fire_spit", 0, 3, "lightning_bolt", 1], ["lightning_fan", 0, 4, "fire_spit", 1], ["dark_wail", 2, 3, "hp", -1],
+    ["frost_breath", 1, 3, "frost_nova", -1],
   ],
   druid: [
     ["howl", 0, 3, "spirit_wolf", 1],
     ["purifying_sap", 1, 3, "healing_moth", -1], ["blossom_burst", 1, 4, "purifying_sap", -2],
     ["vine_lash", 2, 2, "thorn_roots", 1],
     ["spore_burst", 2, 3, "venom_thorn", -1], ["bramble_burst", 2, 4, "spore_burst", -1, "hornet_swarm"],
+    ["butterfly_swarm", 1, 0, "forest_blessing", 1],
+    ["wild_hunt", 0, 6, "ancient_bear", 2], ["tree_of_life", 1, 6, "forest_heart", 2], ["leaf_hurricane", 2, 6, "nature_wrath", 2],
+    ["pack_roar", 0, 3, "spirit_wolf", -1], ["pollen_breeze", 1, 3, "healing_moth", 1], ["thorn_spray", 2, 3, "venom_thorn", 1],
+  ],
+  shaman: [
+    // Slot 3: a magia de entrada, ao lado da raiz (o tronco do Xamã é de docs/CLASSE_XAMA_ORC.md).
+    ["ancestral_totem", 1, 0, "ember_totem", 1],
+    // Costelas (Fase 3): o xamã do clã e o Mau Agouro na Horda, o Totem de Sangue nos Totens e a Chuva de Cinzas na Brasa.
+    ["clan_shaman", 0, 4, "clan_spearmen", -1], ["bad_omen", 0, 5, "clan_shaman", -2],
+    ["blood_totem", 1, 3, "mud_totem", 1], ["ash_rain", 2, 3, "ember_lance", -1],
+    // Ápices (slot 3): no fim do tronco, na ponta do lado direito, fora da especialização.
+    ["horde_roar", 0, 6, "clan_captain", 2], ["ancestor_circle", 1, 6, "grand_totem", 2], ["forge_rain", 2, 6, "forge_ogre", 2],
   ],
 };
 
 /** Tomo de cada ramo: +força em todas as magias do ramo por nível. */
-const TOME_RULE = { perRank: 0.05, maxRank: 3, baseCost: 300, costGrowth: 1.8 };
+const TOME_RULE = { perRank: 0.05, perRankAfter: 0.012, baseRanks: 3, maxRank: 20, baseCost: 300, costGrowth: 1.12 };
 
 /** Nome do Tomo de cada ramo (na ordem de `TREE_BRANCHES`). */
 const TOME_NAMES: Record<ClassId, [string, string, string]> = {
@@ -253,6 +331,7 @@ const TOME_NAMES: Record<ClassId, [string, string, string]> = {
   paladin: ["Tomo da Mira", "Tomo da Luz", "Tomo do Batedor"],
   sorcerer: ["Tomo do Raio", "Tomo do Gelo", "Tomo das Trevas"],
   druid: ["Tomo da Matilha", "Tomo do Bosque", "Tomo dos Espinhos"],
+  shaman: ["Tomo da Horda", "Tomo dos Totens", "Tomo da Brasa"],
 };
 
 const TOME_ICONS = ["📕", "📗", "📘"];
@@ -266,6 +345,7 @@ const TOME_LANES: Record<ClassId, [number, number, number]> = {
   paladin: [2, -2, 2],
   sorcerer: [2, -2, 2],
   druid: [-2, 2, 2],
+  shaman: [2, -2, 2],
 };
 
 /** Força extra que cada nível de uso de uma magia vizinha na árvore dá (Diablo 2: sinergia). */
@@ -292,8 +372,8 @@ function classTree(classId: ClassId): TalentDef[] {
       const rule = AURA_RULES[key];
       return {
         id: id(key), classId, col, row, lane: 0, kind: "aura", name: AURA_NAMES[classId][key], icon: AURA_ICONS[key],
-        aura: { stat: key, perRank: rule.perRank }, maxRank: rule.maxRank, freeRank: 0,
-        baseCost: rule.baseCost, costGrowth: 1.8, requires,
+        aura: { stat: key, perRank: rule.perRank, perRankAfter: rule.perRankAfter, baseRanks: rule.baseRanks }, maxRank: rule.maxRank,
+        freeRank: 0, baseCost: rule.baseCost, costGrowth: rule.costGrowth, requires,
       };
     }
     const spell = SPELLS[key];
@@ -314,20 +394,47 @@ function classTree(classId: ClassId): TalentDef[] {
     keys.add(key);
     return {
       id: id(key), classId, col, row, lane, kind: "spell", name: spell.name, icon: spell.icon, spellId: key,
-      maxRank: 1, freeRank: 0, baseCost: SPELL_COST_BY_ROW[row], costGrowth: 1,
+      maxRank: 1, freeRank: 0, baseCost: spell.slot === 2 ? (row === 0 ? S3_ENTRY_COST : APEX_COST) : SPELL_COST_BY_ROW[row], costGrowth: 1,
       requires: { id: id(parent), rank: 1 }, alsoRequires: also ? { id: id(also), rank: 1 } : undefined,
     };
   });
-  const tomes = TOME_LANES[classId].map((lane, col): TalentDef => {
+  // Ramo ainda sem magia (o Xamã Orc da Fase 1) não ganha Tomo: não teria o que fortalecer.
+  const branchHasSpell = (col: number) => [...trunk, ...ribs].some((t) => t.col === col && t.row > 0 && t.kind === "spell");
+  const tomes = TOME_LANES[classId].flatMap((lane, col): TalentDef[] => {
+    if (!branchHasSpell(col)) return [];
     const first = trunk.find((t) => t.col === col && t.row === 1);
     if (!first) throw new Error(`${classId}: ramo ${col} sem o primeiro nó do tronco`);
-    return {
+    return [{
       id: id(`tome${col}`), classId, col, row: 2, lane, kind: "tome", name: TOME_NAMES[classId][col], icon: TOME_ICONS[col],
-      tome: { perRank: TOME_RULE.perRank }, maxRank: TOME_RULE.maxRank, freeRank: 0,
+      tome: { perRank: TOME_RULE.perRank, perRankAfter: TOME_RULE.perRankAfter, baseRanks: TOME_RULE.baseRanks },
+      maxRank: TOME_RULE.maxRank, freeRank: 0,
       baseCost: TOME_RULE.baseCost, costGrowth: TOME_RULE.costGrowth, requires: { id: first.id, rank: 1 },
-    };
+    }];
   });
-  const tree = [...trunk, ...ribs, ...tomes];
+  // Dons do topo: na linha 2, do lado oposto ao Tomo, pedindo o primeiro nó do tronco no nível 1 (a magia inicial já vem nele).
+  // Dons do fundo: embaixo do Ápice do ramo (mesma faixa, uma linha abaixo), pedindo o Ápice no nível 1.
+  const gifts = Object.values(GIFTS).filter((g) => g.classId === classId).map((g): TalentDef => {
+    const place = (row: number, lane: number, parent: string): TalentDef => ({
+      id: id(g.id), classId, col: g.col, row, lane, kind: "gift", name: g.name, icon: g.icon,
+      giftId: g.id, maxRank: GIFT_MAX_RANK, freeRank: 0, baseCost: GIFT_BASE_COST, costGrowth: GIFT_COST_GROWTH,
+      requires: { id: parent, rank: 1 },
+    });
+    // Dons da costela de passivas: linha VI (lane -2) pede a ponta do tronco; linha VII pede o da linha VI.
+    if (g.rib) {
+      const tip = trunk.filter((t) => t.col === g.col && t.kind === "spell" && t.lane === 0).sort((x, y) => y.row - x.row)[0];
+      if (!tip) throw new Error(`${g.id}: ramo ${g.col} de ${classId} sem tronco`);
+      const first = Object.values(GIFTS).find((o) => o.classId === classId && o.col === g.col && o.rib === 1);
+      return g.rib === 1 ? place(6, -2, tip.id) : place(7, -2, id(first!.id));
+    }
+    if (g.apex) {
+      const apex = ribs.find((t) => t.spellId === g.apex);
+      if (!apex || apex.col !== g.col) throw new Error(`${g.id}: Ápice ${g.apex} fora do ramo ${g.col} de ${classId}`);
+      return place(apex.row + 1, apex.lane, apex.id);
+    }
+    const first = trunk.find((t) => t.col === g.col && t.row === 1)!;
+    return place(2, -TOME_LANES[classId][g.col], first.id);
+  });
+  const tree = [...trunk, ...ribs, ...tomes, ...gifts];
   // Dois nós no mesmo lugar do desenho seriam um erro de digitação na forma.
   const spots = new Set<string>();
   for (const t of tree) {
@@ -395,7 +502,7 @@ export function auraBonuses(classId: ClassId, ranks: TalentRanks): Bonuses {
   const bonus = { ...NO_BONUSES };
   for (const t of talentTree(classId)) {
     const rank = talentRank(t, ranks);
-    if (t.aura && rank > 0) bonus[t.aura.stat] += t.aura.perRank * rank;
+    if (t.aura && rank > 0) bonus[t.aura.stat] += stackedValue(t.aura, rank);
   }
   return bonus;
 }
@@ -449,7 +556,7 @@ export function spellBonus(
   const synergy = spellNeighbors(classId, spellId).reduce((sum, id) => sum + (levels[id] ?? 0) * SYNERGY_PER_LEVEL, 0);
   const self = TALENTS[spellTalentId(classId, spellId)];
   const book = self && self.row > 0 ? talentTree(classId).find((t) => t.kind === "tome" && t.col === self.col) : undefined;
-  const tome = book ? talentRank(book, ranks) * book.tome!.perRank : 0;
+  const tome = book ? stackedValue(book.tome!, talentRank(book, ranks)) : 0;
   return { synergy, tome, total: synergy + tome };
 }
 
@@ -462,6 +569,19 @@ export function spellBonuses(classId: ClassId, ranks: TalentRanks, xp: SpellXp):
     if (total > 0) out[id] = Math.round(total * 1000) / 1000;
   }
   return out;
+}
+
+/**
+ * Grimório inteiro dos testes (`KUSA_ALL_SPELLS`): magias e Traços no máximo; as passivas de gold no teto de antes do
+ * Grimório 4.0 (áureas e Tomos no 3, a velocidade no 2, sem Dons), para os números dos testes antigos não mudarem.
+ */
+export function allSpellsRanks(classId: ClassId): TalentRanks {
+  return Object.fromEntries(talentTree(classId).map((t) => [t.id, t.kind === "gift" ? 0 : (t.aura ?? t.tome)?.baseRanks ?? t.maxRank]));
+}
+
+/** Efeitos somados dos Dons que a conta tem na classe (o servidor lê ao entrar na sala). */
+export function giftEffects(classId: ClassId, ranks: TalentRanks): GiftEffects {
+  return sumGifts(talentTree(classId).filter((t) => t.giftId).map((t) => ({ id: t.giftId!, rank: talentRank(t, ranks) })));
 }
 
 /** Traços que a conta tem na classe (um por ramo especializado, no máximo). */
@@ -506,7 +626,7 @@ export function activeSlotSpells(
 
 /** Magias ativas da classe nos dois slots (as que vão para a hunt). */
 export function activeSpells(classId: ClassId, ranks: TalentRanks, xp: SpellXp, chosen: readonly string[]): SpellId[] {
-  return [0, 1].flatMap((slot) => activeSlotSpells(classId, slot, ranks, xp, chosen));
+  return SPELL_SLOTS.flatMap((slot) => activeSlotSpells(classId, slot, ranks, xp, chosen));
 }
 
 /**
@@ -542,7 +662,9 @@ export function toggleActiveSpell(
 
 /** Texto curto do efeito de um nível de áurea ou de Tomo. */
 export function auraText(def: TalentDef, rank: number): string {
-  if (def.tome) return `+${Math.round(def.tome.perRank * rank * 100)}% de força nas magias do ramo ${TREE_BRANCHES[def.classId][def.col]}`;
+  const pct = (v: number) => `${Math.round(v * 1000) / 10}%`.replace(".", ",");
+  if (def.giftId) return GIFTS[def.giftId].text(GIFTS[def.giftId].perRank * rank);
+  if (def.tome) return `+${pct(stackedValue(def.tome, rank))} de força nas magias do ramo ${TREE_BRANCHES[def.classId][def.col]}`;
   if (!def.aura) return "";
-  return `+${Math.round(def.aura.perRank * rank * 100)}% de ${AURA_STAT_NAMES[def.aura.stat]}`;
+  return `+${pct(stackedValue(def.aura, rank))} de ${AURA_STAT_NAMES[def.aura.stat]}`;
 }

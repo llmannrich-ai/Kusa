@@ -34,6 +34,10 @@ import {
 } from "../../client/src/art/forestArt.ts";
 import { FLAT_DECOR as EMPIRE_FLAT, flatDecor as empireFlat, grassTile } from "../../client/src/art/empireArt.ts";
 import { COLUMN_KINDS, SMALL_DECOR, columnSprite, smallDecor, statueSprite, tombSprite } from "../../client/src/art/empireMonuments.ts";
+import { draw as bog, FLAT_DECOR as BOG_FLAT, PATCHES as BOG_PATCHES, TALL_DECOR as BOG_TALL } from "../../client/src/art/bogArt.ts";
+import { draw as bad, FLAT_DECOR as BAD_FLAT, PATCHES as BAD_PATCHES, TALL_DECOR as BAD_TALL } from "../../client/src/art/badlandsArt.ts";
+import { planBog } from "../../client/src/bogPlan.ts";
+import { planBadlands } from "../../client/src/badlandsPlan.ts";
 import { pavingFringe, pavingTile, ruinColumn, ruinFlat, ruinMosaic, ruinRubble, ruinSmall, ruinWall } from "../../client/src/art/swampArt.ts";
 
 /** Tempo máximo de uma peça do tamanho de uma árvore (256×384) no CI; peça maior ganha tempo na proporção da área. */
@@ -127,6 +131,43 @@ const SCENERY: Record<string, Piece[]> = {
     ...CAVE_FLAT.map((k) => ({ name: `caverna: enfeite ${k}`, draw: () => caveFlat("desert", k, 0) })),
     ...CAVE_TALL.map((k) => ({ name: `caverna: enfeite de pé ${k}`, draw: () => caveTall("desert", k, 0) })),
   ],
+  "Charco Cinzento": [
+    ...[0, 5, 10, 15].map((q) => ({ name: `turfa ${q}`, draw: () => bog.groundTile(q) })),
+    ...BOG_PATCHES.flatMap((m, k) => [0, OPEN.n | OPEN.w].map((o) => ({ name: `mancha ${k} ${o}`, draw: () => bog.patchTile(m, o) }))),
+    ...[OPEN.n | OPEN.s, 255 & ~OPEN.e].map((l) => ({ name: `lama ${l}`, draw: () => bog.mudTile(l) })),
+    ...[[0, 3, true], [OPEN.n, 6, false]].map(([o, v, a]) => ({ name: `lajes ${o} ${v} ${a}`, draw: () => bog.pavingTile(o as number, v as number, a as boolean) })),
+    ...[[0, 5], [OPEN.n | OPEN.w, 0]].map(([l, q]) => ({ name: `poça ${l} ${q}`, draw: () => bog.waterTile(l, q) })),
+    { name: "passarela", draw: () => bog.boardTile(OPEN.n | OPEN.s, OPEN.s, 0) },
+    ...[[0, 0], [OPEN.s | OPEN.se | OPEN.sw, 2]].map(([o, k]) => ({ name: `mata morta ${o} ${k}`, draw: () => bog.deadwoodTile(o, 0, k) })),
+    ...range(5).map((v) => ({ name: `árvore seca ${v}`, draw: () => bog.deadTree(v) })),
+    { name: "monólito", draw: () => bog.monolith(1).image },
+    { name: "palafita", draw: () => bog.stiltHut(0) },
+    { name: "paliçada", draw: () => bog.stakeTile(1) },
+    { name: "braseiro", draw: bog.brazier },
+    { name: "chama", draw: () => bog.flameFrame(0) },
+    { name: "círculo da arena", draw: () => bog.arenaSigil().image },
+    ...BOG_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => bog.flatDecor(k, 0) })),
+    ...BOG_TALL.map((k) => ({ name: `enfeite de pé ${k}`, draw: () => bog.tallDecor(k, 0) })),
+  ],
+  "Ermos Rubros": [
+    ...[0, 5, 10, 15].map((q) => ({ name: `barro ${q}`, draw: () => bad.groundTile(q) })),
+    { name: "barro queimado", draw: () => bad.groundTile(3, true) },
+    ...BAD_PATCHES.flatMap((m, k) => [0, OPEN.n | OPEN.w].map((o) => ({ name: `mancha ${k} ${o}`, draw: () => bad.patchTile(m, o) }))),
+    { name: "rastro", draw: () => bad.trackTile(OPEN.n | OPEN.s) },
+    { name: "trilhos", draw: () => bad.railTile(OPEN.n | OPEN.e) },
+    ...[[0, 0], [OPEN.s | OPEN.se | OPEN.sw, 1], [OPEN.n | OPEN.w, 3]].map(([o, k]) => ({ name: `rocha ${o} ${k}`, draw: () => bad.rockTile(o, k) })),
+    ...[[0, 0], [OPEN.n, 1]].map(([l, q]) => ({ name: `ravina ${l} ${q}`, draw: () => bad.chasmTile(l, q) })),
+    { name: "ponte", draw: () => bad.bridgeTile(OPEN.e, OPEN.n | OPEN.s, true) },
+    ...range(4).map((v) => ({ name: `torre de pedra ${v}`, draw: () => bad.hoodoo(v) })),
+    { name: "costela", draw: () => bad.rib(1) },
+    { name: "crânio gigante", draw: bad.giantSkull },
+    { name: "muro de adobe", draw: () => bad.adobeWall(1) },
+    { name: "boca da mina", draw: bad.mineMouth },
+    { name: "vagoneta", draw: bad.oreCart },
+    { name: "fogueira", draw: bad.campfire },
+    ...BAD_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => bad.flatDecor(k, 0) })),
+    ...BAD_TALL.map((k) => ({ name: `enfeite de pé ${k}`, draw: () => bad.tallDecor(k, 0) })),
+  ],
   "Portões do Império": [
     ...range(4).map((v) => ({ name: `capim ${v}`, draw: () => grassTile(v).render(false), seam: true })),
     ...EMPIRE_FLAT.map((k) => ({ name: `enfeite ${k}`, draw: () => empireFlat(k, 0).render(false) })),
@@ -199,6 +240,15 @@ for (const mapId of PLANNED.filter((m) => MAP_IDS.includes(m))) {
   }
   if (under > 4096) fail(`desert (caverna): atlas de ${under} px de altura (máximo 4096)`);
   console.log(`desert (caverna): atlas de até ${under} px de altura`);
+}
+
+// Charco Cinzento e Ermos Rubros: cada um com 3 atlas (`LAYER_ATLAS`), todos dentro do limite.
+for (const [mapId, plan] of [["bog", planBog], ["badlands", planBadlands]] as const) {
+  let worst = 0;
+  for (let seed = 1; seed <= 6; seed++)
+    for (const atlas of plan(generateDungeon(seed * 7919, mapId)).atlases) worst = Math.max(worst, Math.ceil(atlas.count / TileAtlas.COLUMNS) * (HD + TileAtlas.PAD * 2));
+  if (worst > 4096) fail(`${mapId}: atlas de ${worst} px de altura (máximo 4096)`);
+  console.log(`${mapId}: atlas de até ${worst} px de altura`);
 }
 
 const random = Math.random;

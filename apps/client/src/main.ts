@@ -37,7 +37,7 @@ import { heroSheet } from "./art/heroes.ts";
 import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderWaitingRoom } from "./lobby.ts";
 import { renderCatalog } from "./catalog.ts";
 import { renderHistory } from "./history.ts";
-import { loadMapClears } from "./profile.ts";
+import { loadBossClears, loadMapClears } from "./profile.ts";
 import { Hub } from "./menu.ts";
 import { createHunt, joinHunt, watchHunts, type DungeonRoom, type HuntListing } from "./net.ts";
 import { watchHostedRooms, type HostedListing } from "./p2p.ts";
@@ -45,17 +45,21 @@ import { renderRules } from "./rules.ts";
 import { SETTING_DEFS, loadSettings, saveSetting } from "./settings.ts";
 import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
+import { travarZoom } from "./semZoom.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
+
+travarZoom();
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const show = (id: string, visible: boolean) => { $(id).hidden = !visible; };
 
 // --- Menu ---------------------------------------------------------------
 
-// Batalhas com o mapa já aberto: abre a ficha do cenário onde o herói está, em vez de recarregar o mapa.
+// Batalhas com o mapa já aberto: leva a câmera ao herói e abre a ficha do cenário onde ele está, em vez de recarregar
+// o mapa (tocar num ponto não mexe na câmera; aqui o jogador pediu para voltar ao herói).
 const hub = new Hub(() => {
-  if (!$("rooms").hidden) return pickPoint(createMapId());
+  if (!$("rooms").hidden) { pickPoint(createMapId()); world?.focus(createMapId(), 0.4, true); return; }
   void openRooms();
 });
 let account: Account | null = null;
@@ -253,15 +257,15 @@ function toast(message: string) {
   toastTimer = window.setTimeout(() => show("world-toast", false), 3500);
 }
 
-/** Tocar num ponto do mapa: o herói anda até ele pela trilha e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
+/** Tocar num ponto do mapa: o herói anda até ele pela trilha (sem mexer na câmera) e a ficha do cenário sobe. Tocar de novo pula a caminhada. */
 function pickPoint(id: MapId) {
   if (entering) return;
   if (world?.walkingTo() === id) return world.skip();
   chooseMap(id);
   // Fechado: a ficha diz como abrir (as salas abertas dele continuam ali); o herói não vai até lá.
   if (!isOpen(id)) return openSheet();
-  // A ficha cobre a parte de baixo: o mapa rola com o herói e o ponto para à vista acima dela.
-  world?.select(id, { anchor: 0.4 });
+  // A câmera fica onde o jogador deixou (zoom e posição): só o herói anda. O 📍 do mapa leva a câmera até ele.
+  world?.select(id);
   openSheet();
 }
 
@@ -545,7 +549,7 @@ function bindRoom(room: DungeonRoom) {
   });
 
   const callbacks = Callbacks.get(room);
-  const renderLobby = () => renderWaitingRoom(room);
+  const renderLobby = () => renderWaitingRoom(room, (id) => !hub.locked(id));
   callbacks.onAdd("players", renderLobby);
   callbacks.onRemove("players", renderLobby);
   callbacks.listen("leaderId", renderLobby);
@@ -681,9 +685,33 @@ function showResult(msg: RunEndedMessage) {
   if (msg.note) $("result-detail").textContent += ` ${msg.note}`;
   showLost(msg);
   renderSpellProgress(msg);
+  if (account && !msg.saving) void showClassUnlock();
   // "Voltar ao menu" recarrega a página: espera o banco gravar para não cortar a gravação.
   ($("back") as HTMLButtonElement).disabled = !!msg.saving;
   show("result", true);
+}
+
+/**
+ * Classe trancada que abriu nesta hunt (o boss que a libera caiu com o jogador na hunt): a carta do desbloqueio. O
+ * boss é anotado no banco na hora em que morre, então no resultado ele já está lá.
+ */
+async function showClassUnlock() {
+  const opened = hub.updateBossClears(await loadBossClears());
+  const box = $("result-unlock");
+  if (opened.length === 0) return;
+  box.replaceChildren();
+  for (const id of opened) {
+    const card = document.createElement("div");
+    const lead = document.createElement("span");
+    lead.textContent = id === "shaman" ? "⛓️ Os xamãs da forja estão livres!" : "🔓 Classe nova!";
+    const name = document.createElement("strong");
+    name.textContent = `${CLASSES[id].name} liberado`;
+    const hint = document.createElement("small");
+    hint.textContent = "Escolha o herói na aba Heróis.";
+    card.append(lead, name, hint);
+    box.append(card);
+  }
+  show("result-unlock", true);
 }
 
 /** Na morte, destaca o que ficou no chão: o equipamento sorteado do corpo e a bag inteira. */

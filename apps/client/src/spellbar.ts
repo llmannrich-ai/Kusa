@@ -2,6 +2,7 @@ import {
   MSG,
   SPELLS,
   SPELL_SLOT_LEVELS,
+  SPELL_SLOTS,
   spellChoices,
   heroBonuses,
   runeSpells,
@@ -19,7 +20,7 @@ import { ChoiceCards, type Anchor } from "./choicecards.ts";
 import type { DungeonRoom, PlayerView } from "./net.ts";
 import { stacksOf } from "./perkchoice.ts";
 
-const SLOTS: SpellSlot[] = [0, 1];
+const SLOTS: readonly SpellSlot[] = SPELL_SLOTS;
 
 /**
  * A magia como o herói a conjura: no nível ganho com o uso, com a Maestria no último (alcance e área podem mudar) e a
@@ -43,6 +44,11 @@ interface SlotView {
   key: string;
 }
 
+/** Canalizar: de quanto em quanto tempo o arrasto manda a nova direção do leque ao servidor. */
+const CHANNEL_AIM_MS = 80;
+/** Canalizar: soltar antes disto (sem arrastar) é toque rápido, e o sopro vai até o fim. */
+const CHANNEL_TAP_MS = 250;
+
 /**
  * Botões dos 2 slots de magia (acima do ⚔️, na zona do polegar direito) e a janela de escolha
  * (cartas acima do personagem) que abre quando ele alcança o nível de um slot. Magia com alvo (única ou de área) mira
@@ -54,6 +60,11 @@ export class SpellBar {
   private chooser: ChoiceCards | null = null;
   /** Slot mirando agora e o dedo que segura o botão. */
   private aiming: { slot: SpellSlot; pointerId: number; x0: number; y0: number } | null = null;
+  /**
+   * Magia canalizada em curso (Sopro Gélido): já saiu ao encostar no botão. Arrastar vira o leque (mandado a cada
+   * `CHANNEL_AIM_MS`); soltar encerra, menos no toque rápido, que deixa o sopro ir até o fim para a frente.
+   */
+  private channeling: { startedAt: number; sentAt: number; moved: boolean } | null = null;
 
   /**
    * A escolha de magia tem prioridade: o nível que abre um slot não dá melhoria, e uma melhoria que
@@ -65,9 +76,18 @@ export class SpellBar {
     private aim: SpellAim,
     private anchor: Anchor,
   ) {
-    // O slot 2 fica em cima: o 1, mais usado, fica mais perto do polegar.
+    // Os slots ficam em leque em cima do ⚔️ (posições no CSS, `#actions > [data-slot]`): o 1, mais usado, mais perto do
+    // polegar; o 3 (supremo) no lugar que estava reservado.
     this.slots = SLOTS.map((slot) => this.makeButton(slot));
-    actions.prepend(this.slots[1].button, this.slots[0].button);
+    actions.prepend(this.slots[2].button, this.slots[1].button, this.slots[0].button);
+    // Rede de segurança: o dedo que mirava saiu da tela, mas o botão não recebeu o `pointerup` (no iPhone acontece, e a
+    // mira ficava presa na tela com o botão aceso). Qualquer `pointerup` do mesmo dedo, em qualquer lugar, termina a
+    // mira; se o botão já tratou, `aiming` está vazio e nada acontece.
+    window.addEventListener("pointerup", this.onWindowUp);
+    window.addEventListener("pointercancel", this.onWindowCancel);
+    // App em segundo plano ou aba trocada no meio da mira: cancela, como o ⚔️.
+    window.addEventListener("blur", this.abortAim);
+    document.addEventListener("visibilitychange", this.abortAim);
   }
 
   /**
@@ -79,6 +99,8 @@ export class SpellBar {
     if (!p || p.status !== "playing") return;
     if (p.level < SPELL_SLOT_LEVELS[slot]) return;
     const spell = rankedSpell(p, spellIn(p, slot));
+    // Sem nenhuma magia para escolher (slot 3 sem compra no Grimório): o botão só avisa, pelo rótulo.
+    if (!spell && spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).length === 0) return;
     if (!spell) return this.openChooser(slot);
     this.room.send(MSG.cast, { slot });
   }
@@ -110,6 +132,10 @@ export class SpellBar {
   }
 
   destroy() {
+    window.removeEventListener("pointerup", this.onWindowUp);
+    window.removeEventListener("pointercancel", this.onWindowCancel);
+    window.removeEventListener("blur", this.abortAim);
+    document.removeEventListener("visibilitychange", this.abortAim);
     this.aim.stop();
     this.slots.forEach((s) => s.button.remove());
     this.chooser?.remove();
@@ -122,6 +148,8 @@ export class SpellBar {
   private makeButton(slot: SpellSlot): SlotView {
     const button = document.createElement("button");
     button.className = "action spell";
+    // Posição no leque em volta do ⚔️ (CSS `#actions > [data-slot]`).
+    button.dataset.slot = String(slot);
     const icon = document.createElement("span");
     icon.className = "spell-icon";
     const label = document.createElement("small");
@@ -131,6 +159,8 @@ export class SpellBar {
     button.addEventListener("pointermove", (e) => this.drag(e));
     button.addEventListener("pointerup", (e) => this.up(e));
     button.addEventListener("pointercancel", (e) => this.up(e, true));
+    // Perdeu o dedo sem `pointerup` (o navegador tirou a captura): cancela em vez de deixar a mira presa.
+    button.addEventListener("lostpointercapture", (e) => this.up(e, true));
     return { button, icon, label, readyAt: 0, cooldownMs: 1, offered: false, key: "" };
   }
 
@@ -141,6 +171,11 @@ export class SpellBar {
     const spell = p && rankedSpell(p, spellIn(p, slot));
     const ready = performance.now() >= this.slots[slot].readyAt;
     if (!p || !spell || spell.aim === "self" || !ready || p.mana < spellManaCost(spell, p.classId, p.maxMana)) return this.press(slot);
+    // Canalizar: sai na hora, para a frente do herói; o arrasto vira o leque enquanto o dedo segura.
+    if (spell.channel) {
+      this.room.send(MSG.cast, { slot });
+      this.channeling = { startedAt: performance.now(), sentAt: 0, moved: false };
+    }
     // Segura o dedo no botão mesmo quando ele sai de cima, para o arrasto da mira chegar aqui.
     this.slots[slot].button.setPointerCapture(e.pointerId);
     this.aiming = { slot, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY };
@@ -152,15 +187,50 @@ export class SpellBar {
     const a = this.aiming;
     if (!a || e.pointerId !== a.pointerId) return;
     this.aim.move(e.clientX - a.x0, e.clientY - a.y0);
+    const c = this.channeling;
+    if (c) {
+      const point = this.aim.point();
+      const now = performance.now();
+      if (point && now - c.sentAt >= CHANNEL_AIM_MS) {
+        this.room.send(MSG.channel, { x: point.x, y: point.y });
+        c.sentAt = now;
+        c.moved = true;
+      }
+      return;
+    }
     this.slots[a.slot].button.dataset.aim = this.aim.cancelled ? "cancel" : "on";
   }
 
-  /** Soltou: lança no ponto mirado, no alvo automático (toque rápido) ou nada (cancelou). */
+  private onWindowUp = (e: PointerEvent) => this.up(e);
+  private onWindowCancel = (e: PointerEvent) => this.up(e, true);
+
+  /** Cancela a mira em curso sem lançar nada (app em segundo plano ou aba trocada). */
+  private abortAim = () => {
+    const a = this.aiming;
+    if (!a) return;
+    this.aiming = null;
+    delete this.slots[a.slot].button.dataset.aim;
+    if (this.channeling) {
+      this.channeling = null;
+      this.room.send(MSG.channel, { stop: true });
+    }
+    this.aim.stop();
+  };
+
+  /** Soltou: lança na direção ou no ponto mirado, na frente do herói (toque rápido) ou nada (cancelou). */
   private up(e: PointerEvent, aborted = false) {
     const a = this.aiming;
     if (!a || e.pointerId !== a.pointerId) return;
     this.aiming = null;
     delete this.slots[a.slot].button.dataset.aim;
+    const c = this.channeling;
+    if (c) {
+      // Segurou ou arrastou: soltar encerra o sopro. Toque rápido: o sopro vai até o fim, para a frente.
+      this.channeling = null;
+      this.aim.stop();
+      if (c.moved || performance.now() - c.startedAt >= CHANNEL_TAP_MS) this.room.send(MSG.channel, { stop: true });
+      return;
+    }
     const result = this.aim.finish();
     if (result && !aborted) this.room.send(MSG.cast, { slot: a.slot, ...result });
   }
@@ -173,8 +243,10 @@ export class SpellBar {
 
     // Magia de runa de outra classe pode custar menos (ver `spellManaCost`).
     const manaCost = spell ? spellManaCost(spell, p.classId, p.maxMana) : 0;
-    let state: "locked" | "empty" | "ready" | "cooldown" | "nomana";
+    let state: "locked" | "none" | "empty" | "ready" | "cooldown" | "nomana";
     if (p.level < unlockAt) state = "locked";
+    // Slot aberto sem nenhuma magia para escolher (o slot 3 só tem magias compradas no Grimório): não abre a escolha.
+    else if (!spell && spellChoices(p.classId as ClassId, slot, [...p.knownSpells], runeSpells([...p.runes])).length === 0) state = "none";
     else if (!spell) state = "empty";
     else if (left > 0) state = "cooldown";
     else if (p.mana < manaCost) state = "nomana";
@@ -196,6 +268,10 @@ export class SpellBar {
       view.icon.textContent = "🔒";
       view.label.textContent = `Nv ${unlockAt}`;
       view.button.setAttribute("aria-label", `Slot de magia ${slot + 1}: abre no nível ${unlockAt}`);
+    } else if (state === "none") {
+      view.icon.textContent = "📖";
+      view.label.textContent = "Grimório";
+      view.button.setAttribute("aria-label", `Slot de magia ${slot + 1}: compre uma magia dele no Grimório`);
     } else if (!spell) {
       view.icon.textContent = "✨";
       view.label.textContent = "Escolher";
@@ -247,5 +323,5 @@ export class SpellBar {
 }
 
 function spellIn(p: PlayerView, slot: SpellSlot) {
-  return slot === 0 ? p.spell1 : p.spell2;
+  return slot === 0 ? p.spell1 : slot === 1 ? p.spell2 : p.spell3;
 }

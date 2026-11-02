@@ -18,6 +18,10 @@ embaixo, em 3/4 de frente para a esquerda. Vai para a mesma escala da A (a figur
 altura da 3/4 de frente parada da A) e entra depois das 6 da A: 4 quadros do golpe (`ATTACK_B`) e 4 da morte
 (`DEATH_B`), 14 figuras no total. `art/proto/kosaradiusArt.ts` monta os clipes.
 
+Folha C (habilidades), se existir (`<kind>-C.png`): uma linha de 6 por habilidade, na ordem de `C_ROWS` em
+`kosaradiusArt.ts`, em 3/4 de frente como a B. Vai para a escala da B (a figura parada do começo de cada linha com a
+altura da parada do golpe) e entra depois da B: 4 quadros por linha (`SKILL_C`).
+
 Uso: python3 apps/client/scripts/kosaradiusSprites.py orcSpearman [--flip | --flip=8,...]
 """
 import sys
@@ -58,6 +62,9 @@ USED = (0, 2, 4, 6, 8, 10)
 # já mostra a parada) e a morte com o golpe recebido, de joelhos, caindo e o corpo no chão.
 ATTACK_B = (1, 2, 3, 4)
 DEATH_B = (6, 8, 9, 11)
+
+# Figuras de cada linha da folha C que vão para o jogo: sem a pose parada do começo e do fim.
+SKILL_C = (1, 2, 3, 4)
 
 
 def place(rgba, fig, scale, flip, cell):
@@ -119,6 +126,17 @@ def build(kind, flip, flip_figs, height, cell):
         figs_b = [f for line in rows_b for f in line]
         cells += [place(b, figs_b[i], scale_b, flip, cell) for i in ATTACK_B + DEATH_B]
         print(f"  folha B: escala {scale_b:.3f} (A {scale:.3f})")
+        src_c = SRC / f"{kind}-C.png"
+        if src_c.exists():
+            c = clean(src_c)
+            rows_c = figures(c)
+            assert all(len(r) == 6 for r in rows_c), f"{kind}-C: esperava linhas de 6, achei {[len(r) for r in rows_c]}"
+            # Cada linha começa na pose parada: na altura da parada do golpe da B.
+            for row in rows_c:
+                start = row[0][0]
+                scale_c = scale_b * (ready[3] - ready[1]) / (start[3] - start[1])
+                cells += [place(c, row[i], scale_c, flip, cell) for i in SKILL_C]
+            print(f"  folha C: {len(rows_c)} linhas")
     sheet = Image.new("RGBA", (cell * len(cells), cell), (0, 0, 0, 0))
     for i, c in enumerate(cells):
         sheet.alpha_composite(c, (i * cell, 0))

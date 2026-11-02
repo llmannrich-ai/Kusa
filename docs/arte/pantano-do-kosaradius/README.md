@@ -21,7 +21,7 @@ monstro com folha usa a arte nova; sem folha, continua com a arte por código (`
 | Ogro jovem (`ogreYoung`) | ✅ (`--flip=8`: o perfil andando veio para a direita) | ✅ golpe e morte (`ogreYoung-B.png`) |
 | Ogro do Brejo (`ogreBruiser`) | ✅ | ✅ golpe e morte (`ogreBruiser-B.png`) |
 | Ogro Xamã (`ogreShaman`) | ✅ | ✅ golpe e morte (`ogreShaman-B.png`) |
-| Chefe de Guerra Orc (`orcWarlord`) | ✅ | ✅ golpe e morte (`orcWarlord-B.png`) |
+| Chefe de Guerra Orc (`orcWarlord`) | ✅ 2ª versão (A, B e C feitas em sequência na mesma conversa) | ✅ golpe e morte (`orcWarlord-B.png`) |
 | Grumak, o Rei-Ogro (`ogreKing`) | ✅ (2ª versão, com a coroa pequena e torta) | ✅ golpe e morte (`ogreKing-B.png`) |
 
 Folha B (`<kind>-B.png`, 2 linhas × 6: golpe em cima, morte embaixo, em 3/4 de frente): o script põe na escala da A e
@@ -31,6 +31,12 @@ de sempre. O especial sai do perfil nos dois casos.
 
 O Rei segura o tronco em pé parado e no ombro andando: ele anda só com a figura de andar (`WALK_POSE_ONLY` em
 `kosaradiusArt.ts`), senão o tronco pularia do chão para o ombro a cada passo.
+
+Folha C (`<kind>-C.png`, uma linha por habilidade, 6 quadros, 3/4 de frente): lista de ações em `PROMPTS_FOLHA_C.md`;
+prompts das folhas A, B e C em sequência em `FOLHAS_ABC_CHATGPT.md` (uma conversa do ChatGPT por inimigo: é o que
+mantém o personagem igual nas três). O script leva 4 quadros de cada linha (`SKILL_C`) e o jogo liga cada habilidade
+ao seu clipe (`C_ROWS` em `kosaradiusArt.ts`): a 1ª é o especial, a 2ª o clipe `skill`. Feita: Chefe de Guerra
+(Investida e Golpe Giratório).
 
 ## Memória no celular
 

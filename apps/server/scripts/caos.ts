@@ -17,7 +17,7 @@ import { MAP_IDS } from "@kusa/shared";
 const here = dirname(fileURLToPath(import.meta.url));
 const serverDir = join(here, "..");
 /** Testes que rodam numa arena e leem `KUSA_SEED` (o `bestiario` só nos sorteios; o mapa dele é fixo). */
-const ARENA = ["efeitos", "grimorio", "costelas", "specials", "spells", "bestiario", "items", "bag"];
+const ARENA = ["efeitos", "tiro", "grimorio", "costelas", "specials", "spells", "bestiario", "items", "bag"];
 
 const [count = "20", ...only] = process.argv.slice(2);
 const perMap = Math.max(1, Number(count) || 20);

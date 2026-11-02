@@ -1,5 +1,6 @@
 import type { MonsterKind } from "@kusa/shared";
 import { makeCanvas } from "../pixels.ts";
+import type { Clip } from "../rig.ts";
 import { SheetSource } from "./sheetSource.ts";
 
 /**
@@ -9,7 +10,9 @@ import { SheetSource } from "./sheetSource.ts";
  * quadros quadrados com os pés a 10 px do fundo: frente, perfil (para a esquerda) e costas, parado e depois andando.
  *
  * Com a folha B (golpe e morte, 8 figuras depois das 6), o golpe e a morte são os desenhados; sem ela, o golpe sai do
- * perfil (o jogo já dá o bote do sprite) e a morte é o tombo de sempre. O especial sai do perfil nos dois casos.
+ * perfil (o jogo já dá o bote do sprite) e a morte é o tombo de sempre. Com a folha C (habilidades, 4 figuras por
+ * linha depois da B, na ordem de `C_ROWS`), a 1ª habilidade é o especial e a 2ª o clipe a mais `skill`; sem ela, o
+ * especial sai do perfil.
  * Monstro sem folha nenhuma fica na arte por código.
  */
 const SHEETS = import.meta.glob<string>("./kosaradius/*.png", { eager: true, import: "default", query: "?url" });
@@ -29,11 +32,23 @@ const CLAN_EXTRA = { idleDown: 4, walkDown: 4, idleUp: 4, walkUp: 4 } as const;
 const CLAN_EXTRA_B = { death: 4, ...CLAN_EXTRA } as const;
 /** Figuras da folha B, depois das 6 da A: 4 do golpe e 4 da morte (`kosaradiusSprites.py`). */
 const B = { attack: 6, death: 10, end: 14 } as const;
+/** Com a folha C: a 2ª habilidade desenhada, depois da frente e das costas. */
+const CLAN_EXTRA_C = { ...CLAN_EXTRA_B, skill: 4 } as const;
+
+/**
+ * Habilidades de cada linha da folha C (`id` em `monsters.ts`), na ordem da folha: a 1ª toca o especial (`cast`) e a
+ * 2ª o clipe `skill`.
+ */
+const C_ROWS: Partial<Record<MonsterKind, [string, string?]>> = {
+  orcWarlord: ["charge", "whirl"],
+};
 
 export interface ClanArt {
   size: number;
   fill: number;
-  extra: typeof CLAN_EXTRA | typeof CLAN_EXTRA_B;
+  extra: typeof CLAN_EXTRA | typeof CLAN_EXTRA_B | typeof CLAN_EXTRA_C;
+  /** Clipe de cada habilidade desenhada na folha C (id → clipe). */
+  strike?: Record<string, Clip | "skill">;
   /** Quadros do jogo: parado, andar, golpe e magia (4 cada) e depois os clipes a mais, na ordem de `CLAN_EXTRA`. */
   frames(): (() => HTMLCanvasElement)[];
   portrait(): HTMLCanvasElement;
@@ -56,14 +71,18 @@ function figure(img: CanvasImageSource, s: number, i: number, o: { flip?: boolea
 }
 
 async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
-  // Abre a folha só para medir (tamanho, folha B e altura do corpo) e solta: as figuras são desenhadas quando a hunt
-  // no mapa começa (`loadMapSheets` em `textures.ts`).
+  // Abre a folha só para medir (tamanho, folhas B e C e altura do corpo) e solta: as figuras são desenhadas quando a
+  // hunt no mapa começa (`loadMapSheets` em `textures.ts`).
   const source = new SheetSource(url);
   await source.load();
   const img = source.img as ImageBitmap | HTMLImageElement;
   const s = img.height;
   // Tem a folha B (golpe e morte desenhados)?
   const withB = img.width / s >= B.end;
+  // E a folha C (as habilidades, 4 figuras por linha)?
+  const rowsC = C_ROWS[kind] ?? [];
+  const withC = withB && rowsC.length > 0 && img.width / s >= B.end + 4 * rowsC.length;
+  const C = (row: number) => B.end + 4 * row;
   // Cada figura (com o deslocamento) é uma função só, reaproveitada nos clipes: o jogo guarda cada uma uma vez na
   // memória (`hdStep` em `textures.ts`). Com uma figura por quadro, os 12 do clã passavam de 150 MB e o celular fechava
   // o jogo. Por isso os clipes usam poucas variações.
@@ -94,20 +113,23 @@ async function loadOne(kind: MonsterKind, url: string): Promise<ClanArt> {
   const art: ClanArt = {
     size: s,
     fill: (s - top) / s,
-    extra: withB ? CLAN_EXTRA_B : CLAN_EXTRA,
+    extra: withC && rowsC[1] ? CLAN_EXTRA_C : withB ? CLAN_EXTRA_B : CLAN_EXTRA,
+    strike: withC ? Object.fromEntries(rowsC.flatMap((id, row) => id ? [[id, row === 0 ? "cast" : "skill"]] : [])) : undefined,
     frames: () => [
       ...breathing(F.side),
       ...steps(F.side, F.sideWalk),
       // Golpe: o da folha B; sem ela, avança com a passada e volta (o bote do sprite vem do jogo).
       ...(withB ? run(B.attack) : [at(F.side), at(F.sideWalk, { dx: -8 }), at(F.sideWalk, { dx: -8 }), at(F.side)]),
-      // Especial: o corpo se ergue e volta.
-      at(F.side), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side),
+      // Especial: a 1ª habilidade da folha C; sem ela, o corpo se ergue e volta.
+      ...(withC ? run(C(0)) : [at(F.side), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side, { breathe: -0.035, dy: -2 }), at(F.side)]),
       // A morte desenhada (só com a folha B; sem ela, o jogo tomba o sprite).
       ...(withB ? run(B.death) : []),
       ...breathing(F.front),
       ...steps(F.front, F.frontWalk),
       ...breathing(F.back),
       ...steps(F.back, F.backWalk),
+      // A 2ª habilidade da folha C.
+      ...(withC && rowsC[1] ? run(C(1)) : []),
     ],
     portrait: () => figure(source.img, s, F.side),
     source,

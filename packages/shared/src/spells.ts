@@ -5,8 +5,9 @@ import type { Element } from "./traits.ts";
 import { SUMMONS, type SummonKind } from "./summons.ts";
 
 /**
- * Ataque básico de cada classe: sai enquanto o jogador segura o botão de ataque. Com `projectileSpeed`, o golpe viaja até o alvo
- * e o dano só entra quando chega; 0 = corpo a corpo, o dano é na hora.
+ * Ataque básico de cada classe: sai enquanto o jogador segura o botão de ataque. Com `projectileSpeed`, o golpe é um
+ * tiro: voa reto na direção mirada até o alcance e o dano entra no primeiro monstro que encontrar (pode errar, ver
+ * `shotPath`); 0 = corpo a corpo, o dano é na hora.
  */
 export interface BasicAttackDef {
   name: string;
@@ -19,6 +20,7 @@ export const BASIC_ATTACKS: Record<ClassId, BasicAttackDef> = {
   paladin: { name: "Flecha", projectileSpeed: 16 },
   sorcerer: { name: "Luz negra", projectileSpeed: 10 },
   druid: { name: "Luz verde", projectileSpeed: 11 },
+  shaman: { name: "Brasa do cajado", projectileSpeed: 10 },
 };
 
 /** Intervalo entre ataques básicos, igual para todas as classes. */
@@ -30,14 +32,28 @@ export function flightMs(speed: number, x0: number, y0: number, x1: number, y1: 
 }
 
 /** Nível em que cada slot de magia abre (slot 0 e slot 1). */
-export const SPELL_SLOT_LEVELS = [3, 6] as const;
-export type SpellSlot = 0 | 1;
+export const SPELL_SLOT_LEVELS = [3, 6, 12] as const;
+export type SpellSlot = 0 | 1 | 2;
+/** Os slots de magia da hunt, na ordem (o 3º é o das magias supremas). */
+export const SPELL_SLOTS: readonly SpellSlot[] = [0, 1, 2];
 
 export type SpellId =
   | "blade_spin" | "war_cry"
   | "holy_arrow" | "arrow_rain"
   | "shadow_orb" | "void_storm"
   | "forest_blessing" | "thorn_roots"
+  | "ember_totem" | "war_drum"
+  // Xamã Orc, tronco dos 3 ramos (Horda, Totens, Brasa).
+  | "clan_scouts" | "clan_spearmen" | "clan_archers" | "clan_captain"
+  | "mud_totem" | "call_totem" | "grand_totem"
+  | "ember_lance" | "war_stomp" | "forge_ogre"
+  // Xamã Orc, Fase 3: especializações (Senhor da Horda, Domador de Sangue, Entalhador, Nômade, Coração de Brasa,
+  // Tamboreiro), costelas e os Ápices do slot 3.
+  | "clan_berserkers" | "warlord_call" | "submission_chain" | "chained_ogre"
+  | "thunder_totem" | "volcanic_totem" | "boar_charge" | "totem_ring"
+  | "ember_rift" | "ember_fury" | "blood_drum" | "clan_march"
+  | "clan_shaman" | "bad_omen" | "blood_totem" | "ash_rain"
+  | "horde_roar" | "ancestor_circle" | "forge_rain"
   // Compradas no Grimório da classe (menu).
   | "crushing_blow" | "holy_shield" | "vampiric_blade" | "iron_skin" | "earthquake" | "steel_wall" | "commander_shout" | "execution"
   | "piercing_shot" | "stun_arrow" | "blessed_ward" | "healing_light" | "deadly_shot" | "divine_judgment" | "explosive_volley"
@@ -59,7 +75,16 @@ export type SpellId =
   | "stunning_roar" | "battle_order" | "challenge_mark"
   | "double_shot" | "barbed_arrow" | "sunbeam" | "holy_hammer" | "net_arrow" | "fire_arrows"
   | "spark" | "ember_rain" | "frostbite" | "frozen_orb" | "dark_seal" | "plague"
-  | "howl" | "purifying_sap" | "blossom_burst" | "vine_lash" | "spore_burst" | "bramble_burst";
+  | "howl" | "purifying_sap" | "blossom_burst" | "vine_lash" | "spore_burst" | "bramble_burst"
+  // Grimório 4.0: magias em leque nas costelas novas (docs/GRIMORIO_4_PLANO.md, seção 8).
+  | "gale_blade" | "shield_wall" | "cutting_shout" | "arrow_fan" | "holy_flash"
+  | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
+  | "frost_breath" | "caltrops"
+  // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
+  | "titan_fury" | "sky_arrow" | "arcane_vortex" | "butterfly_swarm" | "ancestral_totem"
+  // Slot 3: Ápices (um no fim de cada ramo, para os dois lados da especialização).
+  | "champion_reap" | "bulwark" | "legion_charge" | "endless_rain" | "branching_bolt" | "ice_age" | "black_hole"
+  | "wild_hunt" | "tree_of_life" | "leaf_hurricane" | "doomsday_shot" | "solar_crown";
 
 /**
  * Uma magia. Os efeitos se combinam: dano em área, em linha ou em cadeia, dano contínuo, cura, raízes,
@@ -88,9 +113,28 @@ export interface SpellDef {
   /**
    * `line`: acerta todos os monstros na reta do herói na direção mirada, até `range` tiles ou a primeira
    * parede (o `radius` não vale).
-   * `cone`: acerta os monstros num leque de 90° à frente do herói, na direção mirada, até `range` tiles.
+   * `cone`: acerta os monstros num leque à frente do herói (`coneAngle`, padrão 90°), na direção mirada, até `range` tiles.
    */
   shape?: "line" | "cone";
+  /** Abertura do leque em graus (só `shape: "cone"`): de 45° (estreito) a 180° (meia-lua). Padrão 90°. */
+  coneAngle?: number;
+  /**
+   * Onda (só `shape: "cone"`): o leque sai do herói e avança um anel de tiles a cada `stepMs`; quem está na ponta é
+   * atingido depois. Cada monstro leva o efeito uma vez só.
+   */
+  wave?: { stepMs: number };
+  /**
+   * Projéteis em leque (magia de tiro, com `projectileSpeed`): `count` tiros espalhados em `angle` graus em volta da
+   * direção mirada. Cada um voa reto e pode errar, como os outros tiros; colado no monstro, todos acertam o mesmo.
+   */
+  spread?: { count: number; angle: number };
+  /**
+   * Canalizar (só `shape: "cone"`): o leque se repete a cada `tickMs` por até `ms`, na direção que o jogador arrasta
+   * (soltar o dedo encerra; o toque rápido solta tudo para a frente). Quem conjura anda `moveSlow` mais devagar. Com
+   * `freezeTicks`, o monstro pego tantos pulsos seguidos fica preso por `freezeMs` (Sopro Gélido). Mana e recarga saem
+   * uma vez, no começo.
+   */
+  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number };
   /**
    * Campo no chão onde a magia cai, por `ms`:
    * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
@@ -113,8 +157,22 @@ export interface SpellDef {
     rootMs?: number;
     /** Parede: quantos tiles, de lado para a direção do herói até o ponto mirado. */
     length?: number;
-    /** Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus), em vez da estaca. */
-    look?: "storm";
+    /**
+     * Desenho: "storm" = nuvem que solta raios do céu (Fúria dos Céus); "totem" = totem do Xamã Orc, que lança brasa
+     * (fogo). Sem isto, a estaca de flechas.
+     */
+    look?: "storm" | "totem";
+    /** Quantos campos desta magia cabem ao mesmo tempo (o mais antigo sai); sem isto, 1 (ou o do Engenhoso). */
+    max?: number;
+    /**
+     * Zona: a cada pulso chama 1 criatura `kind` colada no campo, por `durationMs`, enquanto houver menos de `max`
+     * desta magia (Totem do Chamado). Conta no limite de criaturas do dono.
+     */
+    spawn?: { kind: SummonKind; max: number; durationMs: number };
+    /** Ao acabar o tempo (não ao ser trocado), explode em `radius` com `damage` × dano base e queima (Totem Vulcânico). */
+    burst?: { radius: number; damage: number; burn?: { perSec: number; ms: number } };
+    /** Armadilha: quantas saem de uma vez, espalhadas no leque à frente (`coneAngle`), na ponta do alcance (Abrolhos). */
+    count?: number;
   };
   /** Elemento (só do Feiticeiro): Estática vale para energia. */
   element?: Element;
@@ -220,6 +278,45 @@ export interface SpellDef {
   summon?: { kind: SummonKind; count: number; durationMs: number };
   /** Tiles por segundo até o alvo; sem isso o efeito é imediato. */
   projectileSpeed?: number;
+  /** O efeito cai no ponto mirado depois deste tempo, em vez de voar até lá (Flecha Celeste: atira para o alto). */
+  delayMs?: number;
+  /**
+   * Varredura (só `shape: "cone"`): um golpe corre de uma borda do leque à outra em `ms`; cada tile é atingido quando a
+   * lâmina passa, e cada monstro uma vez por passada (Ceifa do Campeão).
+   */
+  sweep?: { ms: number };
+  /** Linha que se abre no fim (só `shape: "line"`): `count` linhas de `length` tiles em leque de `angle` graus (Relâmpago Ramificado). */
+  fork?: { count: number; length: number; angle: number };
+  /** Puxa os monstros da área para o centro (Buraco Negro): cada um vai para o tile livre mais perto do ponto. */
+  pullIn?: boolean;
+  /**
+   * Aura que anda com quem conjura por `ms` (Carga da Legião): a cada meio segundo, você, os aliados e as criaturas a até
+   * `radius` tiles atacam `haste` mais rápido e causam +`damage`; quem se afasta perde o bônus logo depois.
+   */
+  aura?: { radius: number; ms: number; haste: number; damage: number };
+  /**
+   * Órbita (Coroa Solar): por `ms`, um anel gira em volta de quem conjura; a cada `tickMs`, os monstros entre
+   * `radius - width` (exclusivo) e `radius` tiles levam o efeito da magia (dano, atordoamento). Anda com o herói.
+   */
+  orbit?: { radius: number; width: number; ms: number; tickMs: number };
+  /** Segunda invocação da mesma magia, de outro tipo (Caçada Selvagem: os lobos e o urso). */
+  alsoSummon?: { kind: SummonKind; count: number; durationMs: number };
+  /**
+   * Tambor de Guerra: por `ms`, quem conjura, os aliados e as criaturas (de qualquer herói) a até `radius` tiles atacam
+   * `haste` mais rápido (fração da recarga cortada) e causam +`damage` de dano; `heal` cura essa fração da vida deles.
+   */
+  rally?: {
+    radius: number; ms: number; haste: number; damage: number; heal?: number;
+    /** Marcha do Clã: anda `move` (fração) mais rápido enquanto dura. */
+    move?: number;
+    /** Marcha do Clã: não fica preso nem lento enquanto dura (e o que já prendia sai). */
+    free?: boolean;
+  };
+  /**
+   * Corrente da Submissão: o monstro comum atingido com menos de `hpPct` da vida (depois do golpe) vira aliado de quem
+   * conjura por `ms` (`BOUND_POWER`). Mini-boss, boss e monstro chamado por outro não se convertem.
+   */
+  convert?: { hpPct: number; ms: number };
 }
 
 const spell = (def: SpellDef) => def;
@@ -239,7 +336,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   crushing_blow: spell({
     id: "crushing_blow", classId: "knight", slot: 0, name: "Golpe Esmagador", icon: "🔨", color: 0xd35400,
     description: "Uma pancada brutal no monstro colado em você.",
-    manaCost: 15, cooldownMs: 4500, aim: "target", range: 1, radius: 0, damage: 2.8,
+    manaCost: 15, cooldownMs: 2250, aim: "target", range: 1, radius: 0, damage: 2.8,
   }),
   holy_shield: spell({
     id: "holy_shield", classId: "knight", slot: 0, name: "Escudo da Fé", icon: "🛡️", color: 0x7fc8ff,
@@ -249,7 +346,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   vampiric_blade: spell({
     id: "vampiric_blade", classId: "knight", slot: 0, name: "Lâmina Sedenta", icon: "🩸", color: 0xc0392b,
     description: "Um corte que bebe o sangue do monstro e devolve parte do dano como vida.",
-    manaCost: 16, cooldownMs: 6000, aim: "target", range: 1, radius: 0, damage: 2, lifesteal: 0.5,
+    manaCost: 16, cooldownMs: 3000, aim: "target", range: 1, radius: 0, damage: 2, lifesteal: 0.5,
   }),
   iron_skin: spell({
     id: "iron_skin", classId: "knight", slot: 1, name: "Pele de Ferro", icon: "⛓️", color: 0xa4b0be,
@@ -275,7 +372,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   execution: spell({
     id: "execution", classId: "knight", slot: 1, name: "Execução", icon: "⚔️", color: 0x922b21,
     description: "Um golpe devastador no monstro colado, que ainda o deixa atordoado. Dano dobrado em quem já está quase morto.",
-    manaCost: 35, cooldownMs: 16000, aim: "target", range: 1, radius: 0, damage: 4.5, stunMs: 1000,
+    manaCost: 35, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 4.5, stunMs: 1000,
     execute: { hpPct: 0.3, bonus: 1 },
   }),
 
@@ -296,20 +393,20 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   thrown_blade: spell({
     id: "thrown_blade", classId: "knight", slot: 0, name: "Lâmina Arremessada", icon: "🗡️", color: 0xa4b0be,
     description: "Arremessa a espada num monstro distante, que fica sangrando.",
-    manaCost: 20, cooldownMs: 5000, aim: "target", range: 4, radius: 0, damage: 1.8, projectileSpeed: 18,
+    manaCost: 20, cooldownMs: 2500, aim: "target", range: 4, radius: 0, damage: 1.8, projectileSpeed: 18,
     dot: { perSec: 0.3, ms: 4000, kind: "bleed" },
   }),
   thousand_cuts: spell({
     id: "thousand_cuts", classId: "knight", slot: 1, name: "Mil Cortes", icon: "🔪", color: 0xe74c3c,
     description: "Cinco cortes rápidos no monstro colado em você, que fica atordoado enquanto apanha.",
-    manaCost: 40, cooldownMs: 14000, aim: "target", range: 1, radius: 0, damage: 0.9, stunMs: 900,
+    manaCost: 40, cooldownMs: 7000, aim: "target", range: 1, radius: 0, damage: 0.9, stunMs: 900,
     repeat: { delayMs: 180, power: 1, times: 4 },
   }),
   // Guardião (ramo Bastião).
   shield_bash: spell({
     id: "shield_bash", classId: "knight", slot: 0, name: "Bater com Escudo", icon: "💥", color: 0x7fc8ff,
     description: "Uma pancada com o escudo no monstro colado: ele é empurrado e fica atordoado.",
-    manaCost: 20, cooldownMs: 7000, aim: "target", range: 1, radius: 0, damage: 1.2, push: 2, stunMs: 1000,
+    manaCost: 20, cooldownMs: 3500, aim: "target", range: 1, radius: 0, damage: 1.2, push: 2, stunMs: 1000,
   }),
   shared_aegis: spell({
     id: "shared_aegis", classId: "knight", slot: 1, name: "Égide Compartilhada", icon: "🏛️", color: 0x9fd8ff,
@@ -332,7 +429,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   charge: spell({
     id: "charge", classId: "knight", slot: 0, name: "Investida", icon: "🐎", color: 0xe67e22,
     description: "Corre até um monstro a até 4 tiles e o atinge, deixando-o atordoado.",
-    manaCost: 25, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 1.5, stunMs: 1000, charge: true,
+    manaCost: 25, cooldownMs: 4500, aim: "target", range: 4, radius: 0, damage: 1.5, stunMs: 1000, charge: true,
   }),
   war_banner: spell({
     id: "war_banner", classId: "knight", slot: 1, name: "Estandarte de Guerra", icon: "🚩", color: 0xf1c40f,
@@ -344,7 +441,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   iron_chain: spell({
     id: "iron_chain", classId: "knight", slot: 0, name: "Corrente de Ferro", icon: "🔗", color: 0x95a5a6,
     description: "Laça um monstro de até 5 tiles, puxa-o para perto de você e o prende no lugar.",
-    manaCost: 20, cooldownMs: 8000, aim: "target", range: 5, radius: 0, damage: 0.8, rootMs: 2000, pull: true, projectileSpeed: 20,
+    manaCost: 20, cooldownMs: 4000, aim: "target", range: 5, radius: 0, damage: 0.8, rootMs: 2000, pull: true, projectileSpeed: 20,
   }),
   supreme_challenge: spell({
     id: "supreme_challenge", classId: "knight", slot: 1, name: "Desafio Supremo", icon: "👊", color: 0xe74c3c,
@@ -356,7 +453,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   holy_arrow: spell({
     id: "holy_arrow", classId: "paladin", slot: 0, name: "Flecha Sagrada", icon: "✴️", color: 0xf7d774,
     description: "Uma flecha de luz dourada que causa dano pesado num alvo.",
-    manaCost: 25, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 2.6, projectileSpeed: 20,
+    manaCost: 25, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 2.6, projectileSpeed: 20,
   }),
   arrow_rain: spell({
     id: "arrow_rain", classId: "paladin", slot: 1, name: "Chuva de Flechas", icon: "🏹", color: 0xa08f78,
@@ -371,7 +468,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   stun_arrow: spell({
     id: "stun_arrow", classId: "paladin", slot: 0, name: "Flecha Atordoante", icon: "💫", color: 0xa4b0be,
     description: "Uma flecha de ponta rombuda que deixa o alvo tonto, sem andar nem atacar.",
-    manaCost: 24, cooldownMs: 7000, aim: "target", range: 6, radius: 0, damage: 1.5, stunMs: 2000, projectileSpeed: 20,
+    manaCost: 24, cooldownMs: 3500, aim: "target", range: 6, radius: 0, damage: 1.5, stunMs: 2000, projectileSpeed: 20,
   }),
   blessed_ward: spell({
     id: "blessed_ward", classId: "paladin", slot: 0, name: "Bênção Protetora", icon: "🕊️", color: 0xfff6c8,
@@ -386,7 +483,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   deadly_shot: spell({
     id: "deadly_shot", classId: "paladin", slot: 1, name: "Disparo Certeiro", icon: "🏆", color: 0xf7d774,
     description: "Mira com calma e acerta um tiro enorme num alvo distante: quanto mais longe, mais forte.",
-    manaCost: 40, cooldownMs: 14000, aim: "target", range: 8, radius: 0, damage: 3.2, distanceBonus: 0.1, projectileSpeed: 26,
+    manaCost: 40, cooldownMs: 7000, aim: "target", range: 8, radius: 0, damage: 3.2, distanceBonus: 0.1, projectileSpeed: 26,
   }),
   divine_judgment: spell({
     id: "divine_judgment", classId: "paladin", slot: 1, name: "Julgamento Divino", icon: "⚖️", color: 0xfff6c8,
@@ -403,7 +500,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   hunter_mark: spell({
     id: "hunter_mark", classId: "paladin", slot: 0, name: "Marca do Caçador", icon: "🎯", color: 0xe74c3c,
     description: "Marca um monstro: ele recebe mais dano de toda a equipe por alguns segundos.",
-    manaCost: 20, cooldownMs: 9000, aim: "target", range: 7, radius: 0, damage: 0.8, mark: { pct: 0.25, ms: 10000 },
+    manaCost: 20, cooldownMs: 4500, aim: "target", range: 7, radius: 0, damage: 0.8, mark: { pct: 0.25, ms: 10000 },
     projectileSpeed: 24,
   }),
   sniper_stance: spell({
@@ -428,7 +525,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   holy_spear: spell({
     id: "holy_spear", classId: "paladin", slot: 0, name: "Lança Etérea", icon: "🔱", color: 0xfff6c8,
     description: "Uma lança de luz rápida, de recarga curta. Fere mais os mortos-vivos.",
-    manaCost: 14, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 1.6, undeadBonus: 0.5, projectileSpeed: 26,
+    manaCost: 14, cooldownMs: 1250, aim: "target", range: 6, radius: 0, damage: 1.6, undeadBonus: 0.5, projectileSpeed: 26,
   }),
   divine_caldera: spell({
     id: "divine_caldera", classId: "paladin", slot: 1, name: "Caldeira Divina", icon: "🌞", color: 0xf7d774,
@@ -451,7 +548,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   lightning_arrow: spell({
     id: "lightning_arrow", classId: "paladin", slot: 0, name: "Flecha Relâmpago", icon: "⚡", color: 0x9ec5ff,
     description: "Uma flecha carregada que acerta o alvo e salta para os monstros perto dele.",
-    manaCost: 28, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1.5, projectileSpeed: 28,
+    manaCost: 28, cooldownMs: 3000, aim: "target", range: 6, radius: 0, damage: 1.5, projectileSpeed: 28,
     chain: { jumps: 3, range: 3, falloff: 0.2 },
   }),
   barrage: spell({
@@ -524,7 +621,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   sudden_death: spell({
     id: "sudden_death", classId: "sorcerer", slot: 0, name: "Morte Súbita", icon: "☠️", color: 0x2d0a40, element: "dark",
     description: "Um golpe de morte num único alvo: o maior dano de alvo único do Feiticeiro.",
-    manaCost: 40, cooldownMs: 8000, aim: "target", range: 5, radius: 0, damage: 3.4, projectileSpeed: 14,
+    manaCost: 40, cooldownMs: 4000, aim: "target", range: 5, radius: 0, damage: 3.4, projectileSpeed: 14,
   }),
   raise_skeletons: spell({
     id: "raise_skeletons", classId: "sorcerer", slot: 1, name: "Erguer Esqueletos", icon: "🦴", color: 0xdcdde1, element: "dark",
@@ -535,7 +632,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   eldritch_blast: spell({
     id: "eldritch_blast", classId: "sorcerer", slot: 0, name: "Rajada Mística", icon: "🟣", color: 0xb04ae0, element: "dark",
     description: "Um raio arcano que fere o alvo e o empurra para longe de você.",
-    manaCost: 26, cooldownMs: 4500, aim: "target", range: 6, radius: 0, damage: 2.2, push: 1, projectileSpeed: 20,
+    manaCost: 26, cooldownMs: 2250, aim: "target", range: 6, radius: 0, damage: 2.2, push: 1, projectileSpeed: 20,
   }),
   black_tentacles: spell({
     id: "black_tentacles", classId: "sorcerer", slot: 1, name: "Tentáculos Negros", icon: "🐙", color: 0x9b59b6, element: "dark",
@@ -558,23 +655,23 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   lightning_bolt: spell({
     id: "lightning_bolt", classId: "sorcerer", slot: 0, name: "Relâmpago", icon: "⚡", color: 0x9ec5ff, element: "energy",
     description: "Um raio rápido que causa dano altíssimo num único alvo.",
-    manaCost: 35, cooldownMs: 4500, aim: "target", range: 6, radius: 0, damage: 2.9, projectileSpeed: 30,
+    manaCost: 35, cooldownMs: 2250, aim: "target", range: 6, radius: 0, damage: 2.9, projectileSpeed: 30,
   }),
   chain_lightning: spell({
     id: "chain_lightning", classId: "sorcerer", slot: 0, name: "Raio em Cadeia", icon: "🌩️", color: 0x9ec5ff, element: "energy",
     description: "O raio acerta o alvo e salta de monstro em monstro, perdendo um pouco de força a cada salto.",
-    manaCost: 32, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 1.6, projectileSpeed: 30,
+    manaCost: 32, cooldownMs: 2750, aim: "target", range: 6, radius: 0, damage: 1.6, projectileSpeed: 30,
     chain: { jumps: 3, range: 3, falloff: 0.15 },
   }),
   ice_lance: spell({
     id: "ice_lance", classId: "sorcerer", slot: 0, name: "Lança de Gelo", icon: "🧊", color: 0x7fd8ff, element: "ice",
     description: "Uma lança de gelo que fere e congela o alvo no lugar.",
-    manaCost: 28, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 2, rootMs: 2000, projectileSpeed: 18,
+    manaCost: 28, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 2, rootMs: 2000, projectileSpeed: 18,
   }),
   drain_life: spell({
     id: "drain_life", classId: "sorcerer", slot: 0, name: "Drenar Vida", icon: "🦇", color: 0x8e44ad, element: "dark",
     description: "Suga a força vital do alvo e devolve boa parte do dano como vida.",
-    manaCost: 30, cooldownMs: 6000, aim: "target", range: 5, radius: 0, damage: 1.8, lifesteal: 0.6, projectileSpeed: 12,
+    manaCost: 30, cooldownMs: 3000, aim: "target", range: 5, radius: 0, damage: 1.8, lifesteal: 0.6, projectileSpeed: 12,
   }),
   frost_nova: spell({
     id: "frost_nova", classId: "sorcerer", slot: 1, name: "Nova de Gelo", icon: "❄️", color: 0x7fd8ff, element: "ice",
@@ -611,7 +708,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   venom_thorn: spell({
     id: "venom_thorn", classId: "druid", slot: 0, name: "Espinho Venenoso", icon: "🦂", color: 0x6ab04c,
     description: "Um espinho envenenado: fere o alvo e o veneno continua corroendo por alguns segundos.",
-    manaCost: 30, cooldownMs: 4500, aim: "target", range: 5, radius: 0, damage: 1.4,
+    manaCost: 30, cooldownMs: 2250, aim: "target", range: 5, radius: 0, damage: 1.4,
     dot: { perSec: 0.3, ms: 4000, kind: "poison" }, projectileSpeed: 12,
   }),
   spirit_wolf: spell({
@@ -705,7 +802,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   mamba_bite: spell({
     id: "mamba_bite", classId: "druid", slot: 0, name: "Picada da Mamba", icon: "🐍", color: 0x2d6a1f,
     description: "Um veneno fortíssimo num alvo. Se ele morrer envenenado, explode e espalha o veneno em volta.",
-    manaCost: 30, cooldownMs: 6000, aim: "target", range: 6, radius: 0, damage: 1, projectileSpeed: 14,
+    manaCost: 30, cooldownMs: 3000, aim: "target", range: 6, radius: 0, damage: 1, projectileSpeed: 14,
     dot: { perSec: 0.6, ms: 5000, kind: "poison" }, burst: { radius: 2, damage: 1.5 },
   }),
   poison_cloud: spell({
@@ -731,7 +828,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   twin_slash: spell({
     id: "twin_slash", classId: "knight", slot: 0, name: "Corte Duplo", icon: "✂️", color: 0xd2d6de,
     description: "Dois cortes seguidos no mesmo monstro.",
-    manaCost: 14, cooldownMs: 5000, aim: "target", range: 1, radius: 0, damage: 1.5, repeat: { delayMs: 350, power: 0.9 },
+    manaCost: 14, cooldownMs: 2500, aim: "target", range: 1, radius: 0, damage: 1.5, repeat: { delayMs: 350, power: 0.9 },
   }),
   cross_cut: spell({
     id: "cross_cut", classId: "knight", slot: 0, name: "Corte Largo", icon: "🌒", color: 0xd2d6de,
@@ -741,7 +838,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   open_wound: spell({
     id: "open_wound", classId: "knight", slot: 1, name: "Ferida Aberta", icon: "💔", color: 0xc0392b,
     description: "Um golpe fundo que faz o monstro sangrar por 6 s.",
-    manaCost: 30, cooldownMs: 12000, aim: "target", range: 1, radius: 0, damage: 2.4,
+    manaCost: 30, cooldownMs: 6000, aim: "target", range: 1, radius: 0, damage: 2.4,
     dot: { perSec: 0.5, ms: 6000, kind: "bleed" },
   }),
   seismic_rift: spell({
@@ -753,7 +850,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   aegis_strike: spell({
     id: "aegis_strike", classId: "knight", slot: 0, name: "Golpe de Égide", icon: "🔰", color: 0x5dade2,
     description: "Bate com o escudo e ganha um escudo de 15% da vida por 6 s.",
-    manaCost: 18, cooldownMs: 8000, aim: "target", range: 1, radius: 0, damage: 1.4, barrier: 0.15, barrierMs: 6000,
+    manaCost: 18, cooldownMs: 4000, aim: "target", range: 1, radius: 0, damage: 1.4, barrier: 0.15, barrierMs: 6000,
   }),
   shield_quake: spell({
     id: "shield_quake", classId: "knight", slot: 1, name: "Tremor do Escudo", icon: "🥁", color: 0x5dade2,
@@ -776,20 +873,20 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   challenge_mark: spell({
     id: "challenge_mark", classId: "knight", slot: 0, name: "Desafio", icon: "🤜", color: 0xe67e22,
     description: "Desafia um monstro: ele vem atrás de você e recebe +20% de dano de toda a equipe por 8 s.",
-    manaCost: 16, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 0.6, taunt: true,
+    manaCost: 16, cooldownMs: 4500, aim: "target", range: 4, radius: 0, damage: 0.6, taunt: true,
     mark: { pct: 0.2, ms: 8000 },
   }),
   // Paladino, ramo Mira.
   double_shot: spell({
     id: "double_shot", classId: "paladin", slot: 0, name: "Tiro Duplo", icon: "🪶", color: 0xf1c40f,
     description: "Duas flechas seguidas no mesmo alvo.",
-    manaCost: 26, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 22,
+    manaCost: 26, cooldownMs: 2750, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 22,
     repeat: { delayMs: 300, power: 0.9 },
   }),
   barbed_arrow: spell({
     id: "barbed_arrow", classId: "paladin", slot: 1, name: "Flecha Farpada", icon: "🪝", color: 0xc0392b,
     description: "Uma flecha com farpas que faz o alvo sangrar por 5 s.",
-    manaCost: 40, cooldownMs: 12000, aim: "target", range: 7, radius: 0, damage: 2.4, projectileSpeed: 22,
+    manaCost: 40, cooldownMs: 6000, aim: "target", range: 7, radius: 0, damage: 2.4, projectileSpeed: 22,
     dot: { perSec: 0.5, ms: 5000, kind: "bleed" },
   }),
   // Paladino, ramo Luz.
@@ -801,7 +898,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   holy_hammer: spell({
     id: "holy_hammer", classId: "paladin", slot: 1, name: "Martelo Sagrado", icon: "⚒️", color: 0xfff6c8,
     description: "Um martelo de luz que marca o alvo: +15% de dano de toda a equipe nele por 6 s.",
-    manaCost: 45, cooldownMs: 13000, aim: "target", range: 5, radius: 0, damage: 2.6, undeadBonus: 0.5,
+    manaCost: 45, cooldownMs: 6500, aim: "target", range: 5, radius: 0, damage: 2.6, undeadBonus: 0.5,
     mark: { pct: 0.15, ms: 6000 }, projectileSpeed: 12,
   }),
   // Paladino, ramo Batedor.
@@ -820,7 +917,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   spark: spell({
     id: "spark", classId: "sorcerer", slot: 0, name: "Faísca", icon: "✨", color: 0x9ec5ff, element: "energy",
     description: "Uma faísca barata e rápida que salta para mais um monstro.",
-    manaCost: 16, cooldownMs: 2500, aim: "target", range: 5, radius: 0, damage: 1.1, projectileSpeed: 30,
+    manaCost: 16, cooldownMs: 1250, aim: "target", range: 5, radius: 0, damage: 1.1, projectileSpeed: 30,
     chain: { jumps: 1, range: 2, falloff: 0.3 },
   }),
   ember_rain: spell({
@@ -833,7 +930,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   frostbite: spell({
     id: "frostbite", classId: "sorcerer", slot: 0, name: "Geada", icon: "🥶", color: 0xd6f1ff, element: "ice",
     description: "Um sopro gelado que deixa o alvo 60% mais lento.",
-    manaCost: 26, cooldownMs: 5000, aim: "target", range: 6, radius: 0, damage: 1.3, projectileSpeed: 16,
+    manaCost: 26, cooldownMs: 2500, aim: "target", range: 6, radius: 0, damage: 1.3, projectileSpeed: 16,
     slow: { pct: 0.6, ms: 4000 },
   }),
   frozen_orb: spell({
@@ -846,7 +943,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   dark_seal: spell({
     id: "dark_seal", classId: "sorcerer", slot: 0, name: "Selo Sombrio", icon: "🕳️", color: 0x8e44ad, element: "dark",
     description: "Sela o alvo: ele recebe +20% de dano de toda a equipe por 6 s.",
-    manaCost: 22, cooldownMs: 6000, aim: "target", range: 5, radius: 0, damage: 1, projectileSpeed: 14,
+    manaCost: 22, cooldownMs: 3000, aim: "target", range: 5, radius: 0, damage: 1, projectileSpeed: 14,
     mark: { pct: 0.2, ms: 6000 },
   }),
   plague: spell({
@@ -890,6 +987,388 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     description: "Espinhos brotam em volta: ferem, fazem sangrar e prendem os monstros a até 2 tiles.",
     manaCost: 55, cooldownMs: 14000, aim: "self", range: 0, radius: 2, damage: 1.6, rootMs: 1500,
     dot: { perSec: 0.3, ms: 4000, kind: "bleed" },
+  }),
+
+  // --- Grimório 4.0: magias em leque das costelas novas. -----------------------------------------------
+  gale_blade: spell({
+    id: "gale_blade", classId: "knight", slot: 0, name: "Lâmina do Vendaval", icon: "🌬️", color: 0xcfe8ff,
+    description: "Um corte tão rápido que solta uma onda de vento em leque, que empurra os monstros.",
+    manaCost: 18, cooldownMs: 6000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 60, wave: { stepMs: 90 },
+    damage: 1.4, push: 1,
+  }),
+  shield_wall: spell({
+    id: "shield_wall", classId: "knight", slot: 1, name: "Muro de Escudos", icon: "🔰", color: 0x7fc8ff,
+    description: "Avança o escudo num leque largo: empurra e atordoa os monstros à sua frente.",
+    manaCost: 35, cooldownMs: 12000, aim: "target", range: 2, radius: 0, shape: "cone", coneAngle: 120,
+    damage: 1, push: 2, stunMs: 800,
+  }),
+  cutting_shout: spell({
+    id: "cutting_shout", classId: "knight", slot: 0, name: "Brado Cortante", icon: "📢", color: 0xf39c12,
+    description: "Um grito em leque que fere, faz os monstros te perseguirem e os deixa marcados para a equipe.",
+    manaCost: 20, cooldownMs: 7000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.6, taunt: true, mark: { pct: 0.15, ms: 5000 },
+  }),
+  arrow_fan: spell({
+    id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
+    description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
+    manaCost: 20, cooldownMs: 5500, aim: "target", range: 6, radius: 0, damage: 0.9, projectileSpeed: 16,
+    spread: { count: 5, angle: 45 },
+  }),
+  holy_flash: spell({
+    id: "holy_flash", classId: "paladin", slot: 1, name: "Clarão Sagrado", icon: "☀️", color: 0xfff3a0,
+    description: "Uma onda de luz em leque largo: fere, ofusca e queima em dobro os mortos-vivos.",
+    manaCost: 38, cooldownMs: 12000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 80 },
+    damage: 1.2, stunMs: 1000, undeadBonus: 1,
+  }),
+  fire_spit: spell({
+    id: "fire_spit", classId: "sorcerer", slot: 0, name: "Cusparada de Fogo", icon: "🔥", color: 0xff7f27, element: "fire",
+    description: "Cospe fogo num leque à sua frente: a chama avança e deixa os monstros queimando.",
+    manaCost: 24, cooldownMs: 6000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 60, wave: { stepMs: 90 },
+    damage: 1.3, dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  lightning_fan: spell({
+    id: "lightning_fan", classId: "sorcerer", slot: 1, name: "Leque de Raios", icon: "⚡", color: 0x9ec5ff, element: "energy",
+    description: "Três raios saem das suas mãos abertos em leque, e cada um salta para mais um monstro.",
+    manaCost: 40, cooldownMs: 11000, aim: "target", range: 6, radius: 0, damage: 1.4, projectileSpeed: 24,
+    spread: { count: 3, angle: 60 }, chain: { jumps: 1, range: 3, falloff: 0.3 },
+  }),
+  dark_wail: spell({
+    id: "dark_wail", classId: "sorcerer", slot: 0, name: "Lamento Sombrio", icon: "🌑", color: 0x8e44ad, element: "dark",
+    description: "Um lamento das trevas em leque largo: fere e devolve parte do dano como vida.",
+    manaCost: 24, cooldownMs: 6500, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 100 },
+    damage: 1.1, lifesteal: 0.15,
+  }),
+  pack_roar: spell({
+    id: "pack_roar", classId: "druid", slot: 0, name: "Rugido da Alcateia", icon: "🐺", color: 0xb0bec5,
+    description: "Ruge em leque: fere e empurra os monstros, e suas criaturas atacam mais rápido por alguns segundos.",
+    manaCost: 20, cooldownMs: 7000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 90,
+    damage: 0.8, push: 1, packCall: { haste: 0.3, ms: 4000, heal: 0 },
+  }),
+  pollen_breeze: spell({
+    id: "pollen_breeze", classId: "druid", slot: 1, name: "Brisa de Pólen", icon: "🌸", color: 0xf8bbd0,
+    description: "Uma brisa de pólen em leque largo: cura os aliados no caminho e tira o veneno deles; os monstros ficam lentos.",
+    manaCost: 40, cooldownMs: 13000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 80 },
+    heal: 0.2, cleanse: true, slow: { pct: 0.3, ms: 3000 },
+  }),
+  thorn_spray: spell({
+    id: "thorn_spray", classId: "druid", slot: 0, name: "Rajada de Espinhos", icon: "🌵", color: 0x8bc34a,
+    description: "Seis espinhos voam abertos em leque e fazem sangrar quem acertam.",
+    manaCost: 20, cooldownMs: 5500, aim: "target", range: 5, radius: 0, damage: 0.7, projectileSpeed: 14,
+    spread: { count: 6, angle: 60 }, dot: { perSec: 0.3, ms: 3000, kind: "bleed" },
+  }),
+
+  frost_breath: spell({
+    id: "frost_breath", classId: "sorcerer", slot: 1, name: "Sopro Gélido", icon: "🌨️", color: 0xbfe9ff, element: "ice",
+    description: "Sopra gelo num leque à sua frente enquanto segura o botão: arraste para virar o sopro. Quem fica no frio congela.",
+    manaCost: 40, cooldownMs: 12000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 60,
+    damage: 0.4, slow: { pct: 0.4, ms: 1000 },
+    channel: { ms: 2000, tickMs: 250, moveSlow: 0.5, freezeTicks: 6, freezeMs: 1000 },
+  }),
+  caltrops: spell({
+    id: "caltrops", classId: "paladin", slot: 0, name: "Abrolhos", icon: "🪤", color: 0xa4b0be,
+    description: "Espalha três estrepes no chão em leque à sua frente: quem pisa fica lento e sangra.",
+    manaCost: 20, cooldownMs: 8000, aim: "target", range: 3, radius: 0, coneAngle: 90,
+    slow: { pct: 0.5, ms: 3000 }, dot: { perSec: 0.3, ms: 3000, kind: "bleed" },
+    field: { kind: "trap", ms: 20000, count: 3 },
+  }),
+  // --- Xamã Orc: totens no chão e o tambor que acelera a equipe (docs/CLASSE_XAMA_ORC.md). ---
+  ember_totem: spell({
+    id: "ember_totem", classId: "shaman", slot: 0, name: "Totem da Brasa", icon: "🔥", color: 0xff7a1a,
+    description: "Finca um totem no chão que lança brasa sozinho no monstro mais perto.",
+    manaCost: 22, cooldownMs: 8000, aim: "target", range: 4, radius: 0,
+    field: { kind: "turret", ms: 10000, tickMs: 1000, damage: 0.6, reach: 3, shots: 10, look: "totem", max: 2 },
+  }),
+  war_drum: spell({
+    id: "war_drum", classId: "shaman", slot: 1, name: "Tambor de Guerra", icon: "🥁", color: 0xe67e22,
+    description: "O tambor acelera você, os aliados e as criaturas por perto e deixa lentos os monstros colados.",
+    manaCost: 35, cooldownMs: 14000, aim: "self", range: 0, radius: 2, slow: { pct: 0.3, ms: 3000 },
+    rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15 },
+  }),
+  // Ramo Horda: o clã libertado, do batedor ao capitão (as criaturas em summons.ts).
+  clan_scouts: spell({
+    id: "clan_scouts", classId: "shaman", slot: 0, name: "Chamar Batedores", icon: "🏃", color: 0xd35400,
+    description: "Chama dois orcs batedores do clã: rápidos, chegam primeiro e distraem os monstros.",
+    manaCost: 25, cooldownMs: 12000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanScout", count: 2, durationMs: 12000 },
+  }),
+  clan_spearmen: spell({
+    id: "clan_spearmen", classId: "shaman", slot: 0, name: "Lanceiros do Clã", icon: "🛡️", color: 0xb7950b,
+    description: "Chama dois orcs lanceiros que seguram a linha: o monstro que eles acertam passa a persegui-los.",
+    manaCost: 35, cooldownMs: 15000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanSpearman", count: 2, durationMs: 15000 },
+  }),
+  clan_archers: spell({
+    id: "clan_archers", classId: "shaman", slot: 1, name: "Arqueiros do Clã", icon: "🏹", color: 0x8d6e4a,
+    description: "Chama dois orcs arqueiros que atiram de longe e recuam quando o monstro chega perto.",
+    manaCost: 40, cooldownMs: 16000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanArcher", count: 2, durationMs: 15000 },
+  }),
+  clan_captain: spell({
+    id: "clan_captain", classId: "shaman", slot: 1, name: "Capitão do Clã", icon: "🚩", color: 0xc0392b,
+    description: "Chama o capitão do clã: perto dele, os orcs invocados batem mais forte e mais rápido (Comando).",
+    manaCost: 50, cooldownMs: 20000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanCaptain", count: 1, durationMs: 18000 },
+  }),
+  // Ramo Totens.
+  mud_totem: spell({
+    id: "mud_totem", classId: "shaman", slot: 0, name: "Totem do Lodo", icon: "🪨", color: 0x7a8a2a,
+    description: "Finca um totem que espalha lodo em volta: os monstros perto dele andam bem mais devagar.",
+    manaCost: 24, cooldownMs: 9000, aim: "target", range: 4, radius: 2, slow: { pct: 0.4, ms: 1200 },
+    field: { kind: "zone", ms: 10000, tickMs: 1000, look: "totem", max: 2 },
+  }),
+  call_totem: spell({
+    id: "call_totem", classId: "shaman", slot: 1, name: "Totem do Chamado", icon: "📯", color: 0xe67e22,
+    description: "Finca um totem com a trompa do clã: a cada poucos segundos, um orc batedor atende o chamado.",
+    manaCost: 45, cooldownMs: 18000, aim: "target", range: 4, radius: 0,
+    field: { kind: "zone", ms: 12000, tickMs: 4000, look: "totem", spawn: { kind: "clanScout", max: 3, durationMs: 10000 } },
+  }),
+  grand_totem: spell({
+    id: "grand_totem", classId: "shaman", slot: 1, name: "Grande Totem do Clã", icon: "🏯", color: 0xd35400,
+    description: "O totem maior do clã: fere os monstros em volta a cada pulso e os aliados dentro batem mais forte.",
+    manaCost: 60, cooldownMs: 22000, aim: "target", range: 4, radius: 3,
+    field: { kind: "zone", ms: 12000, tickMs: 2000, damage: 1, allyDamage: 0.15, look: "totem" },
+  }),
+  // Ramo Brasa.
+  ember_lance: spell({
+    id: "ember_lance", classId: "shaman", slot: 0, name: "Lança de Brasa", icon: "🔱", color: 0xff6a1a,
+    description: "Uma lança de brasa em linha reta que fere e queima todos os monstros no caminho.",
+    manaCost: 26, cooldownMs: 6000, aim: "target", range: 5, radius: 0, shape: "line", damage: 1.7, projectileSpeed: 18,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  war_stomp: spell({
+    id: "war_stomp", classId: "shaman", slot: 1, name: "Batida de Guerra", icon: "💥", color: 0xe67e22,
+    description: "Bate o cajado no chão: fere e atordoa os monstros em volta de você.",
+    manaCost: 40, cooldownMs: 12000, aim: "self", range: 0, radius: 2, damage: 1.4, stunMs: 1000,
+  }),
+  forge_ogre: spell({
+    id: "forge_ogre", classId: "shaman", slot: 1, name: "Ogro da Forja", icon: "🔨", color: 0xa0522d,
+    description: "Chama o ogro da forja de Vorgak: o malho em brasa empurra e queima quem ele acerta.",
+    manaCost: 55, cooldownMs: 20000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "forgeOgre", count: 1, durationMs: 15000 },
+  }),
+  // --- Xamã Orc, Fase 3. Senhor da Horda (ramo Horda). ---
+  clan_berserkers: spell({
+    id: "clan_berserkers", classId: "shaman", slot: 0, name: "Berserkers do Clã", icon: "🪓", color: 0xc0392b,
+    description: "Chama dois orcs berserkers: rápidos e, feridos, batem cada vez mais rápido (Rompante).",
+    manaCost: 40, cooldownMs: 15000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanBerserker", count: 2, durationMs: 15000 },
+  }),
+  warlord_call: spell({
+    id: "warlord_call", classId: "shaman", slot: 1, name: "Chefe de Guerra", icon: "👑", color: 0xd35400,
+    description: "Chama o Chefe de Guerra Orc: atrai os monstros que acerta e comanda os orcs perto (+20%).",
+    manaCost: 65, cooldownMs: 24000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanWarlord", count: 1, durationMs: 20000 },
+  }),
+  // Domador de Sangue (ramo Horda).
+  submission_chain: spell({
+    id: "submission_chain", classId: "shaman", slot: 0, name: "Corrente da Submissão", icon: "🔗", color: 0x95a5a6,
+    description: "Uma corrente no monstro: se ele ficar abaixo de 30% da vida, vira seu aliado por 12 s (não vale em mini-boss nem boss).",
+    manaCost: 35, cooldownMs: 14000, aim: "target", range: 4, radius: 0, damage: 0.8,
+    convert: { hpPct: 0.3, ms: 12000 },
+  }),
+  chained_ogre: spell({
+    id: "chained_ogre", classId: "shaman", slot: 1, name: "Ogro Acorrentado", icon: "⛓️", color: 0x7f8c8d,
+    description: "Chama um Ogro do Brejo acorrentado: atrai os monstros e cada pancada atordoa.",
+    manaCost: 60, cooldownMs: 22000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "chainedOgre", count: 1, durationMs: 15000 },
+  }),
+  // Entalhador (ramo Totens).
+  thunder_totem: spell({
+    id: "thunder_totem", classId: "shaman", slot: 0, name: "Totem do Trovão", icon: "⚡", color: 0x9ec5ff,
+    description: "Finca um totem que solta um raio no monstro mais perto a cada pouco tempo.",
+    manaCost: 32, cooldownMs: 12000, aim: "target", range: 4, radius: 0,
+    field: { kind: "turret", ms: 12000, tickMs: 1500, damage: 1.1, reach: 4, shots: 8, look: "totem" },
+  }),
+  volcanic_totem: spell({
+    id: "volcanic_totem", classId: "shaman", slot: 1, name: "Totem Vulcânico", icon: "🌋", color: 0xe74c3c,
+    description: "Finca um totem de brasa viva: quando o tempo acaba, ele explode e queima tudo em volta.",
+    manaCost: 55, cooldownMs: 18000, aim: "target", range: 4, radius: 0,
+    field: { kind: "zone", ms: 8000, tickMs: 1000, look: "totem", burst: { radius: 3, damage: 2.6, burn: { perSec: 0.35, ms: 4000 } } },
+  }),
+  // Nômade (ramo Totens).
+  boar_charge: spell({
+    id: "boar_charge", classId: "shaman", slot: 0, name: "Investida do Javali", icon: "🐗", color: 0x8d6e4a,
+    description: "Corre até um monstro a até 4 tiles como um javali de guerra e o empurra para trás.",
+    manaCost: 25, cooldownMs: 9000, aim: "target", range: 4, radius: 0, damage: 1.3, push: 1, charge: true,
+  }),
+  totem_ring: spell({
+    id: "totem_ring", classId: "shaman", slot: 1, name: "Círculo de Totens", icon: "🌀", color: 0xff8a2a,
+    description: "Um anel de totens pequenos em volta de você: quem fica dentro anda devagar e queima.",
+    manaCost: 45, cooldownMs: 16000, aim: "self", range: 0, radius: 2, slow: { pct: 0.5, ms: 800 },
+    dot: { perSec: 0.2, ms: 2000, kind: "burn" },
+    field: { kind: "zone", ms: 6000, tickMs: 500, damage: 0.15, look: "totem" },
+  }),
+  // Coração de Brasa (ramo Brasa).
+  ember_rift: spell({
+    id: "ember_rift", classId: "shaman", slot: 0, name: "Fenda de Brasa", icon: "🪓", color: 0xff5a14,
+    description: "O cajado racha o chão em linha reta, como o cutelo de Vorgak: fere e queima todos na fenda.",
+    manaCost: 34, cooldownMs: 8000, aim: "target", range: 6, radius: 0, shape: "line", damage: 2, projectileSpeed: 20,
+    dot: { perSec: 0.35, ms: 4000, kind: "burn" },
+  }),
+  ember_fury: spell({
+    id: "ember_fury", classId: "shaman", slot: 1, name: "Fúria de Brasa", icon: "🌋", color: 0xff6a1a,
+    description: "Explode em brasa em volta de si: fere, empurra e queima os monstros, e cura você e os aliados perto.",
+    manaCost: 60, cooldownMs: 25000, aim: "self", range: 0, radius: 3, damage: 1.8, push: 2, heal: 0.12,
+    dot: { perSec: 0.3, ms: 3000, kind: "burn" },
+  }),
+  // Tamboreiro (ramo Brasa).
+  blood_drum: spell({
+    id: "blood_drum", classId: "shaman", slot: 0, name: "Tambor de Sangue", icon: "🩸", color: 0xc0392b,
+    description: "O tambor de pele de sangue: você, os aliados e as criaturas perto recuperam vida e batem mais forte.",
+    manaCost: 35, cooldownMs: 15000, aim: "self", range: 0, radius: 0,
+    rally: { radius: 4, ms: 5000, haste: 0, damage: 0.2, heal: 0.1 },
+  }),
+  clan_march: spell({
+    id: "clan_march", classId: "shaman", slot: 1, name: "Marcha do Clã", icon: "🥾", color: 0xe67e22,
+    description: "O ritmo da marcha: você, os aliados e as criaturas perto andam mais rápido e não ficam presos nem lentos.",
+    manaCost: 40, cooldownMs: 20000, aim: "self", range: 0, radius: 0,
+    rally: { radius: 4, ms: 6000, haste: 0, damage: 0, move: 0.3, free: true },
+  }),
+  // Costelas do Xamã Orc.
+  clan_shaman: spell({
+    id: "clan_shaman", classId: "shaman", slot: 0, name: "Xamã do Clã", icon: "🌿", color: 0x9ccc65,
+    description: "Chama um xamã do clã que cura você e os aliados perto dele.",
+    manaCost: 35, cooldownMs: 18000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "clanShaman", count: 1, durationMs: 15000 },
+  }),
+  bad_omen: spell({
+    id: "bad_omen", classId: "shaman", slot: 1, name: "Mau Agouro", icon: "💀", color: 0x6c3483,
+    description: "Amaldiçoa o monstro: ele recebe mais dano de toda a equipe por alguns segundos.",
+    manaCost: 30, cooldownMs: 12000, aim: "target", range: 5, radius: 0, damage: 1, mark: { pct: 0.2, ms: 8000 },
+  }),
+  blood_totem: spell({
+    id: "blood_totem", classId: "shaman", slot: 1, name: "Totem de Sangue", icon: "🩸", color: 0xc0392b,
+    description: "Finca um totem de sangue: você e os aliados perto dele recuperam vida a cada segundo.",
+    manaCost: 45, cooldownMs: 18000, aim: "target", range: 4, radius: 2,
+    field: { kind: "zone", ms: 10000, tickMs: 1000, allyHeal: 0.03, look: "totem" },
+  }),
+  ash_rain: spell({
+    id: "ash_rain", classId: "shaman", slot: 1, name: "Chuva de Cinzas", icon: "☄️", color: 0x7f7f7f,
+    description: "Cinzas em brasa caem no ponto mirado: ferem e deixam lentos os monstros na área.",
+    manaCost: 45, cooldownMs: 15000, aim: "target", range: 5, radius: 3, slow: { pct: 0.2, ms: 1200 },
+    field: { kind: "zone", ms: 5000, tickMs: 1000, damage: 0.4 },
+  }),
+  // Ápices do Xamã Orc (slot 3, 2.000 de gold), no fim do tronco de cada ramo.
+  horde_roar: spell({
+    id: "horde_roar", classId: "shaman", slot: 2, name: "Fúria da Horda", icon: "📣", color: 0xd35400,
+    description: "O grito que chama a horda inteira: três batedores chegam e todas as suas criaturas atacam mais rápido e se curam.",
+    manaCost: 80, cooldownMs: 40000, aim: "self", range: 0, radius: 0,
+    packCall: { haste: 0.4, ms: 8000, heal: 0.5 }, summon: { kind: "clanScout", count: 3, durationMs: 12000 },
+  }),
+  ancestor_circle: spell({
+    id: "ancestor_circle", classId: "shaman", slot: 2, name: "Círculo dos Ancestrais", icon: "🗿", color: 0xffb35a,
+    description: "Os ancestrais do clã cercam o ponto mirado: ferem e deixam lentos os monstros e curam os aliados dentro.",
+    manaCost: 85, cooldownMs: 40000, aim: "target", range: 4, radius: 4, slow: { pct: 0.3, ms: 1200 },
+    field: { kind: "zone", ms: 12000, tickMs: 1000, damage: 0.5, allyHeal: 0.03, look: "totem" },
+  }),
+  forge_rain: spell({
+    id: "forge_rain", classId: "shaman", slot: 2, name: "Chuva da Forja", icon: "☄️", color: 0xff5a14,
+    description: "O céu da forja desaba no ponto mirado: um golpe enorme de brasa que deixa o chão em chamas.",
+    manaCost: 90, cooldownMs: 40000, aim: "target", range: 6, radius: 3, damage: 3.2, projectileSpeed: 9,
+    dot: { perSec: 0.4, ms: 4000, kind: "burn" }, groundFire: { perSec: 0.3, ms: 4000 },
+  }),
+
+  // --- Slot 3 (magias supremas, nível 12): a de entrada de cada classe. Todas se compram (1.000 de gold). ----------
+  titan_fury: spell({
+    id: "titan_fury", classId: "knight", slot: 2, name: "Fúria do Titã", icon: "🌋", color: 0xd35400,
+    description: "Salta até o ponto mirado e cai com a espada no chão: fere e atordoa todos os monstros em volta.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 3, radius: 2, dash: { tiles: 3 }, damage: 2.5, stunMs: 1000,
+  }),
+  sky_arrow: spell({
+    id: "sky_arrow", classId: "paladin", slot: 2, name: "Flecha Celeste", icon: "🏹", color: 0xfff3a0,
+    description: "Atira uma flecha para o céu; um segundo depois ela cai no ponto mirado como um raio de luz, que fere e ofusca.",
+    manaCost: 50, cooldownMs: 30000, aim: "target", range: 7, radius: 2, delayMs: 1000, damage: 3, stunMs: 1000,
+  }),
+  arcane_vortex: spell({
+    id: "arcane_vortex", classId: "sorcerer", slot: 2, name: "Vórtice Arcano", icon: "🌀", color: 0xb388ff, element: "energy",
+    description: "Um orbe lento de energia atravessa a sala em linha reta e fere tudo por onde passa.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "line", wave: { stepMs: 150 }, damage: 2.6,
+  }),
+  butterfly_swarm: spell({
+    id: "butterfly_swarm", classId: "druid", slot: 2, name: "Revoada", icon: "🦋", color: 0xffb3e6,
+    description: "Uma revoada de borboletas sai em leque largo: fere os monstros, cura os aliados no caminho e o que ferem volta como vida para você.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 4, radius: 0, shape: "cone", coneAngle: 120, wave: { stepMs: 90 },
+    damage: 1.2, heal: 0.15, lifesteal: 0.2,
+  }),
+
+  // --- Slot 3: o Xamã Orc ganha a magia de entrada dele (o resto do Grimório do Xamã é de docs/CLASSE_XAMA_ORC.md). ---
+  ancestral_totem: spell({
+    id: "ancestral_totem", classId: "shaman", slot: 2, name: "Totem Ancestral", icon: "🗿", color: 0xd35400,
+    description: "Finca o totem dos ancestrais do clã: queima os monstros em volta e quem luta perto dele causa mais dano.",
+    manaCost: 55, cooldownMs: 30000, aim: "target", range: 4, radius: 3,
+    field: { kind: "zone", ms: 12000, tickMs: 1000, damage: 0.4, allyDamage: 0.2 },
+  }),
+  // --- Slot 3: Ápices (2.000 de gold), no fim do tronco de cada ramo, valem para os dois lados da especialização. ------
+  champion_reap: spell({
+    id: "champion_reap", classId: "knight", slot: 2, name: "Ceifa do Campeão", icon: "⚔️", color: 0xe0e0e0,
+    description: "Três passadas da espada que varrem a meia-lua inteira à sua frente, de um lado ao outro. Quem é cortado sangra.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 3, radius: 0, shape: "cone", coneAngle: 180, sweep: { ms: 300 },
+    damage: 1.6, dot: { perSec: 0.3, ms: 4000, kind: "bleed" }, repeat: { delayMs: 450, power: 1, times: 2 },
+  }),
+  bulwark: spell({
+    id: "bulwark", classId: "knight", slot: 2, name: "Baluarte", icon: "🏰", color: 0x7fc8ff,
+    description: "Vira um baluarte: escudo enorme em você e nos aliados por perto, armadura extra, e todos os monstros em volta passam a te perseguir.",
+    manaCost: 60, cooldownMs: 35000, aim: "self", range: 0, radius: 4, taunt: true,
+    barrier: 0.35, barrierMs: 8000, barrierAllies: true, armor: { points: 8, ms: 8000 },
+  }),
+  legion_charge: spell({
+    id: "legion_charge", classId: "knight", slot: 2, name: "Carga da Legião", icon: "🐎", color: 0xf1c40f,
+    description: "Ergue o estandarte e puxa a carga: enquanto dura, você e quem estiver perto de você batem mais forte e mais rápido.",
+    manaCost: 55, cooldownMs: 32000, aim: "self", range: 0, radius: 0, aura: { radius: 4, ms: 8000, haste: 0.2, damage: 0.25 },
+  }),
+  endless_rain: spell({
+    id: "endless_rain", classId: "paladin", slot: 2, name: "Chuva sem Fim", icon: "🏹", color: 0xf5deb3,
+    description: "Atira sem parar num leque à sua frente enquanto segura o botão; arraste para mirar a chuva. Anda bem devagar enquanto atira.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 90, damage: 0.5,
+    channel: { ms: 3000, tickMs: 300, moveSlow: 0.6 },
+  }),
+  branching_bolt: spell({
+    id: "branching_bolt", classId: "sorcerer", slot: 2, name: "Relâmpago Ramificado", icon: "🌩️", color: 0x9ec5ff, element: "energy",
+    description: "Um relâmpago corre reto e, no fim, se abre em três raios em leque.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 7, radius: 0, shape: "line", fork: { count: 3, length: 4, angle: 60 },
+    damage: 2.4,
+  }),
+  ice_age: spell({
+    id: "ice_age", classId: "sorcerer", slot: 2, name: "Era do Gelo", icon: "🧊", color: 0xd6f1ff, element: "ice",
+    description: "Congela uma área grande: os monstros dentro ficam muito lentos e o gelo os prende de tempos em tempos.",
+    manaCost: 65, cooldownMs: 35000, aim: "target", range: 5, radius: 4, slow: { pct: 0.7, ms: 2100 },
+    field: { kind: "zone", ms: 6000, tickMs: 2000, damage: 0.6, rootMs: 1000 },
+  }),
+  black_hole: spell({
+    id: "black_hole", classId: "sorcerer", slot: 2, name: "Buraco Negro", icon: "🕳️", color: 0x4a148c, element: "dark",
+    description: "Abre um buraco negro no ponto mirado: puxa os monstros em volta para o centro e explode duas vezes.",
+    manaCost: 65, cooldownMs: 35000, aim: "target", range: 5, radius: 3, pullIn: true, damage: 1.8,
+    repeat: { delayMs: 1200, power: 1 },
+  }),
+  wild_hunt: spell({
+    id: "wild_hunt", classId: "druid", slot: 2, name: "Caçada Selvagem", icon: "🐾", color: 0x8d6e4a,
+    description: "Chama a caçada inteira: três lobos e um urso lutam por você.",
+    manaCost: 65, cooldownMs: 35000, aim: "self", range: 0, radius: 0,
+    summon: { kind: "wolf", count: 3, durationMs: 12000 }, alsoSummon: { kind: "bear", count: 1, durationMs: 12000 },
+  }),
+  tree_of_life: spell({
+    id: "tree_of_life", classId: "druid", slot: 2, name: "Árvore da Vida", icon: "🌳", color: 0x2ecc71,
+    description: "Planta uma árvore sagrada: os aliados à sombra dela se curam a cada segundo.",
+    manaCost: 60, cooldownMs: 35000, aim: "target", range: 4, radius: 3,
+    field: { kind: "zone", ms: 12000, tickMs: 1000, allyHeal: 0.05 },
+  }),
+  leaf_hurricane: spell({
+    id: "leaf_hurricane", classId: "druid", slot: 2, name: "Furacão de Folhas", icon: "🍂", color: 0xc0a050,
+    description: "Solta um furacão de folhas afiadas num leque à sua frente enquanto segura o botão: fere e empurra. Arraste para virar.",
+    manaCost: 60, cooldownMs: 30000, aim: "target", range: 5, radius: 0, shape: "cone", coneAngle: 90, damage: 0.5, push: 1,
+    channel: { ms: 3000, tickMs: 300, moveSlow: 0.5 },
+  }),
+  doomsday_shot: spell({
+    id: "doomsday_shot", classId: "paladin", slot: 2, name: "Tiro do Fim do Mundo", icon: "🎯", color: 0xfff176,
+    description: "Firma os pés e carrega a flecha por 1 s; ela sai numa reta de 12 tiles que atravessa tudo, com dano dobrado em quem está quase morto.",
+    manaCost: 65, cooldownMs: 32000, aim: "target", range: 12, radius: 0, shape: "line", delayMs: 1000,
+    damage: 4, execute: { hpPct: 0.3, bonus: 1 }, selfBuff: { ms: 1000, rooted: true },
+  }),
+  solar_crown: spell({
+    id: "solar_crown", classId: "paladin", slot: 2, name: "Coroa Solar", icon: "👑", color: 0xffe082,
+    description: "Um anel de luz gira em volta de você por alguns segundos: fere e ofusca os monstros que encostam nele.",
+    manaCost: 60, cooldownMs: 32000, aim: "self", range: 0, radius: 0, damage: 0.6, stunMs: 300,
+    orbit: { radius: 2, width: 2, ms: 8000, tickMs: 500 },
   }),
 };
 
@@ -1041,6 +1520,70 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   vine_lash: { text: "O cipó também envenena por 3 s.", changes: { dot: { perSec: 0.25, ms: 3000, kind: "poison" } } },
   spore_burst: { text: "Os esporos cobrem raio 3.", changes: { radius: 3 } },
   bramble_burst: { text: "Os espinhos brotam em raio 3.", changes: { radius: 3 } },
+  // Grimório 4.0: magias em leque.
+  gale_blade: { text: "Solta uma segunda onda logo depois, com 60% do dano.", changes: { repeat: { delayMs: 400, power: 0.6 } } },
+  shield_wall: { text: "O escudo fica com você: escudo de 20% da vida por 5 s.", changes: { barrier: 0.2, barrierMs: 5000 } },
+  cutting_shout: { text: "O grito também deixa os monstros 30% mais lentos.", changes: { slow: { pct: 0.3, ms: 3000 } } },
+  arrow_fan: { text: "Sete flechas no leque.", changes: { spread: { count: 7, angle: 55 } } },
+  holy_flash: { text: "A luz marca os ofuscados: +15% de dano da equipe por 4 s.", changes: { mark: { pct: 0.15, ms: 4000 } } },
+  fire_spit: { text: "O leque de fogo abre a 90°.", changes: { coneAngle: 90 } },
+  lightning_fan: { text: "Cinco raios no leque.", changes: { spread: { count: 5, angle: 80 } } },
+  dark_wail: { text: "O lamento rouba 25% do dano em vida.", changes: { lifesteal: 0.25 } },
+  pack_roar: { text: "O rugido também cura suas criaturas em 10%.", changes: { packCall: { haste: 0.3, ms: 4000, heal: 0.1 } } },
+  pollen_breeze: { text: "A brisa cura 30% da vida.", changes: { heal: 0.3 } },
+  thorn_spray: { text: "Oito espinhos no leque.", changes: { spread: { count: 8, angle: 70 } } },
+  frost_breath: { text: "Congela mais rápido: 4 pulsos seguidos bastam.", changes: { channel: { ms: 2000, tickMs: 250, moveSlow: 0.5, freezeTicks: 4, freezeMs: 1000 } } },
+  caltrops: { text: "Cinco estrepes no leque.", changes: { field: { kind: "trap", ms: 20000, count: 5 } } },
+  // Xamã Orc
+  ember_totem: { text: "A brasa queima o monstro por 3 s.", changes: { dot: { perSec: 0.2, ms: 3000, kind: "burn" } } },
+  war_drum: { text: "A batida também cura 10% da vida de quem está no raio do tambor.", changes: { rally: { radius: 4, ms: 6000, haste: 0.25, damage: 0.15, heal: 0.1 } } },
+  clan_scouts: { text: "Chama 3 batedores.", changes: { summon: { kind: "clanScout", count: 3, durationMs: 12000 } } },
+  clan_spearmen: { text: "Chama 3 lanceiros.", changes: { summon: { kind: "clanSpearman", count: 3, durationMs: 15000 } } },
+  clan_archers: { text: "Chama 3 arqueiros.", changes: { summon: { kind: "clanArcher", count: 3, durationMs: 15000 } } },
+  clan_captain: { text: "O capitão fica 50% mais tempo.", changes: { summon: { kind: "clanCaptain", count: 1, durationMs: 27000 } } },
+  mud_totem: { text: "O lodo também prende 1 s quem está dentro.", changes: { field: { kind: "zone", ms: 10000, tickMs: 1000, rootMs: 1000, look: "totem", max: 2 } } },
+  call_totem: { text: "O totem chama até 4 batedores.", changes: { field: { kind: "zone", ms: 12000, tickMs: 4000, look: "totem", spawn: { kind: "clanScout", max: 4, durationMs: 10000 } } } },
+  grand_totem: { text: "O Grande Totem cobre raio 4.", changes: { radius: 4 } },
+  ember_lance: { text: "A queimadura dura o dobro.", changes: { dot: { perSec: 0.3, ms: 6000, kind: "burn" } } },
+  war_stomp: { text: "A batida cobre raio 3.", changes: { radius: 3 } },
+  forge_ogre: { text: "O ogro fica 50% mais tempo.", changes: { summon: { kind: "forgeOgre", count: 1, durationMs: 22000 } } },
+  clan_berserkers: { text: "Chama 3 berserkers.", changes: { summon: { kind: "clanBerserker", count: 3, durationMs: 15000 } } },
+  warlord_call: { text: "O Chefe de Guerra fica 50% mais tempo.", changes: { summon: { kind: "clanWarlord", count: 1, durationMs: 30000 } } },
+  submission_chain: { text: "Converte o monstro abaixo de 40% da vida.", changes: { convert: { hpPct: 0.4, ms: 12000 } } },
+  chained_ogre: { text: "O ogro fica 50% mais tempo.", changes: { summon: { kind: "chainedOgre", count: 1, durationMs: 22000 } } },
+  thunder_totem: { text: "O totem solta 12 raios, um por segundo.", changes: { field: { kind: "turret", ms: 12000, tickMs: 1000, damage: 1.1, reach: 4, shots: 12, look: "totem" } } },
+  volcanic_totem: { text: "A explosão cobre raio 4.", changes: { field: { kind: "zone", ms: 8000, tickMs: 1000, look: "totem", burst: { radius: 4, damage: 2.6, burn: { perSec: 0.35, ms: 4000 } } } } },
+  boar_charge: { text: "O golpe também atordoa 1 s.", changes: { stunMs: 1000 } },
+  totem_ring: { text: "O anel cobre raio 3.", changes: { radius: 3 } },
+  ember_rift: { text: "A fenda também atordoa 1 s.", changes: { stunMs: 1000 } },
+  ember_fury: { text: "Cura 20% da vida.", changes: { heal: 0.2 } },
+  blood_drum: { text: "Cura 20% da vida.", changes: { rally: { radius: 4, ms: 5000, haste: 0, damage: 0.2, heal: 0.2 } } },
+  clan_march: { text: "A marcha dura 9 s.", changes: { rally: { radius: 4, ms: 9000, haste: 0, damage: 0, move: 0.3, free: true } } },
+  clan_shaman: { text: "Chama 2 xamãs.", changes: { summon: { kind: "clanShaman", count: 2, durationMs: 15000 } } },
+  bad_omen: { text: "A maldição pega também quem está colado no alvo.", changes: { radius: 1 } },
+  blood_totem: { text: "Cura 5% da vida por segundo.", changes: { field: { kind: "zone", ms: 10000, tickMs: 1000, allyHeal: 0.05, look: "totem" } } },
+  ash_rain: { text: "As cinzas cobrem raio 4.", changes: { radius: 4 } },
+  horde_roar: { text: "Chama 4 batedores.", changes: { summon: { kind: "clanScout", count: 4, durationMs: 12000 } } },
+  ancestor_circle: { text: "O círculo cobre raio 5.", changes: { radius: 5 } },
+  forge_rain: { text: "A chuva cobre raio 4.", changes: { radius: 4 } },
+  // Slot 3
+  titan_fury: { text: "A queda pega os monstros a até 3 tiles.", changes: { radius: 3 } },
+  sky_arrow: { text: "O raio de luz cai em raio 3.", changes: { radius: 3 } },
+  arcane_vortex: { text: "O orbe vai até 8 tiles.", changes: { range: 8 } },
+  butterfly_swarm: { text: "As borboletas curam 25% da vida.", changes: { heal: 0.25 } },
+  ancestral_totem: { text: "O totem dura 18 s.", changes: { field: { kind: "zone", ms: 18000, tickMs: 1000, damage: 0.4, allyDamage: 0.2 } } },
+  champion_reap: { text: "Quatro passadas.", changes: { repeat: { delayMs: 450, power: 1, times: 3 } } },
+  bulwark: { text: "O escudo é de 45% da vida.", changes: { barrier: 0.45 } },
+  legion_charge: { text: "A carga dura 12 s.", changes: { aura: { radius: 4, ms: 12000, haste: 0.2, damage: 0.25 } } },
+  endless_rain: { text: "Atira sem ficar lento.", changes: { channel: { ms: 3000, tickMs: 300, moveSlow: 0 } } },
+  branching_bolt: { text: "Cinco raios no fim.", changes: { fork: { count: 5, length: 4, angle: 90 } } },
+  ice_age: { text: "O gelo cobre raio 5.", changes: { radius: 5 } },
+  black_hole: { text: "Puxa e explode três vezes.", changes: { repeat: { delayMs: 1200, power: 1, times: 2 } } },
+  wild_hunt: { text: "A caçada dura 18 s.", changes: { summon: { kind: "wolf", count: 3, durationMs: 18000 }, alsoSummon: { kind: "bear", count: 1, durationMs: 18000 } } },
+  tree_of_life: { text: "A árvore cura 8% por segundo.", changes: { field: { kind: "zone", ms: 12000, tickMs: 1000, allyHeal: 0.08 } } },
+  leaf_hurricane: { text: "O furacão prende 0,5 s a cada pulso.", changes: { rootMs: 500 } },
+  doomsday_shot: { text: "Carrega em 0,5 s.", changes: { delayMs: 500, selfBuff: { ms: 500, rooted: true } } },
+  solar_crown: { text: "O anel abre até 3 tiles.", changes: { orbit: { radius: 3, width: 3, ms: 8000, tickMs: 500 } } },
 };
 
 /**
@@ -1066,6 +1609,8 @@ export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
     selfBuff: def.selfBuff && { ...def.selfBuff, ms: Math.round(def.selfBuff.ms * t) },
     field: def.field && {
       ...def.field, ms: Math.round(def.field.ms * t), damage: def.field.damage && def.field.damage * k,
+      spawn: def.field.spawn && { ...def.field.spawn, durationMs: Math.round(def.field.spawn.durationMs * t) },
+      burst: def.field.burst && { ...def.field.burst, damage: def.field.burst.damage * k, burn: def.field.burst.burn && { ...def.field.burst.burn, perSec: def.field.burst.burn.perSec * k } },
       allyHeal: def.field.allyHeal && def.field.allyHeal * k, allyMana: def.field.allyMana && def.field.allyMana * k,
     },
     form: def.form && { ...def.form, ms: Math.round(def.form.ms * t), pounce: def.form.pounce && def.form.pounce * k, pounceStunMs: ms(def.form.pounceStunMs) },
@@ -1080,6 +1625,10 @@ export function spellAtRank(base: SpellDef, rank: number, bonus = 0): SpellDef {
     guardMs: ms(def.guardMs),
     barrierMs: ms(def.barrierMs),
     summon: def.summon && { ...def.summon, durationMs: Math.round(def.summon.durationMs * t) },
+    orbit: def.orbit && { ...def.orbit, ms: Math.round(def.orbit.ms * t) },
+    alsoSummon: def.alsoSummon && { ...def.alsoSummon, durationMs: Math.round(def.alsoSummon.durationMs * t) },
+    aura: def.aura && { ...def.aura, ms: Math.round(def.aura.ms * t), damage: def.aura.damage * k },
+    rally: def.rally && { ...def.rally, ms: Math.round(def.rally.ms * t), damage: def.rally.damage * k, heal: def.rally.heal && def.rally.heal * k },
   };
 }
 
@@ -1089,17 +1638,46 @@ const num = (v: number, digits = 1) => v.toLocaleString("pt-BR", { maximumFracti
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const sec = (ms: number) => `${num(ms / 1000)} s`;
 
+/**
+ * Dano base do herói para a magia (`baseDamage` em hunt.ts), num intervalo de níveis da hunt: `spell` para magias,
+ * campos e torres, `summon` para criaturas (só parte do poder mágico do equipamento). Com ele, `spellFacts` mostra o
+ * dano em números além do multiplicador. `basic` é o dano do ataque básico (arma), usado pelo salto da Pantera.
+ */
+export interface HeroDamage {
+  spell: readonly [min: number, max: number];
+  basic: readonly [min: number, max: number];
+  summon: readonly [min: number, max: number];
+}
+
 /** Efeitos da magia num nível, em linhas curtas para o menu e a escolha na hunt. */
-export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
+export function spellFacts(def: SpellDef, rank = 0, bonus = 0, hero?: HeroDamage): string[] {
   const s = spellAtRank(def, rank, bonus);
-  const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque (${s.range} tiles)`
+  // "2,3×" ou, com o herói, "23 a 98 (2,3×)": o dano de um golpe, antes da variação de ±15% e da defesa do monstro.
+  const dmg = (mult: number, base = hero?.spell) => {
+    if (!base) return `${num(mult)}×`;
+    const [lo, hi] = base.map((b) => Math.max(1, Math.round(mult * b)));
+    return `${lo === hi ? lo : `${lo} a ${hi}`} (${num(mult)}×)`;
+  };
+  const area = s.shape === "line" ? ` em linha (${s.range} tiles)` : s.shape === "cone" ? ` em leque de ${s.coneAngle ?? 90}° (${s.range} tiles)`
     : s.radius > 0 && !s.field ? ` em raio ${s.radius}` : "";
   const facts: string[] = [];
-  if (s.damage) facts.push(`Dano ${num(s.damage)}×${area}`);
+  if (s.damage) facts.push(s.spread ? `${s.spread.count} projéteis em leque de ${s.spread.angle}°, ${dmg(s.damage)} cada` : `Dano ${dmg(s.damage)}${area}`);
+  if (s.wave) facts.push("Onda: sai de você e avança pelo leque");
+  if (s.sweep) facts.push("Varre o leque de um lado ao outro");
+  if (s.fork) facts.push(`No fim da linha, abre ${s.fork.count} raios de ${s.fork.length} tiles em leque`);
+  if (s.pullIn) facts.push("Puxa os monstros da área para o centro");
+  if (s.orbit) facts.push(`Anel de luz em volta de você por ${sec(s.orbit.ms)}: um pulso a cada ${sec(s.orbit.tickMs)} em quem está a ${s.orbit.width > 1 ? `${s.orbit.radius - s.orbit.width + 1} a ` : ""}${s.orbit.radius} tiles`);
+  if (s.delayMs && s.selfBuff?.rooted) facts.push(`Carrega por ${sec(s.delayMs)} parado antes de soltar`);
+  if (s.aura) facts.push(`Aura por ${sec(s.aura.ms)}: você e quem estiver a até ${s.aura.radius} tiles causam +${pct(s.aura.damage)} de dano e atacam ${pct(s.aura.haste)} mais rápido`);
+  if (s.channel) {
+    facts.push(`Canaliza por até ${sec(s.channel.ms)}: um pulso a cada ${sec(s.channel.tickMs)}; segure e arraste para girar`);
+    if (s.channel.freezeTicks && s.channel.freezeMs) facts.push(`${s.channel.freezeTicks} pulsos seguidos no mesmo monstro o prendem por ${sec(s.channel.freezeMs)}`);
+  }
+  if (s.field?.count) facts.push(`${s.field.count} armadilhas espalhadas no leque`);
   if (s.chain) facts.push(`Salta para mais ${s.chain.jumps} monstros (−${pct(s.chain.falloff)} por salto)`);
   if (s.execute) facts.push(`+${pct(s.execute.bonus)} de dano em quem tem menos de ${pct(s.execute.hpPct)} da vida`);
   if (s.distanceBonus) facts.push(`+${pct(s.distanceBonus)} de dano por tile até o alvo`);
-  if (s.dot) facts.push(`${DOT_NAMES[s.dot.kind]}: ${num(s.dot.perSec)}× por segundo por ${sec(s.dot.ms)}`);
+  if (s.dot) facts.push(`${DOT_NAMES[s.dot.kind]}: ${dmg(s.dot.perSec)} por segundo por ${sec(s.dot.ms)}`);
   if (s.lifesteal) facts.push(`Rouba ${pct(s.lifesteal)} do dano em vida`);
   if (s.heal) facts.push(`Cura ${pct(s.heal)} da vida${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
   if (s.barrier && s.barrierMs) facts.push(`Escudo de ${pct(s.barrier)} da vida por ${sec(s.barrierMs)}${s.barrierAllies ? " (aliados também)" : ""}`);
@@ -1113,17 +1691,21 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.undeadBonus) facts.push(`+${pct(s.undeadBonus)} de dano em mortos-vivos`);
   if (s.field?.kind === "zone") {
     const effects = [
-      s.field.damage ? `${num(s.field.damage)}× por segundo nos monstros` : "",
+      s.field.damage ? `${dmg(s.field.damage)} ${(s.field.tickMs ?? 1000) === 1000 ? "por segundo" : `a cada ${sec(s.field.tickMs!)}`} nos monstros` : "",
       s.field.allyArmor ? `+${s.field.allyArmor} de armadura nos aliados` : "",
       s.field.allyDamage ? `+${pct(s.field.allyDamage)} de dano nos aliados` : "",
       s.field.allyHeal ? `cura ${pct(s.field.allyHeal)} da vida e devolve ${pct(s.field.allyMana ?? 0)} da mana por segundo` : "",
+      s.field.spawn ? `chama 1× ${SUMMONS[s.field.spawn.kind].name} a cada ${sec(s.field.tickMs ?? 250)} (até ${s.field.spawn.max}, por ${sec(s.field.spawn.durationMs)})` : "",
     ].filter(Boolean);
-    facts.push(`Campo de raio ${s.radius} por ${sec(s.field.ms)}${effects.length ? `: ${effects.join(", ")}` : ""}`);
+    const what = s.field.look === "totem" ? "Totem" : "Campo";
+    facts.push(`${what}${s.radius > 0 ? ` de raio ${s.radius}` : ""} por ${sec(s.field.ms)}${effects.length ? `: ${effects.join(", ")}` : ""}`);
   }
   if (s.field?.kind === "trap") facts.push(`Armadilha por ${sec(s.field.ms)}: dispara no primeiro monstro que pisar${s.radius > 0 ? ` (raio ${s.radius})` : ""}`);
   if (s.field?.kind === "turret") {
-    const what = s.field.look === "storm" ? "Nuvem" : "Estaca";
-    facts.push(`${what} por ${sec(s.field.ms)}: ${s.field.shots} ${s.field.look === "storm" ? "raios" : "tiros"} de ${num(s.field.damage ?? 0)}× a até ${s.field.reach} tiles`);
+    const what = s.field.look === "storm" ? "Nuvem" : s.field.look === "totem" ? "Totem" : "Estaca";
+    const shots = s.field.look === "storm" ? "raios" : s.field.look === "totem" ? "brasas" : "tiros";
+    facts.push(`${what} por ${sec(s.field.ms)}: ${s.field.shots} ${shots} de ${dmg(s.field.damage ?? 0)} a até ${s.field.reach} tiles`);
+    if ((s.field.max ?? 1) > 1) facts.push(`Até ${s.field.max} ao mesmo tempo (o mais antigo sai)`);
   }
   if (s.field?.kind === "wall") facts.push(`Parede de ${s.field.length} tiles por ${sec(s.field.ms)}`);
   if (s.field?.kind === "zone" && s.field.rootMs) facts.push(`Prende quem está dentro (${sec(s.field.rootMs)} a cada pulso)`);
@@ -1131,9 +1713,21 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.dash) facts.push(s.dash.teleport ? `Teleporta até ${s.dash.tiles} tiles` : `Salta até ${s.dash.tiles} tiles`);
   if (s.form?.kind === "panther") {
     facts.push(`Pantera por ${sec(s.form.ms)}: anda ${pct(s.form.moveSpeed ?? 0)} mais rápido`);
-    facts.push(`O próximo ataque salta no alvo: ${num(s.form.pounce ?? 1)}×${s.form.pounceStunMs ? `, atordoa por ${sec(s.form.pounceStunMs)}` : ""}`);
+    facts.push(`O próximo ataque salta no alvo: ${dmg(s.form.pounce ?? 1, hero?.basic)}${s.form.pounceStunMs ? `, atordoa por ${sec(s.form.pounceStunMs)}` : ""}`);
   }
   if (s.form?.kind === "bear") facts.push(`Urso por ${sec(s.form.ms)}: +${pct(s.form.hp ?? 0)} de vida; o ataque fere e provoca todos os monstros colados`);
+  if (s.rally) {
+    const parts = [
+      s.rally.haste ? `atacam ${pct(s.rally.haste)} mais rápido` : "",
+      s.rally.damage ? `causam +${pct(s.rally.damage)} de dano` : "",
+      s.rally.move ? `andam ${pct(s.rally.move)} mais rápido` : "",
+      s.rally.free ? "não ficam presos nem lentos" : "",
+    ].filter(Boolean);
+    if (parts.length) facts.push(`Você, os aliados e as criaturas a até ${s.rally.radius} tiles: ${parts.join(", ")} por ${sec(s.rally.ms)}`);
+    if (s.rally.heal) facts.push(`Cura ${pct(s.rally.heal)} da vida deles`);
+  }
+  if (s.convert) facts.push(`Abaixo de ${pct(s.convert.hpPct)} da vida, o monstro comum vira seu aliado por ${sec(s.convert.ms)}`);
+  if (s.field?.burst) facts.push(`No fim, explode: ${dmg(s.field.burst.damage)} em raio ${s.field.burst.radius}${s.field.burst.burn ? " e queima" : ""}`);
   if (s.packCall) facts.push(`Suas criaturas atacam ${pct(s.packCall.haste)} mais rápido por ${sec(s.packCall.ms)} e recuperam ${pct(s.packCall.heal)} da vida`);
   if (s.seed) facts.push(`Semente por ${sec(s.seed.ms)}: se o aliado morrer, renasce com ${pct(s.seed.hp)} da vida, sem perder nada`);
   if (s.cleanse) facts.push("Tira veneno, queimadura e lentidão");
@@ -1141,10 +1735,10 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
   if (s.charge) facts.push("Corre até o alvo antes do golpe");
   if (s.pull) facts.push("Puxa o alvo para perto de você");
   if (s.tauntHeal) facts.push(`Cura ${pct(s.tauntHeal)} da vida por monstro provocado`);
-  if (s.groundFire) facts.push(`O chão fica em chamas por ${sec(s.groundFire.ms)} (${num(s.groundFire.perSec)}× por segundo)`);
+  if (s.groundFire) facts.push(`O chão fica em chamas por ${sec(s.groundFire.ms)} (${dmg(s.groundFire.perSec)} por segundo)`);
   if (s.breakPush) facts.push(`Ao quebrar, empurra ${s.breakPush} tiles os monstros colados`);
   if (s.summonDeathHeal) facts.push(`A criatura, ao morrer, cura ${pct(s.summonDeathHeal.pct)} da equipe a até ${s.summonDeathHeal.radius} tiles`);
-  if (s.burst) facts.push(`Se o alvo morrer envenenado, explode: ${num(s.burst.damage)}× em raio ${s.burst.radius}, e envenena`);
+  if (s.burst) facts.push(`Se o alvo morrer envenenado, explode: ${dmg(s.burst.damage)} em raio ${s.burst.radius}, e envenena`);
   if (s.nextBasicStunMs) facts.push(`A próxima flecha atordoa por ${sec(s.nextBasicStunMs)}`);
   if (s.selfBuff) {
     const b = s.selfBuff;
@@ -1172,7 +1766,11 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
     const power = rankPower(rank) * (1 + bonus);
     const what = s.summon.count > 1 ? `${s.summon.count}× ${sum.name}` : sum.name;
     facts.push(`Invoca ${what} por ${sec(s.summon.durationMs)}`);
-    facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${num(sum.damage * power)}×` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
+    facts.push(`Criatura: vida ${pct(sum.hp * power)} da sua${sum.damage ? ` · dano ${dmg(sum.damage * power, hero?.summon)}` : ""}${sum.heal ? ` · cura ${pct(sum.heal * power)}` : ""}${sum.mana ? ` · mana ${pct(sum.mana * power)}` : ""}`);
+  }
+  if (s.alsoSummon) {
+    const what = s.alsoSummon.count > 1 ? `${s.alsoSummon.count}× ${SUMMONS[s.alsoSummon.kind].name}` : SUMMONS[s.alsoSummon.kind].name;
+    facts.push(`E também ${what} por ${sec(s.alsoSummon.durationMs)}`);
   }
   facts.push(`${s.manaCost} de mana · recarga ${num(s.cooldownMs / 1000)} s${s.aim !== "self" ? ` · alcance ${s.range}` : ""}`);
   if (rank >= MASTERY_RANK) facts.push(`★ Maestria: ${MASTERIES[def.id].text}`);
@@ -1182,6 +1780,7 @@ export function spellFacts(def: SpellDef, rank = 0, bonus = 0): string[] {
 /** Magias que toda classe já tem de graça (uma por slot). As outras se compram no Grimório. */
 export const STARTER_SPELLS: readonly SpellId[] = [
   "blade_spin", "war_cry", "holy_arrow", "arrow_rain", "shadow_orb", "void_storm", "forest_blessing", "thorn_roots",
+  "ember_totem", "war_drum",
 ];
 
 /**
@@ -1198,9 +1797,50 @@ export function spellChoices(classId: ClassId, slot: SpellSlot, known: readonly 
  * Magia de alvo único (`aim: "target"` sem área): a mira gruda no monstro a até `AIM_SNAP_TILES`
  * do ponto mirado. As de área caem no ponto, sem ímã.
  */
-export function isSingleTarget(spell: SpellDef) {
+export function isSingleTarget(spell: Pick<SpellDef, "aim" | "radius" | "shape" | "dash" | "field">) {
   return spell.aim === "target" && spell.radius === 0 && !spell.shape && !spell.dash && !spell.field;
 }
+
+/** O que a mira precisa saber de uma magia (o básico à distância usa o mesmo formato, ver `basicShotAim`). */
+export type AimDef = Pick<SpellDef, "aim" | "range" | "radius" | "shape" | "dash" | "field" | "projectileSpeed" | "charge" | "coneAngle" | "spread" | "fork">;
+
+/** O básico à distância desenhado pela mira das magias: um tiro de alvo único com o alcance do básico. */
+export function basicShotAim(range: number): AimDef {
+  return { aim: "target", range, radius: 0, projectileSpeed: 1 };
+}
+
+/**
+ * Tiro que pode errar: magia de alvo único com projétil (Flecha Sagrada, Relâmpago, Lâmina Arremessada...). É mirado
+ * numa **direção**, não num ponto: voa reto até o alcance inteiro (ou a primeira parede), sem seguir o monstro, e acerta
+ * o primeiro monstro que encontrar no caminho durante o voo (ver `shotPath`). A mira não gruda no monstro.
+ */
+export function isShot(spell: AimDef) {
+  return isSingleTarget(spell) && (spell.projectileSpeed ?? 0) > 0 && !spell.charge;
+}
+
+/**
+ * Caminho de um tiro (básico à distância ou `isShot`): os tiles do herói na direção de (ax, ay) até `range` tiles, em
+ * ordem, sem o tile do herói e parando antes da primeira parede (a reta segue a direção mesmo depois do ponto, como
+ * `lineTiles`). O projétil passa por um tile de cada vez (`flightMs` até ele) e para no primeiro monstro que encontrar.
+ * Quem vem reto na direção do herói continua no caminho; quem anda de lado sai dele. Ponto igual ao herói: sem direção.
+ */
+export function shotPath(d: Dungeon, x0: number, y0: number, ax: number, ay: number, range: number) {
+  if (x0 === ax && y0 === ay) return [];
+  return lineTiles(d, x0, y0, ax, ay, range);
+}
+
+/**
+ * Ponto distante na direção (dx, dy) a partir do herói, para mandar como mira de tiro: quanto mais longe, mais fina a
+ * direção que a reta de tiles consegue seguir. Cliente (mira) e servidor (bots, testes) usam a mesma conta.
+ */
+export function shotAimPoint(x0: number, y0: number, dx: number, dy: number) {
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return { x: x0, y: y0 };
+  return { x: x0 + Math.round((dx / len) * SHOT_AIM_REACH), y: y0 + Math.round((dy / len) * SHOT_AIM_REACH) };
+}
+
+/** Distância (tiles) do ponto que representa a direção de um tiro (ver `shotAimPoint`). */
+export const SHOT_AIM_REACH = 40;
 
 /**
  * Tiles de uma magia em linha: do herói na direção do ponto mirado até `length` tiles, parando antes
@@ -1212,7 +1852,8 @@ export function isSingleTarget(spell: SpellDef) {
  * Tiles de uma magia em cone: um leque de 90° do herói na direção do ponto mirado, até `length` tiles, só os que o
  * herói enxerga (paredes cortam o leque). Não inclui o tile do herói. Cliente e servidor usam a mesma conta.
  */
-export function coneTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {
+export function coneTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number, angle = 90) {
+  const half = (Math.min(180, Math.max(10, angle)) * Math.PI) / 360;
   const dir = Math.atan2(ay - y0, ax - x0);
   if (ax === x0 && ay === y0) return [];
   const tiles: { x: number; y: number }[] = [];
@@ -1221,11 +1862,35 @@ export function coneTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: nu
       if ((x === x0 && y === y0) || tileDistance(x0, y0, x, y) > length || blocksSight(d, x, y)) continue;
       let diff = Math.abs(Math.atan2(y - y0, x - x0) - dir);
       if (diff > Math.PI) diff = 2 * Math.PI - diff;
-      // Meia abertura de 45°, com folga para os tiles da borda não piscarem com o arredondamento.
-      if (diff <= Math.PI / 4 + 0.01 && hasLineOfSight(d, x0, y0, x, y)) tiles.push({ x, y });
+      // Meia abertura, com folga para os tiles da borda não piscarem com o arredondamento.
+      if (diff <= half + 0.01 && hasLineOfSight(d, x0, y0, x, y)) tiles.push({ x, y });
     }
   }
   return tiles;
+}
+
+/**
+ * Direções dos projéteis em leque (`spread`): um ponto longe (`SHOT_AIM_REACH`) por tiro, espalhados igualmente em
+ * `angle` graus em volta da direção do herói para (ax, ay). Cliente e servidor usam a mesma conta.
+ */
+export function spreadAimPoints(x0: number, y0: number, ax: number, ay: number, count: number, angle: number) {
+  const base = Math.atan2(ay - y0, ax - x0);
+  const span = (angle * Math.PI) / 180;
+  return Array.from({ length: count }, (_, i) => {
+    const a = count === 1 ? base : base - span / 2 + (span * i) / (count - 1);
+    return { x: x0 + Math.round(Math.cos(a) * SHOT_AIM_REACH), y: y0 + Math.round(Math.sin(a) * SHOT_AIM_REACH) };
+  });
+}
+
+/**
+ * Galhos no fim de uma linha (Relâmpago Ramificado): `fork.count` linhas de `fork.length` tiles saindo do último tile
+ * (`end`), abertas em leque de `fork.angle` graus em volta da direção do herói até ele. Cliente e servidor usam a mesma conta.
+ */
+export function forkTiles(d: Dungeon, x0: number, y0: number, end: { x: number; y: number }, fork: { count: number; length: number; angle: number }) {
+  if (end.x === x0 && end.y === y0) return [];
+  const ahead = { x: end.x + (end.x - x0), y: end.y + (end.y - y0) };
+  return spreadAimPoints(end.x, end.y, ahead.x, ahead.y, fork.count, fork.angle)
+    .flatMap((point) => lineTiles(d, end.x, end.y, point.x, point.y, fork.length));
 }
 
 export function lineTiles(d: Dungeon, x0: number, y0: number, ax: number, ay: number, length: number) {

@@ -3,6 +3,8 @@
  * - Elementos: o Dragão é imune a fogo; mortos-vivos não envenenam; a Fortitude segura o primeiro golpe fatal (menos luz).
  * - Troll: regenera, e fogo interrompe. Hidra: perde cabeça a cada 20% e nascem duas sem fogo; fogo cauteriza.
  * - Rei Bullywug: some na lama e sai em bote colado no herói; com metade da vida chama 2 bullywugs, uma vez só.
+ * - Vorgak (Fortaleza Orc): a Fenda de Brasa racha o chão em linha e queima; o Salto cai colado e atordoa; o Gancho
+ *   puxa; com 70% chama 2 berserkers, com 35% explode em brasa (empurra, se cura) e chama 2 ogros, cada um uma vez só.
  * - Efeitos no herói: controle tem teto de 2 s, impede andar e dá imunidade de 4 s; Corroído acumula até 3.
  * - Monstro escondido não pode ser alvo. Língua puxa, Agressivo salta, Voo some invulnerável, cai colado e se recompõe antes de bater de novo;
  *   boss espera 1 s entre uma habilidade e outra.
@@ -140,7 +142,7 @@ function check(ok: boolean, what: string) {
   const { spawn, brain, state, hit, any } = arena("marsh");
   const k = MAPS.marsh.lootScale! * LOOT_SCALE;
   const grunt = spawn("orcGrunt");
-  const full = monsterStats("orcGrunt", 0).loot;
+  const full = monsterStats("orcGrunt").loot;
   check(brain(grunt).loot[1] === Math.round(full[1] * k), `loot do orc devia ser ${k} do normal (${brain(grunt).loot[1]} de ${full[1]})`);
   // Mini-bosses: dos 40 mortos, só parte larga o item garantido (≈ dropScale × LOOT_SCALE × ITEM_DROP_SCALE, 29%).
   let items = 0;
@@ -255,36 +257,33 @@ function check(ok: boolean, what: string) {
 {
   const { spawn, hit, hunt, p, brain } = arena();
   p.hp = p.maxHp = 1_000_000;
-  const dragon = spawn("dragon", 4);
-  brain(dragon).targetId = "h";
+  // Boss não mergulha: o voo/mergulho invulnerável deixava as lutas de boss quase impossíveis.
+  const divers = Object.values(MONSTERS).filter((m) => m.rank === "boss" && m.abilities?.some((a) => a.shape === "dive")).map((m) => m.kind);
+  check(divers.length === 0, `nenhum boss devia ter Voo/Mergulho (${divers.join(", ")})`);
+  // A mecânica fica nos comuns, como o Corvo Carniceiro.
+  const crow = spawn("carrionCrow", 4);
+  brain(crow).targetId = "h";
+  brain(crow).abilityReadyAt.crowDive = 0; // sem a espera do primeiro uso
   advance(hunt, 100);
-  hit(dragon, Math.ceil(dragon.maxHp * 0.55), "basic");
-  advance(hunt, 100);
-  check(dragon.hidden && brain(dragon).diving, "abaixo de 50% o Dragão devia alçar voo na hora");
-  check(hit(dragon, 100, "basic") === 0, "voando, o Dragão não devia levar dano");
-  advance(hunt, (MONSTERS.dragon.abilities!.find((a) => a.id === "flight")!.vanishMs ?? 2000) + 100);
-  check(!dragon.hidden && tileDistance(p.x, p.y, dragon.x, dragon.y) <= 1, "o Dragão devia cair colado no herói");
-  // A queda é o golpe: o Multiataque e o sopro não saem colados nela (antes vinham juntos e matavam de uma vez).
+  check(crow.hidden && brain(crow).diving, "longe do herói, o Corvo devia mergulhar na hora");
+  check(hit(crow, 10, "basic") === 0, "no ar, o Corvo não devia levar dano");
+  advance(hunt, (MONSTERS.carrionCrow.abilities!.find((a) => a.id === "crowDive")!.vanishMs ?? 900) + 100);
+  check(!crow.hidden && tileDistance(p.x, p.y, crow.x, crow.y) <= 1, "o Corvo devia cair colado no herói");
+  // A queda é o golpe: o básico não sai colado nela.
   const landed = damage.length;
-  const blows = () => damage.slice(landed).filter((x) => x.toPlayer && x.attacker === dragon.id && !x.dot).length;
+  const blows = () => damage.slice(landed).filter((x) => x.toPlayer && x.attacker === crow.id && !x.dot).length;
   advance(hunt, 1200);
-  check(blows() === 0, `logo depois de cair, o Dragão devia se recompor (${blows()} golpes)`);
-  advance(hunt, 1500);
-  check(blows() > 0, "recomposto, o Dragão devia voltar a atacar");
-  console.log("Voo do Dragão OK");
+  check(blows() === 0, `logo depois de cair, o Corvo devia se recompor (${blows()} golpes)`);
+  advance(hunt, 3000);
+  check(blows() > 0, "recomposto, o Corvo devia voltar a atacar");
+  console.log("Boss sem mergulho e Mergulho do Corvo OK");
 }
 {
-  // Rei Bullywug: some na lama e cai em bote colado no herói; com metade da vida chama 2 bullywugs, uma vez só.
+  // Rei Bullywug: com metade da vida chama 2 bullywugs, uma vez só; de perto, estoca.
   const { spawn, hit, hunt, p, brain, state } = arena("swamp", "knight", 12);
   p.hp = p.maxHp = 1_000_000;
   const king = spawn("bullywugKing", 4);
   brain(king).targetId = "h";
-  brain(king).abilityReadyAt.mudAmbush = 0; // sem a espera do primeiro uso
-  advance(hunt, 100);
-  check(king.hidden && brain(king).diving, "longe do herói, o Rei devia sumir na lama (Bote da Lama)");
-  check(hit(king, 100, "basic") === 0, "na lama, o Rei não devia levar dano");
-  advance(hunt, (MONSTERS.bullywugKing.abilities!.find((a) => a.id === "mudAmbush")!.vanishMs ?? 2000) + 100);
-  check(!king.hidden && tileDistance(p.x, p.y, king.x, king.y) <= 1, "o Rei devia sair da lama colado no herói");
   const guards = () => [...state.monsters.values()].filter((m) => m.kind === "bullywug" && brain(m)?.summonedBy === king.id).length;
   hit(king, Math.ceil(king.maxHp * 0.55), "basic");
   advance(hunt, 100);
@@ -294,6 +293,68 @@ function check(ok: boolean, what: string) {
   check(calls === 1, `o Chamado do Brejo devia sair uma vez só (${calls})`);
   check(strikes.some((s) => s.id === king.id && s.ability === "spearThrust"), "de perto, o Rei devia usar a Estocada");
   console.log("Rei Bullywug OK");
+}
+{
+  // Vorgak, o Senhor da Brasa: cada habilidade testada sozinha (as outras ficam sem recarga pronta).
+  const { spawn, hit, hunt, p, brain, state, any } = arena("fortress", "knight", 20);
+  p.hp = p.maxHp = 1_000_000;
+  const only = (boss: Monster, id: string) => {
+    for (const a of MONSTERS.emberWarlord.abilities!) brain(boss).abilityReadyAt[a.id] = a.id === id ? 0 : Number.MAX_SAFE_INTEGER;
+  };
+  const used = (boss: Monster, id: string) => strikes.some((s) => s.id === boss.id && s.ability === id);
+  {
+    const boss = spawn("emberWarlord", 3);
+    brain(boss).targetId = "h";
+    only(boss, "emberRift");
+    const hp0 = p.hp;
+    advance(hunt, 300);
+    check(used(boss, "emberRift"), "a 3 tiles, Vorgak devia rachar o chão (Fenda de Brasa)");
+    check(p.hp < hp0, "a Fenda de Brasa devia ferir o herói na linha");
+    check(any.seats.get("h").dot?.monsterId === boss.id, "a Fenda de Brasa devia deixar o herói queimando");
+    state.monsters.delete(boss.id);
+  }
+  {
+    const boss = spawn("emberWarlord", 5);
+    brain(boss).targetId = "h";
+    only(boss, "warlordLeap");
+    advance(hunt, 300);
+    check(used(boss, "warlordLeap"), "a 5 tiles, Vorgak devia saltar (Salto do Senhor da Guerra)");
+    check(tileDistance(p.x, p.y, boss.x, boss.y) <= 1, "o Salto devia cair colado no herói");
+    const stun = any.seats.get("h").effects.stun;
+    check(!!stun && stun.until > clock, "o Salto devia atordoar o herói");
+    state.monsters.delete(boss.id);
+  }
+  advance(hunt, 5000);
+  {
+    const boss = spawn("emberWarlord", 4);
+    brain(boss).targetId = "h";
+    only(boss, "ironHook");
+    const before = tileDistance(p.x, p.y, boss.x, boss.y);
+    advance(hunt, 300);
+    check(used(boss, "ironHook"), "a 4 tiles, Vorgak devia lançar o Gancho de Ferro");
+    check(tileDistance(p.x, p.y, boss.x, boss.y) < before, "o Gancho devia puxar o herói");
+    state.monsters.delete(boss.id);
+  }
+  {
+    const boss = spawn("emberWarlord", 1);
+    brain(boss).targetId = "h";
+    const called = (kind: MonsterKind) => [...state.monsters.values()].filter((m) => m.kind === kind && brain(m)?.summonedBy === boss.id).length;
+    hit(boss, Math.ceil(boss.maxHp * 0.32), "basic");
+    advance(hunt, 100);
+    check(called("orcBerserker") === 2, `abaixo de 70% Vorgak devia chamar 2 berserkers (${called("orcBerserker")})`);
+    const hp = boss.hp;
+    hit(boss, Math.ceil(boss.maxHp * 0.36), "basic");
+    advance(hunt, 2500);
+    check(used(boss, "emberFury"), "abaixo de 35% Vorgak devia explodir em brasa (Fúria de Brasa)");
+    check(called("ogreYoung") === 2, `abaixo de 35% Vorgak devia chamar 2 ogros (${called("ogreYoung")})`);
+    check(boss.hp > hp - Math.ceil(boss.maxHp * 0.36), "a Fúria de Brasa devia curar Vorgak");
+    advance(hunt, 40_000);
+    for (const id of ["fortressCall", "emberFury", "ogreGuard"]) {
+      const n = strikes.filter((s) => s.id === boss.id && s.ability === id).length;
+      check(n === 1, `${id} devia sair uma vez só (${n})`);
+    }
+  }
+  console.log("Vorgak, o Senhor da Brasa OK");
 }
 {
   // Boss enfurecido: as habilidades não saem coladas (antes, sopro e Escuridão vinham com 50 ms de diferença).

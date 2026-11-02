@@ -11,7 +11,7 @@
  */
 import { Client } from "@colyseus/sdk";
 import {
-  CLASS_IDS, MSG, SPELLS, SPELL_LEVEL_XP, SPELL_MAX_LEVEL, SYNERGY_PER_LEVEL, spellAtRank, spellBonus, spellBonuses,
+  CLASS_IDS, MSG, allSpellsRanks, SPELLS, SPELL_LEVEL_XP, SPELL_MAX_LEVEL, SYNERGY_PER_LEVEL, spellAtRank, spellBonus, spellBonuses,
   spellNeighbors, spellRanks, talentTree, type ClassId, type SpellId, type SpellXp, type TalentRanks,
 } from "@kusa/shared";
 import { enter, wait } from "./hunt.ts";
@@ -28,7 +28,7 @@ process.exit(0);
 function everything(classId: ClassId): { ranks: TalentRanks; xp: SpellXp } {
   const tree = talentTree(classId);
   return {
-    ranks: Object.fromEntries(tree.map((t) => [t.id, t.maxRank])),
+    ranks: allSpellsRanks(classId),
     xp: Object.fromEntries(tree.filter((t) => t.spellId).map((t) => [t.id, SPELL_LEVEL_XP[SPELL_LEVEL_XP.length - 1]])),
   };
 }
@@ -38,7 +38,10 @@ function rules() {
   for (const classId of CLASS_IDS) {
     const tree = talentTree(classId);
     const tomes = tree.filter((t) => t.kind === "tome");
-    check(tomes.map((t) => t.col).sort().join() === "0,1,2", `${classId}: devia ter um Tomo por ramo`);
+    // Um Tomo por ramo que tem magia (o Xamã Orc da Fase 1 ainda tem ramos só com áureas, que não ganham Tomo).
+    const withSpell = [0, 1, 2].filter((col) => tree.some((t) => t.col === col && t.row > 0 && t.kind === "spell"));
+    check(tomes.map((t) => t.col).sort().join() === withSpell.join(), `${classId}: devia ter um Tomo por ramo com magia`);
+    if (classId !== "shaman") check(withSpell.length === 3, `${classId}: todo ramo devia ter magia`);
     for (const tome of tomes) {
       const parent = tree.find((t) => t.id === tome.requires?.id);
       check(!!parent && parent.col === tome.col && parent.row === 1 && parent.lane === 0, `${tome.id}: pai fora do tronco do ramo`);

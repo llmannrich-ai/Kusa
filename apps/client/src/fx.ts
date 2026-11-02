@@ -29,7 +29,41 @@ function lava(heat: number) {
  * desenhado coincidir com o número de dano.
  */
 export class CombatFx {
+  /** Tiro sendo desenhado agora (`track`): os projéteis e efeitos atrasados dele ficam guardados aqui. */
+  private tracking: ShotFx | null = null;
+  /** Tiros em voo, pelo id do servidor, para parar no `MSG.shotEnd`. */
+  private shots = new Map<number, ShotFx>();
+
   constructor(private scene: Phaser.Scene) {}
+
+  /**
+   * Desenha um tiro que pode errar (`draw` chama `basicAttack` ou `spell` com `to` = fim do caminho) e guarda o que
+   * ele criou, para `endShot` parar o projétil onde ele acertou.
+   */
+  track(shot: number, to: Point, draw: () => void) {
+    const fx: ShotFx = { to, tweens: [], timers: [] };
+    this.tracking = fx;
+    try {
+      draw();
+    } finally {
+      this.tracking = null;
+    }
+    this.shots.set(shot, fx);
+    // Sem `MSG.shotEnd` (errou), o tiro some sozinho no fim do caminho; aqui só se esquece dele.
+    this.scene.time.delayedCall(5000, () => this.shots.delete(shot));
+  }
+
+  /** O tiro acertou antes do fim do caminho: o projétil some em `at` e o impacto sai ali, na hora. */
+  endShot(shot: number, at: Point) {
+    const fx = this.shots.get(shot);
+    if (!fx) return;
+    this.shots.delete(shot);
+    // Os efeitos leem `to` quando acontecem: mudar o ponto leva o impacto para onde o tiro parou.
+    fx.to.x = at.x;
+    fx.to.y = at.y;
+    for (const tween of fx.tweens) if (tween.isPlaying()) tween.complete();
+    for (const timer of fx.timers) if (!timer.hasDispatched) timer.remove(true);
+  }
 
   basicAttack(classId: ClassId, from: Point, to: Point, ms: number) {
     switch (classId) {
@@ -37,6 +71,7 @@ export class CombatFx {
       case "paladin": return this.projectile(FX.arrow, from, to, ms);
       case "druid": return this.projectile(FX.greenLight, from, to, ms, { trail: 0x7bd36a, glow: 0x3fbf3a, impact: 0x9cff7a });
       case "sorcerer": return this.projectile(FX.darkLight, from, to, ms, { trail: 0x5a1c7a, glow: 0x8e44ad, impact: 0xb04ae0 });
+      case "shaman": return this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xe67e22, impact: 0xffd166, scale: 1.3 });
     }
   }
 
@@ -46,6 +81,72 @@ export class CombatFx {
     switch (spellId) {
       case "blade_spin": return this.bladeSpin(from);
       case "war_cry": return this.ring(from, radius, 0xe67e22, 500, 4);
+      // Xamã Orc. O totem: a brasa voa do xamã até o chão no lançamento e do totem até o monstro nos ecos.
+      case "ember_totem":
+        if (from.x === to.x && from.y === to.y) return this.sparks(to, 0xffd166, 6);
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xff7a1a, impact: 0xffd166, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xff7a1a, 6));
+      // O tambor: duas batidas em ondas no chão (a área do reforço), sem tremer a câmera.
+      case "war_drum": {
+        const reach = (SPELLS.war_drum.rally?.radius ?? 4) * TILE_SIZE;
+        this.ring(from, reach, 0xe67e22, 450, 4);
+        return this.later(180, () => this.ring(from, reach, 0xffb35a, 450, 3));
+      }
+      // O chamado do clã: um anel cor de brasa no xamã (os orcs aparecem pelo estado, com o próprio brilho).
+      case "clan_scouts": case "clan_spearmen": case "clan_archers": case "clan_captain": case "forge_ogre":
+        return this.ring(from, TILE_SIZE * 1.5, 0xff8a2a, 450, 4);
+      // Totens em zona: a brasa voa até o chão no lançamento.
+      case "mud_totem": case "call_totem": case "grand_totem":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xff7a1a, impact: 0xffd166, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xffd166, 8));
+      case "ember_lance":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff6a1a, glow: 0xff6a1a, impact: 0xffd166, scale: 1.6 });
+        return this.later(ms, () => this.sparks(to, 0xff6a1a, 10));
+      // Fase 3 do Xamã Orc.
+      case "clan_berserkers": case "warlord_call": case "chained_ogre": case "clan_shaman":
+        return this.ring(from, TILE_SIZE * 1.5, 0xff8a2a, 450, 4);
+      case "horde_roar":
+        this.ring(from, TILE_SIZE * 4, 0xd35400, 600, 6);
+        return this.later(200, () => this.ring(from, TILE_SIZE * 2, 0xffb35a, 500, 4));
+      case "submission_chain": case "bad_omen":
+        this.projectile(FX.spark, from, to, ms, { trail: 0x95a5a6, glow: 0x6c3483, impact: 0xd7c8ff, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xd7c8ff, 8));
+      // Totem de tiro (o trovão sai do totem nos ecos) e os totens em zona: a brasa voa até o chão no lançamento.
+      case "thunder_totem":
+        if (from.x === to.x && from.y === to.y) return this.sparks(to, 0x9ec5ff, 6);
+        this.zap(from, to, 0x9ec5ff);
+        return this.sparks(to, 0xffffff, 6);
+      // O Totem Vulcânico explode no fim (o eco sai do próprio totem).
+      case "volcanic_totem":
+        if (from.x === to.x && from.y === to.y) {
+          this.ring(to, TILE_SIZE * 3, 0xff5a14, 500, 7);
+          return this.sparks(to, 0xffd166, 16);
+        }
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff5a14, glow: 0xff5a14, impact: 0xffd166, scale: 1.2 });
+        return;
+      case "blood_totem": case "ash_rain": case "ancestor_circle":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff7a1a, glow: 0xff7a1a, impact: 0xffd166, scale: 1.2 });
+        return this.later(ms, () => this.sparks(to, 0xffd166, 8));
+      case "forge_rain":
+        this.projectile(FX.shadowOrb, from, to, ms, { trail: 0xff5a14, glow: 0xe74c3c, impact: 0xffd166, scale: 1.6 });
+        return this.later(ms, () => { this.ring(to, radius, 0xff5a14, 500, 8); this.sparks(to, 0xffd166, 16); });
+      case "boar_charge": return this.sparks(to, 0xc8a165, 10);
+      case "totem_ring": return this.ring(from, radius, 0xff8a2a, 500, 5);
+      case "ember_rift":
+        this.projectile(FX.spark, from, to, ms, { trail: 0xff5a14, glow: 0xff5a14, impact: 0xffd166, scale: 1.8 });
+        return this.later(ms, () => this.sparks(to, 0xff5a14, 12));
+      case "ember_fury":
+        this.ring(from, radius, 0xff6a1a, 500, 7);
+        return this.sparks(from, 0xffd166, 16);
+      case "blood_drum": case "clan_march": {
+        const reach = TILE_SIZE * 4;
+        this.ring(from, reach, spellId === "blood_drum" ? 0xc0392b : 0xe67e22, 450, 4);
+        return this.later(180, () => this.ring(from, reach, 0xffb35a, 450, 3));
+      }
+      // A batida do cajado: onda no chão (sem tremer a câmera).
+      case "war_stomp":
+        this.ring(from, radius, 0xe67e22, 400, 6);
+        return this.sparks(from, 0xffb35a, 10);
       case "holy_arrow":
         this.projectile(FX.holyArrow, from, to, ms, { trail: 0xffe9a3, glow: 0xf7d774, impact: 0xfff6c8, scale: 1.5 });
         return this.later(ms, () => this.holyFlash(to));
@@ -362,18 +463,101 @@ export class CombatFx {
       case "forest_heart":
         this.ring(from, Math.max(radius, TILE_SIZE * 1.5), SPELLS[spellId].color, 550, 3);
         return this.heal(from);
+      // Grimório 4.0: o leque (sopro) é desenhado pela cena (`fan`); os projéteis em leque chegam um por mensagem.
+      case "gale_blade":
+      case "shield_wall":
+      case "cutting_shout":
+      case "holy_flash":
+      case "fire_spit":
+      case "dark_wail":
+      case "pack_roar":
+      case "pollen_breeze":
+      case "frost_breath":
+        return;
+      // Abrolhos: as armadilhas aparecem pelo estado (campos); aqui só o arremesso.
+      case "caltrops": return this.sparks(from, 0xa4b0be, 6);
+      case "arrow_fan": return this.projectile(FX.arrow, from, to, ms, { trail: 0xf5deb3, glow: 0xf1c40f });
+      case "lightning_fan":
+        this.projectile(FX.darkLight, from, to, ms, { trail: 0x9ec5ff, glow: 0x9ec5ff, impact: 0xffffff, scale: 0.9 });
+        return this.later(ms, () => this.sparks(to, 0xffffff, 5));
+      // Slot 3: a Fúria do Titã cai onde o cavaleiro pousou (ele já está lá); a Flecha Celeste sobe e cai como raio de
+      // luz depois do atraso; o Vórtice é um orbe lento pela reta; a Revoada é um leque (desenhado pela cena).
+      case "titan_fury":
+        this.ring(to, radius, 0xd35400, 500, 8);
+        return this.debris(to, radius, 0x6b4426);
+      case "sky_arrow":
+        this.projectile(FX.holyArrow, from, { x: from.x, y: from.y - TILE_SIZE * 4 }, 250, { trail: 0xffe9a3, glow: 0xf7d774, scale: 1.4 });
+        return this.later(ms, () => { this.beam(to, 0xfff3a0); this.ring(to, radius, 0xf7d774, 450, 6); this.holyFlash(to); });
+      case "arcane_vortex":
+        return this.projectile(FX.shadowOrb, from, to, Math.max(ms, 300), { trail: 0x7c4dff, glow: 0xb388ff, impact: 0xe1d5ff, scale: 1.8 });
+      case "butterfly_swarm":
+        return;
+      // Ápices e o Totem Ancestral. Os leques (Ceifa, Chuva sem Fim, Furacão) e a linha do Relâmpago são da cena.
+      case "champion_reap":
+      case "endless_rain":
+      case "leaf_hurricane":
+        return;
+      case "branching_bolt": return this.zap(from, to, 0x9ec5ff);
+      case "bulwark":
+        this.ring(from, radius, 0x7fc8ff, 600, 6);
+        return this.shieldRaise(from);
+      case "legion_charge":
+        this.ring(from, TILE_SIZE * 4, 0xf1c40f, 650, 5);
+        return this.later(150, () => this.ring(from, TILE_SIZE * 2, 0xe67e22, 450, 3));
+      case "ice_age":
+        this.snow(to, radius);
+        return this.ring(to, radius, 0xd6f1ff, 600, 6);
+      case "black_hole":
+        this.ring(to, radius, 0x4a148c, 500, 8);
+        return this.later(200, () => this.ring(to, TILE_SIZE / 2, 0x000000, 400, 6));
+      case "wild_hunt":
+        this.ring(from, TILE_SIZE * 2, 0x8d6e4a, 550, 4);
+        return this.heal(from);
+      case "tree_of_life":
+        this.ring(to, radius, 0x2ecc71, 650, 4);
+        return this.heal(to);
+      case "ancestral_totem": return this.ring(to, radius, 0xd35400, 550, 5);
+      // Tiro do Fim do Mundo: o brilho da carga em volta do paladino; a reta acende pela cena (`showLine`).
+      case "doomsday_shot":
+        this.ring(from, TILE_SIZE, 0xfff176, ms, 4);
+        return this.later(ms, () => this.zap(from, to, 0xfff176));
+      // Coroa Solar: a cada pulso (eco no próprio herói), o anel de luz gira em volta dele.
+      case "solar_crown": return this.ring(from, TILE_SIZE * (SPELLS.solar_crown.orbit!.radius + 0.5), 0xffe082, 450, 4);
+      case "thorn_spray": return this.projectile(FX.leaf, from, to, ms, { trail: 0x8bc34a, glow: 0x6b8e23, impact: 0x9cff7a, scale: 0.8 });
     }
+  }
+
+  /**
+   * Leque das magias (sopro): partículas saem de quem conjura e voam até cada tile do leque, abrindo no ângulo; o tile
+   * acende quando a partícula chega (`ring` = distância em tiles até quem conjura, `stepMs` = tempo por anel, o mesmo
+   * da onda no servidor). Sem tremor de tela: o peso vem do chão aceso.
+   */
+  fan(from: Point, tiles: (Point & { ring: number })[], color: number, stepMs: number) {
+    for (const t of tiles) {
+      const travel = Math.max(60, t.ring * stepMs);
+      for (let k = 0; k < 2; k++) {
+        const dot = this.scene.add.circle(from.x, from.y, k === 0 ? 4 : 2.5, k === 0 ? color : 0xffffff, 0.9).setDepth(FX_DEPTH);
+        this.scene.tweens.add({
+          targets: dot,
+          x: t.x + Phaser.Math.Between(-8, 8), y: t.y + Phaser.Math.Between(-8, 8),
+          scale: { from: 0.6, to: 1.6 }, alpha: { from: 0.95, to: 0.2 },
+          delay: k * 40, duration: travel, ease: "Quad.Out",
+          onComplete: () => dot.destroy(),
+        });
+      }
+    }
+    this.area(tiles, color, 0, stepMs);
   }
 
   /**
    * Área de uma magia: cada tile atingido acende com a cor da magia e solta faíscas, em onda do centro
    * para fora (`ring` = distância em tiles até o centro). `delay` espera o projétil chegar.
    */
-  area(tiles: (Point & { ring: number })[], color: number, delay: number) {
+  area(tiles: (Point & { ring: number })[], color: number, delay: number, stepMs = 45) {
     const half = TILE_SIZE / 2;
     this.later(delay, () => {
       for (const t of tiles) {
-        this.later(t.ring * 45, () => {
+        this.later(t.ring * stepMs, () => {
           const g = this.scene.add.graphics().setDepth(FX_DEPTH - 2).setPosition(t.x, t.y);
           g.fillStyle(color, 0.35).fillRect(-half + 1, -half + 1, TILE_SIZE - 2, TILE_SIZE - 2);
           g.lineStyle(1, color, 0.9).strokeRect(-half + 1.5, -half + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
@@ -760,6 +944,9 @@ export class CombatFx {
           this.bubbles(to, color);
           flash();
         });
+      case "emberRift":
+        this.emberRift(from, ability.shape === "self" ? null : to, ability.shape === "self" ? radius : Math.max(1, ability.length ?? 4) * TILE_SIZE);
+        return this.later(160, () => flash(0.35));
       case "lightning":
         for (const t of tiles) this.zap(from, t, color);
         return flash(0.3);
@@ -807,6 +994,95 @@ export class CombatFx {
       },
       onComplete: () => g.destroy(),
     });
+  }
+
+  /**
+   * Fenda de Brasa (Vorgak): o chão racha a partir do cutelo, numa linha reta até `to` (ou em raios para todo lado, sem
+   * `to`), e a fenda fica incandescente e esfria devagar (laranja, vermelho, escuro), com labaredas saindo dela em
+   * sequência e brasas subindo. O impacto está no desenho do chão (a câmera não treme).
+   */
+  private emberRift(from: Point, to: Point | null, reach: number) {
+    const cracks: Point[][] = [];
+    const crack = (angle: number, length: number) => {
+      const pts: Point[] = [{ x: from.x, y: from.y + 6 }];
+      const steps = Math.max(4, Math.round(length / 9));
+      for (let i = 1; i <= steps; i++) {
+        const d = (i / steps) * length;
+        const jag = i === steps ? 0 : Phaser.Math.Between(-5, 5);
+        pts.push({ x: from.x + Math.cos(angle) * d - Math.sin(angle) * jag, y: from.y + 6 + Math.sin(angle) * d + Math.cos(angle) * jag });
+        // Galhos curtos saindo da fenda principal.
+        if (i > 1 && i < steps && Math.random() < 0.35) {
+          const b = angle + (Math.random() < 0.5 ? -1 : 1) * Phaser.Math.FloatBetween(0.5, 1);
+          const at = pts[pts.length - 1], bl = Phaser.Math.Between(6, 14);
+          cracks.push([at, { x: at.x + Math.cos(b) * bl * 0.5 + Phaser.Math.Between(-2, 2), y: at.y + Math.sin(b) * bl * 0.5 }, { x: at.x + Math.cos(b) * bl, y: at.y + Math.sin(b) * bl }]);
+        }
+      }
+      cracks.unshift(pts);
+    };
+    if (to) crack(Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y), reach);
+    else for (let i = 0; i < 7; i++) crack((i / 7) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.2, 0.2), reach * Phaser.Math.FloatBetween(0.75, 1.05));
+
+    const scorch = this.scene.add.graphics().setDepth(GROUND_DEPTH + 0.05);
+    const glow = this.scene.add.graphics().setDepth(GROUND_DEPTH + 0.06).setBlendMode(Phaser.BlendModes.ADD);
+    const path = (g: Phaser.GameObjects.Graphics, pts: Point[], upTo: number) => {
+      const n = Math.max(1, Math.ceil(upTo * (pts.length - 1)));
+      g.beginPath().moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i <= n && i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y);
+      g.strokePath();
+    };
+    const lerpColor = (a: number, b: number, t: number) => {
+      const c = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ValueToColor(a), Phaser.Display.Color.ValueToColor(b), 100, t * 100);
+      return Phaser.Display.Color.GetColor(c.r, c.g, c.b);
+    };
+    // Abre em 220 ms, fica em brasa e esfria até 2,6 s; a marca escura some por último.
+    const OPEN = 220, LIFE = 2600;
+    this.scene.tweens.addCounter({
+      from: 0, to: LIFE, duration: LIFE,
+      onUpdate: (tween) => {
+        const ms = tween.getValue() ?? 0;
+        const open = Math.min(1, ms / OPEN);
+        const heat = ms < OPEN ? 1 : Math.max(0, 1 - (ms - OPEN) / 1500);
+        const fade = ms < LIFE - 700 ? 1 : (LIFE - ms) / 700;
+        scorch.clear();
+        glow.clear();
+        cracks.forEach((pts, k) => {
+          const main = k === 0 || (to === null && pts.length > 3);
+          scorch.lineStyle(main ? 7 : 4, 0x140a06, 0.6 * fade);
+          path(scorch, pts, open);
+          scorch.lineStyle(main ? 3 : 2, lerpColor(0x2a0d06, 0xff8a1a, heat), Math.max(0.35 * fade, heat));
+          path(scorch, pts, open);
+          if (heat > 0) {
+            glow.lineStyle(main ? 12 : 7, 0xff4a0a, 0.32 * heat);
+            path(glow, pts, open);
+            glow.lineStyle(1.2, 0xfff0b0, heat);
+            path(glow, pts, open);
+          }
+        });
+      },
+      onComplete: () => { scorch.destroy(); glow.destroy(); },
+    });
+    // Labaredas saindo da fenda em sequência, do cutelo para a ponta.
+    cracks.forEach((pts, k) => pts.forEach((pt, i) => {
+      if (i === 0 || (k > 0 && to)) return;
+      this.later(i * (OPEN / pts.length) + 40, () => {
+        const flame = this.scene.add.circle(pt.x, pt.y - 3, 4, 0xffd166, 0.95).setDepth(FX_DEPTH).setBlendMode(Phaser.BlendModes.ADD);
+        const outer = this.scene.add.circle(pt.x, pt.y - 3, 8, 0xff6b1a, 0.55).setDepth(FX_DEPTH - 1).setBlendMode(Phaser.BlendModes.ADD);
+        this.scene.tweens.add({
+          targets: [flame, outer], scale: { from: 0.5, to: 1.5 }, alpha: { from: 1, to: 0 }, y: pt.y - 18 - Phaser.Math.Between(0, 8),
+          duration: 460, ease: "Quad.Out", onComplete: () => { flame.destroy(); outer.destroy(); },
+        });
+      });
+    }));
+    // Brasas subindo devagar da fenda, enquanto ela esfria.
+    const main = cracks[0];
+    for (let i = 0; i < 18; i++) {
+      const pt = main[Phaser.Math.Between(0, main.length - 1)];
+      const e = this.scene.add.image(pt.x + Phaser.Math.Between(-4, 4), pt.y, FX.spark).setDepth(FX_DEPTH).setTint(i % 3 ? 0xff8a1a : 0xffd166).setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({
+        targets: e, x: e.x + Phaser.Math.Between(-8, 8), y: pt.y - Phaser.Math.Between(20, 40), alpha: { from: 1, to: 0 }, scale: { from: 1, to: 0.4 },
+        delay: OPEN + i * 45, duration: 900, onComplete: () => e.destroy(),
+      });
+    }
   }
 
   /** Bolhas de veneno subindo. */
@@ -889,7 +1165,7 @@ export class CombatFx {
     parts.push(shot);
     const duration = Math.max(60, ms);
     let lastTrail = 0;
-    this.scene.tweens.add({
+    const tween = this.scene.tweens.add({
       targets: glow ? [shot, glow] : shot,
       x: to.x,
       y: to.y - 6,
@@ -904,6 +1180,7 @@ export class CombatFx {
         if (opts.impact !== undefined) this.sparks({ x: to.x, y: to.y - 6 }, opts.impact, 6);
       },
     });
+    this.tracking?.tweens.push(tween);
   }
 
   // --- Magias ---------------------------------------------------------------
@@ -1096,6 +1373,15 @@ export class CombatFx {
   }
 
   private later(ms: number, fn: () => void) {
-    if (ms <= 0) fn(); else this.scene.time.delayedCall(ms, fn);
+    if (ms <= 0) return fn();
+    const timer = this.scene.time.delayedCall(ms, fn);
+    this.tracking?.timers.push(timer);
   }
+}
+
+/** O que um tiro em voo criou (ver `CombatFx.track`). */
+interface ShotFx {
+  to: Point;
+  tweens: Phaser.Tweens.Tween[];
+  timers: Phaser.Time.TimerEvent[];
 }

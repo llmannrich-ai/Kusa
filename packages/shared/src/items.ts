@@ -10,8 +10,8 @@ import type { MonsterRank } from "./monsters.ts";
  *   uma propriedade mágica a mais (roubo de vida, chamas, espinhos, velocidade...).
  *
  * As armas são da classe (espada e machado do cavaleiro, arco e besta do paladino, varinha e cajado do
- * feiticeiro e do druida); armaduras de guerra são do cavaleiro e do paladino, vestes arcanas do
- * feiticeiro e do druida; botas e escudos servem a todos. Só varinhas e cajados (e alguns itens mágicos)
+ * feiticeiro, do druida e do xamã); armaduras de guerra são do cavaleiro e do paladino, vestes arcanas do
+ * feiticeiro, do druida e do xamã; botas servem a todos, e escudos a todos menos o paladino (arqueiro, usa as duas mãos). Só varinhas e cajados (e alguns itens mágicos)
  * aumentam o dano das magias.
  *
  * O id é `slot-família-nível-raridade` (ex.: `weapon-sword-3-rare`). O banco (`market_items`) repete o
@@ -125,7 +125,9 @@ export interface ItemFamily {
 const KNIGHT: ClassId[] = ["knight"];
 const PALADIN: ClassId[] = ["paladin"];
 const MARTIAL: ClassId[] = ["knight", "paladin"];
-const CASTERS: ClassId[] = ["sorcerer", "druid"];
+const CASTERS: ClassId[] = ["sorcerer", "druid", "shaman"];
+/** O paladino atira com arco e besta (as duas mãos): não usa escudo. */
+const NO_PALADIN: ClassId[] = ["knight", "sorcerer", "druid", "shaman"];
 
 /** Valor do nível (1 a 5) numa tabela. */
 const at = <T>(values: T[]) => (tier: ItemTier) => values[tier - 1];
@@ -295,7 +297,7 @@ export const ITEM_FAMILIES: Record<string, ItemFamily> = Object.fromEntries(([
     ],
   },
   {
-    key: "shield", slot: "shield", name: "Escudo",
+    key: "shield", slot: "shield", name: "Escudo", classes: NO_PALADIN,
     names: ["Broquel de madeira", "Escudo de bronze", "Escudo de ferro", "Escudo de mithral", "Escudo do dragão"],
     base: (t) => ({ armor: at([1, 2, 3, 4, 6])(t) }),
     magic: [

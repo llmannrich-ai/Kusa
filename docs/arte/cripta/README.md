@@ -1,0 +1,52 @@
+# Cripta — inimigos com arte gerada por IA
+
+Folhas geradas com os prompts de `docs/arte/agente/CRIPTA.md` (fila e status em `cripta.json` e `cripta-status.csv`),
+guardadas aqui em WebP sem perda (os mesmos pixels do PNG, metade do tamanho):
+
+- `<kind>-A.webp` (giro): 2 linhas × 6, parado e andando; colunas: frente, 3/4 de frente, perfil para a esquerda,
+  3/4 de costas, costas, 3/4 de costas para a direita.
+- `<kind>-B.webp` (ação): 4 linhas × 4, tudo de perfil para a esquerda: andar (4), golpe (4), especial (4) e morte (3).
+  Alguns têm linhas a mais (`B_EXTRA_ROWS` no script): são lidas e ficam de fora até o jogo ter clipe para elas.
+
+Processadas por `apps/client/scripts/criptaSprites.py <kind>`, que grava `apps/client/src/art/proto/cripta/<kind>.png`
+(21 figuras: as 6 da A que o jogo usa e as 15 da B, paleta de 256 cores). O jogo pega sozinho todo PNG daquela pasta
+(`art/proto/criptaArt.ts`): monstro com folha usa a arte nova em todos os mapas em que aparece; sem folha, continua com
+o desenho por código. Diferente do Kosaradius, aqui o andar, o golpe, o especial e a morte são todos desenhados.
+
+| Monstro | Folhas | Quadro | Memória | Observação |
+|---|---|---|---|---|
+| Ratazana (`rat`) | A e B | 176 px | ~2,5 MB | branco entre as pernas limpo |
+| Kobold (`kobold`) | A e B | 128 px | ~1,3 MB | |
+| Estirge (`stirge`) | A e B | 176 px | ~2,5 MB | voa: cada figura com o próprio pé na linha (`FLYERS`) |
+| Esqueleto (`skeleton`) | A e B | 176 px | ~2,5 MB | caveira solta da morte juntada à figura; branco entre os ossos limpo |
+| Aranha gigante (`giantSpider`) | A e B | 160 px | ~2,1 MB | B veio com o xadrez de "transparente" pintado: limpo; a teia é o especial |
+| Goblin arqueiro (`goblinArcher`) | A e B | 144 px | ~1,7 MB | |
+| Esqueleto arqueiro (`skeletonArcher`) | A e B | 176 px | ~2,5 MB | |
+| Bugbear chefe (`bugbear`) | A e B | 224 px | ~4,0 MB | substitui a arte de referência; o especial é o Golpe Brutal; a 5ª linha (emboscada) fica de fora |
+| Cubo Gelatinoso (`gelatinousCube`) | A e B | 176 px | ~2,5 MB | o especial é o Engolfar; a 5ª linha (cuspida) fica de fora |
+| Orc guerreiro (`orc`) | A e B | 176 px | ~2,5 MB | o especial é a investida (Agressivo) |
+| Hobgoblin capitão (`hobgoblin`) | A e B | 192 px | ~3,0 MB | |
+| Gnoll (`gnoll`) | A e B | 192 px | ~3,0 MB | a 5ª linha (ataque em frenesi) fica de fora |
+| Dragão jovem (`dragon`) | A e B | 352 px | ~9,9 MB | vermelho, como a regra do jogo (troca o verde por código); o especial é o Sopro Infernal e o Voo usa o golpe; decolagem e mergulho ficam de fora |
+| Goblin (`goblin`) | A e B | 144 px | ~1,7 MB | substitui o goblin da arte de referência |
+| Zumbi (`zombie`) | A e B | 160 px | ~2,1 MB | a morte pega fogo |
+| Ogro (`ogre`) | A e B | 256 px | ~5,2 MB | o especial é o Pisão Sísmico; a pedra usa o golpe (a 5ª linha, o arremesso, fica de fora) |
+| Mímico (`mimic`) | A e B | 128 px | ~1,3 MB | o especial é a Mordida Ácida; o Adesivo usa o golpe; o disfarce continua o baú por código (o da folha mostra as pernas) |
+
+## O que o script corrige sozinho
+
+- **Fundo:** o claro sem cor que encosta no transparente (ou forma um buraco grande dentro da figura) vira
+  transparência. Pega o branco entre ossos e pernas e o xadrez pintado; o branco pequeno (dentes, brilho) e a teia
+  (com cor) ficam.
+- **Branco puro:** a mancha branca pura de poucos pixels (entre a asa e o corpo do dragão) também é fundo (`SPECK`).
+- **Peça solta:** se uma figura da B se parte em duas linhas (a caveira voando), a peça vai para a figura mais perto.
+- **Escala:** a altura do perfil parado da A é `HEIGHT` do monstro (o tamanho de hoje no jogo); a B vai para a escala
+  da A pela área do andar de perfil (a altura engana: cauda curvada, asas).
+- **Quadro:** o menor múltiplo de 16 que cabe a figura mais alta e a mais larga; a figura larga encosta na borda.
+
+## Memória no celular
+
+Só os monstros do mapa da hunt são preparados (`warmMapMonsters` em `textures.ts`). Cada monstro tem 21 figuras
+distintas na memória (as 20 da folha que o jogo usa, porque o andar de perfil vem da B, e o fôlego do perfil parado;
+frente e costas ficam paradas sem fôlego): figuras × lado² × 4 bytes. A Cripta usa os 17 de uma vez: ~50 MB (o dragão
+sozinho, ~10 MB), no nível do Kosaradius (~51 MB). A Caverna da Travessia usa 14 deles (~33 MB).

@@ -37,6 +37,14 @@ const BRANCH_ICONS: Record<ClassId, [string, string, string]> = {
     // Espinhos: haste com espinhos e um botão no alto.
     `<path d="M12 22.5V8" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M12 9 3.5 6.5 12 13.5ZM12 13 20.5 10.5 12 17.5ZM12 17 4 14.5 12 21.5Z"/><path d="M12 1C15.5 2.8 15.8 6.5 12 9 8.2 6.5 8.5 2.8 12 1Z"/>`,
   ],
+  shaman: [
+    // Horda: machado de guerra orc.
+    `<path d="M11 3h2v19h-2z"/><path d="M13 3.5C18.5 3.5 21.5 7 21.5 11 18.5 9.5 16 9.5 13 10.5Z"/><path d="M11 3.5C5.5 3.5 2.5 7 2.5 11 5.5 9.5 8 9.5 11 10.5Z"/>`,
+    // Totens: poste entalhado com crânio e chama.
+    `<path d="M9.5 9h5v13.5h-5z"/><path d="M7.5 12.5h9v2h-9zM7.5 17h9v2h-9z"/><path d="M8 8.5C8 5.5 9.8 4 12 4S16 5.5 16 8.5Z"/><path d="M12 0.5C13.8 1.8 13.8 3 12 4 10.2 3 10.2 1.8 12 0.5Z"/>`,
+    // Brasa: chama.
+    `<path d="M12 1.5C14 5.5 19 8 19 14A7 7 0 0 1 5 14C5 10.5 7 8.5 8.5 7 8.5 9.5 9.5 11 11 11.5 10.5 8 11 4.5 12 1.5Z"/>`,
+  ],
 };
 
 /** O símbolo do ramo `col` da classe, pronto para ir dentro de um botão. */

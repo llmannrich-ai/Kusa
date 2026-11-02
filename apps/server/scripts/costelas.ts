@@ -7,7 +7,7 @@
  *   - na hunt, cada magia das costelas sai, colada num monstro, e, se tem dano, fere o monstro.
  * Uso: npx tsx scripts/costelas.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { CLASS_IDS, SPELL_LEVEL_XP, SPELLS, TALENTS, talentBlocker, talentTree, type ClassId } from "@kusa/shared";
+import { CLASS_IDS, SPELL_LEVEL_XP, SPELL_SLOT_LEVELS, SPELLS, TALENTS, talentBlocker, talentTree, type ClassId } from "@kusa/shared";
 import { HERO, arena } from "./arena.ts";
 
 rules();
@@ -26,9 +26,11 @@ function rules() {
       for (const req of [rib.requires, rib.alsoRequires]) {
         if (req && TALENTS[req.id].col !== rib.col) throw new Error(`${rib.id}: pai ${req.id} em outro ramo`);
       }
-      // A bifurcação usa os lados −1 e 1 das linhas de baixo: a costela não pode descer até lá.
+      // A bifurcação usa os lados −1 e 1 das linhas de baixo: a costela não pode descer até lá. Os Ápices do slot 3
+      // (Grimório 4.0) ficam na altura da especialização de propósito, mas na ponta (lados −2 e 2), fora dos dois lados.
       const fork = tree.find((t) => t.kind === "trait" && t.col === rib.col);
-      if (fork && rib.row >= fork.row) throw new Error(`${rib.id}: costela na altura da especialização`);
+      const apex = SPELLS[rib.spellId!].slot === 2 && Math.abs(rib.lane) === 2;
+      if (fork && rib.row >= fork.row && !apex) throw new Error(`${rib.id}: costela na altura da especialização`);
     }
   }
   const rift = TALENTS.knight_seismic_rift;
@@ -44,8 +46,9 @@ function rules() {
 function castRibs(classId: ClassId) {
   for (const id of ribs(classId).map((t) => t.spellId!)) {
     const def = SPELLS[id];
-    // Monstros com 20× a vida: a magia anterior não mata o alvo e o dano aparece.
-    const a = arena({ classId, monsterHp: 20 });
+    // Monstros com 20× a vida: a magia anterior não mata o alvo e o dano aparece. O herói começa no nível em que o
+    // slot da magia abre (o slot 3, das magias supremas, só no 12).
+    const a = arena({ classId, monsterHp: 20, startLevel: Math.max(8, SPELL_SLOT_LEVELS[def.slot]) });
     a.hunt.chooseSpell(HERO, { slot: def.slot, spellId: id });
     a.place("lizardfolk", 1, 0);
     const casts = () => a.spells.filter((s) => s.from === HERO && s.spellId === id).length;

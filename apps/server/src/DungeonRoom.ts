@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Room, ServerError, type Client } from "colyseus";
 import {
+  CLASSES,
+  CLASS_UNLOCK,
   MAX_PARTY_SIZE,
   MSG,
+  classUnlocked,
   SERVER_TICK_MS,
   VERSION_MISMATCH_CODE,
   MAPS,
@@ -18,7 +21,7 @@ import {
   type BagDropMessage,
   type ScreenMessage,
   type BagEquipMessage,
-  type CastMessage,
+  type CastMessage, type ChannelMessage,
   type ChoosePerkMessage,
   type ChooseRuneMessage,
   type ChooseSpellMessage,
@@ -33,7 +36,7 @@ import {
 import { RULES_VERSION } from "./rulesVersion.ts";
 import { Hunt } from "./hunt.ts";
 import { DungeonState } from "./state.ts";
-import { mapClears, recordMapClear, recordRun, resolveAccount, storeBag, supabase, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
+import { mapClears, readLoadout, recordMapClear, recordRun, resolveAccount, storeBag, supabase, takeBag, takenBossRunes, takeLoadout, type Account } from "./supabase.ts";
 import { recordTelemetry } from "./telemetry.ts";
 
 /** Só para testes: KUSA_START_LEVEL=8 faz todo mundo começar no nível 8 (com os slots de magia abertos). */
@@ -54,6 +57,8 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
   private matchId = randomUUID();
   /** sessionId → conta do Supabase (null = convidado). */
   private users = new Map<string, string | null>();
+  /** sessionId → bosses vencidos pela conta (qualquer classe): abrem as classes trancadas, também para os bots. */
+  private bossClears = new Map<string, string[]>();
 
   onCreate(options: JoinOptions) {
     this.hunt = new Hunt(this.state, {
@@ -87,11 +92,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.maxClients = this.hunt.partySize();
 
     this.onMessage(MSG.start, (client) => {
-      if (this.hunt.start(client.sessionId)) this.startRun();
+      if (this.hunt.start(client.sessionId)) void this.startRun();
     });
 
     // Bot ocupa uma vaga: a sala aceita um humano a menos.
     this.onMessage(MSG.addBot, (client, msg: AddBotMessage) => {
+      if (!this.classOpen(client.sessionId, msg?.classId)) return;
       if (this.hunt.addBot(client.sessionId, msg)) this.updateListing();
     });
     this.onMessage(MSG.removeBot, (client, msg: RemoveBotMessage) => {
@@ -105,6 +111,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.onMessage(MSG.choosePerk, (client, msg: ChoosePerkMessage) => this.hunt.choosePerk(client.sessionId, msg));
     this.onMessage(MSG.chooseRune, (client, msg: ChooseRuneMessage) => this.hunt.chooseRune(client.sessionId, msg));
     this.onMessage(MSG.cast, (client, msg: CastMessage) => this.hunt.cast(client.sessionId, msg));
+    this.onMessage(MSG.channel, (client, msg: ChannelMessage) => this.hunt.channel(client.sessionId, msg));
     this.onMessage(MSG.drink, (client, msg: DrinkMessage) => this.hunt.drink(client.sessionId, msg));
     this.onMessage(MSG.bagEquip, (client, msg: BagEquipMessage) => this.hunt.bagEquip(client.sessionId, msg));
     this.onMessage(MSG.unequip, (client, msg: UnequipMessage) => this.hunt.unequip(client.sessionId, msg));
@@ -123,6 +130,11 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
       throw new ServerError(VERSION_MISMATCH_CODE, `O jogo foi atualizado: recarregue a página. (servidor v999, regras ${RULES_VERSION})`);
     }
     const account = await resolveAccount(options.accessToken);
+    // Classe trancada (Xamã Orc): só entra quem já venceu o boss que a abre, com qualquer personagem da conta.
+    if (supabase && options.classId in CLASSES && !classUnlocked(account?.bossClears ?? [], options.classId)) {
+      const boss = CLASS_UNLOCK[options.classId] as keyof typeof MONSTERS;
+      throw new ServerError(4403, `${CLASSES[options.classId].name} ainda está trancado: vença ${MONSTERS[boss].name} com qualquer herói.`);
+    }
     // Campanha: quem cria a sala precisa ter o cenário aberto com a classe (quem entra na sala de outro não).
     // Sem banco (modo convidado, testes) não há campanha para conferir.
     if (supabase && this.users.size === 0) {
@@ -141,6 +153,7 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
 
   onJoin(client: Client, options: JoinOptions, auth: { account: Account | null }) {
     this.users.set(client.sessionId, auth.account?.userId ?? null);
+    this.bossClears.set(client.sessionId, auth.account?.bossClears ?? []);
     this.hunt.join(client.sessionId, {
       name: auth.account?.name ?? options.name,
       classId: options.classId,
@@ -151,6 +164,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.updateListing();
   }
 
+  /** O bot desta classe pode entrar? Sem banco (convidado, testes) toda classe está aberta. */
+  private classOpen(sessionId: string, classId: ClassId | undefined) {
+    if (!supabase || !classId || !(classId in CLASSES)) return true;
+    return classUnlocked(this.bossClears.get(sessionId) ?? [], classId);
+  }
+
   onLeave(client: Client) {
     this.hunt.leave(client.sessionId);
     // Quem sai da sala de espera não entrou na hunt: nada sai da conta dele.
@@ -158,8 +177,12 @@ export class DungeonRoom extends Room<{ state: DungeonState; metadata: HuntMetad
     this.updateListing();
   }
 
-  private startRun() {
+  private async startRun() {
     this.lock();
+    // Os bots vestem uma cópia do equipamento da classe deles na conta de quem os pôs. A leitura vem antes de
+    // retirar o equipamento dos humanos: um humano da mesma classe tiraria os itens da conta.
+    await Promise.allSettled([...this.users].flatMap(([sessionId, userId]) => (userId ? this.hunt.botsOf(sessionId) : [])
+      .map(async (bot) => this.hunt.equip(bot.id, await readLoadout(userId!, bot.classId)))));
     // O equipamento escolhido no menu e a bag saem da conta e entram na dungeon (chegam logo depois do início).
     this.users.forEach((userId, sessionId) => {
       const classId = this.state.players.get(sessionId)?.classId;
