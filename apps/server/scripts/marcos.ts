@@ -99,12 +99,13 @@ test("Couro Curtido: escudo +20%, imune a lentidão, corte de dano ao quebrar", 
   const a = markArena("knight", { tanned_hide: 25 });
   a.p.barrier = a.p.maxBarrier = 100;
   const hp = a.p.hp;
-  a.any.damagePlayer(HERO, 200, hit);
+  // Golpe de 300: com a armadura própria do cavaleiro e a do Dom, ainda passa do escudo (que absorve 120) e o quebra.
+  a.any.damagePlayer(HERO, 300, hit);
   const leaked = hp - a.p.hp;
   const plain = markArena("knight", {});
   plain.p.barrier = plain.p.maxBarrier = 100;
   const plainHp = plain.p.hp;
-  plain.any.damagePlayer(HERO, 200, hit);
+  plain.any.damagePlayer(HERO, 300, hit);
   check(leaked < plainHp - plain.p.hp && a.p.barrier === 0, `com o Dom ${leaked}, sem ${plainHp - plain.p.hp}`);
   check(a.seat().hideGuardUntil > a.now(), "o escudo quebrou e não deu o corte de dano");
   a.any.slowHero(HERO, 0.5, 3000);

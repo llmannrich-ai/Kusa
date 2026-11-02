@@ -1244,7 +1244,8 @@ lê.
 - Matar monstros dá XP e itens dropados (ver "Itens").
 - A cada nível: mais HP e mana, mais velocidade de movimento e mais dano base. Do nível 11 em diante, vida, mana e dano
   crescem só metade por nível (`STAT_TAPER`, `packages/shared/src/progression.ts`), para frear a bola de neve do fim da
-  hunt (pela telemetria, quem passava do nível 10 quase não morria). Os slots de magia abrem nos níveis 3, 6 e 12;
+  hunt (pela telemetria, quem passava do nível 10 quase não morria). O Cavaleiro tem 10 de armadura própria
+  (`ClassDef.armor`, soma com o equipamento), única classe com armadura de nascença. Os slots de magia abrem nos níveis 3, 6 e 12;
   os outros níveis dão uma melhoria à escolha (ver "Melhorias de nível").
 - A dungeon é semi-linear: poucos monstros fracos na entrada e, conforme a equipe se aprofunda, espécies mais fortes e
   salas mais cheias. **O monstro nunca evolui na partida:** um Orc tem a mesma vida e o mesmo dano em qualquer sala.

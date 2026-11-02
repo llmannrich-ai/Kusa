@@ -10,7 +10,7 @@
  * A mensagem `MSG.choosePerk` chega na `Hunt` por uma linha do `DungeonRoom`; a rede é coberta pelos testes de fumaça.
  * Uso: npx tsx apps/server/scripts/perks.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import { MAX_LEVEL, PERK_CHOICES, PERK_IDS, grantsPerk, isPerk, statsFor, xpForLevel, type PerkId } from "@kusa/shared";
+import { CLASSES, MAX_LEVEL, PERK_CHOICES, damageReduction, PERK_IDS, grantsPerk, isPerk, statsFor, xpForLevel, type PerkId } from "@kusa/shared";
 import { HERO, arena, check } from "./arena.ts";
 
 // --- Nível 2: oferta, recusa, escolha -------------------------------------------------------------
@@ -89,6 +89,21 @@ function level2(seed: number) {
   const step = dmg(10) - dmg(9);
   check(Math.abs(dmg(11) - dmg(10) - step / 2) < 1e-9 && Math.abs(dmg(20) - dmg(19) - step / 2) < 1e-9, `ganho de dano do 11 em diante devia ser a metade de ${step}`);
   console.log(`melhorias nos níveis ${levels.join(", ")}; dano do cavaleiro no 10/20: ${dmg(10)}/${dmg(20)}`);
+}
+
+// --- Armadura própria da classe: o Cavaleiro corta o golpe sem equipamento nenhum -----------------------------
+{
+  const hit = (classId: "knight" | "paladin") => {
+    const a = arena({ classId, startLevel: 5, allSpells: false });
+    const before = a.p.hp;
+    a.any.damagePlayer(HERO, 100, { attacker: "" });
+    return before - a.p.hp;
+  };
+  const knight = hit("knight");
+  const paladin = hit("paladin");
+  const expected = Math.round(100 * (1 - damageReduction(CLASSES.knight.armor)));
+  check(CLASSES.knight.armor > 0 && paladin === 100 && knight === expected, `golpe de 100: cavaleiro levou ${knight} (esperava ${expected}), paladino ${paladin}`);
+  console.log(`armadura própria: golpe de 100 → cavaleiro ${knight}, paladino ${paladin}`);
 }
 
 console.log("PERKS OK");
