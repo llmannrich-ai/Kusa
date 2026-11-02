@@ -82,7 +82,7 @@ function rules() {
   }
   // Mortos-vivos (a luz do Paladino fere mais): o tipo de criatura decide.
   const undead = Object.values(MONSTERS).filter((m) => m.undead).map((m) => m.kind).sort().join();
-  if (undead !== "bogBody,boneArcher,boneCenturion,boneJackal,boneLegionary,buriedDead,deadForeman,drownedKnight,elvenShade,eternalPharaoh,fallenWarden,ghoul,lanternBearer,lostMiner,morgrana,mourner,mummy,mummyPriest,peatDrowned,royalMummy,sandScribe,skeleton,skeletonArcher,willOWisp,wrappedMummy,zombie") throw new Error(`mortos-vivos: ${undead}`);
+  if (undead !== "bogBody,boneArcher,boneCenturion,boneJackal,boneKing,boneLegionary,buriedDead,deadForeman,drownedKnight,elvenShade,eternalPharaoh,fallenWarden,ghoul,lanternBearer,lostMiner,morgrana,mourner,mummy,mummyPriest,peatDrowned,royalMummy,sandScribe,skeleton,skeletonArcher,willOWisp,wrappedMummy,zombie") throw new Error(`mortos-vivos: ${undead}`);
 }
 
 /**

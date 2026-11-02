@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { Client } from "@colyseus/sdk";
 import {
   MAPS,
+  huntSeconds,
   mapMonsters,
   partySize,
   MAP_IDS,
@@ -129,8 +130,9 @@ async function playMap(mapId: MapId) {
 
   room.send(MSG.start);
   await wait(300);
-  if (room.state.timeLeft !== map.durationSeconds) {
-    throw new Error(`${mapId}: tempo esperado ${map.durationSeconds}, veio ${room.state.timeLeft}`);
+  // Mapa sem tempo (terreno de caça): o relógio conta até o teto técnico (`huntSeconds`).
+  if (room.state.timeLeft !== huntSeconds(map)) {
+    throw new Error(`${mapId}: tempo esperado ${huntSeconds(map)}, veio ${room.state.timeLeft}`);
   }
 
   // O líder nasce na diagonal de cima à esquerda do portal.
