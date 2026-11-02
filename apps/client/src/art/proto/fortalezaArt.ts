@@ -6,6 +6,7 @@ import lajesUrl from "./fortaleza/chao-lajes.webp";
 import salaoUrl from "./fortaleza/chao-salao.webp";
 import tabuasUrl from "./fortaleza/chao-tabuas.webp";
 import terraUrl from "./fortaleza/chao-terra.webp";
+import valeUrl from "./fortaleza/vale.webp";
 import { HD } from "../paint.ts";
 
 /**
@@ -88,3 +89,14 @@ export const CHAO_SALAO = await loadGround(salaoUrl);
 
 /** Assoalho de tábuas das casernas. */
 export const CHAO_TABUAS = await loadGround(tabuasUrl);
+
+/**
+ * O vale lá embaixo, visto pelo abismo: arte por código (`art/valleyArt.ts`), gravada pronta por
+ * `scripts/valeFortaleza.ts` (pintar no aparelho levaria quase um segundo). Emenda nos 4 lados.
+ */
+export const VALE = await (async () => {
+  const image = new Image();
+  image.src = valeUrl;
+  await image.decode();
+  return image;
+})();
