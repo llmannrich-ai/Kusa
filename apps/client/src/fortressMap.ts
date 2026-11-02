@@ -11,7 +11,7 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  DROP, FOUNTAIN, HANG, KEEP_RISE, ROOM_WALL, STATUE, THRONE, bridgeTile, fountainSprite, statueSprite,
+  BRAZIER, BRAZIER_MOUTH, DRAIN, DROP, FALL, RAVEN, ravenFrames, FOUNTAIN, drainSprite, waterfallTexture, HANG, KEEP_RISE, ORC_DRESS, brazierSprite, carpetTile, strawBed, ROOM_WALL, STATUE, THRONE, orcDressing, bridgeTile, fountainSprite, statueSprite,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   throneSprite,
 } from "./art/fortressArt.ts";
@@ -255,6 +255,24 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       decor[i] = atlas.frame(`flat-${kind}-${v}`, () => flatDecor(kind, v).render(kind !== "puddle" && kind !== "dust"));
     }
 
+  // Interiores. O tapete vermelho do salão do trono, da porta até o trono (3 tiles de largura), por cima das lajes.
+  const kc = f.door.x + 1;
+  for (let y = f.throne.y + 1; y <= f.door.y; y++)
+    for (const part of [-1, 0, 1] as const) {
+      const x = kc + part, end: 0 | 1 | 2 = y === f.throne.y + 1 ? 1 : y === f.door.y ? 2 : 0, v = Math.floor(hash(x, y, 79) * 2);
+      decor[y * W + x] = atlas.frame(`tapete${part}-${end}-${v}`, () => carpetTile(part, end, v));
+    }
+  // As camas de palha dos orcs na parede norte das casernas (o canto do baú fica livre).
+  const beds: { x: number; y: number }[] = [];
+  for (const r of d.side)
+    for (let x = r.x + 3; x < r.x + r.w - 2; x += 2) {
+      const y = r.y + 1;
+      if (at(x, y) !== Tile.Floor || !roomInside(x, y) || hash(x, y, 80) < 0.25) continue;
+      const v = Math.floor(hash(x, y, 81) * 2);
+      decor[y * W + x] = atlas.frame(`cama${v}`, () => strawBed(v));
+      beds.push({ x, y });
+    }
+
   // O andar de cima da torre de menagem: o terraço (com o parapeito e o buraco do telhado) e a fachada sul.
   const K = f.keep;
   const KW = K.w, KH = K.h + KEEP_RISE;
@@ -394,6 +412,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   // --- De pé -------------------------------------------------------------------------------------
   const culler = new ChunkCuller();
   const walls = new SpriteSheet("fortress-walls", WALL_SPRITE.w, WALL_SPRITE.h);
+  const dress = new SpriteSheet("fortress-orcs-muralha", ORC_DRESS.w, ORC_DRESS.h);
   const cols = new SpriteSheet("fortress-columns", COLUMN.w, COLUMN.h);
   const blocks = new SpriteSheet("fortress-blocks", BLOCK.w, BLOCK.h);
   const cypress = new SpriteSheet("fortress-cypress", CYPRESS.w, CYPRESS.h);
@@ -488,6 +507,13 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
       const vn = hash(Math.floor(x / 3), Math.floor(y / 3), 61);
       const v = vn < 0.5 ? 0 : 1;
       put(walls, walls.frame(`w${links}-${h}-${step}-${v}-${city}`, () => wallSprite(links, h, step, v, city)), x, y);
+      // Os orcs penduram e pregam coisas na face sul da muralha: escudos, remendos de tábua, estacas com caveira,
+      // sangue e correntes, panos de guerra (num tile a cada 3 ou 4, nunca dois vizinhos).
+      if (city && !(links & L.s) && !inTower(x, y) && x % 2 === 0 && hash(x, y, 62) < 0.42) {
+        const kind = Math.floor(hash(x, y, 65) * 5), dv = Math.floor(hash(x, y, 66) * 2);
+        put(dress, dress.frame(`o${kind}-${dv}`, () => orcDressing(kind, dv)), x, y);
+        placed[placed.length - 1].depth += 0.01;
+      }
     }
 
   // Tendas (2×2), pela linha de baixo, cada uma com a sombra oval no pé (puxada para o sudeste: o sol vem do noroeste).
@@ -511,6 +537,11 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     // A tenda do chefe é a da guarda, no pátio do esporão (acima da muralha interna).
     putCamp(t.y < f.walls[1].y ? "tendaChefe" : "tenda", t.x, t.y + 1, hash(t.x, t.y, 63) < 0.5, (t.x + 1) * TILE_SIZE, (t.y + 2) * TILE_SIZE);
   }
+  // Nas casernas, as armas encostadas na parede norte, no canto oposto ao do baú.
+  for (const r of d.side) {
+    const x = r.x + r.w - 2, y = r.y + 1;
+    if (at(x, y) === Tile.Floor && !beds.some((b) => b.x === x && b.y === y)) putCamp("armas", x, y, true);
+  }
   // Estandartes de guerra ao lado das fogueiras.
   for (const fire of f.fires) {
     const x = fire.x + (hash(fire.x, fire.y, 64) < 0.5 ? -2 : 2), y = fire.y - 1;
@@ -518,10 +549,13 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     putCamp("estandarte", x, y);
   }
 
-  for (const sheet of [walls, cols, blocks, cypress, pines]) sheet.build(scene);
+  for (const sheet of [walls, dress, cols, blocks, cypress, pines]) sheet.build(scene);
   const crowns: Phaser.GameObjects.Image[] = [];
-  for (const c of campPlaced)
-    culler.add(scene.add.image(c.px, c.py, CAMP_KEY, c.frame).setOrigin(0.5, 1).setScale((c.sx ?? 1) / ZOOM, 1 / ZOOM).setDepth((c.y + 1) * TILE_SIZE - 0.25).setFlipX(c.flip), c.x, c.y);
+  const flags: Phaser.GameObjects.Image[] = [];
+  for (const c of campPlaced) {
+    const img = culler.add(scene.add.image(c.px, c.py, CAMP_KEY, c.frame).setOrigin(0.5, 1).setScale((c.sx ?? 1) / ZOOM, 1 / ZOOM).setDepth((c.y + 1) * TILE_SIZE - 0.25).setFlipX(c.flip), c.x, c.y);
+    if (c.frame === "estandarte") flags.push(img as Phaser.GameObjects.Image);
+  }
   for (const s of placed) {
     const img = culler.add(scene.add.image(s.px, s.py, s.sheet.key, s.frame).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(s.depth).setFlipX(!!s.flip), s.x, s.y);
     if (s.crown) crowns.push(img);
@@ -582,6 +616,9 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   for (const [k, [tx, ty]] of ([[1.5, 3], [KW - 1.5, 3], [1.5, K.h], [KW - 1.5, K.h]] as const).entries()) {
     const p = { px: (K.x + tx) * TILE_SIZE, py: (K.y - KEEP_RISE + ty) * TILE_SIZE };
     keepObjs.push(scene.add.image(p.px, p.py, turretKey).setOrigin(0.5, 1).setScale(0.8 / ZOOM).setFlipX(k % 2 === 1).setDepth(keepDepth + (ty > 3 ? 0.04 : 0.015)));
+    // O estandarte de caveira dos orcs no alto de cada torreão.
+    keepObjs.push(scene.add.image(p.px + (k % 2 ? -8 : 8), p.py - (TOWER.h * 0.8) / ZOOM + 34 / ZOOM, CAMP_KEY, "estandarte").setOrigin(0.5, 1)
+      .setScale(0.9 / ZOOM).setFlipX(k % 2 === 1).setDepth(keepDepth + (ty > 3 ? 0.041 : 0.016)));
   }
   const keepUpper: Upper = { objs: keepObjs, area: K, alpha: 1, hidden: 0 };
   uppers.push(keepUpper);
@@ -649,6 +686,30 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     glows.push(gl);
     return [fl, gl];
   };
+  // A fumaça (cinza, subindo e soprada para o leste pelo vento) e as faíscas das fogueiras.
+  const smokes: { x: number; y: number; emitters: Phaser.GameObjects.Particles.ParticleEmitter[] }[] = [];
+  const SMOKE = "fortress-fumaca";
+  if (!scene.textures.exists(SMOKE)) {
+    const { canvas, ctx } = makeCanvas(48, 48);
+    const g = ctx.createRadialGradient(24, 24, 2, 24, 24, 23);
+    g.addColorStop(0, "rgba(92, 86, 80, 0.85)");
+    g.addColorStop(0.6, "rgba(92, 86, 80, 0.4)");
+    g.addColorStop(1, "rgba(92, 86, 80, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 48, 48);
+    addCanvasTexture(scene.textures, SMOKE, canvas);
+  }
+  const fireLife = (px: number, py: number, depth: number) => [
+    scene.add.particles(px, py, SMOKE, {
+      lifespan: { min: 2600, max: 3800 }, speedY: { min: -26, max: -16 }, speedX: { min: 2, max: 9 },
+      scale: { start: 0.25, end: 0.9 }, alpha: { start: 0.7, end: 0 }, frequency: 320, maxAliveParticles: 12,
+    }).setDepth(depth + 0.05),
+    scene.add.particles(px, py + 6, GLOW, {
+      lifespan: { min: 700, max: 1300 }, speedY: { min: -60, max: -30 }, speedX: { min: -12, max: 14 },
+      scale: { start: 0.05, end: 0 }, alpha: { start: 1, end: 0 }, tint: 0xffb050, frequency: 260, maxAliveParticles: 6,
+      blendMode: Phaser.BlendModes.ADD,
+    }).setDepth(depth + 0.06),
+  ];
   // Fogueiras do acampamento: a da folha (com as chamas desenhadas) e a luz tremendo em volta.
   for (const c of f.fires) {
     const px = (c.x + 0.5) * TILE_SIZE, py = (c.y + 1) * TILE_SIZE;
@@ -657,12 +718,51 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
     gl.setData("phase", hash(c.x, c.y, 68) * 10).setData("alpha", 0.55);
     culler.add(gl, c.x, c.y);
     glows.push(gl);
+    smokes.push({ x: c.x, y: c.y, emitters: fireLife(px, py - 26, py - 0.2) });
+  }
+  // Os braseiros do salão do trono, dos dois lados do tapete, acesos (o fogo e a luz por cima da boca).
+  const brazierKey = single(scene, "fortress-braseiro", BRAZIER.w, BRAZIER.h, brazierSprite);
+  for (let y = f.throne.y + 3; y < f.door.y - 1; y += 4)
+    for (const x of [kc - 3, kc + 3]) {
+      if (at(x, y) !== Tile.Floor) continue;
+      const px = (x + 0.5) * TILE_SIZE, py = (y + 1) * TILE_SIZE;
+      culler.add(scene.add.image(px, py + 10 / ZOOM, brazierKey).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(py - 0.3), x, y);
+      fire(px, py + 10 / ZOOM - BRAZIER_MOUTH / ZOOM, py - 0.29, 0.9, x, y, 1.2);
+    }
+  // A cachoeira: o esgoto do castelo sai pela face do paredão embaixo da muralha externa, a oeste da ponte, e a água
+  // cai no abismo até sumir na névoa (uma textura que rola para baixo, por cima do paredão e do vale).
+  const falls: Phaser.GameObjects.TileSprite[] = [];
+  const fallX = Math.max(8, Math.min(f.bridges[0].x - 16, W - 9));
+  if (!scene.textures.exists("fortress-cachoeira")) addCanvasTexture(scene.textures, "fortress-cachoeira", toCanvas(waterfallTexture(), FALL.w, FALL.h));
+  {
+    const px = (fallX + 0.5) * TILE_SIZE, top = (f.chasm.y0 + 0.35) * TILE_SIZE, len = 4.6 * TILE_SIZE;
+    const fall = scene.add.tileSprite(px, top, (FALL.w * 1.4) / ZOOM, len, "fortress-cachoeira").setOrigin(0.5, 0).setTileScale(1.4 / ZOOM).setAlpha(0.92).setDepth(floorDepth + 0.0015);
+    falls.push(fall);
+    culler.add(fall, fallX, f.chasm.y0 + 2);
+    culler.add(scene.add.image(px, top + 6, single(scene, "fortress-bueiro", DRAIN.w, DRAIN.h, drainSprite)).setOrigin(0.5, 1).setScale(1.3 / ZOOM).setDepth(floorDepth + 0.0016), fallX, f.chasm.y0);
+    // A névoa onde a água some, e o borrifo no pé dela.
+    for (const [dy, sc, al] of [[len - 10, 2.2, 0.55], [len + 6, 3, 0.4]] as const)
+      culler.add(scene.add.image(px, top + dy, MIST).setScale(sc).setAlpha(al).setTint(0xe8f0f6).setDepth(floorDepth + 0.0017), fallX, f.chasm.y0 + 4);
   }
   // A fogueira do terraço some junto com o andar de cima.
   const roofFire = top(holeAt.x < KW / 2 ? KW - 5 : 4, K.h - 5);
   for (const o of fire(roofFire.px, roofFire.py - 6, keepDepth + 0.03, 1.6, K.x, K.y, 1.8, false)) keepObjs.push(o);
 
-  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar], maskCam });
+  // Corvos voando em círculo sobre a torre de menagem (por cima de tudo do mundo, abaixo da interface).
+  if (!scene.textures.exists("fortress-corvo")) {
+    const tex = addCanvasTexture(scene.textures, "fortress-corvo", toCanvas(ravenFrames(), RAVEN.w * 2, RAVEN.h))!;
+    tex.add(0, 0, 0, 0, RAVEN.w, RAVEN.h);
+    tex.add(1, 0, RAVEN.w, 0, RAVEN.w, RAVEN.h);
+  }
+  const ravens = [0, 1, 2].map((k) => scene.add.image(0, 0, "fortress-corvo", 0).setScale(1.6 / ZOOM).setDepth(uiDepth - 7)
+    .setData("phase", k * 2.1).setData("r", 3 + k * 1.3).setData("speed", 0.00018 + k * 0.00005));
+  const ravenCenter = { x: (K.x + K.w / 2) * TILE_SIZE, y: (K.y + K.h / 2) * TILE_SIZE };
+  // A luz do fim de tarde: um véu quente multiplicando a cena inteira (fixo na câmera, abaixo da interface).
+  const cam0 = scene.cameras.main;
+  scene.add.rectangle(0, 0, cam0.width * 4, cam0.height * 4, 0xffe9cf, 1).setOrigin(0.5).setScrollFactor(0).setDepth(uiDepth - 6.5)
+    .setBlendMode(Phaser.BlendModes.MULTIPLY).setPosition(cam0.width / 2, cam0.height / 2);
+
+  return createAmbience(scene, d, uiDepth, culler, { crowns, flames, glows, big, uppers, valley, floorDepth, later: [buildFar], maskCam, falls, smokes, flags, ravens, ravenCenter });
 }
 
 /** Ruído suave em grade de `cell` tiles (0 a 1), para o desenho do vale. */
@@ -722,6 +822,15 @@ function createAmbience(
     later: (() => void)[];
     /** A câmera da máscara da borda do capim, que acompanha a principal em meia resolução. */
     maskCam: Phaser.Cameras.Scene2D.Camera;
+    /** A água das cachoeiras (a textura rola para baixo). */
+    falls: Phaser.GameObjects.TileSprite[];
+    /** Fumaça e faíscas de cada fogueira (ligadas só perto da câmera). */
+    smokes: { x: number; y: number; emitters: Phaser.GameObjects.Particles.ParticleEmitter[] }[];
+    /** Estandartes que balançam ao vento. */
+    flags: Phaser.GameObjects.Image[];
+    /** Os corvos voando em volta do centro da torre de menagem. */
+    ravens: Phaser.GameObjects.Image[];
+    ravenCenter: { x: number; y: number };
   },
 ): MapAmbience {
   const cam = scene.cameras.main;
@@ -785,6 +894,19 @@ function createAmbience(
         if (!visible.has(b.img)) continue;
         const h = b.hide;
         b.img.setAlpha(hero.x >= h.x && hero.y >= h.y && hero.x < h.x + h.w && hero.y < h.y + h.h ? 0.55 : 1);
+      }
+      for (const fall of art.falls) if (fall.visible) fall.tilePositionY = -(time * 0.09) % FALL.h;
+      // A fumaça e as faíscas só são desenhadas perto da câmera (os emissores seguem soltando partículas).
+      const vx0 = v.x / TILE_SIZE - 4, vx1 = (v.x + v.width) / TILE_SIZE + 4, vy0 = v.y / TILE_SIZE - 4, vy1 = (v.y + v.height) / TILE_SIZE + 4;
+      for (const sm of art.smokes) {
+        const on = sm.x > vx0 && sm.x < vx1 && sm.y > vy0 && sm.y < vy1;
+        for (const e of sm.emitters) e.setVisible(on);
+      }
+      for (const fl of art.flags) if (fl.visible) fl.setRotation(Math.sin(time / 520 + fl.x * 0.05) * 0.035);
+      for (const [k, rv] of art.ravens.entries()) {
+        const a = time * rv.getData("speed") * Math.PI * 2 + rv.getData("phase"), r = rv.getData("r") * TILE_SIZE;
+        const x = art.ravenCenter.x + Math.cos(a) * r * 1.3, y = art.ravenCenter.y + Math.sin(a) * r;
+        rv.setPosition(x, y).setRotation(a + Math.PI).setFrame(Math.floor(time / 180 + k) % 2);
       }
       // Fogueiras: troca de quadro em ritmo próprio; a luz treme junto.
       for (const f of art.flames) if (f.visible) f.setFrame(Math.floor(time / 110 + f.getData("phase")) % 4);
