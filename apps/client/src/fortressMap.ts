@@ -11,7 +11,7 @@ import {
   cypressSprite, flameFrame, pineCrown, pineTrunk, rubbleSprite, towerSprite, wallSprite, type ColumnKind,
 } from "./art/empireMonuments.ts";
 import {
-  DROP, HANG, KEEP_RISE, ROOM_WALL, THRONE, bridgeTile,
+  DROP, FOUNTAIN, HANG, KEEP_RISE, ROOM_WALL, STATUE, THRONE, bridgeTile, fountainSprite, statueSprite,
   cliffTile, grassMask, sideCliffTile, hangingBanner, keepFaceTile, ledgeEdge, parapetTile, roofHoleTile, roofRow, roofTile, ropeBridgeTile,
   throneSprite,
 } from "./art/fortressArt.ts";
@@ -92,7 +92,10 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   /** Muro alto, com ameias: as muralhas, as dos lados e a da beira do precipício. */
   const battlement = (x: number, y: number) => curtain(y) || rampart(x, y);
   const roomInside = (x: number, y: number) => d.side.some((r) => x > r.x && y > r.y && x < r.x + r.w - 1 && y < r.y + r.h - 1);
-  const special = (x: number, y: number) => inTower(x, y) || inTent(x, y) || totems.has(y * W + x) || throne(x, y) || palisade(x, y);
+  const fountain = (x: number, y: number) => inR(f.fountain, x, y);
+  const statue = (x: number, y: number) => f.statues.some((r) => inR(r, x, y));
+  const special = (x: number, y: number) =>
+    inTower(x, y) || inTent(x, y) || totems.has(y * W + x) || throne(x, y) || palisade(x, y) || fountain(x, y) || statue(x, y);
   /** Ruína desenhada como muro (o resto: colunas, blocos, totens e as peças grandes). */
   const masonry = (x: number, y: number) => ruin(x, y) && !special(x, y) && !lone(x, y, ruin);
   const camp = (x: number, y: number) => f.camps.some((r) => inR(r, x, y));
@@ -103,7 +106,7 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   const yard = (x: number, y: number) => {
     const k = f.yards.findIndex((r) => inR(r, x, y));
     if (k < 0 || camp(x, y) || plaza(x, y)) return false;
-    return field(x, y, 4, 301) + (hash(x, y, 302) - 0.5) * 0.12 > (k === f.yards.length - 1 ? 0.56 : 0.46);
+    return field(x, y, 4, 301) + (hash(x, y, 302) - 0.5) * 0.12 > 0.46;
   };
   const paved = (x: number, y: number) => road(x, y) || plaza(x, y) || bridge(x, y) || yard(x, y);
   const near = (x: number, y: number, reach: number, test: (x: number, y: number) => boolean) => {
@@ -520,6 +523,19 @@ export function drawFortress(scene: Phaser.Scene, d: Dungeon, floorDepth: number
   for (const s of placed) {
     const img = culler.add(scene.add.image(s.px, s.py, s.sheet.key, s.frame).setOrigin(0.5, 1).setScale(1 / ZOOM).setDepth(s.depth).setFlipX(!!s.flip), s.x, s.y);
     if (s.crown) crowns.push(img);
+  }
+  // A fonte seca da praça da vila e as estátuas derrubadas (pintadas por código, em `fortressArt.ts`).
+  const fr = f.fountain;
+  // Pintada para 3 tiles de lado e esticada até o tamanho da bacia (a arte é reduzida na tela: o pixel maior não aparece).
+  const fountainScale = fr.w / 3;
+  culler.add(scene.add.image((fr.x + fr.w / 2) * TILE_SIZE, (fr.y + fr.h) * TILE_SIZE + (12 * fountainScale) / ZOOM, single(scene, "fortress-fonte", FOUNTAIN.w, FOUNTAIN.h, fountainSprite))
+    .setOrigin(0.5, 1).setScale(fountainScale / ZOOM).setDepth((fr.y + fr.h) * TILE_SIZE - 0.25), fr.x + 2, fr.y + 2);
+  for (const r of f.statues) {
+    const cx = (r.x + r.w / 2) * TILE_SIZE, by = (r.y + r.h) * TILE_SIZE;
+    // A sombra no chão (o sol baixo do oeste a puxa para o leste) e a estátua, um pouco maior que os 2 tiles que bloqueia.
+    culler.add(scene.add.ellipse(cx + 6, by - 4, r.w * TILE_SIZE * 1.25, 12, 0x10140c, 0.3).setDepth(floorDepth + 0.002), r.x, r.y);
+    culler.add(scene.add.image(cx, by + 13 / ZOOM, single(scene, "fortress-estatua", STATUE.w, STATUE.h, statueSprite))
+      .setOrigin(0.5, 1).setScale(1.3 / ZOOM).setDepth(by - 0.25), r.x, r.y);
   }
   const throneKey = single(scene, "fortress-throne", THRONE.w, THRONE.h, throneSprite);
   culler.add(scene.add.image((f.throne.x + 0.5) * TILE_SIZE, (f.throne.y + 1) * TILE_SIZE, throneKey).setOrigin(0.5, 1).setScale(1 / ZOOM)
