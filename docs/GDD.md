@@ -1363,27 +1363,18 @@ magia for escolhida (ou a janela fechada). O rótulo da escolha diz o nível que
   de chance, por cima dos outros cortes: comum 12% → 7,2%, mini-boss 60% (vezes o `dropScale` do mapa e o corte
   geral), cada um dos 2 itens do boss 60% e o item do baú (e do Mímico) 60%. Poções, runas e gold não mudam.
 - Tabelas em `packages/shared/src/monsters.ts` e `classes.ts`.
-- **Princípio: dificuldade por comportamento.** O perigo vem do que os monstros **fazem**, nunca de números maiores:
-  eles ouvem a luta, chamam ajuda, patrulham, perseguem e caçam. O jogador perde o controle de *quando* e *com quantos*
-  luta, e a decisão central passa a ser "fico ou corro?". A ficha de cada monstro não muda (vale "monstros de força
-  fixa"). Avisar que um monstro **existe** (o grito, o "!", o aviso do Andarilho) não fere o princípio abaixo: o
-  golpe continua sem aviso. Regras em `packages/shared/src/threat.ts`, teste `comportamento`:
-  - **Barulho da luta:** o monstro que nota um herói ou leva um golpe acorda os monstros parados a até 5 tiles,
-    através de paredes (um "!" sobe em cada um). O **líder** dá o **Grito de Guerra** e chama até 9 tiles (um líder
-    chamado também grita); o **enxame** chama os da mesma espécie até 8 tiles. Sentinelas e emboscadores não ouvem;
-    bosses não chamam nem são chamados. Lutar no corredor, longe da sala vizinha, e matar o líder primeiro viram
-    decisões.
+- **Princípio: dificuldade por comportamento.** Cada perigo tem uma **resposta certa** que o jogador escolhe: quem
+  acerta passa fácil, quem ignora é punido forte. Todo monstro tem **ameaça** (o que faz de perigoso), **fraqueza**
+  legível (por onde se resolve) e **punição** real (o que acontece se ignorar). Ex.: o escorpião tem veneno forte e pouca
+  vida, então matar rápido vale muito. Recuar (na hunt ou na escolha do mapa) e voltar para treinar em outro cenário
+  precisam ser necessários de vez em quando: é o que torna o jogo provocativo (ver `docs/TERRENO_DE_CACA_PLANO.md`).
+  O golpe continua sem aviso. Regras em `packages/shared/src/threat.ts`, teste `comportamento`:
+  - **Grito de Guerra:** o líder que **sobrevive ao primeiro golpe** chama os monstros parados a até 9 tiles, através
+    de paredes, uma vez só (um "!" sobe em cada um). Morto num golpe, ou antes de perceber o herói, não grita.
+    Sentinelas e emboscadores não ouvem; bosses não são chamados. Golpe em monstro comum não chama ninguém.
   - **Perseguição pelo papel:** além do aggro range, o escaramuçador persegue mais 12 tiles, o enxame 10, bruto,
     controlador, líder e artilheiro 8, o emboscador 6 e a sentinela 3; mini-boss 6 e boss 4. Longe demais para a busca
-    curta, o monstro segue o caminho a pé até o herói (campo de distância), virando os corredores atrás dele.
-  - **Patrulhas:** uma a cada 4 salas do caminho (1 a 4 por mapa), pela seed: o grupo comum de uma sala anda de sala em
-    sala, ida e volta pelas vizinhas (até 2 de cada lado), a 70% da velocidade, o primeiro esperando quem ficou para trás.
-    Nunca na zona da entrada (vale a "Entrada tranquila") nem na sala do boss. Achou alguém, o grupo inteiro vai junto;
-    perdeu, volta a patrulhar. Rendem XP e loot normais.
-  - **O Andarilho:** com 40% do tempo da hunt, um mini-boss do mapa acorda na sala do caminho mais longe da equipe
-    ("☠ <nome> desperta e caça vocês!") e caça o herói vivo mais perto pelo mapa inteiro, sem desistir, 15% mais rápido
-    que a ficha (ainda mais lento que o herói: fugir é possível). Rende 1,5× a XP e o gold; morto, a equipe é avisada.
-  - **A dungeon desperta:** com 60% do tempo, até 2 grupos parados (os mais perto da equipe) saem atrás dela.
+    curta, o monstro segue o caminho a pé até o herói (campo de distância). Fugir do lobo não resolve; do zumbi, sim.
 - **Jogo em equipe** (bots contam): os monstros são os mesmos com 1 ou 4 heróis, mas a equipe se protege:
   - **Formação:** com outro herói vivo a até 4 tiles, o golpe de monstro pesa 15% menos.
   - **Cercado:** cada monstro visível colado no herói além do primeiro deixa o golpe 12% mais forte (até 3 a mais, +36%).

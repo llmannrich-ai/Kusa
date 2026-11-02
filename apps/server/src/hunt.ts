@@ -207,15 +207,8 @@ import {
   type SummonDef,
   type SummonKind,
   type TargetMessage,
-  AWAKEN_AT,
-  AWAKEN_GROUPS,
-  DEAF_ROLES,
   FORMATION_GUARD,
   FORMATION_RADIUS,
-  MAX_PATROLS,
-  PATROL_EVERY_ROOMS,
-  PROWLER_AT,
-  PROWLER_REWARD,
   SURROUND_MAX,
   SURROUND_STEP,
 } from "@kusa/shared";
@@ -593,11 +586,6 @@ export interface HuntOptions {
    * monstros de novo. Sala hospedada por um jogador, quando o anfitrião sai e outro assume.
    */
   restore?: unknown;
-  /**
-   * Só para testes: sem o Andarilho e sem a dungeon despertar (`threat.ts`), para um teste longo não ver um
-   * mini-boss chegar do nada. A arena usa; o teste `comportamento` liga de volta.
-   */
-  calm?: boolean;
 }
 
 /**
@@ -613,7 +601,7 @@ const AURA_PULSE_MS = 500;
 const INTERNALS = [
   "startLevel", "allSpells", "testRunes", "monsterHp", "seats", "elapsedMs", "regenMs", "brains", "chestDepth", "mimicDepth", "nextMonsterId",
   "nextItemId", "nextSummonId", "summonBrains", "fieldBrains", "nextFieldId", "itemExpiresAt", "pickupBlocked", "nextBotId",
-  "sceneBurns", "tentLeft", "tentNextAt", "calm", "threat",
+  "sceneBurns", "tentLeft", "tentNextAt",
 ] as const;
 
 /**
@@ -666,10 +654,6 @@ export class Hunt {
   private tentNextAt: number[] = [];
   /** IA dos bots que completam a equipe (`botAi.ts`): manda as mesmas intenções de um jogador. */
   private bots: BotAi;
-  /** Sem Andarilho nem dungeon despertando (`HuntOptions.calm`, só testes). */
-  private calm: boolean;
-  /** Dificuldade por comportamento (`threat.ts`): o Andarilho já acordou; a dungeon já despertou. */
-  private threat = { prowler: false, awakened: false };
 
   constructor(readonly state: DungeonState, private host: HuntHost, options: HuntOptions) {
     this.map = MAPS[mapIdOf(options.mapId)];
@@ -678,7 +662,6 @@ export class Hunt {
     this.testRunes = options.runes ?? [];
     this.monsterHp = Math.max(1, options.monsterHp ?? 1);
     this.random = options.random ?? Math.random;
-    this.calm = options.calm ?? false;
     this.state.mapId = this.map.id;
     this.state.seed = options.seed;
     this.dungeon = generateDungeon(this.state.seed, this.map.id);
@@ -726,10 +709,7 @@ export class Hunt {
       chooseSpell: (id, msg) => this.chooseSpell(id, msg),
       choosePerk: (id, msg) => this.choosePerk(id, msg),
     });
-    if (!options.restore) {
-      this.spawnMonsters();
-      this.planPatrols();
-    }
+    if (!options.restore) this.spawnMonsters();
   }
 
   /**
@@ -1078,133 +1058,6 @@ export class Hunt {
 
   // --- Dificuldade por comportamento (`threat.ts`) -------------------------------------
 
-  /**
-   * Patrulhas: uma a cada `PATROL_EVERY_ROOMS` salas do caminho (até `MAX_PATROLS`), longe da entrada e fora da sala do
-   * boss. O grupo comum da sala anda de sala em sala, ida e volta, pelas salas vizinhas do caminho. Pela seed.
-   */
-  private planPatrols() {
-    const d = this.dungeon;
-    if (this.map.encounters.length === 0 || d.path.length < 3) return;
-    const rng = createRng(this.state.seed ^ 0x5bd1e995);
-    const far = (r: Rect) => {
-      const c = centerOf(r);
-      return tileDistance(c.x, c.y, d.portal.x, d.portal.y) > START_ZONE_RADIUS + 4;
-    };
-    // A sala do boss é a última do caminho; covis (Caverna) também ficam de fora.
-    const usable = d.path.map((room, i) => ({ room, i })).filter(({ room, i }) => i < d.path.length - 1 && far(room));
-    const want = Math.min(MAX_PATROLS, Math.max(1, Math.round(d.path.length / PATROL_EVERY_ROOMS)));
-    const pool = [...usable];
-    for (let n = 0; n < want && pool.length > 0; n++) {
-      const { room, i } = pool.splice(rng.int(0, pool.length - 1), 1)[0];
-      const group = this.idleIn(room);
-      if (group.length === 0) continue;
-      // Ida e volta pelas salas vizinhas (até 2 para cada lado) que também estão longe da entrada.
-      const near = usable.filter((u) => Math.abs(u.i - i) <= 2).map((u) => u.i).sort((a, b) => a - b);
-      const line = near.map((j) => this.walkableNear(centerOf(d.path[j])));
-      const route = [...line, ...line.slice(1, -1).reverse()];
-      if (route.length < 2) continue;
-      this.makePatrol(group, route, line.indexOf(this.walkableNear(centerOf(room))));
-    }
-  }
-
-  /** Monstros comuns parados dentro de uma sala (sem alvo, sem patrulha, que ouvem o alarme). */
-  private idleIn(room: Rect) {
-    const found: Monster[] = [];
-    this.state.monsters.forEach((m) => {
-      const b = this.brains.get(m.id);
-      if (!b || b.def.rank !== "common" || b.targetId || b.roam || b.prowler || b.camouflaged || DEAF_ROLES.includes(b.def.role)) return;
-      if (m.x >= room.x && m.x < room.x + room.w && m.y >= room.y && m.y < room.y + room.h) found.push(m);
-    });
-    return found;
-  }
-
-  private makePatrol(group: Monster[], route: { x: number; y: number }[], start: number) {
-    const lead = group[0].id;
-    group.forEach((m, i) => {
-      this.brains.get(m.id)!.roam = { route: route.map((p) => ({ ...p })), idx: Math.max(0, start), lead: i === 0 ? null : lead };
-    });
-  }
-
-  /** O tile andável mais perto de um ponto (o centro de uma sala pode ser pilar). */
-  private walkableNear(at: { x: number; y: number }) {
-    for (let r = 0; r < 6; r++) {
-      for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
-        if (Math.max(Math.abs(ox), Math.abs(oy)) === r && isWalkable(this.dungeon, at.x + ox, at.y + oy) && !this.specialTile(at.x + ox, at.y + oy)) {
-          return { x: at.x + ox, y: at.y + oy };
-        }
-      }
-    }
-    return at;
-  }
-
-  /** Relógio da ameaça: o Andarilho acorda em `PROWLER_AT` do tempo e a dungeon desperta em `AWAKEN_AT`. */
-  private threatClock() {
-    if (this.calm || this.map.encounters.length === 0) return;
-    const done = this.elapsedMs / (this.map.durationSeconds * 1000);
-    if (!this.threat.prowler && done >= PROWLER_AT) {
-      this.threat.prowler = true;
-      this.wakeProwler();
-    }
-    if (!this.threat.awakened && done >= AWAKEN_AT) {
-      this.threat.awakened = true;
-      this.awakenDungeon();
-    }
-  }
-
-  /** Heróis vivos na dungeon. */
-  private heroesInside() {
-    return [...this.state.players.values()].filter((p) => p.status === "playing");
-  }
-
-  /** Distância do ponto ao herói vivo mais perto. */
-  private heroDistance(x: number, y: number) {
-    return Math.min(Infinity, ...this.heroesInside().map((p) => tileDistance(x, y, p.x, p.y)));
-  }
-
-  /** O Andarilho: um mini-boss do mapa acorda na sala do caminho mais longe da equipe e caça até morrer. */
-  private wakeProwler() {
-    const heroes = this.heroesInside();
-    if (heroes.length === 0 || this.map.minibosses.length === 0) return;
-    const d = this.dungeon;
-    const rooms = d.path.slice(0, -1).filter((r) => {
-      const c = centerOf(r);
-      return tileDistance(c.x, c.y, d.portal.x, d.portal.y) > START_ZONE_RADIUS;
-    });
-    if (rooms.length === 0) return;
-    rooms.sort((a, b) => this.heroDistance(centerOf(b).x, centerOf(b).y) - this.heroDistance(centerOf(a).x, centerOf(a).y));
-    const room = rooms[0];
-    const at = this.freeSpotNear(centerOf(room).x, centerOf(room).y) ?? this.walkableNear(centerOf(room));
-    if (this.monsterAt(at.x, at.y)) return;
-    const kind = pickWeighted(this.map.minibosses, this.random());
-    const m = this.addMonster(kind, at.x, at.y, d.path.indexOf(room));
-    this.ai.makeProwler(this.brains.get(m.id)!, PROWLER_REWARD);
-    const name = MONSTERS[kind].name;
-    heroes.forEach((p) => this.notice(p.x, p.y - 2, `☠ ${name} desperta e caça vocês!`, 0xc0392b, 3000));
-    this.seats.forEach((seat) => bump(seat.stats.threat, "andarilho"));
-  }
-
-  /** A dungeon desperta: até `AWAKEN_GROUPS` grupos parados saem em patrulha até a sala da equipe e de volta. */
-  private awakenDungeon() {
-    const heroes = this.heroesInside();
-    if (heroes.length === 0) return;
-    const d = this.dungeon;
-    const hero = heroes[0];
-    const target = this.walkableNear({ x: hero.x, y: hero.y });
-    const rooms = d.path.slice(0, -1)
-      .map((room) => ({ room, group: this.idleIn(room) }))
-      .filter((r) => r.group.length > 0)
-      .sort((a, b) => this.heroDistance(centerOf(a.room).x, centerOf(a.room).y) - this.heroDistance(centerOf(b.room).x, centerOf(b.room).y));
-    let woke = 0;
-    for (const { room, group } of rooms) {
-      if (woke >= AWAKEN_GROUPS) break;
-      this.makePatrol(group, [this.walkableNear(centerOf(room)), target], 1);
-      woke++;
-    }
-    if (woke === 0) return;
-    heroes.forEach((p) => this.notice(p.x, p.y - 2, "A dungeon desperta…", 0x9b59b6, 2500));
-    this.seats.forEach((seat) => bump(seat.stats.threat, "despertos", woke));
-  }
-
   /** Monstros visíveis colados no herói. */
   private monstersBeside(p: Player) {
     let n = 0;
@@ -1442,7 +1295,6 @@ export class Hunt {
     this.state.players.forEach((p, sessionId) => this.auraTick(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.orbitTick(sessionId, p, now));
     this.state.players.forEach((p, sessionId) => this.stormTick(sessionId, p, now));
-    this.threatClock();
     for (const m of [...this.state.monsters.values()]) this.ai.think(m, now);
     this.tickScenery(now);
     this.state.summons.forEach((s) => this.summonThink(s, now));
@@ -4717,12 +4569,12 @@ export class Hunt {
     const amount = this.ai.adjustDamage(m, brain, marked, element);
     if (seat) seat.stats.resisted += marked - amount;
     if (!brain.targetId) brain.targetId = hit.attacker;
-    // Barulho da luta: o golpe acorda os vizinhos parados (`MonsterAi.alarm`).
-    if (brain.targetId && this.ai.foe(brain.targetId)) this.ai.alarm(m, brain, brain.targetId, this.host.now());
     if (amount <= 0) return 0;
     const dealt = Math.min(amount, m.hp);
     if (seat) bump(seat.stats.damageDealt, source, dealt);
     m.hp = Math.max(0, m.hp - amount);
+    // Grito de Guerra: o líder que sobrevive ao primeiro golpe chama a vizinhança (`MonsterAi.warCry`).
+    if (m.hp > 0 && brain.targetId && this.ai.foe(brain.targetId)) this.ai.warCry(m, brain, brain.targetId);
     // Barril de Pólvora: fogo de herói num monstro colado no barril o acende.
     if (seat && element === "fire") this.detonateKegs(m.x, m.y, 1);
     // Sede de sangue (melhoria): o golpe do próprio herói cura uma parte do dano, sem aviso a cada golpe.
@@ -4785,11 +4637,6 @@ export class Hunt {
   }
 
   private killMonster(m: Monster, brain: Brain, killerId: string) {
-    // O Andarilho caiu: a equipe inteira fica sabendo.
-    if (brain.prowler) {
-      this.heroesInside().forEach((p) => this.notice(p.x, p.y - 2, `${MONSTERS[m.kind as MonsterKind].name} caiu!`, 0xf1c40f, 2500));
-      this.seats.forEach((seat) => bump(seat.stats.threat, "andarilho_morto"));
-    }
     // Fúria Crescente (Dom): matar soma um acúmulo.
     const furySeat = this.seats.get(killerId);
     if (furySeat && furySeat.gifts.furyStack > 0) {
@@ -5308,11 +5155,7 @@ export class Hunt {
       if (hit.ability) bump(seat.stats.abilityDamage, `${kind}:${hit.ability}`, Math.min(amount, p.hp));
       seat.stats.damageMitigated += Math.max(0, raw - amount);
       seat.stats.minHpPct = Math.min(seat.stats.minHpPct, Math.max(0, p.hp - amount) / p.maxHp);
-      // Quem fez o estrago: o Andarilho, uma patrulha (o que a dificuldade por comportamento trouxe).
-      const threat = attackerBrain?.prowler ? "andarilho" : attackerBrain?.roam ? "patrulha" : null;
-      if (threat) bump(seat.stats.threat, `dano_${threat}`, Math.min(amount, p.hp));
       if (amount > 0 && amount >= p.hp) {
-        if (threat) bump(seat.stats.threat, `morte_${threat}`);
         const depth = this.brains.get(hit.attacker)?.depth ?? -1;
         seat.stats.death = { by: kind, depth, x: p.x, y: p.y, at: this.seconds() };
       }

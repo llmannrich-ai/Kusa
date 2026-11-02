@@ -131,10 +131,9 @@ export interface RunStats {
    */
   reactions: Record<string, number>;
   /**
-   * Dificuldade por comportamento (`threat.ts`): `acordados` (monstros que o barulho da luta chamou para cima deste
-   * herói), `andarilho` (o Andarilho acordou com ele na hunt), `andarilho_morto`, `despertos` (grupos que a dungeon
-   * despertou), `dano_andarilho`/`dano_patrulha` e `morte_andarilho`/`morte_patrulha` (já somados em `damageTaken`),
-   * `dano_cercado` (dano a mais por estar cercado) e `evitado_formacao` (dano que a Formação tirou).
+   * Dificuldade por comportamento (`threat.ts`): `chamados_pelo_grito` (monstros que o Grito de Guerra de um líder
+   * chamou para cima deste herói), `dano_cercado` (dano a mais por estar cercado) e `evitado_formacao` (dano que a
+   * Formação tirou).
    */
   threat: Record<string, number>;
 }

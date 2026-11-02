@@ -56,8 +56,8 @@ export function nextStep(
 
 /**
  * Distância a pé (em passos de 8 direções) de cada tile até `to`, no mapa inteiro: -1 onde não dá para chegar.
- * O `nextStep` corta a busca em `MAX_VISITED` tiles (aggro curto); quem anda longe (patrulha, Andarilho) desce este
- * campo, que custa uma busca no mapa todo e serve a todos os monstros que vão para o mesmo ponto.
+ * O `nextStep` corta a busca em `MAX_VISITED` tiles (aggro curto); quem persegue longe desce este
+ * campo, que custa uma busca no mapa todo e serve a todos os monstros que vão atrás do mesmo herói.
  */
 export function distanceField(d: Dungeon, to: Point, walkable: (x: number, y: number) => boolean = (x, y) => isWalkable(d, x, y)): Int32Array {
   const field = new Int32Array(d.width * d.height).fill(-1);

@@ -1,19 +1,16 @@
 /**
- * Dificuldade por comportamento (GDD, "Combate"): o perigo vem do que os monstros fazem (ouvem, chamam ajuda,
- * patrulham, perseguem e caçam), nunca de números maiores. A ficha de cada monstro não muda.
+ * Dificuldade por comportamento (GDD, "Combate"): cada perigo tem uma resposta certa que o jogador escolhe (matar o
+ * líder rápido, não fugir de quem é mais rápido, lutar no corredor, ficar junto da equipe). A ficha dos monstros não muda.
  * Simulação em `apps/server/src/monsterAi.ts` e `hunt.ts`; o teste `comportamento` confere.
  */
 import type { MonsterDef, MonsterRole } from "./monsters.ts";
 
-/** Barulho da luta: quem nota um herói (ou leva um golpe) acorda os monstros parados a até este raio, através de paredes. */
-export const ALARM_RADIUS = 5;
-/** Grito de Guerra: o líder que nota um herói chama os monstros parados a até este raio. */
+/**
+ * Grito de Guerra: o líder que sobrevive ao primeiro golpe chama os monstros parados a até este raio (através de
+ * paredes, uma vez só). A resposta é matá-lo num golpe, ou antes de ele perceber.
+ */
 export const LEADER_SHOUT_RADIUS = 9;
-/** Enxame: os da mesma espécie a até este raio entram juntos na luta. */
-export const SWARM_CALL_RADIUS = 8;
-/** O mesmo monstro só dá o alarme de novo depois deste tempo. */
-export const ALARM_COOLDOWN_MS = 1500;
-/** Papéis que não ouvem o alarme: ficam parados no lugar (emboscador camuflado, sentinela lenta). */
+/** Papéis que não ouvem o grito: ficam parados no lugar (emboscador camuflado, sentinela lenta). */
 export const DEAF_ROLES: readonly MonsterRole[] = ["sentinel", "lurker"];
 
 /**
@@ -31,29 +28,6 @@ export function pursuitTiles(def: MonsterDef): number {
   if (def.rank === "miniboss") return MINIBOSS_PURSUIT_TILES;
   return PURSUIT_TILES[def.role];
 }
-
-/**
- * Patrulhas: grupos inteiros de uma sala do caminho que andam de sala em sala, ida e volta, sem esperar o herói.
- * Uma patrulha a cada `PATROL_EVERY_ROOMS` salas do caminho, de 1 a `MAX_PATROLS`. Nunca começam na zona da entrada.
- */
-export const PATROL_EVERY_ROOMS = 4;
-export const MAX_PATROLS = 4;
-/** Patrulhando, o monstro anda a esta fração da velocidade (dá para ver chegando). */
-export const PATROL_PACE = 0.7;
-/** O primeiro da patrulha espera quem ficou a mais que isto para trás. */
-export const PATROL_GATHER_TILES = 5;
-
-/**
- * O Andarilho: um mini-boss do mapa que acorda nesta fração do tempo da hunt, no fundo da dungeon, e caça o herói
- * vivo mais perto pelo mapa inteiro, sem desistir. Anda um pouco mais rápido que a ficha (mas mais devagar que o
- * herói: fugir é possível) e rende mais XP e gold.
- */
-export const PROWLER_AT = 0.4;
-export const PROWLER_SPEED = 1.15;
-export const PROWLER_REWARD = 1.5;
-/** A dungeon desperta: nesta fração do tempo, até `AWAKEN_GROUPS` grupos parados saem atrás da equipe. */
-export const AWAKEN_AT = 0.6;
-export const AWAKEN_GROUPS = 2;
 
 /**
  * Jogo em equipe: com um aliado (humano ou bot) a até `FORMATION_RADIUS` tiles, o herói leva `FORMATION_GUARD` a

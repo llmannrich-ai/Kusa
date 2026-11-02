@@ -1,24 +1,17 @@
 /**
- * Dificuldade por comportamento (`packages/shared/src/threat.ts`), sem servidor:
- * - Barulho da luta: o golpe num monstro acorda os parados a até `ALARM_RADIUS` (mesmo sem ver o herói); mais longe, não.
- * - Grito de Guerra: o líder chama até `LEADER_SHOUT_RADIUS`.
- * - Perseguição: o escaramuçador (Goblin) segue o herói longe; o bruto lento (Zumbi) desiste antes.
- * - Patrulhas: saem iguais pela seed, longe da entrada, e andam sem ninguém por perto.
- * - Andarilho: acorda em `PROWLER_AT` do tempo e vem atrás do herói pelo mapa.
- * - Formação: aliado perto corta o dano; Cerco: monstros colados a mais aumentam.
+ * Dificuldade por comportamento (`packages/shared/src/threat.ts`), sem servidor. Cada perigo tem uma resposta certa:
+ * - Grito de Guerra: o líder que sobrevive ao primeiro golpe chama os parados a até `LEADER_SHOUT_RADIUS`, uma vez só;
+ *   morto num golpe, não grita. Golpe em monstro comum não chama ninguém.
+ * - Perseguição pelo papel: o escaramuçador (Goblin) segue o herói longe; o bruto lento (Zumbi) desiste antes.
+ * - Formação: aliado perto corta o dano; Cercado: cada monstro colado a mais aumenta.
  * Uso: npx tsx apps/server/scripts/comportamento.ts (de dentro de apps/server, pelos decorators do schema)
  */
-import {
-  ALARM_RADIUS, FORMATION_GUARD, LEADER_SHOUT_RADIUS, MAPS, PROWLER_AT, SURROUND_STEP,
-  createRng, isWalkable, tileDistance, type MapId,
-} from "@kusa/shared";
-import { Hunt, START_ZONE_RADIUS, type HuntHost } from "../src/hunt.ts";
+import { FORMATION_GUARD, LEADER_SHOUT_RADIUS, SURROUND_STEP, isWalkable, tileDistance } from "@kusa/shared";
 import { distanceField } from "../src/pathfinding.ts";
-import { DungeonState, type Monster } from "../src/state.ts";
-import { HERO, arena, check } from "./arena.ts";
+import { HERO, arena, check, type Arena } from "./arena.ts";
 
-/** Leva o herói para um tile andável a `min`–`max` tiles de `from`, alcançável a pé. */
-function moveHeroAway(a: ReturnType<typeof arena>, from: { x: number; y: number }, min: number, max: number) {
+/** Leva o herói para um tile andável a `min`–`max` tiles de `from`, alcançável a pé e longe dos monstros. */
+function moveHeroAway(a: Arena, from: { x: number; y: number }, min: number, max: number) {
   const field = distanceField(a.d, from);
   for (let y = 0; y < a.d.height; y++) {
     for (let x = 0; x < a.d.width; x++) {
@@ -35,33 +28,43 @@ function moveHeroAway(a: ReturnType<typeof arena>, from: { x: number; y: number 
 
 const hit = (attacker: string) => ({ attacker, fromX: 0, fromY: 0 }) as never;
 
-// --- Barulho da luta ----------------------------------------------------------------
+// --- Golpe comum não chama ninguém ---------------------------------------------------
 {
   const a = arena();
   const struck = a.place("goblin", 3, 0);
-  const near = a.place("goblin", -2, 0); // 5 tiles do golpeado
-  const far = a.place("goblin", -3, 0); // 6 tiles
-  check(tileDistance(struck.x, struck.y, near.x, near.y) === ALARM_RADIUS, "o vizinho perto devia estar no raio do alarme");
+  const near = a.place("goblin", 1, 0);
   moveHeroAway(a, struck, 18, 30);
   a.any.damageMonster(struck, 1, hit(HERO), "basic");
   check(a.brain(struck).targetId === HERO, "o monstro golpeado devia ir atrás do herói");
-  check(a.brain(near).targetId === HERO, `o barulho devia acordar o vizinho a ${ALARM_RADIUS} tiles`);
-  check(a.brain(far).targetId === null, "o barulho não devia chegar a 6 tiles");
-  check((a.seat().stats.threat.acordados ?? 0) === 1, "a telemetria devia contar 1 acordado");
-  console.log("  ✔ barulho da luta acorda quem está a até 5 tiles, através de paredes");
+  check(a.brain(near).targetId === null, "golpe em monstro comum não devia chamar o vizinho");
+  console.log("  ✔ golpe em monstro comum não chama ninguém");
 }
 
-// --- Grito de Guerra ----------------------------------------------------------------
+// --- Grito de Guerra: só se o líder sobreviver -------------------------------------------
 {
   const a = arena();
   const leader = a.place("hobgoblin", 3, 0);
-  const far = a.place("goblin", -3, 0); // 6 tiles: fora do alarme comum, dentro do grito
+  const far = a.place("goblin", -3, 0); // 6 tiles, dentro do grito
   check(tileDistance(leader.x, leader.y, far.x, far.y) <= LEADER_SHOUT_RADIUS, "o goblin devia estar no raio do grito");
   moveHeroAway(a, leader, 18, 30);
   a.any.damageMonster(leader, 1, hit(HERO), "basic");
-  check(a.brain(far).targetId === HERO, "o Grito de Guerra devia chamar o goblin a 6 tiles");
-  check(a.notices.includes("Grito de Guerra!"), "o líder devia gritar");
-  console.log("  ✔ o líder grita e chama de mais longe");
+  check(a.brain(far).targetId === HERO, "o líder que sobrevive devia chamar o goblin");
+  check(a.notices.filter((n) => n === "Grito de Guerra!").length === 1, "o líder devia gritar uma vez");
+  a.brain(far).targetId = null;
+  a.any.damageMonster(leader, 1, hit(HERO), "basic");
+  check(a.brain(far).targetId === null, "o líder só grita uma vez");
+  console.log("  ✔ o líder que sobrevive grita uma vez");
+}
+{
+  const a = arena();
+  const leader = a.place("hobgoblin", 3, 0);
+  const far = a.place("goblin", -3, 0);
+  moveHeroAway(a, leader, 18, 30);
+  a.any.damageMonster(leader, leader.hp * 10, hit(HERO), "basic");
+  check(!a.state.monsters.has(leader.id), "o líder devia morrer no golpe");
+  check(a.brain(far).targetId === null, "o líder morto num golpe não devia gritar");
+  check(!a.notices.includes("Grito de Guerra!"), "não devia haver grito");
+  console.log("  ✔ o líder morto num golpe não grita");
 }
 
 // --- Perseguição pelo papel ---------------------------------------------------------
@@ -76,66 +79,13 @@ for (const [kind, keeps] of [["goblin", true], ["zombie", false]] as const) {
 }
 console.log("  ✔ o goblin persegue longe; o zumbi desiste");
 
-// --- Patrulhas pela seed ------------------------------------------------------------
-function huntOn(mapId: MapId, seed: number) {
-  let clock = 0;
-  const host: HuntHost = {
-    now: () => clock, setTimeout: () => {}, send: () => {}, broadcast: () => {}, runEnded: () => {}, ended: () => {},
-  };
-  const state = new DungeonState();
-  const hunt = new Hunt(state, host, { mapId, seed, random: createRng(seed).next, calm: true });
-  hunt.join(HERO, { name: "Teste", classId: "knight", talents: {}, spellXp: {} });
-  hunt.start(HERO);
-  const any = hunt as any;
-  const patrols = () => [...state.monsters.values()].filter((m: Monster) => any.brains.get(m.id)?.roam);
-  return { hunt, state, any, patrols, tick: (ms: number) => { for (let t = 0; t < ms; t += 50) { clock += 50; hunt.tick(50); } } };
-}
-{
-  let maps = 0;
-  for (const mapId of ["crypt", "swamp", "oldwood", "fortress"] as MapId[]) {
-    const h1 = huntOn(mapId, 777);
-    const h2 = huntOn(mapId, 777);
-    const ids1 = h1.patrols().map((m) => m.id).join(",");
-    check(ids1 === h2.patrols().map((m) => m.id).join(","), `${mapId}: as patrulhas deviam sair iguais pela seed`);
-    if (h1.patrols().length === 0) continue;
-    maps++;
-    const portal = h1.any.dungeon.portal;
-    for (const m of h1.patrols()) check(tileDistance(m.x, m.y, portal.x, portal.y) > START_ZONE_RADIUS, `${mapId}: patrulha nasceu na entrada`);
-    // O herói fica parado no portal: a patrulha anda sozinha.
-    const lead = h1.patrols().find((m) => !h1.any.brains.get(m.id).roam.lead)!;
-    const start = { x: lead.x, y: lead.y };
-    h1.tick(20_000);
-    check(lead.x !== start.x || lead.y !== start.y, `${mapId}: a patrulha devia andar (${lead.kind} em ${lead.x},${lead.y})`);
-  }
-  check(maps >= 3, `devia haver patrulha em pelo menos 3 de 4 mapas (houve em ${maps})`);
-  console.log("  ✔ patrulhas saem pela seed, longe da entrada, e andam sozinhas");
-}
-
-// --- Andarilho -----------------------------------------------------------------------
-{
-  const a = arena({ mapId: "swamp", calm: false });
-  a.p.hp = a.p.maxHp = 1_000_000;
-  const at = MAPS.swamp.durationSeconds * 1000 * PROWLER_AT;
-  a.advance(at + 100);
-  const prowler = [...a.state.monsters.values()].find((m) => a.brain(m).prowler);
-  check(!!prowler, `o Andarilho devia acordar em ${PROWLER_AT * 100}% do tempo`);
-  check(a.seat().stats.threat.andarilho === 1, "a telemetria devia contar o Andarilho");
-  const before = tileDistance(prowler!.x, prowler!.y, a.p.x, a.p.y);
-  a.advance(8000);
-  const after = tileDistance(prowler!.x, prowler!.y, a.p.x, a.p.y);
-  check(after < before, `o Andarilho devia se aproximar (de ${before} para ${after} tiles)`);
-  check(a.brain(prowler!).targetId === HERO, "o Andarilho devia caçar o herói");
-  console.log(`  ✔ o Andarilho (${prowler!.kind}) acorda e caça: ${before} → ${after} tiles em 8 s`);
-}
-
-// --- Formação e Cerco ----------------------------------------------------------------
+// --- Formação e Cercado ----------------------------------------------------------------
 {
   const a = arena({ allies: [{ classId: "druid", bot: true }] });
   const m = a.place("goblin", 0, 1);
   const ally = a.state.players.get("h2")!;
   const taken = () => {
     a.p.hp = a.p.maxHp;
-    a.any.seats.get(HERO).invulnUntil = 0;
     a.p.barrier = 0;
     a.any.damagePlayer(HERO, 200, { attacker: m.id, fromX: m.x, fromY: m.y });
     return a.p.maxHp - a.p.hp;
