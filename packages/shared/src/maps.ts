@@ -58,6 +58,11 @@ export interface MapDef {
    */
   commonPower?: number;
   /**
+   * Multiplicador fixo de vida, dano, XP e loot do boss final neste mapa (padrão 1). O mesmo boss pode estar em mapas
+   * de dificuldades diferentes (o Dragão jovem da Orla do Bosque e da Cripta).
+   */
+  bossPower?: number;
+  /**
    * Fração da XP dos monstros (comuns, mini-bosses, Mímico e boss) que o mapa paga (padrão 1). A força do mapa
    * (`commonPower`, `minibossPower`) multiplica a XP junto com a vida; com muito monstro forte, o herói sozinho chegava
    * no boss já no nível máximo. A meta: limpando 75% do caminho sozinho, chegar no boss abaixo do nível 20, que vem do
@@ -137,7 +142,8 @@ export function crowdAt(depth: number): number {
 export function monsterPower(map: MapDef, kind: MonsterKind): number {
   const rank = MONSTERS[kind].rank;
   if (rank === "miniboss") return map.minibossPower ?? 1;
-  return rank === "common" ? map.commonPower ?? 1 : 1;
+  if (rank === "boss") return map.bossPower ?? 1;
+  return map.commonPower ?? 1;
 }
 
 /** XP que um monstro de `xp` (já com a força do mapa) paga em `map` (`MapDef.xpScale`). */
@@ -174,25 +180,28 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["dragon", 1]],
   },
   crypt: {
-    id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 1, durationSeconds: 4 * 60,
-    minibossPower: 1.24,
-    description: "Salas de pedra e corredores apertados. Kobolds, goblins, mortos-vivos e orcs até o Dragão jovem. Cuidado com os baús.",
+    id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 3, durationSeconds: 6 * 60,
+    // 3 estrelas: a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins cedo, orcs, carniçais e o Pudim
+    // Negro no fundo), mini-bosses e o Dragão jovem bem mais fortes que os da Orla do Bosque.
+    minibossPower: 1.6, bossPower: 1.6,
+    description: "Salas de pedra e corredores apertados. Goblins e mortos-vivos na entrada; orcs, carniçais e o Pudim Negro no fundo, e ogros e cubos guardando os baús. No fim, o Dragão jovem, muito mais forte que o da Orla. Cuidado com os baús.",
     encounters: [
-      { depth: [0, 0], budget: 60, table: [["rat", 4], ["kobold", 4], ["stirge", 2]] },
-      { depth: [1, 1], budget: 150, table: [["goblin", 4], ["goblinArcher", 2], ["kobold", 2], ["zombie", 2], ["rat", 1], ["hobgoblin", 1]] },
+      { depth: [0, 0], budget: 80, table: [["goblin", 3], ["kobold", 3], ["rat", 2], ["zombie", 1]] },
+      { depth: [1, 1], budget: 230, table: [["skeleton", 3], ["goblin", 2], ["hobgoblin", 2], ["skeletonArcher", 2], ["zombie", 2]] },
+      { depth: [2, 2], budget: 350, table: [["orc", 3], ["ghoul", 3], ["skeleton", 2], ["skeletonArcher", 2], ["hobgoblin", 1]] },
       {
-        depth: [2, 2], budget: 230,
-        table: [["skeleton", 4], ["skeletonArcher", 2], ["giantSpider", 2], ["goblin", 2], ["hobgoblin", 1], ["zombie", 1], ["orc", 1]],
+        depth: [3, 9], budget: 520,
+        table: [["orc", 3], ["ghoul", 3], ["gnoll", 2], ["blackPudding", 2], ["skeletonArcher", 1], ["hobgoblin", 1]],
       },
-      { depth: [3, 9], budget: 360, table: [["orc", 4], ["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 1], ["giantSpider", 1], ["hobgoblin", 1]] },
     ],
     minibosses: [["ogre", 2], ["bugbear", 1], ["gelatinousCube", 1]],
     mimicChance: 1 / 3,
     bosses: [["dragon", 1]],
   },
   swamp: {
-    id: "swamp", name: "Pântano das Ruínas", icon: "🌿", difficulty: 2, durationSeconds: 8 * 60,
-    minibossPower: 1.3,
+    id: "swamp", name: "Pântano das Ruínas", icon: "🌿", difficulty: 3, durationSeconds: 8 * 60,
+    // 3 estrelas, como a Cripta e o Mar de Areia que vêm antes na campanha: mini-bosses e o Rei Bullywug um pouco mais fortes.
+    minibossPower: 1.4, bossPower: 1.15,
     description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor. O Rei Bullywug espera nas ruínas do centro.",
     encounters: [
       { depth: [0, 0], budget: 160, table: [["frog", 4], ["bullywug", 2], ["stirge", 1]] },
@@ -214,16 +223,18 @@ export const MAPS: Record<MapId, MapDef> = {
     bosses: [["bullywugKing", 1]],
   },
   desert: {
-    id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 1, durationSeconds: 6 * 60,
-    minibossPower: 1.25,
-    description: "Dunas, oásis e coqueiros. Escorpiões, abutres, gnolls, esqueletos e múmias; ruínas soterradas com mini-boss e baú. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
+    id: "desert", name: "Mar de Areia", icon: "🏜️", difficulty: 3, durationSeconds: 8 * 60,
+    // 3 estrelas: gnolls e múmias desde o meio, a legião de osso das Dunas no fundo, mini-bosses e o Verme da Areia bem
+    // mais fortes.
+    minibossPower: 1.6, bossPower: 1.6,
+    description: "Dunas, oásis e coqueiros. Escorpiões e abutres na entrada; gnolls, esqueletos e múmias mais para dentro, e no fundo os primeiros legionários de osso e os soterrados. Ruínas soterradas com mini-boss e baú. Em algum lugar há uma caverna: lá embaixo vive o Verme da Areia, e atrás dele, 4 baús de runa para escolher.",
     encounters: [
-      { depth: [0, 0], budget: 60, table: [["sandScorpion", 4], ["giantVulture", 2]] },
-      { depth: [1, 1], budget: 130, table: [["sandScorpion", 3], ["giantVulture", 3], ["skeleton", 1], ["giantSpider", 1]] },
-      { depth: [2, 2], budget: 200, table: [["giantVulture", 2], ["skeleton", 3], ["skeletonArcher", 2], ["giantSpider", 2], ["gnoll", 1]] },
-      { depth: [3, 3], budget: 270, table: [["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 2], ["mummy", 1], ["giantSpider", 1]] },
-      { depth: [4, 4], budget: 330, table: [["gnoll", 3], ["mummy", 2], ["skeletonArcher", 2], ["giantVulture", 1]] },
-      { depth: [5, 99], budget: 380, table: [["mummy", 3], ["gnoll", 3], ["skeletonArcher", 1], ["giantVulture", 1]] },
+      { depth: [0, 0], budget: 80, table: [["sandScorpion", 3], ["giantVulture", 3]] },
+      { depth: [1, 1], budget: 200, table: [["skeleton", 3], ["giantVulture", 2], ["giantSpider", 2], ["gnoll", 1], ["sandScorpion", 1]] },
+      { depth: [2, 2], budget: 320, table: [["gnoll", 3], ["skeleton", 2], ["skeletonArcher", 2], ["mummy", 2], ["boneJackal", 1]] },
+      { depth: [3, 3], budget: 400, table: [["gnoll", 3], ["mummy", 3], ["skeletonArcher", 2], ["boneJackal", 2]] },
+      { depth: [4, 4], budget: 480, table: [["mummy", 3], ["gnoll", 2], ["boneLegionary", 2], ["skeletonArcher", 2], ["buriedDead", 1]] },
+      { depth: [5, 99], budget: 560, table: [["mummy", 3], ["boneLegionary", 2], ["buriedDead", 2], ["gnoll", 2], ["boneArcher", 1]] },
     ],
     minibosses: [["blackScorpion", 2], ["mummyPriest", 1], ["sandElemental", 1]],
     mimicChance: 0,
