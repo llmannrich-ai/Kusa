@@ -50,7 +50,13 @@ const bestGear = (classId: ClassId) => gearStats(Object.values(bestPerSlot(Objec
 /** Dano de uma conjuração num alvo, em múltiplos do dano base (magias) e do dano base das criaturas (invocações). */
 function perCast(s: SpellDef, rank: number) {
   const repeat = s.repeat ? 1 + s.repeat.power * (s.repeat.times ?? 1) : 1;
-  let spell = (s.damage ?? 0) * repeat;
+  // Grimório 4.0: canalizar (cada pulso fere de novo), projéteis em leque (colado no alvo, todos acertam), cargas
+  // (lançadas em seguida, na mesma recarga) e o anel da Coroa Solar (um golpe por pulso).
+  const pulses = s.channel ? s.channel.ms / s.channel.tickMs : s.orbit ? s.orbit.ms / s.orbit.tickMs : 1;
+  const shots = (s.spread?.count ?? 1) * (s.charges?.count ?? 1);
+  let spell = (s.damage ?? 0) * repeat * pulses * shots;
+  // Olho da Tempestade: um raio por pulso enquanto dura.
+  if (s.storm) spell += s.storm.damage * (s.storm.ms / s.storm.everyMs);
   if (s.dot) spell += s.dot.perSec * (Math.min(s.dot.ms, paced(s.cooldownMs)) / 1000);
   if (s.burst) spell += s.burst.damage;
   if (s.groundFire) spell += s.groundFire.perSec * (Math.min(s.groundFire.ms, paced(s.cooldownMs)) / 1000);
