@@ -672,11 +672,18 @@ a Ferida Aberta). Teste novo `combos`; migration `20261102190000_combos_cavaleir
 
 **Fase 5 (Paladino), como foi entregue:** Flecha do Ponto Fraco sai do Leque de Flechas, Flecha da Aurora do Clarão
 Sagrado e Barril de Pólvora dos Abrolhos (na faixa ao lado, porque a Flecha Incendiária já ocupa a faixa dos Abrolhos na
-linha 4). Peças novas: `comboBonus` (dano vezes N em quem tinha os estados pedidos antes do golpe), `incandesceRadius` e a
+linha 4). Peças novas: `comboBonus` (dano vezes N em quem tinha os estados pedidos antes do golpe), `reactionRadius` e a
 A12, o barril: um campo (`look: "keg"`) que não pulsa e explode o `burst` quando um projétil passa pelo tile dele ou
 quando fogo de herói fere um monstro colado nele; o tempo acaba (30 s) e ele some sem explodir, e a explosão de um barril
 acende o barril vizinho. A Flecha da Aurora e o Barril são de fogo. Telemetria: `giftProcs.powder_keg` conta os barris
 que explodiram. Migration `20261102200000_combos_paladino.sql`.
+
+**Fase 5 (Feiticeiro), como foi entregue:** só 2 magias de combo, porque o Raio já tem as duas de leque (Cusparada de Fogo
+e Leque de Raios): Choque Térmico sai do Sopro Gélido e Sentença do Lamento Sombrio. O Choque Térmico é de fogo e deixa
+lento junto; o Vapor dele sai em quem já estava queimando ou lento antes do golpe (no congelado, o fogo já faz o Vapor
+sozinho). Peças: `reactionRadius` vale também para o Vapor, `reactionPower` (força da Condenação do golpe), `vaporOn` e
+`markAround`. A Maestria do Lamento Sombrio agora enfraquece 20% por 3 s, como no plano. Migration
+`20261102210000_combos_feiticeiro.sql`.
 
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).

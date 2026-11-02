@@ -462,7 +462,7 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 | Paladino | Luz (Luz Curativa) | ☀️ **Clarão Sagrado** | 2 | onda de 120°, 4 tiles, 1,2×, ofusca 1 s, dobro em mortos-vivos | marca os ofuscados (+15% por 4 s) |
 | Feiticeiro | Raio (Relâmpago) | 🔥 **Cusparada de Fogo** | 1 | onda de fogo de 60°, 3 tiles, 1,3× e queima 3 s | leque de 90° |
 | Feiticeiro | Raio (Cusparada de Fogo) | ⚡ **Leque de Raios** | 2 | 3 raios em 60°, 1,4× cada, e cada um salta 1 vez | 5 raios |
-| Feiticeiro | Trevas (Áurea da Égide) | 🌑 **Lamento Sombrio** | 1 | onda de 120°, 3 tiles, 1,1× e rouba 15% de vida | rouba 25% |
+| Feiticeiro | Trevas (Áurea da Égide) | 🌑 **Lamento Sombrio** | 1 | onda de 120°, 3 tiles, 1,1× e rouba 15% de vida | enfraquece 20% por 3 s |
 | Druida | Matilha (Lobo Espiritual) | 🐺 **Rugido da Alcateia** | 1 | leque de 90°, 3 tiles, 0,8×, empurra 1; criaturas 30% mais rápidas por 4 s | as criaturas curam 10% |
 | Druida | Bosque (Mariposa Curandeira) | 🌸 **Brisa de Pólen** | 2 | onda de 120°, 5 tiles: cura 20% dos **aliados** no leque e tira veneno, queimadura e lentidão; monstros 30% lentos | cura 30% |
 | Druida | Espinhos (Espinho Venenoso) | 🌵 **Rajada de Espinhos** | 1 | 6 espinhos em 60°, 0,7× cada, que sangram | 8 espinhos |
@@ -482,6 +482,8 @@ Magias que saem **do herói em leque**, na direção mirada (no toque rápido, p
 | Paladino | Mira (Leque de Flechas) | 🎯 **Flecha do Ponto Fraco** | 2 | 2,4× num alvo; em monstro marcado **e** sangrando, o dano dobra | marca o alvo (+15% por 4 s) |
 | Paladino | Luz (Clarão Sagrado) | 🌅 **Flecha da Aurora** | 1 | 1,4× de fogo e queima 3 s; em ofuscado, dispara o **Incandescer** na hora | Incandescer em raio 2 |
 | Paladino | Batedor (Abrolhos) | 🛢️ **Barril de Pólvora** | 2 | um barril no ponto mirado (30 s); explode quando leva flecha ou fogo (fogo num monstro colado nele também): raio 2, 2,5× e queima; o tempo acaba e ele some sem explodir; um barril acende o vizinho | 2 barris |
+| Feiticeiro | Gelo (Sopro Gélido) | 💨 **Choque Térmico** | 1 | 1,2× de fogo num alvo: queima 3 s **e** deixa 30% lento; em quem já estava queimando ou lento, dispara o **Vapor** | Vapor em raio 2 |
+| Feiticeiro | Trevas (Lamento Sombrio) | 💀 **Sentença** | 2 | 1,8× de trevas num alvo; em marcado, a **Condenação** sai dobrada | marca os colados no alvo (+15% por 4 s) |
 | Cavaleiro | Comando (Brado Cortante) | ⚡ **Golpe Exposto** | 2 | 2,2× no monstro colado e atordoa 1 s; se ele estiver marcado, o golpe já sai **Exposto** | os marcados colados no alvo também ficam atordoados |
 
 - A janela de escolha da magia na hunt rola quando há muitas magias compradas no slot.

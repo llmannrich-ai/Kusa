@@ -4,7 +4,9 @@
  *   - Cavaleiro: Corte Hemorrágico (Hemorragia dobrada em quem já sangrava), Arremesso (quem bate em parede ou monstro
  *     fica atordoado, com o outro) e Golpe Exposto (marcado vira Exposto na hora); a Maestria do Brado Cortante enfraquece;
  *   - Paladino: Flecha do Ponto Fraco (dobro em marcado e sangrando), Flecha da Aurora (Incandescer em ofuscado) e Barril
- *     de Pólvora (explode com flecha ou fogo, some sem explodir).
+ *     de Pólvora (explode com flecha ou fogo, some sem explodir);
+ *   - Feiticeiro: Choque Térmico (Vapor em quem já estava queimando ou lento) e Sentença (Condenação dobrada); a Maestria
+ *     do Lamento Sombrio enfraquece.
  * Uso: npx tsx scripts/combos.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { EXPOSED_BONUS, MASTERIES, SPELLS, talentTree, type ClassId, type SpellDef, type SpellId } from "@kusa/shared";
@@ -41,6 +43,7 @@ test("as magias de combo ficam embaixo da de leque da mesma costela", () => {
   const pairs: [ClassId, SpellId, SpellId][] = [
     ["knight", "hemorrhagic_cut", "gale_blade"], ["knight", "shield_toss", "shield_wall"], ["knight", "exposed_strike", "cutting_shout"],
     ["paladin", "weak_point_arrow", "arrow_fan"], ["paladin", "dawn_arrow", "holy_flash"], ["paladin", "powder_keg", "caltrops"],
+    ["sorcerer", "thermal_shock", "frost_breath"], ["sorcerer", "sentence", "dark_wail"],
   ];
   for (const [classId, combo, fan] of pairs) {
     const tree = talentTree(classId);
@@ -186,6 +189,51 @@ test("Barril de Pólvora: explode com flecha ou fogo perto, some sem explodir; M
   b.any.applySpell(HERO, mastered("powder_keg"), 0, undefined, b.p.x + 2, b.p.y, 0, undefined, 1);
   b.any.applySpell(HERO, mastered("powder_keg"), 0, undefined, b.p.x, b.p.y + 2, 0, undefined, 1);
   check([...b.state.fields.values()].filter((f) => f.style === "keg").length === 2, "Maestria: 2 barris");
+});
+
+console.log("Feiticeiro:");
+test("Choque Térmico: queima e deixa lento; em quem já estava lento ou queimando, dispara o Vapor (Maestria: raio 2)", () => {
+  const a = comboArena("sorcerer");
+  const m = a.place("lizardfolk", 2, 0);
+  hitWith(a, SPELLS.thermal_shock, m);
+  check(!a.seat().stats.reactions.vapor && a.brain(m).dot?.kind === "burn" && m.slowed, "o 1º só queima e deixa lento");
+  hitWith(a, SPELLS.thermal_shock, m);
+  check(a.seat().stats.reactions.vapor === 1, `o 2º dispara o Vapor: ${JSON.stringify(a.seat().stats.reactions)}`);
+  const b = comboArena("sorcerer");
+  const t = b.place("lizardfolk", 2, 0);
+  const side = b.place("lizardfolk", 2, 2);
+  b.brain(t).slowUntil = b.now() + 3000;
+  b.brain(t).slowPct = 0.3;
+  const hp = side.hp;
+  hitWith(b, mastered("thermal_shock"), t);
+  check(b.seat().stats.reactions.vapor === 1 && side.hp < hp, `Maestria: Vapor em raio 2 (${hp} → ${side.hp})`);
+});
+test("Sentença: em marcado, a Condenação sai dobrada (Maestria: marca os colados)", () => {
+  const doom = (power: number) => {
+    const a = comboArena("sorcerer");
+    const m = a.place("lizardfolk", 2, 0);
+    const side = a.place("lizardfolk", 2, 1);
+    a.any.root(side, a.brain(side), a.now() + 60000);
+    a.brain(m).markUntil = a.now() + 5000;
+    m.marked = true;
+    const hp = side.hp;
+    hitWith(a, { ...SPELLS.sentence, reactionPower: power }, m);
+    return { a, dealt: hp - side.hp };
+  };
+  const once = doom(1);
+  const twice = doom(2);
+  check(twice.a.seat().stats.reactions.doom === 1 && Math.abs(twice.dealt / once.dealt - 2) < 0.2, `Condenação no vizinho ${once.dealt} → ${twice.dealt}`);
+  const b = comboArena("sorcerer");
+  const t = b.place("lizardfolk", 2, 0);
+  const side = b.place("lizardfolk", 2, 1);
+  hitWith(b, mastered("sentence"), t);
+  check(side.marked && b.brain(side).markUntil === b.now() + 4000 && !b.seat().stats.reactions.doom, "Maestria: marca o colado (sem Condenação no mesmo golpe)");
+});
+test("Lamento Sombrio (Maestria): enfraquece 20% por 3 s", () => {
+  const a = comboArena("sorcerer");
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.applySpell(HERO, mastered("dark_wail"), 0, m.id, m.x, m.y, 10, undefined, 0);
+  check(a.brain(m).weakPct === 0.2 && a.brain(m).weakUntil === a.now() + 3000, `enfraquecido ${a.brain(m).weakPct}`);
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);
