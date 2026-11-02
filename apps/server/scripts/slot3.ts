@@ -92,10 +92,12 @@ test("Revoada: fere em leque e cura o druida", () => {
   const a = arena({ classId: "druid", startLevel: 12, monsterHp: 50 });
   const m = a.place(TARGET, 2, 0);
   a.p.hp = Math.round(a.p.maxHp / 2);
-  const before = a.p.hp;
+  // Mede a cura registrada, não a vida: o monstro revida no mesmo intervalo e pode anular a cura na conta da vida.
+  const before = a.seat().stats.healing;
   castS3(a, "butterfly_swarm", m);
   a.advance(800);
-  check(lostHp(a, m.id) > 0 && a.p.hp > before, `dano ${lostHp(a, m.id)}, vida ${before} → ${a.p.hp}`);
+  const healed = a.seat().stats.healing - before;
+  check(lostHp(a, m.id) > 0 && healed > 0, `dano ${lostHp(a, m.id)}, cura ${healed}`);
 });
 test("o bot escolhe e usa a magia do slot 3", () => {
   const a = arena({ classId: "knight", startLevel: 12, monsterHp: 50, allies: [{ classId: "sorcerer", bot: true }] });
