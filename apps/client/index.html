@@ -207,6 +207,17 @@
     <!-- Menu da bag na hunt: equipamento vestido (só aparece aqui) e os itens da bag. -->
     <section id="bag-menu" hidden></section>
 
+    <!-- Carregando a hunt (carregando.ts): cobre a tela preta até o primeiro quadro da dungeon, com o mapa e uma dica. -->
+    <div id="loading" role="status" aria-live="polite" hidden>
+      <div class="loading-box">
+        <p id="loading-map"></p>
+        <div class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <p class="loading-label">Carregando a dungeon</p>
+        <p class="loading-tip-title">Dica</p>
+        <p id="loading-tip"></p>
+      </div>
+    </div>
+
     <!-- Celular deitado fora do Jogar deitado: o texto e o botão vêm de paintRotate (main.ts). -->
     <div id="rotate">
       <div class="rotate-icon">⟳</div>

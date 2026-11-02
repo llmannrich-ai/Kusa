@@ -37,6 +37,7 @@ import { createHostedRoom, joinHostedRoom, myRecruit, type HostedRoom } from "./
 import { heroSheet } from "./art/heroes.ts";
 import { MAP_ART, SERVER_CHOICES, chooseMap, createMapId, createServer, mapLine, renderServerPicker, renderSoloBots, renderWaitingRoom } from "./lobby.ts";
 import { renderCatalog } from "./catalog.ts";
+import { esconderCarregando, mostrarCarregando } from "./carregando.ts";
 import { renderHistory } from "./history.ts";
 import { loadBossClears, loadMapClears } from "./profile.ts";
 import { Hub } from "./menu.ts";
@@ -689,9 +690,15 @@ function startGame(room: DungeonRoom) {
   show("actions", true);
   show("potions", true);
   show("help", true);
+  // Tela preta até a arte chegar e o mapa ser desenhado: cobre com o "Carregando" e uma dica.
+  mostrarCarregando(mapIdOf(room.state.mapId));
   const g = createGame();
   // Se a hunt começou antes de a arte terminar de chegar, a dungeon entra assim que ela chegar.
-  void artReady.then(() => g.scene.add("dungeon", DungeonScene, true, { room }));
+  void artReady.then(() => {
+    const scene = g.scene.add("dungeon", DungeonScene, true, { room });
+    // Fecha no primeiro quadro desenhado, não no fim do create (o canvas ainda estaria vazio).
+    scene?.events.once(Phaser.Scenes.Events.POST_UPDATE, () => requestAnimationFrame(esconderCarregando));
+  });
 
   const me = () => room.state.players.get(room.sessionId);
   const renderStats = () => {
@@ -725,6 +732,7 @@ function setBar(name: "hp" | "mana" | "xp", value: number, max: number, text: st
 }
 
 function showResult(msg: RunEndedMessage) {
+  esconderCarregando();
   show("hud", false);
   show("actions", false);
   show("potions", false);

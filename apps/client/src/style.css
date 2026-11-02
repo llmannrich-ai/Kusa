@@ -578,6 +578,44 @@ button { min-height: 44px; touch-action: manipulation; }
   border: 2px solid #000;
 }
 
+/* Carregando a hunt (carregando.ts): por cima do canvas e do HUD, abaixo do aviso de girar o celular. */
+#loading {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--col-x);
+  width: var(--col-w);
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  transition: opacity 0.25s;
+}
+#loading[hidden] { display: none; }
+#loading.saindo { opacity: 0; pointer-events: none; }
+.loading-box {
+  width: min(360px, 100%);
+  padding: 20px 18px;
+  text-align: center;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+}
+.loading-box p { margin: 0; }
+#loading-map { font-size: 20px; font-weight: bold; color: var(--accent); }
+.loading-label { margin-top: 6px !important; font-size: 13px; color: var(--muted); }
+.loading-dots { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.loading-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: loading-dot 1.2s infinite ease-in-out; }
+.loading-dots i:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes loading-dot { 0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+.loading-tip-title { margin-top: 18px !important; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+#loading-tip { margin-top: 6px !important; min-height: 3.6em; font-size: 15px; line-height: 1.4; }
+#loading-tip.in { animation: loading-tip 0.35s ease-out; }
+@keyframes loading-tip { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
 #rotate {
   display: none;
   position: fixed;
