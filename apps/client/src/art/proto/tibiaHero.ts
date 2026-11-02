@@ -6159,28 +6159,39 @@ function iconDrawing(id: string, legend?: string): HTMLCanvasElement {
   const key = legend ? `${id}~${legend}` : id;
   const cached = iconArt.get(key);
   if (cached) return cached;
-  const all = legend ? { weapon: legend, helmet: legend, armor: legend, legs: legend, boots: legend, shield: legend } : undefined;
-  return withLegends(all, () => {
-  // 1ª passada: onde o item cai no quadro do herói.
-  const probe = new Canvas();
-  iconPose(probe, id);
-  let x0 = S, y0 = S, x1 = -1, y1 = -1;
-  for (let i = 0; i < probe.n; i++) {
-    if (probe.mat[i] < 0) continue;
-    const X = i % S, Y = (i / S) | 0;
-    if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
-  }
-  const c = new Canvas(PROTO_ICON, PROTO_ICON);
-  if (x1 >= 0) {
-    const w = (x1 + 1 - x0) / K, h = (y1 + 1 - y0) / K;
-    const k = Math.min((ICON_U - 3) / w, (ICON_U - 3) / h, 1.6);
-    const mx = (x0 + x1 + 1) / 2 / K, my = (y0 + y1 + 1) / 2 / K;
-    c.placed(k, [ICON_U / 2 - mx * k, ICON_U / 2 - my * k], () => iconPose(c, id));
-  }
-  const canvas = toCanvas(c);
+  const canvas = toCanvas(iconCanvas(id, legend, PROTO_ICON));
   iconArt.set(key, canvas);
   return canvas;
+}
+
+/** O item enquadrado num quadrado de `size` pixels (o ícone do jogo usa `PROTO_ICON`). */
+function iconCanvas(id: string, legend: string | undefined, size: number): Canvas {
+  const all = legend ? { weapon: legend, helmet: legend, armor: legend, legs: legend, boots: legend, shield: legend } : undefined;
+  return withLegends(all, () => {
+    // 1ª passada: onde o item cai no quadro do herói.
+    const probe = new Canvas();
+    iconPose(probe, id);
+    let x0 = S, y0 = S, x1 = -1, y1 = -1;
+    for (let i = 0; i < probe.n; i++) {
+      if (probe.mat[i] < 0) continue;
+      const X = i % S, Y = (i / S) | 0;
+      if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+    }
+    const U = size / K;
+    const c = new Canvas(size, size);
+    if (x1 >= 0) {
+      const w = (x1 + 1 - x0) / K, h = (y1 + 1 - y0) / K;
+      const k = Math.min((U - 3) / w, (U - 3) / h, 1.6 * (size / PROTO_ICON));
+      const mx = (x0 + x1 + 1) / 2 / K, my = (y0 + y1 + 1) / 2 / K;
+      c.placed(k, [U / 2 - mx * k, U / 2 - my * k], () => iconPose(c, id));
+    }
+    return c;
   });
+}
+
+/** Pixels RGBA do item enquadrado (sem navegador: as pranchas de itens em PNG, `scripts/itensPrancha.ts`). */
+export function protoItemIconData(id: string, legend?: string, size = PROTO_ICON): Uint8ClampedArray {
+  return iconCanvas(id, legend, size).render(KNIGHT_LOOK);
 }
 
 /** Gema da raridade no canto (azul no raro, roxa no mágico), desenhada uma vez por raridade. */
