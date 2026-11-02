@@ -19,7 +19,7 @@ const SPELL_ELEMENT: Partial<Record<SpellId, DamageElement>> = {
   holy_arrow: "radiant", holy_hammer: "radiant", holy_spear: "radiant", sunbeam: "radiant", divine_caldera: "radiant",
   divine_judgment: "radiant", consecrated_ground: "radiant", healing_light: "radiant",
   fire_arrows: "fire", explosive_volley: "fire", lightning_arrow: "energy", dawn_arrow: "fire", powder_keg: "fire",
-  flaming_cross: "fire", bombardment: "fire", phantom_shot: "radiant", sanctuary: "radiant",
+  flaming_cross: "fire", bombardment: "fire", fan_storm: "energy", phantom_shot: "radiant", sanctuary: "radiant",
   call_lightning: "energy", thunderwave: "energy",
 };
 

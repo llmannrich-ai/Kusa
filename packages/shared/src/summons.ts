@@ -6,7 +6,7 @@ import type { MonsterKind } from "./monsters.ts";
 // Os monstros também as atacam: as robustas servem de escudo para a equipe.
 
 /** Criaturas com arte própria de invocação (`summonCreatures.ts` no cliente). */
-export type CreatureSummonKind = "wolf" | "hornet" | "moth" | "bear" | "treant" | "wisp" | "skeleton" | "eagle";
+export type CreatureSummonKind = "wolf" | "hornet" | "moth" | "bear" | "treant" | "wisp" | "skeleton" | "eagle" | "lion";
 /** O clã do Xamã Orc: orcs e ogros libertados, desenhados com a arte dos monstros do clã (`look`) e a marca de aliado. */
 export type ClanSummonKind =
   | "clanScout" | "clanSpearman" | "clanArcher" | "clanCaptain" | "forgeOgre"
@@ -54,6 +54,8 @@ export interface SummonDef {
   push?: number;
   /** O golpe queima: `perSec` × o dano da criatura por segundo, por `ms`. */
   burn?: { perSec: number; ms: number };
+  /** Rugido (Rei da Selva): a cada `everyMs`, atordoa `stunMs` os monstros a até `radius` tiles. */
+  roar?: { everyMs: number; radius: number; stunMs: number };
   /** Rompante: abaixo de `belowHp` da vida, ataca `haste` mais rápido (o berserker). */
   frenzy?: { belowHp: number; haste: number };
 }
@@ -72,6 +74,10 @@ export const SUMMONS: Record<SummonKind, SummonDef> = {
   bear: {
     kind: "bear", name: "Urso Ancestral", hp: 1.3, damage: 1.1, attackRange: 1, attackCooldownMs: 1300, speed: 3.5, attackFx: "smash",
     taunt: true,
+  },
+  lion: {
+    kind: "lion", name: "Leão", hp: 1.6, damage: 1.2, attackRange: 1, attackCooldownMs: 1100, speed: 4.5, attackFx: "bite",
+    taunt: true, roar: { everyMs: 6000, radius: 2, stunMs: 1000 },
   },
   treant: {
     kind: "treant", name: "Guardião do Bosque", hp: 2.2, damage: 0.8, attackRange: 1, attackCooldownMs: 1600, speed: 2.5, attackFx: "smash",

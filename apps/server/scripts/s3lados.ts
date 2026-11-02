@@ -11,7 +11,10 @@
  *     Minado (minas em leque que prendem e explodem);
  *   - Feiticeiro: Olho da Tempestade (raios e saltos a mais), Hálito do Dragão (sopro de fogo que deixa o chão em
  *     chamas), Avalanche (congela; o congelado Estilhaça), Fenda Arcana (teleporte que explode na saída e na chegada,
- *     com cargas), Exército dos Mortos (4 esqueletos) e Olhar do Abismo (marca e enfraquece em leque).
+ *     com cargas), Exército dos Mortos (4 esqueletos) e Olhar do Abismo (marca e enfraquece em leque);
+ *   - Druida: Rei da Selva (leão que provoca e ruge), Forma Primordial (o básico vira sopro em leque), Floresta Eterna
+ *     (semente em todos), Muralha de Carvalhos (parede que cura), Pandemia (veneno que pula) e Tempestade em Leque (um
+ *     raio por pulso num monstro do leque).
  * Uso: npx tsx scripts/s3lados.ts (de dentro de apps/server, pelos decorators do schema)
  */
 import { MASTERIES, SPELLS, talentTree, type ClassId, type SpellDef, type SpellId } from "@kusa/shared";
@@ -61,6 +64,9 @@ test("o slot 3 de cada lado fica embaixo da última magia do lado (faixa ±1, 2.
     ["sorcerer", "storm_eye", "sky_fury", 0], ["sorcerer", "dragon_breath", "infernal_core", 1],
     ["sorcerer", "avalanche", "ice_prison", 0], ["sorcerer", "arcane_rift", "magic_wall", 1],
     ["sorcerer", "army_of_dead", "raise_skeletons", 0], ["sorcerer", "abyss_gaze", "black_tentacles", 1],
+    ["druid", "jungle_king", "giant_eagle", 0], ["druid", "primal_form", "bear_form", 1],
+    ["druid", "eternal_forest", "rebirth_seed", 0], ["druid", "oak_wall", "reviving_rain", 1],
+    ["druid", "pandemic", "poison_cloud", 0], ["druid", "fan_storm", "call_lightning", 1],
   ];
   for (const [classId, s3, last, side] of sides) {
     const tree = talentTree(classId);
@@ -301,6 +307,70 @@ test("Olhar do Abismo: marca +30% e enfraquece 30% por 6 s no leque", () => {
   castS3(a, "abyss_gaze", { x: m.x, y: m.y, targetId: m.id });
   a.advance(50);
   check(m.marked && a.brain(m).weakPct === 0.3 && a.brain(m).markPct >= 0.3, `marca ${a.brain(m).markPct}, enfraquece ${a.brain(m).weakPct}`);
+});
+
+console.log("Druida:");
+test("Rei da Selva: um leão que provoca e ruge, atordoando quem está a até 2 tiles", () => {
+  const a = s3Arena("druid");
+  const m = a.place("lizardfolk", 2, 0);
+  a.any.root(m, a.brain(m), a.now() + 60000);
+  self(a, SPELLS.jungle_king);
+  const lions = [...a.state.summons.values()].filter((s) => s.owner === HERO && s.kind === "lion");
+  check(lions.length === 1, `leões ${lions.length}`);
+  a.advance(2500);
+  check(a.brain(m).stunnedUntil > 0, "o rugido atordoa");
+  check(mastered("jungle_king").summon!.count === 2, "Maestria: 2 leões");
+});
+test("Forma Primordial: o básico vira um sopro em leque que pega todos à frente", () => {
+  const a = s3Arena("druid");
+  const front = a.place("lizardfolk", 2, 0);
+  const side = a.place("lizardfolk", 2, 1);
+  for (const m of [front, side]) a.any.root(m, a.brain(m), a.now() + 60000);
+  self(a, SPELLS.primal_form);
+  check(!!a.seat().form?.breath, "forma com sopro");
+  const hp = [front.hp, side.hp];
+  a.p.target = front.id;
+  a.seat().attacking = true;
+  a.seat().targetLocked = true;
+  a.advance(1500);
+  a.seat().attacking = false;
+  check(front.hp < hp[0] && side.hp < hp[1], `os dois levam (${hp[0] - front.hp}, ${hp[1] - side.hp})`);
+});
+test("Floresta Eterna: semente em todos os aliados a até 5 tiles e em você", () => {
+  const a = s3Arena("druid", { allies: [{ classId: "knight" }] });
+  self(a, SPELLS.eternal_forest);
+  check(!!a.seat().seed && !!a.seat("h2").seed && a.state.players.get("h2")!.seeded, "semente nos dois");
+});
+test("Muralha de Carvalhos: parede de 5 tiles que cura os aliados perto", () => {
+  const a = s3Arena("druid");
+  a.any.applySpell(HERO, SPELLS.oak_wall, 0, undefined, a.p.x + 2, a.p.y, 0, undefined, 2);
+  const walls = [...a.state.fields.values()].filter((f) => f.kind === "wall" && f.spellId === "oak_wall");
+  check(walls.length >= 3, `carvalhos ${walls.length}`);
+  a.p.hp = Math.round(a.p.maxHp / 2);
+  const hp = a.p.hp;
+  a.advance(1100);
+  check(a.p.hp > hp, `curou ${hp} → ${a.p.hp}`);
+});
+test("Pandemia: o veneno do alvo pula para os vizinhos a cada 2 s", () => {
+  const a = s3Arena("druid");
+  const m = a.place("lizardfolk", 2, 0);
+  const near = a.place("lizardfolk", 4, 0);
+  const far = a.spawn("lizardfolk", 6);
+  for (const x of [m, near, far]) a.any.root(x, a.brain(x), a.now() + 60000);
+  a.any.applySpell(HERO, SPELLS.pandemic, 0, m.id, m.x, m.y, 50, undefined, 2);
+  check(a.brain(m).dot?.kind === "poison" && !a.brain(near).dot, "só o alvo no começo");
+  a.advance(2100);
+  check(a.brain(near).dot?.kind === "poison" && !a.brain(far).dot, "pulou para o vizinho a 2 tiles, não para o de longe");
+});
+test("Tempestade em Leque: cada pulso é um raio num monstro só do leque", () => {
+  const a = s3Arena("druid");
+  const m = a.place("lizardfolk", 3, 0);
+  a.any.root(m, a.brain(m), a.now() + 60000);
+  const hp = m.hp;
+  castS3(a, "fan_storm", { x: m.x, y: m.y, targetId: m.id });
+  a.advance(1000);
+  check(m.hp < hp && (a.seat().stats.damageDealt.fan_storm ?? 0) > 0, `raios: ${hp - m.hp}`);
+  check(mastered("fan_storm").push === 1, "Maestria: empurra");
 });
 
 console.log(`\n${passed} ok, ${failures.length} falharam`);

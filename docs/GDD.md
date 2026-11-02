@@ -456,6 +456,12 @@ lado (mesma faixa, ±1), pedindo ela no nível 1 de uso; como o lado é escolha 
 | Feiticeiro | Arcanista | 🌀 **Fenda Arcana** | teleporta até 5 tiles e explode (1,8× em raio 1) na saída e na chegada; 2 cargas em 8 s | 3 cargas |
 | Feiticeiro | Necromante | 💀 **Exército dos Mortos** | 4 esqueletos por 20 s | 6 esqueletos |
 | Feiticeiro | Bruxo | 👁️ **Olhar do Abismo** | leque de 60°, 6 tiles: 0,4×, marca (+30%) e enfraquece (30% menos dano) por 6 s | 90° |
+| Druida | Mestre das Feras | 🦁 **Rei da Selva** | um leão por 25 s (o urso dourado, de juba) que provoca e ruge a cada 6 s, atordoando 1 s quem está a até 2 tiles | 2 leões |
+| Druida | Metamorfo | 🐲 **Forma Primordial** | forma animal por 10 s (+30% de vida): o básico vira um sopro em leque de 60°, 3 tiles, em todos os monstros nele | 90° |
+| Druida | Círculo da Vida | 🌰 **Floresta Eterna** | a semente do Renascer em todos os aliados a até 5 tiles (e em você) por 15 s | 25 s |
+| Druida | Guardião da Natureza | 🌲 **Muralha de Carvalhos** | parede de 5 tiles por 8 s (como a Muralha Mágica) que cura 3% por segundo os aliados a até 3 tiles do meio | 7 tiles |
+| Druida | Peste | ☠️ **Pandemia** | 0,5× e veneno forte (0,6× por s, 10 s) no alvo, que pula para os monstros a até 3 tiles dele a cada 2 s | acumula 2 vezes |
+| Druida | Tempestade | ⛈️ **Tempestade em Leque** | canaliza 3 s: a cada 0,3 s, um raio (1,4×) num monstro sorteado do leque de 90°, 6 tiles | os raios empurram 1 tile |
 
 #### Magias em leque (Grimório 4.0)
 

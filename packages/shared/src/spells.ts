@@ -86,6 +86,7 @@ export type SpellId =
   | "massacre" | "blade_storm" | "protector_oath" | "mountain" | "rally_cry" | "challenge_chains"
   | "phantom_shot" | "wind_dance" | "flaming_cross" | "sanctuary" | "bombardment" | "minefield"
   | "storm_eye" | "dragon_breath" | "avalanche" | "arcane_rift" | "army_of_dead" | "abyss_gaze"
+  | "jungle_king" | "primal_form" | "eternal_forest" | "oak_wall" | "pandemic" | "fan_storm"
   | "fire_spit" | "lightning_fan" | "dark_wail" | "pack_roar" | "pollen_breeze" | "thorn_spray"
   | "frost_breath" | "caltrops"
   // Slot 3 (magias supremas, nível 12): a de entrada de cada classe.
@@ -143,7 +144,8 @@ export interface SpellDef {
    * uma vez, no começo.
    */
   /** `fireMs`: cada pulso deixa o chão em chamas na ponta do leque por este tempo (Hálito do Dragão). */
-  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number; fireMs?: number };
+  /** `bolt` (Tempestade em Leque): cada pulso é um raio num monstro só do leque (sorteado), não o leque inteiro. */
+  channel?: { ms: number; tickMs: number; moveSlow: number; freezeTicks?: number; freezeMs?: number; fireMs?: number; bolt?: boolean };
   /**
    * Campo no chão onde a magia cai, por `ms`:
    * - `zone`: a cada `tickMs`, fere os monstros no raio (`damage` × dano base) e dá `allyArmor` aos aliados dentro;
@@ -284,6 +286,15 @@ export interface SpellDef {
   shatterOn?: boolean;
   /** Fenda Arcana: o teleporte (`dash.teleport`) explode no ponto de saída e no de chegada (no raio da magia). */
   blink?: boolean;
+  /** Floresta Eterna: planta a semente (`seed`) em todos os aliados a até o raio da magia, inclusive em quem conjura. */
+  seedAll?: boolean;
+  /** Muralha de Carvalhos: a parede (`field.kind: "wall"`) cura `pct` da vida por segundo dos aliados a até o raio. */
+  wallHeal?: number;
+  /**
+   * Pandemia: o veneno da magia pula do alvo para todos a até `radius` tiles a cada `everyMs`, por `ms` (só quem levou a
+   * magia espalha); `stacks` acumula o veneno (Maestria).
+   */
+  plague?: { ms: number; everyMs: number; radius: number; stacks?: number };
   /**
    * Bônus em quem conjura por `ms`: dano do ataque básico (+fração), alcance do básico (+tiles), velocidade de
    * movimento (fração, negativa = mais lento) e ritmo do básico (fração cortada da recarga).
@@ -327,7 +338,8 @@ export interface SpellDef {
    * próximo ataque básico salta no alvo com `pounce` × dano (atordoando por `pounceStunMs`). Urso: +`hp` da vida máxima
    * (entra cheia) e o ataque básico vira uma patada em todos os monstros colados, que os provoca (`maul`).
    */
-  form?: { kind: "panther" | "bear"; ms: number; moveSpeed?: number; pounce?: number; pounceStunMs?: number; hp?: number; maul?: boolean };
+  /** `breath` (Forma Primordial): o básico vira um sopro em leque (`angle`, `range` tiles) em todos os monstros nele. */
+  form?: { kind: "panther" | "bear"; ms: number; moveSpeed?: number; pounce?: number; pounceStunMs?: number; hp?: number; maul?: boolean; breath?: { angle: number; range: number } };
   /** Grito da Fera: as criaturas de quem conjura atacam `haste` mais rápido por `ms` e recuperam `heal` da vida. */
   packCall?: { haste: number; ms: number; heal: number };
   /**
@@ -1266,6 +1278,41 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     manaCost: 55, cooldownMs: 30000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 60, damage: 0.4,
     mark: { pct: 0.3, ms: 6000 }, weaken: { pct: 0.3, ms: 6000 },
   }),
+  // Fase 6: slot 3 de cada lado da especialização do Druida.
+  jungle_king: spell({
+    id: "jungle_king", classId: "druid", slot: 2, name: "Rei da Selva", icon: "🦁", color: 0xe6bf6a,
+    description: "Chama um leão por 25 s que provoca os monstros e ruge a cada 6 s, atordoando quem está a até 2 tiles.",
+    manaCost: 65, cooldownMs: 40000, aim: "self", range: 0, radius: 0, summon: { kind: "lion", count: 1, durationMs: 25000 },
+  }),
+  primal_form: spell({
+    id: "primal_form", classId: "druid", slot: 2, name: "Forma Primordial", icon: "🐲", color: 0x2e7d32,
+    description: "Vira uma fera primordial por 10 s: mais vida, e o ataque básico vira um sopro em leque que pega todos à frente.",
+    manaCost: 55, cooldownMs: 36000, aim: "self", range: 0, radius: 0,
+    form: { kind: "bear", ms: 10000, hp: 0.3, breath: { angle: 60, range: 3 } },
+  }),
+  eternal_forest: spell({
+    id: "eternal_forest", classId: "druid", slot: 2, name: "Floresta Eterna", icon: "🌰", color: 0xc8a165,
+    description: "Planta a semente do Renascer em todos os aliados a até 5 tiles (e em você) por 15 s.",
+    manaCost: 70, cooldownMs: 45000, aim: "self", range: 0, radius: 5, seed: { ms: 15000, hp: 0.4, invulnMs: 2000 }, seedAll: true,
+  }),
+  oak_wall: spell({
+    id: "oak_wall", classId: "druid", slot: 2, name: "Muralha de Carvalhos", icon: "🌲", color: 0x6b4426,
+    description: "Ergue uma muralha de 5 carvalhos por 8 s no ponto mirado: ninguém passa, e ela cura 3% da vida por segundo dos aliados perto.",
+    manaCost: 55, cooldownMs: 34000, aim: "target", range: 4, radius: 3, wallHeal: 0.03,
+    field: { kind: "wall", ms: 8000, length: 5 },
+  }),
+  pandemic: spell({
+    id: "pandemic", classId: "druid", slot: 2, name: "Pandemia", icon: "☠️", color: 0x9acd32,
+    description: "Um veneno forte num alvo que pula para todos os monstros a até 3 tiles dele a cada 2 s, por 10 s.",
+    manaCost: 55, cooldownMs: 32000, aim: "target", range: 6, radius: 0, damage: 0.5, projectileSpeed: 14,
+    dot: { perSec: 0.6, ms: 10000, kind: "poison" }, plague: { ms: 10000, everyMs: 2000, radius: 3 },
+  }),
+  fan_storm: spell({
+    id: "fan_storm", classId: "druid", slot: 2, name: "Tempestade em Leque", icon: "⛈️", color: 0x9ec5ff,
+    description: "Enquanto segura o botão (3 s), um raio cai a cada 0,3 s num monstro do leque à frente (90°, 6 tiles).",
+    manaCost: 60, cooldownMs: 32000, aim: "target", range: 6, radius: 0, shape: "cone", coneAngle: 90, damage: 1.4,
+    channel: { ms: 3000, tickMs: 300, moveSlow: 0.5, bolt: true },
+  }),
   arrow_fan: spell({
     id: "arrow_fan", classId: "paladin", slot: 0, name: "Leque de Flechas", icon: "🪶", color: 0xf5deb3,
     description: "Solta cinco flechas de uma vez, abertas em leque. Colado no monstro, todas acertam nele.",
@@ -1789,6 +1836,12 @@ export const MASTERIES: Record<SpellId, Mastery> = {
   pack_hunt: { text: "A caça dura o dobro (12 s).", changes: { hunt: { ms: 12000, damage: 0.5 } } },
   twin_sprout: { text: "Cabem 2 sementes no chão ao mesmo tempo.", changes: { field: { kind: "trap", ms: 20000, look: "sprout", max: 2 } } },
   bramble_embrace: { text: "Os espinheiros pegam a até 3 tiles.", changes: { radius: 3 } },
+  jungle_king: { text: "Chama 2 leões.", changes: { summon: { kind: "lion", count: 2, durationMs: 25000 } } },
+  primal_form: { text: "O sopro abre 90°.", changes: { form: { kind: "bear", ms: 10000, hp: 0.3, breath: { angle: 90, range: 3 } } } },
+  eternal_forest: { text: "A semente dura 25 s.", changes: { seed: { ms: 25000, hp: 0.4, invulnMs: 2000 } } },
+  oak_wall: { text: "A muralha tem 7 carvalhos.", changes: { field: { kind: "wall", ms: 8000, length: 7 }, radius: 4 } },
+  pandemic: { text: "O veneno acumula 2 vezes.", changes: { plague: { ms: 10000, everyMs: 2000, radius: 3, stacks: 2 } } },
+  fan_storm: { text: "Os raios empurram 1 tile.", changes: { push: 1 } },
   storm_eye: { text: "A tempestade dura 12 s.", changes: { storm: { ms: 12000, everyMs: 1000, damage: 1, range: 5, jumps: 2 } } },
   dragon_breath: { text: "O leque abre 120°.", changes: { coneAngle: 120 } },
   avalanche: { text: "Congela 3 s.", changes: { rootMs: 3000 } },

@@ -717,6 +717,13 @@ quebra o gelo novo) e `blink` (a Fenda Arcana explode na saída e na chegada, co
 Abismo é a primeira magia que enfraquece por conta própria (a peça A2 das Maestrias da fase 5). Migration
 `20261102250000_s3_feiticeiro.sql`.
 
+**Fase 6 (Druida), como foi entregue:** linha IX na Matilha e no Bosque, VIII nos Espinhos; fecha as 24 magias da fase
+6. Peças: criatura nova `lion` (o desenho do urso com pelagem dourada e juba, `drawBearlike`) com `roar` (atordoa em volta
+a cada 6 s); `form.breath` (o básico vira sopro em leque); `seedAll` (a semente em todos, fora da regra de uma semente por
+druida); `wallHeal` (o tile do meio da parede cura em volta); `plague` (só quem levou a magia espalha o veneno, para não
+crescer sem fim) e `channel.bolt` (um raio por pulso num monstro sorteado do leque). Diferenças: a Forma Primordial usa a
+forma de urso (com +30% de vida); a Pandemia fere 0,5× além do veneno. Migration `20261102260000_s3_druida.sql`.
+
 As fases 1 e 2 mexem em arquivos diferentes na maior parte (`gifts.ts`/`talents.ts`/menu x `spells.ts`/`fx.ts`/`aim.ts`)
 e podem correr em paralelo, cada uma na sua branch, com `git fetch` e merge do `main` antes do PR (regra do `CLAUDE.md`).
 
