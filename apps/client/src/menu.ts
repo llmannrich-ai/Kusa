@@ -901,7 +901,9 @@ export class Hub {
     const title = el("h3", "grim-branch-title", `${branchName[col]}${counts[col].spec ? " ✦" : ""}`);
     page.append(title);
 
-    const shown = tree.filter((t) => t.col === col || t.row === 0);
+    // A raiz aparece em todas as abas (é o começo dos três ramos); o resto, inclusive a magia de entrada do slot 3 ao
+    // lado dela, só na aba do próprio ramo (a da raiz), para não parecer que há uma cópia em cada árvore.
+    const shown = tree.filter((t) => t.col === col || (t.row === 0 && !t.requires));
     const xOf = (def: TalentDef) => 0.5 + def.lane * 0.2;
     const rows = Math.max(...shown.map((t) => t.row)) + 1;
     const grim = el("div", "grimoire");

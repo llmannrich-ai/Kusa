@@ -399,7 +399,7 @@ Magias das costelas (números do nível 0). Todas combinam efeitos que o servido
 #### Slot 3: magias supremas (Grimório 4.0)
 
 O 3º slot abre no **nível 12** da hunt. Todas as magias dele se compram (nenhuma vem de graça); a mais barata é a
-**magia de entrada** de cada classe, ao lado da raiz do Grimório (aparece em todas as abas), por 1.000 de gold, pedindo
+**magia de entrada** de cada classe, ao lado da raiz do Grimório (só na aba do ramo da raiz; a raiz aparece em todas), por 1.000 de gold, pedindo
 só a raiz. Recarga longa (30 s), efeito que muda a luta. O XP de uso segue a regra dos outros slots, e o banco guarda o
 XP de até 3 magias por hunt (`record_spell_xp`). O nível 12 não dá melhoria (é nível de slot).
 

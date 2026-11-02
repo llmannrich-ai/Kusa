@@ -46,6 +46,8 @@ test("magia de entrada do slot 3 ao lado da raiz, 1.000 de gold", () => {
     const root = talentTree(classId as ClassId).find((t) => t.row === 0 && t.lane === 0)!;
     check(!!node && SPELLS[spellId].slot === 2, `${spellId}: não é do slot 3`);
     check(node.row === 0 && node.baseCost === 1000 && node.requires?.id === root.id, `${node.id}: lugar ou preço errado`);
+    // No mesmo ramo da raiz: o menu mostra a magia de entrada só na aba da raiz (a raiz aparece em todas).
+    check(node.col === root.col, `${node.id}: fora do ramo da raiz`);
   }
 });
 test("as magias ativas incluem o slot 3", () => {
