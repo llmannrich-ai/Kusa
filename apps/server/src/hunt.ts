@@ -323,8 +323,12 @@ interface Seat {
   circuitReady: boolean;
   /** Dano extra da magia que está sendo lançada agora (Circuito e Graça): só vale dentro de `cast`. */
   castBoost: number;
-  /** Raio do Incandescer do golpe que está sendo dado agora (Flecha da Aurora, Maestria): só vale dentro do golpe. */
-  castIncandesce: number;
+  /**
+   * Reação do golpe que está sendo dado agora: raio do Vapor e do Incandescer (Choque Térmico e Flecha da Aurora,
+   * Maestria) e força da Condenação (Sentença). Só vale dentro do golpe.
+   */
+  castReactRadius: number;
+  castReactPower: number;
   /** Reserva Gélida (Dom): o escudo volta a poder sair a partir deste momento. */
   frostReadyAt: number;
   /** Instinto (Dom): básicos dados nesta hunt. */
@@ -712,7 +716,7 @@ export class Hunt {
       fieldArmor: 0, fieldArmorUntil: 0, form: null, seed: null, seedTarget: null, invulnUntil: 0, sapArmor: 0, sapUntil: 0, castCount: 0, spellXp,
       thornsPct: 0, thornsUntil: 0, lastStandReadyAt: 0, phoenixUsed: false, echoCount: 0, vengeanceReadyAt: 0, fieldDamage: 0, fieldDamageUntil: 0,
       rallyHaste: 0, rallyDamage: 0, rallyUntil: 0, movedAt: 0, dashBasicReady: false, graceCount: 0, graceReady: false,
-      circuit: {}, circuitReady: false, castBoost: 0, castIncandesce: 0, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
+      circuit: {}, circuitReady: false, castBoost: 0, castReactRadius: 0, castReactPower: 1, frostReadyAt: 0, basicCount: 0, cycleHealed: 0,
       edgeCount: 0, hideGuardUntil: 0, rescueReadyAt: 0, bedrockTauntAt: 0, bannerWardUntil: 0,
       eyeStunAt: 0, lastHurtAt: 0, calmShotAt: 0, breathShots: 0, handCount: 0, frostShellUntil: 0, furyStacks: 0, furyUntil: 0, furyFree: false, quiverCount: 0,
       rallyMove: 0, freeUntil: 0, nectarAt: 0, nectarSpeedUntil: 0,
@@ -2255,6 +2259,7 @@ export class Hunt {
       if (!brain) return;
       // Estados de antes desta magia: as reações não disparam com o que ela mesma acabou de pôr.
       const before = this.statesOf(brain, now);
+      const slowedBefore = now < brain.slowUntil;
       // Estilhaçar vale para quem já estava preso antes desta magia (a Prisão de Gelo não se quebra sozinha).
       const wasRooted = m.rooted;
       if (spell.taunt) {
@@ -2361,9 +2366,23 @@ export class Hunt {
         dealt += value;
         // Golpe Exposto: o atordoar do próprio golpe já vale para o Exposto (as outras reações seguem o estado de antes).
         const states = spell.exposeNow && before.marked && spell.stunMs ? { ...before, stunned: true } : before;
-        seat.castIncandesce = spell.incandesceRadius ?? 0;
+        seat.castReactRadius = spell.reactionRadius ?? 0;
+        seat.castReactPower = spell.reactionPower ?? 1;
         this.damageMonster(m, value, { attacker: sessionId, fromX: cx, fromY: cy, fx: CLASSES[spell.classId].attackFx }, spell.id, sessionId, states);
-        seat.castIncandesce = 0;
+        // Choque Térmico: em quem já estava queimando ou lento (e não congelado: aí o fogo já faz o Vapor), dispara o Vapor.
+        if (spell.vaporOn && !before.frozen && (before.burning || slowedBefore)) this.afterReaction("vapor", m, brain, value, sessionId);
+        seat.castReactRadius = 0;
+        seat.castReactPower = 1;
+        // Sentença (Maestria): marca os colados no alvo.
+        if (spell.markAround && m === anchor) {
+          for (const other of [...this.state.monsters.values()]) {
+            const ob = this.brains.get(other.id);
+            if (!ob || other === m || other.hidden || tileDistance(m.x, m.y, other.x, other.y) > spell.markAround.radius) continue;
+            ob.markPct = Math.max(now < ob.markUntil ? ob.markPct : 0, spell.markAround.pct);
+            ob.markUntil = Math.max(ob.markUntil, now + spell.markAround.ms);
+            other.marked = true;
+          }
+        }
         // Fé Ardente (marco 5): a magia de luz de alvo único atravessa e acerta também o monstro logo atrás.
         if (radiant && m === anchor && spell.radius === 0 && !line && this.marks(seat, "burning_faith") >= 5) {
           const behind = this.monsterOn({ x: m.x + Math.sign(m.x - p.x), y: m.y + Math.sign(m.y - p.y) });
@@ -3364,7 +3383,7 @@ export class Hunt {
       // Panela de Pressão (Dom): o Vapor fere mais; marcos: raio, ofuscar, névoa e mana.
       const seat = this.seats.get(creditId);
       const pressure = this.marks(seat, "pressure_cooker");
-      const radius = pressure >= 4 ? PRESSURE.radiusLater : pressure >= 1 ? PRESSURE.radius : VAPOR.radius;
+      const radius = Math.max(pressure >= 4 ? PRESSURE.radiusLater : pressure >= 1 ? PRESSURE.radius : VAPOR.radius, seat?.castReactRadius ?? 0);
       const dazzle = pressure >= 2 ? PRESSURE.dazzleMs : VAPOR.dazzleMs;
       this.reactionBurst(id, x, y, radius, raw * VAPOR.power * (1 + (seat?.gifts.vaporDamage ?? 0)), creditId, "energy", (other, b) => {
         b.stunnedUntil = Math.max(b.stunnedUntil, now + dazzle);
@@ -3389,7 +3408,7 @@ export class Hunt {
       const seat = this.seats.get(creditId);
       const dawn = this.marks(seat, "dawn");
       const power = INCANDESCE.power * (1 + (seat?.gifts.incandesceDamage ?? 0));
-      const radius = Math.max(dawn >= 1 ? DAWN.radius : INCANDESCE.radius, seat?.castIncandesce ?? 0);
+      const radius = Math.max(dawn >= 1 ? DAWN.radius : INCANDESCE.radius, seat?.castReactRadius ?? 0);
       this.reactionBurst(id, x, y, radius, raw * power, creditId, "fire", (other, b) => {
         if (dawn >= 5) {
           b.stunnedUntil = Math.max(b.stunnedUntil, now + DAWN.stunMs);
@@ -3406,7 +3425,8 @@ export class Hunt {
     } else if (id === "doom") {
       brain.markUntil = now;
       m.marked = false;
-      this.doomBurst(x, y, raw, creditId, m, false);
+      // Sentença: a Condenação do golpe sai mais forte.
+      this.doomBurst(x, y, raw * (this.seats.get(creditId)?.castReactPower ?? 1), creditId, m, false);
     } else if (id === "toxic_ember") {
       if (brain.dot?.kind === "poison") {
         brain.dot = null;

@@ -305,6 +305,8 @@ const RIBS: Record<ClassId, Rib[]> = {
     ["branching_bolt", 0, 6, "meteor", 2], ["ice_age", 1, 6, "blizzard", 2], ["black_hole", 2, 6, "dark_pact", 2],
     ["fire_spit", 0, 3, "lightning_bolt", 1], ["lightning_fan", 0, 4, "fire_spit", 1], ["dark_wail", 2, 3, "hp", -1],
     ["frost_breath", 1, 3, "frost_nova", -1],
+    // Fase 5: a magia de combo, embaixo da de leque (o Raio já tem as duas de leque).
+    ["thermal_shock", 1, 4, "frost_breath", -1], ["sentence", 2, 4, "dark_wail", -1],
   ],
   druid: [
     ["howl", 0, 3, "spirit_wolf", 1],
