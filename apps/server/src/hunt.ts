@@ -5111,8 +5111,13 @@ export class Hunt {
       this.dungeon.tiles[c.y * this.dungeon.width + c.x] = Tile.Portal;
       this.state.lairsDown |= 1 << lair;
       this.state.bossDefeated = true;
-      const side = this.map.lairs?.[lair]?.side;
-      this.notice(c.x, c.y, side ? `O portal do covil ${side} se abriu!` : "O portal se abriu!", 0x3fa7d6);
+      const def = this.map.lairs?.[lair];
+      const opens = def?.opens ? MAPS[def.opens].name : "";
+      // Fíbula Profunda: no lugar do portal, a saída do cenário que o covil abre (o buraco para a Cripta, a boca da caverna).
+      const text = def?.exit === "hole" ? `Um buraco se abriu no chão: desce para ${opens}!`
+        : def?.exit === "cave" ? `A saída da caverna se abriu: ${opens}!`
+        : def?.side ? `O portal do covil ${def.side} se abriu!` : "O portal se abriu!";
+      this.notice(c.x, c.y, text, 0x3fa7d6);
       // Crédito do boss para todo humano ainda na hunt (quem já saiu teve o relatório fechado ao sair).
       this.state.players.forEach((p, id) => {
         const seat = this.seats.get(id);

@@ -36,6 +36,7 @@ import { FLAT_DECOR as EMPIRE_FLAT, flatDecor as empireFlat, grassTile } from ".
 import { COLUMN_KINDS, SMALL_DECOR, columnSprite, smallDecor, statueSprite, tombSprite } from "../../client/src/art/empireMonuments.ts";
 import { draw as bog, FLAT_DECOR as BOG_FLAT, PATCHES as BOG_PATCHES, TALL_DECOR as BOG_TALL } from "../../client/src/art/bogArt.ts";
 import { draw as bad, FLAT_DECOR as BAD_FLAT, PATCHES as BAD_PATCHES, TALL_DECOR as BAD_TALL } from "../../client/src/art/badlandsArt.ts";
+import { draw as exits } from "../../client/src/art/exitArt.ts";
 import { planBog } from "../../client/src/bogPlan.ts";
 import { planBadlands } from "../../client/src/badlandsPlan.ts";
 import { pavingFringe, pavingTile, ruinColumn, ruinFlat, ruinMosaic, ruinRubble, ruinSmall, ruinWall } from "../../client/src/art/swampArt.ts";
@@ -89,6 +90,11 @@ const SCENERY: Record<string, Piece[]> = {
   "Mesas de Solária": dunes("mesas"),
   "Bosque Velho": woods("oldwood"),
   "Coração da Mata": woods("heartwood"),
+  "Fíbula Profunda": [
+    { name: "buraco para a Cripta", draw: exits.floorHole },
+    { name: "saída para o Mar de Areia", draw: exits.caveDesert },
+    { name: "saída para o Bosque Velho", draw: exits.caveForest },
+  ],
   "Pântano do Kosaradius": [
     ...woods("marsh"),
     ...range(3).map((v) => ({ name: `água do miolo ${v}`, draw: () => waterTile("marsh", 0, v + 3).render(false) })),

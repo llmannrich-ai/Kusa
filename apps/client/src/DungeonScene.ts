@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { Callbacks } from "@colyseus/sdk";
 import {
   ITEMS,
+  MAPS,
   lairPortalAt,
   lairsOf,
   MONSTERS,
@@ -62,7 +63,7 @@ import { FX } from "./art/combat.ts";
 import { PROP_SCALE } from "./art/props.ts";
 import { MoveInput } from "./input.ts";
 import { Minimap } from "./minimap.ts";
-import { drawCrypt } from "./cryptMap.ts";
+import { drawCrypt, drawLairExit } from "./cryptMap.ts";
 import type { MapAmbience } from "./mapShared.ts";
 import { SWAMP_VOID, drawSwamp } from "./swampMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
@@ -245,7 +246,10 @@ interface BarrierFx {
 }
 
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
-/** Tamanho dos mini-bosses de hoje (sprites estáticos) e do boss: 30% maior que um mini-boss, nunca o dobro. */
+/**
+ * Tamanho dos mini-bosses de hoje (sprites estáticos) e do boss: 30% maior que um mini-boss, nunca o dobro. O Dragão negro
+ * (1,6 tile) é o teto de todo boss: os animados acertam a escala na arte (`BESTIARY_ART`) para caber nesse tamanho.
+ */
 const MINIBOSS_SCALE = 1.25;
 const BOSS_SCALE = 1.6;
 
@@ -403,7 +407,7 @@ export class DungeonScene extends Phaser.Scene {
       lairsOf(this.dungeon).forEach((lair, i) => {
         if (down & (1 << i) && !this.openPortals.has(i)) {
           this.openPortals.add(i);
-          this.drawBossPortal(lair.portal);
+          this.drawBossPortal(lair.portal, i);
         }
       });
     });
@@ -1162,8 +1166,14 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: portal, alpha: { from: 1, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
   }
 
-  /** O servidor abre o portal de conclusão quando o boss morre (no centro da sala dele, ou na sala dos baús da caverna). */
-  private drawBossPortal(c: { x: number; y: number }) {
+  /**
+   * O servidor abre o portal de conclusão quando o boss morre (no centro da sala dele, ou na sala dos baús da caverna).
+   * Na Fíbula Profunda, no lugar do portal, a saída do cenário que o covil abre (`Lair.exit`): o buraco no chão ou a
+   * boca da caverna na parede do fundo.
+   */
+  private drawBossPortal(c: { x: number; y: number }, lair = 0) {
+    const exit = MAPS[this.dungeon.mapId].lairs?.[lair];
+    if (exit?.exit) return drawLairExit(this, c, exit.exit, exit.theme === "forest" ? "forest" : "desert");
     const x = this.toPx(c.x);
     const y = this.toPx(c.y);
     // Um brilho roxo (a cor do portal no minimapa) pulsa por baixo, para achar o portal de longe no chão escuro.

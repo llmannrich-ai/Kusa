@@ -156,7 +156,19 @@ export interface Lair {
   portalBonus: number;
   /** Nome do lado da bifurcação, para o aviso e o mapa mundi. */
   side: string;
+  /**
+   * Cenário da campanha que este covil abre (Fíbula Profunda): a sala do boss tem o tema dele e, em vez do portal, a
+   * saída de `exit`. Só desenho e aviso; a regra de quem abre o quê fica em `world.ts` (`UNLOCK_BOSS`).
+   */
+  opens?: MapId;
+  /** Tema da sala do boss (chão e enfeites), pelo cenário que ela abre. */
+  theme?: LairTheme;
+  /** Como a saída aparece quando o boss morre: um buraco no chão (desce para a Cripta) ou a boca da caverna para fora. */
+  exit?: LairExit;
 }
+
+export type LairTheme = "crypt" | "desert" | "forest";
+export type LairExit = "hole" | "cave";
 
 /**
  * Corte geral do loot, em todos os mapas, por cima de `MapDef.lootScale` e `dropScale`: o gold dos monstros (boss
@@ -290,8 +302,8 @@ export const MAPS: Record<MapId, MapDef> = {
     id: "fibula2", name: "Fíbula Profunda", icon: "💀", difficulty: 3, durationSeconds: 0,
     // Terreno de caça (`docs/TERRENO_DE_CACA_PLANO.md`): uma caverna aberta de 160×140 com o acampamento no centro. O
     // jogador vai e volta do acampamento e escolhe onde caçar pelo momento dele: a Orla ao sul (nível 1–5), a ala oeste
-    // (3–8, Rei Ossudo), a ala norte (9–14, Colosso Cantante) e a ala leste (14–20, Faraó Eterno). As áreas enchem de
-    // novo; não há tempo.
+    // (3–8, Rei Ossudo), a ala norte (9–14, Colosso Cantante) e a ala leste (14–20, Dragão Verde Jovem). As áreas
+    // enchem de novo; não há tempo. É a trifurcação da campanha: cada covil abre um cenário (`Lair.opens`).
     huntingGround: {
       ringDepth: [0, 1, 3, 5], respawnMs: [60_000, 75_000, 90_000, 120_000], minibossRespawnMs: 240_000,
       // Uma por região do chão, na ordem de `generateFibula` (sul, oeste, norte, leste). Só criaturas com arte desenhada
@@ -319,7 +331,7 @@ export const MAPS: Record<MapId, MapDef> = {
     commonPower: 1.2,
     minibossPower: 1.5,
     xpScale: 0.6,
-    description: "Caverna aberta, sem fim: o acampamento com a fogueira no centro e, em volta, a Orla de iniciante ao sul e três alas cada vez mais perigosas, com escorpiões, chacais de ossos, escaravelhos, lobos, legionários e múmias. Sem tempo: as áreas enchem de novo, a vida volta devagar e quem vai longe demais precisa saber a hora de recuar. Três covis nas bordas: o Rei Ossudo a oeste, o Colosso Cantante ao norte e o Faraó Eterno a leste.",
+    description: "Caverna aberta, sem fim: o acampamento com a fogueira no centro e, em volta, a Orla de iniciante ao sul e três alas cada vez mais perigosas, com escorpiões, chacais de ossos, escaravelhos, lobos, legionários e múmias. Sem tempo: as áreas enchem de novo, a vida volta devagar e quem vai longe demais precisa saber a hora de recuar. Três covis nas bordas, cada um a saída para um cenário: o Rei Ossudo a oeste abre um buraco para a Cripta, o Colosso Cantante ao norte dá nas areias do Mar de Areia e o Dragão Verde Jovem a leste, na mata do Bosque Velho.",
     // As tabelas por ala só servem de reserva (as áreas mandam) e ao Catálogo: as mesmas criaturas das áreas.
     encounters: [
       { depth: [0, 0], budget: 90, table: [["sandScorpion", 4], ["boneJackal", 3], ["giantVulture", 1]] },
@@ -329,11 +341,14 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
     minibosses: [["boneCenturion", 2], ["royalMummy", 1], ["sandScribe", 1]],
     mimicChance: 0,
-    bosses: [["boneKing", 1], ["singingColossus", 1], ["eternalPharaoh", 1]],
+    bosses: [["boneKing", 1], ["singingColossus", 1], ["greenDragon", 1]],
+    // A trifurcação: cada covil é a sala do cenário que abre, com a saída dele no fim (o buraco que desce para a Cripta,
+    // a boca da caverna para as areias e para a mata). A ordem segue a dificuldade do cenário (Cripta e Mar de Areia ★3,
+    // Bosque Velho ★5).
     lairs: [
-      { boss: "boneKing", depth: 2, portalBonus: 0.5, side: "oeste" },
-      { boss: "singingColossus", depth: 3, portalBonus: 0.75, side: "norte" },
-      { boss: "eternalPharaoh", depth: 5, portalBonus: 1, side: "leste" },
+      { boss: "boneKing", depth: 2, portalBonus: 0.5, side: "oeste", opens: "crypt", theme: "crypt", exit: "hole" },
+      { boss: "singingColossus", depth: 3, portalBonus: 0.75, side: "norte", opens: "desert", theme: "desert", exit: "cave" },
+      { boss: "greenDragon", depth: 5, portalBonus: 1, side: "leste", opens: "oldwood", theme: "forest", exit: "cave" },
     ],
   },
   crypt: {
