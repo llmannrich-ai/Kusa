@@ -24,7 +24,7 @@ export class Player extends Schema {
   @type("string") status: PlayerStatus = "playing";
   /** Id do monstro selecionado para o auto-attack ("" = nenhum). */
   @type("string") target = "";
-  /** Alcance (tiles) do ataque básico agora (classe, Traços, Postura, equipamento, cegueira): a mira do ⚔️ desenha. */
+  /** Alcance (tiles) do ataque básico agora (classe, Traços, Postura, equipamento): a mira do ⚔️ desenha. */
   @type("number") basicRange = 1;
   /**
    * Frente do herói: a direção (em tiles) do último passo, golpe ou magia mirada. O toque rápido numa magia com alvo

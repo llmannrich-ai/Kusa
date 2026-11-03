@@ -143,7 +143,7 @@ export function renderRules(root: HTMLElement) {
           return [`${def.name}${rank}`, def.lore];
         }));
       }),
-      "Controle num herói (preso, atordoado, engolido, cego) dura no máximo 2 s, e depois ele fica 4 s imune ao mesmo efeito.",
+      "Controle num herói (preso, atordoado, engolido) dura no máximo 2 s, e depois ele fica 4 s imune ao mesmo efeito.",
     ),
 
     section("🦴 Fíbula e Fíbula Profunda: terrenos de caça", false, list([
