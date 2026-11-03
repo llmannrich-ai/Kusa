@@ -145,7 +145,7 @@ function showError(message: string) {
 let entering = false;
 let joined = false;
 
-async function enter(connect: () => Promise<DungeonRoom>) {
+async function enter(connect: () => Promise<DungeonRoom>, autoStart = false) {
   if (entering || joined) return;
   setEntering(true);
   show("rooms-error", false);
@@ -154,7 +154,7 @@ async function enter(connect: () => Promise<DungeonRoom>) {
     const room = await connect();
     joined = true;
     stopWatching();
-    bindRoom(room);
+    bindRoom(room, autoStart);
   } catch (err) {
     if ((err as { code?: number }).code === VERSION_MISMATCH_CODE) return onVersionMismatch((err as Error).message);
     if (isStaleModule(err)) return onStaleModule();
@@ -576,23 +576,26 @@ $("create").onclick = () => enter(async () => {
 $("solo").onclick = () => enter(async () => {
   const mapId = createMapId();
   const bots = partySize(MAPS[mapId]) === 1 ? [] : soloBots().filter((c) => !hub.locked(c));
-  const room = await createSoloHunt(account?.username ?? "Aventureiro", hub.classId, mapId, bots);
-  window.setTimeout(() => room.send(MSG.start));
-  return room;
-});
+  return createSoloHunt(account?.username ?? "Aventureiro", hub.classId, mapId, bots);
+}, true);
 $("back").onclick = () => location.reload();
 
 // --- Sala ---------------------------------------------------------------
 
 let game: Phaser.Game | null = null;
 
-function bindRoom(room: DungeonRoom) {
+/** `autoStart`: a hunt começa na hora (solo), sem passar pela sala de espera. */
+function bindRoom(room: DungeonRoom, autoStart = false) {
   setMapOpen(false);
   show("menu", false);
-  show("lobby", true);
+  // Solo: o "Carregando" cobre a tela já agora. Criar o Phaser e a arte trava a página por alguns segundos e,
+  // com a sala de espera aberta, ela ficava à mostra até a hunt começar.
+  if (autoStart) mostrarCarregando(mapIdOf(room.state.mapId));
+  else show("lobby", true);
   // A arte começa a carregar já na sala de espera, enquanto a equipe se junta.
   createGame();
   $("start").onclick = () => room.send(MSG.start);
+  if (autoStart) room.send(MSG.start);
 
   let started = false;
   let left = false;
@@ -602,6 +605,7 @@ function bindRoom(room: DungeonRoom) {
     left = true;
     joined = false;
     show("lobby", false);
+    if (autoStart) esconderCarregando();
     await openRooms();
     if (error) showError(error);
   };
