@@ -45,6 +45,15 @@ Regras do retrato (ajuste de apresentação):
   o meio claro e fios finos (`Canvas.shift`, que só muda o tom e deixa a luz da forma); nos cabelos que caem dos lados,
   mechas largas quase retas; a risca do druida é uma linha fina. A pele do retrato não tem pontilhado (o xadrez na
   resolução do retrato parecia sujeira no rosto). Antes e depois: `docs/arte/herois-cabelo-retrato.png`.
+- **Elmos de guerra** (`cap2`, `cap4`): o coríntio de bronze deixou de ser uma elipse lisa sobre o rosto (o "ovo"):
+  calota redonda, abas da bochecha retas terminando em ponta e o recorte em T (`corinthOpen`: olhos em amêndoa largos
+  ligados à fenda da boca); no retrato, bordas claras e escuras em volta do recorte, sobrancelhas gravadas, aresta do
+  protetor de nariz, sombra do elmo no rosto dentro das aberturas e brilho do bronze (`corinthEdges`). O barril de
+  mithral ganhou duas faces planas que se encontram na quilha, a calota fechando em esfera e, no retrato, fenda dos
+  olhos funda, placa da testa com rebites, respiros com sombra e borda virada (`barrelDetail`). O formato vale para o
+  sprite também (retrato e jogo continuam o mesmo item); os detalhes finos, só no retrato. No retrato o pontilhado do
+  metal e dos tecidos cai para 0,3 (o xadrez grosso nas faces lisas parecia ruído). Antes e depois:
+  `docs/arte/herois-elmos-retrato.png`.
 - **Moldura** (`.grim-hero-frame` em `style.css`): o busto preenche a largura e sai pela base do arco; luz da classe
   atrás da cabeça, vinheta nas bordas, aro de metal com luz em cima e a silhueta contornada na cor da classe.
 
@@ -78,8 +87,8 @@ os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.
 
 ## Próximos passos possíveis
 
-- Retrato: elmos e armaduras vistos de perto, uma família por vez, sempre fiéis ao item vestido; a cabeça do orc
-  (costuras e cicatriz do couro cabeludo, faixa de pintura) ainda é a do sprite.
+- Retrato: chapéus e capuzes arcanos, ombreiras e peitorais vistos de perto, uma família por vez, sempre fiéis ao item
+  vestido; a cabeça do orc (costuras e cicatriz do couro cabeludo, faixa de pintura) ainda é a do sprite.
 
 - Braços menos cilíndricos (deltoide e antebraço com forma própria).
 - Os heróis no motor de escultura (`sculpt.ts`), no nível do Orc batedor e do Vorgak: teto bem maior, mas reescreve os

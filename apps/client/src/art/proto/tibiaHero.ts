@@ -550,14 +550,14 @@ export class Canvas {
    * Varre os pixels finais do retângulo `box` (unidades) já pintados pelas peças `ids` e chama `fn` com o índice e o
    * ponto de volta em unidades do desenho (pela escala local e pelos ombros largos). Base de `detail` e `shift`.
    */
-  private sweep(box: Box, ids: readonly number[], fn: (i: number, x: number, y: number) => void) {
+  private sweep(box: Box, ids: readonly number[] | null, fn: (i: number, x: number, y: number) => void) {
     const f = this.xf;
     if (f?.m) return;
     const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
     for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil(y1 * K)); Y++) {
       for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil(x1 * K)); X++) {
         const i = Y * this.w + X;
-        if (this.mat[i] < 0 || !ids.includes(this.part[i])) continue;
+        if (this.mat[i] < 0 || (ids && !ids.includes(this.part[i]))) continue;
         // Centro do pixel em unidades da tela, de volta para as unidades do desenho.
         let x = (X + 0.5) / K, y = (Y + 0.5) / K;
         if (this.flare) x = this.unflare(x, y);
@@ -585,9 +585,9 @@ export class Canvas {
 
   /**
    * Como `detail`, mas só muda o tom de quem já está pintado (`delta` somado ao desvio), sem fixar: a luz da forma
-   * continua valendo. Mechas do cabelo no retrato.
+   * continua valendo. Mechas do cabelo, brilho de metal e sombra do elmo no rosto, no retrato. `ids` nulo: qualquer peça.
    */
-  shift(box: Box, ids: readonly number[], delta: (x: number, y: number) => number) {
+  shift(box: Box, ids: readonly number[] | null, delta: (x: number, y: number) => number) {
     this.sweep(box, ids, (i, x, y) => { if (this.fixed[i] < 0) this.off[i] += delta(x, y); });
   }
 
@@ -709,7 +709,7 @@ export class Canvas {
         else {
           // Luz dura (`grim`): a curva afunda o lado da sombra, que chega ao tom 0 no fundo.
           // Retrato: pele quase sem pontilhado (na resolução do retrato o xadrez parecia sujeira no rosto).
-          const dither = this.portrait && m === Mat.Skin ? 0 : 0.55;
+          const dither = !this.portrait ? 0.55 : m === Mat.Skin ? 0 : 0.3;
           const v = (grim === 1 ? this.shade[i] : this.shade[i] ** grim) * 4 + (BAYER[(y & 1) * 2 + (x & 1)] - 0.5) * dither;
           tone = Math.max(grim > 1 && this.shade[i] < 0.3 ? 0 : 1, Math.min(4, Math.floor(v) + 1)) + this.off[i];
           // Linha interna: a peça da frente risca a de trás com o tom 0.
@@ -3224,6 +3224,58 @@ function cap1(c: Canvas, view: ProtoDir, cx: number, cy: number) {
   // Pena e brasão (o mágico) ficam para o lote 2.
 }
 
+/**
+ * Recorte do elmo coríntio de frente (unidades a partir do centro do rosto): os olhos em amêndoa largos, com a ponta
+ * de fora subindo, ligados pela fenda da boca que desce do protetor de nariz até a borda de baixo (o "T").
+ */
+function corinthOpen(u: number, v: number) {
+  const d = Math.abs(u);
+  // Olhos: de 1,1 a 6,7 do centro, mais altos por dentro e com a ponta de fora erguida.
+  const t = (d - 1.1) / 5.6;
+  if (t >= 0 && t <= 1) {
+    const mid = 2.55 - 0.55 * t, half = 1.25 * Math.sin(Math.PI * Math.min(1, t * 1.15 + 0.05)) ** 0.7;
+    if (Math.abs(v - mid) < half) return true;
+  }
+  // Fenda da boca: abre para baixo a partir do fim do protetor de nariz.
+  return v > 5.4 && d < 0.9 + (v - 5.4) * 0.5;
+}
+
+/** Retrato: bordas do coríntio (lábio claro em volta do recorte, sombra por dentro) e o vinco entre calota e abas. */
+function corinthEdges(c: Canvas, shell: number, cx: number, cy: number) {
+  c.detail([cx - 10, cy - 1, cx + 10, cy + 11], [shell], (x, y) => {
+    const u = x - cx, v = y - cy;
+    // Distância até o recorte: o pixel encosta numa abertura a até 0,35 unidade.
+    let near = 0, dir = 0;
+    for (const [du, dv] of [[0, -0.35], [0, 0.35], [-0.35, 0], [0.35, 0]] as const) if (corinthOpen(u + du, v + dv)) { near++; dir += dv; }
+    if (near) return [Mat.Bronze, dir > 0 ? 5 : dir < 0 ? 1 : u < 0 ? 4 : 2];
+    // Vinco da calota sobre as abas, curvando acima dos olhos.
+    if (Math.abs(v - (0.4 - Math.abs(u) * 0.05)) < 0.14 && Math.abs(u) > 7) return [Mat.Bronze, 1];
+    // Sobrancelhas gravadas: sulco escuro com a borda de cima pegando luz, subindo para fora.
+    const a = Math.abs(u), brow = 0.75 - (a - 1) * 0.12;
+    if (a > 0.9 && a < 6.8) {
+      if (Math.abs(v - brow) < 0.12) return [Mat.Bronze, 1];
+      if (Math.abs(v - (brow - 0.25)) < 0.12) return [Mat.Bronze, u < 0 ? 5 : 4];
+    }
+    // Protetor de nariz: aresta clara no meio, do vão dos olhos até a fenda da boca.
+    if (a < 0.16 && v > 1.2 && v < 5.3) return [Mat.Bronze, 5];
+    return null;
+  });
+  // O elmo faz sombra no rosto, por dentro das aberturas, perto da borda.
+  c.shift([cx - 8, cy, cx + 8, cy + 11], null, (x, y) => {
+    const u = x - cx, v = y - cy;
+    if (!corinthOpen(u, v)) return 0;
+    return corinthOpen(u, v - 0.55) && corinthOpen(u - 0.45, v) && corinthOpen(u + 0.45, v) ? -1 : -2;
+  });
+  // Brilho do bronze: um arco claro na calota e uma faixa na aba do lado da luz.
+  c.shift([cx - 10, cy - 11, cx + 10, cy + 11], [shell], (x, y) => {
+    const u = x - cx, v = y - cy;
+    const arc = Math.abs(Math.hypot((u + 1) / 1.05, v + 0.6) - 8.2);
+    if (v < 0 && u < 0 && arc < 0.45) return v < -4 ? 2 : 1;
+    if (u > -8.4 && u < -7.6 && v > 1 && v < 8) return 1;
+    return 0;
+  });
+}
+
 /** Elmo coríntio de bronze: cobre o rosto com aberturas em amêndoa, protetor de nariz e crista de crina vermelha. */
 function cap2(c: Canvas, view: ProtoDir, cx: number, cy: number) {
   const patina: Offset = (X, Y) => (noise(X >> 1, Y >> 1) < 0.06 ? 0 : noise(X, Y) < 0.02 ? 1 : 0);
@@ -3245,20 +3297,36 @@ function cap2(c: Canvas, view: ProtoDir, cx: number, cy: number) {
     plate(c, [[cx - 2.4, cy - 8.6], [cx - 3, cy - 18.6], [cx - 1.4, cy - 20.6], [cx + 1.4, cy - 20.6], [cx + 3, cy - 18.6], [cx + 2.4, cy - 8.6]], Mat.Crest, (X, Y) => ((X * 3 + Y) % 5 === 0 ? -1 : (X + Y) % 7 === 0 ? 1 : 0));
   }
   const shell = c.fill(ebox(cx, cy + 0.4, 10.4, 11.2), (x, y) => {
-    if (!inEllipse(cx, cy + 0.4, 9.8, 10.8)(x, y)) return false;
-    if (view === "up") return true;
-    const d = Math.abs(x + 0.5 - cx);
-    if (inEllipse(cx - 3.8, cy + 2.2, 3, 1.6)(x, y) || inEllipse(cx + 3.8, cy + 2.2, 3, 1.6)(x, y)) return false;
-    return !(d < 2.1 + (y - cy - 5) * 0.2 && y > cy + 5);
-  }, Mat.Bronze, sphere(cx, cy - 0.6, 10.4, 11.4), patina);
+    if (view === "up") return inEllipse(cx, cy + 0.4, 9.8, 10.8)(x, y);
+    const u = x + 0.5 - cx, v = y + 0.5 - cy, d = Math.abs(u);
+    // Calota redonda até a testa; abaixo dela as abas da bochecha descem retas e terminam em ponta para dentro.
+    if (v < 1 ? !inEllipse(cx, cy + 0.6, 9.8, 10.6)(x, y) : d > 9.7 - Math.max(0, v - 6) * 0.35) return false;
+    if (v > 10.2 - Math.max(0, d - 5.4) * 0.75) return false;
+    return !corinthOpen(u, v);
+  }, Mat.Bronze, (x, y) => {
+    // Calota em esfera; as abas são quase planas, viradas um pouco para os lados.
+    const u = x + 0.5 - cx, v = y + 0.5 - cy;
+    if (v < 1) return sphere(cx, cy - 0.6, 10.4, 11.4)(x, y);
+    const nx = Math.max(-0.9, Math.min(0.9, u / 10.5)) * 1.15;
+    return lit(nx, 0.1 + (v - 1) * 0.02, Math.sqrt(Math.max(0.05, 1 - nx * nx)));
+  }, patina);
+  if (view === "down" && c.portrait) corinthEdges(c, shell, cx, cy);
   if (view === "down") {
     // Sobrancelhas gravadas, protetor de nariz, azinhavre nas bordas e o suporte da crista.
-    for (const s of [-1, 1]) {
-      thread(c, [cx + s * 0.8, cy + 0.4], [cx + s * 6.6, cy + 0.9], Mat.Bronze, 1, [shell]);
-      thread(c, [cx + s * 0.8, cy - 0.1], [cx + s * 6.6, cy + 0.4], Mat.Bronze, 5, [shell]);
-      for (let k = 0; k < 6; k++) c.on([shell], F(cx + s * (6 + noise(k, s) * 3)), F(cy + 6 + noise(s, k) * 4), Mat.Patina, 3);
+    if (!c.portrait) {
+      for (const s of [-1, 1]) {
+        thread(c, [cx + s * 0.8, cy + 0.4], [cx + s * 6.6, cy + 0.9], Mat.Bronze, 1, [shell]);
+        thread(c, [cx + s * 0.8, cy - 0.1], [cx + s * 6.6, cy + 0.4], Mat.Bronze, 5, [shell]);
+        for (let k = 0; k < 6; k++) c.on([shell], F(cx + s * (6 + noise(k, s) * 3)), F(cy + 6 + noise(s, k) * 4), Mat.Patina, 3);
+      }
+      thread(c, [cx, cy + 1], [cx, cy + 5.2], Mat.Bronze, 5, [shell]);
+    } else {
+      // Azinhavre nas bordas de baixo das abas, em manchas finas.
+      c.detail([cx - 10, cy + 5, cx + 10, cy + 11], [shell], (x, y) => {
+        const X = Math.floor(x * 3), Y = Math.floor(y * 3);
+        return Math.abs(x - cx) > 5.5 && noise(X >> 1, Y >> 1) < 0.16 && noise(X, Y) < 0.6 ? [Mat.Patina, 3] : null;
+      });
     }
-    thread(c, [cx, cy + 1], [cx, cy + 5.2], Mat.Bronze, 5, [shell]);
     limb(c, [cx - 1.4, cy - 9.8], [cx + 1.4, cy - 9.8], 0.8, 0.8, Mat.Bronze);
   } else {
     plate(c, [[cx - 2.2, cy - 9.4], [cx - 2, cy - 16], [cx + 2, cy - 16], [cx + 2.2, cy - 9.4]], Mat.Crest, (X, Y) => ((X * 3 + Y) % 5 === 0 ? -1 : 0));
@@ -3294,6 +3362,44 @@ function cap3(c: Canvas, view: ProtoDir, cx: number, cy: number, top: number) {
   if (view === "side") limb(c, [cx - 8.6, cy - 2.6], [cx - 9.4, cy + 5], 0.75, 0.6, Mat.Steel);
 }
 
+/**
+ * Retrato do elmo de mithral de frente: fenda dos olhos com profundidade (lábio de cima claro, fundo escuro), placa da
+ * testa com borda e rebites, respiros em cruz com a sombra embaixo, borda de baixo virada e o brilho de metal na face
+ * clara.
+ */
+function barrelDetail(c: Canvas, shell: number, ox: number, cy: number) {
+  c.detail([ox - 10, cy - 11, ox + 10, cy + 11], [shell], (x, y) => {
+    const u = x - ox, v = y - cy, a = Math.abs(u);
+    // Placa da testa sobre a fenda: borda de baixo clara (pega a luz) e linha escura de encaixe em cima.
+    if (a < 8.8 && Math.abs(v - (-0.9)) < 0.13) return [Mat.Mithral, 1];
+    if (a < 8.8 && v > -0.62 && v < -0.4) return [Mat.Mithral, u < 0 ? 5 : 3];
+    for (const s of [-1, 1]) if (Math.hypot(u - s * 7.4, v + 2.4) < 0.42) return [Mat.Mithral, Math.hypot(u - s * 7.4 + 0.15, v + 2.55) < 0.18 ? 5 : 1];
+    // Respiros: furos com a sombra na parte de baixo.
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 3 - r; k++) for (const s of [-1, 1]) {
+      const hx = s * (3 + k * 1.3 + r * 0.6), hy = 4.6 + r * 1.4;
+      const dd = Math.hypot(u - hx, (v - hy) * 1.2);
+      if (dd < 0.32) return [Mat.Eye, 0];
+      if (dd < 0.5 && v > hy) return [Mat.Mithral, 4];
+    }
+    // Borda de baixo virada (aba que pega luz em cima e faz sombra embaixo).
+    const bottom = 10.2 - Math.max(0, a - 6.4) * 0.9;
+    if (v > bottom - 0.9 && v < bottom - 0.55) return [Mat.Mithral, u < 0 ? 5 : 3];
+    if (v >= bottom - 0.55) return [Mat.Mithral, 1];
+    // Brilho: uma faixa vertical na face clara, mais forte no alto.
+    if (u > -4.4 && u < -3.9 && v > -6 && v < 8 && (v < 0.2 || v > 2.4)) return [Mat.Mithral, v < 0 ? 5 : 4];
+    return null;
+  });
+  // Fenda dos olhos com profundidade: lábio de cima claro, dentro escuro com um fio de luz de baixo.
+  c.detail([ox - 9, cy + 0.2, ox + 9, cy + 2.6], [shell], (x, y) => {
+    const u = x - ox, v = y - cy, a = Math.abs(u);
+    if (a < 1.1 || a > 8.2 - (v - 0.8) * 0.8) return null;
+    if (v > 0.55 && v < 0.85) return [Mat.Mithral, 5];
+    if (v >= 0.85 && v < 1.9) return [Mat.Eye, v > 1.65 ? 1 : 0];
+    if (v >= 1.9 && v < 2.2) return [Mat.Mithral, 1];
+    return null;
+  });
+}
+
 /** Elmo de mithral fechado: barril com fenda em cruz, respiros, coroa de folhas e penacho na cor da classe. */
 function cap4(c: Canvas, view: ProtoDir, cx: number, cy: number) {
   const ox = view === "side" ? cx + 0.4 : cx;
@@ -3309,7 +3415,16 @@ function cap4(c: Canvas, view: ProtoDir, cx: number, cy: number) {
     const d = Math.abs(x + 0.5 - ox);
     if (view === "side" && x + 0.5 < ox - 9.4) return false;
     return (inEllipse(ox, cy - 4, 9.4, 6.8)(x, y) || (d <= 9.4 && y > cy - 4)) && y < cy + 10.2 - Math.max(0, d - 6.4) * 0.9;
-  }, Mat.Mithral, (x) => lit(Math.max(-0.95, Math.min(0.95, (x + 0.5 - ox) / 9.6)), -0.2, 0.8), (X, Y) => (noise(X, Y) < 0.02 ? 1 : 0));
+  }, Mat.Mithral, (x, y) => {
+    const u = x + 0.5 - ox, v = y + 0.5 - cy;
+    // De frente, duas faces planas que se encontram na quilha (luz de um lado, sombra do outro) e curvam nos lados;
+    // a calota fecha em cima como esfera e a borda de baixo vira para dentro.
+    const front = view === "down" || view === "up";
+    const flat = Math.abs(u) < 5.8 && front ? Math.sign(u) * 0.62 : Math.max(-0.95, Math.min(0.95, u / 9.6));
+    const ny = v < -4 ? Math.max(-0.95, (v + 4) / 7) : v > 8 ? 0.45 : -0.15;
+    return lit(flat, ny, Math.sqrt(Math.max(0.05, 1 - flat * flat - ny * ny * 0.6)));
+  }, (X, Y) => (noise(X, Y) < 0.02 ? 1 : 0));
+  if (view === "down" && c.portrait) barrelDetail(c, shell, ox, cy);
   if (view === "up") {
     thread(c, [ox, cy - 10], [ox, cy + 10], Mat.Mithral, 5, [shell]);
     for (const k of [-6, 6]) for (const y of [-2, 4]) rivet(c, [shell], ox + k, cy + y, Mat.Mithral);
@@ -3322,8 +3437,10 @@ function cap4(c: Canvas, view: ProtoDir, cx: number, cy: number) {
         return d > 1 && d < 8 - (y - cy - 0.8) * 0.8 && y + 0.5 > cy + 0.8 && y + 0.5 < cy + 1.9;
       }, Mat.Eye, () => 0.1);
     }
-    for (let r = 0; r < 3; r++) for (let k = 0; k < 3 - r; k++) c.on(shell, F(ox + 3 + k * 1.3 + r * 0.6), F(cy + 4.6 + r * 1.4), Mat.Eye, 0);
-    for (const s of [-1, 1]) thread(c, [ox + s * 1, cy + 0.2], [ox + s * 8, cy + 0.2], Mat.Mithral, 5, [shell]);
+    if (!c.portrait) {
+      for (let r = 0; r < 3; r++) for (let k = 0; k < 3 - r; k++) c.on(shell, F(ox + 3 + k * 1.3 + r * 0.6), F(cy + 4.6 + r * 1.4), Mat.Eye, 0);
+      for (const s of [-1, 1]) thread(c, [ox + s * 1, cy + 0.2], [ox + s * 8, cy + 0.2], Mat.Mithral, 5, [shell]);
+    }
   } else {
     // De lado: frente do barril com a fenda e os respiros, dobradiça.
     c.fill([ox - 9.6, cy + 0.6, ox - 2, cy + 2], (x, y) => x + 0.5 > ox - 9.6 && x + 0.5 < ox - 3 && y + 0.5 > cy + 0.8 && y + 0.5 < cy + 1.9, Mat.Eye, () => 0.1);
