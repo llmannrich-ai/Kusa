@@ -540,6 +540,39 @@ export class Canvas {
    */
   blocks = false;
 
+  /**
+   * Retrato do menu: o rosto dos heróis troca os pixels à mão ampliados em bloco por detalhes desenhados como formas
+   * na resolução final (`detail`): olho com íris e brilho, sobrancelha em fios, nariz e boca com volume.
+   */
+  portrait = false;
+
+  /**
+   * Detalhe em tom fixo desenhado como forma, na resolução final: cada pixel do retângulo (unidades) volta para as
+   * unidades pela escala local e `pick` diz o material e o tom (ou nada). Só pinta sobre as peças `ids`.
+   */
+  detail(box: Box, ids: readonly number[], pick: (x: number, y: number) => readonly [Mat, number] | null) {
+    const f = this.xf;
+    if (f?.m) return;
+    const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
+    for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil(y1 * K)); Y++) {
+      for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil(x1 * K)); X++) {
+        const i = Y * this.w + X;
+        if (this.mat[i] < 0 || !ids.includes(this.part[i])) continue;
+        // Centro do pixel em unidades da tela, de volta para as unidades do desenho.
+        let x = (X + 0.5) / K, y = (Y + 0.5) / K;
+        if (this.flare) x = this.unflare(x, y);
+        if (f) {
+          if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x - f.ox) / (f.k * f.sx); y = f.oy + (y - f.oy) / f.k; }
+          else { x = (x - f.tx) / (f.k * f.sx); y = (y - f.ty) / f.k; }
+        }
+        const got = pick(x, y);
+        if (!got) continue;
+        this.mat[i] = got[0];
+        this.fixed[i] = got[1];
+      }
+    }
+  }
+
   /** Pixels finais para onde vai o pixel `X`, `Y` (um só, ou o bloco inteiro com `blocks`). */
   private spots(X: number, Y: number): [number, number][] {
     const [x0, y0] = this.tx(X, Y);
@@ -1944,8 +1977,26 @@ function stubble(c: Canvas, id: number, X0: number, X1: number, Y0: number, Y1: 
   for (let Y = Y0; Y <= Y1; Y++) for (let X = X0; X <= X1; X++) if (keep(X, Y) && noise(X, Y) < 0.2) c.on(id, X, Y, Mat.Hair, noise(Y, X) < 0.5 ? 2 : 3);
 }
 
-/** Brilho do cabelo em arco no alto à esquerda. */
+/** Barba rala do retrato (`stubble` na resolução final): pontos finos na mandíbula e no queixo, longe da boca. */
+function portraitStubble(c: Canvas, face: number, cy: number) {
+  c.detail([CX - 7, cy + 5.5, CX + 7, cy + 9.6], [face], (x, y) => {
+    const a = Math.abs(x - CX), v = y - cy;
+    if (!(a > 4 || v > 8.1) || (v > 6.9 && v < 8.3 && a < 2.6)) return null;
+    const X = Math.floor(x * 4), Y = Math.floor(y * 4);
+    return noise(X, Y) < 0.3 ? [Mat.Hair, noise(Y, X) < 0.5 ? 2 : 3] : null;
+  });
+}
+
+/** Brilho do cabelo em arco no alto à esquerda (no retrato, um arco fino de fios na resolução final). */
 function gloss(c: Canvas, ids: readonly number[], x0: number, x1: number, y: number, cxArc: number) {
+  if (c.portrait) {
+    c.detail([x0, y - 0.5, x1, y + 3], ids, (x, yy) => {
+      const top = y + ((x - cxArc) / 4) ** 2 * 1.5, d = yy - top;
+      if (d < 0 || d > 0.55 || noise(Math.floor(x * 4), 2) >= 0.7) return null;
+      return [Mat.Hair, d < 0.25 ? 5 : 4];
+    });
+    return;
+  }
   for (let X = F(x0); X <= F(x1); X++) {
     const Y = F(y) + Math.round(((X - F(cxArc)) / 8) ** 2 * 3);
     if (noise(X, 2) < 0.7) { c.on(ids, X, Y, Mat.Hair, 5); c.on(ids, X, Y + 1, Mat.Hair, 4); }
@@ -1991,6 +2042,127 @@ function highCollar(c: Canvas, cy: number, side: boolean, mat: Mat = Mat.Primary
 function collar(c: Canvas, kit: Kit, cy: number, view: ProtoDir) {
   if (kit.armor?.startsWith("robe-")) robeCollar(c, kit, cy, view);
   else if (kit.top === "robe") highCollar(c, cy, view === "side");
+}
+
+/**
+ * Rosto do herói no retrato do menu, desenhado como formas na resolução final (`Canvas.detail`) em vez dos pixels do
+ * sprite ampliados em bloco. Tudo em unidades a partir do centro do rosto (`u` para a direita da tela, `v` para
+ * baixo); a luz vem de cima à esquerda, então o lado esquerdo da tela é o claro. Tom sério: pálpebra pesada cobrindo
+ * o alto da íris, sobrancelha baixa, boca reta com os cantos para baixo.
+ */
+function portraitFace(c: Canvas, kit: Kit, face: number, cy: number, old: boolean) {
+  const on = [face];
+  const box = (u0: number, v0: number, u1: number, v1: number): Box => [CX + u0, cy + v0, CX + u1, cy + v1];
+  /** Grão de fio (sobrancelha): alterna o tom em listras finas inclinadas. */
+  const strand = (x: number, y: number) => (Math.floor((x * 3.2 + y * 1.6) * 1.0) & 1) === 0;
+  const EYE_U = 3.25, EYE_V = 2.75, EYE_W = 1.75;
+
+  // 1. Órbita funda e maçã do rosto (antes do olho, por baixo dele).
+  c.detail(box(-6.5, 0.5, 6.5, 6.5), on, (x, y) => {
+    const u = x - CX, v = y - cy, s = Math.sign(u) || 1, du = Math.abs(u) - EYE_U, dv = v - EYE_V + 0.35;
+    const socket = (du / 2.4) ** 2 + (dv / 1.5) ** 2;
+    if (socket < 1) return [Mat.Skin, s < 0 ? 2 : 1];
+    // Sombra sob a maçã do rosto (o osso em si já pega a luz da forma do rosto).
+    const under = ((Math.abs(u) - 4.5) / 1.5) ** 2 + ((v - 5.9) / 0.38) ** 2;
+    if (under < 1) return [Mat.Skin, s < 0 ? 2 : 1];
+    return null;
+  });
+
+  // 2. Olhos: amêndoa estreita, branco apagado, íris com pupila e um brilho, cílio grosso em cima.
+  c.detail(box(-EYE_U - 2.6, EYE_V - 1.6, EYE_U + 2.6, EYE_V + 1.4), on, (x, y) => {
+    const u = x - CX, v = y - cy, s = Math.sign(u) || 1;
+    const t = Math.abs(u) - EYE_U; // > 0 = canto de fora
+    const w = Math.sqrt(Math.max(0, 1 - (t / EYE_W) ** 2));
+    const lidTop = EYE_V - 0.55 * w + (t > 0 ? 0.12 * t : 0), lidBot = EYE_V + 0.38 * w;
+    // Cílio de cima: linha grossa e escura, passando um pouco do canto de fora.
+    if (Math.abs(t) <= EYE_W + 0.35 && v >= lidTop - 0.42 && v < lidTop && (Math.abs(t) <= EYE_W || v > lidTop - 0.25)) return [Mat.Eye, 0];
+    // Vinco da pálpebra, acima do cílio.
+    if (Math.abs(t) <= EYE_W - 0.3 && Math.abs(v - (lidTop - 0.85)) < 0.14) return [Mat.Skin, 1];
+    if (Math.abs(t) > EYE_W || v < lidTop || v > lidBot) {
+      // Pálpebra de baixo: uma linha de sombra fina.
+      if (Math.abs(t) <= EYE_W - 0.2 && v > lidBot && v < lidBot + 0.22) return [Mat.Skin, 2];
+      return null;
+    }
+    const ix = t * s, iy = v - (EYE_V + 0.08); // íris no meio do olho (ix para a direita da tela)
+    const ir = Math.hypot(ix * 1.05, iy);
+    if (ir < 0.26) return [Mat.Eye, 0];
+    // Brilho do lado da luz (em cima à esquerda da íris).
+    if (Math.hypot(ix + 0.32, iy + 0.28) < 0.17) return [Mat.White, 5];
+    if (ir < 0.78) return [Mat.Iris, ir < 0.5 ? 1 : v < EYE_V - 0.1 ? 1 : 2];
+    // Branco apagado (na sombra da pálpebra), mais escuro em cima e nos cantos.
+    return [Mat.White, v < lidTop + 0.3 || Math.abs(t) > EYE_W - 0.5 ? 0 : 1];
+  });
+
+  // 3. Sobrancelhas: grossas e baixas perto do nariz, afinando para fora, em fios.
+  c.detail(box(-6.2, -0.8, 6.2, 2.4), on, (x, y) => {
+    const u = x - CX, v = y - cy, a = Math.abs(u), s = Math.sign(u) || 1;
+    if (a < 0.9 || a > 5.6) return null;
+    const k = (a - 0.9) / 4.7; // 0 perto do nariz, 1 na ponta
+    const mid = 1.25 - 0.75 * k + 0.55 * Math.max(0, k - 0.75) ** 1.2 * 4 + (old ? 0.25 * k : 0);
+    const half = 0.48 * (1 - k) + 0.17;
+    if (Math.abs(v - mid) > half) {
+      // Arco da sobrancelha (osso da testa) pega luz logo acima.
+      if (v < mid - half && v > mid - half - 0.35 && k < 0.8) return [Mat.Skin, s < 0 ? 4 : 3];
+      return null;
+    }
+    const tip = v < mid - half * 0.3;
+    return [Mat.Hair, strand(x, y) ? (tip ? 2 : 1) : 0];
+  });
+
+  // 4. Nariz: dorso claro, sombra do lado direito, ponta redonda com brilho, narinas e a sombra embaixo.
+  c.detail(box(-2, 2, 2, 7), on, (x, y) => {
+    const u = x - CX, v = y - cy;
+    const tip = (u / 1.05) ** 2 + ((v - 5.55) / 0.62) ** 2;
+    if (Math.hypot(u + 0.3, v - 5.35) < 0.17) return [Mat.Skin, 4];
+    for (const s of [-1, 1]) if (((u - s * 0.62) / 0.3) ** 2 + ((v - 6.12) / 0.17) ** 2 < 1) return [Mat.Lip, 0];
+    if (v > 6.2 && v < 6.5 && Math.abs(u) < 0.75) return [Mat.Skin, 1];
+    if (tip < 1) return [Mat.Skin, u > 0.45 ? 2 : 3];
+    // Asas do nariz.
+    for (const s of [-1, 1]) if (((u - s * 1.05) / 0.38) ** 2 + ((v - 5.85) / 0.42) ** 2 < 1) return [Mat.Skin, s < 0 ? 3 : 1];
+    if (v > 2.9 && v < 5.1) {
+      const w = 0.32 + (v - 2.9) * 0.1;
+      if (u > -0.5 - 0.22 && u < -0.5 + 0.1 && v > 3.3) return [Mat.Skin, 3];
+      if (u > 0.35 && u < 0.35 + w + 0.3) return [Mat.Skin, v > 4.2 ? 1 : 2];
+    }
+    return null;
+  });
+
+  // 5. Marcas da classe: a pintura verde do druida (duas listras pela bochecha) e a cicatriz do cavaleiro.
+  if (kit.wild) c.detail(box(-6.8, 3.6, 6.8, 7), on, (x, y) => {
+    const a = Math.abs(x - CX), v = y - cy;
+    for (const [u0, v0, v1, tone] of [[3.4, 4.4, 6.6, 2], [4.9, 3.9, 6.2, 3]] as const) {
+      if (v > v0 && v < v1 && Math.abs(a - (u0 + (v - v0) * 0.45)) < 0.2) return [Mat.Leaf, tone];
+    }
+    return null;
+  });
+  if (kit.scar) c.detail(box(4, 2.6, 7.2, 5.8), on, (x, y) => {
+    const u = x - CX, v = y - cy;
+    if (v < 3 || v > 5.4) return null;
+    const d = u - (4.6 + (v - 3) * 0.85);
+    if (Math.abs(d) < 0.13) return [Mat.Lip, 1];
+    if (d < -0.13 && d > -0.3) return [Mat.Skin, 4];
+    return null;
+  });
+
+  if (old) return; // a barba cobre a boca e o queixo
+  // 5. Boca: linha escura com o arco no meio e os cantos para baixo, lábio de baixo com luz e a sombra do queixo.
+  c.detail(box(-3, 6.4, 3, 9.4), on, (x, y) => {
+    const u = x - CX, v = y - cy, a = Math.abs(u);
+    if (a > 2.15) {
+      // Sulco do canto da boca.
+      if (a < 2.6 && v > 7.6 && v < 8.2 && Math.abs(v - 7.6 - (a - 2.15) * 1.2) < 0.16) return [Mat.Skin, 1];
+      return null;
+    }
+    const line = 7.55 + (a > 1.4 ? (a - 1.4) * 0.35 : 0) - (a < 0.35 ? 0.06 : 0);
+    if (Math.abs(v - line) < 0.17) return [Mat.Lip, 0];
+    if (v < line && v > line - 0.42 && a < 1.8) return [Mat.Lip, 1];
+    const lower = 7.95 + 0.0;
+    if (v > line && a < 1.5 - (v - line) * 0.5 && v < lower + 0.32) return [Mat.Lip, u < -0.2 && v < lower ? 3 : 2];
+    if (v > lower + 0.42 && v < lower + 0.72 && a < 1.0) return [Mat.Skin, 1];
+    // Filtro (os dois risquinhos sob o nariz).
+    if (v < 7.0 && v > 6.55 && Math.abs(a - 0.35) < 0.1) return [Mat.Skin, u < 0 ? 4 : 2];
+    return null;
+  });
 }
 
 function headFront(c: Canvas, kit: Kit, b: number, top: number) {
@@ -2075,8 +2247,11 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   const Yc = F(cy);
   const old = kit.beard === "long";
   const hero = !!kit.build;
+  const fine = hero && c.portrait;
   for (const sx of [-1, 1]) {
-    if (hero) {
+    if (fine) {
+      // Retrato: olhos, sobrancelhas e maçãs vêm de `portraitFace`, na resolução final.
+    } else if (hero) {
       // Sobrancelha grossa e baixa, descendo para o nariz (olhar firme), com a sombra funda da órbita embaixo.
       for (let dx = 2; dx <= 10; dx++) {
         const Y = Yc + 1 + (dx < 5 ? 1 : 0) + (old && dx > 8 ? 1 : 0);
@@ -2112,7 +2287,9 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
       for (const [dx, dy] of [[10, 3], [11, 4], [10, 5], [11, 6]]) c.px(mx(sx, dx), Yc + dy, Mat.Skin, 2);
       for (let dx = 5; dx <= 8; dx++) c.px(mx(sx, dx), Yc + 8, Mat.Skin, 2);
     }
-    if (kit.wild) {
+    if (kit.wild && fine) {
+      // Pintura do retrato: em `portraitFace`.
+    } else if (kit.wild) {
       // Pintura verde: duas listras descendo pela bochecha.
       for (let k = 0; k < 5; k++) { c.px(mx(sx, 7 + Math.floor(k / 2)), Yc + 9 + k, Mat.Leaf, 2); c.px(mx(sx, 10 + Math.floor(k / 2)), Yc + 8 + k, Mat.Leaf, 3); }
     } else if (kit.orc) {
@@ -2127,17 +2304,22 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
     // Rugas da testa.
     for (const y of [-5, -3]) for (let dx = 0; dx <= 6; dx++) if (noise(dx, y) < 0.8) for (const sx of [-1, 1]) c.on(face, mx(sx, dx), Yc + y + (dx > 4 ? 1 : 0), Mat.Skin, 2);
   }
+  if (fine) portraitFace(c, kit, face, cy, old);
+  else {
   // Nariz: sombra do lado direito, ponta clara, narinas.
   for (let dy = 6; dy <= 10; dy++) c.px(mx(1, 1), Yc + dy, Mat.Skin, 2);
   if (hero) { for (let dy = 8; dy <= 11; dy++) c.px(mx(1, 2), Yc + dy, Mat.Skin, dy > 9 ? 1 : 2); c.px(mx(-1, 1), Yc + 7, Mat.Skin, 4); }
   c.px(mx(-1, 0), Yc + 10, Mat.Skin, 4); c.px(mx(1, 0), Yc + 11, Mat.Skin, 2);
   c.px(mx(-1, 1), Yc + 12, Mat.Skin, 1); c.px(mx(1, 1), Yc + 12, Mat.Skin, 1); c.px(mx(1, 0), Yc + 12, Mat.Skin, 2);
+  }
   if (kit.beard === "long") {
     headwear(c, kit, "down", CX, cy, top);
     beardFront(c, cy, top);
     return;
   }
-  if (hero) {
+  if (fine) {
+    // Boca do retrato: em `portraitFace`.
+  } else if (hero) {
     // Boca firme: uma linha reta e fina, os cantos um pouco para baixo e a sombra do lábio de baixo.
     for (let dx = 0; dx <= 3; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 15 + (dx === 3 ? 1 : 0), Mat.Lip, 0);
     for (let dx = 0; dx <= 1; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 17, Mat.Skin, 1);
@@ -2146,8 +2328,9 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   for (let dx = 0; dx <= 3; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 15, Mat.Lip, dx === 3 ? 2 : 0);
   for (let dx = 0; dx <= 2; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 16, Mat.Lip, sx < 0 && dx < 2 ? 4 : 3);
   }
-  c.px(mx(-1, 0), Yc + 13, Mat.Skin, 2);
-  if (kit.beard === "stubble") {
+  if (!fine) c.px(mx(-1, 0), Yc + 13, Mat.Skin, 2);
+  if (kit.beard === "stubble" && fine) portraitStubble(c, face, cy);
+  else if (kit.beard === "stubble") {
     stubble(c, face, mx(-1, 13), mx(1, 13), Yc + 11, Yc + 19, (X, Y) => {
       const d = Math.abs(X - F(CX) + 0.5);
       return (d > 8 || Y > Yc + 16) && !(Y >= Yc + 14 && Y <= Yc + 16 && d < 5);
@@ -2156,7 +2339,7 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
   // Presas do orc: sobem dos cantos da boca.
   if (kit.orc) for (const sx of [-1, 1]) { c.px(mx(sx, 3), Yc + 15, Mat.Bone, 4); c.px(mx(sx, 3), Yc + 14, Mat.Bone, 5); c.px(mx(sx, 4), Yc + 13, Mat.Bone, 4); }
   // Cicatriz do cavaleiro na bochecha direita.
-  if (kit.scar) for (let k = 0; k < 5; k++) { c.px(mx(1, 9 + k), Yc + 6 + k, Mat.Lip, 1); c.px(mx(1, 8 + k), Yc + 6 + k, Mat.Skin, 4); }
+  if (kit.scar && !fine) for (let k = 0; k < 5; k++) { c.px(mx(1, 9 + k), Yc + 6 + k, Mat.Lip, 1); c.px(mx(1, 8 + k), Yc + 6 + k, Mat.Skin, 4); }
   headwear(c, kit, "down", CX, cy, top);
 }
 
@@ -2208,6 +2391,90 @@ function orcScalp(c: Canvas, id: number, cx: number, cy: number, flip = 1) {
  * a frente e as duas presas grandes saindo do maxilar de baixo por cima do lábio. Orelhas pontudas e a pintura de
  * guerra (brasa) descendo da testa ao queixo.
  */
+/**
+ * Rosto do Xamã Orc no retrato do menu, como `portraitFace`: crista da testa pesada com a sombra funda embaixo, olhos
+ * pequenos de brasa, focinho largo com as narinas para a frente, boca larga de queixo projetado, presas subindo da
+ * mandíbula, pintura de guerra sob os olhos e a cicatriz na maçã do lado de lá.
+ */
+function portraitOrcFace(c: Canvas, face: number, cy: number) {
+  const on = [face];
+  const box = (u0: number, v0: number, u1: number, v1: number): Box => [CX + u0, cy + v0, CX + u1, cy + v1];
+  const EYE_U = 3.3, EYE_V = 2.8;
+
+  // 1. Crista da testa (cara fechada: desce para o nariz), rugas do cenho, maçã larga e o sulco até a boca.
+  c.detail(box(-7.5, -0.6, 7.5, 7.5), on, (x, y) => {
+    const u = x - CX, v = y - cy, a = Math.abs(u), s = Math.sign(u) || 1;
+    const ridge = 0.85 + 0.55 * Math.max(0, 1 - a / 5) + 0.25 * Math.max(0, a - 5.5);
+    if (a < 6.8) {
+      if (v > ridge - 0.75 && v <= ridge - 0.3) return [Mat.Skin, s < 0 ? 4 : 3];
+      if (v > ridge - 0.3 && v <= ridge + 0.2) return [Mat.Skin, 3];
+      if (v > ridge + 0.2 && v <= ridge + 0.75) return [Mat.Skin, a > 5.5 ? 1 : 0];
+      if (v > ridge + 0.75 && v <= ridge + 1.5 && a > 1.1 && a < 5.4) return [Mat.Skin, 1];
+    }
+    if (a > 0.3 && a < 0.62 && v > -0.3 && v < ridge - 0.2) return [Mat.Skin, 1];
+    if (a > 4.4 && a < 6.6 && v > 3.85 && v < 4.3) return [Mat.Skin, s < 0 ? 4 : 3];
+    const g = Math.abs(a - (2.9 + (v - 5) * 0.35));
+    if (v > 5 && v < 7 && g < 0.17) return [Mat.Skin, 1];
+    return null;
+  });
+
+  // 2. Olhos fundos acesos como brasa, sem branco; pintura de guerra em dois riscos embaixo.
+  c.detail(box(-6.2, 1.6, 6.2, 5.4), on, (x, y) => {
+    const u = x - CX, v = y - cy, a = Math.abs(u), t = a - EYE_U, dv = v - EYE_V;
+    const glow = (t / 1.05) ** 2 + (dv / 0.38) ** 2;
+    if (glow < 0.25) return [Mat.Ember, 5];
+    if (glow < 1) return [Mat.Ember, dv < 0 ? 4 : 3];
+    if ((t / 1.6) ** 2 + ((dv + 0.1) / 0.75) ** 2 < 1) return [Mat.Eye, 0];
+    for (const [cx, k] of [[3.3, 0.25], [4.85, 0.3]] as const) {
+      if (v > 3.75 && v < 5.1 && Math.abs(a - cx - (v - 3.75) * k) < 0.15) return [Mat.Ember, 0];
+    }
+    return null;
+  });
+
+  // 3. Focinho: ponte curta, ponta larga com luz em cima e as narinas viradas para a frente.
+  c.detail(box(-3, 3, 3, 6.6), on, (x, y) => {
+    const u = x - CX, v = y - cy;
+    for (const s of [-1, 1]) if (((u - s * 1.0) / 0.42) ** 2 + ((v - 5.55) / 0.3) ** 2 < 1) return [Mat.Eye, 0];
+    if (v > 6.0 && v < 6.3 && Math.abs(u) < 1.9) return [Mat.Skin, 1];
+    const tip = (u / 2.35) ** 2 + ((v - 5.1) / 0.95) ** 2;
+    if (tip < 1) {
+      if (v < 4.75 && u < 0.4) return [Mat.Skin, u < -0.6 ? 5 : 4];
+      return [Mat.Skin, Math.abs(u) > 1.7 ? 1 : u > 0.8 ? 2 : 3];
+    }
+    if (v > 3.2 && v < 4.5 && Math.abs(u + 0.1) < 0.55) return [Mat.Skin, u < 0 ? 4 : 2];
+    return null;
+  });
+
+  // 4. Boca larga de prognata (lábio de baixo saliente) e as presas subindo por fora dos cantos.
+  c.detail(box(-5, 3.6, 5, 9.6), on, (x, y) => {
+    const u = x - CX, v = y - cy, a = Math.abs(u), s = Math.sign(u) || 1;
+    // Presa: base larga na mandíbula, curva para fora, ponta clara; contorno escuro do lado de fora.
+    const tv = (8.8 - v) / 4.6; // 0 na base, 1 na ponta
+    if (tv >= 0 && tv <= 1) {
+      const center = 3.05 + 0.65 * tv ** 1.6, half = 0.55 * (1 - tv) + 0.12;
+      const d = (a - center);
+      if (Math.abs(d) <= half + 0.14 && d > half - 0.02) return [Mat.Eye, 0];
+      if (Math.abs(d) <= half) return [Mat.Bone, tv > 0.82 ? 5 : d < -half * 0.3 ? (s < 0 ? 4 : 3) : 2];
+    }
+    if (a > 3.4) return null;
+    const line = 7.2 + (a > 2.2 ? (a - 2.2) * 0.4 : 0);
+    if (Math.abs(v - line) < 0.18) return [Mat.Lip, 0];
+    if (v > line && v < 8.15 && a < 2.5 - (v - line) * 0.6) return [Mat.Skin, u < -0.3 ? 4 : 3];
+    if (v >= 8.15 && v < 8.5 && a < 1.8) return [Mat.Skin, 1];
+    return null;
+  });
+
+  // 5. Cicatriz funda cortando a maçã do lado de lá (borda clara do lado da luz).
+  c.detail(box(3.8, 1, 6.6, 5.6), on, (x, y) => {
+    const u = x - CX, v = y - cy;
+    const d = u - (4.55 + (v - 1.6) * 0.33);
+    if (v < 1.6 || v > 5) return null;
+    if (Math.abs(d) < 0.14) return [Mat.Lip, 0];
+    if (d < -0.14 && d > -0.32) return [Mat.Skin, 4];
+    return null;
+  });
+}
+
 function orcHeadFront(c: Canvas, kit: Kit, b: number, top: number) {
   const cy = 37 + b;
   collar(c, kit, cy, "down");
@@ -2219,53 +2486,56 @@ function orcHeadFront(c: Canvas, kit: Kit, b: number, top: number) {
   // Pintura de guerra: faixa de brasa no meio da testa e no queixo.
   for (let Y = Yc - 14; Y <= Yc - 1; Y++) for (const sx of [-1, 1]) c.on(face, mx(sx, 0), Y, Mat.Ember, Y < Yc - 11 ? 1 : 0);
   for (let Y = Yc + 17; Y <= Yc + 18; Y++) for (const sx of [-1, 1]) for (let dx = 0; dx <= 1; dx++) c.on(face, mx(sx, dx), Y, Mat.Ember, 0);
-  for (const sx of [-1, 1]) {
-    // Crista da testa: luz em cima, osso saliente e a sombra funda embaixo, descendo para o nariz (cara fechada).
-    for (let dx = 1; dx <= 11; dx++) {
-      const Y = Yc + 1 + (dx < 4 ? 1 : 0);
-      c.px(mx(sx, dx), Y - 1, Mat.Skin, dx > 9 ? 3 : 4);
-      c.px(mx(sx, dx), Y, Mat.Skin, 3);
-      c.px(mx(sx, dx), Y + 1, Mat.Skin, dx > 9 ? 1 : 0);
-      if (dx >= 3 && dx <= 9) c.px(mx(sx, dx), Y + 2, Mat.Skin, 1);
+  if (c.portrait) portraitOrcFace(c, face, cy);
+  else {
+    for (const sx of [-1, 1]) {
+      // Crista da testa: luz em cima, osso saliente e a sombra funda embaixo, descendo para o nariz (cara fechada).
+      for (let dx = 1; dx <= 11; dx++) {
+        const Y = Yc + 1 + (dx < 4 ? 1 : 0);
+        c.px(mx(sx, dx), Y - 1, Mat.Skin, dx > 9 ? 3 : 4);
+        c.px(mx(sx, dx), Y, Mat.Skin, 3);
+        c.px(mx(sx, dx), Y + 1, Mat.Skin, dx > 9 ? 1 : 0);
+        if (dx >= 3 && dx <= 9) c.px(mx(sx, dx), Y + 2, Mat.Skin, 1);
+      }
+      // Olho pequeno e fundo, aceso como brasa dentro da sombra da crista (sem branco): é o que se vê de longe.
+      for (const [dx, m, t] of [[4, Mat.Skin, 0], [5, Mat.Eye, 0], [6, Mat.Ember, 5], [7, Mat.Ember, 5], [8, Mat.Ember, 3], [9, Mat.Eye, 0]] as const) c.px(mx(sx, dx), Yc + 5, m, t);
+      for (const [dx, m, t] of [[5, Mat.Eye, 0], [6, Mat.Ember, 3], [7, Mat.Ember, 2], [8, Mat.Eye, 0]] as const) c.px(mx(sx, dx), Yc + 6, m, t);
+      c.px(mx(sx, 7), Yc + 5, Mat.Eye, 0);
+      for (let dx = 6; dx <= 9; dx++) c.px(mx(sx, dx), Yc + 7, Mat.Skin, 2);
+      // Pintura de guerra: dois riscos curtos sob cada olho.
+      for (const dx of [7, 10]) for (let k = 0; k < 3; k++) c.px(mx(sx, dx + (k > 1 ? 1 : 0)), Yc + 8 + k, Mat.Ember, 0);
+      // Maçã larga: luz no osso e o sulco que desce até o canto da boca.
+      for (let dx = 9; dx <= 12; dx++) c.on(face, mx(sx, dx), Yc + 7, Mat.Skin, sx < 0 ? 4 : 3);
+      for (let k = 0; k < 5; k++) c.px(mx(sx, 6 + Math.floor(k / 2)), Yc + 10 + k, Mat.Skin, 1);
     }
-    // Olho pequeno e fundo, aceso como brasa dentro da sombra da crista (sem branco): é o que se vê de longe.
-    for (const [dx, m, t] of [[4, Mat.Skin, 0], [5, Mat.Eye, 0], [6, Mat.Ember, 5], [7, Mat.Ember, 5], [8, Mat.Ember, 3], [9, Mat.Eye, 0]] as const) c.px(mx(sx, dx), Yc + 5, m, t);
-    for (const [dx, m, t] of [[5, Mat.Eye, 0], [6, Mat.Ember, 3], [7, Mat.Ember, 2], [8, Mat.Eye, 0]] as const) c.px(mx(sx, dx), Yc + 6, m, t);
-    c.px(mx(sx, 7), Yc + 5, Mat.Eye, 0);
-    for (let dx = 6; dx <= 9; dx++) c.px(mx(sx, dx), Yc + 7, Mat.Skin, 2);
-    // Pintura de guerra: dois riscos curtos sob cada olho.
-    for (const dx of [7, 10]) for (let k = 0; k < 3; k++) c.px(mx(sx, dx + (k > 1 ? 1 : 0)), Yc + 8 + k, Mat.Ember, 0);
-    // Maçã larga: luz no osso e o sulco que desce até o canto da boca.
-    for (let dx = 9; dx <= 12; dx++) c.on(face, mx(sx, dx), Yc + 7, Mat.Skin, sx < 0 ? 4 : 3);
-    for (let k = 0; k < 5; k++) c.px(mx(sx, 6 + Math.floor(k / 2)), Yc + 10 + k, Mat.Skin, 1);
+    // Rugas do cenho entre as cristas.
+    for (let Y = Yc; Y <= Yc + 3; Y++) { c.px(mx(-1, 1), Y, Mat.Skin, 1); c.px(mx(1, 1), Y, Mat.Skin, 1); }
+    // Nariz achatado de focinho: ponte curta, ponta larga com luz e as narinas viradas para a frente.
+    for (let Y = Yc + 5; Y <= Yc + 8; Y++) { c.px(mx(-1, 0), Y, Mat.Skin, 4); c.px(mx(1, 0), Y, Mat.Skin, 3); c.px(mx(1, 1), Y, Mat.Skin, 2); }
+    for (let dx = 0; dx <= 4; dx++) for (const sx of [-1, 1]) {
+      c.px(mx(sx, dx), Yc + 9, Mat.Skin, sx < 0 && dx < 3 ? 5 : 3);
+      c.px(mx(sx, dx), Yc + 10, Mat.Skin, dx === 4 ? 1 : 3);
+      c.px(mx(sx, dx), Yc + 11, Mat.Skin, dx === 4 ? 1 : 2);
+    }
+    for (const sx of [-1, 1]) { c.px(mx(sx, 2), Yc + 11, Mat.Eye, 0); c.px(mx(sx, 3), Yc + 11, Mat.Eye, 0); c.px(mx(sx, 2), Yc + 10, Mat.Eye, 1); }
+    for (let dx = 0; dx <= 4; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 12, Mat.Skin, 1);
+    // Boca larga com o queixo projetado (prognata): lábio de cima recolhido, linha escura e o lábio de baixo saliente.
+    for (let dx = 0; dx <= 6; dx++) for (const sx of [-1, 1]) {
+      c.px(mx(sx, dx), Yc + 14 + (dx > 4 ? 1 : 0), Mat.Lip, 0);
+      if (dx <= 4) { c.px(mx(sx, dx), Yc + 15, Mat.Skin, sx < 0 ? 4 : 3); c.px(mx(sx, dx), Yc + 16, Mat.Skin, 2); }
+    }
+    // Presas: saem da mandíbula de baixo, no canto da boca, e sobem por fora do lábio até a altura do nariz; largas na
+    // base, curvas para fora e com a ponta clara. O contorno escuro do lado de fora separa do verde.
+    for (const sx of [-1, 1]) for (let k = 0; k <= 8; k++) {
+      const Y = Yc + 17 - k, dx = 6 + (k > 5 ? 1 : 0);
+      c.px(mx(sx, dx), Y, Mat.Bone, k > 6 ? 5 : sx < 0 ? 4 : 3);
+      if (k < 7) c.px(mx(sx, dx + 1), Y, Mat.Bone, k < 3 ? 1 : 2);
+      c.px(mx(sx, dx + (k < 7 ? 2 : 1)), Y, Mat.Eye, 0);
+      if (k < 6) c.px(mx(sx, dx - 1), Y, k < 3 ? Mat.Lip : Mat.Skin, 0);
+    }
+    // Cicatriz funda cortando a maçã do lado de lá.
+    for (let k = 0; k < 6; k++) { c.px(mx(1, 9 + Math.floor(k * 0.6)), Yc + 4 + k, Mat.Lip, 0); c.px(mx(1, 10 + Math.floor(k * 0.6)), Yc + 4 + k, Mat.Skin, 4); }
   }
-  // Rugas do cenho entre as cristas.
-  for (let Y = Yc; Y <= Yc + 3; Y++) { c.px(mx(-1, 1), Y, Mat.Skin, 1); c.px(mx(1, 1), Y, Mat.Skin, 1); }
-  // Nariz achatado de focinho: ponte curta, ponta larga com luz e as narinas viradas para a frente.
-  for (let Y = Yc + 5; Y <= Yc + 8; Y++) { c.px(mx(-1, 0), Y, Mat.Skin, 4); c.px(mx(1, 0), Y, Mat.Skin, 3); c.px(mx(1, 1), Y, Mat.Skin, 2); }
-  for (let dx = 0; dx <= 4; dx++) for (const sx of [-1, 1]) {
-    c.px(mx(sx, dx), Yc + 9, Mat.Skin, sx < 0 && dx < 3 ? 5 : 3);
-    c.px(mx(sx, dx), Yc + 10, Mat.Skin, dx === 4 ? 1 : 3);
-    c.px(mx(sx, dx), Yc + 11, Mat.Skin, dx === 4 ? 1 : 2);
-  }
-  for (const sx of [-1, 1]) { c.px(mx(sx, 2), Yc + 11, Mat.Eye, 0); c.px(mx(sx, 3), Yc + 11, Mat.Eye, 0); c.px(mx(sx, 2), Yc + 10, Mat.Eye, 1); }
-  for (let dx = 0; dx <= 4; dx++) for (const sx of [-1, 1]) c.px(mx(sx, dx), Yc + 12, Mat.Skin, 1);
-  // Boca larga com o queixo projetado (prognata): lábio de cima recolhido, linha escura e o lábio de baixo saliente.
-  for (let dx = 0; dx <= 6; dx++) for (const sx of [-1, 1]) {
-    c.px(mx(sx, dx), Yc + 14 + (dx > 4 ? 1 : 0), Mat.Lip, 0);
-    if (dx <= 4) { c.px(mx(sx, dx), Yc + 15, Mat.Skin, sx < 0 ? 4 : 3); c.px(mx(sx, dx), Yc + 16, Mat.Skin, 2); }
-  }
-  // Presas: saem da mandíbula de baixo, no canto da boca, e sobem por fora do lábio até a altura do nariz; largas na
-  // base, curvas para fora e com a ponta clara. O contorno escuro do lado de fora separa do verde.
-  for (const sx of [-1, 1]) for (let k = 0; k <= 8; k++) {
-    const Y = Yc + 17 - k, dx = 6 + (k > 5 ? 1 : 0);
-    c.px(mx(sx, dx), Y, Mat.Bone, k > 6 ? 5 : sx < 0 ? 4 : 3);
-    if (k < 7) c.px(mx(sx, dx + 1), Y, Mat.Bone, k < 3 ? 1 : 2);
-    c.px(mx(sx, dx + (k < 7 ? 2 : 1)), Y, Mat.Eye, 0);
-    if (k < 6) c.px(mx(sx, dx - 1), Y, k < 3 ? Mat.Lip : Mat.Skin, 0);
-  }
-  // Cicatriz funda cortando a maçã do lado de lá.
-  for (let k = 0; k < 6; k++) { c.px(mx(1, 9 + Math.floor(k * 0.6)), Yc + 4 + k, Mat.Lip, 0); c.px(mx(1, 10 + Math.floor(k * 0.6)), Yc + 4 + k, Mat.Skin, 4); }
   headwear(c, kit, "down", CX, cy, top);
 }
 
@@ -6289,6 +6559,7 @@ export function protoPortraitData(cls: ProtoClass = "knight", gear: ProtoGear = 
   const colors = { ...kit.look, ...look };
   const c = new Canvas();
   c.blocks = true;
+  c.portrait = true;
   // Rosto (cabeça menor, `Build.head`, em volta do pescoço) ≈ unidade 38; vai para o pixel (96, 76) do quadro.
   const face: Pt = [CX, 38];
   const draw = () => c.scaled(face, PORTRAIT_ZOOM, () => front(c, kit, 1, false));
