@@ -2092,6 +2092,8 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
   aos poucos quando o herói aparece ou troca de roupa; até ficarem prontos, o golpe é só o tranco
   (`docs/ARTE_ITENS_CODIGO_PLANO.md`).
   Na Cripta, a opção também troca o cenário e os monstros (piloto dos mapas e monstros, `docs/ARTE_TIBIA.md`).
+  **Tamanho dos bosses:** nenhum boss passa do Dragão negro (1,6 tile no lado maior), com a arte nova ou a antiga; os
+  animados acertam a escala na arte (`BESTIARY_ART`, `apps/client/src/art/bestiary.ts`).
   Os ícones dos itens (mochila, cofre, mercado, equipamento e chão) passam a ser o mesmo desenho do item vestido
   (`docs/ARTE_ITENS.md`, seção 13).
 
