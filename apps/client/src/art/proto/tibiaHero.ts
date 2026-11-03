@@ -868,6 +868,19 @@ export function poly(c: Canvas, pts: readonly Pt[], mat: Mat, x0: number, x1: nu
 /** Linha de 1 px (em pixels finais) entre dois pontos em unidades. */
 export function thread(c: Canvas, a: Pt, b: Pt, mat: Mat, tone: number | ((k: number) => number), clip?: readonly number[]) {
   const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) * K * c.scale));
+  if (c.portrait) {
+    // Retrato: a linha é desenhada como forma, com uns 1,3 px de largura, em vez de pixels do sprite em bloco. O
+    // pixel do sprite fica em (X + 0.5) ÷ K, então a linha anda ¼ de unidade para baixo e para a direita.
+    const o = 0.5 / K, pick = (x: number, y: number): readonly [Mat, number] | null => {
+      const g = seg(x - o, y - o, a, b);
+      if (g.d > 0.17) return null;
+      const t = typeof tone === "number" ? tone : tone(Math.round(g.t * n));
+      return t < 0 ? null : [mat, t];
+    };
+    const box: Box = [Math.min(a[0], b[0]) - 0.5, Math.min(a[1], b[1]) - 0.5, Math.max(a[0], b[0]) + 1, Math.max(a[1], b[1]) + 1];
+    if (clip) c.detail(box, clip, pick); else c.ink(box, pick);
+    return;
+  }
   for (let k = 0; k <= n; k++) {
     const X = Math.round((a[0] + (b[0] - a[0]) * (k / n)) * K), Y = Math.round((a[1] + (b[1] - a[1]) * (k / n)) * K);
     const t = typeof tone === "number" ? tone : tone(k);
@@ -3123,6 +3136,17 @@ export function plate(c: Canvas, pts: readonly Pt[], mat: Mat, offset?: Offset) 
 
 /** Pontinho de rebite com brilho. */
 export function rivet(c: Canvas, ids: readonly number[], x: number, y: number, mat: Mat = Mat.Steel) {
+  if (c.portrait) {
+    // Retrato: cúpula pequena com o brilho em cima à esquerda e a sombra embaixo à direita.
+    const x0 = x + 0.5 / K, y0 = y + 0.5 / K;
+    c.detail([x0 - 0.6, y0 - 0.6, x0 + 0.6, y0 + 0.6], ids, (xx, yy) => {
+      const d = Math.hypot(xx - x0, yy - y0);
+      if (d > 0.42) return null;
+      if (Math.hypot(xx - x0 + 0.13, yy - y0 + 0.13) < 0.15) return [mat, 5];
+      return [mat, xx - x0 + yy - y0 > 0.15 ? 1 : 3];
+    });
+    return;
+  }
   c.on(ids, F(x), F(y), mat, 5);
   c.on(ids, F(x) + 1, F(y) + 1, mat, 1);
 }
@@ -3560,7 +3584,11 @@ function armorTorsoCommon(c: Canvas, tier: number, top: number, view: ProtoDir, 
         thread(c, [CX, top + 0.6], [CX, top + 12.4], Mat.Leather, 0, [id]);
         for (let y = top + 1.6; y < top + 12; y += 1.6) { thread(c, [CX - 1, y], [CX + 1, y + 0.8], Mat.Linen, 4, [id]); thread(c, [CX + 1, y], [CX - 1, y + 0.8], Mat.Linen, 3, [id]); }
       }
-      for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(top), Mat.Leather, 5); c.on(id, X, F(top) + 1, Mat.Leather, 1); if (X % 3 === 0) c.on(id, X, F(top + 20.2), Mat.Leather, 4); }
+      if (c.portrait) {
+        // Retrato: gola com a borda clara e a linha escura de costura embaixo, em traço fino.
+        thread(c, [x0, top], [x1, top], Mat.Leather, 5, [id]);
+        thread(c, [x0, top + 0.5], [x1, top + 0.5], Mat.Leather, (k) => (k % 4 < 2 ? 1 : -1), [id]);
+      } else for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(top), Mat.Leather, 5); c.on(id, X, F(top) + 1, Mat.Leather, 1); if (X % 3 === 0) c.on(id, X, F(top + 20.2), Mat.Leather, 4); }
       return [id];
     }
     case 2: {
@@ -3593,7 +3621,13 @@ function armorTorsoCommon(c: Canvas, tier: number, top: number, view: ProtoDir, 
         thread(c, [CX - 8.4, top + 6], [CX - 4, top + 6.8], Mat.Bronze, 5, [id]);
       }
       // Bordas viradas no pescoço e na cintura.
-      for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(top), Mat.Bronze, 5); c.on(id, X, F(top + 13.4), Mat.Bronze, 5); c.on(id, X, F(top + 13.4) + 1, Mat.Bronze, 1); }
+      if (c.portrait) {
+        // Retrato: bordas viradas em traço fino (luz em cima, sombra logo embaixo).
+        thread(c, [x0, top], [x1, top], Mat.Bronze, 5, [id]);
+        thread(c, [x0, top + 0.45], [x1, top + 0.45], Mat.Bronze, 2, [id]);
+        thread(c, [x0, top + 13.4], [x1, top + 13.4], Mat.Bronze, 5, [id]);
+        thread(c, [x0, top + 13.85], [x1, top + 13.85], Mat.Bronze, 1, [id]);
+      } else for (let X = F(x0); X <= F(x1); X++) { c.on(id, X, F(top), Mat.Bronze, 5); c.on(id, X, F(top + 13.4), Mat.Bronze, 5); c.on(id, X, F(top + 13.4) + 1, Mat.Bronze, 1); }
       return [id, skirt];
     }
     case 3: {
@@ -3693,8 +3727,14 @@ function shouldersCommon(c: Canvas, tier: number, top: number, view: ProtoDir, a
         return;
       }
       case 2: {
-        const id = c.fill(ebox(p[0], p[1], 4, 3), (x, y) => inEllipse(p[0], p[1] - 0.4, 3.8, 2.8)(x, y) && y < p[1] + 1.4, Mat.Bronze, sphere(p[0], p[1] - 1, 4, 3.2), dk);
-        for (let X = F(p[0] - 3.6); X <= F(p[0] + 3.6); X++) c.on(id, X, F(p[1] + 1), Mat.Bronze, 5);
+        // Ombreira de bronze em duas peças: uma lâmina larga embaixo e a calota por cima, cada uma com a borda de
+        // baixo virada (luz em cima, sombra embaixo) e um rebite no alto da calota.
+        const lame = c.fill(ebox(p[0], p[1] + 0.6, 4.6, 2.8), (x, y) => inEllipse(p[0], p[1] + 0.4, 4.4, 2.5)(x, y) && y < p[1] + 2.3, Mat.Bronze, sphere(p[0], p[1] - 0.4, 4.6, 3.4), dk);
+        thread(c, [p[0] - 3.9, p[1] + 1.9], [p[0] + 3.9, p[1] + 1.9], Mat.Bronze, far ? 3 : 5, [lame]);
+        const cap = c.fill(ebox(p[0], p[1] - 0.8, 3.8, 2.8), (x, y) => inEllipse(p[0], p[1] - 0.9, 3.6, 2.6)(x, y) && y < p[1] + 0.9, Mat.Bronze, sphere(p[0], p[1] - 1.6, 3.8, 3.2), dk);
+        thread(c, [p[0] - 3.3, p[1] + 0.6], [p[0] + 3.3, p[1] + 0.6], Mat.Bronze, far ? 3 : 5, [cap]);
+        thread(c, [p[0] - 3.9, p[1] + 1.1], [p[0] + 3.9, p[1] + 1.1], Mat.Bronze, 1, [lame]);
+        rivet(c, [cap], p[0] - s * 0.6, p[1] - 1.6, Mat.Bronze);
         return;
       }
       case 4: {
@@ -3702,7 +3742,7 @@ function shouldersCommon(c: Canvas, tier: number, top: number, view: ProtoDir, a
         for (let k = 2; k >= 0; k--) {
           const cy = p[1] - 1.2 + k * 1.8;
           const id = c.fill(ebox(p[0], cy, 5.6, 3.6), (x, y) => inEllipse(p[0], cy, 5.4 - k * 0.5, 3.4 - k * 0.3)(x, y) && y < cy + 1.6, Mat.Mithral, sphere(p[0], cy - 1, 5.6, 3.8), dk);
-          for (let X = F(p[0] - 5); X <= F(p[0] + 5); X++) c.on(id, X, F(cy + 1.4), Mat.Trim, 4);
+          thread(c, [p[0] - 5, cy + 1.4], [p[0] + 5, cy + 1.4], Mat.Trim, 4, [id]);
         }
         return;
       }

@@ -60,6 +60,11 @@ Regras do retrato (ajuste de apresentação):
   também no vazio), a aba faz sombra mais funda no rosto (`shadowBelow`) e o feltro tem grão fino de 2 px em vez de
   quadradinhos de 4 px (`felt` com `fineGrain`, ligado só enquanto o retrato desenha). O sprite não muda. Antes e
   depois: `docs/arte/herois-chapeus-retrato.png`.
+- **Armaduras e linhas finas**: no retrato, `thread` (a linha usada em ~190 lugares: costuras, bordas, filigrana,
+  gravuras, fitas) desenha uma forma de ~1,3 px em vez de pixels do sprite em bloco, e `rivet` é uma cúpula pequena
+  com brilho. As golas do couro e do bronze passam a usar essas linhas. A ombreira de bronze (`shouldersCommon`,
+  nível 2) deixou de ser uma semiesfera (almofada): é uma lâmina larga com a calota por cima, bordas viradas e
+  rebite, no sprite também. Antes e depois: `docs/arte/herois-armaduras-retrato.png`.
 - **Moldura** (`.grim-hero-frame` em `style.css`): o busto preenche a largura e sai pela base do arco; luz da classe
   atrás da cabeça, vinheta nas bordas, aro de metal com luz em cima e a silhueta contornada na cor da classe.
 
@@ -93,8 +98,8 @@ os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.
 
 ## Próximos passos possíveis
 
-- Retrato: ombreiras e peitorais vistos de perto, uma família por vez, sempre fiéis ao item vestido; a cabeça do orc
-  (costuras e cicatriz do couro cabeludo, faixa de pintura) ainda é a do sprite.
+- Retrato: a cabeça do orc (costuras e cicatriz do couro cabeludo, faixa de pintura) ainda é a do sprite; as linhas
+  de borda desenhadas pixel a pixel em laço (`c.on` por coluna) que restam nos itens, uma família por vez.
 
 - Braços menos cilíndricos (deltoide e antebraço com forma própria).
 - Os heróis no motor de escultura (`sculpt.ts`), no nível do Orc batedor e do Vorgak: teto bem maior, mas reescreve os
