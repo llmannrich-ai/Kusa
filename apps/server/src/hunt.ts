@@ -3458,8 +3458,9 @@ export class Hunt {
     if (p[field] <= 0 || now < seat.potionReadyAt) return;
     if (this.held(seat, "stun", "engulf")) return;
 
+    // Cura fixa: a mesma em qualquer herói e nível (limitada ao que falta para encher).
     const max = potion.stat === "hp" ? p.maxHp : p.maxMana;
-    const restored = Math.min(max - p[potion.stat], Math.round(max * potion.restore));
+    const restored = Math.min(max - p[potion.stat], potion.amount);
     if (restored <= 0) {
       const text = potion.stat === "hp" ? "Vida cheia" : "Mana cheia";
       this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text, color: 0xbdc3c7 } satisfies NoticeMessage);
@@ -3500,6 +3501,8 @@ export class Hunt {
     const potion = POTIONS[msg.potion];
     const field = POTION_FIELD[potion.id];
     const price = CAMP_VENDOR_PRICES[potion.id];
+    // O vendedor só tem as pequenas (`CAMP_VENDOR_POTIONS`); as maiores são do Mercado.
+    if (price === undefined) return;
     if (p[field] >= POTION_MAX) {
       this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Sem lugar para mais", color: 0xbdc3c7 } satisfies NoticeMessage);
       return;
@@ -6008,7 +6011,7 @@ export class Hunt {
     // Quem sai vivo leva as poções que sobraram de volta para a conta; as de quem morre já caíram no chão.
     const potions = survived && !player.bot
       ? Object.fromEntries(POTION_IDS.map((id) => [id, player[POTION_FIELD[id]]])) as Record<PotionId, number> : undefined;
-    player.healthPotions = player.manaPotions = 0;
+    for (const id of POTION_IDS) player[POTION_FIELD[id]] = 0;
     player.status = outcome;
     player.target = "";
     player.dot = "";
