@@ -32,6 +32,7 @@ function rarityColor(id: string) {
  * o menu com os itens da bag e o equipamento vestido (o único lugar onde ele aparece). O menu é compacto para não
  * cobrir a hunt: título com as runas, uma fileira com o vestido, uma com a bag (as melhorias marcadas com ▲) e,
  * logo embaixo, o item tocado comparado com o vestido e as ações (equipar, guardar, largar), sem rolagem.
+ * Fecha com um toque fora dela (o toque segue para o jogo: andar, atacar, travar alvo), no botão da bag ou com B/Esc.
  * O servidor valida tudo; aqui só mandamos a intenção.
  */
 export class BagBar {
@@ -47,7 +48,17 @@ export class BagBar {
     hud.hidden = false;
     hud.addEventListener("click", this.onHudClick);
     menu.addEventListener("click", this.onMenuClick);
+    // Captura: chega antes do joystick e do Phaser, que não impedem nada (o toque continua valendo para o jogo).
+    document.addEventListener("pointerdown", this.onOutside, true);
   }
+
+  /** Toque fora da bag fecha. O botão da bag do HUD fica de fora: o clique dele já abre e fecha. */
+  private onOutside = (e: PointerEvent) => {
+    if (!this.isOpen) return;
+    const target = e.target as Node | null;
+    if (target && (this.menu.contains(target) || this.hud.contains(target))) return;
+    this.close();
+  };
 
   get isOpen() {
     return !this.menu.hidden;
@@ -112,6 +123,7 @@ export class BagBar {
     clearTimeout(this.gearFlash);
     this.hud.removeEventListener("click", this.onHudClick);
     this.menu.removeEventListener("click", this.onMenuClick);
+    document.removeEventListener("pointerdown", this.onOutside, true);
     this.hud.replaceChildren();
     this.hud.hidden = true;
     this.menu.replaceChildren();
@@ -133,7 +145,7 @@ export class BagBar {
 
   private renderMenu(p: PlayerView, bag: string[]) {
     const classId = p.classId as ClassId;
-    // Título: lotação, as runas equipadas (pequenas: valem a hunt inteira e não se trocam aqui) e fechar.
+    // Título: lotação e as runas equipadas (pequenas: valem a hunt inteira e não se trocam aqui).
     const head = el("div", "bag-head");
     const title = el("strong", "bag-title", `🎒 ${bag.length}/${BAG_SIZE}`);
     title.classList.toggle("cheia", bag.length >= BAG_SIZE);
@@ -147,10 +159,7 @@ export class BagBar {
       if (this.isSelected({ rune: i })) cell.classList.add("selected");
       runes.append(cell);
     }
-    const close = el("button", "icon-button bag-close", "✕");
-    close.dataset.action = "close";
-    close.setAttribute("aria-label", "Fechar");
-    head.append(title, runes, close);
+    head.append(title, runes);
 
     const gear = el("div", "bag-row bag-gear");
     gear.setAttribute("aria-label", "Vestido");
@@ -264,7 +273,6 @@ export class BagBar {
     if (!target) return;
     const action = target.dataset.action;
     const sel = this.selected;
-    if (action === "close") return this.close();
     if (action === "equip" && sel && "bag" in sel) this.room.send(MSG.bagEquip, { index: sel.bag });
     else if (action === "drop" && sel && "bag" in sel) this.room.send(MSG.bagDrop, { index: sel.bag });
     else if (action === "unequip" && sel && "slot" in sel) this.room.send(MSG.unequip, { slot: sel.slot });

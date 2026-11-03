@@ -453,7 +453,7 @@ button { min-height: 44px; touch-action: manipulation; }
 /*
  * Menu da bag na hunt: compacto, na parte de cima, para o polegar esquerdo continuar andando embaixo e a hunt
  * continuar à vista. Título com as runas, uma fileira com o vestido, uma com a bag e o item tocado logo embaixo
- * (sempre à vista, sem rolar).
+ * (sempre à vista, sem rolar). Fecha com um toque fora dela (bagbar.ts).
  */
 #bag-menu {
   position: fixed;
@@ -474,7 +474,6 @@ button { min-height: 44px; touch-action: manipulation; }
 .bag-title { font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bag-title.cheia { color: #ff6b6b; }
 .bag-runes { display: flex; gap: 4px; margin-left: auto; }
-.bag-head .bag-close { width: 32px; min-height: 32px; font-size: 15px; }
 .bag-row { display: grid; gap: 4px; }
 /* Rótulo fino de cada fileira, com um fio até a borda. */
 .bag-label { display: flex; align-items: center; gap: 6px; margin-bottom: -3px; font-size: 10px; line-height: 1; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
