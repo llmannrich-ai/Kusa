@@ -805,7 +805,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
 | 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo e aberto, em pé: acampamento com fogueira e vendedor, 3 salões contínuos com 9 áreas de caça (Orla, Covas, Fundo), 4 alcovas laterais e o covil | 9 áreas com monstros próprios, só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Legionário Ossudo, Sagitário das Dunas, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo |
 | 💀 Fíbula Profunda (terreno de caça) | 3 ★★★ | sem tempo | 160×140, uma caverna fixa e aberta: acampamento com fogueira e vendedor no centro, a Orla ao sul e três alas com 12 áreas de caça, emboscadas pelos vazios, 6 alcovas de guarda e 3 covis nas bordas | só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Sagitário das Dunas, Legionário Ossudo, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo (oeste, abre a Cripta), Colosso Cantante (norte, abre o Mar de Areia), Dragão Verde Jovem (leste, abre o Bosque Velho) |
-| 🏚️ Cripta | 5 ★★★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro (×1,5 de força) → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×2,1) → Dragão jovem (×2) |
+| 🏚️ Cripta | 5 ★★★★★ | 9 min | 96×128, mapa fixo, em pé: 8 salões em zigue-zague da escadaria do sul ao covil do alto, salas laterais e câmaras de emboscada nos corredores | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro (×2,2 de força, XP ×0,35) → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×2,1) → Dragão jovem (×2) |
 | 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
 | 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
@@ -960,11 +960,17 @@ comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói)
   no chão e nos tampos; ossos, entulho, cacos, poças e teias nos cantos; barris, caixotes e sacos na entrada, urnas,
   pilhas de ossos e caixões nas salas; marcas de queimado, sangue e ossada no covil do dragão; poeira flutuando e
   cantos da tela escurecidos. Como no pântano, só os sprites perto da câmera são desenhados.
-- **5 estrelas:** a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins logo na sala 1; orcs,
-  carniçais, gnolls e o Pudim Negro no fundo), e todo o elenco da Cripta mais forte que nos outros mapas: comuns
-  (`commonPower` 1,5), os guardas dos baús, Ogro, Bugbear, Cubo e Mímico (`minibossPower` 2,1), e o Dragão jovem
-  (`bossPower` 2: ~2.660 de vida e 72 de dano, contra 1.332 e 36 na Orla do Bosque), com XP e loot na mesma
-  proporção (teto do loot solo 1.500). 6 minutos de hunt.
+- **Mapa fixo e grande** (`CRYPT_SEED`, `generateCrypt` em `dungeon.ts`): 96×128, em pé, sempre a mesma planta (a
+  seed da hunt só sorteia monstros e baús). A equipe entra pela escadaria do sul e o caminho serpenteia de um lado
+  para o outro por 8 salões, com corredores de 3 tiles, até o covil do Dragão no alto. Salas laterais (baús, mini-boss)
+  penduram nos salões e, no meio dos trechos longos de corredor, câmaras com emboscada (`meadows`) seguram o ritmo
+  (teste `ritmo`).
+- **5 estrelas:** a partir do salão 1, espécies um degrau acima (esqueletos e hobgoblins logo no salão 1; orcs,
+  carniçais, gnolls e o Pudim Negro no fundo), e todo o elenco da Cripta bem mais forte que nos outros mapas: comuns
+  (`commonPower` 2,2), os guardas dos baús, Ogro, Bugbear, Cubo e Mímico (`minibossPower` 2,1), e o Dragão jovem
+  (`bossPower` 2: ~2.660 de vida e 72 de dano, contra 1.332 e 36 na Orla do Bosque), com loot na mesma proporção
+  (teto do loot solo 3.200). A XP do mapa paga só 35% (`xpScale` 0,35): limpando 75% do caminho, o herói chega no
+  Dragão no nível 10, e o boss fica do tamanho certo para ele. 9 minutos de hunt.
 
 ### Pântano das Ruínas
 
