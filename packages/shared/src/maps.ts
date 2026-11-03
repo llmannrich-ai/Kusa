@@ -343,7 +343,7 @@ export const MAPS: Record<MapId, MapDef> = {
     mimicChance: 0,
     bosses: [["boneKing", 1], ["singingColossus", 1], ["greenDragon", 1]],
     // A trifurcação: cada covil é a sala do cenário que abre, com a saída dele no fim (o buraco que desce para a Cripta,
-    // a boca da caverna para as areias e para a mata). A ordem segue a dificuldade do cenário (Cripta e Mar de Areia ★3,
+    // a boca da caverna para as areias e para a mata). A ordem é a da campanha (Cripta ★5, Mar de Areia ★3,
     // Bosque Velho ★5).
     lairs: [
       { boss: "boneKing", depth: 2, portalBonus: 0.5, side: "oeste", opens: "crypt", theme: "crypt", exit: "hole" },
@@ -352,11 +352,12 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
   },
   crypt: {
-    id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 3, durationSeconds: 6 * 60,
-    // 3 estrelas: a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins cedo, orcs, carniçais e o Pudim
-    // Negro no fundo), mini-bosses e o Dragão jovem bem mais fortes que os da Orla do Bosque.
-    minibossPower: 1.6, bossPower: 1.6,
-    description: "Salas de pedra e corredores apertados. Goblins e mortos-vivos na entrada; orcs, carniçais e o Pudim Negro no fundo, e ogros e cubos guardando os baús. No fim, o Dragão jovem, muito mais forte que o da Orla. Cuidado com os baús.",
+    id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 5, durationSeconds: 6 * 60,
+    // 5 estrelas: a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins cedo, orcs, carniçais e o Pudim
+    // Negro no fundo), e todo o elenco da Cripta mais forte: comuns ×1,5, os guardas dos baús (Ogro, Bugbear, Cubo e
+    // Mímico) ×2,1 e o Dragão jovem ×2 (~2.660 de vida e 72 de dano, contra 1.332 e 36 na Orla do Bosque).
+    commonPower: 1.5, minibossPower: 2.1, bossPower: 2,
+    description: "Salas de pedra e corredores apertados. Goblins e mortos-vivos na entrada; orcs, carniçais e o Pudim Negro no fundo, e ogros e cubos guardando os baús, todos bem mais fortes que nos outros mapas. No fim, o Dragão jovem, o dobro do da Orla. Cuidado com os baús.",
     encounters: [
       { depth: [0, 0], budget: 80, table: [["goblin", 3], ["kobold", 3], ["rat", 2], ["zombie", 1]] },
       { depth: [1, 1], budget: 230, table: [["skeleton", 3], ["goblin", 2], ["hobgoblin", 2], ["skeletonArcher", 2], ["zombie", 2]] },
@@ -372,7 +373,7 @@ export const MAPS: Record<MapId, MapDef> = {
   },
   swamp: {
     id: "swamp", name: "Pântano das Ruínas", icon: "🌿", difficulty: 3, durationSeconds: 8 * 60,
-    // 3 estrelas, como a Cripta e o Mar de Areia que vêm antes na campanha: mini-bosses e o Rei Bullywug um pouco mais fortes.
+    // 3 estrelas, como o Mar de Areia que vem antes na campanha: mini-bosses e o Rei Bullywug um pouco mais fortes.
     minibossPower: 1.4, bossPower: 1.15,
     description: "Floresta aberta e alagada, com ruínas antigas. Mapa grande, monstros mais fortes e loot melhor. O Rei Bullywug espera nas ruínas do centro.",
     encounters: [

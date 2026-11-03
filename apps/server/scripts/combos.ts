@@ -252,7 +252,7 @@ test("Caça em Bando: as criaturas vão na presa e ferem +50% nela; presa presa 
     a.cast(0);
     if (hunted) a.any.applySpell(HERO, { ...SPELLS.pack_hunt, dot: undefined }, 0, prey.id, prey.x, prey.y, 0, undefined, 1);
     a.advance(4000);
-    return { a, prey, wolf: a.seat().stats.damageDealt["summon:wolf"] ?? 0, preyHit: 4000 * 150 - prey.hp };
+    return { a, prey, wolf: a.seat().stats.damageDealt["summon:wolf"] ?? 0, preyHit: prey.maxHp - prey.hp };
   };
   const hunted = bite(true);
   check(hunted.preyHit > 0, `os lobos foram na presa (${hunted.preyHit} de dano nela)`);

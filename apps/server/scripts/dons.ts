@@ -150,6 +150,8 @@ test("Fome Sombria cura com a Esfera Sombria (trevas)", () => {
   const a = heroArena("sorcerer", withGift("sorcerer", "shadow_hunger"));
   a.choose("shadow_orb");
   const m = a.place("lizardfolk", 3, 0);
+  // Preso longe: o teste mede a cura, não a briga (na Cripta os comuns batem ×1,5).
+  a.any.root(m, a.brain(m), a.now() + 600000);
   a.p.hp = Math.round(a.p.maxHp / 2);
   const before = a.p.hp;
   a.ready();
