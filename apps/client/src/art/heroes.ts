@@ -106,12 +106,20 @@ export function heroSheet(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCan
 export function heroPortrait(classId: ClassId, outfit: Outfit = NO_OUTFIT): HTMLCanvasElement {
   const p = proto;
   if (!NEW_ART || !p) return heroPoses(classId, outfit, ["down"]);
-  const { canvas, ctx } = makeCanvas(p.PORTRAIT_SIZE, p.PORTRAIT_SIZE);
-  const image = ctx.createImageData(p.PORTRAIT_SIZE, p.PORTRAIT_SIZE);
+  const size = p.PORTRAIT_SIZE;
+  const art = makeCanvas(size, size);
+  const image = art.ctx.createImageData(size, size);
   image.data.set(p.protoPortraitData(classId, protoGear(outfit)));
-  ctx.putImageData(image, 0, 0);
+  art.ctx.putImageData(image, 0, 0);
+  // Ampliado 2× sem suavizar: o medalhão (≈ 60 px de CSS, 120–180 px de tela) só reduz a imagem, e reduzir é nítido;
+  // ampliar 128 px com suavização deixava o retrato borrado nos celulares de tela densa.
+  const { canvas, ctx } = makeCanvas(size * PORTRAIT_UPSCALE, size * PORTRAIT_UPSCALE);
+  ctx.drawImage(art.canvas, 0, 0, size * PORTRAIT_UPSCALE, size * PORTRAIT_UPSCALE);
   return canvas;
 }
+
+/** Quantas vezes o retrato é ampliado (pixel duro) antes de ir para o menu. */
+const PORTRAIT_UPSCALE = 2;
 
 /** Quadro parado de cada direção pedida, lado a lado (retratos e prévia do equipamento). */
 export function heroPoses(classId: ClassId, outfit: Outfit = NO_OUTFIT, dirs: HeroDir[] = ["down", "side", "up"]) {

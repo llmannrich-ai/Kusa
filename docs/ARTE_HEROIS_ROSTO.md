@@ -6,7 +6,8 @@ mudança para um tom **heroico e sério** (estilo Baldur's Gate, sem chegar ao g
 menu. Tudo é cliente: sem regra de jogo, sem `RULES_VERSION`, sem migration.
 
 Antes (em cima) e depois (embaixo), sem equipamento: `docs/arte/herois-rosto-antes-depois.png`.
-Retratos do menu (sem equipamento e com 4 conjuntos): `docs/arte/herois-retratos.png`. Xamã Orc de perto (retratos e as 3 direções): `docs/arte/xama-orc-rosto.png`.
+Retratos do menu (sem equipamento e com 4 conjuntos): `docs/arte/herois-retratos.png`. Medalhões no celular, antes e
+depois do ajuste de nitidez e moldura: `docs/arte/herois-medalhoes-antes-depois.png`. Xamã Orc de perto (retratos e as 3 direções): `docs/arte/xama-orc-rosto.png`.
 
 ## Duas imagens por herói
 
@@ -15,12 +16,23 @@ Retratos do menu (sem equipamento e com 4 conjuntos): `docs/arte/herois-retratos
 | Sprite do jogo (`heroSheet`) | hunt, mapa-múndi, palco da página Heróis, prévia do equipamento | ~60 px | silhueta, proporção, postura |
 | Retrato de busto (`heroPortrait`) | medalhões de Heróis e Grimório, sala de espera | 44–80 px | rosto, expressão, elmo |
 
-O retrato **não é um segundo desenho**: é a mesma figura parada de frente, vestida, redesenhada 1,7× maior em volta do
+O retrato **não é um segundo desenho**: é a mesma figura parada de frente, vestida, redesenhada 2× maior em volta do
 rosto (`protoPortraitData`). As formas e a luz são amostradas na resolução nova; os detalhes desenhados à mão (olhos,
 sobrancelha, costuras) viram blocos do tamanho certo (`Canvas.blocks`). Por isso elmo, capuz, armadura e cosméticos
-aparecem no retrato sem nenhum desenho a mais, e retrato e sprite nunca divergem. Sem a arte nova, o retrato é o quadro
-parado de frente, como antes. O retrato tem 128 px e é reduzido no medalhão com `image-rendering: auto` (`.hero-bust`),
-porque o `pixelated` serrilha ao diminuir.
+aparecem no retrato sem nenhum desenho a mais, e retrato e sprite nunca divergem: o equipamento do retrato é sempre o
+vestido. Sem a arte nova, o retrato é o quadro parado de frente, como antes.
+
+Regras do retrato (ajuste de apresentação):
+
+- **Ampliação inteira** (`PORTRAIT_ZOOM = 2`): com 1,7 os detalhes à mão viravam blocos de 1 e de 2 pixels
+  misturados, o que dava o aspecto tosco.
+- **Enquadramento:** rosto a 55% da altura (`PORTRAIT_FACE_Y`), para penacho, chapéu e chifres caberem; o peito é
+  cortado embaixo.
+- **Nitidez:** o retrato de 128 px sai ampliado 2× em pixel duro (`heroPortrait`, 256 px), e o navegador só *reduz*
+  para o medalhão (`image-rendering: auto` em `.hero-bust`). Ampliar 128 px com suavização num celular de tela densa
+  deixava o retrato borrado.
+- **Moldura** (`.grim-hero-frame` em `style.css`): o busto preenche a largura e sai pela base do arco; luz da classe
+  atrás da cabeça, vinheta nas bordas, aro de metal com luz em cima e a silhueta contornada na cor da classe.
 
 ## O que mudou no sprite (só nos heróis: os humanoides sem `build` ficam como estavam)
 
@@ -47,7 +59,8 @@ os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.
 ## Ver e testar
 
 - Sprites: `npx tsx apps/client/scripts/heroiPrevia.ts /tmp/herois.png 4` (`andar` ou `acao` no fim para os outros quadros).
-- Retratos: `protoPortraitData(classe, equipamento)` em `tibiaHero.ts`; no menu, os medalhões de Heróis e do Grimório.
+- Retratos: `npx tsx apps/client/scripts/retratoPrevia.ts /tmp/retratos.png 2` (5 conjuntos × 5 classes); no menu, os
+  medalhões de Heróis e do Grimório.
 
 ## Próximos passos possíveis
 
