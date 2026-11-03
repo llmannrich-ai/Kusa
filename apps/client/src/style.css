@@ -1576,7 +1576,7 @@ button.danger { background: #5a1e12; border-color: #e67e22; }
 .item-cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; background: #000; border: 2px solid; }
 .item-cell .item-img { width: 40px; height: 40px; }
 .item-cell.empty { border: 2px dashed #3a2f27; background: #0006; }
-/* Poções na aba Itens: uma prateleira por tipo, um frasco por espaço; o primeiro vazio compra mais uma. */
+/* Poções no Mercado: uma prateleira por tipo, um frasco por espaço; o primeiro vazio compra mais uma. */
 .potion-shelf { margin-bottom: 10px; padding: 10px; background: #00000059; border: 1px solid #2a211b; border-left: 3px solid var(--potion); }
 .potion-shelf.none { border-color: #5a2a20; border-left-color: var(--potion); }
 .potion-shelf-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }

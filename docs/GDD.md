@@ -2144,7 +2144,7 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
 
 - **Não caem de monstro nem de baú** (`POTIONS_DROP` em `packages/shared/src/potions.ts`, decisão de 02/11: a poção
   grátis apagava o custo de ignorar um monstro). Dois jeitos de ter poção:
-  - **Mercado** (aba Mercado > Comprar, seção Poções, ou o + da prateleira na aba Itens; `buy_potion`): preços da tabela
+  - **Mercado** (aba Mercado > Comprar, seção Poções no topo: uma prateleira de frascos por nível, o + compra; `buy_potion`): preços da tabela
     (`MARKET_POTION_PRICES`, repetido no banco em `potion_price`). Ficam na conta **por personagem** (`profile_potions`,
     até 5 de cada nível) e **entram em toda hunt** com o herói, como o equipamento: o servidor de jogo as tira com
     `take_potions` e devolve as que sobraram com `store_potions`; a hunt solo e a sala no aparelho usam

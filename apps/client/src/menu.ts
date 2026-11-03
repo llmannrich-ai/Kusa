@@ -79,7 +79,6 @@ import {
   type ClassId,
   type ItemDef,
   type ItemSlot,
-  type PotionId,
   type PotionStat,
   type RuneDef,
   type SpellDef,
@@ -1276,14 +1275,6 @@ export class Hub {
     row.append(panel, hero);
     page.append(el("h3", "", "Para a próxima hunt"), row);
 
-    // Poções da classe: entram em toda hunt junto com o equipamento; dá para completar o estoque sem ir ao Mercado.
-    const stock = this.profile.potions[this.classId] ?? potionStock(null);
-    const total = POTION_IDS.reduce((n, id) => n + stock[id], 0);
-    page.append(el("h3", "", `Poções (${total}/${POTION_MAX * POTION_IDS.length})`));
-    page.append(el("p", "muted hub-hint",
-      `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada nível. Cada uma cura uma quantidade fixa. Quem sai vivo traz as que sobraram; quem morre as deixa no chão. Toque no + para comprar (preço em gold).`));
-    page.append(this.potionShelf("hp"), this.potionShelf("mana"));
-
     const vault = this.vaultItems();
     page.append(el("h3", "", `Cofre (${vault.length}/${VAULT_SIZE})`));
     page.append(el("p", "muted hub-hint", vault.length >= VAULT_SIZE
@@ -1533,6 +1524,16 @@ export class Hub {
 
     const list = el("div", "market-list");
     if (this.marketMode === "buy") {
+      // Poções: não caem na hunt; compram-se aqui (ficam na conta do personagem e entram em toda hunt) ou com o vendedor
+      // do acampamento. Uma prateleira por recurso, com uma linha de frascos por nível e o + para comprar.
+      const stock = this.profile.potions[this.classId] ?? potionStock(null);
+      const total = POTION_IDS.reduce((n, id) => n + stock[id], 0);
+      page.append(el("h3", "", `Poções (${total}/${POTION_MAX * POTION_IDS.length})`));
+      page.append(el("p", "muted hub-hint",
+        `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada nível. Cada uma cura uma quantidade fixa. Quem sai vivo traz as que sobraram; quem morre as deixa no chão. Toque no + para comprar.`));
+      page.append(this.potionShelf("hp"), this.potionShelf("mana"));
+
+      page.append(el("h3", "", "Equipamento"));
       const vaultFull = this.vaultItems().length >= VAULT_SIZE;
       page.append(el("p", "muted hub-hint", vaultFull
         ? `Cofre cheio (${VAULT_SIZE}/${VAULT_SIZE}): venda ou equipe algo para comprar.`
@@ -1545,10 +1546,6 @@ export class Hub {
         slots.append(chip);
       }
       page.append(slots);
-      // Poções: não caem na hunt; compram-se aqui (ficam na conta do personagem e entram em toda hunt) ou com o vendedor do acampamento.
-      list.append(el("h3", "", "Poções"));
-      list.append(el("p", "muted hub-hint", `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada nível. A cura é fixa, igual em qualquer herói. Quem sai vivo traz as que sobraram; quem morre as deixa no chão.`));
-      for (const id of POTION_IDS) list.append(this.potionRow(id));
       list.append(el("h3", "", SLOT_NAMES[this.marketSlot]));
       const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === this.marketSlot && (!f.classes || f.classes.includes(this.classId)));
       for (const family of families) {
@@ -1587,30 +1584,8 @@ export class Hub {
     return page;
   }
 
-  /** Linha de uma poção: o estoque da classe na conta e o botão de comprar mais uma (Mercado e aba Itens). */
-  private potionRow(id: PotionId) {
-    const price = MARKET_POTION_PRICES[id];
-    const have = (this.profile.potions[this.classId] ?? potionStock(null))[id];
-    const buy = el("button", "buy", have >= POTION_MAX ? "Cheio" : gold(price));
-    buy.disabled = have >= POTION_MAX || this.profile.gold < price;
-    buy.setAttribute("aria-label", `Comprar ${POTIONS[id].name} por ${price} de gold`);
-    buy.onclick = () => this.run(async () => {
-      this.profile.gold = await buyPotion(this.classId, id);
-      const mine = (this.profile.potions[this.classId] ??= potionStock(null));
-      mine[id] = Math.min(POTION_MAX, mine[id] + 1);
-      this.toast(`${POTIONS[id].name}: ${mine[id]} de ${POTION_MAX} na conta.`);
-    });
-    const row = el("div", "market-row");
-    const text = el("div");
-    const name = el("strong", "", `${POTIONS[id].name} · ${have}/${POTION_MAX}`);
-    name.style.color = hex(POTIONS[id].color);
-    text.append(name, el("small", "muted", `Devolve ${POTIONS[id].amount} de ${POTIONS[id].stat === "hp" ? "vida" : "mana"}`));
-    row.append(itemImg(id), text, buy);
-    return row;
-  }
-
   /**
-   * Prateleira de um recurso (vida ou mana) na aba Itens: uma linha por nível, um frasco por espaço (cheio ou vazio),
+   * Prateleira de um recurso (vida ou mana) no Mercado: uma linha por nível, um frasco por espaço (cheio ou vazio),
    * para ver de relance quantas a classe leva para a hunt. O primeiro espaço vazio de cada linha compra mais uma.
    */
   private potionShelf(stat: PotionStat) {
