@@ -31,6 +31,14 @@ Regras do retrato (ajuste de apresentação):
 - **Nitidez:** o retrato de 128 px sai ampliado 2× em pixel duro (`heroPortrait`, 256 px), e o navegador só *reduz*
   para o medalhão (`image-rendering: auto` em `.hero-bust`). Ampliar 128 px com suavização num celular de tela densa
   deixava o retrato borrado.
+- **Rosto na resolução do retrato** (`portraitFace` e `portraitOrcFace`, ligados por `Canvas.portrait`): no retrato,
+  olhos, sobrancelhas, nariz, boca, cicatriz, pintura, barba rala e brilho do cabelo não são os pixels do sprite
+  ampliados em bloco; são formas desenhadas na resolução final (`Canvas.detail`, em unidades, tom fixo, só sobre as
+  peças dadas). Olho em amêndoa com cílio grosso, pálpebra pesada sobre a íris, íris com pupila e brilho; sobrancelha
+  em fios, mais grossa perto do nariz; nariz com dorso claro, sombra do lado de lá e narinas; boca reta com os cantos
+  para baixo e o lábio de baixo com luz. O orc tem os seus: crista pesada com sombra funda, olhos de brasa, focinho
+  largo, presas curvas. O sprite do jogo não muda (o `portrait` só liga no retrato). Antes e depois:
+  `docs/arte/herois-rosto-retrato.png`.
 - **Moldura** (`.grim-hero-frame` em `style.css`): o busto preenche a largura e sai pela base do arco; luz da classe
   atrás da cabeça, vinheta nas bordas, aro de metal com luz em cima e a silhueta contornada na cor da classe.
 
@@ -63,6 +71,9 @@ os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.
   medalhões de Heróis e do Grimório.
 
 ## Próximos passos possíveis
+
+- Retrato: cabelo com forma e mechas na resolução final (o corte em cuia do cavaleiro e a costura do druida ainda são
+  os do sprite), depois elmos e armaduras vistos de perto, uma família por vez, sempre fiéis ao item vestido.
 
 - Braços menos cilíndricos (deltoide e antebraço com forma própria).
 - Os heróis no motor de escultura (`sculpt.ts`), no nível do Orc batedor e do Vorgak: teto bem maior, mas reescreve os
