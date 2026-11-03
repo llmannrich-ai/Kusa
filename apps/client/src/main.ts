@@ -51,6 +51,7 @@ import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import { travarZoom } from "./semZoom.ts";
 import { mostrarAvisoInstalar } from "./instalar.ts";
+import { ligarVoltar } from "./voltar.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
 
@@ -145,7 +146,7 @@ function showError(message: string) {
 let entering = false;
 let joined = false;
 
-async function enter(connect: () => Promise<DungeonRoom>) {
+async function enter(connect: () => Promise<DungeonRoom>, autoStart = false) {
   if (entering || joined) return;
   setEntering(true);
   show("rooms-error", false);
@@ -154,7 +155,7 @@ async function enter(connect: () => Promise<DungeonRoom>) {
     const room = await connect();
     joined = true;
     stopWatching();
-    bindRoom(room);
+    bindRoom(room, autoStart);
   } catch (err) {
     if ((err as { code?: number }).code === VERSION_MISMATCH_CODE) return onVersionMismatch((err as Error).message);
     if (isStaleModule(err)) return onStaleModule();
@@ -576,23 +577,48 @@ $("create").onclick = () => enter(async () => {
 $("solo").onclick = () => enter(async () => {
   const mapId = createMapId();
   const bots = partySize(MAPS[mapId]) === 1 ? [] : soloBots().filter((c) => !hub.locked(c));
-  const room = await createSoloHunt(account?.username ?? "Aventureiro", hub.classId, mapId, bots);
-  window.setTimeout(() => room.send(MSG.start));
-  return room;
-});
+  return createSoloHunt(account?.username ?? "Aventureiro", hub.classId, mapId, bots);
+}, true);
 $("back").onclick = () => location.reload();
+
+// "Voltar" do aparelho no app instalado (voltar.ts): desfaz a tela de cima em vez de fechar o jogo.
+const visivel = (id: string) => !$(id).hidden;
+ligarVoltar(() => {
+  // Na sala de espera, carregando e na hunt o voltar não faz nada: um gesto sem querer não tira ninguém da sala.
+  if (entering || visivel("lobby") || visivel("loading") || visivel("hud")) return true;
+  if (visivel("result")) { $("back").click(); return true; }
+  const page = document.querySelector<HTMLElement>(".panel.page:not([hidden])");
+  if (page) { page.querySelector<HTMLButtonElement>(".page-back")!.click(); return true; }
+  if (visivel("settings")) { $("settings-back").click(); return true; }
+  if (visivel("rooms")) {
+    if (visivel("map-sheet")) $("map-sheet-close").click();
+    else if (visivel("rooms-sheet")) $("rooms-sheet-close").click();
+    else if (!$<HTMLButtonElement>("rooms-back").disabled) $("rooms-back").click();
+    return true;
+  }
+  if (visivel("menu")) return hub.back();
+  // Tela de login: nada a desfazer.
+  return false;
+}, () => {
+  if (visivel("menu")) hub.notice("Toque em voltar de novo para fechar o Kusa.");
+});
 
 // --- Sala ---------------------------------------------------------------
 
 let game: Phaser.Game | null = null;
 
-function bindRoom(room: DungeonRoom) {
+/** `autoStart`: a hunt começa na hora (solo), sem passar pela sala de espera. */
+function bindRoom(room: DungeonRoom, autoStart = false) {
   setMapOpen(false);
   show("menu", false);
-  show("lobby", true);
+  // Solo: o "Carregando" cobre a tela já agora. Criar o Phaser e a arte trava a página por alguns segundos e,
+  // com a sala de espera aberta, ela ficava à mostra até a hunt começar.
+  if (autoStart) mostrarCarregando(mapIdOf(room.state.mapId));
+  else show("lobby", true);
   // A arte começa a carregar já na sala de espera, enquanto a equipe se junta.
   createGame();
   $("start").onclick = () => room.send(MSG.start);
+  if (autoStart) room.send(MSG.start);
 
   let started = false;
   let left = false;
@@ -602,6 +628,7 @@ function bindRoom(room: DungeonRoom) {
     left = true;
     joined = false;
     show("lobby", false);
+    if (autoStart) esconderCarregando();
     await openRooms();
     if (error) showError(error);
   };

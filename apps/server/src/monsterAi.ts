@@ -50,7 +50,7 @@ const EXTRA_HEAD_POWER = 0.5;
 const MULTIATTACK_GAP_MS = 120;
 /** Depois de cair do Voo/Mergulho, o monstro se recompõe: nem básico nem outra habilidade até passar este tempo. */
 const DIVE_RECOVERY_MS = 1500;
-/** Boss: intervalo mínimo entre duas habilidades (sem ele, a fúria soltava sopro, cegueira e mergulho em sequência). */
+/** Boss: intervalo mínimo entre duas habilidades (sem ele, a fúria soltava sopro, raio e mergulho em sequência). */
 const BOSS_ABILITY_GAP_MS = 1000;
 
 /** Dados do monstro que só o servidor precisa (o cliente vê só o schema `Monster`). */

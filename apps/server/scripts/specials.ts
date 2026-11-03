@@ -31,7 +31,7 @@ for (const mapId of MAP_IDS) {
       if (ability.phase && ability.belowHp === undefined) throw new Error(`${name}: troca de fase sem vida da fase`);
       if ((ability.minRange ?? 0) > ability.range) throw new Error(`${name}: alcance mínimo maior que o máximo`);
       if (ability.power >= 2 && ability.cooldownMs < 6000) throw new Error(`${name}: golpe forte com recarga curta demais`);
-      if (ability.effect && ["root", "stun", "engulf", "blind"].includes(ability.effect.kind) && ability.effect.ms > 2000) {
+      if (ability.effect && ["root", "stun", "engulf"].includes(ability.effect.kind) && ability.effect.ms > 2000) {
         throw new Error(`${name}: controle passa do teto de 2 s`);
       }
       if (NO_AREA.includes(ability.shape)) continue;
@@ -64,7 +64,7 @@ console.log("regras das habilidades OK");
 
 for (const kind of Object.keys(MONSTERS) as MonsterKind[]) {
   if (MONSTERS[kind].rank === "common") continue;
-  // Golpe com área e dano: o mergulho, a invocação e os efeitos sem dano (a Escuridão que só cega) não servem para
+  // Golpe com área e dano: o mergulho, a invocação e os efeitos sem dano não servem para
   // conferir área e acerto; o monstro usa as habilidades na ordem que o sorteio der, então espera um golpe que sirva.
   const harmful = new Set(MONSTERS[kind].abilities!.filter((x) => x.power > 0 && !NO_AREA.includes(x.shape)).map((x) => x.id));
   check(harmful.size > 0, `${kind}: nenhuma habilidade especial com área e dano`);

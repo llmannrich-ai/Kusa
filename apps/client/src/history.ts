@@ -23,8 +23,8 @@ const OUTCOMES: Record<Player["desfecho"], string> = {
   escaped: "🚪 Fugiu", completed: "🐉 Derrotou o boss", died: "💀 Morreu", buried: "🪨 Soterrado",
 };
 
-/** Filtro da tela; a escolha fica só enquanto o jogo está aberto. */
-let mine = true;
+/** Filtro da tela (abre em "Todas": as partidas de todos os jogadores); a escolha fica só enquanto o jogo está aberto. */
+let mine = false;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -62,7 +62,7 @@ export function renderHistory(root: HTMLElement) {
   const chips = el("div", "tm-chips");
   chips.setAttribute("role", "group");
   chips.setAttribute("aria-label", "Partidas");
-  const options: [boolean, string][] = [[true, "Minhas"], [false, "Todas"]];
+  const options: [boolean, string][] = [[false, "Todas"], [true, "Minhas"]];
   const buttons = options.map(([value, text]) => {
     const b = el("button", "chip", text);
     b.type = "button";
@@ -114,7 +114,7 @@ async function load(list: HTMLElement, before: string | null) {
 function matchCard(m: Match) {
   const card = el("section", "tm-card hist-match");
   const head = el("header", "hist-head");
-  const kind = m.solo ? "Solo" : m.equipe > 1 ? `Equipe de ${m.equipe}` : "Sozinho";
+  const kind = m.equipe > 1 ? `Equipe de ${m.equipe}` : m.solo ? "Solo" : "Sozinho";
   head.append(el("h3", "", mapName(m.mapa)), el("small", "muted", `${when(m.quando)} · ${kind} · ${time(m.duracao_s)}`));
   card.append(head, ...m.jogadores.map(playerRow));
   return card;
