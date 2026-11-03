@@ -19,6 +19,13 @@ teclado e mouse no desktop são um extra.
   altura a partir de `--base-b` (`style.css`): no navegador, rente à borda; no **app instalado** (tela de início,
   `display-mode: standalone`), eles descem para dentro da faixa da barra de gestos, que antes ficava como área morta
   embaixo do joystick (o relógio fica logo acima da barrinha do iPhone). Deitado vale o mesmo.
+- **Menus no app instalado:** o **voltar do aparelho** (gesto ou botão do Android; deslizar da borda esquerda no
+  iPhone) desfaz a tela de cima como num app, em vez de fechar o jogo (`voltar.ts`): fecha a folha aberta, a
+  subpágina das Configurações, as Configurações, a ficha do mapa, o mapa, e de outra aba volta para Heróis. Em
+  Heróis sem nada aberto, o primeiro voltar só avisa ("toque em voltar de novo para fechar"); o segundo, logo em
+  seguida, fecha o app. Na sala de espera, carregando e na hunt o voltar não faz nada (um gesto sem querer não tira
+  ninguém da sala). Os painéis ficam centrados entre a barra de status e a barra de gestos (o "‹" nunca fica embaixo
+  do relógio do iPhone), e a faixa da barra de gestos sob as abas do menu também troca de aba. No navegador nada muda.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
 - **Movimento:** joystick virtual com 8 direções, fixo no canto de baixo à esquerda por padrão (ver abaixo). Desligando o fixo, vira flutuante: aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura; deitado, 40%).
   Na zona do joystick todo toque vira joystick, até em cima de um monstro; um toque rápido parado (menos de 250 ms) trava o alvo ali.
@@ -1545,7 +1552,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   só sai depois de meia recarga contada de quando o monstro nota alguém. Projéteis de monstro acertam no disparo.
 - **Fases dos bosses por vida:** a habilidade de fase sai na hora em que a vida cruza o limite (com 1 ou 4 heróis,
   toda fase aparece). Abaixo de 50% da vida o boss se enfurece e as recargas caem para 60%. Boss espera 1 s
-  entre uma habilidade e outra, para não soltar sopro, cegueira e mergulho em sequência.
+  entre uma habilidade e outra, para não soltar sopro, raio e mergulho em sequência.
 - **Voo e Mergulho:** o monstro some invulnerável e cai colado no alvo; a queda é o golpe. Depois dela, ele se
   recompõe por 1,5 s (sem ataque básico nem outra habilidade): é a janela para reagir. **Boss não tem Voo nem
   Mergulho** (tirado de todos: sumir invulnerável no meio da luta deixava o boss quase impossível); a mecânica fica nos
@@ -1555,9 +1562,9 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   resistentes (0,5–0,8) ou vulneráveis (1,5): o aviso sobe em cinza ("Imune", "Resiste") ou amarelo ("Vulnerável!").
   Mortos-vivos e constructos não pegam veneno nem sangramento; limos não sangram; plantas são vulneráveis a fogo.
 - **Efeitos nos heróis:** preso (não anda), atordoado (não anda, não ataca, não conjura nem bebe poção), engolido
-  (como atordoado, e toma dano por segundo; os aliados batendo no monstro o fazem cuspir), cego (não mira além de 2
-  tiles) e corroído (+8% de dano recebido por acúmulo, até 3). **Controle dura no máximo 2 s** e depois o herói fica
-  **4 s imune** ao mesmo efeito.
+  (como atordoado, e toma dano por segundo; os aliados batendo no monstro o fazem cuspir) e corroído (+8% de dano recebido por acúmulo, até 3). **Controle dura
+  no máximo 2 s** e depois o herói fica **4 s imune** ao mesmo efeito. **Não há cegueira:** o herói que de repente não
+  mira nem ataca parecia jogo travado (reclamação de jogador); as habilidades que cegavam ficaram só com o dano.
 - **Encontros sorteados:** cada sala do caminho recebe monstros sorteados da tabela da profundidade (pelo peso) até
   gastar um orçamento de ameaça (a XP da tabela, mais 12% por sala de profundidade), como o orçamento de XP do D&D.
   Enxames (Kobold, Estirge) vêm em grupo; no máximo 12 monstros, 3 artilheiros e 1 líder por sala. Tudo pela seed.
@@ -1608,7 +1615,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
 | **Rei Bullywug** (boss) | escaramuçador | arte das folhas do Runway (`docs/arte/pantano-das-ruinas/bullywug-*.png`) · Estocada (linha de 3, 1,8×, empurra) · lança de alcance 2 · abaixo de 50%: Chamado do Brejo (2 bullywugs, uma vez) · abaixo de 30%: frenesi |
 | **Hidra do pântano** (boss, fora do mapa desde o Rei Bullywug) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida |
-| **Dragão negro jovem** (boss, fora do mapa desde o Rei Bullywug) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) |
+| **Dragão negro jovem** (boss, fora do mapa desde o Rei Bullywug) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) |
 
 ### Pântano do Kosaradius (★1)
 
@@ -1663,7 +1670,7 @@ cada um tem o seu boss. Quase todos são mortos-vivos (não pegam veneno nem san
 | Soterrado | emboscador | escondido na areia (camuflado, nota a 3 tiles) · Ataque Surpresa 1,8× · Fortitude Morta-viva |
 | **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Golpe de Gládio (1,6× e sangra) · Formação! (chama 2 Legionários) |
 | **Múmia Real** (mini-boss) | controlador | máscara de ouro · Faixas Reais (puxa e prende) · Maldição do Faraó (área que corrói) · ferida, Enxame da Tumba (3 Escaravelhos) |
-| **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cegante (linha que cega) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
+| **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cortante (linha que fere) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
 | **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
 | **Faraó Eterno** (boss das Mesas) | artilheiro (morto-vivo, flutua) | ataca a 3 tiles e foge de quem cola · Raio do Sol Morto (linha de 8 que queima) · Mortalha (puxa e prende) · Maldição Eterna (área que corrói) · Legião Eterna (2 Legionários) · abaixo de 30%, Sarcófago (uma vez: cura 20% e empurra 3 em volta) |
 

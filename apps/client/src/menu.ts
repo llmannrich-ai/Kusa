@@ -1498,6 +1498,20 @@ export class Hub {
     return outfit;
   }
 
+  /**
+   * "Voltar" do aparelho (voltar.ts) no menu: fecha a folha aberta, sai de Magias da hunt para a aba de onde veio e,
+   * de outra aba, volta para Heróis. Devolve false quando já está em Heróis sem nada aberto (nada a voltar).
+   */
+  back(): boolean {
+    if (!$("sheet").hidden) { this.closeSheet(); return true; }
+    if (this.tab === "loadout") { this.setTab(this.loadoutFrom); return true; }
+    if (this.tab !== "heroes") { this.setTab("heroes"); return true; }
+    return false;
+  }
+
+  /** Aviso curto no rodapé do menu (o mesmo das compras). */
+  notice(message: string) { this.toast(message); }
+
   private closeSheet() {
     $("sheet").hidden = true;
     $("sheet-backdrop").hidden = true;

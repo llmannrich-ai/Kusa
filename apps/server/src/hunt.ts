@@ -197,7 +197,6 @@ import {
   CONTROL_MAX_MS,
   CORRODE_MAX,
   CORRODE_PER_STACK,
-  BLIND_RANGE,
   damageElement,
   spellElement,
   hitReaction,
@@ -1688,8 +1687,7 @@ export class Hunt {
     // Na Forma de Urso, o básico é uma patada: só alcança quem está colado.
     const reach = form?.maul ? 1 : form?.breath ? form.breath.range : cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0)
       + (cls.attackRange > 1 ? seat.gear.range : 0) + (this.marks(seat, "patient_eye") >= 1 ? EYE.range : 0);
-    // Cego: não mira nada além de perto.
-    const range = this.held(seat, "blind") ? Math.min(reach, BLIND_RANGE) : reach;
+    const range = reach;
     if (p.basicRange !== range) p.basicRange = range;
     // Atordoado ou engolido: não ataca.
     if (this.held(seat, "stun", "engulf")) return;
@@ -2169,9 +2167,8 @@ export class Hunt {
 
     const now = this.host.now();
     if (now < seat.spellReadyAt[slot]) return;
-    // Atordoado ou engolido: não conjura. Cego: magia com alvo só alcança perto.
+    // Atordoado ou engolido: não conjura.
     if (this.held(seat, "stun", "engulf")) return;
-    if (this.held(seat, "blind") && spell.aim === "target") spell = { ...spell, range: Math.min(spell.range, BLIND_RANGE) };
     // Magia de runa de outra classe custa no máximo uma parte da mana máxima.
     const master = masterRune([...p.runes]);
     // Runa do Eco: as magias custam mais, e a cada tantas a seguinte sai de graça e sem recarga.
@@ -5560,7 +5557,7 @@ export class Hunt {
   }
 
   /**
-   * Efeito de monstro num herói. Controle (preso, atordoado, engolido, cego) dura no máximo `CONTROL_MAX_MS`, não
+   * Efeito de monstro num herói. Controle (preso, atordoado, engolido) dura no máximo `CONTROL_MAX_MS`, não
    * se renova enquanto dura e, ao acabar, o herói fica `CONTROL_IMMUNE_MS` imune ao mesmo efeito. Corroído acumula.
    */
   private affectHero(sessionId: string, effect: HeroEffect, m: Monster, damage: number) {

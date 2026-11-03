@@ -478,6 +478,10 @@ class HostedSession {
     }
     const run = data as SoloRunStart;
     this.runId = run.run_id;
+    // Histórico: a hunt de cada jogador entra na mesma partida (sala + seed da hunt, iguais para todos).
+    const seed = this.client?.state.seed ?? this.runtime?.state.seed;
+    if (seed) void supabase.rpc("link_solo_match", { p_run_id: run.run_id, p_room: this.roomId, p_seed: seed })
+      .then(({ error: linkError }) => { if (linkError) console.error("Falha ao ligar a hunt à partida", linkError); });
     noticeClosed(run.closed);
     watchCommitted(() => (this.left ? null : this.client as unknown as DungeonRoom | null), run.run_id);
     const potions = await takeMyPotions(run.run_id);
