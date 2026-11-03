@@ -19,6 +19,13 @@ teclado e mouse no desktop são um extra.
   altura a partir de `--base-b` (`style.css`): no navegador, rente à borda; no **app instalado** (tela de início,
   `display-mode: standalone`), eles descem para dentro da faixa da barra de gestos, que antes ficava como área morta
   embaixo do joystick (o relógio fica logo acima da barrinha do iPhone). Deitado vale o mesmo.
+- **Menus no app instalado:** o **voltar do aparelho** (gesto ou botão do Android; deslizar da borda esquerda no
+  iPhone) desfaz a tela de cima como num app, em vez de fechar o jogo (`voltar.ts`): fecha a folha aberta, a
+  subpágina das Configurações, as Configurações, a ficha do mapa, o mapa, e de outra aba volta para Heróis. Em
+  Heróis sem nada aberto, o primeiro voltar só avisa ("toque em voltar de novo para fechar"); o segundo, logo em
+  seguida, fecha o app. Na sala de espera, carregando e na hunt o voltar não faz nada (um gesto sem querer não tira
+  ninguém da sala). Os painéis ficam centrados entre a barra de status e a barra de gestos (o "‹" nunca fica embaixo
+  do relógio do iPhone), e a faixa da barra de gestos sob as abas do menu também troca de aba. No navegador nada muda.
 - **Dois polegares:** o esquerdo move, o direito ataca e conjura.
 - **Movimento:** joystick virtual com 8 direções, fixo no canto de baixo à esquerda por padrão (ver abaixo). Desligando o fixo, vira flutuante: aparece onde o polegar toca na metade esquerda da parte de baixo da tela (abaixo de 45% da altura; deitado, 40%).
   Na zona do joystick todo toque vira joystick, até em cima de um monstro; um toque rápido parado (menos de 250 ms) trava o alvo ali.
