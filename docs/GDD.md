@@ -2133,19 +2133,31 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
 
 ## Poções
 
-- 2 tipos: ❤️ vida (devolve 35% da vida máxima) e 💧 mana (devolve 40% da mana máxima). Cada jogador carrega até 5 de cada.
+- 2 tipos (❤️ vida e 💧 mana), cada um em **3 níveis com cura fixa** (decisão de 03/11: a mesma em qualquer herói e
+  nível; antes era 35%/40% do máximo, o que dava mais cura a quem já tinha mais vida). Cada jogador carrega até 5 de cada nível.
+
+  | Nível | Vida | Mana | Mercado (vida · mana) |
+  |---|---|---|---|
+  | Pequena (`potion-health`, `potion-mana`) | +60 | +50 | 50 · 40 gold |
+  | Média (`-2`) | +120 | +120 | 150 · 120 gold |
+  | Grande (`-3`) | +220 | +250 | 400 · 320 gold |
+
 - **Não caem de monstro nem de baú** (`POTIONS_DROP` em `packages/shared/src/potions.ts`, decisão de 02/11: a poção
   grátis apagava o custo de ignorar um monstro). Dois jeitos de ter poção:
-  - **Mercado** (aba Mercado > Comprar, seção Poções; `buy_potion`): 50 gold a de vida e 40 a de mana
+  - **Mercado** (aba Mercado > Comprar, seção Poções, ou o + da prateleira na aba Itens; `buy_potion`): preços da tabela
     (`MARKET_POTION_PRICES`, repetido no banco em `potion_price`). Ficam na conta **por personagem** (`profile_potions`,
-    até 5 de cada) e **entram em toda hunt** com o herói, como o equipamento: o servidor de jogo as tira com
+    até 5 de cada nível) e **entram em toda hunt** com o herói, como o equipamento: o servidor de jogo as tira com
     `take_potions` e devolve as que sobraram com `store_potions`; a hunt solo e a sala no aparelho usam
     `take_my_potions`/`store_my_potions`, presas à hunt aberta em `solo_runs` (uma devolução por hunt, só para quem saiu
     vivo, até 5 de cada: o teto do que um cliente adulterado consegue inventar).
-  - **Vendedor do acampamento** (terrenos de caça, `Dungeon.vendor`): 25 de loot a de vida e 20 a de mana
-    (`CAMP_VENDOR_PRICES`), encostado na banca. O loot gasto não vira gold.
+  - **Vendedor do acampamento** (terrenos de caça, `Dungeon.vendor`): só as pequenas (`CAMP_VENDOR_POTIONS`), 25 de
+    loot a de vida e 20 a de mana (`CAMP_VENDOR_PRICES`), encostado na banca. Médias e grandes são do Mercado, com gold. O loot gasto não vira gold.
 - Quem **sai vivo** leva as que sobraram de volta para a conta; quem **morre** as larga no chão junto com o equipamento.
-- Beber: botão da poção (ou Q/E no desktop). A recarga de 6 s é **compartilhada** entre os dois tipos, para ninguém ficar imortal bebendo sem parar. Com a barra cheia, a poção não é gasta.
+- Na hunt há **um botão de vida e um de mana** (não seis: o canto do polegar não comporta). Tocar bebe; no
+  **automático** vai a menor poção que cobre o que falta, ou a maior que houver (`pickPotion`), para não gastar a grande
+  num arranhão. **Segurar** o botão troca o nível: automático → cada nível que o herói tem → automático (o selo I/II/III
+  mostra o que vai agora e fica dourado quando travado). O número é o total do recurso.
+- Beber: botão da poção (ou Q/E no desktop). A recarga de 6 s é **compartilhada** entre todos os tipos e níveis, para ninguém ficar imortal bebendo sem parar. Com a barra cheia, a poção não é gasta.
 - Tabela em `packages/shared/src/potions.ts`; o frasco é desenhado em `apps/client/src/art/items.ts`, os botões em `apps/client/src/potionbar.ts` (com o painel do vendedor, `VendorPanel`) e a banca em `art/badlandsArt.ts` (`vendorStall`).
 
 ## Decisões em aberto
