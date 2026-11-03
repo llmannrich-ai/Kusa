@@ -27,13 +27,15 @@ export const NODES: Record<string, CampaignNode> = {
   // O prólogo: a beira da floresta, onde todo herói começa (o Dragão jovem dela abre o Pântano do Kosaradius).
   n0: { step: 0, x: 300, y: 1865, name: "Orla do Bosque", area: "Floresta do Kosaradius", map: "grove" },
   n1: { step: 1, x: 390, y: 1990, name: "Pântano do Kosaradius", area: "Floresta do Kosaradius", map: "marsh" },
-  // A Fíbula (terreno de caça de teste, sem tempo) fica entre o Kosaradius e a Cripta, no pé das Colinas das Tumbas.
-  n1b: { step: 1, x: 548, y: 2035, name: "Fíbula", area: "Colinas das Tumbas", map: "fibula" },
+  // A Fíbula (terreno de caça, sem tempo) fica logo depois do Kosaradius, no pé das Colinas das Tumbas.
+  n1b: { step: 1, x: 545, y: 2000, name: "Fíbula", area: "Colinas das Tumbas", map: "fibula" },
   // A Fíbula Profunda: a caverna grande com os três covis, logo acima da Fíbula.
   // A Fíbula Profunda é a trifurcação: o covil oeste (Rei Ossudo) desce para a Cripta, o norte (Colosso Cantante) sai
   // nas areias do Mar de Areia e o leste (Dragão Verde Jovem) na mata do Bosque Velho.
-  n1c: { step: 1, x: 600, y: 2110, name: "Fíbula Profunda", area: "Colinas das Tumbas", map: "fibula2", fork: "cripta, deserto ou floresta" },
-  n2: { step: 2, x: 700, y: 1925, name: "Cripta", area: "Colinas das Tumbas", map: "crypt" },
+  // No meio da planície, com folga para as três trilhas saírem em direções diferentes: a floresta ao norte, a Cripta a
+  // nordeste e o deserto a leste.
+  n1c: { step: 1, x: 700, y: 1930, name: "Fíbula Profunda", area: "Colinas das Tumbas", map: "fibula2", fork: "cripta, deserto ou floresta" },
+  n2: { step: 2, x: 835, y: 1765, name: "Cripta", area: "Colinas das Tumbas", map: "crypt" },
   n3: { step: 3, x: 1030, y: 2000, name: "Mar de Areia", area: "Solária", map: "desert" },
   n4: { step: 4, x: 1105, y: 1680, name: "Pântano das Ruínas", area: "Baía Afundada", map: "swamp" },
   // A Caverna da Travessia: o covil leste (Observador) abre as Dunas Cantantes. A floresta agora vem da Fíbula Profunda.
@@ -121,7 +123,7 @@ export const LABELS = [
 
 /** Lugares menores (somem com o mapa longe). */
 export const PLACES = [
-  { text: "Vila do Brejo", x: 540, y: 2088 }, { text: "Porto do Sal", x: 1262, y: 1792 }, { text: "Farol da Maré", x: 1356, y: 1440 },
+  { text: "Vila do Brejo", x: 445, y: 2088 }, { text: "Porto do Sal", x: 1262, y: 1792 }, { text: "Farol da Maré", x: 1356, y: 1440 },
   { text: "Lago Espelho", x: 752, y: 1336, water: true }, { text: "Torre de Vigia", x: 960, y: 1810 }, { text: "Oásis de Âmbar", x: 1262, y: 1340 },
   { text: "Aldeia das Dunas", x: 1180, y: 2010 }, { text: "Ponte do Rei", x: 860, y: 1420 }, { text: "Baía Afundada", x: 1290, y: 1630, water: true, big: true },
   { text: "Cemitério dos Reis", x: 640, y: 1840 }, { text: "Picos de Hrim", x: 960, y: 250 }, { text: "Vau das Garças", x: 300, y: 1080 },
