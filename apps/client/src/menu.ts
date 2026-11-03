@@ -15,6 +15,7 @@ import {
   POTIONS,
   POTION_IDS,
   POTION_MAX,
+  POTIONS_BY_STAT,
   potionStock,
   RARITY_NAMES,
   RUNES,
@@ -79,6 +80,7 @@ import {
   type ItemDef,
   type ItemSlot,
   type PotionId,
+  type PotionStat,
   type RuneDef,
   type SpellDef,
   type SpellId,
@@ -1279,8 +1281,8 @@ export class Hub {
     const total = POTION_IDS.reduce((n, id) => n + stock[id], 0);
     page.append(el("h3", "", `Poções (${total}/${POTION_MAX * POTION_IDS.length})`));
     page.append(el("p", "muted hub-hint",
-      `Entram em toda hunt do ${CLASSES[this.classId].name}. Quem sai vivo traz as que sobraram; quem morre as deixa no chão. Não caem de monstro: toque no + para comprar, ou compre no Mercado e com o vendedor do acampamento.`));
-    for (const id of POTION_IDS) page.append(this.potionShelf(id));
+      `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada nível. Cada uma cura uma quantidade fixa. Quem sai vivo traz as que sobraram; quem morre as deixa no chão. Toque no + para comprar (preço em gold).`));
+    page.append(this.potionShelf("hp"), this.potionShelf("mana"));
 
     const vault = this.vaultItems();
     page.append(el("h3", "", `Cofre (${vault.length}/${VAULT_SIZE})`));
@@ -1531,7 +1533,7 @@ export class Hub {
       page.append(slots);
       // Poções: não caem na hunt; compram-se aqui (ficam na conta do personagem e entram em toda hunt) ou com o vendedor do acampamento.
       list.append(el("h3", "", "Poções"));
-      list.append(el("p", "muted hub-hint", `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada. Quem sai vivo traz as que sobraram; quem morre as deixa no chão.`));
+      list.append(el("p", "muted hub-hint", `Entram em toda hunt do ${CLASSES[this.classId].name}, até ${POTION_MAX} de cada nível. A cura é fixa, igual em qualquer herói. Quem sai vivo traz as que sobraram; quem morre as deixa no chão.`));
       for (const id of POTION_IDS) list.append(this.potionRow(id));
       list.append(el("h3", "", SLOT_NAMES[this.marketSlot]));
       const families = Object.values(ITEM_FAMILIES).filter((f) => f.slot === this.marketSlot && (!f.classes || f.classes.includes(this.classId)));
@@ -1588,61 +1590,67 @@ export class Hub {
     const text = el("div");
     const name = el("strong", "", `${POTIONS[id].name} · ${have}/${POTION_MAX}`);
     name.style.color = hex(POTIONS[id].color);
-    text.append(name, el("small", "muted", `Devolve ${Math.round(POTIONS[id].restore * 100)}% da ${POTIONS[id].stat === "hp" ? "vida" : "mana"}`));
+    text.append(name, el("small", "muted", `Devolve ${POTIONS[id].amount} de ${POTIONS[id].stat === "hp" ? "vida" : "mana"}`));
     row.append(itemImg(id), text, buy);
     return row;
   }
 
   /**
-   * Prateleira de uma poção na aba Itens: um frasco por espaço (cheio ou vazio), para ver de relance quantas a classe
-   * leva para a hunt. O primeiro espaço vazio é o botão de comprar mais uma.
+   * Prateleira de um recurso (vida ou mana) na aba Itens: uma linha por nível, um frasco por espaço (cheio ou vazio),
+   * para ver de relance quantas a classe leva para a hunt. O primeiro espaço vazio de cada linha compra mais uma.
    */
-  private potionShelf(id: PotionId) {
-    const def = POTIONS[id];
-    const price = MARKET_POTION_PRICES[id];
-    const have = (this.profile.potions[this.classId] ?? potionStock(null))[id];
-    const color = hex(def.color);
+  private potionShelf(stat: PotionStat) {
+    const ids = POTIONS_BY_STAT[stat];
+    const stock = this.profile.potions[this.classId] ?? potionStock(null);
+    const total = ids.reduce((n, id) => n + stock[id], 0);
     const shelf = el("div", "potion-shelf");
-    shelf.style.setProperty("--potion", color);
-    shelf.classList.toggle("full", have >= POTION_MAX);
-    shelf.classList.toggle("none", have === 0);
+    shelf.style.setProperty("--potion", hex(POTIONS[ids[0]].color));
+    shelf.classList.toggle("none", total === 0);
 
     const head = el("div", "potion-shelf-head");
-    const text = el("div");
-    const name = el("strong", "", def.name);
-    name.style.color = color;
-    text.append(name, el("small", "muted", `${def.icon} Devolve ${Math.round(def.restore * 100)}% da ${def.stat === "hp" ? "vida" : "mana"}`));
+    const title = el("strong", "", `${POTIONS[ids[0]].icon} ${stat === "hp" ? "Vida" : "Mana"}`);
+    title.style.color = hex(POTIONS[ids[0]].color);
     const count = el("div", "potion-shelf-count");
-    count.append(el("b", "", String(have)), el("small", "", `/${POTION_MAX}`));
-    count.setAttribute("aria-label", `${have} de ${POTION_MAX}`);
-    head.append(text, count);
+    count.append(el("b", "", String(total)), el("small", "", `/${POTION_MAX * ids.length}`));
+    count.setAttribute("aria-label", `${total} de ${POTION_MAX * ids.length}`);
+    head.append(title, count);
+    shelf.append(head);
 
-    const slots = el("div", "potion-slots");
-    for (let i = 0; i < POTION_MAX; i++) {
-      if (i < have) {
-        const cell = el("div", "potion-slot filled");
-        cell.append(itemImg(id));
-        slots.append(cell);
-      } else if (i === have) {
-        const buy = el("button", "potion-slot buy-slot");
-        buy.append(el("span", "plus", "+"), el("small", "", gold(price)));
-        buy.disabled = this.profile.gold < price;
-        buy.setAttribute("aria-label", `Comprar ${def.name} por ${price} de gold`);
-        buy.onclick = () => this.run(async () => {
-          this.profile.gold = await buyPotion(this.classId, id);
-          const mine = (this.profile.potions[this.classId] ??= potionStock(null));
-          mine[id] = Math.min(POTION_MAX, mine[id] + 1);
-          this.toast(`${def.name}: ${mine[id]} de ${POTION_MAX} na conta.`);
-        });
-        slots.append(buy);
-      } else {
-        slots.append(el("div", "potion-slot empty"));
+    for (const id of ids) {
+      const def = POTIONS[id];
+      const price = MARKET_POTION_PRICES[id];
+      const have = stock[id];
+      const line = el("div", "potion-line");
+      line.style.setProperty("--potion", hex(def.color));
+      const text = el("div", "potion-line-text");
+      text.append(el("strong", "", def.size), el("small", "muted", `+${def.amount} · ${have}/${POTION_MAX}`));
+      const slots = el("div", "potion-slots");
+      for (let i = 0; i < POTION_MAX; i++) {
+        if (i < have) {
+          const cell = el("div", "potion-slot filled");
+          cell.append(itemImg(id));
+          slots.append(cell);
+        } else if (i === have) {
+          const buy = el("button", "potion-slot buy-slot");
+          buy.append(el("span", "plus", "+"), el("small", "", String(price)));
+          buy.disabled = this.profile.gold < price;
+          buy.setAttribute("aria-label", `Comprar ${def.name} por ${price} de gold`);
+          buy.title = `${def.name}: ${price} gold`;
+          buy.onclick = () => this.run(async () => {
+            this.profile.gold = await buyPotion(this.classId, id);
+            const mine = (this.profile.potions[this.classId] ??= potionStock(null));
+            mine[id] = Math.min(POTION_MAX, mine[id] + 1);
+            this.toast(`${def.name}: ${mine[id]} de ${POTION_MAX} na conta.`);
+          });
+          slots.append(buy);
+        } else {
+          slots.append(el("div", "potion-slot empty"));
+        }
       }
+      line.append(text, slots);
+      shelf.append(line);
     }
-    shelf.append(head, slots);
-    if (have === 0) shelf.append(el("small", "warn potion-shelf-note", "Sem nenhuma: a hunt começa sem esta poção."));
-    else if (have >= POTION_MAX) shelf.append(el("small", "muted potion-shelf-note", "Cheio para a próxima hunt."));
-    else if (this.profile.gold < price) shelf.append(el("small", "muted potion-shelf-note", `Falta gold: cada uma custa ${gold(price)}.`));
+    if (total === 0) shelf.append(el("small", "warn potion-shelf-note", `Sem nenhuma: a hunt começa sem poção de ${stat === "hp" ? "vida" : "mana"}.`));
     return shelf;
   }
 

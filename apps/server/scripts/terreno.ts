@@ -200,7 +200,7 @@ for (const mapId of ["fibula", "fibula2"] as const) {
   const h = fibula(7, mapId);
   const vendor = h.any.dungeon.vendor;
   check(!!vendor && h.any.dungeon.tiles[vendor.y * h.any.dungeon.width + vendor.x] !== Tile.Wall, `${mapId}: devia ter o vendedor no chão do acampamento`);
-  const price = CAMP_VENDOR_PRICES["potion-health"];
+  const price = CAMP_VENDOR_PRICES["potion-health"]!;
   h.p.loot = price * 2 - 1;
   h.p.x = vendor!.x + CAMP_VENDOR_RADIUS + 2; h.p.y = vendor!.y;
   h.any.buyPotion(HERO, { potion: "potion-health" });
@@ -212,9 +212,14 @@ for (const mapId of ["fibula", "fibula2"] as const) {
   check(h.p.healthPotions === 1 && h.p.loot === price - 1, `${mapId}: sem loot que chegue não compra`);
   h.p.loot = 10_000;
   for (let k = 0; k < POTION_MAX + 2; k++) h.any.buyPotion(HERO, { potion: "potion-mana" });
-  check(h.p.manaPotions === POTION_MAX && h.p.loot === 10_000 - POTION_MAX * CAMP_VENDOR_PRICES["potion-mana"], `${mapId}: para em ${POTION_MAX} poções de mana`);
+  check(h.p.manaPotions === POTION_MAX && h.p.loot === 10_000 - POTION_MAX * CAMP_VENDOR_PRICES["potion-mana"]!, `${mapId}: para em ${POTION_MAX} poções de mana`);
+  // As médias e grandes são só do Mercado: o vendedor não as vende nem com loot de sobra.
+  const lootBefore = h.p.loot;
+  h.any.buyPotion(HERO, { potion: "potion-health-2" });
+  h.any.buyPotion(HERO, { potion: "potion-mana-3" });
+  check(h.p.healthPotions2 === 0 && h.p.manaPotions3 === 0 && h.p.loot === lootBefore, `${mapId}: o vendedor não vende poção média nem grande`);
   const stats = h.any.seats.get(HERO).stats.potions;
-  check(stats.bought["potion-health"] === 1 && stats.bought["potion-mana"] === POTION_MAX && stats.lootSpent === price + POTION_MAX * CAMP_VENDOR_PRICES["potion-mana"], `${mapId}: telemetria das compras`);
+  check(stats.bought["potion-health"] === 1 && stats.bought["potion-mana"] === POTION_MAX && stats.lootSpent === price + POTION_MAX * CAMP_VENDOR_PRICES["potion-mana"]!, `${mapId}: telemetria das compras`);
   // As poções da conta entram com o herói (até o teto) e as que sobram voltam no resultado de quem sai vivo.
   h.p.manaPotions = 0;
   check(h.any.givePotions(HERO, { "potion-health": 9, "potion-mana": 2 }) && h.p.healthPotions === POTION_MAX && h.p.manaPotions === 2, `${mapId}: as poções da conta entram até ${POTION_MAX}`);
