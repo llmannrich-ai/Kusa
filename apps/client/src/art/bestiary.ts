@@ -133,7 +133,8 @@ export interface MonsterArt {
    */
   anim?: MonsterAnim;
   /**
-   * Tamanho do sprite em relação ao tile (padrão 1; o boss é sempre 2, menos o animado, que usa o quadro). Mini-boss que é a versão grande de um comum
+   * Tamanho do sprite em relação ao tile (padrão 1; o boss é 1,6, menos o animado, que usa o quadro, e nenhum boss passa do
+   * Dragão negro: 1,6 tile no lado maior). Mini-boss que é a versão grande de um comum
    * (o Escorpião Negro) fica maior para não ser confundido com ele.
    */
   scale?: number;
@@ -269,7 +270,7 @@ export const BESTIARY_ART: Record<MonsterKind, MonsterArt> = {
   ogreShaman: { texture: "monster-ogre-shaman", facesLeft: true, blood: "red", anim: marshAnim("ogreShaman") },
   orcWarlord: { texture: "monster-orc-warlord", facesLeft: true, blood: "red", anim: marshAnim("orcWarlord") },
   ogreKing: {
-    texture: "monster-ogre-king", facesLeft: true, blood: "red", scale: 1.35,
+    texture: "monster-ogre-king", facesLeft: true, blood: "red", scale: 0.65,
     anim: { size: KING_SIZE, sheet: ogreKingSheet, portrait: ogreKingPortrait, outline: KING_OUTLINE, fps: { idle: 3.5, walk: 8, attack: 9, cast: 6 } },
   },
   // Fortaleza Orc: a arte (esculpida por código) entra logo abaixo, com a arte nova ligada ou não.
@@ -293,6 +294,9 @@ if (protoHero) {
     };
   }
 }
+// O Rei Ossudo usa a folha do Centurião (a mesma textura): com ela animada, entra como animado, um pouco maior que o
+// Centurião e sem passar do Dragão negro (como boss estático, o quadro de 128 px por tile ia a quase 4 tiles).
+if (BESTIARY_ART.boneCenturion.anim) BESTIARY_ART.boneKing = { ...BESTIARY_ART.boneCenturion, scale: HD_SCALE * 1.2 };
 // O sapo vem das folhas geradas por IA (PNG), com mais movimentos: a língua na habilidade, a morte e frente e costas.
 if (protoFrog) {
   const frog = protoFrog;
@@ -322,14 +326,17 @@ if (protoBullywugKing) {
 // O clã do Pântano do Kosaradius que já tem folha gerada por IA (PNG) troca a arte por código: parado, andar, frente e
 // costas da folha de giro; golpe e especial saem do perfil até chegar a folha de ação. Orcs e ogros entram 20% maiores
 // que os outros monstros da arte nova (só o desenho: a colisão e o alcance são do servidor); o chefe e os semi-chefes
-// (`boss` e `miniboss`), que já vêm grandes na folha, ficam 10% abaixo disso.
+// (`boss` e `miniboss`), que já vêm grandes na folha, ficam 10% abaixo disso. O Grumak (o boss) vem num quadro bem
+// maior e encolhe mais, para não passar do Dragão negro (`BOSS_SCALE` em `DungeonScene.ts`).
 const CLAN_SCALE = 1.2;
 const CLAN_CHIEF_SCALE = 0.9;
+const CLAN_BOSS_SCALE = 0.51;
 if (protoClan) {
   for (const [kind, clan] of Object.entries(protoClan) as [MonsterKind, NonNullable<(typeof protoClan)[MonsterKind]>][]) {
-    const chief = MONSTERS[kind].rank !== "common";
+    const rank = MONSTERS[kind].rank;
     BESTIARY_ART[kind] = {
-      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * CLAN_SCALE * (chief ? CLAN_CHIEF_SCALE : 1),
+      ...BESTIARY_ART[kind], facesLeft: true,
+      scale: HD_SCALE * CLAN_SCALE * (rank === "boss" ? CLAN_BOSS_SCALE : rank === "miniboss" ? CLAN_CHIEF_SCALE : 1),
       anim: {
         size: clan.size, sheet: () => clan.sheet(), portrait: () => clan.portrait(), outline: "",
         fps: { idle: 4, walk: 6, attack: 10, cast: 6 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
@@ -361,10 +368,12 @@ const CRYPT_STRIKE: Partial<Record<MonsterKind, Record<string, Clip>>> = {
   ogre: { stomp: "cast", boulder: "attack" },
   mimic: { acidBite: "cast", adhesive: "attack" },
 };
+/** Encolhe o boss da Cripta que vem num quadro grande na folha, para não passar do Dragão negro. */
+const CRYPT_SIZE: Partial<Record<MonsterKind, number>> = { dragon: 0.68 };
 if (protoCrypt) {
   for (const [kind, crypt] of Object.entries(protoCrypt) as [MonsterKind, NonNullable<(typeof protoCrypt)[MonsterKind]>][]) {
     BESTIARY_ART[kind] = {
-      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE,
+      ...BESTIARY_ART[kind], facesLeft: true, scale: HD_SCALE * (CRYPT_SIZE[kind] ?? 1),
       anim: {
         size: crypt.size, sheet: () => crypt.sheet(), portrait: () => crypt.portrait(), outline: "",
         fps: { idle: 4, walk: 8, attack: 10, cast: 7 }, frames: { idle: 4, walk: 4, attack: 4, cast: 4 }, stride: 2,
@@ -387,7 +396,7 @@ if (protoSculpt) {
     ["mummy", protoSculpt.mummyArt(), 1.4, { dreadfulGlare: "cast" }],
     ["mummyPriest", protoSculpt.priestArt(), 1.55, "cast"],
     ["sandElemental", protoSculpt.elementalArt(), 2.1, { whirlwind: "cast", sandBlast: "skill" }],
-    ["sandWorm", protoSculpt.wormArt(), 2.5, { burrow: "cast", swallow: "skill", quake: "attack" }],
+    ["sandWorm", protoSculpt.wormArt(), 1.45, { burrow: "cast", swallow: "skill", quake: "attack" }],
     ["sandScorpion", protoSculpt.scorpionArt(), 1.2, "cast"],
     ["blackScorpion", protoSculpt.scorpionArt(protoSculpt.SHELLS.black), 1.6, { pincers: "attack", deathSting: "cast" }],
     // Bosque Velho: o golpe e o especial de cada um; a 2ª habilidade desenhada é o Coice do centauro e o Voo do dragão.
@@ -408,8 +417,8 @@ if (protoSculpt) {
     ["stranglerVine", protoSculpt.folkArt("vine"), 1.35, { strangle: "cast" }],
     ["awakenedTree", protoSculpt.folkArt("tree"), 2, { rootGrasp: "cast", branchSweep: "attack" }],
     ["fallenWarden", protoSculpt.folkArt("warden"), 1.55, { shadowStep: "attack", bladeDance: "cast", shadeCall: "cast" }],
-    ["erlking", protoSculpt.folkArt("erlking"), 2.6, { royalCharge: "attack", heartThorns: "cast", wildHunt: "cast", forestWrath: "skill" }],
-    ["greenDragon", protoSculpt.greenDragonArt(), 2.3, { poisonBreath: "cast", menhirGas: "cast", tailSweep: "attack" }],
+    ["erlking", protoSculpt.folkArt("erlking"), 1.6, { royalCharge: "attack", heartThorns: "cast", wildHunt: "cast", forestWrath: "skill" }],
+    ["greenDragon", protoSculpt.greenDragonArt(), 1.3, { poisonBreath: "cast", menhirGas: "cast", tailSweep: "attack" }],
   ];
   // A animação é guardada pela textura: monstro que, na arte antiga, usa a textura de outro (o Coração da Mata) ganha
   // uma só dele, senão os dois tocariam a mesma folha.
@@ -447,7 +456,7 @@ if (protoOrcScout) {
 {
   const art = warlordArt();
   BESTIARY_ART.emberWarlord = {
-    ...BESTIARY_ART.emberWarlord, facesLeft: true, scale: HD_SCALE * 3.4,
+    ...BESTIARY_ART.emberWarlord, facesLeft: true, scale: HD_SCALE * 1.08,
     anim: {
       size: art.size, sheet: () => art.sheet(), portrait: () => art.portrait(), outline: "",
       fps: { ...art.fps }, frames: { ...art.clips }, stride: art.stride,

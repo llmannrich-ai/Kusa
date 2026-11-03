@@ -742,21 +742,23 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   Itens, Mercado) continua embaixo do mapa, com Batalhas aceso; tocar numa aba sai do mapa e abre a aba. Tocar de novo
   em Batalhas, já no mapa, leva a câmera ao herói e abre a ficha do cenário onde ele está.
 - **Campanha:** uma trilha do sul ao norte com **19 cenários em 13 etapas**, mais o prólogo (etapa 0). O começo, na ponta sul:
-  🌱 Orla do Bosque (prólogo) → 🐸 Pântano do Kosaradius → 🦴 Fíbula → 💀 Fíbula Profunda → 🏚️ Cripta → 🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da Travessia (trilha
-  vermelha). Daí ao norte, sob a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a
-  **Cidadela Caída**. Depois da Travessia, os dois lados já existem: o deserto (🌬️ Dunas Cantantes → 🪨 Mesas de
-  Solária → ⚔️ Fortaleza Orc, a etapa 8) e a floresta (🌳 Bosque Velho → 🍄 Coração da
-  Mata), que se reencontram na Fortaleza Orc: ela abre por qualquer um dos dois lados. O herói anda pelos ramos (pela
-  floresta ele chega na Fortaleza sem passar pelas Mesas fechadas); para ir de um lado ao outro, volta pela trilha até
-  a Travessia (`OPEN_CHAINS` em `verdemar.ts`).
-- **Bifurcações:** 3, cada uma com dois caminhos que se reencontram (selo de placa no ponto): a **Caverna da
-  Travessia** (etapa 5, no lugar da antiga Encruzilhada: floresta ou deserto), Fortaleza Orc (charco ou ermos) e
-  Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de onde ele abre.
-- **Bifurcação da Travessia:** cada lado é de um covil da Caverna: a floresta (oeste, Bosque Velho) é o lado do
-  Basilisco, e o deserto (leste, Dunas Cantantes) é o do Observador. **Só o boss de um lado abre aquele lado:** o
-  Basilisco abre o Bosque Velho e o Observador as Dunas Cantantes (um não abre o lado do outro). O cliente lê
-  `profile_boss_clears` (bosses vencidos por personagem); a trilha fica vermelha entre dois cenários abertos, como no
-  resto da campanha.
+  🌱 Orla do Bosque (prólogo) → 🐸 Pântano do Kosaradius → 🦴 Fíbula → 💀 Fíbula Profunda (trilha vermelha), que se
+  divide em três: 🏚️ Cripta (por ora sem saída), o deserto (🏜️ Mar de Areia → 🌿 Pântano das Ruínas → 🕳️ Caverna da
+  Travessia → 🌬️ Dunas Cantantes → 🪨 Mesas de Solária → ⚔️ Fortaleza Orc, a etapa 8) e a floresta (🌳 Bosque Velho →
+  🍄 Coração da Mata), que se reencontram na Fortaleza Orc: ela abre por qualquer um dos dois lados. Daí ao norte, sob
+  a névoa da campanha, os cenários por vir (medalhões numerados, trilha pontilhada) até a **Cidadela Caída**. O herói
+  anda pelos ramos (pela floresta ele chega na Fortaleza sem passar pelas Mesas fechadas); para ir de um lado ao outro,
+  volta pela trilha até a Fíbula Profunda (`OPEN_CHAINS` em `verdemar.ts`).
+- **Bifurcações** (selo de placa no ponto): a **Fíbula Profunda** é a trifurcação (cripta, deserto ou floresta), e
+  depois a Fortaleza Orc (charco ou ermos) e o Sopé da Serra (passo ou garganta). Tocar num cenário por vir só avisa de
+  onde ele abre.
+- **Trifurcação da Fíbula Profunda:** cada lado é de um covil da caverna, e a sala do covil tem o tema do lado que
+  abre. **Só o boss de um lado abre aquele lado:** o Rei Ossudo (oeste) abre a Cripta, o Colosso Cantante (norte) o Mar
+  de Areia e o Dragão Verde Jovem (leste) o Bosque Velho. O cliente lê `profile_boss_clears` (bosses vencidos por
+  personagem); a trilha fica vermelha entre dois cenários abertos, como no resto da campanha. Na Caverna da Travessia
+  só o Observador abre um lado (as Dunas Cantantes); o Basilisco não abre mais o Bosque Velho. Na troca (03/11), quem
+  já tinha o Mar de Areia ou o Bosque Velho aberto pelo caminho antigo ficou com o Colosso Cantante ou o Dragão Verde
+  Jovem anotados como vencidos, para não perder o mapa.
 - **Pontos de hoje:** cada um mostra o selo 👥 N quando tem salas abertas. Tocar abre a ficha e leva o herói até ele
   pela trilha, passando pelos pontos do meio, em ~1 s; a câmera fica onde o jogador deixou (zoom e posição; 📍 leva
   até o herói). O boneco vira para o lado da caminhada e
@@ -764,9 +766,9 @@ em `docs/MAPA_MUNDI_PLANO.md`.
   (`prefers-reduced-motion`), o herói só troca de ponto.
 - **Névoa:** Gelo de Hrimfal (norte) e Ilha de Cinza (leste), fora do continente; tocar só avisa.
 - **Desbloqueio:** a campanha abre **por personagem (conta e classe)**: só a 🌱 Orla do Bosque começa aberta, e
-  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Fíbula, Rei Ossudo → Cripta e qualquer boss da Fíbula → Fíbula Profunda, Dragão jovem → Mar de Areia, Verme da Areia → Pântano
+  vencer o boss de um cenário abre o seguinte (Dragão jovem da Orla → Pântano do Kosaradius, Grumak → Fíbula, qualquer boss da Fíbula → Fíbula Profunda, e nela Rei Ossudo → Cripta, Colosso Cantante → Mar de Areia e Dragão Verde Jovem → Bosque Velho; Verme da Areia → Pântano
   das Ruínas, Rei Bullywug → Caverna da Travessia, Observador das Profundezas → Dunas Cantantes, Colosso
-  Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Basilisco → Bosque Velho, Dragão Verde Jovem →
+  Cantante → Mesas de Solária, Faraó Eterno → Fortaleza Orc (boss: Vorgak); Dragão Verde Jovem →
   Coração da Mata, Rei Galhado → Fortaleza Orc). A Fortaleza abre com o boss das Mesas **ou** com o do Coração da Mata:
   quem escolheu a floresta não fica num beco sem saída. Ordem em `packages/shared/src/world.ts` (`WORLD_ORDER`,
   `unlockedBy` e `ALSO_UNLOCKED_BY`), repetida no banco (`map_unlocked_by` e `map_unlocked_by_also`). Na Caverna da Travessia, qualquer um dos dois bosses vence o cenário (estrela), mas cada lado da
@@ -802,7 +804,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 |---|---|---|---|---|
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
 | 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo e aberto, em pé: acampamento com fogueira e vendedor, 3 salões contínuos com 9 áreas de caça (Orla, Covas, Fundo), 4 alcovas laterais e o covil | 9 áreas com monstros próprios, só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Legionário Ossudo, Sagitário das Dunas, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo |
-| 💀 Fíbula Profunda (terreno de caça) | 3 ★★★ | sem tempo | 160×140, uma caverna fixa e aberta: acampamento com fogueira e vendedor no centro, a Orla ao sul e três alas com 12 áreas de caça, emboscadas pelos vazios, 6 alcovas de guarda e 3 covis nas bordas | só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Sagitário das Dunas, Legionário Ossudo, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo (oeste), Colosso Cantante (norte), Faraó Eterno (leste) |
+| 💀 Fíbula Profunda (terreno de caça) | 3 ★★★ | sem tempo | 160×140, uma caverna fixa e aberta: acampamento com fogueira e vendedor no centro, a Orla ao sul e três alas com 12 áreas de caça, emboscadas pelos vazios, 6 alcovas de guarda e 3 covis nas bordas | só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Sagitário das Dunas, Legionário Ossudo, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo (oeste, abre a Cripta), Colosso Cantante (norte, abre o Mar de Areia), Dragão Verde Jovem (leste, abre o Bosque Velho) |
 | 🏚️ Cripta | 3 ★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×1,6 de força) → Dragão jovem (×1,6) |
 | 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
 | 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
@@ -884,8 +886,8 @@ escolhe até onde vai, quando recua e quando sai: recuar (na hunt ou de mapa) fa
 
 ### Fíbula Profunda (terreno de caça)
 
-Segundo terreno de caça (`fibula2`), um cenário à parte no mapa-múndi logo depois da Fíbula (abre com a Fíbula vencida;
-a Cripta continua abrindo só com o Rei Ossudo), dificuldade 3 (★★★): uma caverna aberta três vezes maior onde o jogador
+Segundo terreno de caça (`fibula2`), um cenário à parte no mapa-múndi logo depois da Fíbula (abre com a Fíbula vencida)
+e a trifurcação da campanha (Cripta, Mar de Areia e Bosque Velho, um por covil), dificuldade 3 (★★★): uma caverna aberta três vezes maior onde o jogador
 escolhe até onde vai, quando recua e quando sai, feita para **ir e voltar ao acampamento até o nível 20**. As regras
 comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói) estão na seção da Fíbula.
 
@@ -893,7 +895,7 @@ comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói)
   o acampamento (portal e fogueira) é uma ilha no centro; as áreas de caça são regiões do chão contínuo, **sem parede
   entre elas**, e o perigo cresce com a distância e pela direção. Ao sul, colada ao acampamento, a **Orla** de
   iniciante; a oeste a **ala baixa** (Rei Ossudo), ao norte a **ala média** (Colosso Cantante), a leste a **ala alta**
-  (Faraó Eterno). Os três covis são câmaras muradas nas bordas com uma boca larga virada para o centro; 6 alcovas de
+  (Dragão Verde Jovem). Os três covis são câmaras muradas nas bordas com uma boca larga virada para o centro; 6 alcovas de
   guarda (mini-boss e baú) ficam na beira. Rochas soltas e pilares quebram a visão sem fechar caminho nenhum; nenhum
   corredor com menos de 4 tiles (o 1º teste mostrou que túneis matavam a sensação de mapa aberto). Desenho da Cripta
   (`drawCrypt`), como na Fíbula. O teste `ritmo` cobre a Fíbula Profunda.
@@ -906,10 +908,17 @@ comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói)
   vazios entre as áreas, com a tabela e metade do orçamento da área mais perta, que também renascem: a caverna inteira
   é viva. Cada área pede a sua resposta (matar o escorpião antes do veneno, não correr atrás do chacal, não deixar os
   escaravelhos cercarem, não fugir dos lobos, fechar pela quina nos sagitários, fogo nas múmias, luz nos soterrados...).
-- **Três bosses** (`MapDef.lairs`, como na Caverna da Travessia): Rei Ossudo (oeste, para o nível 8), Colosso Cantante
-  (norte, 14) e Faraó Eterno (leste, 20). Qualquer um vence o cenário (estrela), mas **a Cripta só abre com o Rei
-  Ossudo** (`UNLOCK_BOSS`, no banco `map_unlocked_by_boss`). Cada covil abre o próprio portal (bônus de loot 50%, 75% e
-  100%). Boss não renasce na hunt.
+- **Três bosses, a trifurcação** (`MapDef.lairs`, como na Caverna da Travessia): Rei Ossudo (oeste, para o nível 8),
+  Colosso Cantante (norte, 14) e Dragão Verde Jovem (leste, 20, no lugar do Faraó Eterno). Qualquer um vence o cenário
+  (estrela), e cada um abre um lado da campanha (`Lair.opens`, `UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): a
+  Cripta, o Mar de Areia e o Bosque Velho, na ordem da dificuldade deles (★3, ★3 e ★5). Boss não renasce na hunt.
+- **Salas temáticas e saídas** (só desenho, `drawLairThemes` em `cryptMap.ts` e `art/exitArt.ts`): a sala de cada covil
+  tem o tema do cenário que abre (`Lair.theme`). A do oeste é cripta; a do norte tem o chão de areia das Dunas, colunas,
+  costelas e ânforas; a do leste, o capim do Bosque Velho, samambaias, arbustos e tocos, encostados nas paredes. Quando
+  o boss cai, no lugar do portal roxo abre a saída (`Lair.exit`): um **buraco no chão** no meio da sala do oeste, com a
+  escada descendo para a Cripta, e a **boca da caverna** na parede do fundo das salas do norte e do leste, com a luz do
+  dia lá fora (as dunas ou a mata). Sair por ela conclui a hunt como o portal (bônus de loot 50%, 75% e 100%), e o
+  aviso diz para onde ela leva.
 - **Monstros em lugares fixos:** os mesmos tipos nos mesmos lugares em toda hunt (sorteio de seed fixa do mapa; só os
   Campeões saem da seed da hunt). Aprender o mapa é progressão.
 - **Força** (`commonPower` 1,2, `minibossPower` 1,5, `xpScale` 0,6): as criaturas da Necrópole já são de mapa ★5; com
@@ -2092,6 +2101,8 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
   aos poucos quando o herói aparece ou troca de roupa; até ficarem prontos, o golpe é só o tranco
   (`docs/ARTE_ITENS_CODIGO_PLANO.md`).
   Na Cripta, a opção também troca o cenário e os monstros (piloto dos mapas e monstros, `docs/ARTE_TIBIA.md`).
+  **Tamanho dos bosses:** nenhum boss passa do Dragão negro (1,6 tile no lado maior), com a arte nova ou a antiga; os
+  animados acertam a escala na arte (`BESTIARY_ART`, `apps/client/src/art/bestiary.ts`).
   Os ícones dos itens (mochila, cofre, mercado, equipamento e chão) passam a ser o mesmo desenho do item vestido
   (`docs/ARTE_ITENS.md`, seção 13).
 

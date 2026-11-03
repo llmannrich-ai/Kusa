@@ -30,12 +30,14 @@ export const NODES: Record<string, CampaignNode> = {
   // A Fíbula (terreno de caça de teste, sem tempo) fica entre o Kosaradius e a Cripta, no pé das Colinas das Tumbas.
   n1b: { step: 1, x: 548, y: 2035, name: "Fíbula", area: "Colinas das Tumbas", map: "fibula" },
   // A Fíbula Profunda: a caverna grande com os três covis, logo acima da Fíbula.
-  n1c: { step: 1, x: 600, y: 2110, name: "Fíbula Profunda", area: "Colinas das Tumbas", map: "fibula2" },
+  // A Fíbula Profunda é a trifurcação: o covil oeste (Rei Ossudo) desce para a Cripta, o norte (Colosso Cantante) sai
+  // nas areias do Mar de Areia e o leste (Dragão Verde Jovem) na mata do Bosque Velho.
+  n1c: { step: 1, x: 600, y: 2110, name: "Fíbula Profunda", area: "Colinas das Tumbas", map: "fibula2", fork: "cripta, deserto ou floresta" },
   n2: { step: 2, x: 700, y: 1925, name: "Cripta", area: "Colinas das Tumbas", map: "crypt" },
   n3: { step: 3, x: 1030, y: 2000, name: "Mar de Areia", area: "Solária", map: "desert" },
   n4: { step: 4, x: 1105, y: 1680, name: "Pântano das Ruínas", area: "Baía Afundada", map: "swamp" },
-  // A Caverna da Travessia é a primeira bifurcação: o covil oeste (Basilisco) dá na floresta, o leste (Observador) no deserto.
-  n5: { step: 5, x: 905, y: 1560, name: "Caverna da Travessia", area: "Campos de Kusa", map: "cavern", fork: "floresta ou deserto" },
+  // A Caverna da Travessia: o covil leste (Observador) abre as Dunas Cantantes. A floresta agora vem da Fíbula Profunda.
+  n5: { step: 5, x: 905, y: 1560, name: "Caverna da Travessia", area: "Campos de Kusa", map: "cavern" },
   n6a: { step: 6, x: 610, y: 1565, name: "Bosque Velho", area: "Floresta do Kosaradius", map: "oldwood" },
   n7a: { step: 7, x: 425, y: 1365, name: "Coração da Mata", area: "Floresta do Kosaradius", map: "heartwood" },
   n6b: { step: 6, x: 1155, y: 1440, name: "Dunas Cantantes", area: "Solária", map: "dunes" },
@@ -54,22 +56,28 @@ export const NODES: Record<string, CampaignNode> = {
 
 /**
  * Os cenários de hoje: o herói anda por estas trilhas, um ramo inteiro por linha. Os ramos se separam nas bifurcações:
- * na Caverna da Travessia, o deserto (Dunas Cantantes, Mesas de Solária, até a Fortaleza Orc) e a floresta (Bosque Velho,
- * Coração da Mata), que se reencontram na Fortaleza Orc; nela, o Charco Cinzento e os Ermos Rubros. Para trocar de ramo o herói volta pela trilha
- * até o último ponto comum aos dois (`worldMap.ts`).
+ * na Fíbula Profunda, a Cripta (que por ora não leva a nada), o deserto (Mar de Areia até a Caverna da Travessia, as
+ * Dunas Cantantes e as Mesas de Solária) e a floresta (Bosque Velho e Coração da Mata), que se reencontram na Fortaleza
+ * Orc; nela, o Charco Cinzento e os Ermos Rubros. Para trocar de ramo o herói volta pela trilha até o último ponto comum
+ * aos dois (`worldMap.ts`).
  */
 export const OPEN_CHAINS = [
-  ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9a"],
-  ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9b"],
+  ["n0", "n1", "n1b", "n1c", "n2"],
+  ["n0", "n1", "n1b", "n1c", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9a"],
+  ["n0", "n1", "n1b", "n1c", "n3", "n4", "n5", "n6b", "n7b", "n8", "n9b"],
   // A floresta também chega na Fortaleza Orc (o Coração da Mata a abre, como as Mesas).
-  ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6a", "n7a", "n8", "n9a"],
-  ["n0", "n1", "n1b", "n1c", "n2", "n3", "n4", "n5", "n6a", "n7a", "n8", "n9b"],
+  ["n0", "n1", "n1b", "n1c", "n6a", "n7a", "n8", "n9a"],
+  ["n0", "n1", "n1b", "n1c", "n6a", "n7a", "n8", "n9b"],
 ] as const;
 
-/** Trilhas: 3 bifurcações (Caverna da Travessia, Portões do Império, Sopé da Serra), cada uma com dois caminhos que se reencontram. */
+/**
+ * Trilhas: a trifurcação da Fíbula Profunda (Cripta, deserto e floresta) e as bifurcações da Fortaleza Orc e do Sopé da
+ * Serra. As duas trilhas da trifurcação que saem da Fíbula Profunda ficam no lugar das antigas Cripta → Mar de Areia e
+ * Travessia → Bosque Velho: as curvas sorteadas das outras não mudam.
+ */
 export const EDGES: [string, string][] = [
-  ["n0", "n1"], ["n1", "n1b"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"],
-  ["n5", "n6a"], ["n6a", "n7a"], ["n7a", "n8"], ["n5", "n6b"], ["n6b", "n7b"], ["n7b", "n8"],
+  ["n0", "n1"], ["n1", "n1b"], ["n1c", "n3"], ["n3", "n4"], ["n4", "n5"],
+  ["n1c", "n6a"], ["n6a", "n7a"], ["n7a", "n8"], ["n5", "n6b"], ["n6b", "n7b"], ["n7b", "n8"],
   ["n8", "n9a"], ["n9a", "n10"], ["n8", "n9b"], ["n9b", "n10"],
   ["n10", "n11a"], ["n11a", "n12a"], ["n12a", "n13"], ["n10", "n11b"], ["n11b", "n12b"], ["n12b", "n13"],
   // No fim da lista: as curvas sorteadas das outras trilhas não mudam com a Fíbula.

@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { MAPS, MAP_IDS, TILE_SIZE, centerOf, generateDungeon, mapIdOf } from "@kusa/shared";
+import { MAPS, MAP_IDS, TILE_SIZE, centerOf, generateDungeon, lairsOf, mapIdOf } from "@kusa/shared";
 import { createPropsArt, PROP_SCALE } from "./art/props.ts";
 import { BLOOD_TEXTURE, CHEST_TEXTURE, PORTAL_TEXTURE, ensureMonsterArt, heroActionAnim, heroActionArt, heroArt, heroIdleFrame, heroWalkAnim, type HeroAction } from "./art/textures.ts";
 import { heroSpriteScale, type HeroDir } from "./art/heroes.ts";
@@ -10,7 +10,7 @@ import { scorpionCanvas } from "./art/desertMonsters.ts";
 import { CREATURE_SPRITE_SCALE, refineArt } from "./art/refine.ts";
 import { CLIP_ORDER } from "./art/rig.ts";
 import { drawCavern, CAVERN_VOID } from "./cavernMap.ts";
-import { drawCrypt } from "./cryptMap.ts";
+import { drawCrypt, drawLairExit } from "./cryptMap.ts";
 import { DESERT_VOID, drawDesert } from "./desertMap.ts";
 import { DUNES_VOID, MESAS_VOID, drawDunes } from "./dunesMap.ts";
 import { HEARTWOOD_VOID, OLDWOOD_VOID, drawForest } from "./forestMap.ts";
@@ -29,7 +29,7 @@ import { addCanvasTexture } from "./art/canvasTexture.ts";
  * (`docs/CENARIOS_PLANO.md`). Põe também os baús (trancado, destrancado e aberto) na primeira clareira, o portal de
  * saída e uma poça de sangue no começo.
  *
- * Parâmetros: `mapa` (id do mapa), `seed`, `em` (`inicio`, `boss`, `sala` ou `x,y` em tiles), `largura` (tiles no lado
+ * Parâmetros: `saidas=1` (Fíbula Profunda: a saída de cada covil já aberta, como depois do boss), `mapa` (id do mapa), `seed`, `em` (`inicio`, `boss`, `sala` ou `x,y` em tiles), `largura` (tiles no lado
  * curto da tela, 9 se faltar: mais que isso afasta a câmera para ver o mapa inteiro), `bichos` (monstros da arte nova
  * lado a lado, passando por todos os clipes, posicionados como no jogo: `bichos=sandScorpion,goblin`) e `antigo=1` (o
  * escorpião da arte antiga ao lado, para comparar). `herois` (heróis lado a lado, como no jogo, repetindo andar, golpe e
@@ -61,6 +61,12 @@ class Previa extends Phaser.Scene {
         .setScale(PROP_SCALE).setDepth((room.y + 3) * TILE_SIZE - 1));
     this.add.image(d.portal.x * TILE_SIZE + 16, d.portal.y * TILE_SIZE + 16, PORTAL_TEXTURE.escape).setScale(PROP_SCALE).setDepth(d.portal.y * TILE_SIZE + 1);
     this.add.image((d.spawn.x + 1) * TILE_SIZE, (d.spawn.y + 1) * TILE_SIZE, BLOOD_TEXTURE.puddle, 1).setScale(PROP_SCALE).setDepth(1);
+    if (q.get("saidas")) {
+      lairsOf(d).forEach((lair, i) => {
+        const def = MAPS[d.mapId].lairs?.[i];
+        if (def?.exit) drawLairExit(this, lair.portal, def.exit, def.theme === "forest" ? "forest" : "desert");
+      });
+    }
     const em = q.get("em") ?? "inicio";
     const [x, y] = em.split(",").map(Number);
     const at = em === "boss" ? centerOf(d.boss) : em === "sala" && room ? centerOf(room) : Number.isFinite(y) ? { x, y } : d.spawn;
