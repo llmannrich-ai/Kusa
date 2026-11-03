@@ -60,7 +60,7 @@ export const ERMOS: CharcoSpec[] = [
   spec("oreGolem", FOLK_POSES.menhir, (p, v) => shootFolk("menhir", p, v, sk.golem), { feet: FOLK_FEET, castS: 0.7 }, 1.9, { seismicPunch: "cast", oreSlam: "attack" }),
   spec("hyenaMatriarch", BEAST_POSES.wolf, (p, v) => shootBeast("wolf", p, v, sk.matriarch), { feet: BEAST_FEET.wolf }, 1.85,
     { matriarchPounce: "cast", matriarchMaul: "attack", hyenaHowl: "cast" }),
-  spec("kragmor", WARLORD_POSES, (p, v) => shootWarlord(p, v, sk.giant, "giant"), { feet: WARLORD_FEET, size: WARLORD_SIZE, attackS: 0.7, castS: 1.1 }, 3.7,
+  spec("kragmor", WARLORD_POSES, (p, v) => shootWarlord(p, v, sk.giant, "giant"), { feet: WARLORD_FEET, size: WARLORD_SIZE, attackS: 0.7, castS: 1.1 }, 1.5,
     { oreThrow: "attack", caveIn: "cast", mineCall: "cast", craterLeap: "skill", forgeFury: "cast" }),
 ];
 

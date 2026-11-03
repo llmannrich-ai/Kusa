@@ -245,7 +245,10 @@ interface BarrierFx {
 }
 
 /** Cena da hunt: desenha a dungeon gerada pela seed e o estado (jogadores, monstros, baús) sincronizado pelo servidor. */
-/** Tamanho dos mini-bosses de hoje (sprites estáticos) e do boss: 30% maior que um mini-boss, nunca o dobro. */
+/**
+ * Tamanho dos mini-bosses de hoje (sprites estáticos) e do boss: 30% maior que um mini-boss, nunca o dobro. O Dragão negro
+ * (1,6 tile) é o teto de todo boss: os animados acertam a escala na arte (`BESTIARY_ART`) para caber nesse tamanho.
+ */
 const MINIBOSS_SCALE = 1.25;
 const BOSS_SCALE = 1.6;
 
