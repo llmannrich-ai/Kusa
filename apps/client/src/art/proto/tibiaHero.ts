@@ -584,6 +584,33 @@ export class Canvas {
   }
 
   /**
+   * Como `detail`, mas pinta também onde está vazio (estrela solta no ar, anel de luz em volta da copa): cada pixel
+   * novo vira uma peça nova, na frente do que houver.
+   */
+  ink(box: Box, pick: (x: number, y: number) => readonly [Mat, number] | null) {
+    const id = ++this.seq;
+    const f = this.xf;
+    if (f?.m) return;
+    const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
+    for (let Y = Math.max(0, Math.floor(y0 * K)); Y <= Math.min(this.h - 1, Math.ceil(y1 * K)); Y++) {
+      for (let X = Math.max(0, Math.floor(x0 * K)); X <= Math.min(this.w - 1, Math.ceil(x1 * K)); X++) {
+        let x = (X + 0.5) / K, y = (Y + 0.5) / K;
+        if (this.flare) x = this.unflare(x, y);
+        if (f) {
+          if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x - f.ox) / (f.k * f.sx); y = f.oy + (y - f.oy) / f.k; }
+          else { x = (x - f.tx) / (f.k * f.sx); y = (y - f.ty) / f.k; }
+        }
+        const got = pick(x, y);
+        if (!got) continue;
+        const i = Y * this.w + X;
+        if (this.mat[i] < 0) { this.order[i] = id; this.part[i] = id; }
+        this.mat[i] = got[0];
+        this.fixed[i] = got[1];
+      }
+    }
+  }
+
+  /**
    * Como `detail`, mas só muda o tom de quem já está pintado (`delta` somado ao desvio), sem fixar: a luz da forma
    * continua valendo. Mechas do cabelo, brilho de metal e sombra do elmo no rosto, no retrato. `ids` nulo: qualquer peça.
    */
@@ -4875,7 +4902,14 @@ function staffHead(c: Canvas, id: string, at: Pt, top: number, bottom: number) {
 /** Lã: ponto de tricô em fileiras e um fio solto aqui e ali. */
 export const wool: Offset = (X, Y) => ((X + (Y >> 1)) % 4 === 0 && noise(X, Y) < 0.6 ? -1 : noise(X, Y) < 0.04 ? 1 : 0);
 /** Feltro: manchas largas e macias. */
-export const felt: Offset = (X, Y) => (noise(X >> 2, Y >> 2) < 0.15 ? -1 : noise(X, Y) < 0.03 ? 1 : 0);
+/**
+ * Grão fino do retrato do menu: ligado só enquanto `protoPortraitData` desenha. No retrato, as texturas em blocos de
+ * 4 px (feltro) viravam quadradinhos visíveis; com ele, o grão é de 2 px e irregular.
+ */
+let fineGrain = false;
+export const felt: Offset = (X, Y) => fineGrain
+  ? (noise(X >> 1, Y >> 1) < 0.1 && noise(X, Y) < 0.7 ? -1 : noise(X, Y) < 0.025 ? 1 : 0)
+  : (noise(X >> 2, Y >> 2) < 0.15 ? -1 : noise(X, Y) < 0.03 ? 1 : 0);
 /** Seda: faixas de brilho compridas que descem. */
 const silk = (cx: number): Offset => (X, Y) => {
   const k = ((X - F(cx)) % 9 + 9) % 9;
@@ -4890,6 +4924,19 @@ export const cloth = (cx: number, half: number): Shade => (x) => {
 
 /** Estrelinha de 1 px (com a cruz de brilho em `big`), só sobre as peças `ids` quando dadas. */
 export function star(c: Canvas, ids: readonly number[] | null, X: number, Y: number, mat: Mat, big = false) {
+  if (c.portrait) {
+    // Retrato: estrela de quatro pontas fina, com o miolo claro e as pontas sumindo.
+    const x0 = (X + 0.5) / K, y0 = (Y + 0.5) / K, r = big ? 1.15 : 0.6;
+    const pick = (x: number, y: number): readonly [Mat, number] | null => {
+      const dx = Math.abs(x - x0), dy = Math.abs(y - y0);
+      if (dx < 0.2 && dy < 0.2) return [mat, 5];
+      if ((dx < 0.1 && dy < r) || (dy < 0.1 && dx < r)) return [mat, dx + dy < r * 0.55 ? 4 : 3];
+      return null;
+    };
+    const box: Box = [x0 - r - 0.3, y0 - r - 0.3, x0 + r + 0.3, y0 + r + 0.3];
+    if (ids) c.detail(box, ids, pick); else c.ink(box, pick);
+    return;
+  }
   const put = (x: number, y: number, t: number) => (ids ? c.on(ids, x, y, mat, t) : c.px(x, y, mat, t));
   put(X, Y, 5);
   if (big) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(X + dx, Y + dy, 3);
@@ -4900,7 +4947,9 @@ function shadowBelow(c: Canvas, ids: readonly number[], x0: number, x1: number, 
   for (let X = F(x0); X <= F(x1); X++) {
     for (let Y = c.h - 1; Y > 0; Y--) {
       if (!c.isAt(X, Y, ids)) continue;
-      for (let k = 1; k <= rows; k++) c.nudge(X, Y + k, -1);
+      // Retrato: a sombra é mais funda e mais comprida, mais escura colada na peça.
+      if (c.portrait) for (let k = 1; k <= rows * 2; k++) c.nudge(X, Y + k, k <= rows ? -2 : -1);
+      else for (let k = 1; k <= rows; k++) c.nudge(X, Y + k, -1);
       break;
     }
   }
@@ -4921,6 +4970,19 @@ function bandOver(c: Canvas, ids: readonly number[], x0: number, x1: number, fro
 function patch(c: Canvas, ids: readonly number[], x: number, y: number, w: number, h: number, mat: Mat, offset?: Offset) {
   const id = c.fill([x - 0.5, y - 0.5, x + w + 0.5, y + h + 0.5], (xx, yy, X, Y) =>
     xx + 0.5 >= x && xx + 0.5 <= x + w && yy + 0.5 >= y && yy + 0.5 <= y + h && c.is(X, Y, ids), mat, cloth(x + w / 2, w), offset);
+  if (c.portrait) {
+    // Retrato: pontos de costura finos em volta e a borda do remendo levantando um pouco (sombra embaixo e à direita).
+    c.detail([x - 0.6, y - 0.6, x + w + 0.6, y + h + 0.6], [id, ...ids], (xx, yy) => {
+      const dl = xx - x, dr = x + w - xx, dt = yy - y, db = y + h - yy;
+      const inside = dl >= 0 && dr >= 0 && dt >= 0 && db >= 0;
+      if (!inside) return (dr < 0 && dr > -0.3 && dt > 0 && db > -0.3) || (db < 0 && db > -0.3 && dl > 0 && dr > -0.3) ? [mat, 0] : null;
+      const edge = Math.min(dl, dr, dt, db);
+      const along = dl === edge || dr === edge ? yy : xx;
+      if (edge > 0.25 && edge < 0.5 && ((along * 2.2) % 1) < 0.5) return [Mat.Linen, dl === edge || dt === edge ? 4 : 3];
+      return null;
+    });
+    return id;
+  }
   for (let X = F(x); X <= F(x + w); X += 2) { c.on(id, X, F(y), Mat.Linen, 4); c.on(id, X + 1, F(y + h), Mat.Linen, 3); }
   for (let Y = F(y) + 1; Y <= F(y + h); Y += 2) { c.on(id, F(x), Y, Mat.Linen, 4); c.on(id, F(x + w), Y + 1, Mat.Linen, 3); }
   return id;
@@ -5068,7 +5130,21 @@ function arcaneHat(c: Canvas, id: string, view: ProtoDir, cx: number, cy: number
     case "3": {
       // Capuz rúnico: anil com ponta, runas acesas em volta do rosto.
       const h = hood(c, view, cx, cy, top, Mat.Indigo, velvet(ox), 2.4);
-      if (o) {
+      if (o && c.portrait) {
+        // Retrato: runas finas acesas em volta do rosto, cada uma com um traço vertical e um ou dois cortes.
+        c.detail([o[0] - o[2] - 4, o[1] - o[3] - 4, o[0] + o[2] + 4, o[1] + o[3] + 4], [h], (x, y) => {
+          const dx = (x - o[0]) / (o[2] + 2.3), dy = (y - o[1]) / (o[3] + 2.3);
+          const r = Math.hypot(dx, dy), a = (Math.atan2(dy, dx) + Math.PI * 2) % (Math.PI * 2);
+          const g = Math.floor(a / 0.34), fa = a / 0.34 - g;
+          const rr = (r - 1) * (o[2] + 2.3); // distância radial em unidades (0 = no meio da faixa)
+          if (Math.abs(rr) > 0.75 || fa < 0.2 || fa > 0.8) return null;
+          const lu = (fa - 0.5) * 0.34 * (o[2] + 2.3); // posição ao longo da faixa, em unidades
+          const stem = Math.abs(lu) < 0.1;
+          const cut = g % 2 ? Math.abs(rr - lu * 1.2 - 0.2) < 0.09 && lu > 0 : Math.abs(rr + lu * 1.2) < 0.09 || Math.abs(rr + 0.35) < 0.09 && Math.abs(lu) < 0.35;
+          if (stem || cut) return [Mat.Arcane, stem && Math.abs(rr) < 0.25 ? 5 : 4];
+          return null;
+        });
+      } else if (o) {
         for (let a = 0, g = 0; a < Math.PI * 2; a += 0.34, g++) {
           const X = F(o[0] + Math.cos(a) * (o[2] + 2.3)), Y = F(o[1] + Math.sin(a) * (o[3] + 2.3));
           const glyph = [[0, 0], [0, 1], [1, 1]] as const, glyph2 = [[0, 0], [1, 0], [0, 1], [-1, 1]] as const;
@@ -5112,6 +5188,20 @@ function arcaneHat(c: Canvas, id: string, view: ProtoDir, cx: number, cy: number
       for (const t of [0.12, 0.3, 0.5, 0.7, 0.86]) { const p = cone.at(t); star(c, cone.ids, F(p[0] + (t * 13 % 2 - 1) * cone.w(t) * 0.6), F(p[1]), Mat.White, t < 0.4); }
       for (const [t, mat, orb] of [[0.28, Mat.Arcane, Mat.Bronze], [0.58, Mat.Bronze, Mat.Arcane]] as const) {
         const p = cone.at(t), rx = cone.w(t) + 4.4, ry = 1.5;
+        if (c.portrait) {
+          // Retrato: anel fino; a metade de trás some atrás da copa.
+          c.ink([p[0] - rx - 0.5, p[1] - ry - 0.5, p[0] + rx + 0.5, p[1] + ry + 0.5], (x, y) => {
+            // Distância até a elipse pela inclinação (|e − 1| ÷ |∇e|): o anel tem a mesma espessura em toda a volta.
+            const ux = (x - p[0]) / rx, uy = (y - p[1]) / ry, e = Math.hypot(ux, uy) || 1e-6;
+            const grad = Math.hypot(ux / rx, uy / ry) / e;
+            if (Math.abs(e - 1) / grad > 0.17) return null;
+            const back = y < p[1];
+            if (back && c.isAt(Math.floor(x * K), Math.floor(y * K), cone.ids)) return null;
+            return [mat, back ? 3 : 5];
+          });
+          gem(c, [p[0] - rx * 0.86, p[1] + ry * 0.5], 0.9, orb);
+          continue;
+        }
         for (let a = 0; a < Math.PI * 2; a += 0.02) {
           const X = F(p[0] + Math.cos(a) * rx), Y = F(p[1] + Math.sin(a) * ry);
           if (Math.sin(a) < 0 && c.is(X, Y, cone.ids)) continue;
@@ -6756,7 +6846,8 @@ export function protoPortraitData(cls: ProtoClass = "knight", gear: ProtoGear = 
   // Rosto (cabeça menor, `Build.head`, em volta do pescoço) ≈ unidade 38; vai para o pixel (96, 76) do quadro.
   const face: Pt = [CX, 38];
   const draw = () => c.scaled(face, PORTRAIT_ZOOM, () => front(c, kit, 1, false));
-  withLegends(kit.legend, () => (kit.build ? c.slimmed(CX + 0.5, kit.build.slim, draw) : draw()));
+  fineGrain = true;
+  try { withLegends(kit.legend, () => (kit.build ? c.slimmed(CX + 0.5, kit.build.slim, draw) : draw())); } finally { fineGrain = false; }
   const full = c.render(colors, true, kit.grim);
   const out = new Uint8ClampedArray(PORTRAIT_SIZE * PORTRAIT_SIZE * 4);
   const x0 = F(face[0]) - PORTRAIT_SIZE / 2, y0 = F(face[1]) - Math.round(PORTRAIT_SIZE * PORTRAIT_FACE_Y);
