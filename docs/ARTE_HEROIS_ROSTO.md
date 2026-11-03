@@ -39,6 +39,12 @@ Regras do retrato (ajuste de apresentação):
   para baixo e o lábio de baixo com luz. O orc tem os seus: crista pesada com sombra funda, olhos de brasa, focinho
   largo, presas curvas. O sprite do jogo não muda (o `portrait` só liga no retrato). Antes e depois:
   `docs/arte/herois-rosto-retrato.png`.
+- **Cabelo do retrato** (`portraitLocks`, `fineHair` em `headFront`): a calota deixa de ser uma elipse lisa (parecia
+  elmo) e ganha o volume das mechas em ondas no alto; a franja cai em pontas finas penteadas para um lado (no
+  paladino, por baixo da faixa, que vira forma com costura e rebites); as mechas saem do redemoinho com o vão escuro,
+  o meio claro e fios finos (`Canvas.shift`, que só muda o tom e deixa a luz da forma); nos cabelos que caem dos lados,
+  mechas largas quase retas; a risca do druida é uma linha fina. A pele do retrato não tem pontilhado (o xadrez na
+  resolução do retrato parecia sujeira no rosto). Antes e depois: `docs/arte/herois-cabelo-retrato.png`.
 - **Moldura** (`.grim-hero-frame` em `style.css`): o busto preenche a largura e sai pela base do arco; luz da classe
   atrás da cabeça, vinheta nas bordas, aro de metal com luz em cima e a silhueta contornada na cor da classe.
 
@@ -72,8 +78,8 @@ os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.
 
 ## Próximos passos possíveis
 
-- Retrato: cabelo com forma e mechas na resolução final (o corte em cuia do cavaleiro e a costura do druida ainda são
-  os do sprite), depois elmos e armaduras vistos de perto, uma família por vez, sempre fiéis ao item vestido.
+- Retrato: elmos e armaduras vistos de perto, uma família por vez, sempre fiéis ao item vestido; a cabeça do orc
+  (costuras e cicatriz do couro cabeludo, faixa de pintura) ainda é a do sprite.
 
 - Braços menos cilíndricos (deltoide e antebraço com forma própria).
 - Os heróis no motor de escultura (`sculpt.ts`), no nível do Orc batedor e do Vorgak: teto bem maior, mas reescreve os

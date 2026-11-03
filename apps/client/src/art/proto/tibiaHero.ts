@@ -547,10 +547,10 @@ export class Canvas {
   portrait = false;
 
   /**
-   * Detalhe em tom fixo desenhado como forma, na resolução final: cada pixel do retângulo (unidades) volta para as
-   * unidades pela escala local e `pick` diz o material e o tom (ou nada). Só pinta sobre as peças `ids`.
+   * Varre os pixels finais do retângulo `box` (unidades) já pintados pelas peças `ids` e chama `fn` com o índice e o
+   * ponto de volta em unidades do desenho (pela escala local e pelos ombros largos). Base de `detail` e `shift`.
    */
-  detail(box: Box, ids: readonly number[], pick: (x: number, y: number) => readonly [Mat, number] | null) {
+  private sweep(box: Box, ids: readonly number[], fn: (i: number, x: number, y: number) => void) {
     const f = this.xf;
     if (f?.m) return;
     const [x0, y0, x1, y1] = f ? [this.fwd(box[0], 0) - 1, this.fwd(box[1], 1) - 1, this.fwd(box[2], 0) + 1, this.fwd(box[3], 1) + 1] : box;
@@ -565,12 +565,30 @@ export class Canvas {
           if (f.ox !== undefined && f.oy !== undefined) { x = f.ox + (x - f.ox) / (f.k * f.sx); y = f.oy + (y - f.oy) / f.k; }
           else { x = (x - f.tx) / (f.k * f.sx); y = (y - f.ty) / f.k; }
         }
-        const got = pick(x, y);
-        if (!got) continue;
-        this.mat[i] = got[0];
-        this.fixed[i] = got[1];
+        fn(i, x, y);
       }
     }
+  }
+
+  /**
+   * Detalhe em tom fixo desenhado como forma, na resolução final: em cada pixel já pintado pelas peças `ids`, `pick`
+   * diz o material e o tom (ou nada).
+   */
+  detail(box: Box, ids: readonly number[], pick: (x: number, y: number) => readonly [Mat, number] | null) {
+    this.sweep(box, ids, (i, x, y) => {
+      const got = pick(x, y);
+      if (!got) return;
+      this.mat[i] = got[0];
+      this.fixed[i] = got[1];
+    });
+  }
+
+  /**
+   * Como `detail`, mas só muda o tom de quem já está pintado (`delta` somado ao desvio), sem fixar: a luz da forma
+   * continua valendo. Mechas do cabelo no retrato.
+   */
+  shift(box: Box, ids: readonly number[], delta: (x: number, y: number) => number) {
+    this.sweep(box, ids, (i, x, y) => { if (this.fixed[i] < 0) this.off[i] += delta(x, y); });
   }
 
   /** Pixels finais para onde vai o pixel `X`, `Y` (um só, ou o bloco inteiro com `blocks`). */
@@ -690,7 +708,9 @@ export class Canvas {
         if (this.fixed[i] >= 0) tone = this.fixed[i];
         else {
           // Luz dura (`grim`): a curva afunda o lado da sombra, que chega ao tom 0 no fundo.
-          const v = (grim === 1 ? this.shade[i] : this.shade[i] ** grim) * 4 + (BAYER[(y & 1) * 2 + (x & 1)] - 0.5) * 0.55;
+          // Retrato: pele quase sem pontilhado (na resolução do retrato o xadrez parecia sujeira no rosto).
+          const dither = this.portrait && m === Mat.Skin ? 0 : 0.55;
+          const v = (grim === 1 ? this.shade[i] : this.shade[i] ** grim) * 4 + (BAYER[(y & 1) * 2 + (x & 1)] - 0.5) * dither;
           tone = Math.max(grim > 1 && this.shade[i] < 0.3 ? 0 : 1, Math.min(4, Math.floor(v) + 1)) + this.off[i];
           // Linha interna: a peça da frente risca a de trás com o tom 0.
           const front = [at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)]
@@ -2045,6 +2065,33 @@ function collar(c: Canvas, kit: Kit, cy: number, view: ProtoDir) {
 }
 
 /**
+ * Mechas do cabelo no retrato: o cabelo sai do redemoinho (no alto, um pouco para trás) em mechas largas; cada uma
+ * tem o vão escuro de um lado, o meio claro e fios finos dentro. Nos cabelos que caem dos lados (longo, solto), as
+ * mechas descem quase retas. Só muda o tom (`Canvas.shift`): a luz da forma continua.
+ */
+function portraitLocks(c: Canvas, ids: readonly number[], hair: Kit["hair"], cy: number) {
+  const crownX = CX + 1.2, crownY = cy - 11.5;
+  const falling = hair === "long" || hair === "flowing";
+  c.shift([CX - 12, cy - 12, CX + 12, cy + 20], ids, (x, y) => {
+    let t: number;
+    const side = falling && Math.abs(x - CX) > 6.8 && y > cy - 3;
+    if (side) t = (x - CX) / 1.9 + Math.sin(y * 0.45) * 0.2;
+    else {
+      const dx = x - crownX, dy = y - crownY, r = Math.hypot(dx, dy);
+      if (r < 1.4) return 0;
+      // Ângulo em volta do redemoinho, com uma leve torção ao descer (as mechas curvam).
+      t = (Math.atan2(dy, dx) + 0.025 * r) * 6.2 + 0.25 * Math.sin(r * 0.9);
+    }
+    const lock = Math.floor(t), fr = t - lock;
+    const fiber = noise(Math.floor(x * 4 + lock * 7), Math.floor(y * 1.3)) < 0.12 ? -1 : 0;
+    if (fr < 0.1) return side || hair === "medium" ? -1 : -2;
+    if (fr < 0.24) return -1 + fiber;
+    if (fr > 0.5 && fr < 0.68) return 1 + fiber;
+    return fiber;
+  });
+}
+
+/**
  * Rosto do herói no retrato do menu, desenhado como formas na resolução final (`Canvas.detail`) em vez dos pixels do
  * sprite ampliados em bloco. Tudo em unidades a partir do centro do rosto (`u` para a direita da tela, `v` para
  * baixo); a luz vem de cima à esquerda, então o lado esquerdo da tela é o claro. Tom sério: pálpebra pesada cobrindo
@@ -2179,7 +2226,20 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
     for (const [dx, dy] of [[0, -2], [1, -1], [1, 0], [1, 1], [0, 2]]) c.on(ear, F(ex) + sx * dx, F(cy + 2) + dy, Mat.Skin, 1);
   }
   const hx = CX, hy = cy - 0.8, rx = 9.4, ry = 9.4;
-  const inHair = inEllipse(hx, hy, rx, ry);
+  const fineHair = !!kit.build && c.portrait;
+  // No retrato, a calota não é uma elipse lisa (parecia elmo): o alto ganha o volume das mechas, em ondas.
+  const inHair = fineHair ? (x: number, y: number) => {
+    const dx = x + 0.5 - hx, dy = y + 0.5 - hy, ang = Math.atan2(dy, dx);
+    const bump = dy < 0 ? 1 + 0.045 * Math.sin(ang * 9 + 1.3) + 0.02 * Math.sin(ang * 17) : 1;
+    return (dx / rx) ** 2 + (dy / ry) ** 2 <= bump * bump;
+  } : inEllipse(hx, hy, rx, ry);
+  /** Franja do retrato: pontas finas caindo na testa, penteadas para a direita da tela (`u` do centro, unidades). */
+  const tufts = (u: number, base: number, depth = 1.3, period = 1.55) => {
+    const t = (u + 20 + 0.5) / period, fr = t - Math.floor(t);
+    const lock = Math.floor(t);
+    return base - 0.15 * u * 0 + depth * (1 - fr) ** 1.4 * (0.75 + 0.5 * noise(lock, 3));
+  };
+  const tex = fineHair ? undefined : strands;
   const hairIds: number[] = [];
   c.begin();
   switch (kit.hair) {
@@ -2191,11 +2251,12 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
     }
     case "short":
       // Calota com franja em pontas finas acima da sobrancelha e costeletas até a orelha.
-      hairIds.push(c.fill(ebox(hx, hy, rx, ry), (x, y, X, Y) => {
+      hairIds.push(c.fill(ebox(hx, hy - 0.6, rx + 0.4, ry), (x, y, X, Y) => {
         if (!inHair(x, y)) return false;
+        if (fineHair) return y + 0.5 < tufts(x + 0.5 - CX, cy - 4.2, 1.6) || (Math.abs(x + 0.5 - CX) > 7 && y < cy + 3);
         const fringe = F(cy - 3) + Math.floor(noise(Math.floor(X / 2), 9) * 4) - (Math.abs(X - F(CX)) < 3 ? 1 : 0);
         return Y < fringe || (Math.abs(x + 0.5 - CX) > 7 && y < cy + 3);
-      }, Mat.Hair, sphere(hx, hy, rx, ry), strands));
+      }, Mat.Hair, sphere(hx, hy, rx, ry), tex));
       break;
     case "medium":
       // Franja jogada para o lado e laterais até o queixo.
@@ -2203,16 +2264,17 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
         const d = Math.abs(x + 0.5 - CX);
         const cap = inHair(x, y) || (d < rx + 0.4 && d > 7.4 && y > cy - 2 && y < cy + 6.5 - (d - 7.4) * 1.5);
         if (!cap) return false;
+        if (fineHair) return y + 0.5 < tufts(x + 0.5 - CX, (kit.headband ? cy - 3.2 : cy - 4.6) + (x - CX) * 0.16, kit.headband ? 0.8 : 1.4, 1.8) || (d > 7.2 && y < cy + 7);
         const fringe = F(cy - 3.6 + (x - CX) * 0.16) + Math.floor(noise(Math.floor(X / 2), 4) * 3);
         return Y < fringe || (d > 7.2 && y < cy + 7);
-      }, Mat.Hair, sphere(hx, hy, rx + 0.6, ry + 1), strands));
+      }, Mat.Hair, sphere(hx, hy, rx + 0.6, ry + 1), tex));
       break;
     case "long":
       // Testa alta (entradas), cabelo branco puxado para trás e mechas caindo nos ombros.
-      hairIds.push(c.fill(ebox(hx, hy, rx, ry), (x, y) => inHair(x, y) && (y + 0.5 < cy - 5.4 + Math.abs(x + 0.5 - CX) * 0.15 || (!inEllipse(CX, cy + 2.4, 7.4, 9.4)(x, y) && y < cy + 6)), Mat.Hair, sphere(hx, hy, rx, ry), strands));
+      hairIds.push(c.fill(ebox(hx, hy, rx, ry), (x, y) => inHair(x, y) && (y + 0.5 < cy - 5.4 + Math.abs(x + 0.5 - CX) * 0.15 || (!inEllipse(CX, cy + 2.4, 7.4, 9.4)(x, y) && y < cy + 6)), Mat.Hair, sphere(hx, hy, rx, ry), tex));
       for (const sx of [-1, 1]) {
         const lock: Pt[] = [[CX + sx * 7.6, cy], [CX + sx * 9.6, cy - 1], [CX + sx * 11.4, top + 6], [CX + sx * 9.6, top + 7.5], [CX + sx * 8.2, cy + 6]];
-        hairIds.push(poly(c, lock, Mat.Hair, CX + sx * 7.6, CX + sx * 11.4, strands));
+        hairIds.push(poly(c, lock, Mat.Hair, CX + sx * 7.6, CX + sx * 11.4, tex));
       }
       break;
     case "flowing":
@@ -2220,19 +2282,33 @@ function headFront(c: Canvas, kit: Kit, b: number, top: number) {
       hairIds.push(c.fill(ebox(hx, hy, rx, ry), (x, y, X, Y) => {
         if (!inHair(x, y)) return false;
         const d = Math.abs(x + 0.5 - CX);
+        if (fineHair) return y + 0.5 < cy - 4.4 + d * 0.32 + 0.9 * (1 - ((d / 1.7) % 1)) ** 1.5 || (d > 7.2 && y < cy + 6);
         return Y < F(cy - 3.8 + d * 0.32) + Math.floor(noise(Math.floor(X / 2), 6) * 3) || (d > 7.2 && y < cy + 6);
-      }, Mat.Hair, sphere(hx, hy, rx, ry), strands));
-      // Risca do meio.
-      for (let Y = F(cy - 9.4); Y < F(cy - 3.6); Y++) c.on(hairIds, F(CX) - (Y % 3 === 0 ? 1 : 0), Y, Mat.Hair, 0);
+      }, Mat.Hair, sphere(hx, hy, rx, ry), tex));
+      // Risca do meio (no retrato, uma linha fina e reta; no sprite, a de pixel).
+      if (fineHair) c.detail([CX - 1, cy - 10.4, CX + 1, cy - 3], hairIds, (x, y) => (Math.abs(x - CX + 0.1 + (y - cy + 10) * 0.03) < 0.16 ? [Mat.Hair, 0] : null));
+      else for (let Y = F(cy - 9.4); Y < F(cy - 3.6); Y++) c.on(hairIds, F(CX) - (Y % 3 === 0 ? 1 : 0), Y, Mat.Hair, 0);
       for (const sx of [-1, 1]) {
         const lock: Pt[] = [[CX + sx * 7, cy - 1], [CX + sx * 9.8, cy - 2], [CX + sx * 11, top + 3], [CX + sx * 8.4, top + 4], [CX + sx * 7.2, cy + 7]];
-        hairIds.push(poly(c, lock, Mat.Hair, CX + sx * 7, CX + sx * 11, strands));
+        hairIds.push(poly(c, lock, Mat.Hair, CX + sx * 7, CX + sx * 11, tex));
       }
       break;
   }
   c.end();
+  if (fineHair && hairIds.length) portraitLocks(c, hairIds, kit.hair, cy);
   if (hairIds.length) gloss(c, hairIds, CX - 7, CX + 1, hy - 6, CX - 3);
-  if (kit.headband) {
+  if (kit.headband && fineHair) {
+    // Retrato: a faixa de couro como forma, curva, com a borda clara em cima, pontos de costura e um rebite de cada lado.
+    c.detail([CX - 10, cy - 5, CX + 10, cy - 1], [face, ...hairIds], (x, y) => {
+      const u = x - CX, v = y - (cy - 3.6 + (u / 9.6) ** 2 * 1.0);
+      if (Math.abs(u) > 9.7 || v < 0 || v > 1.7) return null;
+      for (const s of [-1, 1]) if (Math.hypot(u - s * 6, v - 0.85) < 0.36) return [Mat.Trim, Math.hypot(u - s * 6 + 0.12, v - 0.72) < 0.15 ? 5 : 2];
+      if (v < 0.3) return [Mat.Detail, 4];
+      if (v > 1.4) return [Mat.Detail, 0];
+      if (Math.abs(v - 0.85) < 0.13 && ((u + 20) % 0.9) < 0.45) return [Mat.Detail, 1];
+      return [Mat.Detail, u < 0 ? 3 : 2];
+    });
+  } else if (kit.headband) {
     // Faixa de couro na testa, com costura e um rebite de cada lado.
     const Y0 = F(cy - 3.6);
     for (let X = F(CX - 9.6); X <= F(CX + 9.6); X++) {
