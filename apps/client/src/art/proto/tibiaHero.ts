@@ -6270,14 +6270,19 @@ function protoFrameData(dir: ProtoDir, frame: number, kit: Kit, colors: ProtoLoo
 
 /** Lado do retrato do menu, em pixels. */
 export const PORTRAIT_SIZE = 128;
-/** Ampliação do retrato: o busto é a mesma figura do jogo, redesenhada 1,7× maior em volta do rosto. */
-const PORTRAIT_ZOOM = 1.7;
+/**
+ * Ampliação do retrato: o busto é a mesma figura do jogo, redesenhada 2× maior em volta do rosto. Inteira de
+ * propósito: com 1,7 os detalhes à mão (olho, sobrancelha, costura) viravam blocos de 1 e de 2 pixels misturados.
+ */
+const PORTRAIT_ZOOM = 2;
+/** Altura do rosto no retrato (fração do lado, de cima): sobra espaço para penacho, chapéu e chifre do elmo. */
+const PORTRAIT_FACE_Y = 0.55;
 
 /**
  * Retrato de busto do herói para o menu (medalhões, sala de espera): a figura parada de frente, vestida, redesenhada
  * `PORTRAIT_ZOOM` vezes maior em volta do rosto. As formas e a luz são amostradas na resolução nova (o contorno e o
  * volume ficam finos); os detalhes à mão (olhos, sobrancelha, costuras) viram blocos do tamanho certo. Quadrado de
- * `PORTRAIT_SIZE`, rosto no meio e um pouco acima, o peito cortado embaixo.
+ * `PORTRAIT_SIZE`, rosto no meio e um pouco abaixo (`PORTRAIT_FACE_Y`), o peito cortado embaixo.
  */
 export function protoPortraitData(cls: ProtoClass = "knight", gear: ProtoGear = {}, look?: Partial<ProtoLook>): Uint8ClampedArray {
   const kit = protoKit(cls, gear);
@@ -6290,7 +6295,7 @@ export function protoPortraitData(cls: ProtoClass = "knight", gear: ProtoGear = 
   withLegends(kit.legend, () => (kit.build ? c.slimmed(CX + 0.5, kit.build.slim, draw) : draw()));
   const full = c.render(colors, true, kit.grim);
   const out = new Uint8ClampedArray(PORTRAIT_SIZE * PORTRAIT_SIZE * 4);
-  const x0 = F(face[0]) - PORTRAIT_SIZE / 2, y0 = F(face[1]) - Math.round(PORTRAIT_SIZE * 0.47);
+  const x0 = F(face[0]) - PORTRAIT_SIZE / 2, y0 = F(face[1]) - Math.round(PORTRAIT_SIZE * PORTRAIT_FACE_Y);
   for (let y = 0; y < PORTRAIT_SIZE; y++) {
     const sy = y0 + y;
     if (sy < 0 || sy >= S) continue;
