@@ -54,6 +54,12 @@ Regras do retrato (ajuste de apresentação):
   sprite também (retrato e jogo continuam o mesmo item); os detalhes finos, só no retrato. No retrato o pontilhado do
   metal e dos tecidos cai para 0,3 (o xadrez grosso nas faces lisas parecia ruído). Antes e depois:
   `docs/arte/herois-elmos-retrato.png`.
+- **Chapéus e capuzes arcanos**: no retrato, as estrelas (`star`) são de quatro pontas finas, os remendos (`patch`)
+  têm pontos de costura finos e a borda levantada, as runas do capuz rúnico são traços finos acesos, os anéis de luz
+  do chapéu do arquimago são uma linha contínua com a metade de trás escondida atrás da copa (`Canvas.ink`, que pinta
+  também no vazio), a aba faz sombra mais funda no rosto (`shadowBelow`) e o feltro tem grão fino de 2 px em vez de
+  quadradinhos de 4 px (`felt` com `fineGrain`, ligado só enquanto o retrato desenha). O sprite não muda. Antes e
+  depois: `docs/arte/herois-chapeus-retrato.png`.
 - **Moldura** (`.grim-hero-frame` em `style.css`): o busto preenche a largura e sai pela base do arco; luz da classe
   atrás da cabeça, vinheta nas bordas, aro de metal com luz em cima e a silhueta contornada na cor da classe.
 
@@ -87,8 +93,8 @@ os ~140 desenhos de equipamento continuam no lugar, conferidos com `heroiPrevia.
 
 ## Próximos passos possíveis
 
-- Retrato: chapéus e capuzes arcanos, ombreiras e peitorais vistos de perto, uma família por vez, sempre fiéis ao item
-  vestido; a cabeça do orc (costuras e cicatriz do couro cabeludo, faixa de pintura) ainda é a do sprite.
+- Retrato: ombreiras e peitorais vistos de perto, uma família por vez, sempre fiéis ao item vestido; a cabeça do orc
+  (costuras e cicatriz do couro cabeludo, faixa de pintura) ainda é a do sprite.
 
 - Braços menos cilíndricos (deltoide e antebraço com forma própria).
 - Os heróis no motor de escultura (`sculpt.ts`), no nível do Orc batedor e do Vorgak: teto bem maior, mas reescreve os
