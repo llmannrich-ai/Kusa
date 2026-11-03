@@ -98,7 +98,8 @@ for (let i = 0; i < 900 && me().status === "playing"; i++) {
     const step = nextStep(dungeon, p, goal, 1, (x, y) => occupied.has(`${x},${y}`));
     if (step) hunt.move("a", { dx: Math.sign(step.x - p.x) as -1, dy: Math.sign(step.y - p.y) as -1 });
   }
-  if (p.hp < p.maxHp * 0.3) p.hp = p.maxHp; // o teste é dos bots: o cavaleiro não morre.
+  // O teste é dos bots: o cavaleiro não morre (o sopro do Dragão da Cripta, ×2, tira mais de metade da vida dele).
+  if (p.hp < p.maxHp * 0.6) p.hp = p.maxHp;
   advance(hunt, 100);
   for (const id of bots) {
     const b = hunt.state.players.get(id!)!;

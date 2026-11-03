@@ -797,7 +797,7 @@ recarrega sozinho (e o app instalado na tela de início, que guarda a página an
 publicado ao voltar à tela e a cada 10 min, `update.ts`, e recarrega fora de sala quando o build mudou); se o servidor ainda está terminando o deploy, o cliente pede para esperar 1 ou 2 minutos.
 
 Escala de dificuldade de 1 a 8 estrelas (`MAX_DIFFICULTY`): 1 para os mapas de entrada, 2 para o Pântano das
-Ruínas, 4 para a Caverna da Travessia, 5 para Dunas Cantantes, 6 para Mesas de Solária e 8 para a Fortaleza Orc, o mapa
+Ruínas, 4 para a Caverna da Travessia, 5 para a Cripta, Dunas Cantantes e Bosque Velho, 6 para Mesas de Solária e 8 para a Fortaleza Orc, o mapa
 mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e fora da campanha, ficam com 6 provisório.
 
 | Mapa | Dificuldade | Tempo | Tamanho | Monstros (comuns → mini-bosses → bosses) |
@@ -805,7 +805,7 @@ mais difícil (a 3 e a 7 ficam livres). Os Portões do Império, sem monstros e 
 | 🌱 Orla do Bosque | 1 ★☆ | 8 min | 96×128, mapa fixo (`GROVE_SEED`), em pé: o terreno do Bosque Velho com 7 zonas, 12 emboscadas, 4 clareiras de troncos, o riacho com pontes e o círculo de menires | Ratazana, Estirge, Galhudo, Aranha gigante, Lobo Atroz, Sátiro Flautista, Espinheiro → Dríade Corrompida, Centauro Renegado (×0,6 de força) → Dragão jovem |
 | 🦴 Fíbula (terreno de caça) | 2,5 ★★½ | sem tempo | 64×100, mapa fixo e aberto, em pé: acampamento com fogueira e vendedor, 3 salões contínuos com 9 áreas de caça (Orla, Covas, Fundo), 4 alcovas laterais e o covil | 9 áreas com monstros próprios, só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Legionário Ossudo, Sagitário das Dunas, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo |
 | 💀 Fíbula Profunda (terreno de caça) | 3 ★★★ | sem tempo | 160×140, uma caverna fixa e aberta: acampamento com fogueira e vendedor no centro, a Orla ao sul e três alas com 12 áreas de caça, emboscadas pelos vazios, 6 alcovas de guarda e 3 covis nas bordas | só arte por código (×1,2 de força, XP ×0,6): Escorpião da Areia, Abutre Gigante, Chacal de Ossos, Galhudo, Escaravelhos Carniceiros, Lobo Atroz, Sagitário das Dunas, Legionário Ossudo, Carpideira, Múmia Enfaixada, Soterrado, Múmia, Pantera das Sombras → Centurião Ossudo, Múmia Real, Escriba das Areias (×1,5) → Rei Ossudo (oeste, abre a Cripta), Colosso Cantante (norte, abre o Mar de Areia), Dragão Verde Jovem (leste, abre o Bosque Velho) |
-| 🏚️ Cripta | 3 ★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×1,6 de força) → Dragão jovem (×1,6) |
+| 🏚️ Cripta | 5 ★★★★★ | 6 min | 72×72, 4 salas no caminho | Ratazana, Kobold, Goblin, Zumbi, Esqueleto, Esqueleto arqueiro, Hobgoblin capitão, Orc guerreiro, Carniçal, Gnoll, Pudim Negro (×1,5 de força) → Ogro, Bugbear chefe, Cubo Gelatinoso, Mímico (×2,1) → Dragão jovem (×2) |
 | 🌿 Pântano das Ruínas | 3 ★★★ | 8 min | 112×112, campo aberto com 7 zonas de monstros | Sapo gigante, Bullywug, Estirge, Cobra-d'água, Afogado, Homem-lagarto, Carniçal, Crocodilo gigante, Fogo-fátuo, Naga guerreira, Pudim Negro, Monte Errante → Troll do brejo, Bruxa Verde, Naga Espiritual (×1,4) → Rei Bullywug (×1,15) |
 | 🏜️ Mar de Areia | 3 ★★★ | 8 min | 104×104 de superfície, 6 zonas e 4 campinas + caverna pequena | Escorpião da Areia, Abutre Gigante, Esqueleto, Aranha gigante, Esqueleto arqueiro, Gnoll, Múmia, Chacal de Ossos, Legionário Ossudo, Soterrado, Sagitário das Dunas → Escorpião Negro Gigante, Sacerdote Mumificado, Elemental de Areia (×1,6 de força) → Verme da Areia (×1,6, na caverna) |
 | 🕳️ Caverna da Travessia | 4 ★★★★ | 10 min | 76×108, toda subterrânea: chegada, tronco de 2 zonas, 2 túneis de 3 zonas e 2 covis | Kobold, Estirge, Ratazana, Goblin, Goblin arqueiro, Aranha gigante (tronco); Esqueleto, Esqueleto arqueiro, Gnoll, Hobgoblin, Orc, Carniçal, Homem-lagarto (oeste); Carniçal, Homem-lagarto, Afogado, Crocodilo, Naga, Pudim Negro, Monte Errante, Fogo-fátuo (leste) → Bugbear, Troll, Cubo Gelatinoso, Mímico → Basilisco (covil oeste) e Observador das Profundezas (covil leste) |
@@ -911,7 +911,7 @@ comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói)
 - **Três bosses, a trifurcação** (`MapDef.lairs`, como na Caverna da Travessia): Rei Ossudo (oeste, para o nível 8),
   Colosso Cantante (norte, 14) e Dragão Verde Jovem (leste, 20, no lugar do Faraó Eterno). Qualquer um vence o cenário
   (estrela), e cada um abre um lado da campanha (`Lair.opens`, `UNLOCK_BOSS`, no banco `map_unlocked_by_boss`): a
-  Cripta, o Mar de Areia e o Bosque Velho, na ordem da dificuldade deles (★3, ★3 e ★5). Boss não renasce na hunt.
+  Cripta, o Mar de Areia e o Bosque Velho, na ordem da campanha (★5, ★3 e ★5). Boss não renasce na hunt.
 - **Salas temáticas e saídas** (só desenho, `drawLairThemes` em `cryptMap.ts` e `art/exitArt.ts`): a sala de cada covil
   tem o tema do cenário que abre (`Lair.theme`). A do oeste é cripta; a do norte tem o chão de areia das Dunas, colunas,
   costelas e ânforas; a do leste, o capim do Bosque Velho, samambaias, arbustos e tocos, encostados nas paredes. Quando
@@ -960,10 +960,11 @@ comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói)
   no chão e nos tampos; ossos, entulho, cacos, poças e teias nos cantos; barris, caixotes e sacos na entrada, urnas,
   pilhas de ossos e caixões nas salas; marcas de queimado, sangue e ossada no covil do dragão; poeira flutuando e
   cantos da tela escurecidos. Como no pântano, só os sprites perto da câmera são desenhados.
-- **3 estrelas:** a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins logo na sala 1; orcs,
-  carniçais, gnolls e o Pudim Negro no fundo). Mini-bosses (`minibossPower` 1,6) e o Dragão jovem (`bossPower` 1,6:
-  ~2.130 de vida e 58 de dano, contra 1.332 e 36 na Orla do Bosque) bem mais fortes, com XP e loot na mesma
-  proporção. 6 minutos de hunt.
+- **5 estrelas:** a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins logo na sala 1; orcs,
+  carniçais, gnolls e o Pudim Negro no fundo), e todo o elenco da Cripta mais forte que nos outros mapas: comuns
+  (`commonPower` 1,5), os guardas dos baús, Ogro, Bugbear, Cubo e Mímico (`minibossPower` 2,1), e o Dragão jovem
+  (`bossPower` 2: ~2.660 de vida e 72 de dano, contra 1.332 e 36 na Orla do Bosque), com XP e loot na mesma
+  proporção (teto do loot solo 1.500). 6 minutos de hunt.
 
 ### Pântano das Ruínas
 
@@ -996,7 +997,7 @@ comuns (regen fixa, sem tempo, salas que enchem, vendedor, nada prende o herói)
   - **Arena:** no meio, o mosaico do sol do império em tesselas (11×9 tiles), gasto, com tesselas faltando.
   - **Ambiente:** vaga-lumes, névoa baixa e folhas caindo da beira da mata. Só os sprites perto da câmera são
     desenhados.
-- **3 estrelas**, como a Cripta e o Mar de Areia que vêm antes na campanha: mini-bosses ×1,4 e o Rei Bullywug ×1,15.
+- **3 estrelas**, como o Mar de Areia que vem antes na campanha: mini-bosses ×1,4 e o Rei Bullywug ×1,15.
 - Mais difícil: espécies com mais vida e dano que as da cripta, mais salas e salas fundas mais cheias (o orçamento de
   monstros cresce 12% por sala).
   Em troca, loot maior nas salas fundas e criaturas mais difíceis, que largam material e raridade melhores.
