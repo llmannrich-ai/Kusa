@@ -14,7 +14,7 @@ teclado e mouse no desktop são um extra.
   direita, afastados da beirada (ver "Ações"), com as poções na beirada ao lado; tempo e barras compactos no alto à esquerda e minimapa no alto à
   direita, para o meio da tela ficar livre (no iPhone, as barras do Safari deixam só uns 330 px de altura). Os menus continuam na vertical. A telemetria compara as hunts em pé e
   deitado (`stats.landscapeMs`) para decidir se o modo fica.
-- **HUD da hunt:** no alto só o minimapa (à esquerda) e as barras (à direita), para sobrar tela de jogo. O relógio é
+- **HUD da hunt:** no alto só o minimapa (à esquerda) e o quadro de status (à direita), para sobrar tela de jogo. O quadro não tem caixa e segue a linguagem dos controles (cantos redondos, fundo escuro translúcido, borda na cor do recurso): vida (vermelha) e mana (azul) lado a lado, o nível com uma linha fina de XP embaixo e, abaixo, o loot e o botão redondo da bag. O relógio é
   pequeno e fica embaixo, no meio, encaixado no vão entre o joystick e o ⚔️, sem pegar toque. Os controles medem a
   altura a partir de `--base-b` (`style.css`): no navegador, rente à borda; no **app instalado** (tela de início,
   `display-mode: standalone`), eles descem para dentro da faixa da barra de gestos, que antes ficava como área morta
@@ -559,7 +559,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
   pegou (o servidor manda `MSG.pickup` com quem pegou; o voo é só desenho, `flyToHero` em `DungeonScene.ts`). Na
   diagonal, uma quina de parede entre os dois bloqueia. Com dois heróis perto, quem está em cima do item pega primeiro.
   Vai para a bag (ou direto para o equipamento, se for melhor; o trocado vai para a bag).
-  **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra o botão da bag com a lotação (vermelho quando cheia; ver "Bag na hunt").
+  **Com a bag cheia, não pega mais nada do chão**: só um slot de equipamento vazio ainda recebe item. O HUD mostra o botão da bag, que fica vermelho quando ela enche (ver "Bag na hunt").
 - Quem foge ou conclui volta com o equipamento vestido, e **a bag é transferida sozinha para o cofre**, melhores itens primeiro.
   **Com o cofre cheio, o que não couber fica na bag** e entra na próxima hunt (ocupando espaço e correndo risco).
 - Quem morre perde **1 equipamento do corpo, sorteado**, **a bag inteira** e as poções: tudo cai no chão e outro jogador pode pegar e extrair. O resto do equipamento volta para a conta.
@@ -571,7 +571,7 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 
 #### Bag na hunt (menu)
 
-- **No HUD aparece só um botão de bag** (🎒 com a lotação, ex.: 3/8), embaixo do loot. Os itens da bag e o equipamento vestido aparecem **somente no menu** da bag (e no próprio personagem). Código em `apps/client/src/bagbar.ts`.
+- **No HUD aparece só um botão de bag**: um círculo com 🎒, ao lado do loot, que fica **vermelho quando a bag enche** (a única informação dela no HUD; a lotação aparece no menu). Os itens da bag e o equipamento vestido aparecem **somente no menu** da bag (e no próprio personagem). Código em `apps/client/src/bagbar.ts`.
 - Tocar no botão (ou B no desktop) abre o menu na parte de cima da tela. A hunt não pausa.
 - **Compacto, sem rolagem** (cerca de 1/5 da tela fechado num item): título com a lotação e as 3 runas equipadas, uma fileira com o vestido (silhueta apagada no slot vazio) e uma com a bag. Itens da bag melhores que o vestido no mesmo slot (`isUpgrade`) ganham uma **setinha verde ▲**.
 - **Fecha com um toque fora dela** (não há botão ✕), no botão da bag ou com B/Esc. O toque fora segue para o jogo: quem toca no joystick ou num monstro fecha a bag e já anda ou trava o alvo.

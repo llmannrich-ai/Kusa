@@ -401,7 +401,6 @@ button { min-height: 44px; touch-action: manipulation; }
   gap: 8px;
   pointer-events: none;
 }
-#stats { padding: 6px 10px; background: #000a; border: 1px solid var(--border); }
 /*
  * Relógio: pequeno, embaixo e no meio, encaixado no vão entre o joystick (à esquerda) e o ⚔️ (à direita), abaixo da
  * curva dos dois círculos. Assim o alto da tela fica só com o minimapa e as barras. Não pega toque.
@@ -445,13 +444,24 @@ button { min-height: 44px; touch-action: manipulation; }
   box-shadow: 0 0 0 4px #000, 0 12px 40px #000c;
   z-index: 10;
 }
-#stats { display: grid; gap: 4px; width: min(170px, 48vw); font-size: 11px; }
-#meta { text-align: right; color: var(--accent); font-size: 13px; }
-/* Botão da bag no HUD: ícone e lotação; tocar abre o menu da bag. */
-#bag { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 8px; font-size: 13px; font-variant-numeric: tabular-nums; background: #0008; border: 1px solid #3a2f27; cursor: pointer; pointer-events: auto; }
+/*
+ * Quadro de status, sem caixa: as peças têm a mesma linguagem dos controles de baixo (cantos redondos, fundo escuro
+ * translúcido e borda fina na cor do recurso, como as poções). Vida e mana lado a lado; embaixo o nível com uma
+ * linha fina de XP; e o loot e a bag alinhados à direita.
+ */
+#stats { display: grid; gap: 5px; width: min(240px, 58vw); font-size: 11px; font-variant-numeric: tabular-nums; }
+.stats-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.stats-xp { display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+#xp-text { flex: none; font-size: 10px; line-height: 1; color: #e8c877; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.stats-row { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+#meta { display: flex; align-items: baseline; gap: 4px; height: 30px; padding: 0 12px; line-height: 28px; font-size: 13px; color: var(--accent); background: #000a; border: 1px solid #5a463299; border-radius: 15px; }
+#meta small { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+#meta:empty { display: none; }
+/* Botão da bag no HUD: só o ícone, redondo como os botões de ação; cheia fica vermelha. Tocar abre o menu da bag. */
+#bag { display: grid; place-items: center; width: 36px; min-height: 36px; height: 36px; padding: 0; background: #000a; border: 1px solid #5a4632cc; border-radius: 50%; cursor: pointer; pointer-events: auto; }
 #bag[hidden] { display: none; }
-.bag-button-icon { font-size: 18px; }
-#bag.cheia { color: #ff6b6b; border-color: #ff6b6b; }
+.bag-button-icon { font-size: 18px; line-height: 1; }
+#bag.cheia { background: #5a1212cc; border: 2px solid #ff5a4e; box-shadow: 0 0 8px #ff5a4e88; }
 /* Vestiu um item do chão: a bag pisca (o vestido só aparece no menu). */
 #bag.vestiu { animation: bag-vestiu 0.4s ease-in-out 3; }
 @keyframes bag-vestiu { 50% { filter: brightness(1.8); box-shadow: 0 0 0 2px var(--accent); } }
@@ -509,12 +519,16 @@ button { min-height: 44px; touch-action: manipulation; }
 .bag-actions button { flex: 1; width: auto; min-height: 40px; padding: 6px 10px; }
 .bag-actions button:disabled { cursor: default; }
 
-.bar { position: relative; height: 14px; background: #000; border: 1px solid #000; }
+/* Barras de vida e mana: pílulas com o número no meio. A XP é uma linha fina embaixo delas. */
+.bar { position: relative; height: 18px; overflow: hidden; background: #000b; border: 1px solid #5a463299; border-radius: 9px; }
 .bar i { position: absolute; inset: 0 auto 0 0; width: 100%; transition: width 0.15s; }
-.bar span { position: relative; display: block; padding: 0 4px; line-height: 14px; text-align: right; text-shadow: 0 0 2px #000, 0 0 2px #000; }
-.bar.hp i { background: #2e8b46; }
-.bar.mana i { background: #2f5fa8; }
-.bar.xp i { background: #8a6d2c; }
+.bar span { position: relative; display: block; line-height: 16px; text-align: center; font-size: 11px; color: #fff; text-shadow: 0 0 2px #000, 0 0 3px #000; }
+.bar.hp { border-color: #b0413e; }
+.bar.hp i { background: linear-gradient(#e0483d, #a82a22); }
+.bar.mana { border-color: #2f6fb0; }
+.bar.mana i { background: linear-gradient(#4a86d6, #24539a); }
+.bar.xp { flex: 1; height: 4px; border: 0; border-radius: 2px; background: #000a; }
+.bar.xp i { background: #c9a24a; }
 
 /*
  * Zona do polegar direito. Os botões que miram arrastando (⚔️ e magias) ficam longe da borda direita, para o dedo ter
@@ -746,10 +760,13 @@ body.deitado #vendor { top: calc(max(0px, env(safe-area-inset-top)) + 96px); }
   body.deitado #hud-left { grid-auto-flow: column; }
   /* Deitado, o relógio fica embaixo no meio também: entre o joystick e o arco dos botões há muito espaço. */
   body.deitado #timer { left: 50%; bottom: max(4px, calc(var(--pad-b) - 4px)); }
-  body.deitado #stats { width: 150px; gap: 3px; padding: 4px 6px; font-size: 10px; }
-  body.deitado .bar { height: 11px; }
-  body.deitado .bar span { line-height: 11px; }
-  body.deitado #meta { font-size: 11px; }
+  body.deitado #stats { width: 210px; gap: 4px; }
+  body.deitado .bar:not(.xp) { height: 15px; }
+  body.deitado .bar span { line-height: 13px; font-size: 10px; }
+  body.deitado .stats-row { justify-content: flex-start; }
+  body.deitado #meta { height: 26px; line-height: 24px; font-size: 12px; }
+  body.deitado #bag { width: 30px; min-height: 30px; height: 30px; }
+  body.deitado .bag-button-icon { font-size: 15px; }
   body.deitado #minimap:not(.expanded) {
     position: fixed;
     top: max(6px, env(safe-area-inset-top));

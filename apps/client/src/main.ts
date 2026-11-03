@@ -747,8 +747,10 @@ function startGame(room: DungeonRoom) {
     setBar("hp", p.hp, p.maxHp, `${p.hp}/${p.maxHp}`);
     setBar("mana", p.mana, p.maxMana, `${p.mana}/${p.maxMana}`);
     setBar("xp", p.xp - xpFrom, xpTo - xpFrom, `Nv ${p.level}`);
-    // A bag e o equipamento ficam com a BagBar (fileira no HUD e menu da bag).
-    $("meta").textContent = `Loot ${p.loot}`;
+    // A bag e o equipamento ficam com a BagBar (botão no HUD e menu da bag).
+    const meta = $("meta");
+    meta.replaceChildren(Object.assign(document.createElement("small"), { textContent: "Loot" }), document.createTextNode(` ${p.loot}`));
+    meta.setAttribute("aria-label", `Loot: ${p.loot}`);
   };
   renderStats();
   const p = me();

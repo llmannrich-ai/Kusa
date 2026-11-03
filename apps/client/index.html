@@ -191,13 +191,17 @@
         <!-- Toque (ou M) abre o mapa inteiro. -->
         <canvas id="minimap" aria-label="Minimapa" hidden></canvas>
       </div>
+      <!-- Vida e mana lado a lado; embaixo o nível com a XP; e o loot e a bag (bagbar.ts: toque abre o menu). -->
       <div id="stats">
-        <div class="bar hp"><i></i><span id="hp-text"></span></div>
-        <div class="bar mana"><i></i><span id="mana-text"></span></div>
-        <div class="bar xp"><i></i><span id="xp-text"></span></div>
-        <div id="meta"></div>
-        <!-- Botão da bag (bagbar.ts): toque abre o menu com a bag e o equipamento vestido. -->
-        <button id="bag" type="button" hidden></button>
+        <div class="stats-bars">
+          <div class="bar hp"><i></i><span id="hp-text"></span></div>
+          <div class="bar mana"><i></i><span id="mana-text"></span></div>
+        </div>
+        <div class="stats-xp"><span id="xp-text"></span><div class="bar xp"><i></i></div></div>
+        <div class="stats-row">
+          <div id="meta"></div>
+          <button id="bag" type="button" hidden></button>
+        </div>
       </div>
     </div>
     <!-- Botões de ação (magias e alvo) para o polegar direito; as poções ficam na coluna ao lado. -->
