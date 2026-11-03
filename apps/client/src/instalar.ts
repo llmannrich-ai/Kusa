@@ -1,3 +1,5 @@
+import { instalado } from "./voltar.ts";
+
 // Aviso "Instale no iPhone": o jogo vira um app na tela de início (PWA), sem App Store.
 // O iOS não tem botão de instalar nem evento `beforeinstallprompt`: o jogador precisa usar
 // Compartilhar > Adicionar à Tela de Início no Safari, então o aviso ensina o caminho.
@@ -8,11 +10,6 @@ function ehIos(): boolean {
   return /iPhone|iPad|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
 }
 
-/** Já aberto pelo ícone da tela de início. */
-function instalado(): boolean {
-  return matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches
-    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
 
 /** Só o Safari instala no iOS; Chrome, Firefox e navegadores dentro de apps (Instagram, WhatsApp) não. */
 function ehSafari(): boolean {

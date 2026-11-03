@@ -51,6 +51,7 @@ import { createSoloHunt, flushPendingSolo, onClosedSoloRun } from "./solo.ts";
 import { renderTelemetry } from "./telemetry.ts";
 import { travarZoom } from "./semZoom.ts";
 import { mostrarAvisoInstalar } from "./instalar.ts";
+import { ligarVoltar } from "./voltar.ts";
 import { WORLD_POINTS, createWorldMap, type WorldMapView } from "./worldMap.ts";
 import "./style.css";
 
@@ -581,6 +582,28 @@ $("solo").onclick = () => enter(async () => {
   return room;
 });
 $("back").onclick = () => location.reload();
+
+// "Voltar" do aparelho no app instalado (voltar.ts): desfaz a tela de cima em vez de fechar o jogo.
+const visivel = (id: string) => !$(id).hidden;
+ligarVoltar(() => {
+  // Na sala de espera, carregando e na hunt o voltar não faz nada: um gesto sem querer não tira ninguém da sala.
+  if (entering || visivel("lobby") || visivel("loading") || visivel("hud")) return true;
+  if (visivel("result")) { $("back").click(); return true; }
+  const page = document.querySelector<HTMLElement>(".panel.page:not([hidden])");
+  if (page) { page.querySelector<HTMLButtonElement>(".page-back")!.click(); return true; }
+  if (visivel("settings")) { $("settings-back").click(); return true; }
+  if (visivel("rooms")) {
+    if (visivel("map-sheet")) $("map-sheet-close").click();
+    else if (visivel("rooms-sheet")) $("rooms-sheet-close").click();
+    else if (!$<HTMLButtonElement>("rooms-back").disabled) $("rooms-back").click();
+    return true;
+  }
+  if (visivel("menu")) return hub.back();
+  // Tela de login: nada a desfazer.
+  return false;
+}, () => {
+  if (visivel("menu")) hub.notice("Toque em voltar de novo para fechar o Kusa.");
+});
 
 // --- Sala ---------------------------------------------------------------
 
