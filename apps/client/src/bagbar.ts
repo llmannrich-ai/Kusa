@@ -28,7 +28,7 @@ function rarityColor(id: string) {
 }
 
 /**
- * Bag da hunt (até `BAG_SIZE` itens). No HUD fica só um botão de bag com a lotação; tocar nele abre
+ * Bag da hunt (até `BAG_SIZE` itens). No HUD fica só um botão de bag (vermelho quando cheia); tocar nele abre
  * o menu com os itens da bag e o equipamento vestido (o único lugar onde ele aparece). O menu é compacto para não
  * cobrir a hunt: título com as runas, uma fileira com o vestido, uma com a bag (as melhorias marcadas com ▲) e,
  * logo embaixo, o item tocado comparado com o vestido e as ações (equipar, guardar, largar), sem rolagem.
@@ -134,9 +134,9 @@ export class BagBar {
     return this.room.state.players.get(this.room.sessionId);
   }
 
-  /** Botão do HUD: só a lotação da bag. Cheia fica vermelho (nada mais sai do chão). */
+  /** Botão do HUD: só o ícone. Cheia fica vermelho (nada mais sai do chão); a lotação aparece no menu. */
   private renderHud(count: number) {
-    this.hud.replaceChildren(el("span", "bag-button-icon", "🎒"), el("span", "bag-button-count", `${count}/${BAG_SIZE}`));
+    this.hud.replaceChildren(el("span", "bag-button-icon", "🎒"));
     this.hud.classList.toggle("cheia", count >= BAG_SIZE);
     const label = `Bag: ${count} de ${BAG_SIZE} (toque para abrir)`;
     this.hud.setAttribute("aria-label", label);
