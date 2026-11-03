@@ -572,9 +572,11 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 #### Bag na hunt (menu)
 
 - **No HUD aparece só um botão de bag** (🎒 com a lotação, ex.: 3/8), embaixo do loot. Os itens da bag e o equipamento vestido aparecem **somente no menu** da bag (e no próprio personagem). Código em `apps/client/src/bagbar.ts`.
-- Tocar no botão (ou B no desktop) abre o menu na parte de cima da tela, para o polegar esquerdo continuar andando. A hunt não pausa.
-- No menu, tocar num item mostra o que ele faz (e o vestido no mesmo slot, para comparar):
-  - item da bag: **Equipar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
+- Tocar no botão (ou B no desktop) abre o menu na parte de cima da tela. A hunt não pausa.
+- **Compacto, sem rolagem** (cerca de 1/5 da tela fechado num item): título com a lotação e as 3 runas equipadas, uma fileira com o vestido (silhueta apagada no slot vazio) e uma com a bag. Itens da bag melhores que o vestido no mesmo slot (`isUpgrade`) ganham uma **setinha verde ▲**.
+- **Fecha com um toque fora dela** (não há botão ✕), no botão da bag ou com B/Esc. O toque fora segue para o jogo: quem toca no joystick ou num monstro fecha a bag e já anda ou trava o alvo.
+- No menu, tocar num item mostra logo abaixo das fileiras o que ele faz, o veredito contra o vestido no mesmo slot (**▲ Melhor**, **▼ Pior**, **= Igual** ou **Não usa**) e o vestido, para comparar. A história dos lendários fica no Catálogo e na aba Itens:
+  - item da bag: **Equipar** / **Trocar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
   - item vestido: **Guardar na bag**, se couber.
 - O que o jogador larga não volta para a bag enquanto ele estiver em cima ou colado no item: precisa se afastar 2 tiles e voltar.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 10, 25, 60, 130 e Dragão 300.
