@@ -276,7 +276,7 @@ export const FIBULA_SEED = 93;
  * Fíbula Profunda (terreno de caça, `docs/TERRENO_DE_CACA_PLANO.md`): uma caverna só, de 160×140, toda aberta. O acampamento é
  * uma ilha no centro; as áreas de caça são regiões espalhadas pelo chão contínuo, sem parede entre elas, e o perigo
  * cresce com a distância do acampamento e pela direção: ao sul, colada ao acampamento, a Orla de iniciante; a oeste a
- * ala baixa (Rei Ossudo), ao norte a média (Colosso Cantante), a leste a alta (Faraó Eterno). Os três covis são câmaras
+ * ala baixa (Rei Ossudo), ao norte a média (Colosso Cantante), a leste a alta (Dragão Verde Jovem). Os três covis são câmaras
  * muradas nas bordas com uma boca larga virada para o acampamento; as alcovas de guarda ficam na beira. Rochas soltas e
  * pilares quebram a visão sem fechar caminho nenhum. `rings` é a ala de cada área (0 sul, 1 oeste, 2 norte, 3 leste) e
  * `sideRings` a de cada alcova.
@@ -429,12 +429,31 @@ function generateFibulaDeep(): Dungeon {
   }
 
   const path = [...south, ...west, ...north, ...east];
+  /**
+   * A boca da caverna na parede do fundo da sala: o primeiro chão de cima para baixo numa coluna com parede inteira
+   * acima (2 tiles) e chão embaixo, começando em `x` e indo para o meio da sala até achar.
+   */
+  const backWall = (room: Rect, x: number) => {
+    const mid = room.x + Math.floor(room.w / 2);
+    for (let k = 0; k <= Math.abs(x - mid); k++) {
+      const cx = x + Math.sign(mid - x) * k;
+      for (let y = room.y; y < room.y + room.h; y++) {
+        if (get(cx, y) !== Tile.Floor) continue;
+        if (get(cx, y - 1) === Tile.Wall && get(cx, y - 2) === Tile.Wall && get(cx, y + 1) === Tile.Floor) return { x: cx, y };
+        break;
+      }
+    }
+    return centerOf(room);
+  };
   return finishFixed("fibula2", tiles, W, H, spawn, lairs[0], path, side, meadows, () => ({
     rings: [0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3],
     sideRings: alcoveWing,
     camp: { x: portal.x - 3, y: portal.y - 1 },
     vendor: { x: portal.x + 3, y: portal.y - 1 },
-    lairs: lairs.map((room) => ({ room, portal: centerOf(room) })),
+    // A saída de cada covil (abre quando o boss morre): no oeste, o buraco no meio da sala (desce para a Cripta); no
+    // norte e no leste, a boca da caverna na parede do fundo, a do norte no meio e a do leste no canto mais longe da
+    // entrada (`Lair.exit`, `MAPS.fibula2.lairs`). A boca fica no primeiro chão abaixo da parede de cima.
+    lairs: lairs.map((room, i) => ({ room, portal: i === 0 ? centerOf(room) : backWall(room, i === 1 ? room.x + Math.floor(room.w / 2) : room.x + room.w - 6) })),
   }));
 }
 

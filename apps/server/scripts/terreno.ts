@@ -66,8 +66,19 @@ function check(ok: boolean, what: string) {
   check(packs.filter((x) => x.miniboss).length === 6, "devia haver 6 guardas nas alcovas");
   check(packs.every((x) => x.members.length > 0), "toda sala devia ter monstro");
   const bosses = [...a.state.monsters.values()].filter((m) => MONSTERS[m.kind as never].rank === "boss").map((m) => m.kind).sort().join(",");
-  check(bosses === "boneKing,eternalPharaoh,singingColossus", `os três bosses deviam estar nos covis (veio ${bosses})`);
+  check(bosses === "boneKing,greenDragon,singingColossus", `os três bosses deviam estar nos covis (veio ${bosses})`);
   check(a.any.dungeon.lairs.length === 3, "a Fíbula Profunda devia ter 3 covis");
+  // A saída de cada covil: no chão da sala; a boca da caverna encostada na parede do fundo (2 tiles de parede acima).
+  const d2 = a.any.dungeon;
+  (d2.lairs as { room: { x: number; y: number; w: number; h: number }; portal: { x: number; y: number } }[]).forEach((l, i) => {
+    const def = MAPS.fibula2.lairs![i];
+    const at = (x: number, y: number) => d2.tiles[y * d2.width + x];
+    const inRoom = l.portal.x >= l.room.x && l.portal.x < l.room.x + l.room.w && l.portal.y >= l.room.y && l.portal.y < l.room.y + l.room.h;
+    check(inRoom && at(l.portal.x, l.portal.y) === Tile.Floor, `a saída do covil ${def.side} devia ficar no chão da sala`);
+    if (def.exit === "cave") check(at(l.portal.x, l.portal.y - 1) === Tile.Wall && at(l.portal.x, l.portal.y - 2) === Tile.Wall, `a boca da caverna do covil ${def.side} devia encostar na parede do fundo`);
+  });
+  check(MAPS.fibula2.lairs!.map((l) => `${l.boss}>${l.opens}:${l.exit}`).join() === "boneKing>crypt:hole,singingColossus>desert:cave,greenDragon>oldwood:cave",
+    "cada covil abre o seu cenário: buraco para a Cripta, saída da caverna para o Mar de Areia e o Bosque Velho");
   const portal = a.any.dungeon.portal;
   check([...a.state.monsters.values()].every((m) => tileDistance(m.x, m.y, portal.x, portal.y) > 6), "ninguém nasce colado no acampamento");
   // Áreas de caça: cada sala só com os monstros da tabela dela (a Toca dos Lobos só tem lobos).
