@@ -242,14 +242,11 @@ export function isUnderground(d: Dungeon, x: number) {
   return !!u && x >= u.x && x < u.x + u.w;
 }
 
-const SIZE = 72;
 /**
  * Folga mínima (tiles) entre uma sala lateral e a sala inicial: o mini-boss nasce no centro da
  * lateral e não pode enxergar a equipe ao começar (aggro do ogro = 6).
  */
 const SIDE_ROOM_MIN_GAP = 6;
-/** Deslocamentos possíveis de uma sala lateral em relação à sala do caminho em que ela pendura. */
-const SIDE_OFFSETS: readonly (readonly [number, number])[] = [[-14, -14], [-14, 10], [10, -14], [10, 10]];
 
 /** Gera o mapa da hunt a partir da seed (cliente e servidor chegam ao mesmo resultado). */
 export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dungeon {
@@ -266,7 +263,7 @@ export function generateDungeon(seed: number, mapId: MapId = DEFAULT_MAP): Dunge
   if (mapId === "badlands") return generateBadlands(BADLANDS_SEED);
   if (mapId === "fibula") return generateFibula();
   if (mapId === "fibula2") return generateFibulaDeep();
-  return generateCrypt(seed);
+  return generateCrypt();
 }
 
 /** Fíbula: planta fixa (seed do pincel), como o Charco e os Ermos. */
@@ -457,14 +454,31 @@ function generateFibulaDeep(): Dungeon {
   }));
 }
 
+/** Cripta: mapa fixo (seed do pincel), como a Fortaleza, o Charco e os Ermos. */
+export const CRYPT_SEED = 17;
+/** Cripta em pé, do tamanho dos outros mapas fixos grandes (Dunas, Bosque Velho). */
+const CRYPT_W = 96;
+const CRYPT_H = 128;
+/** Salas do caminho entre a entrada (embaixo) e o covil do dragão (em cima). */
+const CRYPT_STEPS = 8;
+
 /**
- * Cripta: dungeon semi-linear. A equipe nasce numa borda aleatória e o caminho
- * serpenteia por salas até o boss no centro, com salas laterais pelo caminho.
+ * Cripta: planta fixa e grande, em pé. A equipe entra pela escadaria do sul e o caminho serpenteia de um lado para o
+ * outro por 8 salões até o covil do Dragão no alto, com salas laterais (baús, mini-bosses) penduradas nos salões. A
+ * seed da hunt não muda a planta (só os monstros e os baús).
  */
-function generateCrypt(seed: number): Dungeon {
+function generateCrypt(): Dungeon {
+  // Rede de segurança: se algum ponto ficou isolado, tenta o pincel seguinte (continua fixo).
+  for (let attempt = 0; ; attempt++) {
+    const d = buildCrypt(CRYPT_SEED + attempt);
+    if (attempt >= 20 || connected(d.tiles, d.width, swampGoals(d))) return d;
+  }
+}
+
+function buildCrypt(seed: number): Dungeon {
   const rng = createRng(seed);
-  const width = SIZE;
-  const height = SIZE;
+  const width = CRYPT_W;
+  const height = CRYPT_H;
   const tiles = new Uint8Array(width * height);
 
   const carve = (r: Rect) => {
@@ -472,70 +486,76 @@ function generateCrypt(seed: number): Dungeon {
       for (let x = r.x; x < r.x + r.w; x++)
         if (x > 0 && y > 0 && x < width - 1 && y < height - 1) tiles[y * width + x] = Tile.Floor;
   };
-  const corridor = (a: Rect, b: Rect) => {
+  const corridor = (a: Rect, b: Rect, wide: number) => {
     const p = centerOf(a);
     const q = centerOf(b);
-    const hx = (y: number) => { for (let x = Math.min(p.x, q.x); x <= Math.max(p.x, q.x); x++) carve({ x, y, w: 2, h: 2 }); };
-    const vy = (x: number) => { for (let y = Math.min(p.y, q.y); y <= Math.max(p.y, q.y); y++) carve({ x, y, w: 2, h: 2 }); };
-    if (rng.next() < 0.5) { hx(p.y); vy(q.x); } else { vy(p.x); hx(q.y); }
+    const hx = (y: number) => { for (let x = Math.min(p.x, q.x); x <= Math.max(p.x, q.x); x++) carve({ x, y, w: wide, h: wide }); };
+    const vy = (x: number) => { for (let y = Math.min(p.y, q.y); y <= Math.max(p.y, q.y); y++) carve({ x, y, w: wide, h: wide }); };
+    // Devolve o meio de cada trecho reto (horizontal e vertical), para as câmaras de emboscada.
+    const midX = Math.round((p.x + q.x) / 2), midY = Math.round((p.y + q.y) / 2);
+    if (rng.next() < 0.5) { hx(p.y); vy(q.x); return [{ x: midX, y: p.y, len: Math.abs(q.x - p.x) }, { x: q.x, y: midY, len: Math.abs(q.y - p.y) }]; }
+    vy(p.x); hx(q.y);
+    return [{ x: p.x, y: midY, len: Math.abs(q.y - p.y) }, { x: midX, y: q.y, len: Math.abs(q.x - p.x) }];
   };
 
-  const boss: Rect = { x: SIZE / 2 - 6, y: SIZE / 2 - 6, w: 12, h: 12 };
+  const boss: Rect = { x: width / 2 - 11, y: 4, w: 22, h: 14 };
+  const spawn: Rect = { x: width / 2 - 5, y: height - 14, w: 10, h: 10 };
 
-  // Sala inicial numa das 4 bordas.
-  const along = rng.int(8, SIZE - 16);
-  const spawnPos = rng.pick([
-    { x: along, y: 2 },
-    { x: SIZE - 10, y: along },
-    { x: along, y: SIZE - 10 },
-    { x: 2, y: along },
-  ]);
-  const spawn: Rect = { ...spawnPos, w: 8, h: 8 };
-
-  // Caminho principal: salas intermediárias entre a entrada e o boss, com desvio lateral.
-  const steps = 4;
+  // Caminho: os salões alternam de lado (esquerda, direita) subindo do sul ao norte.
   const s = centerOf(spawn);
   const b = centerOf(boss);
   const path: Rect[] = [spawn];
-  for (let i = 1; i <= steps; i++) {
-    const t = i / (steps + 1);
-    const jitter = Math.round(12 * (1 - t));
-    const cx = Math.round(s.x + (b.x - s.x) * t + rng.int(-jitter, jitter));
-    const cy = Math.round(s.y + (b.y - s.y) * t + rng.int(-jitter, jitter));
-    const w = rng.int(6, 9);
-    const h = rng.int(6, 9);
-    path.push({ x: clamp(cx - w / 2, 2, SIZE - w - 2), y: clamp(cy - h / 2, 2, SIZE - h - 2), w, h });
+  const firstSide = rng.next() < 0.5 ? -1 : 1;
+  for (let i = 1; i <= CRYPT_STEPS; i++) {
+    const t = i / (CRYPT_STEPS + 1);
+    const side = i % 2 === 1 ? firstSide : -firstSide;
+    const cx = Math.round(width / 2 + side * rng.int(16, 26));
+    const cy = Math.round(s.y + (b.y - s.y) * t + rng.int(-2, 2));
+    const w = rng.int(11, 15);
+    const h = rng.int(8, 10);
+    path.push({ x: clamp(cx - w / 2, 3, width - w - 3), y: clamp(cy - h / 2, 3, height - h - 3), w, h });
   }
   path.push(boss);
 
   for (const r of path) carve(r);
-  for (let i = 0; i < path.length - 1; i++) corridor(path[i], path[i + 1]);
+  // No meio de cada trecho longo de corredor, uma câmara com emboscada (`meadows`): os salões ficam longe um do outro.
+  const meadows: Rect[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    for (const leg of corridor(path[i], path[i + 1], 3)) {
+      if (leg.len < 14) continue;
+      const niche: Rect = { x: leg.x - 2, y: leg.y - 2, w: 7, h: 7 };
+      if ([...path, ...meadows].every((r) => gapBetween(niche, r) >= 2)) { carve(niche); meadows.push(niche); }
+    }
+  }
 
-  // Salas laterais penduradas no caminho, longe da entrada: tenta os 4 lados em ordem sorteada
-  // e desiste da sala se todos caírem perto demais da sala inicial.
+  // Salas laterais: do lado de fora do salão (a parede do mapa) ou no meio, sem encostar em outra sala.
+  const rooms = [...path];
   const side: Rect[] = [];
   for (let i = 1; i < path.length - 1; i++) {
-    if (rng.next() < 0.35) continue;
-    const anchor = centerOf(path[i]);
-    const w = rng.int(5, 7);
-    const h = rng.int(5, 7);
-    const room = shuffled(rng, SIDE_OFFSETS)
-      .map(([dx, dy]): Rect => ({
-        x: clamp(anchor.x + dx, 2, SIZE - w - 2),
-        y: clamp(anchor.y + dy, 2, SIZE - h - 2),
-        w, h,
-      }))
-      .find((r) => gapBetween(r, spawn) >= SIDE_ROOM_MIN_GAP);
+    if (rng.next() < 0.2) continue;
+    const r = path[i];
+    const w = rng.int(7, 9);
+    const h = rng.int(6, 8);
+    const candidates: Rect[] = shuffled(rng, [
+      { x: r.x - w - 4, y: r.y + Math.floor((r.h - h) / 2), w, h },
+      { x: r.x + r.w + 4, y: r.y + Math.floor((r.h - h) / 2), w, h },
+      { x: r.x + Math.floor((r.w - w) / 2), y: r.y - h - 4, w, h },
+      { x: r.x + Math.floor((r.w - w) / 2), y: r.y + r.h + 4, w, h },
+    ]);
+    const room = candidates.find((c) =>
+      c.x >= 2 && c.y >= 2 && c.x + c.w <= width - 2 && c.y + c.h <= height - 2 &&
+      gapBetween(c, spawn) >= SIDE_ROOM_MIN_GAP && [...rooms, ...meadows].every((o) => gapBetween(c, o) >= 3));
     if (!room) continue;
     carve(room);
-    corridor(path[i], room);
+    corridor(r, room, 2);
+    rooms.push(room);
     side.push(room);
   }
 
   const portal = centerOf(spawn);
   tiles[portal.y * width + portal.x] = Tile.Portal;
 
-  return { mapId: "crypt", width, height, tiles, spawn, boss, bossPortal: centerOf(boss), path: path.slice(1, -1), side, meadows: [], portal };
+  return { mapId: "crypt", width, height, tiles, spawn, boss, bossPortal: centerOf(boss), path: path.slice(1, -1), side, meadows, portal };
 }
 
 const SWAMP_SIZE = 112;

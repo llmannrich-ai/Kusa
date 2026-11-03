@@ -88,13 +88,16 @@ test("Massacre: o básico corta todos os colados e rouba 30%; Maestria: cada mor
   a.p.hp = Math.round(a.p.maxHp / 2);
   const hp = side.hp;
   const heroHp = a.p.hp;
+  // A cura conta sem o dano que os dois colados batem no meio tempo (na Cripta os comuns batem ×2,2).
+  const taken = () => Object.values(a.seat().stats.damageTaken as Record<string, number>).reduce((t, v) => t + v, 0);
+  const takenBefore = taken();
   a.p.target = front.id;
   a.seat().attacking = true;
   a.seat().targetLocked = true;
   a.advance(1500);
   a.seat().attacking = false;
   check(side.hp < hp, `o colado do lado também leva (${hp} → ${side.hp})`);
-  check(a.p.hp > heroHp, `roubou vida (${heroHp} → ${a.p.hp})`);
+  check(a.p.hp + (taken() - takenBefore) > heroHp, `roubou vida (${heroHp} → ${a.p.hp}, ${taken() - takenBefore} de dano levado)`);
   const b = s3Arena("knight", { monsterHp: 1 });
   self(b, mastered("massacre"));
   const until = b.seat().buff.until;

@@ -352,20 +352,26 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
   },
   crypt: {
-    id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 5, durationSeconds: 6 * 60,
-    // 5 estrelas: a partir da sala 1, espécies um degrau acima (esqueletos e hobgoblins cedo, orcs, carniçais e o Pudim
-    // Negro no fundo), e todo o elenco da Cripta mais forte: comuns ×1,5, os guardas dos baús (Ogro, Bugbear, Cubo e
-    // Mímico) ×2,1 e o Dragão jovem ×2 (~2.660 de vida e 72 de dano, contra 1.332 e 36 na Orla do Bosque).
-    commonPower: 1.5, minibossPower: 2.1, bossPower: 2,
-    description: "Salas de pedra e corredores apertados. Goblins e mortos-vivos na entrada; orcs, carniçais e o Pudim Negro no fundo, e ogros e cubos guardando os baús, todos bem mais fortes que nos outros mapas. No fim, o Dragão jovem, o dobro do da Orla. Cuidado com os baús.",
+    id: "crypt", name: "Cripta", icon: "🏚️", difficulty: 5, durationSeconds: 9 * 60,
+    // 5 estrelas, mapa fixo e grande (96×128, 8 salões, `CRYPT_SEED`): a partir do salão 1, espécies um degrau acima
+    // (esqueletos e hobgoblins cedo, orcs, carniçais, gnolls e o Pudim Negro no fundo), e todo o elenco da Cripta bem
+    // mais forte: comuns ×2,2, os guardas dos baús (Ogro, Bugbear, Cubo e Mímico) ×2,1 e o Dragão jovem ×2 (~2.660 de
+    // vida e 72 de dano, contra 1.332 e 36 na Orla do Bosque).
+    // XP ×0,35: o mapa grande, com comuns ×2,2, levava o herói ao Dragão no nível 13 (limpando 75%); assim chega no 10,
+    // um acima da Cripta pequena (9), e o Dragão continua quase do mesmo tamanho para ele.
+    commonPower: 2.2, minibossPower: 2.1, bossPower: 2, xpScale: 0.35,
+    description: "Uma cripta enorme de salas de pedra e corredores, sempre a mesma planta. Goblins e mortos-vivos na entrada; orcs, carniçais e o Pudim Negro no fundo, e ogros e cubos guardando os baús, todos bem mais fortes que nos outros mapas. No covil do alto, o Dragão jovem, o dobro do da Orla. Cuidado com os baús.",
     encounters: [
-      { depth: [0, 0], budget: 80, table: [["goblin", 3], ["kobold", 3], ["rat", 2], ["zombie", 1]] },
-      { depth: [1, 1], budget: 230, table: [["skeleton", 3], ["goblin", 2], ["hobgoblin", 2], ["skeletonArcher", 2], ["zombie", 2]] },
-      { depth: [2, 2], budget: 350, table: [["orc", 3], ["ghoul", 3], ["skeleton", 2], ["skeletonArcher", 2], ["hobgoblin", 1]] },
+      { depth: [0, 0], budget: 90, table: [["goblin", 3], ["kobold", 3], ["rat", 2], ["zombie", 1]] },
+      { depth: [1, 1], budget: 200, table: [["skeleton", 3], ["goblin", 2], ["hobgoblin", 2], ["skeletonArcher", 2], ["zombie", 2]] },
+      { depth: [2, 2], budget: 290, table: [["skeleton", 3], ["ghoul", 2], ["skeletonArcher", 2], ["hobgoblin", 2], ["orc", 1]] },
+      { depth: [3, 3], budget: 370, table: [["orc", 3], ["ghoul", 3], ["skeleton", 2], ["skeletonArcher", 2], ["hobgoblin", 1]] },
+      { depth: [4, 4], budget: 440, table: [["orc", 3], ["ghoul", 3], ["gnoll", 2], ["skeletonArcher", 2], ["blackPudding", 1]] },
       {
-        depth: [3, 9], budget: 520,
+        depth: [5, 5], budget: 510,
         table: [["orc", 3], ["ghoul", 3], ["gnoll", 2], ["blackPudding", 2], ["skeletonArcher", 1], ["hobgoblin", 1]],
       },
+      { depth: [6, 99], budget: 580, table: [["orc", 3], ["gnoll", 3], ["blackPudding", 3], ["ghoul", 2], ["skeletonArcher", 2]] },
     ],
     minibosses: [["ogre", 2], ["bugbear", 1], ["gelatinousCube", 1]],
     mimicChance: 1 / 3,
