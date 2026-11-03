@@ -498,7 +498,7 @@ function buildCrypt(seed: number): Dungeon {
     return [{ x: p.x, y: midY, len: Math.abs(q.y - p.y) }, { x: midX, y: q.y, len: Math.abs(q.x - p.x) }];
   };
 
-  const boss: Rect = { x: width / 2 - 8, y: 4, w: 16, h: 14 };
+  const boss: Rect = { x: width / 2 - 11, y: 4, w: 22, h: 14 };
   const spawn: Rect = { x: width / 2 - 5, y: height - 14, w: 10, h: 10 };
 
   // Caminho: os salões alternam de lado (esquerda, direita) subindo do sul ao norte.
