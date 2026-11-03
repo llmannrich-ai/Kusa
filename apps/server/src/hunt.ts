@@ -197,7 +197,6 @@ import {
   CONTROL_MAX_MS,
   CORRODE_MAX,
   CORRODE_PER_STACK,
-  BLIND_RANGE,
   damageElement,
   spellElement,
   hitReaction,
@@ -1688,8 +1687,7 @@ export class Hunt {
     // Na Forma de Urso, o básico é uma patada: só alcança quem está colado.
     const reach = form?.maul ? 1 : form?.breath ? form.breath.range : cls.attackRange + seat.traits.reduce((sum, t) => sum + (t.basicRange ?? 0), 0) + (buff?.attackRange ?? 0)
       + (cls.attackRange > 1 ? seat.gear.range : 0) + (this.marks(seat, "patient_eye") >= 1 ? EYE.range : 0);
-    // Cego: não mira nada além de perto.
-    const range = this.held(seat, "blind") ? Math.min(reach, BLIND_RANGE) : reach;
+    const range = reach;
     if (p.basicRange !== range) p.basicRange = range;
     // Atordoado ou engolido: não ataca.
     if (this.held(seat, "stun", "engulf")) return;
@@ -2169,9 +2167,8 @@ export class Hunt {
 
     const now = this.host.now();
     if (now < seat.spellReadyAt[slot]) return;
-    // Atordoado ou engolido: não conjura. Cego: magia com alvo só alcança perto.
+    // Atordoado ou engolido: não conjura.
     if (this.held(seat, "stun", "engulf")) return;
-    if (this.held(seat, "blind") && spell.aim === "target") spell = { ...spell, range: Math.min(spell.range, BLIND_RANGE) };
     // Magia de runa de outra classe custa no máximo uma parte da mana máxima.
     const master = masterRune([...p.runes]);
     // Runa do Eco: as magias custam mais, e a cada tantas a seguinte sai de graça e sem recarga.
@@ -3461,8 +3458,9 @@ export class Hunt {
     if (p[field] <= 0 || now < seat.potionReadyAt) return;
     if (this.held(seat, "stun", "engulf")) return;
 
+    // Cura fixa: a mesma em qualquer herói e nível (limitada ao que falta para encher).
     const max = potion.stat === "hp" ? p.maxHp : p.maxMana;
-    const restored = Math.min(max - p[potion.stat], Math.round(max * potion.restore));
+    const restored = Math.min(max - p[potion.stat], potion.amount);
     if (restored <= 0) {
       const text = potion.stat === "hp" ? "Vida cheia" : "Mana cheia";
       this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text, color: 0xbdc3c7 } satisfies NoticeMessage);
@@ -3503,6 +3501,8 @@ export class Hunt {
     const potion = POTIONS[msg.potion];
     const field = POTION_FIELD[potion.id];
     const price = CAMP_VENDOR_PRICES[potion.id];
+    // O vendedor só tem as pequenas (`CAMP_VENDOR_POTIONS`); as maiores são do Mercado.
+    if (price === undefined) return;
     if (p[field] >= POTION_MAX) {
       this.host.send(sessionId, MSG.notice, { x: p.x, y: p.y - 1, text: "Sem lugar para mais", color: 0xbdc3c7 } satisfies NoticeMessage);
       return;
@@ -5562,7 +5562,7 @@ export class Hunt {
   }
 
   /**
-   * Efeito de monstro num herói. Controle (preso, atordoado, engolido, cego) dura no máximo `CONTROL_MAX_MS`, não
+   * Efeito de monstro num herói. Controle (preso, atordoado, engolido) dura no máximo `CONTROL_MAX_MS`, não
    * se renova enquanto dura e, ao acabar, o herói fica `CONTROL_IMMUNE_MS` imune ao mesmo efeito. Corroído acumula.
    */
   private affectHero(sessionId: string, effect: HeroEffect, m: Monster, damage: number) {
@@ -6016,7 +6016,7 @@ export class Hunt {
     // Quem sai vivo leva as poções que sobraram de volta para a conta; as de quem morre já caíram no chão.
     const potions = survived && !player.bot
       ? Object.fromEntries(POTION_IDS.map((id) => [id, player[POTION_FIELD[id]]])) as Record<PotionId, number> : undefined;
-    player.healthPotions = player.manaPotions = 0;
+    for (const id of POTION_IDS) player[POTION_FIELD[id]] = 0;
     player.status = outcome;
     player.target = "";
     player.dot = "";

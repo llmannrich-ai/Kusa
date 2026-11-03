@@ -60,21 +60,18 @@ export const DOT_KINDS: readonly DotKind[] = ["poison", "burn", "bleed"];
  * - `root`: preso (teia, constrição): não anda;
  * - `stun`: atordoado (paralisia): não anda, não ataca, não conjura nem bebe poção;
  * - `engulf`: engolido: como atordoado, e toma dano por segundo de quem engoliu;
- * - `blind`: cego: não mira nada além de 2 tiles;
  * - `corrode`: corroído: recebe mais dano por acúmulo (até `CORRODE_MAX`).
- * Os quatro primeiros são **controle**: duram no máximo `CONTROL_MAX_MS` e depois o herói fica `CONTROL_IMMUNE_MS`
- * imune ao mesmo efeito.
+ * Os três primeiros são **controle**: duram no máximo `CONTROL_MAX_MS` e depois o herói fica `CONTROL_IMMUNE_MS`
+ * imune ao mesmo efeito. Não existe cegueira: o herói que não mira nem ataca parecia jogo travado.
  */
-export type HeroEffectKind = "root" | "stun" | "engulf" | "blind" | "corrode";
-export const HERO_EFFECTS: readonly HeroEffectKind[] = ["root", "stun", "engulf", "blind", "corrode"];
-export const CONTROL_EFFECTS: readonly HeroEffectKind[] = ["root", "stun", "engulf", "blind"];
+export type HeroEffectKind = "root" | "stun" | "engulf" | "corrode";
+export const HERO_EFFECTS: readonly HeroEffectKind[] = ["root", "stun", "engulf", "corrode"];
+export const CONTROL_EFFECTS: readonly HeroEffectKind[] = ["root", "stun", "engulf"];
 export const CONTROL_MAX_MS = 2000;
 export const CONTROL_IMMUNE_MS = 4000;
 /** Corroído: dano recebido a mais por acúmulo, e o máximo de acúmulos. */
 export const CORRODE_PER_STACK = 0.08;
 export const CORRODE_MAX = 3;
-/** Cego: alcance máximo do ataque básico e das magias com alvo. */
-export const BLIND_RANGE = 2;
 
 export interface HeroEffect {
   kind: HeroEffectKind;
@@ -537,9 +534,8 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         id: "acidBreath", name: "Sopro Ácido", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 7000, power: 1.9,
         dot: { kind: "poison", power: 0.25, durationMs: 5000 }, color: 0x9acd32, fx: "breath",
       },
-      { id: "darkness", name: "Escuridão", shape: "target", range: 6, radius: 2, cooldownMs: 12000, power: 0, effect: { kind: "blind", ms: 2000 }, color: 0x37305a, fx: "vanish" },
     ],
-    lore: "Dragão do brejo: sopro ácido em linha, nuvem de Escuridão que cega. Resiste a ácido e veneno.",
+    lore: "Dragão do brejo: sopro ácido em linha. Resiste a ácido e veneno.",
   }),
   hydra: monster({
     kind: "hydra", name: "Hidra do pântano", rank: "boss", type: "monstrosity", role: "brute", cr: 8,
@@ -633,10 +629,10 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
       {
         id: "sandBlast", name: "Rajada de Areia", shape: "line", range: 5, radius: 0, length: 5, cooldownMs: 9000, power: 1.2,
-        effect: { kind: "blind", ms: 1500 }, color: 0xf0d29c, fx: "breath",
+        color: 0xf0d29c, fx: "breath",
       },
     ],
-    lore: "Redemoinho que pensa. Joga longe quem chega perto e cega com a areia (Rajada). Espada e flecha atravessam; gelo, não.",
+    lore: "Redemoinho que pensa. Joga longe quem chega perto e açoita com a areia (Rajada). Espada e flecha atravessam; gelo, não.",
   }),
 
   // --- Caverna da Travessia: um boss em cada covil. O Basilisco (oeste) é o médio, perto do Verme da Areia no covil
@@ -821,8 +817,8 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     traits: { keepDistance: 3 },
     abilities: [
       {
-        id: "blindingWord", name: "Palavra Cegante", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 9000, power: 1,
-        effect: { kind: "blind", ms: 1500 }, color: 0xf0d29c, fx: "breath",
+        id: "blindingWord", name: "Palavra Cortante", shape: "line", range: 6, radius: 0, length: 6, cooldownMs: 9000, power: 1,
+        color: 0xf0d29c, fx: "breath",
       },
       {
         id: "glyphBlast", name: "Hieróglifo Explosivo", shape: "target", range: 6, radius: 1, cooldownMs: 8000, power: 1.6,
@@ -833,7 +829,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
         summon: { kind: "boneJackal", count: 2 }, color: 0xd8cfb2, fx: "summon",
       },
     ],
-    lore: "Esqueleto de escriba com o rolo ainda na mão. Cada palavra que lê cega, cada glifo que escreve explode, e os chacais da legião voltam a correr.",
+    lore: "Esqueleto de escriba com o rolo ainda na mão. Cada palavra que lê corta, cada glifo que escreve explode, e os chacais da legião voltam a correr.",
   }),
   // Bosses: o Colosso Cantante (Dunas) e o Faraó Eterno (Mesas). Mais fortes que o Observador, o das Mesas o mais forte.
   singingColossus: monster({
@@ -856,7 +852,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
       {
         id: "singingStorm", name: "Tempestade Cantante", shape: "target", range: 7, radius: 3, cooldownMs: 12000, power: 1.1,
-        effect: { kind: "blind", ms: 1500 }, belowHp: 0.4, color: 0xf0d29c, fx: "acidRain",
+        belowHp: 0.4, color: 0xf0d29c, fx: "acidRain",
       },
     ],
     lore: "O canto das dunas tem dono. Um gigante de areia em volta dos ossos da legião, furado pelo vento: cada nota empurra, a ária estilhaça e, ferido, chama o coro e a tempestade.",
@@ -1080,10 +1076,10 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     abilities: [
       {
         id: "moonArrow", name: "Flecha da Lua Morta", shape: "line", range: 7, radius: 0, length: 7, cooldownMs: 9000, power: 1.4,
-        effect: { kind: "blind", ms: 1200 }, color: 0x9af0e4, fx: "lightning",
+        color: 0x9af0e4, fx: "lightning",
       },
     ],
-    lore: "Arqueira élfica que morreu no santuário e não saiu de lá. Atira de longe, some no ar de vez em quando e a flecha da lua morta atravessa tudo em linha e cega. A luz a desfaz.",
+    lore: "Arqueira élfica que morreu no santuário e não saiu de lá. Atira de longe, some no ar de vez em quando e a flecha da lua morta atravessa tudo em linha. A luz a desfaz.",
   }),
   stranglerVine: monster({
     kind: "stranglerVine", name: "Cipó Estrangulador", rank: "common", type: "plant", role: "lurker", cr: 5,
@@ -1168,11 +1164,11 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
   carrionCrow: monster({
     kind: "carrionCrow", name: "Corvo Carniceiro", rank: "common", type: "beast", role: "skirmisher", cr: 6, group: [2, 3],
     hp: 110, damage: 13, xp: 92, loot: [9, 14], speed: 4, aggroRange: 7, attackRange: 1, attackCooldownMs: 1300, attackFx: "bite",
-    traits: { hitAndRun: { cooldownMs: 3500 }, onHit: { chance: 0.25, effect: { kind: "blind", ms: 900 } } },
+    traits: { hitAndRun: { cooldownMs: 3500 } },
     abilities: [
       { id: "crowDive", name: "Mergulho", shape: "dive", range: 6, minRange: 2, radius: 1, cooldownMs: 9000, power: 1.4, vanishMs: 900, color: 0x2a2a30, fx: "dive" },
     ],
-    lore: "Corvo grande como um cão, que vive do que o charco devolve. Desce do céu cinza em bando, cai colado em quem anda sozinho e mira nos olhos (a bicada pode cegar).",
+    lore: "Corvo grande como um cão, que vive do que o charco devolve. Desce do céu cinza em bando, cai colado em quem anda sozinho e mira nos olhos.",
   }),
   peatDrowned: monster({
     kind: "peatDrowned", name: "Turfeiro Afogado", rank: "common", type: "undead", role: "brute", cr: 8,
@@ -1231,14 +1227,14 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
       {
         id: "ashFog", name: "Névoa", shape: "target", range: 6, radius: 2, cooldownMs: 10000, power: 0.9,
-        effect: { kind: "blind", ms: 1500 }, color: 0xd8dcd8, fx: "acidRain",
+        color: 0xd8dcd8, fx: "acidRain",
       },
       {
         id: "hagCurse", name: "Maldição", shape: "bolt", range: 6, radius: 0, cooldownMs: 8000, power: 1.2,
         effect: { kind: "corrode", ms: 6000 }, color: 0x7a6272, fx: "bolt",
       },
     ],
-    lore: "A velha que os turfeiros pagavam para afastar a névoa e que, no fim, a chamou. Cega a clareira com a névoa, amaldiçoa (corrói) e, ferida, some e volta em três: só uma é ela.",
+    lore: "A velha que os turfeiros pagavam para afastar a névoa e que, no fim, a chamou. Enche a clareira de névoa, amaldiçoa (corrói) e, ferida, some e volta em três: só uma é ela.",
   }),
   ashHagIllusion: monster({
     kind: "ashHagIllusion", name: "Bruxa Cinzenta", rank: "common", type: "fey", role: "swarm", cr: 1,
@@ -1299,10 +1295,10 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
       },
       {
         id: "drownedLament", name: "Lamento", shape: "self", range: 3, radius: 3, cooldownMs: 30000, power: 1.2,
-        effect: { kind: "blind", ms: 1500 }, selfHeal: 0.12, belowHp: 0.3, phase: true, once: true, color: 0x8ef0d8, fx: "quake",
+        selfHeal: 0.12, belowHp: 0.3, phase: true, once: true, color: 0x8ef0d8, fx: "quake",
       },
     ],
-    lore: "Era a senhora da vila dos turfeiros quando o fogo veio; fugiu para o lago e o lago a guardou. Agora é dele: sai da água negra em volta da ilha, empurra tudo com a maré, puxa quem foge e chama os afogados; quase vencida solta o lamento que cega e a cura. A água a protege do fogo.",
+    lore: "Era a senhora da vila dos turfeiros quando o fogo veio; fugiu para o lago e o lago a guardou. Agora é dele: sai da água negra em volta da ilha, empurra tudo com a maré, puxa quem foge e chama os afogados; quase vencida solta o lamento que fere e a cura. A água a protege do fogo.",
   }),
   // --- Ermos Rubros (8 estrelas): a mina de ferro do império, abandonada quando a cratera desabou. A ferrugem tomou o
   // vale, os mineiros que ficaram lá embaixo voltaram e o gigante que cavava com eles ainda guarda a cratera. No degrau
@@ -1357,10 +1353,10 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
     abilities: [
       {
         id: "rustGust", name: "Poeira de Ferrugem", shape: "self", range: 2, radius: 2, cooldownMs: 10000, power: 0.9,
-        effect: { kind: "blind", ms: 1300 }, color: 0xb0582a, fx: "quake",
+        color: 0xb0582a, fx: "quake",
       },
     ],
-    lore: "Redemoinho de pó de ferro que o vento da cratera levanta e não deixa assentar. Gira em volta de quem passa, cega com a poeira e enferruja a armadura (corrói).",
+    lore: "Redemoinho de pó de ferro que o vento da cratera levanta e não deixa assentar. Gira em volta de quem passa, arranha com a poeira e enferruja a armadura (corrói).",
   }),
   // Mini-bosses (os terreiros guardam o baú; nas emboscadas, 25% trazem um solto).
   deadForeman: monster({

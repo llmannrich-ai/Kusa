@@ -572,9 +572,11 @@ Cada item da conta está num de três lugares (`VAULT_SIZE` e `BAG_SIZE` em `pac
 #### Bag na hunt (menu)
 
 - **No HUD aparece só um botão de bag** (🎒 com a lotação, ex.: 3/8), embaixo do loot. Os itens da bag e o equipamento vestido aparecem **somente no menu** da bag (e no próprio personagem). Código em `apps/client/src/bagbar.ts`.
-- Tocar no botão (ou B no desktop) abre o menu na parte de cima da tela, para o polegar esquerdo continuar andando. A hunt não pausa.
-- No menu, tocar num item mostra o que ele faz (e o vestido no mesmo slot, para comparar):
-  - item da bag: **Equipar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
+- Tocar no botão (ou B no desktop) abre o menu na parte de cima da tela. A hunt não pausa.
+- **Compacto, sem rolagem** (cerca de 1/5 da tela fechado num item): título com a lotação e as 3 runas equipadas, uma fileira com o vestido (silhueta apagada no slot vazio) e uma com a bag. Itens da bag melhores que o vestido no mesmo slot (`isUpgrade`) ganham uma **setinha verde ▲**.
+- **Fecha com um toque fora dela** (não há botão ✕), no botão da bag ou com B/Esc. O toque fora segue para o jogo: quem toca no joystick ou num monstro fecha a bag e já anda ou trava o alvo.
+- No menu, tocar num item mostra logo abaixo das fileiras o que ele faz, o veredito contra o vestido no mesmo slot (**▲ Melhor**, **▼ Pior**, **= Igual** ou **Não usa**) e o vestido, para comparar. A história dos lendários fica no Catálogo e na aba Itens:
+  - item da bag: **Equipar** / **Trocar** (troca de lugar com o vestido) ou **Largar** (cai no chão onde o herói está, e qualquer um pode pegar);
   - item vestido: **Guardar na bag**, se couber.
 - O que o jogador larga não volta para a bag enquanto ele estiver em cima ou colado no item: precisa se afastar 2 tiles e voltar.
 - Mercado: compra Comum 60, Bronze 150, Ferro 350, Aço 800; vende por 10, 25, 60, 130 e Dragão 300.
@@ -1561,7 +1563,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   só sai depois de meia recarga contada de quando o monstro nota alguém. Projéteis de monstro acertam no disparo.
 - **Fases dos bosses por vida:** a habilidade de fase sai na hora em que a vida cruza o limite (com 1 ou 4 heróis,
   toda fase aparece). Abaixo de 50% da vida o boss se enfurece e as recargas caem para 60%. Boss espera 1 s
-  entre uma habilidade e outra, para não soltar sopro, cegueira e mergulho em sequência.
+  entre uma habilidade e outra, para não soltar sopro, raio e mergulho em sequência.
 - **Voo e Mergulho:** o monstro some invulnerável e cai colado no alvo; a queda é o golpe. Depois dela, ele se
   recompõe por 1,5 s (sem ataque básico nem outra habilidade): é a janela para reagir. **Boss não tem Voo nem
   Mergulho** (tirado de todos: sumir invulnerável no meio da luta deixava o boss quase impossível); a mecânica fica nos
@@ -1571,9 +1573,9 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
   resistentes (0,5–0,8) ou vulneráveis (1,5): o aviso sobe em cinza ("Imune", "Resiste") ou amarelo ("Vulnerável!").
   Mortos-vivos e constructos não pegam veneno nem sangramento; limos não sangram; plantas são vulneráveis a fogo.
 - **Efeitos nos heróis:** preso (não anda), atordoado (não anda, não ataca, não conjura nem bebe poção), engolido
-  (como atordoado, e toma dano por segundo; os aliados batendo no monstro o fazem cuspir), cego (não mira além de 2
-  tiles) e corroído (+8% de dano recebido por acúmulo, até 3). **Controle dura no máximo 2 s** e depois o herói fica
-  **4 s imune** ao mesmo efeito.
+  (como atordoado, e toma dano por segundo; os aliados batendo no monstro o fazem cuspir) e corroído (+8% de dano recebido por acúmulo, até 3). **Controle dura
+  no máximo 2 s** e depois o herói fica **4 s imune** ao mesmo efeito. **Não há cegueira:** o herói que de repente não
+  mira nem ataca parecia jogo travado (reclamação de jogador); as habilidades que cegavam ficaram só com o dano.
 - **Encontros sorteados:** cada sala do caminho recebe monstros sorteados da tabela da profundidade (pelo peso) até
   gastar um orçamento de ameaça (a XP da tabela, mais 12% por sala de profundidade), como o orçamento de XP do D&D.
   Enxames (Kobold, Estirge) vêm em grupo; no máximo 12 monstros, 3 artilheiros e 1 líder por sala. Tudo pela seed.
@@ -1624,7 +1626,7 @@ Os jogadores veem tudo em Configurações > Regras > Bestiário.
 | **Naga Espiritual** (mini-boss) | artilheiro | Relâmpago (linha de 6, 1,8×) · Rejuvenescer (uma vez, abaixo de 25%: cura 30%) |
 | **Rei Bullywug** (boss) | escaramuçador | arte das folhas do Runway (`docs/arte/pantano-das-ruinas/bullywug-*.png`) · Estocada (linha de 3, 1,8×, empurra) · lança de alcance 2 · abaixo de 50%: Chamado do Brejo (2 bullywugs, uma vez) · abaixo de 30%: frenesi |
 | **Hidra do pântano** (boss, fora do mapa desde o Rei Bullywug) | — | Cabeças: começa com 3, cada uma morde um alvo diferente (as que sobram mordem o alvo com metade); perde uma a cada 20% de vida e, sem fogo em 6 s, nascem duas (até 5) e cura 5% · Chuva Ácida |
-| **Dragão negro jovem** (boss, fora do mapa desde o Rei Bullywug) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) · Escuridão (cega 2 s em área) |
+| **Dragão negro jovem** (boss, fora do mapa desde o Rei Bullywug) | — | resiste a natureza · Multiataque (3 mordidas de 0,3×) · Sopro Ácido (linha de 6) |
 
 ### Pântano do Kosaradius (★1)
 
@@ -1679,7 +1681,7 @@ cada um tem o seu boss. Quase todos são mortos-vivos (não pegam veneno nem san
 | Soterrado | emboscador | escondido na areia (camuflado, nota a 3 tiles) · Ataque Surpresa 1,8× · Fortitude Morta-viva |
 | **Centurião Ossudo** (mini-boss) | líder | crista e capa vermelhas · Comando (aliados perto +25% de dano e de velocidade) · Investida · Golpe de Gládio (1,6× e sangra) · Formação! (chama 2 Legionários) |
 | **Múmia Real** (mini-boss) | controlador | máscara de ouro · Faixas Reais (puxa e prende) · Maldição do Faraó (área que corrói) · ferida, Enxame da Tumba (3 Escaravelhos) |
-| **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cegante (linha que cega) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
+| **Escriba das Areias** (mini-boss) | artilheiro | túnica azul e o rolo · Palavra Cortante (linha que fere) · Hieróglifo Explosivo (área que queima) · Erguer os Mortos (2 Chacais) |
 | **Colosso Cantante** (boss das Dunas) | bruto (elemental) | gigante de areia em volta dos ossos da legião, alcance 2 · resiste a físico e natureza, vulnerável a gelo · Nota Grave (em volta, empurra e deixa lento) · Ária Estilhaçante (linha de 8 que corrói) · abaixo de 60%, Coro Soterrado (2 Carpideiras) · abaixo de 40%, Tempestade Cantante (área que cega) |
 | **Faraó Eterno** (boss das Mesas) | artilheiro (morto-vivo, flutua) | ataca a 3 tiles e foge de quem cola · Raio do Sol Morto (linha de 8 que queima) · Mortalha (puxa e prende) · Maldição Eterna (área que corrói) · Legião Eterna (2 Legionários) · abaixo de 30%, Sarcófago (uma vez: cura 20% e empurra 3 em volta) |
 
@@ -2140,19 +2142,31 @@ Plano e direção de arte (inspirada em D&D): `docs/ARTE_HEROIS_PLANO.md`. Padr�
 
 ## Poções
 
-- 2 tipos: ❤️ vida (devolve 35% da vida máxima) e 💧 mana (devolve 40% da mana máxima). Cada jogador carrega até 5 de cada.
+- 2 tipos (❤️ vida e 💧 mana), cada um em **3 níveis com cura fixa** (decisão de 03/11: a mesma em qualquer herói e
+  nível; antes era 35%/40% do máximo, o que dava mais cura a quem já tinha mais vida). Cada jogador carrega até 5 de cada nível.
+
+  | Nível | Vida | Mana | Mercado (vida · mana) |
+  |---|---|---|---|
+  | Pequena (`potion-health`, `potion-mana`) | +60 | +50 | 50 · 40 gold |
+  | Média (`-2`) | +120 | +120 | 150 · 120 gold |
+  | Grande (`-3`) | +220 | +250 | 400 · 320 gold |
+
 - **Não caem de monstro nem de baú** (`POTIONS_DROP` em `packages/shared/src/potions.ts`, decisão de 02/11: a poção
   grátis apagava o custo de ignorar um monstro). Dois jeitos de ter poção:
-  - **Mercado** (aba Mercado > Comprar, seção Poções; `buy_potion`): 50 gold a de vida e 40 a de mana
+  - **Mercado** (aba Mercado > Comprar, seção Poções, ou o + da prateleira na aba Itens; `buy_potion`): preços da tabela
     (`MARKET_POTION_PRICES`, repetido no banco em `potion_price`). Ficam na conta **por personagem** (`profile_potions`,
-    até 5 de cada) e **entram em toda hunt** com o herói, como o equipamento: o servidor de jogo as tira com
+    até 5 de cada nível) e **entram em toda hunt** com o herói, como o equipamento: o servidor de jogo as tira com
     `take_potions` e devolve as que sobraram com `store_potions`; a hunt solo e a sala no aparelho usam
     `take_my_potions`/`store_my_potions`, presas à hunt aberta em `solo_runs` (uma devolução por hunt, só para quem saiu
     vivo, até 5 de cada: o teto do que um cliente adulterado consegue inventar).
-  - **Vendedor do acampamento** (terrenos de caça, `Dungeon.vendor`): 25 de loot a de vida e 20 a de mana
-    (`CAMP_VENDOR_PRICES`), encostado na banca. O loot gasto não vira gold.
+  - **Vendedor do acampamento** (terrenos de caça, `Dungeon.vendor`): só as pequenas (`CAMP_VENDOR_POTIONS`), 25 de
+    loot a de vida e 20 a de mana (`CAMP_VENDOR_PRICES`), encostado na banca. Médias e grandes são do Mercado, com gold. O loot gasto não vira gold.
 - Quem **sai vivo** leva as que sobraram de volta para a conta; quem **morre** as larga no chão junto com o equipamento.
-- Beber: botão da poção (ou Q/E no desktop). A recarga de 6 s é **compartilhada** entre os dois tipos, para ninguém ficar imortal bebendo sem parar. Com a barra cheia, a poção não é gasta.
+- Na hunt há **um botão de vida e um de mana** (não seis: o canto do polegar não comporta). Tocar bebe; no
+  **automático** vai a menor poção que cobre o que falta, ou a maior que houver (`pickPotion`), para não gastar a grande
+  num arranhão. **Segurar** o botão troca o nível: automático → cada nível que o herói tem → automático (o selo I/II/III
+  mostra o que vai agora e fica dourado quando travado). O número é o total do recurso.
+- Beber: botão da poção (ou Q/E no desktop). A recarga de 6 s é **compartilhada** entre todos os tipos e níveis, para ninguém ficar imortal bebendo sem parar. Com a barra cheia, a poção não é gasta.
 - Tabela em `packages/shared/src/potions.ts`; o frasco é desenhado em `apps/client/src/art/items.ts`, os botões em `apps/client/src/potionbar.ts` (com o painel do vendedor, `VendorPanel`) e a banca em `art/badlandsArt.ts` (`vendorStall`).
 
 ## Decisões em aberto

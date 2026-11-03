@@ -1,4 +1,4 @@
-import { ITEMS, RUNES, isPotion, isRune, type ItemRarity, type ItemSlot, type ItemTier, type PotionId, type RuneKind } from "@kusa/shared";
+import { ITEMS, POTIONS, RUNES, isPotion, isRune, type ItemRarity, type ItemSlot, type ItemTier, type PotionId, type RuneKind } from "@kusa/shared";
 import { makeCanvas, paintGrid, type Grid, type Palette } from "./pixels.ts";
 import { protoHero, protoItemOf } from "./newArt.ts";
 
@@ -678,9 +678,56 @@ const POTION_GRID: Grid = [
   "................",
 ];
 
+/** Poção média: pote quadrado, mais largo que o frasco pequeno. */
+const POTION_GRID_2: Grid = [
+  "................",
+  ".....oooooo.....",
+  ".....occcco.....",
+  ".....oooooo.....",
+  "......ogLo......",
+  "....oooooooo....",
+  "...ogllllllLo...",
+  "...ogllllllLo...",
+  "...olllllllLo...",
+  "...olllllllLo...",
+  "...olllllllLo...",
+  "...olllllllLo...",
+  "...oLllllllLo...",
+  "...oLLLLLLLLo...",
+  "...oooooooooo...",
+  "................",
+];
+
+/** Poção grande: frasco redondo, o maior de todos, com rolha dourada. */
+const POTION_GRID_3: Grid = [
+  "......oooo......",
+  "......occo......",
+  ".....oooooo.....",
+  "......ogLo......",
+  "......ogLo......",
+  "....oogllLoo....",
+  "...ogglllllLo...",
+  "..ogllllllllLo..",
+  ".ogllllllllllLo.",
+  ".olllllllllllLo.",
+  ".olllllllllllLo.",
+  ".oLllllllllllLo.",
+  "..oLlllllllLLo..",
+  "...oLLLLLLLLo...",
+  "....oooooooo....",
+  "................",
+];
+
+const POTION_GRIDS: Record<1 | 2 | 3, Grid> = { 1: POTION_GRID, 2: POTION_GRID_2, 3: POTION_GRID_3 };
+
+/** Cor do líquido de cada poção: quanto maior, mais funda (vida vai do vermelho ao rubi; mana do azul ao violeta). */
 const LIQUIDS: Record<PotionId, Palette> = {
   "potion-health": { l: "#e74c3c", L: "#8e1f16" },
+  "potion-health-2": { l: "#d6304a", L: "#6e0f22" },
+  "potion-health-3": { l: "#ff4f5e", L: "#8a0f2a", c: "#e0b040" },
   "potion-mana": { l: "#4aa3df", L: "#1f4f8e" },
+  "potion-mana-2": { l: "#4f6ff0", L: "#1a2a7a" },
+  "potion-mana-3": { l: "#9a6cf5", L: "#3d1f8e", c: "#e0b040" },
 };
 
 const GLASS: Palette = { o: "#140d0a", c: "#a9794a", g: "#f4f7fb" };
@@ -746,7 +793,7 @@ const MASTER_STONE: Palette = { o: "#2b1d06", s: "#b8892b", S: "#7a5714" };
 export function itemIcon(itemId: string) {
   const { canvas, ctx } = makeCanvas(ITEM_ICON_SIZE, ITEM_ICON_SIZE);
   if (isPotion(itemId)) {
-    paintGrid(ctx, POTION_GRID, { ...GLASS, ...LIQUIDS[itemId] }, 0, 0);
+    paintGrid(ctx, POTION_GRIDS[POTIONS[itemId].tier], { ...GLASS, ...LIQUIDS[itemId] }, 0, 0);
     return canvas;
   }
   if (isRune(itemId)) {

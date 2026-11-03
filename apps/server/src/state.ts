@@ -24,7 +24,7 @@ export class Player extends Schema {
   @type("string") status: PlayerStatus = "playing";
   /** Id do monstro selecionado para o auto-attack ("" = nenhum). */
   @type("string") target = "";
-  /** Alcance (tiles) do ataque básico agora (classe, Traços, Postura, equipamento, cegueira): a mira do ⚔️ desenha. */
+  /** Alcance (tiles) do ataque básico agora (classe, Traços, Postura, equipamento): a mira do ⚔️ desenha. */
   @type("number") basicRange = 1;
   /**
    * Frente do herói: a direção (em tiles) do último passo, golpe ou magia mirada. O toque rápido numa magia com alvo
@@ -62,9 +62,13 @@ export class Player extends Schema {
   @type("number") perkLevel = 0;
   /** Escolhas ainda na fila além da oferecida agora (subiu vários níveis de uma vez). */
   @type("number") perksQueued = 0;
-  /** Poções carregadas (só valem na hunt; até `POTION_MAX` de cada). */
+  /** Poções carregadas (só valem na hunt; até `POTION_MAX` de cada nível). `POTION_FIELD` liga cada poção ao campo. */
   @type("number") healthPotions = 0;
+  @type("number") healthPotions2 = 0;
+  @type("number") healthPotions3 = 0;
   @type("number") manaPotions = 0;
+  @type("number") manaPotions2 = 0;
+  @type("number") manaPotions3 = 0;
   /** Sob o Grito de Guerra: recebe menos dano. */
   @type("boolean") guarded = false;
   /** Escudo temporário (Escudo da Fé e outros): absorve dano antes da vida. 0 = sem escudo. */

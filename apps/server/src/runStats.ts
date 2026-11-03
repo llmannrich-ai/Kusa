@@ -43,7 +43,7 @@ export interface RunStats {
   specialDamage: Record<string, number>;
   /** Dano recebido por habilidade de monstro ("<monstro>:<habilidade>", já somado em `damageTaken`). */
   abilityDamage: Record<string, number>;
-  /** Tempo (ms) que este herói passou sob efeito de monstro: preso, atordoado, engolido, cego e corroído. */
+  /** Tempo (ms) que este herói passou sob efeito de monstro: preso, atordoado, engolido e corroído. */
   ccTaken: Record<string, number>;
   /** Dano que este herói deixou de causar por resistência ou imunidade dos monstros (negativo = vulnerabilidade rendeu a mais). */
   resisted: number;

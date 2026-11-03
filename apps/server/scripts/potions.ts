@@ -85,7 +85,7 @@ async function run() {
   // Fase 1: caça na Orla até juntar o loot de duas poções de vida (a segunda é para o teste da recarga).
   const potion = POTIONS["potion-health"];
   const field = POTION_FIELD[potion.id];
-  const price = CAMP_VENDOR_PRICES[potion.id];
+  const price = CAMP_VENDOR_PRICES[potion.id]!;
   while (me().loot < price * 2) await fightCommons("não juntou o loot da poção");
   console.log(`${kills} mortes; loot: ${me().loot}`);
 
