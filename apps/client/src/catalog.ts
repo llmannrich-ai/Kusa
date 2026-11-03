@@ -21,6 +21,7 @@ import {
   MAP_IDS,
   MAX_TIER,
   MONSTERS,
+  CAMP_VENDOR_POTIONS,
   CAMP_VENDOR_PRICES,
   MARKET_POTION_PRICES,
   POTIONS,
@@ -161,13 +162,13 @@ function runes() {
 
 function potions() {
   return section("🧪 Poções",
-    note(`Não caem de monstro nem de baú: compre no Mercado (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${MARKET_POTION_PRICES[id]} gold`).join(", ")}) ou com o vendedor do acampamento da Fíbula (${POTION_IDS.map((id) => `${POTIONS[id].icon} ${CAMP_VENDOR_PRICES[id]} de loot`).join(", ")}). Quem sai vivo leva as que sobraram.`),
+    note(`Não caem de monstro nem de baú: compre no Mercado, com gold, ou com o vendedor do acampamento da Fíbula, com loot (só as pequenas: ${CAMP_VENDOR_POTIONS.map((id) => `${POTIONS[id].icon} ${CAMP_VENDOR_PRICES[id]} de loot`).join(", ")}). Cada uma cura uma quantidade fixa, igual para todo herói. Quem sai vivo leva as que sobraram.`),
     ...POTION_IDS.map((id) => {
       const p = POTIONS[id];
       return entry({
         icon: itemIcon(id), name: `${p.icon} ${p.name}`, color: hex(p.color),
-        meta: "Consumível",
-        lines: [`Devolve ${pct(p.restore)} da ${p.stat === "hp" ? "vida" : "mana"} máxima.`],
+        meta: `Consumível · ${p.size} · ${MARKET_POTION_PRICES[id]} gold no Mercado`,
+        lines: [`Devolve ${p.amount} de ${p.stat === "hp" ? "vida" : "mana"}.`],
       });
     }),
   );

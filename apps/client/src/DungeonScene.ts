@@ -442,8 +442,8 @@ export class DungeonScene extends Phaser.Scene {
     kb?.on("keydown-ONE", () => this.spellBar.press(0));
     kb?.on("keydown-TWO", () => this.spellBar.press(1));
     kb?.on("keydown-THREE", () => this.spellBar.press(2));
-    kb?.on("keydown-Q", () => this.potionBar.press("potion-health"));
-    kb?.on("keydown-E", () => this.potionBar.press("potion-mana"));
+    kb?.on("keydown-Q", () => this.potionBar.press("hp"));
+    kb?.on("keydown-E", () => this.potionBar.press("mana"));
     kb?.on("keydown-B", () => this.bagBar.toggle());
     // Na zona do joystick, o toque no monstro só vale ao soltar rápido (ver MoveInput); fora dela, na hora.
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
